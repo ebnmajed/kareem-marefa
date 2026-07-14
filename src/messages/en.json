@@ -9,14 +9,14 @@
   "hero": {
     "eyebrow": "An internal knowledge-sharing initiative for our group",
     "headline": "Share knowledge… make an impact.",
-    "sub": "Generosity isn’t only money — it can be knowledge you share. Knowledge Kareem turns our colleagues’ expertise into sessions everyone benefits from — today, and a year from now.",
+    "sub": "Every experience carries value, and every insight deserves to be shared.",
     "cta": "Register your interest",
-    "ctaSecondary": "Learn more",
+    "ctaSecondary": "Learn about the initiative",
     "microTrust": "Takes less than a minute"
   },
   "about": {
     "title": "What is Knowledge Kareem?",
-    "body": "Each of us carries knowledge earned through experience — a tool we’ve mastered, a way of working we’ve refined, a lesson learned the hard way. Knowledge Kareem makes sure that knowledge doesn’t stay locked in people’s heads: employees turn it into sessions and workshops for colleagues across our group — technical, management, creative, or lessons from real experience."
+    "body": "Every one of us holds knowledge worth sharing. It might be an experience, a skill, or a lesson you picked up along the way. That’s where Knowledge Kareem comes in: a space where employees across the group exchange their expertise through short, varied sessions and workshops — to strengthen learning, trade best practices, and make the most of the experience already among us."
   },
   "how": {
     "title": "How it works",
@@ -64,7 +64,6 @@
     "tagline": "Share knowledge… make an impact."
   },
   "footer": {
-    "tagline": "Share knowledge… make an impact.",
     "privacy": "Your email is used only for the Knowledge Kareem initiative — never shared with anyone else.",
     "internal": "An internal initiative for our group of companies"
   },
