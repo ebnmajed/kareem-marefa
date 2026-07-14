@@ -1,26 +1,814 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+   كريم معرفة — design tokens
+   Dark/light is per-SECTION (not a user theme): `.theme-dark` reassigns the
+   semantic vars, so components consume only semantic utilities and never
+   know which context they sit in.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Navy ramp (brand primary #0B1220) */
+  --color-navy-1000: #070d18;
+  --color-navy-950: #0b1220;
+  --color-navy-900: #111a2c;
+  --color-navy-850: #172136;
+  --color-navy-800: #1d2a42;
+
+  /* Silver ramp */
+  --color-silver-100: #f4f6f9;
+  --color-silver-200: #e6eaf0;
+  --color-silver-300: #c9ced6;
+  --color-silver-400: #a8b3c4;
+
+  /* Slate text on light (silvers are never text on light — WCAG) */
+  --color-slate-body: #33415c;
+  --color-slate-muted: #5b6780;
+
+  /* Status — the only chroma on the page, desaturated to fit the metallic world */
+  --color-error: #9e3b3f;
+  --color-error-border: #c0555a;
+  --color-error-bg: #fbf1f1;
+  --color-error-on-dark: #e08c8f;
+  --color-success: #2f6b4f;
+  --color-success-bg: #eff6f2;
+  --color-success-on-dark: #8fbfa5;
+
+  /* Radii: three steps only */
+  --radius-field: 6px;
+  --radius-card: 14px;
+
+  /* The single shadow token (light context only) */
+  --shadow-card:
+    0 1px 2px rgba(11, 18, 32, 0.05), 0 12px 32px rgba(11, 18, 32, 0.07);
+
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic:
+    var(--font-plex-arabic), var(--font-plex), ui-sans-serif, system-ui,
+    sans-serif;
 }
 
+/* Semantic colors (defaults = light context; .theme-dark reassigns).
+   MUST be `@theme inline`: a plain @theme would resolve var(--fg-heading)
+   at :root once, freezing the light values and breaking .theme-dark. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg-heading: var(--fg-heading);
+  --color-fg-body: var(--fg-body);
+  --color-fg-muted: var(--fg-muted);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+  /* the network made structural: the spine that threads the chapters.
+     --index is intentionally NOT registered here — it would generate a
+     `text-index` color utility that collides with the type utility below. */
+  --color-spine: var(--spine);
+  --color-node: var(--node);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* --------------------------------- semantic contexts -------------------- */
+
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --fg-heading: #0b1220;
+  --fg-body: #33415c;
+  --fg-muted: #5b6780;
+  --edge: #e6eaf0;
+  --edge-strong: #767f8c; /* input borders on white must meet 3:1 (SC 1.4.11) */
+  --ring: #0b1220;
+
+  /* Spine, nodes and chapter numerals are decorative (their rails are
+     aria-hidden), so they sit below text contrast minimums on purpose. */
+  --spine: #d7dce3;
+  --node: #0b1220;
+  --index: #c9ced6;
+
+  /* Buttons: primary inverts per context, secondary is an outline */
+  --btn-bg: #0b1220;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #172136;
+  --btn-bg-active: #1d2a42;
+  --btn2-border: #c9ced6;
+  --btn2-border-hover: #a8b3c4;
+  --btn2-fg: #0b1220;
+  --btn2-bg-hover: #f4f6f9;
+}
+
+.theme-dark {
+  --bg: #0b1220;
+  --surface: #111a2c;
+  --fg-heading: #ffffff;
+  --fg-body: #c9ced6;
+  --fg-muted: #a8b3c4;
+  --edge: rgba(201, 206, 214, 0.14);
+  --edge-strong: rgba(201, 206, 214, 0.38);
+  --ring: #c9ced6;
+
+  --btn-bg: #ffffff;
+  --btn-fg: #0b1220;
+  --btn-bg-hover: #e6eaf0;
+  --btn-bg-active: #c9ced6;
+  --btn2-border: rgba(201, 206, 214, 0.38);
+  --btn2-border-hover: #c9ced6;
+  --btn2-fg: #e6eaf0;
+  --btn2-bg-hover: rgba(201, 206, 214, 0.08);
+
+  --spine: rgba(201, 206, 214, 0.26);
+  --node: #c9ced6;
+  --index: rgba(201, 206, 214, 0.42);
+
+  background-color: var(--bg);
+  color: var(--fg-body);
+}
+
+/* --------------------------------- typography ---------------------------
+   AR runs slightly larger with taller line-height at equal hierarchy.
+   Mobile values by default; desktop overrides ≥768px. Body sizes hold. */
+
+html[lang="en"] {
+  /* Marketing display type is fluid; body type stays on a fixed rem scale
+     (the size delta across viewports is too small to be worth the jitter). */
+  --fs-display: clamp(2.5rem, 1.1rem + 6.2vw, 5rem);  --lh-display: 1.06;
+  --fs-mega: clamp(2.25rem, 0.4rem + 7.6vw, 5.5rem);  --lh-mega: 1.08;
+  --fs-chapter: clamp(1.875rem, 0.9rem + 4.2vw, 3.25rem); --lh-chapter: 1.16;
+  --fs-statement: clamp(1.25rem, 0.95rem + 1.1vw, 1.75rem); --lh-statement: 1.55;
+  --fs-index: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
+  --fs-h1: 1.875rem;      --lh-h1: 2.375rem;       /* 30/38 */
+  --fs-h2: 1.5rem;        --lh-h2: 2rem;           /* 24/32 */
+  --fs-h3: 1.25rem;       --lh-h3: 1.75rem;        /* 20/28 */
+  --fs-body-lg: 1.125rem; --lh-body-lg: 1.75rem;   /* 18/28 */
+  --fs-body: 1rem;        --lh-body: 1.625rem;     /* 16/26 */
+  --fs-caption: 0.875rem; --lh-caption: 1.25rem;   /* 14/20 */
+  --fs-label: 0.9375rem;  --lh-label: 1.25rem;     /* 15/20 */
+  --fs-eyebrow: 0.75rem;  --lh-eyebrow: 1rem;      /* 12/16 */
+  --ls-eyebrow: 0.08em;
+  --tt-eyebrow: uppercase;
+  --ls-display: -0.02em;
+  font-family: var(--font-arabic); /* placeholder; body rule below wins */
+}
+
+html[lang="ar"] {
+  /* Arabic runs larger at equal hierarchy, and its ascenders/descenders need
+     far more leading than Latin — hence the taller multipliers, not a bug. */
+  --fs-display: clamp(2.5rem, 1.3rem + 5.4vw, 4.75rem);  --lh-display: 1.34;
+  --fs-mega: clamp(2.25rem, 0.7rem + 6.6vw, 5rem);       --lh-mega: 1.32;
+  --fs-chapter: clamp(1.875rem, 1.1rem + 3.6vw, 3.125rem); --lh-chapter: 1.42;
+  --fs-statement: clamp(1.3125rem, 1rem + 1.1vw, 1.8125rem); --lh-statement: 1.85;
+  --fs-index: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
+  --fs-h1: 2rem;          --lh-h1: 2.75rem;        /* 32/44 */
+  --fs-h2: 1.625rem;      --lh-h2: 2.375rem;       /* 26/38 */
+  --fs-h3: 1.3125rem;     --lh-h3: 2rem;           /* 21/32 */
+  --fs-body-lg: 1.1875rem; --lh-body-lg: 2rem;     /* 19/32 */
+  --fs-body: 1.0625rem;   --lh-body: 1.875rem;     /* 17/30 */
+  --fs-caption: 0.9375rem; --lh-caption: 1.5rem;   /* 15/24 */
+  --fs-label: 1rem;       --lh-label: 1.5rem;      /* 16/24 */
+  --fs-eyebrow: 0.8125rem; --lh-eyebrow: 1.25rem;  /* 13/20 */
+  --ls-eyebrow: 0;         /* NEVER letter-space Arabic */
+  --tt-eyebrow: none;
+  --ls-display: 0;
+}
+
+@media (min-width: 768px) {
+  html[lang="en"] {
+    --fs-h1: 2.5rem;       --lh-h1: 3rem;          /* 40/48 */
+    --fs-h2: 2rem;         --lh-h2: 2.5rem;        /* 32/40 */
+    --fs-h3: 1.5rem;       --lh-h3: 2rem;          /* 24/32 */
+  }
+  html[lang="ar"] {
+    --fs-h1: 2.75rem;      --lh-h1: 3.75rem;       /* 44/60 */
+    --fs-h2: 2.125rem;     --lh-h2: 3rem;          /* 34/48 */
+    --fs-h3: 1.625rem;     --lh-h3: 2.375rem;      /* 26/38 */
   }
 }
 
+html[lang="ar"] body {
+  font-family: var(--font-arabic);
+}
+html[lang="en"] body {
+  font-family: var(--font-sans);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+@utility text-display {
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  font-weight: 600;
+  color: var(--fg-heading);
+}
+/* The closing title card — the tagline as an end credit. */
+@utility text-mega {
+  font-size: var(--fs-mega);
+  line-height: var(--lh-mega);
+  letter-spacing: var(--ls-display);
+  font-weight: 600;
+  color: var(--fg-heading);
+  text-wrap: balance;
+}
+/* Section headings on the landing page. Deliberately far above --fs-h2: the
+   old 2:1 heading-to-body ratio is what made the page read as a template. */
+@utility text-chapter {
+  font-size: var(--fs-chapter);
+  line-height: var(--lh-chapter);
+  letter-spacing: var(--ls-display);
+  font-weight: 600;
+  color: var(--fg-heading);
+  text-wrap: balance;
+}
+/* Manifesto / lead paragraphs. Long-form copy set at a size that says the
+   words matter — the "generosity is the luxury signal" register. */
+@utility text-statement {
+  font-size: var(--fs-statement);
+  line-height: var(--lh-statement);
+  font-weight: 400;
+}
+/* Chapter numerals in the rail. */
+@utility text-index {
+  font-size: var(--fs-index);
+  line-height: 1;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--index);
+}
+
+@utility text-h1 {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  font-weight: 600;
+  color: var(--fg-heading);
+}
+@utility text-h2 {
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  font-weight: 600;
+  color: var(--fg-heading);
+}
+@utility text-h3 {
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  font-weight: 600;
+  color: var(--fg-heading);
+}
+@utility text-body-lg {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body-lg);
+}
+@utility text-body {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+@utility text-caption {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+}
+@utility text-label {
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
+  font-weight: 500;
+}
+@utility text-eyebrow {
+  font-size: var(--fs-eyebrow);
+  line-height: var(--lh-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: var(--tt-eyebrow);
+  font-weight: 500;
+}
+
+/* --------------------------------- form ---------------------------------
+   Provider-field reveal is CSS-driven (`:has`) so it works before hydration
+   and without JS. Fields are kept-but-hidden on role switch: display:none
+   inputs still submit, and the server strips them for attendees. */
+
+.provider-fields {
+  display: none;
+}
+.role-choice:has(input[value="provider"]:checked) ~ .provider-fields {
+  display: flex;
+  animation: rise-in 200ms ease-out both;
+}
+
+/* Honeypot — off-screen, not display:none (some bots detect that) */
+.hp-field {
+  position: absolute;
+  inset-inline-start: -9999px;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}
+
+/* --------------------------------- focus --------------------------------
+   :focus-visible only; ring color adapts per context via --ring. */
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.theme-dark :focus-visible {
+  outline-offset: 3px;
+}
+
+/* --------------------------------- motion -------------------------------
+   Two orchestrated moments: hero entrance + ambient network pulse/ripple.
+   Micro-interactions elsewhere: 150ms color fades (set in components). */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-rise {
+  animation: rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes network-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dot-pulse {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+
+@keyframes ripple-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  30% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.network-svg {
+  animation: network-fade 800ms ease-out 300ms both;
+}
+.network-svg .pulse-dot {
+  animation: dot-pulse 6s ease-in-out infinite alternate;
+}
+/* Unscoped: the success panel's "your dot joined the network" glyph
+   carries a ripple too, not just the hero artwork. */
+.ripple-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ripple-ring 8s ease-out infinite;
+}
+
+[dir="ltr"] .network-svg {
+  transform: scaleX(-1); /* artwork is authored RTL-first */
+}
+
+/* --------------------------- the chapter spine ---------------------------
+   The page IS the network. A hairline threads every chapter, each hanging off
+   it as a node, and it draws itself as you scroll — so scrolling is the act of
+   connecting. The metaphor is load-bearing structure here, not an ornament
+   dropped into a corner.
+
+   Mobile turns the rail on its side (numeral · node · rule, above the heading)
+   rather than dropping it: a 7rem gutter would eat a third of a 390px screen. */
+
+.chapter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: clamp(1.75rem, 4vw, 2.5rem);
+}
+.chapter-rail {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.875rem;
+}
+.chapter-node {
+  flex-shrink: 0;
+  block-size: 7px;
+  inline-size: 7px;
+  border-radius: 9999px;
+  background: var(--node);
+}
+.chapter-line {
+  flex: 1;
+  background: var(--spine);
+  block-size: 1px;
+}
+
+@media (min-width: 900px) {
+  .chapter {
+    grid-template-columns: 7rem minmax(0, 1fr);
+    column-gap: clamp(2rem, 4vw, 3.5rem);
+  }
+  .chapter-rail {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    /* the rail runs the full height of its chapter, so segments stack into one
+       continuous line down the page */
+    block-size: 100%;
+  }
+  .chapter-line {
+    inline-size: 1px;
+    block-size: auto;
+  }
+}
+
+/* ------------------------- cinematic layer ------------------------------
+   The audience is a media production group: motion speaks their grammar —
+   focus pulls, light sweeps, edit cuts, dolly moves. Everything below is
+   gated on prefers-reduced-motion and degrades to complete stills. */
+
+/* Opening sting — overlay shown only when the pre-hydration gate script
+   sets html[data-sting="1"] (first landing view of a session, JS on,
+   motion allowed). Choreography: ignite → ripple → lines draw → wordmark
+   light-sweep → curtain lift.
+
+   data-sting is a 4-state machine, and both terminal states matter:
+     "1" → "done"     natural end
+     "1" → "skip" → "skipped"
+   The curtain rule below is shared by "1" and "skip" ON PURPOSE. If a skip
+   swapped the animation out, the half-lifted curtain would snap back to
+   translateY(0) — slamming the overlay back over the page it just revealed.
+   Sharing the rule keeps the transform running; the skip only fades opacity. */
+
+.sting {
+  display: none;
+  transition: opacity 220ms ease-out;
+}
+html[data-sting="1"] .sting,
+html[data-sting="skip"] .sting {
+  display: flex;
+  animation: sting-curtain 600ms cubic-bezier(0.87, 0, 0.13, 1) 2450ms both;
+}
+html[data-sting="skip"] .sting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes sting-ignite {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sting-ring {
+  from {
+    transform: scale(0.3);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@keyframes sting-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes sting-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sting-wordmark {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes sting-sweep {
+  from {
+    transform: translateX(-160%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+@keyframes sting-curtain {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+.sting-dot {
+  animation: sting-ignite 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sting-ring {
+  animation: sting-ring 1100ms cubic-bezier(0.16, 1, 0.3, 1) 450ms both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sting-ring-2 {
+  animation-delay: 650ms;
+}
+.sting-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sting-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sting-node {
+  animation: sting-pop 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sting-wordmark {
+  animation: sting-wordmark 700ms cubic-bezier(0.16, 1, 0.3, 1) 1250ms both;
+}
+.sting-sweep {
+  animation: sting-sweep 900ms cubic-bezier(0.4, 0, 0.2, 1) 1650ms both;
+}
+
+/* Hero entrance — focus-pull: blur racks to sharp, word by word for the
+   headline. While the sting plays, every hero entrance waits for the curtain.
+
+   "1" and "done" MUST carry the same offset: changing it under a finished
+   animation is fine, but changing it under a *running* one re-times it, so a
+   natural end must not touch the value. The skip states drop the offset (to
+   the 0ms fallback) while the hero is still in its delay phase, which pulls
+   the entrance forward to now — exactly what a skip should do. */
+html[data-sting="1"],
+html[data-sting="done"] {
+  --sting-offset: 2650ms;
+}
+
+@keyframes focus-pull {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@utility hero-enter {
+  animation: rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--d, 0ms) + var(--sting-offset, 0ms));
+}
+@utility focus-word {
+  display: inline-block;
+  animation: focus-pull 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--d, 0ms) + var(--sting-offset, 0ms));
+}
+
+/* Scroll-directed film — CSS scroll-driven animations where supported
+   (Chrome/Edge/Safari); elsewhere content is simply visible. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes cut-in {
+      from {
+        opacity: 0;
+        clip-path: inset(0rem 0rem 100% 0rem);
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        /* generous negative inset so card shadows are never clipped
+           by the filled final frame */
+        clip-path: inset(-3rem -3rem -3rem -3rem);
+        transform: none;
+      }
+    }
+    .reveal-cut {
+      animation: cut-in cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-timeline: view();
+      animation-range: entry 5% entry 45%;
+    }
+
+    @keyframes thread-grow {
+      from {
+        transform: translateY(-3rem) scaleY(0);
+      }
+      to {
+        transform: translateY(-3rem) scaleY(1);
+      }
+    }
+    .seam-thread-grow {
+      transform-origin: top center;
+      animation: thread-grow cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+
+    @keyframes step-light {
+      to {
+        background-color: var(--color-navy-950);
+        border-color: var(--color-navy-950);
+        color: #ffffff;
+      }
+    }
+    .step-num {
+      animation: step-light both ease-out;
+      animation-timeline: view();
+    }
+    li:nth-child(1) > .step-rail > .step-num {
+      animation-range: entry 40% entry 90%;
+    }
+    li:nth-child(2) > .step-rail > .step-num {
+      animation-range: entry 70% entry 120%;
+    }
+    li:nth-child(3) > .step-rail > .step-num {
+      animation-range: entry 100% entry 150%;
+    }
+
+    /* the connection between two steps draws itself as it enters */
+    .step-line {
+      transform-origin: top;
+      animation: draw-down cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-timeline: view();
+      animation-range: entry 50% entry 105%;
+    }
+
+    /* the chapter spine: one continuous line built segment by segment */
+    @keyframes draw-down {
+      from {
+        transform: scaleY(0);
+      }
+      to {
+        transform: scaleY(1);
+      }
+    }
+    @keyframes node-ignite {
+      from {
+        opacity: 0;
+        transform: scale(0.2);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    @media (min-width: 900px) {
+      .chapter-line {
+        transform-origin: top;
+        animation: draw-down linear both;
+        animation-timeline: view();
+        animation-range: entry 30% cover 65%;
+      }
+    }
+    .chapter-node {
+      animation: node-ignite 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-timeline: view();
+      animation-range: entry 15% entry 55%;
+    }
+
+    @keyframes line-draw {
+      from {
+        stroke-dashoffset: 1;
+      }
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    .draw-on-scroll line {
+      stroke-dasharray: 1;
+      animation: line-draw both ease-out;
+      animation-timeline: view();
+      animation-range: entry 10% entry 80%;
+    }
+
+    @keyframes progress-grow {
+      from {
+        transform: scaleX(0);
+      }
+      to {
+        transform: scaleX(1);
+      }
+    }
+    .scroll-progress {
+      animation: progress-grow linear both;
+      animation-timeline: scroll(root);
+      transform-origin: 0% 50%;
+    }
+    [dir="rtl"] .scroll-progress {
+      transform-origin: 100% 50%;
+    }
+  }
+}
+
+/* Hero legibility fade over the WebGL constellation — opaque navy on the
+   headline side (inline-start), transparent over the dense network. */
+.hero-fade {
+  pointer-events: none;
+}
+[dir="rtl"] .hero-fade {
+  background: linear-gradient(
+    to right,
+    rgba(11, 18, 32, 0) 45%,
+    rgba(11, 18, 32, 0.9) 92%
+  );
+}
+[dir="ltr"] .hero-fade {
+  background: linear-gradient(
+    to left,
+    rgba(11, 18, 32, 0) 45%,
+    rgba(11, 18, 32, 0.9) 92%
+  );
+}
+
+/* Metallic light-sweep on primary buttons — a single pass, like light
+   catching brushed chrome. */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+  /* light context = navy button → silver-white glint */
+  --sheen: rgba(255, 255, 255, 0.28);
+}
+.theme-dark .btn-sheen {
+  /* dark context = white button → navy glint */
+  --sheen: rgba(11, 18, 32, 0.12);
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 45%;
+  background: linear-gradient(105deg, transparent, var(--sheen), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+}
+.btn-sheen:hover::after {
+  animation: sting-sweep 650ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Register-route loading screen: three dots connecting */
+@keyframes loader-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.loader-dot {
+  animation: loader-dot 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .ripple-ring {
+    display: none;
+  }
+  .sting {
+    display: none !important;
+  }
+  .btn-sheen::after {
+    display: none;
+  }
 }
