@@ -28,7 +28,7 @@ export const registrationSchema = z.discriminatedUnion("role", [
     ...base,
     role: z.literal("provider"),
     topicTitle: z.string().trim().min(3).max(150),
-    topicDescription: z.string().trim().max(600).default(""),
+    topicDescription: z.string().trim().min(1).max(600),
     topicCategory: z.enum(TOPIC_CATEGORIES),
   }),
 ]);
@@ -96,7 +96,10 @@ export function validateRegistration(raw: RawRegistrationValues): {
     if (!TOPIC_CATEGORIES.includes(raw.topicCategory as TopicCategory)) {
       errors.topicCategory = "categoryRequired";
     }
-    if ((raw.topicDescription ?? "").trim().length > 600) {
+    const description = (raw.topicDescription ?? "").trim();
+    if (!description) {
+      errors.topicDescription = "descriptionRequired";
+    } else if (description.length > 600) {
       errors.topicDescription = "descriptionTooLong";
     }
   }
@@ -112,7 +115,7 @@ export function validateRegistration(raw: RawRegistrationValues): {
           email,
           locale,
           topicTitle: raw.topicTitle,
-          topicDescription: raw.topicDescription ?? "",
+          topicDescription: raw.topicDescription,
           topicCategory: raw.topicCategory,
         }
       : { role, name, email, locale },

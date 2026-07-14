@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -41,6 +42,17 @@ const FIELD_IDS: Record<RegistrationField, string> = {
   topicDescription: "reg-topic-description",
 };
 
+/** Module scope, not component scope: it closes over nothing but the constants
+ * above, and the failed-submit effect below runs before its old in-component
+ * declaration was reached. */
+function focusFirstInvalid(errs: RegistrationErrors) {
+  const first = FIELDS.find((f) => errs[f]);
+  if (!first) return;
+  requestAnimationFrame(() => {
+    document.getElementById(FIELD_IDS[first])?.focus();
+  });
+}
+
 /** `token` is the server-rendered <FormToken/> hidden field. */
 export function RegistrationForm({ token }: { token: ReactNode }) {
   const t = useTranslations("register");
@@ -67,7 +79,6 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
     if (state.status === "error" && state.errors) {
       focusFirstInvalid(state.errors);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   function readValues() {
@@ -108,14 +119,6 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
       setSubmitted(true);
       focusFirstInvalid(result.errors);
     }
-  }
-
-  function focusFirstInvalid(errs: RegistrationErrors) {
-    const first = FIELDS.find((f) => errs[f]);
-    if (!first) return;
-    requestAnimationFrame(() => {
-      document.getElementById(FIELD_IDS[first])?.focus();
-    });
   }
 
   if (state.status === "success" || state.status === "duplicate") {
@@ -305,7 +308,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
         <TextField
           id="reg-topic-description"
           name="topicDescription"
-          label={`${t("descriptionLabel")} ${t("descriptionOptional")}`}
+          label={t("descriptionLabel")}
           hint={t("descriptionHint")}
           defaultValue={values?.topicDescription}
           error={
@@ -315,6 +318,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           onBlur={() => validateField("topicDescription")}
           onInput={() => validateField("topicDescription", true)}
           textarea
+          ariaRequired
         />
       </div>
 
@@ -524,15 +528,30 @@ function Spinner() {
   );
 }
 
+/* The share URL is client-only: the panel is also server-rendered (the no-JS
+   path POSTs straight to it), so there is no `window` at that point. Reading it
+   through useSyncExternalStore gives the "" server snapshot and the real client
+   one without a hydration mismatch — and without a setState inside an effect,
+   which cascades a second render on every success. The store never changes, so
+   `subscribe` is a no-op; the snapshot is a plain string, so React's identity
+   check is satisfied by value. */
+const noSubscribe = () => () => {};
+const clientShareUrl = () =>
+  `${window.location.origin}${window.location.pathname}`;
+const serverShareUrl = () => "";
+
 function SuccessPanel({ state }: { state: RegistrationState }) {
   const t = useTranslations("register");
   const role = state.role ?? "attendee";
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [shareUrl, setShareUrl] = useState("");
+  const shareUrl = useSyncExternalStore(
+    noSubscribe,
+    clientShareUrl,
+    serverShareUrl,
+  );
 
   useEffect(() => {
     headingRef.current?.focus();
-    setShareUrl(`${window.location.origin}${window.location.pathname}`);
   }, []);
 
   const duplicate = state.status === "duplicate";

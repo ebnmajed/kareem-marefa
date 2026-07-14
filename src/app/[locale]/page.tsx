@@ -63,16 +63,16 @@ export default async function LandingPage({
         <NetworkGL />
         <div aria-hidden="true" className="hero-fade absolute inset-0" />
         <div className="relative mx-auto w-full max-w-6xl px-6 pb-24 pt-32 md:px-8">
-          <div className="max-w-[22ch]">
+          <div className="max-w-[46rem]">
             <p className="hero-enter flex items-center gap-3 text-eyebrow text-fg-muted">
-              <span aria-hidden="true" className="size-[5px] rounded-full bg-node" />
+              <span aria-hidden="true" className="size-[5px] shrink-0 rounded-full bg-node" />
               {t("hero.eyebrow")}
             </p>
             <h1 className="mt-6 text-display">
               <FocusHeadline text={t("hero.headline")} />
             </h1>
             <p
-              className="hero-enter mt-7 max-w-[38ch] text-statement text-fg-body"
+              className="hero-enter mt-7 max-w-[34ch] text-statement text-fg-body"
               style={delay(560)}
             >
               {t("hero.sub")}
@@ -101,8 +101,8 @@ export default async function LandingPage({
 
       {/* 01 — The manifesto. The copy is the artwork here: set large, given
           room, and left to carry the section on its own. */}
-      <section id="about" className="bg-white py-[clamp(6rem,13vw,11rem)]">
-        <Chapter n={1} locale={locale}>
+      <section id="about" className="bg-white">
+        <Chapter n={1} locale={locale} pad="clamp(6rem, 13vw, 11rem)">
           <h2 className="reveal-cut text-chapter">{t("about.title")}</h2>
           <p className="reveal-cut mt-10 max-w-[58ch] text-statement text-fg-body">
             {t("about.body")}
@@ -112,8 +112,8 @@ export default async function LandingPage({
 
       {/* 02 — The two paths, as a diptych split by a hairline. Each step is a
           node; the line between them draws as you arrive at it. */}
-      <section className="bg-silver-100 py-[clamp(4.5rem,9vw,8rem)]">
-        <Chapter n={2} locale={locale}>
+      <section className="bg-silver-100">
+        <Chapter n={2} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("how.title")}</h2>
           <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-0">
             {(["provider", "attendee"] as const).map((path, i) => (
@@ -159,12 +159,15 @@ export default async function LandingPage({
 
       {/* 03 — Recognition. The emotional peak, and the line the whole page is
           built around. The network is drawn behind it rather than left a void. */}
-      <section className="theme-dark relative overflow-hidden py-[clamp(5.5rem,12vw,10rem)]">
+      <section className="theme-dark relative overflow-clip">
         <NetworkBg className="draw-on-scroll opacity-[0.3]" />
-        <Chapter n={3} locale={locale} className="relative">
-          <h2 className="reveal-cut max-w-[16ch] text-chapter">
-            {t("recognition.title")}
-          </h2>
+        <Chapter
+          n={3}
+          locale={locale}
+          pad="clamp(5.5rem, 12vw, 10rem)"
+          className="relative"
+        >
+          <h2 className="reveal-cut text-chapter">{t("recognition.title")}</h2>
           <p className="reveal-cut mt-10 max-w-[54ch] text-statement">
             {t("recognition.body")}
           </p>
@@ -195,10 +198,10 @@ export default async function LandingPage({
 
       {/* 04 — The reassurance. Three qualifying criteria as an editorial
           definition list: term in the margin, plain language beside it. */}
-      <section className="bg-white py-[clamp(4.5rem,9vw,8rem)]">
-        <Chapter n={4} locale={locale}>
+      <section className="bg-white">
+        <Chapter n={4} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("policy.title")}</h2>
-          <p className="reveal-cut mt-7 max-w-[52ch] text-body-lg text-fg-body">
+          <p className="reveal-cut mt-7 max-w-[62ch] text-body-lg text-fg-body">
             {t("policy.intro")}
           </p>
           <dl className="mt-12 border-t border-edge">
@@ -224,7 +227,7 @@ export default async function LandingPage({
 
       {/* Close — the title card. The network draws itself in, and the tagline
           lands at full scale as an end credit. */}
-      <section className="theme-dark relative overflow-hidden">
+      <section className="theme-dark relative overflow-clip">
         <NetworkBg className="draw-on-scroll opacity-40" />
         <div className="relative mx-auto max-w-6xl px-6 py-[clamp(6rem,13vw,11rem)] md:px-8">
           <div className="max-w-[34rem]">

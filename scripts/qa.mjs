@@ -154,7 +154,15 @@ const providerFieldsDisplay = (page) =>
   await page.type("#reg-email", "dup@example.com");
   await page.type("#reg-topic-title", "أتمتة التقارير الشهرية");
   await page.evaluate(() => document.getElementById("reg-category-technical").click());
+
+  // description is required for providers: submitting without it must be blocked
   await sleep(3300);
+  await page.click('button[type="submit"]');
+  await sleep(400);
+  const descErr = await page.$("#reg-topic-description-error");
+  check("provider: empty description blocks submit", descErr !== null);
+
+  await page.type("#reg-topic-description", "كيف اختصرنا وقت إعداد التقارير إلى النصف");
   await page.click('button[type="submit"]');
   await page.waitForSelector('[role="status"]', { timeout: 10000 });
   const title = await page.$eval('[role="status"] h2', (el) => el.textContent);
@@ -179,6 +187,7 @@ const providerFieldsDisplay = (page) =>
   await page.type("#reg-name", "بدون جافاسكربت");
   await page.type("#reg-email", "broken-email");
   await page.type("#reg-topic-title", "موضوع تجريبي");
+  await page.type("#reg-topic-description", "نبذة تجريبية عن الموضوع");
   await page.evaluate(() => document.getElementById("reg-category-technical").click());
   await sleep(3300);
   await Promise.all([
@@ -191,16 +200,31 @@ const providerFieldsDisplay = (page) =>
   check("no-JS: typed values preserved after POST", nameEcho === "بدون جافاسكربت", nameEcho);
   await page.screenshot({ path: `${shots}/qa-nojs-error.png`, fullPage: true });
 
-  // fix the email → full success round-trip without JS
-  await page.click("#reg-email", { clickCount: 3 });
+  // fix the email → full success round-trip without JS.
+  // Clear the field explicitly. A triple-click does NOT select this input's
+  // contents here, so the retyped address used to be appended to the invalid
+  // one — the test posted "broken-emailnojs@example.com" while claiming to
+  // post "nojs@example.com", and wrote that junk row to whatever DB was wired
+  // up. (setJavaScriptEnabled(false) blocks page scripts, not CDP evaluate.)
+  await page.$eval("#reg-email", (el) => {
+    el.value = "";
+  });
   await page.type("#reg-email", "nojs@example.com");
+  const emailSent = await page.$eval("#reg-email", (el) => el.value);
+  check("no-JS: email field actually cleared before retype", emailSent === "nojs@example.com", emailSent);
   await sleep(3300);
   await Promise.all([
     page.waitForNavigation({ waitUntil: "networkidle0", timeout: 15000 }),
     page.click('button[type="submit"]'),
   ]);
-  const status = await page.$('[role="status"]');
-  check("no-JS: success panel after valid POST", status !== null);
+  // assert the SUCCESS panel specifically — `[role=status]` alone also matches
+  // the "already registered" duplicate panel, so the old check passed either way
+  const statusTitle = await page.$eval('[role="status"] h2', (el) => el.textContent);
+  check(
+    "no-JS: success panel after valid POST",
+    statusTitle?.includes("تم تسجيلك") || statusTitle?.includes("وصلنا اهتمامك"),
+    statusTitle ?? "no panel",
+  );
   await page.close();
 }
 
@@ -287,13 +311,17 @@ const providerFieldsDisplay = (page) =>
   await sleep(700);
   await page.mouse.click(640, 450);
   await sleep(500);
+  // Asserted on behaviour, not on the attribute: the overlay is gone and the
+  // hero is up. (data-sting stays as a terminal "skipped" — dropping it would
+  // bounce --sting-offset back to 2650ms and re-hide the hero.)
   const state = await page.evaluate(() => ({
     sting: document.documentElement.dataset.sting ?? "removed",
     display: getComputedStyle(document.querySelector(".sting")).display,
+    hero: +getComputedStyle(document.querySelector(".focus-word")).opacity,
   }));
   check(
     "click skips the sting",
-    state.sting === "removed" && state.display === "none",
+    state.display === "none" && state.hero === 1,
     JSON.stringify(state),
   );
   await page.close();

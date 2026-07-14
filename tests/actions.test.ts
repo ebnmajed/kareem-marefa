@@ -28,7 +28,7 @@ function makeFormData(overrides: Record<string, string> = {}): FormData {
     name: "Yaman Reda",
     email: "Yaman@Example.com",
     topicTitle: "Cutting reporting time in half",
-    topicDescription: "",
+    topicDescription: "How we halved the time it takes to prepare reports.",
     topicCategory: "technical",
     locale: "ar",
     form_token: createFormToken(Date.now() - MIN_SUBMIT_MS - 1000),
@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 
 describe("submitRegistration", () => {
-  it("inserts a snake_case provider row with locale and null empty description", async () => {
+  it("inserts a snake_case provider row with locale and description", async () => {
     const state = await submitRegistration(prev, makeFormData());
     expect(state.status).toBe("success");
     expect(state.role).toBe("provider");
@@ -56,9 +56,21 @@ describe("submitRegistration", () => {
       role: "provider",
       locale: "ar",
       topic_title: "Cutting reporting time in half",
-      topic_description: null, // '' → null
+      topic_description: "How we halved the time it takes to prepare reports.",
       topic_category: "technical",
     });
+  });
+
+  it("rejects a provider with an empty description", async () => {
+    const state = await submitRegistration(
+      prev,
+      makeFormData({ topicDescription: "   " }),
+    );
+    expect(state.status).toBe("error");
+    if (state.status === "error") {
+      expect(state.errors?.topicDescription).toBe("descriptionRequired");
+    }
+    expect(insertMock).not.toHaveBeenCalled();
   });
 
   it("nulls all topic fields for attendees even if submitted (kept-but-hidden)", async () => {

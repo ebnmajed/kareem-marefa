@@ -108,10 +108,7 @@ export async function submitRegistration(
     role: data.role,
     locale: data.locale,
     topic_title: data.role === "provider" ? data.topicTitle : null,
-    topic_description:
-      data.role === "provider" && data.topicDescription !== ""
-        ? data.topicDescription
-        : null,
+    topic_description: data.role === "provider" ? data.topicDescription : null,
     topic_category: data.role === "provider" ? data.topicCategory : null,
   });
 

@@ -55,7 +55,9 @@ export function IntroSting() {
     };
 
     const skip = () => {
-      if ((curtain?.currentTime ?? 0) >= CURTAIN_START) return;
+      // currentTime is CSSNumberish; for a time-driven animation it is a plain
+      // millisecond number, but it must be coerced to compare.
+      if (Number(curtain?.currentTime ?? 0) >= CURTAIN_START) return;
       end(true);
     };
     const onKey = (e: KeyboardEvent) => {

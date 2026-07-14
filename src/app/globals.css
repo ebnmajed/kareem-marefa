@@ -395,12 +395,24 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   row-gap: clamp(1.75rem, 4vw, 2.5rem);
+  /* mobile: the rail lies on its side above the heading, so the chapter pads
+     as one block. A 7rem gutter would eat a third of a 390px screen. */
+  padding-block: var(--chapter-pad);
 }
 .chapter-rail {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.875rem;
+}
+.chapter-mark {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.875rem;
+}
+.chapter-mark .text-index {
+  order: -1; /* mobile reads numeral → node → rule; desktop hangs the node on the line */
 }
 .chapter-node {
   flex-shrink: 0;
@@ -419,18 +431,36 @@ body {
   .chapter {
     grid-template-columns: 7rem minmax(0, 1fr);
     column-gap: clamp(2rem, 4vw, 3.5rem);
+    /* the rail must reach both section edges, so the rhythm moves off the
+       chapter and onto the body column — see chapter.tsx */
+    padding-block: 0;
   }
+  .chapter-body {
+    padding-block: var(--chapter-pad);
+  }
+  /* The line spans the rail edge to edge and the node sits ON it, rather than
+     the line starting below the node — otherwise every chapter head opens a
+     `--chapter-pad`-sized gap and the spine reads as dashes, not a thread. */
   .chapter-rail {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
-    /* the rail runs the full height of its chapter, so segments stack into one
-       continuous line down the page */
-    block-size: 100%;
+    position: relative;
+    display: block;
+    padding-block-start: var(--chapter-pad);
   }
   .chapter-line {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 3px; /* centred under the 7px node */
     inline-size: 1px;
     block-size: auto;
+    flex: none;
+  }
+  .chapter-mark {
+    position: relative;
+    gap: 1rem;
+    margin-block-start: 0.32em; /* drop the node onto the heading's first line */
+  }
+  .chapter-mark .text-index {
+    order: 0;
   }
 }
 

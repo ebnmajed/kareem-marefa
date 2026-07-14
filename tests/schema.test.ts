@@ -37,11 +37,13 @@ describe("registrationSchema", () => {
     expect(parsed.email).toBe("foo@x.com");
   });
 
-  it("accepts an empty provider description (optional) and defaults it", () => {
+  it("rejects a provider without a description", () => {
     const { topicDescription: _omitted, ...rest } = provider;
-    const parsed = registrationSchema.parse(rest);
-    expect(parsed.role).toBe("provider");
-    if (parsed.role === "provider") expect(parsed.topicDescription).toBe("");
+    expect(registrationSchema.safeParse(rest).success).toBe(false);
+    expect(
+      registrationSchema.safeParse({ ...provider, topicDescription: "   " })
+        .success,
+    ).toBe(false);
   });
 
   it("rejects a provider without a title", () => {

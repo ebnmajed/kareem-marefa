@@ -94,7 +94,6 @@
     "categoryCreative": "Creative",
     "categoryExperience": "Lesson from experience",
     "descriptionLabel": "About your topic (1–2 sentences)",
-    "descriptionOptional": "(optional)",
     "descriptionHint": "A rough idea is enough — we’ll shape the details with you later",
     "submit": "Count me in",
     "submitting": "Registering…",
@@ -109,6 +108,7 @@
       "network": "We couldn’t submit your registration — check your connection and try again. Your details are still in the form.",
       "rateLimited": "We’ve received a lot of attempts — please try again in a few minutes.",
       "retry": "We couldn’t complete your registration — wait a moment and try again. Your details are still in the form.",
+      "descriptionRequired": "Please add a short summary of your topic",
       "descriptionTooLong": "The description is too long — 600 characters is the maximum.",
       "duplicate": "This email is already registered — you’re on the list!"
     },
