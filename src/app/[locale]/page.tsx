@@ -59,7 +59,10 @@ export default async function LandingPage({
       />
 
       {/* Hero — the constellation, and the single dot the spine descends from */}
-      <section className="theme-dark relative flex min-h-[92svh] items-center overflow-hidden">
+      <section
+        id="hero"
+        className="theme-dark relative flex min-h-[92svh] items-center overflow-hidden"
+      >
         <NetworkGL />
         <div aria-hidden="true" className="hero-fade absolute inset-0" />
         <div className="relative mx-auto w-full max-w-6xl px-6 pb-24 pt-32 md:px-8">
@@ -84,7 +87,7 @@ export default async function LandingPage({
               <ButtonLink href="/register">{t("hero.cta")}</ButtonLink>
               <a
                 href="#about"
-                className="inline-flex h-12 items-center justify-center rounded-field border border-[var(--btn2-border)] px-7 text-label text-[var(--btn2-fg)] transition-colors duration-150 hover:border-[var(--btn2-border-hover)] hover:bg-[var(--btn2-bg-hover)]"
+                className="inline-flex h-12 items-center justify-center rounded-field border border-[var(--btn2-border)] px-7 text-label text-[var(--btn2-fg)] transition-colors duration-150 hover:border-[var(--btn2-border-hover)] hover:bg-[var(--btn2-bg-hover)] active:border-[var(--btn2-border-hover)] active:bg-[var(--btn2-bg-hover)]"
               >
                 {t("hero.ctaSecondary")}
               </a>
@@ -101,7 +104,7 @@ export default async function LandingPage({
 
       {/* 01 — The manifesto. The copy is the artwork here: set large, given
           room, and left to carry the section on its own. */}
-      <section id="about" className="bg-white">
+      <section id="about" className="scroll-mt-24 bg-white">
         <Chapter n={1} locale={locale} pad="clamp(6rem, 13vw, 11rem)">
           <h2 className="reveal-cut text-chapter">{t("about.title")}</h2>
           <p className="reveal-cut mt-10 max-w-[58ch] text-statement text-fg-body">
@@ -112,7 +115,7 @@ export default async function LandingPage({
 
       {/* 02 — The two paths, as a diptych split by a hairline. Each step is a
           node; the line between them draws as you arrive at it. */}
-      <section className="bg-silver-100">
+      <section className="cv-section bg-silver-100">
         <Chapter n={2} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("how.title")}</h2>
           <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-0">
@@ -159,7 +162,7 @@ export default async function LandingPage({
 
       {/* 03 — Recognition. The emotional peak, and the line the whole page is
           built around. The network is drawn behind it rather than left a void. */}
-      <section className="theme-dark relative overflow-clip">
+      <section className="cv-section theme-dark relative overflow-clip">
         <NetworkBg className="draw-on-scroll opacity-[0.3]" />
         <Chapter
           n={3}
@@ -198,7 +201,7 @@ export default async function LandingPage({
 
       {/* 04 — The reassurance. Three qualifying criteria as an editorial
           definition list: term in the margin, plain language beside it. */}
-      <section className="bg-white">
+      <section className="cv-section bg-white">
         <Chapter n={4} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("policy.title")}</h2>
           <p className="reveal-cut mt-7 max-w-[62ch] text-body-lg text-fg-body">
@@ -227,7 +230,7 @@ export default async function LandingPage({
 
       {/* Close — the title card. The network draws itself in, and the tagline
           lands at full scale as an end credit. */}
-      <section className="theme-dark relative overflow-clip">
+      <section className="cv-section theme-dark relative overflow-clip">
         <NetworkBg className="draw-on-scroll opacity-40" />
         <div className="relative mx-auto max-w-6xl px-6 py-[clamp(6rem,13vw,11rem)] md:px-8">
           <div className="max-w-[34rem]">

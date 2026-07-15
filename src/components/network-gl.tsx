@@ -23,6 +23,16 @@ export function NetworkGL() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Low-end / data-saver bail: keep the already-rendered static SVG rather
+    // than run a GL loop on devices that will struggle. Conservative — only the
+    // weakest tier (Save-Data on, or ≤2GB RAM); capable mid-range phones still
+    // get the constellation. deviceMemory/connection are absent on iOS Safari
+    // (→ never bails there, which is correct — iPhones are capable).
+    const nav = navigator as Navigator & {
+      connection?: { saveData?: boolean };
+      deviceMemory?: number;
+    };
+    if (nav.connection?.saveData || (nav.deviceMemory ?? 8) <= 2) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const gl = canvas.getContext("webgl", {
@@ -46,7 +56,9 @@ export function NetworkGL() {
        World units: camera sits ~22 away with a 40° fov, so x∈[-11,11]
        roughly spans the frame. Clusters occupy the half away from the
        headline; each is a tight local web. */
-    const mobile = window.innerWidth < 768;
+    const mobile =
+      window.matchMedia("(max-width: 767px)").matches ||
+      window.matchMedia("(pointer: coarse)").matches;
     type P = { x: number; y: number; z: number; size: number; alpha: number; soft: number };
     const points: P[] = [];
     const links: [P, P][] = [];
@@ -251,7 +263,9 @@ export function NetworkGL() {
     };
 
     /* ------------------------------ loop --------------------------------- */
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Cap DPR lower on mobile: the soft point sprites (esp. the size-42 halo)
+    // are fill-rate bound; 1.5 is a large saving without looking fuzzy.
+    const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2);
     const resize = () => {
       const w = canvas.clientWidth, h = canvas.clientHeight;
       canvas.width = w * dpr;
@@ -273,6 +287,10 @@ export function NetworkGL() {
     let raf = 0;
     let running = true;
     const start = performance.now();
+    // Cap the draw rate on mobile (~30fps): the ambient breathe/pulse is
+    // imperceptible at 30 and it roughly halves GPU/CPU; desktop stays uncapped.
+    const minInterval = mobile ? 1000 / 30 : 0;
+    let lastDraw = 0;
     const attr = (p: WebGLProgram, name: string, size: number, stride: number, off: number) => {
       const loc = gl.getAttribLocation(p, name);
       gl.enableVertexAttribArray(loc);
@@ -281,7 +299,13 @@ export function NetworkGL() {
 
     const frame = () => {
       if (!running) return;
-      const t = (performance.now() - start) / 1000;
+      const now = performance.now();
+      if (now - lastDraw < minInterval) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+      lastDraw = now;
+      const t = (now - start) / 1000;
       pointerX += (targetPX - pointerX) * 0.04;
       pointerY += (targetPY - pointerY) * 0.04;
       const scroll = Math.min(window.scrollY / Math.max(window.innerHeight, 1), 1);

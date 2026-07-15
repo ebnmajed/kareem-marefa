@@ -8,7 +8,7 @@ const variants = {
   primary:
     "btn-sheen bg-[var(--btn-bg)] text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)] active:bg-[var(--btn-bg-active)]",
   secondary:
-    "border border-[var(--btn2-border)] text-[var(--btn2-fg)] hover:border-[var(--btn2-border-hover)] hover:bg-[var(--btn2-bg-hover)]",
+    "border border-[var(--btn2-border)] text-[var(--btn2-fg)] hover:border-[var(--btn2-border-hover)] hover:bg-[var(--btn2-bg-hover)] active:border-[var(--btn2-border-hover)] active:bg-[var(--btn2-bg-hover)]",
 } as const;
 
 type Variant = keyof typeof variants;

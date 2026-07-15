@@ -36,6 +36,11 @@ export async function generateMetadata({
 
 export const viewport: Viewport = {
   themeColor: "#0B1220",
+  // Opt into edge-to-edge so env(safe-area-inset-*) is non-zero on notched
+  // phones; every fixed element (Header top, MobileCta bottom) then pads for
+  // the notch/home-indicator itself. NEVER add maximumScale/userScalable —
+  // pinch-zoom must stay (a11y).
+  viewportFit: "cover",
 };
 
 export default async function LocaleLayout({

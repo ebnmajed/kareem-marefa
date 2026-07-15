@@ -189,6 +189,21 @@ html[lang="en"] body {
   font-family: var(--font-sans);
 }
 
+/* Mobile base: stop iOS text auto-inflation on rotate, prevent scroll-chaining
+   /rubber-band background reveal (app-like feel — `contain`, not `none`, so
+   pull-to-refresh survives), and smooth in-page anchor scrolling (motion-gated
+   to match the scroll-driven-animation gate below). */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg-body);
@@ -313,6 +328,18 @@ body {
 }
 .theme-dark :focus-visible {
   outline-offset: 3px;
+}
+
+/* --------------------------------- touch --------------------------------
+   Remove the grey/blue tap-flash and the ~300ms double-tap delay on controls;
+   intentional :active states (set per component) carry the press feedback. */
+a,
+button,
+label,
+summary,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* --------------------------------- motion -------------------------------
@@ -616,6 +643,17 @@ html[data-sting="done"] {
     transform: none;
     filter: blur(0);
   }
+}
+
+/* Below-the-fold sections skip layout+paint until near the viewport, cutting
+   first-render cost on the long mobile page. `contain-intrinsic-size: auto …`
+   makes the browser remember each section's real height so the scrollbar and
+   deep-link anchors stay honest. Not applied to the hero or the #about anchor
+   target. Scroll-driven reveals inside still fire (Chrome un-skips ~a viewport
+   ahead of entry). */
+@utility cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
 }
 
 @utility hero-enter {

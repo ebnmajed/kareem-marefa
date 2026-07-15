@@ -224,6 +224,8 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           name="name"
           label={t("nameLabel")}
           autoComplete="name"
+          autoCapitalize="words"
+          enterKeyHint="next"
           defaultValue={values?.name}
           error={errors.name && t(`errors.${errors.name}`)}
           maxLength={100}
@@ -240,6 +242,10 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           privacy={t("emailPrivacy")}
           autoComplete="email"
           inputMode="email"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
           dir="ltr"
           defaultValue={values?.email}
           error={errors.email && t(`errors.${errors.email}`)}
@@ -260,6 +266,8 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           name="topicTitle"
           label={t("topicTitleLabel")}
           hint={t("topicTitleHint")}
+          autoCapitalize="sentences"
+          enterKeyHint="next"
           defaultValue={values?.topicTitle}
           error={errors.topicTitle && t(`errors.${errors.topicTitle}`)}
           maxLength={150}
@@ -281,7 +289,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
             {TOPIC_CATEGORIES.map((cat) => (
               <label
                 key={cat}
-                className="flex h-10 cursor-pointer items-center rounded-full border border-[var(--edge-strong)] px-4.5 text-label text-fg-body transition-colors duration-150 hover:border-navy-950 has-checked:border-navy-950 has-checked:bg-navy-950 has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
+                className="flex h-11 cursor-pointer items-center rounded-full border border-[var(--edge-strong)] px-4.5 text-label text-fg-body transition-colors duration-150 hover:border-navy-950 active:border-navy-950 has-checked:border-navy-950 has-checked:bg-navy-950 has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
               >
                 <input
                   type="radio"
@@ -290,6 +298,10 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
                   id={`reg-category-${cat}`}
                   className="sr-only"
                   defaultChecked={values?.topicCategory === cat}
+                  aria-invalid={Boolean(errors.topicCategory) || undefined}
+                  aria-describedby={
+                    errors.topicCategory ? "reg-category-error" : undefined
+                  }
                 />
                 {t(
                   `category${(cat[0].toUpperCase() + cat.slice(1)) as Capitalize<typeof cat>}`,
@@ -310,6 +322,8 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           name="topicDescription"
           label={t("descriptionLabel")}
           hint={t("descriptionHint")}
+          autoCapitalize="sentences"
+          enterKeyHint="done"
           defaultValue={values?.topicDescription}
           error={
             errors.topicDescription && t(`errors.${errors.topicDescription}`)
@@ -371,7 +385,7 @@ function RoleCard({
   return (
     <label
       htmlFor={id}
-      className="relative block cursor-pointer rounded-card border border-silver-300 bg-white p-6 shadow-card transition-colors duration-150 hover:border-silver-400 has-checked:border-navy-950 has-checked:shadow-[inset_0_0_0_1px_#0B1220] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
+      className="relative block cursor-pointer rounded-card border border-silver-300 bg-white p-6 shadow-card transition-colors duration-150 hover:border-silver-400 active:border-navy-950 has-checked:border-navy-950 has-checked:shadow-[inset_0_0_0_1px_#0B1220] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
     >
       <input
         type="radio"
@@ -476,7 +490,12 @@ function TextField({
           {privacy}
         </p>
       )}
-      {error && <FieldError id={errorId!} msg={error} />}
+      {/* Reserve one caption line so blur/live validation doesn't shift the
+          fields below when an error appears. Height is locale-scaled via
+          --lh-caption (Arabic errors run taller) plus the FieldError's mt-2. */}
+      <div className="min-h-[calc(0.5rem+var(--lh-caption))]">
+        {error && <FieldError id={errorId!} msg={error} />}
+      </div>
     </div>
   );
 }
