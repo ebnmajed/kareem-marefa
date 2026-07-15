@@ -118,7 +118,9 @@
       "attendeeBody": "We’ll email you as soon as the platform launches and sessions begin.",
       "tagline": "Share knowledge… make an impact.",
       "invite": "Invite a colleague",
-      "inviteText": "Join the Knowledge Kareem initiative — share knowledge, make an impact. Register your interest here:"
+      "inviteText": "Join the Knowledge Kareem initiative — share knowledge, make an impact. Register your interest here:",
+      "shareTitle": "Knowledge Kareem",
+      "copied": "Link copied"
     }
   }
 }

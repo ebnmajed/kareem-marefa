@@ -568,10 +568,37 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
     clientShareUrl,
     serverShareUrl,
   );
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
+
+  /* Open the OS share sheet so the user picks where to send it (WhatsApp,
+     Messages, email, …). Where that API is missing — mostly desktop — fall
+     back to copying the invite to the clipboard with a brief confirmation. */
+  const handleShare = async () => {
+    const text = t("success.inviteText");
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: t("success.shareTitle"),
+          text,
+          url: shareUrl,
+        });
+      } catch {
+        // User dismissed the sheet, or the share was cancelled — no-op.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${shareUrl}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (e.g. insecure context) — nothing more to do.
+    }
+  };
 
   const duplicate = state.status === "duplicate";
   const title = duplicate
@@ -607,14 +634,21 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
         {t("success.tagline")}
       </p>
       {shareUrl && (
-        <a
-          href={`https://wa.me/?text=${encodeURIComponent(`${t("success.inviteText")} ${shareUrl}`)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-6 inline-flex h-11 items-center rounded-field border border-[var(--btn2-border)] px-5 text-label text-fg-heading transition-colors duration-150 hover:bg-white"
+        <button
+          type="button"
+          onClick={handleShare}
+          aria-live="polite"
+          className="mt-6 inline-flex h-11 items-center gap-2 rounded-field border border-[var(--btn2-border)] px-5 text-label text-fg-heading transition-colors duration-150 hover:bg-white"
         >
-          {t("success.invite")}
-        </a>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+            <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+          </svg>
+          {copied ? t("success.copied") : t("success.invite")}
+        </button>
       )}
     </div>
   );
