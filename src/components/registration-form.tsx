@@ -578,13 +578,16 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
      Messages, email, …). Where that API is missing — mostly desktop — fall
      back to copying the invite to the clipboard with a brief confirmation. */
   const handleShare = async () => {
-    const text = t("success.inviteText");
+    // Keep the link on its own line AFTER the sentence and pass it inside
+    // `text` (not as a separate `url`) — iOS/WhatsApp prepend a separate url,
+    // which shoves the link above the RTL copy and breaks the reading order.
+    // WhatsApp still detects the URL in the body and renders its link preview.
+    const message = `${t("success.inviteText")}\n${shareUrl}`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
           title: t("success.shareTitle"),
-          text,
-          url: shareUrl,
+          text: message,
         });
       } catch {
         // User dismissed the sheet, or the share was cancelled — no-op.
@@ -592,7 +595,7 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
       return;
     }
     try {
-      await navigator.clipboard.writeText(`${text} ${shareUrl}`);
+      await navigator.clipboard.writeText(message);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {

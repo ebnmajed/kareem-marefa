@@ -20,8 +20,18 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
 
+  // og:image is emitted as an ABSOLUTE URL off metadataBase; if it resolves to
+  // localhost, link-preview crawlers (WhatsApp, etc.) can't fetch it. Prefer an
+  // explicit SITE_URL, then Vercel's production domain, then localhost for dev.
+  // `||` (not `??`) so an empty SITE_URL="" env still falls through.
+  const siteUrl =
+    process.env.SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL &&
+      `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+    "http://localhost:3000";
+
   return {
-    metadataBase: new URL(process.env.SITE_URL ?? "http://localhost:3000"),
+    metadataBase: new URL(siteUrl),
     title: t("title"),
     description: t("description"),
     robots: { index: false, follow: false },
@@ -30,6 +40,9 @@ export async function generateMetadata({
       description: t("description"),
       locale,
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
     },
   };
 }
