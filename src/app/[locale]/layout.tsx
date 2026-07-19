@@ -22,13 +22,17 @@ export async function generateMetadata({
 
   // og:image is emitted as an ABSOLUTE URL off metadataBase; if it resolves to
   // localhost, link-preview crawlers (WhatsApp, etc.) can't fetch it. Prefer an
-  // explicit SITE_URL, then Vercel's production domain, then localhost for dev.
+  // explicit SITE_URL (set to https://kareem.pp.sa on Vercel so the card sits on
+  // the custom domain, not the *.vercel.app one), then Vercel's production
+  // domain, then localhost in dev / the real domain in prod builds.
   // `||` (not `??`) so an empty SITE_URL="" env still falls through.
   const siteUrl =
     process.env.SITE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL &&
       `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
-    "http://localhost:3000";
+    (process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : "https://kareem.pp.sa");
 
   // Served from public/ and referenced explicitly (relative URLs resolve
   // against metadataBase). We can't use the app/opengraph-image file
@@ -36,25 +40,36 @@ export async function generateMetadata({
   // fails to prerender on this Next version.
   const ogImage = {
     url: "/og.png",
+    // secureUrl is passed through verbatim (NOT resolved against metadataBase),
+    // so it MUST be absolute.
+    secureUrl: `${siteUrl}/og.png`,
+    type: "image/png",
     width: 1200,
     height: 630,
     alt: "كريم معرفة | Knowledge Kareem — شارك المعرفة.. واصنع الأثر",
   };
 
+  const title = t("title");
+  const description = t("description");
+
   return {
     metadataBase: new URL(siteUrl),
-    title: t("title"),
-    description: t("description"),
+    title,
+    description,
     robots: { index: false, follow: false },
     openGraph: {
-      title: t("title"),
-      description: t("description"),
+      title,
+      description,
+      url: `/${locale}`,
+      siteName: locale === "ar" ? "كريم معرفة" : "Knowledge Kareem",
       locale,
       type: "website",
       images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
+      title,
+      description,
       images: [ogImage],
     },
   };
