@@ -8,9 +8,9 @@ import { NetworkBg } from "@/components/network-bg";
  * DESIGNED, not uniform noise: a handful of constellation clusters (local
  * webs of short links) joined by a few long bridge lines, one glowing
  * focal node, and a sparse tail of unconnected dots drifting toward the
- * headline — knowledge not yet shared. Light pulses travel along the
- * connections; the camera breathes on a slow dolly with gentle
- * scroll/pointer parallax. Hand-rolled WebGL, no library.
+ * headline — knowledge not yet shared. Connections are flat solid strokes;
+ * the camera breathes on a slow dolly with gentle scroll/pointer
+ * parallax. Hand-rolled WebGL, no library.
  *
  * Fallback chain: reduced motion or no WebGL → the committed SVG artwork
  * (rendered underneath, crossfaded away only when GL is live).
@@ -59,7 +59,9 @@ export function NetworkGL() {
     const mobile =
       window.matchMedia("(max-width: 767px)").matches ||
       window.matchMedia("(pointer: coarse)").matches;
-    type P = { x: number; y: number; z: number; size: number; alpha: number; soft: number };
+    // `flash` is transient: driven to 1 when a traveling light arrives, then
+    // decayed each frame. Everything else is fixed at generation time.
+    type P = { x: number; y: number; z: number; size: number; alpha: number; soft: number; flash: number };
     const points: P[] = [];
     const links: [P, P][] = [];
 
@@ -86,6 +88,7 @@ export function NetworkGL() {
           size: 3.2 + rand() * 3.0,
           alpha: 0.55 + rand() * 0.4,
           soft: 0,
+          flash: 0,
         };
         members.push(p);
         points.push(p);
@@ -98,6 +101,7 @@ export function NetworkGL() {
         size: 8.5,
         alpha: 0.95,
         soft: 0,
+        flash: 0,
       };
       anchors.push(anchor);
       points.push(anchor);
@@ -135,7 +139,7 @@ export function NetworkGL() {
     }
 
     // the focal node: brightest point + a soft halo behind it
-    const focal: P = { x: -4.4 * mirror, y: 0.1, z: 1.2, size: 11, alpha: 1, soft: 0 };
+    const focal: P = { x: -4.4 * mirror, y: 0.1, z: 1.2, size: 11, alpha: 1, soft: 0, flash: 0 };
     points.push(focal);
     points.push({ ...focal, size: 42, alpha: 0.08, soft: 0.42 }); // halo
     links.push([focal, anchors[1]], [focal, anchors[2]]);
@@ -150,17 +154,51 @@ export function NetworkGL() {
         size: 2.6 + rand() * 2,
         alpha: 0.18 + rand() * 0.16,
         soft: 0,
+        flash: 0,
       });
     }
 
+    /* ---------------------------- travelers ------------------------------
+       Balls of light that walk the graph edge by edge. On arrival a node is
+       flashed and the traveler picks a fresh outgoing edge, preferring not
+       to double back — so a light reads as a thought propagating through the
+       network rather than bouncing on one link. */
+    const adj = new Map<P, P[]>();
+    for (const [a, b] of links) {
+      if (!adj.has(a)) adj.set(a, []);
+      if (!adj.has(b)) adj.set(b, []);
+      adj.get(a)!.push(b);
+      adj.get(b)!.push(a);
+    }
+    const linked = [...adj.keys()];
+    type T = { from: P; to: P; t: number };
+    const travelers: T[] = [];
+    const travelerN = mobile ? 4 : 9;
+    for (let i = 0; i < travelerN; i++) {
+      const from = linked[Math.floor(rand() * linked.length)];
+      const nbrs = adj.get(from)!;
+      travelers.push({ from, to: nbrs[Math.floor(rand() * nbrs.length)], t: rand() });
+    }
+    // step a traveler onto its next edge once it lands
+    const advance = (tr: T) => {
+      tr.to.flash = 1;
+      const nbrs = adj.get(tr.to)!;
+      let next = nbrs[Math.floor(rand() * nbrs.length)];
+      if (nbrs.length > 1 && next === tr.from) {
+        next = nbrs[(nbrs.indexOf(next) + 1) % nbrs.length];
+      }
+      tr.from = tr.to;
+      tr.to = next;
+      tr.t = 0;
+    };
+
     const pointData: number[] = [];
     for (const p of points) {
-      pointData.push(p.x, p.y, p.z, p.size, p.alpha, rand(), p.soft);
+      pointData.push(p.x, p.y, p.z, p.size, p.alpha, rand(), p.soft, p.flash);
     }
     const lineData: number[] = [];
     for (const [a, b] of links) {
-      const phase = rand();
-      lineData.push(a.x, a.y, a.z, 0, phase, b.x, b.y, b.z, 1, phase);
+      lineData.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
 
     /* ------------------------------ shaders ------------------------------ */
@@ -179,44 +217,57 @@ export function NetworkGL() {
     };
 
     const ptProg = program(
-      `attribute vec3 aPos; attribute float aSize, aAlpha, aSeed, aSoft;
+      `attribute vec3 aPos; attribute float aSize, aAlpha, aSeed, aSoft, aFlash;
        uniform mat4 uMvp; uniform float uTime, uDpr;
-       varying float vAlpha, vSoft;
+       varying float vAlpha, vSoft, vFlash;
        void main() {
          gl_Position = uMvp * vec4(aPos, 1.0);
          float w = gl_Position.w;
-         gl_PointSize = aSize * uDpr * (22.0 / w);
+         // a flashed node swells briefly as it lights up
+         gl_PointSize = aSize * (1.0 + aFlash * 0.55) * uDpr * (22.0 / w);
          float twinkle = 0.82 + 0.18 * sin(uTime * 0.7 + aSeed * 40.0);
-         vAlpha = aAlpha * twinkle;
+         vAlpha = min(1.0, aAlpha * twinkle + aFlash * 0.85);
+         vFlash = aFlash;
          // depth-of-field: focus plane at w≈22; away = softer disc (bokeh).
          // Cap BELOW 0.5: smoothstep(0.5, vSoft, d) degenerates at 0.5 and
          // renders the whole point quad as a square.
          vSoft = clamp(max(abs(w - 22.0) * 0.09, aSoft), 0.07, 0.44);
        }`,
       `precision mediump float;
-       varying float vAlpha, vSoft;
+       varying float vAlpha, vSoft, vFlash;
        void main() {
          float d = length(gl_PointCoord - 0.5);
          float a = smoothstep(0.5, vSoft, d) * vAlpha;
-         gl_FragColor = vec4(0.812, 0.831, 0.867, a);
+         vec3 c = mix(vec3(0.812, 0.831, 0.867), vec3(1.0), vFlash);
+         gl_FragColor = vec4(c, a);
+       }`,
+    );
+
+    // the traveling balls of light — drawn additively so they read as light
+    const trProg = program(
+      `attribute vec3 aPos;
+       uniform mat4 uMvp; uniform float uDpr;
+       void main() {
+         gl_Position = uMvp * vec4(aPos, 1.0);
+         gl_PointSize = 13.0 * uDpr * (22.0 / gl_Position.w);
+       }`,
+      `precision mediump float;
+       void main() {
+         float d = length(gl_PointCoord - 0.5);
+         // bright core with a quadratic falloff halo
+         float a = pow(1.0 - clamp(d * 2.0, 0.0, 1.0), 2.5);
+         gl_FragColor = vec4(0.94, 0.96, 0.99, a * 0.85);
        }`,
     );
 
     const lnProg = program(
       `attribute vec3 aPos; attribute float aT, aPhase;
        uniform mat4 uMvp;
-       varying float vT, vPhase;
-       void main() { gl_Position = uMvp * vec4(aPos, 1.0); vT = aT; vPhase = aPhase; }`,
+       void main() { gl_Position = uMvp * vec4(aPos, 1.0); }`,
       `precision mediump float;
-       uniform float uTime;
-       varying float vT, vPhase;
        void main() {
-         // a pulse of light travels along each connection
-         float p = fract(uTime * 0.06 + vPhase);
-         float glow = smoothstep(0.22, 0.0, abs(vT - p));
-         float a = 0.16 + glow * 0.45;
-         vec3 c = mix(vec3(0.659, 0.702, 0.769), vec3(0.92, 0.93, 0.95), glow);
-         gl_FragColor = vec4(c, a);
+         // flat stroke: one solid color and opacity end to end
+         gl_FragColor = vec4(0.659, 0.702, 0.769, 0.24);
        }`,
     );
 
@@ -226,8 +277,17 @@ export function NetworkGL() {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
       return b;
     };
-    const ptBuf = buf(pointData);
     const lnBuf = buf(lineData);
+    // points and travelers are re-uploaded each frame (node flash decay /
+    // traveler motion); both are tiny — a few hundred floats.
+    const ptArray = new Float32Array(pointData);
+    const ptBuf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, ptBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, ptArray, gl.DYNAMIC_DRAW);
+    const trArray = new Float32Array(travelers.length * 3);
+    const trBuf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, trBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, trArray, gl.DYNAMIC_DRAW);
 
     /* ------------------------------ matrices ----------------------------- */
     const mat = new Float32Array(16);
@@ -304,8 +364,32 @@ export function NetworkGL() {
         raf = requestAnimationFrame(frame);
         return;
       }
-      lastDraw = now;
       const t = (now - start) / 1000;
+      // Clamp dt: after a tab-hidden pause `now - lastDraw` can be minutes,
+      // which would teleport every traveler across the graph on resume.
+      const dt = Math.min((now - lastDraw) / 1000, 0.05);
+      lastDraw = now;
+
+      // travelers march at a constant world-space speed, so the light moves
+      // at one visual pace regardless of how long the edge is
+      for (const tr of travelers) {
+        const len =
+          Math.hypot(tr.to.x - tr.from.x, tr.to.y - tr.from.y, tr.to.z - tr.from.z) || 1;
+        tr.t += (2.6 * dt) / len;
+        if (tr.t >= 1) advance(tr);
+      }
+      for (let i = 0; i < travelers.length; i++) {
+        const tr = travelers[i];
+        trArray[i * 3] = tr.from.x + (tr.to.x - tr.from.x) * tr.t;
+        trArray[i * 3 + 1] = tr.from.y + (tr.to.y - tr.from.y) * tr.t;
+        trArray[i * 3 + 2] = tr.from.z + (tr.to.z - tr.from.z) * tr.t;
+      }
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        if (p.flash > 0) p.flash = Math.max(0, p.flash - dt * 1.6);
+        ptArray[i * 8 + 7] = p.flash;
+      }
+
       pointerX += (targetPX - pointerX) * 0.04;
       pointerY += (targetPY - pointerY) * 0.04;
       const scroll = Math.min(window.scrollY / Math.max(window.innerHeight, 1), 1);
@@ -320,24 +404,33 @@ export function NetworkGL() {
 
       gl.useProgram(lnProg);
       gl.bindBuffer(gl.ARRAY_BUFFER, lnBuf);
-      attr(lnProg, "aPos", 3, 20, 0);
-      attr(lnProg, "aT", 1, 20, 12);
-      attr(lnProg, "aPhase", 1, 20, 16);
+      attr(lnProg, "aPos", 3, 12, 0);
       gl.uniformMatrix4fv(gl.getUniformLocation(lnProg, "uMvp"), false, mvp);
-      gl.uniform1f(gl.getUniformLocation(lnProg, "uTime"), t);
       gl.drawArrays(gl.LINES, 0, links.length * 2);
 
       gl.useProgram(ptProg);
       gl.bindBuffer(gl.ARRAY_BUFFER, ptBuf);
-      attr(ptProg, "aPos", 3, 28, 0);
-      attr(ptProg, "aSize", 1, 28, 12);
-      attr(ptProg, "aAlpha", 1, 28, 16);
-      attr(ptProg, "aSeed", 1, 28, 20);
-      attr(ptProg, "aSoft", 1, 28, 24);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, ptArray);
+      attr(ptProg, "aPos", 3, 32, 0);
+      attr(ptProg, "aSize", 1, 32, 12);
+      attr(ptProg, "aAlpha", 1, 32, 16);
+      attr(ptProg, "aSeed", 1, 32, 20);
+      attr(ptProg, "aSoft", 1, 32, 24);
+      attr(ptProg, "aFlash", 1, 32, 28);
       gl.uniformMatrix4fv(gl.getUniformLocation(ptProg, "uMvp"), false, mvp);
       gl.uniform1f(gl.getUniformLocation(ptProg, "uTime"), t);
       gl.uniform1f(gl.getUniformLocation(ptProg, "uDpr"), dpr);
       gl.drawArrays(gl.POINTS, 0, points.length);
+
+      // travelers last, additively, so the light sits on top of the network
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.useProgram(trProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, trBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, trArray);
+      attr(trProg, "aPos", 3, 12, 0);
+      gl.uniformMatrix4fv(gl.getUniformLocation(trProg, "uMvp"), false, mvp);
+      gl.uniform1f(gl.getUniformLocation(trProg, "uDpr"), dpr);
+      gl.drawArrays(gl.POINTS, 0, travelers.length);
 
       raf = requestAnimationFrame(frame);
     };
