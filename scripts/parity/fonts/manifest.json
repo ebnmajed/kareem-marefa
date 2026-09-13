@@ -1,23 +1,74 @@
 [
   {
+    "family": "IBM Plex Sans",
+    "weight": 400,
+    "style": "normal",
+    "script": "latin",
+    "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+    "bytes": 40240
+  },
+  {
+    "family": "IBM Plex Sans",
+    "weight": 500,
+    "style": "normal",
+    "script": "latin",
+    "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+    "bytes": 40240
+  },
+  {
+    "family": "IBM Plex Sans",
+    "weight": 600,
+    "style": "normal",
+    "script": "latin",
+    "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+    "bytes": 40240
+  },
+  {
     "family": "IBM Plex Sans Arabic",
     "weight": 400,
     "style": "normal",
+    "script": "arabic",
     "sha256": "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb",
     "bytes": 33512
   },
   {
     "family": "IBM Plex Sans Arabic",
+    "weight": 400,
+    "style": "normal",
+    "script": "latin",
+    "sha256": "4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153",
+    "bytes": 13944
+  },
+  {
+    "family": "IBM Plex Sans Arabic",
     "weight": 500,
     "style": "normal",
+    "script": "arabic",
     "sha256": "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da",
+    "bytes": 35884
+  },
+  {
+    "family": "IBM Plex Sans Arabic",
+    "weight": 500,
+    "style": "normal",
+    "script": "latin",
+    "sha256": "2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af",
+    "bytes": 14792
+  },
+  {
+    "family": "IBM Plex Sans Arabic",
+    "weight": 600,
+    "style": "normal",
+    "script": "arabic",
+    "sha256": "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
     "bytes": 35884
   },
   {
     "family": "IBM Plex Sans Arabic",
     "weight": 600,
     "style": "normal",
-    "sha256": "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
-    "bytes": 35884
+    "script": "latin",
+    "sha256": "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd",
+    "bytes": 15092
   }
 ]

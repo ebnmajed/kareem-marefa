@@ -1,7 +1,7 @@
 {
   "font": {
     "family": "IBM Plex Sans Arabic",
-    "fingerprint": "3cd9a6c6c3541b94"
+    "fingerprint": "8e1fa3bb937b041f"
   },
   "platform": "darwin-arm64",
   "cases": {
@@ -38,12 +38,12 @@
     "mixed-script": {
       "lineCount": 1,
       "lineWidths": [
-        469.73
+        482.45
       ],
       "lineHeights": [
         60
       ],
-      "totalAdvance": 469.73,
+      "totalAdvance": 482.45,
       "charRectCount": 26,
       "zeroWidthRects": 0,
       "fontSize": "40px",
@@ -53,12 +53,12 @@
     "mirrored-punctuation": {
       "lineCount": 1,
       "lineWidths": [
-        509.7
+        497.61
       ],
       "lineHeights": [
         60
       ],
-      "totalAdvance": 509.7,
+      "totalAdvance": 497.61,
       "charRectCount": 31,
       "zeroWidthRects": 0,
       "fontSize": "40px",
@@ -91,12 +91,12 @@
     "numeral-systems": {
       "lineCount": 1,
       "lineWidths": [
-        549.21
+        563.39
       ],
       "lineHeights": [
         60
       ],
-      "totalAdvance": 549.21,
+      "totalAdvance": 563.39,
       "charRectCount": 32,
       "zeroWidthRects": 0,
       "fontSize": "40px",
@@ -106,14 +106,14 @@
     "autofit-limit": {
       "lineCount": 2,
       "lineWidths": [
-        382.2,
+        382.59,
         181.84
       ],
       "lineHeights": [
         42,
         42
       ],
-      "totalAdvance": 564.04,
+      "totalAdvance": 564.43,
       "charRectCount": 52,
       "zeroWidthRects": 1,
       "fontSize": "28px",

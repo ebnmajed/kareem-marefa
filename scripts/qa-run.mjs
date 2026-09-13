@@ -83,6 +83,11 @@ spawnChild('npx', ['next', 'start'], {
   // registrations to the production project.
   SUPABASE_URL: STUB,
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_stub',
+  // anti-spam.ts THROWS when this is unset, which takes the register page's
+  // render down with it. Locally .env.local hides that; CI has no .env.local,
+  // so the page 500s and the suite fails on a missing header link rather than
+  // on anything to do with the header.
+  FORM_TOKEN_SECRET: process.env.FORM_TOKEN_SECRET ?? 'qa-stub-secret-not-used-in-production',
 })
 if (!(await waitFor(`${BASE}/ar`, 'next'))) process.exit(2)
 
