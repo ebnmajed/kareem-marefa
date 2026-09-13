@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { routing } from "@/i18n/routing";
-import { isPlatformPath } from "@/lib/auth/next-path";
+import { isAuthScreenPath, isPlatformPath } from "@/lib/auth/next-path";
+import { platformConfigured } from "@/lib/supabase/env";
 
 // proxy.ts — three jobs, none of them authorization (04 §6, REQ-NFR-003,
 // REQ-AUT-005, DEC-036).
@@ -44,6 +45,19 @@ export default async function proxy(request: NextRequest) {
   // (REQ-NFR-019). Nonce-less, their HTML stays exactly the build's, and
   // the reports simply say what an enforced policy would break there.
   const platform = isPlatformPath(pathname);
+  // The platform is unconfigured (no NEXT_PUBLIC_ Supabase variables — the
+  // state of production until PR C): every platform route and auth screen
+  // is a 404, rendered by the marketing catch-all so it looks like any other
+  // unknown path. The frozen routes never enter this branch (DEC-038).
+  if ((platform || isAuthScreenPath(pathname)) && !platformConfigured()) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${pathname.slice(1, 3)}/platform-unconfigured`;
+    url.search = "";
+    const notFound = NextResponse.rewrite(url, { status: 404 });
+    notFound.headers.set("x-content-type-options", "nosniff");
+    return notFound;
+  }
+
   const nonce = platform ? Buffer.from(crypto.randomUUID()).toString("base64") : null;
   const csp = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);

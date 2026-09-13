@@ -5,8 +5,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Direction } from "radix-ui";
 import { routing } from "@/i18n/routing";
 import { plexArabic, plexSans } from "@/lib/fonts";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -117,9 +115,10 @@ export default async function LocaleLayout({
               opens on the wrong side in Arabic (DEC-019, 10 §2.1). It renders
               no markup, so the frozen routes are byte-identical. */}
           <Direction.Provider dir={locale === "ar" ? "rtl" : "ltr"}>
-            <Header />
-            <main id="main">{children}</main>
-            <Footer />
+            {/* The chrome belongs to each surface: (marketing) renders the
+                header, main and footer; (auth) and app render their own
+                (DEC-038). */}
+            {children}
           </Direction.Provider>
         </NextIntlClientProvider>
       </body>

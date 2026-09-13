@@ -4,6 +4,10 @@
 // frozen routes (DEC-036), and the English platform redirect (STORY-INT-004).
 import { expect, test } from "@playwright/test";
 
+// Under the unconfigured build (DEC-038) these screens are 404s by design;
+// tests/e2e/unconfigured.spec.ts covers that build.
+test.skip(process.env.E2E_PLATFORM_UNCONFIGURED === "1", "platform unconfigured: covered by unconfigured.spec.ts");
+
 test("a signed-out request to /ar/app lands on sign-in with next preserved", async ({ page }) => {
   await page.goto("/ar/app/sessions/abc?tab=materials");
   await expect(page).toHaveURL(/\/ar\/sign-in\?next=%2Far%2Fapp%2Fsessions%2Fabc%3Ftab%3Dmaterials$/);

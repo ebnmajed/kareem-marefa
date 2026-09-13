@@ -10,7 +10,7 @@ vi.mock("next/headers", () => ({
 
 process.env.FORM_TOKEN_SECRET = "test-secret";
 
-import { submitRegistration } from "@/app/[locale]/register/actions";
+import { submitRegistration } from "@/app/[locale]/(marketing)/register/actions";
 import {
   createFormToken,
   verifyFormToken,
