@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `m0/worker` (PR #3 open to `main`; PR #2 **merged** as `9002dbf`) · **Phase:** **M0 complete pending PR #3's merge — no Fly (DEC-034)**
+**Last updated:** 2026-09-13 · **Branch:** `m1/tenancy` (from `main` @ `a58b273`; M0 **complete**, PRs #2 and #3 merged) · **Phase:** **M1 started — plan presented to the owner, awaiting approval; nothing implemented yet**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -146,11 +146,31 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
+## M1 — where it stands
+
+**Branch `m1/tenancy` exists with no code.** The M1 plan was presented to the owner at the end of
+the 2026-09-13 session and is **awaiting approval**. Its shape, so the next session does not
+re-derive it: three PRs — **A** the database spine (migrations `0003`–`0006`: enums and helpers;
+tenancy tables with RLS, grants and the column grant on `members`; the RPCs including
+`provision_member()`, `assert_fresh_admin()`, `write_audit()`; the Custom Access Token Hook that
+never raises, with its three `supabase_auth_admin` grants), the `tests/rls` Vitest project driven
+through `pg` with `set local role` + `request.jwt.claims` and rolled back per test, the generated
+isolation sweep, a minimal `auth` shim in `scripts/ci/roles.sql` so the bare CI container can run
+it, and `policy-diff` green; **B** the app side (`@supabase/ssr` clients, the DAL with
+`requireSession()` narrowed on `data`, `proxy.ts` with CSP in report-only first, sign-in /
+choose-org / no-access, the app shell and the profile with company); **C** the production cutover,
+gated on the owner's explicit go: schema-only dump rehearsal, `supabase db push`, Google provider
+and hook enabled on the hosted project, `NEXT_PUBLIC_*` on Vercel, first-org seed by one-off SQL.
+Deferred out of M1: admin CRUD screens (policies and RPCs exist, UI in M2/M7 per `09`), `tags`,
+`impersonation_sessions`.
+
+**Owner inputs M1 needs:** a Google OAuth client for the hosted project; the first org's name,
+slug, certificate prefix, allowed email domain(s) and first admin email; approval for the two
+`NEXT_PUBLIC_` variables on Vercel; approval for `supabase db push` and the dashboard steps.
+
 ## Waiting on the owner
 
-**Review and merge PR #3** (`m0/worker` → `main`). That closes M0. Nothing else is waiting: PR #2
-is merged and live, the encryption key is set, and Fly is dropped by the owner's decision
-(DEC-034) rather than pending.
+**Approve, amend or reject the M1 plan** (above). PR #3 is merged; M0 is closed.
 
 **Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
 the choice must provide a session-mode Postgres connection and either private networking to the
@@ -241,9 +261,10 @@ unaffected.
 ## Next session should
 
 1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-031 … DEC-034 are new.
-2. Confirm PR #3 merged (or merge it after review). Then **M0 is complete.**
-3. Start **M1** (`14-roadmap.md`) — the dangerous one. Do not compress it. The auth hook, the
-   DAL with `getClaims()` narrowed on `data`, RLS on every table with the generated sweep.
+2. Read *M1 — where it stands* and the owner's answer to the plan. Check out `m1/tenancy`.
+3. Work M1 in the approved order — the dangerous milestone; do not compress it. Every migration
+   lands with its RLS, grants and tests in the same commit; local Supabase and CI first,
+   production last and only with the owner's explicit go.
 4. At M3, answer OQ-027 before the first reminder job needs to run unattended.
 5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
 6. Update this file before finishing.
