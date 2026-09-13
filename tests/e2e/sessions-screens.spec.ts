@@ -100,6 +100,11 @@ async function phone(page: Page, who: string): Promise<Page> {
  * The half of a 390 px review a screenshot cannot do. `scrollWidth` past
  * `clientWidth` is the failure that makes an RTL page feel broken, and it is
  * invisible in a full-page capture because the capture widens to fit.
+ *
+ * Captures go to `.qa-shots/rtl/`, not `test-results/`: Playwright empties
+ * `test-results/` at the start of every run, so in a shared tree another
+ * teammate's run deletes your evidence between taking it and looking at it.
+ * Both directories are gitignored.
  */
 async function review(p: Page, name: string, primary?: string | RegExp) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
@@ -109,7 +114,7 @@ async function review(p: Page, name: string, primary?: string | RegExp) {
     const box = (await p.getByRole("button", { name: primary }).first().boundingBox())!;
     expect(box.height, `${name}: the primary action must be at least 44 px tall`).toBeGreaterThanOrEqual(44);
   }
-  await p.screenshot({ path: `test-results/${name}-390-rtl.png`, fullPage: true });
+  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl.png`, fullPage: true });
 }
 
 test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {

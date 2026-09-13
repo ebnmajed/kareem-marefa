@@ -161,6 +161,6 @@ test("SCR-041 at 390 px RTL: the queue reads down the page and never sideways", 
   const box = await boss.getByRole("button", { name: "اعتمد المقترح" }).first().boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
 
-  await boss.screenshot({ path: "test-results/scr-041-review-390-rtl.png", fullPage: true });
+  await boss.screenshot({ path: ".qa-shots/rtl/scr-041-review-390-rtl.png", fullPage: true });
   await bossContext.close();
 });

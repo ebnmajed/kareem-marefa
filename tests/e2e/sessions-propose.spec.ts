@@ -220,7 +220,7 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   expect(tickBox.x + tickBox.width, "the checkbox sits at the inline-start, which is the right in RTL").toBeGreaterThan(tickRow.x + tickRow.width / 2);
 
   // The reviewed screenshot of the definition of done.
-  await page.screenshot({ path: "test-results/scr-017-propose-390-rtl.png", fullPage: true });
+  await page.screenshot({ path: ".qa-shots/rtl/scr-017-propose-390-rtl.png", fullPage: true });
 });
 
 test("naming a co-presenter invites them, and they answer for themselves (REQ-PRO-003)", async ({ context, page }) => {
