@@ -38,6 +38,11 @@ const r = spawnSync('npx', ['playwright', 'test', ...process.argv.slice(2)], {
     E2E_SUPABASE_SERVICE_KEY: service,
     E2E_SUPABASE_PUBLISHABLE_KEY: publishable,
     RLS_DATABASE_URL: process.env.RLS_DATABASE_URL ?? db,
+    // The served app must talk to the SAME local Supabase at runtime (the
+    // proxy's token refresh reads these); the build inlined them from
+    // .env.local, and the stubbed server would otherwise default to the stub.
+    NEXT_PUBLIC_SUPABASE_URL: url,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishable,
   },
 })
 process.exit(r.status ?? 1)

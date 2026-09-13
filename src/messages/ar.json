@@ -160,12 +160,12 @@
       "brand": "كريم معرفة"
     },
     "home": {
-      "welcome": "أهلًا {name}",
+      "welcome": "أهلًا <name>{value}</name>",
       "welcomeAnon": "أهلًا بك",
       "intro": "هذه بداية المنصة. الجلسات والحجز والنقاط تأتي في المراحل القادمة.",
       "completeProfile": "أكمل ملفك",
       "companyMissing": "اختر شركتك قبل حجز مقعد أو اقتراح جلسة.",
-      "org": "مؤسستك: {org}"
+      "org": "مؤسستك: <org>{value}</org>"
     }
   },
   "profile": {

@@ -120,5 +120,8 @@ async function refreshSession(request: NextRequest, response: NextResponse): Pro
 }
 
 export const config = {
-  matcher: "/((?!_next|_vercel|api/csp-report|.*\\..*).*)",
+  // Route Handlers under /api are not localised pages: next-intl would
+  // otherwise redirect /api/auth/sign-out to /ar/api/auth/sign-out and the
+  // request would never reach the handler. They set their own headers.
+  matcher: "/((?!_next|_vercel|api/|.*\\..*).*)",
 };

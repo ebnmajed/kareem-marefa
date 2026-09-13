@@ -61,3 +61,20 @@ test("the sign-in page carries the report-only CSP too", async ({ request }) => 
   const res = await request.get("/ar/sign-in");
   expect(res.headers()["content-security-policy-report-only"]).toMatch(/report-uri \/api\/csp-report/);
 });
+
+test("the auth Route Handlers are reachable unprefixed and answer with a redirect, not a locale rewrite", async ({ request }) => {
+  const out = await request.post("/api/auth/sign-out", { maxRedirects: 0 });
+  expect(out.status()).toBe(303);
+  expect(out.headers()["location"]).toMatch(/\/ar\/sign-in$/);
+  // Starting Google sign-in hands off to Supabase Auth's authorize endpoint
+  // (which performs the Google hop) with our callback and the validated next
+  // — or, against the stub, lands back on sign-in with an error. Never on
+  // /ar/api/…
+  const start = await request.post("/api/auth/sign-in", { form: { next: "/ar/app" }, maxRedirects: 0 });
+  expect(start.status()).toBe(303);
+  const location = start.headers()["location"] ?? "";
+  expect(location).toMatch(/\/auth\/v1\/authorize\?provider=google|\/ar\/sign-in\?error=1$/);
+  if (location.includes("authorize")) {
+    expect(location).toContain(encodeURIComponent("/api/auth/callback?next=%2Far%2Fapp"));
+  }
+});

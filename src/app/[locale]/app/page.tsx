@@ -13,9 +13,9 @@ export default async function AppHomePage({ params }: { params: Promise<{ locale
   return (
     <>
       <h1 className="text-h1 text-fg-heading">
-        {me.displayName ? t.rich("welcome", { name: () => <bdi>{me.displayName}</bdi> }) : t("welcomeAnon")}
+        {me.displayName ? t.rich("welcome", { value: me.displayName, name: (chunks) => <bdi>{chunks}</bdi> }) : t("welcomeAnon")}
       </h1>
-      <p className="mt-2 text-body text-fg-muted">{t.rich("org", { org: () => <bdi>{org.name}</bdi> })}</p>
+      <p className="mt-2 text-body text-fg-muted">{t.rich("org", { value: org.name, org: (chunks) => <bdi>{chunks}</bdi> })}</p>
       <p className="mt-6 max-w-prose text-body-lg">{t("intro")}</p>
       {!me.companyId ? (
         <div role="status" className="mt-8 rounded-field border border-edge bg-silver-100 p-5">

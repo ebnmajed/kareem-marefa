@@ -160,12 +160,12 @@
       "brand": "Knowledge Kareem"
     },
     "home": {
-      "welcome": "Welcome, {name}",
+      "welcome": "Welcome, <name>{value}</name>",
       "welcomeAnon": "Welcome",
       "intro": "This is the beginning of the platform. Sessions, seats and points arrive in the next milestones.",
       "completeProfile": "Complete your profile",
       "companyMissing": "Choose your company before reserving a seat or proposing a session.",
-      "org": "Your organisation: {org}"
+      "org": "Your organisation: <org>{value}</org>"
     }
   },
   "profile": {

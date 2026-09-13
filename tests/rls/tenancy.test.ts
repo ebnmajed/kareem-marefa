@@ -80,6 +80,22 @@ describe("POL-org_domains", () => {
   });
 });
 
+describe("POL-org_domains.cascade", () => {
+  it("deleting an org cascades through its domains without an audit row (0008); removing a domain directly is still audited", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.as(f.a.admin.claims);
+      await tx.q(`delete from public.org_domains where org_id = $1`, [f.a.id]);
+      const removed = await tx.q<{ action: string }>(`select action from public.audit_log where org_id = $1 and action = 'domain.removed'`, [f.a.id]);
+      expect(removed).toEqual([{ action: "domain.removed" }]);
+      await tx.asOwner();
+      await tx.q(`delete from public.orgs where id = $1`, [f.b.id]);
+      expect(await tx.q(`select id from public.org_domains where org_id = $1`, [f.b.id])).toEqual([]);
+      expect(await tx.q(`select id from public.audit_log where org_id = $1`, [f.b.id])).toEqual([]);
+    });
+  });
+});
+
 describe("POL-org_settings", () => {
   it("update.admin — a moderator updating settings is rejected; an admin succeeds and history records each column", async () => {
     await withTx(async (tx) => {

@@ -20,24 +20,37 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
-const ORG_ID = "22222222-2222-2222-2222-222222222222";
-const DOMAIN = "e2e.example";
 const PASSWORD = "correct-horse-battery-staple-9";
+
+// Playwright runs the desktop and phone projects in parallel workers, each
+// with its own beforeAll/afterAll. One shared org would be torn down by
+// whichever worker finishes first while the other is mid-test — so every
+// worker gets its own org, domain and user, and the specs run serially
+// within the worker.
+test.describe.configure({ mode: "serial" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
+let orgId = "";
+let domain = "";
 let userId = "";
 let email = "";
 
-test.beforeAll(async () => {
+test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
-  await db.query(`insert into public.orgs (id, name, slug, certificate_prefix, created_by) values ($1, 'مؤسسة الاختبار', 'e2e-org', 'EE', gen_random_uuid()) on conflict (id) do nothing`, [ORG_ID]);
-  await db.query(`insert into public.org_settings (org_id) values ($1) on conflict (org_id) do nothing`, [ORG_ID]);
-  await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2) on conflict do nothing`, [ORG_ID, DOMAIN]);
-  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة الاختبار') on conflict do nothing`, [ORG_ID]);
-  email = `e2e-${Date.now()}@${DOMAIN}`;
+  const tag = `${testInfo.workerIndex}-${Date.now()}`;
+  domain = `e2e-${tag}.example`;
+  const { rows } = await db.query<{ id: string }>(
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة الاختبار', $1, 'EE', gen_random_uuid()) returning id`,
+    [`e2e-${tag}`],
+  );
+  orgId = rows[0].id;
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة الاختبار')`, [orgId]);
+  email = `member@${domain}`;
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو الاختبار" } });
   if (error) throw error;
   userId = data.user.id;
@@ -45,7 +58,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (userId) await admin.auth.admin.deleteUser(userId);
-  await db.query(`delete from public.orgs where id = $1`, [ORG_ID]);
+  if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
   await db.end();
 });
 
