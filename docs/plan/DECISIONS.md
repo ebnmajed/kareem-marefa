@@ -650,6 +650,42 @@ decision. Every decision taken **after** the source brief gets an entry here.
   holds on macOS **and** in the Linux container, and the break test still fails all 14 assertions.
 - **Documents changed:** `04-architecture.md`, `STATUS.md`, `14-roadmap.md`
 
+## DEC-030 — The repo carries a shared Claude Code configuration, and task completion is gated on QA
+
+- **Date:** 2026-09-13 · **Decided by:** owner
+- **Decision:** `.claude/settings.json` and `.claude/hooks/` are **tracked**; `.claude/settings.local.json`
+  and `.claude/worktrees/` are ignored. The tracked settings carry a permission allowlist for the
+  commands this repo runs constantly (`npm run qa`, `npm run build`, `npm run dev:*`,
+  `npx vitest:*`, `node scripts/traceability.mjs`, `node scripts/qa.mjs`, and read-only git plus
+  `git add`/`git commit`), and a **`TaskCompleted` hook** that runs `npm run qa` and exits `2` on
+  failure, so a task cannot be closed while the frozen public contract is red. `.worktreeinclude`
+  lists `.env.local` — the only gitignored env file this repo has — so a worktree comes up able to
+  run.
+- **Rationale:** the allowlist stops every machine growing its own divergent local approvals. The
+  gate puts `REQ-NFR-019` at the point of work rather than only in CI, where a red result is found
+  later and by someone else. The rejected alternative was leaving this to each developer's
+  `settings.local.json`, which is exactly how the approvals drift.
+- **Gotchas the next session must not trip on:**
+  1. **`TaskCompleted` is a real hook event** — verified against the Claude Code 2.1.270 binary,
+     alongside `PreToolUse`, `PostToolUse`, `PermissionRequest`, `SessionStart`, `UserPromptSubmit`,
+     `SubagentStop`, `Notification`, `PreCompact` and `SessionEnd`. It is newer than most hook
+     documentation; do not "correct" it to `Stop`.
+  2. **The mkdir lock is best-effort, not a hard gate.** After 240 five-second attempts (20 minutes)
+     the loop gives up with `HAVE_LOCK=0` and runs QA **anyway, unserialized**. Under sustained
+     contention it degrades to the old racy behaviour rather than blocking a task. That is the
+     intended trade; it is not a bug to "fix" by making it exit non-zero.
+  3. **The stale-lock sweep reads the lock's creation mtime**, which nothing refreshes. A legitimate
+     run lasting over 30 minutes can have its lock cleared by a waiter while still working. Harmless
+     while QA is short; it will bite the day a long Playwright suite lands — which is M0 work.
+  4. **The gate costs a full QA pass on every task completion.** `"timeout": 2400` is sized for the
+     20-minute wait plus that pass. Shortening the timeout without shortening the wait will kill
+     queued runs.
+- **Verified:** `bash -n` clean, `settings.json` parses with `timeout` 2400, the executable bit is
+  recorded in the index as `100755` (not merely on disk), and a dry run — `echo '{}' | bash
+  .claude/hooks/task-gate.sh` — exited **0** with the lock released and no stray temp files.
+- **Supersedes:** nothing
+- **Documents changed:** `STATUS.md`
+
 ---
 
 ## Template for new entries

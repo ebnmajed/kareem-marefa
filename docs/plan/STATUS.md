@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `docs/implementation-plan` · **Phase:** **M0 in progress**
+**Last updated:** 2026-09-13 · **Branch:** `main` @ `214124c` · **Phase:** **M0 in progress**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -12,8 +12,9 @@ written, plus `STATUS.md`, `DECISIONS.md` and the root `CLAUDE.md`. `node script
 exits 0.
 
 **No application code has been written. Nothing in `src/` or `supabase/` was touched, and the live
-Supabase project was not connected to.** The only file outside `docs/plan/` that this session
-created is `scripts/traceability.mjs` (the CI gate the plan specifies) and the root `CLAUDE.md`.
+Supabase project was not connected to.** Outside `docs/plan/` the repo has gained only tooling and
+static assets: `scripts/traceability.mjs` (the CI gate the plan specifies), the root `CLAUDE.md`,
+the `.claude/` configuration (DEC-030), `.worktreeinclude`, and the `public/` art described below.
 
 **`public/` is no longer untouched.** Commit `3d43108` added ten static constellation assets — four
 PNGs, four `constellation-frame-*.svg`, `constellation.svg` and `constellation-static.svg` —
@@ -39,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-028**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-030**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -85,7 +86,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | `npm run build` | ✅ builds clean, unchanged from session start |
 | `src/`, `supabase/` untouched | ✅ `git status` and `git diff` both confirm |
 | `public/` | ⚠️ **ten static assets added** in `3d43108` — see above; invariant 11 unaffected |
-| `node scripts/qa.mjs` | ⚠️ **fails — pre-existing, see below** |
+| `npm run qa` | ✅ **44/44 pass** — re-run 2026-09-13 on `main` |
 
 ## ✅ Resolved — the three stray test rows are gone
 
@@ -174,11 +175,52 @@ to be pristine history.
   `ap-southeast-1`) remains in force and nothing is blocked on it. Worth revisiting before real
   member data exists, since it is a configuration change now and a data migration later.
 
+## This session — the plan landed on `main`
+
+Short session, no application code. Three things happened that the plan does not record.
+
+**1. `main` now carries everything.** `main` was fast-forwarded `e53c3e5 → ef313e0` and pushed —
+**69 files**, the first time the plan set, `.github/workflows/ci.yml`, `packages/designer-runtime`
+and the parity harness (fonts and goldens included) have existed on `main` at all. It was a clean
+`--ff-only`; nothing was merged or rebased.
+
+> **Unverified, deliberately:** the CI run and the Vercel deploy triggered by that push were **not
+> observed**. `npm run qa` is green locally, but "`main` stays deployable" (invariant 4,
+> `REQ-NFR-019`) has not been confirmed *on* `main` since the merge. **Check this first.**
+
+**2. Ten constellation assets were committed** (`3d43108`) — see *Where we are*. Two things about
+that commit the next session should not try to tidy:
+
+- **Its message does not follow the convention** — `Add constellation assets`, no type, no scope,
+  no `Refs:`. The owner instructed explicitly that it be left as is and **not amended**. It is now
+  on `main` and pushed; rewriting it would rewrite public history.
+- **Nothing references the files.** The word *constellation* appears in `src/app/[locale]/page.tsx`,
+  `src/app/globals.css`, `src/components/network-gl.tsx` and `scripts/qa.mjs`, but **no code loads
+  any of the ten paths** — verified by grepping for `constellation*.{png,svg}`. They are ~1.1 MB of
+  committed art awaiting a use. Do not assume the hero already serves them.
+
+**3. A shared Claude Code configuration was added** (`ea7eade`, hardened in `214124c`) — tracked
+`.claude/settings.json` and `.claude/hooks/task-gate.sh`, plus `.worktreeinclude`. **Recorded in
+full as DEC-030, including four gotchas — read that entry before touching the hook.** The one with
+teeth: the gate runs `npm run qa` on every task completion, so task closure now costs a full QA
+pass, and its lock is best-effort rather than a hard gate.
+
+**Branch hygiene:** `docs/implementation-plan` still exists locally and on `origin`, now **2 commits
+behind `main`** and fully contained in it. It can be deleted whenever the owner wants; nothing
+depends on it.
+
+**Stale lines fixed in this file:** the header still said branch `docs/implementation-plan`; the
+verification table still said `scripts/qa.mjs` **fails** when DEC-023 had already fixed it to 44/44;
+the documents table still said DEC-001…**028** when DEC-029 existed. Assume other numbers in this
+file drift the same way — trust the commit, not the summary.
+
 ## Next session should
 
 1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md`.
-2. Start **M0** (`14-roadmap.md`). Sequence the monorepo restructure and the font work **first** —
-   both touch the live site, and both want a visual diff before and after.
-3. Cite a `REQ-*` ID in every commit that touches an entity, policy, screen, job or notification.
-4. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
-5. Update this file before finishing.
+2. **Confirm CI and the Vercel deploy are green on `main`** after the merge above — that is the
+   one unverified thing this session left behind.
+3. Start **M0** (`14-roadmap.md`). The monorepo restructure is **done** (DEC-029); the **font work**
+   is the remaining live-site item and still wants a visual diff before and after.
+4. Cite a `REQ-*` ID in every commit that touches an entity, policy, screen, job or notification.
+5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
+6. Update this file before finishing.
