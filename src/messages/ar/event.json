@@ -1,0 +1,54 @@
+{
+  "event": {
+    "comments": {
+      "heading": "التعليقات",
+      "count": "{count, plural, zero {لا تعليقات} one {تعليق واحد} two {تعليقان} few {{value} تعليقات} many {{value} تعليقًا} other {{value} تعليق}}",
+      "empty": "لا تعليقات بعد. كن أول من يعلّق.",
+      "placeholder": "اكتب تعليقًا…",
+      "replyPlaceholder": "اكتب ردًا…",
+      "submit": "نشر",
+      "reply": "رد",
+      "cancel": "إلغاء",
+      "edit": "تعديل",
+      "save": "حفظ التعديل",
+      "edited": "(معدَّل)",
+      "deletedTombstone": "حُذف هذا التعليق",
+      "frozenOnCancelled": "التعليقات مغلقة — هذه الجلسة ملغاة",
+      "mentionHint": "اكتب @ لذكر عضو من مؤسستك",
+      "delete": {
+        "action": "حذف",
+        "confirmTitle": "حذف التعليق؟",
+        "confirmBody": "لا يمكن التراجع عن هذا الإجراء.",
+        "confirm": "حذف",
+        "cancel": "تراجع"
+      },
+      "moderator": {
+        "remove": "إزالة",
+        "restore": "استعادة"
+      },
+      "reactions": {
+        "like": "إعجاب"
+      },
+      "report": {
+        "action": "إبلاغ",
+        "already": "تم إرسال بلاغك عن هذا التعليق",
+        "dialogTitle": "الإبلاغ عن تعليق",
+        "reasonLabel": "سبب الإبلاغ",
+        "reasonHint": "من ٣ إلى ١٠٠٠ حرف",
+        "submit": "إرسال البلاغ",
+        "cancel": "إلغاء",
+        "success": "تم إرسال البلاغ. سيراجعه فريق الإشراف."
+      },
+      "errors": {
+        "reply_depth": "لا يمكن الرد على رد — التعليقات مستوى واحد فقط",
+        "not_author": "لا يمكنك تعديل تعليق عضو آخر",
+        "not_permitted": "لا تملك صلاحية لهذا الإجراء",
+        "edit_window_closed": "انتهت مهلة تعديل هذا التعليق",
+        "invalid_comment": "تعليق غير صالح",
+        "invalid_target": "عنصر غير صالح",
+        "already_reacted": "لديك تفاعل مسجَّل بالفعل",
+        "generic": "حدث خطأ. حاول مرة أخرى"
+      }
+    }
+  }
+}

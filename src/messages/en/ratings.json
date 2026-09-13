@@ -1,0 +1,57 @@
+{
+  "ratings": {
+    "section": {
+      "heading": "Rating"
+    },
+    "prompt": {
+      "cta": "Rate this session",
+      "alreadyRated": "Thanks for rating this session",
+      "editCta": "Edit your rating",
+      "closed": "Rating is closed for this session"
+    },
+    "presenter": {
+      "heading": "Attendee ratings",
+      "countSoFar": "{count, plural, =0 {no ratings yet} one {one rating so far} other {{value} ratings so far}}",
+      "withheldNote": "{min, plural, one {results appear after at least one rating} other {results appear after at least {value} ratings}}",
+      "sessionAvg": "Session rating",
+      "presenterAvg": "Presenter rating",
+      "commentsHeading": "Attendee notes",
+      "noComments": "No written notes"
+    },
+    "form": {
+      "title": "Rate this session",
+      "sessionLabel": "Session rating",
+      "presenterLabel": "Presenter rating",
+      "commentLabel": "Notes (optional)",
+      "commentHint": "Up to 2000 characters",
+      "submit": "Submit rating",
+      "update": "Update rating",
+      "anonymityNotice": "{min, plural, one {Your rating is anonymous to the presenter. Results appear to them after at least one rating. Org admins can see individual ratings.} other {Your rating is anonymous to the presenter. Results appear to them after at least {value} ratings. Org admins can see individual ratings.}}",
+      "windowClosesAt": "Rating closes on {date}",
+      "submitted": "Your rating was submitted",
+      "updated": "Your rating was updated",
+      "sessionStarsLabel": "Session star rating",
+      "presenterStarsLabel": "Presenter star rating"
+    },
+    "states": {
+      "notCompleted": "Rating opens once the session has ended",
+      "notCheckedIn": "Only checked-in attendees can rate",
+      "notFound": "Session not found"
+    },
+    "admin": {
+      "heading": "Individual ratings",
+      "auditedNote": "This view is recorded in the organisation's audit log",
+      "notPermitted": "This page is for org admins only",
+      "noRatings": "No ratings yet",
+      "sessionColumn": "Session rating",
+      "presenterColumn": "Presenter rating",
+      "commentColumn": "Note"
+    },
+    "errors": {
+      "already_rated": "You already rated this session",
+      "not_permitted": "You do not have permission for this action",
+      "window_closed": "Rating is closed for this session",
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}

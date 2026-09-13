@@ -1,0 +1,54 @@
+{
+  "event": {
+    "comments": {
+      "heading": "Comments",
+      "count": "{count, plural, =0 {no comments} one {one comment} other {{value} comments}}",
+      "empty": "No comments yet. Be the first to comment.",
+      "placeholder": "Write a comment…",
+      "replyPlaceholder": "Write a reply…",
+      "submit": "Post",
+      "reply": "Reply",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "save": "Save edit",
+      "edited": "(edited)",
+      "deletedTombstone": "This comment was deleted",
+      "frozenOnCancelled": "Comments are closed — this session was cancelled",
+      "mentionHint": "Type @ to mention a member of your organisation",
+      "delete": {
+        "action": "Delete",
+        "confirmTitle": "Delete this comment?",
+        "confirmBody": "This cannot be undone.",
+        "confirm": "Delete",
+        "cancel": "Cancel"
+      },
+      "moderator": {
+        "remove": "Remove",
+        "restore": "Restore"
+      },
+      "reactions": {
+        "like": "Like"
+      },
+      "report": {
+        "action": "Report",
+        "already": "Your report on this comment was already sent",
+        "dialogTitle": "Report a comment",
+        "reasonLabel": "Reason for reporting",
+        "reasonHint": "3 to 1000 characters",
+        "submit": "Send report",
+        "cancel": "Cancel",
+        "success": "Report sent. The moderation team will review it."
+      },
+      "errors": {
+        "reply_depth": "Cannot reply to a reply — comments are one level deep",
+        "not_author": "You can only edit your own comment",
+        "not_permitted": "You do not have permission for this action",
+        "edit_window_closed": "The edit window for this comment has closed",
+        "invalid_comment": "Invalid comment",
+        "invalid_target": "Invalid target",
+        "already_reacted": "You already reacted with this",
+        "generic": "Something went wrong. Please try again."
+      }
+    }
+  }
+}
