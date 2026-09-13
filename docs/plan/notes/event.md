@@ -204,6 +204,46 @@ against it, not by inspection:
    earlier design, not a gap the plan left — worth being honest about
    rather than folding quietly into "it works now".
 
+### 6.2 — Two more real bugs, found only by the e2e actually flaking
+
+Both required a rebuild to prove; commit `18c3946`.
+
+1. **The rate form's own React 19 reset** — same class of bug `sessions`
+   found on the propose form (`26772e2`): an uncontrolled textarea reverts
+   to its ORIGINAL `defaultValue` on any failed submission. The comment
+   composer (`comment-composer.tsx`) is unaffected — it is fully controlled
+   (`value={body}`), never a native `<form action>` at all — but SCR-015's
+   rate form is exactly the vulnerable shape. Fixed the same way: the
+   action returns what was typed, the field reads it back.
+2. **`CommentList`'s `useState(initialComments)` only reads the prop at
+   mount.** This is the deeper bug behind §6.1's router.refresh() fix
+   actually working: refresh re-runs the server component and hands the
+   client component a fresh prop, but an already-mounted `useState` never
+   re-reads its initializer. The heading's live count (computed straight
+   in the server component) updated correctly on every refresh; the list
+   sitting right below it did not — so the failure looked exactly like
+   "sometimes the post doesn't show up," which is what intermittent test
+   flakiness against a real server always looks like before you find the
+   actual mechanism. Fixed by adjusting `comments`/`reactions`/`reported`
+   during render when their prop identity changes (React's documented
+   pattern for this; a `useEffect` version was tried first and correctly
+   refused by `react-hooks/set-state-in-effect` for the extra visible
+   render it would add on every refresh).
+
+**How this was actually found, because it is a lesson worth keeping:**
+`tests/e2e/event-comments.spec.ts`'s first case passed in isolation,
+passed again, then failed on a THIRD run with an identical setup and no
+code change in between — the classic shape of "a real bug, not a flaky
+test," since a genuinely flaky *test* fails at some roughly constant rate
+regardless of what else is running, while this failed more often under
+load (two parallel workers, or right after several consecutive runs) and
+less often on a quiet system, which is exactly what a client component
+racing a server refresh against its own mount-time state looks like from
+the outside. `tsc`, lint, the unit suite and the full RLS suite were green
+on every single one of these bugs, in both directions — the reason the
+e2e budget is spent on the unhappy path in a real browser is that nothing
+else in this stack would have caught any of the four found this way.
+
 ## 7. What I have not built, and why
 
 - **Photos** (`REQ-EVT-009`…`013`) — `STORY-EVT-005`/`006`, **M5**, not this wave.
