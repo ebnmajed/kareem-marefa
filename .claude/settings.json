@@ -8,7 +8,7 @@
   },
   "hooks": {
     "TaskCompleted": [
-      { "hooks": [ { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-gate.sh\"" } ] }
+      { "hooks": [ { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-gate.sh\"", "timeout": 2400 } ] }
     ]
   }
 }
