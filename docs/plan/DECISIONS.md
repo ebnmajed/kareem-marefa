@@ -523,6 +523,51 @@ decision. Every decision taken **after** the source brief gets an entry here.
   fixes it. **Local development needs no account at all**, so this blocks nothing here.
 - **Documents changed:** `ASSUMPTIONS.md`, `13-testing-quality.md`, `14-roadmap.md`, `STATUS.md`
 
+## DEC-026 — Correction: Docker was installed all along
+
+- **Date:** 2026-09-13 · **Decided by:** architect — a correction, not a decision
+- **Correction:** **DEC-025 and `STATUS.md` stated that Docker was not installed on this machine.
+  That was wrong.** Docker Desktop is installed (client 29.4.3, `/usr/local/bin/docker`); only the
+  **daemon was not running**. Starting it took two seconds.
+- **How the error was made, since it is a repeatable one:** the check was
+  `docker info >/dev/null 2>&1 && echo "docker running" || echo "no docker"`. `docker info` exits
+  non-zero when the daemon is unreachable **and** when Docker is absent, so the two cases were
+  collapsed into one and reported as the wrong one. **Test for the binary and the daemon
+  separately** — `command -v docker` answers "installed", `docker info` answers "running".
+- **What it changes:**
+  - DEC-025's decision (**local + CI, no new hosted projects**) is **unaffected and now cheaper to
+    act on** — the prerequisite it listed was already met.
+  - The owner-action item "install Docker" is **removed** from `STATUS.md`.
+  - The DEC-023 row cleanup is **no longer blocked by tooling**. It is still blocked by the CLI
+    being authenticated to the wrong organisation (`supabase login`), which is genuinely the
+    owner's to do.
+- **Supersedes:** the "Prerequisite" bullet of **DEC-025** only. Per this log's own rule, the
+  original entry is left standing rather than edited.
+- **Documents changed:** `STATUS.md`, `14-roadmap.md`
+
+## DEC-027 — Local Supabase is the dev environment, and `supabase db query --linked` is how production SQL gets run
+
+- **Date:** 2026-09-13 · **Decided by:** architect, from doing it
+- **Outcome:** DEC-025 is **implemented**. `supabase start` brings up twelve healthy containers —
+  Postgres, Auth, Storage, Realtime, Studio, Kong, Mailpit and the rest — and `supabase db reset`
+  applies both existing migrations to a clean database. **The dev environment costs nothing and
+  needs no account.**
+- **Two findings worth carrying:**
+  1. **`supabase db query --linked` runs SQL against production through the Management API, using
+     the CLI access token — no database password.** This is the sanctioned way to run a one-off
+     statement. The cached `supabase/.temp/pooler-url` carries **no password**, `psql` is not
+     installed, and installing a Postgres driver to reach production is (rightly) refused by the
+     sandbox. Every earlier attempt failed on those.
+  2. **`supabase db dump --linked` also works token-only**, and is the read-only way to inspect
+     production. Note that a `--data-only` dump of `public` contains **every real signup's personal
+     data**, so it is deleted immediately after use rather than left in `/tmp`.
+- **Closes:** DEC-023's outstanding follow-up. The three stray rows are deleted; `registrations` is
+  back to 19 rows with no `@example.com` remaining.
+- **Convention this sets:** production SQL goes through `supabase db query --linked`, is **read
+  first**, and is scoped by an explicit predicate. It is never run as a migration — migrations are
+  schema, forward-only, and run in every environment forever; a one-off data fix is none of those.
+- **Documents changed:** `STATUS.md`, `/CLAUDE.md`
+
 ---
 
 ## Template for new entries

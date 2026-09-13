@@ -133,6 +133,35 @@ worker/                         # graphile-worker, Chromium, fonts
 
 ---
 
+## Local development
+
+```bash
+supabase start      # the whole stack in Docker: Postgres, Auth, Storage, Realtime, Studio
+supabase db reset   # recreate and re-apply every migration — do this often
+supabase stop       # free the ~4GB when you are done
+```
+
+API `localhost:54321` · Studio `localhost:54323` · Mail `localhost:54324` · DB `localhost:54322`.
+**Dev is local and CI is a Postgres container** — there is no hosted dev or staging project
+(DEC-025). Local needs no Supabase account.
+
+### Running SQL against production
+
+```bash
+supabase db query --linked "select ..."    # via the Management API — NO db password needed
+supabase db dump --linked --data-only ...  # read-only inspection
+```
+
+Three rules, learned the hard way (DEC-023, DEC-027):
+
+1. **Read before you write.** `select` the rows first and look at them.
+2. **Scope every write with an explicit predicate.** Never an unqualified `delete` or `update`.
+3. **Never do a one-off data fix as a migration.** Migrations are schema, forward-only, and run in
+   every environment forever. A data fix is none of those.
+
+A `--data-only` dump of `public` contains **every real signup's personal data** — delete it as soon
+as you are done with it.
+
 ## Data access
 
 1. **Server-side Supabase client for all data.** The browser client is for auth UI and Realtime

@@ -58,7 +58,7 @@ capacity. `M6` needs `M5`'s storage and job plumbing.
 | Work | Why here |
 |---|---|
 | ✅ **`scripts/qa.mjs` fixed** (DEC-023) | Was stale *and* could write to production. Now 44/44 and repeatable, behind `npm run qa`, refusing any non-localhost `SUPABASE_URL`. The `qa` gate can be turned on |
-| **Local Supabase for dev + Postgres container in CI** (DEC-025) | Replaces three hosted projects — same safety for M1, **$0**. Needs Docker installed (owner's action). A hosted staging is deferred until someone needs to share one |
+| **Local Supabase for dev + Postgres container in CI** (DEC-025) | Replaces three hosted projects — same safety for M1, **$0**. Docker was already installed (DEC-026). A hosted staging is deferred until someone needs to share one |
 | Playwright, jsdom, `@testing-library` | `REQ-NFR-018`. A23 assumed these; they are absent |
 | GitHub Actions CI with the four blocking gates | `13` §9.1 |
 | `scripts/traceability.mjs` + its gate | `13` §10 — the only mechanism that actually holds |

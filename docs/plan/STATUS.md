@@ -33,7 +33,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-025**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-027**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -80,39 +80,19 @@ rule that keeps a later session from casually rewriting a considered decision.
 | `src/`, `supabase/`, `public/` untouched | ✅ `git status` and `git diff` both confirm |
 | `node scripts/qa.mjs` | ⚠️ **fails — pre-existing, see below** |
 
-## ⚠️ Owner action needed — three test rows are in the live `registrations` table
+## ✅ Resolved — the three stray test rows are gone
 
-While fixing `scripts/qa.mjs` (DEC-023), the QA suite was run against the **production** Supabase
-project rather than the local stub. The suite submits the registration form, so **three test rows
-were written to the live `registrations` table** — the table DEC-002 designates a frozen historical
-record.
+The QA suite was run against production rather than the stub (DEC-023) and wrote three test rows to
+the live `registrations` table. **They have been deleted.** Verified: the table went from 22 rows to
+**19**, with **zero** `@example.com` rows remaining — 19 is the real pre-launch signup count.
 
-**Why it happened:** `next start` reads `.env.local`, which points at production. Starting
-`scripts/supabase-stub.mjs` alongside it looks like enough and is not — nothing connects them, and
-nothing errors. The stub's log stayed empty.
+It could not recur: `scripts/qa.mjs` now refuses to start unless `SUPABASE_URL` is localhost, and
+`npm run qa` wires the stub itself.
 
-**Run this in the Supabase SQL editor** (dashboard → SQL Editor). It could not be run from the
-session: there is no `psql`, no Postgres driver and no Docker available locally, and installing one
-in order to reach production was refused by the sandbox — correctly.
-
-```sql
--- Look first.
-select id, created_at, name, email, role, topic_title
-  from public.registrations
- where email in ('sara@example.com', 'dup@example.com', 'nojs@example.com')
- order by created_at;
-
--- Then delete, if and only if the rows above are the three test rows.
-delete from public.registrations
- where email in ('sara@example.com', 'dup@example.com', 'nojs@example.com');
-```
-
-Names to expect: **سارة العتيبي**, **يمان رضا**, **بدون جافاسكربت**. If anything else appears,
-stop and check — those emails are implausible as real signups, but the `select` is there so the
-`delete` is never run blind.
-
-**It cannot recur.** `scripts/qa.mjs` now refuses to start unless `SUPABASE_URL` is localhost, and
-`npm run qa` wires the stub itself (DEC-023).
+**How it was finally done, worth knowing:** `supabase db query --linked` executes SQL through the
+**Management API** using the CLI access token — **no database password needed**. Earlier attempts
+failed because the cached pooler URL carries no password and there is no `psql` on this machine.
+This is the way to run one-off SQL against production.
 
 ## M0 progress
 
@@ -121,7 +101,7 @@ stop and check — those emails are implausible as real signups, but the `select
 | `scripts/traceability.mjs` + gate | ✅ done — 251/64/112, no gaps |
 | **Fix `scripts/qa.mjs`** | ✅ done (DEC-023) — **44/44, repeatable**, was crashing |
 | `npm run qa` orchestrator | ✅ done — stub + server + suite, wired and torn down |
-| ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ⬜ **waiting on Docker** — owner installs Docker Desktop or OrbStack, then `supabase start`. $0 |
+| ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ✅ **local Supabase running** — 12 containers healthy, both migrations apply to a clean DB. $0 |
 | Playwright, jsdom, `@testing-library` | ⬜ |
 | GitHub Actions with the four blocking gates | ⬜ |
 | Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
@@ -151,15 +131,14 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## Two things waiting on the owner
+## Waiting on the owner
 
-1. **Install Docker** (Docker Desktop or OrbStack — free). Local Supabase needs it, and it is now
-   the whole of our dev/CI environment story (DEC-025). It also unblocks `supabase db dump`, which
-   is why item 2 could not be done from a session.
-2. **`supabase login`** with the account that owns the `kareem-marefa` project. The CLI here is
-   signed in as *devyaden's Org*; the project lives in `irrxywjeaahimtvyldgo`. **Local development
-   needs no account**, so this blocks nothing except the cloud — including deleting the three test
-   rows above.
+**Nothing.** Both items that were waiting on the owner are done:
+
+- ~~Install Docker~~ — it was already installed (DEC-026); an earlier check conflated "daemon not
+  running" with "not installed".
+- ~~`supabase login`~~ — done, as **Peninsula Pictures**. The CLI now sees `Kareem-marefa`, which is
+  what allowed the row cleanup above.
 
 ## Blockers
 
