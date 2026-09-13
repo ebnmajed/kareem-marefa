@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `m0/foundation` @ `0e969fa` (from `main` @ `335bde2`) · **Phase:** **M0 in progress — waiting on the owner's approval of the step-1 plan**
+**Last updated:** 2026-09-13 · **Branch:** `m0/foundation` — seven commits on `main` @ `335bde2`, head is the `docs(plan)` handoff commit after `db739a4`, **PR #2 open to `main`** · **Phase:** **M0 — steps 1, 2, 4, 5 done; steps 3 and 6 are the owner's**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -11,10 +11,10 @@
 written, plus `STATUS.md`, `DECISIONS.md` and the root `CLAUDE.md`. `node scripts/traceability.mjs`
 exits 0.
 
-**No application code has been written. Nothing in `src/` or `supabase/` was touched, and the live
-Supabase project was not connected to.** Outside `docs/plan/` the repo has gained only tooling and
-static assets: `scripts/traceability.mjs` (the CI gate the plan specifies), the root `CLAUDE.md`,
-the `.claude/` configuration (DEC-030), `.worktreeinclude`, and the `public/` art described below.
+**M0 has landed on `m0/foundation` (PR open, not merged).** `src/` gained its first platform code
+— `components/ui/icons.tsx`, `components/ui/dialog.tsx`, and the Radix `Direction.Provider` in the
+locale layout — with the frozen routes proven byte-identical by the visual diff. `supabase/` is
+untouched and the live project was not connected to. See *M0 progress* and *This session*.
 
 **`public/` is no longer untouched.** Commit `3d43108` added ten static constellation assets — four
 PNGs, four `constellation-frame-*.svg`, `constellation.svg` and `constellation-static.svg` —
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-030**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-032**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -54,7 +54,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 10 | `10-i18n-rtl.md` | `settled` | Typography tokens, bidi, numerals, adding English. |
 | 11 | `11-background-jobs.md` | `settled` | **34 jobs** with keys, retries, alerts. |
 | 12 | `12-security-privacy.md` | `settled` | Threat model, retention, PDPL. Raised OQ-026. |
-| 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. |
+| 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. **§1's "not installed" rows are stale** — Playwright, jsdom and Testing Library landed in M0; the table was left as written pending a DEC. |
 | 14 | `14-roadmap.md` | `settled` | M0–M8. No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
@@ -82,11 +82,16 @@ rule that keeps a later session from casually rewriting a considered decision.
 | Every A12 poster variant derivable from the master | ✅ `06` §5 |
 | Every A29 export format specified with its pipeline | ✅ `06` §6 |
 | Nothing planned outside §4/§5; §4.22 only in out-of-scope | ✅ `01` §23 |
-| `npx vitest run` | ✅ **30/30 pass**, unchanged from session start |
+| `npm test` (Vitest, two projects) | ✅ **45/45** — 30 unit + 15 component (jsdom, RTL document) |
+| `npm run test:e2e` (Playwright) | ✅ **10/10** — frozen routes, desktop + Pixel 7 profiles |
+| `npm run parity` | ✅ 7 cases, Tiers A and B, 0.000% — manifest now read from `packages/fonts` |
+| `npm run fonts:check` | ✅ 9 web faces, 6 TrueType, build matches |
+| `npm run visual compare m0-before m0-step5` | ✅ **0.000%** on all six captures — the live site is unchanged |
+| `npm run converter:test` | ✅ **17/17** — boot guard, both fixtures, substitution report, 1600 px WebP, sniffing |
 | `npm run build` | ✅ builds clean, unchanged from session start |
-| `src/`, `supabase/` untouched | ✅ `git status` and `git diff` both confirm |
+| `supabase/` untouched | ✅ |
 | `public/` | ⚠️ **ten static assets added** in `3d43108` — see above; invariant 11 unaffected |
-| `npm run qa` | ✅ **44/44 pass** — re-run 2026-09-13 on `main` |
+| `npm run qa` | ✅ **44/44** on every commit of the branch |
 
 ## ✅ Resolved — the three stray test rows are gone
 
@@ -110,16 +115,16 @@ This is the way to run one-off SQL against production.
 | **Fix `scripts/qa.mjs`** | ✅ done (DEC-023) — **44/44, repeatable**, was crashing |
 | `npm run qa` orchestrator | ✅ done — stub + server + suite, wired and torn down |
 | ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ✅ **local Supabase running** — 12 containers healthy, both migrations apply to a clean DB. $0 |
-| Playwright, jsdom, `@testing-library` | ⬜ |
+| Playwright, jsdom, `@testing-library` | ✅ done — `8587a28`. Vitest `unit` + `components` projects, Playwright `desktop` + `phone`, CI `e2e` job |
 | GitHub Actions with the four blocking gates | ✅ done (DEC-028) — 7 jobs; `policy-diff` written and self-tested |
 | Monorepo restructure | ✅ done (DEC-029) — the app stays at the root; nothing moves |
-| **Font work** (`REQ-DSG-016`, `REQ-INT-009`) | ⬜ **plan presented, awaiting owner approval** — see *This session* |
+| **Font work** (`REQ-DSG-016`, `REQ-INT-009`) | ✅ done — Option A, **DEC-031**, `8b1b705`. `packages/fonts` is the manifest; `fonts:check` gates CI and both images |
 | Visual diff of the frozen routes (`npm run visual`) | ✅ done — baseline captured at `.qa-shots/visual/m0-before`, deterministic at 0.000% |
 | **Shaping-parity harness (Tiers A and B)** | ✅ done (DEC-024) — `npm run parity`, 7 cases, green, and proven able to fail |
-| graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ |
-| Credential-free converter app | ⬜ |
-| Radix + the ~8 inline SVGs | ⬜ |
-| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ⬜ |
+| graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ **owner's step 3** — needs `flyctl`, not installed tonight by the owner's instruction. `worker/` does not exist yet |
+| Credential-free converter app | ✅ built and tested, **not deployed** — **DEC-032**, `converter/`. `fly deploy` is part of the owner's step 3 |
+| Radix + the ~8 inline SVGs | ✅ done — `78ff5a6`. `radix-ui` 1.6.7, `Direction.Provider` in the layout, `icons.tsx`, `dialog.tsx`, jsdom tests |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ⬜ **owner's step 6** — a Vercel env change, which this session was told not to make. `openssl rand -base64 32`, set for Production **and** Preview, keep it stable (`04` §9.2) |
 
 ## The parity spike answered the biggest open question
 
@@ -143,16 +148,18 @@ plugs into the same seven cases.
 
 ## Waiting on the owner
 
-**One thing: approval of the M0 step-1 plan** (restructure + font work), presented at the end of
-the 2026-09-13 session and summarised under *This session* below. The owner asked that no file be
-moved before approval. Steps 2–6 of M0 are sequenced after it and have not been started.
+Two M0 steps were explicitly left to the owner tonight, and the PR:
 
-Both earlier items are done:
-
-- ~~Install Docker~~ — it was already installed (DEC-026); an earlier check conflated "daemon not
-  running" with "not installed".
-- ~~`supabase login`~~ — done, as **Peninsula Pictures**. The CLI now sees `Kareem-marefa`, which is
-  what allowed the row cleanup above.
+1. **Step 3 — the worker on Fly, with the LISTEN/NOTIFY boot probe.** `flyctl` is not installed
+   (owner: "no flyctl tonight"). Nothing of `worker/` exists yet; `converter/fly.toml` and the
+   converter image are ready to deploy with
+   `fly deploy --config converter/fly.toml --dockerfile converter/Dockerfile .` once the worker
+   app exists to call it. `04` §7.2 / `11` §1.2: session-mode port **5432**, never 6543; the probe
+   must refuse to start if a `NOTIFY` does not arrive within a second.
+2. **Step 6 — `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** on Vercel, stable across builds (`04` §9.2,
+   §10). This session was instructed not to change Vercel environment variables.
+3. **Review and merge PR #2** (`m0/foundation` → `main`). The session was instructed not to
+   merge or push to `main`.
 
 ## Blockers
 
@@ -181,72 +188,49 @@ to be pristine history.
   `ap-southeast-1`) remains in force and nothing is blocked on it. Worth revisiting before real
   member data exists, since it is a configuration change now and a data migration later.
 
-## This session — `main` verified deployable; M0 opened on `m0/foundation`
+## This session — M0 steps 1, 2, 4 and 5 on `m0/foundation`
 
-**1. `main` is confirmed deployable.** The unverified item the previous session left behind is
-closed. Checked with `gh` and the GitHub deployments API on 2026-09-13:
+`main` was first confirmed deployable (CI green on every push through `335bde2`; the Vercel
+Production deployment for it succeeded; all five frozen routes answer on the live domain). Then,
+with the owner's approval of the step-1 plan ("Option A"), the branch landed in order:
 
-- CI: the four most recent pushes to `main` (`ef313e0` … `335bde2`) all `success`; on `335bde2`
-  every one of the seven jobs passed, including `frozen routes (qa)` and `shaping parity`.
-- Vercel: the Production deployment for `335bde2` reports `success`; the GitHub commit status
-  from Vercel reads "Deployment has completed".
-- The live domain answers: `/` → 307 to `/ar`; `/ar`, `/en`, `/ar/register` 200 `text/html`;
-  `/og.png` 200 `image/png`.
+| Commit | What | Proof |
+|---|---|---|
+| `0e969fa` | `npm run visual` — before/after diff of the frozen routes | two captures of one build: 0.000% |
+| `8b1b705` | **Fonts, Option A — DEC-031.** `packages/fonts` is `ENT-fonts`; web faces are next/font's exact bytes; one merged TTF per weight for LibreOffice; `scripts/fonts/check.mjs` in CI and in the image builds | parity 0.000%; `fonts:check` OK; visual 0.000% |
+| `8587a28` | **Playwright, jsdom, Testing Library.** Two Vitest projects; Playwright over `scripts/serve-stub.mjs`; the stub wiring shared in `scripts/lib/stubbed-server.mjs`; CI `e2e` job | 45 unit/component, 10 e2e |
+| `78ff5a6` | **Radix + the eight glyphs.** `Direction.Provider` in the layout; `icons.tsx`; `dialog.tsx`; `ui.dialog.close` in both catalogues | QA 44/44; visual 0.000% |
+| `db739a4` | **The credential-free converter — DEC-032.** `converter/`: zero-dependency Node over LibreOffice + poppler, boot guard against any credential, fonts from the manifest verified at image build; smoke test + CI `converter` job | smoke 17/17; QA 44/44 |
 
-**2. Branch `m0/foundation` opened** from `main` @ `335bde2`. M0 finishes on it and lands as a PR;
-nothing is pushed to `main` directly.
+**Things the next session should know, none of which are in the plan:**
 
-**3. `npm run visual` — the visual diff the roadmap asks for** (`scripts/visual-diff.mjs`,
-`REQ-NFR-019`). `capture <name>` snapshots `/ar`, `/en`, `/ar/register` at 390 and 1440 px against
-the QA stub; `compare <a> <b>` diffs them with the parity harness's in-browser routine, threshold
-0.1%. **Baseline captured at `.qa-shots/visual/m0-before`** (gitignored; two captures of the same
-build differ by 0.000%, so recapturing from `main` reproduces it). One trap, fixed: a full-page
-screenshot never un-skips `content-visibility: auto` sections, so the first capture had three
-solid-navy chapters and would have passed any diff. The capture now forces them visible and
-**refuses** a capture with a skipped section or text at opacity 0.
+- **`content-visibility: auto` defeats full-page screenshots.** The first visual baseline had
+  three solid-navy chapters and would have passed any diff. `visual-diff.mjs` forces the
+  sections visible and refuses a capture with a skipped section or text at opacity 0.
+- **IBM Plex Sans on Google Fonts is variable.** next/font emits one file for weights 400/500/600
+  of the Latin face, which is why three manifest entries share a hash. Plex Sans Arabic is static:
+  one file per weight, and four subsets each — the manifest keeps only Arabic and basic Latin
+  (DEC-031 says why).
+- **Vitest's `components` project must not carry `react-server`**, and next-intl must be inlined
+  so `next/navigation` (extensionless, no `exports` map) resolves. Both are in `vitest.config.ts`
+  with the reason.
+- **Radix's `Direction.Provider` renders nothing**, which is why the layout could change with the
+  visual diff at 0.000%. It also does not set `dir` on a dialog — only on primitives that position
+  themselves — so a test asserting `dir` on the dialog is wrong, not the provider.
+- **Lock file:** regenerated twice with `npm run lockfile` (CI's npm 10, in Docker). Do not
+  `npm install` and commit the result.
+- **`13` §1 still says Playwright/jsdom are "not installed".** Settled document; left for a DEC.
 
-**4. Fact that settles the font plan:** the three Arabic `.woff2` files production serves today
-hash-match the committed parity manifest (`scripts/parity/fonts/manifest.json`) exactly —
-`4ed189e8…`, `0ccee444…`, `bf2b68e7…`. The manifest already *is* production's font set.
-
-**5. The step-1 plan, as presented (awaiting approval):**
-
-- **Restructure: nothing moves.** DEC-029 is done and not re-litigated. The rest of M0 is
-  additive: `packages/fonts/` (the manifest), `worker/`, `converter/`, `tests/e2e/`,
-  `tests/components/`. The only path that changes is `scripts/parity/fonts/` → `packages/fonts/`,
-  with the harness and the CI `parity` job updated in the same commit. `src/`, `public/`,
-  `supabase/`, `scripts/qa.mjs` and Vercel's root directory are untouched.
-- **Font work, Option A (recommended):** the app keeps `next/font/google` as `10` §4.1 specifies.
-  `packages/fonts/` becomes `ENT-fonts` in the repo: `manifest.json` plus `{sha256}.woff2`, the
-  exact bytes `next/font` emits, so **the live site is byte-identical** and the visual diff is
-  expected at 0.000%. LibreOffice cannot read woff2, so each `.ttf` is derived losslessly from
-  its woff2 (fontTools) with both hashes recorded. A new `scripts/fonts-check.mjs` CI gate
-  rebuilds, re-extracts and fails on any hash not in the manifest; each Docker image verifies the
-  hashes it installs at build. This is the `REQ-DSG-016` gate without a live-site change.
-- **Font work, Option B (not recommended for M0):** switch to `next/font/local` over a pinned
-  upstream IBM Plex release with our own subsetting (keeping `rlig`/`mark`/`mkmk`). Removes Google
-  from the build but changes every served font byte, needs a `DECISIONS.md` entry superseding
-  `10` §4.1's "as shipping today", a non-zero visual diff to review, and an `/en` LCP measurement.
-
-**Verification this session:** `npm run qa` 44/44 on the branch; `npm run build` clean;
-`src/`, `public/`, `supabase/` untouched (`git diff main --stat` shows only `package.json` and
-`scripts/visual-diff.mjs`).
-
-**Not done, deliberately:** M0 steps 2–6 (Playwright/jsdom/testing-library; graphile-worker on Fly
-with the probe; the converter; Radix + inline SVGs; `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`) — the
-owner sequenced them after step 1's approval. `flyctl` is **not installed** on this machine, which
-step 3 will need. `docs/implementation-plan` still exists locally and on `origin`; nothing depends
-on it.
+**Steps 3 and 6 were not done**, by the owner's instruction — see *Waiting on the owner*.
 
 ## Next session should
 
-1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md`.
-2. Check out `m0/foundation`. **Read the owner's answer to the step-1 plan** above; if Option B
-   was chosen, append the `DECISIONS.md` entry before touching `src/lib/fonts.ts`.
-3. Do step 1, then `npm run visual capture m0-after` and `npm run visual compare m0-before
-   m0-after` — recapture `m0-before` from `main` first if `.qa-shots/visual/` is gone.
-4. Then steps 2–6 in the owner's order, small conventional commits, `npm run qa` green before
-   each, `Refs:` trailers on every commit.
-5. Open the PR to `main` when M0 is complete. Do not push to `main` directly.
-6. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
-7. Update this file before finishing.
+1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-031 and DEC-032 are new.
+2. Check whether PR #2 was merged. If yes, `main` carries M0 steps 1, 2, 4, 5; if not, the
+   branch is `m0/foundation` and CI on it was green at handoff.
+3. **Step 3** once `flyctl` is available: create `worker/` (graphile-worker, Chromium,
+   `@kareem/designer-runtime`, fonts from `packages/fonts` verified like the converter does), the
+   LISTEN/NOTIFY boot probe, `fly.toml`, and deploy both apps. **Step 6** on Vercel.
+4. Then M1 (`14-roadmap.md`) — the dangerous one. Do not compress it.
+5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
+6. Update this file before finishing.
