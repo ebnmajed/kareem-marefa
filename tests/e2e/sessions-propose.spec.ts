@@ -31,6 +31,9 @@ let orgId = "";
 let domain = "";
 let userId = "";
 let email = "";
+// A second member, so REQ-PRO-003 has somebody to name.
+let mateId = "";
+let mateEmail = "";
 
 test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
@@ -55,15 +58,21 @@ test.beforeAll(async ({}, testInfo) => {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو الاختبار" } });
   if (error) throw error;
   userId = data.user.id;
+
+  mateEmail = `mate@${domain}`;
+  const mate = await admin.auth.admin.createUser({ email: mateEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "زميلة الاختبار" } });
+  if (mate.error) throw mate.error;
+  mateId = mate.data.user.id;
 });
 
 test.afterAll(async () => {
   if (userId) await admin.auth.admin.deleteUser(userId);
+  if (mateId) await admin.auth.admin.deleteUser(mateId);
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
   await db.end();
 });
 
-async function signIn(context: BrowserContext) {
+async function signIn(context: BrowserContext, who: string = email) {
   const jar: { name: string; value: string }[] = [];
   const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
     cookies: {
@@ -73,7 +82,7 @@ async function signIn(context: BrowserContext) {
       },
     },
   });
-  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  const { error } = await client.auth.signInWithPassword({ email: who, password: PASSWORD });
   if (error) throw error;
   const { data: envelope, error: rpcError } = await client.rpc("provision_member");
   if (rpcError) throw rpcError;
@@ -116,7 +125,7 @@ test("a member submits a proposal and it lands with their org and their id", asy
   await page.getByLabel("المدة المتوقعة").fill("45");
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
 
-  await expect(page).toHaveURL(/\/ar\/app\/propose\?created=/);
+  await expect(page).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
   await expect(page.getByRole("status")).toContainText("وصلنا مقترحك");
   await expect(page.getByRole("status")).toContainText(title);
 
@@ -176,4 +185,47 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
 
   // The reviewed screenshot of the definition of done.
   await page.screenshot({ path: "test-results/scr-017-propose-390-rtl.png", fullPage: true });
+});
+
+test("naming a co-presenter invites them, and they answer for themselves (REQ-PRO-003)", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto("/ar/app/propose");
+  const title = "جلسة بمقدّمَين";
+  await fillProposal(page, title);
+  await page.getByRole("checkbox", { name: /زميلة الاختبار/ }).check();
+  await page.getByRole("button", { name: "أرسل المقترح" }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
+
+  // The proposer is accepted; the named colleague has not answered.
+  await expect(page.getByText("صاحب المقترح")).toBeVisible();
+  await expect(page.getByText("بانتظار الرد")).toBeVisible();
+  // The proposer is not offered an accept button — proposing was accepting.
+  await expect(page.getByRole("button", { name: "أوافق على التقديم" })).toHaveCount(0);
+  const url = page.url();
+
+  const { rows } = await db.query<{ n: string }>(
+    `select count(*) as n from public.proposal_presenters pp
+       join public.proposals p on p.id = pp.proposal_id where p.title = $1`,
+    [title],
+  );
+  expect(Number(rows[0].n)).toBe(2);
+
+  // The colleague, in her own session, answers her own row.
+  const mateContext = await page.context().browser()!.newContext();
+  await signIn(mateContext, mateEmail);
+  const matePage = await mateContext.newPage();
+  await matePage.goto(url.replace(/\?created=1$/, ""));
+  await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toBeVisible();
+  await matePage.getByRole("button", { name: "أوافق على التقديم" }).click();
+  await expect(matePage.getByText("وافق")).toBeVisible();
+  await mateContext.close();
+
+  const after = await db.query<{ accepted: boolean }>(
+    `select pp.accepted from public.proposal_presenters pp
+       join public.proposals p on p.id = pp.proposal_id
+       join public.members m on m.id = pp.member_id
+      where p.title = $1 and m.auth_user_id = $2`,
+    [title, mateId],
+  );
+  expect(after.rows[0].accepted).toBe(true);
 });

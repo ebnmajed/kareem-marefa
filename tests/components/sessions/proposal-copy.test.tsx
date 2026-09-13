@@ -72,12 +72,20 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     expect(Object.keys(enFlat).sort()).toEqual(Object.keys(arFlat).sort());
   });
 
-  it("every interpolated value in a message is wrapped for bidi isolation", () => {
-    // REQ-INT-007. A bare {title} in Arabic prose is the classic bidi bug:
-    // a Latin-script title drags its trailing punctuation to the wrong end.
+  it("every TEXT value interpolated into a message is wrapped for bidi isolation", () => {
+    // REQ-INT-007, and the line this draws is deliberate.
+    //
+    // `{title}` and `{name}` carry member-authored text that may be Latin,
+    // mixed, or end in punctuation — the classic bidi bug, where a Latin
+    // title drags its trailing «.» to the wrong end of an Arabic sentence.
+    // Those must be `<t>{…}</t>` so the page can wrap them in <bdi>.
+    //
+    // `{value}` and `{count}` are numerals from formatNumber(), digits sitting
+    // between Arabic words, whose directional class resolves correctly without
+    // isolation. Where a numeral stands ALONE in a cell rather than inside a
+    // sentence, the call site wraps it in <bdi> — see the duration on SCR-018.
     for (const [key, value] of Object.entries(arFlat)) {
-      if (key === "propose.duration") continue; // a numeral, isolated at the call site
-      const bare = value.match(/(?<!<t>)\{(title|name|value|count)\}/g);
+      const bare = value.match(/(?<!<t>)\{(title|name)\}/g);
       if (bare) expect(value, `${key} interpolates ${bare.join(", ")} without <t>`).toMatch(/<t>\{/);
     }
   });

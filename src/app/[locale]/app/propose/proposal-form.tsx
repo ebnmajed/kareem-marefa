@@ -21,6 +21,7 @@ import type { ProposeState } from "./actions";
 // validation round trip must not do to a 2000-character abstract.
 
 export type ProposalFormCategory = { id: string; name: string };
+export type ProposalFormMember = { id: string; displayName: string | null; jobTitle: string | null };
 
 const FIELD = "mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading";
 const AREA = `${FIELD} min-h-32`;
@@ -64,9 +65,15 @@ function Field({
 export function ProposalForm({
   action,
   categories,
+  members,
+  maxCoPresenters,
+  maxCoPresentersLabel,
 }: {
   action: (prev: ProposeState, formData: FormData) => Promise<ProposeState>;
   categories: ProposalFormCategory[];
+  members: ProposalFormMember[];
+  maxCoPresenters: number;
+  maxCoPresentersLabel: string;
 }) {
   const t = useTranslations("proposals.propose");
   const [state, formAction, pending] = useActionState(action, { errors: {}, formError: null });
@@ -168,6 +175,40 @@ export function ProposalForm({
           <span className="text-body text-fg-muted">{t("form.durationUnit")}</span>
         </div>
       </Field>
+
+      {/* REQ-PRO-003. Checkboxes rather than a multi-select: a multi-select
+          at 390 px is a scroll trap, and the count has to stay visible
+          against the org's limit. The list comes from members_member_view, so
+          it cannot show anyone outside the org — and the database refuses one
+          anyway. */}
+      <fieldset>
+        <legend className="text-label text-fg-heading">
+          {t("form.coPresentersLabel")}
+          <span className="ms-2 text-body-sm font-normal text-fg-muted">{t("form.optional")}</span>
+        </legend>
+        <p className="mt-1 text-body-sm text-fg-muted">{t("form.coPresentersHint")}</p>
+        <p className="mt-1 text-body-sm text-fg-muted">{maxCoPresentersLabel}</p>
+        {members.length === 0 ? (
+          <p className="mt-3 text-body-sm text-fg-muted">{t("form.coPresentersNone")}</p>
+        ) : (
+          <ul className="mt-3 space-y-1">
+            {members.map((m) => (
+              <li key={m.id}>
+                <label className="flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body hover:bg-silver-100">
+                  <input type="checkbox" name="coPresenters" value={m.id} disabled={maxCoPresenters === 0} className="size-5" />
+                  <span>
+                    <bdi>{m.displayName}</bdi>
+                    {m.jobTitle ? <span className="text-fg-muted"> · <bdi>{m.jobTitle}</bdi></span> : null}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {err("coPresenters") ? (
+          <p className="mt-2 text-body-sm text-fg-heading">{err("coPresenters")}</p>
+        ) : null}
+      </fieldset>
 
       <Field name="adminNotes" label={t("form.notesLabel")} hint={t("form.notesHint")} error={err("adminNotes")} optionalLabel={t("form.optional")}>
         <textarea id="adminNotes" name="adminNotes" maxLength={2000} rows={3} className={AREA} {...aria("adminNotes")} />

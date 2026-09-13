@@ -168,3 +168,54 @@ just taken. What I am checking: no horizontal scroll, the submit control ≥ 44 
 category `select` opening right-to-left, the hint lines not clipping tashkeel (no `overflow: hidden`
 on a text line), and the number input's Latin digits sitting inside an RTL line without the label
 and the unit swapping places.
+
+---
+
+## 2. STORY-PRO-002 — co-presenters, and the half that is blocked
+
+**Covers:** `REQ-PRO-003` · **Screens:** SCR-017, SCR-018 · **Size:** M
+
+### 2.1 `REQ-PRO-004` (draft materials) cannot be built in wave 1
+
+There is no `materials` table. `0010` covers proposals, presenters, sessions, transitions, RSVPs,
+codes, check-ins, attempts, comments, reactions, reports, ratings and the aggregates view, and
+nothing else; `ENT-materials` arrives with M5, which is the `content` teammate in wave 2. Its
+requirement also says draft materials "obey every materials rule (`REQ-MAT-*`)", none of which
+exists yet. So STORY-PRO-002 ships its `REQ-PRO-003` half now and `REQ-PRO-004` waits for M5.
+When it lands it is a small addition: attach on SCR-017, admin-only until publication, carried over
+with its phase.
+
+### 2.2 Three holes the schema left, closed in `0002_copresenters.sql`
+
+1. **A named presenter could be in another org.** `proposal_presenters_insert_by_proposer` checks
+   that the ROW's `org_id` is the caller's and that the proposal is theirs. Neither says the named
+   MEMBER is in that org. `REQ-PRO-003` says only same-org members may be named, and A5's presenter
+   points and `REQ-CRT-001`'s certificate follow the named row — so this is a tenancy hole, not a
+   validation nicety. Closed by `presenter_is_same_org()` on **both** presenter tables.
+2. **A co-presenter could be added to an already-approved proposal**, collecting presenter points
+   and a certificate for a session nobody reviewed them onto. Naming now closes at the decision and
+   stays open through review, because a change-request often *is* "add someone who knows the
+   operations side". Deletes are deliberately **not** state-locked: a decline can arrive at any
+   time and `REQ-PRO-003` says the declined member is removed.
+3. **Creating a proposal with presenters was three PostgREST calls, so three transactions.** A bad
+   co-presenter id would have left a proposal with nobody presenting it. `create_proposal()` makes
+   it one act. It is `security invoker` — it exists for **atomicity, not authority**, so RLS and
+   the column grants still decide, and it takes no `proposer_id` or `org_id` because both come from
+   the claims and there is therefore no argument to lie in.
+
+### 2.3 The proposer is a presenter row
+
+`create_proposal()` writes the proposer's own `proposal_presenters` row with `accepted = true`.
+Proposing is accepting. It also makes `presenters_within_limit`'s `max_co_presenters + 1` mean what
+it says — the lead presenter plus four — which is how `tests/rls/m2-schema.test.ts` already reads
+it ("presenter + attendee = 2 = max_co_presenters + 1").
+
+### 2.4 SCR-018 exists now, thinly
+
+A named co-presenter has to be able to *reach* their invitation, so `/app/propose/[id]` and a short
+"مقترحاتي" list at the foot of SCR-017 arrive with this story. The pipeline view `REQ-PRO-008`
+describes — the history behind each state — is still STORY-PRO-004.
+
+Who may open SCR-018 is `proposals_read_own_or_staff`, not a check in the page: the proposer and
+the named co-presenters, nobody else. A member who is neither gets no row, and no row is a **404**
+rather than a message that would confirm the id exists.

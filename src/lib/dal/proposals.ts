@@ -23,15 +23,36 @@ export interface ProposalCategory {
   name: string;
 }
 
+export interface NameableMember {
+  id: string;
+  displayName: string | null;
+  jobTitle: string | null;
+}
+
+export interface ProposalPresenter {
+  memberId: string;
+  displayName: string | null;
+  /** The proposer's own row, which `create_proposal` writes accepted. */
+  isProposer: boolean;
+  accepted: boolean;
+  declinedAt: string | null;
+}
+
 export interface ProposalSummary {
   id: string;
   title: string;
+  abstract: string;
   categoryName: string | null;
   level: ProposalLevel;
   state: ProposalState;
   /** The admin's written reason on a rejection or a change-request (REQ-PRO-005). Read-only here. */
   decisionReason: string | null;
   expectedDurationMinutes: number | null;
+  presenters: ProposalPresenter[];
+  /** Whether the caller owns this proposal. Decided here, never in a component. */
+  viewerIsProposer: boolean;
+  /** Where the caller stands as a named co-presenter (REQ-PRO-003). */
+  viewerInvite: "none" | "pending" | "accepted" | "declined";
   createdAt: string;
   updatedAt: string;
 }
@@ -69,72 +90,201 @@ export async function listCategories(locale: string): Promise<ProposalCategory[]
   return (data ?? []).map((c) => ({ id: c.id, name: c.name }));
 }
 
-/** The org's numeral system (REQ-INT-006). Every numeral this track renders follows it. */
-export async function getNumerals(locale: string): Promise<NumeralSystem> {
+export interface OrgPrefs {
+  /** REQ-INT-006. Every numeral this track renders follows it. */
+  numerals: NumeralSystem;
+  /** A5 / OQ-021. The proposer is the (max + 1)th presenter, not an extra. */
+  maxCoPresenters: number;
+}
+
+export async function getOrgPrefs(locale: string): Promise<OrgPrefs> {
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle();
+  const { data, error } = await supabase.from("org_settings").select("numerals, max_co_presenters").eq("org_id", session.orgId).maybeSingle();
   if (error) throw new Error(`org_settings: ${error.message}`);
-  return (data?.numerals as NumeralSystem) ?? "western";
+  return { numerals: (data?.numerals as NumeralSystem) ?? "western", maxCoPresenters: data?.max_co_presenters ?? 4 };
 }
 
 /**
- * Creates a proposal, as a draft or straight to the admin's queue.
+ * The members a proposer may name as مقدّمون مشاركون (REQ-PRO-003).
  *
- * No RPC: 03 §5.2b is explicit that the asymmetric using/with-check on
- * `proposals_update_own_editable` IS the state machine, and
- * `proposals_insert_own` already permits exactly `draft` and `submitted`. An
- * RPC here would re-implement a policy that already holds. The audit row
- * REQ-PRO-006 demands is written by a trigger, not by this call — see
- * supabase/proposed/sessions/0001_proposal_transitions.sql for why it has to
- * be a trigger.
- *
- * `decision_reason` is absent by construction, and absent from the column
- * grant too: a proposer cannot write their own rejection reason at any layer.
+ * `members_member_view` IS the member tier (A33), so this cannot leak an
+ * email or a status into a picker. RLS scopes it to the org, and the
+ * same-org trigger refuses anything else at the write — the filter here is
+ * defence in depth, not the boundary.
  */
-export async function createProposal(locale: string, input: ProposalInput, submit: boolean): Promise<{ id: string; state: ProposalState }> {
+export async function listNameableMembers(locale: string): Promise<NameableMember[]> {
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase
-    .from("proposals")
-    .insert({
-      org_id: session.orgId,
-      proposer_id: session.memberId,
-      title: input.title,
-      abstract: input.abstract,
-      category_id: input.categoryId,
-      level: input.level,
-      target_audience: input.targetAudience,
-      expected_duration_minutes: input.expectedDurationMinutes,
-      admin_notes: input.adminNotes,
-      state: submit ? "submitted" : "draft",
-    })
-    .select("id, state")
-    .single();
-  if (error || !data) throw new Error(`proposals.insert: ${error?.message ?? "no row"}`);
-  return { id: data.id, state: data.state as ProposalState };
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title").neq("id", session.memberId).order("display_name");
+  if (error) throw new Error(`members_member_view: ${error.message}`);
+  return (data ?? []).map((m) => ({ id: m.id, displayName: m.display_name, jobTitle: m.job_title }));
 }
 
-/** One of the caller's own proposals, or null. Used by the post-submit confirmation. */
-export async function getMyProposal(locale: string, id: string): Promise<ProposalSummary | null> {
+/**
+ * Creates a proposal with its presenters, in one transaction.
+ *
+ * `create_proposal()` is SECURITY INVOKER, so RLS and the column grants are
+ * still the boundary — `proposals_insert_own` decides, and the function is
+ * not asked for a `proposer_id` or an `org_id` because it reads both from the
+ * claims. It exists for ATOMICITY: a proposal, the proposer's own accepted
+ * presenter row and each named co-presenter are three inserts, and three
+ * PostgREST calls would be three transactions, so a bad co-presenter id would
+ * leave a proposal with nobody presenting it.
+ *
+ * The audit row REQ-PRO-006 demands is written by a trigger rather than here —
+ * see supabase/proposed/sessions/0001_proposal_transitions.sql for why it has
+ * to be a trigger and not this call.
+ *
+ * `decision_reason` is absent by construction and absent from the column
+ * grant: a proposer cannot write their own rejection reason at any layer.
+ */
+export async function createProposal(
+  locale: string,
+  input: ProposalInput,
+  submit: boolean,
+  coPresenterIds: string[] = [],
+): Promise<{ id: string; state: ProposalState }> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("create_proposal", {
+    p_title: input.title,
+    p_abstract: input.abstract,
+    p_category: input.categoryId,
+    p_level: input.level,
+    p_target_audience: input.targetAudience,
+    p_expected_duration_minutes: input.expectedDurationMinutes,
+    p_admin_notes: input.adminNotes,
+    p_co_presenters: coPresenterIds,
+    p_submit: submit,
+  });
+  if (error || !data) throw new Error(`create_proposal: ${error?.message ?? "no id"}`);
+  return { id: data as string, state: submit ? "submitted" : "draft" };
+}
+
+/**
+ * The presenters of one proposal, with their display names.
+ *
+ * Two reads rather than an embedded select: `members_member_view` is a view,
+ * and asking PostgREST to infer an embedding through it is a fragile way to
+ * get a name. The view is also what keeps this at the member tier (A33).
+ */
+async function presentersOf(
+  supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
+  proposalId: string,
+  proposerId: string,
+): Promise<ProposalPresenter[]> {
+  const { data, error } = await supabase
+    .from("proposal_presenters")
+    .select("member_id, accepted, declined_at")
+    .eq("proposal_id", proposalId)
+    .order("created_at");
+  if (error) throw new Error(`proposal_presenters: ${error.message}`);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: members, error: mErr } = await supabase
+    .from("members_member_view")
+    .select("id, display_name")
+    .in("id", rows.map((r) => r.member_id));
+  if (mErr) throw new Error(`members_member_view: ${mErr.message}`);
+  const names = new Map((members ?? []).map((m) => [m.id as string, m.display_name as string | null]));
+
+  return rows.map((r) => ({
+    memberId: r.member_id,
+    displayName: names.get(r.member_id) ?? null,
+    isProposer: r.member_id === proposerId,
+    accepted: r.accepted,
+    declinedAt: r.declined_at,
+  }));
+}
+
+const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
+
+type ProposalRow = {
+  id: string;
+  title: string;
+  abstract: string;
+  proposer_id: string;
+  level: string;
+  state: string;
+  decision_reason: string | null;
+  expected_duration_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+  categories: unknown;
+};
+
+function toSummary(row: ProposalRow, presenters: ProposalPresenter[], viewerId: string): ProposalSummary {
+  const category = row.categories as { name: string } | null;
+  const mine = presenters.find((p) => p.memberId === viewerId && !p.isProposer);
+  return {
+    abstract: row.abstract,
+    viewerIsProposer: row.proposer_id === viewerId,
+    viewerInvite: !mine ? "none" : mine.declinedAt ? "declined" : mine.accepted ? "accepted" : "pending",
+    id: row.id,
+    title: row.title,
+    categoryName: category?.name ?? null,
+    level: row.level as ProposalLevel,
+    state: row.state as ProposalState,
+    decisionReason: row.decision_reason,
+    expectedDurationMinutes: row.expected_duration_minutes,
+    presenters,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * One proposal the caller can see, or null.
+ *
+ * Not filtered to `proposer_id`: REQ-PRO-008 gives a named co-presenter sight
+ * of the proposal too, and `proposals_read_own_or_staff` already draws that
+ * line. Adding an application filter here would take back what the policy
+ * grants, and would hide the very row a co-presenter has to answer.
+ */
+export async function getProposal(locale: string, id: string): Promise<ProposalSummary | null> {
   if (!z.uuid().safeParse(id).success) return null;
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase
-    .from("proposals")
-    .select("id, title, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)")
-    .eq("id", id)
-    .eq("proposer_id", session.memberId)
-    .maybeSingle();
+  const { data, error } = await supabase.from("proposals").select(PROPOSAL_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`proposals.select: ${error.message}`);
   if (!data) return null;
-  const category = data.categories as unknown as { name: string } | null;
-  return {
-    id: data.id,
-    title: data.title,
-    categoryName: category?.name ?? null,
-    level: data.level as ProposalLevel,
-    state: data.state as ProposalState,
-    decisionReason: data.decision_reason,
-    expectedDurationMinutes: data.expected_duration_minutes,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  };
+  const row = data as unknown as ProposalRow;
+  return toSummary(row, await presentersOf(supabase, row.id, row.proposer_id), session.memberId);
+}
+
+/**
+ * Every proposal the caller can see: their own, and those naming them
+ * (REQ-PRO-008). The policy decides which; this only orders them.
+ */
+export async function listMyProposals(locale: string): Promise<ProposalSummary[]> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("proposals").select(PROPOSAL_COLUMNS).order("created_at", { ascending: false });
+  if (error) throw new Error(`proposals.select: ${error.message}`);
+  const rows = (data ?? []) as unknown as ProposalRow[];
+  return Promise.all(rows.map(async (row) => toSummary(row, await presentersOf(supabase, row.id, row.proposer_id), session.memberId)));
+}
+
+/**
+ * A named co-presenter answers their own invitation (REQ-PRO-003).
+ *
+ * `proposal_presenters_update_self` scopes the write to the caller's own row
+ * and the column grant covers only `accepted` and `declined_at`, so the
+ * `member_id` filter here is defence in depth. A decline records itself
+ * rather than deleting the row: the proposer has to see that somebody stepped
+ * back, and removing them is the proposer's act, not a side effect.
+ */
+export async function respondToPresenterInvite(locale: string, proposalId: string, accept: boolean): Promise<void> {
+  const { session, supabase } = await sessionClient(locale);
+  const { error } = await supabase
+    .from("proposal_presenters")
+    .update(accept ? { accepted: true, declined_at: null } : { accepted: false, declined_at: new Date().toISOString() })
+    .eq("proposal_id", proposalId)
+    .eq("member_id", session.memberId);
+  if (error) throw new Error(`proposal_presenters.update: ${error.message}`);
+}
+
+/** Removes a co-presenter from the caller's own proposal (REQ-PRO-003). */
+export async function removeCoPresenter(locale: string, proposalId: string, memberId: string): Promise<void> {
+  const { session, supabase } = await sessionClient(locale);
+  if (memberId === session.memberId) throw new Error("removeCoPresenter: the proposer is not removable");
+  const { error } = await supabase.from("proposal_presenters").delete().eq("proposal_id", proposalId).eq("member_id", memberId);
+  if (error) throw new Error(`proposal_presenters.delete: ${error.message}`);
 }
