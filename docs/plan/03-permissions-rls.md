@@ -1117,6 +1117,12 @@ generated suite is the highest-value test in the product.
 | `POL-set_member_role.audit` | Changing a role bumps `claims_version` and writes an audit row with old and new role; demoting the last admin raises `last_admin`. |
 | `POL-deactivate_member.reason` | Deactivating without a reason is rejected; with one, `status` flips, `claims_version` bumps, the audit row carries the reason. |
 | `POL-proposals.select.member` | Member B cannot read member A's proposal; a co-presenter can. |
+| `POL-proposal_presenters.select.member` · `POL-proposal_presenters.insert.proposer` · `POL-proposal_presenters.update.self` · `POL-proposal_presenters.delete.proposer` | Org-readable; only the proposer names or removes a co-presenter; the named member accepts or declines their own row and cannot touch another's; a sixth presenter raises `too_many_presenters` (A5). |
+| `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
+| `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
+| `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |
+| `POL-reactions.select.member` · `POL-reactions.write.self` | Org-readable; a member adds and removes only their own; a duplicate `(member, comment, kind)` is rejected. |
+| `POL-reports.select.staff_or_reporter` · `POL-reports.insert.self` · `POL-reports.update.staff` | The reporter and staff read; a member cannot read another's report; a member cannot resolve; a moderator resolves through the column grant. |
 | `POL-proposals.update.own` | A proposer cannot write `decision_reason`; cannot edit an `approved` proposal. |
 | `POL-sessions.select.member` | A `draft` session is invisible to members, visible to its presenter. |
 | `POL-sessions.update.presenter` | A presenter setting `starts_at` is rejected — the column is not granted (D13). |
