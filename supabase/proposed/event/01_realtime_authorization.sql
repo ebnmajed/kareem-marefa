@@ -161,3 +161,10 @@ end $$;
 
 create trigger reactions_broadcast after insert or delete on public.reactions
   for each row execute function public.reactions_broadcast();
+
+-- Supabase already grants these to `authenticated` on the live project and
+-- locally (verified: information_schema.role_table_grants), so this line
+-- changes nothing at runtime — it exists so scripts/policy-diff.mjs can see
+-- the grant a policy above relies on (invariant 6: a policy without a
+-- matching grant fails 42501; 0002 is the whole reason that check exists).
+grant select, insert on realtime.messages to authenticated;
