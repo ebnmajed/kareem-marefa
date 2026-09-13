@@ -32,7 +32,12 @@ Environment variables (`.env.local` locally, Vercel project settings in producti
 - `FORM_TOKEN_SECRET` — HMAC secret for the min-time-to-submit token: `openssl rand -hex 32`.
 - `SITE_URL` — optional; canonical URL for OG metadata in production.
 
-No `NEXT_PUBLIC_` variables exist anywhere; the browser never talks to Supabase.
+The **registration form** keeps those server-only variables and the browser never talks to Supabase
+for it. The **platform** (M1+) adds two `NEXT_PUBLIC_` variables — `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — because its browser client handles auth UI and Realtime
+(DEC-020, confirmed by the owner in DEC-021). That retires the old invariant that no `NEXT_PUBLIC_`
+variable exists; **RLS is the boundary**, and the generated isolation sweep in `tests/rls` is what
+proves it. All data access is still server-side (`src/lib/dal/`).
 
 ## Database
 

@@ -16,6 +16,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:local": "node scripts/e2e-local.mjs",
     "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} vitest run --project rls",
     "policy-diff": "node scripts/policy-diff.mjs",
     "serve:stub": "node scripts/serve-stub.mjs",
@@ -33,6 +34,7 @@
     "lockfile": "node scripts/lockfile.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.110.2",
     "next": "16.2.10",
     "next-intl": "^4.13.2",

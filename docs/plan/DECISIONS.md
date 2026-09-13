@@ -872,6 +872,45 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing. Amends `02` §4.1 (`orgs`) and `03` §5.1, §8.2 as described.
 - **Documents changed:** `02-domain-model.md`, `03-permissions-rls.md`, `STATUS.md`
 
+## DEC-036 — CSP ships report-only first; proxy refreshes the token; the `NEXT_PUBLIC_` reversal is executed
+
+- **Date:** 2026-09-13 · **Decided by:** session, within the owner's approved M1 plan
+- **Decision — CSP (`REQ-NFR-003`):** `proxy.ts` sets a strict policy — `script-src` and
+  `style-src` by per-request nonce with `strict-dynamic`, no `unsafe-inline` — as
+  **`Content-Security-Policy-Report-Only` on every route**, reporting to `/api/csp-report`. On the
+  platform routes (`/{locale}/app`) the nonce and the policy are also forwarded as request
+  headers, so Next nonces its own inline scripts and a layout can read `x-nonce`. On the frozen
+  marketing routes the policy is a **response header only**: their HTML stays byte-identical
+  (`REQ-NFR-019`, verified by `npm run visual` at 0.000%), and the reports say what an enforced
+  policy would break there. **Enforcement is a later step**, after a review of the reports from a
+  preview deployment — first on `/app`, then everywhere once the marketing pages' inline script
+  and style attributes are addressed.
+- **The open question it raises — OQ-028:** `REQ-NFR-003` says no `unsafe-inline` in the style
+  directive. Radix primitives set inline `style` attributes (positioning, scroll lock), which a
+  nonce-only `style-src` blocks. Either the requirement admits `'unsafe-hashes'`/`'unsafe-inline'`
+  for `style-src` on the platform routes (low risk: style injection, not script), or the
+  primitives are configured to avoid inline styles. Decided at enforcement time, with reports in
+  hand.
+- **Decision — the optimistic check refreshes the token:** `04` §6 says proxy does a cookie-presence
+  check and no database call. It now also calls `getClaims()`, which verifies the JWT locally
+  against the project's JWKS and **only calls Auth to refresh an expired access token** — never
+  the database. The refresh has to live here because Server Components cannot write cookies, and
+  with `jwt_expiry` at 900 s a member who is quiet for fifteen minutes would otherwise be signed
+  out. A forged cookie still passes proxy and is rejected at the data. **PR C prerequisite:** the
+  hosted project must use **asymmetric JWT signing keys**; with the legacy HS256 secret,
+  `getClaims()` falls back to a network call per request.
+- **Decision — DEC-020/DEC-021 executed:** `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` exist. `README.md`'s invariant that none do is retired
+  with a pointer to both entries. The frozen registration form keeps its server-only variables and
+  client untouched. The browser client (`src/lib/supabase/browser.ts`) exists and is unused until
+  Realtime; all data access is the DAL's server client.
+- **Also:** `/en/app/*` and the English auth screens redirect to Arabic until the platform's
+  English catalogue exists (STORY-INT-004); marketing `/en` is untouched. Sign-in starts
+  server-side (a Route Handler calling `signInWithOAuth`), so no browser client is needed for it.
+- **Supersedes:** nothing. Refines `04` §6 as described; `REQ-NFR-003`'s enforcement is deferred,
+  not waived.
+- **Documents changed:** `OPEN-QUESTIONS.md` (OQ-028), `README.md`, `STATUS.md`
+
 ---
 
 ## Template for new entries

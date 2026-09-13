@@ -127,5 +127,67 @@
     "dialog": {
       "close": "Close"
     }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in to Knowledge Kareem",
+      "subtitle": "A private platform for member organisations. Use your work account.",
+      "google": "Continue with Google",
+      "error": "Sign-in failed — please try again",
+      "domainNotAllowed": "Knowledge Kareem is a private platform for specific organisations. If you believe this is a mistake, contact your organisation's administrator."
+    },
+    "chooseOrg": {
+      "title": "Choose your organisation",
+      "body": "Your email is listed by more than one organisation. Choose yours — this choice is final and cannot be changed later.",
+      "confirm": "Confirm"
+    },
+    "noAccess": {
+      "title": "No access",
+      "noMatch": "Knowledge Kareem is a private platform for specific organisations. If you believe this is a mistake, contact your organisation's administrator.",
+      "suspended": "This organisation is currently suspended",
+      "suspendedBody": "Your data is retained. Contact your organisation's administrator to learn more.",
+      "deactivated": "Your account has been deactivated",
+      "deactivatedBody": "Contact your organisation's admin if you believe this is a mistake.",
+      "signOut": "Sign out",
+      "backHome": "Back to home"
+    }
+  },
+  "app": {
+    "shell": {
+      "home": "Home",
+      "profile": "My profile",
+      "signOut": "Sign out",
+      "brand": "Knowledge Kareem"
+    },
+    "home": {
+      "welcome": "Welcome, <name>{value}</name>",
+      "welcomeAnon": "Welcome",
+      "intro": "This is the beginning of the platform. Sessions, seats and points arrive in the next milestones.",
+      "completeProfile": "Complete your profile",
+      "companyMissing": "Choose your company before reserving a seat or proposing a session.",
+      "org": "Your organisation: <org>{value}</org>"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "displayName": "Name",
+    "company": "Company",
+    "companyNone": "— choose your company —",
+    "jobTitle": "Job title",
+    "bio": "Bio",
+    "bioHint": "Up to 600 characters",
+    "leaderboardOptOut": "Hide me from leaderboards",
+    "save": "Save",
+    "saved": "Saved",
+    "invalid": "Check the fields and try again",
+    "email": "Email",
+    "role": {
+      "admin": "Org admin",
+      "moderator": "Moderator",
+      "member": "Member"
+    },
+    "memberSince": "Member since {date}",
+    "notFound": "Member not found",
+    "noBio": "No bio yet"
   }
 }

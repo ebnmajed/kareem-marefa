@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `m1/tenancy` (PR A → `main`, open) · **Phase:** **M1 — PR A (database spine) done; PR B (app side) in progress on `m1/app`; PR C not started**
+**Last updated:** 2026-09-13 · **Branches:** `m1/tenancy` (PR A #4 → `main`, open, CI green) · `m1/app` (PR B → `m1/tenancy`, open) · **Phase:** **M1 — PR A and PR B built; PR C NOT started (owner-gated)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-035**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-036**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -148,30 +148,108 @@ plugs into the same seven cases.
 
 ## M1 — where it stands
 
-**The owner approved the plan as presented** (three PRs, all four listed choices). **PR A is
-built and green:** migrations `0003`–`0006` (`b8c52d7`), the `tests/rls` suite with 61 tests
-(`a41ac8d`) passing on local Supabase and on the CI shim, `policy-diff` green, DEC-035 recording
-the deltas. Its shape, so the next session does not re-derive it: three PRs — **A** the database spine (migrations `0003`–`0006`: enums and helpers;
-tenancy tables with RLS, grants and the column grant on `members`; the RPCs including
-`provision_member()`, `assert_fresh_admin()`, `write_audit()`; the Custom Access Token Hook that
-never raises, with its three `supabase_auth_admin` grants), the `tests/rls` Vitest project driven
-through `pg` with `set local role` + `request.jwt.claims` and rolled back per test, the generated
-isolation sweep, a minimal `auth` shim in `scripts/ci/roles.sql` so the bare CI container can run
-it, and `policy-diff` green; **B** the app side (`@supabase/ssr` clients, the DAL with
-`requireSession()` narrowed on `data`, `proxy.ts` with CSP in report-only first, sign-in /
-choose-org / no-access, the app shell and the profile with company); **C** the production cutover,
-gated on the owner's explicit go: schema-only dump rehearsal, `supabase db push`, Google provider
-and hook enabled on the hosted project, `NEXT_PUBLIC_*` on Vercel, first-org seed by one-off SQL.
-Deferred out of M1: admin CRUD screens (policies and RPCs exist, UI in M2/M7 per `09`), `tags`,
-`impersonation_sessions`.
+**PR A (#4, `m1/tenancy` → `main`) — built, green, awaiting review.** Migrations `0003`–`0006`;
+`tests/rls` with 61 tests on local Supabase and on the CI shim; `policy-diff` green; DEC-035.
 
-**Owner inputs M1 needs:** a Google OAuth client for the hosted project; the first org's name,
-slug, certificate prefix, allowed email domain(s) and first admin email; approval for the two
-`NEXT_PUBLIC_` variables on Vercel; approval for `supabase db push` and the dashboard steps.
+**PR B (#5, `m1/app` → `m1/tenancy`) — built, green, awaiting review.** Slice 1 (`6221c06`):
+`@supabase/ssr` clients, the DAL with `requireSession()` narrowed on `data`, `proxy.ts` with
+report-only CSP, DEC-036 and OQ-028, the README's `NEXT_PUBLIC_` invariant retired. Slice 2
+(`b922197`): sign-in, callback, choose-org, no-access, sign-out, the app shell, home, profile,
+another member's page, migration `0007` (Before User Created hook, `REQ-AUT-006`), the auth e2e
+spec and the signed-in e2e spec. Slice 3 (`bf3e67f`): what the signed-in e2e found — `/api/*`
+excluded from the proxy matcher (next-intl was rewriting the auth Route Handlers), the home page's
+rich messages, and migration `0008` (the domain audit trigger broke org deletion on cascade).
+
+**Proof on `bf3e67f`, all on real local Supabase:** `supabase db reset` applies `0001`–`0008`
+cleanly · `npm run test:rls` **66/66** · `npm run test:e2e:local` **34/34** (unauthenticated,
+CSP, Route Handlers, and the signed-in home/profile/member/sign-out flows) · `npm run qa`
+**44/44** · `npm run visual compare m0-final m1-final` **0.000%** on six captures, frozen HTML
+with no nonce attribute · unit + components 66/66 · `policy-diff`, traceability, tsc, lint clean.
+Live hook probe through the local Auth API: a sign-up on an unlisted domain → **403
+`domain_not_allowed`**, zero orphan rows; on a listed domain → token issued.
+
+**Two things PR B learned that the plan did not know:**
+
+- **A nonce in the CSP header makes Next render prerendered pages dynamically** and stamp every
+  script tag. The frozen marketing routes therefore get a **nonce-less** report-only policy; the
+  platform routes get the nonced one. The visual diff and the e2e spec pin it.
+- **`supabase db reset` does not reload `config.toml` auth hooks** — a hook enabled there needs
+  `supabase stop && supabase start`.
+- **`supabase start` can hang silently on a macOS Keychain dialog.** Because the CLI is linked to
+  the hosted project it reads its access token from the Keychain item "Supabase CLI" on every
+  start; when macOS asks whether `security` may read it, the CLI waits forever with no output —
+  it looks like a slow Docker pull. The tell is an orphaned
+  `security find-generic-password -s "Supabase CLI"` process. Click **Always Allow** on the
+  dialog (owner's screen), then start again. Cost one session an hour.
+
+**Deliberately not in PR B, and the owner should know:**
+
+- **The platform screens render inside the marketing chrome** (the fixed pre-launch header with
+  «سجّل اهتمامك», the footer). The planned split — the root layout without header/footer, the
+  marketing pages in a `(marketing)` route group with their own layout (`04` §4) — means moving
+  the frozen files, which this session was told not to touch. **Approve that move as the first
+  step of the next app PR**; output stays byte-identical and the visual diff proves it.
+- Admin CRUD screens (domains, settings, companies, categories, venues, members): policies and
+  RPCs exist and are tested at the database; UI is M2/M7 per `09`.
+- Sign-in rate limiting (`12` §3: 10 per IP per 5 min) needs a shared store; Supabase Auth's own
+  limits apply meanwhile. Noted for M2 with the first Route Handler that needs one.
+- `worker/src/supabase.ts` (the `createWorkerClient()` of `04` §5.1): with M3's first job.
+
+## PR C — production cutover checklist (NOT started; every step needs the owner's explicit go)
+
+Run in this order, on `main` after PR A and PR B are merged. Nothing here has been done.
+
+1. **Rehearsal (no production change):** `supabase db dump --linked --schema-only` → apply to a
+   fresh local database → apply `0003`–`0007` on top → `npm run test:rls` against it → delete the
+   dump. Migrations are `0003`–`0008`. This is the "tested against production-shaped data" of invariant 3.
+2. **Hosted project, JWT signing:** enable **asymmetric JWT signing keys** (Dashboard → Auth → JWT
+   keys). Without them `getClaims()` falls back to a network call on every request (DEC-036).
+3. **`supabase db push`** (owner's explicit go; the only step that changes the production schema).
+   `registrations` is not referenced by any migration; verify with
+   `supabase db query --linked "select count(*) from registrations"` before and after.
+4. **Hosted Auth settings** (Dashboard → Auth): JWT expiry **900 s**; enable the **Custom Access
+   Token hook** → `public.custom_access_token_hook`; enable the **Before User Created hook** →
+   `public.before_user_created_hook`; Google provider **on** with the OAuth client below; add the
+   callback URL `https://kareem.pp.sa/api/auth/callback` (and the Vercel preview pattern) to the
+   redirect allow-list; Site URL `https://kareem.pp.sa`.
+5. **Google OAuth client** (Google Cloud console, owner's account): authorised redirect URI
+   `https://qnwbgzsgkftqaixzuhdo.supabase.co/auth/v1/callback`; paste client ID and secret into the
+   Supabase provider settings — never into the repo or Vercel.
+6. **Vercel:** add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for
+   Production and Preview (the hosted project's URL and **publishable** key), then redeploy.
+7. **First org, by one-off SQL** (`supabase db query --linked`, never a migration): insert the
+   owner's auth user into `platform_admins` after their first sign-in attempt creates it — note
+   the Before User Created hook refuses a domain on no list, so **create the org first with the
+   owner's domain**, sign in, then insert the `platform_admins` row; or insert the org through
+   `create_org()` as `postgres`. Values needed: name, slug, certificate prefix, allowed domain(s),
+   first admin email. `create_org()` seeds settings and the four categories.
+8. **Verify:** sign in with the first admin's Google account → lands on `/ar/app` as `admin`; a
+   second account on the domain lands as `member`; an account on another domain is refused at
+   Google's return with the closed-door message; `npm run qa` against production stays 44/44.
+9. **Observe the CSP reports** from a preview deployment before any enforcement (OQ-028).
+
+**CI on the final commits, read with `gh` after the owner re-authenticated `ebnmajed`:** PR #4
+(`m1/tenancy` @ `91a3787`) and PR #5 (`m1/app` @ `a8da01d`) each pass all twelve checks — RLS
+policies, build, converter image, end to end, frozen routes, plan gates, shaping parity, types
+and lint, unit tests, worker probe, Vercel, Vercel preview comments. **`gh` gotcha for the next
+session:** another Claude session on this machine re-authenticates `gh` as `devyaden`, which
+invalidated the stored `ebnmajed` credential mid-session (401). `gh auth switch --user ebnmajed`
+is not enough then; `gh auth login -h github.com -p https -w --skip-ssh-key` is (this gh has no
+`-u` flag). Pushes use the SSH alias and are unaffected.
+
+**Owner inputs PR C needs, by name:** `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
+(entered in the Supabase dashboard only) · the first org's **name**, **slug**, **certificate
+prefix** (2–5 capitals), **allowed email domain(s)**, **first admin email** · approval to enable
+asymmetric JWT keys · approval for `supabase db push` · approval for the two Vercel variables ·
+approval to move the frozen files into a `(marketing)` route group (next app PR).
+
+**Also for the owner (found in PR A, not acted on):** `anon` holds `TRUNCATE`, `REFERENCES` and
+`TRIGGER` on the frozen `registrations` table from the project's old default privileges. Not
+reachable through PostgREST; a `revoke` would touch the frozen table's privileges — your call.
 
 ## Waiting on the owner
 
-**Approve, amend or reject the M1 plan** (above). PR #3 is merged; M0 is closed.
+**Review PR A (#4) and PR B**, then start PR C with the checklist above — every step there needs your explicit go.
 
 **Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
 the choice must provide a session-mode Postgres connection and either private networking to the
@@ -261,11 +339,11 @@ unaffected.
 
 ## Next session should
 
-1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-031 … DEC-034 are new.
-2. Read *M1 — where it stands* and the owner's answer to the plan. Check out `m1/tenancy`.
-3. Work M1 in the approved order — the dangerous milestone; do not compress it. Every migration
-   lands with its RLS, grants and tests in the same commit; local Supabase and CI first,
-   production last and only with the owner's explicit go.
-4. At M3, answer OQ-027 before the first reminder job needs to run unattended.
+1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-035 and DEC-036 are new.
+2. Check PR A (#4) and PR B. If merged, `main` carries the M1 schema and app side; if not, the
+   branches are `m1/tenancy` and `m1/app`, both green at handoff.
+3. **PR C only with the owner present and each step approved** — the checklist above is the
+   script. Rehearse against a schema-only dump first. Never a data fix as a migration.
+4. Then the `(marketing)` route-group move (owner-approved), and M2.
 5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
 6. Update this file before finishing.
