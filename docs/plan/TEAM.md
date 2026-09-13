@@ -80,6 +80,22 @@ Every few hours, or when a teammate says "ready for sync":
 4. Commit the shared paths; push `wave-N/…`; watch CI.
 5. Update `STATUS.md`. At wave end, open the PR to `main`; the owner merges.
 
+**Learned in wave 1 (DEC-045):**
+
+- **Commit with an explicit pathspec** — `git commit -F msg -- <paths>` — never a bare `git commit`.
+  The index is shared: three wave-1 commits carried another teammate's staged files. Teammates
+  stage by explicit filename and commit immediately.
+- **The RLS suite is single-runner.** Two `npm run test:rls` processes against one database collide
+  on fixtures and deadlock. `ps aux | grep 'vitest run --project rls'` before running it.
+- **`npm run build` is the only gate that catches** a non-function export from a `"use server"`
+  module and a message namespace named in `index.ts` whose JSON is uncommitted. tsc passes both.
+  A teammate says "committed" only after `grep -n '^export'` on its action modules shows async
+  functions and types alone, and the namespace's `ar/` and `en/` JSON are in the same commit.
+- **The event-page slots render no heading of their own.** The page owns the landmark and the
+  `<h2>`; a slot that repeats it is announced twice by a screen reader.
+- **Open the wave PR as a draft at the first push.** CI triggers on `pull_request`, not on
+  `wave-*` branch pushes.
+
 ---
 
 ## 4. The spawn prompt for the lead
@@ -126,3 +142,10 @@ Then, before spawning anyone:
   the nonce-less policy (`proxy.ts`).
 - The gate lock is best-effort after 20 minutes (DEC-030 gotcha 2) — a run that seems stuck is
   probably waiting on it; `ls -d /tmp/task-gate.lock`.
+- React 19 calls `reset()` on a `<form action>` when the action resolves: a validation failure
+  empties every uncontrolled field unless the action returns what was typed and each field reads
+  its `defaultValue` from that state. tsc, lint, unit and RLS all pass on the broken version.
+- A write-then-`raise` RPC rolls back its own write (DEC-043): after the first write, return an
+  outcome envelope.
+- `docs/plan/notes/<name>.md` is where a teammate's findings live; read all three at wave end
+  before writing the DECISIONS entry.

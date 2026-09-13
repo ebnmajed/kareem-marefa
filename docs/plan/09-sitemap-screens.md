@@ -183,14 +183,15 @@ from a separate rule. Date range pickers run right-to-left.
 **Order on the page** (§6 of the brief, `REQ-SES-013`):
 1. **الملصق**
 2. **التاريخ · الوقت · المكان (مع الخريطة) · المُقدِّم** — before anything else
-3. **The primary action**, with live **السعة** and, if waitlisted, **موقعك في قائمة الانتظار**
-4. **آخر موعد للحجز** and **آخر موعد للإلغاء**, stated plainly
-5. نبذة الجلسة · لغة الجلسة · التصنيف والوسوم
-6. **المهام التحضيرية** with the member's own progress
-7. **المواد** — respecting the phase gate (`REQ-MAT-006`)
-8. **التعليقات** — threaded, one level
-9. **الصور**
-10. **التقييم** — after completion, for checked-in attendees only
+3. **لغة الجلسة** — before the action, because a member decides whether to attend a session they can follow (`REQ-SES-011`; DEC-045 corrected this list, which had the language at 5)
+4. **The primary action**, with live **السعة** and, if waitlisted, **موقعك في قائمة الانتظار**
+5. **آخر موعد للحجز** and **آخر موعد للإلغاء**, stated plainly
+6. نبذة الجلسة · التصنيف والوسوم
+7. **المهام التحضيرية** with the member's own progress
+8. **المواد** — respecting the phase gate (`REQ-MAT-006`)
+9. **التعليقات** — threaded, one level
+10. **الصور**
+11. **التقييم** — after completion, for checked-in attendees only
 
 **States:**
 | State | Behaviour |

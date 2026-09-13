@@ -1116,6 +1116,41 @@ decision. Every decision taken **after** the source brief gets an entry here.
   in `03` §5.6; the `POL-ratings.select.admin` row in §8.2.
 - **Documents changed:** `03-permissions-rls.md` §5.6, §7.2, §8.2; `scripts/ci/roles.sql`; `STATUS.md`
 
+## DEC-045 — Wave 1 closing decisions: the PRD's ordering on the event page, the publish chain, the deferred guard, and the team's working rules
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), closing wave 1
+- **`09` SCR-012 follows `REQ-SES-011`.** The PRD says the spoken language appears before the RSVP
+  action; `09` had the action at 3 and the language at 5. Only `01` may define a requirement, so
+  the built page puts the language above the action and `09`'s list is corrected and renumbered
+  rather than overridden in silence.
+- **`publish_session()` walks `02` §6.2's whole chain** from `draft` to `published` and writes one
+  transition row per edge, all flagged manual and attributed to the admin, instead of jumping.
+  The audit trail shows the path the state machine defines even when a person pressed one button.
+  `review_proposal()` does the same through `in_review` (`0013`).
+- **No table-level guard on `sessions.state` in wave 1.** `sessions.state` is in no grant, so
+  every writer is a definer function the sessions track owns and there is no PostgREST path to the
+  column; a trigger would also start refusing the direct `update … set state` that fixtures in
+  all three tracks use to arrange scenarios. It is the stronger statement and is the **first
+  migration of wave 2**, written before any teammate is spawned, with the fixtures moved to the
+  RPCs at the same time.
+- **Deferred, not faked:** `REQ-PRO-004` (draft materials on a proposal — M5's `materials` table);
+  the poster gate of `REQ-SES-001` (M6's designer; the other five gates are `0010`'s check
+  constraint, and SCR-043 says the poster is coming); `REQ-EVT-007` reply notifications (M3's
+  `notifications` table); job enqueueing from the RSVP and check-in RPCs (`graphile_worker` schema
+  does not exist on local Supabase until the worker is hosted, OQ-027 at M3 — the call sites are
+  marked). `STORY-CHK-005`'s four rights derive from `has_checked_in()`, which exists; the tables
+  they gate arrive with M4 and M5.
+- **`audit_log.occurred_at` stays `now()` this wave.** Rows written by one transaction share an
+  instant and their order is undefined; `clock_timestamp()` fixes it but `02` is frozen. Decide at
+  the start of wave 2 with the `sessions.state` guard.
+- **Working rules** added to `TEAM.md` §3 and §5: commit with an explicit pathspec; the RLS suite
+  is single-runner; the build is the only gate for `"use server"` exports and namespace JSON;
+  slots render no heading; the wave PR opens as a draft at the first push; React 19 form reset;
+  the envelope rule. Each was learned by breaking something this wave.
+- **Supersedes:** the SCR-012 list in `09` (settled document, changed under this entry);
+  `TEAM.md` §3 and §5 (settled, extended under this entry).
+- **Documents changed:** `09-sitemap-screens.md` SCR-012, `TEAM.md` §3, §5, `STATUS.md`
+
 ---
 
 ## Template for new entries

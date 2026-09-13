@@ -187,7 +187,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-004` | `ENT-reactions` | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
 | `REQ-EVT-005` | `ENT-comments` | `POL-ratings.select.admin` | `SCR-012` | — | — | `STORY-EVT-002` | M2 |
 | `REQ-EVT-006` | `ENT-comments` | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
-| `REQ-EVT-007` | — | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
+| `REQ-EVT-007` | — | — | `SCR-012` `SCR-043` | — | — | `STORY-EVT-003` | M2 |
 | `REQ-EVT-008` | `ENT-reports` | — | `SCR-012` `SCR-050` | — | — | `STORY-EVT-004` | M2 |
 | `REQ-EVT-009` | `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-010` | `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
@@ -298,7 +298,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRO-001` | `ENT-proposals` | — | `SCR-017` | — | — | `STORY-PRO-001` | M2 |
 | `REQ-PRO-002` | `ENT-proposals` | — | `SCR-017` | — | — | `STORY-PRO-001` | M2 |
 | `REQ-PRO-003` | `ENT-proposal_presenters` `ENT-session_presenters` | — | `SCR-017` | — | — | `STORY-PRO-002` | M2 |
-| `REQ-PRO-004` | — | — | `SCR-017` | — | — | `STORY-PRO-002` | M2 |
+| `REQ-PRO-004` | — | — | `SCR-012` `SCR-017` `SCR-043` | — | — | `STORY-PRO-002` | M2 |
 | `REQ-PRO-005` | — | — | `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-006` | `ENT-proposals` `ENT-session_state_transitions` | `POL-proposals.transition.audit` | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-007` | — | — | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
@@ -369,7 +369,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-SES-001` | `ENT-sessions` | — | `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
+| `REQ-SES-001` | `ENT-sessions` | — | `SCR-012` `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
 | `REQ-SES-002` | `ENT-sessions` | — | `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
 | `REQ-SES-003` | `ENT-session_state_transitions` `ENT-sessions` | `POL-session_presenters.decline` | `SCR-042` | — | — | `STORY-SES-002` | M2 |
 | `REQ-SES-004` | — | — | — | `JOB-archive_sessions` `JOB-award_presenter_points` +5 | — | `STORY-SES-003` | M2 |
@@ -379,7 +379,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-008` | — | — | `SCR-012` | — | — | `STORY-SES-006` | M2 |
 | `REQ-SES-009` | — | — | `SCR-043` `SCR-057` | — | `MSG-session_changed` | `STORY-SES-005` | M3 |
 | `REQ-SES-010` | — | — | `SCR-012` | — | — | `STORY-SES-005` | M3 |
-| `REQ-SES-011` | `ENT-sessions` | — | `SCR-011` | — | — | `STORY-SES-006` | M2 |
+| `REQ-SES-011` | `ENT-sessions` | — | `SCR-011` `SCR-012` `SCR-043` | — | — | `STORY-SES-006` | M2 |
 | `REQ-SES-012` | — | — | `SCR-042` | `JOB-archive_sessions` `JOB-complete_session` +1 | — | `STORY-SES-002` | M2 |
 | `REQ-SES-013` | — | — | `SCR-010` `SCR-012` | — | — | `STORY-SES-006` | M2 |
 
