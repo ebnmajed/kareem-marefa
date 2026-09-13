@@ -162,7 +162,27 @@ healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 pass
 
 | Sync | Promoted | Gates |
 |---|---|---|
-| — | — | — |
+| 1 (2026-09-14) | `0011_proposal_transitions` (audit + guard triggers, `98db766`) · `0012_copresenters` (same-org guard on both presenter tables, `create_proposal()`, `aaa9f95`) — `03` §8.2 +5 rows | `supabase db reset` ✅ · `test:rls` **163 passed / 4 todo**, all 15 files incl. teammates' ✅ · `policy-diff` ✅ · tsc ✅ · lint ✅ · **build ✗** — blocked on a constant exported from a `"use server"` module in `propose/actions.ts` (Next 16 rule tsc cannot see; `sessions` has the fix) · qa / visual / e2e:local pending the build |
+
+**Lead decisions and findings during the wave (not re-litigations):**
+
+- **DEC-042** — `sessions` owns `app/admin/{proposals,sessions,venues}/**` for wave 1; SCR numbers in
+  the agent definitions corrected to `09`'s.
+- **`scripts/policy-diff.mjs` keys relations by schema** (`1b7b220`): the first migration to policy
+  `realtime.messages` (`03` §7.2) would have failed the gate with a misleading message, and a grant on
+  it could not be parsed at all. A Supabase-owned relation's documented policies are flagged only once
+  a migration policies it; that migration must state its grant.
+- **`REQ-PRO-004` (draft materials on a proposal) is deferred to wave 2 / M5** — no `materials`
+  table exists and the requirement inherits every `REQ-MAT-*` rule. `sessions` did not fake it
+  (`docs/plan/notes/sessions.md` §2.1). STORY-PRO-002 is done except for that half.
+- **Open for a lead decision, not blocking:** `audit_log.occurred_at` defaults to `now()`, the
+  transaction timestamp, so several audit rows from one transaction share an instant and their order
+  is undefined. `clock_timestamp()` would fix it; `02` is frozen so it needs a DEC.
+- **`proposals` has no admin update policy in `0010`** (only the proposer's), so review actions are a
+  definer RPC — `supabase/proposed/sessions/0003_proposal_review.sql`, in progress.
+- **Wave-1 tests that touch the working tree:** the shared tree builds as it stands on disk; a
+  mid-edit DAL or a `"use server"` constant breaks `npm run build` for everyone. tsc does not catch
+  the latter.
 
 ## M2 — wave 0 (previous session, PR `m2/schema` — merged as #10)
 
