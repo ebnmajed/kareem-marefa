@@ -119,4 +119,15 @@ future review doesn't mistake it for a gap introduced here.
   "never letter-space Arabic" rule doesn't apply here), check-in count, revoke control.
 - `src/components/checkin/rsvp-panel.tsx` — the `RsvpPanel` slot.
 
-390 px RTL screenshots reviewed for both new screens — see the final report to the lead.
+### 390 px RTL review (done — screenshots taken against a live `next dev` + local Supabase, real signed-in sessions, real RPC calls, not a mock)
+
+- **Check-in screen** (`.../check-in`): title, instructions and the code field render correctly
+  right-aligned with no overflow at 390 px; good, but the code input's own visual weight is a bit
+  thin for a field someone fills in standing up — worth a follow-up pass with `/typeset` or
+  `/polish` once the event page links to it, not a blocker.
+- **Host view** (`.../host`): the live code (`ensure_check_in_code()`'s real output) renders large,
+  bold, wide-tracked and centered — legible at a glance, which was the point of REQ-CHK-001; the
+  zero-check-ins Arabic plural form and the "not authorized" message for a non-presenter,
+  non-staff member both rendered exactly as authored, confirming REQ-CHK-014 is enforced by policy
+  end to end (a real HTTP request from a real signed-in plain member got the refusal, not a hidden
+  button).
