@@ -142,6 +142,21 @@ leave `dist` stale.
 
 ---
 
+## The lock file — regenerate it with `npm run lockfile`, never plain `npm install`
+
+```bash
+npm run lockfile     # regenerates package-lock.json with CI's npm, in a container
+```
+
+The lock is **npm-version-sensitive**. `next-intl` bundles `@swc/core`, which declares an optional
+peer `@swc/helpers >=0.5.17` while the root has `0.5.15` for Next. **npm 10 adds a nested
+`next-intl/node_modules/@swc/helpers`; npm 11 does not.** A lock written by npm 11 is missing an
+entry npm 10 insists on, so `npm ci` — strict, unlike `npm install` — fails in CI while everything
+looks fine locally. It has broken CI twice.
+
+So: if you add or change a dependency, run `npm run lockfile` before committing. CI is the backstop
+if you forget.
+
 ## Local development
 
 ```bash
