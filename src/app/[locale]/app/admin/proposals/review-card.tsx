@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { emptyReviewState, type ReviewState } from "./actions";
+import { type ReviewState } from "./actions";
+import { emptyReviewState } from "./state";
 
 // One row of SCR-041's queue, with its three decisions.
 //

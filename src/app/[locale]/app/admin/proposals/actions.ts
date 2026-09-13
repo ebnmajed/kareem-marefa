@@ -14,7 +14,6 @@ import type { Locale } from "@/i18n/routing";
 // message a person can read.
 
 export type ReviewState = { error: string | null; done: boolean };
-export const emptyReviewState: ReviewState = { error: null, done: false };
 
 const input = z
   .object({
