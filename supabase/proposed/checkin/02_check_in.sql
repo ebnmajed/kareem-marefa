@@ -187,9 +187,11 @@ begin
 
   -- REQ-CHK-005: a second attempt by an already-checked-in member is a
   -- no-op reporting the existing check-in — not an error, not a duplicate.
+  -- `already_checked_in` is its own status (09 SCR-014's states table: "أنت
+  -- مسجَّل بالفعل" reads differently from a fresh "تم تسجيل حضورك").
   select * into existing from public.check_ins where session_id = p_session and member_id = m.id;
   if found then
-    return jsonb_build_object('status', 'ok', 'check_in', to_jsonb(existing));
+    return jsonb_build_object('status', 'already_checked_in', 'check_in', to_jsonb(existing));
   end if;
 
   -- REQ-CHK-006 / DEC-015: the attempt row is written BEFORE the limit is

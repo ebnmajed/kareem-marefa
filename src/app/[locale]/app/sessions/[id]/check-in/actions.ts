@@ -18,5 +18,6 @@ export async function submitCheckInForm(locale: string, sessionId: string, formD
     const conflict = result.conflictSessionId ? `&conflict=${result.conflictSessionId}` : "";
     redirect(`${base}?error=${error}${conflict}`);
   }
-  redirect(`${base}?success=1`);
+  // 09 SCR-014: "already checked in" is its own state, not the same copy as a fresh success.
+  redirect(`${base}?${result.alreadyCheckedIn ? "already=1" : "success=1"}`);
 }

@@ -56,6 +56,8 @@ export type CheckInError = "not_found" | "presenter_cannot_check_in" | "rate_lim
 
 export interface CheckInSuccess {
   ok: true;
+  /** `alreadyCheckedIn` is its own state (09 SCR-014) — a no-op, not a duplicate "success". */
+  alreadyCheckedIn: boolean;
   method: "code" | "manual";
   arrivedAt: string;
 }
@@ -72,8 +74,8 @@ export async function submitCheckIn(locale: string, sessionId: string, code: str
     return { ok: false, error: error.message.includes("not_found") ? "not_found" : "unknown" };
   }
   const envelope = data as { status: string; check_in?: { method: "code" | "manual"; arrived_at: string }; conflict_session_id?: string };
-  if (envelope.status === "ok" && envelope.check_in) {
-    return { ok: true, method: envelope.check_in.method, arrivedAt: envelope.check_in.arrived_at };
+  if ((envelope.status === "ok" || envelope.status === "already_checked_in") && envelope.check_in) {
+    return { ok: true, alreadyCheckedIn: envelope.status === "already_checked_in", method: envelope.check_in.method, arrivedAt: envelope.check_in.arrived_at };
   }
   return { ok: false, error: envelope.status as CheckInError, conflictSessionId: envelope.conflict_session_id };
 }

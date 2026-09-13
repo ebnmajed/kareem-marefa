@@ -256,7 +256,7 @@ describe("POL-check_ins.single_use", () => {
       const first = await checkIn(tx, sessionId, code.code);
       const second = await checkIn(tx, sessionId, code.code);
       expect(first.status).toBe("ok");
-      expect(second.status).toBe("ok");
+      expect(second.status).toBe("already_checked_in"); // 09 SCR-014 — a distinct state, not a duplicate "success"
       expect(second.check_in!.id).toBe(first.check_in!.id);
 
       await tx.asOwner();
