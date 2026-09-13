@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §6.2 (frozen) · 03-permissions-rls.md §1.3
 --          0010 (the state column has no admin grant) · 0006 (the clock's twin)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 6):
 --   | `RPC-transition_session.admin_only` | A member, a moderator, a presenter and a stale admin
 --     are all refused; an admin of another org cannot reach the session. |
 --   | `RPC-transition_session.edges` | Only 02 §6.2's edges are accepted — starting a draft,

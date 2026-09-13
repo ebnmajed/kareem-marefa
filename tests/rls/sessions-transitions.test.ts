@@ -6,13 +6,12 @@
 //               RPC-transition_session.cancel,
 //               RPC-transition_session.closes_check_in
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0007_session_transitions.sql";
 const CHECK_VIOLATION = "23514";
 
 const act = (tx: Tx, id: string, action: string, reason: string | null = null) =>
@@ -29,7 +28,6 @@ describe("RPC-transition_session.admin_only", () => {
   it("refuses a member, a presenter, a moderator, a stale admin and another org's admin", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = f.m2.a.published;
 
       // members[0] is a presenter of this session — the closest thing to an
@@ -53,7 +51,6 @@ describe("RPC-transition_session.edges", () => {
   it("accepts only 02 §6.2's edges", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = f.m2.a.published;
       await tx.as(f.a.admin.claims);
 
@@ -74,7 +71,6 @@ describe("RPC-transition_session.edges", () => {
   it("refuses starting a draft and completing a published session", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(await errorCode(() => act(tx, f.m2.a.draft, "start"))).toBe(CHECK_VIOLATION);
       expect(await errorCode(() => act(tx, f.m2.a.published, "complete"))).toBe(CHECK_VIOLATION);
@@ -86,7 +82,6 @@ describe("RPC-transition_session.edges", () => {
   it("writes one manual transition row per move, attributed to the admin", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       await act(tx, f.m2.a.published, "start");
       await act(tx, f.m2.a.published, "complete");
@@ -107,7 +102,6 @@ describe("RPC-transition_session.cancel", () => {
   it("requires a reason, in every state it is reachable from (REQ-SES-010)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(await errorCode(() => act(tx, f.m2.a.published, "cancel"))).toBe(CHECK_VIOLATION);
       expect(await errorCode(() => act(tx, f.m2.a.published, "cancel", "   "))).toBe(CHECK_VIOLATION);
@@ -121,7 +115,6 @@ describe("RPC-transition_session.cancel", () => {
   it("is reachable from completed — a session can be retroactively voided (A6)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect((await act(tx, f.m2.a.completed, "cancel", "تبيّن أنها لم تُعقد"))[0].state).toBe("cancelled");
     });
@@ -130,7 +123,6 @@ describe("RPC-transition_session.cancel", () => {
   it("is not reachable from draft, and a cancelled session has no way out", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       // 02 §6.2: cancelled is reachable only after approval.
       expect(await errorCode(() => act(tx, f.m2.a.draft, "cancel", "لا داعي"))).toBe(CHECK_VIOLATION);
@@ -147,7 +139,6 @@ describe("RPC-transition_session.cancel", () => {
   it("keeps the row and the page — REQ-SES-010's «الصفحة باقية»", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       await act(tx, f.m2.a.published, "cancel", "القاعة غير متاحة");
 
@@ -163,7 +154,6 @@ describe("RPC-transition_session.closes_check_in", () => {
   it("completing early closes the check-in window immediately (REQ-SES-005, REQ-CHK-004)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.asOwner();
       await put(tx, f.m2.a.published, "in_progress");
       await tx.q(`update public.check_in_codes set valid_until = now() + interval '20 minutes' where session_id = $1`, [f.m2.a.published]);
@@ -183,7 +173,6 @@ describe("RPC-transition_session.closes_check_in", () => {
   it("cancelling closes it too — there is nothing left to attend", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.asOwner();
       await tx.q(`update public.check_in_codes set valid_until = now() + interval '20 minutes' where session_id = $1`, [f.m2.a.published]);
 
