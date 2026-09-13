@@ -6,7 +6,8 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "worker"
   ],
   "scripts": {
     "dev": "next dev",
@@ -24,6 +25,9 @@
     "fonts:derive": "python3 scripts/fonts/derive-ttf.py",
     "fonts:check": "node scripts/fonts/check.mjs",
     "converter:test": "node converter/test/smoke.mjs",
+    "worker:build": "npm run build -w @kareem/worker",
+    "worker:probe": "npm run probe -w @kareem/worker",
+    "worker:start": "npm run start -w @kareem/worker",
     "lockfile": "node scripts/lockfile.mjs"
   },
   "dependencies": {

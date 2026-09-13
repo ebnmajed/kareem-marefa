@@ -209,6 +209,57 @@ jobs:
       # sniffing. See converter/test/smoke.mjs.
       - run: SKIP_BUILD=1 node converter/test/smoke.mjs
 
+  # ── The worker's LISTEN/NOTIFY boot probe. 04 §7.2, 11 §1.2, DEC-034. ──
+  # The failure this guards is silent: on a transaction-pooled connection
+  # LISTEN succeeds and never delivers. So the probe is run twice — straight
+  # at Postgres, where it MUST pass, and through pgbouncer in transaction
+  # mode, where it MUST fail. A probe that passes both is a probe that
+  # checks nothing.
+  worker:
+    name: worker probe (session vs transaction pooling)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ['5432:5432']
+      pgbouncer:
+        image: edoburu/pgbouncer:latest
+        env:
+          DB_HOST: postgres
+          DB_PORT: '5432'
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: postgres
+          POOL_MODE: transaction
+          AUTH_TYPE: scram-sha-256
+        ports: ['6432:5432']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npm run worker:build
+
+      - name: probe passes on a session-mode connection
+        run: npm run worker:probe
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+      - name: probe REFUSES a transaction-pooled connection
+        run: |
+          if npm run worker:probe; then
+            echo "::error::the probe passed through a transaction pooler — it would not catch the silent failure"
+            exit 1
+          fi
+          echo "probe refused the pooled connection, as it must"
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:6432/postgres
+
   # ── Arabic shaping. D66. ───────────────────────────────────────────────
   parity:
     name: shaping parity

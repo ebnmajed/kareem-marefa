@@ -8,7 +8,7 @@
 
 ## 1. The queue
 
-**graphile-worker on Fly.io** (DEC-018, A34, A35), Postgres-backed so no extra infrastructure —
+**graphile-worker** (DEC-018, A35; host TBD per DEC-034 / OQ-027), Postgres-backed so no extra infrastructure —
 which is D63's own constraint.
 
 ### 1.1 Two properties everything below depends on
@@ -39,8 +39,9 @@ port **5432**, *not* the transaction pooler on **6543**.
 delivers. The worker degrades to polling, jobs still run, nothing logs an error, and reminders
 arrive late for months.
 
-**A boot-time probe is mandatory:** `LISTEN` a test channel, `NOTIFY` it, and **refuse to start**
-if it does not arrive within a second.
+**A boot-time probe is mandatory:** `LISTEN` a test channel on one connection, `NOTIFY` it from a
+second, and **refuse to start** if it does not cross within a second. One connection notifying
+itself passes through an idle transaction pooler and proves nothing (DEC-034).
 
 ### 1.3 Retry policy
 

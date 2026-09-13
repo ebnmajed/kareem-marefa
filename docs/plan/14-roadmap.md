@@ -64,7 +64,7 @@ capacity. `M6` needs `M5`'s storage and job plumbing.
 | `scripts/traceability.mjs` + its gate | `13` §10 — the only mechanism that actually holds |
 | Radix + the ~8 inline SVG glyphs | DEC-019 |
 | **Monorepo restructure** for `designer-runtime` | Touches the live site — do it first, with a visual diff |
-| graphile-worker on Fly + the **`LISTEN`/`NOTIFY` boot probe** | `11` §1.2 — the failure is silent |
+| graphile-worker + the **`LISTEN`/`NOTIFY` boot probe**, run locally and in CI (no Fly — DEC-034) | `11` §1.2 — the failure is silent |
 | The credential-free converter app | `04` §7.1 |
 | **Wire the browser Supabase client** (DEC-020, **DEC-021**) | No longer a spike — the owner confirmed the trade. Retire the `README.md:35` invariant here, pointing at both entries |
 | ✅ **Shaping parity harness** (DEC-024) | **Done and green.** Chromium is deterministic to 0.000%; substitution caught at 2–10%. D66 is achievable — M6 can be planned on it. Export-path coverage still belongs to M6 |

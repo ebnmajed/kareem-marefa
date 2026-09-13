@@ -779,6 +779,51 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing.
 - **Documents changed:** `13-testing-quality.md` §1, `CLAUDE.md` (commit template)
 
+## DEC-034 — No Fly.io; the worker and converter are developed locally and hosting is decided by M3
+
+- **Date:** 2026-09-13 · **Decided by:** owner
+- **Decision:** **Fly.io is dropped.** The owner will not take on a paid hosting plan for
+  infrastructure that nothing in M0–M2 needs in production. The worker (`worker/`) and the
+  converter (`converter/`) are **developed and proven locally and in CI**: the worker against
+  `supabase start` on session-mode port **54322** and against CI's Postgres container, the
+  converter as a Docker image. **Where they run in production is an open question — OQ-027 —
+  with a deadline of M3**, the first milestone that needs a job to run unattended (reminder
+  emails). `converter/fly.toml` is deleted so nobody deploys from stale config.
+- **What does not change:** everything the code depends on. The worker needs a **session-mode**
+  Postgres connection (port 5432 on Supabase, never the 6543 pooler) and runs the LISTEN/NOTIFY
+  boot probe before it starts; `service_role` lives only on the worker and is used only through
+  `SECURITY DEFINER` functions (invariant 7, `04` §10); the converter holds **no credentials**
+  and is reached only by the worker (`04` §7.1). Any host must provide a private path from the
+  worker to the converter, or the converter gains an authentication token — that is the one design
+  point Fly's private networking was carrying, and OQ-027 names it.
+- **Rationale:** Fly was chosen (DEC-018, A34) for burst economics and private networking, not for
+  anything in the code. Both apps are plain images. Paying for two containers to idle through M1
+  and M2 buys nothing; picking a host at M3, with real usage to size against, loses nothing.
+  Candidates to verify then, not now: a small VPS (Hetzner), Oracle Cloud's always-free ARM VM,
+  Railway. **Rejected:** running the worker on Vercel or Supabase Edge Functions — neither can
+  run Chromium with the manifest's fonts or LibreOffice, and Vercel must never hold `service_role`.
+- **What this session did instead of deploying:** `worker/` with the probe (`worker/src/probe.ts`),
+  a `ping` task, a unit test over a fake client, and a CI `worker` job that runs the probe
+  **directly against Postgres (must pass) and through pgbouncer in transaction mode (must fail)**
+  — the silent failure `11` §1.2 warns about, demonstrated rather than described.
+- **What running it taught, and the plan had wrong:** the probe as written in `04` §7.2 and
+  `11` §1.2 — LISTEN, then NOTIFY, on one connection — **passes through pgbouncer in transaction
+  mode** (2 ms round trip) when the pool is idle, because both statements reuse the same server
+  connection. A boot probe always runs in that quiet moment, so it would have approved the exact
+  configuration it exists to refuse. The probe therefore uses **two connections**: the listener's
+  server connection is idle in the pool when the notification lands and the delivery is dropped,
+  which is the real production failure. Verified locally against **both poolers**: direct
+  session mode passes (3 ms); pgbouncer transaction mode refuses, pgbouncer session mode passes
+  (7 ms); **Supavisor** — Supabase's own pooler, enabled in `supabase/config.toml` for this —
+  transaction mode refuses on both its host port `54329` and its internal `6543`, session mode on
+  its internal `5432` passes (2 ms). The commands are in `worker/README.md`. Both plan documents
+  are corrected under this entry.
+- **Supersedes:** **DEC-018**'s hosting clause and **A34** (status: *superseded by owner*).
+  graphile-worker itself (A35) and the two-app split stand.
+- **Documents changed:** `04-architecture.md` §7, §9, §10 · `11-background-jobs.md` §1 ·
+  `14-roadmap.md` M0 · `ASSUMPTIONS.md` A34 · `OPEN-QUESTIONS.md` (OQ-027) · `CLAUDE.md` ·
+  `STATUS.md`
+
 ---
 
 ## Template for new entries

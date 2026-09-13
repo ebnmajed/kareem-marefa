@@ -331,7 +331,7 @@ optimisation and the DAL's is the boundary.
 
 ## 7. Worker topology
 
-**graphile-worker on Fly.io** (DEC-018, A34, A35). Two Fly apps, deliberately:
+**graphile-worker** (DEC-018, A35), as two separate apps, deliberately. *Hosting is undecided — DEC-034 dropped Fly.io; OQ-027 decides by M3. Until then both run locally and in CI.*
 
 ```mermaid
 graph LR
@@ -344,12 +344,12 @@ graph LR
         AU["Auth — Google"]
         RT["Realtime"]
     end
-    subgraph Fly1["Fly app 1 — worker (~2 GB)"]
+    subgraph Fly1["app 1 — worker (~2 GB), host TBD (OQ-027)"]
         W["graphile-worker"]
         CH["headless Chromium<br/>+ designer-runtime"]
         FO["platform fonts"]
     end
-    subgraph Fly2["Fly app 2 — converter (NO DB CREDENTIALS)"]
+    subgraph Fly2["app 2 — converter (NO DB CREDENTIALS)"]
         LO["LibreOffice + pdftoppm"]
         FO2["the same fonts"]
     end
@@ -373,7 +373,7 @@ key, no Supabase URL**.
 
 A remote-code-execution in LibreOffice then yields a container with two short-lived signed URLs.
 In a single-app design it would yield `service_role`, which bypasses RLS on every table in every
-org. The isolation costs one extra Fly app.
+org. The isolation costs one extra app.
 
 ### 7.2 The graphile-worker connection trap
 
@@ -384,8 +384,11 @@ Supabase port **5432**, *not* the transaction pooler on **6543**.
 never delivers. The worker falls back to polling, jobs still run, nothing logs an error, and
 reminders arrive minutes late for months before anyone connects the two.
 
-**So a boot-time probe is mandatory:** on start, `LISTEN` on a test channel, `NOTIFY` it, and
-**refuse to start** if the notification does not arrive within a second. A worker that cannot do
+**So a boot-time probe is mandatory:** on start, `LISTEN` on a test channel on **one connection**,
+`NOTIFY` it from **another**, and **refuse to start** if the notification does not cross within a
+second. Two connections, not one: a connection that notifies itself passes through a transaction
+pooler when the pool is idle — both statements reuse the same server connection — so a
+one-connection probe approves the broken configuration (DEC-034, `worker/src/probe.ts`). A worker that cannot do
 realtime job dispatch should fail loudly at boot, not degrade quietly in production.
 
 ### 7.3 Why graphile-worker, and why not the alternatives
@@ -399,8 +402,8 @@ entirely. Postgres-backed, so no extra infrastructure, which is D63's own constr
 **Named alternative:** pg-boss — comparable, but its idempotency story is singleton keys rather
 than the move-on-reschedule semantics that fit the reminder use case exactly.
 
-**Fly.io over Railway:** burst economics for a ~2 GB image, and the two-app split above. **Named
-alternative:** Railway.
+**Hosting:** Fly.io was chosen over Railway for burst economics and private networking, then dropped on
+cost (DEC-034). The host is OQ-027, decided by M3; the two-app split stands wherever they run.
 
 ### 7.4 Why the renderer is bundled in the worker image
 
@@ -464,8 +467,8 @@ Four properties worth naming:
 |---|---|---|
 | Web | **Vercel** | The **same project and domain** already serving the live pre-launch site (A38) |
 | Database, Auth, Storage, Realtime | **Supabase cloud** | Today: one project, `ap-southeast-1`, and it is production |
-| Worker | **Fly.io** | ~2 GB: Chromium + `designer-runtime` + fonts |
-| Converter | **Fly.io**, separate app | LibreOffice + fonts, **no DB credentials** |
+| Worker | **host TBD** (OQ-027, DEC-034) — local + CI until M3 | ~2 GB: Chromium + `designer-runtime` + fonts |
+| Converter | **host TBD**, separate app | LibreOffice + fonts, **no DB credentials** |
 | Email | **Resend** | Alternative: Postmark |
 | Errors | **Sentry** | Alternative: Bugsnag |
 | Analytics | **PostHog** (optional, A22) | Alternative: none — it is optional by assumption |
@@ -508,7 +511,7 @@ it is on the critical path — M1 retrofits auth and RLS onto a live database wh
 
 | Secret | Held by | Never |
 |---|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Worker (Fly) only | Vercel; the converter; any client bundle |
+| `SUPABASE_SERVICE_ROLE_KEY` | Worker only | Vercel; the converter; any client bundle |
 | `NEXT_PUBLIC_SUPABASE_URL`, publishable key | Vercel + browser | — (public by design; DEC-020) |
 | `DATABASE_URL` (session mode, :5432) | Worker only | Vercel; the converter |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Vercel, **stable across builds** | Rotated casually — see §9.2 |
@@ -517,7 +520,7 @@ it is on the critical path — M1 retrofits auth and RLS onto a live database wh
 | `GOOGLE_FONTS_API_KEY` | Vercel only | Worker — it has a no-network policy |
 | `SENTRY_DSN` | Both | — |
 
-Two rules: **the converter app holds no secrets at all** beyond its Fly token (§7.1), and
+Two rules: **the converter app holds no secrets at all** (§7.1; a host without private networking adds one endpoint token, OQ-027), and
 **Vercel never holds `service_role`** — anything needing it is a job.
 
 ---
