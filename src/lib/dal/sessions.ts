@@ -322,3 +322,103 @@ export async function publishSession(locale: string, sessionId: string): Promise
   const { error } = await supabase.rpc("publish_session", { p_session: sessionId });
   if (error) throw new Error(`publish_session: ${error.message}`);
 }
+
+// ── The event page (SCR-012, REQ-SES-013, REQ-SES-008, REQ-SES-010) ─────────
+
+export interface EventVenue {
+  name: string;
+  address: string | null;
+  mapUrl: string | null;
+  /** True when it is a one-off rather than an entry in the org's list. */
+  oneOff: boolean;
+}
+
+export interface EventSession {
+  id: string;
+  title: string;
+  abstract: string;
+  state: SessionState;
+  level: SessionLevel;
+  language: SessionLanguage;
+  categoryName: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  timeZone: string;
+  venue: EventVenue | null;
+  capacity: number | null;
+  rsvpDeadlineAt: string | null;
+  cancellationCutoffAt: string | null;
+  cancellationReason: string | null;
+  presenters: { memberId: string; displayName: string | null }[];
+  /** The viewer presents this session, so SCR-016 is offered (REQ-CHK-014). */
+  viewerIsPresenter: boolean;
+  viewerIsStaff: boolean;
+}
+
+/**
+ * One session for its event page.
+ *
+ * No role filter of its own: `sessions_read` already decides — published and
+ * everything after for any member, drafts for staff and the session's own
+ * presenters — and re-stating that here would only be able to get it wrong.
+ * Null means the policy returned nothing, which the route turns into a 404.
+ *
+ * ★ REQ-SES-008: there is no stream URL, no join link and no remote-attendance
+ * field anywhere in this DTO, because there is none in the product.
+ */
+export async function getSessionForEvent(locale: string, id: string): Promise<EventSession | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select(
+      "id, title, abstract, state, level, language, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+  const row = data as unknown as Record<string, unknown>;
+
+  const listed = row.venues as { name: string; address: string | null; map_url: string | null } | null;
+  const venue: EventVenue | null = listed
+    ? { name: listed.name, address: listed.address, mapUrl: listed.map_url, oneOff: false }
+    : row.custom_venue_name
+      ? {
+          name: row.custom_venue_name as string,
+          address: (row.custom_venue_address as string) ?? null,
+          mapUrl: (row.custom_venue_map_url as string) ?? null,
+          oneOff: true,
+        }
+      : null;
+
+  const { data: presenters, error: pErr } = await supabase
+    .from("session_presenters")
+    .select("member_id, accepted")
+    .eq("session_id", id)
+    .eq("accepted", true);
+  if (pErr) throw new Error(`session_presenters: ${pErr.message}`);
+  const names = await namesFor(supabase, (presenters ?? []).map((p) => p.member_id));
+
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    abstract: row.abstract as string,
+    state: row.state as SessionState,
+    level: row.level as SessionLevel,
+    language: row.language as SessionLanguage,
+    categoryName: (row.categories as { name: string } | null)?.name ?? null,
+    startsAt: (row.starts_at as string) ?? null,
+    endsAt: (row.ends_at as string) ?? null,
+    timeZone: (row.time_zone as string) ?? "Asia/Riyadh",
+    venue,
+    capacity: (row.capacity as number) ?? null,
+    rsvpDeadlineAt: (row.rsvp_deadline_at as string) ?? null,
+    cancellationCutoffAt: (row.cancellation_cutoff_at as string) ?? null,
+    cancellationReason: (row.cancellation_reason as string) ?? null,
+    presenters: (presenters ?? []).map((p) => ({ memberId: p.member_id, displayName: names.get(p.member_id) ?? null })),
+    viewerIsPresenter: (presenters ?? []).some((p) => p.member_id === session.memberId),
+    viewerIsStaff: session.role === "admin" || session.role === "moderator",
+  };
+}

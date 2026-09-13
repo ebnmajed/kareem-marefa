@@ -10,10 +10,10 @@
 //   event    implements  src/components/event/comments.tsx      → Comments(props: SlotProps)
 //   event    implements  src/components/event/ratings.tsx       → Ratings(props: SlotProps)
 //
-// Until an implementation lands, the page imports the no-op placeholder of
-// the same name from `./slots/` — it renders nothing, so the page is whole
-// either way. Swapping a placeholder for the real import is a one-line
-// change in the page and touches nobody else's folder.
+// All three are implemented as of wave 1, so the no-op placeholders that
+// stood in for them under `./slots/` are gone. This type stays: it is what the
+// three implementations and the page agree on, and it is the reason none of
+// the three teammates ever had to read each other's code.
 //
 // This shape is published by `sessions` and never changed without telling
 // the lead: three props, all strings, all required.

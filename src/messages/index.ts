@@ -3,7 +3,7 @@
 // lead-only; every platform surface owns its own file. Add a namespace here
 // AND create `ar/<name>.json` first (Arabic is the source, invariant 10) —
 // `en/<name>.json` may lag until the English catalogue exists.
-export const NAMESPACES = ["marketing", "ui", "auth", "app", "profile", "proposals", "event", "ratings", "rsvp", "checkin", "admin"] as const;
+export const NAMESPACES = ["marketing", "ui", "auth", "app", "profile", "proposals", "event", "ratings", "rsvp", "checkin", "admin", "sessions"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 export async function loadMessages(locale: string): Promise<Record<string, unknown>> {

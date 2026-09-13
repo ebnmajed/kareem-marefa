@@ -1,0 +1,46 @@
+{
+  "sessions": {
+    "event": {
+      "cancelledTitle": "جلسة ملغاة",
+      "cancelledReason": "السبب الذي ذكره المشرف",
+      "cancelledNote": "الصفحة باقية والمواد متاحة لمن حجز، والتعليقات مغلقة للكتابة.",
+      "whenLabel": "الموعد",
+      "toTime": "حتى {value}",
+      "whereLabel": "المكان",
+      "mapLink": "افتح الموقع على الخريطة",
+      "oneOffVenue": "مكان لمرة واحدة",
+      "presenterLabel": "المُقدِّم",
+      "presentersLabel": "المُقدِّمون",
+      "notScheduled": "لم يُحدَّد الموعد بعد",
+      "noVenue": "لم يُحدَّد المكان بعد",
+      "inPersonNote": "الحضور في القاعة فقط.",
+      "capacityLabel": "السعة",
+      "seats": "{count, plural, zero {لا مقاعد} one {مقعد واحد} two {مقعدان} few {{value} مقاعد} many {{value} مقعدًا} other {{value} مقعد}}",
+      "rsvpDeadlineLabel": "آخر موعد للحجز",
+      "cutoffLabel": "آخر موعد لإلغاء الحجز",
+      "aboutLabel": "عن الجلسة",
+      "languageLabel": "لغة الجلسة",
+      "languageAr": "العربية",
+      "languageEn": "الإنجليزية",
+      "levelLabel": "المستوى",
+      "categoryLabel": "التصنيف",
+      "commentsLabel": "التعليقات",
+      "ratingLabel": "التقييم",
+      "hostView": "شاشة التقديم",
+      "stateLabel": "حالة الجلسة",
+      "state": {
+        "draft": "مسودة",
+        "submitted": "مُرسلة",
+        "in_review": "قيد المراجعة",
+        "changes_requested": "بانتظار تعديل",
+        "approved": "معتمدة",
+        "published": "منشورة",
+        "in_progress": "جارية الآن",
+        "completed": "انتهت",
+        "archived": "مؤرشفة",
+        "cancelled": "ملغاة"
+      },
+      "unpublishedNote": "هذه الجلسة لم تُنشر بعد، وأنت تراها لأنك من فريق الإشراف أو من مُقدِّميها."
+    }
+  }
+}

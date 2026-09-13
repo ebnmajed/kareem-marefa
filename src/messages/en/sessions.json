@@ -1,0 +1,46 @@
+{
+  "sessions": {
+    "event": {
+      "cancelledTitle": "This session is cancelled",
+      "cancelledReason": "The reason the admin gave",
+      "cancelledNote": "The page stays, the materials stay available to anyone who reserved a seat, and comments are frozen.",
+      "whenLabel": "When",
+      "toTime": "until {value}",
+      "whereLabel": "Where",
+      "mapLink": "Open the location on a map",
+      "oneOffVenue": "A one-off venue",
+      "presenterLabel": "Presenter",
+      "presentersLabel": "Presenters",
+      "notScheduled": "No date set yet",
+      "noVenue": "No venue set yet",
+      "inPersonNote": "In the room only.",
+      "capacityLabel": "Capacity",
+      "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
+      "rsvpDeadlineLabel": "Booking closes",
+      "cutoffLabel": "Cancellation closes",
+      "aboutLabel": "About this session",
+      "languageLabel": "Spoken language",
+      "languageAr": "Arabic",
+      "languageEn": "English",
+      "levelLabel": "Level",
+      "categoryLabel": "Category",
+      "commentsLabel": "Comments",
+      "ratingLabel": "Rating",
+      "hostView": "Presenter's screen",
+      "stateLabel": "Session status",
+      "state": {
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "in_review": "Under review",
+        "changes_requested": "Changes requested",
+        "approved": "Approved",
+        "published": "Published",
+        "in_progress": "In progress",
+        "completed": "Finished",
+        "archived": "Archived",
+        "cancelled": "Cancelled"
+      },
+      "unpublishedNote": "This session is not published yet. You can see it because you are staff or one of its presenters."
+    }
+  }
+}

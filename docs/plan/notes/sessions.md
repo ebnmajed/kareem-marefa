@@ -392,3 +392,39 @@ default values.
 `REQ-SES-002` wants `ends_at` **stored**, derived at scheduling, independently editable; OQ-001
 says the duration pre-fills and is never authoritative. So an explicit end wins over the
 arithmetic, and the duration is kept as typed rather than back-computed. A test pins both halves.
+
+---
+
+## 7. SCR-012, the event page — and STORY-SES-006
+
+**Covers:** `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-011` (= STORY-SES-006) plus the three slots
+
+### 7.1 The slot contract held
+
+All three implementations landed on `SlotProps` unchanged — `RsvpPanel` from `checkin`, `Comments`
+and `Ratings` from `event` — so wiring them was three imports and the placeholders are deleted.
+Nobody read anybody else's code. `slots.ts` stays, because the type is the agreement.
+
+### 7.2 One conflict between `01` and `09`, resolved in `01`'s favour
+
+`REQ-SES-011` says «لغة الجلسة» is "shown **before** the RSVP action, not below it". `09` SCR-012
+numbers the action 3 and the language 5, with the abstract. Only `01-prd.md` may define a
+requirement, so its acceptance wins: the language sits in the details block above the action, at
+every width, and the abstract stays at 5. Worth a `DECISIONS.md` line if the lead wants `09`
+corrected rather than merely overridden.
+
+### 7.3 The primary action is one element, sticky
+
+`REQ-SES-013` wants exactly one primary action, in the mobile thumb zone, reachable through the
+whole scroll, ≥ 44 px. A duplicated button would break "exactly one", so the slot's wrapper is
+`sticky bottom-0` on mobile: one element, in reading order at position 3, pinned to the thumb zone
+visually. On desktop the same element is the sticky rail `09` asks for. It carries
+`padding-block-end: max(1rem, env(safe-area-inset-bottom))`, because a bottom-pinned control on a
+notched phone otherwise sits under the home indicator.
+
+### 7.4 What is absent, and why nothing stands in for it
+
+The poster (1), the preparation tasks (6), the materials (7) and the photos (9) are M5 and M6. The
+page renders **nothing** in their place rather than a grey box implying they are coming, and the
+comments say which milestone owns each. `REQ-SES-008` is absent by construction: there is no stream
+URL, no join link and no remote-attendance field in the DTO, because there is none in the product.

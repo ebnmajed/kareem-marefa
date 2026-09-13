@@ -15,6 +15,8 @@ const ar = read("src/messages/ar/proposals.json").proposals;
 const en = read("src/messages/en/proposals.json").proposals;
 const marketing = read("src/messages/ar/marketing.json");
 const arAdmin = read("src/messages/ar/admin.json").admin;
+const arSessions = read("src/messages/ar/sessions.json").sessions;
+const enSessions = read("src/messages/en/sessions.json").sessions;
 const enAdmin = read("src/messages/en/admin.json").admin;
 
 describe("REQ-PRO-002 — the labels members have already read", () => {
@@ -49,8 +51,8 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) flatten(v, prefix ? `${prefix}.${k}` : k, out);
     return out;
   }
-  const arFlat = { ...flatten(ar), ...flatten(arAdmin, "admin") };
-  const enFlat = { ...flatten(en), ...flatten(enAdmin, "admin") };
+  const arFlat = { ...flatten(ar), ...flatten(arAdmin, "admin"), ...flatten(arSessions, "sessions") };
+  const enFlat = { ...flatten(en), ...flatten(enAdmin, "admin"), ...flatten(enSessions, "sessions") };
 
   it("every Arabic plural message carries all six ICU forms", () => {
     const plurals = Object.entries(arFlat).filter(([, v]) => v.includes(", plural,"));
@@ -66,7 +68,7 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     // `#` would render in the locale's default numbering system (arab for ar),
     // which can disagree with org_settings.numerals. The count still drives
     // the plural branch; the digits come from formatNumber().
-    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count", "admin.sessions.readyCount"]) {
+    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count", "admin.sessions.readyCount", "sessions.event.seats"]) {
       expect(arFlat[key], key).toContain("{value}");
       expect(arFlat[key], key).not.toContain("#");
     }
