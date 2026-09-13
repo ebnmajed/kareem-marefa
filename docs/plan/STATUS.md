@@ -187,8 +187,8 @@ Live hook probe through the local Auth API: a sign-up on an unlisted domain → 
 **Pre-cutover PR (`m1/pre-cutover`, both decisions approved by the owner on 2026-09-14):**
 
 - **DEC-037** — migration `0009` revokes `anon`'s `TRUNCATE` on the frozen `registrations` table;
-  the owner runs the same statement in the hosted SQL editor. Verified locally: anon keeps
-  `insert` only.
+  the owner ran the same statement in the hosted SQL editor (2026-09-14, verified: anon keeps
+  `insert` only, 19 rows intact).
 - **DEC-038** — the frozen marketing files now live in `src/app/[locale]/(marketing)/` with their
   own layout (header, `main`, footer); the locale layout renders only the providers. URLs and HTML
   unchanged: `npm run visual` 0.000%, `npm run qa` 44/44. The `(auth)` and `app` layouts render
@@ -264,7 +264,7 @@ reachable through PostgREST; a `revoke` would touch the frozen table's privilege
 
 ## Waiting on the owner
 
-**Run the `REVOKE` in the hosted SQL editor** (`revoke truncate on table public.registrations from anon;`, DEC-037) whenever convenient. Nothing else: M2 starts on local Supabase and CI.
+**Nothing.** The owner ran DEC-037's `REVOKE` in the hosted SQL editor on 2026-09-14; verified read-only with `supabase db query --linked`: `anon` has no `truncate`, keeps `insert` only, and the 19 registrations are intact. M2 starts on local Supabase and CI.
 
 **Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
 the choice must provide a session-mode Postgres connection and either private networking to the
