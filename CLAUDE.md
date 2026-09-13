@@ -244,7 +244,11 @@ as you are done with it.
 <body: why, not what>
 
 Refs: REQ-CHK-006, DEC-015
+Co-Authored-By: …
 ```
+
+`Refs:` sits in the **final trailer paragraph** with any other trailers and no blank line between
+them, so `git interpret-trailers` parses it (DEC-033).
 
 Types: `feat` `fix` `docs` `refactor` `test` `chore` `perf` `security`.
 Scopes: `auth` `sessions` `rsvp` `checkin` `materials` `scoring` `designer` `certs` `notify`

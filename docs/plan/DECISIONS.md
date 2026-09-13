@@ -760,6 +760,25 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing. Implements `REQ-MAT-003`'s conversion path within `04` §7.1.
 - **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
 
+## DEC-033 — `13` §1 records the M0 test stack as installed; `Refs:` lives in the trailer paragraph
+
+- **Date:** 2026-09-13 · **Decided by:** owner
+- **Decision:** the "Where we start from" table in `13-testing-quality.md` §1 is updated to say
+  what is true after M0: Vitest runs two projects (`unit` under Node, `components` under jsdom in
+  an RTL document), jsdom and `@testing-library/*` are installed, Playwright is installed and runs
+  against the QA stub with a CI `e2e` job, and GitHub Actions is configured (DEC-028) with the
+  `converter` image job added. `13` is `settled`, so the change needed this entry; the previous
+  session left the rows stale rather than edit a settled document without one (`STATUS.md`).
+- **Also decided, for every commit from here on:** the `Refs:` line goes in **git's final
+  trailer paragraph** — the same block as `Co-Authored-By` and `Claude-Session`, with no blank
+  line between them — so `git interpret-trailers` and `%(trailers:key=Refs)` parse it. The seven
+  M0 commits on `m0/foundation` carry `Refs:` one paragraph above the trailers; they are pushed
+  and are not rewritten (no force-push).
+- **Rationale:** a "not installed" row in the testing document sends a session to install what
+  exists. The trailer placement is so tooling can read citations, not only people.
+- **Supersedes:** nothing.
+- **Documents changed:** `13-testing-quality.md` §1, `CLAUDE.md` (commit template)
+
 ---
 
 ## Template for new entries
