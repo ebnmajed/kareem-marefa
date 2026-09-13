@@ -240,16 +240,34 @@ Kept. The open choice is **resolved: Fly.io** (**A34**, **DEC-018**), with **gra
 as the queue (**A35**). Each service keeps its one-line justification and named alternative in
 `04-architecture.md`.
 
-## A23 — Quality · **kept + gap noted**
+## A23 — Quality · **kept + gap noted**, environments clause **proposed alternative**
 
 Vitest for unit tests, Playwright for e2e, GitHub Actions CI, environments dev/staging/prod with
 separate Supabase projects.
 
-Kept. **The gap:** Vitest is installed but configured `environment: "node"` only — there is no
-jsdom, no `@testing-library`, and **no Playwright**. There is **one** Supabase project, and it is
-production. So dev/staging/prod separation is **new work in M0**, not an existing condition, and
-it is on the critical path because M1 retrofits RLS onto a live database. Sized in
-`14-roadmap.md`.
+Kept, with **one clause superseded** and one gap noted.
+
+**The gap:** Vitest is installed but configured `environment: "node"` only — there is no jsdom, no
+`@testing-library`, and **no Playwright**. Adding them is M0 work.
+
+**The superseded clause — "separate Supabase projects" (DEC-025).**
+
+> **Original:** environments dev / staging / prod, each with its own hosted Supabase project.
+
+**Proposed alternative:** **dev is local** (`supabase start`), **CI uses an ephemeral Postgres
+container**, production stays as it is, and a hosted **staging** project is deferred until there is
+a reason for one.
+
+**Rationale, in one line:** each hosted project costs roughly $10/month and the only thing it buys
+over local is *sharing* — while the safety M1 actually needs, "never run an untested migration
+against production", is fully delivered by local plus CI.
+
+**Named alternative if this is rejected:** three hosted projects as A23 literally specifies, at
+roughly $20/month more than today. A reasonable call if a second developer joins; not required now.
+
+**Recorded honestly:** the plan carried A23's environments clause through several documents
+*without costing it*. The owner caught that. Adding a hosted project later is a dashboard click and
+an env var.
 
 ## A24 — Scale target · **kept**
 

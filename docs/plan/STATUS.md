@@ -33,7 +33,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-024**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-025**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -121,7 +121,7 @@ stop and check — those emails are implausible as real signups, but the `select
 | `scripts/traceability.mjs` + gate | ✅ done — 251/64/112, no gaps |
 | **Fix `scripts/qa.mjs`** | ✅ done (DEC-023) — **44/44, repeatable**, was crashing |
 | `npm run qa` orchestrator | ✅ done — stub + server + suite, wired and torn down |
-| Three Supabase projects (dev/staging/prod) | ⬜ next — on the critical path for M1 |
+| ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ⬜ **waiting on Docker** — owner installs Docker Desktop or OrbStack, then `supabase start`. $0 |
 | Playwright, jsdom, `@testing-library` | ⬜ |
 | GitHub Actions with the four blocking gates | ⬜ |
 | Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
@@ -150,6 +150,16 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## Two things waiting on the owner
+
+1. **Install Docker** (Docker Desktop or OrbStack — free). Local Supabase needs it, and it is now
+   the whole of our dev/CI environment story (DEC-025). It also unblocks `supabase db dump`, which
+   is why item 2 could not be done from a session.
+2. **`supabase login`** with the account that owns the `kareem-marefa` project. The CLI here is
+   signed in as *devyaden's Org*; the project lives in `irrxywjeaahimtvyldgo`. **Local development
+   needs no account**, so this blocks nothing except the cloud — including deleting the three test
+   rows above.
 
 ## Blockers
 

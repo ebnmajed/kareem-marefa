@@ -14,7 +14,7 @@
 | **jsdom, `@testing-library/*`** | **Not installed** |
 | **Playwright** | **Not installed** |
 | GitHub Actions | **Not configured** |
-| Supabase projects | **One. It is production.** |
+| Supabase projects | One, and it is production. **Dev is local, CI is a container** (DEC-025) — no new hosted projects |
 
 **`scripts/qa.mjs` was stale, and it could write to production.** Both fixed in DEC-023. Two
 things carry forward, because they are the general lessons and not the specific bug:

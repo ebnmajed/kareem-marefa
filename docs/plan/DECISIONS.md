@@ -484,6 +484,45 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Documents changed:** `06-visual-designer.md`, `13-testing-quality.md`, `14-roadmap.md`,
   `STATUS.md`
 
+## DEC-025 — Environments are local + CI, not three hosted Supabase projects
+
+- **Date:** 2026-09-13 · **Decided by:** owner, on cost
+- **Decision:** **dev is local** (`supabase start` — the full stack in Docker on the developer's
+  machine) and **CI runs against an ephemeral Postgres container**. **No new hosted Supabase
+  projects are created.** Production stays as it is. A hosted **staging** project is deferred until
+  there is a reason for one.
+- **Rationale:** A23 asked for "environments dev/staging/prod with separate Supabase projects" and
+  the plan carried that through **without costing it**. That was an omission on the architect's
+  part, and the owner caught it. Each additional hosted project is roughly **$10/month**, so the
+  literal reading of A23 is ~$20/month of recurring spend.
+
+  It buys very little, because of what each environment is actually *for*:
+
+  | Need | What it is really for | What covers it |
+  |---|---|---|
+  | dev | Migrate and iterate without fear | **Local** — free, and faster to reset |
+  | CI | The ~86 RLS policy tests (`03` §8) | **A Postgres service container** — free |
+  | staging | A *shared* pre-prod with real OAuth | A hosted project — **the only one that costs** |
+
+  The safety M1 genuinely needs is *"never run an untested migration against production"*, and
+  local plus CI delivers that completely. The RLS suite — the highest-value testing in the plan —
+  needs an ephemeral Postgres, **not** a hosted project. Sharing is the only column a hosted
+  staging wins, and there is one developer.
+- **Supersedes:** **A23**'s "separate Supabase projects" clause. Status in `ASSUMPTIONS.md` moves
+  to *proposed alternative*. The rest of A23 — Vitest, Playwright, GitHub Actions — is unchanged.
+- **When to revisit:** a second person joins, or the launch rehearsal needs real Google OAuth
+  against a shared host. Both are good reasons; neither is true now. Adding a project later is a
+  dashboard click and an env var, not a migration.
+- **Prerequisite, and it is the owner's:** **Docker is not installed on this machine.** Local
+  Supabase needs it (Docker Desktop or OrbStack, both free). The same install unblocks
+  `supabase db dump`, which is why the three stray test rows could not be cleaned up from the
+  session (DEC-023).
+- **Unrelated blocker found at the same time:** the `supabase` CLI on this machine is authenticated
+  as **devyaden's Org**, while the `kareem-marefa` project lives in org `irrxywjeaahimtvyldgo`.
+  The CLI therefore cannot see the production project. `supabase login` with the owning account
+  fixes it. **Local development needs no account at all**, so this blocks nothing here.
+- **Documents changed:** `ASSUMPTIONS.md`, `13-testing-quality.md`, `14-roadmap.md`, `STATUS.md`
+
 ---
 
 ## Template for new entries
