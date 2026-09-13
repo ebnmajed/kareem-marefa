@@ -1,16 +1,16 @@
-// STORY-PRO-002 — co-presenters (REQ-PRO-003), against the proposed SQL.
+// STORY-PRO-002 — co-presenters (REQ-PRO-003). Authored against the proposed SQL
+// (DEC-040), promoted by the lead as migration 0012_copresenters.sql.
 //
 // 03 §8.2 rows: POL-proposal_presenters.insert.same_org,
 //               POL-proposal_presenters.insert.state,
 //               RPC-create_proposal
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, pool, withTx } from "./db";
+import { errorCode, errorMessage, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0002_copresenters.sql";
 const CHECK_VIOLATION = "23514";
 
 async function createProposal(tx: Tx, title: string, categoryId: string, coPresenters: string[] = [], submit = false) {
@@ -25,7 +25,6 @@ describe("RPC-create_proposal", () => {
   it("creates the proposal, the proposer's accepted row and the named co-presenters in one act", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
       await tx.as(me.claims);
 
@@ -53,7 +52,6 @@ describe("RPC-create_proposal", () => {
   it("ignores a proposer who names themselves as their own co-presenter", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
       await tx.as(me.claims);
       const id = await createProposal(tx, "مقترح فردي", f.a.categoryId, [me.memberId]);
@@ -64,7 +62,6 @@ describe("RPC-create_proposal", () => {
   it("is atomic — a co-presenter from another org takes the proposal down with it", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
 
       const title = "مقترح لن يوجد";
@@ -80,7 +77,6 @@ describe("RPC-create_proposal", () => {
   it("cannot be used to propose on someone else's behalf or into another org", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       // The function takes no proposer and no org: both come from the claims,
       // so there is no argument to lie in. A member of B calling it lands in B.
       await tx.as(f.b.members[0].claims);
@@ -97,7 +93,6 @@ describe("RPC-create_proposal", () => {
   it("still obeys presenters_within_limit — the lead presenter plus max_co_presenters", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.asOwner();
       await tx.q(`update public.org_settings set max_co_presenters = 1 where org_id = $1`, [f.a.id]);
 
@@ -117,7 +112,6 @@ describe("create_proposal composes with the 0011 audit trigger", () => {
       // 0011 (the transition triggers) is a migration now; only this file is
       // still proposed. The pairing is what matters: the RPC's insert must
       // reach the audit trigger exactly once.
-      await applyProposed(tx, PROPOSED);
 
       await tx.as(f.a.members[0].claims);
       const id = await createProposal(tx, "مقترح موثّق", f.a.categoryId, [f.a.members[1].memberId], true);
@@ -138,7 +132,6 @@ describe("POL-proposal_presenters.insert.same_org", () => {
   it("refuses a member of another org even when the row's own org_id is the caller's", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
       // The insert POLICY is satisfied: org_id is A's and the proposal is the
       // caller's. Only the trigger catches that the member is B's.
@@ -157,7 +150,6 @@ describe("POL-proposal_presenters.insert.same_org", () => {
   it("guards session_presenters the same way", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(
         await errorCode(() =>
@@ -172,7 +164,6 @@ describe("POL-proposal_presenters.insert.state", () => {
   it("naming stays open through review and closes at the decision", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
 
       await tx.as(me.claims);
@@ -197,7 +188,6 @@ describe("POL-proposal_presenters.insert.state", () => {
   it("a declined co-presenter can still be removed after the decision", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
 
       await tx.as(me.claims);
@@ -225,7 +215,6 @@ describe("POL-proposal_presenters.insert.state", () => {
   it("a named member answers only for themselves", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
       const id = await createProposal(tx, "مقترح بمقدّمين", f.a.categoryId, [f.a.members[1].memberId]);
 

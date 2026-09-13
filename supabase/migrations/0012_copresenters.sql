@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §4.3 (ENT-proposal_presenters) · 03-permissions-rls.md §5.2
 --          0010_m2_schema.sql (presenters_within_limit, the insert policies)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 1):
 --   | `POL-proposal_presenters.insert.same_org` | Naming a member of another org is refused with
 --     23514, even though the row's own `org_id` is the caller's. |
 --   | `POL-proposal_presenters.insert.state` | A co-presenter cannot be added to an `approved` or
