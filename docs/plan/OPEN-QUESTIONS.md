@@ -325,3 +325,20 @@ question closes with no change to any document. If not, the entry names what mov
   Supabase offers a Middle East region.
 - **If answered differently:** a new Supabase project in a permitted region, a Fly region change,
   and a review of the email provider's processing region. **No code changes.**
+
+## OQ-027 — Where do the worker and the converter run in production?
+
+*Raised by DEC-034 during M0.*
+
+- **Gap:** Fly.io was the planned host for both (DEC-018) and is dropped on cost. Nothing in
+  M0–M2 needs either in production; M3 (reminder emails) is the first milestone that does.
+- **Default:** **run both locally and in CI until M3**; decide the host at the start of M3.
+- **Why:** the code is host-agnostic — two Docker images, a session-mode Postgres URL for the
+  worker, no credentials for the converter. Choosing with real usage to size against is cheaper
+  than choosing now.
+- **What the choice must provide:** a session-mode (port 5432) connection for LISTEN/NOTIFY; a
+  place for `service_role` that is not Vercel; and **either** a private network path from the
+  worker to the converter **or** an authentication token on the converter's endpoints (the
+  converter's current security model assumes the former).
+- **If answered differently:** a host change is a configuration change and an image push; the
+  only code change is the converter token if the host has no private networking.

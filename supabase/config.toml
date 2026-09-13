@@ -42,7 +42,9 @@ health_timeout = "2m"
 major_version = 17
 
 [db.pooler]
-enabled = false
+# Enabled so the worker's LISTEN/NOTIFY probe can be run against Supabase's own
+# pooler (Supavisor) in transaction mode locally — it must REFUSE (DEC-034).
+enabled = true
 # Port to use for the local connection pooler.
 port = 54329
 # Specifies when a server connection can be reused by other clients.

@@ -1,0 +1,21 @@
+{
+  "name": "@kareem/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "graphile-worker: the only process that holds service_role, and only through SECURITY DEFINER functions. 11-background-jobs.md.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "probe": "node dist/index.js --probe-only"
+  },
+  "dependencies": {
+    "graphile-worker": "^0.18.0",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

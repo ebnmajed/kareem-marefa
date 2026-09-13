@@ -435,7 +435,7 @@ Four rules the matrix encodes:
 
 **No photo tagging at launch.** "Photos" on a profile means photos that member **uploaded**.
 
-## A34 — Worker hosted on Fly.io · new (resolves A22)
+## A34 — Worker hosted on Fly.io · **superseded by owner** (DEC-034 — no Fly; hosting is OQ-027, decided by M3)
 
 **Fly.io**, not Railway. Justification: burst economics for a ~2 GB Chromium + LibreOffice image,
 and — decisively — it lets the document converter run as a **separate app holding no database

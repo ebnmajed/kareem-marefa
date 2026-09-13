@@ -53,7 +53,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 
 **Next.js 16.2.10** · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
 Zod 4.4.3 · supabase-js 2.110.2 · Vitest 4.1.10
-**Infra:** Vercel · Supabase cloud · graphile-worker on Fly.io · Resend · Sentry
+**Infra:** Vercel · Supabase cloud · graphile-worker (host TBD by M3 — DEC-034, OQ-027) · Resend · Sentry
 **CLI:** `supabase` 2.109.1, linked to project `qnwbgzsgkftqaixzuhdo`
 
 ### This is Next 16, not what you remember
@@ -114,8 +114,8 @@ src/
 ├── i18n/ · messages/{ar,en}.json
 packages/designer-runtime/      # THE renderer — shared by the app and the worker
 packages/fonts/                 # THE font set — manifest + files by SHA-256 (DEC-031)
-converter/                      # Fly app 2: LibreOffice + poppler, NO credentials (DEC-032)
-worker/                         # graphile-worker, Chromium, fonts (not yet created)
+converter/                      # LibreOffice + poppler behind signed URLs, NO credentials (DEC-032)
+worker/                         # graphile-worker + the LISTEN/NOTIFY boot probe (DEC-034)
 tests/                          # *.test.ts units · components/ (jsdom) · e2e/ (Playwright)
 scripts/fonts/                  # extract · derive-ttf · check — the REQ-DSG-016 gate
 ```

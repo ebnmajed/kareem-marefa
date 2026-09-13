@@ -1,4 +1,4 @@
-# The credential-free converter — Fly app 2 (04 §7). Build from the REPO ROOT:
+# The credential-free converter (04 §7.1). Build from the REPO ROOT:
 #
 #   docker build -f converter/Dockerfile -t kareem-converter .
 #
