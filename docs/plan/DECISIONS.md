@@ -911,6 +911,50 @@ decision. Every decision taken **after** the source brief gets an entry here.
   not waived.
 - **Documents changed:** `OPEN-QUESTIONS.md` (OQ-028), `README.md`, `STATUS.md`
 
+## DEC-037 — `anon` loses `TRUNCATE` on the frozen `registrations` table
+
+- **Date:** 2026-09-14 · **Decided by:** owner
+- **Decision:** migration `0009` runs `revoke truncate on table public.registrations from anon;`
+  and the owner runs the same statement by hand in the hosted project's SQL editor. Nothing else
+  about the table changes: not its rows, not its columns, not its insert policy, not the
+  `select/update/delete` revocations of `0001`, not the `insert` grant of `0002`.
+- **Rationale:** PR A found that the hosted project's old default privileges had granted `anon`
+  `ALL` on the table when it was created, and `0001` revoked only `select, update, delete`.
+  `TRUNCATE` was not reachable through the publishable key — PostgREST never issues it — but a
+  privilege nobody needs is a privilege to remove. `REFERENCES` and `TRIGGER` remain granted by
+  the same accident; they are equally unreachable and the owner may revoke them later with the
+  same one-liner shape.
+- **Supersedes:** narrows DEC-002's "never touch": the table and its data stay frozen; a
+  **privilege revocation that only removes access** is allowed, by decision, one at a time.
+- **Documents changed:** `STATUS.md`
+
+## DEC-038 — The marketing routes live in a `(marketing)` route group; the platform is a 404 until configured
+
+- **Date:** 2026-09-14 · **Decided by:** owner
+- **Decision 1 — the route group.** `page.tsx`, `register/`, `not-found.tsx` and `[...rest]/`
+  move from `src/app/[locale]/` into `src/app/[locale]/(marketing)/`, whose layout renders the
+  header, the `main` landmark and the footer exactly as the locale layout did. The locale layout
+  keeps `html`, fonts, the sting script, `NextIntlClientProvider` and `Direction.Provider`, and
+  renders `children`. **URLs are unchanged**: a route group adds no path segment and no DOM, so
+  the frozen routes' HTML is byte-for-byte what it was (`npm run visual` 0.000%, `npm run qa`
+  44/44). The `(auth)` and `app` layouts render their own `main` under the wordmark and no longer
+  pad for a fixed marketing header they no longer have. This is the structure `04` §4 always
+  described; PR B rendered the platform inside the marketing chrome only because the frozen files
+  could not be moved without this approval.
+- **Decision 2 — the unconfigured guard.** `platformConfigured()` is true only when both
+  `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set. When it is false
+  — production's state until PR C — `proxy.ts` rewrites every platform route and auth screen to
+  the marketing catch-all with status **404**, and the auth Route Handlers answer 404. The build
+  itself needs neither variable. `npm run test:e2e:unconfigured` builds with both empty and proves
+  the 404s and the untouched frozen routes; CI runs it as the `unconfigured` job. This is what
+  "`main` stays deployable" means between M1 and launch: the live site is the marketing site and
+  nothing else, with no 500s behind it.
+- **Rationale:** the alternative to the group was branching the shared layout on the pathname,
+  which puts platform logic in a frozen file forever. The alternative to the guard was configuring
+  the hosted project early, which is PR C and is deferred (DEC-039).
+- **Supersedes:** the STATUS note from PR B that the platform renders inside the marketing chrome.
+- **Documents changed:** `04-architecture.md` is already right; `STATUS.md`
+
 ---
 
 ## Template for new entries
