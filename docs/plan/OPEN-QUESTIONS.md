@@ -342,3 +342,18 @@ question closes with no change to any document. If not, the entry names what mov
   converter's current security model assumes the former).
 - **If answered differently:** a host change is a configuration change and an image push; the
   only code change is the converter token if the host has no private networking.
+
+## OQ-028 — Does `style-src` admit inline style attributes on the platform routes?
+
+*Raised by DEC-036 during M1.*
+
+- **Gap:** `REQ-NFR-003` forbids `unsafe-inline` in the style directive. Radix primitives (DEC-019)
+  set inline `style` attributes for positioning and scroll locking, which a nonce-only `style-src`
+  blocks. The marketing pages also use inline style attributes for their animation variables.
+- **Default:** **report-only everywhere until the reports from a preview deployment are reviewed**;
+  enforce `script-src` strictly first, decide `style-src` with evidence.
+- **Why:** style injection is a materially smaller risk than script injection, and the choice
+  should be made against real violation reports rather than a guess.
+- **If answered differently:** `'unsafe-hashes'` with the hashes of the primitives' inline styles,
+  or `'unsafe-inline'` for `style-src` only on `/app`, or replacing the primitives' inline styles
+  with classes. All are proxy-level changes plus, at most, a wrapper change; no data model impact.

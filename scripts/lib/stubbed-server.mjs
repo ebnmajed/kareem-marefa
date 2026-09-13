@@ -94,6 +94,12 @@ export async function startStubbedServer({ log = console.log } = {}) {
     // anti-spam.ts THROWS when this is unset, which takes the register page's
     // render down with it. Locally .env.local hides that; CI has no .env.local.
     FORM_TOKEN_SECRET: process.env.FORM_TOKEN_SECRET ?? 'qa-stub-secret-not-used-in-production',
+    // The platform's variables are inlined by `next build`, so these only
+    // matter to server code that reads them at runtime (proxy's refresh).
+    // Default them to the stub so nothing platform-side can reach a real
+    // project from a QA run either.
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? STUB,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_stub',
   })
   if (!(await waitFor(`${BASE}/ar`))) {
     console.error(`next did not come up at ${BASE}`)
