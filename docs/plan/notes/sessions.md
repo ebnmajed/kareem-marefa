@@ -564,3 +564,51 @@ because both orderings look plausible at a glance. **Measure it.**
 2. **The two device projects share one database.** A database assertion matching only on a title
    sees the other worker's row: both failures in my first full run were that, not the app. Scope
    every query by `org_id`.
+
+---
+
+## 12. Three defects the 390 px walk found on my own screens
+
+None of these would have shown up in `tsc`, lint, the unit suite or the RLS suite. Two were mine.
+
+### 12.1 The sticky action panel was hiding the very row `REQ-SES-011` protects
+
+`09` SCR-012 asks for the primary action "sticky in the thumb zone… reachable through the whole
+scroll", so the slot's wrapper was `sticky bottom-0` on mobile. The panel is about 380 px tall at
+390 px, so pinning it to the viewport bottom pulls it **up over the tail of the details block** and
+covers «لغة الجلسة» — the one row `REQ-SES-011` requires to be visible *above* the action.
+
+`01-prd.md` is normative and `09` is descriptive, and `REQ-SES-013`'s own acceptance asks that the
+action be "reachable without scrolling past the fold", not that it be pinned for the whole scroll.
+So on mobile the panel is now in flow at position 3, inside the first screenful, with nothing
+covered; on desktop it is still the sticky rail. **The lead may want `09` corrected here too, in the
+same breath as the language-ordering conflict.**
+
+The test now asserts the language's bottom edge is above the panel's top, not merely that its `y` is
+smaller — the weaker check passed while the row was hidden.
+
+### 12.2 The end time repeated the whole date
+
+«الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٦:٠٠ م · حتى الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٧:٠٠ م». `sameDay()` compares
+the two instants **in the session's zone**, not the server's, or a late-evening Riyadh session looks
+like two days to a process running in UTC.
+
+### 12.3 The category was labelled as a language
+
+Moving the category up beside «لغة الجلسة» left it inside that `dd`, so the page read as though
+«درس من تجربة» were a language. It has its own `dt`/`dd` now.
+
+### 12.4 Not a defect: the RSVP panel is absent for a presenter
+
+The first capture had no primary action, which looked like a broken slot. It is `REQ-CHK-011`
+working: my walk's proposer carried across as the session's presenter, and `RsvpPanel` returns null
+for them. SCR-012 is now captured as a **third** account who presents nothing, and the presenter's
+own view is asserted separately — «شاشة التقديم» present, no RSVP control.
+
+### 12.5 A limitation worth a decision, not a fix
+
+`<input type="datetime-local">` renders its own placeholder and calendar in the **browser's** locale,
+so SCR-043's four date fields show `dd/mm/yyyy, --:--` in Latin regardless of the page being Arabic.
+`09` SCR-043 says "the date-time picker runs right-to-left". A native control cannot be made to;
+the only way to honour that line literally is a custom picker, which is not small and which nothing
+in M2 budgets for. **Flagged for the lead, not worked around.**

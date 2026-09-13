@@ -37,3 +37,24 @@ export function formatDateTime(iso: string, numerals: NumeralSystem, timeZone: s
     timeZone,
   }).format(new Date(iso));
 }
+
+/**
+ * A clock time alone, in the org's numeral system and time zone.
+ *
+ * A session that starts and ends on the same day should read «… ٦:٠٠ م ·
+ * حتى ٧:٠٠ م», not repeat the whole date twice. `sameDay()` decides which,
+ * comparing the two instants **in the session's zone** rather than the
+ * server's, or a session late in the evening in Riyadh would look like two
+ * days to a process running in UTC.
+ */
+export function formatTime(iso: string, numerals: NumeralSystem, timeZone: string, locale = "ar"): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic" ? "arab" : "latn"}`, {
+    timeStyle: "short",
+    timeZone,
+  }).format(new Date(iso));
+}
+
+export function sameDay(a: string, b: string, timeZone: string): boolean {
+  const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(iso));
+  return day(a) === day(b);
+}

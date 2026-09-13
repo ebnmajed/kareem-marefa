@@ -34,6 +34,8 @@ let orgId = "";
 let domain = "";
 let adminEmail = "";
 let memberEmail = "";
+// A third account who presents nothing: SCR-012's "any member" view.
+let attendeeEmail = "";
 const userIds: string[] = [];
 
 test.beforeAll(async ({}, testInfo) => {
@@ -44,6 +46,7 @@ test.beforeAll(async ({}, testInfo) => {
   domain = `e2e-scr-${tag}.example`;
   adminEmail = `boss@${domain}`;
   memberEmail = `member@${domain}`;
+  attendeeEmail = `attendee@${domain}`;
 
   const { rows } = await db.query<{ id: string }>(
     `insert into public.orgs (name, slug, certificate_prefix, created_by, first_admin_email)
@@ -58,6 +61,7 @@ test.beforeAll(async ({}, testInfo) => {
   for (const [email, name] of [
     [adminEmail, "مشرفة المؤسسة"],
     [memberEmail, "عضو الاختبار"],
+    [attendeeEmail, "حاضرة الاختبار"],
   ]) {
     const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: name } });
     if (error) throw error;
@@ -187,19 +191,44 @@ test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {
     "approved→published",
   ]);
 
-  // ── SCR-012 · the event page ──────────────────────────────────────────────
+  // ── SCR-012 · the event page, as the PRESENTER ────────────────────────────
+  // The proposer carried across as the session's presenter, so REQ-CHK-011's
+  // split starts here: no RSVP panel for them, and «شاشة التقديم» instead.
   await member.goto(`/ar/app/sessions/${sessionId}`);
   await expect(member.getByRole("heading", { level: 1 })).toContainText(title);
-  await expect(member.getByText("قاعة الابتكار")).toBeVisible();
+  await expect(member.getByRole("link", { name: "شاشة التقديم" })).toBeVisible();
+  await expect(member.getByRole("button", { name: /احجز مقعدك/ })).toHaveCount(0);
+
+  // ── SCR-012 · the event page, as any member ───────────────────────────────
+  const attendee = await phone(page, attendeeEmail);
+  await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await expect(attendee.getByRole("heading", { level: 1 })).toContainText(title);
+  await expect(attendee.getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-008: no remote-attendance affordance anywhere on the page.
-  await expect(member.getByText(/بث|رابط الانضمام|عن بعد|أونلاين/)).toHaveCount(0);
-  await expect(member.getByText("الحضور في القاعة فقط.")).toBeVisible();
+  await expect(attendee.getByText(/بث مباشر|رابط الانضمام|عن بعد|أونلاين/)).toHaveCount(0);
+  await expect(attendee.getByText("الحضور في القاعة فقط.")).toBeVisible();
+  // Not a presenter, so no host-view entry (OQ-013, REQ-CHK-014).
+  await expect(attendee.getByRole("link", { name: "شاشة التقديم" })).toHaveCount(0);
+
   // REQ-SES-011: the spoken language is above the RSVP action, not below it.
-  const language = (await member.getByText("لغة الجلسة").first().boundingBox())!;
-  const action = (await member.locator("aside").first().boundingBox())!;
+  const language = (await attendee.getByText("لغة الجلسة").first().boundingBox())!;
+  const action = (await attendee.locator("aside").first().boundingBox())!;
   expect(language.y, "the spoken language appears before the RSVP action").toBeLessThan(action.y);
-  await review(member, "scr-012-event-page");
+
+  // REQ-SES-013: exactly one primary action, in the thumb zone, ≥ 44 px. The
+  // control is `checkin`'s; its presence and its size are this page's promise.
+  const rsvp = attendee.getByRole("button", { name: /احجز مقعدك|انضم لقائمة الانتظار|ألغِ حجزي/ });
+  await expect(rsvp).toHaveCount(1);
+  const rsvpBox = (await rsvp.boundingBox())!;
+  expect(rsvpBox.height, "the RSVP action must be at least 44 px tall").toBeGreaterThanOrEqual(44);
+  expect(rsvpBox.y + rsvpBox.height, "the RSVP action sits within the first screenful at 390 px").toBeLessThanOrEqual(PHONE.height);
+  // …and nothing above it is hidden underneath it, which is what a
+  // bottom-pinned panel of this height would do to «لغة الجلسة».
+  expect(language.y + language.height, "the spoken language is not covered by the action panel").toBeLessThanOrEqual(action.y);
+
+  await review(attendee, "scr-012-event-page");
 
   await boss.context().close();
   await member.context().close();
+  await attendee.context().close();
 });

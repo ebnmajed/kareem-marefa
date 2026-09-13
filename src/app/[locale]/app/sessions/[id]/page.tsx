@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getSessionForEvent } from "@/lib/dal/sessions";
@@ -44,6 +44,15 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   if (!session) notFound();
 
   const when = (iso: string | null) => (iso ? formatDateTime(iso, prefs.numerals, session.timeZone, locale) : null);
+  // A session that starts and ends on the same day says the day once. Reading
+  // «الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٦:٠٠ م · حتى الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٧:٠٠ م»
+  // out loud is enough to see why.
+  const until =
+    session.startsAt && session.endsAt
+      ? sameDay(session.startsAt, session.endsAt, session.timeZone)
+        ? formatTime(session.endsAt, prefs.numerals, session.timeZone, locale)
+        : when(session.endsAt)
+      : null;
   const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
 
   return (
@@ -84,7 +93,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               {session.startsAt ? (
                 <>
                   <bdi>{when(session.startsAt)}</bdi>
-                  {session.endsAt ? <span className="text-fg-muted"> · {t("toTime", { value: when(session.endsAt) ?? "" })}</span> : null}
+                  {until ? <span className="text-fg-muted"> · {t("toTime", { value: until })}</span> : null}
                 </>
               ) : (
                 t("notScheduled")
@@ -143,28 +152,35 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
                 requirement, so its acceptance wins and the language sits here,
                 above the action in reading order on every width. */}
             <dt className="text-label text-fg-heading">{t("languageLabel")}</dt>
-            <dd className="mt-1 text-body text-fg-body">
-              {session.language === "ar" ? t("languageAr") : t("languageEn")}
-              {session.categoryName ? (
-                <span className="text-fg-muted">
-                  {" · "}
-                  <bdi>{session.categoryName}</bdi>
-                </span>
-              ) : null}
-            </dd>
+            <dd className="mt-1 text-body text-fg-body">{session.language === "ar" ? t("languageAr") : t("languageEn")}</dd>
           </div>
+          {session.categoryName ? (
+            <div>
+              {/* Its own pair. Folded into the language's `dd` it read as
+                  though «درس من تجربة» were a language. */}
+              <dt className="text-label text-fg-heading">{t("categoryLabel")}</dt>
+              <dd className="mt-1 text-body text-fg-body">
+                <bdi>{session.categoryName}</bdi>
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </div>
 
       {/* 3 and 4 — the ONE primary action, then the two deadlines stated
-          plainly. On mobile it is `sticky bottom-0`, which keeps it in the
-          thumb zone through the whole scroll while staying a single element in
-          reading order (REQ-SES-013). On desktop it is a sticky rail beside
-          the content. The safe-area inset matters on a notched phone. */}
-      <aside
-        className="sticky bottom-0 z-10 mt-8 border-t border-edge bg-canvas pt-4 md:top-6 md:mt-0 md:border-t-0 md:pt-0"
-        style={{ paddingBlockEnd: "max(1rem, env(safe-area-inset-bottom))" }}
-      >
+          plainly.
+          
+          It is NOT `sticky bottom-0` on mobile, and that is a considered
+          departure from 09's prose. This panel is ~380 px tall at 390 px, so
+          pinning it to the viewport bottom pulls it up over the tail of the
+          details block and hides «لغة الجلسة» — the one row REQ-SES-011
+          requires to be visible ABOVE the action. 01-prd.md is normative and
+          09 is descriptive, and REQ-SES-013's own acceptance asks that the
+          action be "reachable without scrolling past the fold", not that it
+          be pinned for the whole scroll. In flow at position 3 it sits inside
+          the first screenful, nothing is covered, and both requirements hold.
+          On desktop it is the sticky rail 09 asks for. */}
+      <aside className="mt-8 border-t border-edge pt-4 md:sticky md:top-6 md:mt-0 md:border-t-0 md:pt-0">
         <RsvpPanel sessionId={session.id} memberId={me.memberId} locale={locale} />
 
         {session.capacity !== null ? (
