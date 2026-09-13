@@ -7,8 +7,8 @@
 //   node scripts/visual-diff.mjs capture <name>          # .qa-shots/visual/<name>/
 //   node scripts/visual-diff.mjs compare <before> <after>
 //
-// `capture` starts the QA stub and `next start` exactly as scripts/qa-run.mjs
-// does (never a real project), then screenshots every frozen route at a phone
+// `capture` starts the QA stub and `next start` through the same helper
+// scripts/qa-run.mjs uses (never a real project), then screenshots every frozen route at a phone
 // and a desktop width. Motion is frozen — reduced-motion is emulated, so the
 // sting never plays and the WebGL constellation yields to its static SVG
 // fallback — and every capture waits for `document.fonts.ready`, so what is
@@ -20,16 +20,12 @@
 // on any pair above THRESHOLD, or on a size mismatch, which is what a changed
 // line break looks like.
 
-import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import puppeteer from 'puppeteer-core'
+import { BASE, ROOT, startStubbedServer } from './lib/stubbed-server.mjs'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = join(ROOT, '.qa-shots', 'visual')
-const STUB = `http://localhost:${process.env.STUB_PORT ?? 54331}`
-const BASE = 'http://localhost:3000'
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 // 0.1% of pixels — the parity harness's own bar. Below it is anti-aliasing.
 const THRESHOLD = Number(process.env.VISUAL_THRESHOLD ?? 0.001)
@@ -51,41 +47,9 @@ else {
 /* ---------------------------------------------------------------- capture */
 
 async function capture(name) {
-  if (!existsSync(join(ROOT, '.next'))) {
-    console.error('No .next build found. Run `npm run build` first.')
-    process.exit(2)
-  }
   const dir = join(OUT, name)
   mkdirSync(dir, { recursive: true })
-
-  const children = []
-  const spawnChild = (cmd, args, env) => {
-    const c = spawn(cmd, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } })
-    children.push(c)
-    return c
-  }
-  const shutdown = () => {
-    for (const c of children) {
-      try {
-        c.kill('SIGTERM')
-      } catch {}
-    }
-  }
-  process.on('exit', shutdown)
-
-  console.log(`· starting Supabase stub on ${STUB}`)
-  spawnChild('node', ['scripts/supabase-stub.mjs'])
-  if (!(await waitFor(`${STUB}/__stub`))) fail('stub did not come up')
-  const { marker } = await (await fetch(`${STUB}/__stub`)).json()
-  if (marker !== 'kareem-marefa-qa-stub') fail(`something on ${STUB} is not the QA stub`)
-
-  console.log('· starting next start on :3000, pointed at the stub')
-  spawnChild('npx', ['next', 'start'], {
-    SUPABASE_URL: STUB,
-    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_stub',
-    FORM_TOKEN_SECRET: process.env.FORM_TOKEN_SECRET ?? 'qa-stub-secret-not-used-in-production',
-  })
-  if (!(await waitFor(`${BASE}/ar`))) fail('next did not come up')
+  const { shutdown } = await startStubbedServer()
 
   const browser = await launch()
   try {
@@ -210,18 +174,6 @@ function launch() {
       ...(process.env.CHROME_NO_SANDBOX ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
     ],
   })
-}
-
-async function waitFor(url, tries = 60) {
-  for (let i = 0; i < tries; i++) {
-    try {
-      await fetch(url)
-      return true
-    } catch {
-      await new Promise((r) => setTimeout(r, 500))
-    }
-  }
-  return false
 }
 
 function fail(msg) {
