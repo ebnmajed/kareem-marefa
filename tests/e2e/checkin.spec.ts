@@ -31,6 +31,7 @@ let db: pg.Client;
 let orgId = "";
 let domain = "";
 let sessionId = "";
+let publishedSessionId = "";
 let attendeeUserId = "";
 let attendeeEmail = "";
 let staffUserId = "";
@@ -60,6 +61,19 @@ test.beforeAll(async ({}, testInfo) => {
     [orgId, catRows[0].id, venueRows[0].id],
   );
   sessionId = sessRows[0].id;
+
+  // A separate PUBLISHED (not yet started) session for the RsvpPanel slot —
+  // the host/check-in session above is already in_progress, past the point
+  // reserve_seat() accepts.
+  const { rows: publishedRows } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
+                                   venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
+     values ($1, 'جلسة اختبار الحجز', 'ملخص الجلسة', $2, 'introductory', now() + interval '48 hours', 60, now() + interval '49 hours',
+             $3, 30, now() + interval '47 hours', now() + interval '47 hours', 'published', now() - interval '1 hour')
+     returning id`,
+    [orgId, catRows[0].id, venueRows[0].id],
+  );
+  publishedSessionId = publishedRows[0].id;
 
   attendeeEmail = `attendee@${domain}`;
   const { data: attendeeAuth, error: e1 } = await admin.auth.admin.createUser({ email: attendeeEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو الحضور" } });
@@ -156,7 +170,31 @@ test("an invalid code is rejected without revealing anything else, and the field
     await boxes.nth(i).fill("Z");
   }
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/error=invalid_code$/);
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/);
   // Next's own route announcer also carries role="alert" — scope to the copy, not the role alone.
   await expect(page.getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
+  // React 19 resets the form on every action, redirect included (DEC-043) — the rejected
+  // code should still be there to fix one character, not six empty boxes to retype.
+  for (let i = 0; i < 6; i++) {
+    await expect(boxes.nth(i)).toHaveValue("Z");
+  }
+});
+
+test("the RsvpPanel slot renders inside the real event page and reserves a seat, at 390px", async ({ context, page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(context, attendeeEmail, false);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await expect(page.getByRole("heading", { name: "الحضور" })).toBeVisible();
+  await expect(page.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
+
+  await page.getByRole("button", { name: "احجز مقعدك" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible();
+  await expect(page.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
+
+  const { rows } = await db.query<{ status: string }>(`select status from public.rsvps where session_id = $1 and member_id = (select id from public.members where auth_user_id = $2)`, [
+    publishedSessionId,
+    attendeeUserId,
+  ]);
+  expect(rows[0].status).toBe("confirmed");
 });
