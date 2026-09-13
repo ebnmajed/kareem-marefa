@@ -1041,6 +1041,31 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** the settings paragraph of DEC-040 for those two commands.
 - **Documents changed:** `CLAUDE.md` § Agent team, `.claude/settings.json`
 
+## DEC-042 — Wave 1: `sessions` owns the M2 admin surfaces for proposals, sessions and venues; `console` inherits them at wave 3
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `sessions` teammate's finding
+- **Decision:** for the duration of wave 1, the `sessions` teammate's globs extend to
+  `src/app/[locale]/app/admin/{proposals,sessions,venues}/**` and `src/messages/{ar,en}/admin.json`
+  (the `admin` namespace name in `src/messages/index.ts` included). STORY-PRO-003 (admin review),
+  STORY-SES-001 (schedule and publish), STORY-SES-002 (the state machine) and STORY-SES-004
+  (venues) are M2 stories on the `sessions` track whose screens — SCR-041, SCR-042, SCR-043,
+  SCR-046 in `09` — live under `/app/admin`. At wave 3 the `console` teammate inherits those
+  folders as working screens; its `TEAM.md` §1 row already says `app/admin/**`, so no later edit is
+  needed. The other admin folders (`categories`, `companies`, `members`, `domains`, `settings`,
+  `moderation`, `exports`, `audit`) stay untouched until wave 3.
+- **Also corrected:** the screen numbers in the three agent definitions were drafted before `09`
+  was finalised. `09` owns the SCR ID space: the event page is **SCR-012**, check-in is
+  **SCR-014**, the host view SCR-016, rate SCR-015, propose SCR-017, my proposal SCR-018.
+- **Rationale:** the wave gate is the M2 demonstrable — propose → approve → schedule → publish →
+  … — and approve and schedule are admin screens. Deferring them to wave 3 would mean driving the
+  demonstrable from SQL, which proves the database and not the product, and would leave `console`
+  to build M2 behaviour it did not design. The path split is disjoint from every other wave-1
+  glob, so the ownership rule (one writer per path) still holds.
+- **Supersedes:** the wave-1 row of the ownership map in `CLAUDE.md` § Agent team and `TEAM.md`
+  §1, for these paths only.
+- **Documents changed:** `CLAUDE.md` § Agent team, `TEAM.md` §1, `.claude/agents/{sessions,checkin}.md`,
+  `STATUS.md`
+
 ---
 
 ## Template for new entries

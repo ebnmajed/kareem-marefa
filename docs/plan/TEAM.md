@@ -17,7 +17,7 @@ along its own seams**.
 | Wave | Teammates | Why they can run together | Gate |
 |---|---|---|---|
 | **0 — done** | lead | Migration `0010` (the M2 schema with RLS, grants, `03` §8.2 rows), the per-namespace messages, the gate lock, `applyProposed()`, `supabase/proposed/`, this document | PR `m2/schema` merged |
-| **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders | M2 demonstrable in a real room; `wave-1/m2` PR green |
+| **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4) | M6 needs M5; the console half that needs no templates runs alongside | |
 | **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | Launch follows, owner-run |
