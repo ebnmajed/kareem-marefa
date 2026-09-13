@@ -1129,6 +1129,10 @@ generated suite is the highest-value test in the product.
 | `RPC-review_proposal.admin_only` | A member and a moderator are both refused `42501`; only an org admin may review, and never a proposal in another org (migration `0013`). |
 | `RPC-review_proposal.reason` | `reject` and `request_changes` without a reason are refused; the reason reaches the proposer on the row and the audit row (`REQ-PRO-005`, `REQ-PRO-006`). |
 | `RPC-review_proposal.path` | Deciding on a `submitted` proposal walks it through `in_review`, so `02` §6.1 is followed and both transitions are audited. |
+| `POL-sessions.insert.rpc` | `sessions` has no insert policy and no insert grant: a direct insert by an admin is refused, and `create_session()` is the only way in (migration `0020`). |
+| `RPC-create_session.admin_only` | A member and a moderator are refused `42501`; an admin of another org cannot reach the proposal or create into that org. |
+| `RPC-create_session.one_per_proposal` | An approved proposal becomes at most one session (partial unique index); a second attempt is refused, and only an `approved` proposal can be turned into one (`REQ-PRO-007`, `REQ-PRO-008`). |
+| `POL-session_presenters.decline` | A presenter declining an unpublished session returns it to `draft` and writes the transition row; a published session is left alone (`REQ-SES-003`). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |

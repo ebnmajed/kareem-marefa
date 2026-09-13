@@ -371,7 +371,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-SES-001` | `ENT-sessions` | — | `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
 | `REQ-SES-002` | `ENT-sessions` | — | `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
-| `REQ-SES-003` | `ENT-session_state_transitions` `ENT-sessions` | — | `SCR-042` | — | — | `STORY-SES-002` | M2 |
+| `REQ-SES-003` | `ENT-session_state_transitions` `ENT-sessions` | `POL-session_presenters.decline` | `SCR-042` | — | — | `STORY-SES-002` | M2 |
 | `REQ-SES-004` | — | — | — | `JOB-archive_sessions` `JOB-award_presenter_points` +5 | — | `STORY-SES-003` | M2 |
 | `REQ-SES-005` | `ENT-session_state_transitions` | — | `SCR-042` | `JOB-start_session` | — | `STORY-SES-003` | M2 |
 | `REQ-SES-006` | `ENT-venues` | — | `SCR-043` `SCR-046` | — | — | `STORY-SES-004` | M2 |

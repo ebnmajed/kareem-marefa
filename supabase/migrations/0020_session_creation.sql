@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §4.3, §6.2, and the `proposals ||--o| sessions` cardinality of §2
 --          03-permissions-rls.md §1.3, §5.2c/d · 0005 (assert_fresh_admin) · 0010 (the tables)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 4):
 --   | `POL-sessions.insert.rpc` | `sessions` has no insert policy and no insert grant: a direct
 --     insert by an admin is refused, and `create_session()` is the only way in. |
 --   | `RPC-create_session.admin_only` | A member and a moderator are refused 42501; an admin of

@@ -6,13 +6,12 @@
 //               RPC-create_session.one_per_proposal,
 //               POL-session_presenters.decline
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0004_session_creation.sql";
 const CHECK_VIOLATION = "23514";
 
 const createSession = async (tx: Tx, args: { title?: string; category?: string; presenters?: string[]; proposal?: string }) =>
@@ -42,7 +41,6 @@ describe("POL-sessions.insert.rpc", () => {
   it("even an admin cannot insert a session directly — there is no policy and no grant", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(
         await errorCode(() =>
@@ -57,7 +55,6 @@ describe("RPC-create_session.admin_only", () => {
   it("refuses a member, a moderator and a stale admin", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       for (const who of [f.a.members[0].claims, f.a.mod.claims]) {
         await tx.as(who);
         expect(await errorMessage(() => createSession(tx, { title: "جلسة", category: f.a.categoryId }))).toMatch(/not_an_admin/);
@@ -70,7 +67,6 @@ describe("RPC-create_session.admin_only", () => {
   it("creates into the actor's own org, and cannot reach another org's proposal", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const proposal = await approved(tx, f);
 
       await tx.as(f.b.admin.claims);
@@ -84,7 +80,6 @@ describe("RPC-create_session.admin_only", () => {
   it("refuses a session with no title, abstract or category", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => createSession(tx, {}))).toMatch(/session_needs_title_abstract_category/);
     });
@@ -95,7 +90,6 @@ describe("RPC-create_session.one_per_proposal", () => {
   it("carries the approved proposal's fields and its accepted presenters, and only those", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const proposal = await approved(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -128,7 +122,6 @@ describe("RPC-create_session.one_per_proposal", () => {
   it("turns an approved proposal into one session and no more", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const proposal = await approved(tx, f);
       await tx.as(f.a.admin.claims);
       await createSession(tx, { proposal });
@@ -139,7 +132,6 @@ describe("RPC-create_session.one_per_proposal", () => {
   it("will not schedule a proposal the admin has not approved", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       // The fixture's proposal is a draft.
       expect(await errorMessage(() => createSession(tx, { proposal: f.m2.a.proposal }))).toMatch(/proposal_not_approved/);
@@ -149,7 +141,6 @@ describe("RPC-create_session.one_per_proposal", () => {
   it("records which path it came by, and only in the audit log (REQ-PRO-007)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const proposal = await approved(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -177,7 +168,6 @@ describe("RPC-create_session.one_per_proposal", () => {
   it("an assigned presenter is not accepted on their behalf", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       const id = await createSession(tx, { title: "جلسة مُسندة", category: f.a.categoryId, presenters: [f.a.members[1].memberId] });
       await tx.asOwner();
@@ -190,7 +180,6 @@ describe("POL-session_presenters.decline", () => {
   it("a decline before publication sends the session back to draft, with a transition row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       const id = await createSession(tx, { title: "جلسة سيعتذر عنها المُقدِّم", category: f.a.categoryId, presenters: [f.a.members[1].memberId] });
       await tx.asOwner();
@@ -214,7 +203,6 @@ describe("POL-session_presenters.decline", () => {
   it("a decline on a PUBLISHED session leaves it published — people have seats", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const published = f.m2.a.published;
       await tx.asOwner();
       await tx.q(`insert into public.session_presenters (org_id, session_id, member_id) values ($1, $2, $3)`, [f.a.id, published, f.a.members[1].memberId]);
