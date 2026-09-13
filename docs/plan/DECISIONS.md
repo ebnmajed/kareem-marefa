@@ -824,6 +824,54 @@ decision. Every decision taken **after** the source brief gets an entry here.
   `14-roadmap.md` M0 · `ASSUMPTIONS.md` A34 · `OPEN-QUESTIONS.md` (OQ-027) · `CLAUDE.md` ·
   `STATUS.md`
 
+## DEC-035 — M1's schema and policy deltas, and how the RLS suite runs
+
+- **Date:** 2026-09-13 · **Decided by:** session, within the owner's approved M1 plan
+- **Decision — schema deltas from `02` (frozen) and `03` (settled), all in migrations `0003`–`0006`:**
+  1. `orgs.first_admin_email citext` — `REQ-TEN-002` says the super admin "sets … the first org
+     admin", but that person cannot exist before their first sign-in. The address is recorded at
+     creation and `provision_member()` grants `admin` when it arrives. The alternative — the first
+     member of an org becomes its admin — hands the org to whoever signs in first.
+  2. `public.auth_claims_version()` joins the claim readers of `03` §2, so the staleness check in
+     `assert_active_member()` is `is distinct from` against a typed reader rather than an inline
+     cast that a missing claim would turn into a null comparison that passes.
+  3. The `members` select grant carries `org_id`, `status` and `leaderboard_opt_out` in addition to
+     `03` §5.1b's list: `org_id` so the generated isolation sweep can `select org_id` from every
+     table with one query shape, the other two because the app shows them on the member tier.
+     `email`, `claims_version`, `deactivated_*` and `anonymised_at` stay out. `members_member_view`
+     is `security_invoker` so the base table's RLS and column grant still bind through it.
+  4. Named policies `03` did not spell out: `org_domains_read_admin` (§5.1 says "P2-read", which
+     P2 does not define), `config_history_read_admin`, and the P1/P2/P3 instances on `companies`,
+     `categories`, `venues`, `member_interests`. `03` §8.2 gains a test row for each.
+  5. `org_settings` changes reach `scoring_config_history` through an **after-update trigger**,
+     one row per changed column, rather than through an RPC — so no code path can change a setting
+     silently, including a future admin screen that forgets.
+  6. Audit rows for `org_domains` come from a trigger for the same reason.
+  7. `platform_admins` has RLS enabled, **no policy and no grant** — exactly `03`'s "No policy at
+     all". `scripts/policy-diff.mjs` now reads that phrase from the per-table map and requires the
+     migration to match it, instead of reporting "denies everything".
+  8. **`service_role` holds no direct privilege on any platform table.** Invariant 6 says the
+     worker reaches data only through `SECURITY DEFINER` functions; a hosted project's default
+     privileges would nonetheless hand `service_role` everything, while local Supabase's current
+     defaults hand it nothing. Every table revokes it explicitly so both environments mean the
+     same thing, and a leaked `service_role` key cannot read a table.
+  9. **citext under `set search_path = ''`:** the citext `=` operator lives in `extensions` and is
+     not found with an empty search path, so `citext = citext` silently degrades to
+     case-sensitive `text` comparison. `provision_member()` compares with `lower()` on both
+     sides; every future function that compares an email or a domain must too.
+- **Decision — the RLS suite:** `tests/rls` is a Vitest project driven through `pg` directly:
+  each test runs in a transaction, does `set local role authenticated` and sets
+  `request.jwt.claims` — which is exactly how Supabase evaluates policies — and rolls back.
+  **Local Supabase is the source of truth**; CI's bare Postgres gets a minimal `auth` shim in
+  `scripts/ci/roles.sql` (`auth.users`, `auth.uid()`, `auth.jwt()`, `supabase_auth_admin`) so
+  the identical suite runs there too. The project is only registered when `RLS_DATABASE_URL` is
+  set, so `npm test` without a database still runs the other projects.
+- **Rationale:** each delta is the smallest change that makes a requirement enforceable rather
+  than described. The trigger choices trade a little opacity for the guarantee that history
+  cannot be skipped.
+- **Supersedes:** nothing. Amends `02` §4.1 (`orgs`) and `03` §5.1, §8.2 as described.
+- **Documents changed:** `02-domain-model.md`, `03-permissions-rls.md`, `STATUS.md`
+
 ---
 
 ## Template for new entries
