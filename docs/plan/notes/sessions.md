@@ -267,3 +267,61 @@ the row is cleared on approval.
 `03` §5.2a makes a moderator `is_staff()`, so they *can read* proposals; `09` §7.1 gives them four
 screens and this is not one. `listProposalsForReview()` returns null for anyone but an admin and
 the route calls `notFound()`. A message would confirm the queue exists.
+
+---
+
+## 4. STORY-PRO-004 — admin-created sessions, and the pipeline the author sees
+
+**Covers:** `REQ-PRO-007`, `REQ-PRO-008` · **Screens:** SCR-042, SCR-018 · **Size:** S
+
+### 4.1 `REQ-PRO-008` was already standing
+
+The policy `proposals_read_own_or_staff` is the whole of its acceptance ("A member sees only their
+own proposals and those where they are a named co-presenter"), and SCR-018 already shows the state
+and the admin's written reason. `listMyProposals()` does not add an application filter on
+`proposer_id`, deliberately: that would take back what the policy grants a co-presenter and hide the
+very row they have to answer.
+
+### 4.2 `REQ-PRO-007` needed a third RPC, for a third reason
+
+`sessions` has **no insert policy and no insert grant** — `0010` gives it `select` and a
+four-column `update` (title, abstract, level, language) and nothing else. So an admin cannot make a
+session through PostgREST at all, and `create_session()` is `SECURITY DEFINER` with the `03` §1.3
+re-read. Three RPCs now, three different reasons, which is worth keeping straight:
+
+| RPC | Why it exists | Security |
+|---|---|---|
+| `create_proposal` | atomicity — three inserts, one act | `invoker`, RLS still decides |
+| `review_proposal` | there is no admin policy on `proposals` | `definer` + `assert_fresh_admin` |
+| `create_session` | there is no insert policy on `sessions` | `definer` + `assert_fresh_admin` |
+
+### 4.3 Three things the RPC settles
+
+- **A proposal becomes at most one session.** `02` §2 draws it `proposals ||--o| sessions`, so the
+  file adds the partial unique index the schema was missing. A second attempt is a 23505.
+- **Only an `approved` proposal can be scheduled.** Otherwise an admin could route around their own
+  review by scheduling a `submitted` one.
+- **Creating schedules nothing.** No `starts_at`, no venue, no capacity — the function has no
+  parameter for any of them and `directSessionInput` is `.strict()`. Creating and scheduling are two
+  acts, which is D13/D14, and a test asserts the created row's `starts_at`, `venue_id` and
+  `capacity` are all null.
+
+An assigned presenter is inserted **not accepted**: `REQ-PRO-007` gives them the right to decline,
+which they do not have if the admin accepted on their behalf. From a proposal, the presenters who
+had accepted the proposal come across accepted, because they already answered.
+
+### 4.4 The decline has to be a trigger, and it stops at publication
+
+A presenter can set their own `declined_at` — the policy and the column grant both allow it — but
+they have no grant on `sessions.state`, so "which returns the session to `draft`" cannot be their
+write. A definer trigger does it and records the `session_state_transitions` row.
+
+It deliberately does **nothing** to a published session. People have reserved seats against a
+published session and silently un-publishing it under them would be worse than leaving an admin to
+handle a presenter who has withdrawn; `REQ-SES-009` is the path for that.
+
+### 4.5 `session.created_direct` vs `session.created_from_proposal`
+
+`REQ-PRO-007` asks for a directly created session to be "indistinguishable from a proposed one
+downstream, except in the audit log". The rows are identical apart from `proposal_id`, and the
+difference is carried entirely by the audit action. A test asserts both halves.

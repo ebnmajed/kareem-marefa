@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
+**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`; **draft PR #12**) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -162,7 +162,7 @@ healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 pass
 
 | Sync | Promoted | Gates |
 |---|---|---|
-| 1 (2026-09-14) | `0011_proposal_transitions` (audit + guard triggers, `98db766`) · `0012_copresenters` (same-org guard on both presenter tables, `create_proposal()`, `aaa9f95`) — `03` §8.2 +5 rows | `supabase db reset` ✅ · `test:rls` **163 passed / 4 todo**, all 15 files incl. teammates' ✅ · `policy-diff` ✅ · tsc ✅ · lint ✅ · **build ✗** — blocked on a constant exported from a `"use server"` module in `propose/actions.ts` (Next 16 rule tsc cannot see; `sessions` has the fix) · qa / visual / e2e:local pending the build |
+| 1 (2026-09-14) | `0011_proposal_transitions` (audit + guard triggers, `98db766`) · `0012_copresenters` (same-org guard on both presenter tables, `create_proposal()`, `aaa9f95`) — `03` §8.2 +5 rows | `supabase db reset` ✅ · `test:rls` **163 passed / 4 todo**, all 15 files incl. teammates' ✅ · `policy-diff` ✅ · tsc ✅ · lint ✅ · build ✅ after three `"use server"` constant exports were moved out (`3cded54`, `9b2a4a7`; the Next 16 rule tsc cannot see) · `npm run qa` **44/44** · `npm run visual compare m0-final wave1-s1` **0.000%** on 6 captures · `test:e2e:local` 42 passed / **4 failed** (all in `sessions`' two new specs, handed back) · pushed; **draft PR #12** open so CI runs per push |
 
 **Lead decisions and findings during the wave (not re-litigations):**
 

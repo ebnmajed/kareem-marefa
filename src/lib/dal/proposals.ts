@@ -95,13 +95,19 @@ export interface OrgPrefs {
   numerals: NumeralSystem;
   /** A5 / OQ-021. The proposer is the (max + 1)th presenter, not an extra. */
   maxCoPresenters: number;
+  /** OQ-018. A session happens in a room; its clock is the org's, not the reader's. */
+  timeZone: string;
 }
 
 export async function getOrgPrefs(locale: string): Promise<OrgPrefs> {
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("org_settings").select("numerals, max_co_presenters").eq("org_id", session.orgId).maybeSingle();
+  const { data, error } = await supabase.from("org_settings").select("numerals, max_co_presenters, time_zone").eq("org_id", session.orgId).maybeSingle();
   if (error) throw new Error(`org_settings: ${error.message}`);
-  return { numerals: (data?.numerals as NumeralSystem) ?? "western", maxCoPresenters: data?.max_co_presenters ?? 4 };
+  return {
+    numerals: (data?.numerals as NumeralSystem) ?? "western",
+    maxCoPresenters: data?.max_co_presenters ?? 4,
+    timeZone: data?.time_zone ?? "Asia/Riyadh",
+  };
 }
 
 /**

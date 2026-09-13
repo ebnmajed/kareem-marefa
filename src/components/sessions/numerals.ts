@@ -22,3 +22,18 @@ export function formatNumber(value: number, numerals: NumeralSystem): string {
   }
   return f.format(value);
 }
+
+/**
+ * A date and time in the org's numeral system and time zone (REQ-INT-003,
+ * REQ-INT-006, OQ-018).
+ *
+ * The time zone is the org's, not the reader's: a session happens in a room,
+ * and «٦:٠٠ م» has to mean the clock on that room's wall whoever is looking.
+ */
+export function formatDateTime(iso: string, numerals: NumeralSystem, timeZone: string, locale = "ar"): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic" ? "arab" : "latn"}`, {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone,
+  }).format(new Date(iso));
+}
