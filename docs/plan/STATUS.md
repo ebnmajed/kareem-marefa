@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `main` @ `214124c` · **Phase:** **M0 in progress**
+**Last updated:** 2026-09-13 · **Branch:** `m0/foundation` @ `0e969fa` (from `main` @ `335bde2`) · **Phase:** **M0 in progress — waiting on the owner's approval of the step-1 plan**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -112,7 +112,9 @@ This is the way to run one-off SQL against production.
 | ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ✅ **local Supabase running** — 12 containers healthy, both migrations apply to a clean DB. $0 |
 | Playwright, jsdom, `@testing-library` | ⬜ |
 | GitHub Actions with the four blocking gates | ✅ done (DEC-028) — 7 jobs; `policy-diff` written and self-tested |
-| Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
+| Monorepo restructure | ✅ done (DEC-029) — the app stays at the root; nothing moves |
+| **Font work** (`REQ-DSG-016`, `REQ-INT-009`) | ⬜ **plan presented, awaiting owner approval** — see *This session* |
+| Visual diff of the frozen routes (`npm run visual`) | ✅ done — baseline captured at `.qa-shots/visual/m0-before`, deterministic at 0.000% |
 | **Shaping-parity harness (Tiers A and B)** | ✅ done (DEC-024) — `npm run parity`, 7 cases, green, and proven able to fail |
 | graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ |
 | Credential-free converter app | ⬜ |
@@ -141,7 +143,11 @@ plugs into the same seven cases.
 
 ## Waiting on the owner
 
-**Nothing.** Both items that were waiting on the owner are done:
+**One thing: approval of the M0 step-1 plan** (restructure + font work), presented at the end of
+the 2026-09-13 session and summarised under *This session* below. The owner asked that no file be
+moved before approval. Steps 2–6 of M0 are sequenced after it and have not been started.
+
+Both earlier items are done:
 
 - ~~Install Docker~~ — it was already installed (DEC-026); an earlier check conflated "daemon not
   running" with "not installed".
@@ -175,52 +181,72 @@ to be pristine history.
   `ap-southeast-1`) remains in force and nothing is blocked on it. Worth revisiting before real
   member data exists, since it is a configuration change now and a data migration later.
 
-## This session — the plan landed on `main`
+## This session — `main` verified deployable; M0 opened on `m0/foundation`
 
-Short session, no application code. Three things happened that the plan does not record.
+**1. `main` is confirmed deployable.** The unverified item the previous session left behind is
+closed. Checked with `gh` and the GitHub deployments API on 2026-09-13:
 
-**1. `main` now carries everything.** `main` was fast-forwarded `e53c3e5 → ef313e0` and pushed —
-**69 files**, the first time the plan set, `.github/workflows/ci.yml`, `packages/designer-runtime`
-and the parity harness (fonts and goldens included) have existed on `main` at all. It was a clean
-`--ff-only`; nothing was merged or rebased.
+- CI: the four most recent pushes to `main` (`ef313e0` … `335bde2`) all `success`; on `335bde2`
+  every one of the seven jobs passed, including `frozen routes (qa)` and `shaping parity`.
+- Vercel: the Production deployment for `335bde2` reports `success`; the GitHub commit status
+  from Vercel reads "Deployment has completed".
+- The live domain answers: `/` → 307 to `/ar`; `/ar`, `/en`, `/ar/register` 200 `text/html`;
+  `/og.png` 200 `image/png`.
 
-> **Unverified, deliberately:** the CI run and the Vercel deploy triggered by that push were **not
-> observed**. `npm run qa` is green locally, but "`main` stays deployable" (invariant 4,
-> `REQ-NFR-019`) has not been confirmed *on* `main` since the merge. **Check this first.**
+**2. Branch `m0/foundation` opened** from `main` @ `335bde2`. M0 finishes on it and lands as a PR;
+nothing is pushed to `main` directly.
 
-**2. Ten constellation assets were committed** (`3d43108`) — see *Where we are*. Two things about
-that commit the next session should not try to tidy:
+**3. `npm run visual` — the visual diff the roadmap asks for** (`scripts/visual-diff.mjs`,
+`REQ-NFR-019`). `capture <name>` snapshots `/ar`, `/en`, `/ar/register` at 390 and 1440 px against
+the QA stub; `compare <a> <b>` diffs them with the parity harness's in-browser routine, threshold
+0.1%. **Baseline captured at `.qa-shots/visual/m0-before`** (gitignored; two captures of the same
+build differ by 0.000%, so recapturing from `main` reproduces it). One trap, fixed: a full-page
+screenshot never un-skips `content-visibility: auto` sections, so the first capture had three
+solid-navy chapters and would have passed any diff. The capture now forces them visible and
+**refuses** a capture with a skipped section or text at opacity 0.
 
-- **Its message does not follow the convention** — `Add constellation assets`, no type, no scope,
-  no `Refs:`. The owner instructed explicitly that it be left as is and **not amended**. It is now
-  on `main` and pushed; rewriting it would rewrite public history.
-- **Nothing references the files.** The word *constellation* appears in `src/app/[locale]/page.tsx`,
-  `src/app/globals.css`, `src/components/network-gl.tsx` and `scripts/qa.mjs`, but **no code loads
-  any of the ten paths** — verified by grepping for `constellation*.{png,svg}`. They are ~1.1 MB of
-  committed art awaiting a use. Do not assume the hero already serves them.
+**4. Fact that settles the font plan:** the three Arabic `.woff2` files production serves today
+hash-match the committed parity manifest (`scripts/parity/fonts/manifest.json`) exactly —
+`4ed189e8…`, `0ccee444…`, `bf2b68e7…`. The manifest already *is* production's font set.
 
-**3. A shared Claude Code configuration was added** (`ea7eade`, hardened in `214124c`) — tracked
-`.claude/settings.json` and `.claude/hooks/task-gate.sh`, plus `.worktreeinclude`. **Recorded in
-full as DEC-030, including four gotchas — read that entry before touching the hook.** The one with
-teeth: the gate runs `npm run qa` on every task completion, so task closure now costs a full QA
-pass, and its lock is best-effort rather than a hard gate.
+**5. The step-1 plan, as presented (awaiting approval):**
 
-**Branch hygiene:** `docs/implementation-plan` still exists locally and on `origin`, now **2 commits
-behind `main`** and fully contained in it. It can be deleted whenever the owner wants; nothing
-depends on it.
+- **Restructure: nothing moves.** DEC-029 is done and not re-litigated. The rest of M0 is
+  additive: `packages/fonts/` (the manifest), `worker/`, `converter/`, `tests/e2e/`,
+  `tests/components/`. The only path that changes is `scripts/parity/fonts/` → `packages/fonts/`,
+  with the harness and the CI `parity` job updated in the same commit. `src/`, `public/`,
+  `supabase/`, `scripts/qa.mjs` and Vercel's root directory are untouched.
+- **Font work, Option A (recommended):** the app keeps `next/font/google` as `10` §4.1 specifies.
+  `packages/fonts/` becomes `ENT-fonts` in the repo: `manifest.json` plus `{sha256}.woff2`, the
+  exact bytes `next/font` emits, so **the live site is byte-identical** and the visual diff is
+  expected at 0.000%. LibreOffice cannot read woff2, so each `.ttf` is derived losslessly from
+  its woff2 (fontTools) with both hashes recorded. A new `scripts/fonts-check.mjs` CI gate
+  rebuilds, re-extracts and fails on any hash not in the manifest; each Docker image verifies the
+  hashes it installs at build. This is the `REQ-DSG-016` gate without a live-site change.
+- **Font work, Option B (not recommended for M0):** switch to `next/font/local` over a pinned
+  upstream IBM Plex release with our own subsetting (keeping `rlig`/`mark`/`mkmk`). Removes Google
+  from the build but changes every served font byte, needs a `DECISIONS.md` entry superseding
+  `10` §4.1's "as shipping today", a non-zero visual diff to review, and an `/en` LCP measurement.
 
-**Stale lines fixed in this file:** the header still said branch `docs/implementation-plan`; the
-verification table still said `scripts/qa.mjs` **fails** when DEC-023 had already fixed it to 44/44;
-the documents table still said DEC-001…**028** when DEC-029 existed. Assume other numbers in this
-file drift the same way — trust the commit, not the summary.
+**Verification this session:** `npm run qa` 44/44 on the branch; `npm run build` clean;
+`src/`, `public/`, `supabase/` untouched (`git diff main --stat` shows only `package.json` and
+`scripts/visual-diff.mjs`).
+
+**Not done, deliberately:** M0 steps 2–6 (Playwright/jsdom/testing-library; graphile-worker on Fly
+with the probe; the converter; Radix + inline SVGs; `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`) — the
+owner sequenced them after step 1's approval. `flyctl` is **not installed** on this machine, which
+step 3 will need. `docs/implementation-plan` still exists locally and on `origin`; nothing depends
+on it.
 
 ## Next session should
 
 1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md`.
-2. **Confirm CI and the Vercel deploy are green on `main`** after the merge above — that is the
-   one unverified thing this session left behind.
-3. Start **M0** (`14-roadmap.md`). The monorepo restructure is **done** (DEC-029); the **font work**
-   is the remaining live-site item and still wants a visual diff before and after.
-4. Cite a `REQ-*` ID in every commit that touches an entity, policy, screen, job or notification.
-5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
-6. Update this file before finishing.
+2. Check out `m0/foundation`. **Read the owner's answer to the step-1 plan** above; if Option B
+   was chosen, append the `DECISIONS.md` entry before touching `src/lib/fonts.ts`.
+3. Do step 1, then `npm run visual capture m0-after` and `npm run visual compare m0-before
+   m0-after` — recapture `m0-before` from `main` first if `.qa-shots/visual/` is gone.
+4. Then steps 2–6 in the owner's order, small conventional commits, `npm run qa` green before
+   each, `Refs:` trailers on every commit.
+5. Open the PR to `main` when M0 is complete. Do not push to `main` directly.
+6. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
+7. Update this file before finishing.
