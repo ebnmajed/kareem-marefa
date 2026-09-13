@@ -170,7 +170,39 @@ nothing lost:** `d42bcf1` also carries `tests/e2e/checkin.spec.ts`
 (`checkin`'s file, staged by them between my `add` and `commit`), and
 `5c4f97f` also carries the lead's rename of three proposed SQL files into
 `supabase/migrations/0013–0015`. Both are exactly what they say, just
-attributed under my commit message rather than the right one.
+attributed under my commit message rather than the right one. A third:
+`e4bbe64` (`sessions`'s) carries my fix in §7.1 below, same shared-index
+race, same non-issue for content.
+
+### 6.1 — Two real bugs found once the event page actually existed (`c81f4af`)
+
+Both caught by looking at the real page and running `tests/e2e/event-comments.spec.ts`
+against it, not by inspection:
+
+1. **Duplicate headings.** The page wraps every slot in its own
+   `<section aria-labelledby>` + `<h2>` ("التعليقات" / "التقييم" —
+   `commentsLabel`/`ratingLabel`, `sessions`'s copy). `Comments` and
+   `Ratings` also rendered their own, identical `<h2>` — a screen reader
+   announces the same heading twice, and Playwright hit it immediately as a
+   strict-mode violation (two elements, one accessible name). Fixed: both
+   slots render a plain `<div>` now; the page owns the landmark and the
+   heading, matching what `09`/SCR-012 always specified (the slot renders
+   *content*, item 8 or 10, not a second copy of the section's own title).
+   `Comments` keeps its live count, now as plain text next to the list
+   rather than folded into a duplicate heading.
+2. **A comment could fail to appear for the person who just wrote it.** The
+   original design (documented in `actions.ts`'s own comment, now
+   corrected) relied entirely on the private channel's broadcast for a
+   just-written comment to render, on the theory that the poster's own
+   browser gets the broadcast back like anyone else's. That is only true
+   once the channel's subscription has finished establishing — a fresh
+   page load can lose that race against the insert it is about to make,
+   and the poster is left looking at an empty composer. Fixed: every
+   mutation (post/edit/delete/react) also calls `router.refresh()` on
+   success, independent of the broadcast, which still carries the update
+   to everyone *else* watching live. This is a correction to my own
+   earlier design, not a gap the plan left — worth being honest about
+   rather than folding quietly into "it works now".
 
 ## 7. What I have not built, and why
 
