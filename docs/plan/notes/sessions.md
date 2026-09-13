@@ -612,3 +612,22 @@ so SCR-043's four date fields show `dd/mm/yyyy, --:--` in Latin regardless of th
 `09` SCR-043 says "the date-time picker runs right-to-left". A native control cannot be made to;
 the only way to honour that line literally is a custom picker, which is not small and which nothing
 in M2 budgets for. **Flagged for the lead, not worked around.**
+
+### 12.6 Two more the captures found on my own screens
+
+- **SCR-042 had two buttons with one accessible name.** The «جاهزة للجدولة» card's control and the
+  direct-create form's submit both read «أنشئ الجلسة». A sighted reader has two headings between
+  them; someone tabbing hears the same phrase twice and cannot tell them apart (`REQ-NFR-007`). The
+  visible label stays short and the accessible name now carries the proposal's title.
+- **A native `datetime-local` cannot be made RTL.** SCR-043's four date fields render their
+  placeholder and calendar in the **browser's** locale, so they show `dd/mm/yyyy` in Latin however
+  Arabic the page is. `09` SCR-043 says "the date-time picker runs right-to-left"; honouring that
+  literally needs a custom picker, which nothing in M2 budgets for. **Left for the lead** as either
+  a `09` correction or a backlog item.
+
+### 12.7 Where a capture must not be written
+
+`test-results/` is emptied by Playwright at the **start** of every run, so in a shared tree another
+teammate's run deletes your evidence between taking it and looking at it — three of mine vanished
+between the `ls` that listed them and the read that followed. Captures go to `.qa-shots/rtl/`,
+gitignored the same way, cleared by nothing.
