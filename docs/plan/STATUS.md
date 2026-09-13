@@ -11,10 +11,16 @@
 written, plus `STATUS.md`, `DECISIONS.md` and the root `CLAUDE.md`. `node scripts/traceability.mjs`
 exits 0.
 
-**No application code has been written. Nothing in `src/`, `supabase/` or `public/` was touched,
-and the live Supabase project was not connected to.** The only file outside `docs/plan/` that this
-session created is `scripts/traceability.mjs` (the CI gate the plan specifies) and the root
-`CLAUDE.md`.
+**No application code has been written. Nothing in `src/` or `supabase/` was touched, and the live
+Supabase project was not connected to.** The only file outside `docs/plan/` that this session
+created is `scripts/traceability.mjs` (the CI gate the plan specifies) and the root `CLAUDE.md`.
+
+**`public/` is no longer untouched.** Commit `3d43108` added ten static constellation assets — four
+PNGs, four `constellation-frame-*.svg`, `constellation.svg` and `constellation-static.svg` —
+hand-authored art extracted from `src/components/network-bg.tsx`. They are **repo assets, not uploads**,
+so invariant 11 / DEC-009 (no SVG uploads, anywhere) is not affected: nothing here passes through
+the upload pipeline or renders inside the privileged headless Chromium. No route, component or
+frozen contract (`REQ-NFR-019`) references them yet — they are committed art awaiting use.
 
 **Next:** M0 — foundation and de-risking (`14-roadmap.md`). Nothing in M0 is user-visible, and the
 existing QA must stay green throughout.
@@ -77,7 +83,8 @@ rule that keeps a later session from casually rewriting a considered decision.
 | Nothing planned outside §4/§5; §4.22 only in out-of-scope | ✅ `01` §23 |
 | `npx vitest run` | ✅ **30/30 pass**, unchanged from session start |
 | `npm run build` | ✅ builds clean, unchanged from session start |
-| `src/`, `supabase/`, `public/` untouched | ✅ `git status` and `git diff` both confirm |
+| `src/`, `supabase/` untouched | ✅ `git status` and `git diff` both confirm |
+| `public/` | ⚠️ **ten static assets added** in `3d43108` — see above; invariant 11 unaffected |
 | `node scripts/qa.mjs` | ⚠️ **fails — pre-existing, see below** |
 
 ## ✅ Resolved — the three stray test rows are gone
