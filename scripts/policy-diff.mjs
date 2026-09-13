@@ -33,6 +33,17 @@ const sql = readdirSync(MIGRATIONS)
 
 const strip = (s) => s.replace(/--[^\n]*/g, '')
 
+// A relation is keyed by its bare name in `public` and by `schema.name` elsewhere
+// (`realtime.messages`, `storage.objects`), so a policy on realtime.messages is
+// never confused with a public table called `realtime`. Wave 1 (DEC-022, 03 §7.2)
+// is the first migration to policy a table outside `public`.
+const key = (schema, name) => (schema && schema !== 'public' ? `${schema}.${name}` : name)
+// Relations Supabase itself creates (`realtime.messages`, `storage.objects`) are
+// never `create table`d by a migration, so a policy 03 writes out for them is
+// not flagged as missing until a migration policies the relation — 03 §7.2
+// lands in M2, §6 in M5. Once a migration does, names must match and the
+// migration must state the grant it relies on (invariant 6), idempotently.
+
 /* ---------- what the migrations actually create ---------- */
 const inMigrations = new Map() // table -> Set(policy name)
 const rlsEnabled = new Set()
@@ -40,16 +51,17 @@ const granted = new Set()
 
 for (const { body } of sql) {
   const text = strip(body)
-  for (const m of text.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:public\.)?(\w+)/gi)) {
-    const [, name, table] = m
+  for (const m of text.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:(\w+)\.)?(\w+)/gi)) {
+    const [, name, schema, rel] = m
+    const table = key(schema, rel)
     if (!inMigrations.has(table)) inMigrations.set(table, new Set())
     inMigrations.get(table).add(name)
   }
-  for (const m of text.matchAll(/alter\s+table\s+(?:public\.)?(\w+)\s+enable\s+row\s+level\s+security/gi)) {
-    rlsEnabled.add(m[1])
+  for (const m of text.matchAll(/alter\s+table\s+(?:(\w+)\.)?(\w+)\s+enable\s+row\s+level\s+security/gi)) {
+    rlsEnabled.add(key(m[1], m[2]))
   }
-  for (const m of text.matchAll(/grant\s+[^;]*?\s+on\s+(?:table\s+)?(?:public\.)?(\w+)\s+to\s+/gi)) {
-    granted.add(m[1])
+  for (const m of text.matchAll(/grant\s+[^;]*?\s+on\s+(?:table\s+)?(?:(\w+)\.)?(\w+)\s+to\s+/gi)) {
+    granted.add(key(m[1], m[2]))
   }
 }
 
@@ -57,8 +69,9 @@ for (const { body } of sql) {
 // Policies written out as SQL in 03, and policy IDs cited as POL-<table>.<action>[.<role>]
 const doc = readFileSync(DOC, 'utf8')
 const inDoc = new Map()
-for (const m of strip(doc).matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:public\.|storage\.)?(\w+)/gi)) {
-  const [, name, table] = m
+for (const m of strip(doc).matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:(\w+)\.)?(\w+)/gi)) {
+  const [, name, schema, rel] = m
+  const table = key(schema, rel)
   if (!inDoc.has(table)) inDoc.set(table, new Set())
   inDoc.get(table).add(name)
 }
@@ -112,7 +125,7 @@ for (const table of noPolicyByDesign) {
 }
 
 for (const [table, names] of inDoc) {
-  if (EXEMPT_TABLES.has(table) || table === 'objects') continue // storage.objects lives in Supabase
+  if (EXEMPT_TABLES.has(table) || table === 'storage.objects') continue // bucket policies are M5's
   if (!inMigrations.has(table)) {
     // Only a problem once the table itself exists in a migration.
     const tableExists = sql.some(({ body }) =>
