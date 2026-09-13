@@ -162,8 +162,12 @@ test("a rejected submission keeps every word the member typed", async ({ context
   await page.getByLabel("تصنيف الموضوع").selectOption({ label: "فني" });
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("يرجى تصحيح الأخطاء التالية");
-  await expect(page.getByRole("alert")).toContainText("العنوان قصير جدًا");
+  // Scoped to the form: Next's own route announcer is also role="alert", and
+  // an unscoped getByRole("alert") is a strict-mode violation, not a bug in
+  // the page.
+  const summary = page.locator("form [role=alert]");
+  await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
+  await expect(summary).toContainText("العنوان قصير جدًا");
   // ★ The abstract survives the round trip — the form's own promise.
   await expect(page.getByLabel("نبذة عن موضوعك")).toHaveValue(abstract);
   await expect(page.getByLabel("عنوان الموضوع المقترح")).toHaveValue("ق");

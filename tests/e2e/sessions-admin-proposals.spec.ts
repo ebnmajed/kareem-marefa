@@ -130,7 +130,8 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   // Sending with the box empty is refused, and the proposal does not move.
   await card.getByRole("group").filter({ hasText: "ارفض المقترح" }).getByText("ارفض المقترح").click();
   await card.getByRole("button", { name: "أرسل" }).last().click();
-  await expect(boss.getByRole("alert")).toContainText("اكتب السبب أولًا");
+  // Scoped: Next's route announcer is also role="alert".
+  await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
   expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1`, [title])).rows[0].state).toBe("submitted");
 
   await card.getByLabel("السبب الذي سيصل صاحب المقترح").last().fill(reason);

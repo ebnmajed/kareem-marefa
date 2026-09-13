@@ -13,7 +13,19 @@ import type { Locale } from "@/i18n/routing";
 // action's job is to shape the call and turn a database refusal into a
 // message a person can read.
 
-export type ReviewState = { error: string | null; done: boolean };
+export type ReviewState = {
+  error: string | null;
+  done: boolean;
+  /**
+   * The reason as typed, handed back.
+   *
+   * ★ React 19 resets a form after its action resolves, so a rejection whose
+   * reason was rejected for being empty — or which failed for any other
+   * reason — would come back with the admin's paragraph gone. The textarea
+   * reads its `defaultValue` from here.
+   */
+  reason: string;
+};
 
 const input = z
   .object({
@@ -33,23 +45,24 @@ export async function decideProposal(locale: Locale, _prev: ReviewState, formDat
   // The reason box is named for its own decision: the three buttons share one
   // form, so a single `reason` field would hand back whichever box came first.
   const action = formData.get("action")?.toString() ?? "";
+  const typed = formData.get(`reason-${action}`)?.toString() ?? "";
   const parsed = input.safeParse({
     proposalId: formData.get("proposalId")?.toString() ?? "",
     action,
-    reason: formData.get(`reason-${action}`)?.toString().trim() || null,
+    reason: typed.trim() || null,
   });
   if (!parsed.success) {
     const reasonMissing = parsed.error.issues.some((i) => i.path[0] === "reason");
-    return { error: reasonMissing ? "reasonRequired" : "failed", done: false };
+    return { error: reasonMissing ? "reasonRequired" : "failed", done: false, reason: typed };
   }
 
   try {
     await reviewProposal(locale, parsed.data.proposalId, parsed.data.action, parsed.data.reason);
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
-    return { error: message.includes("reason_required") ? "reasonRequired" : "failed", done: false };
+    return { error: message.includes("reason_required") ? "reasonRequired" : "failed", done: false, reason: typed };
   }
 
   revalidatePath(`/${locale}/app/admin/proposals`);
-  return { error: null, done: true };
+  return { error: null, done: true, reason: "" };
 }

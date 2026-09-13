@@ -325,3 +325,25 @@ handle a presenter who has withdrawn; `REQ-SES-009` is the path for that.
 `REQ-PRO-007` asks for a directly created session to be "indistinguishable from a proposed one
 downstream, except in the audit log". The rows are identical apart from `proposal_id`, and the
 difference is carried entirely by the audit action. A test asserts both halves.
+
+---
+
+## 5. The bug only the e2e could find: React 19 resets a form after its action
+
+`tests/e2e/sessions-propose.spec.ts` "a rejected submission keeps every word the member typed"
+failed, and it was not the test. **React 19 calls `reset()` on a `<form action={…}>` once the
+action resolves.** Every uncontrolled field therefore comes back empty on a validation failure —
+so a member who mistypes a three-character title loses the 2000-character abstract they just
+wrote, and the copy that promises «بياناتك ما زالت في النموذج» becomes a lie.
+
+Nothing else in the definition of done would have caught it. `tsc`, lint, the unit tests and the
+RLS suite all pass on the broken version; the form only misbehaves in a browser, after a round
+trip, on the unhappy path.
+
+**The fix:** the action returns what was typed (`values`, `coPresenters`, and the admin's `reason`
+on SCR-041) and every field reads its `defaultValue` out of that state, so the reset restores the
+text instead of clearing it. The reason box on SCR-041 also reopens its `<details>` when a reason
+came back, or the admin would be looking at a collapsed summary and an error telling them to write
+something.
+
+**Carry this to every form in the wave** — it is not specific to proposals.

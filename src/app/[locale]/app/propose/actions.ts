@@ -19,6 +19,19 @@ export type ProposeState = {
   errors: Record<string, string>;
   /** A whole-form failure, same key space. */
   formError: string | null;
+  /**
+   * What the member typed, handed straight back.
+   *
+   * ★ React 19 RESETS a form after its action resolves. An uncontrolled
+   * textarea therefore comes back empty on a validation failure, which would
+   * throw away a 2000-character abstract and break the promise the copy makes
+   * («بياناتك ما زالت في النموذج»). The fields read their `defaultValue` from
+   * here, so the reset restores what was typed instead of clearing it.
+   * tests/e2e/sessions-propose.spec.ts found this; nothing else would have.
+   */
+  values: Record<string, string>;
+  /** The co-presenters that were ticked, for the same reason. */
+  coPresenters: string[];
 };
 
 
@@ -67,6 +80,20 @@ export async function submitProposal(locale: Locale, _prev: ProposeState, formDa
     adminNotes: optional(formData, "adminNotes"),
   };
 
+  // The picker's own list is the only source of these ids, and the same-org
+  // trigger refuses anything else at the write; parsing them here just keeps
+  // a malformed value out of the RPC.
+  const coPresenters = formData.getAll("coPresenters").map(String).filter((v) => z.uuid().safeParse(v).success);
+  const typed: Record<string, string> = {
+    title: raw.title,
+    abstract: raw.abstract,
+    categoryId: raw.categoryId,
+    level: raw.level,
+    targetAudience: raw.targetAudience ?? "",
+    expectedDurationMinutes: duration ?? "",
+    adminNotes: raw.adminNotes ?? "",
+  };
+
   const parsed = proposalInput.safeParse(raw);
   if (!parsed.success) {
     const errors: Record<string, string> = {};
@@ -78,13 +105,8 @@ export async function submitProposal(locale: Locale, _prev: ProposeState, formDa
     }
     // The member's text stays in the form — a 2000-character abstract must
     // never be thrown away by a validation round trip.
-    return { errors, formError: null };
+    return { errors, formError: null, values: typed, coPresenters };
   }
-
-  // The picker's own list is the only source of these ids, and the same-org
-  // trigger refuses anything else at the write; parsing them here just keeps
-  // a malformed value out of the RPC.
-  const coPresenters = formData.getAll("coPresenters").map(String).filter((v) => z.uuid().safeParse(v).success);
 
   const submit = formData.get("intent")?.toString() !== "draft";
   let created: { id: string };
@@ -92,9 +114,9 @@ export async function submitProposal(locale: Locale, _prev: ProposeState, formDa
     created = await createProposal(locale, parsed.data, submit, coPresenters);
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
-    if (message.includes("too_many_presenters")) return { errors: { coPresenters: "coPresentersTooMany" }, formError: null };
-    if (message.includes("presenter_not_in_org")) return { errors: { coPresenters: "coPresentersUnknown" }, formError: null };
-    return { errors: {}, formError: "failed" };
+    if (message.includes("too_many_presenters")) return { errors: { coPresenters: "coPresentersTooMany" }, formError: null, values: typed, coPresenters };
+    if (message.includes("presenter_not_in_org")) return { errors: { coPresenters: "coPresentersUnknown" }, formError: null, values: typed, coPresenters };
+    return { errors: {}, formError: "failed", values: typed, coPresenters };
   }
 
   // Outside the try: redirect() signals by throwing, and catching it here

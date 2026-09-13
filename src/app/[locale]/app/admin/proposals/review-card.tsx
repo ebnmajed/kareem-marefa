@@ -46,8 +46,8 @@ export function ReviewCard({
           <Button type="submit" name="action" value="approve" disabled={pending}>
             {t("approve")}
           </Button>
-          <Reason label={t("requestChanges")} decision="request_changes" pending={pending} />
-          <Reason label={t("reject")} decision="reject" pending={pending} />
+          <Reason label={t("requestChanges")} decision="request_changes" pending={pending} typed={state.reason} />
+          <Reason label={t("reject")} decision="reject" pending={pending} typed={state.reason} />
         </div>
       </form>
     </li>
@@ -69,11 +69,11 @@ export function ReviewCard({
  * reason is enforced in the action and again in `review_proposal()`, which is
  * where it has to hold anyway.
  */
-function Reason({ label, decision, pending }: { label: string; decision: Decision; pending: boolean }) {
+function Reason({ label, decision, pending, typed }: { label: string; decision: Decision; pending: boolean; typed: string }) {
   const t = useTranslations("admin.proposals");
   const id = `${decision}-reason`;
   return (
-    <details className="w-full">
+    <details className="w-full" open={typed !== ""}>
       <summary className="inline-flex h-12 cursor-pointer list-none items-center rounded-field border border-edge-strong px-6 text-label text-fg-heading hover:bg-silver-100">
         {label}
       </summary>
@@ -87,6 +87,7 @@ function Reason({ label, decision, pending }: { label: string; decision: Decisio
           name={`reason-${decision}`}
           rows={3}
           maxLength={2000}
+          defaultValue={typed}
           className="mt-2 block min-h-24 w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading"
         />
         <Button type="submit" name="action" value={decision} variant="secondary" className="mt-3" disabled={pending}>

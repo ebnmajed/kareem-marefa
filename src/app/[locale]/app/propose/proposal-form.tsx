@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { ProposeState } from "./actions";
+import { emptyProposeState } from "./state";
 
 // SCR-017's form. A client component only because it renders field errors
 // from `useActionState`; everything it needs is passed in, so it holds no
@@ -76,7 +77,7 @@ export function ProposalForm({
   maxCoPresentersLabel: string;
 }) {
   const t = useTranslations("proposals.propose");
-  const [state, formAction, pending] = useActionState(action, { errors: {}, formError: null });
+  const [state, formAction, pending] = useActionState(action, emptyProposeState);
   const summary = useRef<HTMLDivElement>(null);
   const failed = Object.keys(state.errors).length > 0 || state.formError !== null;
 
@@ -88,6 +89,10 @@ export function ProposalForm({
   }, [failed, state]);
 
   const err = (field: string) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : null);
+  // ★ React 19 resets a form once its action resolves, so every field reads
+  // its value back out of the returned state. Without this a failed
+  // validation empties the abstract the member just spent five minutes on.
+  const was = (field: string) => state.values[field] ?? "";
   const aria = (name: string, hinted = true) => ({
     "aria-describedby": [state.errors[name] ? `${name}-error` : null, hinted ? `${name}-hint` : null].filter(Boolean).join(" ") || undefined,
     "aria-invalid": state.errors[name] ? true : undefined,
@@ -110,15 +115,15 @@ export function ProposalForm({
       </div>
 
       <Field name="title" label={t("form.titleLabel")} hint={t("form.titleHint")} error={err("title")}>
-        <input id="title" name="title" required maxLength={150} className={FIELD} {...aria("title")} />
+        <input id="title" name="title" required maxLength={150} defaultValue={was("title")} className={FIELD} {...aria("title")} />
       </Field>
 
       <Field name="abstract" label={t("form.abstractLabel")} hint={t("form.abstractHint")} error={err("abstract")}>
-        <textarea id="abstract" name="abstract" required maxLength={2000} rows={5} className={AREA} {...aria("abstract")} />
+        <textarea id="abstract" name="abstract" required maxLength={2000} rows={5} defaultValue={was("abstract")} className={AREA} {...aria("abstract")} />
       </Field>
 
       <Field name="categoryId" label={t("form.categoryLabel")} error={err("categoryId")}>
-        <select id="categoryId" name="categoryId" required defaultValue="" className={FIELD} {...aria("categoryId", false)}>
+        <select id="categoryId" name="categoryId" required defaultValue={was("categoryId")} className={FIELD} {...aria("categoryId", false)}>
           <option value="" disabled>
             {t("form.categoryPlaceholder")}
           </option>
@@ -131,7 +136,7 @@ export function ProposalForm({
       </Field>
 
       <Field name="level" label={t("form.levelLabel")} error={err("level")}>
-        <select id="level" name="level" required defaultValue="introductory" className={FIELD} {...aria("level", false)}>
+        <select id="level" name="level" required defaultValue={was("level") || "introductory"} className={FIELD} {...aria("level", false)}>
           <option value="introductory">{t("form.levelIntroductory")}</option>
           <option value="intermediate">{t("form.levelIntermediate")}</option>
           <option value="advanced">{t("form.levelAdvanced")}</option>
@@ -145,7 +150,7 @@ export function ProposalForm({
         error={err("targetAudience")}
         optionalLabel={t("form.optional")}
       >
-        <input id="targetAudience" name="targetAudience" maxLength={300} className={FIELD} {...aria("targetAudience")} />
+        <input id="targetAudience" name="targetAudience" maxLength={300} defaultValue={was("targetAudience")} className={FIELD} {...aria("targetAudience")} />
       </Field>
 
       <Field
@@ -169,6 +174,7 @@ export function ProposalForm({
             max={480}
             step={5}
             dir="ltr"
+            defaultValue={was("expectedDurationMinutes")}
             className={`${FIELD} mt-0 w-32 text-center`}
             {...aria("expectedDurationMinutes")}
           />
@@ -195,7 +201,14 @@ export function ProposalForm({
             {members.map((m) => (
               <li key={m.id}>
                 <label className="flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body hover:bg-silver-100">
-                  <input type="checkbox" name="coPresenters" value={m.id} disabled={maxCoPresenters === 0} className="size-5" />
+                  <input
+                    type="checkbox"
+                    name="coPresenters"
+                    value={m.id}
+                    defaultChecked={state.coPresenters.includes(m.id)}
+                    disabled={maxCoPresenters === 0}
+                    className="size-5"
+                  />
                   <span>
                     <bdi>{m.displayName}</bdi>
                     {m.jobTitle ? <span className="text-fg-muted"> · <bdi>{m.jobTitle}</bdi></span> : null}
@@ -211,7 +224,7 @@ export function ProposalForm({
       </fieldset>
 
       <Field name="adminNotes" label={t("form.notesLabel")} hint={t("form.notesHint")} error={err("adminNotes")} optionalLabel={t("form.optional")}>
-        <textarea id="adminNotes" name="adminNotes" maxLength={2000} rows={3} className={AREA} {...aria("adminNotes")} />
+        <textarea id="adminNotes" name="adminNotes" maxLength={2000} rows={3} defaultValue={was("adminNotes")} className={AREA} {...aria("adminNotes")} />
       </Field>
 
       <div className="flex flex-wrap items-center gap-3">
