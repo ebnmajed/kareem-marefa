@@ -10,6 +10,9 @@ import { formatNumber } from "@/components/sessions/numerals";
 // before completion for anyone but the presenter/staff, and nothing at all
 // for a member who never checked in (SCR-012: "for checked-in attendees
 // only") — the CTA appearing at all is already the signal.
+//
+// No <section>/<h2> of its own — same reason as comments.tsx: the event
+// page already wraps this slot in its own landmark and "التقييم" heading.
 export async function Ratings({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("ratings");
   const { eligibility, isPresenter, isStaff, aggregate, countForWithheld, minAggregate, numerals } = await getRatingsSummary(locale, sessionId);
@@ -20,11 +23,7 @@ export async function Ratings({ sessionId, locale }: SlotProps) {
   if (!showPresenterBlock && !showRaterBlock) return null;
 
   return (
-    <section aria-labelledby="event-ratings-heading">
-      <h2 id="event-ratings-heading" className="text-h2 text-fg-heading">
-        {t("section.heading")}
-      </h2>
-
+    <div>
       {showPresenterBlock ? (
         <div className="mt-3">
           <h3 className="text-label text-fg-heading">{t("presenter.heading")}</h3>
@@ -86,6 +85,6 @@ export async function Ratings({ sessionId, locale }: SlotProps) {
           )}
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }

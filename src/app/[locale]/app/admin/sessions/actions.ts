@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createSessionDirect, createSessionFromProposal, directSessionInput } from "@/lib/dal/sessions";
+import { createSessionDirect, createSessionFromProposal, directSessionInput, transitionSession, type SessionAction } from "@/lib/dal/sessions";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 
@@ -44,4 +44,39 @@ export async function makeSessionDirectly(locale: Locale, _prev: CreateSessionSt
   // `return` because next-intl's redirect is destructured, so TypeScript does
   // not read it as never-returning.
   return redirect({ href: { pathname: "/app/admin/sessions", query: { created: id } }, locale });
+}
+
+export type TransitionState = { error: string | null };
+
+/**
+ * An admin's manual transition (REQ-SES-005). Every check that matters is in
+ * `transition_session()`: it re-reads the caller against `claims_version`,
+ * refuses anyone who is not a fresh admin of the session's own org, accepts
+ * only 02 §6.2's edges, and refuses a cancellation with no written reason.
+ * This action shapes the call and names the refusal.
+ */
+export async function runTransition(locale: Locale, sessionId: string, _prev: TransitionState, formData: FormData): Promise<TransitionState> {
+  const parsed = z
+    .object({
+      action: z.enum(["start", "complete", "cancel", "archive", "reopen"]),
+      reason: z.string().trim().max(2000).nullable(),
+    })
+    .strict()
+    .refine((v) => v.action !== "cancel" || (v.reason !== null && v.reason.length > 0), { path: ["reason"] })
+    .safeParse({
+      action: formData.get("action")?.toString() ?? "",
+      reason: formData.get("reason")?.toString().trim() || null,
+    });
+  if (!parsed.success) {
+    return { error: parsed.error.issues.some((i) => i.path[0] === "reason") ? "cancelReasonRequired" : "actionFailed" };
+  }
+
+  try {
+    await transitionSession(locale, sessionId, parsed.data.action as SessionAction, parsed.data.reason);
+  } catch {
+    return { error: "actionFailed" };
+  }
+  revalidatePath(`/${locale}/app/admin/sessions`);
+  revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+  return { error: null };
 }

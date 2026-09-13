@@ -477,3 +477,32 @@ itself, because `check_in_codes` is `checkin`'s. `complete_session` enqueues **n
 fan-out jobs are M3, M4 and M6, and graphile-worker permanently fails a job whose task name has no
 handler, so enqueuing them now would turn every completed session into a stuck job and a false
 alert. The task's comment is the list each milestone adds itself to.
+
+---
+
+## 9. STORY-SES-002 — manual transitions and archiving
+
+**Covers:** `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-010`, `REQ-SES-012` · **Screen:** SCR-042
+
+`transition_session(session, action, reason)` — start · complete · cancel · archive · reopen —
+definer over `assert_fresh_admin()`, accepting only `02` §6.2's edges, writing one manual
+transition row and one audit row per move, and closing the check-in window on complete **and** on
+cancel because there is nothing left to attend.
+
+`reopen` is `archived → completed`. The frozen diagram gives `cancelled` **no outgoing edge at
+all**, so a cancelled session is not reopened — it is superseded by a new one. A test pins that all
+four other actions are refused on a cancelled session.
+
+### 9.1 Why the edge set is in the function and not in a trigger — the opposite of proposals
+
+For `proposals` I argued the guard had to be a **trigger**, because `03` §5.2b deliberately lets a
+member submit with a plain PostgREST update, so anything in an RPC would have been optional.
+
+`sessions.state` is the other case. It is in **no grant** — `grant update (title, abstract, level,
+language)` is the whole of an authenticated user's write — so there is no PostgREST path to the
+column, and every writer is already a definer function this track owns: `create_session`,
+`publish_session`, the two clock functions and this one. A table-level guard would still be the
+stronger statement and I would like one, but it would begin refusing the direct
+`update … set state` that fixtures and tests across all three tracks use to arrange a scenario.
+That is a change to make deliberately at the **start** of a wave, not at its gate. **`0008` is
+where it goes; I have not written it, on purpose.**

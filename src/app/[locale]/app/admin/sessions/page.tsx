@@ -4,8 +4,9 @@ import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, listCategories, listNameableMembers } from "@/lib/dal/proposals";
-import { listSchedulableProposals, listSessionsForAdmin } from "@/lib/dal/sessions";
-import { makeSessionDirectly, makeSessionFromProposal } from "./actions";
+import { actionsFor, listSchedulableProposals, listSessionsForAdmin } from "@/lib/dal/sessions";
+import { makeSessionDirectly, makeSessionFromProposal, runTransition } from "./actions";
+import { SessionControls } from "./session-controls";
 import { DirectSessionForm } from "./direct-session-form";
 
 // SCR-042 · /app/admin/sessions — session management.
@@ -112,6 +113,14 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
                     {s.fromProposal ? t("fromProposal") : t("directBadge")}
                     {declined ? ` · ${t("presenterDeclined")}` : pending ? ` · ${t("presenterPending")}` : ""}
                   </p>
+                  <p className="mt-2 text-body-sm">
+                    <Link href={`/app/admin/sessions/${s.id}/schedule`} className="text-fg-heading underline underline-offset-4">
+                      {t("schedule")}
+                    </Link>
+                  </p>
+                  {/* REQ-SES-005: start, complete, cancel, archive, reopen —
+                      only the edges 02 §6.2 allows from this state. */}
+                  <SessionControls action={runTransition.bind(null, locale as Locale, s.id)} actions={actionsFor(s.state)} />
                 </li>
               );
             })}

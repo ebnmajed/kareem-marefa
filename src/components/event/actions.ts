@@ -11,13 +11,19 @@ import { reportComment, reportCommentInput } from "@/lib/dal/reports";
 //
 // UI update strategy, stated once here rather than left implicit: these
 // actions do NOT return the written row and the client does NOT patch its
-// own state optimistically. The event page's own private channel (03 §7.4)
-// echoes every insert/edit/delete back to the poster's own browser like
-// everyone else's, so there is exactly one code path that renders a
-// comment — the realtime handler — instead of one for "mine, just now" and
-// a second for "someone else's, from the wire" that could drift apart. A
-// fresh page load is correct regardless (REQ-EVT-015's DEC-020 fallback),
-// since it always reads through listComments().
+// own state by hand. Two things make the result visible instead, for two
+// different audiences: the private channel's broadcast (03 §7.4) is what
+// everyone ELSE watching the page sees live, and the caller
+// (comment-composer.tsx, comment-item.tsx) calls `router.refresh()` after a
+// successful action so the ACTOR sees their own result immediately without
+// depending on a websocket subscription having finished establishing yet.
+// Relying on the broadcast alone for the actor's own copy was tried first
+// and found wanting — tests/e2e/event-comments.spec.ts caught a real case
+// of a fresh page load racing its own subscribe() against the insert it was
+// about to make, leaving the poster looking at an empty composer with
+// nothing to show for it. A fresh page load is correct regardless
+// (REQ-EVT-015's DEC-020 fallback), since it always reads through
+// getCommentsPageData().
 
 export type ActionResult = { error: string | null };
 

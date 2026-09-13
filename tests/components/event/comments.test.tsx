@@ -37,30 +37,30 @@ const emptyPage: CommentsPageData = {
 };
 
 describe("Comments slot", () => {
-  it("shows the empty-thread heading with no count when there are no comments", async () => {
+  it("renders no heading of its own — the event page already provides one (a real duplicate-heading bug this pins)", async () => {
     vi.mocked(getCommentsPageData).mockResolvedValue({ ...emptyPage });
     render(await Comments({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByRole("heading", { name: "التعليقات" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
-  it("appends the Arabic plural count next to the heading, and passes every comment through", async () => {
+  it("shows the Arabic plural count as plain text, and passes every comment through", async () => {
     const comments = [
       { id: "c1", sessionId, parentId: null, author: { id: "a1", displayName: "سارة", avatarUrl: null }, body: "س", mentions: [], createdAt: "now", editedAt: null, deletedAt: null, isMine: false, canEditNow: false, isStaffViewer: false },
       { id: "c2", sessionId, parentId: null, author: { id: "a2", displayName: "يمان", avatarUrl: null }, body: "ي", mentions: [], createdAt: "now", editedAt: null, deletedAt: null, isMine: false, canEditNow: false, isStaffViewer: false },
     ];
     vi.mocked(getCommentsPageData).mockResolvedValue({ ...emptyPage, comments });
     render(await Comments({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByRole("heading")).toHaveTextContent("التعليقات · تعليقان");
+    expect(screen.getByText("تعليقان")).toBeInTheDocument();
     expect(screen.getByTestId("comment-list")).toHaveAttribute("data-count", "2");
   });
 
-  it("a soft-deleted comment does not count toward the visible total", async () => {
+  it("a soft-deleted comment does not count toward the visible total, and no count renders at zero", async () => {
     const comments = [
       { id: "c1", sessionId, parentId: null, author: { id: "a1", displayName: "سارة", avatarUrl: null }, body: "س", mentions: [], createdAt: "now", editedAt: null, deletedAt: "now", isMine: false, canEditNow: false, isStaffViewer: false },
     ];
     vi.mocked(getCommentsPageData).mockResolvedValue({ ...emptyPage, comments });
     render(await Comments({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByRole("heading", { name: "التعليقات" })).toBeInTheDocument();
+    expect(screen.queryByText(/تعليق/)).not.toBeInTheDocument();
   });
 
   it("passes `frozen` through for a cancelled session (REQ-SES-010)", async () => {

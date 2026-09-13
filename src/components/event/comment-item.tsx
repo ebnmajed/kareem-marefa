@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -40,6 +41,7 @@ export function CommentItem({
 }) {
   const t = useTranslations("event.comments");
   const format = useFormatter();
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export function CommentItem({
         return;
       }
       setEditing(false);
+      router.refresh(); // see comment-composer.tsx — the actor's own copy must not wait on the realtime echo
     });
   }
 
@@ -68,6 +71,7 @@ export function CommentItem({
     startTransition(async () => {
       const result = await deleteMyCommentAction(locale, comment.id);
       if (result.error) setError(result.error);
+      else router.refresh();
     });
   }
 
@@ -75,6 +79,7 @@ export function CommentItem({
     startTransition(async () => {
       const result = await moderateCommentAction(locale, comment.id, action);
       if (result.error) setError(result.error);
+      else router.refresh();
     });
   }
 
@@ -82,6 +87,7 @@ export function CommentItem({
     startTransition(async () => {
       const result = await toggleReactionAction(locale, comment.id, "like");
       if (result.error) setError(result.error);
+      else router.refresh();
     });
   }
 

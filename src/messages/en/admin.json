@@ -72,7 +72,20 @@
         "cancelled": "Cancelled"
       },
       "failed": "That session could not be created — try again.",
-      "invalid": "Check the required fields: title, description and category."
+      "invalid": "Check the required fields: title, description and category.",
+      "actionsLabel": "Admin actions",
+      "schedule": "Schedule and publish",
+      "start": "Start the session now",
+      "complete": "End the session",
+      "archive": "Archive",
+      "reopen": "Bring back from the archive",
+      "cancel": "Cancel the session",
+      "cancelReasonLabel": "The reason attendees will read",
+      "cancelReasonHint": "Everyone who reserved a seat sees this, and it stays on the session's page.",
+      "cancelSend": "Confirm the cancellation",
+      "actionFailed": "That action could not be carried out — try again.",
+      "cancelReasonRequired": "Write the reason for cancelling first.",
+      "completeNote": "Ending early closes check-in immediately."
     },
     "schedule": {
       "title": "Schedule and publish",

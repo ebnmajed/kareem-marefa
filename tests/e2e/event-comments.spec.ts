@@ -1,0 +1,143 @@
+// The Comments slot inside the real event page (SCR-012 item 8), against
+// REAL local Supabase — REQ-EVT-002, REQ-EVT-003, REQ-EVT-005. Same shape
+// as tests/e2e/event-rate.spec.ts: a service-role admin client plus raw pg
+// to seed a published session, a password sign-in with the resulting
+// cookies installed in the browser context.
+import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+import { expect, test, type BrowserContext } from "@playwright/test";
+import pg from "pg";
+
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
+const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
+const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
+test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+const PASSWORD = "correct-horse-battery-staple-9";
+
+test.describe.configure({ mode: "serial" });
+
+let admin: ReturnType<typeof createClient>;
+let db: pg.Client;
+let orgId = "";
+let domain = "";
+let userId = "";
+let email = "";
+let publishedSessionId = "";
+
+test.beforeAll(async ({}, testInfo) => {
+  admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
+  db = new pg.Client(DB_URL);
+  await db.connect();
+
+  const tag = `comments-${testInfo.workerIndex}-${Date.now()}`;
+  domain = `e2e-${tag}.example`;
+  const { rows: orgRows } = await db.query<{ id: string }>(
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة الاختبار', $1, 'EE', gen_random_uuid()) returning id`,
+    [`e2e-${tag}`],
+  );
+  orgId = orgRows[0].id;
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+  const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
+  const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [orgId]);
+
+  email = `member@${domain}`;
+  const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو الاختبار" } });
+  if (error) throw error;
+  userId = data.user.id;
+
+  const { rows: sessionRows } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, rsvp_deadline_at, state, published_at)
+     values ($1, 'جلسة منشورة للاختبار', 'ملخص الجلسة', $2, 'introductory', now() + interval '2 days', 60, now() + interval '2 days' + interval '1 hour', $3, 30, now() + interval '1 day', 'published', now())
+     returning id`,
+    [orgId, catRows[0].id, venueRows[0].id],
+  );
+  publishedSessionId = sessionRows[0].id;
+});
+
+test.afterAll(async () => {
+  if (userId) await admin.auth.admin.deleteUser(userId);
+  if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
+  await db.end();
+});
+
+async function signIn(context: BrowserContext) {
+  const jar: { name: string; value: string }[] = [];
+  const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
+    cookies: {
+      getAll: () => jar,
+      setAll: (list) => {
+        for (const { name, value } of list) jar.push({ name, value });
+      },
+    },
+  });
+  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  if (error) throw error;
+  const { data: envelope, error: rpcError } = await client.rpc("provision_member");
+  if (rpcError) throw rpcError;
+  expect(["provisioned", "member"]).toContain((envelope as { status: string }).status);
+  jar.length = 0;
+  await client.auth.refreshSession();
+  await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
+}
+
+test("a member with no RSVP can comment on a published session (REQ-EVT-003)", async ({ context, page }) => {
+  const { rows } = await db.query<{ id: string }>(`select id from public.rsvps where session_id = $1`, [publishedSessionId]);
+  expect(rows).toHaveLength(0); // confirms the condition this test is actually about
+
+  await signIn(context);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await expect(page.getByPlaceholder("اكتب تعليقًا…")).toBeVisible();
+
+  await page.getByPlaceholder("اكتب تعليقًا…").fill("سؤال عن الجلسة");
+  await page.getByRole("button", { name: "نشر" }).click();
+  await expect(page.getByText("سؤال عن الجلسة")).toBeVisible();
+
+  const { rows: rsvpRows } = await db.query<{ id: string }>(`select id from public.rsvps where session_id = $1`, [publishedSessionId]);
+  expect(rsvpRows).toHaveLength(0); // still no RSVP — commenting did not create one
+});
+
+test("a reply to a reply attaches to the parent thread, not a third level (REQ-EVT-002)", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+
+  // Reply to the comment from the previous test.
+  await page.getByRole("button", { name: "رد" }).first().click();
+  await page.getByPlaceholder("اكتب ردًا…").fill("إجابة أولى");
+  await page.getByRole("button", { name: "رد" }).last().click();
+  await expect(page.getByText("إجابة أولى")).toBeVisible();
+
+  // The reply itself offers no Reply action — the UI has nowhere to attach a
+  // third level, which is what "attaches to the parent thread" means in
+  // practice: there is no deeper thread to attach to. (The database refuses
+  // the attempt outright regardless — tests/rls/m2-schema.test.ts already
+  // proves that at the RLS layer; this is the UI-side half of the same
+  // requirement.)
+  const replyRow = page.locator("li", { hasText: "إجابة أولى" }).first();
+  await expect(replyRow.getByRole("button", { name: "رد" })).toHaveCount(0);
+});
+
+test("deleting a comment with replies leaves a tombstone; a reply-less comment vanishes entirely (REQ-EVT-005)", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+
+  // "سؤال عن الجلسة" now has one reply ("إجابة أولى") from the previous test.
+  const originalRow = page.locator("li", { hasText: "سؤال عن الجلسة" }).first();
+  await originalRow.getByRole("button", { name: "حذف" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
+
+  await expect(page.getByText("حُذف هذا التعليق")).toBeVisible();
+  await expect(page.getByText("إجابة أولى")).toBeVisible(); // the reply survives, readable
+
+  // A fresh, reply-less comment: delete it and it disappears outright, no tombstone.
+  await page.getByPlaceholder("اكتب تعليقًا…").fill("تعليق بلا ردود");
+  await page.getByRole("button", { name: "نشر" }).click();
+  await expect(page.getByText("تعليق بلا ردود")).toBeVisible();
+  const freshRow = page.locator("li", { hasText: "تعليق بلا ردود" }).first();
+  await freshRow.getByRole("button", { name: "حذف" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
+  await expect(page.getByText("تعليق بلا ردود")).toHaveCount(0);
+});

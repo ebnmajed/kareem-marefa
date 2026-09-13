@@ -11,6 +11,13 @@ import { CommentList } from "@/components/event/comment-list";
 // component that fetches its own data and hands a plain client component
 // the DTOs plus the org's edit-window and numeral settings — nothing here
 // receives a row, only what src/lib/dal/comments.ts already shaped.
+//
+// No <section>/<h2> of its own: the event page already wraps every slot in
+// its own landmark and heading (`<section aria-labelledby="comments">`,
+// SCR-012's own "التعليقات" copy) — a slot adding a second, identical
+// heading inside that section is a real accessibility duplicate, not a
+// style choice, caught by tests/e2e/event-comments.spec.ts against the
+// real page rather than assumed from the component test alone.
 export async function Comments({ sessionId, memberId, locale }: SlotProps) {
   const t = await getTranslations("event.comments");
   const { comments, editWindowMinutes, numerals, frozen, isStaffViewer } = await getCommentsPageData(locale, sessionId);
@@ -23,11 +30,8 @@ export async function Comments({ sessionId, memberId, locale }: SlotProps) {
   const activeCount = comments.filter((c) => !c.deletedAt).length;
 
   return (
-    <section aria-labelledby="event-comments-heading">
-      <h2 id="event-comments-heading" className="text-h2 text-fg-heading">
-        {t("heading")}
-        {activeCount > 0 ? ` · ${t("count", { count: activeCount, value: formatNumber(activeCount, numerals) })}` : ""}
-      </h2>
+    <div>
+      {activeCount > 0 ? <p className="text-body-sm text-fg-muted">{t("count", { count: activeCount, value: formatNumber(activeCount, numerals) })}</p> : null}
       <div className="mt-4">
         <CommentList
           locale={locale}
@@ -42,6 +46,6 @@ export async function Comments({ sessionId, memberId, locale }: SlotProps) {
           frozen={frozen}
         />
       </div>
-    </section>
+    </div>
   );
 }

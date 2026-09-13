@@ -15,6 +15,16 @@ vi.mock("@/components/event/actions", () => ({
   reportCommentAction: vi.fn().mockResolvedValue({ error: null }),
   toggleReactionAction: vi.fn().mockResolvedValue({ error: null }),
 }));
+// router.refresh() after a successful action (comment-item.tsx) is what
+// makes the actor's own edit/delete/react show up without waiting on the
+// realtime echo — see actions.ts's module comment for why. jsdom has no
+// app router mounted, so useRouter needs a stub — but the REST of
+// next/navigation must stay real, since @/i18n/navigation's Link (used by
+// the house Button component) is built on top of it.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 const { CommentItem } = await import("@/components/event/comment-item");
 

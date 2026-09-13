@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { postCommentAction, searchMentionsAction } from "@/components/event/actions";
@@ -32,6 +33,7 @@ export function CommentComposer({
   autoFocus?: boolean;
 }) {
   const t = useTranslations("event.comments");
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [mentioned, setMentioned] = useState<Map<string, string>>(new Map()); // id -> displayName
   const [candidates, setCandidates] = useState<MentionCandidate[]>([]);
@@ -81,6 +83,15 @@ export function CommentComposer({
       setMentioned(new Map());
       setCandidates([]);
       onPosted?.();
+      // The realtime echo (03 §7.4) is what shows this to everyone ELSE
+      // live; the poster's own copy must not depend on a websocket round
+      // trip completing, so a server-rendered refresh guarantees it — the
+      // gap this closes is real, not defensive: a subscription that has not
+      // finished establishing yet by the time the insert commits leaves the
+      // poster staring at their own empty composer with no comment to show
+      // for it (caught by tests/e2e/event-comments.spec.ts against the real
+      // page, not assumed from the component test alone).
+      router.refresh();
     });
   }
 

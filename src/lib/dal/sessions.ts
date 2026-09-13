@@ -422,3 +422,38 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     viewerIsStaff: session.role === "admin" || session.role === "moderator",
   };
 }
+
+// ── Manual transitions (SCR-042, REQ-SES-003, REQ-SES-005, REQ-SES-012) ─────
+
+export type SessionAction = "start" | "complete" | "cancel" | "archive" | "reopen";
+
+/**
+ * The actions 02 §6.2 allows from a given state.
+ *
+ * Exported so the screen and its test agree, and so the list cannot drift from
+ * `transition_session()` — which refuses anything else anyway, with the same
+ * edge set written the same way.
+ */
+export function actionsFor(state: SessionState): SessionAction[] {
+  switch (state) {
+    case "published":
+      return ["start", "cancel"];
+    case "in_progress":
+      return ["complete", "cancel"];
+    case "completed":
+      return ["archive", "cancel"];
+    case "archived":
+      return ["reopen", "cancel"];
+    case "approved":
+      return ["cancel"];
+    default:
+      return [];
+  }
+}
+
+/** An admin's manual transition (REQ-SES-005). Every check is in the RPC. */
+export async function transitionSession(locale: string, sessionId: string, action: SessionAction, reason: string | null): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("transition_session", { p_session: sessionId, p_action: action, p_reason: reason });
+  if (error) throw new Error(`transition_session: ${error.message}`);
+}
