@@ -11,9 +11,6 @@ import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-async function applyRsvpSql(tx: Tx) {
-}
-
 /** A throwaway extra member, for tests that need more bodies than the base fixture ships. */
 async function addMember(tx: Tx, org: Org, local: string, name: string): Promise<{ memberId: string; claims: Claims }> {
   const email = `${local}@${org.domain}`;
@@ -63,7 +60,6 @@ describe("POL-rsvps.insert.rpc", () => {
   it("direct insert into rsvps is rejected for member, admin and anon", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 5 });
 
@@ -93,7 +89,6 @@ describe("POL-rsvps.reserve.capacity", () => {
     // concurrent connections racing the same `for update` lock.
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const capacity = 3;
       const sessionId = await makeSession(tx, f.a, { capacity });
@@ -125,7 +120,6 @@ describe("POL-rsvps.reserve.capacity", () => {
   it("reserving twice is idempotent — one row, unchanged status", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 10 });
 
@@ -147,7 +141,6 @@ describe("POL-rsvps.reserve.deadline", () => {
   it("reserving after rsvp_deadline_at is rejected", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 10, deadlineOffsetMinutes: -1 });
 
@@ -159,7 +152,6 @@ describe("POL-rsvps.reserve.deadline", () => {
   it("promotion off an existing waitlist succeeds even after the deadline has passed (OQ-002)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       // Deadline far enough out to let both members reserve, then rewound.
       const sessionId = await makeSession(tx, f.a, { capacity: 1, deadlineOffsetMinutes: 60 });
@@ -194,7 +186,6 @@ describe("POL-rsvps.select.member", () => {
   it("member B cannot read member A's RSVP; staff and the presenter can", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx); // already an M2Fixture — f.m2.a.published has a confirmed RSVP seeded
-      await applyRsvpSql(tx);
       const owner = f.a.members[1]; // fixture-m2's `attendee`, holds the confirmed RSVP
       const presenter = f.a.members[0]; // fixture-m2's `presenter` on that session
 
@@ -220,7 +211,6 @@ describe("STORY-RSV-002 — waitlist and atomic promotion", () => {
   it("promotes the first waitlisted member, in strict join order, atomically with the cancellation", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 1 });
       const extra = await addMember(tx, f.a, "extra3", "متسابق ٣");
@@ -261,7 +251,6 @@ describe("STORY-RSV-003 — deadline and cutoff", () => {
   it("cancelling before the cutoff is 'cancelled'; after the cutoff is 'late_cancelled'", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const early = await makeSession(tx, f.a, { capacity: 5, cutoffOffsetMinutes: 60 });
       const late = await makeSession(tx, f.a, { capacity: 5, cutoffOffsetMinutes: -1 });
@@ -284,7 +273,6 @@ describe("STORY-RSV-004 — leaving the waitlist is always free", () => {
   it("a waitlisted member who cancels past the cutoff is still 'cancelled', never 'late_cancelled'", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyRsvpSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 1, cutoffOffsetMinutes: -1 });
 

@@ -80,6 +80,36 @@ export async function submitCheckIn(locale: string, sessionId: string, code: str
   return { ok: false, error: envelope.status as CheckInError, conflictSessionId: envelope.conflict_session_id };
 }
 
+export interface UncheckedAttendee {
+  memberId: string;
+  displayName: string | null;
+}
+
+/**
+ * Confirmed RSVP holders with no check-in yet, for the host view's manual
+ * mark form (REQ-CHK-008). Two reads rather than a NOT EXISTS join because
+ * PostgREST embeds don't express anti-joins — both `rsvps` and `check_ins`
+ * are staff-readable for the whole session (0010's `rsvps_read` /
+ * `checkins_read`), so this is a caller-side set difference, not a
+ * permission workaround.
+ */
+export async function listUncheckedConfirmedRsvps(locale: string, sessionId: string): Promise<UncheckedAttendee[]> {
+  const { supabase } = await sessionClient(locale);
+  const [rsvpsRes, checkInsRes] = await Promise.all([
+    supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).eq("status", "confirmed"),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+  ]);
+  if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
+  if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
+  const checkedIn = new Set((checkInsRes.data ?? []).map((c) => c.member_id));
+  return (rsvpsRes.data ?? [])
+    .filter((r) => !checkedIn.has(r.member_id))
+    .map((r) => {
+      const member = Array.isArray(r.members) ? r.members[0] : r.members;
+      return { memberId: r.member_id, displayName: (member as { display_name: string | null } | null)?.display_name ?? null };
+    });
+}
+
 export const manualCheckInInput = z.object({ memberId: z.uuid(), reason: z.string().trim().min(1).max(300) });
 
 export type ManualCheckInError = "not_authorized" | "reason_required" | "not_found" | "not_open" | "member_not_found" | "presenter_cannot_check_in" | "unknown";

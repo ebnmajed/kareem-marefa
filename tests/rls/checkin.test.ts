@@ -13,9 +13,6 @@ import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-async function applyCheckinSql(tx: Tx) {
-}
-
 async function addMember(tx: Tx, org: Org, local: string, name: string): Promise<{ memberId: string; claims: Claims }> {
   const email = `${local}@${org.domain}`;
   const authUserId = randomUUID();
@@ -67,7 +64,6 @@ describe("POL-check_in_codes.select.member and .select.presenter — ensure_chec
   it("a member cannot read the current code, including a checked-in member; the presenter and staff can", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
@@ -105,7 +101,6 @@ describe("POL-check_in_codes.select.member and .select.presenter — ensure_chec
   it("rotate_check_in_code (service_role) needs no identity and reuses the current window", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
 
@@ -125,7 +120,6 @@ describe("POL-check_ins.insert.rpc", () => {
   it("direct insert into check_ins is rejected for every role", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
 
@@ -150,7 +144,6 @@ describe("POL-check_ins.rate_limit", () => {
   it("the 11th attempt in 10 minutes raises rate_limited, and every attempt is recorded — the row is written before the limit check", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const member = f.a.members[0];
@@ -175,7 +168,6 @@ describe("POL-check_ins.window", () => {
   it("a code entered before the session starts is rejected as not_started, without revealing whether the code was right", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "published", startsInMinutes: 30, endsInMinutes: 90 });
 
@@ -188,7 +180,6 @@ describe("POL-check_ins.window", () => {
   it("a code entered after the session ends is rejected as session_ended", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -120, endsInMinutes: -60 });
 
@@ -203,7 +194,6 @@ describe("POL-check_ins.revoked", () => {
   it("a revoked code is rejected; check-ins already recorded with it stand", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
@@ -244,7 +234,6 @@ describe("POL-check_ins.single_use", () => {
   it("a second check-in attempt is a no-op that returns the existing check-in", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
@@ -269,7 +258,6 @@ describe("POL-check_ins.overlap", () => {
   it("checking in to an overlapping session raises on the exclusion constraint, naming the conflicting session", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionA = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -30, endsInMinutes: 30 });
       const sessionB = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 }); // overlaps A
@@ -294,7 +282,6 @@ describe("POL-check_ins.presenter", () => {
   it("a presenter cannot check in to their own session (OQ-025)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
@@ -311,7 +298,6 @@ describe("POL-check_ins.select.member", () => {
   it("a member cannot list who else attended a session (A33 rule 3); staff and the presenter can see their own visibility scope", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
@@ -338,7 +324,6 @@ describe("POL-check_in_attempts.select.staff", () => {
   it("a member — including the attempter — reads none; staff read the org's; no role inserts directly", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const member = f.a.members[0];
@@ -365,7 +350,6 @@ describe("STORY-CHK-004 — manual attendance backup", () => {
   it("requires a reason, staff-only, and produces the same check-in row shape with method = 'manual'", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const member = f.a.members[0];
@@ -397,7 +381,6 @@ describe("STORY-CHK-005 — the single trigger, and who it is not for", () => {
   it("a walk-in with no RSVP checks in and is granted has_checked_in() — capacity is a planning limit, not a door policy (REQ-CHK-010)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyCheckinSql(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
