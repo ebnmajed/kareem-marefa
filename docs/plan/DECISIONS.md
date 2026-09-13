@@ -686,6 +686,43 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing
 - **Documents changed:** `STATUS.md`
 
+## DEC-031 — `packages/fonts` is the font manifest; the app keeps `next/font/google`
+
+- **Date:** 2026-09-13 · **Decided by:** owner ("Option A"), on the architect's recommendation
+- **Decision:** `ENT-fonts` exists in the repository as the workspace package **`@kareem/fonts`**
+  (`packages/fonts/`): a `manifest.json` plus every font file named by its SHA-256. It is the only
+  way a font enters the editor, the worker's Chromium or the worker's LibreOffice (`REQ-DSG-016`).
+  The **app keeps `next/font/google`** exactly as `10` §4.1 specifies; the manifest's web faces
+  (`faces`, `.woff2`) are the **exact bytes the build emits** — so the live site is byte-identical
+  and no font byte the public routes serve changed. For LibreOffice, which cannot read woff2, each
+  `(family, weight, style)` gets **one TrueType file (`ttf`) derived losslessly** from its woff2
+  subsets by `scripts/fonts/derive-ttf.py` (fontTools, pinned): Arabic and Latin subsets are merged
+  into one face so LibreOffice does not see two fonts of the same name, and the script **refuses to
+  write** a derived font that lost `rlig`, `mark` or `mkmk`. `derivedFrom` records the woff2
+  hashes each TTF came from.
+- **The gate:** `scripts/fonts/check.mjs` (`npm run fonts:check`) asserts (1) every manifest file
+  exists and hashes to its name, with no stray font in the package; (2) every web face group has
+  exactly one TTF derived from exactly that group's hashes; (3) when a Next build is present, the
+  Arabic and Latin faces it emitted are exactly the manifest's, by hash. CI runs it in the `build`
+  job after `next build`. The worker and converter images run it with `--no-build` at image build,
+  so an image cannot ship a font the manifest does not name.
+- **Rationale:** the alternative ("Option B") was `next/font/local` over a pinned upstream IBM Plex
+  release with our own subsetting. It removes Google from the build, but it changes every served
+  font byte on a live site, contradicts `10` §4.1's "as shipping today", needs a non-zero visual
+  diff reviewed and an `/en` LCP measurement — for no D66 gain, since parity is a property of the
+  bytes, not of where they came from. Production's three Arabic files were verified to hash-match
+  the manifest before the decision. Option B remains available as a later entry if Google-at-build
+  ever becomes a problem; the gate above is what would detect it.
+- **Path change:** `scripts/parity/fonts/` → `packages/fonts/`; `scripts/parity/extract-fonts.mjs`
+  → `scripts/fonts/extract.mjs`; `npm run parity:fonts` → `npm run fonts:extract`. The parity
+  harness reads `packages/fonts/manifest.json`. Goldens unchanged; parity re-verified at 0.000%.
+- **Scope of the set, stated so nobody widens it by accident:** the manifest holds the **Arabic
+  and basic-Latin** subsets of both families. next/font also emits Cyrillic, Greek, Vietnamese and
+  Latin-Extended subsets; they are not part of the set, because a font set is a promise about what
+  the product renders. Adding a script means adding it here and to the parity cases.
+- **Supersedes:** nothing. Implements `REQ-DSG-016` and `REQ-INT-009`; makes invariant 12 checkable.
+- **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
+
 ---
 
 ## Template for new entries

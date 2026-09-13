@@ -34,11 +34,15 @@ const BREAK_FONT = process.argv.includes('--break-font')
 mkdirSync(GOLDENS, { recursive: true })
 
 /* ---------- fonts: inlined by hash, so the render is hermetic ---------- */
-const manifest = JSON.parse(readFileSync(join(HERE, 'fonts', 'manifest.json'), 'utf8'))
+// The one font set (REQ-DSG-016). The harness reads the same manifest the
+// worker's Chromium and LibreOffice will, so a golden is tied to bytes that
+// exist in exactly one place.
+const FONTS = join(HERE, '..', '..', 'packages', 'fonts')
+const manifest = JSON.parse(readFileSync(join(FONTS, 'manifest.json'), 'utf8')).faces
 const familyFonts = manifest.filter((m) => m.family === FAMILY)
 const inlineFonts = familyFonts.map((m) => ({
   ...m,
-  base64: readFileSync(join(HERE, 'fonts', `${m.sha256}.woff2`)).toString('base64'),
+  base64: readFileSync(join(FONTS, m.file)).toString('base64'),
 }))
 
 const fontFingerprint = createHash('sha256')

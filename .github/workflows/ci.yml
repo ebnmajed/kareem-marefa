@@ -117,6 +117,12 @@ jobs:
           SUPABASE_URL: http://localhost:54331
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
           FORM_TOKEN_SECRET: ci-placeholder-not-a-real-secret
+
+      # REQ-DSG-016: the fonts the build just emitted must be exactly the
+      # manifest's — the same bytes the worker's Chromium and LibreOffice get.
+      # If Google's subset moves under next/font, this is where it shows.
+      - name: font set matches the manifest
+        run: node scripts/fonts/check.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: next-build

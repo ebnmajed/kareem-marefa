@@ -17,7 +17,9 @@
     "visual": "node scripts/visual-diff.mjs",
     "parity": "node scripts/parity/harness.mjs",
     "parity:update": "node scripts/parity/harness.mjs --update",
-    "parity:fonts": "node scripts/parity/extract-fonts.mjs",
+    "fonts:extract": "node scripts/fonts/extract.mjs",
+    "fonts:derive": "python3 scripts/fonts/derive-ttf.py",
+    "fonts:check": "node scripts/fonts/check.mjs",
     "lockfile": "node scripts/lockfile.mjs"
   },
   "dependencies": {
