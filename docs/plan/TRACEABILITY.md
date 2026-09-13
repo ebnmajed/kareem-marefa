@@ -185,7 +185,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-002` | `ENT-comments` | — | `SCR-012` | — | — | `STORY-EVT-002` | M2 |
 | `REQ-EVT-003` | — | — | `SCR-012` | — | — | `STORY-EVT-002` | M2 |
 | `REQ-EVT-004` | `ENT-reactions` | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
-| `REQ-EVT-005` | `ENT-comments` | — | `SCR-012` | — | — | `STORY-EVT-002` | M2 |
+| `REQ-EVT-005` | `ENT-comments` | `POL-ratings.select.admin` | `SCR-012` | — | — | `STORY-EVT-002` | M2 |
 | `REQ-EVT-006` | `ENT-comments` | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
 | `REQ-EVT-007` | — | — | `SCR-012` | — | — | `STORY-EVT-003` | M2 |
 | `REQ-EVT-008` | `ENT-reports` | — | `SCR-012` `SCR-050` | — | — | `STORY-EVT-004` | M2 |
@@ -331,8 +331,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-RAT-002` | `ENT-ratings` | — | `SCR-015` | — | — | `STORY-RAT-001` | M2 |
 | `REQ-RAT-003` | `ENT-ratings` | — | `SCR-015` | — | — | `STORY-RAT-001` | M2 |
 | `REQ-RAT-004` | `ENT-ratings` | — | `SCR-015` | — | — | `STORY-RAT-002` | M2 |
-| `REQ-RAT-005` | `ENT-ratings` | — | `SCR-044` | — | — | `STORY-RAT-002` | M2 |
-| `REQ-RAT-006` | `ENT-ratings` | — | `SCR-015` | — | — | `STORY-RAT-002` | M2 |
+| `REQ-RAT-005` | `ENT-ratings` | `POL-ratings.select.admin` | `SCR-044` | — | — | `STORY-RAT-002` | M2 |
+| `REQ-RAT-006` | `ENT-ratings` | `POL-ratings.select.admin` | `SCR-015` | — | — | `STORY-RAT-002` | M2 |
 | `REQ-RAT-007` | — | — | — | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | `MSG-rating_prompt` | `STORY-RAT-003` | M3 |
 
 ### REC

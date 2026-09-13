@@ -41,3 +41,9 @@ end $$;
 
 revoke execute on function public.list_session_ratings_admin from public, anon;
 grant  execute on function public.list_session_ratings_admin to authenticated;
+
+-- DEC-044: the audited RPC above is the ONLY admin path onto per-rater
+-- ratings. 0010's direct admin select left an unaudited read that
+-- REQ-RAT-005 forbids; an admin selecting the table now gets zero rows,
+-- exactly as a presenter does. The aggregates view is untouched.
+drop policy "ratings_read_admin" on public.ratings;

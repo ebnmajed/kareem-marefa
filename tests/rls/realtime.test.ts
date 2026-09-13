@@ -9,18 +9,16 @@
 // proves what happens once the socket IS authenticated: realtime.messages
 // RLS, and the broadcast payload the two triggers produce.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "event/01_realtime_authorization.sql";
 
 describe("POL-realtime.messages", () => {
   it("select — a member of org A subscribing to org B's session topic gets nothing; org A's own succeeds", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const ownTopic = `session:${f.m2.a.published}`;
       const otherTopic = `session:${f.m2.b.published}`;
       await tx.asOwner();
@@ -35,7 +33,6 @@ describe("POL-realtime.messages", () => {
   it("insert — a member cannot broadcast into a session topic belonging to another org", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
       expect(
         await errorCode(() =>
@@ -52,7 +49,6 @@ describe("POL-realtime.messages", () => {
   it("host_topic — a checked-in but not staff/presenter member receives nothing; the presenter and staff do (OQ-013)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const hostTopic = `host:${f.m2.a.published}`;
       await tx.asOwner();
       await tx.q(`insert into realtime.messages (topic, extension, event, payload, private) values ($1, 'broadcast', 'probe', '{}'::jsonb, true)`, [hostTopic]);
@@ -70,7 +66,6 @@ describe("POL-realtime.messages", () => {
   it("a member of org B cannot read org A's host topic at all, staff or not", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const hostTopic = `host:${f.m2.a.published}`;
       await tx.asOwner();
       await tx.q(`insert into realtime.messages (topic, extension, event, payload, private) values ($1, 'broadcast', 'probe', '{}'::jsonb, true)`, [hostTopic]);
@@ -84,7 +79,6 @@ describe("POL-realtime.payload_shape", () => {
   it("comments broadcast the row; reactions broadcast totals, never a member id", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const topic = `session:${f.m2.a.published}`;
 
       await tx.as(f.a.members[1].claims);
@@ -118,7 +112,6 @@ describe("POL-realtime.payload_shape", () => {
   it("editing a comment broadcasts an UPDATE; a reaction removal updates the totals to zero-absent", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const topic = `session:${f.m2.a.published}`;
 
       await tx.as(f.a.members[1].claims);

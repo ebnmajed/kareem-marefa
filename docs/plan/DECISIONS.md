@@ -1090,6 +1090,32 @@ decision. Every decision taken **after** the source brief gets an entry here.
   `POL-check_ins.rate_limit` and `POL-check_ins.single_use` rows in §8.2.
 - **Documents changed:** `03-permissions-rls.md` §8.2, `STATUS.md`
 
+## DEC-044 — Realtime host topics are org-scoped; admin per-rater ratings reads go only through the audited RPC
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `event` teammate's two findings
+- **Decision 1 — host topic:** `realtime_host_select` (migration `0016`) requires the session named
+  in `host:{id}` to belong to the caller's org before the staff-or-presenter disjunct is consulted.
+  `03` §7.2's sample policy had no org check, so any org's staff could have read another org's
+  check-in counts. The sample is corrected in place.
+- **Decision 2 — ratings:** `0010`'s `ratings_read_admin` policy is **dropped** in `0017`.
+  `REQ-RAT-005` requires the admin's per-rater read to be audited; RLS cannot leave an audit row
+  as a side effect of a select, so a direct policy is an unaudited path by construction. The only
+  admin path is `list_session_ratings_admin()`, a `security definer` RPC that re-checks admin
+  freshness, writes one `audit_log` row, and returns the rows. An admin selecting the table gets
+  zero rows, like a presenter. The aggregates view and the self policies are untouched.
+- **Also promoted:** `delete_own_comment()` (`0018`) — `comments_update_own` gated a self-delete
+  behind the same 15-minute window as a body edit, making `REQ-EVT-005` unreachable past it — and
+  `session_rating_count()` (`0019`) for the bare count `REQ-RAT-006` shows below the minimum.
+- **CI:** `scripts/ci/roles.sql` gains the `realtime` schema, `realtime.messages` and
+  `realtime.send()` (Supabase's own body), mirroring local Supabase, because the bare container
+  has none of them and the first CI run of the Realtime tests failed with `3F000`.
+- **Rationale for dropping rather than keeping the policy "for the dashboard":** an access path
+  that exists only to be avoided by convention is the pattern `12` §2 calls out; the policy-diff
+  gate cannot see a `drop policy`, so `03` §5.6 records the drop in prose where the policy stood.
+- **Supersedes:** the `realtime_host_select` sample in `03` §7.2; the `ratings_read_admin` block
+  in `03` §5.6; the `POL-ratings.select.admin` row in §8.2.
+- **Documents changed:** `03-permissions-rls.md` §5.6, §7.2, §8.2; `scripts/ci/roles.sql`; `STATUS.md`
+
 ---
 
 ## Template for new entries

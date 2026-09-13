@@ -3,18 +3,16 @@
 // remove/restore). This file only covers what I added:
 // supabase/proposed/event/03_comments_self_delete_rpc.sql.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorMessage, pool, withTx } from "./db";
+import { errorMessage, pool, withTx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "event/03_comments_self_delete_rpc.sql";
 
 describe("POL-comments.delete.self_anytime", () => {
   it("an author deletes their own comment PAST the 15-minute edit window (REQ-EVT-005)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.asOwner();
       await tx.q(`update public.comments set created_at = now() - interval '16 minutes' where id = $1`, [f.m2.a.commentId]);
 
@@ -32,7 +30,6 @@ describe("POL-comments.delete.self_anytime", () => {
   it("cannot delete another member's comment", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[1].claims); // not the reply's author (presenter is)
       expect(await errorMessage(() => tx.q(`select public.delete_own_comment($1)`, [f.m2.a.replyId]))).toMatch(/not_author/);
     });
@@ -41,7 +38,6 @@ describe("POL-comments.delete.self_anytime", () => {
   it("cannot delete a comment in another org, and it reads as not_found, not a bypass", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[1].claims);
       expect(await errorMessage(() => tx.q(`select public.delete_own_comment($1)`, [f.m2.b.commentId]))).toMatch(/not_found/);
     });
@@ -50,7 +46,6 @@ describe("POL-comments.delete.self_anytime", () => {
   it("a second call is an idempotent no-op, not an error", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[1].claims);
       await tx.q(`select public.delete_own_comment($1)`, [f.m2.a.commentId]);
       await tx.q(`select public.delete_own_comment($1)`, [f.m2.a.commentId]); // does not throw

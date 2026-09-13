@@ -670,9 +670,11 @@ recorded even by a code path that forgot to strip it.
 
 #### §5.6d — `ratings`, read — where D36 lives
 ```sql
--- Org admins see everything, including who rated what (D36, REQ-RAT-005).
-create policy "ratings_read_admin" on ratings for select to authenticated
-  using (org_id = auth_org_id() and is_org_admin());
+-- Org admins see everything, including who rated what (D36, REQ-RAT-005) —
+-- ONLY through list_session_ratings_admin(), a definer RPC that writes an
+-- audit_log row per read. The direct admin select 0010 created was dropped
+-- in 0017 (DEC-044): RLS cannot leave an audit row as a side effect of a
+-- select, so a direct policy is an unaudited path by construction.
 -- A member sees their own rating, to edit it within the window.
 create policy "ratings_read_self" on ratings for select to authenticated
   using (org_id = auth_org_id() and member_id = auth_member_id());
@@ -1024,6 +1026,9 @@ create policy "realtime_host_select" on realtime.messages for select to authenti
   using (
     extension in ('broadcast', 'presence')
     and topic like 'host:%'
+    -- DEC-044: the org check the first draft lacked — without it any org's
+    -- staff could read another org's host topic.
+    and exists (select 1 from sessions s where s.id = split_part(topic, ':', 2)::uuid and s.org_id = auth_org_id())
     and (is_staff() or is_presenter_of(split_part(topic, ':', 2)::uuid))
   );
 ```
@@ -1166,7 +1171,10 @@ generated suite is the highest-value test in the product.
 | `POL-ratings.insert.window` | Rating 15 days after completion is rejected. |
 | `POL-ratings.select.presenter` | A presenter selecting from `ratings` gets **zero rows** — not redacted rows. |
 | `POL-ratings.aggregate.min` | With 2 ratings the aggregate view returns nothing; with 3 it returns a value (OQ-009). |
-| `POL-ratings.select.admin` | An org admin sees `member_id` and free text; a **moderator** does not. |
+| `POL-ratings.select.admin` | An org admin's **direct** select on `ratings` returns zero rows (DEC-044, migration `0017`); a moderator's too. |
+| `POL-ratings.select.admin.audited` | `list_session_ratings_admin()` returns the org's rows for that session to a fresh admin **and writes one `audit_log` row naming them**; a moderator and a stale admin are refused; another org's session is refused (`REQ-RAT-005`, migration `0017`). |
+| `RPC-session_rating_count` | Below `rating_min_aggregate` the presenter and staff get the bare **count**; a member gets nothing; another org's presenter gets nothing (`REQ-RAT-006`, migration `0019`). |
+| `RPC-delete_own_comment` | The author soft-deletes their own comment **after** the edit window; another member cannot; a tombstone remains when replies exist (`REQ-EVT-005`, migration `0018`). |
 | `POL-points_ledger.insert` | Direct insert is rejected for `authenticated` **and** `service_role`. |
 | `POL-points_ledger.update` | `update` and `delete` raise for every role including `service_role`. |
 | `POL-points_ledger.select` | A member reads only their own rows; an admin reads the org's. |

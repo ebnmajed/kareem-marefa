@@ -248,11 +248,13 @@ describe("POL-ratings", () => {
     });
   });
 
-  it("select — an admin sees rows; a presenter sees NO rows and reads the aggregate view, which is empty below the minimum", async () => {
+  it("select — an admin sees rows only through the audited RPC; a presenter sees NO rows and reads the aggregate view, which is empty below the minimum", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.as(f.a.admin.claims);
-      expect((await tx.q(`select member_id from public.ratings where session_id = $1`, [f.m2.a.completed])).length).toBe(1);
+      // DEC-044 (0017): an admin's direct select is empty — the audited RPC is the only path
+      expect(await tx.q(`select member_id from public.ratings where session_id = $1`, [f.m2.a.completed])).toEqual([]);
+      expect((await tx.q(`select member_id from public.list_session_ratings_admin($1)`, [f.m2.a.completed])).length).toBe(1);
       await tx.as(f.a.members[0].claims); // presenter of the completed session
       expect(await tx.q(`select member_id from public.ratings where session_id = $1`, [f.m2.a.completed])).toEqual([]);
       expect(await tx.q(`select rating_count from public.session_rating_aggregates where session_id = $1`, [f.m2.a.completed])).toEqual([]); // 1 < 3

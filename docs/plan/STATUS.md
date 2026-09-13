@@ -163,6 +163,8 @@ healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 pass
 | Sync | Promoted | Gates |
 |---|---|---|
 | 1 (2026-09-14) | `0011_proposal_transitions` (audit + guard triggers, `98db766`) · `0012_copresenters` (same-org guard on both presenter tables, `create_proposal()`, `aaa9f95`) — `03` §8.2 +5 rows | `supabase db reset` ✅ · `test:rls` **163 passed / 4 todo**, all 15 files incl. teammates' ✅ · `policy-diff` ✅ · tsc ✅ · lint ✅ · build ✅ after three `"use server"` constant exports were moved out (`3cded54`, `9b2a4a7`; the Next 16 rule tsc cannot see) · `npm run qa` **44/44** · `npm run visual compare m0-final wave1-s1` **0.000%** on 6 captures · `test:e2e:local` 42 passed / **4 failed** (all in `sessions`' two new specs, handed back) · pushed; **draft PR #12** open so CI runs per push |
+| 2 (2026-09-14) | `0013_proposal_review` (`review_proposal()`) · `0014_rsvp_rpcs` · `0015_check_in_rpcs` (`2faff35`) — **DEC-043** (outcome envelope, not raise-after-write) · worker `taskList` gains `promote_waitlist`, `rotate_codes` | reset ✅ · `test:rls` 174/4 todo ✅ (two false failures traced to a **concurrent teammate run** — the suite is single-runner) · policy-diff ✅ · tsc/lint/unit 117 ✅ · build ✅ · qa **44/44** · visual **0.000%** · CI: 12 pass, **RLS ✗** — bare container has no `realtime` schema (fixed at sync 3) |
+| 3 (2026-09-14) | `0016_realtime_authorization` (host topic org-scoped) · `0017_ratings_admin_audited` (**drops** `ratings_read_admin`) · `0018_comments_self_delete` · `0019_rating_count` — **DEC-044** · CI shim gains `realtime.messages` + `send()` · `03` §5.6/§7.2/§8.2 corrected | reset ✅ 0001–0019 · `test:rls` **188 passed / 4 todo**, 17 files ✅ · policy-diff ✅ · traceability ✅ · tsc ✅ · build/qa/visual/CI: see below |
 
 **Lead decisions and findings during the wave (not re-litigations):**
 
@@ -180,6 +182,12 @@ healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 pass
   is undefined. `clock_timestamp()` would fix it; `02` is frozen so it needs a DEC.
 - **`proposals` has no admin update policy in `0010`** (only the proposer's), so review actions are a
   definer RPC — `supabase/proposed/sessions/0003_proposal_review.sql`, in progress.
+- **The RLS suite is single-runner.** Two processes running `npm run test:rls` against one local
+  database collide on fixtures and fail unrelated files (seen twice at sync 2). Check
+  `ps aux | grep 'vitest run --project rls'` before running it.
+- **The shared git index races.** Three commits this wave carried another teammate's staged files
+  (`d42bcf1`, `5c4f97f`, `6efd2c8`); content intact, attribution wrong. Stage by explicit path and
+  commit immediately.
 - **Wave-1 tests that touch the working tree:** the shared tree builds as it stands on disk; a
   mid-edit DAL or a `"use server"` constant breaks `npm run build` for everyone. tsc does not catch
   the latter.

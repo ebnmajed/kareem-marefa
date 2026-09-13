@@ -3,18 +3,16 @@
 // §0 for why the existing direct-select policy (0010, ratings_read_admin) is
 // left as written rather than narrowed here.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorMessage, pool, withTx } from "./db";
+import { errorMessage, pool, withTx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "event/02_ratings_admin_rpc.sql";
 
 describe("POL-ratings.select.admin.audited", () => {
   it("a fresh admin gets the org's rows for that session, and it is audited", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
 
       await tx.as(f.a.admin.claims);
       const rows = await tx.q<{ id: string; member_id: string }>(`select * from public.list_session_ratings_admin($1)`, [f.m2.a.completed]);
@@ -35,7 +33,6 @@ describe("POL-ratings.select.admin.audited", () => {
   it("a moderator is rejected — this is admin-only (REQ-ADM-020)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.mod.claims);
       expect(await errorMessage(() => tx.q(`select * from public.list_session_ratings_admin($1)`, [f.m2.a.completed]))).toMatch(/not_an_admin/);
     });
@@ -44,7 +41,6 @@ describe("POL-ratings.select.admin.audited", () => {
   it("a stale admin (claims_version lags the row) is rejected", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as({ ...f.a.admin.claims, claims_version: (f.a.admin.claims.claims_version ?? 0) + 1 });
       expect(await errorMessage(() => tx.q(`select * from public.list_session_ratings_admin($1)`, [f.m2.a.completed]))).toMatch(/stale_claims/);
     });
@@ -53,7 +49,6 @@ describe("POL-ratings.select.admin.audited", () => {
   it("another org's session is rejected, not merely empty", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => tx.q(`select * from public.list_session_ratings_admin($1)`, [f.m2.b.completed]))).toMatch(/not_found/);
     });
