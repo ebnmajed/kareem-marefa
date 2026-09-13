@@ -62,7 +62,12 @@ function check(name, cond, extra = "") {
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ["--no-first-run"],
+  args: [
+    "--no-first-run",
+    // CI runners cannot start Chrome's sandbox. Opt-in, so a developer machine
+    // never silently drops it.
+    ...(process.env.CHROME_NO_SANDBOX ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+  ],
 });
 // The invite button falls back to the clipboard when navigator.share is absent,
 // which is the case in headless Chrome. Grant it so the fallback is testable.

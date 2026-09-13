@@ -81,6 +81,12 @@ jobs:
       # DEC-025: CI uses an ephemeral Postgres container, not a hosted project.
       # The isolation sweep is generated over every entity, so a new table is
       # covered the day it is created (03 §8.1).
+      # The migrations grant to `anon` and `authenticated`. A stock postgres
+      # image has neither, so 0001 fails before reaching anything testable.
+      - name: bootstrap Supabase roles
+        env: { PGPASSWORD: postgres }
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f scripts/ci/roles.sql
+
       - name: apply migrations
         env: { PGPASSWORD: postgres }
         run: |
@@ -112,7 +118,14 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
           FORM_TOKEN_SECRET: ci-placeholder-not-a-real-secret
       - uses: actions/upload-artifact@v4
-        with: { name: next-build, path: .next, retention-days: 1 }
+        with:
+          name: next-build
+          path: .next
+          retention-days: 1
+          # .next is a dot-directory and upload-artifact skips hidden files by
+          # default, so without this the artifact is silently empty and the qa
+          # job fails with "Artifact not found".
+          include-hidden-files: true
 
   # ── The frozen public contract. REQ-NFR-019. ───────────────────────────
   qa:
@@ -137,6 +150,7 @@ jobs:
         run: npm run qa
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_NO_SANDBOX: '1'
 
   # ── Arabic shaping. D66. ───────────────────────────────────────────────
   parity:
@@ -164,3 +178,6 @@ jobs:
         run: npm run parity
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          # The runner cannot start Chrome's sandbox. Opt in here rather than
+          # in the harness, so a developer machine never silently drops it.
+          CHROME_NO_SANDBOX: '1'
