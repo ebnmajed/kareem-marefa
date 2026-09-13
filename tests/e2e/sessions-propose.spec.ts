@@ -63,7 +63,23 @@ test.beforeAll(async ({}, testInfo) => {
   const mate = await admin.auth.admin.createUser({ email: mateEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "زميلة الاختبار" } });
   if (mate.error) throw mate.error;
   mateId = mate.data.user.id;
+  // A member row only exists once someone has signed in — provision_member()
+  // is what the OAuth callback calls. Without this she is an auth user with no
+  // membership, so she is not in the org and cannot be named a co-presenter.
+  await provision(mateEmail);
 });
+
+/** Signs in headlessly, purely to give this account its member row. */
+async function provision(who: string) {
+  const jar: { name: string; value: string }[] = [];
+  const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
+    cookies: { getAll: () => jar, setAll: (list) => { for (const { name, value } of list) jar.push({ name, value }); } },
+  });
+  const { error } = await client.auth.signInWithPassword({ email: who, password: PASSWORD });
+  if (error) throw error;
+  const { error: rpcError } = await client.rpc("provision_member");
+  if (rpcError) throw rpcError;
+}
 
 test.afterAll(async () => {
   if (userId) await admin.auth.admin.deleteUser(userId);
@@ -149,7 +165,9 @@ test("saving a draft does not put it in front of an admin", async ({ context, pa
   await page.getByRole("button", { name: "احفظ كمسودة" }).click();
 
   await expect(page.getByRole("status")).toContainText("حُفظ مقترحك كمسودة");
-  const { rows } = await db.query<{ state: string }>(`select state from public.proposals where title = $1`, [title]);
+  // Scoped to this worker's org: the two device projects run in parallel
+  // against one database and both create a proposal with this title.
+  const { rows } = await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId]);
   expect(rows[0].state).toBe("draft");
 });
 
@@ -171,7 +189,7 @@ test("a rejected submission keeps every word the member typed", async ({ context
   // ★ The abstract survives the round trip — the form's own promise.
   await expect(page.getByLabel("نبذة عن موضوعك")).toHaveValue(abstract);
   await expect(page.getByLabel("عنوان الموضوع المقترح")).toHaveValue("ق");
-  expect((await db.query(`select 1 from public.proposals where abstract = $1`, [abstract])).rowCount).toBe(0);
+  expect((await db.query(`select 1 from public.proposals where abstract = $1 and org_id = $2`, [abstract, orgId])).rowCount).toBe(0);
 });
 
 test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥ 44 px", async ({ context, page }) => {
@@ -186,6 +204,20 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   const submit = page.getByRole("button", { name: "أرسل المقترح" });
   const box = await submit.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
+
+  // ★ The two mixed-direction rows, measured rather than eyeballed. In RTL the
+  // first flex child is the RIGHTMOST one, so a numeral must sit to the right
+  // of its unit («٤٥ دقيقة» reads number-first) and a checkbox to the right of
+  // its label. Getting either backwards looks subtly wrong in a way a
+  // screenshot review misses and a coordinate comparison does not.
+  const duration = (await page.getByLabel("المدة المتوقعة").boundingBox())!;
+  const unit = (await page.getByText("دقيقة", { exact: true }).boundingBox())!;
+  expect(duration.x, "the number box sits to the right of «دقيقة» in RTL").toBeGreaterThan(unit.x);
+
+  const tick = page.getByRole("checkbox", { name: /زميلة الاختبار/ });
+  const tickBox = (await tick.boundingBox())!;
+  const tickRow = (await tick.locator("xpath=..").boundingBox())!;
+  expect(tickBox.x + tickBox.width, "the checkbox sits at the inline-start, which is the right in RTL").toBeGreaterThan(tickRow.x + tickRow.width / 2);
 
   // The reviewed screenshot of the definition of done.
   await page.screenshot({ path: "test-results/scr-017-propose-390-rtl.png", fullPage: true });
@@ -209,8 +241,8 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
 
   const { rows } = await db.query<{ n: string }>(
     `select count(*) as n from public.proposal_presenters pp
-       join public.proposals p on p.id = pp.proposal_id where p.title = $1`,
-    [title],
+       join public.proposals p on p.id = pp.proposal_id where p.title = $1 and p.org_id = $2`,
+    [title, orgId],
   );
   expect(Number(rows[0].n)).toBe(2);
 
@@ -221,7 +253,10 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await matePage.goto(url.replace(/\?created=1$/, ""));
   await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toBeVisible();
   await matePage.getByRole("button", { name: "أوافق على التقديم" }).click();
-  await expect(matePage.getByText("وافق")).toBeVisible();
+  // Scoped to her own row: «وافق» is a substring of «أوافق على التقديم» and of
+  // the invitation copy, so an unscoped text match is ambiguous, not a finding.
+  await expect(matePage.getByRole("listitem").filter({ hasText: "زميلة الاختبار" })).toContainText("وافق");
+  await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toHaveCount(0);
   await mateContext.close();
 
   const after = await db.query<{ accepted: boolean }>(

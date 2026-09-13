@@ -530,3 +530,37 @@ What remained was the screen: create, deactivate, reactivate, and the optional t
 that OQ-018 lets a venue carry. Creation is a plain insert, because `p2_admin_insert` already says
 who may and an RPC would only re-implement a live policy — the same argument as
 `create_proposal`'s, in the direction of *not* writing a function.
+
+---
+
+## 11. The 390 px RTL review, and what the screenshots could not tell me
+
+Both captures taken and looked at: `test-results/scr-017-propose-390-rtl.png` and
+`scr-041-review-390-rtl.png`.
+
+**SCR-041** reads correctly: the card's `dt`/`dd` pairs run label-then-value right to left, the
+count renders «مقترح واحد» in the singular and the age «وصل اليوم» in the zero form, and the three
+actions stack flush to the inline-start edge, each ≥ 44 px, with the primary first.
+
+**SCR-017 taught me not to trust my own eye on a scaled capture.** Reading the PNG I was fairly
+sure the duration row was reversed — the number box appearing to the left of «دقيقة» — and that the
+co-presenter checkbox was on the wrong side. Both were **correct**; I was misreading a 333 px-wide
+render of a 390 px page.
+
+So the review is now two assertions rather than an opinion, and they live in the 390 px test:
+
+- the number box's `x` is greater than «دقيقة»'s — «٤٥ دقيقة» reads number-first, so the numeral is
+  the rightmost of the pair in RTL;
+- the checkbox's right edge is past the midpoint of its row — a checkbox belongs at the
+  inline-start, which is the right.
+
+A mixed-direction row is the one thing in an RTL page that a screenshot review reliably gets wrong,
+because both orderings look plausible at a glance. **Measure it.**
+
+### Two e2e traps worth passing on
+
+1. **Next's route announcer is `role="alert"`.** An unscoped `getByRole("alert")` is a strict-mode
+   violation on every page, not a finding. Scope it to the form.
+2. **The two device projects share one database.** A database assertion matching only on a title
+   sees the other worker's row: both failures in my first full run were that, not the app. Scope
+   every query by `org_id`.

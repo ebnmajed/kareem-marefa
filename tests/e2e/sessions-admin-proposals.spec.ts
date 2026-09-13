@@ -109,10 +109,12 @@ test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({
   await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
   await bossContext.close();
 
-  const { rows } = await db.query<{ state: string }>(`select state from public.proposals where title = $1`, [title]);
+  // Scoped to this worker's org: both device projects run in parallel
+  // against one database and both create a proposal with this title.
+  const { rows } = await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId]);
   expect(rows[0].state).toBe("approved");
   // REQ-PRO-005: approving is not publishing. No session row exists yet.
-  const sessions = await db.query(`select 1 from public.sessions s join public.proposals p on p.id = s.proposal_id where p.title = $1`, [title]);
+  const sessions = await db.query(`select 1 from public.sessions s join public.proposals p on p.id = s.proposal_id where p.title = $1 and p.org_id = $2`, [title, orgId]);
   expect(sessions.rowCount).toBe(0);
 });
 
@@ -132,7 +134,7 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   await card.getByRole("button", { name: "أرسل" }).last().click();
   // Scoped: Next's route announcer is also role="alert".
   await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
-  expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1`, [title])).rows[0].state).toBe("submitted");
+  expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId])).rows[0].state).toBe("submitted");
 
   await card.getByLabel("السبب الذي سيصل صاحب المقترح").last().fill(reason);
   await card.getByRole("button", { name: "أرسل" }).last().click();
