@@ -228,15 +228,14 @@ Run in this order, on `main` after PR A and PR B are merged. Nothing here has be
    Google's return with the closed-door message; `npm run qa` against production stays 44/44.
 9. **Observe the CSP reports** from a preview deployment before any enforcement (OQ-028).
 
-**One proof left unread at handoff — the CI status of the final commits.** PR #4's head `91a3787`
-was shown green on all twelve checks earlier in the session. PR #5's CI was shown green at
-`b922197`; its final commits `bf3e67f` and `757b9e6` (a code fix and this handoff) were pushed
-but their checks could not be read: the `gh` credential stored for `ebnmajed` began returning
-**401 Bad credentials** late in the session (another Claude session re-authenticated `gh`), the
-repository is private, and `devyaden` cannot see it. Pushes over the SSH alias are unaffected.
-**Owner:** run `gh auth login -h github.com -u ebnmajed -p https -w`, then read
-https://github.com/ebnmajed/kareem-marefa/pull/5/checks — nothing in `bf3e67f` touches CI
-config, and every suite the CI jobs run passed locally on that commit.
+**CI on the final commits, read with `gh` after the owner re-authenticated `ebnmajed`:** PR #4
+(`m1/tenancy` @ `91a3787`) and PR #5 (`m1/app` @ `a8da01d`) each pass all twelve checks — RLS
+policies, build, converter image, end to end, frozen routes, plan gates, shaping parity, types
+and lint, unit tests, worker probe, Vercel, Vercel preview comments. **`gh` gotcha for the next
+session:** another Claude session on this machine re-authenticates `gh` as `devyaden`, which
+invalidated the stored `ebnmajed` credential mid-session (401). `gh auth switch --user ebnmajed`
+is not enough then; `gh auth login -h github.com -p https -w --skip-ssh-key` is (this gh has no
+`-u` flag). Pushes use the SSH alias and are unaffected.
 
 **Owner inputs PR C needs, by name:** `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
 (entered in the Supabase dashboard only) · the first org's **name**, **slug**, **certificate
