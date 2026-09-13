@@ -21,7 +21,6 @@ export type ProposeState = {
   formError: string | null;
 };
 
-export const emptyProposeState: ProposeState = { errors: {}, formError: null };
 
 /**
  * The message key for a failed field.
