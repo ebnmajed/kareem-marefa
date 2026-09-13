@@ -1,0 +1,123 @@
+{
+  "font": {
+    "family": "IBM Plex Sans Arabic",
+    "fingerprint": "3cd9a6c6c3541b94"
+  },
+  "cases": {
+    "lam-alef": {
+      "lineCount": 1,
+      "lineWidths": [
+        168.81
+      ],
+      "lineHeights": [
+        60
+      ],
+      "totalAdvance": 168.81,
+      "charRectCount": 15,
+      "zeroWidthRects": 0,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "stacked-tashkeel": {
+      "lineCount": 1,
+      "lineWidths": [
+        88.05
+      ],
+      "lineHeights": [
+        60
+      ],
+      "totalAdvance": 88.05,
+      "charRectCount": 9,
+      "zeroWidthRects": 0,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "mixed-script": {
+      "lineCount": 1,
+      "lineWidths": [
+        469.73
+      ],
+      "lineHeights": [
+        60
+      ],
+      "totalAdvance": 469.73,
+      "charRectCount": 26,
+      "zeroWidthRects": 0,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "mirrored-punctuation": {
+      "lineCount": 1,
+      "lineWidths": [
+        509.7
+      ],
+      "lineHeights": [
+        60
+      ],
+      "totalAdvance": 509.7,
+      "charRectCount": 31,
+      "zeroWidthRects": 0,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "long-word-break": {
+      "lineCount": 5,
+      "lineWidths": [
+        176.69,
+        126.64,
+        98.84,
+        121.05,
+        142.97
+      ],
+      "lineHeights": [
+        60,
+        60,
+        60,
+        60,
+        60
+      ],
+      "totalAdvance": 666.19,
+      "charRectCount": 42,
+      "zeroWidthRects": 4,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "numeral-systems": {
+      "lineCount": 1,
+      "lineWidths": [
+        549.21
+      ],
+      "lineHeights": [
+        60
+      ],
+      "totalAdvance": 549.21,
+      "charRectCount": 32,
+      "zeroWidthRects": 0,
+      "fontSize": "40px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    },
+    "autofit-limit": {
+      "lineCount": 2,
+      "lineWidths": [
+        382.2,
+        181.84
+      ],
+      "lineHeights": [
+        42,
+        42
+      ],
+      "totalAdvance": 564.04,
+      "charRectCount": 52,
+      "zeroWidthRects": 1,
+      "fontSize": "28px",
+      "letterSpacing": "normal",
+      "distinctFromFallback": true
+    }
+  }
+}

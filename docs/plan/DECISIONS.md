@@ -440,6 +440,50 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Documents changed:** `scripts/qa.mjs`, `scripts/qa-run.mjs` (new), `package.json`,
   `.gitignore`, `13-testing-quality.md`, `14-roadmap.md`, `STATUS.md`
 
+## DEC-024 — The parity spike lands: Tier A is geometry, not glyph IDs, and blank captures are the real enemy
+
+- **Date:** 2026-09-13 · **Decided by:** architect, from the M0 spike (`scripts/parity/`)
+- **Verdict: the approach works.** Headless Chromium renders Arabic correctly — lam-alef forms,
+  stacked tashkeel positions and is not clipped — and is **bit-for-bit deterministic**: 0.000%
+  pixel drift between two renders of the same document, repeatably. A substituted face is caught
+  at **2–10% pixel difference** and by advance-width drift on every case. **D66 is achievable
+  through this pipeline**, and M6 can be planned on it.
+- **Decisions the spike forced:**
+  1. **Tier A is geometry, not a glyph dump.** No browser exposes shaped glyph IDs, so
+     `06` §9.1's "same glyph sequence" is implemented as the geometry shaping *produces*: line-box
+     count, per-line rounded widths, total advance, per-character rect count, and computed size.
+     It changes when shaping changes and holds when it does not, which is the property that was
+     actually wanted.
+  2. **A blank capture must be a hard failure.** Twice during the spike the goldens recorded
+     *nothing* and passed every comparison — the worst possible outcome, because a blank golden is
+     permanently green. The harness now measures inked pixels and **refuses to write a golden**
+     below 0.1% ink.
+  3. **Tier B compares against the golden, not only run-to-run.** Comparing two renders of the
+     same broken configuration proves only that the renderer is consistent with itself, which a
+     substituted font satisfies perfectly.
+  4. **Fonts are inlined as data URIs by SHA-256.** The render is hermetic and the golden is tied
+     to exact bytes (A39, `REQ-DSG-016`). `npm run parity:fonts` materialises them out of the
+     next/font build output.
+- **Two failure modes worth carrying into M6, because both are silent:**
+  - **`font-display: block` hides glyphs while metrics still resolve.** Measurements looked
+    correct, `document.fonts.check()` returned true, and the screenshots were empty. Use `swap`,
+    and `await document.fonts.load()` per weight rather than trusting `document.fonts.ready` —
+    a face that is declared but never exercised is not "pending", so `ready` resolves early.
+  - **In an RTL document, an overflowing absolutely-positioned element overflows *leftward*.** A
+    measurement helper with `white-space: nowrap` pushed `scrollWidth` to 1008 against an 800px
+    viewport and sat at `x = -74`, which shifted the scroll origin and made **every
+    element-relative screenshot capture the wrong region** — silently. Helpers are now
+    `position: fixed`, which cannot affect scroll size. **This is an RTL-specific trap that would
+    not occur in an LTR layout**, and the designer's own export path takes element screenshots.
+- **Supersedes:** nothing. It implements `REQ-DSG-014` / `REQ-DSG-015` as far as M0 can, and
+  confirms DEC-017's premise.
+- **Scope, honestly:** this proves Tiers A and B for **DOM text in the app's own Chromium**. It
+  does **not** yet cover the four export paths of `REQ-DSG-015` (poster PNG, poster PDF,
+  certificate PDF, slide page images) — those need the worker image and the designer, in M6. The
+  suite is built so each path plugs into the same seven cases.
+- **Documents changed:** `06-visual-designer.md`, `13-testing-quality.md`, `14-roadmap.md`,
+  `STATUS.md`
+
 ---
 
 ## Template for new entries

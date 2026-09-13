@@ -33,7 +33,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-023**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-024**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -125,11 +125,31 @@ stop and check — those emails are implausible as real signups, but the `select
 | Playwright, jsdom, `@testing-library` | ⬜ |
 | GitHub Actions with the four blocking gates | ⬜ |
 | Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
-| **Shaping-parity harness (Tiers A and B)** | ⬜ **the biggest unknown** — do early |
+| **Shaping-parity harness (Tiers A and B)** | ✅ done (DEC-024) — `npm run parity`, 7 cases, green, and proven able to fail |
 | graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ |
 | Credential-free converter app | ⬜ |
 | Radix + the ~8 inline SVGs | ⬜ |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ⬜ |
+
+## The parity spike answered the biggest open question
+
+`npm run parity` — 7 cases, Tiers A and B, green and repeatable. **Headless Chromium holds Arabic
+parity**: 0.000% pixel drift between renders, lam-alef forming correctly, stacked tashkeel
+positioned and unclipped. A substituted face is caught at 2–10% pixel difference and by advance
+drift on every case, verified with `--break-font`.
+
+**So D66 is achievable through this pipeline and M6 can be planned on it.** That was the riskiest
+unknown in the product.
+
+Two silent traps found on the way, both recorded in DEC-024 because they will recur in M6:
+`font-display: block` hides glyphs while metrics still resolve (blank captures that measure fine),
+and in an RTL document an overflowing absolutely-positioned element overflows **leftward**, shifting
+the scroll origin so element screenshots capture the wrong region. Both produced blank goldens that
+passed everything. The harness now refuses to write a golden below 0.1% inked pixels.
+
+**Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
+page images). Those need the worker image and the designer — M6. The suite is built so each path
+plugs into the same seven cases.
 
 ## Blockers
 

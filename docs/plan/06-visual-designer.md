@@ -493,8 +493,15 @@ Run against **every** export path — poster PNG, poster PDF, certificate PDF, s
 
 ### 9.3 Tolerance and discipline
 
-- **Tier A:** exact. Glyph sequence, line-break positions and fitted size must match **exactly**.
-  Not a tolerance — a string comparison.
+- **Tier A:** exact. Line-box count, per-line widths, total advance, per-character rect count and
+  fitted size must match **exactly**. Not a tolerance — a structural comparison.
+
+  **Implementation note (DEC-024, proven in `scripts/parity/`):** no browser exposes shaped glyph
+  IDs, so "same glyph sequence" is measured through the geometry shaping *produces* rather than
+  read from the shaper. A dropped ligature, a substituted face or lost mark positioning all move
+  those numbers — verified by deliberately substituting the font, which fails all seven cases on
+  both tiers. Additionally, **a capture below 0.1% inked pixels is a hard failure**: a blank golden
+  passes every comparison forever, and the spike produced one twice before this guard existed.
 - **Tier B:** pixel diff **≤ 0.1 %** of pixels differing by **> 2/255** per channel, to absorb
   antialiasing between runs inside the same image.
 - **Tier C:** reported, never blocking. Cross-browser difference is expected; a *growing* one is

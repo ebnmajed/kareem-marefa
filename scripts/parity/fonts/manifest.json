@@ -1,0 +1,23 @@
+[
+  {
+    "family": "IBM Plex Sans Arabic",
+    "weight": 400,
+    "style": "normal",
+    "sha256": "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb",
+    "bytes": 33512
+  },
+  {
+    "family": "IBM Plex Sans Arabic",
+    "weight": 500,
+    "style": "normal",
+    "sha256": "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da",
+    "bytes": 35884
+  },
+  {
+    "family": "IBM Plex Sans Arabic",
+    "weight": 600,
+    "style": "normal",
+    "sha256": "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
+    "bytes": 35884
+  }
+]

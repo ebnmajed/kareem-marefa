@@ -67,7 +67,7 @@ capacity. `M6` needs `M5`'s storage and job plumbing.
 | graphile-worker on Fly + the **`LISTEN`/`NOTIFY` boot probe** | `11` §1.2 — the failure is silent |
 | The credential-free converter app | `04` §7.1 |
 | **Wire the browser Supabase client** (DEC-020, **DEC-021**) | No longer a spike — the owner confirmed the trade. Retire the `README.md:35` invariant here, pointing at both entries |
-| **Spike: shaping parity harness**, Tiers A and B | The riskiest unknown in the product |
+| ✅ **Shaping parity harness** (DEC-024) | **Done and green.** Chromium is deterministic to 0.000%; substitution caught at 2–10%. D66 is achievable — M6 can be planned on it. Export-path coverage still belongs to M6 |
 | **Decide the hosting region** (OQ-026) | Cheap now; a data migration later |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` set and stable | `04` §9.2 |
 

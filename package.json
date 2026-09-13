@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "qa": "node scripts/qa-run.mjs"
+    "qa": "node scripts/qa-run.mjs",
+    "parity": "node scripts/parity/harness.mjs",
+    "parity:update": "node scripts/parity/harness.mjs --update",
+    "parity:fonts": "node scripts/parity/extract-fonts.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
