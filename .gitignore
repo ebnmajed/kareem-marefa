@@ -46,3 +46,7 @@ next-env.d.ts
 
 # workspace package build output (built on install and before next build)
 packages/*/dist/
+
+# Claude Code — local-only; .claude/settings.json and .claude/hooks/ stay tracked
+.claude/worktrees/
+.claude/settings.local.json

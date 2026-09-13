@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)", "Bash(npm run qa)", "Bash(npm run build)", "Bash(npm run dev:*)",
+      "Bash(npx vitest:*)", "Bash(node scripts/traceability.mjs)", "Bash(node scripts/qa.mjs)",
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)"
+    ]
+  },
+  "hooks": {
+    "TaskCompleted": [
+      { "hooks": [ { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-gate.sh\"" } ] }
+    ]
+  }
+}
