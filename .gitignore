@@ -43,3 +43,6 @@ next-env.d.ts
 
 # QA screenshots (scripts/qa.mjs)
 .qa-shots/
+
+# workspace package build output (built on install and before next build)
+packages/*/dist/

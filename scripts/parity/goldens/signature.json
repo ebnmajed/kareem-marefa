@@ -68,10 +68,10 @@
     "long-word-break": {
       "lineCount": 5,
       "lineWidths": [
-        176.69,
-        126.64,
-        98.84,
-        121.05,
+        186.14,
+        136.09,
+        108.29,
+        130.5,
         142.97
       ],
       "lineHeights": [
@@ -81,9 +81,9 @@
         60,
         60
       ],
-      "totalAdvance": 666.19,
+      "totalAdvance": 703.99,
       "charRectCount": 42,
-      "zeroWidthRects": 4,
+      "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
       "distinctFromFallback": true
@@ -106,16 +106,16 @@
     "autofit-limit": {
       "lineCount": 2,
       "lineWidths": [
-        382.59,
+        389.2,
         181.84
       ],
       "lineHeights": [
         42,
         42
       ],
-      "totalAdvance": 564.43,
+      "totalAdvance": 571.04,
       "charRectCount": 52,
-      "zeroWidthRects": 1,
+      "zeroWidthRects": 0,
       "fontSize": "28px",
       "letterSpacing": "normal",
       "distinctFromFallback": true

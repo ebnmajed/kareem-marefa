@@ -5,9 +5,12 @@
   "engines": {
     "node": ">=22"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build -w @kareem/designer-runtime && next build",
     "start": "next start",
     "lint": "eslint",
     "qa": "node scripts/qa-run.mjs",

@@ -22,6 +22,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { renderDocumentToHtml } from '@kareem/designer-runtime'
 import { CASES, DEFAULT_FONT_SIZE, FAMILY } from './cases.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -34,62 +35,85 @@ mkdirSync(GOLDENS, { recursive: true })
 
 /* ---------- fonts: inlined by hash, so the render is hermetic ---------- */
 const manifest = JSON.parse(readFileSync(join(HERE, 'fonts', 'manifest.json'), 'utf8'))
-const faces = manifest
-  .filter((m) => m.family === FAMILY)
-  .map((m) => {
-    const b64 = readFileSync(join(HERE, 'fonts', `${m.sha256}.woff2`)).toString('base64')
-    return `@font-face{font-family:'${FAMILY}';font-style:${m.style};font-weight:${m.weight};` +
-      `font-display:swap;src:url(data:font/woff2;base64,${b64}) format('woff2');}`
-  })
-  .join('\n')
+const familyFonts = manifest.filter((m) => m.family === FAMILY)
+const inlineFonts = familyFonts.map((m) => ({
+  ...m,
+  base64: readFileSync(join(HERE, 'fonts', `${m.sha256}.woff2`)).toString('base64'),
+}))
 
 const fontFingerprint = createHash('sha256')
-  .update(manifest.filter((m) => m.family === FAMILY).map((m) => m.sha256).join(','))
+  .update(familyFonts.map((m) => m.sha256).join(','))
   .digest('hex')
   .slice(0, 16)
 
-/* ---------- the fixture ---------- */
-// --break-font is the harness testing itself: it points the family at a face
-// that does not exist, so the browser falls back. A suite that cannot be made
-// to fail is not evidence of anything.
+/* ---------- the fixture, built from the SHARED runtime ---------- */
+// The suite renders through @kareem/designer-runtime — the same package the
+// worker image will use (DEC-017). That is the point: a bespoke fixture would
+// only prove that Chromium can shape Arabic, which was never in doubt. This
+// proves OUR renderer produces correct Arabic, and it fails if the renderer
+// regresses.
+//
+// --break-font points the family at a face that does not exist, so the browser
+// falls back. A suite that cannot be made to fail is not evidence of anything.
 const familyInUse = BREAK_FONT ? 'NoSuchArabicFace' : FAMILY
 
-const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
-<style>
-${BREAK_FONT ? '' : faces}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#fff}
-.case{
-  font-family:'${familyInUse}', sans-serif;
-  font-weight:400;
-  letter-spacing:0;            /* A30: never letter-space Arabic */
-  line-height:1.7;             /* A30: Arabic needs the leading */
-  color:#0B1220;
-  padding:12px;
-  /* deliberately NOT overflow:hidden — that clips stacked tashkeel (A30) */
+const PAD = 12
+let cursorY = 0
+const layers = []
+for (const c of CASES) {
+  const size = c.fontSize ?? DEFAULT_FONT_SIZE
+  // Sized to the expected line count plus one line of slack. Generous enough
+  // never to clip a stacked mark (A30), tight enough that the Tier B pixel
+  // ratio stays dense — a frame mostly full of white dilutes the diff and
+  // hides a real difference under the 0.1% threshold.
+  const h = Math.ceil(size * 1.7 * ((c.lines ?? 1) + 1)) + PAD * 2
+  layers.push({
+    id: `case-${c.id}`,
+    kind: 'text',
+    frame: { x: 0, y: cursorY, w: c.width, h },
+    text: { literal: c.text },
+    font: { family: familyInUse, size, lineHeight: 1.7, letterSpacing: 0, weight: 400 },
+    align: 'start',
+    color: '#0B1220',
+  })
+  // The control: the same string in a face that certainly does not exist. If a
+  // case's advance equals its control's, the target font never loaded.
+  layers.push({
+    id: `ctrl-${c.id}`,
+    kind: 'text',
+    frame: { x: 0, y: 0, w: c.width, h },
+    text: { literal: c.text },
+    font: { family: 'NoSuchArabicFace', size, lineHeight: 1.7, letterSpacing: 0, weight: 400 },
+  })
+  cursorY += h
 }
-/* The control strip: the same text in a face that certainly does not exist.
-   If a case's advance equals its control's, the target font never loaded.
 
-   position:FIXED, not absolute, and parked off-screen. As absolute elements in
-   normal flow they were nowrap and wider than the viewport, which in an RTL
-   document overflows LEFTWARD (one measured at x = -74) and grows
-   documentElement.scrollWidth past the viewport. That shifts the page's scroll
-   origin, and every element-relative screenshot then captures the wrong region
-   — silently, producing blank goldens that pass every comparison forever.
-   Fixed elements do not contribute to scroll size at all. */
-.control{font-family:'NoSuchArabicFace', monospace; position:fixed; top:-10000px;
-  left:0; visibility:hidden; white-space:nowrap; pointer-events:none}
-</style></head><body>
-${CASES.map(
-  (c) => `<div class="case" id="case-${c.id}" style="width:${c.width}px;font-size:${c.fontSize ?? DEFAULT_FONT_SIZE}px">${escapeHtml(c.text)}</div>
-<div class="control" id="ctrl-${c.id}" style="font-size:${c.fontSize ?? DEFAULT_FONT_SIZE}px">${escapeHtml(c.text)}</div>`,
-).join('\n')}
-</body></html>`
-
-function escapeHtml(s) {
-  return s.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m])
+const doc = {
+  schemaVersion: 1,
+  purpose: 'poster',
+  master: { width: 800, height: cursorY, unit: 'px' },
+  direction: 'rtl',
+  background: { type: 'solid', color: '#ffffff' },
+  layers,
 }
+
+const html = renderDocumentToHtml(doc, {
+  fonts: BREAK_FONT ? [] : inlineFonts,
+  // Controls are parked off-screen with position:FIXED. As absolutely
+  // positioned nowrap elements they overflowed LEFTWARD in RTL (one measured
+  // at x = -74), growing scrollWidth past the viewport, shifting the scroll
+  // origin, and making every element-relative screenshot capture the wrong
+  // region — silently, producing blank goldens. Fixed elements contribute
+  // nothing to scroll size.
+  extraCss: `
+    [data-layer^="ctrl-"]{
+      position:fixed !important; top:-10000px !important; inset-inline-start:0 !important;
+      width:auto !important; height:auto !important;
+      white-space:nowrap; visibility:hidden; pointer-events:none;
+    }
+    .dr-text{padding:${PAD}px}
+  `,
+})
 
 if (process.argv.includes('--dump-html')) {
   const { writeFileSync: w } = await import('node:fs')
@@ -103,9 +127,12 @@ const EXTRACT = (caseIds) => {
   const round = (n) => Math.round(n * 100) / 100
   const out = {}
   for (const id of caseIds) {
-    const el = document.getElementById(`case-${id}`)
-    const ctrl = document.getElementById(`ctrl-${id}`)
-    const node = el.firstChild
+    // The runtime marks layers with data-layer, and bidi-isolates text in
+    // <bdi> (REQ-INT-007), so the measurable text node is inside it.
+    const el = document.querySelector(`[data-layer="case-${id}"]`)
+    const ctrl = document.querySelector(`[data-layer="ctrl-${id}"]`)
+    const holder = el.querySelector('bdi') ?? el
+    const node = holder.firstChild
 
     // Per-character rects. A ligature makes two code points share one box, so
     // the count drops when a ligature forms and rises when one is dropped.
@@ -120,7 +147,7 @@ const EXTRACT = (caseIds) => {
 
     // Line boxes, from the full range's client rects grouped by top.
     const full = document.createRange()
-    full.selectNodeContents(el)
+    full.selectNodeContents(holder)
     const rects = [...full.getClientRects()].filter((r) => r.width > 0)
     const byTop = new Map()
     for (const r of rects) {
@@ -191,7 +218,7 @@ async function render() {
   const shots = {}
   const ink = {}
   for (const c of CASES) {
-    const el = await page.$(`#case-${c.id}`)
+    const el = await page.$(`[data-layer="case-${c.id}"]`)
     shots[c.id] = await el.screenshot({ encoding: 'base64' })
     // How much of the capture is not background. A blank golden passes every
     // comparison forever and proves nothing — which is exactly what happened

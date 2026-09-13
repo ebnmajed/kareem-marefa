@@ -614,6 +614,42 @@ decision. Every decision taken **after** the source brief gets an entry here.
   reports "no platform policies yet" and starts comparing the moment the first policied table lands.
 - **Documents changed:** `13-testing-quality.md`, `STATUS.md`, `14-roadmap.md`
 
+## DEC-029 — The workspace adds `packages/*`; the Next app stays at the repo root
+
+- **Date:** 2026-09-13 · **Decided by:** architect
+- **Decision:** npm workspaces with `packages/*`, and **`@kareem/designer-runtime`** as the first
+  package — the one renderer shared by the app and the worker image (DEC-017). **The Next app stays
+  at the repository root.** It is not moved to `apps/web`.
+- **Rationale for not moving the app:** `04-architecture.md` sketches `packages/designer-runtime`
+  alongside the app and never required `apps/web`. Moving `src/` would mean changing Vercel's root
+  directory on a **live deployment** for no benefit: npm workspaces do not require it, and —
+  verified in `node_modules/next/dist/docs/` — **Turbopack transpiles workspace packages
+  automatically under the App Router**, so no `transpilePackages` entry is needed either. The
+  roadmap flags this restructure as touching the live site; the cheapest way to honour that is to
+  not touch it.
+- **What the package contains:** the document/layer model (`06` §2) as real types, and
+  `renderDocumentToHtml()` — DOM/SVG, never a raster canvas (A28). The typographic invariants from
+  A30 are **CSS in the package**, not advice in a document: letter-spacing 0, line-height 1.7,
+  `overflow: visible` on text, `text-align: start`, and `<bdi>` around every interpolated value.
+- **The change that makes it real:** the parity suite now renders **through the package** instead
+  of a bespoke fixture. A fixture only proved Chromium can shape Arabic, which was never in doubt.
+  The suite now proves **our renderer** produces correct Arabic, and fails if the renderer
+  regresses — which is what DEC-017's "shared `designer-runtime` package at one version plus a
+  blocking CI parity gate" actually means.
+- **Two fixes it forced, both worth keeping:**
+  1. Capture frames are sized to the case's **expected line count plus one**. They were six lines
+     tall regardless, so a one-line case was measured in a frame that was mostly white — which
+     **dilutes the Tier B ratio** and can hide a real difference under the 0.1% threshold.
+  2. The off-screen measurement controls are positioned through the runtime's `extraCss` with
+     `position: fixed`, preserving the DEC-024 fix rather than reintroducing the RTL
+     overflow-leftward trap.
+- **Build order:** root `build` runs `npm run build -w @kareem/designer-runtime && next build`
+  explicitly rather than relying on `prepare`, because Vercel restores a build cache and reports
+  "up to date" — which would leave `dist` missing or stale.
+- **Verified:** the route table is byte-identical before and after, `npm run qa` is 44/44, parity
+  holds on macOS **and** in the Linux container, and the break test still fails all 14 assertions.
+- **Documents changed:** `04-architecture.md`, `STATUS.md`, `14-roadmap.md`
+
 ---
 
 ## Template for new entries

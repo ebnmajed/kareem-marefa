@@ -112,9 +112,18 @@ src/
 ├── lib/dal/                    # THE ONLY PLACE THAT TOUCHES SUPABASE
 ├── lib/supabase/               # server · browser · worker clients
 ├── i18n/ · messages/{ar,en}.json
-packages/designer-runtime/      # shared by the app and the worker image
+packages/designer-runtime/      # THE renderer — shared by the app and the worker
 worker/                         # graphile-worker, Chromium, fonts
 ```
+
+**The Next app stays at the repository root.** npm workspaces (`packages/*`) do not require
+`apps/web`, and Turbopack transpiles workspace packages automatically under the App Router — so
+there is no `transpilePackages` entry and Vercel's root directory is untouched (DEC-029).
+
+`@kareem/designer-runtime` is the **only** renderer. The app, the worker image and the parity
+suite all import it, which is what keeps them from drifting (DEC-017). Root `npm run build` builds
+it first, explicitly — Vercel restores a cache and reports "up to date", which would otherwise
+leave `dist` stale.
 
 ---
 

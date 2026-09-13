@@ -188,14 +188,21 @@ src/
 │       └── webhooks/{resend,google-calendar}/route.ts
 ```
 
-### 4.1 Why route groups now, when the repo has none
+### 4.1 The app stays at the repository root
+
+npm workspaces add `packages/*` — the first being **`@kareem/designer-runtime`** — **without**
+moving the app to `apps/web` (DEC-029). Verified in `node_modules/next/dist/docs/`: **Turbopack
+transpiles workspace packages automatically under the App Router**, so there is no
+`transpilePackages` entry and no reason to change Vercel's root directory on a live deployment.
+
+### 4.2 Why route groups now, when the repo has none
 
 `(auth)` groups the three unauthenticated platform routes so they share a layout without adding a
 URL segment. The frozen marketing routes stay exactly where they are — **`REQ-NFR-019` means
 `/`, `/ar`, `/en`, `/ar/register` and `/og.png` do not move**, and a route group would not change
 their URLs but would change their files, which is a diff on a live page for no benefit.
 
-### 4.2 Actions vs Route Handlers
+### 4.3 Actions vs Route Handlers
 
 | Use a **Server Action** | Use a **Route Handler** |
 |---|---|
