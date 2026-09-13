@@ -1,0 +1,34 @@
+{
+  "admin": {
+    "proposals": {
+      "title": "Review proposals",
+      "intro": "Every proposal members have sent, waiting on your decision. Rejecting and requesting changes each need a written reason, which reaches the proposer.",
+      "empty": "No proposals are waiting for review.",
+      "count": "{count, plural, =0 {no proposals} one {one proposal} other {{value} proposals}}",
+      "age": "{count, plural, =0 {arrived today} one {a day ago} other {{value} days ago}}",
+      "proposerLabel": "Proposer",
+      "presentersLabel": "Presenters",
+      "categoryLabel": "Category",
+      "levelLabel": "Level",
+      "durationLabel": "Expected duration",
+      "audienceLabel": "Intended audience",
+      "notesLabel": "The proposer's notes for the admin",
+      "abstractLabel": "About the topic",
+      "state": {
+        "submitted": "Waiting for review",
+        "in_review": "Under review"
+      },
+      "approve": "Approve",
+      "approveNote": "Approving does not publish the session — scheduling and publishing are a separate act.",
+      "requestChanges": "Request changes",
+      "reject": "Reject",
+      "reasonLabel": "The reason the proposer will read",
+      "reasonHint": "Write it the way you would say it to them — it is all they will see of your decision.",
+      "reasonRequired": "Write the reason first — no decision reaches a proposer without one.",
+      "send": "Send",
+      "cancel": "Cancel",
+      "failed": "That decision could not be recorded — try again.",
+      "done": "Your decision is recorded and has reached the proposer."
+    }
+  }
+}

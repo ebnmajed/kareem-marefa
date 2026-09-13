@@ -14,6 +14,8 @@ const read = (p: string) => JSON.parse(readFileSync(join(process.cwd(), p), "utf
 const ar = read("src/messages/ar/proposals.json").proposals;
 const en = read("src/messages/en/proposals.json").proposals;
 const marketing = read("src/messages/ar/marketing.json");
+const arAdmin = read("src/messages/ar/admin.json").admin;
+const enAdmin = read("src/messages/en/admin.json").admin;
 
 describe("REQ-PRO-002 — the labels members have already read", () => {
   it("العنوان and التصنيف are word for word the pre-launch form's", () => {
@@ -47,8 +49,8 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) flatten(v, prefix ? `${prefix}.${k}` : k, out);
     return out;
   }
-  const arFlat = flatten(ar);
-  const enFlat = flatten(en);
+  const arFlat = { ...flatten(ar), ...flatten(arAdmin, "admin") };
+  const enFlat = { ...flatten(en), ...flatten(enAdmin, "admin") };
 
   it("every Arabic plural message carries all six ICU forms", () => {
     const plurals = Object.entries(arFlat).filter(([, v]) => v.includes(", plural,"));
@@ -64,8 +66,10 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     // `#` would render in the locale's default numbering system (arab for ar),
     // which can disagree with org_settings.numerals. The count still drives
     // the plural branch; the digits come from formatNumber().
-    expect(arFlat["propose.duration"]).toContain("{value}");
-    expect(arFlat["propose.duration"]).not.toContain("#");
+    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count"]) {
+      expect(arFlat[key], key).toContain("{value}");
+      expect(arFlat[key], key).not.toContain("#");
+    }
   });
 
   it("the English twin has the same keys", () => {
@@ -92,7 +96,7 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
 });
 
 describe("REQ-INT-004 — logical properties only, in every file this track owns", () => {
-  const ROOTS = ["src/app/[locale]/app/propose", "src/components/sessions", "src/lib/dal/proposals.ts"];
+  const ROOTS = ["src/app/[locale]/app/propose", "src/app/[locale]/app/admin/proposals", "src/components/sessions", "src/lib/dal/proposals.ts"];
   // Physical utilities that have a logical twin. `right-`/`left-` are caught
   // by the inset forms; `text-left`/`text-right` by the alignment forms.
   const PHYSICAL = /\b(?:ml|mr|pl|pr|border-l|border-r|rounded-l|rounded-r|left|right)-(?:\[|\d|auto|px|full)|\btext-(?:left|right)\b/;

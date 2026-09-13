@@ -219,3 +219,51 @@ describes — the history behind each state — is still STORY-PRO-004.
 Who may open SCR-018 is `proposals_read_own_or_staff`, not a check in the page: the proposer and
 the named co-presenters, nobody else. A member who is neither gets no row, and no row is a **404**
 rather than a message that would confirm the id exists.
+
+---
+
+## 3. STORY-PRO-003 — admin review with reasons
+
+**Covers:** `REQ-PRO-005`, `REQ-PRO-006` · **Screen:** SCR-041 · **Size:** M
+
+### 3.1 Why this one IS an RPC, when PRO-001's was not
+
+`proposals` has **no admin update policy**. `0010` gives the table four policies and every one of
+them is the proposer's, which is `03` §5.2b saying out loud that "Approval, rejection and
+change-requests are admin RPCs". So an admin cannot write this table through PostgREST at all and
+`SECURITY DEFINER` is the only way in — the opposite of `create_proposal()`, which is `SECURITY
+INVOKER` because it needed atomicity and not authority.
+
+That is also why `review_proposal()` opens with `assert_fresh_admin()`. A definer function bypasses
+RLS, so the caller's claim to be an admin is re-derived from the members table against
+`claims_version` (`03` §1.3) rather than believed.
+
+### 3.2 One click for the admin, the real path in the record
+
+`02` §6.1 has no edge from `submitted` to a decision — an admin opens a proposal and then decides —
+and `0011`'s guard enforces it. Making the queue's approve button a two-step would be UI ceremony
+for a rule about record-keeping, so `review_proposal()` walks `submitted → in_review → approved`
+itself. The admin presses once; the audit log shows both moves.
+
+### 3.3 Approval clears a previous change-request's reason
+
+A proposal that went `changes_requested` (reason set) → `submitted` → `in_review` → `approved`
+would otherwise still carry that reason, and SCR-018 would print it under «مقبول» as though the
+admin had reservations. It belongs to the earlier decision and is preserved in the audit log, so
+the row is cleared on approval.
+
+### 3.4 Two things the review card got wrong first, worth not repeating
+
+- **Three buttons share one form**, so a single `<textarea name="reason">` per decision meant
+  `formData.get("reason")` returned whichever appeared first — a filled rejection reason could be
+  replaced by an empty change-request box. The boxes are named for their decision.
+- **`required` inside a collapsed `<details>` blocks the whole form.** A required control that is
+  not focusable makes the browser refuse to submit, silently, including the approve button that has
+  nothing to do with it. The reason is enforced in the action and again in the RPC, which is where
+  it has to hold anyway.
+
+### 3.5 A moderator gets a 404, not a message
+
+`03` §5.2a makes a moderator `is_staff()`, so they *can read* proposals; `09` §7.1 gives them four
+screens and this is not one. `listProposalsForReview()` returns null for anyone but an admin and
+the route calls `notFound()`. A message would confirm the queue exists.
