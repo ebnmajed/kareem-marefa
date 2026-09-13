@@ -205,7 +205,7 @@ from a separate rule. Date range pickers run right-to-left.
 | `cancelled` | **«جلسة ملغاة»** banner with the reason; comments frozen, materials retained (OQ-022) |
 | presenter viewing | an extra **«شاشة التقديم»** entry → SCR-016 |
 
-**Mobile:** the primary action is **sticky in the thumb zone** and stays reachable through the
+**Mobile:** the primary action is **in flow at position 4, inside the first screenful** — not sticky: at 390 px the panel is ~380 px tall and pinning it covered the language row `REQ-SES-011` requires above it (DEC-045). It was drafted as sticky in the thumb zone through the
 whole scroll. Poster at the top, 4:5 crop. Comments lazy-load.
 **Desktop:** two columns — details and action in a sticky rail, content in the main column.
 **RTL:** comment threads indent from the **inline-start** side; reply chevrons mirror; the map link
@@ -396,7 +396,7 @@ reason** the proposer receives.
 (warns that attendees will be notified and calendars updated — `REQ-SES-009`)
 **Mobile:** a stepper, one section per step.
 **Desktop:** a form with a live poster preview beside it.
-**RTL:** the date-time picker runs right-to-left; the duration field pairs its numeral with a unit
+**RTL:** the date-time picker runs right-to-left — **not in M2**: a native `datetime-local` renders in the browser's locale; a custom picker is an M7-console backlog item (DEC-045); the duration field pairs its numeral with a unit
 label in the correct order.
 **Note:** publishing is **blocked by a database constraint**, not only by the form (`02` §4.3) —
 date, time, venue, capacity and poster are all required.

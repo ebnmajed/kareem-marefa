@@ -1123,6 +1123,15 @@ decision. Every decision taken **after** the source brief gets an entry here.
   action; `09` had the action at 3 and the language at 5. Only `01` may define a requirement, so
   the built page puts the language above the action and `09`'s list is corrected and renumbered
   rather than overridden in silence.
+- **`09` SCR-012's sticky action is desktop-only.** `09` asked for the primary action pinned in
+  the thumb zone through the whole scroll; at 390 px the RSVP panel is ~380 px tall and pinning it
+  covered the language row `REQ-SES-011` requires above it. On mobile the panel is in flow at
+  position 4 (inside the first screenful, nothing covered); on desktop it stays the sticky rail.
+  A y-coordinate assertion alone did not catch this — the row was *under* the panel — so the
+  390 px review also asserts the row is not occluded.
+- **`09` SCR-043's "date-time picker runs right to left" is not honoured in M2.** A native
+  `datetime-local` renders its placeholder and calendar in the browser's locale; the only literal
+  fix is a custom picker, which M2 does not budget. Backlog item for M7-console; `09` notes it.
 - **`publish_session()` walks `02` §6.2's whole chain** from `draft` to `published` and writes one
   transition row per edge, all flagged manual and attributed to the admin, instead of jumping.
   The audit trail shows the path the state machine defines even when a person pressed one button.
