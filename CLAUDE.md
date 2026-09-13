@@ -259,6 +259,64 @@ Scopes: `auth` `sessions` `rsvp` `checkin` `materials` `scoring` `designer` `cer
 
 ---
 
+## Agent team
+
+A lead session with three to five in-process teammates sharing **this one checkout, one branch, one
+local Supabase**. The full model — waves, spawn prompt, contracts — is in
+[`docs/plan/TEAM.md`](docs/plan/TEAM.md) (DEC-040). The rules below are the ones that bite.
+
+### Ownership map (wave 1 — M2)
+
+| Teammate | Model | Tracks | Edits only |
+|---|---|---|---|
+| `sessions` | opus | PRO, SES, the clock jobs; **owns the event page and its slot contracts** | `app/sessions/**` (minus `check-in`, `host`, `rate`), `app/propose/**`, `lib/dal/{sessions,proposals}.ts`, `components/sessions/**`, `worker/src/tasks/{start,complete}_session.ts`, its tests, `supabase/proposed/sessions/**`, `messages/*/{sessions,proposals}.json` |
+| `checkin` | sonnet | RSV, CHK, the host view | `app/sessions/[id]/{check-in,host}/**`, `lib/dal/{rsvp,checkin}.ts`, `components/checkin/**`, `worker/src/tasks/{promote_waitlist,rotate_codes}.ts`, its tests, `supabase/proposed/checkin/**`, `messages/*/{rsvp,checkin}.json` |
+| `event` | sonnet | EVT, RAT, private Realtime | `app/sessions/[id]/rate/**`, `lib/dal/{comments,reactions,reports,ratings}.ts`, `lib/realtime/**`, `components/event/**`, its tests, `supabase/proposed/event/**`, `messages/*/{event,ratings}.json` |
+
+Later waves (M3 · M4 · M5, then M6 · M7-console, then M8 · M7-branding) are in `TEAM.md`.
+
+### Lead-only paths
+
+`supabase/migrations/**` · `docs/plan/**` (teammates get `docs/plan/notes/<name>.md`) · `CLAUDE.md` ·
+`.claude/**` · `.github/**` · `package.json`, `package-lock.json` · `src/app/[locale]/layout.tsx` ·
+`src/app/[locale]/(marketing)/**` · `public/**` · `src/proxy.ts` · `src/lib/supabase/**` ·
+`src/lib/dal/session.ts` · `src/i18n/**` · `src/messages/*/marketing.json` · `scripts/**` ·
+`vitest.config.ts` · `playwright.config.ts`.
+
+### The migration rule
+
+**Teammates never write into `supabase/migrations/`.** One local Supabase and `supabase db reset`
+applying every file on disk means a half-written migration breaks everyone the moment it is saved,
+and two teammates would race for a sequence number. Teammates write SQL under
+`supabase/proposed/<name>/`, prove it with `applyProposed()` inside their RLS tests (transactional,
+rolled back), and hand the lead the file plus the `03` §8.2 rows and test names. The lead numbers,
+moves, resets, runs the suite, commits. **Only the lead runs `supabase db reset`, `start`, `stop`.**
+
+### The gate lock
+
+`npm run qa`, `npm run visual`, Playwright's web server, `npm run test:e2e:unconfigured` and the
+`TaskCompleted` hook all take **`/tmp/task-gate.lock`** (`scripts/lib/gate-lock.mjs`): one server on
+port 3000 and one `.next` at a time. Waiters queue for up to 20 minutes and say so. **Only the lead
+runs `npm run build`**; teammates run `tsc`, lint, `npm test`, `npm run test:rls`, and their e2e
+through the lock.
+
+### Git in a shared tree
+
+One integration branch per wave (`wave-1/m2`). Stage **only your own paths** — never `git add -A`.
+Never `stash`, `rebase`, `reset --hard`, `clean`, or switch branches: it is everyone's tree. Small
+conventional commits, `Refs:` in the trailer paragraph. The lead pushes and opens the wave's PR.
+
+### Definition of done (every story, every teammate)
+
+- `npx tsc --noEmit` clean · `npm run lint` zero errors · `npm test` green · `npm run test:rls` green
+  with the generated sweep · your e2e green under `npm run test:e2e:local`.
+- **`npm run qa` 44/44** and **`npm run visual` 0.000%** for anything that touches
+  `src/app/[locale]/(marketing)/**`, `public/**` or the locale layout — lead runs these at sync points.
+- **Arabic/RTL verified:** strings authored in `messages/ar/` first; all six ICU plural forms where a
+  count appears; `<bdi>` on every interpolated value; logical properties only, no `rtl:` paired with
+  a physical utility; no `overflow: hidden` on a text line; numerals per the org setting; one
+  390 px RTL screenshot per new screen, looked at.
+
 ## The plan
 
 | | |

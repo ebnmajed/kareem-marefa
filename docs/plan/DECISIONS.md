@@ -979,6 +979,52 @@ decision. Every decision taken **after** the source brief gets an entry here.
   a **Launch** item (`14` §2, after M8) holding the rehearsal and the cutover.
 - **Documents changed:** `14-roadmap.md`, `STATUS.md`
 
+## DEC-040 — The agent team: one checkout, one branch per wave, lead-owned migrations, a shared gate lock
+
+- **Date:** 2026-09-14 · **Decided by:** owner, on the architect's plan (`docs/plan/TEAM.md`)
+- **Decision — shape:** a lead Claude Code session with three to five **in-process** teammates
+  sharing this checkout, one integration branch per wave (`wave-N/…`), and one local Supabase.
+  Waves follow `14` §3: wave 1 splits **M2 along its seams** into `sessions` (PRO, SES, clock jobs;
+  owns the event page and its slot contracts; **opus**), `checkin` (RSV, CHK; **sonnet**) and
+  `event` (EVT, RAT, private Realtime; **sonnet**); wave 2 is M3 · M4 · M5; wave 3 is M6 ·
+  M7-console; wave 4 is M8 · M7-branding. The lead runs whatever model the owner starts it with.
+  Ownership is a map of path globs per teammate plus a lead-only list (`CLAUDE.md` § Agent team);
+  a teammate stages only its own paths.
+- **Decision — migrations are the lead's.** Teammates never write into `supabase/migrations/`:
+  `supabase db reset` applies every file on disk, so a half-written migration breaks everyone the
+  moment it is saved, and two teammates would race for a sequence number. SQL is authored under
+  `supabase/proposed/<name>/` (ignored by the CLI), proven with `applyProposed()` inside the RLS
+  suite's rolled-back transactions, and promoted by the lead with its `03` §8.2 rows. Only the
+  lead runs `supabase db reset`, `start`, `stop`, and `npm run build`.
+- **Decision — the gate lock.** `npm run qa`, `npm run visual`, Playwright's web server, the
+  unconfigured build-and-test and the `TaskCompleted` hook take one mutex,
+  `/tmp/task-gate.lock` (`scripts/lib/gate-lock.mjs`, same directory and same 30-minute stale
+  sweep and 20-minute give-up as the hook of DEC-030), so port 3000 and `.next` are used by one
+  run at a time and the hook queues behind a manual run instead of racing it. A parent that holds
+  the lock passes `KAREEM_GATE_HELD=1` so its children do not deadlock on it.
+- **Decision — wave 0 is done by the M1 session, as PR `m2/schema`:** migration `0010` (the whole
+  M2 schema — proposals, presenters, sessions, transitions, RSVPs, codes, check-ins, attempts,
+  comments, reactions, reports, ratings, the aggregates view — with RLS, grants, the guard
+  triggers, `is_presenter_of()` and `has_checked_in()`), the `03` §8.2 rows for the six pattern
+  tables, the per-namespace message catalogue (`src/messages/{ar,en}/<ns>.json` merged by
+  `src/messages/index.ts`), the gate lock, `applyProposed()`, `supabase/proposed/`, the three agent
+  definitions, the settings allow/deny lists, and `TEAM.md`. **The RPCs are not in wave 0**; they
+  are the teammates' first proposed files.
+- **Rationale:** the three tracks of M2 touch disjoint tables and screens and share exactly one
+  surface, which a slot contract turns into an interface. A branch per teammate is impossible in
+  one working tree, and worktrees would multiply the local Supabase problem; one branch with
+  path ownership is the honest version of "commit small, often". The lock exists because one
+  port and one `.next` cannot be shared by concurrent builds, and the DEC-030 hook already owned
+  the only mutex in the repo.
+- **Settings:** allow the local Supabase and test commands teammates run; deny `supabase db
+  push`, `link`, `--linked` queries and dumps, `config push`, `secrets`, `vercel`, `fly`,
+  `gh pr merge`, `gh auth`, pushes to `main`, force-pushes, `reset --hard`, `stash`, `rebase`,
+  `clean`, switching to `main`.
+- **Supersedes:** nothing. `13` §1's table is unchanged; `TEAM.md` is a new document at
+  `settled`.
+- **Documents changed:** `CLAUDE.md`, `03-permissions-rls.md` §8.2, `TEAM.md` (new),
+  `STATUS.md`
+
 ---
 
 ## Template for new entries
