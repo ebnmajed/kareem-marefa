@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-14 · **Branch:** `m1/pre-cutover` (PR → `main`, awaiting the owner's merge) · **`main` @ `453e540`:** M1 PR A (#4) and PR B (#6) **merged**, production deploy green, frozen routes answer · **Phase:** **M1 closing — pre-cutover hardening; PR C deferred to launch (owner's morning plan, step 3 pending)**
+**Last updated:** 2026-09-14 · **Branch:** `main` @ `cacd54b` (PRs #4, #6, #7 merged; production deploy green; frozen routes answer; platform routes 404 by design) · **Phase:** **M1 complete. Next: M2 — on local Supabase and CI only (DEC-039). PR C is deferred to Launch.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-038**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-039**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -55,7 +55,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 11 | `11-background-jobs.md` | `settled` | **34 jobs** with keys, retries, alerts. |
 | 12 | `12-security-privacy.md` | `settled` | Threat model, retention, PDPL. Raised OQ-026. |
 | 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. §1 updated under DEC-033. |
-| 14 | `14-roadmap.md` | `settled` | M0–M8. No phase-2 bucket. |
+| 14 | `14-roadmap.md` | `settled` | M0–M8 + **Launch** (DEC-039). No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
 | — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) is due at M3. |
@@ -210,9 +210,9 @@ Live hook probe through the local Auth API: a sign-up on an unlisted domain → 
   limits apply meanwhile. Noted for M2 with the first Route Handler that needs one.
 - `worker/src/supabase.ts` (the `createWorkerClient()` of `04` §5.1): with M3's first job.
 
-## PR C — production cutover checklist (NOT started; every step needs the owner's explicit go)
+## PR C — production cutover checklist (deferred to **Launch** by DEC-039; NOT started; every step needs the owner's explicit go)
 
-Run in this order, on `main` after PR A and PR B are merged. Nothing here has been done.
+Run in this order, on `main`, **on launch day** (`14` Launch). Nothing here has been done, and nothing here is started before then. Migrations to rehearse: everything from `0003` onward.
 
 1. **Rehearsal (no production change):** `supabase db dump --linked --schema-only` → apply to a
    fresh local database → apply `0003`–`0007` on top → `npm run test:rls` against it → delete the
@@ -264,7 +264,7 @@ reachable through PostgREST; a `revoke` would touch the frozen table's privilege
 
 ## Waiting on the owner
 
-**Merge the pre-cutover PR** (`m1/pre-cutover`), run the `REVOKE` in the hosted SQL editor, then step 3 of the morning plan: PR C deferred to launch as a decision, the roadmap's launch item, and STATUS pointing M2 at local Supabase and CI only.
+**Run the `REVOKE` in the hosted SQL editor** (`revoke truncate on table public.registrations from anon;`, DEC-037) whenever convenient. Nothing else: M2 starts on local Supabase and CI.
 
 **Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
 the choice must provide a session-mode Postgres connection and either private networking to the
@@ -354,11 +354,12 @@ unaffected.
 
 ## Next session should
 
-1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-035 and DEC-036 are new.
-2. Check PR A (#4) and PR B. If merged, `main` carries the M1 schema and app side; if not, the
-   branches are `m1/tenancy` and `m1/app`, both green at handoff.
-3. **PR C only with the owner present and each step approved** — the checklist above is the
-   script. Rehearse against a schema-only dump first. Never a data fix as a migration.
-4. Then the `(marketing)` route-group move (owner-approved), and M2.
+1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-035 … DEC-039 are new.
+2. **Start M2** (`14-roadmap.md` M2: proposals, sessions, RSVP) on a branch, **local Supabase and
+   CI only** (DEC-039): migrations forward-only from `0010`, every table with RLS, grants and its
+   rows in `03` §8.2, the isolation sweep left generated, `policy-diff` green, `npm run qa` 44/44
+   and `npm run visual` 0.000% before every commit that touches the app.
+3. Plan first and wait for the owner's approval before code, as M1 did.
+4. **PR C / Launch stays untouched** until the owner says "launch".
 5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
 6. Update this file before finishing.

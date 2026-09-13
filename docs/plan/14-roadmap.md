@@ -98,6 +98,7 @@ compress this milestone.**
 
 **Demonstrable:** two members of two different orgs sign in; each sees only their own org; the
 isolation sweep passes over every table; a super admin gets **zero rows** from every data table.
+*Demonstrated locally (DEC-039): the hosted project is untouched until Launch.*
 
 **Risks, and the mitigations:**
 
@@ -263,6 +264,31 @@ tested but not exercised.
 **Demonstrable:** a super admin creates an org, sets its first admin, and **cannot read a single
 row of its data**. A break-glass session appears in the org's own audit log. Every alert fires in a
 drill.
+
+---
+
+## Launch — rehearsal and cutover · DEC-039
+
+**The only milestone that touches the hosted project.** Everything before it is proven on local
+Supabase and in CI (DEC-025, DEC-039); this is the day the accumulated migrations, the hooks and
+the sign-in configuration reach production, once.
+
+| Work | Where the script is |
+|---|---|
+| Schema-only dump of production → fresh local database → every migration on top → the full RLS suite | `STATUS.md`, "PR C — production cutover checklist", step 1 |
+| Asymmetric JWT signing keys on the hosted project | step 2 |
+| `supabase db push` — the owner's explicit go, `registrations` counted before and after | step 3 |
+| Hosted Auth: 900 s expiry, the access token hook, the before-user-created hook, Google, redirect URLs | steps 4–5 |
+| `NEXT_PUBLIC_SUPABASE_URL` and the publishable key on Vercel, then redeploy — the guard of DEC-038 lifts | step 6 |
+| The first org and the platform admin by one-off SQL, never a migration | step 7 |
+| Verification: first admin lands as `admin`; a member as `member`; an unlisted domain refused at Google's return; `npm run qa` 44/44 against production; the CSP reports reviewed before any enforcement (OQ-028) | steps 8–9 |
+
+**Demonstrable:** a real member signs in with Google on the live domain and lands on `/ar/app`; the
+marketing site is byte-identical to the day before.
+
+**Risk:** the same as M1's — the hook is a single point of failure for sign-in, and this is the
+first time it runs on the hosted project. The rehearsal is not optional, and the day is chosen so
+that a rollback (disable the hook, remove the two variables — the guard returns) costs nothing.
 
 ---
 

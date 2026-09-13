@@ -955,6 +955,30 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** the STATUS note from PR B that the platform renders inside the marketing chrome.
 - **Documents changed:** `04-architecture.md` is already right; `STATUS.md`
 
+## DEC-039 — PR C (production cutover) is deferred to launch; M2 onward build on local Supabase and CI only
+
+- **Date:** 2026-09-14 · **Decided by:** owner
+- **Decision:** the production cutover — the schema-only rehearsal, `supabase db push`, the hosted
+  Auth settings (asymmetric JWT keys, 900 s expiry, both hooks, the Google provider), the two
+  `NEXT_PUBLIC_` variables on Vercel, the first org's one-off seed — **does not happen at the end
+  of M1.** It happens once, at **launch**, as the roadmap's final item. Until then the hosted
+  project keeps only the frozen `registrations` table and its policy; production serves the
+  marketing site and returns 404 for every platform route (DEC-038's guard). **The PR C checklist
+  in `STATUS.md` stays exactly as written** and is the script for that day; nothing in it is
+  started early.
+- **Consequence for every milestone from M2:** development and proof are **local Supabase and
+  CI only** (DEC-025). Migrations accumulate forward-only and are rehearsed together against a
+  schema-only dump at launch; no migration is pushed to the hosted project before then. A
+  milestone's "demonstrable" line is demonstrated locally.
+- **Rationale:** cutting over after M1 would put an auth hook, Google sign-in and RLS onto the
+  live project months before any member can use them, with the hook a single point of failure
+  for sign-in (`14` M1 risks) and nothing to gain but exposure. Deferring costs one rehearsal at
+  launch, which the plan required anyway (invariant 3). The one thing this trades away is early
+  real-OAuth feedback; the local Auth API and the e2e session specs cover the flow until then.
+- **Supersedes:** the M1 scope line "PR C — production cutover" in `STATUS.md`; the roadmap gains
+  a **Launch** item (`14` §2, after M8) holding the rehearsal and the cutover.
+- **Documents changed:** `14-roadmap.md`, `STATUS.md`
+
 ---
 
 ## Template for new entries
