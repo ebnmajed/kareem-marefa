@@ -1025,6 +1025,22 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Documents changed:** `CLAUDE.md`, `03-permissions-rls.md` §8.2, `TEAM.md` (new),
   `STATUS.md`
 
+## DEC-041 — Settings correction: branch switching is the lead's; merging is the owner's
+
+- **Date:** 2026-09-14 · **Decided by:** owner (merged PR #10 by hand when the deny rule stopped the session)
+- **Decision:** the shared settings deny `gh pr merge` to **every** session, including the lead:
+  **the owner merges**, on GitHub or in their own terminal. `git checkout main` and
+  `git switch main` are removed from the deny list — the lead must return to `main` between waves
+  and cut the next wave branch; the `CLAUDE.md` rule (teammates never switch branches) carries the
+  intent that the deny rule cannot express per agent. `git fetch`, `git pull --ff-only`,
+  `git checkout`, `git switch` and pushes to non-`main` branches are allowed explicitly.
+- **Rationale:** DEC-040's first deny list was written for teammates and then blocked the lead's
+  own hand-off steps the same day. Settings are per checkout, not per agent; anything that only
+  the lead may do is a rule in `CLAUDE.md`, and only the actions no session may ever take belong
+  in the deny list.
+- **Supersedes:** the settings paragraph of DEC-040 for those two commands.
+- **Documents changed:** `CLAUDE.md` § Agent team, `.claude/settings.json`
+
 ---
 
 ## Template for new entries

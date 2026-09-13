@@ -303,8 +303,10 @@ through the lock.
 ### Git in a shared tree
 
 One integration branch per wave (`wave-1/m2`). Stage **only your own paths** — never `git add -A`.
-Never `stash`, `rebase`, `reset --hard`, `clean`, or switch branches: it is everyone's tree. Small
-conventional commits, `Refs:` in the trailer paragraph. The lead pushes and opens the wave's PR.
+Teammates never `stash`, `rebase`, `reset --hard`, `clean`, or switch branches: it is everyone's
+tree. **Only the lead switches branches**, and only between waves. Small conventional commits,
+`Refs:` in the trailer paragraph. The lead pushes and opens the wave's PR; **the owner merges**
+(`gh pr merge` is denied to every session by the shared settings, on purpose).
 
 ### Definition of done (every story, every teammate)
 
