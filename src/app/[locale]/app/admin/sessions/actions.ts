@@ -13,8 +13,9 @@ import type { Locale } from "@/i18n/routing";
 // grant, so there is no other way to make one and no way for this action to
 // widen who may.
 
+// The initial state lives in ./state.ts: a "use server" module may export
+// async functions only, and Next 16 refuses a constant here at build time.
 export type CreateSessionState = { error: string | null };
-export const emptyCreateState: CreateSessionState = { error: null };
 
 export async function makeSessionFromProposal(locale: Locale, proposalId: string): Promise<void> {
   if (!z.uuid().safeParse(proposalId).success) return;

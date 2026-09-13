@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { emptyCreateState, type CreateSessionState } from "./actions";
+import { type CreateSessionState } from "./actions";
+import { emptyCreateState } from "./state";
 
 // SCR-042's «أنشئ جلسة مباشرة» (REQ-PRO-007).
 //
