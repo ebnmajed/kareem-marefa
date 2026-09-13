@@ -1,0 +1,27 @@
+{
+  "checkin": {
+    "title": "Check in",
+    "instructions": "Enter the code shown in the room to check in.",
+    "codeLabel": "Check-in code",
+    "submit": "Check in",
+    "success": "You're checked in",
+    "error": {
+      "not_found": "Session not found",
+      "presenter_cannot_check_in": "A presenter cannot check in to their own session",
+      "rate_limited": "Too many attempts — wait a moment and try again",
+      "not_started": "This session hasn't started yet",
+      "session_ended": "This session has ended",
+      "not_open": "Check-in isn't open right now",
+      "invalid_code": "That code isn't correct",
+      "overlap": "You're already checked in to another session at this time",
+      "unknown": "Something went wrong — try again"
+    },
+    "host": {
+      "title": "Check-in code",
+      "notAuthorized": "This page is for the session's presenters and staff only",
+      "checkInCount": "{count, plural, =0 {No one has checked in yet} one {# person checked in} other {# people checked in}}",
+      "revoke": "Burn this code now",
+      "revoked": "Code revoked — a new one has been issued"
+    }
+  }
+}
