@@ -125,9 +125,16 @@ test("deleting a comment with replies leaves a tombstone; a reply-less comment v
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
 
   // "سؤال عن الجلسة" now has one reply ("إجابة أولى") from the previous test.
-  const originalRow = page.locator("li", { hasText: "سؤال عن الجلسة" }).first();
-  await originalRow.getByRole("button", { name: "حذف" }).click();
+  // The reply's <li> nests INSIDE the original's <li> (comment-list.tsx), so
+  // an `li` locator matching on text would also match the reply's own
+  // "حذف" button as a descendant. Scoping to the comment's own body
+  // paragraph and its immediate container (the CommentItem's own <div>,
+  // a sibling of the nested reply <ul>, not an ancestor of it) is precise.
+  const originalBody = page.getByText("سؤال عن الجلسة", { exact: true });
+  await originalBody.locator("..").getByRole("button", { name: "حذف" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await expect(page.getByText("حُذف هذا التعليق")).toBeVisible();
   await expect(page.getByText("إجابة أولى")).toBeVisible(); // the reply survives, readable
@@ -136,8 +143,8 @@ test("deleting a comment with replies leaves a tombstone; a reply-less comment v
   await page.getByPlaceholder("اكتب تعليقًا…").fill("تعليق بلا ردود");
   await page.getByRole("button", { name: "نشر" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toBeVisible();
-  const freshRow = page.locator("li", { hasText: "تعليق بلا ردود" }).first();
-  await freshRow.getByRole("button", { name: "حذف" }).click();
+  const freshBody = page.getByText("تعليق بلا ردود", { exact: true });
+  await freshBody.locator("..").getByRole("button", { name: "حذف" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toHaveCount(0);
 });

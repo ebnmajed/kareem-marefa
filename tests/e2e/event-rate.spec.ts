@@ -140,3 +140,24 @@ test("once the rating exists, revisiting the page offers an edit, pre-filled", a
   await expect(groups.nth(0).getByRole("radio", { name: "5" })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByLabel("ملاحظات (اختياري)")).toHaveValue("جلسة ممتازة، شكرًا");
 });
+
+test("a failed submission does not erase what the member just typed (React 19 resets the form on every action, sessions found this on the propose form, 26772e2)", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto(`/ar/app/sessions/${completedSessionId}/rate`);
+  await page.getByLabel("ملاحظات (اختياري)").fill("تعديل جديد لم يُحفظ بعد");
+
+  // The window closes between load and submit — the realistic version of
+  // this race, not a contrived one: `ratings_update_self`'s `using` clause
+  // re-checks the window at write time, so this is exactly what a member
+  // hitting submit seconds after the deadline passes would trigger.
+  await db.query(`update public.sessions set completed_at = now() - interval '30 days' where id = $1`, [completedSessionId]);
+  await page.getByRole("button", { name: "تحديث التقييم" }).click();
+
+  await expect(page.getByText("أُغلق باب التقييم لهذه الجلسة")).toBeVisible();
+  // The bug: React 19 resets the form once the action resolves, which would
+  // put the textarea back to "جلسة ممتازة، شكرًا" (its ORIGINAL defaultValue)
+  // unless the action hands the typed text back through state.
+  await expect(page.getByLabel("ملاحظات (اختياري)")).toHaveValue("تعديل جديد لم يُحفظ بعد");
+
+  await db.query(`update public.sessions set completed_at = now() - interval '2 days' where id = $1`, [completedSessionId]); // restore for any later test
+});

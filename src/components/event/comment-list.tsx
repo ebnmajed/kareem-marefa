@@ -81,6 +81,34 @@ export function CommentList({
   const [openReplyFor, setOpenReplyFor] = useState<string | null>(null);
   const editWindowMs = editWindowMinutes != null ? editWindowMinutes * 60_000 : null;
 
+  // ★ `useState(initialComments)` only reads the prop at MOUNT — a real bug,
+  // not a defensive guard: `router.refresh()` (comment-composer.tsx,
+  // comment-item.tsx) re-runs the server component and passes a fresh
+  // `initialComments` array, but an already-mounted client component never
+  // re-reads its own useState initializer, so the poster's own new comment
+  // never appeared even though the server had it and the count next to the
+  // heading updated — the two were rendering from different data. Caught by
+  // tests/e2e/event-comments.spec.ts flaking exactly on this composer/list
+  // mismatch. Adjusted DURING render (React's own pattern for "reset state
+  // when a prop changes", not an effect — an effect here would be a second,
+  // visibly-delayed render on every refresh), one prop at a time so a prop
+  // that happens to change alone can't leave another's tracker stale.
+  const [prevComments, setPrevComments] = useState(initialComments);
+  if (prevComments !== initialComments) {
+    setPrevComments(initialComments);
+    setComments(initialComments);
+  }
+  const [prevReactions, setPrevReactions] = useState(initialReactions);
+  if (prevReactions !== initialReactions) {
+    setPrevReactions(initialReactions);
+    setReactions(initialReactions);
+  }
+  const [prevReported, setPrevReported] = useState(initialReported);
+  if (prevReported !== initialReported) {
+    setPrevReported(initialReported);
+    setReported(new Set(initialReported));
+  }
+
   useEffect(() => {
     const unsubscribe = subscribeToSessionTopic(sessionId, (message) => {
       if (message.event === "INSERT" || message.event === "UPDATE") {

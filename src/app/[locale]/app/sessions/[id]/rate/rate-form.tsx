@@ -43,7 +43,12 @@ export function RateForm({ locale, sessionId, checkInId, existing }: { locale: s
         <textarea
           id="comment"
           name="comment"
-          defaultValue={existing?.comment ?? ""}
+          // ★ React 19 resets this form once the action resolves — reading
+          // from `state.comment` (populated on every failed submission) is
+          // what makes the reset restore what was typed instead of the
+          // rating's ORIGINAL comment. `null` (no submission attempted yet)
+          // is the only case that falls back to `existing`.
+          defaultValue={state.comment ?? existing?.comment ?? ""}
           maxLength={2000}
           rows={4}
           className="mt-2 w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading"
