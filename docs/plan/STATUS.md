@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `m0/foundation` — seven commits on `main` @ `335bde2`, head is the `docs(plan)` handoff commit after `db739a4`, **PR #2 open to `main`** · **Phase:** **M0 — steps 1, 2, 4, 5 done; steps 3 and 6 are the owner's**
+**Last updated:** 2026-09-13 · **Branch:** `m0/worker` (PR #3 open to `main`; PR #2 **merged** as `9002dbf`) · **Phase:** **M0 complete pending PR #3's merge — no Fly (DEC-034)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -11,7 +11,7 @@
 written, plus `STATUS.md`, `DECISIONS.md` and the root `CLAUDE.md`. `node scripts/traceability.mjs`
 exits 0.
 
-**M0 has landed on `m0/foundation` (PR open, not merged).** `src/` gained its first platform code
+**M0 is on `main` (PR #2 merged as `9002dbf`) plus PR #3 (`m0/worker`).** `src/` gained its first platform code
 — `components/ui/icons.tsx`, `components/ui/dialog.tsx`, and the Radix `Direction.Provider` in the
 locale layout — with the frozen routes proven byte-identical by the visual diff. `supabase/` is
 untouched and the live project was not connected to. See *M0 progress* and *This session*.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-032**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-034**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -54,11 +54,11 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 10 | `10-i18n-rtl.md` | `settled` | Typography tokens, bidi, numerals, adding English. |
 | 11 | `11-background-jobs.md` | `settled` | **34 jobs** with keys, retries, alerts. |
 | 12 | `12-security-privacy.md` | `settled` | Threat model, retention, PDPL. Raised OQ-026. |
-| 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. **§1's "not installed" rows are stale** — Playwright, jsdom and Testing Library landed in M0; the table was left as written pending a DEC. |
+| 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. §1 updated under DEC-033. |
 | 14 | `14-roadmap.md` | `settled` | M0–M8. No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
-| — | `OPEN-QUESTIONS.md` | `settled` | **26**, each with a default in force. |
+| — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) is due at M3. |
 | — | `TRACEABILITY.md` | generated | `node scripts/traceability.mjs`. Do not hand-edit. |
 | — | `/CLAUDE.md` | `settled` | Repo root. Keeps `@AGENTS.md` as line 1. |
 
@@ -82,7 +82,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | Every A12 poster variant derivable from the master | ✅ `06` §5 |
 | Every A29 export format specified with its pipeline | ✅ `06` §6 |
 | Nothing planned outside §4/§5; §4.22 only in out-of-scope | ✅ `01` §23 |
-| `npm test` (Vitest, two projects) | ✅ **45/45** — 30 unit + 15 component (jsdom, RTL document) |
+| `npm test` (Vitest, two projects) | ✅ **52/52** — 37 unit (incl. the probe over fake clients) + 15 component |
 | `npm run test:e2e` (Playwright) | ✅ **10/10** — frozen routes, desktop + Pixel 7 profiles |
 | `npm run parity` | ✅ 7 cases, Tiers A and B, 0.000% — manifest now read from `packages/fonts` |
 | `npm run fonts:check` | ✅ 9 web faces, 6 TrueType, build matches |
@@ -121,10 +121,10 @@ This is the way to run one-off SQL against production.
 | **Font work** (`REQ-DSG-016`, `REQ-INT-009`) | ✅ done — Option A, **DEC-031**, `8b1b705`. `packages/fonts` is the manifest; `fonts:check` gates CI and both images |
 | Visual diff of the frozen routes (`npm run visual`) | ✅ done — baseline captured at `.qa-shots/visual/m0-before`, deterministic at 0.000% |
 | **Shaping-parity harness (Tiers A and B)** | ✅ done (DEC-024) — `npm run parity`, 7 cases, green, and proven able to fail |
-| graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ **owner's step 3** — needs `flyctl`, not installed tonight by the owner's instruction. `worker/` does not exist yet |
-| Credential-free converter app | ✅ built and tested, **not deployed** — **DEC-032**, `converter/`. `fly deploy` is part of the owner's step 3 |
+| graphile-worker + LISTEN/NOTIFY probe | ✅ **built and proven locally, not hosted** — **DEC-034**, `d3de903`. Two-connection probe; refuses pgbouncer and Supavisor in transaction mode, passes session mode; CI `worker` job runs both outcomes. **Hosting is OQ-027, due at M3** |
+| Credential-free converter app | ✅ built and tested, **not hosted** — **DEC-032**, `converter/`. `fly.toml` removed (DEC-034); host with the worker at M3 |
 | Radix + the ~8 inline SVGs | ✅ done — `78ff5a6`. `radix-ui` 1.6.7, `Direction.Provider` in the layout, `icons.tsx`, `dialog.tsx`, jsdom tests |
-| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ⬜ **owner's step 6** — a Vercel env change, which this session was told not to make. `openssl rand -base64 32`, set for Production **and** Preview, keep it stable (`04` §9.2) |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ✅ **set** — Production and Preview, as a sensitive variable, piped from a local file and never printed; production rebuilt with it (deployment `kareem-marefa-4x451q4oj`), frozen routes re-verified. Rotating it casually breaks in-flight action IDs (`04` §9.2) |
 
 ## The parity spike answered the biggest open question
 
@@ -148,18 +148,13 @@ plugs into the same seven cases.
 
 ## Waiting on the owner
 
-Two M0 steps were explicitly left to the owner tonight, and the PR:
+**Review and merge PR #3** (`m0/worker` → `main`). That closes M0. Nothing else is waiting: PR #2
+is merged and live, the encryption key is set, and Fly is dropped by the owner's decision
+(DEC-034) rather than pending.
 
-1. **Step 3 — the worker on Fly, with the LISTEN/NOTIFY boot probe.** `flyctl` is not installed
-   (owner: "no flyctl tonight"). Nothing of `worker/` exists yet; `converter/fly.toml` and the
-   converter image are ready to deploy with
-   `fly deploy --config converter/fly.toml --dockerfile converter/Dockerfile .` once the worker
-   app exists to call it. `04` §7.2 / `11` §1.2: session-mode port **5432**, never 6543; the probe
-   must refuse to start if a `NOTIFY` does not arrive within a second.
-2. **Step 6 — `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** on Vercel, stable across builds (`04` §9.2,
-   §10). This session was instructed not to change Vercel environment variables.
-3. **Review and merge PR #2** (`m0/foundation` → `main`). The session was instructed not to
-   merge or push to `main`.
+**Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
+the choice must provide a session-mode Postgres connection and either private networking to the
+converter or an endpoint token on it.
 
 ## Blockers
 
@@ -223,14 +218,32 @@ with the owner's approval of the step-1 plan ("Option A"), the branch landed in 
 
 **Steps 3 and 6 were not done**, by the owner's instruction — see *Waiting on the owner*.
 
+## Continuation — same day, owner present
+
+1. **DEC-033** — `13` §1 says the test stack is installed; `Refs:` now sits in git's trailer
+   paragraph (`1a75b0d`). CI on PR #2 stayed green.
+2. **PR #2 merged** with a merge commit (`9002dbf`, owner's choice: keeps every cited SHA valid;
+   main's first merge commit). Branch deleted. Vercel production deploy green; five frozen routes
+   answer; CI on `main` green.
+3. **Step 6 done** — see the table above. The Vercel project is now linked locally (`.vercel/`,
+   gitignored; `vercel link` also appended `VERCEL_OIDC_TOKEN` to `.env.local`).
+4. **Fly dropped** by the owner on cost — **DEC-034**, OQ-027, A34 superseded. Instead of
+   deploying: `worker/` on `m0/worker` (**PR #3**), with the probe proven against Postgres,
+   pgbouncer and Supavisor in both pooling modes, and a CI `worker` job. **The plan's probe was
+   wrong** — one connection notifying itself passes through an idle transaction pooler; `04` §7.2
+   and `11` §1.2 are corrected under DEC-034. The local pooler is now enabled in
+   `supabase/config.toml` so the Supavisor case stays reproducible.
+
+**GitHub account gotcha:** another Claude session on this machine switched `gh` to `devyaden`;
+run `gh auth switch --user ebnmajed` before any `gh` call. Pushes use the SSH alias and are
+unaffected.
+
 ## Next session should
 
-1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-031 and DEC-032 are new.
-2. Check whether PR #2 was merged. If yes, `main` carries M0 steps 1, 2, 4, 5; if not, the
-   branch is `m0/foundation` and CI on it was green at handoff.
-3. **Step 3** once `flyctl` is available: create `worker/` (graphile-worker, Chromium,
-   `@kareem/designer-runtime`, fonts from `packages/fonts` verified like the converter does), the
-   LISTEN/NOTIFY boot probe, `fly.toml`, and deploy both apps. **Step 6** on Vercel.
-4. Then M1 (`14-roadmap.md`) — the dangerous one. Do not compress it.
+1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-031 … DEC-034 are new.
+2. Confirm PR #3 merged (or merge it after review). Then **M0 is complete.**
+3. Start **M1** (`14-roadmap.md`) — the dangerous one. Do not compress it. The auth hook, the
+   DAL with `getClaims()` narrowed on `data`, RLS on every table with the generated sweep.
+4. At M3, answer OQ-027 before the first reminder job needs to run unattended.
 5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
 6. Update this file before finishing.
