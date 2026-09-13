@@ -19,12 +19,12 @@ export default async function HostPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ revoked?: string; manualSuccess?: string; manualError?: string }>;
+  searchParams: Promise<{ revoked?: string; manualSuccess?: string; manualError?: string; memberId?: string; reason?: string }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
   const session = await requireSession(locale, `/${locale}/app/sessions/${id}/host`);
-  const { revoked, manualSuccess, manualError } = await searchParams;
+  const { revoked, manualSuccess, manualError, memberId: submittedMemberId, reason: submittedReason } = await searchParams;
   const isStaff = session.role === "admin" || session.role === "moderator";
 
   const [view, candidates, t] = await Promise.all([
@@ -84,7 +84,7 @@ export default async function HostPage({
                 <label htmlFor="memberId" className="text-label text-fg-heading">
                   {t("host.manualMember")}
                 </label>
-                <select id="memberId" name="memberId" required className={field}>
+                <select id="memberId" name="memberId" required defaultValue={submittedMemberId ?? ""} className={field}>
                   {candidates.map((c) => (
                     <option key={c.memberId} value={c.memberId}>
                       {c.displayName ?? c.memberId}
@@ -96,7 +96,7 @@ export default async function HostPage({
                 <label htmlFor="reason" className="text-label text-fg-heading">
                   {t("host.manualReason")}
                 </label>
-                <input id="reason" name="reason" required maxLength={300} className={field} />
+                <input id="reason" name="reason" required maxLength={300} defaultValue={submittedReason ?? ""} className={field} />
               </div>
               <button type="submit" className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100">
                 {t("host.manualSubmit")}

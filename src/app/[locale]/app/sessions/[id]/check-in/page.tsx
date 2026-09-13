@@ -14,12 +14,12 @@ export default async function CheckInPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ success?: string; already?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; already?: string; error?: string; code?: string }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
   await requireSession(locale, `/${locale}/app/sessions/${id}/check-in`);
-  const { success, already, error } = await searchParams;
+  const { success, already, error, code } = await searchParams;
   const t = await getTranslations("checkin");
 
   const errorKey = error && KNOWN_ERRORS.has(error) ? error : error ? "unknown" : null;
@@ -51,7 +51,7 @@ export default async function CheckInPage({
             {t("codeLabel")}
           </label>
           <div className="mt-1">
-            <CodeInput id="code-0" name="code" />
+            <CodeInput id="code-0" name="code" defaultValue={code} />
           </div>
         </div>
         <button type="submit" className="inline-flex h-12 w-full items-center justify-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900">
