@@ -154,3 +154,6 @@ Then, before spawning anyone:
   user; Next's route announcer carries `role="alert"`, so an unscoped `getByRole("alert")` is a
   strict-mode violation on every page; the `desktop` and `phone` projects share one database, so a
   row assertion that matches only on a title sees the other worker's row — tag by org or by id.
+- **Never keep a 390 px capture under `test-results/`.** Playwright empties it at the start of every
+  run, and in a shared tree another teammate's run deletes your screenshots between taking them and
+  looking at them. Captures go to `.qa-shots/rtl/` (gitignored, never cleared).
