@@ -57,7 +57,9 @@ The team reads submissions in the Supabase dashboard (Table Editor) — that *is
 ## Testing & QA
 
 ```bash
-npx vitest run        # schema / anti-spam / server-action unit tests
+npm test              # Vitest: unit (Node) + components (jsdom, RTL document)
+npm run test:e2e      # Playwright, against the stub — never a real project
+npm run visual capture <name>   # screenshots of the frozen routes; `compare <a> <b>` diffs two
 ```
 
 Interactive headless-Chrome QA (40 checks: routing/RTL/toggle, the CSS-only provider reveal,

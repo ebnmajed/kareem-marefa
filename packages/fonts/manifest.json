@@ -1,0 +1,162 @@
+{
+  "faces": [
+    {
+      "family": "IBM Plex Sans",
+      "weight": 400,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240,
+      "file": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818.woff2"
+    },
+    {
+      "family": "IBM Plex Sans",
+      "weight": 500,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240,
+      "file": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818.woff2"
+    },
+    {
+      "family": "IBM Plex Sans",
+      "weight": 600,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240,
+      "file": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 400,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb",
+      "bytes": 33512,
+      "file": "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 400,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153",
+      "bytes": 13944,
+      "file": "4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 500,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da",
+      "bytes": 35884,
+      "file": "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 500,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af",
+      "bytes": 14792,
+      "file": "2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 600,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
+      "bytes": 35884,
+      "file": "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26.woff2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 600,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd",
+      "bytes": 15092,
+      "file": "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd.woff2"
+    }
+  ],
+  "ttf": [
+    {
+      "family": "IBM Plex Sans",
+      "weight": 400,
+      "style": "normal",
+      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
+      "bytes": 88052,
+      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "derivedFrom": [
+        "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "IBM Plex Sans",
+      "weight": 500,
+      "style": "normal",
+      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
+      "bytes": 88052,
+      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "derivedFrom": [
+        "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "IBM Plex Sans",
+      "weight": 600,
+      "style": "normal",
+      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
+      "bytes": 88052,
+      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "derivedFrom": [
+        "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 400,
+      "style": "normal",
+      "sha256": "29eb291ac38e38a87876a07cd3d5b2e62ab610279f461520b8cde963c03955ce",
+      "bytes": 146904,
+      "file": "29eb291ac38e38a87876a07cd3d5b2e62ab610279f461520b8cde963c03955ce.ttf",
+      "derivedFrom": [
+        "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb",
+        "4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 500,
+      "style": "normal",
+      "sha256": "1509c8a3ebbd5692449e8561dbdb26ede5373f1ed582f010949b6f41d0bb3a37",
+      "bytes": 151108,
+      "file": "1509c8a3ebbd5692449e8561dbdb26ede5373f1ed582f010949b6f41d0bb3a37.ttf",
+      "derivedFrom": [
+        "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da",
+        "2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 600,
+      "style": "normal",
+      "sha256": "c1c3dbaede226cc7dcb95d9164dcef6f1a38ef9f0a4e5879a6228d45c6ac46dc",
+      "bytes": 151348,
+      "file": "c1c3dbaede226cc7dcb95d9164dcef6f1a38ef9f0a4e5879a6228d45c6ac46dc.ttf",
+      "derivedFrom": [
+        "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
+        "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd"
+      ],
+      "tool": "fonttools 4.60.2"
+    }
+  ]
+}

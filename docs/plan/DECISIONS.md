@@ -686,6 +686,99 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing
 - **Documents changed:** `STATUS.md`
 
+## DEC-031 — `packages/fonts` is the font manifest; the app keeps `next/font/google`
+
+- **Date:** 2026-09-13 · **Decided by:** owner ("Option A"), on the architect's recommendation
+- **Decision:** `ENT-fonts` exists in the repository as the workspace package **`@kareem/fonts`**
+  (`packages/fonts/`): a `manifest.json` plus every font file named by its SHA-256. It is the only
+  way a font enters the editor, the worker's Chromium or the worker's LibreOffice (`REQ-DSG-016`).
+  The **app keeps `next/font/google`** exactly as `10` §4.1 specifies; the manifest's web faces
+  (`faces`, `.woff2`) are the **exact bytes the build emits** — so the live site is byte-identical
+  and no font byte the public routes serve changed. For LibreOffice, which cannot read woff2, each
+  `(family, weight, style)` gets **one TrueType file (`ttf`) derived losslessly** from its woff2
+  subsets by `scripts/fonts/derive-ttf.py` (fontTools, pinned): Arabic and Latin subsets are merged
+  into one face so LibreOffice does not see two fonts of the same name, and the script **refuses to
+  write** a derived font that lost `rlig`, `mark` or `mkmk`. `derivedFrom` records the woff2
+  hashes each TTF came from.
+- **The gate:** `scripts/fonts/check.mjs` (`npm run fonts:check`) asserts (1) every manifest file
+  exists and hashes to its name, with no stray font in the package; (2) every web face group has
+  exactly one TTF derived from exactly that group's hashes; (3) when a Next build is present, the
+  Arabic and Latin faces it emitted are exactly the manifest's, by hash. CI runs it in the `build`
+  job after `next build`. The worker and converter images run it with `--no-build` at image build,
+  so an image cannot ship a font the manifest does not name.
+- **Rationale:** the alternative ("Option B") was `next/font/local` over a pinned upstream IBM Plex
+  release with our own subsetting. It removes Google from the build, but it changes every served
+  font byte on a live site, contradicts `10` §4.1's "as shipping today", needs a non-zero visual
+  diff reviewed and an `/en` LCP measurement — for no D66 gain, since parity is a property of the
+  bytes, not of where they came from. Production's three Arabic files were verified to hash-match
+  the manifest before the decision. Option B remains available as a later entry if Google-at-build
+  ever becomes a problem; the gate above is what would detect it.
+- **Path change:** `scripts/parity/fonts/` → `packages/fonts/`; `scripts/parity/extract-fonts.mjs`
+  → `scripts/fonts/extract.mjs`; `npm run parity:fonts` → `npm run fonts:extract`. The parity
+  harness reads `packages/fonts/manifest.json`. Goldens unchanged; parity re-verified at 0.000%.
+- **Scope of the set, stated so nobody widens it by accident:** the manifest holds the **Arabic
+  and basic-Latin** subsets of both families. next/font also emits Cyrillic, Greek, Vietnamese and
+  Latin-Extended subsets; they are not part of the set, because a font set is a promise about what
+  the product renders. Adding a script means adding it here and to the parity cases.
+- **Supersedes:** nothing. Implements `REQ-DSG-016` and `REQ-INT-009`; makes invariant 12 checkable.
+- **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
+
+## DEC-032 — The converter lives at `converter/`, is dependency-free Node, and refuses to boot with a credential
+
+- **Date:** 2026-09-13 · **Decided by:** session, within `04` §7.1
+- **Decision:** Fly app 2 — the credential-free converter — is the top-level directory
+  **`converter/`**: `server.mjs` (Node built-ins only, no npm dependencies), a `Dockerfile` built
+  **from the repository root** so it can copy `packages/fonts`, a `fly.toml` with **no
+  `[http_service]`** so the app is reachable only over Fly private networking from the worker, and
+  `test/smoke.mjs`, which builds the image and drives it through its real contract. The image
+  installs LibreOffice Impress, poppler, libwebp and unzip; its fonts are **exactly the manifest's
+  TrueType files**, and the build runs `scripts/fonts/check.mjs --no-build` and greps `fc-list` for
+  both families before the image can exist (`REQ-DSG-016`).
+- **The contract** (`07` §4): `POST /convert` takes a signed input URL and a signed output URL,
+  sniffs the input on content (a PowerPoint declared as PDF is a `415`), converts with a **fresh
+  LibreOffice profile per job** in a temp dir that is always removed, uploads the PDF, and returns
+  the page count plus a font report — `used`, `embedded`, `substituted` (families the deck names
+  that the image lacks, by name, for `REQ-MAT-011`) and `inPdf` (what `pdffonts` finds actually
+  embedded). `POST /pages` takes a signed PDF URL and per-page signed PUT URLs and renders WebP at
+  the long edge and quality `07` §4.5 specifies (1600 px / q82; thumbnails 320 px / q70). Input is
+  capped at 200 MB, JSON at 1 MB, LibreOffice at 180 s.
+- **The boot guard:** the process exits `1` before listening if any environment variable name
+  matches a credential shape (`SUPABASE`, `DATABASE`, `SERVICE_ROLE`, `POSTGRES`, `PG*`, `RESEND`,
+  `SECRET`, `PASSWORD`, `API_KEY`, `PRIVATE_KEY`, `ENCRYPTION`), printing the **names only**. The
+  security model of `04` §7.1 is that this app holds nothing; a guard makes that a property of the
+  process rather than a hope about the deployment. Only `PORT` and, for the local smoke test,
+  `CONVERTER_ALLOW_HTTP=1` are read.
+- **Rationale:** a workspace package would have put the converter's dependencies into the root
+  `node_modules` that Vercel installs, for a service that needs none; a separate lock file would
+  have been a second thing to keep npm-version-safe. Zero dependencies avoids both. Node over a
+  Python or shell service because the fonts gate is a Node script and the image can run it
+  unchanged. The substitution *report* is produced here because only this process can see what
+  LibreOffice had; writing it to the material and surfacing the warning remains M4.
+- **Not decided here:** deployment. `fly deploy` has not been run and `flyctl` is not installed;
+  the image is built and tested locally and in the CI `converter` job. Deploying both Fly apps is
+  the owner's step (`STATUS.md`).
+- **Supersedes:** nothing. Implements `REQ-MAT-003`'s conversion path within `04` §7.1.
+- **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
+
+## DEC-033 — `13` §1 records the M0 test stack as installed; `Refs:` lives in the trailer paragraph
+
+- **Date:** 2026-09-13 · **Decided by:** owner
+- **Decision:** the "Where we start from" table in `13-testing-quality.md` §1 is updated to say
+  what is true after M0: Vitest runs two projects (`unit` under Node, `components` under jsdom in
+  an RTL document), jsdom and `@testing-library/*` are installed, Playwright is installed and runs
+  against the QA stub with a CI `e2e` job, and GitHub Actions is configured (DEC-028) with the
+  `converter` image job added. `13` is `settled`, so the change needed this entry; the previous
+  session left the rows stale rather than edit a settled document without one (`STATUS.md`).
+- **Also decided, for every commit from here on:** the `Refs:` line goes in **git's final
+  trailer paragraph** — the same block as `Co-Authored-By` and `Claude-Session`, with no blank
+  line between them — so `git interpret-trailers` and `%(trailers:key=Refs)` parse it. The seven
+  M0 commits on `m0/foundation` carry `Refs:` one paragraph above the trailers; they are pushed
+  and are not rewritten (no force-push).
+- **Rationale:** a "not installed" row in the testing document sends a session to install what
+  exists. The trailer placement is so tooling can read citations, not only people.
+- **Supersedes:** nothing.
+- **Documents changed:** `13-testing-quality.md` §1, `CLAUDE.md` (commit template)
+
 ---
 
 ## Template for new entries

@@ -1,0 +1,18 @@
+# Image builds use the repo root as context (converter/Dockerfile, and the
+# worker's when it lands) so they can COPY packages/*. Keep the context small.
+node_modules
+**/node_modules
+.next
+.git
+.qa-shots
+.claude
+.vercel
+test-results
+playwright-report
+docs
+public
+src
+tests
+supabase
+*.tsbuildinfo
+.env*

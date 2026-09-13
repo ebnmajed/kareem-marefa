@@ -1,0 +1,32 @@
+# Fly app 2 — the credential-free converter (04 §7.1). Deploy from the repo
+# root so the build context includes packages/fonts:
+#
+#   fly deploy --config converter/fly.toml --dockerfile converter/Dockerfile .
+#
+# NOT deployed yet: M0 builds and tests the image locally and in CI; the Fly
+# apps are the owner's step (STATUS.md).
+
+app = "kareem-converter"
+primary_region = "sin"   # OQ-026: stays with the Supabase region until decided
+
+[build]
+  dockerfile = "converter/Dockerfile"
+
+# No [http_service] and no [[services]]: this app is NOT reachable from the
+# internet. The worker calls it over Fly private networking (6PN) at
+#   http://kareem-converter.internal:8080
+# from the same organisation. That, plus an empty secrets list, is the whole
+# security model: an RCE in LibreOffice lands in a container that can be
+# reached only by the worker and holds two short-lived signed URLs.
+
+[env]
+  PORT = "8080"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"
+
+# Scale to zero when idle; the worker's job retries (3 × 60 s, 11 §2.4)
+# comfortably cover a cold start.
+[[restart]]
+  policy = "on-failure"

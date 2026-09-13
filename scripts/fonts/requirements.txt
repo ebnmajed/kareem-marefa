@@ -1,0 +1,4 @@
+# Pinned: the derived TTF hashes in packages/fonts/manifest.json are only
+# reproducible with the exact fonttools that wrote them.
+fonttools==4.60.2
+brotli==1.1.0

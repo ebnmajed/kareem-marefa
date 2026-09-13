@@ -41,8 +41,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# QA screenshots (scripts/qa.mjs)
+# QA screenshots (scripts/qa.mjs, scripts/visual-diff.mjs)
 .qa-shots/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
 
 # workspace package build output (built on install and before next build)
 packages/*/dist/

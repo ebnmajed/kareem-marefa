@@ -9,11 +9,11 @@
 
 | Tool | Status |
 |---|---|
-| **Vitest 4.1.10** | Installed, `environment: "node"` only |
+| **Vitest 4.1.10** | Installed. Two projects (DEC-033): `unit` under Node with the `react-server` condition, `components` under jsdom in an Arabic RTL document |
 | `scripts/qa.mjs` | **Fixed (DEC-023).** 44/44, repeatable. Run it with `npm run qa` — never directly |
-| **jsdom, `@testing-library/*`** | **Not installed** |
-| **Playwright** | **Not installed** |
-| GitHub Actions | **Not configured** |
+| **jsdom, `@testing-library/*`** | **Installed** (M0, DEC-033) — `npm test`, `tests/components/` |
+| **Playwright** | **Installed** (M0, DEC-033) — `npm run test:e2e`, `tests/e2e/`, served through the QA stub; CI `e2e` job |
+| GitHub Actions | **Configured** (DEC-028) — the four blocking gates plus `e2e` and the `converter` image job |
 | Supabase projects | One, and it is production. **Dev is local, CI is a container** (DEC-025) — no new hosted projects |
 
 **`scripts/qa.mjs` was stale, and it could write to production.** Both fixed in DEC-023. Two

@@ -209,7 +209,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-INT-006` | — | — | `SCR-063` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-007` | — | — | `SCR-012` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-008` | — | — | — | — | — | `STORY-INT-004` | M1 |
-| `REQ-INT-009` | — | — | — | — | — | `STORY-INT-004` | M1 |
+| `REQ-INT-009` | `ENT-fonts` | — | — | — | — | `STORY-INT-004` | M1 |
 
 ### LDR
 

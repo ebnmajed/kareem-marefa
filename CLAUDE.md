@@ -108,12 +108,16 @@ src/
 │       ├── admin/              # org admin + moderator
 │       └── platform/           # super admin
 ├── app/api/                    # Route Handlers: uploads, autosave, ICS, webhooks
-├── components/ui/              # house primitives over Radix
+├── components/ui/              # house primitives over Radix + the eight inline glyphs (icons.tsx)
 ├── lib/dal/                    # THE ONLY PLACE THAT TOUCHES SUPABASE
 ├── lib/supabase/               # server · browser · worker clients
 ├── i18n/ · messages/{ar,en}.json
 packages/designer-runtime/      # THE renderer — shared by the app and the worker
-worker/                         # graphile-worker, Chromium, fonts
+packages/fonts/                 # THE font set — manifest + files by SHA-256 (DEC-031)
+converter/                      # Fly app 2: LibreOffice + poppler, NO credentials (DEC-032)
+worker/                         # graphile-worker, Chromium, fonts (not yet created)
+tests/                          # *.test.ts units · components/ (jsdom) · e2e/ (Playwright)
+scripts/fonts/                  # extract · derive-ttf · check — the REQ-DSG-016 gate
 ```
 
 **The Next app stays at the repository root.** npm workspaces (`packages/*`) do not require
@@ -219,7 +223,13 @@ as you are done with it.
 
 ## Testing
 
-- **Vitest** units · **Playwright** e2e · **RLS suite is the highest-value tests in the product.**
+- **Vitest** units (`npm test`, two projects: `unit` under Node, `components` under jsdom in an RTL
+  document) · **Playwright** e2e (`npm run test:e2e`, against the stub) · **RLS suite is the
+  highest-value tests in the product.**
+- **`npm run visual capture <name>` / `compare <a> <b>`** — the before/after diff of the frozen
+  routes. Anything touching the layout runs it against a baseline taken from `main`.
+- **Nothing serves the app for tests except `scripts/lib/stubbed-server.mjs`.** It wires
+  `next start` to the QA stub; a test can submit real forms and never reach production.
 - **Every policy has a test case** (`REQ-NFR-001`). The isolation sweep is **generated** over the
   entity list, so a new table is covered the day it is created.
 - **Shaping goldens are never auto-refreshed.** A changed golden is a reviewed change.
@@ -234,7 +244,11 @@ as you are done with it.
 <body: why, not what>
 
 Refs: REQ-CHK-006, DEC-015
+Co-Authored-By: …
 ```
+
+`Refs:` sits in the **final trailer paragraph** with any other trailers and no blank line between
+them, so `git interpret-trailers` parses it (DEC-033).
 
 Types: `feat` `fix` `docs` `refactor` `test` `chore` `perf` `security`.
 Scopes: `auth` `sessions` `rsvp` `checkin` `materials` `scoring` `designer` `certs` `notify`

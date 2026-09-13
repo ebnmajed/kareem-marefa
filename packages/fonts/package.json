@@ -1,0 +1,13 @@
+{
+  "name": "@kareem/fonts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The one font set — editor, worker Chromium, worker LibreOffice — content-addressed by SHA-256. REQ-DSG-016, D66.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./manifest.json": "./manifest.json"
+  },
+  "files": ["index.js", "manifest.json", "*.woff2", "*.ttf"]
+}
