@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 720" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Knowledge network constellation">
+  <!--
+    Kareem Marefa — the "Knowledge Network" constellation (static, no animation).
+    Extracted from the hero-section artwork (src/components/network-bg.tsx):
+    a seeded generator's hand-tuned output, committed as static artwork.
+    Several dots are deliberately unconnected — knowledge not yet shared.
+  -->
+  <defs>
+    <radialGradient id="nk-glow">
+      <stop offset="0%" stop-color="rgba(168,179,196,0.10)" />
+      <stop offset="100%" stop-color="rgba(168,179,196,0)" />
+    </radialGradient>
+    <linearGradient id="nk-fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0.55" stop-color="#0B1220" stop-opacity="0" />
+      <stop offset="0.95" stop-color="#0B1220" stop-opacity="0.92" />
+    </linearGradient>
+  </defs>
+
+  <!-- Deep-navy backdrop so the light nodes read against it -->
+  <rect x="0" y="0" width="1440" height="720" fill="#0B1220" />
+
+  <circle cx="560" cy="300" r="190" fill="url(#nk-glow)" />
+
+  <g stroke="#A8B3C4" stroke-width="0.75" fill="none">
+    <line x1="595" y1="153" x2="509" y2="203" opacity="0.11" />
+    <line x1="218" y1="133" x2="139" y2="262" opacity="0.11" />
+    <line x1="1272" y1="603" x2="1255" y2="487" opacity="0.1" />
+    <line x1="1272" y1="603" x2="1116" y2="524" opacity="0.08" />
+    <line x1="774" y1="352" x2="760" y2="250" opacity="0.1" />
+    <line x1="774" y1="352" x2="764" y2="461" opacity="0.09" />
+    <line x1="470" y1="341" x2="560" y2="300" opacity="0.11" />
+    <line x1="470" y1="341" x2="546" y2="430" opacity="0.11" />
+    <line x1="830" y1="630" x2="661" y2="583" opacity="0.14" />
+    <line x1="767" y1="111" x2="760" y2="250" opacity="0.11" />
+    <line x1="429" y1="478" x2="546" y2="430" opacity="0.12" />
+    <line x1="957" y1="219" x2="932" y2="87" opacity="0.13" />
+    <line x1="932" y1="87" x2="767" y2="111" opacity="0.1" />
+    <line x1="620" y1="266" x2="560" y2="300" opacity="0.12" />
+    <line x1="620" y1="266" x2="595" y2="153" opacity="0.1" />
+    <line x1="288" y1="510" x2="385" y2="598" opacity="0.08" />
+    <line x1="288" y1="510" x2="429" y2="478" opacity="0.13" />
+    <line x1="854" y1="536" x2="764" y2="461" opacity="0.11" />
+    <line x1="139" y1="613" x2="288" y2="510" opacity="0.12" />
+    <line x1="139" y1="613" x2="129" y2="432" opacity="0.13" />
+    <line x1="639" y1="476" x2="546" y2="430" opacity="0.09" />
+    <line x1="509" y1="203" x2="470" y2="170" opacity="0.14" />
+    <line x1="1029" y1="368" x2="957" y2="219" opacity="0.13" />
+    <line x1="1029" y1="368" x2="1116" y2="524" opacity="0.09" />
+    <line x1="371" y1="120" x2="485" y2="92" opacity="0.13" />
+    <line x1="822" y1="215" x2="760" y2="250" opacity="0.13" />
+    <line x1="661" y1="583" x2="640" y2="520" opacity="0.09" />
+    <line x1="408" y1="237" x2="470" y2="170" opacity="0.11" />
+    <line x1="408" y1="237" x2="509" y2="203" opacity="0.11" />
+    <line x1="139" y1="262" x2="129" y2="432" opacity="0.1" />
+    <line x1="485" y1="92" x2="470" y2="170" opacity="0.08" />
+    <line x1="640" y1="520" x2="639" y2="476" opacity="0.1" />
+  </g>
+
+  <g fill="#C9CED6">
+    <circle cx="595" cy="153" r="2.2" opacity="0.33" />
+    <circle cx="218" cy="133" r="1.5" opacity="0.35" />
+    <circle cx="569" cy="628" r="1.5" opacity="0.4" />
+    <circle cx="1272" cy="603" r="2.2" opacity="0.22" />
+    <circle cx="1351" cy="211" r="1.5" opacity="0.15" />
+    <circle cx="774" cy="352" r="3" opacity="0.26" />
+    <circle cx="764" cy="461" r="3" opacity="0.51" />
+    <circle cx="470" cy="341" r="1.5" opacity="0.25" />
+    <circle cx="830" cy="630" r="3" opacity="0.49" />
+    <circle cx="767" cy="111" r="2.2" opacity="0.38" />
+    <circle cx="429" cy="478" r="2.2" opacity="0.48" />
+    <circle cx="957" cy="219" r="3" opacity="0.3" />
+    <circle cx="932" cy="87" r="2.2" opacity="0.26" />
+    <circle cx="620" cy="266" r="3" opacity="0.54" />
+    <circle cx="288" cy="510" r="3" opacity="0.43" />
+    <circle cx="1255" cy="487" r="2.2" opacity="0.23" />
+    <circle cx="1259" cy="359" r="3" opacity="0.12" />
+    <circle cx="854" cy="536" r="2.2" opacity="0.47" />
+    <circle cx="139" cy="613" r="1.5" opacity="0.48" />
+    <circle cx="639" cy="476" r="1.5" opacity="0.35" />
+    <circle cx="509" cy="203" r="3" opacity="0.38" />
+    <circle cx="1029" cy="368" r="1.5" opacity="0.35" />
+    <circle cx="1116" cy="524" r="1.5" opacity="0.26" />
+    <circle cx="371" cy="120" r="3" opacity="0.27" />
+    <circle cx="822" cy="215" r="2.2" opacity="0.36" />
+    <circle cx="661" cy="583" r="1.5" opacity="0.35" />
+    <circle cx="385" cy="598" r="2.2" opacity="0.38" />
+    <circle cx="408" cy="237" r="3" opacity="0.39" />
+    <circle cx="139" cy="262" r="3" opacity="0.39" />
+    <circle cx="1260" cy="172" r="2.2" opacity="0.11" />
+    <circle cx="546" cy="430" r="1.5" opacity="0.49" />
+    <circle cx="1105" cy="172" r="1.5" opacity="0.3" />
+    <circle cx="129" cy="432" r="3" opacity="0.25" />
+    <circle cx="485" cy="92" r="1.5" opacity="0.4" />
+    <circle cx="470" cy="170" r="3.5" opacity="0.9" />
+    <circle cx="760" cy="250" r="3.5" opacity="0.85" />
+    <circle cx="640" cy="520" r="4" opacity="0.9" />
+    <circle cx="560" cy="300" r="4" opacity="0.95" />
+  </g>
+
+  <!-- Focal ripple, frozen at its resting radius -->
+  <circle cx="560" cy="300" r="8" fill="none" stroke="#C9CED6" stroke-width="1" opacity="0.5" />
+
+  <rect x="0" y="0" width="1440" height="720" fill="url(#nk-fade)" />
+</svg>
