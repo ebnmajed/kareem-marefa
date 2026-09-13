@@ -65,6 +65,13 @@ for (const m of strip(doc).matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:publi
 const documentedTables = new Set(
   [...doc.matchAll(/\bPOL-([a-z_]+)\./g)].map((m) => m[1]),
 )
+// Tables 03 documents as having NO policy on purpose — RLS enabled, nothing
+// granted, nothing readable by any client role (platform_admins: read only by
+// the auth hook). Parsed from the per-table map rows that say so, never
+// hard-coded here, so the document stays the source of truth.
+const noPolicyByDesign = new Set(
+  [...doc.matchAll(/^\|\s*`([a-z_]+)`\s*\|[^\n]*No policy at all/gm)].map((m) => m[1]),
+)
 
 /* ---------- diff ---------- */
 const problems = []
@@ -92,8 +99,16 @@ for (const [table, names] of inMigrations) {
 for (const table of rlsEnabled) {
   if (EXEMPT_TABLES.has(table)) continue
   if (!inMigrations.has(table)) {
+    if (noPolicyByDesign.has(table)) {
+      note.push(`  ${table}: RLS enabled and no policy — by design (03 says "No policy at all")`)
+      if (granted.has(table)) problems.push(`${table} is documented as having no policy but a migration GRANTs on it`)
+      continue
+    }
     problems.push(`${table} has RLS enabled but no policy — it denies everything`)
   }
+}
+for (const table of noPolicyByDesign) {
+  if (inMigrations.has(table)) problems.push(`${table} is documented as "No policy at all" but a migration creates a policy on it`)
 }
 
 for (const [table, names] of inDoc) {

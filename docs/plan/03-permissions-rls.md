@@ -1100,6 +1100,22 @@ generated suite is the highest-value test in the product.
 | `POL-members.update.self` | A member updating their own `org_role` is rejected; the column is not granted. |
 | `POL-members.update.self` | A member updating another member's `bio` is rejected. |
 | `POL-members.org_immutable` | An update changing `org_id` raises, even as service_role. |
+| `POL-companies.select.member` · `POL-categories.select.member` · `POL-venues.select.member` | A member of org A sees none of org B's rows; sees all of A's. |
+| `POL-companies.insert.admin` · `POL-categories.insert.admin` · `POL-venues.insert.admin` | A member's insert is rejected; an admin's succeeds; an admin inserting with org B's `org_id` is rejected by `with check`. |
+| `POL-companies.update.admin` · `POL-categories.update.admin` · `POL-venues.update.admin` | An admin deactivates a row; **no role can delete one** (`REQ-ADM-006`). |
+| `POL-member_interests.select.member` · `POL-member_interests.write.self` | A member writes only their own interests; writing another member's is rejected. |
+| `POL-scoring_config_history.select.admin` | An admin reads the org's history; a moderator and a member get nothing; no role can insert, update or delete directly. |
+| `POL-org_settings.history` | Changing a setting as an admin writes one history row per changed column, with old and new values. |
+| `POL-platform_admins.none` | Every client role selecting from `platform_admins` fails on the grant — there is no policy and no grant (DEC-035). |
+| `POL-auth_hook.no_member` | The hook returns the event **unchanged** for a user with no member row. |
+| `POL-auth_hook.claims` | For a member, `app_metadata` carries `org_id`, `member_id`, `org_role`, `status`, `claims_version`, `org_status`. |
+| `POL-auth_hook.never_raises` | With `select` on `members` revoked from the definer's path, the hook still returns the event unchanged. |
+| `POL-provision_member.no_match` | A domain on no list returns `no_match` and creates **no** member row and **no** audit row (`REQ-AUT-006`). |
+| `POL-provision_member.ambiguous` | A domain on two lists returns both orgs and creates nothing; a second call naming one org creates exactly one member (`REQ-AUT-004`). |
+| `POL-provision_member.idempotent` | Two calls for the same user yield one row. |
+| `POL-assert_fresh_admin.stale` | A token whose `claims_version` lags the row raises `stale_claims`; a member raises `not_an_admin`. |
+| `POL-set_member_role.audit` | Changing a role bumps `claims_version` and writes an audit row with old and new role; demoting the last admin raises `last_admin`. |
+| `POL-deactivate_member.reason` | Deactivating without a reason is rejected; with one, `status` flips, `claims_version` bumps, the audit row carries the reason. |
 | `POL-proposals.select.member` | Member B cannot read member A's proposal; a co-presenter can. |
 | `POL-proposals.update.own` | A proposer cannot write `decision_reason`; cannot edit an `approved` proposal. |
 | `POL-sessions.select.member` | A `draft` session is invisible to members, visible to its presenter. |

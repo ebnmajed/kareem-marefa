@@ -237,6 +237,7 @@ The tenant root. **The only table with no `org_id`** — it *is* the org.
 | `status` | `org_status not null default 'active'` | `REQ-TEN-006` |
 | `certificate_prefix` | `text not null` | e.g. `KM` — `REQ-CRT-008` |
 | `created_by` | `uuid not null` | the super admin — `REQ-TEN-002` |
+| `first_admin_email` | `citext` | named at creation; `provision_member()` grants `admin` when it signs in — `REQ-TEN-002` (DEC-035) |
 | `suspended_at`, `suspended_reason` | `timestamptz`, `text` | |
 
 #### `ENT-org_domains`

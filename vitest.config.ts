@@ -13,9 +13,31 @@ const alias = { "@": path.resolve(__dirname, "src") };
 //   `render()` has nothing to mount into. Vitest merges project config with
 //   the root by concatenating arrays, so the condition is kept out of the root
 //   rather than "overridden" in one project.
+// The RLS suite needs a database. It is registered only when RLS_DATABASE_URL
+// is set — `npm run test:rls` sets it to local Supabase, CI's `rls` job sets
+// it to its container — so `npm test` without one still runs everything else.
+const rlsProject = process.env.RLS_DATABASE_URL
+  ? [
+      {
+        resolve: { alias },
+        test: {
+          name: "rls",
+          include: ["tests/rls/**/*.test.ts"],
+          environment: "node",
+          // One connection, one transaction per test, rolled back. Files must
+          // not interleave on the same database.
+          fileParallelism: false,
+          testTimeout: 20_000,
+          hookTimeout: 30_000,
+        },
+      },
+    ]
+  : [];
+
 export default defineConfig({
   test: {
     projects: [
+      ...rlsProject,
       {
         resolve: { alias, conditions: ["react-server"] },
         test: {

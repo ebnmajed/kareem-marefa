@@ -54,7 +54,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-003` | — | — | `SCR-080` `SCR-084` | — | — | `STORY-ADM-001` | M8 |
 | `REQ-ADM-004` | — | — | `SCR-040` | — | — | `STORY-ADM-003` | M7 |
 | `REQ-ADM-005` | — | — | `SCR-042` | — | — | `STORY-ADM-004` | M7 |
-| `REQ-ADM-006` | — | — | `SCR-046` | — | — | `STORY-ADM-004` | M7 |
+| `REQ-ADM-006` | — | `POL-categories.update.admin` `POL-companies.update.admin` +1 | `SCR-046` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-007` | — | — | `SCR-047` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-008` | — | — | `SCR-048` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-009` | — | — | `SCR-049` | — | — | `STORY-ADM-005` | M7 |
@@ -77,9 +77,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-AUT-001` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
 | `REQ-AUT-002` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
 | `REQ-AUT-003` | `ENT-members` `ENT-org_domains` | — | `SCR-082` | — | — | `STORY-AUT-002` | M1 |
-| `REQ-AUT-004` | `ENT-org_domains` | — | `SCR-003` | — | — | `STORY-AUT-002` | M1 |
+| `REQ-AUT-004` | `ENT-org_domains` | `POL-provision_member.ambiguous` | `SCR-003` | — | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-005` | — | — | `SCR-002` | — | — | `STORY-AUT-003` | M1 |
-| `REQ-AUT-006` | — | — | `SCR-004` | — | — | `STORY-AUT-003` | M1 |
+| `REQ-AUT-006` | — | `POL-provision_member.no_match` | `SCR-004` | — | — | `STORY-AUT-003` | M1 |
 | `REQ-AUT-007` | `ENT-members` | — | `SCR-049` | — | — | `STORY-AUT-004` | M1 |
 | `REQ-AUT-008` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-049` | — | — | `STORY-AUT-004` | M1 |
 
