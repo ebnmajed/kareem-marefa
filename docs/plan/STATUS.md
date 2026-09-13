@@ -33,7 +33,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-027**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-028**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -103,7 +103,7 @@ This is the way to run one-off SQL against production.
 | `npm run qa` orchestrator | ✅ done — stub + server + suite, wired and torn down |
 | ~~Three Supabase projects~~ → **local + CI** (DEC-025) | ✅ **local Supabase running** — 12 containers healthy, both migrations apply to a clean DB. $0 |
 | Playwright, jsdom, `@testing-library` | ⬜ |
-| GitHub Actions with the four blocking gates | ⬜ |
+| GitHub Actions with the four blocking gates | ✅ done (DEC-028) — 7 jobs; `policy-diff` written and self-tested |
 | Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
 | **Shaping-parity harness (Tiers A and B)** | ✅ done (DEC-024) — `npm run parity`, 7 cases, green, and proven able to fail |
 | graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ |

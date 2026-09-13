@@ -568,6 +568,52 @@ decision. Every decision taken **after** the source brief gets an entry here.
   schema, forward-only, and run in every environment forever; a one-off data fix is none of those.
 - **Documents changed:** `STATUS.md`, `/CLAUDE.md`
 
+## DEC-028 — CI wires the four gates, and parity goldens are environment-bound
+
+- **Date:** 2026-09-13 · **Decided by:** architect
+- **Decision:** `.github/workflows/ci.yml` runs seven jobs on every push and pull request:
+  **plan** (traceability + policy-diff + "the generated matrix is current"), **lint** (tsc +
+  eslint), **unit**, **rls** (migrations against an ephemeral Postgres service container, per
+  DEC-025), **build**, **qa** (the frozen public contract), and **parity**.
+- **`scripts/policy-diff.mjs` now exists.** `13` §3.5 called it "the highest-value automation in the
+  plan" and it had not been written. It fails on four conditions: a policy in a migration but not in
+  `03`; a policy in `03` but not in any migration once its table exists; RLS enabled with no policy;
+  and **a policy with no matching `GRANT`** — migration `0002`'s exact lesson, now caught by a
+  machine. `registrations` is exempt as frozen legacy (DEC-002). Self-tested: it catches both the
+  undocumented policy and the missing grant.
+- **The parity decision — Tier A is portable, Tier B is not. Measured, not assumed.** The goldens
+  were produced by a developer's **macOS Chrome**; CI runs **Linux**. Rather than guess, the suite
+  was run inside a Debian/Chromium 152 container against the same goldens:
+
+  | | macOS vs Linux, same font bytes | Under a substituted font |
+  |---|---|---|
+  | **Tier A** (advance widths, line counts, fitted size) | **identical on all 7 cases** — 168.81, 88.05, 469.73, 509.70, 666.19, 549.21, 564.04 | **moves on all 7** (168.81 → 208.66) |
+  | **Tier B** (pixels) | **0.7–3.9% drift** — an order of magnitude above the 0.1% threshold | 11%+ |
+
+  So Tier A is a function of the **font bytes and the layout algorithm**, not the rasteriser, and
+  Tier B is the rasteriser. The harness splits accordingly:
+
+  | Check | Cross-platform |
+  |---|---|
+  | **Tier A layout geometry** | **BLOCKING everywhere** |
+  | Blank capture, font fell back, letter-spacing, determinism | **BLOCKING** — platform-independent properties |
+  | Tier B pixel regression vs golden | **advisory (Tier C)**, and the run says so |
+
+  **This gives CI a real, blocking D66 check today** — verified by running the substitution case
+  inside the Linux container, where all seven fail. It does not wait for M6. Tier B additionally
+  becomes blocking on Linux in M6, when goldens are regenerated inside the worker image, which
+  DEC-017 already names as the reference environment.
+
+  Two supporting details: `CHROME_NO_SANDBOX=1` opts into `--no-sandbox` for containers running as
+  root, deliberately **opt-in** so a developer machine never silently drops the sandbox; and
+  `--font-render-hinting=none` plus `--force-color-profile=srgb` pin the two things that would
+  otherwise vary between machines.
+
+- **What is armed but not yet meaningful:** the `rls` job proves the migrations apply to a clean
+  Postgres and runs `tests/rls` when it exists. M1 creates that suite. `policy-diff` likewise
+  reports "no platform policies yet" and starts comparing the moment the first policied table lands.
+- **Documents changed:** `13-testing-quality.md`, `STATUS.md`, `14-roadmap.md`
+
 ---
 
 ## Template for new entries

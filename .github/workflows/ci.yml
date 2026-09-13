@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'docs/**', 'feat/**', 'fix/**']
+  pull_request:
+
+# One run per ref. A superseded push is wasted CI and a confusing red X.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ── The plan gates. Cheap, and they fail fastest. ──────────────────────
+  plan:
+    name: plan gates (traceability, policies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+
+      # No orphan requirement, no broken citation, no requirement without a
+      # story or a milestone. 13-testing-quality.md §10.
+      - name: traceability
+        run: node scripts/traceability.mjs
+
+      # 03-permissions-rls.md is only true if it matches the database, and
+      # nothing else checks that it does.
+      - name: policy diff
+        run: node scripts/policy-diff.mjs
+
+      # The matrix is generated. A committed matrix that differs from a fresh
+      # run means someone hand-edited it.
+      - name: traceability matrix is current
+        run: git diff --exit-code docs/plan/TRACEABILITY.md
+
+  lint:
+    name: types and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npx vitest run
+
+  # ── RLS. Armed now, meaningful from M1. ───────────────────────────────
+  rls:
+    name: RLS policies
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ['5432:5432']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+
+      # DEC-025: CI uses an ephemeral Postgres container, not a hosted project.
+      # The isolation sweep is generated over every entity, so a new table is
+      # covered the day it is created (03 §8.1).
+      - name: apply migrations
+        env: { PGPASSWORD: postgres }
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "-- $f"
+            psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: RLS suite
+        run: |
+          if [ -d tests/rls ]; then
+            npx vitest run tests/rls
+          else
+            echo "No RLS suite yet — M1 creates it. The container is proven to"
+            echo "accept the migrations, which is what this job guards."
+          fi
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npm run build
+        env:
+          SUPABASE_URL: http://localhost:54331
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+          FORM_TOKEN_SECRET: ci-placeholder-not-a-real-secret
+      - uses: actions/upload-artifact@v4
+        with: { name: next-build, path: .next, retention-days: 1 }
+
+  # ── The frozen public contract. REQ-NFR-019. ───────────────────────────
+  qa:
+    name: frozen routes (qa)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with: { name: next-build, path: .next }
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with: { chrome-version: stable }
+
+      # npm run qa starts the stub, starts next with SUPABASE_URL pointed at
+      # it, and refuses to run against anything that is not localhost
+      # (DEC-023). It never reaches a real project.
+      - name: qa
+        run: npm run qa
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+  # ── Arabic shaping. D66. ───────────────────────────────────────────────
+  parity:
+    name: shaping parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with: { chrome-version: stable }
+
+      # The goldens are committed from a developer's macOS Chrome, so on this
+      # Linux runner the layout and pixel comparisons drop to Tier C
+      # (advisory) and the harness says so. What stays BLOCKING here is
+      # everything platform-independent: a blank capture, a font that fell
+      # back, letter-spacing on Arabic, and render-to-render determinism.
+      #
+      # Tier B becomes blocking on Linux in M6, when the goldens are
+      # regenerated inside the worker image — which DEC-017 already names as
+      # the reference environment.
+      - name: parity
+        run: npm run parity
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}

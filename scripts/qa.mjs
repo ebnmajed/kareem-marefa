@@ -3,7 +3,10 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+// CI runs Linux, so the browser is not where a Mac keeps it. CHROME_PATH wins.
+const CHROME =
+  process.env.CHROME_PATH ??
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = "http://localhost:3000";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 

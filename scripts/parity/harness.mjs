@@ -17,6 +17,7 @@
 // needs no image dependency.
 
 import { createHash } from 'node:crypto'
+import { platform, arch } from 'node:process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -158,7 +159,16 @@ const EXTRACT = (caseIds) => {
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ['--no-first-run', '--font-render-hinting=none', '--force-color-profile=srgb'],
+  args: [
+    '--no-first-run',
+    // Pin the two things that would otherwise vary between machines and make
+    // a pixel comparison meaningless.
+    '--font-render-hinting=none',
+    '--force-color-profile=srgb',
+    // Containers run as root, where Chrome's sandbox refuses to start. Opt-in
+    // rather than automatic: never drop the sandbox on a developer's machine.
+    ...(process.env.CHROME_NO_SANDBOX ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
+  ],
 })
 
 async function render() {
@@ -266,7 +276,18 @@ await browser.close()
 
 /* ---------- report ---------- */
 const goldenPath = join(GOLDENS, 'signature.json')
-const record = { font: { family: FAMILY, fingerprint: fontFingerprint }, cases: a.signature }
+// The goldens belong to the environment that produced them. Font rasterisation
+// and line breaking differ between a developer's macOS Chrome and the Linux
+// Chromium that will render production exports, so a golden is only directly
+// comparable on its own platform. DEC-017 already names the worker image as the
+// reference environment — this records which environment a golden came from so
+// the comparison can be honest about it.
+const PLATFORM = `${platform}-${arch}`
+const record = {
+  font: { family: FAMILY, fingerprint: fontFingerprint },
+  platform: PLATFORM,
+  cases: a.signature,
+}
 
 if (UPDATE) {
   const blank = CASES.filter((c) => (a.ink[c.id] ?? 0) < 0.001)
@@ -293,6 +314,34 @@ const problem = (msg) => {
   console.log(`FAIL  ${msg}`)
 }
 const ok = (msg) => console.log(`PASS  ${msg}`)
+
+// Tier B compares pixels, and Tier A compares layout geometry. Both are
+// environment-bound. On a different platform they become Tier C — reported,
+// never blocking — because a cross-environment pixel difference is expected and
+// only a GROWING one is a signal (06 §9.1).
+const samePlatform = (golden.platform ?? PLATFORM) === PLATFORM
+if (!samePlatform) {
+  console.log(
+    `NOTE  goldens were made on ${golden.platform}, running on ${PLATFORM}.\n` +
+      `      Tier B (pixels) drops to Tier C — advisory — for this run.\n` +
+      `      Tier A stays BLOCKING: measured identical across macOS and Linux\n` +
+      `      with the same font bytes, and it still moves under substitution.`,
+  )
+}
+const advisory = (msg) => console.log(`TIER-C  ${msg}`)
+
+// Tier A is layout geometry — advance widths, line counts, fitted size. It is a
+// function of the FONT BYTES and the layout algorithm, not the rasteriser.
+// Measured: byte-identical between macOS Chrome and Linux Chromium on all seven
+// cases, and still moves on every case under a substituted face. So it blocks
+// everywhere, which is what gives CI a real D66 check without platform goldens.
+const reportTierA = problem
+
+// Tier B is pixels, and pixels are the rasteriser. Measured 0.7-3.9% drift
+// macOS vs Linux with identical fonts and identical layout — an order of
+// magnitude above the 0.1% threshold. Cross-platform it measures the platform,
+// so it is advisory there and blocking on its own.
+const reportTierB = samePlatform ? problem : advisory
 
 if (golden.font.fingerprint !== fontFingerprint) {
   problem(`font drift: goldens were made with ${golden.font.fingerprint}, this run has ${fontFingerprint}`)
@@ -324,7 +373,7 @@ for (const c of CASES) {
   const drift = keys.filter((k) => JSON.stringify(g?.[k]) !== JSON.stringify(s[k]))
   const widthDrift = JSON.stringify(g?.lineWidths) !== JSON.stringify(s.lineWidths)
   if (drift.length || widthDrift) {
-    problem(
+    reportTierA(
       `${c.id} [Tier A]: ${[...drift, ...(widthDrift ? ['lineWidths'] : [])].join(', ')} — ` +
         `expected ${JSON.stringify(keys.map((k) => g?.[k]))}, got ${JSON.stringify(keys.map((k) => s[k]))}`,
     )
@@ -341,7 +390,7 @@ for (const c of CASES) {
   else if (!r) problem(`${c.id} [Tier B/regression]: no golden image`)
   else if (r.sizeMismatch) problem(`${c.id} [Tier B/regression]: size differs from the golden`)
   else if (r.ratio > 0.001)
-    problem(`${c.id} [Tier B/regression]: ${(r.ratio * 100).toFixed(3)}% differs from the golden (limit 0.1%)`)
+    reportTierB(`${c.id} [Tier B/regression]: ${(r.ratio * 100).toFixed(3)}% differs from the golden (limit 0.1%)`)
   else ok(`${c.id} [Tier B] determinism ${(d.ratio * 100).toFixed(3)}%, vs golden ${(r.ratio * 100).toFixed(3)}%`)
 }
 

@@ -507,6 +507,19 @@ Run against **every** export path — poster PNG, poster PDF, certificate PDF, s
 - **Tier C:** reported, never blocking. Cross-browser difference is expected; a *growing* one is
   the signal.
 
+**Measured cross-platform behaviour (DEC-028).** The suite was run on macOS Chrome and inside a
+Debian/Chromium container against the same goldens and the same font bytes:
+
+| | macOS vs Linux | Under a substituted font |
+|---|---|---|
+| **Tier A** | **identical on all seven cases** | **moves on all seven** |
+| **Tier B** | 0.7–3.9% drift | 11%+ |
+
+Tier A is therefore a property of the **font bytes and the layout algorithm**, not the rasteriser,
+and **blocks on every platform** — which is what lets CI enforce D66 on a Linux runner against
+goldens made on a Mac. Tier B is the rasteriser, so cross-platform it measures the platform and is
+advisory there.
+
 **Goldens are never auto-refreshed** (`REQ-DSG-015`). A changed golden is a reviewed change with a
 human looking at the before and after. An auto-refreshing golden suite tests that the code equals
 itself, which is the most reassuring way to test nothing at all.

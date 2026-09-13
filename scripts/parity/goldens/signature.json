@@ -3,6 +3,7 @@
     "family": "IBM Plex Sans Arabic",
     "fingerprint": "3cd9a6c6c3541b94"
   },
+  "platform": "darwin-arm64",
   "cases": {
     "lam-alef": {
       "lineCount": 1,
