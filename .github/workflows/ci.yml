@@ -263,6 +263,26 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:6432/postgres
 
+  # ── main stays deployable with the platform unconfigured. DEC-038. ────
+  # Production has no NEXT_PUBLIC_ Supabase variables until PR C. This job
+  # builds exactly that way and proves the platform routes are 404s while the
+  # frozen routes are untouched.
+  unconfigured:
+    name: platform unconfigured (build + 404s)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:unconfigured
+        env:
+          SUPABASE_URL: http://localhost:54331
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+          FORM_TOKEN_SECRET: ci-placeholder-not-a-real-secret
+          CI: 'true'
+
   # ── Arabic shaping. D66. ───────────────────────────────────────────────
   parity:
     name: shaping parity

@@ -5,6 +5,17 @@
 // The frozen registration form keeps its own SUPABASE_URL /
 // SUPABASE_PUBLISHABLE_KEY (src/lib/supabase.ts) and is not touched.
 
+/**
+ * True when the platform's two variables are set. Until PR C sets them on
+ * Vercel the platform is UNCONFIGURED in production: `proxy.ts` then serves
+ * 404 for every platform route and the auth Route Handlers refuse, while the
+ * frozen marketing routes are untouched (DEC-038). This is what keeps `main`
+ * deployable between M1 and launch.
+ */
+export function platformConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+}
+
 export function supabaseEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

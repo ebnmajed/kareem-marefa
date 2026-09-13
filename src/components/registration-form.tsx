@@ -12,7 +12,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   submitRegistration,
   type RegistrationState,
-} from "@/app/[locale]/register/actions";
+} from "@/app/[locale]/(marketing)/register/actions";
 import {
   HONEYPOT_FIELD,
   TOPIC_CATEGORIES,

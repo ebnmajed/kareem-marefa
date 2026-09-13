@@ -98,6 +98,8 @@ export async function startStubbedServer({ log = console.log } = {}) {
     // matter to server code that reads them at runtime (proxy's refresh).
     // Default them to the stub so nothing platform-side can reach a real
     // project from a QA run either.
+    // `??` not `||`: an EMPTY value is deliberate — the unconfigured proof
+    // (scripts/e2e-unconfigured.mjs) serves the app with them empty.
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? STUB,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_stub',
   })

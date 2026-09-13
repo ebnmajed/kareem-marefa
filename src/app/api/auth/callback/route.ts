@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { platformConfigured } from "@/lib/supabase/env";
 import { destinationFor, PLATFORM_LOCALE, provision } from "@/lib/auth/flow";
 
 // Google returns here. Exchange the code, provision (or recognise) the
@@ -8,6 +9,7 @@ import { destinationFor, PLATFORM_LOCALE, provision } from "@/lib/auth/flow";
 // explanation in Arabic — never a blank page, never a redirect loop
 // (REQ-AUT-006).
 export async function GET(request: NextRequest) {
+  if (!platformConfigured()) return new NextResponse(null, { status: 404 }); // DEC-038
   const url = request.nextUrl;
   const next = url.searchParams.get("next");
   const code = url.searchParams.get("code");

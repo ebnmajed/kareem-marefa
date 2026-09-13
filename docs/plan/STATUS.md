@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branches:** `m1/tenancy` (PR A #4 → `main`, open, CI green) · `m1/app` (PR B → `m1/tenancy`, open) · **Phase:** **M1 — PR A and PR B built; PR C NOT started (owner-gated)**
+**Last updated:** 2026-09-14 · **Branch:** `m1/pre-cutover` (PR → `main`, awaiting the owner's merge) · **`main` @ `453e540`:** M1 PR A (#4) and PR B (#6) **merged**, production deploy green, frozen routes answer · **Phase:** **M1 closing — pre-cutover hardening; PR C deferred to launch (owner's morning plan, step 3 pending)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-036**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-038**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -148,10 +148,12 @@ plugs into the same seven cases.
 
 ## M1 — where it stands
 
-**PR A (#4, `m1/tenancy` → `main`) — built, green, awaiting review.** Migrations `0003`–`0006`;
+**PR A (#4) and PR B (#6) are merged into `main` (`e253ea0`, `453e540`); CI on `main` and the Vercel production deploy succeeded; the five frozen routes answer.** GitHub closed the original PR B (#5) when its base branch was deleted, so it was re-opened unchanged as #6.
+
+**PR A (#4, `m1/tenancy` → `main`) — merged.** Migrations `0003`–`0006`;
 `tests/rls` with 61 tests on local Supabase and on the CI shim; `policy-diff` green; DEC-035.
 
-**PR B (#5, `m1/app` → `m1/tenancy`) — built, green, awaiting review.** Slice 1 (`6221c06`):
+**PR B (#6, `m1/app` → `main`) — merged.** Slice 1 (`6221c06`):
 `@supabase/ssr` clients, the DAL with `requireSession()` narrowed on `data`, `proxy.ts` with
 report-only CSP, DEC-036 and OQ-028, the README's `NEXT_PUBLIC_` invariant retired. Slice 2
 (`b922197`): sign-in, callback, choose-org, no-access, sign-out, the app shell, home, profile,
@@ -182,13 +184,26 @@ Live hook probe through the local Auth API: a sign-up on an unlisted domain → 
   `security find-generic-password -s "Supabase CLI"` process. Click **Always Allow** on the
   dialog (owner's screen), then start again. Cost one session an hour.
 
-**Deliberately not in PR B, and the owner should know:**
+**Pre-cutover PR (`m1/pre-cutover`, both decisions approved by the owner on 2026-09-14):**
 
-- **The platform screens render inside the marketing chrome** (the fixed pre-launch header with
-  «سجّل اهتمامك», the footer). The planned split — the root layout without header/footer, the
-  marketing pages in a `(marketing)` route group with their own layout (`04` §4) — means moving
-  the frozen files, which this session was told not to touch. **Approve that move as the first
-  step of the next app PR**; output stays byte-identical and the visual diff proves it.
+- **DEC-037** — migration `0009` revokes `anon`'s `TRUNCATE` on the frozen `registrations` table;
+  the owner runs the same statement in the hosted SQL editor. Verified locally: anon keeps
+  `insert` only.
+- **DEC-038** — the frozen marketing files now live in `src/app/[locale]/(marketing)/` with their
+  own layout (header, `main`, footer); the locale layout renders only the providers. URLs and HTML
+  unchanged: `npm run visual` 0.000%, `npm run qa` 44/44. The `(auth)` and `app` layouts render
+  their own `main` under the wordmark. **The unconfigured guard:** with the two `NEXT_PUBLIC_`
+  variables unset — production until launch — the build succeeds, every platform route and auth
+  screen is a 404 through the marketing catch-all, the auth Route Handlers answer 404, and the
+  frozen routes are untouched. Proven by `npm run test:e2e:unconfigured` (builds with both empty:
+  16 e2e pass, 24 skip by design; on that build `npm run qa` 44/44 and the visual diff 0.000%) and
+  by the CI `unconfigured` job.
+- Observed once, not reproduced: the `signing out` e2e failed in one full run (`toHaveURL`) and
+  passed on the rerun and alone. If it recurs, suspect the two workers' timing on the stubbed
+  server, not the app.
+
+**Still deliberately out of M1:**
+
 - Admin CRUD screens (domains, settings, companies, categories, venues, members): policies and
   RPCs exist and are tested at the database; UI is M2/M7 per `09`.
 - Sign-in rate limiting (`12` §3: 10 per IP per 5 min) needs a shared store; Supabase Auth's own
@@ -249,7 +264,7 @@ reachable through PostgREST; a `revoke` would touch the frozen table's privilege
 
 ## Waiting on the owner
 
-**Review PR A (#4) and PR B**, then start PR C with the checklist above — every step there needs your explicit go.
+**Merge the pre-cutover PR** (`m1/pre-cutover`), run the `REVOKE` in the hosted SQL editor, then step 3 of the morning plan: PR C deferred to launch as a decision, the roadmap's launch item, and STATUS pointing M2 at local Supabase and CI only.
 
 **Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
 the choice must provide a session-mode Postgres connection and either private networking to the

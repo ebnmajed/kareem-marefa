@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
+import { platformConfigured } from "@/lib/supabase/env";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { PLATFORM_LOCALE, siteOrigin } from "@/lib/auth/flow";
 
@@ -11,6 +12,7 @@ import { PLATFORM_LOCALE, siteOrigin } from "@/lib/auth/flow";
 const input = z.object({ next: z.string().max(2048).optional() });
 
 export async function POST(request: NextRequest) {
+  if (!platformConfigured()) return new NextResponse(null, { status: 404 }); // DEC-038
   const form = await request.formData();
   const parsed = input.safeParse({ next: form.get("next")?.toString() });
   const next = safeNextPath(parsed.success ? parsed.data.next : undefined, PLATFORM_LOCALE);
