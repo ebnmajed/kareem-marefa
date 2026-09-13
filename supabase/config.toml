@@ -280,9 +280,11 @@ max_frequency = "5s"
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
-# [auth.hook.before_user_created]
-# enabled = true
-# uri = "pg-functions://postgres/auth/before-user-created-hook"
+# 0007_before_user_created_hook.sql: a domain on no org's list creates no
+# account at all (REQ-AUT-006, DEC-036).
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/before_user_created_hook"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # The Custom Access Token Hook (0006_auth_hook.sql). Adds org_id, member_id,

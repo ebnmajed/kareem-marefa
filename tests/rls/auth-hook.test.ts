@@ -111,3 +111,56 @@ describe("POL-auth_hook", () => {
     });
   });
 });
+
+describe("POL-before_user_created_hook", () => {
+  const ev = (email: string) => ({ metadata: { uuid: "x", time: "now" }, user: { id: "00000000-0000-0000-0000-000000000001", email, app_metadata: {}, user_metadata: {} } });
+  const call = async (tx: Tx, e: unknown) => (await tx.q<{ out: Record<string, unknown> }>(`select public.before_user_created_hook($1::jsonb) as out`, [JSON.stringify(e)]))[0].out;
+
+  it("lets a listed domain through unchanged, case-insensitively", async () => {
+    await withTx(async (tx) => {
+      await seed(tx);
+      await tx.asOwner();
+      const e = ev("New.Person@Kareem.Example");
+      expect(await call(tx, e)).toEqual(e);
+    });
+  });
+
+  it("refuses a domain on no active org's list, naming no org", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const out = await call(tx, ev("someone@nowhere.example"));
+      expect(out).toEqual({ error: { http_code: 403, message: "domain_not_allowed" } });
+      expect(JSON.stringify(out)).not.toContain(f.a.name);
+      // A suspended org's domain no longer admits new users.
+      await tx.q(`update public.orgs set status = 'suspended', suspended_at = now(), suspended_reason = 'x' where id = $1`, [f.b.id]);
+      expect(await call(tx, ev("late@other.example"))).toMatchObject({ error: { http_code: 403 } });
+    });
+  });
+
+  it("fails open: a malformed event and a broken read both come back unchanged", async () => {
+    await withTx(async (tx) => {
+      await seed(tx);
+      await tx.asOwner();
+      const none = { user: {} };
+      expect(await call(tx, none)).toEqual(none);
+      await tx.q(`alter table public.org_domains rename to org_domains_broken`);
+      const e = ev("someone@nowhere.example");
+      expect(await call(tx, e)).toEqual(e);
+    });
+  });
+
+  it("grants — supabase_auth_admin may execute it; authenticated and anon may not", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const [g] = await tx.q<Record<string, boolean>>(
+        `select has_function_privilege('supabase_auth_admin', 'public.before_user_created_hook(jsonb)', 'execute') as a,
+                has_function_privilege('authenticated', 'public.before_user_created_hook(jsonb)', 'execute') as b,
+                has_function_privilege('anon', 'public.before_user_created_hook(jsonb)', 'execute') as c`,
+      );
+      expect(g).toEqual({ a: true, b: false, c: false });
+      await tx.as(f.a.admin.claims);
+      expect(await errorCode(() => call(tx, ev("x@kareem.example")))).toBe(PERMISSION_DENIED);
+    });
+  });
+});

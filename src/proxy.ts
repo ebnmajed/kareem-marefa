@@ -35,17 +35,19 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = contentSecurityPolicy(nonce);
-
-  // On platform routes, forward the nonce and the policy to the render so
-  // Next nonces its own inline scripts and a layout can read `x-nonce`. On
-  // the frozen marketing routes the policy is a RESPONSE header only: their
-  // HTML stays byte-identical (REQ-NFR-019), and the reports simply say what
-  // an enforced policy would break there.
+  // On platform routes the policy carries a per-request nonce, forwarded
+  // as request headers so Next nonces its own inline scripts and a layout
+  // can read `x-nonce`. On the frozen marketing routes the report-only
+  // policy carries NO nonce: Next reacts to a nonce in the CSP header by
+  // rendering dynamically and stamping every script tag, which would turn
+  // the prerendered pages dynamic — a change to the frozen routes
+  // (REQ-NFR-019). Nonce-less, their HTML stays exactly the build's, and
+  // the reports simply say what an enforced policy would break there.
   const platform = isPlatformPath(pathname);
+  const nonce = platform ? Buffer.from(crypto.randomUUID()).toString("base64") : null;
+  const csp = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
-  if (platform) {
+  if (platform && nonce) {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("content-security-policy-report-only", csp);
   }
@@ -74,13 +76,15 @@ export default async function proxy(request: NextRequest) {
   return response;
 }
 
-function contentSecurityPolicy(nonce: string): string {
+function contentSecurityPolicy(nonce: string | null): string {
   const dev = process.env.NODE_ENV === "development";
   const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const scripts = nonce ? `'nonce-${nonce}' 'strict-dynamic'` : "'report-sample'";
+  const styles = nonce ? `'nonce-${nonce}'` : "'report-sample'";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' ${scripts}${dev ? " 'unsafe-eval'" : ""}`,
+    `style-src 'self' ${styles}`,
     "img-src 'self' blob: data: https://lh3.googleusercontent.com",
     "font-src 'self'",
     `connect-src 'self'${supabase ? ` ${supabase} ${supabase.replace(/^http/, "ws")}` : ""}`,
