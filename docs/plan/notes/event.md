@@ -153,7 +153,26 @@ Added `event` and `ratings` to `NAMESPACES` in `src/messages/index.ts` (the one 
 `TEAM.md` §2 — appended, not reordered). Arabic authored first in both files; English twins written
 alongside rather than left to fall back, since both are short enough to do properly now.
 
-## 6. What I have not built, and why
+## 6. Status at handoff
+
+STORY-EVT-002, EVT-004, RAT-001, RAT-002 done; EVT-003 done except reply
+notifications (needs the M3 notifications table). Commits on `wave-1/m2`:
+`d42bcf1` (Realtime authorization + the host-topic fix), `584b7ae` (ratings
+admin + count RPCs), `03_comments_self_delete_rpc.sql`/its test (folded
+into the lead's `6efd2c8` — see below), `176d821` (DAL), `5c4f97f`
+(Comments/Ratings slots + components + tests), `d326698` (SCR-015 rate
+route + e2e). `npx tsc --noEmit`, `npm run lint` (0 errors), `npm test`
+(117/117) and `npm run test:rls` (161+ passing, only unrelated in-flight
+WIP in other teammates' files ever red) all green as of this commit.
+
+**Two incidental commit mix-ups from the shared git index, content intact,
+nothing lost:** `d42bcf1` also carries `tests/e2e/checkin.spec.ts`
+(`checkin`'s file, staged by them between my `add` and `commit`), and
+`5c4f97f` also carries the lead's rename of three proposed SQL files into
+`supabase/migrations/0013–0015`. Both are exactly what they say, just
+attributed under my commit message rather than the right one.
+
+## 7. What I have not built, and why
 
 - **Photos** (`REQ-EVT-009`…`013`) — `STORY-EVT-005`/`006`, **M5**, not this wave.
 - **Notification delivery** for mentions/replies — **M3** (`notify`), see §1.
