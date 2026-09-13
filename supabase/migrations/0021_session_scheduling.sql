@@ -6,7 +6,7 @@
 -- Cites:   02-domain-model.md §4.3, §6.2 (frozen) · 03-permissions-rls.md §1.3, §5.2d
 --          0010 (the publish check constraint) · 0005 (assert_fresh_admin)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 5):
 --   | `RPC-schedule_session.admin_only` | A member, a moderator and the session's own presenter
 --     are all refused; a presenter cannot set a date even through the RPC. |
 --   | `RPC-schedule_session.derives` | `ends_at` is stored, derived from the duration when not

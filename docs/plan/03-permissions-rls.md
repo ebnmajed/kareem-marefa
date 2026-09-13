@@ -1133,6 +1133,13 @@ generated suite is the highest-value test in the product.
 | `RPC-create_session.admin_only` | A member and a moderator are refused `42501`; an admin of another org cannot reach the proposal or create into that org. |
 | `RPC-create_session.one_per_proposal` | An approved proposal becomes at most one session (partial unique index); a second attempt is refused, and only an `approved` proposal can be turned into one (`REQ-PRO-007`, `REQ-PRO-008`). |
 | `POL-session_presenters.decline` | A presenter declining an unpublished session returns it to `draft` and writes the transition row; a published session is left alone (`REQ-SES-003`). |
+| `RPC-schedule_session.admin_only` | A member, a moderator and the session's own presenter are all refused; a presenter cannot set a date even through the RPC (D13, migration `0021`). |
+| `RPC-schedule_session.derives` | `ends_at` is stored, derived from the duration when not given and independently editable when it is; the time zone comes from the venue, else the org; a custom venue needs a name **and** an address (`REQ-SES-002`). |
+| `RPC-publish_session.gate` | Publishing without a date, an end, a venue or a capacity is refused by the **table**, not only by the form; the refusal names what is missing (`REQ-SES-001`; the poster gate joins at M6). |
+| `RPC-publish_session.path` | Publishing walks `02` §6.2's chain and writes one transition row per edge, all flagged manual and attributed to the admin (`REQ-SES-012`). |
+| `RPC-clock.service_role_only` | Neither clock function is executable by `authenticated` or `anon`; only the worker's role may call them (migration `0022`). |
+| `RPC-clock.idempotent` | Running either twice moves a session once, and neither ever moves a session backwards: a session an admin started, completed or cancelled early is left alone (`REQ-SES-004`, `REQ-SES-005`). |
+| `RPC-clock.closes_check_in` | Completing a session expires its live check-in codes in the **same** transaction (`REQ-CHK-004`). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |

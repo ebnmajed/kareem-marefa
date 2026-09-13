@@ -5,13 +5,12 @@
 //               RPC-publish_session.gate,
 //               RPC-publish_session.path
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0005_session_scheduling.sql";
 const CHECK_VIOLATION = "23514";
 const IN_TWO_DAYS = "now() + interval '2 days'";
 
@@ -41,7 +40,6 @@ describe("RPC-schedule_session.admin_only", () => {
   it("refuses a member, a moderator and the session's own presenter", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.asOwner();
       await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, id, f.a.members[0].memberId]);
@@ -63,7 +61,6 @@ describe("RPC-schedule_session.admin_only", () => {
   it("a presenter still cannot reach the scheduling columns directly", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims); // a presenter of the fixture's published session
       expect(await errorCode(() => tx.q(`update public.sessions set starts_at = now() where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
       expect(await errorCode(() => tx.q(`update public.sessions set capacity = 999 where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
@@ -75,7 +72,6 @@ describe("RPC-schedule_session.admin_only", () => {
   it("will not reschedule a finished, archived or cancelled session", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => schedule(tx, f.m2.a.completed, { venue: f.a.venueId }))).toMatch(/session_not_schedulable/);
     });
@@ -86,7 +82,6 @@ describe("RPC-schedule_session.derives", () => {
   it("stores ends_at from the duration, and lets an explicit end override it (REQ-SES-002, OQ-001)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.as(f.a.admin.claims);
 
@@ -106,7 +101,6 @@ describe("RPC-schedule_session.derives", () => {
   it("takes the time zone from the venue, else the org (OQ-018)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -124,7 +118,6 @@ describe("RPC-schedule_session.derives", () => {
   it("pre-fills the capacity from the venue and lets the admin override it (REQ-SES-006)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.asOwner();
       await tx.q(`update public.venues set capacity = 40 where id = $1`, [f.a.venueId]);
@@ -138,7 +131,6 @@ describe("RPC-schedule_session.derives", () => {
   it("a custom venue needs a name AND an address, and never both kinds at once (REQ-SES-007)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.as(f.a.admin.claims);
 
@@ -159,7 +151,6 @@ describe("RPC-schedule_session.derives", () => {
   it("refuses a deactivated venue, and one belonging to another org", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => schedule(tx, id, { venue: f.b.venueId }))).toMatch(/venue_not_found/);
@@ -175,7 +166,6 @@ describe("RPC-publish_session.gate", () => {
   it("is refused while anything is missing, and names what (REQ-SES-001)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -193,7 +183,6 @@ describe("RPC-publish_session.gate", () => {
   it("the TABLE refuses it too, not only the function (15-backlog's ★)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       // Straight past every code path, as the owner: 0010's check constraint
       // is what actually holds the line.
@@ -207,7 +196,6 @@ describe("RPC-publish_session.path", () => {
   it("walks 02 §6.2's chain, one manual transition row per edge", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.asOwner();
       await tx.q(`update public.venues set capacity = 30 where id = $1`, [f.a.venueId]);
@@ -236,7 +224,6 @@ describe("RPC-publish_session.path", () => {
   it("is idempotent, and refuses a session that is past publishing", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
 
       const before = (await publish(tx, f.m2.a.published))[0];
@@ -251,7 +238,6 @@ describe("RPC-publish_session.path", () => {
   it("makes the session visible to an ordinary member, which is what publishing means", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await draft(tx, f);
       await tx.asOwner();
       await tx.q(`update public.venues set capacity = 30 where id = $1`, [f.a.venueId]);

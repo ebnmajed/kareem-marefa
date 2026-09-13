@@ -4,13 +4,12 @@
 // 03 §8.2 rows: RPC-clock.service_role_only, RPC-clock.idempotent,
 //               RPC-clock.closes_check_in
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0006_session_clock.sql";
 
 const startClock = (tx: Tx) => tx.q<{ session_id: string }>(`select public.clock_start_sessions() as session_id`);
 const completeClock = (tx: Tx) => tx.q<{ session_id: string }>(`select public.clock_complete_sessions() as session_id`);
@@ -41,7 +40,6 @@ describe("RPC-clock.service_role_only", () => {
   it("is out of reach of every signed-in role", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       for (const who of [f.a.members[0].claims, f.a.mod.claims, f.a.admin.claims]) {
         await tx.as(who);
         expect(await errorCode(() => startClock(tx))).toBe(PERMISSION_DENIED);
@@ -55,7 +53,6 @@ describe("RPC-clock.service_role_only", () => {
   it("the worker's role can call it", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await due(tx, f.m2.a.published);
       await tx.asServiceRole();
       expect((await startClock(tx)).map((r) => r.session_id)).toContain(f.m2.a.published);
@@ -67,7 +64,6 @@ describe("RPC-clock.idempotent", () => {
   it("running start twice moves a session once, and writes one transition row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await due(tx, f.m2.a.published);
 
       await tx.asServiceRole();
@@ -85,7 +81,6 @@ describe("RPC-clock.idempotent", () => {
   it("records the clock as the actor, not a person (REQ-SES-005's flag)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await due(tx, f.m2.a.published);
       await tx.asServiceRole();
       await startClock(tx);
@@ -102,7 +97,6 @@ describe("RPC-clock.idempotent", () => {
   it("never moves a session an admin already finished or cancelled", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
 
       // Completed early by an admin, with an end time in the past: the clock
       // must not touch it, and there is no query that could move it back.
@@ -123,7 +117,6 @@ describe("RPC-clock.idempotent", () => {
   it("leaves a session alone until its own clock time", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       // The fixture's published session starts in 24 hours.
       await tx.asServiceRole();
       expect((await startClock(tx)).map((r) => r.session_id)).not.toContain(f.m2.a.published);
@@ -135,7 +128,6 @@ describe("RPC-clock.idempotent", () => {
   it("completes only what the clock started, and only past its end", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await retime(tx, f.m2.a.published, "-30 minutes", "30 minutes");
 
       await tx.asServiceRole();
@@ -156,7 +148,6 @@ describe("RPC-clock.closes_check_in", () => {
   it("expires the session's live codes in the same transaction as the completion (REQ-CHK-004)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await retime(tx, f.m2.a.published, "-2 hours", "-1 minute", "in_progress");
       await tx.asOwner();
       // The fixture's code runs ten minutes into the future.

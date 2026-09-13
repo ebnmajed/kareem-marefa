@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §6.2 · 11-background-jobs.md §2.1 · CLAUDE.md invariant:
 --          "the worker uses service_role only through SECURITY DEFINER functions"
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 5):
 --   | `RPC-clock.service_role_only` | Neither clock function is executable by `authenticated` or
 --     `anon`; only the worker's role may call them. |
 --   | `RPC-clock.idempotent` | Running either twice moves a session once, and neither ever moves a
