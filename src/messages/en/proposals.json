@@ -1,0 +1,55 @@
+{
+  "proposals": {
+    "propose": {
+      "title": "Propose a topic",
+      "lead": "You don't have to be an expert.",
+      "leadBody": "Anything you've tried that worked — or didn't — is worth hearing. Write your idea the way you'd tell it, and an admin will follow up to arrange the rest.",
+      "noScheduleNote": "You don't pick a date or a place — an admin sets those once your topic is approved.",
+      "form": {
+        "titleLabel": "Proposed topic title",
+        "titleHint": "For example: how we halved the time it takes to prepare our reports",
+        "abstractLabel": "About your topic",
+        "abstractHint": "Explain the idea and who it helps",
+        "categoryLabel": "Topic category",
+        "categoryPlaceholder": "Choose a category",
+        "levelLabel": "Session level",
+        "levelIntroductory": "Introductory",
+        "levelIntermediate": "Intermediate",
+        "levelAdvanced": "Advanced",
+        "audienceLabel": "Intended audience",
+        "audienceHint": "Who is this for? For example: anyone who prepares the monthly reports",
+        "durationLabel": "Expected duration",
+        "durationUnit": "minutes",
+        "durationHint": "A first estimate only — an admin sets the final duration when scheduling",
+        "notesLabel": "Notes for the admin",
+        "notesHint": "Anything you'd like the admin to know before reviewing",
+        "optional": "optional",
+        "submit": "Send the proposal",
+        "saveDraft": "Save as a draft",
+        "submitting": "Sending…",
+        "errorSummaryTitle": "Please correct the following:"
+      },
+      "errors": {
+        "titleRequired": "Please enter a title for your proposed topic",
+        "titleTooShort": "That title is too short — add a word or two so the idea is clear",
+        "titleTooLong": "That title is longer than it needs to be — shorten it a little",
+        "abstractRequired": "Please write a short description of your topic",
+        "abstractTooLong": "That description is longer than it needs to be — shorten it a little",
+        "categoryRequired": "Choose a category for your topic",
+        "levelRequired": "Choose the session level",
+        "audienceTooLong": "That description is longer than it needs to be — shorten it a little",
+        "durationInvalid": "Enter a sensible duration — from a quarter of an hour to eight hours",
+        "notesTooLong": "Those notes are longer than they need to be — shorten them a little",
+        "failed": "We couldn't save your proposal — try again. Your text is still in the form."
+      },
+      "created": {
+        "submittedTitle": "We have your proposal — thank you",
+        "submittedBody": "Your proposal <t>{title}</t> is now with an admin for review. We'll let you know the outcome, and if a change is needed you'll get a clear reason.",
+        "draftTitle": "Your proposal is saved as a draft",
+        "draftBody": "The draft <t>{title}</t> is saved and has not reached an admin yet. Send it whenever it's ready.",
+        "another": "Propose another topic"
+      },
+      "duration": "{count, plural, =0 {no set duration} one {one minute} other {{value} minutes}}"
+    }
+  }
+}
