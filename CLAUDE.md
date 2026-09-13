@@ -1,1 +1,234 @@
 @AGENTS.md
+
+# كريم معرفة — working conventions
+
+This repository serves a **live pre-launch site** and is becoming the platform behind it. The full
+plan is in [`docs/plan/`](docs/plan/).
+
+---
+
+## Read this first, every session
+
+1. **[`docs/plan/STATUS.md`](docs/plan/STATUS.md)** — where the work is. Read first, write last.
+2. **[`docs/plan/DECISIONS.md`](docs/plan/DECISIONS.md)** — decisions already taken. **Do not
+   re-litigate these.**
+3. The document you are about to change — check its status line.
+
+**Before ending a session, update `STATUS.md`**, whether or not you finished what you set out to do.
+
+### The four rules of the handoff protocol
+
+1. **Read `STATUS.md` first.**
+2. **Cite a `REQ-*` ID** for any change touching an entity, policy, screen, job or notification.
+   Only [`01-prd.md`](docs/plan/01-prd.md) may *define* a requirement; everything else cites.
+3. **Log any post-plan decision in `DECISIONS.md`** — append only, never edit or delete. A
+   `settled` or `frozen` document may **only** change via a `DECISIONS.md` entry.
+4. **Update `STATUS.md` before you finish.**
+
+Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story statuses: `todo` ·
+`in-progress` · `done`.
+
+---
+
+## Hard invariants — never break these
+
+| # | Invariant | Why |
+|---|---|---|
+| 1 | **`/`, `/ar`, `/en`, `/ar/register`, `/og.png` are a frozen public contract** | A live site serves real visitors. `scripts/qa.mjs` guards them in CI. |
+| 2 | **`registrations` is never dropped, altered, or read by platform code** | Frozen legacy holding real pre-launch signups (DEC-002). |
+| 3 | **Every migration is forward-only** and tested against production-shaped data first | There is one Supabase project today and it is production. |
+| 4 | **`main` stays deployable** | Every milestone ships to the live domain. |
+| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Four documented exceptions only (`02` §7). |
+| 6 | **Every policy has a matching `grant`** | A policy without one fails `42501`. Migration `0002` exists *solely* because `0001` forgot it. |
+| 7 | **`service_role` is never on Vercel** | Anything needing it is a worker job. |
+| 8 | **No super-admin disjunct in any RLS policy** | DEC-014. It would reduce D3 to "one claim is correct". |
+| 9 | **`points_ledger` and `audit_log` are append-only**, `revoke` including `service_role` | Balances must be recomputable; the audit log must be evidence. |
+| 10 | **Arabic is written in Arabic.** Never draft in English and translate | D5. Inverting this on day one is irreversible in practice. |
+| 11 | **No SVG uploads, anywhere** | DEC-009. It would render inside a privileged headless Chromium. |
+| 12 | **One font set** — editor, worker Chromium, worker LibreOffice, identical by SHA-256 | D66. Font drift breaks Arabic silently. |
+
+---
+
+## Stack
+
+**Next.js 16.2.10** · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
+Zod 4.4.3 · supabase-js 2.110.2 · Vitest 4.1.10
+**Infra:** Vercel · Supabase cloud · graphile-worker on Fly.io · Resend · Sentry
+**CLI:** `supabase` 2.109.1, linked to project `qnwbgzsgkftqaixzuhdo`
+
+### This is Next 16, not what you remember
+
+`AGENTS.md` requires reading `node_modules/next/dist/docs/` before writing Next.js code. The
+verified facts, so you do not re-derive them:
+
+- **`cookies()`, `headers()`, `params`, `searchParams` are async-only.** Always `await`.
+- **Middleware is `src/proxy.ts`.** Not `middleware.ts`.
+- **`revalidateTag(tag, profile)` takes two arguments.** One argument is a TS error.
+  **`updateTag(tag)`** is Server-Action-only (read-your-own-writes). **`refresh()`** refetches the
+  RSC payload without invalidating.
+- **Server Actions dispatch one at a time per client.** Never `Promise.all` over actions —
+  they serialise. Parallel work goes inside one action.
+- **Server Actions have a 1 MB body cap.** Uploads and designer autosave are **Route Handlers**.
+- **Server Action IDs rotate on deploy.** Freeze deploys during scheduled sessions; keep
+  `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` stable.
+- **`next/image`: `priority` → `preload`.** `images.qualities` defaults to `[75]`.
+- **Auth: DAL + React `cache()`, checks close to the data, never in layouts** (Partial Rendering
+  means a layout does not re-render on navigation). `proxy.ts` does optimistic cookie checks only.
+- **Cache Components is OFF** (DEC-013). `getTranslations()` cannot be called inside a `use cache`
+  boundary. Routes go dynamic by touching `cookies()` in the DAL — **never** `export const dynamic`.
+
+### Supabase specifics
+
+- **`getClaims()` returns a three-way union.** `{data: null, error: null}` is a reachable
+  no-session state, so **narrow on `data`, not on `error`**. Narrowing on `error` lets
+  unauthenticated requests through while looking correct.
+- Claims: `org_id` **immutable**; `org_role` / `status` re-read from the table on privileged writes
+  against `claims_version`; `jwt_expiry` 900 s.
+
+### Tailwind v4
+
+- **No `tailwind.config.*`.** Tokens live in `src/app/globals.css` under `@theme`.
+- **The `@theme inline` block is load-bearing.** A plain `@theme` resolves `var(--fg-heading)` at
+  `:root` once, freezing light values and breaking `.theme-dark`.
+- **`rtl:` / `ltr:` variants add zero specificity** (`:where()`). Never pair one with a physical
+  utility for the same property — the physical one wins.
+
+---
+
+## Folder layout
+
+```
+src/
+├── proxy.ts                    # locale routing + CSP nonce + optimistic auth
+├── app/[locale]/               # the real root — next-intl. No src/app/layout.tsx.
+│   ├── page.tsx · register/    # FROZEN marketing
+│   ├── (auth)/ · legal/ · verify/[code]/
+│   └── app/                    # session required
+│       ├── sessions/ · propose/ · members/ · me/ · leaderboards/
+│       ├── admin/              # org admin + moderator
+│       └── platform/           # super admin
+├── app/api/                    # Route Handlers: uploads, autosave, ICS, webhooks
+├── components/ui/              # house primitives over Radix
+├── lib/dal/                    # THE ONLY PLACE THAT TOUCHES SUPABASE
+├── lib/supabase/               # server · browser · worker clients
+├── i18n/ · messages/{ar,en}.json
+packages/designer-runtime/      # shared by the app and the worker image
+worker/                         # graphile-worker, Chromium, fonts
+```
+
+---
+
+## Naming
+
+| Thing | Convention |
+|---|---|
+| Tables | plural `snake_case` |
+| Columns | `snake_case`; FKs `<singular>_id`; timestamps `_at` |
+| Booleans | read as assertions — `allow_download`, not `downloadable` |
+| Enums | singular `snake_case`, **Postgres enum types**, never `text` + check |
+| Files | `kebab-case.tsx` |
+| Components | `PascalCase` |
+| Message keys | `feature.screen.element`, **stable** — copy changes, keys do not |
+| Job names | `snake_case` verbs — `render_variant`, `award_points` |
+
+---
+
+## Data access
+
+1. **Server-side Supabase client for all data.** The browser client is for auth UI and Realtime
+   **only** (DEC-020 — and that reverses the README's old invariant; read the entry before
+   "fixing" it).
+2. **Every DAL module starts with `import 'server-only'`.**
+3. **Every DAL function calls `requireSession()` first** — at the data, not in a layout.
+4. **Every DAL function returns a DTO**, never a raw row. Profile tiering (A33) is a DAL
+   guarantee, not a rendering one.
+5. **RLS is always on.** Application filters are defence in depth, never the boundary.
+6. **The worker uses `service_role` only through `SECURITY DEFINER` functions**, never raw table
+   writes.
+
+## Validation
+
+- **Zod on every Server Action and Route Handler**, before anything else.
+- **Validation checks shape, not authority.** Take a reference plus the change; re-derive ownership
+  server-side from the session. A well-formed object can still name a row the caller does not own.
+- **Uploads are sniffed on content, not extension**, after the bytes land.
+
+## i18n and RTL
+
+- **Every user-facing string is externalised.** `ar.json` is the source and is complete.
+- **Logical properties only.** No `left`/`right`/`ml-4`/`text-left` in layout code.
+- **Arabic plurals need all six ICU forms.**
+- **Never letter-space Arabic.** Never `overflow: hidden` on a text line (it clips tashkeel).
+  Never justify text.
+- **Bidi-isolate every interpolated value** — `<bdi>` around titles, names, codes.
+- Body line-height **1.7**, headings **1.4**, base **17 px** on mobile.
+- Numerals follow the **org setting**, consistently across UI, email, templates and exports.
+
+## Testing
+
+- **Vitest** units · **Playwright** e2e · **RLS suite is the highest-value tests in the product.**
+- **Every policy has a test case** (`REQ-NFR-001`). The isolation sweep is **generated** over the
+  entity list, so a new table is covered the day it is created.
+- **Shaping goldens are never auto-refreshed.** A changed golden is a reviewed change.
+- Four blocking CI gates: `qa` (frozen routes) · `policy-diff` (migrations vs `03`) ·
+  `parity` (Tier B) · `trace` (`node scripts/traceability.mjs`).
+
+## Commits
+
+```
+<type>(<scope>): <subject in the imperative>
+
+<body: why, not what>
+
+Refs: REQ-CHK-006, DEC-015
+```
+
+Types: `feat` `fix` `docs` `refactor` `test` `chore` `perf` `security`.
+Scopes: `auth` `sessions` `rsvp` `checkin` `materials` `scoring` `designer` `certs` `notify`
+`calendar` `admin` `i18n` `infra` `plan`.
+
+**Every commit touching an entity, policy, screen, job or notification cites a `REQ-*`.**
+**Push as `ebnmajed` via the `github-second` SSH alias. Never reset `origin` to HTTPS.**
+
+---
+
+## The plan
+
+| | |
+|---|---|
+| [`STATUS.md`](docs/plan/STATUS.md) | **Read first, write last** |
+| [`DECISIONS.md`](docs/plan/DECISIONS.md) | Append-only decision log |
+| [`_source-brief.md`](docs/plan/_source-brief.md) | The brief verbatim — D1–D68, A1–A32. **Never edit.** |
+| [`00-overview.md`](docs/plan/00-overview.md) | Personas, **AR/EN glossary**, ID scheme, owning-document table |
+| [`01-prd.md`](docs/plan/01-prd.md) | **The only place a requirement is defined** — 251 of them |
+| [`02-domain-model.md`](docs/plan/02-domain-model.md) | 64 entities, DDL, state machines. **Frozen.** |
+| [`03-permissions-rls.md`](docs/plan/03-permissions-rls.md) | Policies, storage, ~80 test cases |
+| [`04-architecture.md`](docs/plan/04-architecture.md) | **The canonical route table**, worker, deployment, secrets |
+| [`05-scoring-engine.md`](docs/plan/05-scoring-engine.md) | Catalogue, ledger, leaderboards |
+| [`06-visual-designer.md`](docs/plan/06-visual-designer.md) | Layer model, exports, **the parity suite** |
+| [`07-content-pipeline.md`](docs/plan/07-content-pipeline.md) | Uploads, conversion, the viewer, photos |
+| [`08-notifications-calendar.md`](docs/plan/08-notifications-calendar.md) | The matrix, templates, calendar sync |
+| [`09-sitemap-screens.md`](docs/plan/09-sitemap-screens.md) | 53 screens, each with mobile/desktop/RTL notes |
+| [`10-i18n-rtl.md`](docs/plan/10-i18n-rtl.md) | Typography tokens, bidi, numerals, adding English |
+| [`11-background-jobs.md`](docs/plan/11-background-jobs.md) | 34 jobs, idempotency keys, alerts |
+| [`12-security-privacy.md`](docs/plan/12-security-privacy.md) | Threat model, retention, PDPL |
+| [`13-testing-quality.md`](docs/plan/13-testing-quality.md) | Test strategy, budgets, device matrix, CI |
+| [`14-roadmap.md`](docs/plan/14-roadmap.md) | M0–M8, no phase-2 bucket |
+| [`15-backlog.md`](docs/plan/15-backlog.md) | 112 stories, each citing `REQ-*` |
+| [`ASSUMPTIONS.md`](docs/plan/ASSUMPTIONS.md) | A1–A40 with status |
+| [`OPEN-QUESTIONS.md`](docs/plan/OPEN-QUESTIONS.md) | 26 gaps, each with a default in force |
+| [`TRACEABILITY.md`](docs/plan/TRACEABILITY.md) | **Generated.** `node scripts/traceability.mjs` |
+
+## The five things most likely to go wrong
+
+1. **M1 is the dangerous milestone** — retrofitting auth and RLS onto a live database whose only
+   policy is `anon`-insert. Do not compress it.
+2. **The Custom Access Token Hook is a single point of failure for all sign-in.** It must never
+   raise, must return the event unchanged when no member row exists, and needs three separate
+   grants for `supabase_auth_admin`. Failure looks like a generic auth outage.
+3. **Font subsetting is the likeliest silent Arabic killer.** A subsetter dropping `rlig`/`mark`
+   passes every Latin test and breaks lam-alef.
+4. **Storage path prefixes are the only place isolation depends on application correctness.**
+   One path builder, a restrictive prefix policy, a nightly assertion.
+5. **graphile-worker needs a session-mode connection (port 5432, not 6543).** On the pooler it
+   degrades silently to polling. The boot-time probe is mandatory.
