@@ -189,3 +189,136 @@ export async function createSessionDirect(locale: string, input: DirectSessionIn
   if (error || !data) throw new Error(`create_session: ${error?.message ?? "no id"}`);
   return data as string;
 }
+
+// ── Scheduling (SCR-043, REQ-SES-001, REQ-SES-002) ──────────────────────────
+
+export interface Venue {
+  id: string;
+  name: string;
+  address: string | null;
+  capacity: number | null;
+}
+
+export interface SchedulableSession {
+  id: string;
+  title: string;
+  state: SessionState;
+  language: SessionLanguage;
+  startsAt: string | null;
+  durationMinutes: number | null;
+  endsAt: string | null;
+  venueId: string | null;
+  customVenueName: string | null;
+  customVenueAddress: string | null;
+  customVenueMapUrl: string | null;
+  capacity: number | null;
+  rsvpDeadlineAt: string | null;
+  cancellationCutoffAt: string | null;
+  certificateMode: "off" | "automatic" | "review";
+  timeZone: string;
+  /** What REQ-SES-001 still wants before this can be published. */
+  missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
+}
+
+export async function listVenues(locale: string): Promise<Venue[]> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("venues").select("id, name, address, capacity").is("deactivated_at", null).order("name");
+  if (error) throw new Error(`venues: ${error.message}`);
+  return (data ?? []).map((v) => ({ id: v.id, name: v.name, address: v.address, capacity: v.capacity }));
+}
+
+/** One session, for the schedule form. Admin only; null lets the route 404. */
+export async function getSessionForSchedule(locale: string, id: string): Promise<SchedulableSession | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select(
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, time_zone",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+
+  const missing: SchedulableSession["missing"] = [];
+  if (!data.starts_at) missing.push("startsAt");
+  if (!data.ends_at) missing.push("endsAt");
+  if (data.capacity === null) missing.push("capacity");
+  if (!data.venue_id && !data.custom_venue_name) missing.push("venue");
+
+  return {
+    id: data.id,
+    title: data.title,
+    state: data.state as SessionState,
+    language: data.language as SessionLanguage,
+    startsAt: data.starts_at,
+    durationMinutes: data.duration_minutes,
+    endsAt: data.ends_at,
+    venueId: data.venue_id,
+    customVenueName: data.custom_venue_name,
+    customVenueAddress: data.custom_venue_address,
+    customVenueMapUrl: data.custom_venue_map_url,
+    capacity: data.capacity,
+    rsvpDeadlineAt: data.rsvp_deadline_at,
+    cancellationCutoffAt: data.cancellation_cutoff_at,
+    certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
+    timeZone: data.time_zone,
+    missing,
+  };
+}
+
+/**
+ * ★ Everything schedule-shaped, and nothing else.
+ *
+ * `.strict()`, so a `title` or a `state` arriving here is a parse failure:
+ * this form sets a time and a place, and the four columns a presenter may
+ * edit are not its business. The mirror of `proposalInput`, which refuses
+ * exactly the opposite set.
+ */
+export const scheduleInput = z
+  .object({
+    startsAt: z.iso.datetime({ offset: true }),
+    durationMinutes: z.int().min(15).max(480),
+    endsAt: z.iso.datetime({ offset: true }).nullable(),
+    venueId: z.uuid().nullable(),
+    customVenueName: z.string().trim().max(120).nullable(),
+    customVenueAddress: z.string().trim().max(300).nullable(),
+    customVenueMapUrl: z.url().startsWith("https://").nullable(),
+    capacity: z.int().min(1).max(10000).nullable(),
+    rsvpDeadlineAt: z.iso.datetime({ offset: true }).nullable(),
+    cancellationCutoffAt: z.iso.datetime({ offset: true }).nullable(),
+    certificateMode: z.enum(["off", "automatic", "review"]),
+    language: z.enum(["ar", "en"]),
+  })
+  .strict();
+export type ScheduleInput = z.infer<typeof scheduleInput>;
+
+export async function scheduleSession(locale: string, sessionId: string, input: ScheduleInput): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("schedule_session", {
+    p_session: sessionId,
+    p_starts_at: input.startsAt,
+    p_duration_minutes: input.durationMinutes,
+    p_ends_at: input.endsAt,
+    p_venue: input.venueId,
+    p_custom_venue_name: input.customVenueName,
+    p_custom_venue_address: input.customVenueAddress,
+    p_custom_venue_map_url: input.customVenueMapUrl,
+    p_capacity: input.capacity,
+    p_rsvp_deadline_at: input.rsvpDeadlineAt,
+    p_cancellation_cutoff_at: input.cancellationCutoffAt,
+    p_certificate_mode: input.certificateMode,
+    p_language: input.language,
+  });
+  if (error) throw new Error(`schedule_session: ${error.message}`);
+}
+
+/** Publishing (REQ-SES-001). The gate is the table's; this reports its refusal. */
+export async function publishSession(locale: string, sessionId: string): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("publish_session", { p_session: sessionId });
+  if (error) throw new Error(`publish_session: ${error.message}`);
+}

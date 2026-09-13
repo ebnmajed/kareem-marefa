@@ -347,3 +347,48 @@ came back, or the admin would be looking at a collapsed summary and an error tel
 something.
 
 **Carry this to every form in the wave** — it is not specific to proposals.
+
+---
+
+## 6. STORY-SES-001 — schedule and publish
+
+**Covers:** `REQ-SES-001`, `REQ-SES-002` · **Screen:** SCR-043 · **Size:** L
+
+### 6.1 The poster gate cannot be built yet
+
+`REQ-SES-001` blocks publishing on six things: date, time, duration, venue, capacity **and the
+ملصق**. Five are enforced by `0010`'s check constraint. The sixth cannot be: there is no poster
+column, no `documents` table and no designer — that is M6 (`REQ-DSG-002`, DEC-012). SCR-043 says so
+on the page rather than pretending, and the note is in the proposed file's header so it is picked
+up when M6 lands. **This is the second half-blocked requirement in my track**, after
+`REQ-PRO-004`'s draft materials.
+
+### 6.2 The publish gate is the table's, and a test proves it as the owner
+
+`15-backlog.md` marks it ★: "Publishing is blocked by a **database constraint**, not only by the
+form." So the test that matters bypasses every code path and tries the update **as the owner**,
+where only `0010`'s check can stop it. `publish_session()` re-derives the same list only to turn a
+23514 into a message naming the gap, which is SCR-043's "incomplete" state.
+
+### 6.3 Publishing walks the frozen chain
+
+`02` §6.2 is frozen and has no edge from `draft` to `published`. An admin-created session has had
+no review, so four buttons would be ceremony — but a synthetic `draft → published` row would record
+a transition the model says cannot happen. `publish_session()` walks
+`draft → submitted → in_review → approved → published`, one `session_state_transitions` row per
+edge, every one `is_manual` and attributed to the admin, intermediate hops reasoned `publishing`.
+Same shape as `review_proposal()` walking `submitted → in_review`. **Lead: this is a judgement call
+about what the audit trail should look like, and may deserve a `DECISIONS.md` entry.**
+
+### 6.4 Time zones are the venue's, then the org's
+
+OQ-018. A `datetime-local` input carries no offset, so the action converts it **in the session's own
+zone**, not the server's — otherwise «٦:٠٠ م» would mean the clock wherever Vercel happens to run
+rather than the clock on the room's wall. The page converts back the same way for the form's
+default values.
+
+### 6.5 `ends_at` and the duration disagree on purpose
+
+`REQ-SES-002` wants `ends_at` **stored**, derived at scheduling, independently editable; OQ-001
+says the duration pre-fills and is never authoritative. So an explicit end wins over the
+arithmetic, and the duration is kept as typed rather than back-computed. A test pins both halves.
