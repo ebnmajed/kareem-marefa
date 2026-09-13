@@ -95,14 +95,14 @@ jobs:
             psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      # The highest-value suite in the product (13 §3): the generated isolation
+      # sweep over every table, the per-policy cases from 03 §8.2, the auth
+      # hook, the RPCs. Local Supabase is the source of truth; this container
+      # runs the identical suite over the shim in scripts/ci/roles.sql.
       - name: RLS suite
-        run: |
-          if [ -d tests/rls ]; then
-            npx vitest run tests/rls
-          else
-            echo "No RLS suite yet — M1 creates it. The container is proven to"
-            echo "accept the migrations, which is what this job guards."
-          fi
+        run: npx vitest run --project rls
+        env:
+          RLS_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
 
   build:
     name: build

@@ -19,3 +19,43 @@ create role authenticator noinherit login password 'postgres';
 grant anon, authenticated, service_role to authenticator;
 
 grant usage on schema public to anon, authenticated, service_role;
+
+-- ── M1: the auth surface the migrations and the RLS suite touch. ────────────
+-- Local Supabase provides all of this for real; CI's bare container gets the
+-- smallest shim that lets the same SQL run. Local Supabase is the source of
+-- truth (STATUS.md) — this shim exists so CI can run the suite at all, not to
+-- stand in for the platform.
+create role supabase_auth_admin nologin noinherit;
+grant anon, authenticated, service_role, supabase_auth_admin to postgres;
+
+create schema if not exists auth;
+create schema if not exists extensions;
+grant usage on schema auth to anon, authenticated, service_role, supabase_auth_admin;
+grant usage on schema extensions to anon, authenticated, service_role, supabase_auth_admin;
+
+create table auth.users (
+  id                 uuid primary key,
+  email              text,
+  raw_user_meta_data jsonb not null default '{}'::jsonb,
+  created_at         timestamptz not null default now()
+);
+grant select on auth.users to supabase_auth_admin;
+
+-- Exactly how Supabase implements them: the claims of the current request.
+create function auth.jwt() returns jsonb
+language sql stable as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim', true), ''),
+    nullif(current_setting('request.jwt.claims', true), '')
+  )::jsonb
+$$;
+create function auth.uid() returns uuid
+language sql stable as $$
+  select nullif(auth.jwt() ->> 'sub', '')::uuid
+$$;
+create function auth.role() returns text
+language sql stable as $$
+  select nullif(auth.jwt() ->> 'role', '')
+$$;
+grant execute on function auth.jwt(), auth.uid(), auth.role()
+  to anon, authenticated, service_role, supabase_auth_admin;
