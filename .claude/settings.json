@@ -1,14 +1,91 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install)", "Bash(npm run qa)", "Bash(npm run build)", "Bash(npm run dev:*)",
-      "Bash(npx vitest:*)", "Bash(node scripts/traceability.mjs)", "Bash(node scripts/qa.mjs)",
-      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)"
+      "Bash(npm install)",
+      "Bash(npm run qa)",
+      "Bash(npm run build)",
+      "Bash(npm run dev:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node scripts/traceability.mjs)",
+      "Bash(node scripts/qa.mjs)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(supabase status:*)",
+      "Bash(supabase db reset)",
+      "Bash(supabase start)",
+      "Bash(supabase stop)",
+      "Bash(npm test)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run policy-diff)",
+      "Bash(npm run fonts:check)",
+      "Bash(npm run visual:*)",
+      "Bash(npm run worker:*)",
+      "Bash(npm run converter:test)",
+      "Bash(npm run parity)",
+      "Bash(npx tsc:*)",
+      "Bash(npx playwright:*)",
+      "Bash(node scripts/policy-diff.mjs)",
+      "Bash(node scripts/visual-diff.mjs:*)",
+      "Bash(docker ps:*)",
+      "Bash(git push origin wave-*)",
+      "Bash(git push -u origin wave-*)",
+      "Bash(gh auth switch:*)",
+      "Bash(gh auth status)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
+    ],
+    "deny": [
+      "Bash(supabase db push:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase unlink:*)",
+      "Bash(supabase db query --linked:*)",
+      "Bash(supabase db dump --linked:*)",
+      "Bash(supabase config push:*)",
+      "Bash(supabase secrets:*)",
+      "Bash(supabase projects:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase migration up --linked:*)",
+      "Bash(vercel:*)",
+      "Bash(fly:*)",
+      "Bash(flyctl:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git stash:*)",
+      "Bash(git rebase:*)",
+      "Bash(git checkout main)",
+      "Bash(git switch main)",
+      "Bash(git clean:*)",
+      "Bash(gh auth login:*)",
+      "Bash(gh auth logout:*)",
+      "Bash(gh auth refresh:*)",
+      "Bash(gh auth token:*)",
+      "Bash(gh auth setup-git:*)"
     ]
   },
   "hooks": {
     "TaskCompleted": [
-      { "hooks": [ { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-gate.sh\"", "timeout": 2400 } ] }
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-gate.sh\"",
+            "timeout": 2400
+          }
+        ]
+      }
     ]
   }
 }

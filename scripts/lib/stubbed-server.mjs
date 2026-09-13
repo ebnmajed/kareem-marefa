@@ -10,6 +10,7 @@
 // our stub is the only thing that stops local Supabase answering instead.
 
 import { spawn } from 'node:child_process'
+import { acquireGate } from './gate-lock.mjs'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,6 +43,9 @@ export async function startStubbedServer({ log = console.log } = {}) {
     console.error('No .next build found. Run `npm run build` first.')
     process.exit(2)
   }
+  // Port 3000 and .next are shared by every agent in the checkout: one
+  // server at a time (DEC-040). Released when this process exits.
+  await acquireGate('stubbed server')
 
   const children = []
   const spawnChild = (cmd, args, env) => {

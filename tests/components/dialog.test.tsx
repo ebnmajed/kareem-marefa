@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { Direction } from "radix-ui";
 import { describe, expect, it } from "vitest";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import ar from "@/messages/ar.json";
+import ar from "@/messages/ar/ui.json";
 
 const closeLabel = ar.ui.dialog.close;
 

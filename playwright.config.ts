@@ -26,5 +26,8 @@ export default defineConfig({
     url: "http://localhost:3000/ar",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // SIGTERM first, so the server releases the gate lock (DEC-040) instead
+    // of leaving a dead holder behind; the PID check covers the rest.
+    gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
   },
 });

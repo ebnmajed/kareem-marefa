@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "title": "My profile",
+    "displayName": "Name",
+    "company": "Company",
+    "companyNone": "— choose your company —",
+    "jobTitle": "Job title",
+    "bio": "Bio",
+    "bioHint": "Up to 600 characters",
+    "leaderboardOptOut": "Hide me from leaderboards",
+    "save": "Save",
+    "saved": "Saved",
+    "invalid": "Check the fields and try again",
+    "email": "Email",
+    "role": {
+      "admin": "Org admin",
+      "moderator": "Moderator",
+      "member": "Member"
+    },
+    "memberSince": "Member since {date}",
+    "notFound": "Member not found",
+    "noBio": "No bio yet"
+  }
+}

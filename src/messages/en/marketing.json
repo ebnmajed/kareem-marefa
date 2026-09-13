@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "title": "Knowledge Kareem | كريم معرفة",
+    "description": "Share knowledge… make an impact — an internal knowledge-sharing initiative for our group of companies"
+  },
+  "header": {
+    "cta": "Register interest"
+  },
+  "hero": {
+    "eyebrow": "An internal knowledge-sharing initiative for our group",
+    "headline": "Share knowledge… make an impact.",
+    "sub": "Every experience carries value, and every insight deserves to be shared.",
+    "cta": "Register your interest",
+    "ctaSecondary": "Learn about the initiative",
+    "microTrust": "Takes less than a minute"
+  },
+  "about": {
+    "title": "What is Knowledge Kareem?",
+    "body": "Every one of us holds knowledge worth sharing. It might be an experience, a skill, or a lesson you picked up along the way. That’s where Knowledge Kareem comes in: a space where employees across the group exchange their expertise through short, varied sessions and workshops — to strengthen learning, trade best practices, and make the most of the experience already among us."
+  },
+  "how": {
+    "title": "How it works",
+    "provider": {
+      "title": "Share your knowledge",
+      "step1Title": "Register",
+      "step1Body": "Tell us your proposed topic in a minute",
+      "step2Title": "Prepare",
+      "step2Body": "The initiative team reaches out and helps you shape your session",
+      "step3Title": "Share",
+      "step3Body": "Deliver your session and leave an impact that outlasts it"
+    },
+    "attendee": {
+      "title": "Learn from your colleagues",
+      "step1Title": "Discover",
+      "step1Body": "Browse upcoming sessions once the platform launches",
+      "step2Title": "Register",
+      "step2Body": "Book your seat in the sessions that interest you",
+      "step3Title": "Attend",
+      "step3Body": "Learn, join the discussion, and earn points"
+    }
+  },
+  "recognition": {
+    "title": "Build your name — not just your points",
+    "body": "Every session you give or attend earns you points — and adds to your company’s standing across the group. But what matters more: your name becomes tied to the knowledge you shared, and your impact stays with your colleagues. At the end of the year, we celebrate our most generous contributors.",
+    "tile1": "Points for presenters and attendees",
+    "tile2": "A group-wide company race",
+    "tile3": "Annual recognition"
+  },
+  "policy": {
+    "title": "You don’t need to be an expert",
+    "intro": "The best sessions aren’t academic lectures — they’re real experiences. Any one of these is enough:",
+    "card1Title": "Real impact",
+    "card1Body": "A tangible result you achieved at work that others can repeat",
+    "card2Title": "A tool you’ve tried",
+    "card2Body": "Something you used yourself, with what worked and what didn’t",
+    "card3Title": "A lesson that changed your thinking",
+    "card3Body": "An experience or mistake that changed how you work",
+    "closer": "If you have one of these, you have a session."
+  },
+  "finalCta": {
+    "title": "Be among the first to share — and the first to know",
+    "body": "The platform launches soon. Register your interest now and we’ll email you the moment it goes live.",
+    "cta": "Register your interest now",
+    "tagline": "Share knowledge… make an impact."
+  },
+  "footer": {
+    "privacy": "Your email is used only for the Knowledge Kareem initiative — never shared with anyone else.",
+    "internal": "An internal initiative for our group of companies"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "cta": "Back to home"
+  },
+  "register": {
+    "title": "Register your interest",
+    "intro": "Tell us how you’d like to take part, and we’ll be in touch when the platform launches.",
+    "back": "Back to home",
+    "roleLegend": "How would you like to take part?",
+    "roleHelper": "Choosing “I’ll share my knowledge” automatically includes you as an attendee too",
+    "providerCardTitle": "I’ll share my knowledge",
+    "providerCardBody": "I have expertise, a tool I’ve tried, or a lesson learned — and I’d like to present it in a session",
+    "attendeeCardTitle": "I’ll attend and learn",
+    "attendeeCardBody": "I want to attend sessions and learn from my colleagues’ experience",
+    "nameLabel": "Full name",
+    "emailLabel": "Email",
+    "emailHint": "We’ll email you here when the platform launches",
+    "emailPrivacy": "Your email is used only for this initiative — never shared with anyone else.",
+    "topicTitleLabel": "Proposed topic title",
+    "topicTitleHint": "e.g. How we cut our reporting time in half",
+    "categoryLabel": "Topic category",
+    "categoryTechnical": "Technical",
+    "categoryManagement": "Management",
+    "categoryCreative": "Creative",
+    "categoryExperience": "Lesson from experience",
+    "descriptionLabel": "About your topic (1–2 sentences)",
+    "descriptionHint": "A rough idea is enough — we’ll shape the details with you later",
+    "submit": "Count me in",
+    "submitting": "Registering…",
+    "errorSummaryTitle": "Please fix the following:",
+    "errors": {
+      "roleMissing": "Please choose how you’d like to take part",
+      "nameRequired": "Please enter your full name",
+      "emailRequired": "Please enter your email address",
+      "emailInvalid": "This email looks incomplete — check the format, e.g. name@company.com",
+      "topicTitleRequired": "Please enter your proposed topic title",
+      "categoryRequired": "Please choose a category for your topic",
+      "network": "We couldn’t submit your registration — check your connection and try again. Your details are still in the form.",
+      "rateLimited": "We’ve received a lot of attempts — please try again in a few minutes.",
+      "retry": "We couldn’t complete your registration — wait a moment and try again. Your details are still in the form.",
+      "descriptionRequired": "Please add a short summary of your topic",
+      "descriptionTooLong": "The description is too long — 600 characters is the maximum.",
+      "duplicate": "This email is already registered — you’re on the list!"
+    },
+    "success": {
+      "providerTitle": "We’ve received your interest — thank you for your generosity",
+      "providerBody": "The Knowledge Kareem team will contact you soon to discuss your proposed topic and help you shape your session. We’ll also email you the moment the platform launches — and you can share more topics when the team reaches out.",
+      "attendeeTitle": "You’re registered — welcome to Knowledge Kareem",
+      "attendeeBody": "We’ll email you as soon as the platform launches and sessions begin.",
+      "tagline": "Share knowledge… make an impact.",
+      "invite": "Invite a colleague",
+      "inviteText": "Join the Knowledge Kareem initiative — share knowledge, make an impact. Register your interest here:",
+      "shareTitle": "Knowledge Kareem",
+      "copied": "Link copied"
+    }
+  }
+}
