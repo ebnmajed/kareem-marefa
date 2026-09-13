@@ -506,3 +506,27 @@ stronger statement and I would like one, but it would begin refusing the direct
 `update … set state` that fixtures and tests across all three tracks use to arrange a scenario.
 That is a change to make deliberately at the **start** of a wave, not at its gate. **`0008` is
 where it goes; I have not written it, on purpose.**
+
+---
+
+## 10. STORY-SES-004 — venues, list and one-off
+
+**Covers:** `REQ-SES-006`, `REQ-SES-007` · **Screen:** SCR-046 · **No SQL at all**
+
+Both halves were already true before I wrote a line, which is worth recording because the temptation
+was to add code that only restated the schema.
+
+- **"A venue in use by a future session cannot be deleted, only deactivated."** `venues` has
+  `grant select, insert, update` and **no delete grant and no delete policy** (`0004`). Deletion is
+  impossible for every authenticated role, in use or not — stronger than the requirement asks. So
+  SCR-046 has no delete button and a sentence saying why, and the page's "upcoming sessions" count
+  is explanation rather than a guard.
+- **"Selecting a venue pre-fills the session's capacity, editable afterwards."** Done in
+  `schedule_session()` under SES-001, with its own test.
+- **`REQ-SES-007`'s one-off venue** — name and address both required, never added to the org's list
+  — is also `schedule_session()`, tested there.
+
+What remained was the screen: create, deactivate, reactivate, and the optional time-zone override
+that OQ-018 lets a venue carry. Creation is a plain insert, because `p2_admin_insert` already says
+who may and an RPC would only re-implement a live policy — the same argument as
+`create_proposal`'s, in the direction of *not* writing a function.

@@ -134,6 +134,30 @@
       "stateLabel": "Session status",
       "failed": "That could not be saved — try again.",
       "invalid": "Check the fields: a date, a time and a duration are required, plus a venue from the list or a one-off venue with a name and an address."
+    },
+    "venues": {
+      "title": "Venues",
+      "intro": "Your organisation's rooms. Choosing one when scheduling fills in the capacity.",
+      "noDeleteNote": "A venue cannot be deleted, only deactivated, so past sessions can still say where they were held.",
+      "nameLabel": "Name",
+      "addressLabel": "Address",
+      "mapLabel": "Map link",
+      "capacityLabel": "Capacity",
+      "notesLabel": "Notes",
+      "timeZoneLabel": "Time zone",
+      "timeZoneHint": "Leave empty to follow the organisation's time zone.",
+      "addTitle": "Add a venue",
+      "add": "Add the venue",
+      "listTitle": "Your venues",
+      "empty": "No venues yet.",
+      "deactivate": "Deactivate",
+      "activate": "Reactivate",
+      "deactivated": "Deactivated",
+      "upcoming": "{count, plural, =0 {no upcoming sessions} one {one upcoming session} other {{value} upcoming sessions}}",
+      "noCapacity": "No capacity set",
+      "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
+      "failed": "That could not be saved — try again.",
+      "invalid": "Check the fields: a name is required, and a map link must start with https."
     }
   }
 }

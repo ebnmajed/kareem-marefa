@@ -457,3 +457,94 @@ export async function transitionSession(locale: string, sessionId: string, actio
   const { error } = await supabase.rpc("transition_session", { p_session: sessionId, p_action: action, p_reason: reason });
   if (error) throw new Error(`transition_session: ${error.message}`);
 }
+
+// ── Venues (SCR-046, REQ-SES-006, REQ-ADM-006) ──────────────────────────────
+
+export interface AdminVenue extends Venue {
+  mapUrl: string | null;
+  notes: string | null;
+  timeZone: string | null;
+  deactivatedAt: string | null;
+  /** Future sessions still pointing at it — why deactivating is the only exit. */
+  upcomingSessions: number;
+}
+
+/**
+ * ★ REQ-SES-006's "cannot be deleted, only deactivated" needs no code and no
+ * policy: `venues` has `grant select, insert, update` and **no delete grant
+ * and no delete policy** (0004), so deletion is impossible for every
+ * authenticated role, in use or not. The count below is not a guard — it is
+ * the sentence the screen uses to explain why there is no delete button.
+ */
+export async function listVenuesForAdmin(locale: string): Promise<AdminVenue[] | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const { data, error } = await supabase
+    .from("venues")
+    .select("id, name, address, map_url, capacity, notes, time_zone, deactivated_at")
+    .order("deactivated_at", { nullsFirst: true })
+    .order("name");
+  if (error) throw new Error(`venues: ${error.message}`);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: upcoming, error: sErr } = await supabase
+    .from("sessions")
+    .select("venue_id")
+    .not("venue_id", "is", null)
+    .gte("starts_at", new Date().toISOString())
+    .in("state", ["approved", "published", "in_progress"]);
+  if (sErr) throw new Error(`sessions: ${sErr.message}`);
+  const counts = new Map<string, number>();
+  for (const s of upcoming ?? []) counts.set(s.venue_id as string, (counts.get(s.venue_id as string) ?? 0) + 1);
+
+  return rows.map((v) => ({
+    id: v.id,
+    name: v.name,
+    address: v.address,
+    mapUrl: v.map_url,
+    capacity: v.capacity,
+    notes: v.notes,
+    timeZone: v.time_zone,
+    deactivatedAt: v.deactivated_at,
+    upcomingSessions: counts.get(v.id) ?? 0,
+  }));
+}
+
+export const venueInput = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    address: z.string().trim().max(300).nullable(),
+    mapUrl: z.url().startsWith("https://").nullable(),
+    capacity: z.int().min(1).max(10000).nullable(),
+    notes: z.string().trim().max(2000).nullable(),
+    timeZone: z.string().trim().max(64).nullable(),
+  })
+  .strict();
+export type VenueInput = z.infer<typeof venueInput>;
+
+/** Plain insert: `p2_admin_insert` on `venues` already says who may (0004). */
+export async function createVenue(locale: string, input: VenueInput): Promise<void> {
+  const { session, supabase } = await sessionClient(locale);
+  const { error } = await supabase.from("venues").insert({
+    org_id: session.orgId,
+    name: input.name,
+    address: input.address,
+    map_url: input.mapUrl,
+    capacity: input.capacity,
+    notes: input.notes,
+    time_zone: input.timeZone,
+  });
+  if (error) throw new Error(`venues.insert: ${error.message}`);
+}
+
+/** Deactivate or restore. The only exit a venue has (REQ-SES-006). */
+export async function setVenueActive(locale: string, venueId: string, active: boolean): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase
+    .from("venues")
+    .update({ deactivated_at: active ? null : new Date().toISOString() })
+    .eq("id", venueId);
+  if (error) throw new Error(`venues.update: ${error.message}`);
+}

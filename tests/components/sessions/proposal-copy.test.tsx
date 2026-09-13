@@ -68,7 +68,7 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     // `#` would render in the locale's default numbering system (arab for ar),
     // which can disagree with org_settings.numerals. The count still drives
     // the plural branch; the digits come from formatNumber().
-    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count", "admin.sessions.readyCount", "sessions.event.seats"]) {
+    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count", "admin.sessions.readyCount", "sessions.event.seats", "admin.venues.upcoming", "admin.venues.seats"]) {
       expect(arFlat[key], key).toContain("{value}");
       expect(arFlat[key], key).not.toContain("#");
     }
@@ -98,7 +98,7 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
 });
 
 describe("REQ-INT-004 — logical properties only, in every file this track owns", () => {
-  const ROOTS = ["src/app/[locale]/app/propose", "src/app/[locale]/app/admin/proposals", "src/app/[locale]/app/admin/sessions", "src/lib/dal/sessions.ts", "src/components/sessions", "src/lib/dal/proposals.ts"];
+  const ROOTS = ["src/app/[locale]/app/propose", "src/app/[locale]/app/admin/proposals", "src/app/[locale]/app/admin/sessions", "src/app/[locale]/app/admin/venues", "src/lib/dal/sessions.ts", "src/components/sessions", "src/lib/dal/proposals.ts"];
   // Physical utilities that have a logical twin. `right-`/`left-` are caught
   // by the inset forms; `text-left`/`text-right` by the alignment forms.
   const PHYSICAL = /\b(?:ml|mr|pl|pr|border-l|border-r|rounded-l|rounded-r|left|right)-(?:\[|\d|auto|px|full)|\btext-(?:left|right)\b/;
