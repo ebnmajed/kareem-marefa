@@ -393,3 +393,30 @@ describe("STORY-CHK-004 — manual attendance backup", () => {
     });
   });
 });
+
+describe("STORY-CHK-005 — the single trigger, and who it is not for", () => {
+  it("a walk-in with no RSVP checks in and is granted has_checked_in() — capacity is a planning limit, not a door policy (REQ-CHK-010)", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyCheckinSql(tx);
+      await tx.asOwner();
+      const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
+      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
+      const walkIn = await addMember(tx, f.a, "walk-in", "زائر بلا حجز");
+
+      // Confirm there is NO rsvp row for this member on this session — this is the whole point.
+      const priorRsvps = await tx.q(`select id from public.rsvps where session_id = $1 and member_id = $2`, [sessionId, walkIn.memberId]);
+      expect(priorRsvps).toEqual([]);
+
+      await tx.as(f.a.members[0].claims);
+      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+
+      await tx.as(walkIn.claims);
+      const r = await checkIn(tx, sessionId, code.code);
+      expect(r.status).toBe("ok");
+
+      const [hasChecked] = await tx.q<{ has_checked_in: boolean }>(`select public.has_checked_in($1) as has_checked_in`, [sessionId]);
+      expect(hasChecked.has_checked_in).toBe(true); // REQ-CHK-009: the four attendance rights key off exactly this
+    });
+  });
+});
