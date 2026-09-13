@@ -73,7 +73,16 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
                     </p>
                   </div>
                   <form action={makeSessionFromProposal.bind(null, locale as Locale, p.id)} className="ms-auto">
-                    <button type="submit" className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900">
+                    {/* The visible label is short; the accessible name names
+                        the proposal, because this page also carries a
+                        «أنشئ الجلسة» submit for the direct form and two
+                        controls with one accessible name doing different
+                        things is a REQ-NFR-007 failure a screenshot hides. */}
+                    <button
+                      type="submit"
+                      aria-label={`${t("createFromProposal")} — ${p.title}`}
+                      className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
+                    >
                       {t("createFromProposal")}
                     </button>
                   </form>

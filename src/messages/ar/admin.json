@@ -85,7 +85,8 @@
       "cancelSend": "أكّد الإلغاء",
       "actionFailed": "تعذّر تنفيذ الإجراء — حاول مرة أخرى.",
       "cancelReasonRequired": "اكتب سبب الإلغاء أولًا.",
-      "completeNote": "الإنهاء المبكر يغلق تسجيل الحضور فورًا."
+      "completeNote": "الإنهاء المبكر يغلق تسجيل الحضور فورًا.",
+      "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>"
     },
     "schedule": {
       "title": "جدولة الجلسة ونشرها",

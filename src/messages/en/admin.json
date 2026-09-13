@@ -85,7 +85,8 @@
       "cancelSend": "Confirm the cancellation",
       "actionFailed": "That action could not be carried out — try again.",
       "cancelReasonRequired": "Write the reason for cancelling first.",
-      "completeNote": "Ending early closes check-in immediately."
+      "completeNote": "Ending early closes check-in immediately.",
+      "createFromProposalLabel": "Create the session from <t>{title}</t>"
     },
     "schedule": {
       "title": "Schedule and publish",

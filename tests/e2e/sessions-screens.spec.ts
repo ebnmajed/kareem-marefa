@@ -101,7 +101,7 @@ async function phone(page: Page, who: string): Promise<Page> {
  * `clientWidth` is the failure that makes an RTL page feel broken, and it is
  * invisible in a full-page capture because the capture widens to fit.
  */
-async function review(p: Page, name: string, primary?: string) {
+async function review(p: Page, name: string, primary?: string | RegExp) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
   const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
@@ -150,8 +150,11 @@ test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {
   // ── SCR-042 · sessions ────────────────────────────────────────────────────
   await boss.goto("/ar/app/admin/sessions");
   await expect(boss.getByText(title)).toBeVisible(); // waiting under «جاهزة للجدولة»
-  await review(boss, "scr-042-sessions", "أنشئ الجلسة");
-  await boss.getByRole("button", { name: "أنشئ الجلسة" }).first().click();
+  await review(boss, "scr-042-sessions", /أنشئ الجلسة/);
+  // REQ-NFR-007: the card's control names its proposal, so it is not one of
+  // two buttons on the page answering to the same accessible name.
+  await expect(boss.getByRole("button", { name: `أنشئ الجلسة — ${title}` })).toHaveCount(1);
+  await boss.getByRole("button", { name: `أنشئ الجلسة — ${title}` }).click();
   await expect(boss.getByText("لا مقترحات معتمدة تنتظر.")).toBeVisible();
 
   const { rows } = await db.query<{ id: string }>(`select id from public.sessions where org_id = $1`, [orgId]);
