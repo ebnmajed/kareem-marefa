@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `m1/tenancy` (from `main` @ `a58b273`; M0 **complete**, PRs #2 and #3 merged) · **Phase:** **M1 started — plan presented to the owner, awaiting approval; nothing implemented yet**
+**Last updated:** 2026-09-13 · **Branch:** `m1/tenancy` (PR A → `main`, open) · **Phase:** **M1 — PR A (database spine) done; PR B (app side) in progress on `m1/app`; PR C not started**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-034**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-035**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -148,9 +148,10 @@ plugs into the same seven cases.
 
 ## M1 — where it stands
 
-**Branch `m1/tenancy` exists with no code.** The M1 plan was presented to the owner at the end of
-the 2026-09-13 session and is **awaiting approval**. Its shape, so the next session does not
-re-derive it: three PRs — **A** the database spine (migrations `0003`–`0006`: enums and helpers;
+**The owner approved the plan as presented** (three PRs, all four listed choices). **PR A is
+built and green:** migrations `0003`–`0006` (`b8c52d7`), the `tests/rls` suite with 61 tests
+(`a41ac8d`) passing on local Supabase and on the CI shim, `policy-diff` green, DEC-035 recording
+the deltas. Its shape, so the next session does not re-derive it: three PRs — **A** the database spine (migrations `0003`–`0006`: enums and helpers;
 tenancy tables with RLS, grants and the column grant on `members`; the RPCs including
 `provision_member()`, `assert_fresh_admin()`, `write_audit()`; the Custom Access Token Hook that
 never raises, with its three `supabase_auth_admin` grants), the `tests/rls` Vitest project driven
