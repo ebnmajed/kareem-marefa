@@ -8,13 +8,12 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, type Claims, type Tx, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, type Claims, type Tx, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
 async function applyCheckinSql(tx: Tx) {
-  await applyProposed(tx, "checkin/02_check_in.sql");
 }
 
 async function addMember(tx: Tx, org: Org, local: string, name: string): Promise<{ memberId: string; claims: Claims }> {

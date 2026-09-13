@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §6.1 · 03-permissions-rls.md §1.3 (staleness), §5.2b
 --          0005_tenancy_rpcs.sql (assert_fresh_admin) · 0011 (the guard and audit triggers)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 2):
 --   | `RPC-review_proposal.admin_only` | A member and a moderator are both refused 42501; only an
 --     org admin may review, and never a proposal in another org. |
 --   | `RPC-review_proposal.reason` | `reject` and `request_changes` without a reason are refused;

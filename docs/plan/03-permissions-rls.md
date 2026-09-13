@@ -1121,6 +1121,9 @@ generated suite is the highest-value test in the product.
 | `POL-proposal_presenters.insert.same_org` · `POL-session_presenters.insert.same_org` | Naming a member of another org is refused with `23514`, even though the row's own `org_id` is the caller's — the isolation sweep walks tables, not cross-table references (migration `0012`). |
 | `POL-proposal_presenters.insert.state` | A co-presenter cannot be added to an `approved` or `rejected` proposal (migration `0012`). |
 | `RPC-create_proposal` | Creates the proposal, the proposer's own accepted presenter row and the named co-presenters atomically; a bad co-presenter id rolls the proposal back with it; `proposer_id` is the session's own member whatever the caller sends (`REQ-PRO-003`, migration `0012`). |
+| `RPC-review_proposal.admin_only` | A member and a moderator are both refused `42501`; only an org admin may review, and never a proposal in another org (migration `0013`). |
+| `RPC-review_proposal.reason` | `reject` and `request_changes` without a reason are refused; the reason reaches the proposer on the row and the audit row (`REQ-PRO-005`, `REQ-PRO-006`). |
+| `RPC-review_proposal.path` | Deciding on a `submitted` proposal walks it through `in_review`, so `02` §6.1 is followed and both transitions are audited. |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |
@@ -1139,10 +1142,10 @@ generated suite is the highest-value test in the product.
 | `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
 | `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
 | `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
-| `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th raises `rate_limited`, and the attempt is still recorded. |
+| `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
 | `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. |
 | `POL-check_ins.revoked` | A revoked code is rejected; check-ins already recorded with it stand. |
-| `POL-check_ins.single_use` | A second check-in is a no-op returning the first. |
+| `POL-check_ins.single_use` | A second check-in is a no-op returning the first, with `status = 'already_checked_in'` so SCR-014 renders its own state (`09`). |
 | `POL-check_ins.overlap` | Checking in to an overlapping session raises on the exclusion constraint. |
 | `POL-check_ins.presenter` | A presenter checking in to their own session is rejected (OQ-025). |
 | `POL-check_ins.select.member` | A member cannot list who else attended (A33 rule 3). |

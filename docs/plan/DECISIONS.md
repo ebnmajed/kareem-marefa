@@ -1066,6 +1066,30 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Documents changed:** `CLAUDE.md` § Agent team, `TEAM.md` §1, `.claude/agents/{sessions,checkin}.md`,
   `STATUS.md`
 
+## DEC-043 — A write-then-maybe-refuse RPC returns an outcome envelope; it never raises after its first write
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `checkin` teammate's finding
+- **Decision:** `check_in()` (migration `0015`) returns a JSON envelope `{status, check_in?,
+  conflict_session_id?}` for every outcome downstream of the `check_in_attempts` insert —
+  `ok`, `already_checked_in`, `rate_limited`, `invalid_code`, `revoked`, `not_started`,
+  `session_ended`, `overlap`, `presenter` — and raises only for `not_found`, before anything is
+  written. The same rule applies to every future RPC whose contract is "record the attempt, then
+  decide": `promote_next_waitlisted`, the M4 `award_points` path, the M5 upload finaliser. The DAL
+  maps `status` to the screen state; the app never branches on a SQLSTATE for these outcomes.
+- **Rationale:** `03` §5.4's sketch wrote the attempt row and then `raise exception 'rate_limited'`
+  in the same call. In Postgres one RPC call is one statement is one transaction, and an exception
+  rolls back everything the call did — including that insert — so the "attempt is still recorded"
+  clause of `REQ-CHK-006` was unsatisfiable as sketched, in production exactly as much as in the
+  RLS harness. `provision_member()` (`0005`) already uses the envelope shape for the same reason.
+  The rejected alternative, a subtransaction (`begin … exception when others`) around the insert,
+  keeps the raise but costs a savepoint per attempt on the product's hottest write path and hides
+  the rule instead of stating it.
+- **Also:** a repeat check-in returns `already_checked_in`, not `ok`, because `09` SCR-014 specifies
+  "already checked in" as its own screen state.
+- **Supersedes:** the `raise` in `03` §5.4's `check_in()` sketch and the wording of the
+  `POL-check_ins.rate_limit` and `POL-check_ins.single_use` rows in §8.2.
+- **Documents changed:** `03-permissions-rls.md` §8.2, `STATUS.md`
+
 ---
 
 ## Template for new entries

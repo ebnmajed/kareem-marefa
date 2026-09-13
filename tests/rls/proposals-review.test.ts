@@ -4,13 +4,12 @@
 //               RPC-review_proposal.reason,
 //               RPC-review_proposal.path
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0003_proposal_review.sql";
 const CHECK_VIOLATION = "23514";
 
 /** A submitted proposal of org A, owned by members[0]. */
@@ -31,7 +30,6 @@ describe("RPC-review_proposal.admin_only", () => {
   it("refuses a member, a moderator, and an admin of another org", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
 
       // The proposer themselves.
@@ -56,7 +54,6 @@ describe("RPC-review_proposal.admin_only", () => {
   it("refuses an admin whose claims are stale (03 §1.3)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       // A token minted before the row changed: the definer re-reads rather
       // than believing the claim it was handed.
@@ -68,7 +65,6 @@ describe("RPC-review_proposal.admin_only", () => {
   it("still cannot write the table directly, which is why the RPC exists", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       await tx.as(f.a.admin.claims);
       // `proposals` has no admin update policy at all (0010): the update
@@ -82,7 +78,6 @@ describe("RPC-review_proposal.reason", () => {
   it("refuses a rejection or a change-request with no reason, or with only spaces", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       await tx.as(f.a.admin.claims);
 
@@ -98,7 +93,6 @@ describe("RPC-review_proposal.reason", () => {
   it("puts the reason where the proposer can read it, and in the audit row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       const reason = "وضّح الفئة المستهدفة قبل أن نعتمده";
 
@@ -126,7 +120,6 @@ describe("RPC-review_proposal.reason", () => {
   it("approval clears a previous change-request's reason", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -148,7 +141,6 @@ describe("RPC-review_proposal.path", () => {
   it("walks a submitted proposal through in_review, auditing both moves", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
 
       await tx.as(f.a.admin.claims);
@@ -166,7 +158,6 @@ describe("RPC-review_proposal.path", () => {
   it("opens a proposal without deciding it", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       await tx.as(f.a.admin.claims);
       expect((await review(tx, id, "open"))[0].state).toBe("in_review");
@@ -177,7 +168,6 @@ describe("RPC-review_proposal.path", () => {
   it("will not decide a draft, or re-decide a decided proposal", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.admin.claims);
 
       // The fixture's proposal is a draft: it has not been submitted, so
@@ -194,7 +184,6 @@ describe("RPC-review_proposal.path", () => {
   it("refuses an action it does not know", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const id = await submitted(tx, f);
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => review(tx, id, "publish"))).toMatch(/unknown_review_action/);

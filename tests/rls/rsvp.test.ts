@@ -6,13 +6,12 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, type Claims, type Tx, withTx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, type Claims, type Tx, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
 async function applyRsvpSql(tx: Tx) {
-  await applyProposed(tx, "checkin/01_rsvp.sql");
 }
 
 /** A throwaway extra member, for tests that need more bodies than the base fixture ships. */

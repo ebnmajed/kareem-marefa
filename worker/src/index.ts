@@ -10,6 +10,8 @@
 import { run } from "graphile-worker";
 import { poolerWarning, probeListenNotify, ProbeError } from "./probe.js";
 import { ping } from "./tasks/ping.js";
+import { promote_waitlist } from "./tasks/promote_waitlist.js";
+import { rotate_codes } from "./tasks/rotate_codes.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const probeOnly = process.argv.includes("--probe-only");
@@ -45,7 +47,7 @@ const runner = await run({
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
   pollInterval: 60_000,
-  taskList: { ping },
+  taskList: { ping, promote_waitlist, rotate_codes },
 });
 
 console.log("worker: running — queues dispatch over LISTEN/NOTIFY; polling every 60 s as a fallback");
