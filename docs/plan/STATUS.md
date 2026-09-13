@@ -228,6 +228,16 @@ Run in this order, on `main` after PR A and PR B are merged. Nothing here has be
    Google's return with the closed-door message; `npm run qa` against production stays 44/44.
 9. **Observe the CSP reports** from a preview deployment before any enforcement (OQ-028).
 
+**One proof left unread at handoff — the CI status of the final commits.** PR #4's head `91a3787`
+was shown green on all twelve checks earlier in the session. PR #5's CI was shown green at
+`b922197`; its final commits `bf3e67f` and `757b9e6` (a code fix and this handoff) were pushed
+but their checks could not be read: the `gh` credential stored for `ebnmajed` began returning
+**401 Bad credentials** late in the session (another Claude session re-authenticated `gh`), the
+repository is private, and `devyaden` cannot see it. Pushes over the SSH alias are unaffected.
+**Owner:** run `gh auth login -h github.com -u ebnmajed -p https -w`, then read
+https://github.com/ebnmajed/kareem-marefa/pull/5/checks — nothing in `bf3e67f` touches CI
+config, and every suite the CI jobs run passed locally on that commit.
+
 **Owner inputs PR C needs, by name:** `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
 (entered in the Supabase dashboard only) · the first org's **name**, **slug**, **certificate
 prefix** (2–5 capitals), **allowed email domain(s)**, **first admin email** · approval to enable
