@@ -89,7 +89,12 @@ describe("a member of org A selecting with no org predicate", () => {
         expect(rows.some((r) => r.org_id === f.b.id)).toBe(false);
         // And the sweep is not vacuous: org A's own rows are visible where the
         // role may read the table at all.
-        if (!["org_domains", "audit_log", "scoring_config_history"].includes(table)) {
+        // Where a plain member may see none of A's rows by design: admin-only
+        // lists, the audit log, the host-view code, the check-in attempts,
+        // the staff/presenter-only transitions, and the self-scoped ratings
+        // and reports (the fixture's are another member's). Their own
+        // per-policy tests prove the scoping; the sweep proves the wall.
+        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports"].includes(table)) {
           expect(rows.some((r) => r.org_id === f.a.id)).toBe(true);
         }
       });

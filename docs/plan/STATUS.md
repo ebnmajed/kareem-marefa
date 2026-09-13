@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-14 · **Branch:** `main` @ `cacd54b` (PRs #4, #6, #7 merged; production deploy green; frozen routes answer; platform routes 404 by design) · **Phase:** **M1 complete. Next: M2 — on local Supabase and CI only (DEC-039). PR C is deferred to Launch.**
+**Last updated:** 2026-09-14 · **Branch:** `m2/schema` (PR → `main`, awaiting the owner's merge) · **`main` @ `e0e3c37`:** M1 complete and live · **Phase:** **M2 wave 0 built (DEC-040); wave 1 starts from a green main with the lead's spawn prompt in `TEAM.md`**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-039**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-040**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -59,6 +59,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
 | — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) is due at M3. |
+| — | `TEAM.md` | `settled` | The agent team: waves, ownership, contracts, the lead's spawn prompt (DEC-040). |
 | — | `TRACEABILITY.md` | generated | `node scripts/traceability.mjs`. Do not hand-edit. |
 | — | `/CLAUDE.md` | `settled` | Repo root. Keeps `@AGENTS.md` as line 1. |
 
@@ -145,6 +146,26 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## M2 — wave 0 (this session, PR `m2/schema`)
+
+**Done, awaiting merge:** migration `0010` — the whole M2 schema with RLS, grants, the guard
+triggers, `is_presenter_of()` / `has_checked_in()` and the presenter-only aggregates view; no RPCs
+(those are the teammates' first proposed files). `03` §8.2 gains rows for the six pattern tables.
+The message catalogue is split per namespace (`src/messages/{ar,en}/<ns>.json`, merged by
+`src/messages/index.ts`). The gate lock (`scripts/lib/gate-lock.mjs`) serializes `npm run qa`,
+`npm run visual`, Playwright's server, the unconfigured build and the `TaskCompleted` hook on
+`/tmp/task-gate.lock`. `applyProposed()` and `supabase/proposed/` carry the migration rule.
+`.claude/agents/{sessions,checkin,event}.md`, the settings allow/deny lists, `CLAUDE.md` § Agent
+team and `TEAM.md` (with the spawn prompt) are in place. **Nothing was spawned.**
+
+**Proof on the branch:** `supabase db reset` applies `0001`–`0010` · `npm run test:rls` **95/95 +
+4 todo** (the sweep now walks 24 tables) · `npm test` 69/69 · `npm run qa` 44/44 · `npm run
+visual compare m0-final m2-schema` **0.000%** · `npm run test:e2e:local` 34/34 · policy-diff and
+traceability green.
+
+**Next session = the lead.** Start it with the prompt in `TEAM.md` §4, from a green `main` after
+this PR merges. Wave 1 is `sessions` (opus), `checkin` (sonnet), `event` (sonnet).
 
 ## M1 — where it stands
 
@@ -354,12 +375,11 @@ unaffected.
 
 ## Next session should
 
-1. Read this file, then `/CLAUDE.md`, then `DECISIONS.md` — DEC-035 … DEC-039 are new.
-2. **Start M2** (`14-roadmap.md` M2: proposals, sessions, RSVP) on a branch, **local Supabase and
-   CI only** (DEC-039): migrations forward-only from `0010`, every table with RLS, grants and its
-   rows in `03` §8.2, the isolation sweep left generated, `policy-diff` green, `npm run qa` 44/44
-   and `npm run visual` 0.000% before every commit that touches the app.
-3. Plan first and wait for the owner's approval before code, as M1 did.
-4. **PR C / Launch stays untouched** until the owner says "launch".
+1. Be the **lead**: paste `docs/plan/TEAM.md` §4 into a fresh session in this checkout.
+2. Read this file, `/CLAUDE.md` (the "Agent team" section is new), `DECISIONS.md` (DEC-040), then
+   `TEAM.md`. Confirm `main` green and local Supabase up; `supabase db reset`; `npm run test:rls`.
+3. Cut `wave-1/m2`, present the wave plan, WAIT for the owner, then spawn the three teammates from
+   `.claude/agents/`.
+4. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
 5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
 6. Update this file before finishing.

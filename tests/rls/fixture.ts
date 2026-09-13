@@ -9,6 +9,7 @@
 
 import { randomUUID } from "node:crypto";
 import type { Claims, Tx } from "./db";
+import { seedM2, type M2Fixture } from "./fixture-m2";
 
 export interface Person {
   authUserId: string;
@@ -98,7 +99,12 @@ async function org(tx: Tx, name: string, slug: string, prefix: string, domain: s
   return { id: o.id, slug, name, domain, settingsId: s.id, companyId: c.id, categoryId: cat.id, venueId: v.id, admin, mod, members };
 }
 
-export async function seed(tx: Tx): Promise<Fixture> {
+/** The base fixture plus the M2 rows (sessions, RSVPs, check-ins, comments, ratings…). */
+export async function seed(tx: Tx): Promise<M2Fixture> {
+  return seedM2(tx, await seedBase(tx));
+}
+
+export async function seedBase(tx: Tx): Promise<Fixture> {
   await tx.asOwner();
   const a = await org(tx, "كريم معرفة", "kareem", "KM", "kareem.example", [
     ["admin", "مشرف كريم"],

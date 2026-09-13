@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "title": "ملفي",
+    "displayName": "الاسم",
+    "company": "الشركة",
+    "companyNone": "— اختر شركتك —",
+    "jobTitle": "المسمى الوظيفي",
+    "bio": "نبذة",
+    "bioHint": "حتى 600 حرف",
+    "leaderboardOptOut": "لا تُظهرني في لوحات المتصدرين",
+    "save": "حفظ",
+    "saved": "تم الحفظ",
+    "invalid": "تحقق من الحقول ثم أعد المحاولة",
+    "email": "البريد",
+    "role": {
+      "admin": "مشرف المؤسسة",
+      "moderator": "مُنظِّم",
+      "member": "عضو"
+    },
+    "memberSince": "عضو منذ {date}",
+    "notFound": "العضو غير موجود",
+    "noBio": "لا توجد نبذة بعد"
+  }
+}

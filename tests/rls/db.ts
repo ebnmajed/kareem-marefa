@@ -10,6 +10,8 @@
 // RLS_DATABASE_URL: local Supabase (54322) by default via `npm run test:rls`;
 // CI's container in the `rls` job.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import pg from "pg";
 
 const url = process.env.RLS_DATABASE_URL;
@@ -119,3 +121,18 @@ export async function errorMessage(fn: () => Promise<unknown>): Promise<string |
 }
 
 export const PERMISSION_DENIED = "42501";
+
+/**
+ * Runs a proposed migration (supabase/proposed/<path>) inside the current
+ * transaction, as the owner. Postgres DDL is transactional, so the file's
+ * tables, functions and policies exist for the rest of the test and vanish
+ * at rollback — a teammate proves SQL without touching the shared database
+ * or writing into supabase/migrations/ (DEC-040). Restores whichever role the
+ * test had before.
+ */
+export async function applyProposed(tx: Tx, relativePath: string): Promise<void> {
+  const sql = readFileSync(join(process.cwd(), "supabase", "proposed", relativePath), "utf8");
+  await tx.asOwner();
+  await tx.q(sql);
+  // asOwner() reset the role; callers re-assume their identity with tx.as().
+}
