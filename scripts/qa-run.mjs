@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const STUB = 'http://localhost:54321'
+const STUB = `http://localhost:${process.env.STUB_PORT ?? 54331}`
 const BASE = 'http://localhost:3000'
 
 if (!existsSync(join(ROOT, '.next'))) {
@@ -61,9 +61,21 @@ async function waitFor(url, label, tries = 60) {
   return false
 }
 
-console.log('· starting Supabase stub on :54321')
+console.log(`· starting Supabase stub on ${STUB}`)
 spawnChild('node', ['scripts/supabase-stub.mjs'])
-if (!(await waitFor(STUB, 'stub'))) process.exit(2)
+if (!(await waitFor(`${STUB}/__stub`, 'stub'))) process.exit(2)
+
+// Assert the thing answering is OUR stub, not whatever else happens to be on
+// that port. "Something responded" is not the same as "the stub responded" —
+// local Supabase answering on 54321 is exactly how this went wrong before.
+try {
+  const { marker } = await (await fetch(`${STUB}/__stub`)).json()
+  if (marker !== 'kareem-marefa-qa-stub') throw new Error(`got marker ${marker}`)
+  console.log('· stub identity confirmed')
+} catch (err) {
+  console.error(`Something is on ${STUB} but it is not the QA stub: ${err.message}`)
+  process.exit(2)
+}
 
 console.log('· starting next start on :3000, pointed at the stub')
 spawnChild('npx', ['next', 'start'], {
