@@ -405,6 +405,41 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Documents changed:** `03-permissions-rls.md` (new §7; test cases renumbered to §8),
   `04-architecture.md`, `12-security-privacy.md`, `13-testing-quality.md`
 
+## DEC-023 — The QA suite refuses to run against a real Supabase project
+
+- **Date:** 2026-09-13 · **Decided by:** architect, after causing the incident below
+- **What happened:** `scripts/qa.mjs` submits the registration form. Its header says *"Supabase
+  stubbed on :54321"*, so the suite was run with `scripts/supabase-stub.mjs` started alongside it.
+  **That is not sufficient and nothing said so.** `next start` reads `.env.local`, which points at
+  the production project, so the form posts went to the **live `registrations` table** while the
+  stub sat idle with an empty log. No error, no warning — the only symptom was later runs returning
+  «هذا البريد مسجّل معنا مسبقًا», which is the unique index rejecting a second insert.
+
+  Three test rows reached production: `sara@example.com`, `dup@example.com`, `nojs@example.com`.
+  `registrations` is a frozen historical record (DEC-002), so these are contamination of the one
+  table the plan says never to touch.
+- **Decision:**
+  1. **`scripts/qa.mjs` refuses to start** unless `SUPABASE_URL` resolves to `localhost` or
+     `127.0.0.1`. It reads `process.env` first, then `.env.local`. Exit code 2, with the reason.
+  2. **`npm run qa`** (`scripts/qa-run.mjs`) starts the stub, starts `next start` **with
+     `SUPABASE_URL` overridden in the same command**, waits for both, runs the suite, and tears
+     everything down. Overriding the env where the server is spawned is the only thing that
+     actually wires them together.
+  3. The suite's own staleness was fixed at the same time: the `wa.me` assertion that commit
+     `e748642` invalidated now stubs `navigator.share` and asserts the composed message, and the
+     screenshot path resolves to `.qa-shots/` instead of an expired session directory.
+- **Rationale:** a comment is not a control. The suite is destined to be a **blocking CI gate**
+  over the frozen public contract (`REQ-NFR-019`), and a gate that can write to production is worse
+  than no gate — it carries authority it has not earned. The guard is deliberately a hard refusal
+  rather than a warning, because the failure it prevents is silent and irreversible.
+- **Supersedes:** nothing. It closes a defect in the repository's own tooling, found by using it.
+- **Follow-up owed:** the three rows must be deleted from the live table. It could not be done from
+  this session — there is no `psql`, no Postgres driver and no Docker available, and installing one
+  to reach production was refused by the sandbox, correctly. **The SQL is in `STATUS.md` for the
+  owner to run in the Supabase SQL editor.**
+- **Documents changed:** `scripts/qa.mjs`, `scripts/qa-run.mjs` (new), `package.json`,
+  `.gitignore`, `13-testing-quality.md`, `14-roadmap.md`, `STATUS.md`
+
 ---
 
 ## Template for new entries

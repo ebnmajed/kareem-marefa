@@ -57,7 +57,7 @@ capacity. `M6` needs `M5`'s storage and job plumbing.
 
 | Work | Why here |
 |---|---|
-| ★ **Fix `scripts/qa.mjs`** — it is stale and fails on `main` | It asserts a `wa.me` link that commit `e748642` removed, and writes to an expired scratchpad path. The `qa` gate **cannot be turned on until this is fixed**, and it guards the frozen public contract (`REQ-NFR-019`) |
+| ✅ **`scripts/qa.mjs` fixed** (DEC-023) | Was stale *and* could write to production. Now 44/44 and repeatable, behind `npm run qa`, refusing any non-localhost `SUPABASE_URL`. The `qa` gate can be turned on |
 | **Three Supabase projects** (dev, staging, prod) | `REQ-NFR-017`. Today there is one, and it is production — M1 is unsafe without a staging copy |
 | Playwright, jsdom, `@testing-library` | `REQ-NFR-018`. A23 assumed these; they are absent |
 | GitHub Actions CI with the four blocking gates | `13` §9.1 |

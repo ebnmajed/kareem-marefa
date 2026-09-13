@@ -1,12 +1,55 @@
-// Interactive headless-browser QA for the Kareem Marefa pre-launch site.
-// Drives the real production server (Supabase stubbed on :54321).
 import puppeteer from "puppeteer-core";
+import { mkdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = "http://localhost:3000";
-const shots = "/private/tmp/claude-501/-Users-yamanreda-Desktop-kareem-marefa/72fa5ffc-c9bd-4402-97a6-5b98bc4daf1f/scratchpad";
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+/* ------------------------------------------------------------------------
+   Refuse to run against a real Supabase project.
+
+   This suite SUBMITS THE REGISTRATION FORM. The header above says "Supabase
+   stubbed on :54321", but nothing enforced it: starting scripts/supabase-stub.mjs
+   looks like enough, while `next start` quietly reads .env.local and posts to
+   the production project instead. Nothing errors — the rows just land in the
+   live `registrations` table, which is a frozen historical record
+   (docs/plan/DECISIONS.md, DEC-002).
+
+   That happened. This guard is why it cannot happen twice. Use `npm run qa`,
+   which wires the stub for you.
+------------------------------------------------------------------------- */
+function resolveSupabaseUrl() {
+  if (process.env.SUPABASE_URL) return process.env.SUPABASE_URL;
+  try {
+    const env = readFileSync(join(ROOT, ".env.local"), "utf8");
+    return env.match(/^\s*SUPABASE_URL\s*=\s*(.+)$/m)?.[1]?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+{
+  const url = resolveSupabaseUrl();
+  const local = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(url);
+  if (!local) {
+    console.error(
+      `\nREFUSING TO RUN.\n\n` +
+        `  SUPABASE_URL resolves to: ${url || "(unset)"}\n` +
+        `  This suite submits the registration form, so it must only ever run\n` +
+        `  against the local stub — otherwise it writes rows to the live\n` +
+        `  \`registrations\` table.\n\n` +
+        `  Run \`npm run qa\`, which starts the stub and points the server at it.\n`,
+    );
+    process.exit(2);
+  }
+}
+
+// Was hard-coded to one session's scratchpad, which throws ENOENT once that
+// session ends. Resolve next to the repo and create it; QA_SHOTS overrides.
+const shots = process.env.QA_SHOTS ?? join(ROOT, ".qa-shots");
+mkdirSync(shots, { recursive: true });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 function check(name, cond, extra = "") {
   if (cond) { pass++; console.log(`PASS  ${name}`); }
@@ -18,6 +61,11 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ["--no-first-run"],
 });
+// The invite button falls back to the clipboard when navigator.share is absent,
+// which is the case in headless Chrome. Grant it so the fallback is testable.
+await browser
+  .defaultBrowserContext()
+  .overridePermissions(BASE, ["clipboard-read", "clipboard-write"]);
 
 async function fresh(opts = {}) {
   const page = await browser.newPage();
@@ -105,6 +153,11 @@ const providerFieldsDisplay = (page) =>
   await page.waitForSelector('[role="alert"]');
   const summaryLinks = await page.$$eval('[role="alert"] a', (as) => as.length);
   check("empty submit shows summary with role+name+email", summaryLinks === 3, `links=${summaryLinks}`);
+  // The alert renders before React moves focus, so reading activeElement on the
+  // next tick races it. Wait for the focus to land rather than sampling once.
+  await page
+    .waitForFunction(() => document.activeElement?.id === "reg-role-provider", { timeout: 3000 })
+    .catch(() => {});
   const focused = await page.evaluate(() => document.activeElement?.id);
   check("focus moves to first invalid (role radio)", focused === "reg-role-provider", focused);
   await page.screenshot({ path: `${shots}/qa-error-summary.png`, fullPage: true });
@@ -139,10 +192,31 @@ const providerFieldsDisplay = (page) =>
   check("attendee success panel", title?.includes("تم تسجيلك"), title ?? "");
   const focusedTag = await page.evaluate(() => document.activeElement?.tagName);
   check("focus moved to success heading", focusedTag === "H2", focusedTag);
-  const invite = await page.$eval('[role="status"] a[href^="https://wa.me"]', (el) =>
-    decodeURIComponent(el.href),
+  // e748642 replaced the wa.me link with the native share sheet, so there is no
+  // href to read. Stub navigator.share and capture what the app passes it —
+  // that is the message itself, which is what the old href assertion was really
+  // checking. Reading the clipboard instead would test browser plumbing, and is
+  // flaky in headless because writeText needs the page to hold focus.
+  const inviteBtn = await page.$('[role="status"] button[type="button"]');
+  check("invite button present", Boolean(inviteBtn));
+  await page.evaluate(() => {
+    window.__shared = null;
+    navigator.share = async (data) => {
+      window.__shared = data;
+    };
+  });
+  await inviteBtn.click();
+  await page.waitForFunction(() => window.__shared !== null, { timeout: 3000 });
+  const shared = await page.evaluate(() => window.__shared);
+  check("invite message carries the page URL", shared.text.includes("/ar/register"), shared.text);
+  check(
+    // 725b79e put the link on its own line AFTER the copy, and passes it inside
+    // `text` rather than as a separate `url` — iOS/WhatsApp hoist a separate
+    // url above the RTL copy and wreck the reading order. Guard that shape.
+    "invite link sits on its own line after the copy, not in a separate url field",
+    /\n\S*\/ar\/register\s*$/.test(shared.text) && shared.url === undefined,
+    JSON.stringify(shared),
   );
-  check("WhatsApp invite carries page URL", invite.includes("/ar/register"), invite);
   await page.screenshot({ path: `${shots}/qa-success-attendee.png` });
   await page.close();
 }

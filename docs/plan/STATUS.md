@@ -1,7 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-13 · **Branch:** `main` · **Phase:** planning **complete** — implementation
-has not started
+**Last updated:** 2026-09-13 · **Branch:** `docs/implementation-plan` · **Phase:** **M0 in progress**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -34,7 +33,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-022**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-023**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -81,40 +80,64 @@ rule that keeps a later session from casually rewriting a considered decision.
 | `src/`, `supabase/`, `public/` untouched | ✅ `git status` and `git diff` both confirm |
 | `node scripts/qa.mjs` | ⚠️ **fails — pre-existing, see below** |
 
-## Known issue found during verification — `scripts/qa.mjs` is stale
+## ⚠️ Owner action needed — three test rows are in the live `registrations` table
 
-**`scripts/qa.mjs` does not currently pass on `main`, and has not since commit `e748642`.**
+While fixing `scripts/qa.mjs` (DEC-023), the QA suite was run against the **production** Supabase
+project rather than the local stub. The suite submits the registration form, so **three test rows
+were written to the live `registrations` table** — the table DEC-002 designates a frozen historical
+record.
 
-That commit — *"Replace WhatsApp invite link with native share sheet"* — removed the `wa.me` link
-from `src/components/registration-form.tsx`, but the QA script still asserts on it:
+**Why it happened:** `next start` reads `.env.local`, which points at production. Starting
+`scripts/supabase-stub.mjs` alongside it looks like enough and is not — nothing connects them, and
+nothing errors. The stub's log stayed empty.
 
-```js
-// scripts/qa.mjs:142 — asserts an element that no longer exists
-page.$eval('[role="status"] a[href^="https://wa.me"]', …)
+**Run this in the Supabase SQL editor** (dashboard → SQL Editor). It could not be run from the
+session: there is no `psql`, no Postgres driver and no Docker available locally, and installing one
+in order to reach production was refused by the sandbox — correctly.
+
+```sql
+-- Look first.
+select id, created_at, name, email, role, topic_title
+  from public.registrations
+ where email in ('sara@example.com', 'dup@example.com', 'nojs@example.com')
+ order by created_at;
+
+-- Then delete, if and only if the rows above are the three test rows.
+delete from public.registrations
+ where email in ('sara@example.com', 'dup@example.com', 'nojs@example.com');
 ```
 
-Everything up to that assertion passes; the script then throws and never reaches the checks after
-it. There is also a hard-coded screenshot path pointing at an expired session's scratchpad
-directory (`scripts/qa.mjs:7`), which throws earlier unless that directory happens to exist.
+Names to expect: **سارة العتيبي**, **يمان رضا**, **بدون جافاسكربت**. If anything else appears,
+stop and check — those emails are implausible as real signups, but the `select` is there so the
+`delete` is never run blind.
 
-**This was not caused by this session** — `src/` and `supabase/` are untouched (`git diff` is
-empty). It was found *because* the plan makes `scripts/qa.mjs` a **blocking CI gate** guarding the
-frozen public contract (`REQ-NFR-019`, `13` §9.1), and a gate that fails on `main` cannot be turned
-on until it is fixed.
+**It cannot recur.** `scripts/qa.mjs` now refuses to start unless `SUPABASE_URL` is localhost, and
+`npm run qa` wires the stub itself (DEC-023).
 
-**It was deliberately not fixed here.** This session produces documents; changing the QA script is
-code, and it should be a deliberate change with its own commit. **It is the first task in M0**
-(`14-roadmap.md`), where it blocks turning the `qa` gate on.
+## M0 progress
 
-**The fix is small:** update the assertion to the native-share affordance the form actually renders,
-and make the screenshot directory relative or configurable.
+| Task | Status |
+|---|---|
+| `scripts/traceability.mjs` + gate | ✅ done — 251/64/112, no gaps |
+| **Fix `scripts/qa.mjs`** | ✅ done (DEC-023) — **44/44, repeatable**, was crashing |
+| `npm run qa` orchestrator | ✅ done — stub + server + suite, wired and torn down |
+| Three Supabase projects (dev/staging/prod) | ⬜ next — on the critical path for M1 |
+| Playwright, jsdom, `@testing-library` | ⬜ |
+| GitHub Actions with the four blocking gates | ⬜ |
+| Monorepo restructure + font work | ⬜ **sequence first** — both touch the live site |
+| **Shaping-parity harness (Tiers A and B)** | ⬜ **the biggest unknown** — do early |
+| graphile-worker on Fly + LISTEN/NOTIFY probe | ⬜ |
+| Credential-free converter app | ⬜ |
+| Radix + the ~8 inline SVGs | ⬜ |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | ⬜ |
 
 ## Blockers
 
 **None for the plan.** Every open question carries a default that is already in force, so no work
 is blocked on an answer.
 
-**One for M0:** the `qa` CI gate cannot be turned on until `scripts/qa.mjs` is fixed (above).
+**One for the owner:** the three test rows above. Nothing is blocked on it, but the table is meant
+to be pristine history.
 
 **Resolved since the plan was written:**
 

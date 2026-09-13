@@ -10,18 +10,22 @@
 | Tool | Status |
 |---|---|
 | **Vitest 4.1.10** | Installed, `environment: "node"` only |
-| `scripts/qa.mjs` | Exists and guards the frozen public contract — but is **stale and failing on `main`**; see below |
+| `scripts/qa.mjs` | **Fixed (DEC-023).** 44/44, repeatable. Run it with `npm run qa` — never directly |
 | **jsdom, `@testing-library/*`** | **Not installed** |
 | **Playwright** | **Not installed** |
 | GitHub Actions | **Not configured** |
 | Supabase projects | **One. It is production.** |
 
-**`scripts/qa.mjs` is stale.** It asserts `[role="status"] a[href^="https://wa.me"]`, an element
-commit `e748642` (*"Replace WhatsApp invite link with native share sheet"*) removed from
-`src/components/registration-form.tsx`. It also writes screenshots to a hard-coded path from an
-expired session. Everything before the assertion passes; the script then throws. **Fixing it is the
-first task in M0**, because the `qa` gate below cannot be turned on while it fails — and a green
-gate that nobody can run is worse than no gate.
+**`scripts/qa.mjs` was stale, and it could write to production.** Both fixed in DEC-023. Two
+things carry forward, because they are the general lessons and not the specific bug:
+
+- **The suite submits real forms, so it must never reach a real project.** It now refuses to start
+  unless `SUPABASE_URL` is localhost, and `npm run qa` wires the stub by overriding the env where
+  the server is spawned. Starting the stub alongside the server does **not** wire them together —
+  `next start` reads `.env.local` and nothing warns you.
+- **A test that asserts on markup goes stale silently.** The `wa.me` assertion outlived the element
+  it tested by several commits, and the suite crashed rather than reporting it. Assertions now
+  target behaviour — the share *message* the app composes — not the DOM shape that carries it.
 
 A23 assumed all of this existed. **It does not**, and the gap is on the critical path: M1
 retrofits auth and RLS onto a live database whose only policy is `anon`-insert, and doing that
