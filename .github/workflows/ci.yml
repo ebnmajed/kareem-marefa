@@ -183,6 +183,32 @@ jobs:
           path: playwright-report
           retention-days: 7
 
+  # ── The credential-free converter. 04 §7.1, REQ-DSG-016. ─────────────
+  converter:
+    name: converter image (LibreOffice, no credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - uses: docker/setup-buildx-action@v3
+
+      # The image build IS a font test: it runs scripts/fonts/check.mjs and
+      # refuses to exist unless LibreOffice's fonts are exactly the manifest's.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: converter/Dockerfile
+          tags: kareem-converter
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Boot guard, real conversions through the signed-URL contract, the
+      # substitution report, WebP pages at the specified size, content
+      # sniffing. See converter/test/smoke.mjs.
+      - run: SKIP_BUILD=1 node converter/test/smoke.mjs
+
   # ── Arabic shaping. D66. ───────────────────────────────────────────────
   parity:
     name: shaping parity

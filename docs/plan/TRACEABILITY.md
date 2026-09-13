@@ -209,7 +209,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-INT-006` | — | — | `SCR-063` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-007` | — | — | `SCR-012` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-008` | — | — | — | — | — | `STORY-INT-004` | M1 |
-| `REQ-INT-009` | — | — | — | — | — | `STORY-INT-004` | M1 |
+| `REQ-INT-009` | `ENT-fonts` | — | — | — | — | `STORY-INT-004` | M1 |
 
 ### LDR
 
@@ -263,7 +263,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-016` | `ENT-email_deliveries` | — | — | — | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-017` | — | — | — | — | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-018` | — | — | — | — | — | `STORY-NFR-008` | M0 |
-| `REQ-NFR-019` | `ENT-fonts` | — | `SCR-000` `SCR-001` | — | — | `STORY-NFR-008` | M0 |
+| `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` | — | — | `STORY-NFR-008` | M0 |
 | `REQ-NFR-020` | `ENT-registrations` | — | — | — | — | `STORY-NFR-008` | M0 |
 
 ### NTF

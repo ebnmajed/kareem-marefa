@@ -723,6 +723,43 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** nothing. Implements `REQ-DSG-016` and `REQ-INT-009`; makes invariant 12 checkable.
 - **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
 
+## DEC-032 — The converter lives at `converter/`, is dependency-free Node, and refuses to boot with a credential
+
+- **Date:** 2026-09-13 · **Decided by:** session, within `04` §7.1
+- **Decision:** Fly app 2 — the credential-free converter — is the top-level directory
+  **`converter/`**: `server.mjs` (Node built-ins only, no npm dependencies), a `Dockerfile` built
+  **from the repository root** so it can copy `packages/fonts`, a `fly.toml` with **no
+  `[http_service]`** so the app is reachable only over Fly private networking from the worker, and
+  `test/smoke.mjs`, which builds the image and drives it through its real contract. The image
+  installs LibreOffice Impress, poppler, libwebp and unzip; its fonts are **exactly the manifest's
+  TrueType files**, and the build runs `scripts/fonts/check.mjs --no-build` and greps `fc-list` for
+  both families before the image can exist (`REQ-DSG-016`).
+- **The contract** (`07` §4): `POST /convert` takes a signed input URL and a signed output URL,
+  sniffs the input on content (a PowerPoint declared as PDF is a `415`), converts with a **fresh
+  LibreOffice profile per job** in a temp dir that is always removed, uploads the PDF, and returns
+  the page count plus a font report — `used`, `embedded`, `substituted` (families the deck names
+  that the image lacks, by name, for `REQ-MAT-011`) and `inPdf` (what `pdffonts` finds actually
+  embedded). `POST /pages` takes a signed PDF URL and per-page signed PUT URLs and renders WebP at
+  the long edge and quality `07` §4.5 specifies (1600 px / q82; thumbnails 320 px / q70). Input is
+  capped at 200 MB, JSON at 1 MB, LibreOffice at 180 s.
+- **The boot guard:** the process exits `1` before listening if any environment variable name
+  matches a credential shape (`SUPABASE`, `DATABASE`, `SERVICE_ROLE`, `POSTGRES`, `PG*`, `RESEND`,
+  `SECRET`, `PASSWORD`, `API_KEY`, `PRIVATE_KEY`, `ENCRYPTION`), printing the **names only**. The
+  security model of `04` §7.1 is that this app holds nothing; a guard makes that a property of the
+  process rather than a hope about the deployment. Only `PORT` and, for the local smoke test,
+  `CONVERTER_ALLOW_HTTP=1` are read.
+- **Rationale:** a workspace package would have put the converter's dependencies into the root
+  `node_modules` that Vercel installs, for a service that needs none; a separate lock file would
+  have been a second thing to keep npm-version-safe. Zero dependencies avoids both. Node over a
+  Python or shell service because the fonts gate is a Node script and the image can run it
+  unchanged. The substitution *report* is produced here because only this process can see what
+  LibreOffice had; writing it to the material and surfacing the warning remains M4.
+- **Not decided here:** deployment. `fly deploy` has not been run and `flyctl` is not installed;
+  the image is built and tested locally and in the CI `converter` job. Deploying both Fly apps is
+  the owner's step (`STATUS.md`).
+- **Supersedes:** nothing. Implements `REQ-MAT-003`'s conversion path within `04` §7.1.
+- **Documents changed:** `STATUS.md`, `CLAUDE.md` (folder layout)
+
 ---
 
 ## Template for new entries

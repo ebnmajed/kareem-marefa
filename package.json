@@ -23,6 +23,7 @@
     "fonts:extract": "node scripts/fonts/extract.mjs",
     "fonts:derive": "python3 scripts/fonts/derive-ttf.py",
     "fonts:check": "node scripts/fonts/check.mjs",
+    "converter:test": "node converter/test/smoke.mjs",
     "lockfile": "node scripts/lockfile.mjs"
   },
   "dependencies": {
