@@ -39,7 +39,13 @@
       "Bash(gh pr checks:*)",
       "Bash(gh pr list:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git pull --ff-only:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push -u origin:*)",
+      "Bash(git push origin:*)"
     ],
     "deny": [
       "Bash(supabase db push:*)",
@@ -65,8 +71,6 @@
       "Bash(git reset --hard:*)",
       "Bash(git stash:*)",
       "Bash(git rebase:*)",
-      "Bash(git checkout main)",
-      "Bash(git switch main)",
       "Bash(git clean:*)",
       "Bash(gh auth login:*)",
       "Bash(gh auth logout:*)",
