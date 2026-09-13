@@ -1,6 +1,6 @@
 # STATUS — read this first, write it last
 
-**Last updated:** 2026-09-14 · **Branch:** `m2/schema` (PR → `main`, awaiting the owner's merge) · **`main` @ `e0e3c37`:** M1 complete and live · **Phase:** **M2 wave 0 built (DEC-040); wave 1 starts from a green main with the lead's spawn prompt in `TEAM.md`**
+**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -147,7 +147,24 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## M2 — wave 0 (this session, PR `m2/schema`)
+## M2 — wave 1 (in progress, the lead session)
+
+**Started 2026-09-14** after the owner approved the wave plan. Pre-flight on `main` @ `5378555`: CI
+green on the last five pushes, five frozen routes answer, `/ar/app` 404 by design, local Supabase
+healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 passed / 4 todo.
+`wave-1/m2` cut; `docs/plan/notes/` created for the teammates' plans.
+
+**Spawned:** `sessions` (opus) → slot contract first, then STORY-PRO-001 onward · `checkin` (sonnet)
+→ STORY-RSV-001 (`reserve_seat()` as proposed SQL) onward · `event` (sonnet) → STORY-EVT-002
+(threaded comments + the private Realtime channel) onward, since EVT-001 is the page `sessions` owns.
+
+**Promoted SQL, sync points and CI runs are logged below as they happen.**
+
+| Sync | Promoted | Gates |
+|---|---|---|
+| — | — | — |
+
+## M2 — wave 0 (previous session, PR `m2/schema` — merged as #10)
 
 **Done, awaiting merge:** migration `0010` — the whole M2 schema with RLS, grants, the guard
 triggers, `is_presenter_of()` / `has_checked_in()` and the presenter-only aggregates view; no RPCs
