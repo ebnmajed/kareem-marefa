@@ -4,7 +4,7 @@
 -- Cites:   02-domain-model.md §6.1 (the normative diagram) · 03-permissions-rls.md §5.2b
 --          0004_tenancy.sql (audit_log, append-only) · 0005_tenancy_rpcs.sql (write_audit)
 --
--- 03 §8.2 rows this needs (for the lead to add):
+-- 03 §8.2 rows (added at wave-1 sync point 1):
 --   | `POL-proposals.transition.audit` | Creating a proposal and submitting it each write an
 --     `audit_log` row; a member cannot suppress either, and cannot write one directly. |
 --   | `POL-proposals.transition.legal` | `changes_requested -> draft` and `submitted -> approved`

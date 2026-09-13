@@ -1,25 +1,21 @@
-// STORY-PRO-001 — the proposal state machine, proven against the proposed
-// SQL rather than against the migrations (DEC-040): applyProposed() runs
-// supabase/proposed/sessions/0001_proposal_transitions.sql inside the test's
-// own transaction, so the triggers exist for these cases and vanish on
-// rollback.
+// STORY-PRO-001 — the proposal state machine. Authored against the proposed
+// SQL (DEC-040) and promoted by the lead as migration 0011_proposal_transitions.sql
+// at wave-1 sync point 1, so the triggers are now part of the schema.
 //
 // 03 §8.2 rows: POL-proposals.transition.audit, POL-proposals.transition.legal
 // Serves: REQ-PRO-005, REQ-PRO-006 · 02 §6.1 is the normative diagram.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0001_proposal_transitions.sql";
 const CHECK_VIOLATION = "23514";
 
 /**
- * A proposal created AFTER applyProposed(), so the insert itself is audited.
- * The fixture's own proposal predates the trigger inside a test transaction,
- * which is right — a trigger cannot audit a row that existed before it.
+ * A proposal created inside the test, so the insert itself is audited and the
+ * audit rows asserted are exactly this proposal's.
  */
 async function newProposal(tx: Tx, orgId: string, proposerId: string, categoryId: string, title: string, state = "draft") {
   const [{ id }] = await tx.q<{ id: string }>(
@@ -54,7 +50,6 @@ describe("POL-proposals.transition.audit", () => {
   it("a member creating a draft and then submitting it leaves two audit rows they did not write", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
 
       await tx.as(me.claims);
@@ -82,7 +77,6 @@ describe("POL-proposals.transition.audit", () => {
   it("a proposal born submitted is audited as submitted, not as created", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
 
       await tx.as(me.claims);
@@ -99,7 +93,6 @@ describe("POL-proposals.transition.audit", () => {
   it("an admin's rejection carries the written reason into the audit row (REQ-PRO-005)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
       const proposal = await newProposal(tx, f.a.id, f.a.members[0].memberId, f.a.categoryId, "مقترح للمراجعة");
       await tx.q(`update public.proposals set state = 'submitted' where id = $1`, [proposal]);
@@ -120,7 +113,6 @@ describe("POL-proposals.transition.audit", () => {
   it("editing a proposal without moving it writes no audit row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const me = f.a.members[0];
 
       await tx.as(me.claims);
@@ -134,7 +126,6 @@ describe("POL-proposals.transition.audit", () => {
   it("nobody can write audit_log directly — the trigger is the only path", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       for (const who of [f.a.members[0].claims, f.a.admin.claims]) {
         await tx.as(who);
         expect(
@@ -157,7 +148,6 @@ describe("POL-proposals.transition.legal", () => {
   it("only the edges of 02 §6.1 are permitted, for the owner as much as for a member", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       const proposal = f.m2.a.proposal; // draft
 
       // Legal: draft → submitted → in_review → changes_requested → submitted
@@ -188,7 +178,6 @@ describe("POL-proposals.transition.legal", () => {
   it("a member submitting their own draft still passes the guard", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
       await tx.as(f.a.members[0].claims);
       const rows = await tx.q<{ state: string }>(`update public.proposals set state = 'submitted' where id = $1 returning state`, [f.m2.a.proposal]);
       expect(rows[0].state).toBe("submitted");

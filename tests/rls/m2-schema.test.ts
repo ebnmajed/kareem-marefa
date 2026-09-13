@@ -35,12 +35,25 @@ describe("POL-proposals", () => {
       // submitted is no longer editable by the proposer
       expect(await tx.q(`update public.proposals set title = 'عنوان آخر' where id = $1 returning id`, [f.m2.a.proposal])).toEqual([]);
       await tx.asOwner();
+      // 0011's guard enforces 02 §6.1: an admin reviews before approving
+      await tx.q(`update public.proposals set state = 'in_review' where id = $1`, [f.m2.a.proposal]);
       await tx.q(`update public.proposals set state = 'approved' where id = $1`, [f.m2.a.proposal]);
       await tx.as(me.claims);
       expect(await tx.q(`update public.proposals set title = 'x' where id = $1 returning id`, [f.m2.a.proposal])).toEqual([]);
-      // and a member cannot jump straight to approved
+      // and a member cannot approve — even along a legal edge. draft → approved
+      // is now refused by 0011's guard (23514) before the policy is consulted,
+      // so the policy is exercised on in_review → approved, which the state
+      // machine allows and the proposer's policy does not.
       const [{ id }] = await tx.q<{ id: string }>(`insert into public.proposals (org_id, proposer_id, title, abstract, category_id, level) values ($1, $2, 'اقتراح جديد', 'ملخص', $3, 'introductory') returning id`, [f.a.id, me.memberId, f.a.categoryId]);
-      expect(await errorCode(() => tx.q(`update public.proposals set state = 'approved' where id = $1`, [id]))).toBe(PERMISSION_DENIED);
+      expect(await errorCode(() => tx.q(`update public.proposals set state = 'approved' where id = $1`, [id]))).toBe("23514");
+      await tx.asOwner();
+      await tx.q(`update public.proposals set state = 'submitted' where id = $1`, [id]);
+      await tx.q(`update public.proposals set state = 'in_review' where id = $1`, [id]);
+      await tx.as(me.claims);
+      // the proposer's policy only reaches draft rows, so the update matches nothing
+      expect(await tx.q(`update public.proposals set state = 'approved' where id = $1 returning id`, [id])).toEqual([]);
+      await tx.asOwner();
+      expect((await tx.q<{ state: string }>(`select state from public.proposals where id = $1`, [id]))[0].state).toBe("in_review");
     });
   });
 
