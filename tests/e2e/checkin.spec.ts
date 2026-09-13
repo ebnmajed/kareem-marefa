@@ -96,14 +96,13 @@ async function signIn(context: BrowserContext, email: string, asAdmin: boolean):
   if (rpcError) throw rpcError;
   const memberId = (envelope as { member_id: string }).member_id;
   if (asAdmin) {
+    // Claims were minted before the role change — the custom access token
+    // hook re-reads the members row on EVERY token mint, refresh included
+    // (not just initial sign-in), so a plain refreshSession() below is
+    // enough; no sign-out/re-sign-in needed (and doing that unnecessarily
+    // clobbered the cookie jar between the two calls — first version of
+    // this test learned that the hard way).
     await db.query(`update public.members set org_role = 'admin' where id = $1`, [memberId]);
-    // Claims were minted before the role change — bump claims_version and
-    // re-sign so app_metadata reflects 'admin' (the custom access token hook
-    // re-reads the row on next token mint, same as DEC-036's staleness pattern).
-    await client.auth.signOut();
-    jar.length = 0;
-    const retry = await client.auth.signInWithPassword({ email, password: PASSWORD });
-    if (retry.error) throw retry.error;
   }
   jar.length = 0;
   await client.auth.refreshSession();
@@ -158,5 +157,6 @@ test("an invalid code is rejected without revealing anything else, and the field
   }
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
   await expect(page).toHaveURL(/error=invalid_code$/);
-  await expect(page.getByRole("alert")).toContainText("الرمز غير صحيح");
+  // Next's own route announcer also carries role="alert" — scope to the copy, not the role alone.
+  await expect(page.getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
 });
