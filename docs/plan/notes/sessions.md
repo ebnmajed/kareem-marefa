@@ -428,3 +428,52 @@ The poster (1), the preparation tasks (6), the materials (7) and the photos (9) 
 page renders **nothing** in their place rather than a grey box implying they are coming, and the
 comments say which milestone owns each. `REQ-SES-008` is absent by construction: there is no stream
 URL, no join link and no remote-attendance field in the DTO, because there is none in the product.
+
+---
+
+## 8. STORY-SES-003 — the clock moves sessions, not people
+
+**Covers:** `REQ-SES-004`, `REQ-SES-005` · **Jobs:** `JOB-start_session`, `JOB-complete_session`
+
+### 8.1 The "skip manual transitions" check would have been a bug
+
+`11` §2.1 says start_session "skips any session an admin transitioned manually". The obvious
+implementation — read the last `session_state_transitions` row and skip it if `is_manual` — would
+skip **every session in the product**, because `publish_session()` writes `is_manual = true` on the
+publish: a person published it.
+
+Both acceptance criteria hold on the state filter alone, and more strongly:
+
+- "running the job twice moves a session once" — the second run finds nothing in the source state;
+- "a session whose state was overridden by an admin is not moved back" — the two queries only move
+  **forward** along `02` §6.2, so an admin who started early leaves it `in_progress` (start matches
+  nothing), and one who completed early or cancelled leaves it `completed` or `cancelled` (neither
+  matches). There is no path by which the clock reverses a person.
+
+`is_manual = false` with a null `actor_id` is how these rows say "the clock did this".
+
+### 8.2 The check-in window closes inside the completion
+
+`REQ-CHK-004` has no room for a gap in which a session is over and its code still works, so
+`clock_complete_sessions()` shortens every live code's `valid_until` **in the same transaction**.
+`check_in_codes` is the `checkin` track's table and this is the one place I write it — it only
+shortens a live window and touches nothing else. **`checkin` should know.**
+
+### 8.3 `returns setof uuid`, not `returns table (session_id …)`
+
+A `RETURNS TABLE` column named `session_id` is an OUT parameter, and every unqualified `session_id`
+in the body — including the one in the transitions INSERT — then resolves ambiguously and the
+function will not run at all. Cost half an hour. The session id is all either task needs.
+
+### 8.4 Two things the lead has to do for these jobs to run
+
+1. **Register the tasks.** `worker/src/index.ts` is not in my globs. It needs
+   `import { start_session } from "./tasks/start_session.js";`, the same for `complete_session`, and
+   both added to `taskList`.
+2. **Schedule them.** Both are cron, every minute (`11` §2.1). There is no crontab in the repo yet.
+
+`start_session` enqueues `rotate_codes` per started session rather than issuing the first code
+itself, because `check_in_codes` is `checkin`'s. `complete_session` enqueues **nothing**: its four
+fan-out jobs are M3, M4 and M6, and graphile-worker permanently fails a job whose task name has no
+handler, so enqueuing them now would turn every completed session into a stuck job and a false
+alert. The task's comment is the list each milestone adds itself to.
