@@ -122,5 +122,10 @@
       "shareTitle": "Knowledge Kareem",
       "copied": "Link copied"
     }
+  },
+  "ui": {
+    "dialog": {
+      "close": "Close"
+    }
   }
 }

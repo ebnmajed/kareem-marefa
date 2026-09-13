@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Direction } from "radix-ui";
 import { routing } from "@/i18n/routing";
 import { plexArabic, plexSans } from "@/lib/fonts";
 import { Header } from "@/components/header";
@@ -111,9 +112,15 @@ export default async function LocaleLayout({
           }}
         />
         <NextIntlClientProvider>
-          <Header />
-          <main id="main">{children}</main>
-          <Footer />
+          {/* Radix primitives read their direction from here, not from the
+              DOM — a popover or a select with no provider assumes LTR and
+              opens on the wrong side in Arabic (DEC-019, 10 §2.1). It renders
+              no markup, so the frozen routes are byte-identical. */}
+          <Direction.Provider dir={locale === "ar" ? "rtl" : "ltr"}>
+            <Header />
+            <main id="main">{children}</main>
+            <Footer />
+          </Direction.Provider>
         </NextIntlClientProvider>
       </body>
     </html>
