@@ -149,3 +149,8 @@ Then, before spawning anyone:
   outcome envelope.
 - `docs/plan/notes/<name>.md` is where a teammate's findings live; read all three at wave end
   before writing the DECISIONS entry.
+- **Three e2e traps** (DEC-045): a user has no `members` row until their first sign-in, because
+  `provision_member()` runs in the callback — seed a member by signing in, not by creating the auth
+  user; Next's route announcer carries `role="alert"`, so an unscoped `getByRole("alert")` is a
+  strict-mode violation on every page; the `desktop` and `phone` projects share one database, so a
+  row assertion that matches only on a title sees the other worker's row — tag by org or by id.

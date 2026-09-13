@@ -1146,7 +1146,9 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Working rules** added to `TEAM.md` §3 and §5: commit with an explicit pathspec; the RLS suite
   is single-runner; the build is the only gate for `"use server"` exports and namespace JSON;
   slots render no heading; the wave PR opens as a draft at the first push; React 19 form reset;
-  the envelope rule. Each was learned by breaking something this wave.
+  the envelope rule; three e2e traps (no member row before first sign-in, the route announcer's
+  `role="alert"`, two Playwright projects on one database). Each was learned by breaking
+  something this wave.
 - **Supersedes:** the SCR-012 list in `09` (settled document, changed under this entry);
   `TEAM.md` §3 and §5 (settled, extended under this entry).
 - **Documents changed:** `09-sitemap-screens.md` SCR-012, `TEAM.md` §3, §5, `STATUS.md`
