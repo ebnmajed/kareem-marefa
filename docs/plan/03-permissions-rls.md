@@ -1432,6 +1432,9 @@ generated suite is the highest-value test in the product.
 | `POL-session_posters.stale` | A data change on a detached poster sets `stale_since` and enqueues no render. (migration `0063`). |
 | `POL-session_posters.live` | A data change on a live poster enqueues one render and leaves `stale_since` null. (migration `0063`). |
 | `POL-request_render.system` | `system_request_render()`, `poster_render_context()` and `record_session_poster()` are `service_role` only; an admin calling them is refused. (migration `0063`). |
+| `POL-fonts.materialise.admin` | An org admin requests a Google family and one `materialise_font` job is enqueued with `11` §2.5's key; a moderator is refused (`REQ-DSG-017`). (migration `0064`). |
+| `POL-fonts.record.worker` | `record_font()` is `service_role` only; an admin calling it is refused. (migration `0064`). |
+| `POL-fonts.gate` | A font recorded as `failed` carries the report naming which checks failed and stays unselectable (A39). (migration `0064`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |

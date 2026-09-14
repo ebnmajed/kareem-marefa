@@ -154,8 +154,32 @@ async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
+  // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
+  // (`scrollWidth - clientWidth` is the scrollbar's width on every RTL page that
+  // scrolls vertically); then which element is responsible, skipping permitted
+  // scroll containers and fixed overlays. Names what to fix.
+  // Phone project only: a desktop context at 390 px carries a classic scrollbar
+  // that inflates scrollWidth on every page that scrolls vertically.
+  const overflow = test.info().project.name !== "phone" ? [] : await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 

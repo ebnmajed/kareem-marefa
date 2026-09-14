@@ -21,7 +21,11 @@ describe("POL-provision_member", () => {
       expect(await provision(tx)).toEqual({ status: "no_match" });
       await tx.asOwner();
       expect(await tx.q(`select id from public.members where auth_user_id = $1`, [f.stranger.authUserId])).toEqual([]);
-      expect(await tx.q(`select id from public.audit_log where action = 'member.provisioned'`)).toEqual([]);
+      // Scoped to this transaction (`now()` is its start): the audit log is
+      // append-only and shared, so an e2e run that signed a member in leaves a
+      // committed `member.provisioned` row that a global emptiness check would
+      // count for everyone afterwards (wave-3 sync 8).
+      expect(await tx.q(`select id from public.audit_log where action = 'member.provisioned' and occurred_at >= now()`)).toEqual([]);
     });
   });
 

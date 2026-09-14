@@ -44,10 +44,27 @@ export async function SessionPoster({ sessionId, locale, variant = "master" }: D
 
   return (
     <figure className="m-0">
-      {/* eslint-disable-next-line @next/next/no-img-element -- a signed URL
-          from a private bucket expires in five minutes; there is nothing to
-          optimise and no stable remote pattern to declare. */}
-      <img src={poster.imageUrl} alt="" className="w-full rounded-card border border-edge" loading="lazy" />
+      {/* A plain <img>, not next/image: a signed URL from a private bucket
+          expires in five minutes, so there is nothing to optimise and no
+          stable remote pattern to declare.
+
+          ★ THE BOX IS RESERVED BEFORE THE IMAGE ARRIVES. Without it the
+          whole event page jumped when the poster loaded, and the M2
+          demonstrable's phone run timed out because Playwright never saw a
+          stable target (the lead's finding at sync 8). The artifact's OWN
+          size is used when it is known: the master's 4:5 is the wrong ratio
+          for `square` or `og`, and a box reserved at the wrong ratio shifts
+          the page exactly as badly as no box at all. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={poster.imageUrl}
+        alt=""
+        className="w-full rounded-card border border-edge bg-silver-100"
+        loading="lazy"
+        decoding="async"
+        {...(poster.width && poster.height ? { width: poster.width, height: poster.height } : {})}
+        style={{ aspectRatio: poster.width && poster.height ? `${poster.width} / ${poster.height}` : "1080 / 1350" }}
+      />
       {poster.staleSince ? (
         <figcaption role="status" className="mt-2 text-body-sm text-fg-heading">
           {t("stale")}

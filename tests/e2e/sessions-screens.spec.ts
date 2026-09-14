@@ -135,8 +135,32 @@ async function review(p: Page, name: string, primary?: string | RegExp) {
   // easily at 1024, and the capture just looks like a wide page.
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
+  // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
+  // (`scrollWidth - clientWidth` is the scrollbar's width on every RTL page that
+  // scrolls vertically); then which element is responsible, skipping permitted
+  // scroll containers and fixed overlays. Names what to fix.
+  // Phone project only: a desktop context at 390 px carries a classic scrollbar
+  // that inflates scrollWidth on every page that scrolls vertically.
+  const overflow = test.info().project.name !== "phone" ? [] : await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
   if (primary) {
     const box = (await p.getByRole("button", { name: primary }).first().boundingBox())!;
     expect(box.height, `${name}: the primary action must be at least 44 px tall`).toBeGreaterThanOrEqual(44);
@@ -205,10 +229,11 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // carried-over item): a trigger whose accessible name carries its value, a
   // day grid whose cells are labelled by full date, hour and minute selects.
   await boss.getByRole("button", { name: new RegExp("^التاريخ والوقت:") }).click();
-  await boss.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).first().click();
-  await boss.getByLabel("الساعة").selectOption("18");
-  await boss.getByLabel("الدقيقة").selectOption("0");
-  await boss.getByRole("button", { name: "تم" }).click();
+  const picker = boss.getByRole("dialog", { name: "التاريخ والوقت" });
+  await picker.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).first().click();
+  await picker.getByLabel("الساعة").selectOption("18");
+  await picker.getByLabel("الدقيقة").selectOption("0");
+  await picker.getByRole("button", { name: "تم", exact: true }).click();
   await boss.getByLabel("المدة").fill("60");
   await boss.getByLabel("المكان", { exact: true }).selectOption({ label: "قاعة الابتكار" });
   await boss.getByRole("button", { name: "احفظ الجدولة" }).click();

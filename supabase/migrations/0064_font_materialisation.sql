@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — the Google Fonts materialisation flow.
+-- promoted by the lead at wave-3 sync 8 · designer (wave 3, M6) — the Google Fonts materialisation flow.
 -- Follows 0062.
 --
 -- Serves:  02 §4.13 (ENT-fonts), 03 §5.9 (`fonts`: read by every member,
