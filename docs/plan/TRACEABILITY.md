@@ -222,7 +222,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-005` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |
-| `REQ-LDR-008` | — | `POL-leaderboard_entries.select.opt_out` | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
+| `REQ-LDR-008` | — | `POL-leaderboard_entries.opt_out_at_write` `POL-leaderboard_entries.select.opt_out` | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 
 ### MAT
 
@@ -301,7 +301,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRO-004` | — | — | `SCR-012` `SCR-017` `SCR-043` | — | — | `STORY-PRO-002` | M2 |
 | `REQ-PRO-005` | — | — | `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-006` | `ENT-proposals` `ENT-session_state_transitions` | `POL-proposals.transition.audit` | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
-| `REQ-PRO-007` | — | `POL-sessions.transition.legal` | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
+| `REQ-PRO-007` | — | `POL-session_presenters.assigned_notice` `POL-sessions.transition.legal` | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
 | `REQ-PRO-008` | — | — | `SCR-018` | — | — | `STORY-PRO-004` | M2 |
 
 ### PTS

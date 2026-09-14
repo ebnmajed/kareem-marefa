@@ -12,7 +12,7 @@
 // members[0], which would make an idempotency assertion here ambiguous
 // about which award produced a given row.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -21,7 +21,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0007_recognition_evaluators.sql");
+  // Promoted at wave-2 sync 6 (0041–0043): applied by `supabase db reset`.
   return f;
 }
 

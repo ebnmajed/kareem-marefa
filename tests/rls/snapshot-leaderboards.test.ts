@@ -5,7 +5,7 @@
 // 03 §8.2 rows proven here: RPC-snapshot_leaderboard.service_role_only,
 // .frozen_denominator, .provisional_replace.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -14,7 +14,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0008_snapshot_leaderboards.sql");
+  // Promoted at wave-2 sync 6 (0041–0043): applied by `supabase db reset`.
   return f;
 }
 

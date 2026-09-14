@@ -1246,6 +1246,30 @@ generated suite is the highest-value test in the product.
 | `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006); follows the parent's phase gate with no `allow_download` conjunct. (migration `0037`). |
 | `POL-session_tasks.write.presenter` | A member who is not a presenter cannot insert, update or delete a session task; the presenter and an admin can. (migration `0037`). |
 | `POL-task_completions.self` | A member reads and writes only their own completions; a presenter reads the session's (migration `0037`). |
+| `RPC-store_calendar_connection.self` | A member can store only their OWN connection: the function takes no member id and reads `auth_member_id()`. (migration `0038`). |
+| `RPC-store_calendar_connection.write_only` | Storing a token does not make it readable — the same member calling `select *` afterwards still gets `42501`. (migration `0038`). |
+| `RPC-calendar_tokens_for_job.worker_only` | The ONLY function that returns a token, and no client role may call it (`03` §5.9c, `11` §2.2). (migration `0038`). |
+| `RPC-record_calendar_sync.idempotent` | Running it twice for one (member, session) leaves ONE row — `REQ-CAL-004`'s idempotency is the constraint, not job logic. (migration `0038`). |
+| `POL-calendar_connections.disconnect_notice` | Deleting the row notifies the member that existing events will no longer update (`MSG-calendar_disconnected`, non-optional). (migration `0038`). |
+| `POL-comments.reply_notice` | A reply notifies the parent's author, and replying to yourself notifies nobody. (migration `0039`). |
+| `POL-comments.mention_notice` | Every member in `mentions` is notified once; a mention of yourself, of the parent's author you already replied to, or of someone in another org, is not. (migration `0039`). |
+| `POL-comments.removal_notice` | A moderator removing a comment tells its author (`MSG-content_removed`, non-optional). (migration `0039`). |
+| `POL-proposals.decision_notice` | Approved, rejected and changes-requested each notify the proposer AND the co-presenters, carrying `decision_reason`. (migration `0039`). |
+| `POL-proposal_presenters.invite_notice` | Being named as a co-presenter is non-optional; the decline notifies the proposer. (migration `0039`). |
+| `POL-session_presenters.assigned_notice` | An assigned presenter is told (`REQ-PRO-007`). (migration `0039`). |
+| `POL-reports.filed_notice` | A report reaches every moderator and admin of the org, and nobody else. (migration `0039`). |
+| `POL-org_settings.reminder_reschedule` | Changing `reminder_offsets_minutes` removes every pending job under an offset that is no longer configured and adds one per new offset, for every confirmed seat in the org — no duplicates and no orphans. (migration `0040`). |
+| `POL-org_settings.prompt_delay_reschedule` | Changing `rating_prompt_delay_minutes` moves the pending `rate:{session}` job of every completed session. (migration `0040`). |
+| `RPC-evaluate_streaks.idempotent` | a member who already has a period's streak_awards row is never awarded twice for it (migration `0041`). |
+| `RPC-evaluate_badges.idempotent` | member_badges' unique constraint makes a re-run a no-op; a `manual` metric badge is never auto-awarded (only an admin RPC can grant it — not yet built) (migration `0041`). |
+| `RPC-evaluate_levels_perks.no_demotion` | a member's current_level_id never moves to a lower sort_order (REQ-REC-003) (migration `0041`). |
+| `RPC-evaluate_levels_perks.perk_materialisation` | member_perks reflects level/badge state without a recursive check on the RSVP hot path (migration `0041`). |
+| `RPC-*.service_role_only` | no client role may call any of the three (migration `0041`). |
+| `RPC-snapshot_leaderboard.service_role_only` | no client role may call it (migration `0042`). |
+| `RPC-snapshot_leaderboard.frozen_denominator` | active_member_count on a company snapshot never changes after it is taken, even if a member is later deactivated (migration `0042`). |
+| `RPC-snapshot_leaderboard.provisional_replace` | re-running for the same (org, kind, period_start, period_end, category_id) before it is final replaces the entries; after is_final it cannot be re-run at all (the table's own immutability trigger, 0027, refuses the necessary delete) (migration `0042`). |
+| `POL-leaderboard_entries.opt_out_at_write` | an opted-out member's row is still written (REQ-LDR-008: they still count toward their company's total and still see their own rank) — the RLS policy is what hides it from other members, not the snapshot itself (migration `0042`). |
+| `RPC-photo_takedowns_hide.notifies` | Inserting a takedown writes an in-app `MSG-photo_hidden` notification to the photo's uploader, whose payload names the photo and session but never the requester. (migration `0043`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
 | `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |

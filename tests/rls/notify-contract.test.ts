@@ -45,6 +45,9 @@ async function setup(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
   for (const table of M3_TABLES) await tx.q(`delete from public.${table}`);
+  // Deleting calendar_connections above fired 0038's disconnect notice into the
+  // inbox just emptied; clear the inbox once more, last.
+  await tx.q(`delete from public.notifications`);
   // Since 0034 the fixture's RSVP inserts enqueue notices of their own; the
   // queue assertions below count only what THIS case enqueues.
   await tx.q(`delete from graphile_worker._private_jobs`);
