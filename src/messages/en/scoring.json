@@ -35,6 +35,38 @@
       "strip": {
         "cta": "View my full points history"
       }
+    },
+    "admin": {
+      "title": "Points settings",
+      "intro": "Change values whenever you like — a change applies only to what is earned afterward, and never rewrites anyone's past balance.",
+      "saved": "Saved",
+      "error": "Could not save. Try again.",
+      "rules": {
+        "heading": "The points catalogue",
+        "points": "Points",
+        "enabled": "Enabled",
+        "cap": "Cap per session",
+        "noCap": "No cap",
+        "cooldown": "Cooldown (seconds)",
+        "noCooldown": "No cooldown",
+        "save": "Save"
+      },
+      "history": {
+        "heading": "Change history",
+        "empty": "No changes yet.",
+        "field": "Field",
+        "from": "From",
+        "to": "To",
+        "when": "Date"
+      },
+      "manual": {
+        "heading": "Manual adjustment",
+        "intro": "Add or remove points for a member, with a reason that appears in their history.",
+        "member": "Member ID",
+        "amount": "Points (negative to remove)",
+        "reason": "Reason",
+        "submit": "Apply adjustment"
+      }
     }
   }
 }
