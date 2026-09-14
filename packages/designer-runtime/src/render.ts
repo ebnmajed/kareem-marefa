@@ -22,6 +22,7 @@
 
 import { type BindingContext, EMPTY_BINDINGS, resolveColour, resolveRef, resolveText } from './bindings.js'
 import type { DesignDocument, Layer, ManifestFont } from './model.js'
+import { qrSvg } from './qr.js'
 
 export interface RenderOptions {
   /** Font binaries. `base64` is inlined as a data URI so the render is
@@ -171,13 +172,24 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
   // QR. Emitted as inline SVG by our own runtime, which is why it stays vector
   // and crisp at A3 despite DEC-009's no-SVG-upload rule — that rule is about
   // UPLOADED files. Generated markup from our own code is a different thing.
-  // The matrix itself arrives with STORY-DSG-011; until then the layer carries
-  // its target and its quiet zone so the geometry is already correct.
   const target = resolveRef(ctx, l.qr.binding)
-  const unbound = target === null ? ' dr-placeholder' : ''
+  if (target === null) {
+    // Unbound: a marked placeholder, never a blank square that prints as one
+    // (REQ-DSG-006). A QR nobody can scan is at least visibly missing.
+    return (
+      `<div class="dr-layer dr-qr dr-placeholder" data-layer="${esc(l.id)}" ` +
+      `data-placeholder="${esc(l.qr.binding)}" style="${style}"></div>`
+    )
+  }
+  const svg = qrSvg(target, {
+    ...(l.qr.ecLevel ? { level: l.qr.ecLevel } : {}),
+    quietZoneModules: l.qr.quietZoneModules ?? 4,
+    // The QR is black on white regardless of the brand: a tinted QR is a QR
+    // with less contrast, and contrast is the whole of whether it scans.
+  })
   return (
-    `<div class="dr-layer dr-qr${unbound}" data-layer="${esc(l.id)}" data-qr-target="${esc(target ?? '')}" ` +
-    `data-qr-quiet="${l.qr.quietZoneModules ?? 4}" style="${style}"></div>`
+    `<div class="dr-layer dr-qr" data-layer="${esc(l.id)}" data-qr-target="${esc(target)}" ` +
+    `data-qr-quiet="${l.qr.quietZoneModules ?? 4}" style="${style}">${svg}</div>`
   )
 }
 

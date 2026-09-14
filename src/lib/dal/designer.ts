@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   type BindingContext,
   type DesignDocument,
+  declaredBindingsOf,
   type FingerprintSource,
   fingerprintSource,
   platformBrand,
@@ -133,28 +134,10 @@ function certificateBindings(row: CertificateRow | null, numerals: NumeralSystem
   return out;
 }
 
-/** Every `{{binding}}` a document names, in document order, deduplicated. */
-export function declaredBindings(document: DesignDocument): string[] {
-  const found: string[] = [];
-  const add = (raw: string | undefined) => {
-    if (!raw) return;
-    const path = raw.replace(/^\{\{|\}\}$/g, "").trim();
-    if (path && !found.includes(path)) found.push(path);
-  };
-  for (const layer of document.layers) {
-    if (layer.kind === "text") add(layer.text.binding);
-    if (layer.kind === "dynamic_field") add(layer.field.binding);
-    if (layer.kind === "qr") add(layer.qr.binding);
-    if (layer.kind === "image") add(layer.image.binding);
-    if ("color" in layer) add(layer.color);
-    if (layer.kind === "shape") {
-      add(layer.shape.fill);
-      add(layer.shape.stroke);
-    }
-  }
-  if (document.background?.color) add(document.background.color);
-  return found;
-}
+/** Every `{{binding}}` a document names. One definition, in the runtime, so
+ *  the editor's panel, the baseline library's test and the export pipeline
+ *  cannot disagree about what a document asks for. */
+export const declaredBindings = declaredBindingsOf;
 
 /** The binding context the runtime renders with — the editor and the export
  *  build it the same way, which is what keeps the preview honest. */

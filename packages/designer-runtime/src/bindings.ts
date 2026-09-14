@@ -101,3 +101,39 @@ export function resolveRef(ctx: BindingContext, value: string | undefined): stri
   if (!isBinding(value)) return value
   return ctx.values[normaliseBinding(value)] ?? null
 }
+
+/**
+ * Every binding a document names, in document order, deduplicated.
+ *
+ * In the runtime rather than the app because three callers want it: the
+ * editor's dynamic-field panel, the baseline library's own test, and the
+ * export pipeline, which has to know what to resolve before it renders.
+ */
+export function declaredBindingsOf(doc: {
+  layers: ReadonlyArray<unknown>
+  background?: { color?: string } | undefined
+}): string[] {
+  const found: string[] = []
+  const add = (raw: unknown) => {
+    if (typeof raw !== 'string') return
+    const path = normaliseBinding(raw)
+    if (path && isBinding(path) && !found.includes(path)) found.push(path)
+  }
+  for (const raw of doc.layers) {
+    const layer = raw as Record<string, unknown>
+    const text = layer.text as { binding?: string } | undefined
+    const field = layer.field as { binding?: string } | undefined
+    const qr = layer.qr as { binding?: string } | undefined
+    const image = layer.image as { binding?: string } | undefined
+    const shape = layer.shape as { fill?: string; stroke?: string } | undefined
+    add(text?.binding)
+    add(field?.binding)
+    add(qr?.binding)
+    add(image?.binding)
+    add(layer.color)
+    add(shape?.fill)
+    add(shape?.stroke)
+  }
+  add(doc.background?.color)
+  return found
+}
