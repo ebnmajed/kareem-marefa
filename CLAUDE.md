@@ -273,7 +273,20 @@ local Supabase**. The full model — waves, spawn prompt, contracts — is in
 | `checkin` | sonnet | RSV, CHK, the host view | `app/sessions/[id]/{check-in,host}/**`, `lib/dal/{rsvp,checkin}.ts`, `components/checkin/**`, `worker/src/tasks/{promote_waitlist,rotate_codes}.ts`, its tests, `supabase/proposed/checkin/**`, `messages/*/{rsvp,checkin}.json` |
 | `event` | sonnet | EVT, RAT, private Realtime | `app/sessions/[id]/rate/**`, `lib/dal/{comments,reactions,reports,ratings}.ts`, `lib/realtime/**`, `components/event/**`, its tests, `supabase/proposed/event/**`, `messages/*/{event,ratings}.json` |
 
-Later waves (M3 · M4 · M5, then M6 · M7-console, then M8 · M7-branding) are in `TEAM.md`.
+### Ownership map (wave 2 — M3 · M4 · M5, DEC-046)
+
+| Teammate | Model | Tracks | Edits only |
+|---|---|---|---|
+| `notify` | opus | NTF, CAL, the reminder and calendar jobs, the mail transport (sink in dev/CI, Resend at Launch); **owns `public.notify()`, the contract the other two call** | `app/me/{notifications,calendar}/**`, **`app/admin/{emails,reminders}/**` for wave 2**, `app/api/{sessions/[id]/ics,webhooks,calendar}/**`, `lib/dal/{notifications,calendar}.ts`, `components/{notifications,calendar}/**`, `worker/src/{mail,calendar}/**` + its eight tasks, `messages/*/{notifications,calendar}.json`, `supabase/proposed/notify/**`, its tests, `docs/plan/notes/notify.md` |
+| `scoring` | sonnet | PTS, LDR, REC | `app/{leaderboards,me/points}/**`, **`app/admin/{scoring,recognition}/**` for wave 2**, `lib/dal/{points,leaderboards,recognition,scoring-admin}.ts`, `components/scoring/**`, its eight worker tasks, `messages/*/{scoring,leaderboards,recognition}.json`, `supabase/proposed/scoring/**`, its tests, its note |
+| `content` | sonnet | MAT, TSK, photos (EVT-009…015), DSC, PRO-004 | `app/api/{upload,materials,photos}/**`, **`lib/storage/**` (the single path builder)**, `lib/dal/{materials,photos,tasks,search,bookmarks}.ts`, `app/sessions/[id]/materials/**`, `app/me/bookmarks/**`, `components/{materials,photos,viewer,tasks,search}/**`, its four worker tasks + `worker/src/content/**`, `converter/{fixtures,test}/**`, `messages/*/{materials,photos,tasks,search}.json`, `supabase/proposed/content/**`, its tests, its note |
+
+**Wave-2 rules:** tracks never edit wave-1 app code — they hook into M2 from SQL only (a trigger,
+or a `create or replace` of an M2 RPC at its `TODO(notify, M3)` / `TODO(scoring, M4)` call site)
+and the lead promotes it. Jobs are enqueued only through `public.enqueue_job()` (`0025`). The lead
+wires the slots on the event page, the home page, the shell, the propose and browse screens.
+
+Later waves (M6 · M7-console, then M8 · M7-branding) are in `TEAM.md`.
 
 ### Lead-only paths
 

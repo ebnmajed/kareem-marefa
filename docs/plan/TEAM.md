@@ -22,13 +22,43 @@ along its own seams**.
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4) | M6 needs M5; the console half that needs no templates runs alongside | |
 | **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | Launch follows, owner-run |
 
-### Ownership for waves 2–4 (drafts — the lead confirms at each wave's start)
+### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046) and waves 3–4 (drafts)
+
+The wave-2 rows are the ones in `CLAUDE.md` § Agent team and in `.claude/agents/{notify,scoring,content}.md`;
+the agent definition is authoritative for a teammate. Two carve-outs follow DEC-042's pattern —
+`notify` holds `app/admin/{emails,reminders}/**` and `scoring` holds `app/admin/{scoring,recognition}/**`
+for this wave; `console` inherits both at wave 3.
+
+| Teammate | Model | Edits only |
+|---|---|---|
+| `notify` | opus | `src/app/[locale]/app/me/{notifications,calendar}/**`, `src/app/[locale]/app/admin/{emails,reminders}/**`, `src/app/api/{sessions/[id]/ics,webhooks,calendar}/**`, `src/lib/dal/{notifications,calendar}.ts`, `src/components/{notifications,calendar}/**`, `worker/src/{mail,calendar}/**`, `worker/src/tasks/{send_notification,schedule_reminders,send_reminder,rating_prompt,rsvp_nudge,calendar_upsert,calendar_delete,refresh_calendar_tokens}.ts`, `messages/*/{notifications,calendar}.json`, `supabase/proposed/notify/**`, its tests, `docs/plan/notes/notify.md` |
+| `scoring` | sonnet | `src/app/[locale]/app/{leaderboards,me/points}/**`, `src/app/[locale]/app/admin/{scoring,recognition}/**`, `src/lib/dal/{points,leaderboards,recognition,scoring-admin}.ts`, `src/components/scoring/**`, `worker/src/tasks/{award_points,award_presenter_points,evaluate_no_shows,evaluate_streaks,evaluate_badges,evaluate_levels_perks,snapshot_leaderboards,audit_balances}.ts`, `messages/*/{scoring,leaderboards,recognition}.json`, `supabase/proposed/scoring/**`, its tests, its note |
+| `content` | sonnet | `src/app/api/{upload,materials,photos}/**`, `src/lib/storage/**` (the single path builder), `src/lib/dal/{materials,photos,tasks,search,bookmarks}.ts`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/app/[locale]/app/me/bookmarks/**`, `src/components/{materials,photos,viewer,tasks,search}/**`, `worker/src/content/**`, `worker/src/tasks/{convert_document,render_pages,process_photo,rebuild_search}.ts`, `converter/{fixtures,test}/**`, `messages/*/{materials,photos,tasks,search}.json`, `supabase/proposed/content/**`, its tests, its note |
+
+**Wave-2 contracts (DEC-046):**
+
+- **Hooks into M2 are SQL only.** A wave-2 track never edits wave-1 app code; it proposes a trigger
+  or a `create or replace` of an M2 RPC at its marked call site (`TODO(notify, M3)` in `0014`,
+  `TODO(scoring, M4)` in `0015`) and the lead promotes it.
+- **`notify` publishes `public.notify(p_org, p_member, p_category, p_payload, p_key)` on day one**
+  (its first proposed file, promoted at sync 1). `scoring` and `content` call only that function,
+  from their own SQL, and leave a `TODO(notify)` at the call site until it is promoted.
+- **Jobs are enqueued only through `public.enqueue_job()`** (`0025`), never `graphile_worker.add_job`.
+  Keys are `11`'s, verbatim; a re-enqueue with the same key moves the job.
+- **The lead wires the slots** — on the event page `AddToCalendar`, `Materials`, `Photos`, `Tasks`;
+  on the home page `PointsStrip`; in the shell `NotificationBell`; on the propose screen
+  `ProposalMaterials`; on browse `SearchFilters`. Same contract as §2: server components, ids never
+  rows, own data through the owner's DAL, no heading of their own.
+- **Each track proposes its own milestone's schema as its first file**; sync 1 is early so the
+  isolation sweep covers the new tables within hours.
+- **Mail never reaches a provider before Launch.** `worker/src/mail/transport.ts` is an interface:
+  a sink (SMTP to Mailpit on `:54325` locally, an in-memory transport in CI) and Resend, wired at
+  Launch. `RESEND_API_KEY` is never read in development or CI.
+
+### Ownership for waves 3–4 (drafts — the lead confirms at each wave's start)
 
 | Teammate | Edits only |
 |---|---|
-| `notify` | `worker/src/tasks/{notify_*,remind_*,calendar_*}.ts`, `src/lib/dal/notifications.ts`, `src/app/[locale]/app/me/{notifications,calendar}/**`, `src/app/api/{sessions/[id]/ics,webhooks}/**`, `src/components/notifications/**`, `messages/*/notifications.json`, `supabase/proposed/notify/**` |
-| `scoring` | `worker/src/tasks/{award_points,audit_balances,snapshot_*}.ts`, `src/lib/dal/{points,recognition,leaderboards}.ts`, `src/app/[locale]/app/{leaderboards,me/points}/**`, `src/components/scoring/**`, `messages/*/scoring.json`, `supabase/proposed/scoring/**` |
-| `content` | `src/app/api/upload/**`, `src/lib/storage/**` (the single path builder), `src/lib/dal/{materials,photos,tasks,search}.ts`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/components/{materials,photos,viewer}/**`, `worker/src/tasks/{convert_document,render_pages,process_photo}.ts`, `messages/*/materials.json`, `supabase/proposed/content/**` |
 | `designer` | `packages/designer-runtime/**`, `src/app/[locale]/app/admin/{designer,templates}/**`, `src/lib/dal/{designer,certificates}.ts`, `worker/src/tasks/{render_variant,issue_certificates,materialise_font}.ts`, `src/app/[locale]/verify/**`, `messages/*/{designer,certificates}.json`, `supabase/proposed/designer/**` |
 | `console` | `src/app/[locale]/app/admin/**` except `designer`, `templates`, `branding`; `src/lib/dal/admin*.ts`; `messages/*/admin.json`; `supabase/proposed/console/**` |
 | `platform` | `src/app/[locale]/app/platform/**`, `src/lib/dal/platform*.ts`, `worker/src/tasks/{retention_*,anonymise_*,storage_prefix_assert}.ts`, `messages/*/platform.json`, `supabase/proposed/platform/**` |
