@@ -158,14 +158,18 @@ asserted at every step: `rsvps.status`, `check_ins.method = 'code'`, the comment
 rating's stars and non-null `check_in_id`, no live code after completion, the seven-step transition
 chain, the seven `audit_log` actions in order.
 
-**Shipped:** migrations **`0011`–`0023`** (13, `supabase/proposed/` empty) · screens SCR-011, 012,
+### Shipped
+
+Migrations **`0011`–`0023`** (13, `supabase/proposed/` empty) · screens SCR-011, 012,
 014, 015, 016, 017, 018, 041, 042, 043, 046 · DAL modules `proposals`, `sessions`, `rsvp`,
 `checkin`, `comments`, `reactions`, `reports`, `ratings` · the slot contract and all three slots ·
 worker tasks `promote_waitlist`, `rotate_codes`, `start_session`, `complete_session` (clock on an
 every-minute crontab) · message namespaces `proposals`, `sessions`, `admin`, `rsvp`, `checkin`,
 `event`, `ratings` (Arabic first) · **DEC-042 … DEC-045**.
 
-**Definition of done on `b430871` (the lead's final gate run, all on local Supabase; app code last changed at `a3f8497`):**
+### Definition of done on `b430871`
+
+**Gate run: (the lead's final gate run, all on local Supabase; app code last changed at `a3f8497`):**
 
 | Check | Result |
 |---|---|
@@ -185,7 +189,9 @@ every-minute crontab) · message namespaces `proposals`, `sessions`, `admin`, `r
 | CI on PR #12 | ✅ **13/13** on `a3f8497` and on every push since sync 3; final run on `b430871` **13/13 green** (the STATUS commit after it is docs only) |
 | 390 px RTL captures, looked at | ✅ SCR-012, 014, 015, 016, 017, 018, 041, 042, 043, 046 (`.qa-shots/rtl/`; the lead looked at SCR-012) |
 
-**Observed once, recorded honestly:** the first full-suite gate run on this build failed the
+### Observed once, recorded honestly
+
+ the first full-suite gate run on this build failed the
 demonstrable on both profiles, and the artefacts show `next start` stopped answering mid-run
 (`net::ERR_CONNECTION_REFUSED` on a plain navigation on the phone project; Next's own "This page
 couldn't load" on desktop) while two other agents were running suites on the same machine. The
@@ -196,15 +202,21 @@ suite and runs twice concurrently against one `next start` and one Postgres; if 
 it `workers: 1` or a serial project dependency in `playwright.config.ts` (lead-only), and keep the
 stub server's log — a crash names the route, a teardown race does not.
 
-**Deferred, not faked (DEC-045):** `REQ-PRO-004` (M5 materials) · the poster gate of `REQ-SES-001`
+### Deferred, not faked (DEC-045)
+
+ `REQ-PRO-004` (M5 materials) · the poster gate of `REQ-SES-001`
 (M6) · `REQ-EVT-007` reply notifications (M3) · job enqueueing from the RSVP/check-in RPCs (worker
 hosting, OQ-027 at M3; call sites marked) · the native date picker's locale on SCR-043 (M7-console).
 
-**First migration of wave 2, before anyone is spawned:** a table-level guard on `sessions.state`
+### First migration of wave 2, before anyone is spawned
+
+ a table-level guard on `sessions.state`
 (and move the fixtures that set state directly onto the RPCs); decide `audit_log.occurred_at` →
 `clock_timestamp()` at the same time.
 
-**Security findings closed this wave** (each a real hole in the plan or in `0010`): a named
+### Security findings closed this wave
+
+ (each a real hole in the plan or in `0010`): a named
 presenter could be pulled across the tenancy boundary (`0012`); the `03` §7.2 host-topic sample
 had no org check (`0016`); the admin's direct select on `ratings` was an unaudited read of per-rater
 data (`0017`); `check_in()` as sketched rolled back its own attempt row (`0015`, DEC-043).
