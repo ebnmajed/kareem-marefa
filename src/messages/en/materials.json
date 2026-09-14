@@ -49,6 +49,29 @@
       "reasonLabel": "Reason for removal",
       "reasonRequired": "A reason for removal is required.",
       "sessionCompleted": "A presenter cannot remove a material after the session is complete — contact the org admin."
+    },
+    "viewer": {
+      "back": "Back to session materials",
+      "pageOf": "Page {current} of {total}",
+      "thumbnailsLabel": "Pages",
+      "thumbnailLabel": "Go to page {number}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "firstPage": "First page",
+      "lastPage": "Last page",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "download": "Download the original file",
+      "downloadAudited": "This download will be recorded in the audit log.",
+      "downloadUnavailable": "Download is not available for this material.",
+      "states": {
+        "pending": "Preparing the deck…",
+        "rendering": "Preparing the deck…",
+        "failed": "This file could not be converted. Try exporting the deck to PDF and uploading it again.",
+        "keynoteDownloadOnly": "Keynote files are available for download only.",
+        "keynoteHint": "To view the slides inside the platform, export the deck to PDF and upload it — it will then appear in the viewer page by page.",
+        "noPages": "No pages to show."
+      }
     }
   }
 }

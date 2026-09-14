@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getMaterialsPageData } from "@/lib/dal/materials";
@@ -12,11 +13,9 @@ import { formatNumber } from "@/components/sessions/numerals";
 // heading (TEAM.md §3, learned in wave 1: a slot repeating it is announced
 // twice by a screen reader).
 //
-// This is the list only (STORY-MAT-001). The in-browser page-by-page viewer
-// (SCR-013, STORY-MAT-002) is a follow-up: today "Keynote and links" render
-// as a direct link, and pdf/powerpoint materials that have finished
-// converting also render as a link to the source, until the viewer route
-// exists to link to instead.
+// A `pdf`/`powerpoint` material links to SCR-013 (the viewer) once it has
+// finished rendering; Keynote and links never get a viewer link (DEC-006 /
+// REQ-MAT-007) — they render their own affordance instead.
 export async function Materials({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("materials.list");
   const { materials, numerals } = await getMaterialsPageData(locale, sessionId);
@@ -50,6 +49,12 @@ export async function Materials({ sessionId, locale }: SlotProps) {
 
             {m.fontSubstitutionWarning ? (
               <p className="mt-2 text-body-sm text-fg-heading">{t("substitutionWarning.body", { family: m.fontSubstitutionWarning })}</p>
+            ) : null}
+
+            {(m.kind === "pdf" || m.kind === "powerpoint") && m.renderStatus === "ready" ? (
+              <Link href={`/${locale}/app/sessions/${sessionId}/materials/${m.id}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
+                {t("openViewer")}
+              </Link>
             ) : null}
 
             {m.externalUrl ? (

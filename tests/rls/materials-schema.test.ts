@@ -123,6 +123,169 @@ describe("RPC-finalize_material_upload", () => {
   });
 });
 
+const pendingJob = (tx: Tx, key: string) => tx.q<{ task_identifier: string }>(`select task_identifier from graphile_worker.jobs where key = $1`, [key]);
+
+describe("RPC-record_material_conversion", () => {
+  it("service_role_only: authenticated and anon are refused on the grant; service_role succeeds", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[0].claims);
+      expect(await errorCode(() => tx.q(`select public.record_material_conversion($1, '{}', 3, false)`, [versionId]))).toBe(PERMISSION_DENIED);
+      await tx.asAnon();
+      expect(await errorCode(() => tx.q(`select public.record_material_conversion($1, '{}', 3, false)`, [versionId]))).toBe(PERMISSION_DENIED);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_conversion($1, '{}', 3, false)`, [versionId]);
+      await tx.asOwner();
+      const [row] = await tx.q<{ render_status: string }>(`select render_status from public.materials where current_version_id = $1`, [versionId]);
+      expect(row.render_status).toBe("rendering");
+    });
+  });
+
+  it("enqueues render_pages, keyed pages:{version_id}, only on success with a page count", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId: okVersion } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+      const { versionId: failedVersion } = await seedMaterial(tx, f.a.id, f.m2.a.completed, f.a.members[0].memberId);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_conversion($1, '{}', 5, false)`, [okVersion]);
+      await tx.q(`select public.record_material_conversion($1, '{}', null, true)`, [failedVersion]);
+
+      await tx.asOwner();
+      expect((await pendingJob(tx, `pages:${okVersion}`))[0]?.task_identifier).toBe("render_pages");
+      expect(await pendingJob(tx, `pages:${failedVersion}`)).toEqual([]);
+      const [row] = await tx.q<{ render_status: string }>(`select render_status from public.materials where current_version_id = $1`, [failedVersion]);
+      expect(row.render_status).toBe("failed");
+    });
+  });
+
+  it("★ REQ-MAT-011: names the substituted family on the material, not only in a log", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_conversion($1, $2, 2, false)`, [versionId, ["Amiri", "Cairo"]]);
+      await tx.asOwner();
+      const [row] = await tx.q<{ font_substitution_warning: string }>(
+        `select font_substitution_warning from public.materials where current_version_id = $1`,
+        [versionId],
+      );
+      expect(row.font_substitution_warning).toContain("Amiri");
+      expect(row.font_substitution_warning).toContain("Cairo");
+    });
+  });
+
+  it("a call naming a superseded version changes nothing on materials", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // finalize_material_upload() is already promoted (0046) — no applyProposed needed for it.
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId: v1, materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`select public.finalize_material_upload($1, 'v2.pdf', 1000, 'application/pdf', $2)`, [materialId, "9".repeat(64)]);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_conversion($1, '{}', 3, false)`, [v1]); // v1 is no longer current_version_id
+      await tx.asOwner();
+      const [row] = await tx.q<{ render_status: string }>(`select render_status from public.materials where id = $1`, [materialId]);
+      expect(row.render_status).toBe("pending"); // v2's own status from finalize_material_upload, untouched by v1's late report
+    });
+  });
+});
+
+describe("RPC-record_material_pages", () => {
+  it("service_role_only: authenticated is refused on the grant; service_role succeeds and moves render_status to ready", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+      const pages = JSON.stringify([
+        { page_number: 1, image_path: "p1.webp", thumbnail_path: "t1.webp" },
+        { page_number: 2, image_path: "p2.webp", thumbnail_path: "t2.webp" },
+      ]);
+
+      await tx.as(f.a.members[0].claims);
+      expect(await errorCode(() => tx.q(`select public.record_material_pages($1, $2::jsonb)`, [versionId, pages]))).toBe(PERMISSION_DENIED);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_pages($1, $2::jsonb)`, [versionId, pages]);
+      await tx.asOwner();
+      const rows = await tx.q<{ page_number: number; image_path: string }>(
+        `select page_number, image_path from public.material_pages where material_version_id = $1 order by page_number`,
+        [versionId],
+      );
+      expect(rows).toEqual([
+        { page_number: 1, image_path: "p1.webp" },
+        { page_number: 2, image_path: "p2.webp" },
+      ]);
+      const [material] = await tx.q<{ render_status: string }>(`select render_status from public.materials where current_version_id = $1`, [versionId]);
+      expect(material.render_status).toBe("ready");
+    });
+  });
+
+  it("upsert: a second call for the same page number replaces its paths rather than duplicating the row", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.record_material_pages($1, $2::jsonb)`, [versionId, JSON.stringify([{ page_number: 1, image_path: "old.webp", thumbnail_path: "oldt.webp" }])]);
+      await tx.q(`select public.record_material_pages($1, $2::jsonb)`, [versionId, JSON.stringify([{ page_number: 1, image_path: "new.webp", thumbnail_path: "newt.webp" }])]);
+
+      await tx.asOwner();
+      const rows = await tx.q<{ image_path: string }>(`select image_path from public.material_pages where material_version_id = $1`, [versionId]);
+      expect(rows).toEqual([{ image_path: "new.webp" }]);
+    });
+  });
+});
+
+describe("RPC-record_material_download.admin_only", () => {
+  it("a member and a moderator are refused; an admin writes one audit row naming the material and the version", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0005_record_material_download.sql");
+      const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[1].claims);
+      expect(await errorCode(() => tx.q(`select public.record_material_download($1, $2)`, [materialId, versionId]))).toBe(PERMISSION_DENIED);
+
+      await tx.as(f.a.mod.claims);
+      expect(await errorCode(() => tx.q(`select public.record_material_download($1, $2)`, [materialId, versionId]))).toBe(PERMISSION_DENIED);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select public.record_material_download($1, $2)`, [materialId, versionId]);
+
+      await tx.asOwner();
+      const rows = await tx.q<{ action: string; subject_id: string; after: { version_id: string } }>(
+        `select action, subject_id, after from public.audit_log where action = 'material.downloaded' and subject_id = $1`,
+        [materialId],
+      );
+      expect(rows.length).toBe(1);
+      expect(rows[0].after.version_id).toBe(versionId);
+    });
+  });
+
+  it("another org's material is refused, even to that org's own admin", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0005_record_material_download.sql");
+      const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
+
+      await tx.as(f.b.admin.claims);
+      expect(await errorCode(() => tx.q(`select public.record_material_download($1, $2)`, [materialId, versionId]))).toBe("P0002");
+    });
+  });
+});
+
 describe("POL-materials.select.phase", () => {
   it("an 'after' material is invisible to a member until the session is completed; visible to the presenter throughout", async () => {
     await withTx(async (tx) => {

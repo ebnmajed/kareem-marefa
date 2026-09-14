@@ -256,4 +256,119 @@ export async function getMaterialsPageData(locale: string, sessionId: string): P
   return { materials, numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western" };
 }
 
+export interface ViewerPage {
+  pageNumber: number;
+  imageUrl: string;
+  thumbnailUrl: string;
+}
+
+export interface ViewerData {
+  id: string;
+  title: string;
+  kind: MaterialKind;
+  allowDownload: boolean;
+  renderStatus: string;
+  fontSubstitutionWarning: string | null;
+  externalUrl: string | null;
+  pages: ViewerPage[];
+  numerals: "western" | "arabic_indic";
+  /** null for a link kind, or a material with no version yet. */
+  currentVersionId: string | null;
+}
+
+/** SCR-013, the viewer (REQ-MAT-003). `materials_read`'s phase gate and
+ *  `material_pages_storage_read`'s own join back to the same gate (03 §6,
+ *  docs/plan/notes/content.md §1.5) are what actually decide whether this
+ *  returns anything at all — a phase-gated-out or nonexistent material and
+ *  a genuinely absent one are indistinguishable here on purpose (null),
+ *  matching the "a moderator gets a 404, not a message" convention already
+ *  used elsewhere in this codebase.
+ *
+ *  Signed URLs for EVERY page are minted up front (page images are
+ *  small and a deck is capped at 500 pages by the converter itself) rather
+ *  than one Route Handler per page on scroll — a reasonable v1 given 07 §6's
+ *  60-minute page-image expiry; windowed/lazy signing for very large decks
+ *  is a follow-up, not a correctness requirement. */
+export async function getViewerData(locale: string, materialId: string): Promise<ViewerData | null> {
+  if (!z.uuid().safeParse(materialId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+
+  const [{ data: material, error }, { data: settings }] = await Promise.all([
+    supabase
+      .from("materials")
+      .select("id, title, kind, allow_download, render_status, font_substitution_warning, external_url, current_version_id")
+      .eq("id", materialId)
+      .maybeSingle(),
+    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (error) throw new Error(`materials: ${error.message}`);
+  if (!material) return null;
+
+  const numerals = (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western";
+  const base = {
+    id: material.id as string,
+    title: material.title as string,
+    kind: material.kind as MaterialKind,
+    allowDownload: material.allow_download as boolean,
+    renderStatus: material.render_status as string,
+    fontSubstitutionWarning: (material.font_substitution_warning as string | null) ?? null,
+    externalUrl: (material.external_url as string | null) ?? null,
+    numerals,
+    currentVersionId: (material.current_version_id as string | null) ?? null,
+  };
+
+  if (!material.current_version_id || material.render_status !== "ready") {
+    return { ...base, pages: [] };
+  }
+
+  const { data: pageRows, error: pagesError } = await supabase
+    .from("material_pages")
+    .select("page_number, image_path, thumbnail_path")
+    .eq("material_version_id", material.current_version_id)
+    .order("page_number", { ascending: true });
+  if (pagesError) throw new Error(`material_pages: ${pagesError.message}`);
+
+  const pages = await Promise.all(
+    (pageRows ?? []).map(async (p): Promise<ViewerPage> => {
+      const [image, thumb] = await Promise.all([
+        supabase.storage.from("material-pages").createSignedUrl(p.image_path as string, 3600),
+        supabase.storage.from("material-pages").createSignedUrl(p.thumbnail_path as string, 3600),
+      ]);
+      return { pageNumber: p.page_number as number, imageUrl: image.data?.signedUrl ?? "", thumbnailUrl: thumb.data?.signedUrl ?? "" };
+    }),
+  );
+
+  return { ...base, pages };
+}
+
+/** REQ-MAT-005: an admin download is always permitted and always audited;
+ *  a denied member never receives a URL at all — there is nothing here to
+ *  fall back to. Only the `materials` bucket's own storage policy (03 §6),
+ *  joined back to `allow_download`, decides — this function does not
+ *  duplicate that check, it just asks Storage and lets a denial come back
+ *  as no data. */
+export async function getMaterialDownloadUrl(locale: string, materialId: string): Promise<string | null> {
+  const { session, supabase } = await sessionClient(locale);
+
+  const { data: material } = await supabase.from("materials").select("current_version_id").eq("id", materialId).maybeSingle();
+  if (!material?.current_version_id) return null;
+  const { data: version } = await supabase.from("material_versions").select("storage_path").eq("id", material.current_version_id).maybeSingle();
+  if (!version?.storage_path) return null;
+
+  // REQ-MAT-005: an admin's download is always audited. The app cannot
+  // write `audit_log` directly (POL-audit_log.insert) or call write_audit()
+  // itself (service_role-only) — record_material_download() is the door,
+  // re-deriving admin status itself rather than trusting `session.role`
+  // (proposed/content/0005). A presenter downloading their own material
+  // skips this call entirely — 03 §6 names only the admin path as audited.
+  if (session.role === "admin") {
+    const { error: auditError } = await supabase.rpc("record_material_download", { p_material_id: materialId, p_version_id: material.current_version_id });
+    if (auditError) return null;
+  }
+
+  const { data, error } = await supabase.storage.from("materials").createSignedUrl(version.storage_path as string, 300);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
 export type { SniffedKind };
