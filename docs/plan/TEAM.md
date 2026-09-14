@@ -19,10 +19,10 @@ along its own seams**.
 | **0 — done** | lead | Migration `0010` (the M2 schema with RLS, grants, `03` §8.2 rows), the per-namespace messages, the gate lock, `applyProposed()`, `supabase/proposed/`, this document | PR `m2/schema` merged |
 | **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
-| **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4) | M6 needs M5; the console half that needs no templates runs alongside | |
+| **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4, plus the never-built SCR-011) | M6 needs M5; the console half that needs no templates runs alongside | both demonstrables locally: every A12 variant, the detach, both QRs, the serial not-found, 28 parity assertions; a second org invisible to the first with the moderator scope proven by policy; `wave-3/m6-m7` PR green |
 | **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | Launch follows, owner-run |
 
-### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046) and waves 3–4 (drafts)
+### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046)
 
 The wave-2 rows are the ones in `CLAUDE.md` § Agent team and in `.claude/agents/{notify,scoring,content}.md`;
 the agent definition is authoritative for a teammate. Two carve-outs follow DEC-042's pattern —
@@ -55,12 +55,53 @@ for this wave; `console` inherits both at wave 3.
   a sink (SMTP to Mailpit on `:54325` locally, an in-memory transport in CI) and Resend, wired at
   Launch. `RESEND_API_KEY` is never read in development or CI.
 
-### Ownership for waves 3–4 (drafts — the lead confirms at each wave's start)
+### Ownership for wave 3 (confirmed by the owner 2026-09-14, DEC-048) and wave 4 (draft)
+
+The wave-3 rows are the ones in `CLAUDE.md` § Agent team and in `.claude/agents/{designer,console}.md`;
+the agent definition is authoritative for a teammate. `console` inherits the seven admin screens
+wave 1 and wave 2 carved out (`proposals`, `sessions`, `venues` — DEC-042; `scoring`, `recognition`,
+`emails`, `reminders` — DEC-046). Three admin folders are `designer`'s inside `console`'s tree, and
+`branding` waits for wave 4.
+
+| Teammate | Model | Edits only |
+|---|---|---|
+| `designer` | opus | `packages/designer-runtime/**`, `packages/storage-paths/src/designer.ts`, `src/app/[locale]/app/admin/{designer,templates}/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`, `src/app/[locale]/app/me/certificates/**`, `src/app/[locale]/verify/**`, `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `src/components/{designer,posters,certificates}/**`, `worker/src/render/**`, `worker/src/tasks/{render_variant,regenerate_poster,issue_certificates,materialise_font}.ts`, `scripts/parity/**` except `goldens/**`, `messages/*/{designer,templates,certificates}.json`, `supabase/proposed/designer/**`, its tests, `docs/plan/notes/designer.md` |
+| `console` | sonnet | `src/app/[locale]/app/admin/**` except `designer/**`, `templates/**`, `sessions/[id]/certificates/**`, `branding/**` (so the new `admin/layout.tsx` and `admin/page.tsx` are its), `src/app/[locale]/app/sessions/page.tsx` (SCR-011 only), `src/app/api/admin/**`, `src/lib/dal/admin*.ts`, `src/lib/dal/scoring-admin.ts`, add-only admin functions in `src/lib/dal/{sessions,proposals,notifications,recognition,checkin}.ts`, `src/components/{admin,browse}/**`, `messages/*/{admin,browse}.json`, `supabase/proposed/console/**`, its tests, `docs/plan/notes/console.md` |
+
+**Wave-3 contracts (DEC-048):**
+
+- **The engine is settled.** DOM/SVG in the editor, headless Chromium in the worker image, Tier A
+  parity on every render — as the harness proves (D66, A28, DEC-024, DEC-028). No raster canvas,
+  no HarfBuzz fallback, no render route in the Next app.
+- **`designer` publishes three slots as no-op placeholders on day one:** `<SessionPoster sessionId locale />`
+  (`@/components/posters/session-poster` — the event page's item 1, wired by the lead; the browse
+  cards, imported by `console`), `<PosterPicker sessionId locale />` (`@/components/posters/picker` —
+  the three poster paths on SCR-043, DEC-012; `console` holds the screen, the lead wires the slot),
+  `<CertificateModeBadge sessionId locale />` (`@/components/certificates/mode-badge`). Same rules
+  as §2: server components, ids never rows, own data through the owner's DAL, no heading of their own.
+- **`console` publishes the admin shell:** `src/app/[locale]/app/admin/layout.tsx` — the staff gate
+  and sub-nav listing every admin route including `designer`'s. Its route list goes in
+  `docs/plan/notes/console.md` on day one and never changes without the lead hearing.
+- **Hooks into M2–M5 are SQL only**, as in wave 2: a trigger on `sessions` (publish → posters,
+  complete → certificate fan-out, a change → `regenerate_poster`), or a `create or replace` of an
+  earlier RPC in the proposed folder, promoted by the lead. Certificate mail is `public.notify()`
+  (`MSG-certificate_issued`); no track writes `notifications`.
+- **Goldens change only through a lead-reviewed diff** (`REQ-DSG-015`): `designer` runs `--update`,
+  the lead looks at the before and after and commits `scripts/parity/goldens/**`.
+- **`worker/src/index.ts` and `worker/Dockerfile` stay the lead's.** `designer` hands over the four
+  task registrations and the `render` queue's concurrency of 2 (`11` §1.4); the image already carries
+  Chromium at `CHROME_PATH`, the runtime and the font set, and CI runs the parity harness inside it.
+- **The brand kit is a token contract this wave, a screen next wave.** `designer` resolves
+  `{{brand.*}}` from the platform defaults (`06` §8.3); wave 4's `branding` supplies the org override
+  through `src/lib/brand/**`, which does not exist yet.
+- **SCR-011 is `console`'s first story.** The page reads the URL params `src/lib/dal/search.ts`
+  already defines, calls `searchSessions()`, and renders `content`'s `<SearchFilters>` and
+  `<BookmarkButton>` unchanged.
+
+### Ownership for wave 4 (draft — the lead confirms at the wave's start)
 
 | Teammate | Edits only |
 |---|---|
-| `designer` | `packages/designer-runtime/**`, `src/app/[locale]/app/admin/{designer,templates}/**`, `src/lib/dal/{designer,certificates}.ts`, `worker/src/tasks/{render_variant,issue_certificates,materialise_font}.ts`, `src/app/[locale]/verify/**`, `messages/*/{designer,certificates}.json`, `supabase/proposed/designer/**` |
-| `console` | `src/app/[locale]/app/admin/**` except `designer`, `templates`, `branding`; `src/lib/dal/admin*.ts`; `messages/*/admin.json`; `supabase/proposed/console/**` |
 | `platform` | `src/app/[locale]/app/platform/**`, `src/lib/dal/platform*.ts`, `worker/src/tasks/{retention_*,anonymise_*,storage_prefix_assert}.ts`, `messages/*/platform.json`, `supabase/proposed/platform/**` |
 | `branding` | `src/app/[locale]/app/admin/branding/**`, `src/lib/brand/**`, `messages/*/branding.json`, `supabase/proposed/branding/**` |
 
