@@ -17,7 +17,7 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["branding/0001_brand_kits.sql"];
+const PROPOSED = ["branding/0001_brand_kits.sql", "branding/0002_regenerate_posters_on_save.sql"];
 
 const SHA = (c: string) => c.repeat(64).slice(0, 64);
 
@@ -58,8 +58,18 @@ async function setup(tx: Tx) {
   // The fixture's inserts fired the history trigger too; the history cases
   // count from zero.
   await tx.q(`delete from public.scoring_config_history where scope = 'branding'`);
+  // The M6 fixture's own inserts never went through publish_session() or a
+  // presenter add/remove, so they fire neither poster hook (0063) — but
+  // clearing is cheap and makes every job-count assertion below exact
+  // regardless of what an earlier fixture change adds.
+  await tx.q(`delete from graphile_worker._private_jobs`);
   return f;
 }
+
+const posterJobs = (tx: Tx) =>
+  tx.q<{ key: string; queue_name: string }>(
+    `select key, queue_name from graphile_worker.jobs where task_identifier = 'regenerate_poster'`,
+  );
 
 const saveKit = (tx: Tx, logoAssetId: string | null, headingFontId: string | null, bodyFontId: string | null) =>
   tx.q<{ id: string; org_id: string }>(
@@ -350,6 +360,86 @@ describe("POL-export_render_context.grant", () => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
       expect(await errorCode(() => tx.q(`select * from public.export_render_context($1)`, [f.m6.a.artifactId]))).toBe(PERMISSION_DENIED);
+    });
+  });
+});
+
+// 06 §8.3's demonstrable: "an org admin changes one colour … and a poster
+// re-render … all change." save_brand_kit()/reset_brand_kit() re-enqueue
+// every LIVE poster in the org so the render worker resolves {{brand.*}}
+// again at request time (0063, DEC-053 decision 2) — a customised poster is
+// left alone (DEC-012), and the isolation this whole file is otherwise
+// about applies here too: org B's session never gets a job from org A's
+// save. supabase/proposed/branding/0002_regenerate_posters_on_save.sql.
+describe("POL-save_brand_kit.regenerates_live_posters", () => {
+  it("★ saving enqueues regenerate_poster once for the org's live poster, and not for org B's", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, null, null, null);
+
+      await tx.asOwner();
+      const jobs = await posterJobs(tx);
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0]?.key).toBe(`poster:${f.m2.a.published}`);
+      expect(jobs[0]?.queue_name).toBe("render");
+    });
+  });
+
+  it("a second save in the same burst MOVES the job rather than duplicating it (11 §1.1)", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, null, null, null);
+      await saveKit(tx, null, null, null);
+
+      await tx.asOwner();
+      expect(await posterJobs(tx)).toHaveLength(1);
+    });
+  });
+
+  it("a CUSTOMISED (detached) poster is left alone — DEC-012's asymmetry", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      await tx.q(`update public.session_posters set binding = 'detached', mode = 'customised', detached_at = now() where id = $1`, [f.m6.a.posterId]);
+
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, null, null, null);
+
+      await tx.asOwner();
+      expect(await posterJobs(tx)).toEqual([]);
+    });
+  });
+});
+
+describe("POL-reset_brand_kit.regenerates_live_posters", () => {
+  it("resetting an existing kit enqueues the org's live poster too", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, null, null, null);
+      await tx.asOwner();
+      await tx.q(`delete from graphile_worker._private_jobs`);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select public.reset_brand_kit()`);
+
+      await tx.asOwner();
+      const jobs = await posterJobs(tx);
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0]?.key).toBe(`poster:${f.m2.a.published}`);
+    });
+  });
+
+  it("resetting an org with no kit enqueues nothing", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select public.reset_brand_kit()`);
+
+      await tx.asOwner();
+      expect(await posterJobs(tx)).toEqual([]);
     });
   });
 });
