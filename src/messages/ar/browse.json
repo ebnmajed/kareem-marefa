@@ -1,0 +1,30 @@
+{
+  "browse": {
+    "title": "الجلسات",
+    "intro": "تصفّح جلسات مؤسستك وابحث عن الجلسة التي تهمّك.",
+    "empty": "لا جلسات تطابق بحثك",
+    "clearFilters": "امسح الفلاتر",
+    "count": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}",
+    "filterSheet": {
+      "open": "الفلاتر",
+      "title": "فلترة الجلسات",
+      "close": "أغلق"
+    },
+    "card": {
+      "whenLabel": "الموعد",
+      "levelLabel": "المستوى",
+      "languageLabel": "لغة الجلسة",
+      "level": {
+        "introductory": "تمهيدي",
+        "intermediate": "متوسط",
+        "advanced": "متقدم"
+      },
+      "language": {
+        "ar": "العربية",
+        "en": "الإنجليزية"
+      },
+      "cancelledBadge": "جلسة ملغاة",
+      "inProgressBadge": "جارية الآن"
+    }
+  }
+}

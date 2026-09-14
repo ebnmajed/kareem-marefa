@@ -166,8 +166,32 @@ async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
+  // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
+  // (`scrollWidth - clientWidth` is the scrollbar's width on every RTL page that
+  // scrolls vertically); then which element is responsible, skipping permitted
+  // scroll containers and fixed overlays. Names what to fix.
+  // Phone project only: a desktop context at 390 px carries a classic scrollbar
+  // that inflates scrollWidth on every page that scrolls vertically.
+  const overflow = test.info().project.name !== "phone" ? [] : await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
@@ -180,7 +204,12 @@ test("the Materials slot shows the substitution warning on the material, and lin
   await expect(page.getByText("Amiri")).toBeVisible();
   await review(page, "materials-event-page");
 
-  await page.getByRole("link", { name: "فتح العارض" }).click();
+  // Phone emulation keeps re-scrolling this long page while Playwright waits
+  // for the link to hold still (TEAM.md §5); the tap is dispatched to the
+  // (visible) link and the viewer page below is the assertion that matters.
+  const open = page.getByRole("link", { name: "فتح العارض" });
+  await expect(open).toBeVisible();
+  await open.dispatchEvent("click");
   await expect(page).toHaveURL(new RegExp(`/materials/${materialId}$`));
 });
 
@@ -189,6 +218,11 @@ test("★ REQ-MAT-003/010: the viewer's arrows follow the RTL reading direction 
   await signIn(context, memberEmail);
   await page.goto(`/ar/app/sessions/${sessionId}/materials/${materialId}`);
   await expect(page.getByTestId("page-indicator")).toHaveText(/1.*3/);
+  // The arrows are a window keydown handler attached on hydration; a key
+  // pressed before the client bundle has run is lost (deterministic on the
+  // desktop project since the event page grew heavier in wave 3). Wait for
+  // the network to settle — hydration included — before the first press.
+  await page.waitForLoadState("networkidle");
 
   await page.keyboard.press("ArrowLeft"); // RTL: left = forward
   await expect(page.getByTestId("page-indicator")).toHaveText(/2.*3/);

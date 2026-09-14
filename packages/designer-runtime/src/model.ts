@@ -56,6 +56,36 @@ interface LayerBase {
    *  editor (REQ-DSG-024) — a certificate whose QR was dragged off the page
    *  cannot be verified, and that only shows up after printing. */
   locked?: boolean
+  /** Hidden is listed beside moved, resized and deleted in REQ-DSG-024, so it
+   *  has to be a field the guard can see rather than an opacity of 0 nobody
+   *  recognises as hiding. */
+  hidden?: boolean
+  /** The label in the editor's layer list. Never rendered. Falls back to the
+   *  binding or the literal, so a template author is not forced to name
+   *  every layer twice. */
+  name?: string
+  /** Per-preset anchor and scale behaviour (06 §5.1). `default` applies to
+   *  every preset that names no override. Typed loosely here and resolved in
+   *  `presets.ts`, so the model does not import the preset table and the
+   *  preset table does not have to re-declare the layer. */
+  presets?: { default?: LayerPresetOverride } & Partial<Record<string, LayerPresetOverride>>
+  /** Presets this layer does not survive. 06 §5.1: «layers that do not
+   *  survive a crop are DECLARED, not discovered» — an `og` card is 1200×630
+   *  and a three-line abstract does not belong on it, and finding that out
+   *  from a cramped link preview is finding it out too late. */
+  hideAt?: string[]
+}
+
+/** The shape of one per-preset override. `presets.ts` owns the meaning. */
+export interface LayerPresetOverride {
+  anchor?: 'block-start' | 'block-end' | 'center'
+  scale?: 'proportional' | 'fixed' | 'fill'
+  /** The per-variant crop override (A32, REQ-DSG-020). Automatic cropping
+   *  gets some cases wrong — a poster with its title at the bottom, a logo
+   *  in a corner a 16:9 crop would cut — and this is the escape hatch: the
+   *  admin adjusts the crop for THAT variant, and the others keep the
+   *  layer's own focal point. */
+  focal?: { x: number; y: number }
 }
 
 export interface TextLayer extends LayerBase {
@@ -129,4 +159,33 @@ export interface ManifestFont {
   script?: string
   sha256: string
   bytes?: number
+  /** The CSS `unicode-range` this face covers. The manifest lists one entry
+   *  per (family, weight, style, SCRIPT), and two faces of the same family
+   *  declared without a range do not merge coverage — the LAST one wins for
+   *  every character, so a mixed «جلسة عن Next.js» loses its Latin to a host
+   *  font. Optional: a consumer that inlines a single face (the parity
+   *  harness) omits it and the declaration is unchanged. */
+  unicodeRange?: string
 }
+
+/**
+ * The Arabic subset's range, as Google Fonts publishes it.
+ *
+ * ★ NOT APPLIED, and the reason is measured rather than reasoned. A family
+ * whose Arabic and Latin subsets are two files looks like it needs a range
+ * on each — and giving one to the Arabic face alone makes Arabic WORSE: the
+ * unranged Latin face still matches every character and, being declared
+ * last, still wins, but now the browser resolves the missing glyph to a
+ * SYSTEM font instead of falling back to the Arabic face in the same
+ * family. Measured on IBM Plex Sans Arabic: «محمد» is 88.05 with no ranges
+ * and 76.02 — the system fallback's own width — with the range.
+ *
+ * With no ranges at all, CSS font matching does the right thing by itself:
+ * the last face wins, and when it lacks the glyph the search continues
+ * through the rest of the family before leaving it. So the faces are
+ * declared plainly and this constant is kept only to name what was tried.
+ */
+export const ARABIC_UNICODE_RANGE =
+  'U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+200C-200E, U+2010-2011, U+204F, ' +
+  'U+2E41, U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7E, U+1EE00-1EEFF'
+

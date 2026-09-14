@@ -401,6 +401,8 @@ label in the correct order.
 **Note:** publishing is **blocked by a database constraint**, not only by the form (`02` §4.3) —
 date, time, venue, capacity and poster are all required.
 
+**Amended under DEC-050 (wave 3):** the date-time fields are the RTL picker DEC-045 deferred (a trigger whose accessible name carries its value, a day grid labelled by full date, hour and minute selects); the poster section («الملصق») hosts `designer`'s `PosterPicker` with DEC-012's three paths.
+
 ### SCR-044 · `/app/admin/sessions/[id]/attendance`
 **Serves:** `REQ-CHK-008`, `REQ-CHK-012` · Reserved / confirmed / checked in / walked in /
 no-showed, with arrival times.
@@ -423,6 +425,8 @@ cooldown and enablement.
 **Note:** the catalogue is **fixed** — an admin edits values, never adds an action. `الحجز` and
 `التفاعل` **do not appear**, because they are not configurable at zero; they are absent
 (`REQ-PTS-010`). Negative actions appear grouped, at 0, with «مغلق افتراضيًا».
+
+**Amended under DEC-050 (wave 3), SCR-054:** `/app/admin/recognition` hosts «شهادات الإنجاز بانتظار الإصدار» — the release of HELD achievement certificates (`HeldAchievements`). `REQ-CRT-012` gives an admin the release; SCR-045 is per session and an achievement certificate has no session, so it lives here. SCR-053's manual adjustment has a member picker instead of a typed UUID.
 
 ### SCR-057 · `/app/admin/designer/[documentId]` ★
 **Purpose:** the shared designer. **Serves:** `REQ-DSG-005`, `REQ-DSG-010`, `REQ-DSG-022`

@@ -108,6 +108,35 @@ export async function listSessionsForAdmin(locale: string): Promise<AdminSession
   }));
 }
 
+// ── console (wave 3) — added for SCR-044, never changes the DTO/signature above ──
+
+export interface AttendanceSessionRow {
+  id: string;
+  title: string;
+  state: SessionState;
+  startsAt: string | null;
+}
+
+/**
+ * SCR-044's own entry point (docs/plan/notes/console.md's moderator/
+ * `/sessions` decision): a moderator has no reason to see full session
+ * management (`REQ-ADM-005` is admin-only — edit/cancel/publish are exactly
+ * the "scheduling endpoint" `REQ-ADM-020` keeps out of a moderator's
+ * reach), but DOES have a reason to reach a session's attendance report
+ * (`REQ-CHK-008`/`REQ-CHK-012`, `REQ-ADM-020`'s "event-day operations").
+ * `admin/sessions/page.tsx` branches on role and renders this minimal list
+ * — id, title, state, start time, nothing else — with only an attendance
+ * link, for a moderator; an admin keeps the full page exactly as it was.
+ */
+export async function listSessionsForAttendance(locale: string): Promise<AttendanceSessionRow[] | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+
+  const { data, error } = await supabase.from("sessions").select("id, title, state, starts_at").order("starts_at", { ascending: false, nullsFirst: false });
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  return (data ?? []).map((r) => ({ id: r.id, title: r.title, state: r.state as SessionState, startsAt: r.starts_at }));
+}
+
 /**
  * Approved proposals with no session yet (SCR-042's «جاهزة للجدولة»).
  *

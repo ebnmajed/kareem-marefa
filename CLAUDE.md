@@ -38,7 +38,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 | 2 | **`registrations` is never dropped, altered, or read by platform code** | Frozen legacy holding real pre-launch signups (DEC-002). |
 | 3 | **Every migration is forward-only** and tested against production-shaped data first | There is one Supabase project today and it is production. |
 | 4 | **`main` stays deployable** | Every milestone ships to the live domain. |
-| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Four documented exceptions only (`02` §7). |
+| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Five documented exceptions only (`02` §7; the fifth, `fonts`, is DEC-049). |
 | 6 | **Every policy has a matching `grant`** | A policy without one fails `42501`. Migration `0002` exists *solely* because `0001` forgot it. |
 | 7 | **`service_role` is never on Vercel** | Anything needing it is a worker job. |
 | 8 | **No super-admin disjunct in any RLS policy** | DEC-014. It would reduce D3 to "one claim is correct". |
@@ -286,7 +286,20 @@ or a `create or replace` of an M2 RPC at its `TODO(notify, M3)` / `TODO(scoring,
 and the lead promotes it. Jobs are enqueued only through `public.enqueue_job()` (`0025`). The lead
 wires the slots on the event page, the home page, the shell, the propose and browse screens.
 
-Later waves (M6 · M7-console, then M8 · M7-branding) are in `TEAM.md`.
+### Ownership map (wave 3 — M6 · M7-console, DEC-048)
+
+| Teammate | Model | Tracks | Edits only |
+|---|---|---|---|
+| `designer` | opus | DSG, CRT, the four render/issue/font jobs; **owns the renderer every export shares and the three poster/certificate slots** | `packages/designer-runtime/**`, `packages/storage-paths/src/designer.ts`, `app/admin/{designer,templates}/**`, `app/admin/sessions/[id]/certificates/**`, `app/me/certificates/**`, `verify/**`, `app/api/{designer,fonts,certificates}/**`, `lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `components/{designer,posters,certificates}/**`, `worker/src/render/**` + its four tasks, `scripts/parity/**` minus `goldens/`, `messages/*/{designer,templates,certificates}.json`, `supabase/proposed/designer/**`, its tests, its note |
+| `console` | sonnet | ADM-003 … 008 minus templates and branding, SCR-044, **SCR-011 (browse, first story)**, the RTL date-time picker, the member picker, `08`'s fourth reminder message; **inherits the seven M2–M4 admin screens** | `app/admin/**` except `designer`, `templates`, `sessions/[id]/certificates`, `branding` (the new `admin/layout.tsx` is its), `app/sessions/page.tsx` only, `app/api/admin/**`, `lib/dal/admin*.ts`, `lib/dal/scoring-admin.ts`, add-only admin functions in the wave-1/2 DAL modules, `components/{admin,browse}/**`, `messages/*/{admin,browse}.json`, `supabase/proposed/console/**`, its tests, its note |
+
+**Wave-3 rules:** the engine is settled — DOM/SVG editor, headless Chromium in the worker image,
+Tier A on every render (D66, A28, DEC-048); goldens change only through a lead-reviewed diff.
+`designer` publishes `SessionPoster`, `PosterPicker` and `CertificateModeBadge` as placeholders on
+day one; `console` publishes the admin shell with every admin route. `worker/src/index.ts` and the
+image stay the lead's. Branding, the brand-kit screen and the platform library are wave 4's.
+
+Wave 4 (M8 · M7-branding) is in `TEAM.md`.
 
 ### Lead-only paths
 

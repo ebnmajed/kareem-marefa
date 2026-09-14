@@ -1,0 +1,284 @@
+// SCR-011 · /app/sessions — browse and search, against REAL local Supabase
+// (REQ-DSC-003, REQ-DSC-005, REQ-DSC-007, REQ-SES-011). `console`'s first
+// story this wave (DEC-048). Proves the real page wiring `searchSessions()`
+// (content's DAL, unchanged) to the URL's own filter params, `<SearchFilters>`
+// (content's) embedded in the responsive filter placement, and
+// `<BookmarkButton>` (content's) toggled from a real card.
+import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import pg from "pg";
+
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
+const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
+const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
+test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+const PASSWORD = "correct-horse-battery-staple-9";
+const PHONE = { width: 390, height: 844 };
+
+test.describe.configure({ mode: "serial" });
+
+let admin: ReturnType<typeof createClient>;
+let db: pg.Client;
+let orgId = "";
+let domain = "";
+let memberEmail = "";
+let categoryAiId = "";
+let sessionAiId = "";
+let sessionTimeId = "";
+const userIds: string[] = [];
+
+test.beforeAll(async ({}, testInfo) => {
+  admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
+  db = new pg.Client(DB_URL);
+  await db.connect();
+  const tag = `${testInfo.workerIndex}-${Date.now()}`;
+  domain = `browse-e2e-${tag}.example`;
+  memberEmail = `member@${domain}`;
+
+  const { rows: orgRows } = await db.query<{ id: string }>(
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة التصفّح', $1, 'BR', gen_random_uuid()) returning id`,
+    [`browse-e2e-${tag}`],
+  );
+  orgId = orgRows[0].id;
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+
+  const { rows: catRows } = await db.query<{ id: string }>(
+    `insert into public.categories (org_id, name) values ($1, 'ذكاء اصطناعي'), ($1, 'إدارة الوقت') returning id`,
+    [orgId],
+  );
+  categoryAiId = catRows[0].id;
+  const categoryTimeId = catRows[1].id;
+  const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة التصفّح', 40) returning id`, [orgId]);
+  const venueId = venueRows[0].id;
+
+  const { rows: sessRows } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
+     values
+       ($1, 'جلسة الذكاء الاصطناعي التوليدي', 'نظرة عملية على أدوات الذكاء الاصطناعي.', $2, 'introductory', now() + interval '3 days', 60, now() + interval '3 days' + interval '1 hour', $4, 30, 'published', now() - interval '1 day'),
+       ($1, 'جلسة إدارة الوقت الفعّالة', 'أدوات وعادات لإدارة وقتك بذكاء.', $3, 'introductory', now() + interval '4 days', 60, now() + interval '4 days' + interval '1 hour', $4, 30, 'published', now() - interval '1 day')
+     returning id`,
+    [orgId, categoryAiId, categoryTimeId, venueId],
+  );
+  sessionAiId = sessRows[0].id;
+  sessionTimeId = sessRows[1].id;
+
+  const { data, error } = await admin.auth.admin.createUser({ email: memberEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو التصفّح" } });
+  if (error) throw error;
+  userIds.push(data.user.id);
+});
+
+test.afterAll(async () => {
+  for (const id of userIds) await admin.auth.admin.deleteUser(id);
+  if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
+  await db.end();
+});
+
+async function signIn(context: BrowserContext, email: string) {
+  const jar: { name: string; value: string }[] = [];
+  const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
+    cookies: { getAll: () => jar, setAll: (list) => { for (const { name, value } of list) jar.push({ name, value }); } },
+  });
+  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  if (error) throw error;
+  const { error: rpcError } = await client.rpc("provision_member");
+  if (rpcError) throw rpcError;
+  jar.length = 0;
+  await client.auth.refreshSession();
+  await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
+}
+
+// The `phone` project runs every test at a narrow viewport by default
+// (playwright.config.ts, Pixel 7) — the filter form lives inside
+// `<SearchFilters>`'s bottom sheet (`FilterSheet`), opened only through this
+// toggle; the desktop rail shows the same content unconditionally, so the
+// toggle is simply absent there. `.isVisible()` alone is not enough to
+// decide "absent on desktop" from "not yet streamed in on phone": this
+// route's shell can still be resolving a Suspense boundary for a few
+// hundred ms after `goto()` returns, during which the toggle briefly sits
+// inside a hidden placeholder and every locator against it reports empty —
+// indistinguishable, to a single unpolled `.isVisible()` check, from
+// "desktop, no toggle at all". `waitFor` polls instead of sampling once.
+// Returns the scope the filter FORM now lives in: `<FilterSheet>` (content's,
+// `src/components/browse/filter-sheet.tsx`) renders `<SearchFilters>` as
+// `children` in TWO places at once — the desktop `<aside>` (always mounted,
+// `hidden md:block`) and, once opened, the mobile dialog — so once the
+// sheet is open there are two real `<input name="q">`s in the DOM. A
+// role-based locator (`getByRole`) only matches the accessibility tree,
+// which excludes the CSS-`hidden` aside, but `getByLabel` matches both and
+// a caller doing `.fill()` on it hits a strict-mode violation. Callers on
+// phone must scope every filter-form lookup to the returned locator;
+// desktop callers can use `page` directly since only the aside ever exists.
+async function openMobileFilterSheetIfPresent(page: Page): Promise<Page | ReturnType<Page["getByRole"]>> {
+  const toggle = page.getByRole("button", { name: "الفلاتر" });
+  const present = await toggle
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!present) return page;
+  await toggle.click();
+  return page.getByRole("dialog");
+}
+
+async function review(p: Page, name: string) {
+  const project = test.info().project.name;
+  expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
+  await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
+  // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
+  // document the vertical scrollbar sits on the left, so that difference is the
+  // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
+  // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
+  const overflow = await p.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+    // phone project innerWidth already includes no classic scrollbar.)
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    // Second: which element is responsible. An element inside an
+    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+    // tables), and a `position: fixed` overlay spans the visual viewport by
+    // design; neither makes the page scroll, so neither is named.
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
+  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
+}
+
+test("both sessions list on the unfiltered page", async ({ context, page }) => {
+  await signIn(context, memberEmail);
+  await page.goto("/ar/app/sessions");
+  await expect(page.getByRole("heading", { name: "الجلسات", level: 1 })).toBeVisible();
+  await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
+  await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).toBeVisible();
+});
+
+test("REQ-DSC-005: a category filter narrows the results, and its chip clears it (REQ-DSC-005)", async ({ context, page }) => {
+  await signIn(context, memberEmail);
+  await page.goto(`/ar/app/sessions?category=${categoryAiId}`);
+
+  await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
+  await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).not.toBeVisible();
+
+  await openMobileFilterSheetIfPresent(page);
+
+  // The active filter is visible as a removable chip (content's own
+  // filters-form.tsx renders the raw param value, so the chip's own text is
+  // the category's id here — this test asserts on the mechanism, not the
+  // label).
+  const chip = page.getByRole("button", { name: new RegExp(categoryAiId) });
+  await expect(chip).toBeVisible();
+  await chip.click();
+  await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).toBeVisible();
+});
+
+test("REQ-DSC-003: a text search matches the session whose title carries it", async ({ context, page }) => {
+  await signIn(context, memberEmail);
+  await page.goto("/ar/app/sessions");
+  // Same mobile-sheet gap as the category-chip test above: on the `phone`
+  // project the search field lives inside `<SearchFilters>`'s bottom sheet,
+  // closed by default, while the desktop rail shows it unconditionally —
+  // open the sheet only if the toggle exists. Unlike the chip test's
+  // role-based lookup, `getByLabel` is not accessibility-tree-scoped, so
+  // once the sheet is open both the hidden desktop copy and the open
+  // dialog's copy of the search field match — scope to the sheet's own
+  // returned locator to get the one dialog actually holds.
+  const scope = await openMobileFilterSheetIfPresent(page);
+  await scope.getByLabel("ابحث عن جلسة").fill("الذكاء الاصطناعي");
+  await scope.getByRole("button", { name: "تطبيق" }).click();
+  await expect(page).toHaveURL(/[?&]q=/);
+  await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
+  await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).not.toBeVisible();
+});
+
+test("REQ-DSC-006: bookmarking from the list toggles the button and persists", async ({ context, page }) => {
+  await signIn(context, memberEmail);
+  await page.goto("/ar/app/sessions");
+  const card = page.locator("li", { has: page.getByText("جلسة الذكاء الاصطناعي التوليدي") });
+  await expect(card.getByRole("button", { name: "أضف إلى المحفوظات" })).toBeVisible();
+  await card.getByRole("button", { name: "أضف إلى المحفوظات" }).click();
+  // Not a reliable "the server call finished" signal: `BookmarkButton`
+  // (content's own component) flips this label from its optimistic
+  // `setBookmarked(next)`, which runs synchronously on click, before
+  // `toggleBookmarkAction`'s round trip to Postgres has even started. The
+  // DB assertion right after would then race a write that has not landed
+  // yet — the same class of bug already found in the admin-members role
+  // change test (`admin-members.spec.ts`). `expect.poll` retries the query
+  // instead of trusting the button text as a completion signal.
+  await expect(card.getByRole("button", { name: "إزالة من المحفوظات" })).toBeVisible();
+
+  await expect
+    .poll(async () => (await db.query(`select 1 from public.bookmarks where session_id = $1`, [sessionAiId])).rows.length)
+    .toBe(1);
+
+  await page.reload();
+  const cardAfterReload = page.locator("li", { has: page.getByText("جلسة الذكاء الاصطناعي التوليدي") });
+  await expect(cardAfterReload.getByRole("button", { name: "إزالة من المحفوظات" })).toBeVisible();
+});
+
+test("the empty state offers a way back when a filter matches nothing", async ({ context, page }) => {
+  await signIn(context, memberEmail);
+  await page.goto("/ar/app/sessions?q=لا-يوجد-شيء-بهذا-الاسم");
+  await expect(page.getByText("لا جلسات تطابق بحثك")).toBeVisible();
+  await page.getByRole("link", { name: "امسح الفلاتر" }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
+});
+
+test("SCR-011 at 390 px RTL: results read down the page, and the mobile filter sheet opens without sideways scroll", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+  await page.setViewportSize(PHONE);
+  await signIn(context, memberEmail);
+  await page.goto("/ar/app/sessions");
+  await review(page, "scr-011-browse");
+
+  await page.getByRole("button", { name: "الفلاتر" }).click();
+  await expect(page.getByRole("dialog", { name: "فلترة الجلسات" })).toBeVisible();
+  // Layout-viewport measurement, as above (TEAM.md §5).
+  const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+    // phone project innerWidth already includes no classic scrollbar.)
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    // Second: which element is responsible. An element inside an
+    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+    // tables), and a `position: fixed` overlay spans the visual viewport by
+    // design; neither makes the page scroll, so neither is named.
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, "the filter sheet must not scroll sideways at 390 px").toEqual([]);
+  await page.screenshot({ path: `.qa-shots/rtl/scr-011-browse-filter-sheet-390-rtl-${test.info().project.name}.png`, fullPage: true });
+});
+
+// sessionTimeId is asserted indirectly (its title's absence) throughout;
+// referencing it here keeps the seed's intent legible to a future reader.
+void sessionTimeId;

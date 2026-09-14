@@ -69,6 +69,8 @@ check-in's points while the member is looking at the screen.
 
 ---
 
+**Note under DEC-050 (wave 3):** `render` is a named graphile-worker queue, and a named queue runs one job at a time — renders are serial today (a floor of 1 where this section asks for 2). Two is two queue names chosen by hash in `request_render()`, not a second process; deferred until a measured need.
+
 ## 2. Job catalogue
 
 Each job: trigger · inputs · outputs · idempotency key · failure handling · observability.

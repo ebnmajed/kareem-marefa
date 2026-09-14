@@ -4,7 +4,8 @@ import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, listCategories, listNameableMembers } from "@/lib/dal/proposals";
-import { actionsFor, listSchedulableProposals, listSessionsForAdmin } from "@/lib/dal/sessions";
+import { actionsFor, listSchedulableProposals, listSessionsForAdmin, listSessionsForAttendance } from "@/lib/dal/sessions";
+import { requireSession } from "@/lib/dal/session";
 import { makeSessionDirectly, makeSessionFromProposal, runTransition } from "./actions";
 import { SessionControls } from "./session-controls";
 import { DirectSessionForm } from "./direct-session-form";
@@ -18,10 +19,22 @@ import { DirectSessionForm } from "./direct-session-form";
 //
 // Owned by `sessions` for wave 1 only; handed to `console` at wave 3
 // (DEC-042). Admin only, 404 for everyone else — see listSessionsForAdmin().
+//
+// ★ console (wave 3, SCR-044): a moderator now reaches THIS route too, but
+// gets a different, much smaller render — `ModeratorSessionsView` below —
+// never the admin's management UI. `REQ-ADM-005`'s edit/cancel/publish
+// controls stay admin-only; a moderator's only reason to be here is
+// picking a session to open its attendance report (`docs/plan/notes/
+// console.md`'s moderator/`/sessions` decision). The admin path below is
+// completely unchanged.
 
 export default async function AdminSessionsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  const session = await requireSession(locale);
+  if (session.role === "moderator") return <ModeratorSessionsView locale={locale} />;
+  if (session.role === "member") notFound();
 
   const [sessions, ready, categories, members, prefs, t] = await Promise.all([
     listSessionsForAdmin(locale),
@@ -136,6 +149,47 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </section>
+    </>
+  );
+}
+
+/**
+ * SCR-042's moderator render — event-day operations only (REQ-ADM-020): id,
+ * title, state, start time, and one link to the session's attendance
+ * report (SCR-044). No proposal-to-session pipeline, no direct-create
+ * form, no `SessionControls` (start/complete/cancel/archive/reopen are
+ * exactly `REQ-ADM-005`'s admin-only scheduling actions).
+ */
+async function ModeratorSessionsView({ locale }: { locale: string }) {
+  const [sessions, prefs, t] = await Promise.all([listSessionsForAttendance(locale), getOrgPrefs(locale), getTranslations("admin.sessions")]);
+  if (sessions === null) notFound();
+
+  return (
+    <>
+      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
+      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("moderatorIntro")}</p>
+
+      {sessions.length === 0 ? (
+        <p className="mt-8 text-body text-fg-body">{t("listEmpty")}</p>
+      ) : (
+        <ul className="mt-8 max-w-2xl space-y-3">
+          {sessions.map((s) => (
+            <li key={s.id} className="rounded-field border border-edge p-4">
+              <p className="text-label text-fg-heading">
+                <bdi>{s.title}</bdi>
+              </p>
+              <p className="mt-1 text-body-sm text-fg-muted">
+                {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.numerals, prefs.timeZone, locale)}</bdi> : t("notScheduled")}
+              </p>
+              <p className="mt-2 text-body-sm">
+                <Link href={`/app/admin/sessions/${s.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+                  {t("openAttendance")}
+                </Link>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }

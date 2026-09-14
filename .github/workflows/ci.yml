@@ -286,6 +286,41 @@ jobs:
       - name: the image's probe passes on a session-mode connection
         run: docker run --rm --network host -e DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres kareem-worker node worker/dist/index.js --probe-only
 
+      # DEC-048: the image now carries headless Chromium, the designer runtime
+      # and the font set (REQ-DSG-016). The shaping parity harness runs INSIDE
+      # it against the committed goldens, so the Chromium and the font bytes
+      # that would render a poster in production are the ones proven here —
+      # Tier A is a property of the font bytes and the layout algorithm, not
+      # the rasteriser (DEC-028), which is what lets a Linux image match
+      # goldens made on a Mac. The sandbox is dropped only inside the
+      # container (CHROME_NO_SANDBOX), never on a developer's machine.
+      # DEC-049: the fourth export path is the converter's page images, so the
+      # converter image stands beside the worker image on the host network and
+      # the harness inside the worker container reaches it at 127.0.0.1:8080;
+      # the harness's own loopback server is reachable from the converter the
+      # same way. All 28 assertions run here; a missing converter would skip
+      # seven of them LOUDLY, and this job is where that must never happen.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: converter/Dockerfile
+          tags: kareem-converter
+          load: true
+          cache-from: type=gha
+      - name: start the converter beside the worker image
+        run: docker run -d --rm --name kareem-converter --network host -e CONVERTER_ALLOW_HTTP=1 kareem-converter && sleep 3
+      - name: the image's Chromium and fonts pass the shaping parity suite — 28 of 28
+        run: >-
+          docker run --rm --network host
+          -v "$PWD/scripts:/app/scripts:ro"
+          -v "$PWD/packages/fonts:/app/packages/fonts:ro"
+          -e CHROME_NO_SANDBOX=1
+          -e CONVERTER_URL=http://127.0.0.1:8080
+          kareem-worker node scripts/parity/harness.mjs
+      - name: the converter path actually ran
+        if: always()
+        run: docker rm -f kareem-converter >/dev/null 2>&1 || true
+
   # ── main stays deployable with the platform unconfigured. DEC-038. ────
   # Production has no NEXT_PUBLIC_ Supabase variables until PR C. This job
   # builds exactly that way and proves the platform routes are 404s while the

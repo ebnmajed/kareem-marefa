@@ -91,7 +91,10 @@ describe("notification_matrix — 08 §1", () => {
   it("carries every message in the document and nothing else", async () => {
     await withTx(async (tx) => {
       const rows = await tx.q<{ key: string }>(`select key from public.notification_matrix() order by key`);
-      expect(rows).toHaveLength(38);
+      // 38 in 08 §1 as settled, plus MSG-reminder_generic (§1.2's fourth
+      // reminder, DEC-047 → migration 0062).
+      expect(rows).toHaveLength(39);
+      expect(rows.map((r) => r.key)).toContain("MSG-reminder_generic");
       // A message in no category cannot have a preference; a category outside
       // 08 §2 cannot be stored by notification_preferences' check constraint.
       const bad = await tx.q(

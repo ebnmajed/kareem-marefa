@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime } from "@/components/sessions/numerals";
+import { MemberPicker } from "@/components/admin/member-picker";
+import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getScoringAdminData } from "@/lib/dal/scoring-admin";
 import { saveManualAdjustment, saveScoringRule } from "./actions";
 
@@ -11,6 +13,12 @@ import { saveManualAdjustment, saveScoringRule } from "./actions";
 // (REQ-PTS-014) — a save here is visible to every member immediately, and
 // only affects awards from that point forward (REQ-PTS-004): a ledger row
 // already written keeps the rule_version and amount it was written with.
+//
+// The manual-adjustment form's member field is `<MemberPicker>`
+// (`scoring.md`'s carried-over item, console.md's story order item 2) —
+// still the same `formData.get("memberId")` `saveManualAdjustment` already
+// reads, so `actions.ts`/`submitManualAdjustment()`/`adjust_points_
+// manually()` are all unchanged.
 
 const field = "mt-1 block h-11 w-full rounded-field border border-edge-strong bg-canvas px-3 text-body text-fg-heading";
 
@@ -25,7 +33,12 @@ export default async function ScoringAdminPage({
   setRequestLocale(locale);
   const { saved, error } = await searchParams;
 
-  const [t, data] = await Promise.all([getTranslations("scoring.admin"), getScoringAdminData(locale)]);
+  const [t, tp, data, members] = await Promise.all([
+    getTranslations("scoring.admin"),
+    getTranslations("admin.memberPicker"),
+    getScoringAdminData(locale),
+    listMembersForAdmin(locale),
+  ]);
   if (!data) notFound();
 
   return (
@@ -103,10 +116,14 @@ export default async function ScoringAdminPage({
         </h2>
         <p className="mt-2 text-body text-fg-muted">{t("manual.intro")}</p>
         <form action={saveManualAdjustment} className="mt-4 space-y-4">
-          <label className="block">
-            <span className="text-label text-fg-heading">{t("manual.member")}</span>
-            <input name="memberId" required dir="ltr" className={`${field} text-start`} />
-          </label>
+          <MemberPicker
+            members={members ?? []}
+            name="memberId"
+            label={t("manual.member")}
+            required
+            placeholder={tp("placeholder")}
+            noMatches={tp("noMatches")}
+          />
           <label className="block">
             <span className="text-label text-fg-heading">{t("manual.amount")}</span>
             <input name="amount" type="number" required className={field} />

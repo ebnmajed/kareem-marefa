@@ -46,7 +46,8 @@
         "bonusPoints": "Bonus points",
         "enabled": "Enabled",
         "save": "Save"
-      }
+      },
+      "heldCertificates": "Achievement certificates awaiting release"
     }
   }
 }

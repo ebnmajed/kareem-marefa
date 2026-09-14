@@ -1,7 +1,7 @@
 {
   "font": {
     "family": "IBM Plex Sans Arabic",
-    "fingerprint": "8e1fa3bb937b041f"
+    "fingerprint": "4dfb3b3a02d708e5"
   },
   "platform": "darwin-arm64",
   "cases": {
@@ -10,14 +10,12 @@
       "lineWidths": [
         168.81
       ],
-      "lineHeights": [
-        60
-      ],
       "totalAdvance": 168.81,
       "charRectCount": 15,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 157.2,
       "distinctFromFallback": true
     },
     "stacked-tashkeel": {
@@ -25,14 +23,12 @@
       "lineWidths": [
         88.05
       ],
-      "lineHeights": [
-        60
-      ],
       "totalAdvance": 88.05,
       "charRectCount": 9,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 76.02,
       "distinctFromFallback": true
     },
     "mixed-script": {
@@ -40,14 +36,12 @@
       "lineWidths": [
         482.45
       ],
-      "lineHeights": [
-        60
-      ],
       "totalAdvance": 482.45,
       "charRectCount": 26,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 443.09,
       "distinctFromFallback": true
     },
     "mirrored-punctuation": {
@@ -55,14 +49,12 @@
       "lineWidths": [
         497.61
       ],
-      "lineHeights": [
-        60
-      ],
       "totalAdvance": 497.61,
       "charRectCount": 31,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 476.05,
       "distinctFromFallback": true
     },
     "long-word-break": {
@@ -70,37 +62,29 @@
       "lineWidths": [
         186.14,
         136.09,
-        108.29,
+        108.3,
         130.5,
         142.97
       ],
-      "lineHeights": [
-        60,
-        60,
-        60,
-        60,
-        60
-      ],
-      "totalAdvance": 703.99,
+      "totalAdvance": 704,
       "charRectCount": 42,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 644.66,
       "distinctFromFallback": true
     },
     "numeral-systems": {
       "lineCount": 1,
       "lineWidths": [
-        563.39
+        563.41
       ],
-      "lineHeights": [
-        60
-      ],
-      "totalAdvance": 563.39,
+      "totalAdvance": 563.41,
       "charRectCount": 32,
       "zeroWidthRects": 0,
       "fontSize": "40px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 506.97,
       "distinctFromFallback": true
     },
     "autofit-limit": {
@@ -109,16 +93,210 @@
         389.2,
         181.84
       ],
-      "lineHeights": [
-        42,
-        42
-      ],
       "totalAdvance": 571.04,
       "charRectCount": 52,
       "zeroWidthRects": 0,
       "fontSize": "28px",
       "letterSpacing": "normal",
+      "fallbackAdvance": 555.91,
       "distinctFromFallback": true
+    }
+  },
+  "paths": {
+    "poster_pdf": {
+      "lam-alef": {
+        "lineCount": 1,
+        "lineWidths": [
+          168.81
+        ],
+        "totalAdvance": 168.81,
+        "charRectCount": 15,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 157.2,
+        "distinctFromFallback": true
+      },
+      "stacked-tashkeel": {
+        "lineCount": 1,
+        "lineWidths": [
+          88.05
+        ],
+        "totalAdvance": 88.05,
+        "charRectCount": 9,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 76.02,
+        "distinctFromFallback": true
+      },
+      "mixed-script": {
+        "lineCount": 1,
+        "lineWidths": [
+          482.45
+        ],
+        "totalAdvance": 482.45,
+        "charRectCount": 26,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 443.09,
+        "distinctFromFallback": true
+      },
+      "mirrored-punctuation": {
+        "lineCount": 1,
+        "lineWidths": [
+          497.61
+        ],
+        "totalAdvance": 497.61,
+        "charRectCount": 31,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 476.05,
+        "distinctFromFallback": true
+      },
+      "long-word-break": {
+        "lineCount": 5,
+        "lineWidths": [
+          186.14,
+          136.09,
+          108.3,
+          130.5,
+          142.97
+        ],
+        "totalAdvance": 704,
+        "charRectCount": 42,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 644.66,
+        "distinctFromFallback": true
+      },
+      "numeral-systems": {
+        "lineCount": 1,
+        "lineWidths": [
+          563.41
+        ],
+        "totalAdvance": 563.41,
+        "charRectCount": 32,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 506.97,
+        "distinctFromFallback": true
+      },
+      "autofit-limit": {
+        "lineCount": 2,
+        "lineWidths": [
+          389.2,
+          181.84
+        ],
+        "totalAdvance": 571.04,
+        "charRectCount": 52,
+        "zeroWidthRects": 0,
+        "fontSize": "28px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 555.91,
+        "distinctFromFallback": true
+      }
+    },
+    "certificate_pdf": {
+      "lam-alef": {
+        "lineCount": 1,
+        "lineWidths": [
+          163.73
+        ],
+        "totalAdvance": 163.73,
+        "charRectCount": 15,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 157.2,
+        "distinctFromFallback": true
+      },
+      "stacked-tashkeel": {
+        "lineCount": 1,
+        "lineWidths": [
+          48.05
+        ],
+        "totalAdvance": 48.05,
+        "charRectCount": 9,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 76.02,
+        "distinctFromFallback": true
+      },
+      "mixed-script": {
+        "lineCount": 1,
+        "lineWidths": [
+          437.83
+        ],
+        "totalAdvance": 437.83,
+        "charRectCount": 26,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 443.09,
+        "distinctFromFallback": true
+      },
+      "mirrored-punctuation": {
+        "lineCount": 1,
+        "lineWidths": [
+          456.92
+        ],
+        "totalAdvance": 456.92,
+        "charRectCount": 31,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 476.05,
+        "distinctFromFallback": true
+      },
+      "long-word-break": {
+        "lineCount": 4,
+        "lineWidths": [
+          156.81,
+          179.53,
+          115.45,
+          103.81
+        ],
+        "totalAdvance": 555.6,
+        "charRectCount": 42,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 644.66,
+        "distinctFromFallback": true
+      },
+      "numeral-systems": {
+        "lineCount": 1,
+        "lineWidths": [
+          535.89
+        ],
+        "totalAdvance": 535.89,
+        "charRectCount": 32,
+        "zeroWidthRects": 0,
+        "fontSize": "40px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 506.97,
+        "distinctFromFallback": true
+      },
+      "autofit-limit": {
+        "lineCount": 2,
+        "lineWidths": [
+          366.06,
+          170.3
+        ],
+        "totalAdvance": 536.36,
+        "charRectCount": 52,
+        "zeroWidthRects": 0,
+        "fontSize": "28px",
+        "letterSpacing": "normal",
+        "fallbackAdvance": 555.91,
+        "distinctFromFallback": true
+      }
     }
   }
 }

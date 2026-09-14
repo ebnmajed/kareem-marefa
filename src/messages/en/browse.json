@@ -1,0 +1,30 @@
+{
+  "browse": {
+    "title": "Sessions",
+    "intro": "Browse your organisation's sessions and find the one you're after.",
+    "empty": "No sessions match your search",
+    "clearFilters": "Clear filters",
+    "count": "{count, plural, =0 {no sessions} one {one session} other {{value} sessions}}",
+    "filterSheet": {
+      "open": "Filters",
+      "title": "Filter sessions",
+      "close": "Close"
+    },
+    "card": {
+      "whenLabel": "When",
+      "levelLabel": "Level",
+      "languageLabel": "Spoken language",
+      "level": {
+        "introductory": "Introductory",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "language": {
+        "ar": "Arabic",
+        "en": "English"
+      },
+      "cancelledBadge": "Cancelled",
+      "inProgressBadge": "In progress now"
+    }
+  }
+}

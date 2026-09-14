@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { signReadUrl, signUploadUrl } from "../content/storage.js";
-import { convertedPdfPath } from "../content/paths.js";
+import { convertedPdfPath } from "@kareem/storage-paths";
 
 // JOB-convert_document (11 §2.4, 07 §4, REQ-MAT-003, REQ-MAT-011, DEC-006).
 // Enqueued by finalize_material_upload() (supabase/proposed/content/0003)

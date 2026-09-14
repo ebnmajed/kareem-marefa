@@ -1392,6 +1392,61 @@ generated suite is the highest-value test in the product.
 | `POL-audit_log.insert` | Direct insert is rejected; `write_audit()` succeeds. |
 | `POL-audit_log.update` | `update` and `delete` raise for every role. |
 | `POL-audit_log.select.moderator` | A moderator sees their own actions and not the admin's. |
+| `POL-design_templates.select.platform` | An org admin reads a platform template; org B's own templates are invisible. (migration `0055`). |
+| `POL-design_templates.update.platform` | An org admin cannot update a platform template (`REQ-DSG-008`). (migration `0055`). |
+| `POL-design_templates.insert.org` | An admin cannot create a platform-scope template; a plain member cannot create any. The scope/`org_id` and family/purpose constraints hold. (migration `0055`). |
+| `POL-design_template_versions.read` | Read follows the parent; a platform template's version is readable and not writable; a published version has no update and no delete grant (`REQ-DSG-007`); `org_id` mirrors the parent. (migration `0055`). |
+| `POL-design_template_versions.guard` | A hard-coded colour, an unknown layer kind or a duplicate layer id is refused by the trigger (`REQ-DSG-021`, `REQ-DSG-005`). (migration `0055`). |
+| `POL-design_documents.read` | The presenter of the bound session sees the document, another member does not, the admin does; a member sees the document behind their own certificate only. (migration `0055`). |
+| `POL-design_documents.write` | Design is an admin act (`REQ-DSG-002`): a presenter cannot edit their own poster document. (migration `0055`). |
+| `POL-design_documents.locked` | A locked region cannot be moved, resized, hidden, unlocked or deleted (`REQ-DSG-024`). (migration `0055`). |
+| `POL-design_assets.insert.mime` | An SVG named `.png` is rejected on `sniffed_mime`, never on the filename (DEC-009); a plain member cannot add or remove an asset; an asset is never updated in place. (migration `0055`). |
+| `POL-fonts.select` | Every member reads the manifest; only the job writes it; a font cannot reach `passed` without Arabic coverage (A39). (migration `0055`). |
+| `POL-export_artifacts.select` | Select follows the document; no client role writes one; `source_fingerprint` is the cache key — the same source cannot be stored twice (`REQ-DSG-013`). (migration `0055`). |
+| `POL-session_posters.*` | An `auto` poster is always live (structural); every member reads the poster, only an admin writes it, nobody deletes it. (migration `0055`). |
+| `POL-certificates.constraints` | An attendee certificate without a `check_in_id` is refused by the table (`REQ-CRT-001`); the same session, member and kind cannot be certified twice (`REQ-CRT-003`); a revoked certificate must carry a reason (`REQ-CRT-011`). (migration `0055`). |
+| `POL-certificates.select.held` | A held certificate is invisible to its recipient and visible to the admin (`REQ-CRT-004`); writes are RPC-only for every role. (migration `0055`). |
+| `POL-certificates.serial` | A rolled-back issuance leaves `next_value` unchanged; two orgs both issue `…-000001`; the counter table has no policy and no grant (`REQ-CRT-008`, DEC-010). (migration `0055`). |
+| `POL-certificates.verify.anon` | `verify_certificate()` resolves by code and returns the A13 fields and nothing else; a serial returns not-found; unknown and held are the same empty answer (`REQ-CRT-007`, `REQ-CRT-009`). (migration `0055`). |
+| `POL-admin_list_members.select.admin` | An admin reads every member of their org **with email** through `admin_list_members()`, and none of org B's (`REQ-ADM-009`). (migration `0056`). |
+| `POL-admin_list_members.select.non_admin` | A member and a moderator get zero rows from the function, not an error. (migration `0056`). |
+| `POL-admin_list_members.select.no_base_grant` | The base table's column grant still hides `email` from a direct select, admin included — the function is the only door (A33, DEC-044's pattern). (migration `0056`). |
+| `POL-write_admin_export_audit.execute.admin` | An admin's export writes exactly one audit row naming the export type and the subject (`REQ-ADM-017`). (migration `0058`). |
+| `POL-write_admin_export_audit.execute.non_admin` | A moderator and a member are both refused — the boundary is `assert_fresh_admin()`, not the route handler. (migration `0058`). |
+| `POL-write_admin_export_audit.execute.own_org_only` | An admin cannot forge another org's export as their own subject; the audit row lands in the caller's own org. (migration `0058`). |
+| `POL-comments.removal_audit` | A staff removal of a comment writes an audit row with the reason; a self-delete writes none (`REQ-EVT-014`, `REQ-ADM-018`). (migration `0059`). |
+| `POL-remove_photo.staff_only` | `remove_photo()` is admin-or-moderator with a mandatory reason; a member is refused. (migration `0059`). |
+| `POL-remove_photo.resolves_takedown_and_report` | One call hides the photo and resolves any open takedown and report on it in the same transaction (DEC-005). (migration `0059`). |
+| `POL-remove_photo.reverses_points` | Removing a photo reverses its points the way a comment's removal does (`0032`'s deferred half). (migration `0059`). |
+| `POL-remove_photo.own_org_only` | A staff member cannot remove another org's photo. (migration `0059`). |
+| `POL-export_artifacts.request.admin` | A moderator's `request_render()` is refused; an admin's queues one row per target and returns them. (migration `0060`). |
+| `POL-export_artifacts.cache` | Re-requesting an unchanged document re-renders nothing — the `ready` rows come back as they are (`REQ-DSG-013`). (migration `0060`). |
+| `POL-export_artifacts.record.worker` | `record_export_artifact()` and `export_render_context()` are `service_role` only; an admin calling them is refused; `service_role`'s direct select on the table is refused too — the definer functions are the boundary. (migration `0060`). |
+| `POL-export_artifacts.retry.admin` | An admin retries a `failed` artifact and it returns to `queued`; a `ready` one is left alone. (migration `0060`). |
+| `POL-reminder_message_key.tolerance_band` | `reminder_message_key()` picks a fixed reminder message within ±20% of its offset and `MSG-reminder_generic` for anything else (`08` §1.2's fourth message, DEC-047). (migration `0062`). |
+| `POL-reminder_message_key.default_unaffected` | Every default org offset still maps to the message it mapped to before. (migration `0062`). |
+| `POL-notification_matrix.generic_key_accepted` | `MSG-reminder_generic` is in the matrix under `reminders`, so a template for it is accepted and a reminder carrying it is deliverable. (migration `0062`). |
+| `POL-session_posters.publish` | Publishing a session enqueues `regenerate_poster` once, with `11` §2.5's key (`REQ-DSG-001`). (migration `0063`). |
+| `POL-session_posters.detach` | `detach_poster()` flips binding to `detached` and mode to `customised`, one way: no call ever re-attaches (`REQ-DSG-003`). (migration `0063`). |
+| `POL-session_posters.detach.admin` | A moderator's `detach_poster()` is refused. (migration `0063`). |
+| `POL-session_posters.stale` | A data change on a detached poster sets `stale_since` and enqueues no render. (migration `0063`). |
+| `POL-session_posters.live` | A data change on a live poster enqueues one render and leaves `stale_since` null. (migration `0063`). |
+| `POL-request_render.system` | `system_request_render()`, `poster_render_context()` and `record_session_poster()` are `service_role` only; an admin calling them is refused. (migration `0063`). |
+| `POL-fonts.materialise.admin` | An org admin requests a Google family and one `materialise_font` job is enqueued with `11` §2.5's key; a moderator is refused (`REQ-DSG-017`). (migration `0064`). |
+| `POL-fonts.record.worker` | `record_font()` is `service_role` only; an admin calling it is refused. (migration `0064`). |
+| `POL-fonts.gate` | A font recorded as `failed` carries the report naming which checks failed and stays unselectable (A39). (migration `0064`). |
+| `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
+| `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
+| `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
+| `POL-issue_certificate.idempotent` | Running the job twice produces one certificate and consumes one serial (`REQ-CRT-003`, `REQ-CRT-008`). (migration `0065`). |
+| `POL-issue_certificate.mode` | `automatic` issues; `review` holds, invisible to the recipient and unemailed (`REQ-CRT-004`). (migration `0065`). |
+| `POL-release_certificates.admin` | An admin releases held certificates; a moderator is refused; the release is audited and notifies once. (migration `0065`). |
+| `POL-revoke_certificate.reason` | Revoking without a reason is refused; with one the state flips, it is audited, and the PDF is not deleted (`REQ-CRT-011`). (migration `0065`). |
+| `POL-achievement.badge` | Earning a badge issues an achievement certificate outright (`issue_achievement_certificate()` from a definer row trigger on `member_badges`, driven as an admin, not the owner); a second earn issues no second certificate (`REQ-CRT-012`). (migration `0066`). |
+| `POL-achievement.snapshot` | A final member-ranked snapshot's top three get HELD achievement certificates through `fan_out_snapshot_certificates()` (a statement-level definer trigger on `leaderboard_entries`); topic boards issue none; an admin releases them (`REQ-CRT-012`, `REQ-LDR-006`). (migration `0066`). |
+| `POL-verify_certificate.public` | `/verify/[code]` for `anon`: an issued certificate resolves with the A13 fields; a held one, a revoked one's reason, a serial and an unknown code are all the same not-found (`REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-011`). (migration `0065`). |
+| `POL-allocate_serial.gapless` | Two issuances in two transactions take consecutive serials; a rolled-back one leaves `next_value` unchanged (`REQ-CRT-008`, DEC-010). (migration `0065`). |
+| `POL-design_documents.certificate_read` | A member reads the document behind their own issued certificate and nobody else's. (migration `0065`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |

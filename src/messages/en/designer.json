@@ -1,0 +1,164 @@
+{
+  "designer": {
+    "editor": {
+      "title": "Document designer",
+      "purpose": {
+        "poster": "Poster",
+        "certificate": "Certificate"
+      },
+      "boundSession": "Bound to a session",
+      "boundCertificate": "Bound to a certificate",
+      "unbound": "Not bound yet",
+      "readOnly": "You can view this. Designing is an org admin's act.",
+      "mobileNotice": "On a small screen this is preview and approval only. The layer editor needs a wider window; a cramped one is a bad tool pretending to be a feature.",
+      "previewHeading": "Preview",
+      "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text.",
+      "undo": "Undo",
+      "redo": "Redo"
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "error": "The save failed. Your edits are still here; try again.",
+      "conflict": "Another admin saved a newer version of this document. Reload before you continue, so neither of you loses work.",
+      "lockedRegion": "This region is locked in the template: <bdi>{layer}</bdi>",
+      "invalid": "Something in the document prevents saving: <bdi>{issue}</bdi>",
+      "forbidden": "Designing is an org admin's act."
+    },
+    "canvas": {
+      "label": "Design canvas",
+      "zoom": "Zoom <bdi>{value}</bdi>%",
+      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+    },
+    "layers": {
+      "heading": "Layers",
+      "count": "{count, plural, =0 {No layers} one {One layer} other {{value} layers}}",
+      "empty": "This document has no layers yet.",
+      "select": "Select the layer <bdi>{name}</bdi>",
+      "locked": "Locked",
+      "hidden": "Hidden",
+      "show": "Show",
+      "hide": "Hide",
+      "kind": {
+        "text": "Text",
+        "image": "Image",
+        "shape": "Shape",
+        "qr": "Verification QR",
+        "dynamic_field": "Dynamic field"
+      }
+    },
+    "properties": {
+      "heading": "Properties",
+      "none": "Select a layer to see its properties.",
+      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden or deleted. Unlocking happens in the platform template, not here.",
+      "positionHeading": "Position and size",
+      "x": "Offset from the start",
+      "y": "Offset from the top",
+      "w": "Width",
+      "h": "Height",
+      "rotation": "Rotation",
+      "opacity": "Opacity",
+      "typographyHeading": "Typography",
+      "fontFamily": "Font",
+      "fontSize": "Font size",
+      "align": "Alignment",
+      "alignStart": "Start",
+      "alignCenter": "Centre",
+      "alignEnd": "End",
+      "alignNote": "Alignment is logical — start and end, never left and right — so it mirrors with the text direction instead of being redrawn.",
+      "letterSpacingNote": "Letter-spacing is always zero in Arabic: spacing it breaks the cursive join, which makes a broken word rather than a loose one.",
+      "contentHeading": "Content",
+      "binding": "Binding",
+      "bindingNone": "No binding",
+      "fallback": "Fallback text",
+      "literal": "Literal text"
+    },
+    "bindings": {
+      "heading": "Dynamic fields",
+      "bound": "Bound",
+      "unbound": "Unbound",
+      "unboundHint": "An unbound field draws a marked box on the canvas, never a blank — a blank exports as white space nobody notices until it is printed.",
+      "empty": "This document carries no dynamic fields.",
+      "unboundWithFallback": "Unbound — the fallback will print: <bdi>{fallback}</bdi>"
+    },
+    "presets": {
+      "heading": "Sizes",
+      "intro": "Every size derives from the master with no manual step. Text re-fits per size, so the link card's title is genuinely smaller rather than a downscaled image.",
+      "name": {
+        "master": "Master",
+        "square": "Square",
+        "story": "Story",
+        "landscape": "Landscape",
+        "og": "Link card",
+        "a4": "Print A4",
+        "a3": "Print A3",
+        "cert_landscape": "Certificate, landscape",
+        "cert_portrait": "Certificate, portrait"
+      },
+      "size": "<bdi>{width}</bdi> × <bdi>{height}</bdi>",
+      "overlaysShow": "Show the safe area",
+      "overlaysHide": "Hide the safe area",
+      "safeAreaLabel": "Safe area",
+      "bleedLabel": "Bleed",
+      "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands."
+    },
+    "checks": {
+      "heading": "Before export",
+      "clean": "Nothing crosses the safe area on any size.",
+      "intro": "Anything crossing the safe area appears here before export, not after: after printing there is no fix.",
+      "safeArea": "The layer <bdi>{layer}</bdi> crosses the safe area on <bdi>{preset}</bdi> by <bdi>{px}</bdi>.",
+      "minSize": "The layer <bdi>{layer}</bdi> reached the smallest size the template allows on <bdi>{preset}</bdi> and is still taller than its frame. The template will not shrink it further.",
+      "maxLines": "The layer <bdi>{layer}</bdi> wrapped past the line limit on <bdi>{preset}</bdi>.",
+      "measuring": "Measuring the text…",
+      "ppiWarn": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below what print wants. It will look soft.",
+      "ppiBlock": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below the print minimum. Export for that size is blocked until a higher-resolution image is uploaded.",
+      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes."
+    },
+    "exports": {
+      "heading": "Export queue",
+      "intro": "Each size exports as its own job and its status appears here. The preview you approve is the file that goes to print, not a picture of it.",
+      "none": "No export has been requested for this version yet.",
+      "request": "Export every size",
+      "requestAgain": "Request whatever is missing",
+      "retry": "Try again",
+      "download": "Download",
+      "status": {
+        "queued": "Queued",
+        "rendering": "Rendering",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "failed": "Why it failed: <bdi>{reason}</bdi>",
+      "rgbCaveat": "Print files are RGB, not CMYK. The print shop will convert them and the navy may shift slightly in the conversion — tell them before the run. Saying it costs one line; discovering it costs two hundred posters.",
+      "cacheNote": "Nothing re-renders while the source is unchanged: the same key means the same file. Any edit to the design, to the session's data, or to the template version produces a new key, and only that is rendered again.",
+      "queuedNotice": "The sizes were added to the export queue.",
+      "retriedNotice": "Retried.",
+      "notAuthorized": "Exporting is an org admin's act."
+    },
+    "poster": {
+      "alt": "Poster for <bdi>{title}</bdi>",
+      "pending": "Rendering… <bdi>{ready}</bdi> of <bdi>{total}</bdi>",
+      "none": "This session has no poster yet.",
+      "stale": "The session's details changed — review the poster.",
+      "staleWhy": "This poster is customised, so it is not regenerated automatically: an edit that erases someone's work is worse than a prompt asking them to look.",
+      "picker": {
+        "heading": "Poster",
+        "intro": "Every published session has a poster. The automatic path produces every size with no design work at all.",
+        "auto": "Automatic",
+        "autoHint": "Built from the template and the session's data, and rebuilt whenever the title, time, venue or presenters change.",
+        "customise": "Customise",
+        "customiseHint": "Opens the designer. The first edit detaches the poster from its template, one way: after that it is never regenerated automatically, only flagged when details change.",
+        "upload": "Upload a finished poster",
+        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start: there is no template to regenerate it from.",
+        "openDesigner": "Open the designer",
+        "state": {
+          "auto": "Automatic",
+          "customised": "Customised",
+          "uploaded": "Uploaded"
+        },
+        "live": "Linked to its template",
+        "detached": "Detached"
+      }
+    }
+  }
+}

@@ -1,6 +1,42 @@
 {
   "faces": [
     {
+      "family": "Amiri",
+      "weight": 400,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "4c2750cf6100ce8854fa06f67c875263bbc76bf80e8f9d4808a54fdb804d374e",
+      "bytes": 108492,
+      "file": "4c2750cf6100ce8854fa06f67c875263bbc76bf80e8f9d4808a54fdb804d374e.woff2"
+    },
+    {
+      "family": "Amiri",
+      "weight": 400,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "06649aaf429d76e50721c2ad2115bf8cff7c4ee34ad21725aee7c36ccbf222ac",
+      "bytes": 19572,
+      "file": "06649aaf429d76e50721c2ad2115bf8cff7c4ee34ad21725aee7c36ccbf222ac.woff2"
+    },
+    {
+      "family": "Amiri",
+      "weight": 700,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "1313bcd0bcb23aa414a601c41d7cd3e751a00f80ae72f0d5dad8acdba04f836f",
+      "bytes": 100024,
+      "file": "1313bcd0bcb23aa414a601c41d7cd3e751a00f80ae72f0d5dad8acdba04f836f.woff2"
+    },
+    {
+      "family": "Amiri",
+      "weight": 700,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "25feffc5815d323a2eb4daef379697d0ebffff34367ee8b2560e5a0e9a54fa23",
+      "bytes": 20284,
+      "file": "25feffc5815d323a2eb4daef379697d0ebffff34367ee8b2560e5a0e9a54fa23.woff2"
+    },
+    {
       "family": "IBM Plex Sans",
       "weight": 400,
       "style": "normal",
@@ -80,16 +116,114 @@
       "sha256": "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd",
       "bytes": 15092,
       "file": "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 400,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+      "bytes": 12324,
+      "file": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 400,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a",
+      "bytes": 20356,
+      "file": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 500,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+      "bytes": 12324,
+      "file": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 500,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a",
+      "bytes": 20356,
+      "file": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 600,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+      "bytes": 12324,
+      "file": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 600,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a",
+      "bytes": 20356,
+      "file": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 700,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+      "bytes": 12324,
+      "file": "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612.woff2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 700,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a",
+      "bytes": 20356,
+      "file": "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a.woff2"
     }
   ],
   "ttf": [
     {
+      "family": "Amiri",
+      "weight": 400,
+      "style": "normal",
+      "sha256": "5739ea209b69127cf1b8294ba3da30f6c4aa2666da00f197a5f566dc0d05f78c",
+      "bytes": 365180,
+      "file": "5739ea209b69127cf1b8294ba3da30f6c4aa2666da00f197a5f566dc0d05f78c.ttf",
+      "derivedFrom": [
+        "4c2750cf6100ce8854fa06f67c875263bbc76bf80e8f9d4808a54fdb804d374e",
+        "06649aaf429d76e50721c2ad2115bf8cff7c4ee34ad21725aee7c36ccbf222ac"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Amiri",
+      "weight": 700,
+      "style": "normal",
+      "sha256": "a3f750262361be03db2a4a80a4ffcb36830333c79d83d384319973ec072f534b",
+      "bytes": 348984,
+      "file": "a3f750262361be03db2a4a80a4ffcb36830333c79d83d384319973ec072f534b.ttf",
+      "derivedFrom": [
+        "1313bcd0bcb23aa414a601c41d7cd3e751a00f80ae72f0d5dad8acdba04f836f",
+        "25feffc5815d323a2eb4daef379697d0ebffff34367ee8b2560e5a0e9a54fa23"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
       "family": "IBM Plex Sans",
       "weight": 400,
       "style": "normal",
-      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
-      "bytes": 88052,
-      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "sha256": "0971f510af28163d6e07b0817cd6e09d1a24fd54d272aa04d1eec44517a5a58c",
+      "bytes": 45840,
+      "file": "0971f510af28163d6e07b0817cd6e09d1a24fd54d272aa04d1eec44517a5a58c.ttf",
       "derivedFrom": [
         "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
       ],
@@ -99,9 +233,9 @@
       "family": "IBM Plex Sans",
       "weight": 500,
       "style": "normal",
-      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
-      "bytes": 88052,
-      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "sha256": "e8e2136032b2685e32abd8ec652d68659477b7ded37d7d38dc0569959adb1806",
+      "bytes": 45880,
+      "file": "e8e2136032b2685e32abd8ec652d68659477b7ded37d7d38dc0569959adb1806.ttf",
       "derivedFrom": [
         "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
       ],
@@ -111,9 +245,9 @@
       "family": "IBM Plex Sans",
       "weight": 600,
       "style": "normal",
-      "sha256": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed",
-      "bytes": 88052,
-      "file": "aee033d1831788607b94b74469f44868a6bab4e3f33c69190fb5163035063bed.ttf",
+      "sha256": "eef66c2761b8edc473e68a5ce1fec8c2356e9cff8c11096bd0aa7dcddc77a413",
+      "bytes": 45868,
+      "file": "eef66c2761b8edc473e68a5ce1fec8c2356e9cff8c11096bd0aa7dcddc77a413.ttf",
       "derivedFrom": [
         "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818"
       ],
@@ -123,9 +257,9 @@
       "family": "IBM Plex Sans Arabic",
       "weight": 400,
       "style": "normal",
-      "sha256": "29eb291ac38e38a87876a07cd3d5b2e62ab610279f461520b8cde963c03955ce",
+      "sha256": "379f71e89a7e47ad635af49d4bcd830fb605df8f242b9b7544f7db3ed4ca2de8",
       "bytes": 146904,
-      "file": "29eb291ac38e38a87876a07cd3d5b2e62ab610279f461520b8cde963c03955ce.ttf",
+      "file": "379f71e89a7e47ad635af49d4bcd830fb605df8f242b9b7544f7db3ed4ca2de8.ttf",
       "derivedFrom": [
         "4ed189e8653e9303ec1e1448a6025f838ecd19fe4a5f4f7889b8394b3c5378fb",
         "4a917a99a5b6acbe3b56887d1a8396fcd7d2112e0e4796f252c0859106679153"
@@ -136,9 +270,9 @@
       "family": "IBM Plex Sans Arabic",
       "weight": 500,
       "style": "normal",
-      "sha256": "1509c8a3ebbd5692449e8561dbdb26ede5373f1ed582f010949b6f41d0bb3a37",
+      "sha256": "a6c677bbc65cb4bad3f808768b504ec2bf72575abdf5dc097ea10966e6a6a21b",
       "bytes": 151108,
-      "file": "1509c8a3ebbd5692449e8561dbdb26ede5373f1ed582f010949b6f41d0bb3a37.ttf",
+      "file": "a6c677bbc65cb4bad3f808768b504ec2bf72575abdf5dc097ea10966e6a6a21b.ttf",
       "derivedFrom": [
         "bf2b68e78ca6e9c6e560634ecc33c1f11947b9ffaff1b6d9b42730ce85f696da",
         "2c348d103970c93c7b817a5bee77406a5861200390df6bd751d2d1bd7071e1af"
@@ -149,12 +283,64 @@
       "family": "IBM Plex Sans Arabic",
       "weight": 600,
       "style": "normal",
-      "sha256": "c1c3dbaede226cc7dcb95d9164dcef6f1a38ef9f0a4e5879a6228d45c6ac46dc",
+      "sha256": "301ac469cb1ac808f18be2a7a93dc3c4597d2816f0c3ca0b8798cd52f349bb7f",
       "bytes": 151348,
-      "file": "c1c3dbaede226cc7dcb95d9164dcef6f1a38ef9f0a4e5879a6228d45c6ac46dc.ttf",
+      "file": "301ac469cb1ac808f18be2a7a93dc3c4597d2816f0c3ca0b8798cd52f349bb7f.ttf",
       "derivedFrom": [
         "0ccee44455f545eb6b4083f77e5d15e7c9cd514007870167c8c69d1ba7631e26",
         "08b108227ae9cd53d2b8e9fc442e06a1f4884e5cf2d26c9216ec386227de74fd"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 400,
+      "style": "normal",
+      "sha256": "c2ca3008eeafbca2c59b49988cce895e37d3fc313f542c130a85d24708560da8",
+      "bytes": 50524,
+      "file": "c2ca3008eeafbca2c59b49988cce895e37d3fc313f542c130a85d24708560da8.ttf",
+      "derivedFrom": [
+        "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+        "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 500,
+      "style": "normal",
+      "sha256": "03a76a0bf943dc359d90829ea79b12b872d4e7408cf8e93315d080aed22141ef",
+      "bytes": 50644,
+      "file": "03a76a0bf943dc359d90829ea79b12b872d4e7408cf8e93315d080aed22141ef.ttf",
+      "derivedFrom": [
+        "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+        "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 600,
+      "style": "normal",
+      "sha256": "a24e3322cc99281a79b44de4bd95320588a600737ca4bf4ca001866017157360",
+      "bytes": 50660,
+      "file": "a24e3322cc99281a79b44de4bd95320588a600737ca4bf4ca001866017157360.ttf",
+      "derivedFrom": [
+        "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+        "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Reem Kufi",
+      "weight": 700,
+      "style": "normal",
+      "sha256": "864e82bbf21e815687596bf1535be8f89eb71b9264397cb87eac03daa17d5f0d",
+      "bytes": 50516,
+      "file": "864e82bbf21e815687596bf1535be8f89eb71b9264397cb87eac03daa17d5f0d.ttf",
+      "derivedFrom": [
+        "71b89239d93ca976dd637cfe6bbac664412c2713c73e86893b810ea61dd2b612",
+        "99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a"
       ],
       "tool": "fonttools 4.60.2"
     }

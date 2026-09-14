@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getRecognitionAdminData } from "@/lib/dal/scoring-admin";
+import { HeldAchievements } from "@/components/certificates/held-achievements";
 import { saveBadge, saveLevel, saveManualBadgeAward, savePerk, saveStreakRule } from "./actions";
 
 // SCR-054 · /app/admin/recognition — DEC-046's wave-2 carve-out for
@@ -203,6 +204,18 @@ export default async function RecognitionAdminPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* الشهادات المحجوزة — the designer slot on SCR-054 (REQ-CRT-012): a
+          leaderboard certificate is held until an admin releases it, and an
+          achievement certificate has no session for SCR-045 to release it
+          from, so the release lives here. The page owns the landmark and the
+          heading; the slot owns its data and its action (TEAM.md §2). */}
+      <section aria-labelledby="held-certificates-heading" className="mt-12">
+        <h2 id="held-certificates-heading" className="text-h2 text-fg-heading">
+          {t("heldCertificates")}
+        </h2>
+        <HeldAchievements locale={locale} />
       </section>
     </>
   );

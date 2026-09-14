@@ -2,16 +2,20 @@
 
 import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
+import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 import { Button } from "@/components/ui/button";
+import type { NumeralSystem } from "@/components/sessions/numerals";
 import type { ScheduleState } from "./actions";
 import { emptyScheduleState } from "./state";
 
 // SCR-043's form (REQ-SES-001, REQ-SES-002).
 //
-// Every date box is `dir="ltr"`: a date entry reads left to right whatever the
-// page direction, and the label beside it stays in the reading order because
-// the rows are flex, never floats. Getting this wrong is the same class of
-// mistake as the check-in code boxes (09 SCR-014).
+// The four date-time fields (`startsAt`, `endsAt`, `rsvpDeadlineAt`,
+// `cancellationCutoffAt`) use `<RtlDateTimePicker>` (`src/components/
+// admin/rtl-datetime-picker.tsx`) — DEC-045's carried-over item, closed at
+// wave 3 (console.md): a native `datetime-local` renders its calendar and
+// placeholder in the BROWSER's own locale, unreachable from this page's
+// own `dir="rtl"`. Every other field keeps its plain `dir="ltr"` box.
 //
 // Fields read their defaultValue out of the returned state as well as the
 // row, because React 19 resets a form once its action resolves — see
@@ -24,10 +28,14 @@ const FIELD = "mt-2 block w-full rounded-field border border-edge-strong bg-canv
 export function ScheduleForm({
   action,
   venues,
+  numerals,
+  locale,
   initial,
 }: {
   action: (prev: ScheduleState, formData: FormData) => Promise<ScheduleState>;
   venues: ScheduleVenue[];
+  numerals: NumeralSystem;
+  locale: string;
   initial: {
     startsAt: string;
     durationMinutes: string;
@@ -60,13 +68,22 @@ export function ScheduleForm({
         </p>
       ) : null}
 
-      <div>
-        <label htmlFor="startsAt" className="text-label text-fg-heading">
-          {t("whenLabel")}
-        </label>
-        <p className="mt-1 text-body-sm text-fg-muted">{t("whenHint")}</p>
-        <input id="startsAt" name="startsAt" type="datetime-local" required dir="ltr" defaultValue={initial.startsAt} className={FIELD} />
-      </div>
+      <RtlDateTimePicker
+        id="startsAt"
+        name="startsAt"
+        label={t("whenLabel")}
+        hint={t("whenHint")}
+        required
+        defaultValue={initial.startsAt}
+        numerals={numerals}
+        locale={locale}
+        clearLabel={t("pickerClear")}
+        todayLabel={t("pickerToday")}
+        doneLabel={t("pickerDone")}
+        hourLabel={t("pickerHour")}
+        minuteLabel={t("pickerMinute")}
+        emptyLabel={t("pickerEmpty")}
+      />
 
       <div>
         <label htmlFor="durationMinutes" className="text-label text-fg-heading">
@@ -91,13 +108,21 @@ export function ScheduleForm({
         </div>
       </div>
 
-      <div>
-        <label htmlFor="endsAt" className="text-label text-fg-heading">
-          {t("endsLabel")}
-        </label>
-        <p className="mt-1 text-body-sm text-fg-muted">{t("endsHint")}</p>
-        <input id="endsAt" name="endsAt" type="datetime-local" dir="ltr" defaultValue={initial.endsAt} className={FIELD} />
-      </div>
+      <RtlDateTimePicker
+        id="endsAt"
+        name="endsAt"
+        label={t("endsLabel")}
+        hint={t("endsHint")}
+        defaultValue={initial.endsAt}
+        numerals={numerals}
+        locale={locale}
+        clearLabel={t("pickerClear")}
+        todayLabel={t("pickerToday")}
+        doneLabel={t("pickerDone")}
+        hourLabel={t("pickerHour")}
+        minuteLabel={t("pickerMinute")}
+        emptyLabel={t("pickerEmpty")}
+      />
 
       <fieldset>
         <legend className="text-label text-fg-heading">{t("venueLabel")}</legend>
@@ -152,20 +177,36 @@ export function ScheduleForm({
         <input id="capacity" name="capacity" type="number" inputMode="numeric" min={1} max={10000} dir="ltr" defaultValue={initial.capacity} className={`${FIELD} w-32 text-center`} />
       </div>
 
-      <div>
-        <label htmlFor="rsvpDeadlineAt" className="text-label text-fg-heading">
-          {t("rsvpDeadlineLabel")}
-        </label>
-        <p className="mt-1 text-body-sm text-fg-muted">{t("deadlineHint")}</p>
-        <input id="rsvpDeadlineAt" name="rsvpDeadlineAt" type="datetime-local" dir="ltr" defaultValue={initial.rsvpDeadlineAt} className={FIELD} />
-      </div>
+      <RtlDateTimePicker
+        id="rsvpDeadlineAt"
+        name="rsvpDeadlineAt"
+        label={t("rsvpDeadlineLabel")}
+        hint={t("deadlineHint")}
+        defaultValue={initial.rsvpDeadlineAt}
+        numerals={numerals}
+        locale={locale}
+        clearLabel={t("pickerClear")}
+        todayLabel={t("pickerToday")}
+        doneLabel={t("pickerDone")}
+        hourLabel={t("pickerHour")}
+        minuteLabel={t("pickerMinute")}
+        emptyLabel={t("pickerEmpty")}
+      />
 
-      <div>
-        <label htmlFor="cancellationCutoffAt" className="text-label text-fg-heading">
-          {t("cutoffLabel")}
-        </label>
-        <input id="cancellationCutoffAt" name="cancellationCutoffAt" type="datetime-local" dir="ltr" defaultValue={initial.cancellationCutoffAt} className={FIELD} />
-      </div>
+      <RtlDateTimePicker
+        id="cancellationCutoffAt"
+        name="cancellationCutoffAt"
+        label={t("cutoffLabel")}
+        defaultValue={initial.cancellationCutoffAt}
+        numerals={numerals}
+        locale={locale}
+        clearLabel={t("pickerClear")}
+        todayLabel={t("pickerToday")}
+        doneLabel={t("pickerDone")}
+        hourLabel={t("pickerHour")}
+        minuteLabel={t("pickerMinute")}
+        emptyLabel={t("pickerEmpty")}
+      />
 
       <div>
         <label htmlFor="certificateMode" className="text-label text-fg-heading">

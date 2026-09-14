@@ -2,6 +2,7 @@
   "app": {
     "shell": {
       "home": "Home",
+      "sessions": "Sessions",
       "profile": "My profile",
       "signOut": "Sign out",
       "brand": "Knowledge Kareem"

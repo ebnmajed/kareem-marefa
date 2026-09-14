@@ -135,8 +135,32 @@ async function review(p: Page, name: string, primary?: string | RegExp) {
   // easily at 1024, and the capture just looks like a wide page.
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
+  // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
+  // (`scrollWidth - clientWidth` is the scrollbar's width on every RTL page that
+  // scrolls vertically); then which element is responsible, skipping permitted
+  // scroll containers and fixed overlays. Names what to fix.
+  // Phone project only: a desktop context at 390 px carries a classic scrollbar
+  // that inflates scrollWidth on every page that scrolls vertically.
+  const overflow = test.info().project.name !== "phone" ? [] : await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
   if (primary) {
     const box = (await p.getByRole("button", { name: primary }).first().boundingBox())!;
     expect(box.height, `${name}: the primary action must be at least 44 px tall`).toBeGreaterThanOrEqual(44);
@@ -201,8 +225,15 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await review(boss, "scr-043-schedule", "احفظ الجدولة");
 
   const when = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-  const local = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")}T18:00`;
-  await boss.getByLabel("التاريخ والوقت").fill(local);
+  // SCR-043's field is console's RTL date-time picker since wave 3 (DEC-045's
+  // carried-over item): a trigger whose accessible name carries its value, a
+  // day grid whose cells are labelled by full date, hour and minute selects.
+  await boss.getByRole("button", { name: new RegExp("^التاريخ والوقت:") }).click();
+  const picker = boss.getByRole("dialog", { name: "التاريخ والوقت" });
+  await picker.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).first().click();
+  await picker.getByLabel("الساعة").selectOption("18");
+  await picker.getByLabel("الدقيقة").selectOption("0");
+  await picker.getByRole("button", { name: "تم", exact: true }).click();
   await boss.getByLabel("المدة").fill("60");
   await boss.getByLabel("المكان", { exact: true }).selectOption({ label: "قاعة الابتكار" });
   await boss.getByRole("button", { name: "احفظ الجدولة" }).click();
@@ -326,7 +357,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
   const composer = attendee.getByPlaceholder("اكتب تعليقًا…");
   await composer.fill(said);
-  await attendee.getByRole("button", { name: "نشر" }).click();
+  // Phone emulation keeps a FOCUSED field in view: Playwright scrolls the
+  // button up, Chromium scrolls the textarea back, and the click lands on the
+  // textarea ("intercepts pointer events") for as long as the test allows.
+  // Blur first, as a thumb leaving the keyboard would. Seen once the event
+  // page grew a poster above the composer (wave 3).
+  await composer.blur();
+  // Even blurred, the Pixel-7 emulation keeps re-scrolling this long page
+  // while Playwright waits for the button to hold still, so the actionability
+  // wait never ends. The tap is dispatched to the (visible, enabled) button
+  // directly; the assertion that matters is the posted comment below.
+  const post = attendee.getByRole("button", { name: "نشر" });
+  await expect(post).toBeEnabled();
+  await post.dispatchEvent("click");
   // Scoped to the posted list item, not `getByText`. The composer is a
   // CONTROLLED textarea, so React renders the typed text as its DOM child and
   // an unscoped getByText matches the box you just typed into — it passes

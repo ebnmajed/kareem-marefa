@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { signReadUrl, signUploadUrl } from "../content/storage.js";
-import { convertedPdfPath, materialPagePath, materialPageThumbnailPath } from "../content/paths.js";
+import { convertedPdfPath, materialPagePath, materialPageThumbnailPath } from "@kareem/storage-paths";
 
 // JOB-render_pages (11 §2.4, 07 §4.5). Enqueued by
 // record_material_conversion() (supabase/proposed/content/0004) once

@@ -36,7 +36,7 @@ console.log(`· regenerating package-lock.json with ${NODE}`)
 execFileSync(
   'docker',
   ['run', '--rm', '-v', `${ROOT}:/app`, '-w', '/app', NODE,
-   'npm', 'install', '--package-lock-only', '--no-audit', '--no-fund'],
+   'npm', 'install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
   { stdio: 'inherit' },
 )
 console.log('· done — commit package-lock.json, and let CI confirm `npm ci` works')

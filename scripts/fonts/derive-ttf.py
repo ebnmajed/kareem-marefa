@@ -7,7 +7,8 @@ each TTF here is the woff2 bytes from the manifest, losslessly decompressed,
 with a weight's Arabic and Latin subsets merged into one file so LibreOffice
 sees one face with both scripts rather than two fonts of the same name.
 
-Nothing is re-subsetted, re-hinted or re-instanced. Every OpenType layout
+Nothing is re-subsetted or re-hinted; a VARIABLE face is instanced once, at
+the manifest weight, because LibreOffice cannot use it otherwise. Every OpenType layout
 table comes through untouched — including `rlig`, `mark` and `mkmk`, the
 three a Latin-minded subsetter drops (10 §4.2). check.mjs asserts that.
 
@@ -27,6 +28,7 @@ from pathlib import Path
 from fontTools import version as FONTTOOLS_VERSION
 from fontTools.merge import Merger
 from fontTools.ttLib import TTFont
+from fontTools.varLib import instancer
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "packages" / "fonts"
@@ -36,9 +38,23 @@ REQUIRED_GSUB = {"rlig"}
 REQUIRED_GPOS = {"mark", "mkmk"}
 
 
-def load_ttf(sha: str) -> TTFont:
+def load_ttf(sha: str, weight: int) -> TTFont:
     font = TTFont(FONTS / f"{sha}.woff2", recalcTimestamp=False)
     font.flavor = None  # woff2 → plain sfnt; same tables, same bytes inside
+    # A VARIABLE face (Reem Kufi is one: Google serves one file for every
+    # weight, so the manifest lists the same hash four times) cannot be
+    # merged — fontTools' Merger has no rule for VarStore — and LibreOffice
+    # picks only named instances from one anyway. So the TTF is the static
+    # instance at exactly the manifest weight: `instantiateVariableFont`
+    # freezes the outlines and drops the variation tables, and keeps every
+    # OpenType layout table — `rlig`, `mark`, `mkmk` included, which the
+    # check below still asserts. Deterministic for a given input and weight.
+    if "fvar" in font:
+        axes = {a.axisTag: a for a in font["fvar"].axes}
+        if "wght" in axes:
+            w = min(max(weight, axes["wght"].minValue), axes["wght"].maxValue)
+            font = instancer.instantiateVariableFont(font, {"wght": w}, inplace=False, updateFontNames=False)
+            font.recalcTimestamp = False
     return font
 
 
@@ -60,7 +76,7 @@ def main() -> int:
         # first input, and the Arabic subset is the one whose vertical
         # metrics were set for stacked tashkeel.
         faces = sorted(faces, key=lambda f: (f["script"] != "arabic", f["sha256"]))
-        parts = [load_ttf(f["sha256"]) for f in faces]
+        parts = [load_ttf(f["sha256"], weight) for f in faces]
         if len(parts) == 1:
             font = parts[0]
         else:

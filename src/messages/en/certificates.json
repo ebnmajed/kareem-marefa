@@ -1,0 +1,84 @@
+{
+  "certificates": {
+    "mode": {
+      "label": "Certificates",
+      "automatic": "An attendance certificate is issued to you automatically when the session completes",
+      "review": "An attendance certificate after the organisers review it"
+    },
+    "kind": {
+      "attendance": "Attendance certificate",
+      "presenter": "Presenter certificate",
+      "achievement": "Achievement certificate"
+    },
+    "state": {
+      "held": "Awaiting review",
+      "issued": "Valid",
+      "revoked": "Revoked"
+    },
+    "mine": {
+      "title": "My certificates",
+      "intro": "Every certificate issued in your name, with its serial and verification code.",
+      "empty": "No certificates yet. An attendance certificate is issued after a session you checked into completes.",
+      "serial": "Serial",
+      "code": "Verification code",
+      "issuedAt": "Issued",
+      "notIssued": "Not issued yet",
+      "download": "Download the certificate",
+      "preparing": "The certificate is being prepared",
+      "verify": "Verification page",
+      "revokedReason": "Reason for revocation: <bdi>{reason}</bdi>",
+      "count": "{count, plural, one {One certificate} other {{value} certificates}}",
+      "status": "Status"
+    },
+    "review": {
+      "title": "Session certificates",
+      "session": "Session: <bdi>{title}</bdi>",
+      "modeOff": "Certificates are off for this session, so none are issued and none are shown to attendees.",
+      "modeAutomatic": "Automatic: certificates are issued and sent as soon as the session completes, with no review.",
+      "modeReview": "Review: certificates are prepared and held until you release them. Attendees do not see them and no message is sent before that.",
+      "notCompleted": "The session has not completed yet. Certificates are prepared when it does.",
+      "heldHeading": "Awaiting review",
+      "heldEmpty": "No held certificates.",
+      "issuedHeading": "Issued",
+      "issuedEmpty": "No certificates issued yet.",
+      "revokedHeading": "Revoked",
+      "revokedEmpty": "No revoked certificates.",
+      "recipient": "Recipient",
+      "serial": "Serial",
+      "release": "Release selected",
+      "releaseAll": "Release all",
+      "selectAll": "Select all",
+      "select": "Select <bdi>{name}</bdi>'s certificate",
+      "revoke": "Revoke",
+      "revokeHeading": "Revoke <bdi>{name}</bdi>'s certificate",
+      "reason": "Reason for revocation",
+      "reasonHint": "Mandatory, and recorded in the audit log. It never appears on the public verification page.",
+      "reasonRequired": "Write the reason for revocation.",
+      "confirmRevoke": "Confirm revocation",
+      "revokedAt": "Revoked on <bdi>{date}</bdi>",
+      "notAuthorized": "Releasing and revoking certificates is an org admin's to do.",
+      "released": "{count, plural, one {One certificate released} other {{value} certificates released}}",
+      "revokeDone": "The certificate was revoked.",
+      "failed": "The request could not be completed."
+    },
+    "verify": {
+      "title": "Verify a certificate",
+      "valid": "Valid certificate",
+      "revoked": "This certificate has been revoked.",
+      "notFound": "We found no certificate with this code.",
+      "notFoundHint": "Check the code exactly as printed on the certificate. The verification code is not the serial.",
+      "rateLimited": "Too many attempts. Try again shortly.",
+      "recipient": "Recipient",
+      "kind": "Certificate type",
+      "session": "Session",
+      "sessionDate": "Session date",
+      "achievement": "Achievement",
+      "org": "Issued by",
+      "issuedAt": "Issued"
+    },
+    "achievements": {
+      "heading": "Achievement certificates awaiting release",
+      "intro": "Leaderboard certificates are prepared from a frozen snapshot and do not reach their recipients until you release them. A later leaderboard change cannot alter who won a closed period."
+    }
+  }
+}

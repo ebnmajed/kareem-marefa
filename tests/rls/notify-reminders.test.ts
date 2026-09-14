@@ -206,8 +206,8 @@ describe("RPC-schedule_session_reminders", () => {
   });
 });
 
-describe("reminder_message_key — 08 §1.2 defines three messages for a free int[]", () => {
-  it("maps each default offset to its own message and a custom one to the nearest", async () => {
+describe("reminder_message_key — 08 §1.2's three fixed messages plus the offset-agnostic fourth (0062, DEC-047)", () => {
+  it("maps each default offset to its own message, a near one to the nearest, and a far one to the generic message", async () => {
     await withTx(async (tx) => {
       await setup(tx);
       await tx.asOwner();
@@ -216,11 +216,17 @@ describe("reminder_message_key — 08 §1.2 defines three messages for a free in
       expect(await key(10080)).toBe("MSG-reminder_7d");
       expect(await key(1440)).toBe("MSG-reminder_1d");
       expect(await key(120)).toBe("MSG-reminder_2h");
-      // An org that picks 3 days borrows the nearest message rather than
-      // sending nothing. Flagged in docs/plan/notes/notify.md for 08.
-      expect(await key(4320)).toBe("MSG-reminder_7d");
-      expect(await key(720)).toBe("MSG-reminder_1d");
-      expect(await key(30)).toBe("MSG-reminder_2h");
+      // Within ±20% of a fixed offset the fixed message still speaks (its
+      // "after a week"/"tomorrow"/"in two hours" stays honest); outside it,
+      // an org that picks 3 days, 12 hours or 30 minutes gets the fourth,
+      // offset-agnostic message rather than a wrong distance — DEC-047's
+      // "honest fix", built by console as migration 0062.
+      expect(await key(9000)).toBe("MSG-reminder_7d");
+      expect(await key(1500)).toBe("MSG-reminder_1d");
+      expect(await key(130)).toBe("MSG-reminder_2h");
+      expect(await key(4320)).toBe("MSG-reminder_generic");
+      expect(await key(720)).toBe("MSG-reminder_generic");
+      expect(await key(30)).toBe("MSG-reminder_generic");
     });
   });
 });

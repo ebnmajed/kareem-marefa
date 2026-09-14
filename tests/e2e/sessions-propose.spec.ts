@@ -198,8 +198,57 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   await page.goto("/ar/app/propose");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, "the page must not scroll sideways at 390 px").toBeLessThanOrEqual(0);
+  // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
+
+  // (`scrollWidth - clientWidth` is the scrollbar's width on every RTL page that
+
+  // scrolls vertically); then which element is responsible, skipping permitted
+
+  // scroll containers and fixed overlays. Names what to fix.
+
+  // Phone project only: a desktop context at 390 px carries a classic scrollbar
+
+  // that inflates scrollWidth on every page that scrolls vertically.
+
+  const overflow = test.info().project.name !== "phone" ? [] : await page.evaluate(() => {
+
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+
+    const limit = window.innerWidth;
+
+    const offenders: string[] = [];
+
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+
+      const box = el.getBoundingClientRect();
+
+      if (box.width === 0) continue;
+
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+
+      let contained = false;
+
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+
+        const cs = getComputedStyle(n);
+
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+
+      }
+
+      if (contained) continue;
+
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+
+    }
+
+    return offenders.slice(0, 6);
+
+  });
+
+  expect(overflow, "the page must not scroll sideways at 390 px").toEqual([]);
 
   const submit = page.getByRole("button", { name: "أرسل المقترح" });
   const box = await submit.boundingBox();

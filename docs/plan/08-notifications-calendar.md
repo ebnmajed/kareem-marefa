@@ -43,6 +43,7 @@ the category it belongs to for preferences.
 | Reminder −7d | `MSG-reminder_7d` | confirmed | in-app, email | yes | `reminders` |
 | Reminder −1d | `MSG-reminder_1d` | confirmed | in-app, email | yes | `reminders` |
 | Reminder −2h | `MSG-reminder_2h` | confirmed | in-app, email | yes | `reminders` |
+| Reminder, any other offset | `MSG-reminder_generic` | confirmed | in-app, email | yes | `reminders` — for an org offset outside ±20% of the three above (DEC-047, migration `0062`) |
 | Nudge to non-responders | `MSG-rsvp_nudge` | members who have not responded | in-app | yes | `new_sessions` |
 
 ### 1.3 RSVP
@@ -168,6 +169,7 @@ export that does.
 | `MSG-reminder_7d` | «بعد أسبوع: {{title}}» |
 | `MSG-reminder_1d` | «غدًا: {{title}}» |
 | `MSG-reminder_2h` | «بعد ساعتين: {{title}}» |
+| `MSG-reminder_generic` | «تذكير: {{title}}» |
 | `MSG-rating_prompt` | «كيف كانت جلسة {{title}}؟» |
 | `MSG-materials_added` | «أُضيفت مواد جلسة {{title}}» |
 | `MSG-comment_reply` | «رد على تعليقك» |

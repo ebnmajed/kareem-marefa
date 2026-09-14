@@ -57,7 +57,13 @@ export async function toggleBookmark(locale: string, input: z.infer<typeof toggl
   const { sessionId, bookmarked } = toggleInput.parse(input);
   const { session, supabase } = await sessionClient(locale);
   if (bookmarked) {
-    const { error } = await supabase.from("bookmarks").upsert({ org_id: session.orgId, member_id: session.memberId, session_id: sessionId }, { onConflict: "member_id,session_id" });
+    const { error } = await supabase.from("bookmarks").upsert({ org_id: session.orgId, member_id: session.memberId, session_id: sessionId }, { onConflict: "member_id,session_id", ignoreDuplicates: true });
+    // ↑ ON CONFLICT DO NOTHING, not DO UPDATE: `bookmarks` grants insert and
+    // delete to `authenticated` and deliberately no update (0037), and
+    // Postgres checks the privilege against the parsed statement whether or
+    // not a conflict happens — every FIRST bookmark was 42501 until console's
+    // browse e2e drove the real form (wave-3 sync 8). A repeat is the harmless
+    // no-op the comment above promises.
     if (error) throw new Error(`bookmarks: ${error.message}`);
   } else {
     const { error } = await supabase.from("bookmarks").delete().eq("member_id", session.memberId).eq("session_id", sessionId);

@@ -482,6 +482,8 @@ form backed by a unique index, wrong for code guessing. Retained 90 days (OQ-019
 
 ### 4.6 Materials and tasks
 
+**Amended under DEC-050 (wave 3):** `photos.removal_reason text` — additive (`0059`, `REQ-EVT-014`).
+
 #### `ENT-materials`
 **Serves:** `REQ-MAT-001` … `REQ-MAT-011`
 
@@ -528,6 +530,8 @@ presenters and admins only (`REQ-TSK-003`).
 **No table here is ever consulted by the check-in path** (`REQ-TSK-002`).
 
 ### 4.7 Event page
+
+**Amended under DEC-050 (wave 3):** `comments.removal_reason text` — additive (`0059`, `REQ-EVT-014`); a staff removal writes its audit row with it.
 
 #### `ENT-comments`
 **Serves:** `REQ-EVT-002`, `REQ-EVT-005`, `REQ-EVT-006`
@@ -775,6 +779,8 @@ as a lost or hidden certificate. So the number is allocated by
 Volume is hundreds per month (A24), so the row-lock contention this introduces is irrelevant.
 
 ### 4.13 The designer
+
+**Amended under DEC-050 (wave 3):** `design_documents.draft_for_template_id uuid unique` (a template's one working draft; the one-binding check becomes poster | certificate | template draft — `0057`); `export_artifacts.render_context jsonb` (the pinned faces and bindings a render is reproduced from — `0060`); `fonts` gains the materialisation columns of `0064`; `design_templates_single_default` keeps exactly one default per (org, purpose, family) (`0057`). `ENT-fonts` carries no `org_id` (DEC-049, §7).
 
 #### `ENT-design_templates` · `ENT-design_template_versions`
 **Serves:** `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-026`, D67
@@ -1306,8 +1312,8 @@ Losing someone's hand-tuned design to an automatic rerender is the worse of the 
 
 ## 7. Tenancy key coverage
 
-Every table in §4 carries `org_id not null`, with exactly **four** exceptions, each deliberate and
-each named:
+Every table in §4 carries `org_id not null`, with exactly **five** exceptions, each deliberate and
+each named (the fifth added under DEC-049):
 
 | Table | Why no `org_id` |
 |---|---|
@@ -1315,6 +1321,7 @@ each named:
 | `ENT-platform_admins` | Platform-level. No policy anywhere references it (`REQ-ADM-002`). |
 | `ENT-design_templates` where `scope = 'platform'` | A platform template belongs to no org by requirement (D67). Nullable, with an explicitly written policy in `03`. |
 | `ENT-registrations` | Frozen legacy, predating the platform (DEC-002). |
+| `ENT-fonts` | Content-addressed and platform-wide by requirement (`REQ-DSG-016`, `06` §6.4, §7.3): the editor, the worker's Chromium and LibreOffice must read the **same bytes**, and the `fonts` bucket is deliberately not org-prefixed. `sha256` is unique platform-wide; `parity_status` is written by the job alone. DEC-049. |
 
 Everything else — join tables, ledgers, snapshots, audit rows, storage metadata — carries it, even
 where it is derivable. An RLS policy that has to join to find the tenant is a policy that can be
