@@ -2,6 +2,7 @@
   "app": {
     "shell": {
       "home": "الرئيسية",
+      "sessions": "الجلسات",
       "profile": "ملفي",
       "signOut": "تسجيل الخروج",
       "brand": "كريم معرفة"

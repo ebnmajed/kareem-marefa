@@ -24,6 +24,12 @@ export default async function AppLayout({ children, params }: { children: React.
               </Link>
             </li>
             <li>
+              {/* SCR-011, browse — built in wave 3 (DEC-048); the shell link is the lead's. */}
+              <Link href="/app/sessions" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3">
+                {t("sessions")}
+              </Link>
+            </li>
+            <li>
               <Link href="/app/me" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3">
                 {t("profile")}
               </Link>
