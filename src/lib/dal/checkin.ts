@@ -129,3 +129,119 @@ export async function markCheckedInManually(
   const row = data as { arrived_at: string };
   return { ok: true, arrivedAt: row.arrived_at };
 }
+
+// ── console (wave 3) — added for SCR-044, never changes anything above ─────
+
+export interface AttendanceRow {
+  memberId: string;
+  displayName: string | null;
+  rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
+  checkedIn: boolean;
+  arrivedAt: string | null;
+  method: "code" | "manual" | null;
+  /** Checked in with no confirmed RSVP at all (REQ-CHK-010's walk-in). */
+  isWalkIn: boolean;
+  /** Confirmed RSVP, no check-in (`evaluate_no_shows`' own definition,
+   *  `worker/src/tasks/evaluate_no_shows.ts` — computed the same way here so
+   *  the report and the points job never disagree on what a no-show is). */
+  isNoShow: boolean;
+}
+
+export interface AttendanceReport {
+  sessionId: string;
+  sessionTitle: string;
+  sessionState: string;
+  rows: AttendanceRow[];
+  counts: {
+    reserved: number;
+    confirmed: number;
+    checkedIn: number;
+    walkedIn: number;
+    noShowed: number;
+  };
+  /** Checked-in **among confirmed RSVPs**, divided by confirmed — a walk-in
+   *  inflates check-ins without ever having promised to come, so it stays
+   *  out of both sides of this fraction. Null with zero confirmed RSVPs. */
+  attendanceRate: number | null;
+}
+
+/**
+ * SCR-044 (`REQ-CHK-008`, `REQ-CHK-012`). Staff-only — admin or moderator,
+ * REQ-ADM-020's "event-day operations." `rsvps`/`check_ins` are already
+ * staff-readable for the whole session (0010's `rsvps_read`/`checkins_read`
+ * — `listUncheckedConfirmedRsvps`'s own comment says so), so this is a
+ * caller-side join of two already-authorized reads, the same shape as that
+ * function, not a new permission boundary.
+ */
+export async function getAttendanceReport(locale: string, sessionId: string): Promise<AttendanceReport | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+
+  const [sessionRes, rsvpsRes, checkInsRes] = await Promise.all([
+    supabase.from("sessions").select("id, title, state").eq("id", sessionId).maybeSingle(),
+    supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
+    supabase.from("check_ins").select("member_id, arrived_at, method, members(display_name)").eq("session_id", sessionId),
+  ]);
+  if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
+  if (!sessionRes.data) return null;
+  if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
+  if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
+
+  type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
+  const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
+
+  const checkIns = checkInsRes.data ?? [];
+  const checkInByMember = new Map(checkIns.map((c) => [c.member_id, c]));
+  const rows: AttendanceRow[] = [];
+  const seen = new Set<string>();
+
+  for (const r of rsvpsRes.data ?? []) {
+    seen.add(r.member_id);
+    const ci = checkInByMember.get(r.member_id);
+    const status = r.status as AttendanceRow["rsvpStatus"];
+    rows.push({
+      memberId: r.member_id,
+      displayName: nameOf(r.members as MemberEmbed),
+      rsvpStatus: status,
+      checkedIn: !!ci,
+      arrivedAt: ci?.arrived_at ?? null,
+      method: (ci?.method as AttendanceRow["method"]) ?? null,
+      isWalkIn: false,
+      isNoShow: status === "confirmed" && !ci,
+    });
+  }
+  for (const c of checkIns) {
+    if (seen.has(c.member_id)) continue;
+    rows.push({
+      memberId: c.member_id,
+      displayName: nameOf(c.members as MemberEmbed),
+      rsvpStatus: null,
+      checkedIn: true,
+      arrivedAt: c.arrived_at,
+      method: c.method as AttendanceRow["method"],
+      isWalkIn: true,
+      isNoShow: false,
+    });
+  }
+  rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
+
+  const confirmedRows = rows.filter((r) => r.rsvpStatus === "confirmed");
+  const confirmed = confirmedRows.length;
+  const checkedInAmongConfirmed = confirmedRows.filter((r) => r.checkedIn).length;
+
+  return {
+    sessionId,
+    sessionTitle: sessionRes.data.title,
+    sessionState: sessionRes.data.state,
+    rows,
+    counts: {
+      reserved: rsvpsRes.data?.length ?? 0,
+      confirmed,
+      checkedIn: checkIns.length,
+      walkedIn: rows.filter((r) => r.isWalkIn).length,
+      noShowed: rows.filter((r) => r.isNoShow).length,
+    },
+    attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
+  };
+}

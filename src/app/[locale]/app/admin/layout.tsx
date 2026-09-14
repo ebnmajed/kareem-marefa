@@ -25,10 +25,10 @@ type NavItem = { key: string; href: string; adminOnly: boolean; built: boolean }
 const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", href: "/app/admin", adminOnly: true, built: true },
   { key: "proposals", href: "/app/admin/proposals", adminOnly: true, built: true },
-  // Moderator scoping (a read-only, attendance-focused view of this same
-  // route) is SCR-044's story (console.md) — `adminOnly` flips once that
-  // DAL scoping exists, not before.
-  { key: "sessions", href: "/app/admin/sessions", adminOnly: true, built: true },
+  // SCR-044: a moderator now sees this item too — `admin/sessions/page.tsx`
+  // itself branches on role and renders a read-only, attendance-focused
+  // list for a moderator, never the admin's management UI.
+  { key: "sessions", href: "/app/admin/sessions", adminOnly: false, built: true },
   { key: "venues", href: "/app/admin/venues", adminOnly: true, built: true },
   { key: "categories", href: "/app/admin/categories", adminOnly: true, built: true },
   { key: "companies", href: "/app/admin/companies", adminOnly: true, built: true },
