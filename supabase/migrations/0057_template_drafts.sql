@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — a template's working draft, and one default per family.
+-- promoted by the lead at wave-3 sync 2 · designer (wave 3, M6) — a template's working draft, and one default per family.
 -- Follows 0055; forward-only, so what 0055 could have carried is added here
 -- rather than edited into it.
 --
