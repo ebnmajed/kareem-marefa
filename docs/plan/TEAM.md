@@ -190,6 +190,44 @@ Every few hours, or when a teammate says "ready for sync":
 
 ---
 
+**Learned in wave 3 (DEC-050):**
+
+- **The 390 px review is phone-project only.** A desktop context at 390 px carries a classic 12 px
+  scrollbar that mobile emulation does not, so every page that scrolls vertically measures 402
+  wide there; wave 1 and 2 never saw it because their admin pages were short. The helper asks first
+  whether `scrollWidth > innerWidth + 1`, then names the offender, skipping anything inside an
+  `overflow-x: auto|scroll` container (a table) or a `position: fixed` overlay (a sheet) — a probe
+  against a passing notify page is what settled it, not reasoning.
+- **The runner guard must not match its own shell.** `pgrep -f "node_modules/.bin/vitest"` matches
+  the waiting loop's command line, so every gate waited its full timeout on itself; and
+  `playwright/test` never matched the real process (`playwright test`), so resets went through
+  during teammates' e2e runs — 502s from Kong, "connection terminated", a page-image pipeline
+  that could not be told from environment noise. Bracket the first letter: `[n]ode_modules/.bin/vitest`,
+  `[p]laywright`.
+- **A trigger that enqueues or notifies is `security definer`.** It fires on any writer's row —
+  a presenter's own title edit or decline — and `enqueue_job()` is definer-only (0025). Test the
+  hook as a member, not as the owner: three wave-1 cases caught what the owner-only tests could not.
+- **A `unicode-range` on one subset of a two-file family sends Arabic to a system font**, and
+  `document.fonts.check()` says true throughout because it reports whether SOME face in the family
+  covers the character. A font assertion that is not a comparison between two measured strings
+  is not an assertion; the harness's own layout was insensitive to it (Tier B 0.000% both ways).
+- **Playwright role names match substrings**: `getByRole("button", { name: "تم" })` resolves to
+  every day cell of a September calendar («سبتمبر» contains «تم»). Use `exact: true` for short
+  Arabic labels, and scope to the open `dialog`.
+- **Mobile emulation keeps the focused field in view.** On a long page the click on a button
+  below a focused textarea never becomes actionable: Playwright scrolls the button up, Chromium
+  scrolls the field back. Blur, assert enabled, dispatch the tap; assert on the outcome.
+- **An unscoped emptiness assertion on an append-only table fails for everyone after the first
+  e2e run.** `audit_log` rows survive their member's cleanup; scope by `occurred_at >= now()` (the
+  transaction's start) or by org — never count the table.
+- **A teammate's promotion file may reference a column the DTO lacks.** CI's build is the only
+  gate that sees a committed component reading a property only an uncommitted DAL adds; a
+  teammate commits the DAL and the component together, always.
+- **The M5 pipeline had never run for real before wave 3.** A converter and a worker container on
+  the local Supabase network, two real decks, one hour: nothing was wrong, and now that is known
+  rather than hoped. Run every image-backed pipeline once against local Supabase before the wave
+  that builds on it.
+
 ## 4. The spawn prompt for the lead
 
 Paste this into a fresh Claude Code session in the checkout. The lead runs whatever model the
