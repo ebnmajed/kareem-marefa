@@ -17,6 +17,7 @@
       "disconnect": "Disconnect",
       "scope": "We ask for the narrowest permission there is: writing and updating events, nothing more.",
       "privacy": "Nobody can read the connection tokens, not you and not your organisation's admin. Disconnecting deletes them immediately.",
+      "justConnected": "Your calendar is connected. Upcoming sessions are added automatically.",
       "afterDisconnect": "Your calendar is disconnected. Events already added stay as they are, but they will no longer update.",
       "error": "That could not be done. Try again."
     },
