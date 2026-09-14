@@ -66,8 +66,13 @@ export function ImpersonateForm({
       <label htmlFor="imp-org" className="block text-label text-fg-heading">
         {t("orgLabel")}
       </label>
+      {/* The placeholder carries TEXT. An empty `<option>` renders as a blank
+          line, which at 390 px reads as a broken control rather than as a
+          prompt — the capture is what showed it. */}
       <select id="imp-org" name="orgId" required defaultValue="" className={FIELD}>
-        <option value="" disabled />
+        <option value="" disabled>
+          {t("orgPlaceholder")}
+        </option>
         {orgs.map((org) => (
           <option key={org.id} value={org.id}>
             {org.name}

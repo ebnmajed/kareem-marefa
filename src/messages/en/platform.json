@@ -127,6 +127,7 @@
       "honest": "You cannot look at an org's data without the org knowing. The session is written to that org's own audit log the moment it starts, and its admins can see it.",
       "intro": "Pick the org, write the reason, set the duration. Four hours is the ceiling, and it is a database constraint rather than a rule on this page.",
       "orgLabel": "Org",
+      "orgPlaceholder": "Choose the org",
       "reasonLabel": "Reason",
       "reasonHint": "Stored verbatim in the org's log. Write it for whoever reads it there.",
       "minutesLabel": "Duration in minutes",

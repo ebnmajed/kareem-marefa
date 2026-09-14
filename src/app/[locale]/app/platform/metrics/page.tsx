@@ -88,14 +88,19 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
                   <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
                     {t("jobTask")}
                   </th>
+                  {/* ★ `oldest pending` sits SECOND, not last. It is the only
+                      number that catches the LISTEN/NOTIFY degradation, and
+                      the 390 px capture showed it scrolled off the edge while
+                      two columns that look healthy either way stayed in view.
+                      A scroller is fine; putting the answer inside it is not. */}
+                  <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
+                    {t("jobOldest")}
+                  </th>
                   <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
                     {t("jobPending")}
                   </th>
-                  <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
-                    {t("jobFailed")}
-                  </th>
                   <th scope="col" className="py-2 text-start text-label text-fg-muted">
-                    {t("jobOldest")}
+                    {t("jobFailed")}
                   </th>
                 </tr>
               </thead>
@@ -107,9 +112,9 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
                     <td className="py-3 pe-4 font-mono text-body-sm text-fg-heading">
                       <bdi dir="ltr">{job.task}</bdi>
                     </td>
+                    <td className="py-3 pe-4 text-fg-body">{age(job.oldestPendingSeconds)}</td>
                     <td className="py-3 pe-4 text-fg-body">{num(job.pending)}</td>
-                    <td className="py-3 pe-4 text-fg-body">{num(job.failed)}</td>
-                    <td className="py-3 text-fg-body">{age(job.oldestPendingSeconds)}</td>
+                    <td className="py-3 text-fg-body">{num(job.failed)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -68,7 +68,14 @@ export default async function PlatformTemplatesPage({ params }: { params: Promis
                       <p className="text-label text-fg-heading">
                         <bdi>{tpl.name}</bdi>
                       </p>
-                      <p className="text-body-sm text-fg-muted">{tFamily(tpl.family)}</p>
+                      {/* The A27 baseline names each template after its own
+                          family (`0061`), so printing both reads as a stutter
+                          — «إعلان إعلان». The label earns its place only when
+                          it says something the name does not, which is the
+                          case for a promoted template that was renamed. */}
+                      {tFamily(tpl.family) === tpl.name ? null : (
+                        <p className="text-body-sm text-fg-muted">{tFamily(tpl.family)}</p>
+                      )}
                       {tpl.isDefault ? <p className="text-body-sm text-fg-body">{t("isDefault")}</p> : null}
                       {tpl.retiredAt ? <p className="text-body-sm text-fg-muted">{t("retired")}</p> : null}
                     </div>

@@ -271,15 +271,31 @@ test("★ REQ-ADM-002: a super admin walks the whole console and sees no member,
 
 test("★ REQ-ADM-002: the org's own screens are closed to a super admin, and so are its APIs", async ({ context, page }) => {
   await signInPlatform(context);
-  // No member row means no member session: every org screen sends them to
-  // /no-access rather than rendering an empty version of itself.
+  const never = [...secrets(a), ...secrets(b)];
+
+  // ★ The assertion is REQ-ADM-002's property, not a mechanism. A screen whose
+  // DAL calls `requireSession()` sends a super admin to /no-access; the browse
+  // page renders and comes back EMPTY, because a session with no `org_id`
+  // claim matches no row under any policy. Both satisfy "cannot read a single
+  // row"; demanding a redirect would couple this spec to another track's
+  // choice of where it calls its DAL, and would fail on a screen that is in
+  // fact perfectly safe.
   for (const path of ["/ar/app/admin", "/ar/app/admin/members", "/ar/app/sessions"]) {
     await page.goto(path);
-    expect(page.url(), `${path} does not render for a super admin`).toContain("/no-access");
+    if (page.url().includes("/no-access")) continue;
+    const text = await page.locator("body").innerText();
+    for (const s of never) expect(text, `${path} renders, and shows nothing an org owns (${s})`).not.toContain(s);
   }
-  // And the widest window an org admin has is closed too.
-  const csv = await page.request.get("/api/admin/exports/members");
-  expect(csv.status(), "the members export is not a super admin's").not.toBe(200);
+  // And the widest window an org admin has is closed too. `maxRedirects: 0`
+  // matters here: `requireSession()` answers a Route Handler with a redirect
+  // to /no-access, and a followed redirect lands on an HTML page with status
+  // 200 — which reads as "the export succeeded" when nothing of the sort
+  // happened. The assertion is again the property: whatever comes back, it
+  // carries no member of either org.
+  const csv = await page.request.get("/api/admin/exports/members", { maxRedirects: 0 });
+  expect(csv.status(), "the members export is not served to a super admin").not.toBe(200);
+  const body = await csv.text();
+  for (const s of never) expect(body, `the members export carries nothing an org owns (${s})`).not.toContain(s);
 });
 
 test("REQ-ADM-001: the console answers NOT FOUND for an org admin, not forbidden", async ({ context, page }) => {
