@@ -85,7 +85,16 @@ const runner = await run({
   // Polling is the FALLBACK, not the mechanism. A long interval keeps it
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
-  pollInterval: 60_000,
+  // Measured at wave-4's final sync (DEC-057): on the serial `render` queue
+  // a worker that finishes a job does not always get the queue's next job
+  // itself — the next one waits for the next POLL, so twelve poster
+  // variants completed in bursts of three at each 60-second boundary, four
+  // minutes end to end for a publish. Fifteen seconds keeps polling a
+  // fallback (LISTEN's latency is milliseconds, so a regression still shows
+  // as a 15 s stall in the queue-age alert) and brings a publish under a
+  // minute. Concurrency stays 1 (DEC-051) — this is the cheaper knob, and
+  // it is the one the measurement pointed at.
+  pollInterval: 15_000,
   taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
