@@ -26,7 +26,7 @@ afterAll(() => pool.end());
 const CHECK_VIOLATION = "23514";
 const INVALID_TEXT_REPRESENTATION = "22023";
 
-const PROPOSED = ["designer/0001_m6_schema.sql"];
+const PROPOSED = ["designer/0001_m6_schema.sql", "designer/0002_template_drafts.sql"];
 
 /** A file the lead has promoted is applied by `supabase db reset` and no
  *  longer exists under `supabase/proposed/`. In a shared tree that promotion
@@ -819,6 +819,119 @@ describe("POL-certificates.verify.anon", () => {
         codes.add(row.code);
       }
       expect(codes.size).toBe(40);
+    });
+  });
+});
+
+/* ═══ 0002 — a template's working draft, and one default per family ══════ */
+
+describe("design_documents.draft_for_template_id", () => {
+  it("a template has exactly ONE working draft", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const t = await template(tx, { orgId: f.a.id, scope: "org" });
+      const draft = (over: Record<string, unknown> = {}) =>
+        tx.q(
+          `insert into public.design_documents (org_id, template_version_id, purpose, document, draft_for_template_id, bound_session_id)
+           values ($1, $2, 'poster', $3::jsonb, $4, $5)`,
+          [f.a.id, t.versionId, JSON.stringify(DOC()), over.draft ?? t.templateId, over.session ?? null],
+        );
+
+      expect(await errorCode(() => draft())).toBeNull();
+      // Two admins opening the library must not each get their own draft:
+      // one of them would then publish over the other's version.
+      expect(await errorCode(() => draft())).toBe("23505");
+    });
+  });
+
+  it("a document is a poster, a certificate or a template draft — never two", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const t = await template(tx, { orgId: f.a.id, scope: "org" });
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.design_documents (org_id, template_version_id, purpose, document, draft_for_template_id, bound_session_id)
+             values ($1, $2, 'poster', $3::jsonb, $4, $5)`,
+            [f.a.id, t.versionId, JSON.stringify(DOC()), t.templateId, f.m2.a.published],
+          ),
+        ),
+      ).toBe(CHECK_VIOLATION);
+    });
+  });
+
+  it("a draft is an admin's to read and write — it is bound to nothing, so 03 §5.9b gives a member nothing", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const t = await template(tx, { orgId: f.a.id, scope: "org" });
+      await tx.q(
+        `insert into public.design_documents (org_id, template_version_id, purpose, document, draft_for_template_id)
+         values ($1, $2, 'poster', $3::jsonb, $4)`,
+        [f.a.id, t.versionId, JSON.stringify(DOC()), t.templateId],
+      );
+
+      // members[0] is the presenter of every fixture session, and still sees
+      // nothing: a template draft is bound to no session at all.
+      await tx.as(f.a.members[0].claims);
+      expect(await tx.q(`select id from public.design_documents where draft_for_template_id is not null`)).toEqual([]);
+
+      await tx.as(f.a.admin.claims);
+      expect(await tx.q(`select id from public.design_documents where draft_for_template_id is not null`)).toHaveLength(1);
+    });
+  });
+});
+
+describe("design_templates_single_default", () => {
+  it("promoting a default demotes the previous one in the same statement", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const make = async (name: string) =>
+        (
+          await tx.q<{ id: string }>(
+            `insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
+             values ($1, 'org', 'poster', 'talk', $2, false) returning id`,
+            [f.a.id, name],
+          )
+        )[0].id;
+      const first = await make("الأول");
+      const second = await make("الثاني");
+
+      await tx.q(`update public.design_templates set is_default = true where id = $1`, [first]);
+      await tx.q(`update public.design_templates set is_default = true where id = $1`, [second]);
+
+      const rows = await tx.q<{ id: string; is_default: boolean }>(
+        `select id, is_default from public.design_templates where id = any($1::uuid[])`,
+        [[first, second]],
+      );
+      // Not a clear-then-set an application could half-perform: a family with
+      // no default is a publish with no template to bind (DEC-012).
+      expect(rows.find((r) => r.id === first)?.is_default).toBe(false);
+      expect(rows.find((r) => r.id === second)?.is_default).toBe(true);
+    });
+  });
+
+  it("another org's default and another family's are untouched", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const make = async (orgId: string, family: string) =>
+        (
+          await tx.q<{ id: string }>(
+            `insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
+             values ($1, 'org', 'poster', $2, 'قالب', true) returning id`,
+            [orgId, family],
+          )
+        )[0].id;
+      const aTalk = await make(f.a.id, "talk");
+      const bTalk = await make(f.b.id, "talk");
+      const aPanel = await make(f.a.id, "panel");
+
+      const rows = await tx.q<{ id: string; is_default: boolean }>(
+        `select id, is_default from public.design_templates where id = any($1::uuid[])`,
+        [[aTalk, bTalk, aPanel]],
+      );
+      expect(rows.every((r) => r.is_default)).toBe(true);
     });
   });
 });

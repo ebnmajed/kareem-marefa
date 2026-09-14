@@ -30,7 +30,7 @@
     },
     "layers": {
       "heading": "Layers",
-      "count": "{count, plural, =0 {No layers} one {One layer} other {# layers}}",
+      "count": "{count, plural, =0 {No layers} one {One layer} other {{value} layers}}",
       "empty": "This document has no layers yet.",
       "select": "Select the layer <bdi>{name}</bdi>",
       "locked": "Locked",

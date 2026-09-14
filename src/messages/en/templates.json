@@ -1,0 +1,63 @@
+{
+  "templates": {
+    "library": {
+      "titlePoster": "Poster templates",
+      "titleCertificate": "Certificate templates",
+      "intro": "Platform templates are read, never edited. To change one, duplicate it into your org: the copy is independent, so no later platform change reaches it — which is exactly what makes improving a platform template safe.",
+      "platformHeading": "Platform templates",
+      "platformIntro": "Managed by the platform admin. Every org sees them; no org writes them.",
+      "platformEmpty": "No platform templates of this kind yet.",
+      "orgHeading": "Your org's templates",
+      "orgIntro": "Built by duplicating a platform template or starting blank.",
+      "orgEmpty": "Your org has not created a template yet.",
+      "moderatorNotice": "You can read the templates. Creating and editing them is an org admin's act."
+    },
+    "card": {
+      "family": "Family",
+      "readOnly": "Read only",
+      "version": "Version <bdi>{value}</bdi>",
+      "noVersion": "No published version",
+      "versionCount": "{count, plural, =0 {No versions} one {One version} other {{value} versions}}",
+      "lockedRegions": "{count, plural, =0 {No locked regions} one {One locked region} other {{value} locked regions}}",
+      "lockedHint": "A locked region cannot be moved, resized, hidden or deleted in the org editor. The verification QR and the signature block are locked on every certificate template: a certificate whose QR someone dragged off the page cannot be verified, and that only shows up after it is printed and handed over.",
+      "isDefault": "Default",
+      "defaultHint": "The template the automatic path binds session data to at publish.",
+      "retired": "Retired",
+      "duplicate": "Duplicate into my org",
+      "edit": "Open in the designer",
+      "publish": "Publish a new version",
+      "setDefault": "Make it the default",
+      "retire": "Retire",
+      "restore": "Restore"
+    },
+    "create": {
+      "heading": "New blank template",
+      "name": "Name",
+      "family": "Family",
+      "submit": "Create",
+      "duplicateName": "Name for the copy"
+    },
+    "family": {
+      "talk": "Talk",
+      "workshop": "Workshop",
+      "panel": "Panel",
+      "meetup": "Meetup",
+      "announcement": "Announcement",
+      "attendance": "Attendance certificate",
+      "presenter": "Presenter certificate",
+      "achievement": "Achievement certificate"
+    },
+    "brandNote": "Templates carry no open books, graduation caps, lightbulbs, icon libraries, emoji or photography. The visual language is the Knowledge Network: connected dots, thin silver lines, light. And no colour is written out in a template — colours bind to the org's brand kit, and the database refuses anything else.",
+    "result": {
+      "duplicated": "The template was copied into your org.",
+      "created": "The template was created.",
+      "published": "Version <bdi>{value}</bdi> is published. Certificates and posters issued before it stay on their own version.",
+      "defaultSet": "This template is now the default for its family.",
+      "renamed": "The name was updated.",
+      "retired": "The template was retired.",
+      "restored": "The template is back in service.",
+      "notAuthorized": "This is an org admin's act, and platform templates are not edited here.",
+      "invalid": "The save failed: <bdi>{message}</bdi>"
+    }
+  }
+}

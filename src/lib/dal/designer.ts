@@ -239,6 +239,14 @@ export async function getDesignerDocument(locale: string, documentId: string, or
   };
 }
 
+/** The org's numeral system, for any designer screen that prints a count.
+ *  One query rather than each screen remembering `org_settings` exists. */
+export async function getOrgNumerals(locale: string): Promise<NumeralSystem> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle();
+  return (data?.numerals as NumeralSystem | undefined) ?? "western";
+}
+
 /* ── the autosave ───────────────────────────────────────────────────────── */
 
 /** The Route Handler's envelope. The tree inside is validated by the runtime's

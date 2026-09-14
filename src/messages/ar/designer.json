@@ -30,7 +30,7 @@
     },
     "layers": {
       "heading": "الطبقات",
-      "count": "{count, plural, zero {لا طبقات} one {طبقة واحدة} two {طبقتان} few {# طبقات} many {# طبقة} other {# طبقة}}",
+      "count": "{count, plural, zero {لا طبقات} one {طبقة واحدة} two {طبقتان} few {{value} طبقات} many {{value} طبقة} other {{value} طبقة}}",
       "empty": "لا طبقات في هذا المستند بعد.",
       "select": "اختيار الطبقة <bdi>{name}</bdi>",
       "locked": "مقفلة",
