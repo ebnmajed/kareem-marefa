@@ -91,3 +91,62 @@ typed).
    §4.1` calls "deliberately general enough to carry non-scoring settings too", but the constraint
    itself was written before this track existed).
 3. One export line needed in `packages/storage-paths/src/index.ts` (§0.6) — not in my glob.
+
+**Resolved at sync 1 (DEC-053):** all three. `0068_brand_kits.sql` promoted as proposed,
+`getBrandKit(locale, orgId)` kept as written (the app layout calls it exactly that way), the
+`'branding'` scope stands, and `packages/storage-paths/src/index.ts` gained the export line. The
+four consumers are wired: the CSS layer in the app layout (`.brand-org` over `globals.css`'s
+tokens), `worker/src/render/brand.ts`'s `brandBindings()` in `regenerate_poster`/
+`issue_certificates`, `send_notification`'s mail renderer against `public.brand_kit()`, and the
+editor's preview in `designer`'s `getDesignerDocument()` — all through `resolveBrand()`, resolved
+at REQUEST time (before the fingerprint), never at render time, which is DEC-053's correction to
+my own plan: I had assumed `export_render_context()`'s `brand` column would be what the worker
+reads, and it turned out to be the wrong seam for `0060`'s "never a fresh resolution" rule. The
+column stays, unread by the worker, which is harmless and still tested.
+
+## 1. Second pass — SCR-059 itself
+
+Built after sync 1, on top of the wired consumers:
+
+- **`src/lib/brand/ppi.ts`** — `ppiAtA3()`, REQ-DSG-019's 300/200 PPI thresholds read backwards at
+  upload time: "if this logo filled A3, what PPI would it be?" A conservative worst-case number
+  (any smaller placement only improves it), shared between the upload Route Handler (which
+  computes it) and the screen (which shows it) so there is one rounding, not two.
+- **`src/app/api/admin/branding/logo{,/complete}/route.ts`** — thin wrappers over `designer`'s
+  `initiateAssetUpload()`/`completeAssetUpload()` (`src/lib/dal/posters.ts`) rather than a second
+  sniff-and-measure pipeline; `complete` adds the `a3` PPI reading to the response.
+- **`src/lib/brand/fonts.ts`** — `listSelectableFonts()`, a small query of my own rather than
+  reusing `designer`'s `listEditorFaces()`: that function falls back to the unmaterialised package
+  manifest (no `fonts.id`, which `save_brand_kit()` needs) when the bucket is empty, and offering a
+  choice the RPC cannot accept would be dishonest.
+- **`BrandKitForm`** holds all nine-times-two colour tokens, the logo and the two font choices
+  **fully controlled** in React state rather than `defaultValue` — the live preview needs it, and
+  it is what satisfies "the form survives a failed action" without an echo-back state field:
+  React re-asserts a controlled input's DOM value on every render, so React 19's post-action form
+  reset is never visible. Switching the light/dark tab mirrors the untouched scheme into hidden
+  inputs so neither is lost on submit.
+- **`ContrastBadge`** shows WCAG 2.2 AA against four pairs: heading/body/muted text on canvas, and
+  edge-strong on canvas as a UI border — the last one matches `globals.css`'s own comment that
+  `edge-strong` "must meet 3:1 (SC 1.4.11)" for input borders, so the check is not an invented
+  pairing.
+- **Reset** is a two-step confirm inside the same page (no modal dependency): a toggle button
+  reveals a confirm/cancel pair, and only the confirm one submits.
+
+**Definition of done, as it stands:** `tsc --noEmit` clean, `lint` zero errors, `npm test` green
+(`tests/components/branding/brand-kit-form.test.tsx`, `tests/unit/brand-runtime.test.ts`,
+`tests/unit/brand-schema.test.ts`), `npm run test:rls` green (14 cases,
+`tests/rls/brand-kits.test.ts`, now proven against the real promoted migration `0068` rather than
+`applyProposed()`). **`tests/e2e/branding.spec.ts` is written and the moderator-404 case passes,
+but the admin flow does not yet** — the currently-served build predates this track's route
+(`/app/admin/branding`, `/api/admin/branding/**`), and only the lead runs `npm run build`
+(`CLAUDE.md`). Needs a rebuild to go green; not blocking, flagged to the lead.
+
+**Left for a later pass, named rather than silently skipped:** the two font ids are stored and
+unbound (§0.5, DEC-053 decision 5); no dedicated unit test asserts the SQL literals in
+`0068_brand_kits.sql`'s `brand_kit()` fallback match the runtime's `platformBrand()` beyond what
+`tests/rls/brand-kits.test.ts`'s `POL-brand_kit.identity_default` case already does at the
+integration level (sufficient — it is the same guarantee, proven against the real function).
+
+Ready for sync. Track complete: `getBrandKit()`, the schema, the RLS proof, SCR-059 with a real
+logo upload, live preview, contrast display and reset, and a component test suite — all green
+except the e2e admin flow, which needs a rebuild.
