@@ -245,3 +245,176 @@ both have a test that a length-counting implementation fails. `ics` and
 It encodes a space as `+` (form encoding, not percent-encoding). Google
 tolerates it; Outlook shows the member literal plus signs, and Arabic titles
 are full of spaces. `08` §6.2's "naive encoding breaks" is this.
+
+---
+
+## 6. Handoff to wave 3
+
+Written at the close of wave 2, for whoever picks this up. Everything below was
+verified against the tree, not recalled.
+
+### 6.1 What `console` inherits
+
+`src/app/[locale]/app/admin/{emails,reminders}/**`, held by `notify` for wave 2
+under DEC-042's pattern and yours from wave 3. Two screens, four files, and one
+DAL module they share with the member-facing screens
+(`src/lib/dal/notifications.ts` — its admin half is the last third of the file
+and each of its functions returns `null` for a non-admin so the page can
+`notFound()`, the same shape as `listVenuesForAdmin`).
+
+**SCR-058, `/app/admin/emails`** — `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-008`.
+The thing to preserve: **the editor validates nothing itself.** The
+`notification_templates_validate` trigger (`0026`) refuses a body missing a
+declared `required_fields` entry, and a key or channel `08` §1 does not list,
+for every writer. The screen renders its errcodes (`23514`, `22023`). A second
+copy of those rules in TypeScript is a second thing to keep in step, and the
+copy that drifts is always the one the screen enforces.
+
+**`/app/admin/reminders`** — `REQ-ADM-016`, `REQ-NTF-004`. One UPDATE. The
+moving of every pending reminder is `org_settings_reschedule` (`0040`), not the
+action, so it holds whatever writes the column.
+
+### 6.2 The mail transport
+
+`worker/src/mail/` — one interface, three implementations, one factory
+(`index.ts`) that is the only place `RESEND_API_KEY` is read.
+
+| Implementation | Selected when | Goes to |
+|---|---|---|
+| `SmtpSinkTransport` | the default | Mailpit, `127.0.0.1:54325`; read it at `:54324` |
+| `MemoryTransport` | `VITEST`, `NODE_ENV=test` or `CI` | an array the tests read back |
+| `ResendTransport` | `MAIL_TRANSPORT=resend`, and nothing else | Resend |
+
+**The default is a sink, not a provider.** Getting that backwards once — a
+missing variable falling through to Resend — sends real mail from a test run,
+and there is no undo for a delivered email. `tests/unit/mail-transport.test.ts`
+proves `RESEND_API_KEY` is not so much as *read* outside the `resend` branch,
+using a recording `Proxy` over the environment rather than by inspection.
+
+Two environment switches, both optional: **`MAIL_TRANSPORT`** (`resend` ·
+`memory` · `smtp`) and **`MAIL_SMTP_HOST`/`MAIL_SMTP_PORT`**. Plus
+**`MAIL_FROM_ADDRESS`**, defaulting to `08` §3.4's single platform-verified
+sender.
+
+The sink speaks SMTP over `node:net` in about forty lines rather than adding
+`nodemailer`: six verbs against a server with no auth and no TLS did not
+justify a package in the lock file and in the worker image.
+
+**Templates** live in `worker/src/mail/templates.ts` — 24 Arabic defaults, one
+per message `08` §1 gives an email channel. An org's row in
+`notification_templates` wins where it exists. `tests/unit/mail-render.test.ts`
+reads the matrix out of migration `0026` and diffs it against the file, so a
+message added to `08` §1 with no template fails there rather than in a
+member's empty inbox.
+
+### 6.3 Jobs, keys and the crontab
+
+All eight are in `worker/src/index.ts`'s `taskList`. Keys are `08` §7's,
+verbatim; `public.enqueue_job()` fixes `job_key_mode => 'replace'`, so
+re-enqueueing a key **moves** the job.
+
+```
+notify:{message_id}                                send_notification
+sched:{session_id}                                 schedule_reminders
+remind:{session_id}:{offset_minutes}:{member_id}   send_reminder
+rate:{session_id}                                  rating_prompt
+nudge:{session_id}                                 rsvp_nudge
+cal:{rsvp_id} · caldel:{rsvp_id}                   calendar_upsert / _delete
+caltok:{connection_id}                             refresh_calendar_tokens
+```
+
+**One crontab line is this track's:** `0 * * * * refresh_calendar_tokens`.
+Hourly, not at expiry: Google's access tokens last an hour, so a sweep timed to
+expiry leaves a window in which every sync job fails with a 401. With no
+payload it refreshes every connection expiring within thirty minutes.
+
+`schedule_reminders` is **reconciliation only**. The common paths call
+`schedule_session_reminders()` inline, in the transaction that made the change,
+because a member reserving ten minutes before the −2 h mark would otherwise
+miss their own reminder.
+
+### 6.4 `public.notify()` — unchanged since day one
+
+The contract in §0 above is current. `scoring` and `content` both call it and
+neither needed a change to it. Nothing else may write `public.notifications`:
+the table has no insert policy and no insert grant for any role, `service_role`
+included.
+
+**Three `TODO(notify, M3)` comments survive in the migrations and are all
+stale** — `0014` lines 75 and 144, and `0045` line 103, where `scoring`'s
+`create or replace` of `reserve_seat()` carried the comment forward. Migrations
+are forward-only, so they cannot be edited. **Do not implement them.** The
+`rsvps_notify` trigger (`0034`) is at the table and already covers every writer,
+which is exactly why a trigger was chosen over replacing the RPC. Verified
+against the live schema: a plain `insert into public.rsvps (… 'confirmed' …)`
+produces one `calendar_upsert` on `cal:{rsvp_id}`, three `send_reminder` jobs
+and one `MSG-rsvp_confirmed` notification, with no RPC involved.
+
+### 6.5 The fixture rows, and what they break
+
+`tests/rls/fixture-m3.ts` (the lead's) seeds one row in every notify table on
+**both** orgs, all for `members[0]`, so the generated isolation sweep is never
+vacuous:
+
+- one unread `notifications` row — `MSG-session_published`, `session_id = m2.published`
+- one `notification_preferences` row — `social` / `email` / `enabled = false`
+- one `calendar_connections` row with tokens set
+- one `calendar_events` row — `members[0]` × `m2.published`, `synced`
+- one Arabic email `notification_templates` row and one `delivered` `email_deliveries` row
+  (both tables are on the sweep's admin-only exemption list)
+
+**A per-policy case must therefore key its assertions by id or by org, never by
+count**, or arrange its own world. Mine do the latter: `setup()` clears the six
+tables. Two traps in that, both learned the hard way and both commented in
+`tests/rls/notify-contract.test.ts`: deleting `calendar_connections` fires
+`0038`'s disconnect notice **into the inbox just emptied**, so the inbox is
+cleared once more, last; and since `0034` the fixture's RSVP inserts enqueue
+jobs of their own, so `graphile_worker._private_jobs` is cleared too.
+
+Use `members[1]` or the completed session for anything that would collide with
+the fixture's `members[0]` × published row on `unique (member_id, session_id)`.
+
+### 6.6 The two lead edits in this track's files
+
+Both correct, both worth knowing about:
+
+1. **`0038`, `calendar_disconnected()`** gains an early return when
+   `old.member_id` no longer exists in `old.org_id`. An org deletion cascades
+   into the trigger with the member already gone, `notify()` raises `not_found`
+   and the whole cascade aborts. Nobody is left to tell, so nothing is lost.
+   The M1 tenancy test caught it.
+2. **`tests/rls/notify-contract.test.ts`'s `setup()`** gains the two extra
+   cleanups described in §6.5.
+
+### 6.7 Launch inputs
+
+Recorded in `STATUS.md` and DEC-047; nothing here is decided by this track.
+
+- **The Google OAuth client with calendar scopes**, and **its secret on
+  Vercel** for the callback's code exchange. That is not the `service_role` key
+  invariant 7 forbids. `08` §6.3 gives "Connect" no job and the authorization
+  code is single-use and short-lived, so a queued exchange adds a window in
+  which it expires unredeemed; the alternative is a worker-side exchange with a
+  new job name, which is a change to `11`. The reasoning is written into
+  `src/app/api/calendar/oauth.ts`, where PR C will find it. Until the client
+  exists, `/api/calendar/connect` redirects to SCR-025 with a reason and the
+  screen says so in Arabic.
+- **The Resend account.** `RESEND_API_KEY` stays unset until then; see §6.2.
+- The production host for the worker image is DEC-046's, not this track's.
+
+### 6.8 The four `08` corrections, now under DEC-047
+
+All four are recorded; none needs code from wave 3 except the third.
+
+1. §1.7's heading says eleven above a list of seventeen keys. The list is
+   authoritative; the matrix in `0026` carries all seventeen.
+2. §3.2 lists 22 templates for 24 messages with an email channel.
+   `MSG-proposal_submitted` and `MSG-presenter_assigned` have defaults now, and
+   the test diffs the file against the migration.
+3. §1.2 defines three reminder messages against `reminder_offsets_minutes` as a
+   free `int[]`. `reminder_message_key()` picks the nearest by magnitude, so an
+   org choosing three days reads «بعد أسبوع» above a body carrying the real
+   moment. **The honest fix is a fourth, offset-agnostic message, left to
+   M7-console.** That is the one piece of unfinished business on this track.
+4. `MSG-rsvp_deadline_soon` (§1.3) has no job in `11` §7. Unimplemented and not
+   faked; it needs a job name and key from `11` before anyone builds it.
