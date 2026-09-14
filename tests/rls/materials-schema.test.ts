@@ -3,7 +3,7 @@
 // each test's rolled-back transaction (DEC-040) — nothing here touches the
 // shared local database.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
