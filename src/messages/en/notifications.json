@@ -123,6 +123,55 @@
       "MSG-account_deactivated": "Your account was deactivated",
       "MSG-calendar_disconnected": "Your calendar was disconnected",
       "MSG-export_ready": "Your data is ready to download"
+    },
+    "admin": {
+      "emails": {
+        "title": "Email templates",
+        "intro": "Your organisation's templates win over the built-in ones. Write them in Arabic, and do not delete a field you declared required.",
+        "templateHeading": "Template",
+        "message": "Message",
+        "subject": "Subject",
+        "body": "Body",
+        "requiredFields": "Required fields (comma separated)",
+        "save": "Save template",
+        "remove": "Delete and use the default",
+        "saved": "Template saved",
+        "usingDefault": "Using the built-in template",
+        "overridden": "Organisation template",
+        "errors": {
+          "missing_required_field": "The body is missing a field you declared required. Add it, or remove it from the list.",
+          "unknown_message_key": "That message is not in the notification matrix, or it is not sent by email.",
+          "not_permitted": "This page is for organisation admins.",
+          "generic": "That could not be saved. Try again."
+        },
+        "deliveries": {
+          "heading": "Delivery log",
+          "empty": "No messages yet.",
+          "recipient": "Recipient",
+          "status": "Status",
+          "reason": "Reason",
+          "sentAt": "Sent",
+          "retention": "The log is kept for 180 days.",
+          "state": {
+            "queued": "Queued",
+            "sent": "Sent",
+            "delivered": "Delivered",
+            "bounced": "Bounced",
+            "failed": "Failed"
+          }
+        }
+      },
+      "reminders": {
+        "title": "Reminder schedule",
+        "intro": "Reminders arrive these many minutes before a session. Changing the schedule moves pending reminders rather than duplicating them.",
+        "offsets": "Minutes before the session (comma separated)",
+        "offsetsHint": "The default is 10080, 1440 and 120 — a week, a day and two hours.",
+        "promptDelay": "Minutes after a session ends before the rating prompt",
+        "save": "Save schedule",
+        "saved": "Schedule saved and pending reminders moved",
+        "error": "That could not be saved. Each value must be between 5 minutes and 30 days.",
+        "current": "Current schedule"
+      }
     }
   }
 }

@@ -272,3 +272,244 @@ export async function markAllRead(locale: string): Promise<void> {
     .is("read_at", null);
   if (error) throw new Error(`notifications: ${error.message}`);
 }
+
+// ── The admin surfaces of SCR-058 and the reminder schedule ─────────────────
+//
+// `notify` holds `app/admin/{emails,reminders}` for wave 2 and hands them to
+// `console` at wave 3, the same carve-out DEC-042 made for `sessions`.
+//
+// Each of these returns `null` for a caller who is not an org admin, and the
+// page calls `notFound()` — the same shape as `listVenuesForAdmin`. RLS is
+// still the boundary (`templates_read_admin`, `deliveries_read_admin`); this
+// is so the screen 404s instead of rendering an empty table that looks like
+// an org with no templates.
+
+export interface TemplateDTO {
+  id: string;
+  key: string;
+  channel: NotifyChannel;
+  locale: string;
+  subject: string | null;
+  body: string;
+  requiredFields: string[];
+  updatedAt: string;
+}
+
+export interface TemplateCatalogue {
+  templates: TemplateDTO[];
+  /** Every `MSG-*` with an email channel, so the screen can offer the ones
+   *  the org has not overridden rather than only listing what exists. */
+  emailMessages: string[];
+}
+
+async function assertAdmin(locale: string) {
+  const client = await sessionClient(locale);
+  return client.session.role === "admin" ? client : null;
+}
+
+export async function getTemplateCatalogue(locale: string): Promise<TemplateCatalogue | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+
+  const [{ data, error }, matrix] = await Promise.all([
+    supabase
+      .from("notification_templates")
+      .select("id, key, channel, locale, subject, body, required_fields, updated_at")
+      .eq("org_id", session.orgId)
+      .order("key"),
+    getNotificationMatrix(locale),
+  ]);
+  if (error) throw new Error(`notification_templates: ${error.message}`);
+
+  return {
+    templates: ((data ?? []) as Array<{
+      id: string;
+      key: string;
+      channel: NotifyChannel;
+      locale: string;
+      subject: string | null;
+      body: string;
+      required_fields: string[] | null;
+      updated_at: string;
+    }>).map((r) => ({
+      id: r.id,
+      key: r.key,
+      channel: r.channel,
+      locale: r.locale,
+      subject: r.subject,
+      body: r.body,
+      requiredFields: r.required_fields ?? [],
+      updatedAt: r.updated_at,
+    })),
+    emailMessages: matrix.filter((m) => m.email).map((m) => m.key),
+  };
+}
+
+export const templateInput = z.object({
+  key: z.string().min(3).max(80),
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(20000),
+  requiredFields: z.array(z.string().trim().min(1).max(80)).max(20),
+});
+export type TemplateInput = z.infer<typeof templateInput>;
+
+/**
+ * `REQ-NTF-007`. The validation that matters is NOT here: the
+ * `notification_templates_validate` trigger (migration 0026) refuses a body
+ * that omits a declared `required_fields` entry, and refuses a key or channel
+ * `08` §1 does not list. This maps those refusals to something the screen can
+ * say, rather than re-implementing them where they could drift.
+ */
+export async function saveTemplate(locale: string, input: TemplateInput): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_permitted");
+  const { session, supabase } = client;
+
+  const row = {
+    org_id: session.orgId,
+    key: input.key,
+    channel: "email" as const,
+    locale: "ar",
+    subject: input.subject,
+    body: input.body,
+    required_fields: input.requiredFields,
+  };
+
+  const { data: existing, error: findError } = await supabase
+    .from("notification_templates")
+    .select("id")
+    .eq("org_id", session.orgId)
+    .eq("key", input.key)
+    .eq("channel", "email")
+    .eq("locale", "ar")
+    .maybeSingle();
+  if (findError) throw new Error(`notification_templates: ${findError.message}`);
+
+  const { error } = existing
+    ? await supabase.from("notification_templates").update(row).eq("id", existing.id)
+    : await supabase.from("notification_templates").insert(row);
+  if (error) throw mapTemplateError(error);
+}
+
+export async function deleteTemplate(locale: string, id: string): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_permitted");
+  if (!z.uuid().safeParse(id).success) throw new Error("not_found");
+  const { error } = await client.supabase.from("notification_templates").delete().eq("id", id);
+  if (error) throw new Error(`notification_templates: ${error.message}`);
+}
+
+function mapTemplateError(error: { code?: string; message: string }): Error {
+  // The trigger's own errcodes (0026): 23514 a missing required field,
+  // 22023 a key or channel outside 08 §1.
+  if (error.code === "23514") return new Error("missing_required_field");
+  if (error.code === "22023") return new Error("unknown_message_key");
+  if (error.code === "42501") return new Error("not_permitted");
+  return new Error(`notification_templates: ${error.message}`);
+}
+
+export interface DeliveryDTO {
+  id: string;
+  key: string;
+  status: "queued" | "sent" | "delivered" | "bounced" | "failed";
+  error: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  member: { id: string; displayName: string | null } | null;
+}
+
+/** `REQ-NTF-008` — "A bounce or failure is visible to the org admin, with the
+ *  reason." Failures first, because that is what the screen exists for. */
+export async function listDeliveries(locale: string, opts: { limit?: number } = {}): Promise<DeliveryDTO[] | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+
+  const { data, error } = await supabase
+    .from("email_deliveries")
+    .select("id, key, status, error, created_at, sent_at, member_id")
+    .eq("org_id", session.orgId)
+    .order("created_at", { ascending: false })
+    .limit(Math.min(opts.limit ?? 100, 500));
+  if (error) throw new Error(`email_deliveries: ${error.message}`);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    key: string;
+    status: DeliveryDTO["status"];
+    error: string | null;
+    created_at: string;
+    sent_at: string | null;
+    member_id: string;
+  }>;
+  if (rows.length === 0) return [];
+
+  // The column grant on `members` exposes exactly `display_name`/`avatar_url`
+  // (0004), so this cannot leak an address even by accident — which matters
+  // on a screen about email.
+  const ids = Array.from(new Set(rows.map((r) => r.member_id)));
+  const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name").in("id", ids);
+  if (memberError) throw new Error(`members_member_view: ${memberError.message}`);
+  const byId = new Map((members ?? []).map((m) => [m.id as string, m.display_name as string | null]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    key: r.key,
+    status: r.status,
+    error: r.error,
+    createdAt: r.created_at,
+    sentAt: r.sent_at,
+    member: byId.has(r.member_id) ? { id: r.member_id, displayName: byId.get(r.member_id) ?? null } : null,
+  }));
+}
+
+export interface ReminderSchedule {
+  offsetsMinutes: number[];
+  ratingPromptDelayMinutes: number;
+}
+
+export async function getReminderSchedule(locale: string): Promise<ReminderSchedule | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const { data, error } = await supabase
+    .from("org_settings")
+    .select("reminder_offsets_minutes, rating_prompt_delay_minutes")
+    .eq("org_id", session.orgId)
+    .maybeSingle();
+  if (error) throw new Error(`org_settings: ${error.message}`);
+  return {
+    offsetsMinutes: data?.reminder_offsets_minutes ?? [10080, 1440, 120],
+    ratingPromptDelayMinutes: data?.rating_prompt_delay_minutes ?? 60,
+  };
+}
+
+export const reminderScheduleInput = z.object({
+  // A19's defaults are 7 d / 1 d / 2 h; the bounds keep an admin from
+  // scheduling a reminder a year out or one minute before, either of which is
+  // a job the queue will hold pointlessly.
+  offsetsMinutes: z.array(z.number().int().min(5).max(43200)).min(1).max(6),
+  ratingPromptDelayMinutes: z.number().int().min(0).max(10080),
+});
+export type ReminderScheduleInput = z.infer<typeof reminderScheduleInput>;
+
+/**
+ * `REQ-NTF-004` / `REQ-ADM-016`. The rescheduling is NOT here: the
+ * `org_settings_reschedule` trigger (supabase/proposed/notify/0008) removes
+ * every pending job under an abandoned offset and re-walks the new set for
+ * every published session in the org. Doing it in this function would leave
+ * the same orphans behind whenever the value changed by any other path.
+ */
+export async function setReminderSchedule(locale: string, input: ReminderScheduleInput): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_permitted");
+  const { session, supabase } = client;
+
+  const offsets = Array.from(new Set(input.offsetsMinutes)).sort((a, b) => b - a);
+  const { error } = await supabase
+    .from("org_settings")
+    .update({ reminder_offsets_minutes: offsets, rating_prompt_delay_minutes: input.ratingPromptDelayMinutes })
+    .eq("org_id", session.orgId);
+  if (error) throw new Error(error.code === "42501" ? "not_permitted" : `org_settings: ${error.message}`);
+}
