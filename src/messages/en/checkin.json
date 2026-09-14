@@ -1,0 +1,43 @@
+{
+  "checkin": {
+    "title": "Check in",
+    "ready": "Enter the check-in code the presenter announced",
+    "codeLabel": "Check-in code",
+    "submit": "Check in",
+    "success": "You're checked in",
+    "alreadyCheckedIn": "You're already checked in",
+    "error": {
+      "not_found": "Session not found",
+      "presenter_cannot_check_in": "A presenter cannot check in to their own session",
+      "rate_limited": "Too many attempts — wait a minute and try again",
+      "not_started": "This session hasn't started yet",
+      "session_ended": "This session has ended",
+      "not_open": "Check-in is only open during the session",
+      "invalid_code": "That code isn't correct — check the code shown right now",
+      "overlap": "You're checked in to another session at this same time",
+      "unknown": "Something went wrong — try again"
+    },
+    "host": {
+      "title": "Check-in code",
+      "notAuthorized": "This page is for the session's presenters and staff only",
+      "checkInCount": "{count, plural, =0 {No one has checked in yet} one {# person checked in} other {# people checked in}}",
+      "revoke": "Burn this code now",
+      "revoked": "Code revoked — a new one has been issued",
+      "manualTitle": "Manual attendance",
+      "manualMember": "Member",
+      "manualReason": "Reason",
+      "manualSubmit": "Mark present manually",
+      "manualSuccess": "Marked present manually",
+      "manualNoCandidates": "No one has a confirmed reservation without a check-in",
+      "manualError": {
+        "not_authorized": "You don't have permission to mark attendance manually",
+        "reason_required": "A reason is required",
+        "not_found": "Session not found",
+        "not_open": "Manual check-in is only available during the session",
+        "member_not_found": "That member isn't in this organisation",
+        "presenter_cannot_check_in": "The session's presenter cannot be marked present",
+        "unknown": "Something went wrong — try again"
+      }
+    }
+  }
+}

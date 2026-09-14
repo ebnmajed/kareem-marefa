@@ -183,14 +183,15 @@ from a separate rule. Date range pickers run right-to-left.
 **Order on the page** (§6 of the brief, `REQ-SES-013`):
 1. **الملصق**
 2. **التاريخ · الوقت · المكان (مع الخريطة) · المُقدِّم** — before anything else
-3. **The primary action**, with live **السعة** and, if waitlisted, **موقعك في قائمة الانتظار**
-4. **آخر موعد للحجز** and **آخر موعد للإلغاء**, stated plainly
-5. نبذة الجلسة · لغة الجلسة · التصنيف والوسوم
-6. **المهام التحضيرية** with the member's own progress
-7. **المواد** — respecting the phase gate (`REQ-MAT-006`)
-8. **التعليقات** — threaded, one level
-9. **الصور**
-10. **التقييم** — after completion, for checked-in attendees only
+3. **لغة الجلسة** — before the action, because a member decides whether to attend a session they can follow (`REQ-SES-011`; DEC-045 corrected this list, which had the language at 5)
+4. **The primary action**, with live **السعة** and, if waitlisted, **موقعك في قائمة الانتظار**
+5. **آخر موعد للحجز** and **آخر موعد للإلغاء**, stated plainly
+6. نبذة الجلسة · التصنيف والوسوم
+7. **المهام التحضيرية** with the member's own progress
+8. **المواد** — respecting the phase gate (`REQ-MAT-006`)
+9. **التعليقات** — threaded, one level
+10. **الصور**
+11. **التقييم** — after completion, for checked-in attendees only
 
 **States:**
 | State | Behaviour |
@@ -204,7 +205,7 @@ from a separate rule. Date range pickers run right-to-left.
 | `cancelled` | **«جلسة ملغاة»** banner with the reason; comments frozen, materials retained (OQ-022) |
 | presenter viewing | an extra **«شاشة التقديم»** entry → SCR-016 |
 
-**Mobile:** the primary action is **sticky in the thumb zone** and stays reachable through the
+**Mobile:** the primary action is **in flow at position 4, inside the first screenful** — not sticky: at 390 px the panel is ~380 px tall and pinning it covered the language row `REQ-SES-011` requires above it (DEC-045). It was drafted as sticky in the thumb zone through the
 whole scroll. Poster at the top, 4:5 crop. Comments lazy-load.
 **Desktop:** two columns — details and action in a sticky rail, content in the main column.
 **RTL:** comment threads indent from the **inline-start** side; reply chevrons mirror; the map link
@@ -395,7 +396,7 @@ reason** the proposer receives.
 (warns that attendees will be notified and calendars updated — `REQ-SES-009`)
 **Mobile:** a stepper, one section per step.
 **Desktop:** a form with a live poster preview beside it.
-**RTL:** the date-time picker runs right-to-left; the duration field pairs its numeral with a unit
+**RTL:** the date-time picker runs right-to-left — **not in M2**: a native `datetime-local` renders in the browser's locale; a custom picker is an M7-console backlog item (DEC-045); the duration field pairs its numeral with a unit
 label in the correct order.
 **Note:** publishing is **blocked by a database constraint**, not only by the form (`02` §4.3) —
 date, time, venue, capacity and poster are all required.

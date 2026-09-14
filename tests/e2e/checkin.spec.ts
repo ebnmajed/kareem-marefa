@@ -1,0 +1,200 @@
+// RSV/CHK against REAL local Supabase (STORY-RSV-001..004, STORY-CHK-001..006).
+// Same shape as tests/e2e/session.spec.ts: a user minted through the local
+// Auth admin API, provisioned through provision_member(), signed in with a
+// captured cookie jar handed to the browser. Skipped when the local service
+// key isn't provided (`npm run test:e2e:local`) — CI has no Supabase, the
+// RLS suite covers the database there.
+//
+// Needs supabase/proposed/checkin/{01_rsvp,02_check_in}.sql promoted into
+// supabase/migrations/ first — these RPCs don't exist until the lead does
+// that at a sync point.
+import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+import { expect, test, type BrowserContext } from "@playwright/test";
+import pg from "pg";
+
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
+const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
+const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
+test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+const PASSWORD = "correct-horse-battery-staple-9";
+
+// Same isolation reasoning as session.spec.ts: each worker gets its own org,
+// domain, session and users, and specs run serially within the worker.
+test.describe.configure({ mode: "serial" });
+
+let admin: ReturnType<typeof createClient>;
+let db: pg.Client;
+let orgId = "";
+let domain = "";
+let sessionId = "";
+let publishedSessionId = "";
+let attendeeUserId = "";
+let attendeeEmail = "";
+let staffUserId = "";
+let staffEmail = "";
+
+test.beforeAll(async ({}, testInfo) => {
+  admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
+  db = new pg.Client(DB_URL);
+  await db.connect();
+  const tag = `${testInfo.workerIndex}-${Date.now()}`;
+  domain = `checkin-e2e-${tag}.example`;
+
+  const { rows: orgRows } = await db.query<{ id: string }>(
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة تسجيل الحضور', $1, 'CE', gen_random_uuid()) returning id`,
+    [`checkin-e2e-${tag}`],
+  );
+  orgId = orgRows[0].id;
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+  const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
+  const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [orgId]);
+
+  const { rows: sessRows } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
+     values ($1, 'جلسة اختبار الحضور', 'ملخص الجلسة', $2, 'introductory', now() - interval '10 minutes', 60, now() + interval '50 minutes', $3, 40, 'in_progress', now() - interval '1 day')
+     returning id`,
+    [orgId, catRows[0].id, venueRows[0].id],
+  );
+  sessionId = sessRows[0].id;
+
+  // A separate PUBLISHED (not yet started) session for the RsvpPanel slot —
+  // the host/check-in session above is already in_progress, past the point
+  // reserve_seat() accepts.
+  const { rows: publishedRows } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
+                                   venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
+     values ($1, 'جلسة اختبار الحجز', 'ملخص الجلسة', $2, 'introductory', now() + interval '48 hours', 60, now() + interval '49 hours',
+             $3, 30, now() + interval '47 hours', now() + interval '47 hours', 'published', now() - interval '1 hour')
+     returning id`,
+    [orgId, catRows[0].id, venueRows[0].id],
+  );
+  publishedSessionId = publishedRows[0].id;
+
+  attendeeEmail = `attendee@${domain}`;
+  const { data: attendeeAuth, error: e1 } = await admin.auth.admin.createUser({ email: attendeeEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو الحضور" } });
+  if (e1) throw e1;
+  attendeeUserId = attendeeAuth.user.id;
+
+  staffEmail = `staff@${domain}`;
+  const { data: staffAuth, error: e2 } = await admin.auth.admin.createUser({ email: staffEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "مشرف الحضور" } });
+  if (e2) throw e2;
+  staffUserId = staffAuth.user.id;
+});
+
+test.afterAll(async () => {
+  if (attendeeUserId) await admin.auth.admin.deleteUser(attendeeUserId);
+  if (staffUserId) await admin.auth.admin.deleteUser(staffUserId);
+  if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
+  await db.end();
+});
+
+/** Signs in, provisions through the real RPC, and installs the resulting cookies. Returns the member id. */
+async function signIn(context: BrowserContext, email: string, asAdmin: boolean): Promise<string> {
+  const jar: { name: string; value: string }[] = [];
+  const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
+    cookies: {
+      getAll: () => jar,
+      setAll: (list) => {
+        for (const { name, value } of list) jar.push({ name, value });
+      },
+    },
+  });
+  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  if (error) throw error;
+  const { data: envelope, error: rpcError } = await client.rpc("provision_member");
+  if (rpcError) throw rpcError;
+  const memberId = (envelope as { member_id: string }).member_id;
+  if (asAdmin) {
+    // Claims were minted before the role change — the custom access token
+    // hook re-reads the members row on EVERY token mint, refresh included
+    // (not just initial sign-in), so a plain refreshSession() below is
+    // enough; no sign-out/re-sign-in needed (and doing that unnecessarily
+    // clobbered the cookie jar between the two calls — first version of
+    // this test learned that the hard way).
+    await db.query(`update public.members set org_role = 'admin' where id = $1`, [memberId]);
+  }
+  jar.length = 0;
+  await client.auth.refreshSession();
+  await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
+  return memberId;
+}
+
+test("an ordinary member reaches the check-in field one tap away and checks in with the live code", async ({ context, page }) => {
+  await signIn(context, staffEmail, true);
+  await page.goto(`/ar/app/sessions/${sessionId}/host`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
+  const code = await page.locator("p[dir='ltr']").first().textContent();
+  expect(code?.trim()).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
+
+  await context.clearCookies();
+  await signIn(context, attendeeEmail, false);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
+  await expect(page.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();
+
+  const boxes = page.locator("input[maxlength='1']");
+  await expect(boxes).toHaveCount(6);
+  for (const [i, ch] of Array.from(code!.trim()).entries()) {
+    await boxes.nth(i).fill(ch);
+  }
+  await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  await expect(page).toHaveURL(/\?success=1$/);
+  await expect(page.getByRole("status")).toHaveText("تم تسجيل حضورك");
+
+  // A second visit and submit is the DISTINCT "already checked in" state, not another success.
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  for (const [i, ch] of Array.from(code!.trim()).entries()) {
+    await boxes.nth(i).fill(ch);
+  }
+  await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  await expect(page).toHaveURL(/\?already=1$/);
+  await expect(page.getByRole("status")).toHaveText("أنت مسجَّل بالفعل");
+});
+
+test("a plain member is refused the host view by policy, not merely hidden UI (REQ-CHK-014)", async ({ context, page }) => {
+  await signIn(context, attendeeEmail, false);
+  await page.goto(`/ar/app/sessions/${sessionId}/host`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("هذه الصفحة متاحة لمقدِّمي الجلسة والمشرفين فقط");
+});
+
+test("an invalid code is rejected without revealing anything else, and the field is reachable in the RTL layout", async ({ context, page }) => {
+  await signIn(context, staffEmail, true);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  const boxes = page.locator("input[maxlength='1']");
+  for (let i = 0; i < 6; i++) {
+    await boxes.nth(i).fill("Z");
+  }
+  await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/);
+  // Next's own route announcer also carries role="alert" — scope to the copy, not the role alone.
+  await expect(page.getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
+  // React 19 resets the form on every action, redirect included (DEC-043) — the rejected
+  // code should still be there to fix one character, not six empty boxes to retype.
+  for (let i = 0; i < 6; i++) {
+    await expect(boxes.nth(i)).toHaveValue("Z");
+  }
+});
+
+test("the RsvpPanel slot renders inside the real event page and reserves a seat, at 390px", async ({ context, page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(context, attendeeEmail, false);
+  await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await expect(page.getByRole("heading", { name: "الحضور" })).toBeVisible();
+  await expect(page.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
+
+  await page.getByRole("button", { name: "احجز مقعدك" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible();
+  await expect(page.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
+
+  const { rows } = await db.query<{ status: string }>(`select status from public.rsvps where session_id = $1 and member_id = (select id from public.members where auth_user_id = $2)`, [
+    publishedSessionId,
+    attendeeUserId,
+  ]);
+  expect(rows[0].status).toBe("confirmed");
+});

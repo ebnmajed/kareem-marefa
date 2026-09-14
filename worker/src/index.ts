@@ -10,6 +10,10 @@
 import { run } from "graphile-worker";
 import { poolerWarning, probeListenNotify, ProbeError } from "./probe.js";
 import { ping } from "./tasks/ping.js";
+import { promote_waitlist } from "./tasks/promote_waitlist.js";
+import { rotate_codes } from "./tasks/rotate_codes.js";
+import { start_session } from "./tasks/start_session.js";
+import { complete_session } from "./tasks/complete_session.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const probeOnly = process.argv.includes("--probe-only");
@@ -45,7 +49,12 @@ const runner = await run({
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
   pollInterval: 60_000,
-  taskList: { ping },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session },
+  // 11 §2.1: the clock runs every minute. Both functions are idempotent and
+  // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
+  // tick is harmless. Inline rather than a crontab file so the image carries
+  // it without a path to get wrong.
+  crontab: ["* * * * * start_session", "* * * * * complete_session"].join("\n") + "\n",
 });
 
 console.log("worker: running — queues dispatch over LISTEN/NOTIFY; polling every 60 s as a fallback");

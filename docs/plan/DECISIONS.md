@@ -1041,6 +1041,127 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Supersedes:** the settings paragraph of DEC-040 for those two commands.
 - **Documents changed:** `CLAUDE.md` § Agent team, `.claude/settings.json`
 
+## DEC-042 — Wave 1: `sessions` owns the M2 admin surfaces for proposals, sessions and venues; `console` inherits them at wave 3
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `sessions` teammate's finding
+- **Decision:** for the duration of wave 1, the `sessions` teammate's globs extend to
+  `src/app/[locale]/app/admin/{proposals,sessions,venues}/**` and `src/messages/{ar,en}/admin.json`
+  (the `admin` namespace name in `src/messages/index.ts` included). STORY-PRO-003 (admin review),
+  STORY-SES-001 (schedule and publish), STORY-SES-002 (the state machine) and STORY-SES-004
+  (venues) are M2 stories on the `sessions` track whose screens — SCR-041, SCR-042, SCR-043,
+  SCR-046 in `09` — live under `/app/admin`. At wave 3 the `console` teammate inherits those
+  folders as working screens; its `TEAM.md` §1 row already says `app/admin/**`, so no later edit is
+  needed. The other admin folders (`categories`, `companies`, `members`, `domains`, `settings`,
+  `moderation`, `exports`, `audit`) stay untouched until wave 3.
+- **Also corrected:** the screen numbers in the three agent definitions were drafted before `09`
+  was finalised. `09` owns the SCR ID space: the event page is **SCR-012**, check-in is
+  **SCR-014**, the host view SCR-016, rate SCR-015, propose SCR-017, my proposal SCR-018.
+- **Rationale:** the wave gate is the M2 demonstrable — propose → approve → schedule → publish →
+  … — and approve and schedule are admin screens. Deferring them to wave 3 would mean driving the
+  demonstrable from SQL, which proves the database and not the product, and would leave `console`
+  to build M2 behaviour it did not design. The path split is disjoint from every other wave-1
+  glob, so the ownership rule (one writer per path) still holds.
+- **Supersedes:** the wave-1 row of the ownership map in `CLAUDE.md` § Agent team and `TEAM.md`
+  §1, for these paths only.
+- **Documents changed:** `CLAUDE.md` § Agent team, `TEAM.md` §1, `.claude/agents/{sessions,checkin}.md`,
+  `STATUS.md`
+
+## DEC-043 — A write-then-maybe-refuse RPC returns an outcome envelope; it never raises after its first write
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `checkin` teammate's finding
+- **Decision:** `check_in()` (migration `0015`) returns a JSON envelope `{status, check_in?,
+  conflict_session_id?}` for every outcome downstream of the `check_in_attempts` insert —
+  `ok`, `already_checked_in`, `rate_limited`, `invalid_code`, `revoked`, `not_started`,
+  `session_ended`, `overlap`, `presenter` — and raises only for `not_found`, before anything is
+  written. The same rule applies to every future RPC whose contract is "record the attempt, then
+  decide": `promote_next_waitlisted`, the M4 `award_points` path, the M5 upload finaliser. The DAL
+  maps `status` to the screen state; the app never branches on a SQLSTATE for these outcomes.
+- **Rationale:** `03` §5.4's sketch wrote the attempt row and then `raise exception 'rate_limited'`
+  in the same call. In Postgres one RPC call is one statement is one transaction, and an exception
+  rolls back everything the call did — including that insert — so the "attempt is still recorded"
+  clause of `REQ-CHK-006` was unsatisfiable as sketched, in production exactly as much as in the
+  RLS harness. `provision_member()` (`0005`) already uses the envelope shape for the same reason.
+  The rejected alternative, a subtransaction (`begin … exception when others`) around the insert,
+  keeps the raise but costs a savepoint per attempt on the product's hottest write path and hides
+  the rule instead of stating it.
+- **Also:** a repeat check-in returns `already_checked_in`, not `ok`, because `09` SCR-014 specifies
+  "already checked in" as its own screen state.
+- **Supersedes:** the `raise` in `03` §5.4's `check_in()` sketch and the wording of the
+  `POL-check_ins.rate_limit` and `POL-check_ins.single_use` rows in §8.2.
+- **Documents changed:** `03-permissions-rls.md` §8.2, `STATUS.md`
+
+## DEC-044 — Realtime host topics are org-scoped; admin per-rater ratings reads go only through the audited RPC
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), on the `event` teammate's two findings
+- **Decision 1 — host topic:** `realtime_host_select` (migration `0016`) requires the session named
+  in `host:{id}` to belong to the caller's org before the staff-or-presenter disjunct is consulted.
+  `03` §7.2's sample policy had no org check, so any org's staff could have read another org's
+  check-in counts. The sample is corrected in place.
+- **Decision 2 — ratings:** `0010`'s `ratings_read_admin` policy is **dropped** in `0017`.
+  `REQ-RAT-005` requires the admin's per-rater read to be audited; RLS cannot leave an audit row
+  as a side effect of a select, so a direct policy is an unaudited path by construction. The only
+  admin path is `list_session_ratings_admin()`, a `security definer` RPC that re-checks admin
+  freshness, writes one `audit_log` row, and returns the rows. An admin selecting the table gets
+  zero rows, like a presenter. The aggregates view and the self policies are untouched.
+- **Also promoted:** `delete_own_comment()` (`0018`) — `comments_update_own` gated a self-delete
+  behind the same 15-minute window as a body edit, making `REQ-EVT-005` unreachable past it — and
+  `session_rating_count()` (`0019`) for the bare count `REQ-RAT-006` shows below the minimum.
+- **CI:** `scripts/ci/roles.sql` gains the `realtime` schema, `realtime.messages` and
+  `realtime.send()` (Supabase's own body), mirroring local Supabase, because the bare container
+  has none of them and the first CI run of the Realtime tests failed with `3F000`.
+- **Rationale for dropping rather than keeping the policy "for the dashboard":** an access path
+  that exists only to be avoided by convention is the pattern `12` §2 calls out; the policy-diff
+  gate cannot see a `drop policy`, so `03` §5.6 records the drop in prose where the policy stood.
+- **Supersedes:** the `realtime_host_select` sample in `03` §7.2; the `ratings_read_admin` block
+  in `03` §5.6; the `POL-ratings.select.admin` row in §8.2.
+- **Documents changed:** `03-permissions-rls.md` §5.6, §7.2, §8.2; `scripts/ci/roles.sql`; `STATUS.md`
+
+## DEC-045 — Wave 1 closing decisions: the PRD's ordering on the event page, the publish chain, the deferred guard, and the team's working rules
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-1 lead), closing wave 1
+- **`09` SCR-012 follows `REQ-SES-011`.** The PRD says the spoken language appears before the RSVP
+  action; `09` had the action at 3 and the language at 5. Only `01` may define a requirement, so
+  the built page puts the language above the action and `09`'s list is corrected and renumbered
+  rather than overridden in silence.
+- **`09` SCR-012's sticky action is desktop-only.** `09` asked for the primary action pinned in
+  the thumb zone through the whole scroll; at 390 px the RSVP panel is ~380 px tall and pinning it
+  covered the language row `REQ-SES-011` requires above it. On mobile the panel is in flow at
+  position 4 (inside the first screenful, nothing covered); on desktop it stays the sticky rail.
+  A y-coordinate assertion alone did not catch this — the row was *under* the panel — so the
+  390 px review also asserts the row is not occluded.
+- **`09` SCR-043's "date-time picker runs right to left" is not honoured in M2.** A native
+  `datetime-local` renders its placeholder and calendar in the browser's locale; the only literal
+  fix is a custom picker, which M2 does not budget. Backlog item for M7-console; `09` notes it.
+- **`publish_session()` walks `02` §6.2's whole chain** from `draft` to `published` and writes one
+  transition row per edge, all flagged manual and attributed to the admin, instead of jumping.
+  The audit trail shows the path the state machine defines even when a person pressed one button.
+  `review_proposal()` does the same through `in_review` (`0013`).
+- **No table-level guard on `sessions.state` in wave 1.** `sessions.state` is in no grant, so
+  every writer is a definer function the sessions track owns and there is no PostgREST path to the
+  column; a trigger would also start refusing the direct `update … set state` that fixtures in
+  all three tracks use to arrange scenarios. It is the stronger statement and is the **first
+  migration of wave 2**, written before any teammate is spawned, with the fixtures moved to the
+  RPCs at the same time.
+- **Deferred, not faked:** `REQ-PRO-004` (draft materials on a proposal — M5's `materials` table);
+  the poster gate of `REQ-SES-001` (M6's designer; the other five gates are `0010`'s check
+  constraint, and SCR-043 says the poster is coming); `REQ-EVT-007` reply notifications (M3's
+  `notifications` table); job enqueueing from the RSVP and check-in RPCs (`graphile_worker` schema
+  does not exist on local Supabase until the worker is hosted, OQ-027 at M3 — the call sites are
+  marked). `STORY-CHK-005`'s four rights derive from `has_checked_in()`, which exists; the tables
+  they gate arrive with M4 and M5.
+- **`audit_log.occurred_at` stays `now()` this wave.** Rows written by one transaction share an
+  instant and their order is undefined; `clock_timestamp()` fixes it but `02` is frozen. Decide at
+  the start of wave 2 with the `sessions.state` guard.
+- **Working rules** added to `TEAM.md` §3 and §5: commit with an explicit pathspec; the RLS suite
+  is single-runner; the build is the only gate for `"use server"` exports and namespace JSON;
+  slots render no heading; the wave PR opens as a draft at the first push; React 19 form reset;
+  the envelope rule; three e2e traps (no member row before first sign-in, the route announcer's
+  `role="alert"`, two Playwright projects on one database). Each was learned by breaking
+  something this wave.
+- **Supersedes:** the SCR-012 list in `09` (settled document, changed under this entry);
+  `TEAM.md` §3 and §5 (settled, extended under this entry).
+- **Documents changed:** `09-sitemap-screens.md` SCR-012, `TEAM.md` §3, §5, `STATUS.md`
+
 ---
 
 ## Template for new entries

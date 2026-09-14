@@ -1,6 +1,6 @@
-# STATUS — read this first, write it last
+**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (**PR #12** → `main`, awaiting the owner's merge) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged · **Phase:** **M2 wave 1 complete on the branch — the demonstrable holds locally end to end; next session is the wave-2 lead after the owner merges**
 
-**Last updated:** 2026-09-14 · **Branch:** `m2/schema` (PR → `main`, awaiting the owner's merge) · **`main` @ `e0e3c37`:** M1 complete and live · **Phase:** **M2 wave 0 built (DEC-040); wave 1 starts from a green main with the lead's spawn prompt in `TEAM.md`**
+**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`; **draft PR #12**) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-040**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-045**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -147,7 +147,129 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## M2 — wave 0 (this session, PR `m2/schema`)
+## M2 — wave 1 — COMPLETE on `wave-1/m2` (PR #12, the owner merges)
+
+**The M2 demonstrable holds locally, end to end, through the real screens**, as one serial Playwright
+test against real local Supabase (`tests/e2e/sessions-screens.spec.ts`, commits `a3f8497`, `38e72d8`): add a
+venue → propose → approve → create the session → schedule → publish → reserve a seat → **the clock
+starts it** (`clock_start_sessions()`, audit row with no actor) → staff read the rotating code →
+check in with it → comment → **an admin completes it** (audit row naming the admin) → rate. Rows
+asserted at every step: `rsvps.status`, `check_ins.method = 'code'`, the comment's author, the
+rating's stars and non-null `check_in_id`, no live code after completion, the seven-step transition
+chain, the seven `audit_log` actions in order.
+
+### Shipped
+
+Migrations **`0011`–`0023`** (13, `supabase/proposed/` empty) · screens SCR-011, 012,
+014, 015, 016, 017, 018, 041, 042, 043, 046 · DAL modules `proposals`, `sessions`, `rsvp`,
+`checkin`, `comments`, `reactions`, `reports`, `ratings` · the slot contract and all three slots ·
+worker tasks `promote_waitlist`, `rotate_codes`, `start_session`, `complete_session` (clock on an
+every-minute crontab) · message namespaces `proposals`, `sessions`, `admin`, `rsvp`, `checkin`,
+`event`, `ratings` (Arabic first) · **DEC-042 … DEC-045**.
+
+### Definition of done on `b430871`
+
+**Gate run: (the lead's final gate run, all on local Supabase; app code last changed at `a3f8497`):**
+
+| Check | Result |
+|---|---|
+| `supabase db reset` | ✅ `0001`–`0023` |
+| `npm run test:rls` | ✅ **206 passed / 4 todo**, 19 files, sweep over 24 tables |
+| `npm run policy-diff` | ✅ |
+| `node scripts/traceability.mjs` | ✅ 251 / 64 / 112, no gaps, matrix current |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run lint` | ✅ 0 errors (8 warnings) |
+| `npm test` (unit + components) | ✅ **117 passed** |
+| `npm run worker:build` · `npm run fonts:check` | ✅ |
+| `npm run build` | ✅ 25 routes |
+| `npm run qa` | ✅ **44/44** |
+| `npm run visual compare m0-final wave1-final` | ✅ **0.000%** on all six captures — the live site is unchanged |
+| `npm run test:e2e:local` | ✅ **78 passed / 0 failed / 6 skipped by design** (two workers, both profiles; includes the end-to-end demonstrable) — final code `b430871` on the build of `a3f8497` (later commits are test/docs only) |
+| `npm run test:e2e:unconfigured` | ✅ 16 passed, 68 skipped by design (both `NEXT_PUBLIC_` variables empty: every platform route 404, frozen routes untouched) |
+| CI on PR #12 | ✅ **13/13** on `a3f8497` and on every push since sync 3; final run on `b430871` **13/13 green** (the STATUS commit after it is docs only) |
+| 390 px RTL captures, looked at | ✅ SCR-012, 014, 015, 016, 017, 018, 041, 042, 043, 046 (`.qa-shots/rtl/`; the lead looked at SCR-012) |
+
+### Observed once, recorded honestly
+
+ the first full-suite gate run on this build failed the
+demonstrable on both profiles, and the artefacts show `next start` stopped answering mid-run
+(`net::ERR_CONNECTION_REFUSED` on a plain navigation on the phone project; Next's own "This page
+couldn't load" on desktop) while two other agents were running suites on the same machine. The
+rerun with the identical two-worker configuration passed 78/78, and the walk passes alone on both
+profiles. Nothing in the product was wrong; `38e72d8` also fixed six test-side races and wrong
+assertions found on the way. **For the wave-2 lead:** the demonstrable is the heaviest test in the
+suite and runs twice concurrently against one `next start` and one Postgres; if this recurs, give
+it `workers: 1` or a serial project dependency in `playwright.config.ts` (lead-only), and keep the
+stub server's log — a crash names the route, a teardown race does not.
+
+### Deferred, not faked (DEC-045)
+
+ `REQ-PRO-004` (M5 materials) · the poster gate of `REQ-SES-001`
+(M6) · `REQ-EVT-007` reply notifications (M3) · job enqueueing from the RSVP/check-in RPCs (worker
+hosting, OQ-027 at M3; call sites marked) · the native date picker's locale on SCR-043 (M7-console).
+
+### First migration of wave 2, before anyone is spawned
+
+ a table-level guard on `sessions.state`
+(and move the fixtures that set state directly onto the RPCs); decide `audit_log.occurred_at` →
+`clock_timestamp()` at the same time.
+
+### Security findings closed this wave
+
+ (each a real hole in the plan or in `0010`): a named
+presenter could be pulled across the tenancy boundary (`0012`); the `03` §7.2 host-topic sample
+had no org check (`0016`); the admin's direct select on `ratings` was an unaudited read of per-rater
+data (`0017`); `check_in()` as sketched rolled back its own attempt row (`0015`, DEC-043).
+
+### Sync log
+
+
+**Started 2026-09-14** after the owner approved the wave plan. Pre-flight on `main` @ `5378555`: CI
+green on the last five pushes, five frozen routes answer, `/ar/app` 404 by design, local Supabase
+healthy, `supabase db reset` applies `0001`–`0010`, `npm run test:rls` 95 passed / 4 todo.
+`wave-1/m2` cut; `docs/plan/notes/` created for the teammates' plans.
+
+**Spawned:** `sessions` (opus) → slot contract first, then STORY-PRO-001 onward · `checkin` (sonnet)
+→ STORY-RSV-001 (`reserve_seat()` as proposed SQL) onward · `event` (sonnet) → STORY-EVT-002
+(threaded comments + the private Realtime channel) onward, since EVT-001 is the page `sessions` owns.
+
+**Promoted SQL, sync points and CI runs are logged below as they happen.**
+
+| Sync | Promoted | Gates |
+|---|---|---|
+| 1 (2026-09-14) | `0011_proposal_transitions` (audit + guard triggers, `98db766`) · `0012_copresenters` (same-org guard on both presenter tables, `create_proposal()`, `aaa9f95`) — `03` §8.2 +5 rows | `supabase db reset` ✅ · `test:rls` **163 passed / 4 todo**, all 15 files incl. teammates' ✅ · `policy-diff` ✅ · tsc ✅ · lint ✅ · build ✅ after three `"use server"` constant exports were moved out (`3cded54`, `9b2a4a7`; the Next 16 rule tsc cannot see) · `npm run qa` **44/44** · `npm run visual compare m0-final wave1-s1` **0.000%** on 6 captures · `test:e2e:local` 42 passed / **4 failed** (all in `sessions`' two new specs, handed back) · pushed; **draft PR #12** open so CI runs per push |
+| 2 (2026-09-14) | `0013_proposal_review` (`review_proposal()`) · `0014_rsvp_rpcs` · `0015_check_in_rpcs` (`2faff35`) — **DEC-043** (outcome envelope, not raise-after-write) · worker `taskList` gains `promote_waitlist`, `rotate_codes` | reset ✅ · `test:rls` 174/4 todo ✅ (two false failures traced to a **concurrent teammate run** — the suite is single-runner) · policy-diff ✅ · tsc/lint/unit 117 ✅ · build ✅ · qa **44/44** · visual **0.000%** · CI: 12 pass, **RLS ✗** — bare container has no `realtime` schema (fixed at sync 3) |
+| 3 (2026-09-14) | `0016_realtime_authorization` (host topic org-scoped) · `0017_ratings_admin_audited` (**drops** `ratings_read_admin`) · `0018_comments_self_delete` · `0019_rating_count` — **DEC-044** · CI shim gains `realtime.messages` + `send()` · `03` §5.6/§7.2/§8.2 corrected | reset ✅ 0001–0019 · `test:rls` **188 passed / 4 todo**, 17 files ✅ · policy-diff ✅ · traceability ✅ · tsc ✅ · build ✅ · CI on `93f6734` **13/13 green** (Realtime shim proven) |
+| 4 (2026-09-14) | `0020_session_creation` (`create_session()`, one session per proposal, decline returns to draft) `93f6734` | reset ✅ · RLS green for all promoted files · policy-diff ✅ · traceability ✅ |
+| 5 (2026-09-14) | `0021_session_scheduling` (`schedule_session()`, `publish_session()` — the poster gate waits for M6) · `0022_session_clock` (`clock_start/complete_sessions()`, service_role only, forward-only; `11` §2.1's manual-skip is the state filter) `c6d07b1` · worker `taskList` gains `start_session`, `complete_session` on an inline every-minute crontab | reset ✅ 0001–0022 · `test:rls` 195/4 todo (one collision) ✅ alone · policy-diff ✅ · traceability ✅ · `worker:build` ✅ · build ✅ · **full `test:e2e:local` 66 passed / 6 failed** = one case per track on both profiles, handed back (`checkin.spec.ts:151`, `event-comments.spec.ts:123`, `sessions-propose.spec.ts:194`) |
+
+**Lead decisions and findings during the wave (not re-litigations):**
+
+- **DEC-042** — `sessions` owns `app/admin/{proposals,sessions,venues}/**` for wave 1; SCR numbers in
+  the agent definitions corrected to `09`'s.
+- **`scripts/policy-diff.mjs` keys relations by schema** (`1b7b220`): the first migration to policy
+  `realtime.messages` (`03` §7.2) would have failed the gate with a misleading message, and a grant on
+  it could not be parsed at all. A Supabase-owned relation's documented policies are flagged only once
+  a migration policies it; that migration must state its grant.
+- **`REQ-PRO-004` (draft materials on a proposal) is deferred to wave 2 / M5** — no `materials`
+  table exists and the requirement inherits every `REQ-MAT-*` rule. `sessions` did not fake it
+  (`docs/plan/notes/sessions.md` §2.1). STORY-PRO-002 is done except for that half.
+- **Open for a lead decision, not blocking:** `audit_log.occurred_at` defaults to `now()`, the
+  transaction timestamp, so several audit rows from one transaction share an instant and their order
+  is undefined. `clock_timestamp()` would fix it; `02` is frozen so it needs a DEC.
+- **`proposals` has no admin update policy in `0010`** (only the proposer's), so review actions are a
+  definer RPC — `supabase/proposed/sessions/0003_proposal_review.sql`, in progress.
+- **The RLS suite is single-runner.** Two processes running `npm run test:rls` against one local
+  database collide on fixtures and fail unrelated files (seen twice at sync 2). Check
+  `ps aux | grep 'vitest run --project rls'` before running it.
+- **The shared git index races.** Three commits this wave carried another teammate's staged files
+  (`d42bcf1`, `5c4f97f`, `6efd2c8`); content intact, attribution wrong. Stage by explicit path and
+  commit immediately.
+- **Wave-1 tests that touch the working tree:** the shared tree builds as it stands on disk; a
+  mid-edit DAL or a `"use server"` constant breaks `npm run build` for everyone. tsc does not catch
+  the latter.
+
+## M2 — wave 0 (previous session, PR `m2/schema` — merged as #10)
 
 **Done, awaiting merge:** migration `0010` — the whole M2 schema with RLS, grants, the guard
 triggers, `is_presenter_of()` / `has_checked_in()` and the presenter-only aggregates view; no RPCs
@@ -375,11 +497,20 @@ unaffected.
 
 ## Next session should
 
-1. Be the **lead**: paste `docs/plan/TEAM.md` §4 into a fresh session in this checkout.
-2. Read this file, `/CLAUDE.md` (the "Agent team" section is new), `DECISIONS.md` (DEC-040), then
-   `TEAM.md`. Confirm `main` green and local Supabase up; `supabase db reset`; `npm run test:rls`.
-3. Cut `wave-1/m2`, present the wave plan, WAIT for the owner, then spawn the three teammates from
-   `.claude/agents/`.
-4. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
-5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
-6. Update this file before finishing.
+1. **Wait for the owner to merge PR #12** (`wave-1/m2` → `main`); nothing on the branch is merged
+   by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
+2. Be the **wave-2 lead**: read this file, `CLAUDE.md`, `DECISIONS.md` (DEC-042 … DEC-045), `TEAM.md`
+   (§3 and §5 grew this wave — the working rules are there), and the three
+   `docs/plan/notes/{sessions,checkin,event}.md`.
+3. **Before spawning anyone:** write migration `0024` — the table-level guard on `sessions.state`
+   and, if decided, `audit_log.occurred_at default clock_timestamp()` — move the fixtures that set
+   state directly onto the RPCs, `supabase db reset`, `npm run test:rls` green. Log the DEC.
+4. Confirm the wave-2 ownership map (`TEAM.md` §1 drafts): `notify` (M3), `scoring` (M4),
+   `content` (M5). OQ-027 (worker + converter hosting) is **due at M3** — the `notify` track cannot
+   deliver reminders without a running worker; decide hosting with the owner at the wave-2 plan.
+5. Cut `wave-2/m3-m4-m5`, present the plan, WAIT, spawn from `.claude/agents/` (write the three new
+   definitions first; the wave-1 ones are the template).
+6. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
+7. `.next` on disk is the **unconfigured** build from the final gate; run `npm run build` before
+   `npm run qa` / `visual` / `test:e2e:local`.
+8. Update this file before finishing.

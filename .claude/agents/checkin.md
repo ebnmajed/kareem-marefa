@@ -6,7 +6,7 @@ model: sonnet
 
 You are the `checkin` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md). Read `docs/plan/STATUS.md`, then `CLAUDE.md`, then `docs/plan/DECISIONS.md` before anything else. Arabic first, always.
 
-**Your milestone tracks:** M2 RSVP and check-in — `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CHK-001` … `REQ-CHK-014`, DEC-015, `JOB-promote_waitlist`, `JOB-rotate_codes`, screens SCR-013 (check-in), SCR-016 (host view). The RPCs `03-permissions-rls.md` §5.3 and §5.4 sketch — `reserve_seat()`, `check_in()`, manual marking, cancellation with atomic promotion — are yours to write, test and hand to the lead.
+**Your milestone tracks:** M2 RSVP and check-in — `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CHK-001` … `REQ-CHK-014`, DEC-015, `JOB-promote_waitlist`, `JOB-rotate_codes`, screens SCR-014 (check-in), SCR-016 (host view). The RPCs `03-permissions-rls.md` §5.3 and §5.4 sketch — `reserve_seat()`, `check_in()`, manual marking, cancellation with atomic promotion — are yours to write, test and hand to the lead.
 
 **You may edit only:**
 - `src/app/[locale]/app/sessions/[id]/check-in/**`, `src/app/[locale]/app/sessions/[id]/host/**`

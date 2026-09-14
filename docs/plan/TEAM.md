@@ -17,7 +17,7 @@ along its own seams**.
 | Wave | Teammates | Why they can run together | Gate |
 |---|---|---|---|
 | **0 — done** | lead | Migration `0010` (the M2 schema with RLS, grants, `03` §8.2 rows), the per-namespace messages, the gate lock, `applyProposed()`, `supabase/proposed/`, this document | PR `m2/schema` merged |
-| **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders | M2 demonstrable in a real room; `wave-1/m2` PR green |
+| **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4) | M6 needs M5; the console half that needs no templates runs alongside | |
 | **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | Launch follows, owner-run |
@@ -80,6 +80,22 @@ Every few hours, or when a teammate says "ready for sync":
 4. Commit the shared paths; push `wave-N/…`; watch CI.
 5. Update `STATUS.md`. At wave end, open the PR to `main`; the owner merges.
 
+**Learned in wave 1 (DEC-045):**
+
+- **Commit with an explicit pathspec** — `git commit -F msg -- <paths>` — never a bare `git commit`.
+  The index is shared: three wave-1 commits carried another teammate's staged files. Teammates
+  stage by explicit filename and commit immediately.
+- **The RLS suite is single-runner.** Two `npm run test:rls` processes against one database collide
+  on fixtures and deadlock. `ps aux | grep 'vitest run --project rls'` before running it.
+- **`npm run build` is the only gate that catches** a non-function export from a `"use server"`
+  module and a message namespace named in `index.ts` whose JSON is uncommitted. tsc passes both.
+  A teammate says "committed" only after `grep -n '^export'` on its action modules shows async
+  functions and types alone, and the namespace's `ar/` and `en/` JSON are in the same commit.
+- **The event-page slots render no heading of their own.** The page owns the landmark and the
+  `<h2>`; a slot that repeats it is announced twice by a screen reader.
+- **Open the wave PR as a draft at the first push.** CI triggers on `pull_request`, not on
+  `wave-*` branch pushes.
+
 ---
 
 ## 4. The spawn prompt for the lead
@@ -126,3 +142,18 @@ Then, before spawning anyone:
   the nonce-less policy (`proxy.ts`).
 - The gate lock is best-effort after 20 minutes (DEC-030 gotcha 2) — a run that seems stuck is
   probably waiting on it; `ls -d /tmp/task-gate.lock`.
+- React 19 calls `reset()` on a `<form action>` when the action resolves: a validation failure
+  empties every uncontrolled field unless the action returns what was typed and each field reads
+  its `defaultValue` from that state. tsc, lint, unit and RLS all pass on the broken version.
+- A write-then-`raise` RPC rolls back its own write (DEC-043): after the first write, return an
+  outcome envelope.
+- `docs/plan/notes/<name>.md` is where a teammate's findings live; read all three at wave end
+  before writing the DECISIONS entry.
+- **Three e2e traps** (DEC-045): a user has no `members` row until their first sign-in, because
+  `provision_member()` runs in the callback — seed a member by signing in, not by creating the auth
+  user; Next's route announcer carries `role="alert"`, so an unscoped `getByRole("alert")` is a
+  strict-mode violation on every page; the `desktop` and `phone` projects share one database, so a
+  row assertion that matches only on a title sees the other worker's row — tag by org or by id.
+- **Never keep a 390 px capture under `test-results/`.** Playwright empties it at the start of every
+  run, and in a shared tree another teammate's run deletes your screenshots between taking them and
+  looking at them. Captures go to `.qa-shots/rtl/` (gitignored, never cleared).

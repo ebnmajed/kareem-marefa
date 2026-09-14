@@ -670,9 +670,11 @@ recorded even by a code path that forgot to strip it.
 
 #### §5.6d — `ratings`, read — where D36 lives
 ```sql
--- Org admins see everything, including who rated what (D36, REQ-RAT-005).
-create policy "ratings_read_admin" on ratings for select to authenticated
-  using (org_id = auth_org_id() and is_org_admin());
+-- Org admins see everything, including who rated what (D36, REQ-RAT-005) —
+-- ONLY through list_session_ratings_admin(), a definer RPC that writes an
+-- audit_log row per read. The direct admin select 0010 created was dropped
+-- in 0017 (DEC-044): RLS cannot leave an audit row as a side effect of a
+-- select, so a direct policy is an unaudited path by construction.
 -- A member sees their own rating, to edit it within the window.
 create policy "ratings_read_self" on ratings for select to authenticated
   using (org_id = auth_org_id() and member_id = auth_member_id());
@@ -1024,6 +1026,9 @@ create policy "realtime_host_select" on realtime.messages for select to authenti
   using (
     extension in ('broadcast', 'presence')
     and topic like 'host:%'
+    -- DEC-044: the org check the first draft lacked — without it any org's
+    -- staff could read another org's host topic.
+    and exists (select 1 from sessions s where s.id = split_part(topic, ':', 2)::uuid and s.org_id = auth_org_id())
     and (is_staff() or is_presenter_of(split_part(topic, ':', 2)::uuid))
   );
 ```
@@ -1118,12 +1123,35 @@ generated suite is the highest-value test in the product.
 | `POL-deactivate_member.reason` | Deactivating without a reason is rejected; with one, `status` flips, `claims_version` bumps, the audit row carries the reason. |
 | `POL-proposals.select.member` | Member B cannot read member A's proposal; a co-presenter can. |
 | `POL-proposal_presenters.select.member` · `POL-proposal_presenters.insert.proposer` · `POL-proposal_presenters.update.self` · `POL-proposal_presenters.delete.proposer` | Org-readable; only the proposer names or removes a co-presenter; the named member accepts or declines their own row and cannot touch another's; a sixth presenter raises `too_many_presenters` (A5). |
+| `POL-proposal_presenters.insert.same_org` · `POL-session_presenters.insert.same_org` | Naming a member of another org is refused with `23514`, even though the row's own `org_id` is the caller's — the isolation sweep walks tables, not cross-table references (migration `0012`). |
+| `POL-proposal_presenters.insert.state` | A co-presenter cannot be added to an `approved` or `rejected` proposal (migration `0012`). |
+| `RPC-create_proposal` | Creates the proposal, the proposer's own accepted presenter row and the named co-presenters atomically; a bad co-presenter id rolls the proposal back with it; `proposer_id` is the session's own member whatever the caller sends (`REQ-PRO-003`, migration `0012`). |
+| `RPC-review_proposal.admin_only` | A member and a moderator are both refused `42501`; only an org admin may review, and never a proposal in another org (migration `0013`). |
+| `RPC-review_proposal.reason` | `reject` and `request_changes` without a reason are refused; the reason reaches the proposer on the row and the audit row (`REQ-PRO-005`, `REQ-PRO-006`). |
+| `RPC-review_proposal.path` | Deciding on a `submitted` proposal walks it through `in_review`, so `02` §6.1 is followed and both transitions are audited. |
+| `POL-sessions.insert.rpc` | `sessions` has no insert policy and no insert grant: a direct insert by an admin is refused, and `create_session()` is the only way in (migration `0020`). |
+| `RPC-create_session.admin_only` | A member and a moderator are refused `42501`; an admin of another org cannot reach the proposal or create into that org. |
+| `RPC-create_session.one_per_proposal` | An approved proposal becomes at most one session (partial unique index); a second attempt is refused, and only an `approved` proposal can be turned into one (`REQ-PRO-007`, `REQ-PRO-008`). |
+| `POL-session_presenters.decline` | A presenter declining an unpublished session returns it to `draft` and writes the transition row; a published session is left alone (`REQ-SES-003`). |
+| `RPC-schedule_session.admin_only` | A member, a moderator and the session's own presenter are all refused; a presenter cannot set a date even through the RPC (D13, migration `0021`). |
+| `RPC-schedule_session.derives` | `ends_at` is stored, derived from the duration when not given and independently editable when it is; the time zone comes from the venue, else the org; a custom venue needs a name **and** an address (`REQ-SES-002`). |
+| `RPC-publish_session.gate` | Publishing without a date, an end, a venue or a capacity is refused by the **table**, not only by the form; the refusal names what is missing (`REQ-SES-001`; the poster gate joins at M6). |
+| `RPC-publish_session.path` | Publishing walks `02` §6.2's chain and writes one transition row per edge, all flagged manual and attributed to the admin (`REQ-SES-012`). |
+| `RPC-clock.service_role_only` | Neither clock function is executable by `authenticated` or `anon`; only the worker's role may call them (migration `0022`). |
+| `RPC-clock.idempotent` | Running either twice moves a session once, and neither ever moves a session backwards: a session an admin started, completed or cancelled early is left alone (`REQ-SES-004`, `REQ-SES-005`). |
+| `RPC-clock.closes_check_in` | Completing a session expires its live check-in codes in the **same** transaction (`REQ-CHK-004`). |
+| `RPC-transition_session.admin_only` | A member, a moderator, a presenter and a stale admin are all refused; an admin of another org cannot reach the session (migration `0023`). |
+| `RPC-transition_session.edges` | Only `02` §6.2's edges are accepted — starting a draft, completing a published session, archiving anything but a completed one are all refused; `reopen` is archived → completed (`cancelled` has no outgoing edge). |
+| `RPC-transition_session.cancel` | Cancelling requires a reason, keeps the page and the row, and is reachable from `completed` (`REQ-SES-010`). |
+| `RPC-transition_session.closes_check_in` | Completing early — or cancelling — closes the check-in window in the same transaction (`REQ-CHK-004`). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |
 | `POL-reactions.select.member` · `POL-reactions.write.self` | Org-readable; a member adds and removes only their own; a duplicate `(member, comment, kind)` is rejected. |
 | `POL-reports.select.staff_or_reporter` · `POL-reports.insert.self` · `POL-reports.update.staff` | The reporter and staff read; a member cannot read another's report; a member cannot resolve; a moderator resolves through the column grant. |
 | `POL-proposals.update.own` | A proposer cannot write `decision_reason`; cannot edit an `approved` proposal. |
+| `POL-proposals.transition.audit` | Creating a proposal and submitting it each write an `audit_log` row; a member cannot suppress either, and cannot write one directly (`REQ-PRO-006`, migration `0011`). |
+| `POL-proposals.transition.legal` | `changes_requested → draft` and `submitted → approved` are refused with `23514`; `draft → submitted` and `in_review → approved` succeed (`02` §6.1, migration `0011`). |
 | `POL-sessions.select.member` | A `draft` session is invisible to members, visible to its presenter. |
 | `POL-sessions.update.presenter` | A presenter setting `starts_at` is rejected — the column is not granted (D13). |
 | `POL-sessions.update.presenter` | A presenter setting `state = 'published'` is rejected. |
@@ -1134,10 +1162,10 @@ generated suite is the highest-value test in the product.
 | `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
 | `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
 | `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
-| `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th raises `rate_limited`, and the attempt is still recorded. |
+| `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
 | `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. |
 | `POL-check_ins.revoked` | A revoked code is rejected; check-ins already recorded with it stand. |
-| `POL-check_ins.single_use` | A second check-in is a no-op returning the first. |
+| `POL-check_ins.single_use` | A second check-in is a no-op returning the first, with `status = 'already_checked_in'` so SCR-014 renders its own state (`09`). |
 | `POL-check_ins.overlap` | Checking in to an overlapping session raises on the exclusion constraint. |
 | `POL-check_ins.presenter` | A presenter checking in to their own session is rejected (OQ-025). |
 | `POL-check_ins.select.member` | A member cannot list who else attended (A33 rule 3). |
@@ -1158,7 +1186,10 @@ generated suite is the highest-value test in the product.
 | `POL-ratings.insert.window` | Rating 15 days after completion is rejected. |
 | `POL-ratings.select.presenter` | A presenter selecting from `ratings` gets **zero rows** — not redacted rows. |
 | `POL-ratings.aggregate.min` | With 2 ratings the aggregate view returns nothing; with 3 it returns a value (OQ-009). |
-| `POL-ratings.select.admin` | An org admin sees `member_id` and free text; a **moderator** does not. |
+| `POL-ratings.select.admin` | An org admin's **direct** select on `ratings` returns zero rows (DEC-044, migration `0017`); a moderator's too. |
+| `POL-ratings.select.admin.audited` | `list_session_ratings_admin()` returns the org's rows for that session to a fresh admin **and writes one `audit_log` row naming them**; a moderator and a stale admin are refused; another org's session is refused (`REQ-RAT-005`, migration `0017`). |
+| `RPC-session_rating_count` | Below `rating_min_aggregate` the presenter and staff get the bare **count**; a member gets nothing; another org's presenter gets nothing (`REQ-RAT-006`, migration `0019`). |
+| `RPC-delete_own_comment` | The author soft-deletes their own comment **after** the edit window; another member cannot; a tombstone remains when replies exist (`REQ-EVT-005`, migration `0018`). |
 | `POL-points_ledger.insert` | Direct insert is rejected for `authenticated` **and** `service_role`. |
 | `POL-points_ledger.update` | `update` and `delete` raise for every role including `service_role`. |
 | `POL-points_ledger.select` | A member reads only their own rows; an admin reads the org's. |
