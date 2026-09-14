@@ -168,9 +168,14 @@ export function RtlDateTimePicker({
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor={`${id}-trigger`} className="text-label text-fg-heading">
+      {/* Not a `<label htmlFor>` on the trigger: that association would make
+          the trigger's ACCESSIBLE NAME the field label alone, always,
+          discarding the current value a screen reader needs — the same
+          class of bug as the check-in code boxes (09 SCR-014's own
+          warning). `aria-label` combines both, updating with the value. */}
+      <p id={`${id}-label`} className="text-label text-fg-heading">
         {label}
-      </label>
+      </p>
       {hint ? <p className="mt-1 text-body-sm text-fg-muted">{hint}</p> : null}
       <input type="hidden" id={id} name={name} value={value} />
       <button
@@ -179,10 +184,11 @@ export function RtlDateTimePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={popoverId}
+        aria-label={`${label}: ${displayText}`}
         onClick={() => setOpen((o) => !o)}
         className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-start text-body text-fg-heading"
       >
-        <bdi>{displayText}</bdi>
+        <bdi aria-hidden="true">{displayText}</bdi>
       </button>
 
       {open ? (
@@ -207,15 +213,23 @@ export function RtlDateTimePicker({
           <div className="mt-1 grid grid-cols-7 gap-1">
             {days.map((cell, i) => {
               const selected = p !== null && p.y === cell.y && p.m === cell.m && p.d === cell.date;
+              // A leading/trailing padding cell can share its bare day
+              // number with an in-month day elsewhere in the same 42-cell
+              // grid (e.g. a 30-day month with a 2-day lead reaches ten
+              // days into next month) — the full date disambiguates both
+              // for a screen reader and for anything that queries by name.
+              const nu = numerals === "arabic_indic" ? "arab" : "latn";
+              const fullDate = new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { day: "numeric", month: "long", year: "numeric" }).format(new Date(cell.y, cell.m, cell.date));
               return (
                 <button
                   key={i}
                   type="button"
                   disabled={!cell.inMonth}
+                  aria-label={fullDate}
                   onClick={() => pickDay(cell)}
                   className={`h-9 rounded-field text-body-sm ${selected ? "bg-navy-950 text-white" : cell.inMonth ? "text-fg-heading hover:bg-silver-100" : "text-fg-muted/40"}`}
                 >
-                  {num(cell.date)}
+                  <span aria-hidden="true">{num(cell.date)}</span>
                 </button>
               );
             })}
