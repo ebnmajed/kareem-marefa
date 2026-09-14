@@ -1,0 +1,40 @@
+{
+  "scoring": {
+    "points": {
+      "title": "My Points",
+      "intro": "Every point here has a clear reason — you can explain any of them without asking anyone.",
+      "balance": "{count, plural, =0 {Your balance is zero points} one {Your balance is one point} other {Your balance is <bdi>{value}</bdi> points}}",
+      "empty": "No points yet. Your first check-in earns your first point.",
+      "filters": {
+        "heading": "Filter",
+        "session": "Session",
+        "month": "Month",
+        "allSessions": "All sessions",
+        "allMonths": "All months",
+        "clear": "Clear filter"
+      },
+      "table": {
+        "date": "Date",
+        "reason": "Reason",
+        "amount": "Points",
+        "session": "Session"
+      },
+      "row": {
+        "reversal": "Reversal of an earlier award",
+        "manual": "Manual adjustment by an admin",
+        "openSession": "Open session"
+      },
+      "catalogue": {
+        "heading": "What earns points?",
+        "intro": "This table is read live from your organisation's settings — a changed value shows here immediately.",
+        "disabled": "Currently disabled",
+        "noCap": "No per-session cap",
+        "cap": "{count, plural, =0 {No per-session cap} one {Once per session} other {{value} times per session}}",
+        "pointsValue": "{count, plural, =0 {zero points} one {one point} other {{value} points}}"
+      },
+      "strip": {
+        "cta": "View my full points history"
+      }
+    }
+  }
+}
