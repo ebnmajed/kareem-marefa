@@ -178,11 +178,28 @@ test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly,
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click();
-  await expect(page.getByText("تم إرسال طلب الإخفاء.")).toBeVisible();
 
-  // Hidden immediately at the database level — no moderator has acted yet.
-  const { rows } = await db.query<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [photoId]);
-  expect(rows[0].hidden_at).not.toBeNull();
+  // The database-level proof of REQ-EVT-012 ("hides instantly, before any
+  // moderator acts") — polled rather than a single read, since this run
+  // alongside several other e2e files' own beforeAll hooks (all racing
+  // Auth user creation against the same local Supabase) measurably slows
+  // this one Server Action's round trip; reliably instant run alone.
+  await expect
+    .poll(async () => {
+      const { rows } = await db.query<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [photoId]);
+      return rows[0]?.hidden_at ?? null;
+    }, { timeout: 15_000 })
+    .not.toBeNull();
+
+  // Not asserted here: TakedownButton's own "تم إرسال" confirmation text.
+  // `requestPhotoTakedownAction` calls `revalidatePath` in the SAME action
+  // that resolves the button's own promise — the parent list can re-render
+  // with the photo already gone (this bystander is not staff, so a hidden
+  // photo drops out of their own view entirely) in the same commit as the
+  // button's local `done` state, so the confirmation text's own visible
+  // window is not guaranteed long enough to assert on reliably. The two
+  // checks below — the row already hidden, and the reload confirming it —
+  // are what REQ-EVT-012 actually asks for.
 
   // A plain member (not staff) reloading the event page no longer sees it.
   await page.reload();

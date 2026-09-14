@@ -41,7 +41,7 @@ export default async function MaterialViewerPage({ params }: { params: Promise<{
         <div className="mt-6">
           {data.fontSubstitutionWarning ? (
             <p className="mb-4 rounded-field border border-edge p-3 text-body-sm text-fg-heading">
-              {tList("substitutionWarning.body", { family: data.fontSubstitutionWarning })}
+              {tList.rich("substitutionWarning.body", { family: data.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
             </p>
           ) : null}
           <PageViewer pages={data.pages} numerals={data.numerals} rtl={locale !== "en"} title={data.title} />

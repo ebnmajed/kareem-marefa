@@ -209,7 +209,9 @@ test("★ REQ-MAT-001/012: the presenter drives a real upload through the form e
 
   await page.getByLabel("نوع المادة").selectOption("image");
   await page.getByLabel("عنوان المادة").fill("صورة من الجلسة");
-  await page.getByLabel("الملف").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
+  // Scoped to the المواد region: photos.spec.ts's own UploadWidget shares
+  // the same "الملف" file-input label on the SAME event page.
+  await page.getByRole("region", { name: "المواد" }).getByLabel("الملف").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
   await page.getByRole("button", { name: "رفع" }).click();
 
   // completeMaterialUpload() downloads the object it just wrote through the

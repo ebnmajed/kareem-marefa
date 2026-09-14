@@ -141,7 +141,9 @@ test("★ REQ-TSK-001/002: the presenter adds an external task through the inlin
   await page.getByLabel("نوع المهمة").selectOption("external");
   await page.getByLabel("عنوان المهمة").fill("ثبّت التطبيق قبل الحضور");
   await page.getByLabel("الرابط").fill("https://example.com/app");
-  await page.getByRole("button", { name: "إضافة" }).click();
+  // exact: true — photos.spec.ts's own UploadWidget submit button
+  // ("إضافة صورة") shares the same event page and would otherwise match too.
+  await page.getByRole("button", { name: "إضافة", exact: true }).click();
 
   await expect(page.getByText("ثبّت التطبيق قبل الحضور")).toBeVisible();
   await expect(page.getByRole("link", { name: "فتح الرابط — يغادر المنصة" })).toHaveAttribute("href", "https://example.com/app");
