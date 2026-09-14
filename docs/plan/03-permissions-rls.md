@@ -1442,6 +1442,11 @@ generated suite is the highest-value test in the product.
 | `POL-issue_certificate.mode` | `automatic` issues; `review` holds, invisible to the recipient and unemailed (`REQ-CRT-004`). (migration `0065`). |
 | `POL-release_certificates.admin` | An admin releases held certificates; a moderator is refused; the release is audited and notifies once. (migration `0065`). |
 | `POL-revoke_certificate.reason` | Revoking without a reason is refused; with one the state flips, it is audited, and the PDF is not deleted (`REQ-CRT-011`). (migration `0065`). |
+| `POL-achievement.badge` | Earning a badge issues an achievement certificate outright (`issue_achievement_certificate()` from a definer row trigger on `member_badges`, driven as an admin, not the owner); a second earn issues no second certificate (`REQ-CRT-012`). (migration `0066`). |
+| `POL-achievement.snapshot` | A final member-ranked snapshot's top three get HELD achievement certificates through `fan_out_snapshot_certificates()` (a statement-level definer trigger on `leaderboard_entries`); topic boards issue none; an admin releases them (`REQ-CRT-012`, `REQ-LDR-006`). (migration `0066`). |
+| `POL-verify_certificate.public` | `/verify/[code]` for `anon`: an issued certificate resolves with the A13 fields; a held one, a revoked one's reason, a serial and an unknown code are all the same not-found (`REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-011`). (migration `0065`). |
+| `POL-allocate_serial.gapless` | Two issuances in two transactions take consecutive serials; a rolled-back one leaves `next_value` unchanged (`REQ-CRT-008`, DEC-010). (migration `0065`). |
+| `POL-design_documents.certificate_read` | A member reads the document behind their own issued certificate and nobody else's. (migration `0065`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |

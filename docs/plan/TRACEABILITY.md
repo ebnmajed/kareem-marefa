@@ -125,12 +125,12 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-004` | `ENT-certificates` | `POL-certificates.select.held` `POL-issue_certificate.mode` | `SCR-045` | — | — | `STORY-CRT-002` | M6 |
 | `REQ-CRT-005` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-006` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
-| `REQ-CRT-007` | `ENT-certificates` | `POL-certificates.verify.anon` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
-| `REQ-CRT-008` | `ENT-certificate_serial_counters` `ENT-certificates` | `POL-certificates.serial` `POL-issue_certificate.idempotent` | — | `JOB-issue_certificates` | — | `STORY-CRT-004` | M6 |
-| `REQ-CRT-009` | `ENT-certificates` | `POL-certificates.verify.anon` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
+| `REQ-CRT-007` | `ENT-certificates` | `POL-certificates.verify.anon` `POL-verify_certificate.public` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
+| `REQ-CRT-008` | `ENT-certificate_serial_counters` `ENT-certificates` | `POL-allocate_serial.gapless` `POL-certificates.serial` +1 | — | `JOB-issue_certificates` | — | `STORY-CRT-004` | M6 |
+| `REQ-CRT-009` | `ENT-certificates` | `POL-certificates.verify.anon` `POL-verify_certificate.public` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
 | `REQ-CRT-010` | `ENT-certificates` | — | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
-| `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
-| `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | — | `SCR-045` | — | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` +1 | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` | — | `SCR-023` | — | — | `STORY-CRT-006` | M6 |
 
@@ -220,7 +220,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-003` | `ENT-categories` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-002` | M4 |
 | `REQ-LDR-004` | `ENT-companies` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-005` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
-| `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
+| `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | `POL-achievement.snapshot` | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-008` | — | `POL-leaderboard_entries.opt_out_at_write` `POL-leaderboard_entries.select.opt_out` | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 

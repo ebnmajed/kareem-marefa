@@ -36,6 +36,7 @@ import { snapshot_leaderboards } from "./tasks/snapshot_leaderboards.js";
 import { render_variant } from "./tasks/render_variant.js";
 import { regenerate_poster } from "./tasks/regenerate_poster.js";
 import { materialise_font } from "./tasks/materialise_font.js";
+import { issue_certificates } from "./tasks/issue_certificates.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const probeOnly = process.argv.includes("--probe-only");
@@ -79,7 +80,7 @@ const runner = await run({
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
   pollInterval: 60_000,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries

@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — achievement certificates: badges and frozen
+-- promoted by the lead at wave-3 sync 11 · designer (wave 3, M6) — achievement certificates: badges and frozen
 -- leaderboard snapshots.
 --
 -- Serves:  REQ-CRT-012, REQ-CRT-008, REQ-LDR-006, 02 §4.12, 03 §5.8,
