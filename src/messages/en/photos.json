@@ -1,0 +1,25 @@
+{
+  "photos": {
+    "gallery": {
+      "count": "{count, plural, zero {No photos} one {One photo} two {Two photos} few {{value} photos} many {{value} photos} other {{value} photos}}",
+      "empty": "No photos for this session yet.",
+      "notice": "These photos will be shown to every member of the organization. We automatically remove location data from every photo. Any colleague who appears in a photo can ask to have it hidden.",
+      "requestHide": "Remove photos I appear in",
+      "requestHideConfirm": "This photo will be hidden immediately pending review by an admin. Continue?",
+      "requestedHide": "The hide request was sent.",
+      "hiddenBadge": "Hidden — pending review",
+      "restore": "Restore",
+      "restored": "The photo was restored."
+    },
+    "upload": {
+      "action": "Add a photo",
+      "fileLabel": "File",
+      "fileRequired": "Choose a photo first.",
+      "notAuthorized": "You do not have permission to upload photos to this session.",
+      "sizeLimitExceeded": "The photo is larger than the allowed limit ({limitMb} MB).",
+      "unsupportedType": "Unsupported image type — use JPEG, PNG or WebP.",
+      "uploadFailed": "The upload failed. Try again.",
+      "processing": "Processing the photo…"
+    }
+  }
+}

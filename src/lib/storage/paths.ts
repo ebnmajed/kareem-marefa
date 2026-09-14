@@ -119,9 +119,21 @@ export function materialPageThumbnailPath(orgId: string, sessionId: string, vers
   ].join("/");
 }
 
-/** `photos/{org_id}/sessions/{session_id}/photos/{photo_id}.webp` — EXIF already stripped before this path is ever written to (07 §9.2). */
-export function photoPath(orgId: string, sessionId: string, photoId: string): string {
-  return [assertUuid(orgId, "orgId"), "sessions", assertUuid(sessionId, "sessionId"), "photos", `${assertUuid(photoId, "photoId")}.webp`].join("/");
+/** `photos/{org_id}/sessions/{session_id}/photos/{photo_id}.{ext}` (07 §9.2, amended DEC-047).
+ *  The browser PUTs its raw bytes to exactly this path — `photos_storage_read` (03 §6) denies
+ *  everyone, including the uploader, until a matching `public.photos` row exists, and that row
+ *  cannot exist unstripped (`check (exif_stripped)`, 0037) — so the object is never retrievable
+ *  with EXIF intact even though the write and the strip are not the same statement. `ext`
+ *  defaults to `webp` (07 §3's literal table); DEC-047 defers re-encoding, so the worker's own
+ *  caller (worker/src/content/paths.ts) passes the sniffed kind's real extension instead. */
+export function photoPath(orgId: string, sessionId: string, photoId: string, ext: "jpg" | "png" | "webp" = "webp"): string {
+  return [
+    assertUuid(orgId, "orgId"),
+    "sessions",
+    assertUuid(sessionId, "sessionId"),
+    "photos",
+    `${assertUuid(photoId, "photoId")}.${assertSafeSegment(ext, "ext")}`,
+  ].join("/");
 }
 
 /** `design-assets/{org_id}/design/assets/{asset_id}.{ext}` — admin-only, DEC-009 never accepts an `svg` extension here. */
@@ -167,9 +179,9 @@ export const storagePaths = {
     bucket: "material-pages",
     path: materialPageThumbnailPath(orgId, sessionId, versionId, page),
   }),
-  photo: (orgId: string, sessionId: string, photoId: string): StorageLocation => ({
+  photo: (orgId: string, sessionId: string, photoId: string, ext: "jpg" | "png" | "webp" = "webp"): StorageLocation => ({
     bucket: "photos",
-    path: photoPath(orgId, sessionId, photoId),
+    path: photoPath(orgId, sessionId, photoId, ext),
   }),
   designAsset: (orgId: string, assetId: string, ext: "png" | "jpg" | "webp"): StorageLocation => ({
     bucket: "design-assets",

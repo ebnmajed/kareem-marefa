@@ -71,6 +71,11 @@ describe("photoPath", () => {
   it("rejects a non-UUID photo id", () => {
     expect(() => photoPath(ORG, SESSION, "'; drop table photos; --")).toThrow(InvalidStoragePathError);
   });
+
+  it("★ DEC-047: takes the sniffed kind's own extension rather than always forcing .webp", () => {
+    expect(photoPath(ORG, SESSION, PHOTO, "jpg")).toBe(`${ORG}/sessions/${SESSION}/photos/${PHOTO}.jpg`);
+    expect(photoPath(ORG, SESSION, PHOTO, "png")).toBe(`${ORG}/sessions/${SESSION}/photos/${PHOTO}.png`);
+  });
 });
 
 describe("designAssetPath", () => {
