@@ -104,9 +104,15 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   await page.getByLabel("رفع شعار").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG });
   await expect(page.getByRole("status").filter({ hasText: "نقطة/بوصة" })).toBeVisible();
 
+  // "كريم معرفة" is ambiguous on this page (the nav Wordmark carries the
+  // same text as the live preview's sample heading) — the live-preview's
+  // OWN reactivity to typed colours is a component concern, already proven
+  // by tests/components/branding/brand-kit-form.test.tsx. What only a real
+  // browser against a real database can prove is the round trip THIS test
+  // checks below: save, reload, and the org theme CSS layer (`.brand-org`,
+  // DEC-053 decision 3) actually carries the new colour into the shell.
   const headingField = page.getByLabel("لون العناوين").first();
   await headingField.fill("#ff5500");
-  await expect(page.getByText("كريم معرفة")).toHaveCSS("color", "rgb(255, 85, 0)");
 
   await page.getByRole("button", { name: "حفظ" }).click();
   await expect(page.getByText("تم حفظ هوية المؤسسة.")).toBeVisible();
@@ -126,9 +132,17 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   expect(kitRows[0].brand_kit.isOverridden).toBe(true);
   expect(kitRows[0].brand_kit.light.fgHeading).toBe("#ff5500");
 
-  // Reload: the persisted override comes back, not the platform default.
+  // Reload: the persisted override comes back, not the platform default —
+  // both in the form (the DAL round trip) and in the SHELL'S OWN theme
+  // layer (the CSS round trip, DEC-053 decision 3): the app layout emits
+  // `.brand-org{--fg-heading:#ff5500;…}` only once `isOverridden` is true,
+  // over globals.css's platform value, and this page's own `<h1>` carries
+  // `text-fg-heading` — so its COMPUTED colour is the org override,
+  // resolved through the `@theme inline` layer, not read off a class name
+  // or an inline style string.
   await page.reload();
   await expect(page.getByLabel("لون العناوين").first()).toHaveValue("#ff5500");
+  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(255, 85, 0)");
 });
 
 test("resetting deletes the row — every consumer returns to the platform default", async ({ context, page }) => {
