@@ -30,8 +30,8 @@ const NAV_ITEMS: NavItem[] = [
   // DAL scoping exists, not before.
   { key: "sessions", href: "/app/admin/sessions", adminOnly: true, built: true },
   { key: "venues", href: "/app/admin/venues", adminOnly: true, built: true },
-  { key: "categories", href: "/app/admin/categories", adminOnly: true, built: false },
-  { key: "companies", href: "/app/admin/companies", adminOnly: true, built: false },
+  { key: "categories", href: "/app/admin/categories", adminOnly: true, built: true },
+  { key: "companies", href: "/app/admin/companies", adminOnly: true, built: true },
   { key: "members", href: "/app/admin/members", adminOnly: true, built: false },
   { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: false },
   { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: false },

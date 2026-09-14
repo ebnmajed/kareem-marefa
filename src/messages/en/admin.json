@@ -210,6 +210,38 @@
       "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
       "failed": "That could not be saved — try again.",
       "invalid": "Check the fields: a name is required, and a map link must start with https."
+    },
+    "categories": {
+      "title": "Categories",
+      "intro": "Your organisation's session categories. Every proposal and session carries exactly one.",
+      "noDeleteNote": "A category cannot be deleted, only deactivated, so past sessions can still say what it was.",
+      "nameLabel": "Name",
+      "addTitle": "Add a category",
+      "add": "Add the category",
+      "listTitle": "Your categories",
+      "empty": "No categories yet.",
+      "deactivate": "Deactivate",
+      "activate": "Reactivate",
+      "deactivated": "Deactivated",
+      "sessionCount": "{count, plural, =0 {no sessions} one {one session} other {{value} sessions}}",
+      "failed": "That could not be saved — try again.",
+      "invalid": "Check the fields: a name is required."
+    },
+    "companies": {
+      "title": "Companies",
+      "intro": "Your group's companies. A member picks theirs from this list when completing their profile.",
+      "noDeleteNote": "A company cannot be deleted, only deactivated, so existing members can still say where they work.",
+      "nameLabel": "Name",
+      "addTitle": "Add a company",
+      "add": "Add the company",
+      "listTitle": "Your companies",
+      "empty": "No companies yet.",
+      "deactivate": "Deactivate",
+      "activate": "Reactivate",
+      "deactivated": "Deactivated",
+      "memberCount": "{count, plural, =0 {no members} one {one member} other {{value} members}}",
+      "failed": "That could not be saved — try again.",
+      "invalid": "Check the fields: a name is required."
     }
   }
 }

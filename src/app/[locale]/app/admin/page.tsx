@@ -39,14 +39,12 @@ function TopList({ rows, numerals, emptyLabel, linkFor }: { rows: TopRow[]; nume
 // screens use: `getAdminDashboardData()` returns null for a moderator, this
 // page never learns why.
 //
-// "Active members," "busiest categories" and "most active companies" link
-// forward to `/app/admin/{members,categories,companies}` — the very next
-// stories on this track's list (console.md) — which do not exist yet as of
-// this bundle and will 404 until they land later this same wave. Every
-// other figure links to a screen that already exists today. Flagged to the
-// lead in the bundle-1 report: REQ-ADM-004's "every figure is clickable" is
-// the acceptance criterion, and a card with no link at all is the worse
-// failure of the two while the managed-list stories are still in flight.
+// "Active members" links forward to `/app/admin/members` — the next story
+// on this track's list (console.md) — which does not exist yet and 404s
+// until it lands. "Busiest categories" and "most active companies" now
+// link to real screens (SCR-047/048, bundle 2). Every other figure links
+// to a screen that already existed at bundle 1. REQ-ADM-004's "every
+// figure is clickable" is the acceptance criterion this note tracks.
 
 export default async function AdminDashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
