@@ -250,6 +250,35 @@ admin-only until publication).
 
 ## 3. Status at handoff
 
-Schema written, proven locally with `applyProposed()`, not yet promoted. Sent the lead the CI shim
-requirements (§1.7) and the `03` §8.2 rows (§1.8) with "ready for sync." Not waiting on promotion
-to start `src/lib/storage/`.
+Schema promoted as `supabase/migrations/0037_m5_schema.sql`; the takedown's uploader notice
+(`REQ-EVT-012`, `MSG-photo_hidden`) followed as `0043_photo_hidden_notify.sql`. `docs/plan/notes/
+content.md` §1.4/§1.4a cover two real Postgres gotchas found and fixed along the way — worth
+reading before touching `remove_material()` or any future composite-returning RPC:
+
+- **materials_read's unconditional `removed_at is null`** makes a plain client `UPDATE` setting
+  `removed_at` structurally impossible (Postgres requires the post-UPDATE row to also satisfy the
+  table's SELECT policy) — `remove_material()` exists because of this, not for authority.
+- **`(func()).*` can evaluate a composite-returning function twice.** For a side-effecting function
+  this is silent data corruption dressed up as a spurious `not_found`. Every call site here uses
+  `select r.* from func() r` instead — carry this to any future RPC returning a table's row type.
+
+`src/lib/storage/paths.ts` (the single path builder, `03` §6) is written and unit-tested
+(`tests/unit/storage-paths.test.ts`, 15 cases, `vi.mock("server-only", ...)` the way `tests/unit/
+dal-session.test.ts` does — the `unit` project's `react-server` condition does not reliably resolve
+`server-only`'s own conditional export in this Vitest version, so mocking is the house pattern, not
+the config).
+
+**Open question for the lead, not yet resolved:** `render_pages` (the worker) needs to mint the same
+`material-pages/...` shapes itself — it is not just replaying a path read back from a row, it builds
+one per rendered page. The worker is a separate TypeScript project (`worker/tsconfig.json`, its own
+`rootDir`) with no import path back into `src/`, unlike `packages/designer-runtime`, which both the
+app and the worker image import as a real shared package. Two ways to keep "one path builder" true
+in fact and not just in the app half: (a) a new `packages/storage-paths` workspace member — needs a
+`package.json` edit, which is the lead's; or (b) a small, comment-linked port of just the two shapes
+the worker needs into `worker/src/content/paths.ts`, covered by its own test, with `src/lib/storage/
+paths.ts` staying canonical and the port's header pointing back at it. Leaning toward (b) unless the
+lead would rather add the workspace package — flagging rather than deciding alone since it touches
+`package.json`.
+
+Next: `api/upload/material` (STORY-MAT-001) — Zod first, sniffed on content after the bytes land,
+an SVG named `.png` rejected, the signed-upload flow from `07` §1.
