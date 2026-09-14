@@ -96,8 +96,25 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
   (`content`'s `filters-form.tsx`), so the browse page embeds it once rather than building a
   second chip row.
 - `<SessionPoster>` (`@/components/posters/session-poster`) — checked `git log` before writing
-  the card; not published by `designer` yet at the time of writing. [updated once resolved]
+  the card; `designer` had published its no-op placeholder by the time I reached this step
+  (`session-poster.tsx`, `picker.tsx`, `mode-badge.tsx` all landed together), so the card imports
+  it directly.
 - The admin dashboard (`src/lib/dal/admin-dashboard.ts`) needed no new SQL — every figure is a
   plain aggregate over tables the admin's existing RLS policies already let them read
   (`sessions`, `proposals`, `rsvps`, `check_ins`, `points_ledger`, `members`), so there is nothing
   under `supabase/proposed/console/` yet.
+- **e2e blocker, both bundles:** `.next/BUILD_ID` predates this session's files, so
+  `test:e2e:local` 404s every new route against a stale build (the three inherited-screen specs
+  still pass, since they exercise code untouched by this session). Not something this track can
+  fix — only the lead runs `npm run build`. Both new spec files are written and reported to the
+  lead; they need a sync-point rebuild to actually turn green.
+
+### Bundle 2
+
+- SCR-047/048 (`src/lib/dal/admin-lists.ts`) needed no new SQL either: `categories` and
+  `companies` already carry `p2_admin_insert`/`p2_admin_update` (0004), and the generic
+  `POL-{companies,categories}` cases in `tests/rls/tenancy.test.ts` (the lead's) already prove
+  the write policy — this track's insert/update is a plain call into it, same as `createVenue`/
+  `setVenueActive` (`sessions`'s SCR-046 code, inherited) already did.
+- The dashboard's "busiest categories"/"most active companies" figures, which bundle 1 had to
+  link forward, now point at real screens; "active members" still 404s until SCR-049 (bundle 3).
