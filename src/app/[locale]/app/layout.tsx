@@ -34,8 +34,7 @@ function themeCss(kit: BrandKit): string {
   return `.brand-org{${block(kit.light)}}.brand-org .theme-dark{${block(kit.dark)}}`;
 }
 
-async function orgTheme(locale: string): Promise<{ css: string; nonce: string | undefined } | null> {
-  const state = await getSessionState();
+async function orgTheme(locale: string, state: Awaited<ReturnType<typeof getSessionState>>): Promise<{ css: string; nonce: string | undefined } | null> {
   if (state.kind !== "member") return null;
   const kit = await getBrandKit(locale, state.session.orgId);
   if (!kit.isOverridden) return null;
@@ -49,7 +48,13 @@ export default async function AppLayout({ children, params }: { children: React.
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("app.shell");
-  const theme = await orgTheme(locale);
+  // One classification for the whole shell (cache()d). A platform admin on
+  // /app/platform/** has no member row: the bell's unread count would call
+  // requireSession() and redirect every console screen to /no-access — the
+  // shell bug platform found at wave-4 sync 3 (DEC-057). A non-member
+  // session gets no bell and no org theme, which is also the honest answer.
+  const state = await getSessionState();
+  const theme = await orgTheme(locale, state);
   return (
     <div className={theme ? "brand-org min-h-dvh bg-canvas text-fg-body" : "min-h-dvh bg-canvas text-fg-body"}>
       {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
@@ -79,9 +84,7 @@ export default async function AppLayout({ children, params }: { children: React.
                 session's own unread count through its DAL on every render of the
                 shell. Under Partial Rendering the shell does not re-render on
                 navigation, so the count refreshes on the next full request. */}
-            <li>
-              <NotificationBell locale={locale} />
-            </li>
+            <li>{state.kind === "member" ? <NotificationBell locale={locale} /> : null}</li>
           </ul>
           <form method="post" action="/api/auth/sign-out">
             <button type="submit" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-muted hover:bg-silver-100 hover:text-fg-heading whitespace-nowrap md:px-3">
