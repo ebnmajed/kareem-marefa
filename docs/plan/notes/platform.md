@@ -352,6 +352,69 @@ a no-op placeholder until the lead decides.
 
 ---
 
+## 1b. `JOB-evaluate_alerts` — the drill (planned before code, lead's addition at sync 1)
+
+`14` M8's third demonstrable is "every `11` §3.2 alert fires in a drill". That is
+**this track's job, not Sentry's**: Sentry is a transport, and a transport
+cannot be drilled. What can be drilled is a pure evaluation of eight thresholds
+against SQL, emitted through one interface with a sink you can assert on.
+
+### 1b.1 Shape
+
+- **`public.evaluate_alerts()`** — one `security definer` function, `service_role`
+  only, returning `(alert text, fired boolean, detail jsonb)` for **all eight**
+  alerts every call. Evaluating all eight always (rather than returning only
+  the firing ones) is what makes "and clears when the condition clears"
+  expressible: the task sees both edges.
+- **`worker/src/platform/alerts.ts`** — the `AlertSink` interface and
+  `ConsoleAlertSink` / `MemoryAlertSink`. **No network call lives here.** The
+  lead wires Sentry behind the same interface at Launch.
+- **`worker/src/tasks/evaluate_alerts.ts`** — every minute, key
+  `alerts:{minute}`. Calls the function, hands every row to the sink.
+
+### 1b.2 The eight, and the SQL each reads
+
+| `11` §3.2 alert | Threshold | Read from |
+|---|---|---|
+| `queue_stalled` | oldest pending > 5 min on `default` | `graphile_worker._private_jobs` left-joined to `_private_job_queues`; a null queue IS `default` |
+| `ledger_divergence` | any | `audit_log` rows `points.balance_divergence` in the last 24 h — the trail `JOB-audit_balances` already writes, rather than re-running an expensive sweep every minute |
+| `parity_failure` | any Tier A failure | `fonts.parity_status = 'failed'` recorded in the window; that row IS the parity gate's record (`record_font()` writes `parity_report`) |
+| `calendar_backlog` | > 50 pending **or** > 15 min old | `calendar_events` where `state = 'pending'` |
+| `email_bounce_spike` | > 5 % in an hour | `email_deliveries` in the last hour, `bounced`/`failed` over the total, with a floor so one bounce out of three is not a spike |
+| `render_failures` | > 3 consecutive | the last four `export_artifacts` by `created_at`; all failed means the run is consecutive |
+| `storage_prefix_violation` | any | `platform_audit_log` rows `storage.prefix_violation` — written by `assert_storage_prefixes`, so the two jobs meet through the durable trail rather than through a variable |
+| `impersonation_active` | > 2 h | `impersonation_sessions` still open and started more than two hours ago |
+
+Two of these are readings rather than transcriptions, and both are stated in
+the SQL header: **ledger divergence and parity failure are read from the
+records the jobs that detect them already write**, because an alert job that
+re-derives a nightly sweep every minute is an alert job that becomes the
+outage it was meant to report.
+
+### 1b.3 Why "fires once" is the SINK's property
+
+There is no alert-state table, deliberately. A ninth entity holding open/closed
+would need a DEC, a policy and a retention row, and it would duplicate what
+every real alert transport already does: Sentry, PagerDuty and a log pipeline
+all dedupe by fingerprint. So the task emits the **current state** of all eight
+every minute and the sink turns that into transitions — `fire` on the first
+firing evaluation, `clear` on the first non-firing one after it.
+
+The honest cost, recorded here so nobody calls it a bug: **a worker restart
+re-fires every currently-open alert once.** That is the correct behaviour for a
+process that has just lost its memory, and it is what the real transport
+deduplicates.
+
+### 1b.4 The drill
+
+`tests/rls/platform-alerts.test.ts` for the SQL (seed each condition, assert
+exactly that one alert fires, clear it, assert it stops) and
+`tests/unit/platform-alerts.test.ts` for the sink's transition logic over a
+`MemoryAlertSink`. The RLS half is the drill `14` M8 asks for: **eight
+conditions, eight alerts, and each one proven not to fire the other seven.**
+
+---
+
 ## 2. What is owed at the next sync
 
 1. **A build.** `tests/e2e/{platform-console,legal,privacy}.spec.ts` are
