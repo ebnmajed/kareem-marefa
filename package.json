@@ -37,6 +37,7 @@
     "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime"
   },
   "dependencies": {
+    "@kareem/fonts": "0.1.0",
     "@kareem/storage-paths": "0.1.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.110.2",
