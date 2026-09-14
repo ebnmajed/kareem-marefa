@@ -1164,6 +1164,53 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-046 — The session edge set is a table trigger; evidence tables timestamp per statement; wave-2 standing decisions from the owner
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-2 lead) for the guard and the clock; **the owner** for OQ-027 and email transport
+- **Decision 1 — `sessions.state` is guarded by the table.** Migration `0024` adds
+  `sessions_guard_transition`, a `before update of state` trigger accepting exactly `02` §6.2's
+  edges and refusing every other change of state with `23514`, for every writer including the
+  migration owner and `service_role`. It is the migration DEC-045 deferred to "the first of wave
+  2". There is **no insert guard**: a row is born with a state and no edge, `create_session()` is
+  the only door for people, and the wave-1 fixtures and e2e seeds insert published and completed
+  rows to arrange history. The fixtures that *updated* `state` directly now walk legal edges
+  (`tests/rls/sessions-{creation,scheduling}.test.ts`); the new `tests/rls/sessions-guard.test.ts`
+  proves the edge set, the RPCs through it, and the ordering below.
+- **Decision 2 — `02` §6.2 gains four edges back to `draft`:** from `submitted`, `in_review`,
+  `changes_requested` and `approved`, labelled "presenter declines". `01`'s `REQ-PRO-007` says a
+  decline "returns the session to `draft`" and migration `0020` implements it; a strict guard would
+  have broken the decline silently. Only `01` defines requirements, so the frozen diagram is
+  amended under this entry rather than the guard permitting an undrawn edge. A published session is
+  not returned to draft by a decline (people hold seats; `REQ-SES-009` is the path).
+- **Decision 3 — append-only evidence tables default `occurred_at` to `clock_timestamp()`.**
+  `now()` is the transaction's start, so `publish_session()`'s four transition rows and one audit
+  row shared an instant and tests ordered by `ctid`, which is not evidence. `0024` moves the
+  default on `audit_log` and `session_state_transitions`; `points_ledger` (M4) is created with it.
+  Indexes are unchanged. `02` §4.3 and §4.16 are corrected under this entry.
+- **Decision 4 (owner) — OQ-027 is closed for wave 2 without a host.** The worker stays a
+  host-agnostic Docker image running locally and in CI; the production host is decided at Launch
+  with PR C. **Nothing in wave 2 waits on hosting.** Consequence for the `notify` and `scoring`
+  tracks: the `graphile_worker` schema must exist wherever the RLS suite runs, because
+  `reserve_seat()`, `check_in()` and the M3/M4 RPCs enqueue from SQL (`02` §4.17). The lead
+  installs it with `graphile-worker --schema-only` after `supabase db reset` locally and after the
+  migrations in CI's `rls` job; an RPC that enqueues does so through one wrapper,
+  `public.enqueue_job(name, payload, key)`, so a missing schema fails loudly in one place.
+- **Decision 5 (owner) — email in development and CI never reaches a provider.** The worker's
+  mail transport is an interface with two implementations: a **sink** (local Supabase's Mailpit on
+  `:54324` via SMTP in development; an in-memory transport the tests read back in CI) and Resend,
+  which is wired at Launch. `RESEND_API_KEY` stays unset everywhere until then; `04` §10 is
+  unchanged. `email_deliveries` rows are written by the sink exactly as by Resend, so `REQ-NTF-008`
+  is testable now.
+- **Rationale:** the guard is the stronger statement 0023 asked for; the decline edge is the PRD's;
+  per-statement clocks make the log readable as a sequence, which is what an audit log is for;
+  the hosting and transport decisions remove the only two things that could have blocked M3.
+- **Supersedes:** the "no table-level guard in wave 1" and "`occurred_at` stays `now()`" paragraphs
+  of DEC-045; the default in force under OQ-027 ("decide the host at the start of M3").
+- **Documents changed:** `02-domain-model.md` §4.3, §4.16, §6.2 (frozen, changed under this entry);
+  `03-permissions-rls.md` §5.2, §8.2; `OPEN-QUESTIONS.md` OQ-027; `STATUS.md`; `TEAM.md` §1 (at wave start)
+
+---
+
 ## Template for new entries
 
 ```markdown

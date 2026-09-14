@@ -301,7 +301,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRO-004` | — | — | `SCR-012` `SCR-017` `SCR-043` | — | — | `STORY-PRO-002` | M2 |
 | `REQ-PRO-005` | — | — | `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-006` | `ENT-proposals` `ENT-session_state_transitions` | `POL-proposals.transition.audit` | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
-| `REQ-PRO-007` | — | — | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
+| `REQ-PRO-007` | — | `POL-sessions.transition.legal` | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
 | `REQ-PRO-008` | — | — | `SCR-018` | — | — | `STORY-PRO-004` | M2 |
 
 ### PTS

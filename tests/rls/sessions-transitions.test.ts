@@ -20,7 +20,7 @@ const act = (tx: Tx, id: string, action: string, reason: string | null = null) =
     [id, action, reason],
   );
 
-/** Sets a session's state directly, as the owner, to arrange a scenario. */
+/** Sets a session's state directly, as the owner, to arrange a scenario — along a legal edge of 02 §6.2; 0024's guard refuses anything else. */
 const put = (tx: Tx, id: string, state: string, extra = "") =>
   tx.q(`update public.sessions set state = $2::public.session_state ${extra} where id = $1`, [id, state]);
 

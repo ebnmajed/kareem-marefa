@@ -436,6 +436,13 @@ privileges rather than as UI: a presenter literally cannot set a date, even by c
 Admin updates to those columns go through an RPC that writes the state transition and fires the
 change notifications (`REQ-SES-009`).
 
+**The edge set is the table's, not any RPC's** (migration `0024`, DEC-046). `sessions_guard_transition`
+is a `before update of state` trigger that accepts exactly `02` §6.2's edges — including the
+presenter-decline return to `draft` (`REQ-PRO-007`) — and refuses everything else with `23514`,
+for every writer including the migration owner and `service_role`. An RPC that writes an edge the
+diagram does not draw fails its own test. Rows are born with a state and no edge, so there is no
+insert guard: `create_session()` is the only door for people (no insert grant, no insert policy).
+
 ### 5.3 RSVP
 
 | Table | select | insert | update | delete | Notes |
@@ -1144,6 +1151,9 @@ generated suite is the highest-value test in the product.
 | `RPC-transition_session.edges` | Only `02` §6.2's edges are accepted — starting a draft, completing a published session, archiving anything but a completed one are all refused; `reopen` is archived → completed (`cancelled` has no outgoing edge). |
 | `RPC-transition_session.cancel` | Cancelling requires a reason, keeps the page and the row, and is reachable from `completed` (`REQ-SES-010`). |
 | `RPC-transition_session.closes_check_in` | Completing early — or cancelling — closes the check-in window in the same transaction (`REQ-CHK-004`). |
+| `POL-sessions.transition.legal` | Every edge of `02` §6.2, and the presenter-decline return to `draft` (`REQ-PRO-007`), is accepted; `draft → published`, `approved → in_progress`, `completed → draft`, `published → draft` and anything out of `cancelled` are refused with `23514` — even by the migration owner, past every RPC (migration `0024`). |
+| `POL-sessions.transition.rpcs_pass` | `publish_session()`'s walk, both clock functions, `transition_session()` and the decline trigger all still succeed through the guard (migration `0024`). |
+| `POL-evidence.occurred_at.ordered` | `audit_log` and `session_state_transitions` rows written by one transaction carry strictly increasing `occurred_at`; the publish chain's rows order by time alone (migration `0024`, DEC-046). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |

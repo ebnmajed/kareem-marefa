@@ -183,7 +183,10 @@ describe("POL-session_presenters.decline", () => {
       await tx.as(f.a.admin.claims);
       const id = await createSession(tx, { title: "جلسة سيعتذر عنها المُقدِّم", category: f.a.categoryId, presenters: [f.a.members[1].memberId] });
       await tx.asOwner();
-      await tx.q(`update public.sessions set state = 'approved' where id = $1`, [id]);
+      // Walk 02 §6.2's edges to `approved`; 0024's guard refuses a jump.
+      for (const to of ["submitted", "in_review", "approved"]) {
+        await tx.q(`update public.sessions set state = $2::public.session_state where id = $1`, [id, to]);
+      }
 
       // The presenter has no grant on sessions.state — the consequence is the
       // trigger's, not theirs.

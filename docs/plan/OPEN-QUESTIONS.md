@@ -342,6 +342,10 @@ question closes with no change to any document. If not, the entry names what mov
   converter's current security model assumes the former).
 - **If answered differently:** a host change is a configuration change and an image push; the
   only code change is the converter token if the host has no private networking.
+- **Owner's answer at the start of wave 2 (2026-09-14, DEC-046):** the worker stays a
+  host-agnostic Docker image running locally and in CI; the production host is decided at Launch
+  with PR C. Nothing in wave 2 waits on hosting; the `graphile_worker` schema is installed wherever
+  the RLS suite runs. The question stays open only for the host's name.
 
 ## OQ-028 — Does `style-src` admit inline style attributes on the platform routes?
 

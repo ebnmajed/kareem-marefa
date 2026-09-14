@@ -398,8 +398,11 @@ that can be bypassed. Indexes: `(org_id, state, starts_at)`, `(org_id, category_
 #### `ENT-session_state_transitions`
 **Serves:** `REQ-SES-003`, `REQ-PRO-006`, `REQ-SES-005`
 Append-only. `session_id`, `from_state`, `to_state`, `actor_id` (null when the clock did it),
-`is_manual boolean not null`, `reason text`, `occurred_at`.
-**Every transition writes a row.** A transition without one is a defect.
+`is_manual boolean not null`, `reason text`, `occurred_at` (`default clock_timestamp()` since
+migration `0024`, DEC-046 — rows from one transaction order by time alone).
+**Every transition writes a row.** A transition without one is a defect. **Every transition is a
+drawn edge of §6.2**: migration `0024`'s `sessions_guard_transition` trigger refuses any other
+change of `state` with `23514`, whoever the writer is.
 
 ### 4.4 RSVP
 
@@ -957,7 +960,7 @@ would be indexed as gibberish and would match nothing a member could type.
 | `before`, `after` | `jsonb` |
 | `reason` | `text` — mandatory for the actions that require one |
 | `ip`, `user_agent` | `inet`, `text` |
-| `occurred_at` | `timestamptz not null default now()` |
+| `occurred_at` | `timestamptz not null default clock_timestamp()` — per statement, not per transaction, so rows one transaction writes order by time alone (migration `0024`, DEC-046; was `now()`) |
 
 Indexes: `(org_id, occurred_at desc)`, `(org_id, actor_id, occurred_at desc)`,
 `(org_id, subject_type, subject_id)`. Retained **7 years** (OQ-019).
@@ -1222,9 +1225,19 @@ stateDiagram-v2
     in_progress --> cancelled
     completed --> cancelled: retroactively voided
     archived --> cancelled
+
+    submitted --> draft: presenter declines (REQ-PRO-007, DEC-046)
+    in_review --> draft: presenter declines
+    changes_requested --> draft: presenter declines
+    approved --> draft: presenter declines
 ```
 
-Three notes:
+Four notes:
+- **The four edges back to `draft` were added under DEC-046.** `REQ-PRO-007` says a presenter
+  "can decline, which returns the session to `draft`"; migration `0020` implements it and
+  migration `0024` makes the whole edge set a `before update` trigger on the table, so the
+  diagram had to say what the table enforces. A published session is not returned to draft by a
+  decline — people hold seats against it (`REQ-SES-009` is the path for a withdrawn presenter).
 - **`full` is not here.** It is `confirmed_count >= capacity`, derived at read time
   (`REQ-SES-003`).
 - The clock transitions are **idempotent** and never override a manual one (`REQ-SES-004`,
