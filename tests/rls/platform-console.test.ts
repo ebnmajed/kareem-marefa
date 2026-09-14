@@ -1,0 +1,130 @@
+// platform — the console's reads (supabase/proposed/platform/0002_platform_console_reads.sql).
+// Applied with applyProposed() inside this test's transaction, rolled back.
+//
+// 0002 opens exactly two doors a super admin does not otherwise have: an org's
+// own row with its domain list, and their own impersonation history. The cases
+// below are about what does NOT come back through them.
+//
+// REQ-ADM-001 · REQ-ADM-002 · REQ-ADM-003 · REQ-ADM-019 · REQ-TEN-007
+
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { applyProposed, errorMessage, PERMISSION_DENIED, errorCode, withTx, type Claims, type Tx } from "./db";
+import { seedBase } from "./fixture";
+
+const FILES = ["platform/0001_m8_schema.sql", "platform/0002_platform_console_reads.sql"];
+
+async function apply(tx: Tx) {
+  for (const file of FILES) {
+    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
+  }
+}
+
+function platformClaims(authUserId: string, email: string): Claims {
+  return { sub: authUserId, email, platform_admin: true };
+}
+
+describe("platform — the console's reads (0002)", () => {
+  it("RPC-platform_org.platform_only — every org role is refused; anon is refused", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+
+      for (const claims of [f.a.admin.claims, f.a.mod.claims, f.a.members[0].claims, f.b.admin.claims]) {
+        await tx.as(claims);
+        expect(await errorMessage(() => tx.q(`select public.platform_org($1)`, [f.a.id]))).toMatch(/not_platform_admin/);
+      }
+      await tx.asAnon();
+      expect(await errorCode(() => tx.q(`select public.platform_org($1)`, [f.a.id]))).toBe(PERMISSION_DENIED);
+    });
+  });
+
+  it("RPC-platform_org — the org's row, its domains and counts, and nothing that names anyone", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+
+      const [{ platform_org: org }] = await tx.q<{ platform_org: Record<string, unknown> }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.slug).toBe(f.a.slug);
+      expect(org.domains).toEqual([f.a.domain]);
+      expect((org.counts as Record<string, number>).members).toBeGreaterThan(0);
+
+      // REQ-ADM-003 as a shape assertion: the envelope's keys are a closed set,
+      // and none of them is a member, a title or a piece of content.
+      expect(Object.keys(org).sort()).toEqual(
+        [
+          "certificatePrefix",
+          "counts",
+          "createdAt",
+          "domains",
+          "firstAdminEmail",
+          "id",
+          "name",
+          "slug",
+          "status",
+          "suspendedAt",
+          "suspendedReason",
+        ].sort(),
+      );
+
+      // An unknown org is null, not an error: the console's not-found boundary
+      // must not distinguish "no such org" from "not a uuid" for a guesser.
+      const [{ platform_org: missing }] = await tx.q<{ platform_org: unknown }>(
+        `select public.platform_org('00000000-0000-0000-0000-000000000000'::uuid) as platform_org`,
+      );
+      expect(missing).toBeNull();
+    });
+  });
+
+  it("RPC-platform_org — a domain added through the RPC is the one that comes back", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      await tx.q(`select public.add_org_domain($1, 'second.example')`, [f.a.id]);
+
+      const [{ platform_org: org }] = await tx.q<{ platform_org: { domains: string[] } }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.domains.sort()).toEqual([f.a.domain, "second.example"].sort());
+    });
+  });
+
+  it("RPC-platform_impersonations.own — a platform admin sees their own sessions and not another's", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+
+      // A second super admin, so "their own" is a real distinction rather than
+      // a filter that happens to match everything.
+      await tx.asOwner();
+      const [other] = await tx.q<{ id: string }>(
+        `insert into auth.users (id, email) values (gen_random_uuid(), 'other-platform@example.test') returning id`,
+      );
+      await tx.q(`insert into public.platform_admins (auth_user_id) values ($1)`, [other.id]);
+
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      await tx.q(`select public.start_impersonation($1, 'تحقيق أول', 60)`, [f.a.id]);
+
+      await tx.as(platformClaims(other.id, "other-platform@example.test"));
+      await tx.q(`select public.start_impersonation($1, 'تحقيق ثانٍ', 60)`, [f.b.id]);
+      const mine = await tx.q<{ reason: string; org_slug: string }>(`select reason, org_slug from public.platform_impersonations()`);
+      expect(mine).toHaveLength(1);
+      expect(mine[0].reason).toBe("تحقيق ثانٍ");
+      expect(mine[0].org_slug).toBe(f.b.slug);
+
+      // The ORG still sees what happened to it, through the table's own policy.
+      await tx.as(f.a.admin.claims);
+      expect(await tx.q(`select id from public.impersonation_sessions`)).toHaveLength(1);
+
+      // And an org admin cannot call the platform reader at all.
+      expect(await errorMessage(() => tx.q(`select * from public.platform_impersonations()`))).toMatch(/not_platform_admin/);
+    });
+  });
+});
