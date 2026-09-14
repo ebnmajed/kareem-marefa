@@ -143,10 +143,11 @@
       "sessionCount": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}"
     },
     "banner": {
-      "viewingAs": "أنت تتصفح مؤسسة أخرى بصلاحية استثنائية.",
-      "remaining": "تنتهي الجلسة خلال {minutes}",
+      "viewingAs": "أنت تتصفح <bdi>{org}</bdi> بصلاحية استثنائية، وهذه الجلسة مسجَّلة في سجل تدقيق المؤسسة.",
+      "remaining": "تنتهي خلال {minutes}",
       "minutes": "{count, plural, zero {أقل من دقيقة} one {دقيقة واحدة} two {دقيقتين} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
-      "stop": "إنهاء"
+      "stop": "إنهاء",
+      "readOnly": "الوصول محدود بالقراءة: لا يمكن تنفيذ أي إجراء إداري داخل المؤسسة."
     },
     "errors": {
       "failed": "تعذّر إتمام العملية. حاول مرة أخرى.",

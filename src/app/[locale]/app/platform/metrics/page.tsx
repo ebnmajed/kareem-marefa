@@ -75,7 +75,13 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
           // (CLAUDE.md § i18n and RTL): four columns of numbers do not fit at
           // 390 px, and this is the one shape where a horizontal scroll is
           // the honest answer rather than a discovery problem.
-          <div className="mt-4 overflow-x-auto">
+          //
+          // ★ `tabIndex={0}` + `role="region"` + a label, or axe's
+          // `scrollable-region-focusable` fails it as SERIOUS (WCAG 2.2 AA):
+          // a region that scrolls with a mouse and not with a keyboard is
+          // content a keyboard user cannot reach at all. Every scroller in
+          // this track carries the same three attributes.
+          <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label={t("jobsTitle")}>
             <table className="w-full min-w-xl border-collapse text-body">
               <thead>
                 <tr className="border-b border-edge text-start">

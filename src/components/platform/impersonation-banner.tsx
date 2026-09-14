@@ -1,38 +1,71 @@
-// The `ImpersonationBanner` slot — REQ-ADM-002, REQ-ADM-019, SCR-085, DEC-052.
+import { getTranslations } from "next-intl/server";
+import { formatNumber } from "@/components/sessions/numerals";
+import type { Locale } from "@/i18n/routing";
+import { getMyActiveImpersonation, PLATFORM_NUMERALS } from "@/lib/dal/platform";
+import { stopImpersonationAction } from "./actions";
+import { StopImpersonationControl } from "./stop-control";
+
+// The `ImpersonationBanner` slot — REQ-ADM-002, REQ-ADM-019, SCR-085,
+// DEC-052, DEC-055.
 //
-// PLACEHOLDER. It renders nothing today, and it exists on day one so the lead
-// can wire the import into the app shell (`src/app/[locale]/app/layout.tsx`)
-// before the rest of M8 lands (TEAM.md §2). When it is real it will show
-// «أنت تتصفح كـ …» with the org, the remaining time and a stop control, on
-// every screen of an active break-glass session.
+// ★ IT RENDERS NOTHING FOR ALMOST EVERYONE, ALMOST ALWAYS. `my_impersonation()`
+// is keyed on `auth.uid()` and needs no org claim, so this is safe to render on
+// every screen for every visitor: a member, a signed-out stranger and a super
+// admin with no live session all get null, and only a super admin inside a live
+// break-glass session gets a banner. It never redirects and never throws, which
+// matters because a slot in a layout takes the whole page down with it.
 //
-// The rules it will keep, stated now so the real version cannot quietly drop
-// them:
+// ★ WHERE IT APPEARS, under DEC-055. This wave accepts that an impersonating
+// super admin has no `member_id` and therefore lands on `/no-access` rather
+// than inside the org's screens. So the banner belongs in two places — the
+// platform console's shell and `/no-access` — and the second is the more
+// important of the two: it is the screen the operator is actually looking at,
+// and without the banner there it says only «لا يمكن الدخول», which is true and
+// useless. Both slots are the lead's to wire.
 //
-//   1. **It reads its own data through this track's DAL**, never props. The
-//      shell passes a locale and nothing else; ids never rows (TEAM.md §2).
-//   2. **No heading of its own.** The shell owns the landmark, and a slot that
-//      repeats it is announced twice.
-//   3. **It renders nothing when there is no active session** — which is the
-//      common case for every member of every org, forever. A banner that says
-//      «لا توجد جلسة» on every page is noise the reader learns to skip, and
-//      then does not see the one time it matters.
-//   4. **The org sees the session in its own audit log whether or not this
-//      banner renders** (`REQ-ADM-019`). The banner is for the super admin's
-//      own honesty; the evidence is in the org's log.
+// It says three things and stops: which org, how long is left, and that the
+// org's audit log already has the record. The third is not decoration — SCR-085
+// states the consequence before the session starts, and a banner that dropped
+// it would let an operator forget it the moment the screen changed.
 //
-// A `"use client"` stop control will sit inside it, because ending a session
-// has to refresh the token — the claims are minted by the hook at issuance.
+// No heading of its own: the host page owns the landmark (TEAM.md §2).
 
 export interface ImpersonationBannerProps {
   locale: string;
 }
 
-// `locale` is the slot's contract (TEAM.md §2) and the placeholder body does
-// not read it yet.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function ImpersonationBanner(props: ImpersonationBannerProps) {
-  // TODO(platform, M8): read my_impersonation() through src/lib/dal/platform.ts
-  // and render the banner of SCR-085. Placeholder until then.
-  return null;
+export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) {
+  const active = await getMyActiveImpersonation();
+  if (!active) return null;
+
+  const t = await getTranslations("platform.banner");
+
+  return (
+    // `role="status"` rather than `alert`: it is a standing condition, not an
+    // interruption, and an assertive live region re-announced on every
+    // navigation is how a screen-reader user learns to tune a banner out.
+    <div
+      role="status"
+      className="border-b border-edge-strong bg-silver-100 px-4 py-3 md:px-8"
+    >
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2">
+        <p className="min-w-0 text-body-sm text-fg-heading">
+          {t.rich("viewingAs", { org: active.orgName, bdi: (c) => <bdi>{c}</bdi> })}
+        </p>
+        <p className="text-body-sm text-fg-body">
+          {t("remaining", {
+            minutes: t("minutes", {
+              count: active.minutesRemaining,
+              value: formatNumber(active.minutesRemaining, PLATFORM_NUMERALS),
+            }),
+          })}
+        </p>
+        <p className="text-body-sm text-fg-muted">{t("readOnly")}</p>
+        <StopImpersonationControl
+          sessionId={active.id}
+          stop={stopImpersonationAction.bind(null, locale as Locale)}
+        />
+      </div>
+    </div>
+  );
 }

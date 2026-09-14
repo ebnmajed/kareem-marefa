@@ -11,6 +11,7 @@
 //
 // Same seeding and sign-in as second-org.spec.ts: real auth users, a real
 // provision_member(), cookies from a server client (DEC-020).
+import AxeBuilder from "@axe-core/playwright";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -24,6 +25,10 @@ test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run 
 
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
+// The same rule tags as tests/e2e/a11y.spec.ts, because the console is part of
+// the same WCAG 2.2 AA promise (REQ-NFR-007) and a second, looser set would
+// make "the a11y harness passes" mean two different things.
+const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 test.describe.configure({ mode: "serial" });
 
 type SeededOrg = {
@@ -207,6 +212,28 @@ async function review(p: Page, name: string) {
   expect(sideways, `${name} must not scroll sideways at 390 px`).toBeNull();
 }
 
+/**
+ * The a11y scan, in this spec rather than in `tests/e2e/a11y.spec.ts`: the
+ * console needs a platform admin, and that spec's fixture is an org's member
+ * and admin. Same tags, same severity rule — `serious` and `critical` fail and
+ * name the rule, the selector and the help URL; `moderate` and `minor` are
+ * printed for the manual half of `13` §2.
+ */
+async function scan(page: Page, path: string) {
+  await page.goto(path);
+  await expect(page.locator("main, [role=main]").first()).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  for (const v of results.violations.filter((v) => v.impact !== "serious" && v.impact !== "critical")) {
+    console.log(`a11y advisory ${path}: ${v.id} (${v.impact}) ×${v.nodes.length} — ${v.helpUrl}`);
+  }
+  const report = blocking
+    .map((v) => `${v.id} (${v.impact}) — ${v.help}\n  ${v.helpUrl}\n` + v.nodes.slice(0, 5).map((n) => `  ${n.target.join(" ")}`).join("\n"))
+    .join("\n");
+  expect(blocking, `${path}\n${report}`).toEqual([]);
+}
+
 /** Everything about an org that a super admin must never see anywhere. */
 function secrets(org: SeededOrg): string[] {
   return [org.memberName, org.sessionTitle, org.memberEmail];
@@ -224,6 +251,11 @@ test("★ REQ-ADM-002: a super admin walks the whole console and sees no member,
   ]) {
     const response = await page.goto(path);
     expect(response!.status(), `${path} answers for a super admin`).toBe(200);
+    // ★ AND it is still the page that was asked for. `page.goto()` reports the
+    // status of the FINAL response, so a redirect to /no-access answers 200
+    // and a status check alone reads as a pass — which is exactly how the app
+    // shell's member-only slot hid for a whole sync (notes/platform.md §1.9).
+    expect(page.url(), `${path} is not a redirect to somewhere else`).toContain(path);
     const text = await page.locator("body").innerText();
     for (const s of never) expect(text, `${path} shows nothing an org owns (${s})`).not.toContain(s);
   }
@@ -331,6 +363,23 @@ test("REQ-ADM-002: a session cannot be silently extended — four hours is the c
   await expect(minutes).toHaveAttribute("max", "240");
 });
 
+test("REQ-NFR-007: the console passes axe at WCAG 2.2 AA", async ({ context, page }) => {
+  await signInPlatform(context);
+  // `/ar/app/platform` redirects to the org list, so scanning it proves the
+  // entry point AND the list. The metrics screen carries the one horizontal
+  // scroller in this track, which is `scrollable-region-focusable`'s case.
+  for (const path of [
+    "/ar/app/platform",
+    "/ar/app/platform/orgs",
+    "/ar/app/platform/orgs/new",
+    "/ar/app/platform/templates",
+    "/ar/app/platform/metrics",
+    "/ar/app/platform/impersonate",
+  ]) {
+    await scan(page, path);
+  }
+});
+
 test.describe("390 px RTL review", () => {
   test.use({ viewport: PHONE });
 
@@ -345,6 +394,9 @@ test.describe("390 px RTL review", () => {
 
     await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
     await review(page, "scr-082-platform-domains");
+
+    await page.goto("/ar/app/platform/templates");
+    await review(page, "scr-083-platform-templates");
 
     await page.goto("/ar/app/platform/metrics");
     await review(page, "scr-084-platform-metrics");

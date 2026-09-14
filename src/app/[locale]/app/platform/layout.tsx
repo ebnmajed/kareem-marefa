@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 import { requirePlatformAdmin } from "@/lib/dal/platform";
 
 // The platform console's shell — `app/platform/**`'s one shared layout.
@@ -40,6 +41,14 @@ export default async function PlatformLayout({
 
   return (
     <div>
+      {/* SCR-085's persistent banner, on the console's own shell. It renders
+          nothing unless this operator is inside a live break-glass session,
+          and it is the lead's to wire into `/no-access` — the other screen an
+          impersonating super admin actually lands on under DEC-055. A layout
+          does not re-render on navigation [v16], so the remaining-time figure
+          is as of the last full request; the session expires on its own
+          either way, which is what REQ-ADM-002 relies on. */}
+      <ImpersonationBanner locale={locale} />
       <nav aria-label={t("brand")} className="border-b border-edge pb-3">
         {/* Wrapping, never an internally-scrollable strip: an item scrolled
             out of a horizontal scroller reads as "off the page" at 390 px,

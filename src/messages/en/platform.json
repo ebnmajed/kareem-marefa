@@ -143,10 +143,11 @@
       "sessionCount": "{count, plural, =0 {No sessions} one {One session} other {{value} sessions}}"
     },
     "banner": {
-      "viewingAs": "You are browsing another org with break-glass access.",
-      "remaining": "The session ends in {minutes}",
+      "viewingAs": "You are browsing <bdi>{org}</bdi> with break-glass access, and this session is recorded in that org's audit log.",
+      "remaining": "Ends in {minutes}",
       "minutes": "{count, plural, =0 {under a minute} one {one minute} other {{value} minutes}}",
-      "stop": "End"
+      "stop": "End",
+      "readOnly": "Read-only: no privileged action inside the org can be performed."
     },
     "errors": {
       "failed": "That did not go through. Try again.",

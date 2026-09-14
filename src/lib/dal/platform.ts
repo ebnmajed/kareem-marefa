@@ -417,14 +417,37 @@ export async function listMyImpersonations(locale: string, limit = 20): Promise<
  * returns null for anyone who is not inside a live session of their own, which
  * is everyone almost always.
  */
-export async function getMyActiveImpersonation(): Promise<{ id: string; orgId: string; expiresAt: string } | null> {
+export interface ActiveImpersonation {
+  id: string;
+  orgId: string;
+  orgName: string;
+  expiresAt: string;
+  /** Decided here: reading the clock during render is an impure call. */
+  minutesRemaining: number;
+}
+
+export async function getMyActiveImpersonation(): Promise<ActiveImpersonation | null> {
   const state = await getSessionState();
   if (state.kind === "none") return null;
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("my_impersonation");
   if (error || !data) return null;
   const r = data as { id: string | null; org_id: string; expires_at: string };
-  return r.id ? { id: r.id, orgId: r.org_id, expiresAt: r.expires_at } : null;
+  if (!r.id) return null;
+
+  // The org's NAME is read the way any member of it would read it: during an
+  // active session the token carries `org_id`, so `orgs_read_own` matches and
+  // the column grant allows `name`. No definer function is needed, and the
+  // banner therefore shows exactly what the session can actually see.
+  const { data: org } = await supabase.from("orgs").select("name").eq("id", r.org_id).maybeSingle();
+  const remaining = Math.max(0, Math.round((Date.parse(r.expires_at) - Date.now()) / 60000));
+  return {
+    id: r.id,
+    orgId: r.org_id,
+    orgName: (org?.name as string) ?? "",
+    expiresAt: r.expires_at,
+    minutesRemaining: remaining,
+  };
 }
 
 // ── The platform-side trail ───────────────────────────────────────────────
