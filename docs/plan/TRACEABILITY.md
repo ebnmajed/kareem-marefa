@@ -65,7 +65,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-014` | — | — | `SCR-058` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-015` | — | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-016` | — | — | `SCR-060` | — | — | `STORY-ADM-007` | M7 |
-| `REQ-ADM-017` | — | — | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
+| `REQ-ADM-017` | — | `POL-write_admin_export_audit.execute.admin` | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-018` | `ENT-audit_log` | — | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-085` | — | — | `STORY-ADM-002` | M8 |
 | `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-050` `SCR-062` | — | — | `STORY-ADM-005` | M7 |

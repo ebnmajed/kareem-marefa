@@ -1,4 +1,4 @@
--- console (wave 3, M7) — write_admin_export_audit(), REQ-ADM-017's "every
+-- promoted by the lead at wave-3 sync 3 · console (wave 3, M7) — write_admin_export_audit(), REQ-ADM-017's "every
 -- export is audited."
 --
 -- Serves:  01 §20 REQ-ADM-017, REQ-CHK-012's CSV acceptance

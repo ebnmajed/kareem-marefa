@@ -1411,6 +1411,9 @@ generated suite is the highest-value test in the product.
 | `POL-admin_list_members.select.admin` | An admin reads every member of their org **with email** through `admin_list_members()`, and none of org B's (`REQ-ADM-009`). (migration `0056`). |
 | `POL-admin_list_members.select.non_admin` | A member and a moderator get zero rows from the function, not an error. (migration `0056`). |
 | `POL-admin_list_members.select.no_base_grant` | The base table's column grant still hides `email` from a direct select, admin included — the function is the only door (A33, DEC-044's pattern). (migration `0056`). |
+| `POL-write_admin_export_audit.execute.admin` | An admin's export writes exactly one audit row naming the export type and the subject (`REQ-ADM-017`). (migration `0058`). |
+| `POL-write_admin_export_audit.execute.non_admin` | A moderator and a member are both refused — the boundary is `assert_fresh_admin()`, not the route handler. (migration `0058`). |
+| `POL-write_admin_export_audit.execute.own_org_only` | An admin cannot forge another org's export as their own subject; the audit row lands in the caller's own org. (migration `0058`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
