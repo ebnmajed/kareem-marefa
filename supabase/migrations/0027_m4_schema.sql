@@ -1,4 +1,4 @@
--- scoring/0001_m4_schema.sql — the whole M4 schema: the action catalogue, the
+-- proposed by `scoring` (wave 2, M4), promoted by the lead at sync 1 — the whole M4 schema: the action catalogue, the
 -- append-only ledger and its rollup, badges, levels, streaks, perks, and the
 -- leaderboard snapshots. 02-domain-model.md §4.9–4.11 · 03-permissions-rls.md
 -- §5.7 · 05-scoring-engine.md whole · CLAUDE.md invariant 9 (points_ledger is
@@ -398,6 +398,28 @@ end $$;
 create trigger points_rollup after insert on public.points_ledger
   for each row execute function public.points_rollup();
 
+-- Added by the lead at promotion (CLAUDE.md invariant 9, the members_org_immutable
+-- pattern of 0004): the revoke above stops every client role, but the table
+-- owner and every SECURITY DEFINER function run as the owner, and ownership is
+-- not subject to a revoke. A trigger raises for every writer — bypassrls skips
+-- policies, not triggers — so "balances must be recomputable" is a property of
+-- the table, not of the functions that happen to exist today. A reversal is a
+-- compensating row (REQ-PTS-013), never an edit.
+create function public.points_ledger_append_only() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  -- The one legitimate disappearance: the org itself is being deleted and the
+  -- row goes with it by cascade (the parent row is already gone when the
+  -- cascade reaches this table). Everything else is refused.
+  if tg_op = 'DELETE' and not exists (select 1 from public.orgs o where o.id = old.org_id) then
+    return old;
+  end if;
+  raise exception 'points_ledger is append-only: % refused (REQ-PTS-001; a reversal is a compensating row)', tg_op
+    using errcode = '23514';
+end $$;
+create trigger points_ledger_append_only before update or delete on public.points_ledger
+  for each row execute function public.points_ledger_append_only();
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- leaderboard_snapshots / leaderboard_entries — REQ-LDR-002, REQ-LDR-006,
 -- A11, DEC-016. Job-written only; a `is_final` snapshot and its entries are
@@ -431,6 +453,11 @@ revoke insert, update, delete on public.leaderboard_snapshots from anon, authent
 create function public.leaderboard_snapshot_guard() returns trigger
 language plpgsql set search_path = '' as $$
 begin
+  -- Lead, at promotion: an org deletion cascades through here; the parent row
+  -- is already gone when the cascade reaches this table.
+  if tg_op = 'DELETE' and not exists (select 1 from public.orgs o where o.id = old.org_id) then
+    return old;
+  end if;
   if old.is_final then
     raise exception 'leaderboard_snapshots: a final snapshot is immutable' using errcode = '23514';
   end if;
@@ -471,6 +498,9 @@ create function public.leaderboard_entry_guard() returns trigger
 language plpgsql set search_path = '' as $$
 declare v_final boolean;
 begin
+  if tg_op = 'DELETE' and not exists (select 1 from public.orgs o where o.id = old.org_id) then
+    return old;   -- org deletion cascade (see leaderboard_snapshot_guard)
+  end if;
   select is_final into v_final from public.leaderboard_snapshots where id = old.snapshot_id;
   if v_final then
     raise exception 'leaderboard_entries: entries of a final snapshot are immutable' using errcode = '23514';

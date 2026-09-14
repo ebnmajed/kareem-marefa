@@ -1166,6 +1166,28 @@ generated suite is the highest-value test in the product.
 | `POL-notification_templates.matrix` | A template for a key or channel absent from `08` §1 is refused (`REQ-NTF-002`). (migration `0026`). |
 | `POL-email_deliveries.select.admin` | An org admin sees bounces with the reason; a member sees nothing, not even their own. (migration `0026`). |
 | `POL-calendar_events.select.self` | A member sees only their own sync rows; insert and update have no policy and no grant. (migration `0026`). |
+| `POL-scoring_rules.select` | any org member reads the catalogue (REQ-PTS-003) (migration `0027`). |
+| `POL-scoring_rules.update.admin` | a moderator changing a point value is rejected (migration `0027`). |
+| `POL-scoring_rules.catalogue` | inserting action_key = 'rsvp' is rejected (REQ-PTS-010) (migration `0027`). |
+| `POL-scoring_rules.immutable_key` | action_key and actor cannot be changed by update (column grant) (migration `0027`). |
+| `POL-scoring_rules.history` | a rule edit appends to scoring_config_history (scope='scoring') (migration `0027`). |
+| `POL-points_ledger.insert` | direct insert rejected for authenticated AND service_role (migration `0027`). |
+| `POL-points_ledger.update` | update and delete raise for every client role including service_role (migration `0027`). |
+| `POL-points_ledger.select` | a member reads only their own rows; an admin reads the org's (migration `0027`). |
+| `POL-points_ledger.idempotency` | awarding the same source event twice inserts one row (proven again once award_points() exists) (migration `0027`). |
+| `POL-points_balances.select` | org-wide read, no client writes (migration `0027`). |
+| `POL-badges.select` · `POL-badges.update.admin` | P1/P2, no delete (retiring ≠ deleting, REQ-REC-001) (migration `0027`). |
+| `POL-levels.select` · `POL-levels.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-streak_rules.select` · `POL-streak_rules.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-perks.select` · `POL-perks.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-member_badges.select` | org-wide read, no client writes (job/admin RPC only) (migration `0027`). |
+| `POL-member_perks.select` | same (migration `0027`). |
+| `POL-streak_awards.select` | same (migration `0027`). |
+| `POL-leaderboard_snapshots.select` | org-wide read, no client writes (migration `0027`). |
+| `POL-leaderboard_snapshots.immutable` | a final (is_final) snapshot refuses update and delete, for every role including the owner (migration `0027`). |
+| `POL-leaderboard_entries.select.opt_out` | an opted-out member is absent from others' view, present in their own; company rows unaffected (REQ-LDR-008) (migration `0027`). |
+| `POL-leaderboard_entries.immutable` | entries of a final snapshot refuse update and delete (migration `0027`). |
+| `POL-orgs.seed_scoring` | inserting a row into orgs seeds all five M4 catalogues for it (proven on the fixture orgs, which insert into orgs directly) (migration `0027`). |
 | `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
 | `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
 | `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |

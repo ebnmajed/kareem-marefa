@@ -14,16 +14,17 @@
 // DEC-040) — nothing here touches the real migrations or the shared
 // database.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seedBase } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
+// Promoted as migration 0027 at wave-2 sync 1: the schema is applied by
+// `supabase db reset`, so nothing here applies it.
 async function ready(tx: Tx) {
   const f = await seedBase(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0001_m4_schema.sql");
   return f;
 }
 
