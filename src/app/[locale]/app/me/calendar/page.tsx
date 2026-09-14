@@ -79,6 +79,8 @@ export default async function CalendarPage({
               </button>
             </form>
           ) : (
+            /* A Route Handler (the OAuth redirect), not a page: <Link /> would client-navigate into it. */
+            // eslint-disable-next-line @next/next/no-html-link-for-pages
             <a
               href="/api/calendar/connect"
               className="inline-flex h-12 items-center rounded-field bg-[var(--btn-bg)] px-7 text-label text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]"

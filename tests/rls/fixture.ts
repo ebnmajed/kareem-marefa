@@ -11,7 +11,8 @@ import { randomUUID } from "node:crypto";
 import type { Claims, Tx } from "./db";
 import { seedM2, type M2Fixture } from "./fixture-m2";
 import { seedM3 } from "./fixture-m3";
-import { seedM4, type M4Fixture } from "./fixture-m4";
+import { seedM4 } from "./fixture-m4";
+import { seedM5, type M5Fixture } from "./fixture-m5";
 
 export interface Person {
   authUserId: string;
@@ -102,8 +103,8 @@ async function org(tx: Tx, name: string, slug: string, prefix: string, domain: s
 }
 
 /** The base fixture plus the M2 rows (sessions, RSVPs, check-ins, comments, ratings…). */
-export async function seed(tx: Tx): Promise<M4Fixture> {
-  return seedM4(tx, await seedM3(tx, await seedM2(tx, await seedBase(tx))));
+export async function seed(tx: Tx): Promise<M5Fixture> {
+  return seedM5(tx, await seedM4(tx, await seedM3(tx, await seedM2(tx, await seedBase(tx)))));
 }
 
 export async function seedBase(tx: Tx): Promise<Fixture> {

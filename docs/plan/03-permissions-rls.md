@@ -966,6 +966,24 @@ expire in 5 minutes for sources and 60 minutes for page images, which are re-req
 
 ---
 
+### 6.9 The bucket policies as promoted — migration `0037` (wave 2)
+
+The nine policies below are the ones `0037_m5_schema.sql` creates on `storage.objects`; their
+bodies are the prefix rules of §6.1–§6.6 and are read there, not restated here. The
+`policy-diff` gate keys `storage.objects` by schema (DEC-044) and matches these names.
+
+```sql
+create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006)
+create policy "materials_storage_write"      on storage.objects for insert to authenticated;  -- org prefix · sessions/<id> · presenter or staff
+create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
+create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012)
+create policy "photos_storage_write"         on storage.objects for insert to authenticated;  -- org prefix · has_checked_in() or presenter or staff (REQ-EVT-009)
+create policy "design_assets_storage_read"   on storage.objects for select to authenticated;  -- org prefix
+create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
+create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
+create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
+```
+
 ## 7. Realtime authorization
 
 **Added by DEC-022.** Under DEC-020 this section was unnecessary — the browser could not reach
@@ -1220,6 +1238,30 @@ generated suite is the highest-value test in the product.
 | `POL-sessions.change_notice.unpublished` | Editing a draft notifies nobody: there is nobody holding a seat to mislead. (migration `0036`). |
 | `POL-sessions.cancel_notice` | Cancelling removes every reminder key and the nudge, enqueues a calendar delete per seat, and tells confirmed and waitlisted members why. (migration `0036`). |
 | `POL-sessions.publish_notice` | Publishing announces the session once, to active members, and never twice for one session. (migration `0036`). |
+| `POL-materials.select.phase` | An `after` material is invisible to a member until the session is `completed`; visible to the presenter throughout. (migration `0037`). |
+| `POL-materials.insert.presenter` | A member who is not a presenter cannot add a material. (migration `0037`). |
+| `POL-materials.update.window` | A presenter removes their own material before completion; the same presenter is refused after completion; an admin removes it anyway. (migration `0037`). |
+| `POL-materials.hard_delete.admin_only` | A member and a presenter are refused a hard `delete`; an admin succeeds. (migration `0037`). |
+| `POL-material_versions.select.phase` | Follows the parent material's phase gate exactly. (migration `0037`). |
+| `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006); follows the parent's phase gate with no `allow_download` conjunct. (migration `0037`). |
+| `POL-session_tasks.write.presenter` | A member who is not a presenter cannot insert, update or delete a session task; the presenter and an admin can. (migration `0037`). |
+| `POL-task_completions.self` | A member reads and writes only their own completions; a presenter reads the session's (migration `0037`). |
+| `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
+| `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
+| `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
+| `POL-photo_takedowns.insert` | Inserting hides the photo in the same transaction, before any other read. (migration `0037`). |
+| `POL-photo_takedowns.restore` | A moderator resolving with `restored` unhides the photo; `resolved_by` is stamped, never trusted from the client. (migration `0037`). |
+| `POL-photos.select.hidden` | A hidden photo is invisible to a member, visible to staff. (migration `0037`). |
+| `POL-tags.insert.admin` · `POL-tags.delete.admin` | A member's insert is rejected; an admin's succeeds; a moderator cannot delete a tag, an admin can. (migration `0037`). |
+| `POL-session_tags.write.presenter` | A non-presenter member cannot tag a session they do not present; the presenter and an admin can. (migration `0037`). |
+| `POL-bookmarks.self` | A member reads and writes only their own bookmarks; another member's bookmark is invisible. (migration `0037`). |
+| `POL-search.ar_normalize` | «معرفات» and «مُعرِّفات» normalise to the same string; «إدارة» and «ادارة» too. (migration `0037`). |
+| `POL-storage.materials.prefix` | An authenticated write to another org's prefix is rejected. (migration `0037`). |
+| `POL-storage.materials.download` | With `allow_download = false`, the joined `materials` bucket read policy denies a member (but not the presenter or staff). (migration `0037`). |
+| `POL-storage.material_pages.phase` | An `after` page image is denied to a member before completion, regardless of `allow_download`. (migration `0037`). |
+| `POL-storage.photos.hidden` | A hidden photo's object is denied to a member, permitted to staff. (migration `0037`). |
+| `POL-storage.exports.write` | An authenticated client cannot write to `exports`; only `service_role` can (bypassrls, not a policy). (migration `0037`). |
+| `POL-storage.fonts.read` | Any authenticated member reads the `fonts` bucket with no org prefix required. (migration `0037`). |
 | `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
 | `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
 | `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |
