@@ -20,7 +20,7 @@ along its own seams**.
 | **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4, plus the never-built SCR-011) | M6 needs M5; the console half that needs no templates runs alongside | both demonstrables locally: every A12 variant, the detach, both QRs, the serial not-found, 28 parity assertions; a second org invisible to the first with the moderator scope proven by policy; `wave-3/m6-m7` PR green |
-| **4 — running** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | M8's demonstrable and branding's (one edit, four consumers, goldens untouched); `wave-4/m8-branding` PR green; the lead's NFR-004/005 closing pass; Launch follows, owner-run |
+| **4 — done** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | M8's demonstrable and branding's (one edit, four consumers, goldens untouched); `wave-4/m8-branding` PR green; the lead's NFR-004/005 closing pass; Launch follows, owner-run |
 
 ### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046)
 
@@ -325,6 +325,14 @@ Every few hours, or when a teammate says "ready for sync":
   composite RPC uses `select * from f()`.
 - **A budget the framework's own baseline cannot meet is a plan number, not a gate.** Measure first;
   enforce no-regression against a committed baseline; send the absolute numbers back to the plan.
+- **A screen is "complete and unverified in the browser" until a real session walks it on a real
+  build.** The shell can redirect before any page code runs (the bell's `requireSession()` sent every
+  super admin to `/no-access` — DEC-057), thirty-five RLS cases cannot see it, and `page.goto()`
+  reports the final response after a redirect: assert `page.url()`, not the status.
+- **A job whose subject is gone returns; it does not retry twenty-five times.** `render_variant`'s
+  warn-and-return is the pattern for every task whose row can be deleted underneath it.
+- **The serial render queue moves at the poll interval, not at job speed.** Measure a publish end to
+  end before touching concurrency (DEC-057: 60 s → bursts of three a minute; 15 s → under a minute).
 
 ## 4. The spawn prompt for the lead
 

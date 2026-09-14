@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (draft PR #15 → `main`) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 RUNNING — `platform` and `branding` spawned after DEC-052; the lead's pre-spawn items are DEC-051**
+**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (PR #15 → `main`, ready for the owner's review) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 (M8 · M7-branding) COMPLETE on the branch — migrations `0067`–`0075`, DEC-051 … DEC-057, both demonstrables run on the real images, the full gate below; next session is the Launch session, with the handoff further down**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -145,7 +145,33 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## Wave 4 (M8 · M7-branding) — RUNNING on `wave-4/m8-branding` (draft PR #15)
+## Wave 4 (M8 · M7-branding) — COMPLETE on `wave-4/m8-branding` (PR #15, the owner merges)
+
+**Both demonstrables hold locally, run against the real images, not reasoned about** (`scratchpad/wave4-demo.mjs`, gitignored; DEC-057 decision 3):
+
+- **M8** — `create_org()` as a platform admin through PostgREST → the new org reads all eight A27 baseline templates → the platform admin selects from `orgs`, `members`, `sessions`, `points_ledger`, `materials`, `comments`, `audit_log`, `brand_kits` and gets **zero rows** → `start_impersonation()` writes `impersonation.started` into **that org's own** `audit_log` → `end_impersonation()` → `my_impersonation()` answers none. `tests/e2e/platform-console.spec.ts` (16/16) walks SCR-080 … 085 as a super admin across two seeded orgs on the real build with an axe scan on every console screen; the ★ RLS sweep proves every `org_id` table returns nothing or `42501` to a platform admin; **every one of `11` §3.2's eight alerts fires in the drill** (`tests/rls/platform-alerts.test.ts`, each condition alone, then cleared, then all eight).
+- **M7-branding** — `publish_session()` → 12 of 12 variants ready with Tier A (one fingerprint) → `save_brand_kit()` → `brand_kit()` returns the override → **12 variants re-rendered under new fingerprints** by the worker image, the poster carrying the org's colours; the theme layer proven by `tests/e2e/branding.spec.ts` (the page's `<h1>` takes the saved colour after a reload), the mail by `send_notification`'s `brand_kit()` read; the parity goldens unchanged all wave (28 of 28 on all four paths, the converter image running).
+
+### Shipped
+
+Migrations `0067` (fonts read for `service_role`), `0068` (`brand_kits`), `0069` (the M8 schema), `0070` (platform console reads), `0071` (re-render on a brand save), `0072` (the platform library, managed), `0073` (retention, anonymisation, the member's export), `0074` (enum types), `0075` (the eight alerts). Screens SCR-005, SCR-059, SCR-080 … 085, the member's privacy screen. Seven jobs. The four brand consumers wired at request time. The closing pass: axe on fourteen screens, Lighthouse on six, ICU's `#` banned from every plural, keyboard access on every table scroller, the shell bug that hid the console (DEC-057).
+
+### Definition of done on the final commits
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` · `npm run lint` | clean · 0 errors (1 pre-existing warning) |
+| `npm test` | 64 files / 581 passed |
+| `npm run db:reset` + `npm run test:rls` | 61 files / 711 passed, 4 todo (the generated sweep over 68 entities, `retention_periods` and `platform_audit_log` by refusal) |
+| `npm run policy-diff` · `node scripts/traceability.mjs` | agree · 251 requirements, 68 entities, no gaps |
+| `npm run worker:build` · the worker image | clean · rebuilt, LISTEN/NOTIFY probe OK, seven tasks registered, ran the demonstrables |
+| `npm run test:e2e:local` | `platform-console` 16 · `privacy` 10 · `legal` 12 · `branding` 7 (+1 skipped by design) · `a11y` 6 · `certificates` 8 · `second-org` 6, on both projects |
+| `npm run qa` · `npm run visual compare m0-final wave-4-final` | 44/44 · 0.000% on all six pairs |
+| `npm run parity` with `CONVERTER_URL` | **28 of 28**, 7 cases × 4 paths, goldens unchanged |
+| `npm run test:e2e:unconfigured` · `tests/e2e/budgets.spec.ts` | 16 passed / 280 skipped / 0 failed · no regression against the quiet median-of-three baseline; the absolute misses are DEC-055's advisories |
+| 390 px RTL captures | SCR-059 and the eight platform/legal/privacy screens under `.qa-shots/rtl/`, looked at by their owners; three real fixes came out of them (DEC-057) |
+
+
 
 **Confirmed by the owner (DEC-052) and spawned.** The ownership is `TEAM.md` §1, `CLAUDE.md`
 § Agent team and `.claude/agents/{platform,branding}.md`. The owner's amendment: the A27 baseline
@@ -206,6 +232,7 @@ after both land. Open for the owner: the SCR-083 default (managed, not authored)
 | 1 (2026-09-14) | `0068_brand_kits` (branding, DEC-053) and `0069_m8_schema` (platform, DEC-054) promoted; `03` +25 rows (§8.2) +3 (§5); `fixture-m7.ts` (a kit and an export request per org); the four brand consumers wired — request-time `brandBindings()` in both worker composition paths and the designer preview, `brand_kit()` in the mail sender, the nonced `.brand-org` theme layer in the shell; `JOB-evaluate_alerts` and the three M8 entities into `11`/`02`; DEC-052's impersonation readers widened to staff per `03` | tsc clean · lint 0 errors · unit 502 · RLS 57 files / 674 passed · policy-diff agrees · traceability 68 entities no gaps · parity 21/28 local (converter path at wave end) · e2e shell smoke 19/19; auth + second-org + designer e2e on the new hook: see sync 2 |
 | 2 (2026-09-14) | `0070_platform_console_reads` (platform) and `0071_regenerate_posters_on_save` (branding) promoted, `03` +4; DEC-055 — break-glass browses nothing this wave (option C, A next wave), the two closing-pass harnesses (`tests/e2e/a11y.spec.ts`, `tests/e2e/budgets.spec.ts` + baseline), the reset script probes Auth through Kong; axe and Lighthouse added (lock regenerated with CI's npm — 434 transitive versions moved within their ranges, CI green on it); the audit and attendance table scrollers gained keyboard access | auth + second-org + designer e2e on the `0069` hook 34/34 · RLS 58 files / 683 passed with `0071` · policy-diff agrees · traceability no gaps · CI green on sync 1 · a11y 6/6 (13 screens, one serious finding fixed) · budgets: every `/app` screen 164 KB gz JS, four absolute misses recorded in DEC-055, the gate is no-regression (median of three) · platform-console spec: 1 case red, its owner is on it · branding spec: pending its owner's fix (Kong 502 cost one run) |
 | 3 (2026-09-14) | `0072_platform_library` and `0073_retention_and_privacy` (platform) promoted, `03` +10; the six M8 tasks and three crontab lines registered in `worker/src/index.ts`; DEC-056; the closing pass's numerals fix — five plurals in `checkin`/`rsvp`/`scoring` printed ICU's `#`, now `{value}` per the org setting with a catalogue-wide test; `branding` shut down, track complete (SCR-059 4/4, capture looked at, `0071` re-render on save) | RLS 60 files / 699 passed with `0073` · policy-diff agrees · tsc clean · worker builds · unit+components 566 · `legal` 12/12 · a11y 6/6 · `platform-console` :215 red and `privacy` 2 red (its owner, the route-announcer trap) · budgets and parity at the wave-end gate |
+| 4 (2026-09-14) | `0074_enum_types` and `0075_alerts` (platform — the renames landed in its `b0bd0f8` by a missing pathspec, byte-identical, recorded not rewritten), `03` +4; `evaluate_alerts` registered every minute; the banner on `/no-access`; the shell bell for a member alone (DEC-057 decision 1); `pollInterval` 15 s after measuring the serial render queue (decision 2); the two demonstrables run on the real images; DEC-057; the Launch handoff written; `platform` shut down | the full gate in the table above; `test:e2e:unconfigured` 16 passed / 280 skipped / 0 failed (the legal spec now waits for a configured build) · budgets on the quiet median-of-three baseline: 1 passed, no regression, five absolute misses recorded as advisories (DEC-055) |
 
 ### Next for the lead
 
@@ -612,7 +639,95 @@ Live hook probe through the local Auth API: a sign-up on an unlisted domain → 
   limits apply meanwhile. Noted for M2 with the first Route Handler that needs one.
 - `worker/src/supabase.ts` (the `createWorkerClient()` of `04` §5.1): with M3's first job.
 
-## PR C — production cutover checklist (deferred to **Launch** by DEC-039; NOT started; every step needs the owner's explicit go)
+## Handoff for the Launch session — PR C, complete (supersedes the M1-era checklist below it)
+
+**Read first:** DEC-039 (Launch is the only milestone that touches the hosted project), DEC-051 … DEC-057
+(wave 4), `14` "Launch", `04` §9–§10, `12` §7. **Nothing here has been done.** Every step that changes
+the hosted project, Vercel, a DNS record, a GitHub setting or a mail provider needs the owner's explicit
+go, step by step; the deny list refuses the commands on purpose, so the owner runs them or lifts one for
+one step. The lead of that session never merges, never force-pushes, never changes repository settings.
+
+### Migrations to ship
+`0003` … `0073` (the platform), on top of the frozen `0001`/`0002`. `registrations` is referenced by none
+of them. Rehearse first (step 1), against a schema-only dump of production — invariant 3.
+
+### The order, on launch day
+
+1. **Rehearsal, no production change.** `supabase db dump --linked --schema-only` → a fresh local
+   database → `0003`–`0073` on top → `npm run test:rls` (60 files, the isolation sweep over every table)
+   → `npm run policy-diff` → delete the dump. If a migration fails on production's shape, the day ends
+   here with a fix on a branch, and the count of `registrations` is untouched.
+2. **Asymmetric JWT signing keys** on the hosted project (Dashboard → Auth → JWT keys). Without them
+   `getClaims()` calls the network on every request (DEC-036) and the proxy's optimistic check slows.
+3. **`supabase db push`** — the owner's explicit go; the one step that changes the production schema.
+   `select count(*) from registrations` before and after, through `supabase db query --linked`.
+4. **Hosted Auth settings:** JWT expiry **900 s**; **Custom Access Token hook** →
+   `public.custom_access_token_hook` (re-created by `0069`: it reads `impersonation_sessions` for
+   `supabase_auth_admin` — the three grants of `0006` plus that select); **Before User Created hook** →
+   `public.before_user_created_hook`; Google provider **on** with the OAuth client below; redirect
+   allow-list: `https://kareem.pp.sa/api/auth/callback` and the Vercel preview pattern; Site URL
+   `https://kareem.pp.sa`. **The hook is the single point of failure for sign-in** — step 8 verifies it
+   before anything else.
+5. **Google OAuth client** (Google Cloud console, the owner's account): authorised redirect URI
+   `https://qnwbgzsgkftqaixzuhdo.supabase.co/auth/v1/callback`; the client ID and secret go into the
+   Supabase provider settings — never into the repo. **Calendar scopes** on the same client for M3's sync
+   (`src/app/api/calendar/oauth.ts`): `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET` on
+   Vercel for the callback exchange.
+6. **Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Production and
+   Preview; the hosted URL and the **publishable** key), `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (stable
+   across deploys — `04` §9.2), `SITE_URL`, `FORM_TOKEN_SECRET` (already set for the frozen form),
+   `SENTRY_DSN` (optional until observability is wired), the two calendar variables above. Redeploy.
+   **Never `SUPABASE_SERVICE_ROLE_KEY` on Vercel** (invariant 7).
+7. **The worker host** (OQ-027, decided at Launch): one container from `worker/Dockerfile` (Chromium at
+   `CHROME_PATH`, the runtime, the font set by SHA-256), env `DATABASE_URL` = the **session-mode**
+   connection on **port 5432, never 6543** (the boot probe refuses the pooler), `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `CONVERTER_URL`, `PUBLIC_ORIGIN=https://kareem.pp.sa`, `MAIL_TRANSPORT=resend`,
+   `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `SENTRY_DSN`. Boot log must show `LISTEN/NOTIFY probe OK`.
+   **The converter host:** one container from `converter/Dockerfile`, **no credentials** (DEC-032),
+   reachable from the worker only, HTTPS (`CONVERTER_ALLOW_HTTP` unset). Render concurrency stays serial
+   (DEC-051) — one `render` queue; measure queue age before raising it.
+8. **First org, by one-off SQL** (`supabase db query --linked`, never a migration): `create_org()` as
+   `postgres` with the owner's values below (it seeds settings and the four categories; the A27 baseline
+   templates are already platform-owned from `0061`, present for every org — DEC-052); the owner signs
+   in once (the Before User Created hook needs the domain on the list first), then
+   `insert into platform_admins (auth_user_id)` for that user.
+9. **Verify, in this order:** the first admin's Google account lands on `/ar/app` as `admin`; a second
+   account on the domain lands as `member`; an account on another domain is refused at Google's return
+   with the closed-door message; `/ar/app/platform` opens for the platform admin and every org table
+   returns nothing to them (the console's own ★ case, run by hand); `npm run qa` against production
+   stays 44/44; `/ar/verify/<a real code>` answers and `/ar/verify/<a serial>` is not found; a poster
+   publishes with all twelve variants and Tier A; a certificate mails through Resend to a real address.
+10. **Observability:** the Sentry DSN into Vercel and the worker; the eight `11` §3.2 alerts from
+    `JOB-evaluate_alerts` routed to Sentry through the `AlertSink` (a one-line transport swap in the
+    worker, the lead's); the CSP reports from a preview reviewed before any enforcement (OQ-028).
+11. **The two owner checks no test stands in for:** scan both QRs on paper at print size (the poster's
+    lands on the session after sign-in, the certificate's on `/verify`); open a session's ICS in Outlook
+    on Windows. And the real-device pass of `13` §8.
+12. **Re-measure the six budgeted screens** against production with `tests/e2e/budgets.spec.ts` pointed
+    at the live domain (DEC-055 decision 5), then either amend `13` §7 or schedule the shell split.
+
+### Owner inputs, by name
+- **Google OAuth:** `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (Supabase dashboard only) ·
+  `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` (Vercel).
+- **Resend:** the account, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, the verified sending domain, the
+  webhook URL `https://kareem.pp.sa/api/webhooks/resend`.
+- **Sentry:** `SENTRY_DSN` (Vercel and the worker).
+- **Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, `SITE_URL`.
+- **The worker and converter hosts:** the provider (OQ-027), `DATABASE_URL` (session mode, 5432),
+  `SUPABASE_SERVICE_ROLE_KEY` (the worker's container only), `CONVERTER_URL`, `PUBLIC_ORIGIN`,
+  `CHROME_PATH` is in the image.
+- **The first org:** name · slug · certificate prefix (2–5 capitals) · allowed email domain(s) · the first
+  admin's email · the numerals setting (`western` by default).
+- **Approvals, each its own go:** asymmetric JWT keys · `supabase db push` · the Auth hooks and the
+  Google provider · the Vercel variables and the redeploy · the worker and converter deployments ·
+  the `platform_admins` insert · the Resend domain · any change to repository visibility (DEC-051 —
+  the repository is public until Launch by the owner's decision, and this is the moment to decide again).
+- **Decisions the plan left to Launch:** render concurrency (DEC-051, measure first) · the hosting region
+  (OQ-026, recorded as a fact) · the check-in budget (DEC-055) · `impersonation_sessions` browsing the
+  org's screens (DEC-055 option A, the next wave).
+
+## PR C — the M1-era checklist (superseded by the Launch handoff above; kept for the history of steps 1–9)
 
 Run in this order, on `main`, **on launch day** (`14` Launch). Nothing here has been done, and nothing here is started before then. Migrations to rehearse: everything from `0003` onward.
 
