@@ -413,6 +413,41 @@ The baseline library lives in TypeScript and the seed migration is generated
 from it, with a test that parses the JSON back out of the SQL and
 deep-equals it. A copy nobody compares is a copy that diverges.
 
+### 2.7 What the real browser found that nothing else did
+
+`tests/e2e/designer.spec.ts`, SCR-055/056/057 against real local Supabase.
+
+- ★ **The canvas drew a message key.** An unbound field's label rendered
+  `designer.bindings.value` — DEC-047's lesson in a place no catalogue guard
+  can see: a message carrying a tag called through plain `t()` renders the
+  key, and `t.rich` returns a ReactNode the canvas cannot draw. Composed
+  from an untagged key now; the renderer bidi-isolates it itself.
+- **The test was wrong before the code was.** It asserted a placeholder on a
+  layer declaring a FALLBACK. A fallback is real text the author meant to
+  ship, not a placeholder — the distinction `REQ-DSG-006` turns on.
+- **The locked-region hint repeated on every card**, so six cards of the
+  same three lines made the 390 px page eleven thousand pixels tall. Found
+  by looking at the capture, which is the only thing that could have found
+  it. Once per section now.
+- **The bindings panel said «غير مرتبط» beside a canvas showing text**,
+  which reads as a contradiction. It now names the fallback that will print.
+
+**The 390 px helper had a false positive, and it is shared.** It walked
+`body *` and flagged anything past the viewport, including items inside an
+`overflow-x: auto` container — which `CLAUDE.md` explicitly permits and
+which does not make the page scroll. Verified directly: a nav in a scroller
+flags fourteen elements on a page whose `scrollWidth` equals its viewport.
+The version here asks the real question first (does the DOCUMENT scroll?)
+and only then which element is responsible, skipping contained ones.
+`console`'s copies of the old helper are behind most of its red 390 px
+assertions.
+
+**A real 12 px shell overflow, not mine.** On an admin page at 390 px the
+document is 402 px wide. The offender is the sign-out `form`/`button` at
+`src/app/[locale]/app/layout.tsx:46` (`…whitespace-nowrap md:px-3`),
+measured at `left: -12`. That is the lead's file and the same class of
+defect `TEAM.md` §5 already records for that layout.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for
