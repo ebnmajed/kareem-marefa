@@ -62,7 +62,7 @@ export function TaskItem({ locale, sessionId, task }: TaskItemProps) {
 
       {task.kind !== "form" ? (
         <div className="mt-2 flex flex-col gap-1">
-          <button type="button" disabled={pending} onClick={() => toggle(!task.completed)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading disabled:opacity-40">
+          <button type="button" disabled={pending} onClick={() => toggle(!task.completed)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading disabled:opacity-40 w-fit">
             {task.completed ? t("list.markUndone") : t("list.markDone")}
           </button>
           {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
@@ -100,7 +100,7 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
     return (
       <div className="mt-2 flex flex-col gap-1">
         <p className="text-body-sm text-fg-muted">{t("submitted")}</p>
-        <button type="button" onClick={() => setEditing(true)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading">
+        <button type="button" onClick={() => setEditing(true)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading w-fit">
           {t("edit")}
         </button>
       </div>
@@ -120,7 +120,7 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
         </label>
       ))}
       {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
-      <button type="submit" disabled={pending} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40">
+      <button type="submit" disabled={pending} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
         {t("submit")}
       </button>
     </form>

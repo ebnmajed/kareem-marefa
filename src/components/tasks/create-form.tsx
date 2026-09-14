@@ -126,7 +126,7 @@ export function CreateTaskForm({ locale, sessionId, materials }: CreateTaskFormP
 
       {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
 
-      <button type="submit" disabled={busy || (kind === "read_material" && materials.length === 0)} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40">
+      <button type="submit" disabled={busy || (kind === "read_material" && materials.length === 0)} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
         {t("submit")}
       </button>
     </form>

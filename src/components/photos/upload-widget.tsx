@@ -123,7 +123,7 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
       </label>
       {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
       {notice ? <p className="text-body-sm text-fg-muted">{notice}</p> : null}
-      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40">
+      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
         {t("action")}
       </button>
     </form>

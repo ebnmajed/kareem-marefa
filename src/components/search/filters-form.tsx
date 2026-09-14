@@ -131,7 +131,7 @@ export function FiltersForm({ options }: FiltersFormProps) {
           </label>
         </div>
 
-        <button type="submit" className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading">
+        <button type="submit" className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading w-fit">
           {t("apply")}
         </button>
       </form>

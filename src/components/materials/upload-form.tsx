@@ -183,7 +183,7 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
       <p className="text-body-sm text-fg-muted">{t("notice")}</p>
       {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
 
-      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40">
+      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
         {t("submit")}
       </button>
     </form>
