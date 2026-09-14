@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { Materials } from "@/components/materials/list";
+import { Photos } from "@/components/photos/gallery";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
@@ -232,6 +233,14 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
             {t("materialsLabel")}
           </h2>
           <Materials sessionId={session.id} memberId={me.memberId} locale={locale} />
+        </section>
+        {/* 9. الصور — the content slot for photos (REQ-EVT-009…015): checked-in members
+            upload, the takedown hides instantly; the gallery is gated by its own read policy. */}
+        <section aria-labelledby="photos" className="mt-10">
+          <h2 id="photos" className="text-h2 text-fg-heading">
+            {t("photosLabel")}
+          </h2>
+          <Photos sessionId={session.id} memberId={me.memberId} locale={locale} />
         </section>
 
         {/* 6, 7 and 9 — المهام التحضيرية, المواد and الصور are M5 (`content`). */}

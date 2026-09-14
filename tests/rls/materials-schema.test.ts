@@ -290,7 +290,7 @@ describe("POL-materials.phase_change.audited", () => {
   it("★ REQ-MAT-006: changing phase writes one audit row naming the old and new value", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0006_materials_audit_phase_change.sql");
+      // Promoted as migration 0052 at wave-2 sync 11: applied by `supabase db reset`.
       const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
 
       await tx.as(f.a.members[0].claims);
@@ -310,7 +310,7 @@ describe("POL-materials.phase_change.audited", () => {
   it("changing title or allow_download alone writes no phase-change audit row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0006_materials_audit_phase_change.sql");
+      // Promoted as migration 0052 at wave-2 sync 11: applied by `supabase db reset`.
       const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
 
       await tx.as(f.a.members[0].claims);

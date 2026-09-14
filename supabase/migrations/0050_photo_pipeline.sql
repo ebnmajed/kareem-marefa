@@ -1,4 +1,4 @@
--- content, follow-up — the photo upload pipeline: STORY-EVT-005/006,
+-- promoted by the lead at wave-2 sync 11 · content, follow-up — the photo upload pipeline: STORY-EVT-005/006,
 -- REQ-EVT-009 … REQ-EVT-011, 07 §9.
 --
 -- `photos` carries `check (exif_stripped)` (0037) — a row cannot exist for

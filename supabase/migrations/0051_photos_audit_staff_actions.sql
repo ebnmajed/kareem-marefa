@@ -1,4 +1,4 @@
--- content, follow-up — REQ-EVT-012 ("A moderator can restore it if the
+-- promoted by the lead at wave-2 sync 11 · content, follow-up — REQ-EVT-012 ("A moderator can restore it if the
 -- request was mistaken; restoration is audited") and REQ-EVT-014
 -- ("Removal is audited with actor and reason"). Same shape as
 -- materials_audit_phase_change (0006): a trigger, not an RPC, because

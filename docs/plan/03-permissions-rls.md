@@ -1286,6 +1286,16 @@ generated suite is the highest-value test in the product.
 | `RPC-record_material_pages.upsert` | A second call for the same version and page number replaces that page's paths rather than duplicating the row (`unique (material_version_id, page_number)`, 0037). (migration `0048`). |
 | `RPC-record_material_pages.ready` | A successful call moves `render_status` to `ready`. (migration `0048`). |
 | `RPC-record_material_download.admin_only` | A member and a moderator are both refused `42501`; an admin writes one audit row naming the material and the version. (migration `0049`). |
+| `POL-materials.phase_change.audited` | Changing `phase` writes one `audit_log` row naming the old and new value; changing `title` or `allow_download` alone writes none. (migration `0052`). |
+| `RPC-initiate_photo_processing.authority` | A member with a confirmed RSVP and no check-in, who is not the session's presenter or org staff, is refused `42501` — REQ-EVT-009, mirroring `photos_storage_write`. (migration `0050`). |
+| `RPC-initiate_photo_processing.size` | A declared byte size over the org's `limit_image_mb` is refused `23514`, naming the limit — the courtesy check; `record_photo_upload`'s is the control, against the REAL (post-strip) size. (migration `0050`). |
+| `RPC-initiate_photo_processing.enqueues` | A successful call enqueues `process_photo` keyed `photo:{photo_id}`. (migration `0050`). |
+| `RPC-record_photo_upload.service_role_only` | `authenticated` and `anon` are both refused on the grant; `service_role` succeeds. (migration `0050`). |
+| `RPC-record_photo_upload.exif_stripped` | Every row this function inserts has `exif_stripped = true` — it is the ONLY door that can ever create a `photos` row (03 §5.6c's `with check (exif_stripped)` says the same thing again, as a constraint rather than a door). (migration `0050`). |
+| `RPC-record_photo_upload.size_envelope` | A real byte size over the org's `limit_image_mb` returns `{status: 'file_too_large', limit_mb}` and inserts no row, rather than raising (DEC-043). (migration `0050`). |
+| `RPC-record_photo_upload.idempotent` | A second call with the same `p_photo_id` (a retried job) returns the already-inserted row's envelope rather than erroring on the primary key. (migration `0050`). |
+| `POL-photos.restore.audited` | `hidden_at` going from set to null writes one `audit_log` row naming the photo. (migration `0051`). |
+| `POL-photos.removal.audited` | `removed_at` going from null to set writes one `audit_log` row naming the photo and `removed_by`. (migration `0051`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
 | `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |

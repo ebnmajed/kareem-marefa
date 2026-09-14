@@ -1,4 +1,4 @@
--- content, follow-up — REQ-MAT-006: "Changing the flag takes effect
+-- promoted by the lead at wave-2 sync 11 · content, follow-up — REQ-MAT-006: "Changing the flag takes effect
 -- immediately and is audited." The client's own UPDATE (materials_update_
 -- presenter/_admin, 0037) already makes the change take effect immediately;
 -- this trigger is the audit half, the same shape as proposals_audit_

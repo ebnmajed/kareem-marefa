@@ -307,7 +307,7 @@ describe("RPC-initiate_photo_processing.authority", () => {
   it("a member with no check-in/presenter/staff standing for the session is refused 42501; a checked-in member and the presenter succeed", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
 
       await tx.as(f.a.members[1].claims); // not checked in to the draft session (storage-content.test.ts's own precedent)
       expect(await errorCode(() => tx.q(`select public.initiate_photo_processing($1, $2, 'x.jpg', 'jpeg', 1000)`, [randomUUID(), f.m2.a.draft]))).toBe(
@@ -327,7 +327,7 @@ describe("RPC-initiate_photo_processing.size", () => {
   it("a declared byte size over the org's limit_image_mb is refused 23514, naming the limit", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       await tx.as(f.a.members[1].claims); // checked in to `published`
       expect(
         await errorCode(() =>
@@ -342,7 +342,7 @@ describe("RPC-initiate_photo_processing.enqueues", () => {
   it("a successful call enqueues process_photo keyed photo:{photo_id}", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = randomUUID();
       await tx.as(f.a.members[1].claims);
       await tx.q(`select public.initiate_photo_processing($1, $2, $3, 'jpeg', 1000)`, [photoId, f.m2.a.published, `a/photos/${photoId}.jpg`]);
@@ -357,7 +357,7 @@ describe("RPC-record_photo_upload", () => {
   it("service_role_only: authenticated and anon are refused on the grant; service_role succeeds, and the inserted row has exif_stripped = true", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = randomUUID();
 
       await tx.as(f.a.members[1].claims);
@@ -400,7 +400,7 @@ describe("RPC-record_photo_upload", () => {
   it("★ DEC-043: a real byte size over the org's limit_image_mb returns {status: 'file_too_large', limit_mb} and inserts no row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = randomUUID();
       await tx.asServiceRole();
       const [row] = await tx.q<{ envelope: { status: string; limit_mb: number } }>(
@@ -418,7 +418,7 @@ describe("RPC-record_photo_upload", () => {
   it("idempotent: a second call with the same photo_id (a retried job) returns the already-inserted row rather than erroring", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0007_photo_pipeline.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = randomUUID();
       await tx.asServiceRole();
 
@@ -447,7 +447,7 @@ describe("POL-photos.restore.audited", () => {
   it("★ REQ-EVT-012: a moderator clearing hidden_at writes one audit row naming the photo", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0008_photos_audit_staff_actions.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "9".repeat(64));
       await tx.asOwner();
       await tx.q(`update public.photos set hidden_at = now(), hidden_reason = 'x' where id = $1`, [photoId]);
@@ -466,7 +466,7 @@ describe("POL-photos.removal.audited", () => {
   it("★ REQ-EVT-014: a moderator's removal writes one audit row naming removed_by", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0008_photos_audit_staff_actions.sql");
+      // Promoted at wave-2 sync 11 (0050–0051): applied by `supabase db reset`.
       const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "0a".repeat(32));
 
       await tx.as(f.a.mod.claims);
