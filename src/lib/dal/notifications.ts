@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // Notifications — the inbox and the preference matrix of SCR-026
 // (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006), plus the unread count the shell's
@@ -85,7 +86,7 @@ export interface PreferenceMatrix {
    *  `public.numeral_system` spells the second value `arabic_indic`; the
    *  shared `NumeralSystem` of components/sessions/numerals.ts spells it
    *  `arabic`, so the mapping happens here, once, at the boundary. */
-  numerals: "western" | "arabic";
+  numerals: "western" | "arabic_indic";
   timeZone: string;
 }
 
@@ -128,7 +129,7 @@ export async function getPreferenceMatrix(locale: string): Promise<PreferenceMat
 
   return {
     rows,
-    numerals: settings?.numerals === "arabic_indic" ? "arabic" : "western",
+    numerals: settings?.numerals ?? "western",
     timeZone: settings?.time_zone ?? "Asia/Riyadh",
   };
 }

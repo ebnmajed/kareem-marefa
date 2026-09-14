@@ -71,7 +71,7 @@ export interface CommentsPageData {
   comments: CommentDTO[];
   /** null when the org's setting could not be read — treated as "no window" (no self-edit offered), never as unlimited. */
   editWindowMinutes: number | null;
-  numerals: "western" | "arabic";
+  numerals: "western" | "arabic_indic";
   /** REQ-SES-010 — a cancelled session's comments are read-only. */
   frozen: boolean;
   /** admin or moderator — kept at the top level so an empty thread still knows. */

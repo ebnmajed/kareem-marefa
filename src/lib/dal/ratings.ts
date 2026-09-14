@@ -201,7 +201,7 @@ export interface RatingsSummary {
   /** Only fetched when the viewer is staff/presenter and the aggregate is withheld. */
   countForWithheld: number | null;
   minAggregate: number;
-  numerals: "western" | "arabic";
+  numerals: "western" | "arabic_indic";
 }
 
 /**
