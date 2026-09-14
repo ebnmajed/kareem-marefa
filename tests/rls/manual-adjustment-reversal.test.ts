@@ -5,7 +5,7 @@
 // 03 §8.2 rows proven here: RPC-adjust_points_manually.admin_only,
 // RPC-adjust_points_manually.audited, POL-comments.reversal_hook.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -14,7 +14,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0005_manual_adjustment_and_reversal.sql");
+  // Promoted at wave-2 sync 3 (0031–0035): applied by `supabase db reset`.
   return f;
 }
 

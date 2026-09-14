@@ -1,4 +1,4 @@
--- scoring/0004_award_presenter_points.sql — proposal_accepted, and the
+-- promoted by the lead at wave-2 sync 3 · scoring/0004_award_presenter_points.sql — proposal_accepted, and the
 -- session-completion fan-out for session_delivered, attendee_bonus,
 -- rating_bonus and no_show. STORY-PTS-003, OQ-004.
 -- Serves: REQ-PTS-001, REQ-PTS-008, A5, A10 · 05 §1.2, §1.3

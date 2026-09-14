@@ -356,7 +356,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-RSV-001` | `ENT-rsvps` | — | `SCR-012` | — | — | `STORY-RSV-001` | M2 |
 | `REQ-RSV-002` | `ENT-rsvps` | — | `SCR-012` | — | — | `STORY-RSV-001` | M2 |
 | `REQ-RSV-003` | `ENT-rsvps` | — | `SCR-012` | `JOB-calendar_upsert` `JOB-promote_waitlist` | `MSG-rsvp_promoted` | `STORY-RSV-002` | M2 |
-| `REQ-RSV-004` | `ENT-calendar_events` `ENT-rsvps` | — | `SCR-012` | `JOB-calendar_upsert` `JOB-promote_waitlist` | `MSG-rsvp_promoted` | `STORY-RSV-002` | M2 |
+| `REQ-RSV-004` | `ENT-calendar_events` `ENT-rsvps` | `POL-rsvps.notice` | `SCR-012` | `JOB-calendar_upsert` `JOB-promote_waitlist` | `MSG-rsvp_promoted` | `STORY-RSV-002` | M2 |
 | `REQ-RSV-005` | `ENT-rsvps` | — | `SCR-012` | — | — | `STORY-RSV-003` | M2 |
 | `REQ-RSV-006` | `ENT-rsvps` | — | `SCR-012` | — | — | `STORY-RSV-003` | M2 |
 | `REQ-RSV-007` | `ENT-rsvps` | — | `SCR-012` | — | — | `STORY-RSV-003` | M2 |

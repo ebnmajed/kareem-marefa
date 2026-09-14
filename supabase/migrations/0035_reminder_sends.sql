@@ -1,4 +1,4 @@
--- notify (wave 2, M3) — the send side of the scheduled jobs.
+-- promoted by the lead at wave-2 sync 3 · notify (wave 2, M3) — the send side of the scheduled jobs.
 --
 -- Serves:  REQ-NTF-004 (the three reminders, and the nudge to non-responders,
 --          distinctly) · REQ-RAT-007 (the rating prompt, filtered at SEND

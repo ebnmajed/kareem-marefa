@@ -1,4 +1,4 @@
--- notify (wave 2, M3) — reminders that MOVE, and the RSVP notices M2 deferred.
+-- promoted by the lead at wave-2 sync 3 · notify (wave 2, M3) — reminders that MOVE, and the RSVP notices M2 deferred.
 --
 -- Serves:  REQ-NTF-004 (7 d · 1 d · 2 h, org-configurable, rescheduling moves
 --          rather than duplicates) · REQ-RAT-007 (the rating prompt, +1 h) ·

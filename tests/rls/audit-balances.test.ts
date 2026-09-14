@@ -5,7 +5,7 @@
 // 03 §8.2 rows proven here: RPC-audit_balances.service_role_only,
 // RPC-audit_balances.no_self_heal, RPC-rebuild_points_balances.reproduces.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -14,7 +14,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0006_audit_balances.sql");
+  // Promoted at wave-2 sync 3 (0031–0035): applied by `supabase db reset`.
   return f;
 }
 

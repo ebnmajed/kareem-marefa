@@ -11,7 +11,7 @@
 // and the tasks' own SQL (the no-show query, the rating-average threshold)
 // is proven by running the identical statements a worker run would.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx } from "./db";
+import { pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -20,7 +20,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0004_award_presenter_points.sql");
+  // Promoted at wave-2 sync 3 (0031–0035): applied by `supabase db reset`.
   return f;
 }
 

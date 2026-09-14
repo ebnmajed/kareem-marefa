@@ -14,18 +14,17 @@
 // arranges history, and history should not fire the trigger that announces
 // news.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["notify/0003_reminders.sql", "notify/0004_reminder_sends.sql"];
 const OFFSETS = [10080, 1440, 120];
 
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  for (const file of PROPOSED) await applyProposed(tx, file);
+  // Promoted at wave-2 sync 3 (0031–0035): applied by `supabase db reset`.
   for (const table of ["notifications", "notification_preferences"]) await tx.q(`delete from public.${table}`);
   return f;
 }

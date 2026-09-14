@@ -116,7 +116,7 @@ Every few hours, or when a teammate says "ready for sync":
   The index is shared: three wave-1 commits carried another teammate's staged files. Teammates
   stage by explicit filename and commit immediately.
 - **The RLS suite is single-runner.** Two `npm run test:rls` processes against one database collide
-  on fixtures and deadlock. `ps aux | grep 'vitest run --project rls'` before running it.
+  on fixtures and deadlock. `pgrep -fl "node_modules/.bin/vitest"` before running it.
 - **`npm run build` is the only gate that catches** a non-function export from a `"use server"`
   module and a message namespace named in `index.ts` whose JSON is uncommitted. tsc passes both.
   A teammate says "committed" only after `grep -n '^export'` on its action modules shows async

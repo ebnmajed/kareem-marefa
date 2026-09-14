@@ -1198,6 +1198,23 @@ generated suite is the highest-value test in the product.
 | `RPC-notification_send_context.recheck` | It reports the preference as it stands NOW, not as it stood when the job was enqueued (`11` §2.6). (migration `0030`). |
 | `RPC-record_email_delivery.append` | The worker records a send it has not made yet as `queued`, then moves it to `sent`, `delivered`, `bounced` or `failed` — no send is unlogged. (migration `0030`). |
 | `RPC-update_email_delivery_by_provider.scoped` | The provider webhook can only move a row it can name by `provider_message_id`, and cannot invent one. (migration `0030`). |
+| `POL-proposals.award_points_hook` | an approval enqueues one proposal_accepted award_points job per accepted presenter (proposer included), keyed pts:proposal_accepted:<proposal_id>:<member_id> (migration `0031`). |
+| `POL-sessions.completion_fanout` | a session reaching `completed` enqueues one evaluate_no_shows job (key noshow:<session_id>) and, per accepted session presenter, two award_presenter_points jobs (immediate and +48h), keyed pts:presenter:<session_id>:<member_id> and the same with a :rating_bonus suffix (migration `0031`). |
+| `RPC-adjust_points_manually.admin_only` | a moderator and a stale admin are refused; a fresh admin succeeds; a caller-error (empty reason, zero amount, another org's member) raises before anything is written (migration `0032`). |
+| `RPC-adjust_points_manually.audited` | the ledger row and the audit_log row commit in the same transaction (migration `0032`). |
+| `POL-comments.reversal_hook` | a moderator's removal of a comment writes a compensating reversal row for whatever the original comment award was (nothing, if it was capped or cooled down), and separately evaluates the off-by-default comment_removed penalty (migration `0032`). |
+| `RPC-audit_balances.service_role_only` | no client role may call it (migration `0033`). |
+| `RPC-audit_balances.no_self_heal` | a divergence is reported, not corrected; points_balances is unchanged by calling it (migration `0033`). |
+| `RPC-rebuild_points_balances.reproduces` | truncate + resum always reproduces the same totals a correct rollup would already show (migration `0033`). |
+| `RPC-cancel_job.definer_only` | No client role can remove a queued job; a definer RPC and the worker can. (migration `0034`). |
+| `RPC-schedule_session_reminders.moves` | Rescheduling a session leaves ONE pending job per (member, offset), at the new time — not a second set (`REQ-NTF-004`). (migration `0034`). |
+| `RPC-schedule_session_reminders.past` | An offset whose moment has passed is REMOVED, not left to fire the instant the worker sees it. (migration `0034`). |
+| `RPC-schedule_session_reminders.confirmed_only` | A waitlisted member has no reminders; being promoted gives them the full set. (migration `0034`). |
+| `POL-rsvps.notice` | Reserving notifies the member, promotion off the waitlist notifies them on both channels (`REQ-RSV-004`), and cancelling removes their reminder keys. (migration `0034`). |
+| `RPC-send_reminder_notification.still_due` | A reminder for a seat that was cancelled, or for a session that was, sends nothing — the job may outlive the reason for it. (migration `0035`). |
+| `RPC-send_rsvp_nudge.non_responders` | Only members with NO rsvp row are nudged, and never a presenter of the session. (migration `0035`). |
+| `RPC-send_rating_prompt.unrated` | Filtered at SEND time: a member who rated in the first hour is not prompted (`REQ-RAT-007`). (migration `0035`). |
+| `RPC-send_*.definer_only` | All three are the worker's; no client role may fan out a notification to an org. (migration `0035`). |
 | `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
 | `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
 | `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |

@@ -1,4 +1,4 @@
--- scoring/0005_manual_adjustment_and_reversal.sql — the admin manual
+-- promoted by the lead at wave-2 sync 3 · scoring/0005_manual_adjustment_and_reversal.sql — the admin manual
 -- adjustment RPC (05 §7, REQ-PTS-009, D41) and reversal-on-removal for
 -- comments (05 §2.4, REQ-PTS-013, OQ-014). STORY-PTS-004, STORY-PTS-005.
 --

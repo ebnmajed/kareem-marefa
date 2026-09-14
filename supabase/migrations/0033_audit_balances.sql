@@ -1,4 +1,4 @@
--- scoring/0006_audit_balances.sql — JOB-audit_balances (11 §2.3, REQ-PTS-011,
+-- promoted by the lead at wave-2 sync 3 · scoring/0006_audit_balances.sql — JOB-audit_balances (11 §2.3, REQ-PTS-011,
 -- 05 §4.1) and the safe rebuild it recommends as the first response.
 -- STORY-PTS-006.
 --
