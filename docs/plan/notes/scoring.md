@@ -27,6 +27,31 @@ Owner: `scoring` teammate, wave 2 (M4). Tracks: `REQ-PTS-001`…`014`, `REQ-LDR-
 11. `SCR-053`/`SCR-054` under `/app/admin/{scoring,recognition}` (DEC-046's wave-2 carve-out,
     console inherits at wave 3).
 
+## Status: all of the above shipped
+
+Every story in the list above is done, tested and committed on `wave-2/m3-m4-m5`:
+`0001_m4_schema` → `0011_award_badge_manually` (proposed, promoted by the lead as real migrations
+along the way), `tests/rls/{scoring-schema,award-points,award-hooks-ratings-comments,
+award-presenter-points,manual-adjustment-reversal,audit-balances,recognition-evaluators,
+snapshot-leaderboards,all-time-leaderboard,priority-rsvp,award-badge-manually}.test.ts`, and the
+screens `SCR-022`, `SCR-027`/`SCR-028`, `SCR-053`, `SCR-054`. `STORY-RSV-005` (priority_rsvp) is
+also done — see "Hooks into other tracks' tables" below for why it needed a `create or replace`
+of `reserve_seat()` with no marker, the same reasoning as the completion fan-out.
+
+Two things flagged rather than silently narrowed:
+
+- **Seasonal leaderboards are not scheduled.** `worker/src/tasks/snapshot_leaderboards.ts`
+  snapshots monthly, topic (all-time per category) and company only — nothing in `02`'s frozen
+  domain model or `org_settings` defines what a season's boundaries are, so there is nothing to
+  schedule yet. The `leaderboard_kind` enum already carries `'seasonal'` for whoever defines one.
+- **e2e and RTL screenshots are written, not run.** `tests/e2e/{points,leaderboards}.spec.ts` exist
+  and read correctly against the real schema, but running them and taking the 390 px captures both
+  need a fresh `.next` build, which is the lead's to produce. Flagged to the lead directly rather
+  than left implicit.
+
+`<PointsStrip memberId locale />` (`src/components/scoring/points-strip.tsx`) is ready for the
+lead to wire onto the app home.
+
 ## Hooks into other tracks' tables (flagging, not silently building)
 
 `award_points()` is called from write paths I do not own:
@@ -60,6 +85,13 @@ Owner: `scoring` teammate, wave 2 (M4). Tracks: `REQ-PTS-001`…`014`, `REQ-LDR-
   `public.orgs` that seeds all five M4 catalogues for the new row. This also seeds the RLS
   fixture's two orgs for free, since `tests/rls/fixture.ts` inserts into `orgs` directly — no
   fixture changes needed for scoring's tests to have data.
+- **`reserve_seat()` (STORY-RSV-005, the priority_rsvp perk).** No marker either, and for a
+  different reason than the others above: granting an early window changes the RPC's own
+  accept/reject decision, which a trigger cannot express (a `before insert` trigger only fires
+  once `reserve_seat()` has already decided to attempt the write). `0010_priority_rsvp.sql` is a
+  `create or replace` of checkin's `reserve_seat()` (0014) — every line unchanged except one new
+  gate ahead of the existing capacity/deadline checks, using `org_settings.priority_rsvp_hours`
+  (already seeded 24 by M1) against the session's `published_at`.
 
 ## Idempotency keys (`11` §2.3, `05` §2.1, verbatim plus the ones `05`/`11` didn't spell out)
 
