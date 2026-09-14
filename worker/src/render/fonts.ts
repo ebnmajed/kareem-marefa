@@ -1,5 +1,6 @@
+import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { storagePaths } from "@kareem/storage-paths";
 import { downloadObject } from "../content/storage.js";
 
@@ -29,10 +30,29 @@ export interface WorkerFace {
  *  invalidating — which is the same property that makes the hash a path. */
 const cache = new Map<string, string>();
 
+/**
+ * `packages/fonts` on disk, RESOLVED THROUGH THE PACKAGE rather than
+ * guessed from `process.cwd()`.
+ *
+ * The cwd-relative path happened to be right in the image (WORKDIR /app,
+ * and the Dockerfile copies `packages/fonts` to /app/packages/fonts) and
+ * wrong everywhere else — including from `worker/` itself, which is how a
+ * local reproduction of a container failure turns into a second, fake
+ * failure. `@kareem/fonts` is a declared dependency of this workspace and
+ * exports `./manifest.json`, so the resolver already knows where it is.
+ */
+const fontsDir = (() => {
+  try {
+    return dirname(createRequire(import.meta.url).resolve("@kareem/fonts/manifest.json"));
+  } catch {
+    return join(process.cwd(), "packages", "fonts");
+  }
+})();
+
 async function fromPackage(sha256: string): Promise<Uint8Array | null> {
   for (const ext of ["woff2", "ttf"] as const) {
     try {
-      return await readFile(join(process.cwd(), "packages", "fonts", `${sha256}.${ext}`));
+      return await readFile(join(fontsDir, `${sha256}.${ext}`));
     } catch {
       /* the next extension, then the bucket's answer stands */
     }
@@ -89,4 +109,54 @@ export async function inlineFaces(rows: readonly ManifestRow[]): Promise<WorkerF
       base64: await faceBase64(row.sha256),
     })),
   );
+}
+
+/**
+ * The face set a render context must PIN — REQ-DSG-016, invariant 12.
+ *
+ * ★ THE FALLBACK IS THE WHOLE FUNCTION. `public.fonts` holds only fonts an
+ * admin MATERIALISED (REQ-DSG-017, JOB-materialise_font); the platform set
+ * — Reem Kufi, Amiri, IBM Plex Sans Arabic — lives in the image's own
+ * `packages/fonts/manifest.json` and has no row there. So on a fresh
+ * install the table is EMPTY, and a job that pinned only what the table
+ * held pinned nothing: `render_variant` then refused every variant with
+ * «the render context pins no faces», which is exactly what it should do
+ * and exactly the wrong set to have handed it.
+ *
+ * `listEditorFaces()` (src/lib/dal/fonts.ts) already resolved it this way
+ * for the editor. The two paths disagreeing is what made an automatic
+ * poster fail while a hand-saved one worked — and DEC-017's «the preview an
+ * admin approves is the artifact» cannot survive two font resolvers, so
+ * this is the worker's single copy of that rule.
+ */
+export async function renderFaces(dbRows: readonly ManifestRow[]): Promise<ManifestRow[]> {
+  // A materialised font is the org's own choice and supersedes nothing —
+  // but if the table has any passed row, it is the authoritative set the
+  // editor showed, so the export matches the preview.
+  if (dbRows.length) return [...dbRows];
+  return readPackageManifest();
+}
+
+type PackageFace = { family: string; weight: number; style: string; sha256: string; script?: string };
+
+/** `packages/fonts/manifest.json`, from the image. One entry per (family,
+ *  weight, style, SCRIPT): a family's Arabic and Latin subsets are separate
+ *  files with separate hashes and BOTH are pinned, because dropping either
+ *  is how a mixed «جلسة عن Next.js 16» loses half its glyphs. */
+export async function readPackageManifest(): Promise<ManifestRow[]> {
+  const raw = await readFile(join(fontsDir, "manifest.json"), "utf8");
+  const faces = (JSON.parse(raw) as { faces?: PackageFace[] }).faces ?? [];
+  const seen = new Set<string>();
+  const out: ManifestRow[] = [];
+  for (const f of faces) {
+    const key = `${f.family}|${f.weight}|${f.style}|${f.script ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ family: f.family, weight: f.weight, style: f.style, sha256: f.sha256, script: f.script ?? null });
+  }
+  // Loud, not empty. An image with no manifest cannot render Arabic at all,
+  // and returning [] here would push that failure down into every single
+  // variant instead of saying it once.
+  if (out.length === 0) throw new Error("render/fonts: packages/fonts/manifest.json lists no faces — the image has no font set (REQ-DSG-016)");
+  return out;
 }

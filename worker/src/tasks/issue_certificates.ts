@@ -1,5 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
+import { renderFaces } from "../render/fonts.js";
 import {
   fingerprintSource,
   platformBrand,
@@ -92,7 +93,10 @@ export const issue_certificates: Task = async (payload, helpers) => {
        from public.fonts where parity_status = 'passed'
       order by sha256`,
   );
-  const faces = faceRows;
+  // The platform set when nothing has been materialised — see
+  // `renderFaces()`. Pinning an empty list makes `render_variant` refuse
+  // every export, which is the right refusal for the wrong input.
+  const faces = await renderFaces(faceRows);
 
   // ★ The serial is allocated HERE, inside this statement's transaction,
   // and `allocate_serial()` holds the counter row's lock until it commits.

@@ -565,6 +565,50 @@ transition table, not on `leaderboard_snapshots`. 0042 inserts the
 snapshot row first and the ranks after, so a row trigger on the
 snapshot would fan out over an empty entries table and issue nothing.
 
+## 2.12 Every automatic poster failed, and the editor had been right all along
+
+The lead ran the M6 demonstrable's first sentence against the real
+worker image and all twelve variants failed at attempt 1 with «the
+render context pins no faces — a render with no font set cannot be
+reproduced (REQ-DSG-016)».
+
+**The cause.** `public.fonts` holds only fonts an admin MATERIALISED
+(REQ-DSG-017). The platform set — Reem Kufi, Amiri, IBM Plex Sans
+Arabic, IBM Plex Sans — lives in the image's `packages/fonts/manifest.
+json` and has no row there, so on a fresh install the table is empty.
+`regenerate_poster` and `issue_certificates` pinned `faceRows.length ?
+faceRows : []`, under a comment of mine that said an empty list means
+«use what the image carries». It does not: `render_variant` refuses an
+empty set, correctly, and that refusal is the only thing standing
+between us and an unreproducible export.
+
+**The editor never had this bug.** `listEditorFaces()` (src/lib/dal/
+fonts.ts) has fallen back to the manifest since DSG-005. So a
+hand-saved designer document exported fine while every automatic poster
+failed — two font resolvers, disagreeing, which is DEC-017 («the
+preview an admin approves IS the artifact») failing by construction.
+`renderFaces()` in `worker/src/render/fonts.ts` is now the worker's
+single copy of that rule and both tasks call it.
+
+**A second bug found while reproducing it.** `fromPackage()` resolved
+`packages/fonts` from `process.cwd()`. That is right in the image
+(WORKDIR /app) and wrong from anywhere else, so a local reproduction of
+a container failure produced a second, fake failure. `@kareem/fonts` is
+a declared dependency and exports `./manifest.json`, so both reads now
+go through `createRequire(...).resolve`.
+
+**Verified against the real image, not reasoned about.** A fresh
+published session through the fixed task queued 12 artifacts each
+pinning 21 faces across all four families; the RUNNING `kareem-worker-m6`
+container rendered all twelve to `ready` with a Tier A signature on
+every one and correct dimensions, in about three minutes. `render_variant`
+itself did not change, which is why no rebuild was needed to prove it.
+
+**The retry path does NOT recover the old rows.** A failed artifact's
+`render_context` is stored, so `retry_export_artifact()` re-runs against
+the same empty face list. Recovery is a fresh publish (or re-enqueuing
+`regenerate_poster`), not a retry.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for

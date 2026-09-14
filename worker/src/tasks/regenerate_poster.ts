@@ -1,5 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
+import { renderFaces } from "../render/fonts.js";
 import {
   fingerprintSource,
   PRESETS,
@@ -126,10 +127,13 @@ export const regenerate_poster: Task = async (payload, helpers) => {
             case when 'arabic' = any(subsets) then 'arabic' else 'latin' end as script
        from public.fonts where parity_status = 'passed'`,
   );
-  // Before JOB-materialise_font has seeded ENT-fonts the table is empty, and
-  // the image's own packages/fonts is what the renderer loads by hash
-  // anyway; an empty list here means "use what the image carries".
-  const faces = faceRows.length ? faceRows : [];
+  // ★ The table holds only MATERIALISED fonts (REQ-DSG-017); the platform
+  // set lives in the image's manifest and has no row there. `renderFaces()`
+  // is the one place that rule lives, shared with issue_certificates and
+  // mirroring the editor's `listEditorFaces()` — the two disagreeing is
+  // what made every automatic poster fail with «the render context pins no
+  // faces» while a hand-saved document rendered fine.
+  const faces = await renderFaces(faceRows);
 
   // The document a LIVE poster is: the template's, bound to this session.
   // Written before the render is requested, so the fingerprint the artifact
