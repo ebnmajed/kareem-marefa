@@ -836,7 +836,7 @@ describe("POL-storage.materials.preupload_self_read", () => {
   it("★ before any material_versions row exists, the session's presenter can read back the object they just wrote; an unrelated member cannot", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      // Promoted as migration 0054 at wave-2 sync 13: applied by `supabase db reset`.
       const versionId = "99999999-9999-9999-9999-999999999999";
       const name = `${f.a.id}/sessions/${f.m2.a.published}/materials/${versionId}/deck.pdf`;
 
@@ -857,7 +857,7 @@ describe("POL-storage.materials.preupload_self_read", () => {
   it("★ REQ-PRO-004: the same window applies to a proposal's own draft material — the owner reads it back, an unrelated member does not", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      // Promoted as migration 0054 at wave-2 sync 13: applied by `supabase db reset`.
       const versionId = "88888888-8888-8888-8888-888888888888";
       const name = `${f.a.id}/proposals/${f.m2.a.proposal}/materials/${versionId}/deck.pdf`;
 
@@ -873,7 +873,7 @@ describe("POL-storage.materials.preupload_self_read", () => {
   it("does not weaken the ordinary post-finalize read: an unrelated member still sees only what phase/allow_download already allowed", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      // Promoted as migration 0054 at wave-2 sync 13: applied by `supabase db reset`.
       const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
       await tx.asOwner();
       await tx.q(`update public.materials set allow_download = false where id = $1`, [materialId]);

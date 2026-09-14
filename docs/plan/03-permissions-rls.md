@@ -973,7 +973,7 @@ bodies are the prefix rules of §6.1–§6.6 and are read there, not restated he
 `policy-diff` gate keys `storage.objects` by schema (DEC-044) and matches these names.
 
 ```sql
-create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006)
+create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006) · since 0054 also the pre-finalize self-read: whoever may WRITE the path may read it back before a material_versions row exists (the complete step sniffs the landed bytes)
 create policy "materials_storage_write"      on storage.objects for insert to authenticated;  -- org prefix · sessions/<id> · presenter or staff
 create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
 create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012)
@@ -1286,6 +1286,7 @@ generated suite is the highest-value test in the product.
 | `RPC-record_material_pages.upsert` | A second call for the same version and page number replaces that page's paths rather than duplicating the row (`unique (material_version_id, page_number)`, 0037). (migration `0048`). |
 | `RPC-record_material_pages.ready` | A successful call moves `render_status` to `ready`. (migration `0048`). |
 | `RPC-record_material_download.admin_only` | A member and a moderator are both refused `42501`; an admin writes one audit row naming the material and the version. (migration `0049`). |
+| `POL-storage.materials.preupload_self_read` | Before a material's `material_versions` row exists, only whoever `materials_storage_write` would have let write to that exact prefix — the session's presenter, the proposal's owner, or staff — can read the object back; nobody else, and the ordinary phase/`allow_download` branches are unaffected once the version row exists. (migration `0054`). |
 | `POL-materials.proposal.visibility` | A proposal's own materials are visible to its proposer, an accepted co-presenter, and staff — never to a plain member — until the proposal becomes a session. (migration `0053`). |
 | `POL-materials.proposal.write` | The same three may upload/update a proposal's materials; nobody else. (migration `0053`). |
 | `RPC-carry_over_proposal_materials.trigger` | A session inserted with a `proposal_id` reassigns every material with that `proposal_id` to the new session (`session_id` set, `proposal_id` cleared), leaving `phase`/`allow_download` untouched. (migration `0053`). |

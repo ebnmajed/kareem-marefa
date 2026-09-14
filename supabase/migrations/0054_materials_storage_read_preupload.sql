@@ -1,4 +1,4 @@
--- content, follow-up — a real bug found by tests/e2e/proposal-materials.spec.ts
+-- promoted by the lead at wave-2 sync 13 · content, follow-up — a real bug found by tests/e2e/proposal-materials.spec.ts
 -- (and equally true for ordinary session uploads, never previously exercised
 -- end to end through a browser): `completeMaterialUpload()` downloads the
 -- object THROUGH THE UPLOADER'S OWN RLS-BOUND CLIENT before calling
