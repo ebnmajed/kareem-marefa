@@ -356,6 +356,18 @@
         "not_found": "That item could not be found — it may already have been handled.",
         "unknown": "That could not be carried out — try again."
       }
+    },
+    "exports": {
+      "title": "Exports",
+      "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM, headers are Arabic, and numbers follow your organisation's numeral system.",
+      "download": "Download CSV",
+      "sessions": { "title": "Sessions", "note": "Title, status, level, language, schedule and presenters." },
+      "rsvps": { "title": "RSVPs", "note": "Every reservation, with session, member, status, waitlist position and reservation time." },
+      "attendance": { "title": "Attendance", "note": "Every check-in across every session, with the manual-mark flag." },
+      "ratings": { "title": "Ratings", "note": "Per-session averages — not individual ratings; those are on each session's own attendance report." },
+      "points": { "title": "Points", "note": "The full ledger for every member, with source, reason and date." },
+      "certificates": { "title": "Certificates", "note": "Serial, member, kind and status for every certificate." },
+      "members": { "title": "Members", "note": "Name, email, role and status for every member." }
     }
   }
 }
