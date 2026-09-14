@@ -1,0 +1,177 @@
+{
+  "notifications": {
+    "title": "Notifications",
+    "bell": {
+      "label": "Notifications",
+      "unread": "{count, plural, =0 {no unread notifications} one {one unread notification} other {{value} unread notifications}}",
+      "more": "See all notifications"
+    },
+    "tabs": {
+      "inbox": "Inbox",
+      "preferences": "Preferences"
+    },
+    "inbox": {
+      "heading": "Inbox",
+      "empty": "Nothing yet. Everything about your sessions and proposals lands here.",
+      "unreadOnly": "Unread only",
+      "markRead": "Mark as read",
+      "markAllRead": "Mark all as read",
+      "allRead": "Nothing unread",
+      "openSession": "Open the session",
+      "count": "{count, plural, =0 {no notifications} one {one notification} other {{value} notifications}}"
+    },
+    "preferences": {
+      "heading": "Notification preferences",
+      "intro": "There are two channels and only two: in-app and email. Choose what reaches you on each.",
+      "channel": {
+        "inApp": "In-app",
+        "email": "Email"
+      },
+      "on": "On",
+      "off": "Off",
+      "fixed": "Always sent",
+      "notAvailable": "Not sent on this channel",
+      "saved": "Your preferences are saved",
+      "error": "That preference could not be saved. Try again.",
+      "alwaysOn": "Some notifications in this group reach you whatever the setting: <bdi>{list}</bdi>"
+    },
+    "category": {
+      "new_sessions": {
+        "name": "New sessions",
+        "hint": "A session was published, or a booking window opened for you early."
+      },
+      "my_sessions": {
+        "name": "My sessions",
+        "hint": "Anything about a seat you hold: confirmation, waitlist, check-in, materials added afterwards."
+      },
+      "reminders": {
+        "name": "Reminders",
+        "hint": "A week before, a day before, two hours before."
+      },
+      "ratings": {
+        "name": "Ratings",
+        "hint": "An invitation to rate a session you attended, an hour after it ends."
+      },
+      "social": {
+        "name": "Comments and mentions",
+        "hint": "A reply to your comment, or a mention of you in one."
+      },
+      "recognition": {
+        "name": "Points and recognition",
+        "hint": "A badge, a level, a completed streak, a month's board closing."
+      },
+      "certificates": {
+        "name": "Certificates",
+        "hint": "A certificate issued to you or revoked.",
+        "why": "A certificate in your name that you do not know about is a certificate lost, so it always reaches you."
+      },
+      "moderation": {
+        "name": "Moderation",
+        "hint": "Content of yours hidden or removed.",
+        "why": "What is removed without your knowing cannot be appealed, so it always reaches you."
+      },
+      "proposals": {
+        "name": "Proposals",
+        "hint": "A decision on your proposal, or an invitation to co-present."
+      },
+      "admin_queue": {
+        "name": "Admin queue",
+        "hint": "A proposal waiting on your review, or a report that arrived."
+      },
+      "account": {
+        "name": "Account",
+        "hint": "Your role changing, your account being deactivated, your calendar disconnected, your data ready.",
+        "why": "A change to your account you do not know about is a change you cannot question, so it always reaches you."
+      }
+    },
+    "message": {
+      "MSG-proposal_submitted": "A new proposal is waiting for review",
+      "MSG-copresenter_invited": "You were invited to co-present a session",
+      "MSG-copresenter_declined": "A co-presenter declined your session",
+      "MSG-proposal_changes": "Changes were requested on your proposal",
+      "MSG-proposal_approved": "Your proposal was approved",
+      "MSG-proposal_rejected": "About your proposal",
+      "MSG-session_published": "A new session",
+      "MSG-presenter_assigned": "A session was assigned to you",
+      "MSG-session_changed": "A session you booked has changed",
+      "MSG-session_cancelled": "A session you booked was cancelled",
+      "MSG-reminder_7d": "In a week",
+      "MSG-reminder_1d": "Tomorrow",
+      "MSG-reminder_2h": "In two hours",
+      "MSG-rsvp_nudge": "A session you have not answered",
+      "MSG-rsvp_confirmed": "Your seat is confirmed",
+      "MSG-rsvp_waitlisted": "You are on the waitlist",
+      "MSG-rsvp_promoted": "You have a seat",
+      "MSG-rsvp_deadline_soon": "Booking closes soon",
+      "MSG-priority_window": "Booking opened early for you",
+      "MSG-check_in_confirmed": "Your attendance was recorded",
+      "MSG-rating_prompt": "How was the session?",
+      "MSG-materials_added": "Session materials were added",
+      "MSG-comment_reply": "A reply to your comment",
+      "MSG-mentioned": "Someone mentioned you in a comment",
+      "MSG-photo_hidden": "Your photo was hidden",
+      "MSG-content_removed": "Content of yours was removed",
+      "MSG-report_filed": "A new report arrived",
+      "MSG-badge_earned": "You earned a badge",
+      "MSG-level_reached": "You reached a new level",
+      "MSG-streak_completed": "You completed a streak",
+      "MSG-points_adjusted": "Your points were adjusted",
+      "MSG-leaderboard_closed": "The month's board closed",
+      "MSG-certificate_issued": "Your certificate was issued",
+      "MSG-certificate_revoked": "About your certificate",
+      "MSG-role_changed": "Your role changed",
+      "MSG-account_deactivated": "Your account was deactivated",
+      "MSG-calendar_disconnected": "Your calendar was disconnected",
+      "MSG-export_ready": "Your data is ready to download"
+    },
+    "admin": {
+      "emails": {
+        "title": "Email templates",
+        "intro": "Your organisation's templates win over the built-in ones. Write them in Arabic, and do not delete a field you declared required.",
+        "templateHeading": "Template",
+        "message": "Message",
+        "subject": "Subject",
+        "body": "Body",
+        "requiredFields": "Required fields (comma separated)",
+        "save": "Save template",
+        "remove": "Delete and use the default",
+        "saved": "Template saved",
+        "usingDefault": "Using the built-in template",
+        "overridden": "Organisation template",
+        "errors": {
+          "missing_required_field": "The body is missing a field you declared required. Add it, or remove it from the list.",
+          "unknown_message_key": "That message is not in the notification matrix, or it is not sent by email.",
+          "not_permitted": "This page is for organisation admins.",
+          "generic": "That could not be saved. Try again."
+        },
+        "deliveries": {
+          "heading": "Delivery log",
+          "empty": "No messages yet.",
+          "recipient": "Recipient",
+          "status": "Status",
+          "reason": "Reason",
+          "sentAt": "Sent",
+          "retention": "The log is kept for <bdi>{days}</bdi> days.",
+          "state": {
+            "queued": "Queued",
+            "sent": "Sent",
+            "delivered": "Delivered",
+            "bounced": "Bounced",
+            "failed": "Failed"
+          }
+        }
+      },
+      "reminders": {
+        "title": "Reminder schedule",
+        "intro": "Reminders arrive these many minutes before a session. Changing the schedule moves pending reminders rather than duplicating them.",
+        "offsets": "Minutes before the session (comma separated)",
+        "offsetsHint": "The default is <bdi>{week}</bdi>, <bdi>{day}</bdi> and <bdi>{hours}</bdi> — a week, a day and two hours.",
+        "promptDelay": "Minutes after a session ends before the rating prompt",
+        "save": "Save schedule",
+        "saved": "Schedule saved and pending reminders moved",
+        "error": "That could not be saved. Each value must be between five minutes and thirty days.",
+        "current": "Current schedule"
+      }
+    }
+  }
+}

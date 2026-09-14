@@ -1,0 +1,52 @@
+{
+  "recognition": {
+    "admin": {
+      "title": "Badges, levels and perks",
+      "intro": "Automatic evaluation runs nightly — changes here apply from the next run.",
+      "saved": "Saved",
+      "error": "Could not save. Try again.",
+      "badges": {
+        "heading": "Badges",
+        "certificate": "Issues a certificate",
+        "noCertificate": "No certificate",
+        "retired": "Retired — no longer awarded",
+        "retire": "Retire badge",
+        "restore": "Restore badge",
+        "manualOnly": "Awarded manually only",
+        "description": "Description",
+        "save": "Save"
+      },
+      "manualAward": {
+        "heading": "Award a badge manually",
+        "intro": "For badges like the annual honour that automatic evaluation never grants.",
+        "member": "Member ID",
+        "badge": "Badge",
+        "reason": "Reason",
+        "submit": "Award badge"
+      },
+      "levels": {
+        "heading": "Levels",
+        "threshold": "Points required",
+        "note": "Lowering a threshold promotes members immediately; raising one never demotes anyone who already reached it.",
+        "save": "Save"
+      },
+      "perks": {
+        "heading": "Perks",
+        "priority_rsvp": "Priority RSVP",
+        "can_host": "Can propose a session",
+        "enabled": "Enabled",
+        "requiredLevel": "Granted at level",
+        "requiredBadge": "Granted with badge",
+        "save": "Save",
+        "canHostWarning": "Enabling this stops some members from proposing sessions until they reach this level — off by default, since the platform's whole premise is that you don't need to be an expert."
+      },
+      "streaks": {
+        "heading": "Attendance streaks",
+        "requiredCount": "Check-ins required",
+        "bonusPoints": "Bonus points",
+        "enabled": "Enabled",
+        "save": "Save"
+      }
+    }
+  }
+}

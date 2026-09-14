@@ -1,6 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (**PR #12** → `main`, awaiting the owner's merge) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged · **Phase:** **M2 wave 1 complete on the branch — the demonstrable holds locally end to end; next session is the wave-2 lead after the owner merges**
-
-**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`; **draft PR #12**) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
+**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (**PR #13** → `main`, ready for the owner's review) · **`main` @ `e0b448d`:** M1 live, M2 complete · **Phase:** **M2 wave 2 (M3 · M4 · M5) COMPLETE on the branch — thirteen sync points, migrations `0024`–`0054`, the three demonstrables proven by e2e against real local Supabase; next session is the wave-3 lead after the owner merges**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -40,7 +38,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-045**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-047**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -58,7 +56,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 14 | `14-roadmap.md` | `settled` | M0–M8 + **Launch** (DEC-039). No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
-| — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) is due at M3. |
+| — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) closes at Launch with PR C (DEC-046); OQ-012 implemented behind the perk (DEC-047). |
 | — | `TEAM.md` | `settled` | The agent team: waves, ownership, contracts, the lead's spawn prompt (DEC-040). |
 | — | `TRACEABILITY.md` | generated | `node scripts/traceability.mjs`. Do not hand-edit. |
 | — | `/CLAUDE.md` | `settled` | Repo root. Keeps `@AGENTS.md` as line 1. |
@@ -147,7 +145,110 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## M2 — wave 1 — COMPLETE on `wave-1/m2` (PR #12, the owner merges)
+## Wave 2 (M3 · M4 · M5) — COMPLETE on `wave-2/m3-m4-m5` (PR #13, the owner merges)
+
+**The three demonstrables hold locally, proven by the specs that drive the real screens against real local Supabase:**
+
+- **M3** — `tests/e2e/notify-screens.spec.ts` (11 passed): the inbox, the preference matrix with the not-switchable categories, the calendar screen and the ICS over real HTTP; `tests/rls/notify-reminders.test.ts` proves a reschedule leaves ONE pending job per member per offset and cancels the past ones; `notify-session-notices` proves the change notice carries both values and the publish chain announces once. **Owner's manual checks at Launch:** open the ICS in Outlook on Windows; real Google sync (a stub in tests).
+- **M4** — `tests/e2e/points.spec.ts` + `leaderboards.spec.ts` (6 passed, twice): a member reads their whole history with every row's real reason; an admin's catalogue edit shows immediately; the rebuild reproduces every balance (`audit-balances.test.ts`); سباق الشركات shows both metrics.
+- **M5** — `tests/e2e/materials.spec.ts`, `proposal-materials.spec.ts`, `photos.spec.ts`, `tasks.spec.ts`, `bookmarks.spec.ts` (11 passed): a deck read page by page with the arrows following the reading direction, the substitution warning on the material, a real upload through the form against real Storage, a photo whose stored bytes carry no EXIF, a takedown that hides before the page reloads. **Not run in this wave:** the live converter + worker pipeline end to end (the contract is unit-tested against the converter's own doc comment and `npm run converter:test` is green); the steps are in `docs/plan/notes/content.md` §4.
+
+### Shipped
+
+Migrations **`0024`–`0054`** (31; `supabase/proposed/` empty) · screens SCR-022, 025, 026, 027, 028, 053, 054, 058, the admin reminders and emails routes, SCR-013, SCR-024, plus five slots on the event page, the proposal screen and the shell · DAL modules `notifications`, `calendar`, `points`, `leaderboards`, `recognition`, `scoring-admin`, `materials`, `photos`, `tasks`, `search`, `bookmarks` · 20 worker tasks on the crontab and the queue, the mail transport with its sink · message namespaces `notifications`, `calendar`, `scoring`, `leaderboards`, `recognition`, `materials`, `photos`, `tasks`, `search` (Arabic first) · **DEC-046, DEC-047**.
+
+### Definition of done on ``d68a35b``
+
+| Check | Result |
+|---|---|
+| `npm run db:reset` | ✅ `0001`–`0054` (with the queue schema reinstalled) |
+| `npm run test:rls` | ✅ **495 passed / 4 todo, 45 files**, the sweep over every table incl. the 24 wave-2 ones |
+| `npm run policy-diff` | ✅ |
+| `node scripts/traceability.mjs` | ✅ 251 / 64 / 112, no gaps, matrix current |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run lint` | ✅ 0 errors (13 warnings, all pre-existing `eslint-disable` directives) |
+| `npm test` (unit + components) | ✅ **332 passed, 46 files** — incl. the per-track i18n guards and the namespace-collision test |
+| `npm run worker:build` · `fonts:check` · `converter:test` | ✅ · ✅ 9 faces / 6 TTF · ✅ 16/16 |
+| `npm run build` | ✅ 54 routes |
+| `npm run qa` | ✅ **44/44** |
+| `npm run visual compare m0-final wave2-final` | ✅ **0.000%** on all six captures — after the namespace deep-merge fix (`bbedf56`): a shared top-level key had replaced the landing page's recognition section, and this gate is what caught it |
+| `npm run test:e2e:local` | ✅ **118 passed / 0 failed / 8 skipped by design** (two workers, both profiles; every wave-1 and wave-2 spec, the three demonstrables included) — after two shell fixes the gate itself demanded: the nav's wrap had pushed the RSVP action 13 px below the fold, and a 16 px overflow at 390 px needed a compact bell |
+| `npm run test:e2e:unconfigured` | ✅ 16 passed, 110 skipped by design |
+| CI on PR #13 | ✅ **all jobs green on `d68a35b`** (the gate commit); the STATUS commit after it is docs only |
+| 390 px RTL captures, looked at | ✅ notify 4 · scoring 5 · content 6 (`.qa-shots/rtl/`) |
+
+### Handoff for the wave-3 lead
+
+1. **Read** `DECISIONS.md` DEC-046 and DEC-047, `TEAM.md` §3 and §5 (grown this wave), and the three handoff sections: `docs/plan/notes/notify.md` §6, `scoring.md` "Handoff to wave 3", `content.md` §4–§5.
+2. **SCR-011 (`/app/sessions`, browse) was never built in wave 1.** Nothing links to it. `SearchFilters` and `BookmarkButton` (`src/components/search/`, DAL and tests done) wait for that page; `console` or a `sessions` follow-up builds it first.
+3. **Three stale `TODO(notify, M3)` comments** survive in `0014` (lines 75, 144) and `0045` (line 103). Migrations are forward-only; the work is done by the `rsvps_notify` trigger of `0034`. Do not implement them.
+4. **Worker environment** for the content tasks: `CONVERTER_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (`worker/README.md`); the worker image is proven by its probe in CI; the host is chosen at Launch (DEC-046).
+5. **Launch inputs:** the Google OAuth client with calendar scopes and its secret on Vercel for the callback exchange (`src/app/api/calendar/oauth.ts`), the Resend account (`RESEND_API_KEY` is never read before Launch), the worker host, the converter's endpoint token if the host has no private networking (OQ-027).
+6. **The fixture** (`tests/rls/fixture-m3.ts`, `-m4.ts`, `-m5.ts`) seeds every wave-2 table for `members[0]`; a new per-policy case counts by id or clears its tables in `setup()` inside the transaction.
+7. **The path builder** is still a port (`worker/src/content/paths.ts` mirrors `src/lib/storage/paths.ts`, parity-tested); wave 3 turns it into `@kareem/storage-paths` with a lockfile regeneration.
+8. **`08`'s fourth reminder message** (offset-agnostic) is M7-console's; `MSG-rsvp_deadline_soon` has no job.
+9. `.next` on disk is the wave-final build; `npm run db:reset` (with the reset lock) before any RLS run.
+
+### The wave as it ran (the sync log below is the record)
+
+#### Wave 2 — PREPARED (kept as written at the start)
+
+**Done this session (the wave-2 lead, 2026-09-14), before anyone is spawned:**
+
+- **`main` @ `e0b448d`** (PR #12 merged, CI green on the last three pushes to `main`); local Supabase
+  healthy; `wave-2/m3-m4-m5` cut from it.
+- **Migration `0024_session_transition_guard`** — the table-level guard on `sessions.state` DEC-045
+  deferred, plus `occurred_at default clock_timestamp()` on `audit_log` and
+  `session_state_transitions`. The guard exposed a real conflict: `0020`'s presenter-decline trigger
+  returns a session to `draft`, an edge the frozen `02` §6.2 never drew but `REQ-PRO-007` defines;
+  `02` is amended under **DEC-046** rather than the guard breaking the decline. Two fixtures that
+  jumped states now walk legal edges; `tests/rls/sessions-guard.test.ts` adds six cases.
+  **Gates:** `supabase db reset` ✅ `0001`–`0024` · `npm run test:rls` ✅ **212 passed / 4 todo, 20
+  files** · `policy-diff` ✅ · traceability ✅ (matrix regenerated) · tsc ✅ · lint 0 errors.
+  Commit `29ffbef`.
+- **DEC-046** also records the owner's two standing decisions: **OQ-027 closes for wave 2 without
+  a host** (the worker stays a host-agnostic Docker image, locally and in CI; the production host
+  is chosen at Launch with PR C) and **email in development and CI goes to a sink, never a
+  provider** (Mailpit on `:54324`/SMTP `:54325` locally, an in-memory transport in CI; Resend is
+  wired at Launch).
+- **`.claude/agents/{notify,scoring,content}.md`** written from the wave-1 template with the
+  ownership globs below. Not committed until the owner approves the plan.
+
+**The owner approved the plan as presented (2026-09-14; `content` stays on Sonnet) and set the
+wave goal:** every wave-2 story done by its teammate, the definition of done proven on the branch,
+the three demonstrables passing locally, decisions logged, the wave-3 handoff here, teammates shut
+down, PR open with CI green; no merge, no hosted Supabase, no Vercel, no real mail provider.
+
+**Pre-spawn tasks — all done (lead, 2026-09-14):**
+
+| # | Task | Commit / proof |
+|---|---|---|
+| 1 | `0025_enqueue_job` — `public.enqueue_job()`, the one door to the queue; `scripts/rls.mjs` installs the `graphile_worker` schema before every RLS run, CI's `rls` job after the migrations | `74ba237` · `test:rls` **217 passed / 4 todo, 21 files** · policy-diff ✅ · traceability ✅ |
+| 2 | `worker/Dockerfile` (host-agnostic, worker workspace only, runs as `node`) + CI builds it and runs the probe inside | `08863a7` · local build 394 MB, in-image probe against local Supabase **OK, 6 ms** |
+| 3 | `[local_smtp] smtp_port = 54325` — Supabase stopped and started, port answers | `08863a7` |
+| 4 | `TEAM.md` §1 (confirmed rows + the wave-2 contracts) and `CLAUDE.md` § Agent team | `52d9e49` |
+| 5 | Pushed; **draft PR #13** open at the first push; `notify` (opus), `scoring`, `content` (sonnet) spawned with their first tasks (plan in `docs/plan/notes/<name>.md`, then the milestone schema as proposed SQL, then the first story) | — |
+
+### Sync log
+
+| Sync | Promoted | Gates |
+|---|---|---|
+| 0 (2026-09-14) | 0024, 0025 (lead, pre-spawn) | CI on the first push of PR #13 (`52d9e49`) **all jobs green** — the `rls` job with the schema install and the new in-image worker probe included; `.next` rebuilt fresh after spawn |
+| 1 (2026-09-14) | `0026_notification_contract` (`notify`, unchanged; `aa98bec`) · `0027_m4_schema` (`scoring`, + the lead's `points_ledger_append_only` trigger and an org-cascade clause in all three guards; `53b5013`) · `03` §8.2 +36 rows · fixtures `fixture-m3.ts`, `fixture-m4.ts` (the sweep is non-vacuous) · the bell wired into the shell (`cc5c908`) | reset ✅ 0001–0027 · `test:rls` green on every committed file (the red files are untracked WIP — a wave rule now: never save a failing test under `tests/rls/`) · policy-diff ✅ · traceability ✅ · tsc ✅ · build ✅ 32 routes · CI green on `513a4bf` after a re-push (the first push carried a stale traceability matrix — regenerate and commit it in the same commit as any `03` change) |
+| 2 (2026-09-14) | `0028_award_points` (award_points() + the check_in() replacement at 0015's TODO) · `0029_award_hooks_ratings_comments` (SQL-only hooks into `event`'s tables) · `0030_send_notification` (send context with the send-time re-check; delivery log append + provider-scoped update) — all unchanged · `03` §8.2 +10 rows · worker `taskList` gains `award_points`, `send_notification` · `npm run db:reset` reinstalls the queue schema · **fix(i18n)**: `NumeralSystem` spelled `arabic` while the enum says `arabic_indic` — Arabic-Indic orgs got Western digits everywhere; found by `notify`, fixed at the source in four wave-1 DAL DTOs | `db:reset` ✅ 0001–0030 · `test:rls` green on every committed file (6 red = `content`'s untracked WIP) · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors (13 warnings, pre-existing) · `worker:build` ✅ · CI on `e2119ed` **all jobs green** |
+| 3 (2026-09-14) | `0031_award_presenter_points` · `0032_manual_adjustment_and_reversal` · `0033_audit_balances` · `0034_reminders` (+ `cancel_job()`, enqueue_job's twin; the RSVP notices as a trigger on `rsvps`) · `0035_reminder_sends` — all unchanged · `03` §8.2 +17 rows · worker `taskList` +7 (presenter points, no-shows, balance audit, reminder, nudge, rating prompt, reconciliation) · the runner check is now `pgrep -fl "node_modules/.bin/vitest"` (the old grep matched other agents' waiting shells) | `db:reset` ✅ 0001–0035 · `test:rls`: one `notify-contract` case red (queue rows the fixture's RSVP inserts now enqueue — handed back) + content's 6 untracked WIP · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · `worker:build` ✅ · push waits on the notify fix · `.next` rebuilt 08:47 on `dbeca9c` (bell + points strip wired; an orphaned `next start` from the previous session — ppid 1, no gate lock, 5 h old — was holding port 3000 and is gone; a waiter must use `pgrep -fl next-server`, since `pgrep -f "next start"` matches the waiter itself) |
+| 4 (2026-09-14) | `0036_session_notices` (`notify`, unchanged — the REQ-SES-009 change notices with both values, publish and cancel notices, all guarded on the state EDGE so publish_session()'s four-row walk announces once) · `03` §8.2 +5 rows · `AddToCalendar` wired into the event page's RSVP rail · the `notify-contract` queue count fixed by the lead (setup() clears the queue the fixture's RSVP notices fill) | `db:reset` ✅ 0001–0036 · `test:rls` green on every committed file (red = `content`'s 6 and `scoring`'s `recognition-evaluators` 2, both untracked WIP) · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · `worker:build` ✅ · CI on `5357dc0` (syncs 3 + 4) **all jobs green** |
+| 5 (2026-09-14) | `0037_m5_schema` (`content`, unchanged — 11 tables, `reports.photo_id`, `ar_normalize()` + `sessions.search_vector` (an additive ALTER on a frozen table, for the DEC), the six buckets with nine `storage.objects` policies, `remove_material()` — a real finding: an UPDATE's result must satisfy the SELECT policy, so `removed_at` can only be set by a definer RPC) · `03` §8.2 +23 rows, §6.9 lists the nine bucket policies for the gate · `fixture-m5.ts` (the sweep is non-vacuous for all 11) · worker `taskList` +3 (`calendar_upsert`, `calendar_delete`, `refresh_calendar_tokens`) and crontab lines for the hourly token sweep and the nightly balance audit · one lint fix in `notify`'s SCR-025 (an `<a>` to a Route Handler is right; the page rule is silenced with the reason) · **the first attempt at this commit (`8cdd08e`) carried only the traceability matrix** — a failed edit in a `&&` chain skipped the path list; the real commit follows | `db:reset` ✅ 0001–0037 · `test:rls` green on every committed file · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · `worker:build` ✅ · CI: see below |
+| 6 (2026-09-14) | `0038_calendar_sync` (`notify`; + a lead clause: the disconnect notice skips when the member is gone, so an org deletion cascades) · `0039_m2_notices` (the last of DEC-045's deferrals: replies, mentions, decisions, invitations, assignment, removal, reports) · `0040_reminder_schedule` · `0041_recognition_evaluators` · `0042_snapshot_leaderboards` (`scoring`) · `0043_photo_hidden_notify` (`content`) — all otherwise unchanged · `03` §8.2 +24 rows · the contract test's cleanup empties the inbox last (deleting a connection now writes a notice) · **owner input for Launch (notify):** the Google OAuth client secret lives on Vercel for the code exchange in the callback — not `service_role`, so invariant 7 holds; reasoning in `src/app/api/calendar/oauth.ts` | `db:reset` ✅ 0001–0043 · `test:rls` **453 passed / 4 todo, 43 files — the whole tree, nothing red** · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+| 7 (2026-09-14) | `0044_all_time_leaderboard` (`scoring`, unchanged) · `0045_priority_rsvp` (`scoring`; the `reserve_seat()` replacement — **two lead changes, DEC at wave end:** the priority window exists only while the org's `priority_rsvp` perk is enabled, and the perk now ships **disabled** like `can_host` (`0027` seed changed), because a window nobody can use only closed general RSVP for a day and every M2 flow, the demonstrable included, reserves at publish) · `03` §8.2 +2 rows · the tracked proposed copies of promoted files removed (`25791b1` — CI applied `0039` twice through a test's `existsSync` guard; the rule is now `git rm` the proposed path in the promotion commit) | `db:reset` ✅ 0001–0045 · `test:rls` green on the whole tree (45 files) · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+| 8 (2026-09-14) | `0046_finalize_material_upload` (`content`, unchanged — the upload finaliser: authority re-derived, the org's size limit, `convert_document` enqueued for PDF and PowerPoint, Keynote download-only, version numbering) · `03` §8.2 +4 rows · the `Materials` slot wired into the event page's main column under its own `<h2>` (`sessions.event.materialsLabel`, Arabic first) · **CI lesson:** two pushes failed the build with `Cannot find module './ar/materials.json'` — a namespace named in `src/messages/index.ts` before its JSON was committed (TEAM.md §3's rule, broken once more; `89efe88` carries both) | `db:reset` ✅ 0001–0046 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+| 9 (2026-09-14) | `0047_award_badge_manually` (`scoring`, unchanged — the only door for the manual-metric annual badge) · `03` §8.2 +3 rows · the tracked proposed copies of `0046`/`0047` removed in the same commit (the rule) · **M3 is complete** — `notify`'s definition of done ticked in full: e2e 11 passed / 1 skipped by design on the 09:28 build, four 390 px captures reviewed (SCR-025, 026, 058, reminders), 249 unit, 464 RLS; the review found three numeral/height defects nothing else could see | `db:reset` ✅ 0001–0047 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+| 10 (2026-09-14) | `0048_record_material_conversion` (`content`, unchanged — the worker's two doors: record the converted PDF, record the rendered pages and mark the material ready; `render_pages` enqueued from SQL) · `0049_record_material_download` (the audited admin download, the one door to `write_audit` for the app) · `03` §8.2 +7 rows · worker `taskList` +2 (`convert_document`, `render_pages`) with three new worker-only variables documented in `worker/README.md` (`CONVERTER_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — Launch inputs with the host) · **M4 is complete** — `scoring`'s definition of done ticked: e2e 6/6 twice, five captures reviewed, `scoring-i18n.test.ts` found the one text placeholder that needed `<bdi>`; handoff sections written by `notify` (`7d7f7e2`) and `scoring` | `db:reset` ✅ 0001–0049 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · `worker:build` ✅ · CI: see below |
+| 11 (2026-09-14) | `0050_photo_pipeline` (`content`: the browser PUTs raw bytes under the check-in gate, `initiate_photo_processing()` enqueues `process_photo`, the worker strips EXIF/XMP/ICC byte-level and `record_photo_upload()` — the only door to a `photos` row — returns a DEC-043 envelope) · `0051_photos_audit_staff_actions` · `0052_materials_audit_phase_change` — all unchanged · `03` §8.2 rows added · `process_photo` registered · the `Photos` slot wired into the event page under its own `<h2>` («الصور») · MAT-005 (`81e3c18`, the upload form in the slot) | `db:reset` ✅ 0001–0052 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · `worker:build` ✅ · CI: see below |
+| 12 (2026-09-14) | `0053_proposal_materials` (`content`, unchanged — `materials.session_id` becomes nullable with a session-XOR-proposal check, every session-shaped policy and bucket rule gains a proposal branch, `is_proposal_owner_of()`, and a trigger on `sessions` reassigns a proposal's materials to the session created from it and enqueues the waiting conversions; REQ-PRO-004, DEC-045's last deferral) · `03` §8.2 +4 rows · `ProposalMaterials` wired into the proposal screen · **every M5 story is built** (MAT-001…006, EVT-005/006, TSK-001/002, DSC-001…003, PRO-004) · **wave-1 gap found:** SCR-011 (`/app/sessions`, browse) was never built — nothing links to it and the file does not exist — so `SearchFilters` (`src/components/search/filters.tsx`, DAL and tests done) has no page to sit on; wave 3 builds the page and wires it (a note for the wave-3 lead, not a wave-2 story) | `db:reset` ✅ 0001–0053 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+| 13 (2026-09-14) | `0054_materials_storage_read_preupload` (`content`) — **a real defect the first browser upload found:** the complete step downloads the landed bytes through the uploader's own client to sniff them, before `finalize_material_upload()` creates the `material_versions` row that `materials_storage_read` joins through, so every upload's complete step 403'd; the read policy gains the pre-finalize self-read branch mirroring the write policy's own path check (whoever may write the path may read it back), three RLS cases, no widening for anyone else · `03` §8.2 +3 rows, §6.9 amended · e2e `proposal-materials.spec.ts` drives the real form against real Storage (`b0ba0d0`) — the first spec that did | `db:reset` ✅ 0001–0054 · `test:rls` green on the whole tree · policy-diff ✅ · traceability ✅ · tsc ✅ · lint 0 errors · CI: see below |
+
+## M2 — wave 1 — COMPLETE on `wave-1/m2` (merged as PR #12)
 
 **The M2 demonstrable holds locally, end to end, through the real screens**, as one serial Playwright
 test against real local Supabase (`tests/e2e/sessions-screens.spec.ts`, commits `a3f8497`, `38e72d8`): add a
@@ -409,9 +510,14 @@ reachable through PostgREST; a `revoke` would touch the frozen table's privilege
 
 **Nothing.** The owner ran DEC-037's `REVOKE` in the hosted SQL editor on 2026-09-14; verified read-only with `supabase db query --linked`: `anon` has no `truncate`, keeps `insert` only, and the 19 registrations are intact. M2 starts on local Supabase and CI.
 
-**Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
-the choice must provide a session-mode Postgres connection and either private networking to the
-converter or an endpoint token on it.
+**OQ-027 answered for wave 2 (DEC-046):** the worker and converter run as host-agnostic Docker
+images locally and in CI; the production host is chosen at Launch with PR C. Nothing in wave 2
+waits on it. **Owner input due at Launch, not now:** a Google OAuth client with calendar scopes
+(the M3 sync runs against a stub in tests) and the Resend account.
+
+**Open for the owner at the wave-2 plan:** approval of the ownership globs; whether `content`
+runs on Opus rather than Sonnet (it holds the storage-prefix boundary, the one place isolation
+depends on application correctness).
 
 ## Blockers
 
@@ -497,20 +603,10 @@ unaffected.
 
 ## Next session should
 
-1. **Wait for the owner to merge PR #12** (`wave-1/m2` → `main`); nothing on the branch is merged
-   by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
-2. Be the **wave-2 lead**: read this file, `CLAUDE.md`, `DECISIONS.md` (DEC-042 … DEC-045), `TEAM.md`
-   (§3 and §5 grew this wave — the working rules are there), and the three
-   `docs/plan/notes/{sessions,checkin,event}.md`.
-3. **Before spawning anyone:** write migration `0024` — the table-level guard on `sessions.state`
-   and, if decided, `audit_log.occurred_at default clock_timestamp()` — move the fixtures that set
-   state directly onto the RPCs, `supabase db reset`, `npm run test:rls` green. Log the DEC.
-4. Confirm the wave-2 ownership map (`TEAM.md` §1 drafts): `notify` (M3), `scoring` (M4),
-   `content` (M5). OQ-027 (worker + converter hosting) is **due at M3** — the `notify` track cannot
-   deliver reminders without a running worker; decide hosting with the owner at the wave-2 plan.
-5. Cut `wave-2/m3-m4-m5`, present the plan, WAIT, spawn from `.claude/agents/` (write the three new
-   definitions first; the wave-1 ones are the template).
-6. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
-7. `.next` on disk is the **unconfigured** build from the final gate; run `npm run build` before
-   `npm run qa` / `visual` / `test:e2e:local`.
-8. Update this file before finishing.
+1. **Wait for the owner to merge PR #13** (`wave-2/m3-m4-m5` → `main`); nothing is merged by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
+2. Be the **wave-3 lead** (`designer` M6 · `console` M7-console, TEAM.md §1): read this file, `CLAUDE.md`, `DECISIONS.md` DEC-046/DEC-047, `TEAM.md` §3 and §5, and the three handoff sections named under *Handoff for the wave-3 lead* above.
+3. **Before spawning anyone:** build SCR-011 (`/app/sessions`, browse) or assign it as `console`'s first story, and wire `SearchFilters`/`BookmarkButton` onto it; turn the path-builder port into `@kareem/storage-paths` (a lockfile regeneration); decide whether the M6 image work (Chromium + fonts in `worker/Dockerfile`) goes first.
+4. **Run the M5 pipeline once for real** — converter image + worker against local Supabase with the three variables — before M6 builds on `material_pages`; the steps are in `docs/plan/notes/content.md` §4.
+5. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. Launch inputs are listed above.
+6. `.next` on disk is the wave-final configured build; `npm run db:reset` before any RLS run.
+7. Update this file before finishing.

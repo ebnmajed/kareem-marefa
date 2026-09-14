@@ -1164,6 +1164,73 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-046 — The session edge set is a table trigger; evidence tables timestamp per statement; wave-2 standing decisions from the owner
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-2 lead) for the guard and the clock; **the owner** for OQ-027 and email transport
+- **Decision 1 — `sessions.state` is guarded by the table.** Migration `0024` adds
+  `sessions_guard_transition`, a `before update of state` trigger accepting exactly `02` §6.2's
+  edges and refusing every other change of state with `23514`, for every writer including the
+  migration owner and `service_role`. It is the migration DEC-045 deferred to "the first of wave
+  2". There is **no insert guard**: a row is born with a state and no edge, `create_session()` is
+  the only door for people, and the wave-1 fixtures and e2e seeds insert published and completed
+  rows to arrange history. The fixtures that *updated* `state` directly now walk legal edges
+  (`tests/rls/sessions-{creation,scheduling}.test.ts`); the new `tests/rls/sessions-guard.test.ts`
+  proves the edge set, the RPCs through it, and the ordering below.
+- **Decision 2 — `02` §6.2 gains four edges back to `draft`:** from `submitted`, `in_review`,
+  `changes_requested` and `approved`, labelled "presenter declines". `01`'s `REQ-PRO-007` says a
+  decline "returns the session to `draft`" and migration `0020` implements it; a strict guard would
+  have broken the decline silently. Only `01` defines requirements, so the frozen diagram is
+  amended under this entry rather than the guard permitting an undrawn edge. A published session is
+  not returned to draft by a decline (people hold seats; `REQ-SES-009` is the path).
+- **Decision 3 — append-only evidence tables default `occurred_at` to `clock_timestamp()`.**
+  `now()` is the transaction's start, so `publish_session()`'s four transition rows and one audit
+  row shared an instant and tests ordered by `ctid`, which is not evidence. `0024` moves the
+  default on `audit_log` and `session_state_transitions`; `points_ledger` (M4) is created with it.
+  Indexes are unchanged. `02` §4.3 and §4.16 are corrected under this entry.
+- **Decision 4 (owner) — OQ-027 is closed for wave 2 without a host.** The worker stays a
+  host-agnostic Docker image running locally and in CI; the production host is decided at Launch
+  with PR C. **Nothing in wave 2 waits on hosting.** Consequence for the `notify` and `scoring`
+  tracks: the `graphile_worker` schema must exist wherever the RLS suite runs, because
+  `reserve_seat()`, `check_in()` and the M3/M4 RPCs enqueue from SQL (`02` §4.17). The lead
+  installs it with `graphile-worker --schema-only` after `supabase db reset` locally and after the
+  migrations in CI's `rls` job; an RPC that enqueues does so through one wrapper,
+  `public.enqueue_job(name, payload, key)`, so a missing schema fails loudly in one place.
+- **Decision 5 (owner) — email in development and CI never reaches a provider.** The worker's
+  mail transport is an interface with two implementations: a **sink** (local Supabase's Mailpit on
+  `:54324` via SMTP in development; an in-memory transport the tests read back in CI) and Resend,
+  which is wired at Launch. `RESEND_API_KEY` stays unset everywhere until then; `04` §10 is
+  unchanged. `email_deliveries` rows are written by the sink exactly as by Resend, so `REQ-NTF-008`
+  is testable now.
+- **Rationale:** the guard is the stronger statement 0023 asked for; the decline edge is the PRD's;
+  per-statement clocks make the log readable as a sequence, which is what an audit log is for;
+  the hosting and transport decisions remove the only two things that could have blocked M3.
+- **Supersedes:** the "no table-level guard in wave 1" and "`occurred_at` stays `now()`" paragraphs
+  of DEC-045; the default in force under OQ-027 ("decide the host at the start of M3").
+- **Documents changed:** `02-domain-model.md` §4.3, §4.16, §6.2 (frozen, changed under this entry);
+  `03-permissions-rls.md` §5.2, §8.2; `OPEN-QUESTIONS.md` OQ-027; `STATUS.md`; `TEAM.md` §1 (at wave start)
+
+---
+
+## DEC-047 — Wave 2 closing decisions: the promotions' amendments to frozen and settled documents, the plan gaps the code found, and the team's working rules
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-2 lead), closing wave 2; the owner for the Launch inputs
+- **`02` amendments (frozen, changed under this entry):** `email_deliveries.notification_id` and `notification_preferences.updated_at` (both additive, `0026`); `sessions.search_vector` — a generated `tsvector` over `ar_normalize(title, abstract)` with a GIN index and a trigram index (`0037`, `REQ-DSC-003`); `reports.photo_id` gains its foreign key (`0037`); `points_ledger.occurred_at` defaults to `clock_timestamp()` as DEC-046 decided.
+- **`08` corrections (settled):** §1.7 lists seventeen keys under a heading that says eleven — the list is authoritative and the matrix in `0026` carries all seventeen; §3.2 lists 22 templates for 24 messages with an email channel — `MSG-proposal_submitted` and `MSG-presenter_assigned` gain defaults, and `tests/unit/mail-render.test.ts` diffs the template file against the matrix in the migration; §1.2's three reminder messages against `reminder_offsets_minutes` as a free `int[]` — `reminder_message_key()` picks the nearest by magnitude, and a fourth, offset-agnostic message is the honest fix, left to M7-console; `MSG-rsvp_deadline_soon` (§1.3) has no job in `11` — unimplemented, not faked.
+- **`07` §9.2 amendment (settled):** `process_photo` strips EXIF/XMP/ICC by removing the segments in place (JPEG APP markers, PNG ancillary chunks, WebP RIFF chunks) and asserts on the stored bytes; no image library enters the worker and the converter gains no endpoint. WebP re-encoding through the converter is a later size optimisation, not a correctness requirement.
+- **The append-only guards are table triggers with one legitimate delete:** `points_ledger`, `leaderboard_snapshots` and `leaderboard_entries` refuse update and delete for every writer including the owner (`0027`, the `members_org_immutable` pattern), and let an org deletion cascade through because the parent row is already gone. `calendar_disconnected()` (`0038`) skips when the member is gone for the same reason.
+- **`sessions.state` and `proposals.state` are the tables' edge sets**, and a wave-2 track hooks into M2 by SQL only: a trigger on the table (`0029`, `0031`, `0039`), or a `create or replace` of an M2 RPC at its marked call site (`0028` on `check_in()`, `0045` on `reserve_seat()` — flagged, since no marker existed there: a gate that changes the accept/reject decision cannot be a trigger). Nothing in wave-1 app code was edited by a wave-2 track; the lead edited three wave-1 DAL DTOs for the numerals fix and one wave-1 test helper.
+- **The priority RSVP window exists only while the org's `priority_rsvp` perk is enabled, and the perk ships disabled** (`0045`, `0027`). OQ-012's default of 24 hours applies once an admin turns it on; with nobody holding the perk a window only closed general RSVP for a day after every publish, which every M2 flow — the demonstrable included — contradicts.
+- **`remove_material()` (`0037`)** exists because a row an UPDATE produces must still satisfy the table's SELECT policy, and `materials_read` requires `removed_at is null`; the same reason `delete_own_comment()` exists (DEC-044). `removed_at`, `removed_by` and `removal_reason` leave the client column grant.
+- **`public.enqueue_job()` and `public.cancel_job()` are the only doors to the queue** (`0025`, `0034`); the `graphile_worker` schema is installed wherever the suite runs (`scripts/rls.mjs`, `npm run db:reset`, CI's `rls` job), and `npm run db:reset` holds `/tmp/db-reset.lock` while the runner waits on it.
+- **Numerals follow the org setting** (`REQ-INT-006`): `NumeralSystem` spells the enum's value `arabic_indic` (the shared type and three wave-1 DTOs spelled `arabic`, so Arabic-Indic orgs silently got Western digits); no literal digit of either system in an Arabic catalogue, every interpolated value inside `<bdi>` — `tests/unit/<track>-i18n.test.ts` per track; `min-h-*` on any cell whose Arabic label can wrap.
+- **The path builder is a workspace package**, `@kareem/storage-paths`, imported by the app and the worker (the DEC-029 pattern), not a port.
+- **Launch inputs recorded, not decided here:** the Google OAuth client with calendar scopes and its secret on Vercel for the callback's code exchange (not `service_role`; reasoning in `src/app/api/calendar/oauth.ts`), the Resend account; the production host for the worker image (DEC-046).
+- **Working rules** added to `TEAM.md` §3 and §5: the runner check is `pgrep -fl "node_modules/.bin/vitest"` (the old grep matched other agents' waiting shells); never save a failing test under `tests/rls/` — `describe.skip` until green; a test may guard `applyProposed()` with `existsSync` so a promotion mid-session does not turn it red; the promotion commit `git rm`s the proposed path (tracked copies made CI apply `0039` twice); a namespace's JSON and its `index.ts` line go in one commit (CI's build failed twice on `./ar/materials.json`); an orphaned `next start` from an earlier session (`ppid 1`, no gate lock) can hold port 3000 — `pgrep -fl next-server`; the 390 px capture measures overflow against the layout viewport (the RTL scrollbar sits on the left); messages between agents arrive out of order — restate facts with a verifiable command; a Sonnet teammate idles at "checkpoints" — its task ends at the last story, and the lead re-drives it with that sentence.
+- **Supersedes:** the `08` §1.7 heading, §3.2 count and §1.2 reminder set; `07` §9.2's WebP re-encode; `02` §4.3, §4.6, §4.7, §4.14 column lists as amended above.
+- **Documents changed:** `02-domain-model.md`, `07-content-pipeline.md`, `08-notifications-calendar.md`, `TEAM.md` §3, §5, `OPEN-QUESTIONS.md` OQ-012 (note), `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

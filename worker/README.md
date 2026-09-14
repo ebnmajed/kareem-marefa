@@ -3,7 +3,7 @@
 `11-background-jobs.md` §1 · `04-architecture.md` §7.2 · DEC-018 · DEC-034
 
 The only process that will ever hold `service_role`, and only through `SECURITY DEFINER`
-functions (invariant 7). **Hosting is undecided until M3** (OQ-027); it runs locally and in CI.
+functions (invariant 7). **Host-agnostic Docker image** (`worker/Dockerfile`, built from the repo root; DEC-046): it runs locally and in CI, and the production host is chosen at Launch with PR C (OQ-027).
 
 ```bash
 npm run worker:build                       # tsc → worker/dist
@@ -43,3 +43,16 @@ select graphile_worker.add_job('ping', '{"hello": "world"}');
 ```
 
 Tasks live in `src/tasks/`, one file per snake_case job name (`11` §2).
+
+## Environment (wave 2, M5)
+
+The content tasks need three more variables besides `DATABASE_URL`, all worker-only (`04` §10):
+
+| Variable | Local value | Purpose |
+|---|---|---|
+| `CONVERTER_URL` | `http://127.0.0.1:8080` (the `kareem-converter` image, `docker run -p 8080:8080 kareem-converter`) | `convert_document` / `render_pages` call it with signed URLs in and out — no credentials cross |
+| `SUPABASE_URL` | `http://127.0.0.1:54321` | minting the signed Storage URLs the converter reads and writes |
+| `SUPABASE_SERVICE_ROLE_KEY` | from `supabase status` | the same — never on Vercel (invariant 7) |
+
+A task whose variable is missing throws at once and names it; nothing degrades silently. The
+production values are Launch inputs with the host (OQ-027, DEC-046).

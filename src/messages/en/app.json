@@ -9,10 +9,11 @@
     "home": {
       "welcome": "Welcome, <name>{value}</name>",
       "welcomeAnon": "Welcome",
-      "intro": "This is the beginning of the platform. Sessions, seats and points arrive in the next milestones.",
+      "intro": "Welcome to the platform. Browse the upcoming sessions and reserve your seat.",
       "completeProfile": "Complete your profile",
       "companyMissing": "Choose your company before reserving a seat or proposing a session.",
-      "org": "Your organisation: <org>{value}</org>"
+      "org": "Your organisation: <org>{value}</org>",
+      "pointsStrip": "My points"
     }
   }
 }

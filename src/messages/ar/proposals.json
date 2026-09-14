@@ -90,7 +90,8 @@
       "accept": "أوافق على التقديم",
       "decline": "أعتذر",
       "remove": "أزل من المقدّمين",
-      "removeLabel": "أزل <t>{name}</t> من المقدّمين"
+      "removeLabel": "أزل <t>{name}</t> من المقدّمين",
+      "materialsLabel": "المواد المرفقة"
     }
   }
 }

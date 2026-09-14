@@ -18,7 +18,7 @@
     "test:e2e": "playwright test",
     "test:e2e:local": "node scripts/e2e-local.mjs",
     "test:e2e:unconfigured": "node scripts/e2e-unconfigured.mjs",
-    "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} vitest run --project rls",
+    "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} node scripts/rls.mjs",
     "policy-diff": "node scripts/policy-diff.mjs",
     "serve:stub": "node scripts/serve-stub.mjs",
     "qa": "node scripts/qa-run.mjs",
@@ -32,7 +32,8 @@
     "worker:build": "npm run build -w @kareem/worker",
     "worker:probe": "npm run probe -w @kareem/worker",
     "worker:start": "npm run start -w @kareem/worker",
-    "lockfile": "node scripts/lockfile.mjs"
+    "lockfile": "node scripts/lockfile.mjs",
+    "db:reset": "node scripts/db-reset.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -1,0 +1,82 @@
+{
+  "materials": {
+    "list": {
+      "count": "{count, plural, zero {لا توجد مواد} one {مادة واحدة} two {مادتان} few {{value} مواد} many {{value} مادة} other {{value} مادة}}",
+      "empty": "لا توجد مواد لهذه الجلسة بعد.",
+      "downloadOnly": "للتحميل فقط",
+      "downloadOnlyHint": "لعرض الشرائح داخل المنصة، صدّر العرض إلى PDF وارفعه — سيظهر حينها في العارض صفحةً صفحة.",
+      "phase": {
+        "before": "قبل الجلسة",
+        "after": "بعد الجلسة"
+      },
+      "kind": {
+        "pdf": "PDF",
+        "powerpoint": "عرض تقديمي",
+        "keynote": "Keynote",
+        "image": "صورة",
+        "audio": "تسجيل صوتي",
+        "video_link": "رابط فيديو",
+        "external_link": "رابط خارجي"
+      },
+      "renderStatus": {
+        "pending": "بانتظار المعالجة",
+        "rendering": "جارٍ التحويل…",
+        "failed": "تعذّر تحويل الملف"
+      },
+      "substitutionWarning": {
+        "title": "قد تختلف الخطوط عن ملفك الأصلي.",
+        "body": "استُبدل الخط \"<bdi>{family}</bdi>\" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه."
+      },
+      "openViewer": "فتح العارض",
+      "download": "تحميل",
+      "downloadAudited": "سيُسجَّل هذا التحميل في سجل التدقيق.",
+      "openExternal": "فتح الرابط — يغادر المنصة",
+      "removedByAdmin": "أُزيلت هذه المادة.",
+      "allowDownloadLabel": "السماح بالتحميل"
+    },
+    "upload": {
+      "notice": "سيُتاح هذا الملف لجميع أعضاء المؤسسة وفق الجدول الزمني الذي تختاره.",
+      "sizeLimitExceeded": "الملف أكبر من الحد المسموح (<bdi>{limitMb}</bdi> م.ب).",
+      "sniffMismatch": "لا يطابق محتوى الملف الفعلي النوع المُعلَن — تحقق من الملف وحاول مرة أخرى.",
+      "notAuthorized": "لا تملك صلاحية إضافة مواد لهذه الجلسة.",
+      "submit": "رفع",
+      "titleLabel": "عنوان المادة",
+      "phaseLabel": "التوقيت",
+      "kindLabel": "نوع المادة",
+      "fileLabel": "الملف",
+      "fileRequired": "اختر ملفًا أولًا.",
+      "urlLabel": "الرابط",
+      "uploadFailed": "تعذّر رفع الملف. حاول مرة أخرى."
+    },
+    "remove": {
+      "action": "إزالة",
+      "confirmTitle": "إزالة هذه المادة؟",
+      "reasonLabel": "سبب الإزالة",
+      "reasonRequired": "سبب الإزالة مطلوب.",
+      "sessionCompleted": "لا يمكن للمقدّم إزالة مادة بعد اكتمال الجلسة — تواصل مع مشرف المؤسسة."
+    },
+    "viewer": {
+      "back": "الرجوع إلى مواد الجلسة",
+      "pageOf": "صفحة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "thumbnailsLabel": "الصفحات",
+      "thumbnailLabel": "الانتقال إلى الصفحة <bdi>{number}</bdi>",
+      "previous": "الصفحة السابقة",
+      "next": "الصفحة التالية",
+      "firstPage": "أول صفحة",
+      "lastPage": "آخر صفحة",
+      "zoomIn": "تكبير",
+      "zoomOut": "تصغير",
+      "download": "تحميل الملف الأصلي",
+      "downloadAudited": "سيُسجَّل هذا التحميل في سجل التدقيق.",
+      "downloadUnavailable": "التحميل غير متاح لهذه المادة.",
+      "states": {
+        "pending": "جارٍ تجهيز العرض…",
+        "rendering": "جارٍ تجهيز العرض…",
+        "failed": "تعذّر تحويل هذا الملف. جرّب تصدير العرض إلى PDF ورفعه من جديد.",
+        "keynoteDownloadOnly": "ملفات Keynote متاحة للتحميل فقط.",
+        "keynoteHint": "لعرض الشرائح داخل المنصة، صدّر العرض إلى PDF وارفعه — سيظهر حينها في العارض صفحةً صفحة.",
+        "noPages": "لا توجد صفحات لعرضها."
+      }
+    }
+  }
+}

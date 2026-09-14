@@ -185,9 +185,15 @@ describe("RPC-publish_session.gate", () => {
       const f = await seed(tx);
       const id = await draft(tx, f);
       // Straight past every code path, as the owner: 0010's check constraint
-      // is what actually holds the line.
+      // is what actually holds the line. Walk to `approved` first so 0024's
+      // edge guard lets `approved → published` through and the CONSTRAINT is
+      // what refuses it — the message names the table's check, not the guard.
       await tx.asOwner();
+      for (const to of ["submitted", "in_review", "approved"]) {
+        await tx.q(`update public.sessions set state = $2::public.session_state where id = $1`, [id, to]);
+      }
       expect(await errorCode(() => tx.q(`update public.sessions set state = 'published' where id = $1`, [id]))).toBe(CHECK_VIOLATION);
+      expect(await errorMessage(() => tx.q(`update public.sessions set state = 'published' where id = $1`, [id]))).toMatch(/violates check constraint/);
     });
   });
 });

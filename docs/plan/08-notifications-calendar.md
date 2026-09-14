@@ -32,6 +32,8 @@ the category it belongs to for preferences.
 
 ### 1.2 Sessions
 
+> **Noted under DEC-047:** three reminder messages exist while `org_settings.reminder_offsets_minutes` is a free `int[]`; `reminder_message_key()` (migration `0034`) gives an offset with no message of its own the nearest by magnitude. A fourth, offset-agnostic message is the honest fix, left to M7-console.
+
 | Trigger | `MSG-*` | To | Channels | Optional? | Category |
 |---|---|---|---|---|---|
 | Session published | `MSG-session_published` | all active members | in-app, email | yes | `new_sessions` |
@@ -50,7 +52,7 @@ the category it belongs to for preferences.
 | Seat confirmed | `MSG-rsvp_confirmed` | the member | in-app | yes | `my_sessions` |
 | Joined the waitlist | `MSG-rsvp_waitlisted` | the member | in-app | yes | `my_sessions` |
 | **Promoted off the waitlist** | `MSG-rsvp_promoted` | the member | in-app, email | **no** | `my_sessions` |
-| RSVP deadline approaching | `MSG-rsvp_deadline_soon` | waitlisted | in-app | yes | `my_sessions` |
+| RSVP deadline approaching (**no job schedules it — `11` §7 gap, DEC-047; not implemented in wave 2**) | `MSG-rsvp_deadline_soon` | waitlisted | in-app | yes | `my_sessions` |
 | Priority window open | `MSG-priority_window` | perk holders | in-app | yes | `new_sessions` |
 
 ### 1.4 During and after
@@ -87,7 +89,9 @@ the category it belongs to for preferences.
 | Calendar disconnected | `MSG-calendar_disconnected` | the member | in-app | **no** | `account` |
 | Data export ready | `MSG-export_ready` | the member | in-app, email | **no** | `account` |
 
-### 1.7 The eleven a member cannot switch off
+### 1.7 The seventeen a member cannot switch off
+
+> **Corrected under DEC-047:** the heading said eleven; the list below has always had seventeen keys and the list is authoritative (`REQ-NTF-003` names four and says "certain notifications"). Migration `0026`'s matrix carries all seventeen and `tests/rls/notify-contract.test.ts` pins them by name.
 
 `REQ-NTF-003` requires the non-optional set be **marked as such**, so it is listed once here rather
 than inferred from the tables:
@@ -148,6 +152,8 @@ export that does.
 - **A plain-text alternative** for every message. Some corporate clients strip HTML entirely.
 
 ### 3.2 The templates
+
+> **Corrected under DEC-047:** §1 gives 24 messages an email channel; this list had 22. `MSG-proposal_submitted` and `MSG-presenter_assigned` have templates since wave 2 (`worker/src/mail/`), and `tests/unit/mail-render.test.ts` diffs the template file against the matrix in migration `0026` so the gap cannot reopen quietly.
 
 | `MSG-*` | Arabic subject |
 |---|---|

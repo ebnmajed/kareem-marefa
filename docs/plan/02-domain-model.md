@@ -363,6 +363,8 @@ form-validation rule.
 #### `ENT-sessions`
 **Serves:** `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-003`, `REQ-SES-011`
 
+**Amended under DEC-047 (migration `0037`):** `search_vector tsvector generated always as (…ar_normalize(title)… ‖ …ar_normalize(abstract)…) stored`, with a GIN index and a trigram index on the normalised title (`REQ-DSC-003`).
+
 | Column | Type | Notes |
 |---|---|---|
 | `proposal_id` | `uuid references proposals(id)` | null when admin-created — `REQ-PRO-007` |
@@ -398,8 +400,11 @@ that can be bypassed. Indexes: `(org_id, state, starts_at)`, `(org_id, category_
 #### `ENT-session_state_transitions`
 **Serves:** `REQ-SES-003`, `REQ-PRO-006`, `REQ-SES-005`
 Append-only. `session_id`, `from_state`, `to_state`, `actor_id` (null when the clock did it),
-`is_manual boolean not null`, `reason text`, `occurred_at`.
-**Every transition writes a row.** A transition without one is a defect.
+`is_manual boolean not null`, `reason text`, `occurred_at` (`default clock_timestamp()` since
+migration `0024`, DEC-046 — rows from one transaction order by time alone).
+**Every transition writes a row.** A transition without one is a defect. **Every transition is a
+drawn edge of §6.2**: migration `0024`'s `sessions_guard_transition` trigger refuses any other
+change of `state` with `23514`, whoever the writer is.
 
 ### 4.4 RSVP
 
@@ -567,6 +572,8 @@ check ((target = 'comment') = (comment_id is not null))
 check ((target = 'photo') = (photo_id is not null))
 ```
 
+**Amended under DEC-047 (migration `0037`):** `photo_id` now carries its foreign key to `photos`, which `0010` left bare because the table did not exist.
+
 ### 4.8 Ratings
 
 #### `ENT-ratings`
@@ -622,6 +629,8 @@ rather than six.
 #### `ENT-points_ledger`
 **Serves:** `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-012`, DEC-016
 **Append-only. `revoke update, delete … from anon, authenticated, service_role`.**
+
+**Amended under DEC-046/DEC-047 (migration `0027`):** `occurred_at timestamptz not null default clock_timestamp()`; update and delete raise for every writer by trigger, except an org deletion's cascade.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -879,10 +888,14 @@ Index `(org_id, member_id, read_at nulls first, created_at desc)` — the unread
 Categories the member **cannot** disable are enforced in the send path and listed in `08`:
 certificate issued, seat promoted, session cancelled, session time or venue changed.
 
+**Amended under DEC-047 (migration `0026`):** `updated_at`, per the repo-wide `set_updated_at()` convention.
+
 #### `ENT-email_deliveries`
 **Serves:** `REQ-NTF-008`
 `member_id`, `key`, `provider_message_id`, `status delivery_status not null`, `error`,
 `sent_at`, `delivered_at`. Retained 180 days (OQ-019).
+
+**Amended under DEC-047 (migration `0026`):** `notification_id uuid references notifications on delete set null` — null when the message was email-only.
 
 #### `ENT-calendar_connections`
 **Serves:** `REQ-CAL-003`, `REQ-CAL-007`, A33
@@ -957,7 +970,7 @@ would be indexed as gibberish and would match nothing a member could type.
 | `before`, `after` | `jsonb` |
 | `reason` | `text` — mandatory for the actions that require one |
 | `ip`, `user_agent` | `inet`, `text` |
-| `occurred_at` | `timestamptz not null default now()` |
+| `occurred_at` | `timestamptz not null default clock_timestamp()` — per statement, not per transaction, so rows one transaction writes order by time alone (migration `0024`, DEC-046; was `now()`) |
 
 Indexes: `(org_id, occurred_at desc)`, `(org_id, actor_id, occurred_at desc)`,
 `(org_id, subject_type, subject_id)`. Retained **7 years** (OQ-019).
@@ -1222,9 +1235,19 @@ stateDiagram-v2
     in_progress --> cancelled
     completed --> cancelled: retroactively voided
     archived --> cancelled
+
+    submitted --> draft: presenter declines (REQ-PRO-007, DEC-046)
+    in_review --> draft: presenter declines
+    changes_requested --> draft: presenter declines
+    approved --> draft: presenter declines
 ```
 
-Three notes:
+Four notes:
+- **The four edges back to `draft` were added under DEC-046.** `REQ-PRO-007` says a presenter
+  "can decline, which returns the session to `draft`"; migration `0020` implements it and
+  migration `0024` makes the whole edge set a `before update` trigger on the table, so the
+  diagram had to say what the table enforces. A published session is not returned to draft by a
+  decline — people hold seats against it (`REQ-SES-009` is the path for a withdrawn presenter).
 - **`full` is not here.** It is `confirmed_count >= capacity`, derived at read time
   (`REQ-SES-003`).
 - The clock transitions are **idempotent** and never override a manual one (`REQ-SES-004`,

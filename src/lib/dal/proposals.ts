@@ -16,7 +16,7 @@ import { sessionClient } from "@/lib/dal/session";
 
 export type ProposalLevel = "introductory" | "intermediate" | "advanced";
 export type ProposalState = "draft" | "submitted" | "in_review" | "changes_requested" | "approved" | "rejected";
-export type NumeralSystem = "western" | "arabic";
+export type NumeralSystem = "western" | "arabic_indic";
 
 export interface ProposalCategory {
   id: string;

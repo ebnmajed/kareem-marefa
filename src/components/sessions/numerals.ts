@@ -9,7 +9,7 @@
 // The type is declared here, not imported from the DAL: this module is
 // imported by client components, and `src/lib/dal/*` is `server-only`.
 
-export type NumeralSystem = "western" | "arabic";
+export type NumeralSystem = "western" | "arabic_indic";
 
 const formatters = new Map<NumeralSystem, Intl.NumberFormat>();
 
@@ -17,7 +17,7 @@ const formatters = new Map<NumeralSystem, Intl.NumberFormat>();
 export function formatNumber(value: number, numerals: NumeralSystem): string {
   let f = formatters.get(numerals);
   if (!f) {
-    f = new Intl.NumberFormat(numerals === "arabic" ? "ar-u-nu-arab" : "ar-u-nu-latn");
+    f = new Intl.NumberFormat(numerals === "arabic_indic" ? "ar-u-nu-arab" : "ar-u-nu-latn");
     formatters.set(numerals, f);
   }
   return f.format(value);
@@ -31,7 +31,7 @@ export function formatNumber(value: number, numerals: NumeralSystem): string {
  * and «٦:٠٠ م» has to mean the clock on that room's wall whoever is looking.
  */
 export function formatDateTime(iso: string, numerals: NumeralSystem, timeZone: string, locale = "ar"): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic" ? "arab" : "latn"}`, {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic_indic" ? "arab" : "latn"}`, {
     dateStyle: "full",
     timeStyle: "short",
     timeZone,
@@ -48,7 +48,7 @@ export function formatDateTime(iso: string, numerals: NumeralSystem, timeZone: s
  * days to a process running in UTC.
  */
 export function formatTime(iso: string, numerals: NumeralSystem, timeZone: string, locale = "ar"): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic" ? "arab" : "latn"}`, {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-${numerals === "arabic_indic" ? "arab" : "latn"}`, {
     timeStyle: "short",
     timeZone,
   }).format(new Date(iso));

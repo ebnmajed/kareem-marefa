@@ -436,6 +436,13 @@ privileges rather than as UI: a presenter literally cannot set a date, even by c
 Admin updates to those columns go through an RPC that writes the state transition and fires the
 change notifications (`REQ-SES-009`).
 
+**The edge set is the table's, not any RPC's** (migration `0024`, DEC-046). `sessions_guard_transition`
+is a `before update of state` trigger that accepts exactly `02` §6.2's edges — including the
+presenter-decline return to `draft` (`REQ-PRO-007`) — and refuses everything else with `23514`,
+for every writer including the migration owner and `service_role`. An RPC that writes an edge the
+diagram does not draw fails its own test. Rows are born with a state and no edge, so there is no
+insert guard: `create_session()` is the only door for people (no insert grant, no insert policy).
+
 ### 5.3 RSVP
 
 | Table | select | insert | update | delete | Notes |
@@ -959,6 +966,24 @@ expire in 5 minutes for sources and 60 minutes for page images, which are re-req
 
 ---
 
+### 6.9 The bucket policies as promoted — migration `0037` (wave 2)
+
+The nine policies below are the ones `0037_m5_schema.sql` creates on `storage.objects`; their
+bodies are the prefix rules of §6.1–§6.6 and are read there, not restated here. The
+`policy-diff` gate keys `storage.objects` by schema (DEC-044) and matches these names.
+
+```sql
+create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006) · since 0054 also the pre-finalize self-read: whoever may WRITE the path may read it back before a material_versions row exists (the complete step sniffs the landed bytes)
+create policy "materials_storage_write"      on storage.objects for insert to authenticated;  -- org prefix · sessions/<id> · presenter or staff
+create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
+create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012)
+create policy "photos_storage_write"         on storage.objects for insert to authenticated;  -- org prefix · has_checked_in() or presenter or staff (REQ-EVT-009)
+create policy "design_assets_storage_read"   on storage.objects for select to authenticated;  -- org prefix
+create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
+create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
+create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
+```
+
 ## 7. Realtime authorization
 
 **Added by DEC-022.** Under DEC-020 this section was unnecessary — the browser could not reach
@@ -1144,6 +1169,159 @@ generated suite is the highest-value test in the product.
 | `RPC-transition_session.edges` | Only `02` §6.2's edges are accepted — starting a draft, completing a published session, archiving anything but a completed one are all refused; `reopen` is archived → completed (`cancelled` has no outgoing edge). |
 | `RPC-transition_session.cancel` | Cancelling requires a reason, keeps the page and the row, and is reachable from `completed` (`REQ-SES-010`). |
 | `RPC-transition_session.closes_check_in` | Completing early — or cancelling — closes the check-in window in the same transaction (`REQ-CHK-004`). |
+| `POL-sessions.transition.legal` | Every edge of `02` §6.2, and the presenter-decline return to `draft` (`REQ-PRO-007`), is accepted; `draft → published`, `approved → in_progress`, `completed → draft`, `published → draft` and anything out of `cancelled` are refused with `23514` — even by the migration owner, past every RPC (migration `0024`). |
+| `POL-sessions.transition.rpcs_pass` | `publish_session()`'s walk, both clock functions, `transition_session()` and the decline trigger all still succeed through the guard (migration `0024`). |
+| `POL-evidence.occurred_at.ordered` | `audit_log` and `session_state_transitions` rows written by one transaction carry strictly increasing `occurred_at`; the publish chain's rows order by time alone (migration `0024`, DEC-046). |
+| `RPC-enqueue_job.definer_only` | No client role can call `public.enqueue_job()` — `anon`, `authenticated` and a stale admin are refused on the grant; a `security definer` RPC and the worker's role can (migration `0025`, DEC-046). |
+| `RPC-enqueue_job.replace` | Enqueuing twice with one key leaves **one** pending job, moved to the later `run_at` — a rescheduled reminder moves rather than duplicating (`REQ-NTF-004`, `11` §1.1). |
+| `RPC-enqueue_job.loud` | Without the `graphile_worker` schema the call raises `3F000` naming the fix; a job is never silently dropped. A task name that is not a snake_case identifier is refused with `22023`. |
+| `POL-notifications.insert` | **No role** may insert: job-written through `notify()`. (migration `0026`). |
+| `POL-notifications.update.read_at` | A member marks their own row read; `key`, `payload` and `member_id` are outside the column grant. (migration `0026`). |
+| `POL-notification_preferences.self` | A member reads and writes only their own preferences. (migration `0026`). |
+| `POL-notification_preferences.not_switchable` | A row disabling `certificates`, `moderation` or `account` is rejected by the constraint (`08` §2). (migration `0026`). |
+| `POL-notification_templates.select.admin` | A plain member reads no template; the org admin does. (migration `0026`). |
+| `POL-notification_templates.required_fields` | A template whose body omits a declared `required_fields` entry is refused **before it is saved** (`REQ-NTF-007`). (migration `0026`). |
+| `POL-notification_templates.matrix` | A template for a key or channel absent from `08` §1 is refused (`REQ-NTF-002`). (migration `0026`). |
+| `POL-email_deliveries.select.admin` | An org admin sees bounces with the reason; a member sees nothing, not even their own. (migration `0026`). |
+| `POL-calendar_events.select.self` | A member sees only their own sync rows; insert and update have no policy and no grant. (migration `0026`). |
+| `POL-scoring_rules.select` | any org member reads the catalogue (REQ-PTS-003) (migration `0027`). |
+| `POL-scoring_rules.update.admin` | a moderator changing a point value is rejected (migration `0027`). |
+| `POL-scoring_rules.catalogue` | inserting action_key = 'rsvp' is rejected (REQ-PTS-010) (migration `0027`). |
+| `POL-scoring_rules.immutable_key` | action_key and actor cannot be changed by update (column grant) (migration `0027`). |
+| `POL-scoring_rules.history` | a rule edit appends to scoring_config_history (scope='scoring') (migration `0027`). |
+| `POL-points_ledger.insert` | direct insert rejected for authenticated AND service_role (migration `0027`). |
+| `POL-points_ledger.update` | update and delete raise for every client role including service_role (migration `0027`). |
+| `POL-points_ledger.select` | a member reads only their own rows; an admin reads the org's (migration `0027`). |
+| `POL-points_ledger.idempotency` | awarding the same source event twice inserts one row (proven again once award_points() exists) (migration `0027`). |
+| `POL-points_balances.select` | org-wide read, no client writes (migration `0027`). |
+| `POL-badges.select` · `POL-badges.update.admin` | P1/P2, no delete (retiring ≠ deleting, REQ-REC-001) (migration `0027`). |
+| `POL-levels.select` · `POL-levels.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-streak_rules.select` · `POL-streak_rules.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-perks.select` · `POL-perks.update.admin` | P1/P2, no delete (migration `0027`). |
+| `POL-member_badges.select` | org-wide read, no client writes (job/admin RPC only) (migration `0027`). |
+| `POL-member_perks.select` | same (migration `0027`). |
+| `POL-streak_awards.select` | same (migration `0027`). |
+| `POL-leaderboard_snapshots.select` | org-wide read, no client writes (migration `0027`). |
+| `POL-leaderboard_snapshots.immutable` | a final (is_final) snapshot refuses update and delete, for every role including the owner (migration `0027`). |
+| `POL-leaderboard_entries.select.opt_out` | an opted-out member is absent from others' view, present in their own; company rows unaffected (REQ-LDR-008) (migration `0027`). |
+| `POL-leaderboard_entries.immutable` | entries of a final snapshot refuse update and delete (migration `0027`). |
+| `POL-orgs.seed_scoring` | inserting a row into orgs seeds all five M4 catalogues for it (proven on the fixture orgs, which insert into orgs directly) (migration `0027`). |
+| `RPC-award_points.definer_only` | no client role can call it; only service_role (the worker) and the function owner can (migration `0028`). |
+| `RPC-award_points.silent_skip` | a disabled rule, an exhausted cap, or a live cooldown award nothing and raise nothing (migration `0028`). |
+| `RPC-award_points.idempotent` | the same (rule, source, source_id, member) quadruple inserts at most one row, via on conflict do nothing (migration `0028`). |
+| `POL-check_in.award_points_hook` | a successful check-in enqueues exactly one `award_points` job, keyed `pts:check_in:<check_in.id>` (migration `0028`). |
+| `POL-ratings.award_points_hook` | a rating insert enqueues one `award_points` job keyed `pts:rating:<rating.id>` (migration `0029`). |
+| `POL-comments.award_points_hook` | a comment insert (top-level or a reply) enqueues one `award_points` job keyed `pts:comment:<comment.id>` (migration `0029`). |
+| `RPC-notification_send_context.definer_only` | `anon`, `authenticated` and an org admin are refused on the grant: it returns another member's email address. (migration `0030`). |
+| `RPC-notification_send_context.recheck` | It reports the preference as it stands NOW, not as it stood when the job was enqueued (`11` §2.6). (migration `0030`). |
+| `RPC-record_email_delivery.append` | The worker records a send it has not made yet as `queued`, then moves it to `sent`, `delivered`, `bounced` or `failed` — no send is unlogged. (migration `0030`). |
+| `RPC-update_email_delivery_by_provider.scoped` | The provider webhook can only move a row it can name by `provider_message_id`, and cannot invent one. (migration `0030`). |
+| `POL-proposals.award_points_hook` | an approval enqueues one proposal_accepted award_points job per accepted presenter (proposer included), keyed pts:proposal_accepted:<proposal_id>:<member_id> (migration `0031`). |
+| `POL-sessions.completion_fanout` | a session reaching `completed` enqueues one evaluate_no_shows job (key noshow:<session_id>) and, per accepted session presenter, two award_presenter_points jobs (immediate and +48h), keyed pts:presenter:<session_id>:<member_id> and the same with a :rating_bonus suffix (migration `0031`). |
+| `RPC-adjust_points_manually.admin_only` | a moderator and a stale admin are refused; a fresh admin succeeds; a caller-error (empty reason, zero amount, another org's member) raises before anything is written (migration `0032`). |
+| `RPC-adjust_points_manually.audited` | the ledger row and the audit_log row commit in the same transaction (migration `0032`). |
+| `POL-comments.reversal_hook` | a moderator's removal of a comment writes a compensating reversal row for whatever the original comment award was (nothing, if it was capped or cooled down), and separately evaluates the off-by-default comment_removed penalty (migration `0032`). |
+| `RPC-audit_balances.service_role_only` | no client role may call it (migration `0033`). |
+| `RPC-audit_balances.no_self_heal` | a divergence is reported, not corrected; points_balances is unchanged by calling it (migration `0033`). |
+| `RPC-rebuild_points_balances.reproduces` | truncate + resum always reproduces the same totals a correct rollup would already show (migration `0033`). |
+| `RPC-cancel_job.definer_only` | No client role can remove a queued job; a definer RPC and the worker can. (migration `0034`). |
+| `RPC-schedule_session_reminders.moves` | Rescheduling a session leaves ONE pending job per (member, offset), at the new time — not a second set (`REQ-NTF-004`). (migration `0034`). |
+| `RPC-schedule_session_reminders.past` | An offset whose moment has passed is REMOVED, not left to fire the instant the worker sees it. (migration `0034`). |
+| `RPC-schedule_session_reminders.confirmed_only` | A waitlisted member has no reminders; being promoted gives them the full set. (migration `0034`). |
+| `POL-rsvps.notice` | Reserving notifies the member, promotion off the waitlist notifies them on both channels (`REQ-RSV-004`), and cancelling removes their reminder keys. (migration `0034`). |
+| `RPC-send_reminder_notification.still_due` | A reminder for a seat that was cancelled, or for a session that was, sends nothing — the job may outlive the reason for it. (migration `0035`). |
+| `RPC-send_rsvp_nudge.non_responders` | Only members with NO rsvp row are nudged, and never a presenter of the session. (migration `0035`). |
+| `RPC-send_rating_prompt.unrated` | Filtered at SEND time: a member who rated in the first hour is not prompted (`REQ-RAT-007`). (migration `0035`). |
+| `RPC-send_*.definer_only` | All three are the worker's; no client role may fan out a notification to an org. (migration `0035`). |
+| `POL-sessions.change_notice` | Moving a published session notifies confirmed AND waitlisted members with both values, moves their reminders, and enqueues one calendar upsert per confirmed seat. (migration `0036`). |
+| `POL-sessions.change_notice.non_optional` | `MSG-session_changed` and `MSG-session_cancelled` reach a member who muted `my_sessions` on both channels (`08` §1.7). (migration `0036`). |
+| `POL-sessions.change_notice.unpublished` | Editing a draft notifies nobody: there is nobody holding a seat to mislead. (migration `0036`). |
+| `POL-sessions.cancel_notice` | Cancelling removes every reminder key and the nudge, enqueues a calendar delete per seat, and tells confirmed and waitlisted members why. (migration `0036`). |
+| `POL-sessions.publish_notice` | Publishing announces the session once, to active members, and never twice for one session. (migration `0036`). |
+| `POL-materials.select.phase` | An `after` material is invisible to a member until the session is `completed`; visible to the presenter throughout. (migration `0037`). |
+| `POL-materials.insert.presenter` | A member who is not a presenter cannot add a material. (migration `0037`). |
+| `POL-materials.update.window` | A presenter removes their own material before completion; the same presenter is refused after completion; an admin removes it anyway. (migration `0037`). |
+| `POL-materials.hard_delete.admin_only` | A member and a presenter are refused a hard `delete`; an admin succeeds. (migration `0037`). |
+| `POL-material_versions.select.phase` | Follows the parent material's phase gate exactly. (migration `0037`). |
+| `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006); follows the parent's phase gate with no `allow_download` conjunct. (migration `0037`). |
+| `POL-session_tasks.write.presenter` | A member who is not a presenter cannot insert, update or delete a session task; the presenter and an admin can. (migration `0037`). |
+| `POL-task_completions.self` | A member reads and writes only their own completions; a presenter reads the session's (migration `0037`). |
+| `RPC-store_calendar_connection.self` | A member can store only their OWN connection: the function takes no member id and reads `auth_member_id()`. (migration `0038`). |
+| `RPC-store_calendar_connection.write_only` | Storing a token does not make it readable — the same member calling `select *` afterwards still gets `42501`. (migration `0038`). |
+| `RPC-calendar_tokens_for_job.worker_only` | The ONLY function that returns a token, and no client role may call it (`03` §5.9c, `11` §2.2). (migration `0038`). |
+| `RPC-record_calendar_sync.idempotent` | Running it twice for one (member, session) leaves ONE row — `REQ-CAL-004`'s idempotency is the constraint, not job logic. (migration `0038`). |
+| `POL-calendar_connections.disconnect_notice` | Deleting the row notifies the member that existing events will no longer update (`MSG-calendar_disconnected`, non-optional). (migration `0038`). |
+| `POL-comments.reply_notice` | A reply notifies the parent's author, and replying to yourself notifies nobody. (migration `0039`). |
+| `POL-comments.mention_notice` | Every member in `mentions` is notified once; a mention of yourself, of the parent's author you already replied to, or of someone in another org, is not. (migration `0039`). |
+| `POL-comments.removal_notice` | A moderator removing a comment tells its author (`MSG-content_removed`, non-optional). (migration `0039`). |
+| `POL-proposals.decision_notice` | Approved, rejected and changes-requested each notify the proposer AND the co-presenters, carrying `decision_reason`. (migration `0039`). |
+| `POL-proposal_presenters.invite_notice` | Being named as a co-presenter is non-optional; the decline notifies the proposer. (migration `0039`). |
+| `POL-session_presenters.assigned_notice` | An assigned presenter is told (`REQ-PRO-007`). (migration `0039`). |
+| `POL-reports.filed_notice` | A report reaches every moderator and admin of the org, and nobody else. (migration `0039`). |
+| `POL-org_settings.reminder_reschedule` | Changing `reminder_offsets_minutes` removes every pending job under an offset that is no longer configured and adds one per new offset, for every confirmed seat in the org — no duplicates and no orphans. (migration `0040`). |
+| `POL-org_settings.prompt_delay_reschedule` | Changing `rating_prompt_delay_minutes` moves the pending `rate:{session}` job of every completed session. (migration `0040`). |
+| `RPC-evaluate_streaks.idempotent` | a member who already has a period's streak_awards row is never awarded twice for it (migration `0041`). |
+| `RPC-evaluate_badges.idempotent` | member_badges' unique constraint makes a re-run a no-op; a `manual` metric badge is never auto-awarded (only an admin RPC can grant it — not yet built) (migration `0041`). |
+| `RPC-evaluate_levels_perks.no_demotion` | a member's current_level_id never moves to a lower sort_order (REQ-REC-003) (migration `0041`). |
+| `RPC-evaluate_levels_perks.perk_materialisation` | member_perks reflects level/badge state without a recursive check on the RSVP hot path (migration `0041`). |
+| `RPC-*.service_role_only` | no client role may call any of the three (migration `0041`). |
+| `RPC-snapshot_leaderboard.service_role_only` | no client role may call it (migration `0042`). |
+| `RPC-snapshot_leaderboard.frozen_denominator` | active_member_count on a company snapshot never changes after it is taken, even if a member is later deactivated (migration `0042`). |
+| `RPC-snapshot_leaderboard.provisional_replace` | re-running for the same (org, kind, period_start, period_end, category_id) before it is final replaces the entries; after is_final it cannot be re-run at all (the table's own immutability trigger, 0027, refuses the necessary delete) (migration `0042`). |
+| `POL-leaderboard_entries.opt_out_at_write` | an opted-out member's row is still written (REQ-LDR-008: they still count toward their company's total and still see their own rank) — the RLS policy is what hides it from other members, not the snapshot itself (migration `0042`). |
+| `RPC-photo_takedowns_hide.notifies` | Inserting a takedown writes an in-app `MSG-photo_hidden` notification to the photo's uploader, whose payload names the photo and session but never the requester. (migration `0043`). |
+| `RPC-all_time_leaderboard.opt_out` | an opted-out member is absent from another member's call, present in their own; a deactivated member never appears at all (unlike a snapshot, which has no "still a member" concept to check) (migration `0044`). |
+| `POL-rsvps.priority_window` | a member without the perk is refused during the priority window; a member with it is not; after the window everyone is treated identically, whether or not they hold it (migration `0045`). |
+| `RPC-finalize_material_upload.authority` | A member who is neither the session's presenter nor an org admin is refused `42501`. (migration `0046`). |
+| `RPC-finalize_material_upload.size` | A byte size over the org's `limit_document_mb`/`limit_audio_mb`/`limit_image_mb` for the material's kind is refused `23514`, naming the limit. (migration `0046`). |
+| `RPC-finalize_material_upload.enqueues` | A `pdf`/`powerpoint` material enqueues `convert_document` keyed `conv:{version_id}`; an `image`/`audio`/`keynote` material does not, and its `render_status` is `not_applicable`. (migration `0046`). |
+| `RPC-finalize_material_upload.version_number` | A second call for the same material inserts version 2 and moves `current_version_id`, leaving version 1's row and its pages untouched (`REQ-MAT-010`). (migration `0046`). |
+| `RPC-award_badge_manually.admin_only` | a moderator and a stale admin are refused (migration `0047`). |
+| `RPC-award_badge_manually.reason_mandatory` | an empty reason raises before anything is written (member_badges' own check constraint backs this up structurally) (migration `0047`). |
+| `RPC-award_badge_manually.idempotent` | awarding the same badge twice to the same member is a no-op, not an error (migration `0047`). |
+| `RPC-record_material_conversion.service_role_only` | `authenticated` and `anon` are both refused on the grant; `service_role` succeeds. (migration `0048`). |
+| `RPC-record_material_conversion.enqueues` | A successful call with a page count enqueues `render_pages` keyed `pages:{version_id}`; a failed call (or one with no page count) enqueues nothing. (migration `0048`). |
+| `RPC-record_material_conversion.superseded` | A call naming a version that is no longer `current_version_id` changes nothing on `materials`, but still enqueues (the version's own row is still worth rendering, if it somehow gets there — in practice the job that would do that was itself for the version that superseded it). (migration `0048`). |
+| `RPC-record_material_pages.service_role_only` | Same as above. (migration `0048`). |
+| `RPC-record_material_pages.upsert` | A second call for the same version and page number replaces that page's paths rather than duplicating the row (`unique (material_version_id, page_number)`, 0037). (migration `0048`). |
+| `RPC-record_material_pages.ready` | A successful call moves `render_status` to `ready`. (migration `0048`). |
+| `RPC-record_material_download.admin_only` | A member and a moderator are both refused `42501`; an admin writes one audit row naming the material and the version. (migration `0049`). |
+| `POL-storage.materials.preupload_self_read` | Before a material's `material_versions` row exists, only whoever `materials_storage_write` would have let write to that exact prefix — the session's presenter, the proposal's owner, or staff — can read the object back; nobody else, and the ordinary phase/`allow_download` branches are unaffected once the version row exists. (migration `0054`). |
+| `POL-materials.proposal.visibility` | A proposal's own materials are visible to its proposer, an accepted co-presenter, and staff — never to a plain member — until the proposal becomes a session. (migration `0053`). |
+| `POL-materials.proposal.write` | The same three may upload/update a proposal's materials; nobody else. (migration `0053`). |
+| `RPC-carry_over_proposal_materials.trigger` | A session inserted with a `proposal_id` reassigns every material with that `proposal_id` to the new session (`session_id` set, `proposal_id` cleared), leaving `phase`/`allow_download` untouched. (migration `0053`). |
+| `POL-storage.materials.proposal_write` | The `materials` bucket's write policy accepts a `{org}/proposals/{proposal_id}/materials/…` prefix for the proposal's owner/co-presenter/staff, the same shape the `{org}/sessions/{session_id}/materials/…` prefix already had. (migration `0053`). |
+| `POL-materials.phase_change.audited` | Changing `phase` writes one `audit_log` row naming the old and new value; changing `title` or `allow_download` alone writes none. (migration `0052`). |
+| `RPC-initiate_photo_processing.authority` | A member with a confirmed RSVP and no check-in, who is not the session's presenter or org staff, is refused `42501` — REQ-EVT-009, mirroring `photos_storage_write`. (migration `0050`). |
+| `RPC-initiate_photo_processing.size` | A declared byte size over the org's `limit_image_mb` is refused `23514`, naming the limit — the courtesy check; `record_photo_upload`'s is the control, against the REAL (post-strip) size. (migration `0050`). |
+| `RPC-initiate_photo_processing.enqueues` | A successful call enqueues `process_photo` keyed `photo:{photo_id}`. (migration `0050`). |
+| `RPC-record_photo_upload.service_role_only` | `authenticated` and `anon` are both refused on the grant; `service_role` succeeds. (migration `0050`). |
+| `RPC-record_photo_upload.exif_stripped` | Every row this function inserts has `exif_stripped = true` — it is the ONLY door that can ever create a `photos` row (03 §5.6c's `with check (exif_stripped)` says the same thing again, as a constraint rather than a door). (migration `0050`). |
+| `RPC-record_photo_upload.size_envelope` | A real byte size over the org's `limit_image_mb` returns `{status: 'file_too_large', limit_mb}` and inserts no row, rather than raising (DEC-043). (migration `0050`). |
+| `RPC-record_photo_upload.idempotent` | A second call with the same `p_photo_id` (a retried job) returns the already-inserted row's envelope rather than erroring on the primary key. (migration `0050`). |
+| `POL-photos.restore.audited` | `hidden_at` going from set to null writes one `audit_log` row naming the photo. (migration `0051`). |
+| `POL-photos.removal.audited` | `removed_at` going from null to set writes one `audit_log` row naming the photo and `removed_by`. (migration `0051`). |
+| `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
+| `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
+| `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
+| `POL-photo_takedowns.insert` | Inserting hides the photo in the same transaction, before any other read. (migration `0037`). |
+| `POL-photo_takedowns.restore` | A moderator resolving with `restored` unhides the photo; `resolved_by` is stamped, never trusted from the client. (migration `0037`). |
+| `POL-photos.select.hidden` | A hidden photo is invisible to a member, visible to staff. (migration `0037`). |
+| `POL-tags.insert.admin` · `POL-tags.delete.admin` | A member's insert is rejected; an admin's succeeds; a moderator cannot delete a tag, an admin can. (migration `0037`). |
+| `POL-session_tags.write.presenter` | A non-presenter member cannot tag a session they do not present; the presenter and an admin can. (migration `0037`). |
+| `POL-bookmarks.self` | A member reads and writes only their own bookmarks; another member's bookmark is invisible. (migration `0037`). |
+| `POL-search.ar_normalize` | «معرفات» and «مُعرِّفات» normalise to the same string; «إدارة» and «ادارة» too. (migration `0037`). |
+| `POL-storage.materials.prefix` | An authenticated write to another org's prefix is rejected. (migration `0037`). |
+| `POL-storage.materials.download` | With `allow_download = false`, the joined `materials` bucket read policy denies a member (but not the presenter or staff). (migration `0037`). |
+| `POL-storage.material_pages.phase` | An `after` page image is denied to a member before completion, regardless of `allow_download`. (migration `0037`). |
+| `POL-storage.photos.hidden` | A hidden photo's object is denied to a member, permitted to staff. (migration `0037`). |
+| `POL-storage.exports.write` | An authenticated client cannot write to `exports`; only `service_role` can (bypassrls, not a policy). (migration `0037`). |
+| `POL-storage.fonts.read` | Any authenticated member reads the `fonts` bucket with no org prefix required. (migration `0037`). |
+| `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
+| `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
+| `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |
+| `RPC-notify.definer_only` | `anon`, `authenticated` and an org admin are all refused on the grant; a definer RPC and `service_role` succeed. (migration `0026`). |
+| `RPC-notify.enqueues_in_transaction` | The `notify:{message_id}` job and the `notifications` row commit or roll back together (`02` §4.17). (migration `0026`). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |

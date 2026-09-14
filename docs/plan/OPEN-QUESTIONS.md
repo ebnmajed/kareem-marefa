@@ -158,6 +158,7 @@ question closes with no change to any document. If not, the entry names what mov
   worse experience than not getting one. A head start gives the perk real value without taking
   anything from anyone.
 - **If answered differently:** `01-prd.md` `REQ-RSV-*`, `05-scoring-engine.md`.
+- **Wave 2 (DEC-047):** implemented in migration `0045` as the default describes, **gated on the org's `priority_rsvp` perk being enabled**, and the perk ships disabled (`0027`): with nobody holding it a window only closed general RSVP for a day after every publish. An admin turns it on when the org wants the head start.
 
 ## OQ-013 — Who can see the live رمز الحضور?
 
@@ -342,6 +343,10 @@ question closes with no change to any document. If not, the entry names what mov
   converter's current security model assumes the former).
 - **If answered differently:** a host change is a configuration change and an image push; the
   only code change is the converter token if the host has no private networking.
+- **Owner's answer at the start of wave 2 (2026-09-14, DEC-046):** the worker stays a
+  host-agnostic Docker image running locally and in CI; the production host is decided at Launch
+  with PR C. Nothing in wave 2 waits on hosting; the `graphile_worker` schema is installed wherever
+  the RLS suite runs. The question stays open only for the host's name.
 
 ## OQ-028 — Does `style-src` admit inline style attributes on the platform routes?
 

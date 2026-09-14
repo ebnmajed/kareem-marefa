@@ -95,6 +95,13 @@ jobs:
             psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      # DEC-046, 02 §4.17: RPCs enqueue through public.enqueue_job() (0025),
+      # which calls graphile-worker's own schema. The library installs it;
+      # nothing under supabase/migrations/ models it. Same step as
+      # scripts/rls.mjs runs locally after `supabase db reset`.
+      - name: install the graphile_worker schema
+        run: npx graphile-worker --schema-only -c postgres://postgres:postgres@localhost:5432/postgres
+
       # The highest-value suite in the product (13 §3): the generated isolation
       # sweep over every table, the per-policy cases from 03 §8.2, the auth
       # hook, the RPCs. Local Supabase is the source of truth; this container
@@ -262,6 +269,22 @@ jobs:
           echo "probe refused the pooled connection, as it must"
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:6432/postgres
+
+      # DEC-046: the worker is a host-agnostic image, locally and in CI, until
+      # Launch picks the host. Build it and run the same probe INSIDE it, so
+      # the image that would ship is the one proven. Built from the repo root
+      # like the converter (worker/Dockerfile).
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: worker/Dockerfile
+          tags: kareem-worker
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: the image's probe passes on a session-mode connection
+        run: docker run --rm --network host -e DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres kareem-worker node worker/dist/index.js --probe-only
 
   # ── main stays deployable with the platform unconfigured. DEC-038. ────
   # Production has no NEXT_PUBLIC_ Supabase variables until PR C. This job

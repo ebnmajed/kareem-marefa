@@ -1,0 +1,36 @@
+{
+  "search": {
+    "filters": {
+      "queryLabel": "Search for a session",
+      "categoryLabel": "Category",
+      "venueLabel": "Venue",
+      "companyLabel": "Company",
+      "levelLabel": "Level",
+      "languageLabel": "Session language",
+      "presenterLabel": "Presenter",
+      "dateFromLabel": "From date",
+      "dateToLabel": "To date",
+      "any": "Any",
+      "apply": "Apply",
+      "clearAll": "Clear all",
+      "level": {
+        "introductory": "Introductory",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "language": {
+        "ar": "Arabic",
+        "en": "English"
+      }
+    },
+    "bookmarkButton": {
+      "add": "Add to bookmarks",
+      "remove": "Remove from bookmarks"
+    },
+    "bookmarksPage": {
+      "heading": "Bookmarks",
+      "empty": "You have not bookmarked any session yet.",
+      "count": "{count, plural, zero {No bookmarked sessions} one {One bookmarked session} two {Two bookmarked sessions} few {{value} bookmarked sessions} many {{value} bookmarked sessions} other {{value} bookmarked sessions}}"
+    }
+  }
+}

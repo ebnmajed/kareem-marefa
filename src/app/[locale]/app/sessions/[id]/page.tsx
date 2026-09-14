@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
+import { AddToCalendar } from "@/components/calendar/add-to-calendar";
+import { Materials } from "@/components/materials/list";
+import { Photos } from "@/components/photos/gallery";
+import { Tasks } from "@/components/tasks/panel";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
@@ -182,6 +186,9 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           On desktop it is the sticky rail 09 asks for. */}
       <aside className="mt-8 border-t border-edge pt-4 md:sticky md:top-6 md:mt-0 md:border-t-0 md:pt-0">
         <RsvpPanel sessionId={session.id} memberId={me.memberId} locale={locale} />
+        {/* The notify slot (TEAM.md §2, wave 2): ICS + add-to-calendar links, REQ-CAL-001/002.
+            Renders nothing for an unscheduled or cancelled session. */}
+        <AddToCalendar sessionId={session.id} memberId={me.memberId} locale={locale} />
 
         {session.capacity !== null ? (
           <p className="mt-3 text-body-sm text-fg-muted">
@@ -219,6 +226,30 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           <p className="mt-3 whitespace-pre-line text-body text-fg-body">
             <bdi>{session.abstract}</bdi>
           </p>
+        </section>
+        {/* 6. مهام ما قبل الجلسة — the content slot for tasks (REQ-TSK-001…005): reminder-only,
+            never consulted by check-in; presenters and admins add them inline. */}
+        <section aria-labelledby="tasks" className="mt-10">
+          <h2 id="tasks" className="text-h2 text-fg-heading">
+            {t("tasksLabel")}
+          </h2>
+          <Tasks sessionId={session.id} memberId={me.memberId} locale={locale} />
+        </section>
+        {/* 7. المواد — the content slot (TEAM.md §2, wave 2): the page owns the
+            landmark and the heading; the list is phase-gated by its own read policy. */}
+        <section aria-labelledby="materials" className="mt-10">
+          <h2 id="materials" className="text-h2 text-fg-heading">
+            {t("materialsLabel")}
+          </h2>
+          <Materials sessionId={session.id} memberId={me.memberId} locale={locale} />
+        </section>
+        {/* 9. الصور — the content slot for photos (REQ-EVT-009…015): checked-in members
+            upload, the takedown hides instantly; the gallery is gated by its own read policy. */}
+        <section aria-labelledby="photos" className="mt-10">
+          <h2 id="photos" className="text-h2 text-fg-heading">
+            {t("photosLabel")}
+          </h2>
+          <Photos sessionId={session.id} memberId={me.memberId} locale={locale} />
         </section>
 
         {/* 6, 7 and 9 — المهام التحضيرية, المواد and الصور are M5 (`content`). */}
