@@ -33,9 +33,9 @@ const NAV_ITEMS: NavItem[] = [
   { key: "categories", href: "/app/admin/categories", adminOnly: true, built: true },
   { key: "companies", href: "/app/admin/companies", adminOnly: true, built: true },
   { key: "members", href: "/app/admin/members", adminOnly: true, built: true },
-  { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: false },
-  { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: false },
-  { key: "moderationReports", href: "/app/admin/moderation/reports", adminOnly: false, built: false },
+  { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: true },
+  { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: true },
+  { key: "moderationReports", href: "/app/admin/moderation/reports", adminOnly: false, built: true },
   { key: "scoring", href: "/app/admin/scoring", adminOnly: true, built: true },
   { key: "recognition", href: "/app/admin/recognition", adminOnly: true, built: true },
   // designer's — admin-only per REQ-ADM-013, listed here so their pages

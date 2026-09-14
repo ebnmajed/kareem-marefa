@@ -325,6 +325,37 @@
         "presenter_cannot_check_in": "A session's presenter does not check in to it.",
         "unknown": "That could not be recorded — try again."
       }
+    },
+    "moderation": {
+      "commentsTitle": "Reported comments",
+      "commentsIntro": "Open reports on comments. The comment stays visible until you decide.",
+      "commentsEmpty": "No open comment reports.",
+      "photosTakedownTitle": "Photo takedown requests",
+      "photosTakedownIntro": "Photos already hidden at a member's request, waiting on your review.",
+      "photosTakedownEmpty": "No open takedown requests.",
+      "photosReportsTitle": "Reported photos",
+      "photosReportsIntro": "Open reports on photos that have not been hidden yet. The photo stays visible until you decide.",
+      "photosReportsEmpty": "No open photo reports.",
+      "reporterLabel": "Reporter",
+      "requesterLabel": "Requested by",
+      "uploaderLabel": "Uploaded by",
+      "sessionLabel": "Session",
+      "reasonGiven": "Reported reason",
+      "age": "{count, plural, =0 {arrived today} one {a day ago} other {{value} days ago}}",
+      "commentDeletedNote": "This comment has already been removed.",
+      "remove": "Remove",
+      "dismiss": "Dismiss the report",
+      "restore": "Restore",
+      "reasonLabel": "The reason recorded in the audit log",
+      "reasonHint": "Required for a removal, and never reaches the content's owner.",
+      "send": "Send",
+      "done": "Decision recorded.",
+      "error": {
+        "not_authorized": "You do not have permission for this action.",
+        "reason_required": "Write the reason first.",
+        "not_found": "That item could not be found — it may already have been handled.",
+        "unknown": "That could not be carried out — try again."
+      }
     }
   }
 }

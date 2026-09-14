@@ -325,6 +325,37 @@
         "presenter_cannot_check_in": "مُقدِّم الجلسة لا يسجّل حضوره فيها.",
         "unknown": "تعذّر تسجيل الحضور — حاول مرة أخرى."
       }
+    },
+    "moderation": {
+      "commentsTitle": "التعليقات المُبلَّغ عنها",
+      "commentsIntro": "بلاغات مفتوحة على تعليقات. التعليق يبقى ظاهرًا حتى تقرر.",
+      "commentsEmpty": "لا بلاغات مفتوحة على تعليقات.",
+      "photosTakedownTitle": "طلبات إخفاء الصور",
+      "photosTakedownIntro": "صور أُخفيت فورًا بطلب من أحد الأعضاء، بانتظار مراجعتك.",
+      "photosTakedownEmpty": "لا طلبات إخفاء مفتوحة.",
+      "photosReportsTitle": "الصور المُبلَّغ عنها",
+      "photosReportsIntro": "بلاغات مفتوحة على صور لم تُخفَ بعد. الصورة تبقى ظاهرة حتى تقرر.",
+      "photosReportsEmpty": "لا بلاغات مفتوحة على صور.",
+      "reporterLabel": "المُبلِّغ",
+      "requesterLabel": "طالب الإخفاء",
+      "uploaderLabel": "رفعها",
+      "sessionLabel": "الجلسة",
+      "reasonGiven": "سبب البلاغ",
+      "age": "{count, plural, zero {وصل اليوم} one {منذ يوم} two {منذ يومين} few {منذ {value} أيام} many {منذ {value} يومًا} other {منذ {value} يوم}}",
+      "commentDeletedNote": "أُزيل هذا التعليق بالفعل.",
+      "remove": "أزل",
+      "dismiss": "تجاهل البلاغ",
+      "restore": "أعد الإظهار",
+      "reasonLabel": "السبب الذي يُسجَّل في سجل التدقيق",
+      "reasonHint": "مطلوب عند الإزالة، ولا يصل صاحب المحتوى.",
+      "send": "أرسل",
+      "done": "تم تنفيذ القرار.",
+      "error": {
+        "not_authorized": "لا تملك صلاحية هذا الإجراء.",
+        "reason_required": "اكتب السبب أولًا.",
+        "not_found": "تعذّر العثور على العنصر — ربما عولج بالفعل.",
+        "unknown": "تعذّر تنفيذ الإجراء — حاول مرة أخرى."
+      }
     }
   }
 }
