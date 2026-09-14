@@ -1426,6 +1426,12 @@ generated suite is the highest-value test in the product.
 | `POL-reminder_message_key.tolerance_band` | `reminder_message_key()` picks a fixed reminder message within ±20% of its offset and `MSG-reminder_generic` for anything else (`08` §1.2's fourth message, DEC-047). (migration `0062`). |
 | `POL-reminder_message_key.default_unaffected` | Every default org offset still maps to the message it mapped to before. (migration `0062`). |
 | `POL-notification_matrix.generic_key_accepted` | `MSG-reminder_generic` is in the matrix under `reminders`, so a template for it is accepted and a reminder carrying it is deliverable. (migration `0062`). |
+| `POL-session_posters.publish` | Publishing a session enqueues `regenerate_poster` once, with `11` §2.5's key (`REQ-DSG-001`). (migration `0063`). |
+| `POL-session_posters.detach` | `detach_poster()` flips binding to `detached` and mode to `customised`, one way: no call ever re-attaches (`REQ-DSG-003`). (migration `0063`). |
+| `POL-session_posters.detach.admin` | A moderator's `detach_poster()` is refused. (migration `0063`). |
+| `POL-session_posters.stale` | A data change on a detached poster sets `stale_since` and enqueues no render. (migration `0063`). |
+| `POL-session_posters.live` | A data change on a live poster enqueues one render and leaves `stale_since` null. (migration `0063`). |
+| `POL-request_render.system` | `system_request_render()`, `poster_render_context()` and `record_session_poster()` are `service_role` only; an admin calling them is refused. (migration `0063`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |

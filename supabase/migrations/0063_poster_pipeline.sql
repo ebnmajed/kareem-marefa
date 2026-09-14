@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — the three poster paths, and the live/detached rule.
+-- promoted by the lead at wave-3 sync 7 · designer (wave 3, M6) — the three poster paths, and the live/detached rule.
 -- Follows 0061.
 --
 -- Serves:  02 §4.13 (session_posters), 03 §5.9
@@ -186,8 +186,14 @@ revoke execute on function public.detach_poster(uuid) from public, anon;
 grant  execute on function public.detach_poster(uuid) to authenticated;
 
 -- ── the hook into M2: SQL only, as the wave contract requires ─────────────
+-- SECURITY DEFINER (the lead, at promotion): the hook fires on ANY writer's
+-- update of a session — a presenter's own title edit included — and calls
+-- enqueue_job(), which no client role may execute (0025). As an invoker
+-- function it turned every presenter edit into "permission denied for
+-- function enqueue_job" (three wave-1 cases). The same reason 0034's
+-- rsvps_notify() is a definer.
 create function public.sessions_poster_hook() returns trigger
-language plpgsql set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $$
 begin
   -- REQ-DSG-001: on the EDGE into published, every session gets a poster.
   -- On the edge, not on the state, so publish_session()'s walk through four
@@ -222,8 +228,11 @@ create trigger sessions_poster_hook
 
 -- A presenter joining or leaving changes the poster too (A5), and that is a
 -- different table, so it is a different trigger naming the same job key.
+-- SECURITY DEFINER for the same reason as sessions_poster_hook() above: a
+-- presenter's own decline (0020) is a member's write, and the hook must
+-- still reach enqueue_job().
 create function public.session_presenters_poster_hook() returns trigger
-language plpgsql set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $$
 declare v_session uuid := coalesce(new.session_id, old.session_id);
 begin
   if exists (select 1 from public.sessions s where s.id = v_session and s.state in ('published', 'in_progress')) then

@@ -1,3 +1,4 @@
+import { PosterPicker } from "@/components/posters/picker";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -80,6 +81,16 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
           language: session.language,
         }}
       />
+
+      {/* الملصق، بثلاث طرق — the designer slot on SCR-043 (DEC-012, REQ-DSG-002/003):
+          automatic, customise (which detaches, one way), or upload. The page owns
+          the landmark and the heading; the slot owns its data (TEAM.md §2). */}
+      <section aria-labelledby="poster" className="mt-10">
+        <h2 id="poster" className="text-h2 text-fg-heading">
+          {t("poster")}
+        </h2>
+        <PosterPicker sessionId={session.id} locale={locale} />
+      </section>
 
       <PublishButton action={publish.bind(null, locale as Locale, session.id)} missing={session.missing} />
     </>

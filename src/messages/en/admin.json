@@ -193,7 +193,8 @@
       "posterPending": "The poster arrives with the designer in a later milestone and does not block publishing today.",
       "stateLabel": "Session status",
       "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields: a date, a time and a duration are required, plus a venue from the list or a one-off venue with a name and an address."
+      "invalid": "Check the fields: a date, a time and a duration are required, plus a venue from the list or a one-off venue with a name and an address.",
+      "poster": "Poster"
     },
     "venues": {
       "title": "Venues",
@@ -262,9 +263,11 @@
         "member": "Member"
       },
       "changeRole": "Change role",
+      "roleChanged": "Role changed.",
       "statusActive": "Active",
       "statusDeactivated": "Deactivated",
       "deactivate": "Deactivate membership",
+      "deactivateDone": "Membership deactivated.",
       "reactivate": "Reactivate membership",
       "reasonLabel": "The deactivation reason recorded in the audit log",
       "reasonHint": "The member never sees this reason; it stays in your organisation's audit log.",
@@ -367,13 +370,34 @@
       "title": "Exports",
       "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM, headers are Arabic, and numbers follow your organisation's numeral system.",
       "download": "Download CSV",
-      "sessions": { "title": "Sessions", "note": "Title, status, level, language, schedule and presenters." },
-      "rsvps": { "title": "RSVPs", "note": "Every reservation, with session, member, status, waitlist position and reservation time." },
-      "attendance": { "title": "Attendance", "note": "Every check-in across every session, with the manual-mark flag." },
-      "ratings": { "title": "Ratings", "note": "Per-session averages — not individual ratings; those are on each session's own attendance report." },
-      "points": { "title": "Points", "note": "The full ledger for every member, with source, reason and date." },
-      "certificates": { "title": "Certificates", "note": "Serial, member, kind and status for every certificate." },
-      "members": { "title": "Members", "note": "Name, email, role and status for every member." }
+      "sessions": {
+        "title": "Sessions",
+        "note": "Title, status, level, language, schedule and presenters."
+      },
+      "rsvps": {
+        "title": "RSVPs",
+        "note": "Every reservation, with session, member, status, waitlist position and reservation time."
+      },
+      "attendance": {
+        "title": "Attendance",
+        "note": "Every check-in across every session, with the manual-mark flag."
+      },
+      "ratings": {
+        "title": "Ratings",
+        "note": "Per-session averages — not individual ratings; those are on each session's own attendance report."
+      },
+      "points": {
+        "title": "Points",
+        "note": "The full ledger for every member, with source, reason and date."
+      },
+      "certificates": {
+        "title": "Certificates",
+        "note": "Serial, member, kind and status for every certificate."
+      },
+      "members": {
+        "title": "Members",
+        "note": "Name, email, role and status for every member."
+      }
     },
     "audit": {
       "title": "Audit log",

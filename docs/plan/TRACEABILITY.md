@@ -150,9 +150,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-DSG-001` | `ENT-session_posters` | — | `SCR-043` | — | — | `STORY-DSG-001` | M6 |
+| `REQ-DSG-001` | `ENT-session_posters` | `POL-session_posters.publish` | `SCR-043` | — | — | `STORY-DSG-001` | M6 |
 | `REQ-DSG-002` | `ENT-session_posters` | `POL-design_documents.write` | `SCR-043` `SCR-057` | — | — | `STORY-DSG-001` | M6 |
-| `REQ-DSG-003` | `ENT-session_posters` | — | `SCR-043` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-002` | M6 |
+| `REQ-DSG-003` | `ENT-session_posters` | `POL-session_posters.detach` | `SCR-043` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-002` | M6 |
 | `REQ-DSG-004` | — | — | `SCR-055` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-005` | `ENT-design_documents` | `POL-design_template_versions.guard` | `SCR-057` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-006` | `ENT-design_documents` | — | `SCR-057` | — | — | `STORY-DSG-003` | M6 |

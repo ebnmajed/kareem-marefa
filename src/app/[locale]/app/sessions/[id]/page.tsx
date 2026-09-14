@@ -7,6 +7,8 @@ import { Photos } from "@/components/photos/gallery";
 import { Tasks } from "@/components/tasks/panel";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
+import { SessionPoster } from "@/components/posters/session-poster";
+import { CertificateModeBadge } from "@/components/certificates/mode-badge";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import { getOrgPrefs } from "@/lib/dal/proposals";
@@ -62,8 +64,13 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   return (
     <article className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:items-start md:gap-10">
       <div className="min-w-0">
-        {/* 1. الملصق — M6 (REQ-DSG-002, DEC-012). Nothing renders rather than a
-            grey box pretending a poster is coming. */}
+        {/* 1. الملصق — the designer slot (TEAM.md §2, wave 3; REQ-DSG-001/002,
+            DEC-012): the session's poster in every variant, live or detached,
+            fetched through designer's own DAL; the certificate mode beside it
+            (REQ-CRT-001). Both render nothing until there is something to show —
+            never a grey box pretending a poster is coming. */}
+        <SessionPoster sessionId={session.id} locale={locale} />
+        <CertificateModeBadge sessionId={session.id} locale={locale} />
 
         {session.state === "cancelled" ? (
           <div role="alert" className="rounded-field border-2 border-edge-strong p-5">
