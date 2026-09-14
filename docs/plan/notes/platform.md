@@ -410,6 +410,34 @@ And one the drill caught instead: a real worker beside the suite finishes
 `build_data_export` in under a second, so an assertion that expected `queued`
 only passed on a machine where nothing was running.
 
+### 1.13 The `existsSync` guard hides a promotion that never happened
+
+Every RLS test in this track opens with
+
+```ts
+if (existsSync(join(cwd, "supabase", "proposed", file))) await applyProposed(tx, file);
+```
+
+which is what lets a test survive its own promotion: once the lead moves the
+file into `supabase/migrations/`, the proposed copy is gone and the guard skips
+it. That is the right behaviour and it has worked all wave.
+
+**It also means a file that was never promoted looks identical to one that
+was.** The proposed file is committed, so the guard fires on CI too, and the
+case passes everywhere while `supabase/migrations/` lacks the change. The
+green test says "this SQL is correct", never "this SQL is deployed".
+
+It bit at the close of the wave: `platform_job_health()`'s due-jobs fix lived
+in `supabase/proposed/platform/0007_job_health_due.sql`, the case passed, and
+the migrations did not carry it — while the running database did, so `pg_proc`,
+`supabase/migrations/` and CI held three different answers at once.
+
+**What to do about it**, for whoever picks this up: the guard is not the bug and
+should not be removed. The check that is missing is a promotion checklist item,
+not a test — *`supabase/proposed/<name>/` is empty when a wave closes*. An empty
+proposed folder is the only honest signal that every proven file is deployed,
+and it costs one `ls`.
+
 ---
 
 ## 1b. `JOB-evaluate_alerts` — the drill (planned before code, lead's addition at sync 1)
