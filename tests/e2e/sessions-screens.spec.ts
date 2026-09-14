@@ -324,9 +324,16 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-012 · comment · REQ-EVT-002, through `event`'s slot ───────────────
   const said = "سؤال عن الأداة التي استخدمتموها في القياس.";
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
-  await attendee.getByPlaceholder("اكتب تعليقًا…").fill(said);
+  const composer = attendee.getByPlaceholder("اكتب تعليقًا…");
+  await composer.fill(said);
   await attendee.getByRole("button", { name: "نشر" }).click();
-  await expect(attendee.getByText(said)).toBeVisible();
+  // Scoped to the posted list item, not `getByText`. The composer is a
+  // CONTROLLED textarea, so React renders the typed text as its DOM child and
+  // an unscoped getByText matches the box you just typed into — it passes
+  // instantly, waits for nothing, and the database assertion below then races
+  // the server action. This waits for the comment to actually exist.
+  await expect(composer).toHaveValue("");
+  await expect(attendee.locator("li").filter({ hasText: said })).toHaveCount(1);
 
   const comment = await db.query<{ author_id: string }>(`select author_id from public.comments where session_id = $1 and body = $2`, [sessionId, said]);
   expect(comment.rows).toHaveLength(1);
@@ -335,6 +342,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-042 · the ADMIN completes it · REQ-SES-005 ────────────────────────
   await boss.goto("/ar/app/admin/sessions");
   await boss.getByRole("button", { name: "أنهِ الجلسة" }).click();
+  // Wait for the console to show the new state before reading the database.
+  // Clicking a Server Action returns immediately; «أرشف» is only offered on a
+  // completed session, so its appearance IS the confirmation.
+  await expect(boss.getByRole("button", { name: "أرشف" })).toBeVisible();
   expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("completed");
   const manualRow = await db.query<{ is_manual: boolean; actor_id: string | null }>(
     `select is_manual, actor_id from public.session_state_transitions where session_id = $1 and to_state = 'completed'`,
@@ -354,10 +365,15 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("heading", { name: "قيّم الجلسة" })).toBeVisible();
   const groups = attendee.getByRole("radiogroup");
   await expect(groups).toHaveCount(2);
-  await groups.nth(0).getByRole("radio", { name: "5" }).check();
-  await groups.nth(1).getByRole("radio", { name: "4" }).check();
+  // .click(), not .check(): these are <button role="radio">, and Playwright's
+  // check() only drives a real input.
+  await groups.nth(0).getByRole("radio", { name: "5" }).click();
+  await groups.nth(1).getByRole("radio", { name: "4" }).click();
   await attendee.getByLabel("ملاحظات (اختياري)").fill("جلسة عملية ومباشرة.");
   await attendee.getByRole("button", { name: "إرسال التقييم" }).click();
+  // The form redirects back to the event page with ?rated=1; waiting for the
+  // URL is what stops the database read below racing the action.
+  await expect(attendee).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}\\?rated=1$`));
 
   const rating = await db.query<{ session_stars: number; presenter_stars: number; check_in_id: string }>(
     `select session_stars, presenter_stars, check_in_id from public.ratings where session_id = $1 and member_id = $2`,
@@ -371,15 +387,26 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // The rating section exists now that the session is complete, and the
   // attendee is told their rating landed.
-  await attendee.goto(`/ar/app/sessions/${sessionId}`);
   await expect(attendee.getByRole("heading", { name: "التقييم" })).toBeVisible();
-  await expect(attendee.getByText("شكرًا على تقييمك")).toBeVisible();
+  // Still inside the rating window, so the slot offers the edit link rather
+  // than the «شكرًا على تقييمك» that appears once the window has closed.
+  await expect(attendee.getByRole("link", { name: "عدّل تقييمك" })).toBeVisible();
 
   // REQ-RAT-004, the D36 boundary: the presenter reads an aggregate, never a
   // name and never an attributed score. `member` is this session's presenter.
   await member.goto(`/ar/app/sessions/${sessionId}`);
   await expect(member.getByRole("heading", { name: "التقييم" })).toBeVisible();
-  await expect(member.getByText("حاضرة الاختبار")).toHaveCount(0);
+  // Scoped to the ratings SECTION, not the page: she also commented, and a
+  // comment is attributed by design (REQ-EVT-002). The D36 boundary is that
+  // her name never appears beside her SCORE.
+  const ratingSection = member.locator("section", { has: member.getByRole("heading", { name: "التقييم" }) });
+  await expect(ratingSection.getByText("تقييم الحضور")).toBeVisible();
+  await expect(ratingSection.getByText("تقييم الجلسة")).toBeVisible();
+  await expect(ratingSection.getByText("جلسة عملية ومباشرة.")).toBeVisible();
+  await expect(ratingSection.getByText("حاضرة الاختبار")).toHaveCount(0);
+  // No rating CTA for the presenter: they are not an attendee of their own
+  // session (REQ-CHK-011's split, again).
+  await expect(member.getByRole("link", { name: "قيّم الجلسة" })).toHaveCount(0);
 
   // ── The audit trail of the whole walk ─────────────────────────────────────
   const chain = await db.query<{ from_state: string | null; to_state: string }>(
