@@ -13,6 +13,14 @@ import { saveReminderSchedule } from "./actions";
 // pending reminders rather than duplicating them. It is true because the key
 // is the mechanism (08 §4.1) and because `org_settings_reschedule` cancels
 // the offsets the org abandoned, which no key-based replace could reach.
+//
+// The generic-message note (`admin.reminders.genericNote`, this track's own
+// namespace, not `notifications.json`) explains DEC-047's carried-over item
+// (console.md's story order item 3): a custom offset near none of the three
+// built-in messages now arrives with an honest, offset-agnostic one instead
+// of borrowing the nearest specific-sounding message
+// (`reminder_message_key()`, `supabase/proposed/console/
+// 0004_reminder_generic_message.sql`).
 
 const field = "mt-1 block h-12 w-full rounded-field border border-edge-strong bg-canvas px-4 text-body text-fg-heading";
 
@@ -27,7 +35,11 @@ export default async function RemindersPage({
   setRequestLocale(locale);
   const { saved, error } = await searchParams;
 
-  const [t, schedule] = await Promise.all([getTranslations("notifications.admin.reminders"), getReminderSchedule(locale)]);
+  const [t, tg, schedule] = await Promise.all([
+    getTranslations("notifications.admin.reminders"),
+    getTranslations("admin.reminders"),
+    getReminderSchedule(locale),
+  ]);
   if (!schedule) notFound();
 
   return (
@@ -72,6 +84,7 @@ export default async function RemindersPage({
               bdi: (chunks) => <bdi>{chunks}</bdi>,
             })}
           </p>
+          <p className="mt-2 text-body-sm text-fg-muted">{tg("genericNote")}</p>
         </div>
         <div>
           <label htmlFor="promptDelay" className="text-label text-fg-heading">

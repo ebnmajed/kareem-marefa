@@ -434,6 +434,9 @@
     "memberPicker": {
       "placeholder": "Type a member's name or email",
       "noMatches": "No matching member"
+    },
+    "reminders": {
+      "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day."
     }
   }
 }
