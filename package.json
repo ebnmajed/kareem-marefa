@@ -18,7 +18,7 @@
     "test:e2e": "playwright test",
     "test:e2e:local": "node scripts/e2e-local.mjs",
     "test:e2e:unconfigured": "node scripts/e2e-unconfigured.mjs",
-    "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} vitest run --project rls",
+    "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} node scripts/rls.mjs",
     "policy-diff": "node scripts/policy-diff.mjs",
     "serve:stub": "node scripts/serve-stub.mjs",
     "qa": "node scripts/qa-run.mjs",
