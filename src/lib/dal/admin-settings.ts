@@ -7,10 +7,12 @@ import { sessionClient } from "@/lib/dal/session";
 // No new SQL: `p2_admin_update`'s column grant (0004) already covers every
 // field here, and `org_settings_history()` (0004, an `after update`
 // trigger) already writes REQ-TEN-008's "actor, timestamp, old value, new
-// value" to `org_settings_history` for every column, on every write,
-// regardless of which screen makes it — the same reason `scoring_rules`'s
-// own version bump lives in a trigger and not in a DAL (`scoring.md`'s
-// handoff note). This screen is a plain admin-gated UPDATE.
+// value" into `scoring_config_history` (`scope = 'org_settings'`, the same
+// shared history table `scoring_rules` writes into under `scope =
+// 'scoring'`) for every column, on every write, regardless of which
+// screen makes it — the same reason `scoring_rules`'s own version bump
+// lives in a trigger and not in a DAL (`scoring.md`'s handoff note). This
+// screen is a plain admin-gated UPDATE.
 //
 // `reminder_offsets_minutes`/`rating_prompt_delay_minutes` are `/admin/
 // reminders`' own fields (notify, inherited); `perks.enabled` (including
