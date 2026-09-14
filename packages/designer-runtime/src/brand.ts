@@ -1,0 +1,77 @@
+/**
+ * The `{{brand.*}}` token contract — 06 §8.3, DEC-008, REQ-DSG-021.
+ *
+ * One source of truth, four consumers: the CSS `@theme`, the org brand kit,
+ * designer templates, and email templates. A template never carries a hex
+ * literal; it carries a token, and the token is resolved at render time. That
+ * is what makes "change a colour in one place" true rather than aspirational —
+ * and the database refuses a hex literal in a template version, so it stays
+ * true after the fifth person edits a template.
+ *
+ * **This file is the CONTRACT and the platform default, not the org override.**
+ * Wave 4's `branding` track supplies the per-org kit through `src/lib/brand/**`
+ * (DEC-048 decision 2); until then every org resolves to the platform theme.
+ * The values below are `src/app/globals.css`'s `:root` and `.theme-dark`
+ * blocks, transcribed — when one changes, this changes with it, and
+ * `tests/unit/designer-brand.test.ts` is what notices.
+ */
+
+/** Every token a template may bind. A binding outside this list is unbound,
+ *  and an unbound field renders as a marked placeholder (REQ-DSG-006). */
+export const BRAND_COLOUR_TOKENS = [
+  'canvas',
+  'surface',
+  'fgHeading',
+  'fgBody',
+  'fgMuted',
+  'edge',
+  'edgeStrong',
+  'spine',
+  'node',
+] as const
+
+export type BrandColourToken = (typeof BRAND_COLOUR_TOKENS)[number]
+
+/** Not a colour: the org logo is an image layer bound to an ASSET ID, never an
+ *  asset each template embeds — which is why replacing the logo updates every
+ *  template at once (06 §8.3). Raster only (DEC-009). */
+export const BRAND_ASSET_TOKENS = ['logoAssetId'] as const
+
+export type BrandScheme = 'light' | 'dark'
+
+const LIGHT: Record<BrandColourToken, string> = {
+  canvas: '#ffffff',
+  surface: '#ffffff',
+  fgHeading: '#0b1220',
+  fgBody: '#33415c',
+  fgMuted: '#5b6780',
+  edge: '#e6eaf0',
+  edgeStrong: '#767f8c',
+  spine: '#d7dce3',
+  node: '#0b1220',
+}
+
+const DARK: Record<BrandColourToken, string> = {
+  canvas: '#0b1220',
+  surface: '#111a2c',
+  fgHeading: '#ffffff',
+  fgBody: '#c9ced6',
+  fgMuted: '#a8b3c4',
+  // globals.css writes these two as rgba() over the silver; a poster is
+  // composited on an opaque canvas, so the flattened value is used here —
+  // an export has no page behind it to blend with.
+  edge: '#252e3d',
+  edgeStrong: '#4b5464',
+  spine: '#252e3d',
+  node: '#ffffff',
+}
+
+/** The platform brand as `brand.*` binding values. Every template family ships
+ *  in a light and a dark variant (06 §3.3), and the variant is the SCHEME —
+ *  not a second template. */
+export function platformBrand(scheme: BrandScheme = 'light'): Record<string, string> {
+  const palette = scheme === 'dark' ? DARK : LIGHT
+  const out: Record<string, string> = {}
+  for (const token of BRAND_COLOUR_TOKENS) out[`brand.${token}`] = palette[token]
+  return out
+}

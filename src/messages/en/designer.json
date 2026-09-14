@@ -1,0 +1,83 @@
+{
+  "designer": {
+    "editor": {
+      "title": "Document designer",
+      "purpose": {
+        "poster": "Poster",
+        "certificate": "Certificate"
+      },
+      "boundSession": "Bound to a session",
+      "boundCertificate": "Bound to a certificate",
+      "unbound": "Not bound yet",
+      "readOnly": "You can view this. Designing is an org admin's act.",
+      "mobileNotice": "On a small screen this is preview and approval only. The layer editor needs a wider window; a cramped one is a bad tool pretending to be a feature.",
+      "previewHeading": "Preview",
+      "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text."
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "error": "The save failed. Your edits are still here; try again.",
+      "conflict": "Another admin saved a newer version of this document. Reload before you continue, so neither of you loses work.",
+      "lockedRegion": "This region is locked in the template: <bdi>{layer}</bdi>",
+      "invalid": "Something in the document prevents saving: <bdi>{issue}</bdi>",
+      "forbidden": "Designing is an org admin's act."
+    },
+    "canvas": {
+      "label": "Design canvas",
+      "zoom": "Zoom <bdi>{value}</bdi>%",
+      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+    },
+    "layers": {
+      "heading": "Layers",
+      "count": "{count, plural, =0 {No layers} one {One layer} other {# layers}}",
+      "empty": "This document has no layers yet.",
+      "select": "Select the layer <bdi>{name}</bdi>",
+      "locked": "Locked",
+      "hidden": "Hidden",
+      "show": "Show",
+      "hide": "Hide",
+      "kind": {
+        "text": "Text",
+        "image": "Image",
+        "shape": "Shape",
+        "qr": "Verification QR",
+        "dynamic_field": "Dynamic field"
+      }
+    },
+    "properties": {
+      "heading": "Properties",
+      "none": "Select a layer to see its properties.",
+      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden or deleted. Unlocking happens in the platform template, not here.",
+      "positionHeading": "Position and size",
+      "x": "Offset from the start",
+      "y": "Offset from the top",
+      "w": "Width",
+      "h": "Height",
+      "rotation": "Rotation",
+      "opacity": "Opacity",
+      "typographyHeading": "Typography",
+      "fontFamily": "Font",
+      "fontSize": "Font size",
+      "align": "Alignment",
+      "alignStart": "Start",
+      "alignCenter": "Centre",
+      "alignEnd": "End",
+      "alignNote": "Alignment is logical — start and end, never left and right — so it mirrors with the text direction instead of being redrawn.",
+      "letterSpacingNote": "Letter-spacing is always zero in Arabic: spacing it breaks the cursive join, which makes a broken word rather than a loose one.",
+      "contentHeading": "Content",
+      "binding": "Binding",
+      "bindingNone": "No binding",
+      "fallback": "Fallback text",
+      "literal": "Literal text"
+    },
+    "bindings": {
+      "heading": "Dynamic fields",
+      "bound": "Bound",
+      "unbound": "Unbound",
+      "value": "<bdi>{value}</bdi>",
+      "unboundHint": "An unbound field draws a marked box on the canvas, never a blank — a blank exports as white space nobody notices until it is printed.",
+      "empty": "This document carries no dynamic fields."
+    }
+  }
+}

@@ -56,6 +56,14 @@ interface LayerBase {
    *  editor (REQ-DSG-024) — a certificate whose QR was dragged off the page
    *  cannot be verified, and that only shows up after printing. */
   locked?: boolean
+  /** Hidden is listed beside moved, resized and deleted in REQ-DSG-024, so it
+   *  has to be a field the guard can see rather than an opacity of 0 nobody
+   *  recognises as hiding. */
+  hidden?: boolean
+  /** The label in the editor's layer list. Never rendered. Falls back to the
+   *  binding or the literal, so a template author is not forced to name
+   *  every layer twice. */
+  name?: string
 }
 
 export interface TextLayer extends LayerBase {
@@ -129,4 +137,19 @@ export interface ManifestFont {
   script?: string
   sha256: string
   bytes?: number
+  /** The CSS `unicode-range` this face covers. The manifest lists one entry
+   *  per (family, weight, style, SCRIPT), and two faces of the same family
+   *  declared without a range do not merge coverage — the LAST one wins for
+   *  every character, so a mixed «جلسة عن Next.js» loses its Latin to a host
+   *  font. Optional: a consumer that inlines a single face (the parity
+   *  harness) omits it and the declaration is unchanged. */
+  unicodeRange?: string
 }
+
+/** The Arabic subset's range, as Google Fonts publishes it — the editor and
+ *  the worker declare the Arabic face over exactly this and let the Latin
+ *  face keep everything else. */
+export const ARABIC_UNICODE_RANGE =
+  'U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+200C-200E, U+2010-2011, U+204F, ' +
+  'U+2E41, U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7E, U+1EE00-1EEFF'
+
