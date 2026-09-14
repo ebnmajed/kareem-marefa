@@ -640,6 +640,37 @@ Three e2e traps and one copy bug, none of which a unit test could see.
   «الشهادات صالحة»: I had reused the namespace's own label where a
   field label belonged. It is «الحالة» now. Nothing typechecks that.
 
+## 2.14 The "fewer jobs than artifacts" report: not reproducible, now covered
+
+The lead saw four of six certificate artifacts `queued` with no
+`render_variant` job in `graphile_worker._private_jobs`. I could not
+reproduce a dropped enqueue, and I think the snapshot was mid-run.
+
+**What the evidence says.** All six artifacts of that run
+(`c0000000-…d1`) are `ready` now, three per document, two distinct
+documents and two distinct fingerprints. Two new RLS cases prove the
+SQL directly: two recipients produce six artifact rows, six
+`render_variant` jobs and six DISTINCT keys of `11` §2.5's shape, and
+re-requesting the same fingerprint adds neither a row nor a job.
+
+**Why a snapshot can look like a loss.** Renders are SERIAL —
+`enqueue_job(..., p_queue => 'render')` puts every one in a single
+named graphile-worker queue, and a named queue runs one job at a time
+whatever the pool's concurrency is. The lead's own note in
+`worker/src/index.ts` already records this as a floor of 1 where `11`
+§1.4 asked for 2, held for the wave-3 closing decision. Twelve poster
+variants took 168 seconds in my own run, about 14 seconds each, strictly
+sequential — which matches. And a COMPLETED graphile-worker job is
+deleted, so at any moment the finished artifacts have no job and the
+pending ones are behind one lock.
+
+**The one path that would produce it for real** is `render_variant`
+returning early when `export_render_context()` finds no row: the job is
+consumed and the artifact stays `queued`. That needs the document to
+have been deleted mid-flight, which did not happen here. If it recurs,
+that is the line to look at first (`worker/src/tasks/render_variant.ts`,
+the `if (!ctx)` warn-and-return).
+
 ---
 
 ## 3. Owner checks that no test here can stand in for

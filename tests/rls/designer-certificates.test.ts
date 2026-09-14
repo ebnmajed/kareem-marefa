@@ -522,3 +522,106 @@ describe("POL-design_documents.certificate_read", () => {
     });
   });
 });
+
+describe("POL-system_request_render.per_artifact", () => {
+  /** What `issue_certificates` does after issuing: record the document,
+   *  then request the three certificate targets. Written out here rather
+   *  than imported, because the property under test is the SQL's — one job
+   *  per artifact row, with a key of its own. */
+  async function requestFor(tx: Tx, certificateId: string, fingerprint: string) {
+    await tx.asOwner();
+    const [version] = await tx.q<{ document: unknown }>(
+      `select v.document from public.design_template_versions v
+         join public.certificates c on c.template_version_id = v.id where c.id = $1`,
+      [certificateId],
+    );
+    await tx.asServiceRole();
+    const [doc] = await tx.q<{ record_certificate_document: string }>(`select public.record_certificate_document($1, $2::jsonb)`, [
+      certificateId,
+      JSON.stringify(version.document),
+    ]);
+    const documentId = doc.record_certificate_document;
+    await tx.q(`select public.system_request_render($1, $2, $3::jsonb, $4::jsonb)`, [
+      documentId,
+      fingerprint,
+      JSON.stringify({ bindings: {}, faces: [{ family: "Amiri", weight: 400, style: "normal", sha256: "a".repeat(64) }] }),
+      JSON.stringify([
+        { preset: "cert_landscape", format: "pdf" },
+        { preset: "cert_portrait", format: "pdf" },
+        { preset: "cert_landscape", format: "png" },
+      ]),
+    ]);
+    return documentId;
+  }
+
+  it("★ ONE JOB PER ARTIFACT, for two recipients — a shared key would silently drop renders", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asServiceRole();
+      const [attendance] = await tx.q<{ id: string }>(
+        `select id from public.issue_certificate($1, $2, 'attendance'::public.certificate_kind)`,
+        [f.m2.a.completed, f.a.members[1].memberId],
+      );
+      const [presenter] = await tx.q<{ id: string }>(
+        `select id from public.issue_certificate($1, $2, 'presenter'::public.certificate_kind)`,
+        [f.m2.a.completed, f.a.members[0].memberId],
+      );
+
+      await tx.asOwner();
+      await tx.q(`delete from graphile_worker._private_jobs`);
+
+      // Distinct fingerprints, as two recipients always produce: the
+      // bindings carry a different name, serial and verification code.
+      const docA = await requestFor(tx, attendance.id, "fp-attendance");
+      const docB = await requestFor(tx, presenter.id, "fp-presenter");
+      expect(docA).not.toBe(docB);
+
+      await tx.asOwner();
+      const [{ artifacts }] = await tx.q<{ artifacts: number }>(
+        `select count(*)::int artifacts from public.export_artifacts where document_id = any($1::uuid[])`,
+        [[docA, docB]],
+      );
+      const jobs = await tx.q<{ key: string }>(`select key from graphile_worker.jobs where task_identifier = 'render_variant' order by key`);
+
+      // Six rows, six jobs. `enqueue_job` uses job_key_mode 'replace', so a
+      // key shared across formats or across documents does not add a job —
+      // it REPLACES one, and the difference is invisible until a render
+      // that was requested never happens.
+      expect(artifacts).toBe(6);
+      expect(jobs).toHaveLength(6);
+      expect(new Set(jobs.map((j) => j.key)).size).toBe(6);
+      // 11 §2.5's key, verbatim, and every part of it load-bearing.
+      expect(jobs.map((j) => j.key).sort()).toEqual(
+        [
+          `doc:${docA}:cert_landscape:pdf`,
+          `doc:${docA}:cert_landscape:png`,
+          `doc:${docA}:cert_portrait:pdf`,
+          `doc:${docB}:cert_landscape:pdf`,
+          `doc:${docB}:cert_landscape:png`,
+          `doc:${docB}:cert_portrait:pdf`,
+        ].sort(),
+      );
+    });
+  });
+
+  it("re-requesting the SAME fingerprint adds no row and no job (REQ-DSG-013)", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asServiceRole();
+      const [cert] = await tx.q<{ id: string }>(`select id from public.issue_certificate($1, $2, 'presenter'::public.certificate_kind)`, [
+        f.m2.a.completed,
+        f.a.members[0].memberId,
+      ]);
+      await tx.asOwner();
+      await tx.q(`delete from graphile_worker._private_jobs`);
+
+      const documentId = await requestFor(tx, cert.id, "fp-same");
+      await requestFor(tx, cert.id, "fp-same");
+
+      await tx.asOwner();
+      const [{ n }] = await tx.q<{ n: number }>(`select count(*)::int n from public.export_artifacts where document_id = $1`, [documentId]);
+      expect(n).toBe(3);
+      expect(await tx.q(`select key from graphile_worker.jobs where task_identifier = 'render_variant'`)).toHaveLength(3);
+    });
+  });
+});
