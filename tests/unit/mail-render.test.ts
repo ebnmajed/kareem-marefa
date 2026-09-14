@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { changeBlock, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "../../worker/src/mail/render";
+import { changeBlock, changesFromPayload, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "../../worker/src/mail/render";
 import { DEFAULT_TEMPLATES } from "../../worker/src/mail/templates";
 
 const ORG: RenderInput["org"] = { name: "كريم معرفة", numerals: "western", timeZone: "Asia/Riyadh" };
@@ -151,5 +151,55 @@ describe("REQ-NTF-007 — the org's template wins", () => {
 
   it("raises rather than sending a blank when a key has no template at all", () => {
     expect(() => render("MSG-rsvp_confirmed")).toThrow(TemplateMissingError);
+  });
+});
+
+describe("changesFromPayload — the raw values the 0005 trigger ships", () => {
+  const RIYADH: RenderInput["org"] = { name: "كريم معرفة", numerals: "arabic_indic", timeZone: "Asia/Riyadh" };
+
+  it("formats a timestamp in the ORG's zone and numerals, not the reader's", () => {
+    const block = changesFromPayload(
+      [{ field: "starts_at", from: "2026-10-01T15:00:00+00:00", to: "2026-10-02T16:00:00+00:00" }],
+      RIYADH,
+    )!;
+    expect(block).toContain("الموعد:");
+    expect(block).toContain("←");
+    // 15:00 UTC is 18:00 in Riyadh, in Arabic-Indic digits.
+    expect(block).toContain("٦:٠٠");
+    expect(block).not.toMatch(/[0-9]/);
+  });
+
+  it("labels the two fields 08 §3.3 names, and falls back to the field name rather than dropping one", () => {
+    const block = changesFromPayload(
+      [
+        { field: "venue", from: "قاعة أ", to: "قاعة ب" },
+        { field: "capacity", from: "30", to: "40" },
+      ],
+      RIYADH,
+    )!;
+    expect(block).toContain("المكان: قاعة أ ← قاعة ب");
+    expect(block).toContain("capacity: 30 ← 40");
+  });
+
+  it("returns null when the payload carries no changes at all", () => {
+    expect(changesFromPayload(undefined, RIYADH)).toBeNull();
+    expect(changesFromPayload("not an array", RIYADH)).toBeNull();
+  });
+
+  it("reaches the rendered session_changed mail, with only the moved line", () => {
+    const out = renderEmail({
+      key: "MSG-session_changed",
+      payload: {
+        title: "جلسة",
+        changes: [
+          { field: "starts_at", from: "2026-10-01T15:00:00+00:00", to: "2026-10-01T15:00:00+00:00" },
+          { field: "venue", from: "قاعة أ", to: "قاعة ب" },
+        ],
+      },
+      member: { name: "سارة", email: "s@k.example" },
+      org: RIYADH,
+    });
+    expect(out.text).toContain("المكان: قاعة أ ← قاعة ب");
+    expect(out.text).not.toContain("الموعد:");
   });
 });

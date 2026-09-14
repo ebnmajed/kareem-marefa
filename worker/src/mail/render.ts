@@ -103,6 +103,51 @@ export function changeBlock(changes: ChangedField[]): string {
     .join("\n");
 }
 
+/** 08 §3.3's two fields, in Arabic. A field with no label here renders under
+ *  its own name rather than being dropped — a change the member is not told
+ *  about is the failure REQ-SES-009 exists to prevent. */
+const CHANGE_LABELS: Readonly<Record<string, string>> = {
+  starts_at: "الموعد",
+  venue: "المكان",
+};
+
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+
+/**
+ * A raw value from the change trigger, in the org's zone and numerals.
+ *
+ * The zone is the ORG's, not the reader's: a session happens in a room, and
+ * «٦:٠٠ م» has to mean the clock on that room's wall whoever is reading the
+ * mail. Same rule as components/sessions/numerals.ts, for the same reason.
+ */
+function formatChangeValue(value: unknown, org: RenderInput["org"]): string {
+  if (value === null || value === undefined) return "—";
+  const text = String(value);
+  if (!ISO_INSTANT.test(text)) return text;
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+  return new Intl.DateTimeFormat(`ar-u-nu-${org.numerals === "arabic_indic" ? "arab" : "latn"}`, {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: org.timeZone,
+  }).format(parsed);
+}
+
+/** The trigger ships raw values (supabase/proposed/notify/0005); the block is
+ *  built here so the formatting rule lives in one place instead of in every
+ *  trigger that reports a change. */
+export function changesFromPayload(raw: unknown, org: RenderInput["org"]): string | null {
+  if (!Array.isArray(raw)) return null;
+  const fields = raw
+    .filter((c): c is { field: string; from: unknown; to: unknown } => Boolean(c) && typeof c === "object" && "field" in c)
+    .map((c) => ({
+      label: CHANGE_LABELS[c.field] ?? c.field,
+      from: formatChangeValue(c.from, org),
+      to: formatChangeValue(c.to, org),
+    }));
+  return changeBlock(fields);
+}
+
 function toParagraphs(text: string): string[] {
   return text
     .split(/\n\s*\n/)
@@ -155,8 +200,10 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   // `member.name` and `org` are always resolvable, whatever the payload
   // carries: every default template greets by name, and a greeting that
   // renders «مرحبًا ،» is the failure mode this prevents.
+  const changes = changesFromPayload(input.payload.changes, input.org);
   const payload: Record<string, unknown> = {
     ...input.payload,
+    ...(changes === null ? {} : { changes }),
     member: { ...(typeof input.payload.member === "object" && input.payload.member ? input.payload.member : {}), name: input.member.name ?? input.member.email, email: input.member.email },
     org: input.org.name,
   };
