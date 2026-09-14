@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "reminders", href: "/app/admin/reminders", adminOnly: true, built: true },
   { key: "exports", href: "/app/admin/exports", adminOnly: true, built: true },
   { key: "audit", href: "/app/admin/audit", adminOnly: false, built: true },
-  { key: "settings", href: "/app/admin/settings", adminOnly: true, built: false },
+  { key: "settings", href: "/app/admin/settings", adminOnly: true, built: true },
 ];
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
