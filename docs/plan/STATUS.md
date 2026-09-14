@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (**draft PR #13**, CI green through sync 5) · **`main` @ `e0b448d`:** M1 live, M2 complete · **Phase:** **wave 2 in progress — six sync points, migrations `0024`–`0043` promoted (all three milestone schemas and every M3 file), M3 code-complete pending its e2e run, M4 and M5 stories in flight (DEC-046)**
+**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (**PR #13** → `main`, ready for the owner's review) · **`main` @ `e0b448d`:** M1 live, M2 complete · **Phase:** **M2 wave 2 (M3 · M4 · M5) COMPLETE on the branch — thirteen sync points, migrations `0024`–`0054`, the three demonstrables proven by e2e against real local Supabase; next session is the wave-3 lead after the owner merges**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -38,7 +38,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-045**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-047**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -56,7 +56,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 14 | `14-roadmap.md` | `settled` | M0–M8 + **Launch** (DEC-039). No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
-| — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) is due at M3. |
+| — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) closes at Launch with PR C (DEC-046); OQ-012 implemented behind the perk (DEC-047). |
 | — | `TEAM.md` | `settled` | The agent team: waves, ownership, contracts, the lead's spawn prompt (DEC-040). |
 | — | `TRACEABILITY.md` | generated | `node scripts/traceability.mjs`. Do not hand-edit. |
 | — | `/CLAUDE.md` | `settled` | Repo root. Keeps `@AGENTS.md` as line 1. |
@@ -145,7 +145,53 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## Wave 2 (M3 · M4 · M5) — PREPARED on `wave-2/m3-m4-m5`, waiting for the owner's approval
+## Wave 2 (M3 · M4 · M5) — COMPLETE on `wave-2/m3-m4-m5` (PR #13, the owner merges)
+
+**The three demonstrables hold locally, proven by the specs that drive the real screens against real local Supabase:**
+
+- **M3** — `tests/e2e/notify-screens.spec.ts` (11 passed): the inbox, the preference matrix with the not-switchable categories, the calendar screen and the ICS over real HTTP; `tests/rls/notify-reminders.test.ts` proves a reschedule leaves ONE pending job per member per offset and cancels the past ones; `notify-session-notices` proves the change notice carries both values and the publish chain announces once. **Owner's manual checks at Launch:** open the ICS in Outlook on Windows; real Google sync (a stub in tests).
+- **M4** — `tests/e2e/points.spec.ts` + `leaderboards.spec.ts` (6 passed, twice): a member reads their whole history with every row's real reason; an admin's catalogue edit shows immediately; the rebuild reproduces every balance (`audit-balances.test.ts`); سباق الشركات shows both metrics.
+- **M5** — `tests/e2e/materials.spec.ts`, `proposal-materials.spec.ts`, `photos.spec.ts`, `tasks.spec.ts`, `bookmarks.spec.ts` (11 passed): a deck read page by page with the arrows following the reading direction, the substitution warning on the material, a real upload through the form against real Storage, a photo whose stored bytes carry no EXIF, a takedown that hides before the page reloads. **Not run in this wave:** the live converter + worker pipeline end to end (the contract is unit-tested against the converter's own doc comment and `npm run converter:test` is green); the steps are in `docs/plan/notes/content.md` §4.
+
+### Shipped
+
+Migrations **`0024`–`0054`** (31; `supabase/proposed/` empty) · screens SCR-022, 025, 026, 027, 028, 053, 054, 058, the admin reminders and emails routes, SCR-013, SCR-024, plus five slots on the event page, the proposal screen and the shell · DAL modules `notifications`, `calendar`, `points`, `leaderboards`, `recognition`, `scoring-admin`, `materials`, `photos`, `tasks`, `search`, `bookmarks` · 20 worker tasks on the crontab and the queue, the mail transport with its sink · message namespaces `notifications`, `calendar`, `scoring`, `leaderboards`, `recognition`, `materials`, `photos`, `tasks`, `search` (Arabic first) · **DEC-046, DEC-047**.
+
+### Definition of done on ``d68a35b``
+
+| Check | Result |
+|---|---|
+| `npm run db:reset` | ✅ `0001`–`0054` (with the queue schema reinstalled) |
+| `npm run test:rls` | ✅ **495 passed / 4 todo, 45 files**, the sweep over every table incl. the 24 wave-2 ones |
+| `npm run policy-diff` | ✅ |
+| `node scripts/traceability.mjs` | ✅ 251 / 64 / 112, no gaps, matrix current |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run lint` | ✅ 0 errors (13 warnings, all pre-existing `eslint-disable` directives) |
+| `npm test` (unit + components) | ✅ **332 passed, 46 files** — incl. the per-track i18n guards and the namespace-collision test |
+| `npm run worker:build` · `fonts:check` · `converter:test` | ✅ · ✅ 9 faces / 6 TTF · ✅ 16/16 |
+| `npm run build` | ✅ 54 routes |
+| `npm run qa` | ✅ **44/44** |
+| `npm run visual compare m0-final wave2-final` | ✅ **0.000%** on all six captures — after the namespace deep-merge fix (`bbedf56`): a shared top-level key had replaced the landing page's recognition section, and this gate is what caught it |
+| `npm run test:e2e:local` | ✅ **118 passed / 0 failed / 8 skipped by design** (two workers, both profiles; every wave-1 and wave-2 spec, the three demonstrables included) — after two shell fixes the gate itself demanded: the nav's wrap had pushed the RSVP action 13 px below the fold, and a 16 px overflow at 390 px needed a compact bell |
+| `npm run test:e2e:unconfigured` | ✅ 16 passed, 110 skipped by design |
+| CI on PR #13 | ✅ **all jobs green on `d68a35b`** (the gate commit); the STATUS commit after it is docs only |
+| 390 px RTL captures, looked at | ✅ notify 4 · scoring 5 · content 6 (`.qa-shots/rtl/`) |
+
+### Handoff for the wave-3 lead
+
+1. **Read** `DECISIONS.md` DEC-046 and DEC-047, `TEAM.md` §3 and §5 (grown this wave), and the three handoff sections: `docs/plan/notes/notify.md` §6, `scoring.md` "Handoff to wave 3", `content.md` §4–§5.
+2. **SCR-011 (`/app/sessions`, browse) was never built in wave 1.** Nothing links to it. `SearchFilters` and `BookmarkButton` (`src/components/search/`, DAL and tests done) wait for that page; `console` or a `sessions` follow-up builds it first.
+3. **Three stale `TODO(notify, M3)` comments** survive in `0014` (lines 75, 144) and `0045` (line 103). Migrations are forward-only; the work is done by the `rsvps_notify` trigger of `0034`. Do not implement them.
+4. **Worker environment** for the content tasks: `CONVERTER_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (`worker/README.md`); the worker image is proven by its probe in CI; the host is chosen at Launch (DEC-046).
+5. **Launch inputs:** the Google OAuth client with calendar scopes and its secret on Vercel for the callback exchange (`src/app/api/calendar/oauth.ts`), the Resend account (`RESEND_API_KEY` is never read before Launch), the worker host, the converter's endpoint token if the host has no private networking (OQ-027).
+6. **The fixture** (`tests/rls/fixture-m3.ts`, `-m4.ts`, `-m5.ts`) seeds every wave-2 table for `members[0]`; a new per-policy case counts by id or clears its tables in `setup()` inside the transaction.
+7. **The path builder** is still a port (`worker/src/content/paths.ts` mirrors `src/lib/storage/paths.ts`, parity-tested); wave 3 turns it into `@kareem/storage-paths` with a lockfile regeneration.
+8. **`08`'s fourth reminder message** (offset-agnostic) is M7-console's; `MSG-rsvp_deadline_soon` has no job.
+9. `.next` on disk is the wave-final build; `npm run db:reset` (with the reset lock) before any RLS run.
+
+### The wave as it ran (the sync log below is the record)
+
+#### Wave 2 — PREPARED (kept as written at the start)
 
 **Done this session (the wave-2 lead, 2026-09-14), before anyone is spawned:**
 
@@ -557,13 +603,10 @@ unaffected.
 
 ## Next session should
 
-1. You are on `wave-2/m3-m4-m5` (unpushed). **If the owner approved the wave-2 plan**, run the five
-   pre-spawn tasks listed under *Wave 2 — PREPARED* above, commit the agent definitions, push,
-   open the draft PR, spawn `notify`, `scoring`, `content` from `.claude/agents/`, and run
-   `TEAM.md` §3 every few hours. **If not**, apply the owner's changes to the globs first.
-2. Read `DECISIONS.md` DEC-046 and the three `docs/plan/notes/{sessions,checkin,event}.md` handoffs
-   (the `TODO(notify, M3)` / `TODO(scoring, M4)` call sites in `0014`/`0015` are wave 2's hooks).
-3. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. `RESEND_API_KEY` stays
-   unset everywhere (DEC-046).
-4. `.next` on disk is stale; run `npm run build` before `npm run qa` / `visual` / `test:e2e:local`.
-5. Update this file before finishing.
+1. **Wait for the owner to merge PR #13** (`wave-2/m3-m4-m5` → `main`); nothing is merged by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
+2. Be the **wave-3 lead** (`designer` M6 · `console` M7-console, TEAM.md §1): read this file, `CLAUDE.md`, `DECISIONS.md` DEC-046/DEC-047, `TEAM.md` §3 and §5, and the three handoff sections named under *Handoff for the wave-3 lead* above.
+3. **Before spawning anyone:** build SCR-011 (`/app/sessions`, browse) or assign it as `console`'s first story, and wire `SearchFilters`/`BookmarkButton` onto it; turn the path-builder port into `@kareem/storage-paths` (a lockfile regeneration); decide whether the M6 image work (Chromium + fonts in `worker/Dockerfile`) goes first.
+4. **Run the M5 pipeline once for real** — converter image + worker against local Supabase with the three variables — before M6 builds on `material_pages`; the steps are in `docs/plan/notes/content.md` §4.
+5. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. Launch inputs are listed above.
+6. `.next` on disk is the wave-final configured build; `npm run db:reset` before any RLS run.
+7. Update this file before finishing.
