@@ -108,7 +108,8 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
         {report.rows.length === 0 ? (
           <p className="mt-3 text-body text-fg-body">{t("empty")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          // REQ-NFR-007: a scrollable region is a keyboard stop (axe scrollable-region-focusable).
+          <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-labelledby="list">
             <table className="w-full min-w-[560px] text-start text-body-sm">
               <thead>
                 <tr className="border-b border-edge text-fg-muted">
