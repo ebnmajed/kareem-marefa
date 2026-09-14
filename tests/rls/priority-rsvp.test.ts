@@ -4,7 +4,7 @@
 //
 // 03 §8.2 row proven here: POL-rsvps.priority_window.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorMessage, pool, withTx } from "./db";
+import { errorMessage, pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -12,8 +12,12 @@ afterAll(() => pool.end());
 
 async function ready(tx: Tx) {
   const f = await seed(tx);
+  // The perk ships disabled (0027, sync 7): the window exists only while the
+  // org has turned it on, so these cases turn it on for both orgs first.
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0010_priority_rsvp.sql");
+  await tx.q(`update public.perks set enabled = true where key = 'priority_rsvp'`);
+  await tx.asOwner();
+  // Promoted at wave-2 sync 7 (0044–0045): applied by `supabase db reset`.
   return f;
 }
 

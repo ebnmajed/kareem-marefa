@@ -173,6 +173,9 @@ describe("RPC-evaluate_levels_perks", () => {
   it("perk_materialisation — priority_rsvp grants at level 3; can_host stays ungranted at level 4 (disabled by default, REQ-REC-008)", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
+      // priority_rsvp ships disabled (0027, sync 7); this case is about the grant, so turn it on.
+      await tx.asOwner();
+      await tx.q(`update public.perks set enabled = true where key = 'priority_rsvp'`);
       const member = f.a.members[1].memberId;
       await tx.q(
         `insert into public.points_ledger (org_id, member_id, amount, source, reason, idempotency_key)

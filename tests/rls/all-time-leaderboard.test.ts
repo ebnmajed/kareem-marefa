@@ -3,7 +3,7 @@
 //
 // 03 §8.2 row proven here: RPC-all_time_leaderboard.opt_out.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -12,7 +12,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0009_all_time_leaderboard.sql");
+  // Promoted at wave-2 sync 7 (0044–0045): applied by `supabase db reset`.
   return f;
 }
 

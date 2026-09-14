@@ -574,9 +574,11 @@ begin
     (p_org, 'monthly_3', interval '1 month', 3, 15, true)
   on conflict (org_id, key) do nothing;
 
-  -- priority_rsvp ships enabled; can_host ships disabled (REQ-REC-008).
+  -- Both perks ship DISABLED (REQ-REC-008; lead at wave-2 sync 7): a priority
+  -- window that nobody can use would only close general RSVP for a day, so an
+  -- admin turns priority_rsvp on when the org wants it (OQ-012).
   insert into public.perks (org_id, key, required_level_id, enabled) values
-    (p_org, 'priority_rsvp', v_level3, true),
+    (p_org, 'priority_rsvp', v_level3, false),
     (p_org, 'can_host',      v_level4, false)
   on conflict (org_id, key) do nothing;
 end $$;

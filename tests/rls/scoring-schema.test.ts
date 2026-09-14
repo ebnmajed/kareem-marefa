@@ -64,7 +64,7 @@ describe("POL-orgs.seed_scoring", () => {
       );
       expect(perks).toEqual([
         { key: "can_host", enabled: false }, // REQ-REC-008: off unless the org turns it on
-        { key: "priority_rsvp", enabled: true },
+        { key: "priority_rsvp", enabled: false }, // ships off too (sync 7): the window exists only once the org turns the perk on
       ]);
 
       // Both orgs seeded independently — never one org's rows for another's.

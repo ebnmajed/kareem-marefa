@@ -1270,6 +1270,8 @@ generated suite is the highest-value test in the product.
 | `RPC-snapshot_leaderboard.provisional_replace` | re-running for the same (org, kind, period_start, period_end, category_id) before it is final replaces the entries; after is_final it cannot be re-run at all (the table's own immutability trigger, 0027, refuses the necessary delete) (migration `0042`). |
 | `POL-leaderboard_entries.opt_out_at_write` | an opted-out member's row is still written (REQ-LDR-008: they still count toward their company's total and still see their own rank) — the RLS policy is what hides it from other members, not the snapshot itself (migration `0042`). |
 | `RPC-photo_takedowns_hide.notifies` | Inserting a takedown writes an in-app `MSG-photo_hidden` notification to the photo's uploader, whose payload names the photo and session but never the requester. (migration `0043`). |
+| `RPC-all_time_leaderboard.opt_out` | an opted-out member is absent from another member's call, present in their own; a deactivated member never appears at all (unlike a snapshot, which has no "still a member" concept to check) (migration `0044`). |
+| `POL-rsvps.priority_window` | a member without the perk is refused during the priority window; a member with it is not; after the window everyone is treated identically, whether or not they hold it (migration `0045`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
 | `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
