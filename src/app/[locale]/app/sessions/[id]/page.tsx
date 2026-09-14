@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
+import { Materials } from "@/components/materials/list";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
@@ -223,6 +224,14 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           <p className="mt-3 whitespace-pre-line text-body text-fg-body">
             <bdi>{session.abstract}</bdi>
           </p>
+        </section>
+        {/* 7. المواد — the content slot (TEAM.md §2, wave 2): the page owns the
+            landmark and the heading; the list is phase-gated by its own read policy. */}
+        <section aria-labelledby="materials" className="mt-10">
+          <h2 id="materials" className="text-h2 text-fg-heading">
+            {t("materialsLabel")}
+          </h2>
+          <Materials sessionId={session.id} memberId={me.memberId} locale={locale} />
         </section>
 
         {/* 6, 7 and 9 — المهام التحضيرية, المواد and الصور are M5 (`content`). */}

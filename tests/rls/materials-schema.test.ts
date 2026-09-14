@@ -39,7 +39,7 @@ describe("RPC-finalize_material_upload", () => {
   it("a member who is neither presenter nor admin is refused; the presenter succeeds and the material enqueues a conversion", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0003_finalize_material_upload.sql");
+      // Promoted as migration 0046 at wave-2 sync 8: applied by `supabase db reset`.
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "pdf");
 
       await tx.as(f.a.members[1].claims); // attendee, not this material's presenter
@@ -69,7 +69,7 @@ describe("RPC-finalize_material_upload", () => {
   it("image and keynote materials go straight to not_applicable and enqueue nothing", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0003_finalize_material_upload.sql");
+      // Promoted as migration 0046 at wave-2 sync 8: applied by `supabase db reset`.
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "image");
 
       await tx.as(f.a.members[0].claims);
@@ -82,7 +82,7 @@ describe("RPC-finalize_material_upload", () => {
   it("a byte size over the org's document limit is refused, naming the limit", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0003_finalize_material_upload.sql");
+      // Promoted as migration 0046 at wave-2 sync 8: applied by `supabase db reset`.
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "pdf");
       await tx.asOwner();
       const [{ limit_document_mb }] = await tx.q<{ limit_document_mb: number }>(`select limit_document_mb from public.org_settings where org_id = $1`, [f.a.id]);
@@ -100,7 +100,7 @@ describe("RPC-finalize_material_upload", () => {
   it("a second call for the same material inserts version 2 and moves current_version_id, leaving version 1 untouched (REQ-MAT-010)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0003_finalize_material_upload.sql");
+      // Promoted as migration 0046 at wave-2 sync 8: applied by `supabase db reset`.
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "pdf");
 
       await tx.as(f.a.members[0].claims);

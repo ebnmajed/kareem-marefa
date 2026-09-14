@@ -1272,6 +1272,13 @@ generated suite is the highest-value test in the product.
 | `RPC-photo_takedowns_hide.notifies` | Inserting a takedown writes an in-app `MSG-photo_hidden` notification to the photo's uploader, whose payload names the photo and session but never the requester. (migration `0043`). |
 | `RPC-all_time_leaderboard.opt_out` | an opted-out member is absent from another member's call, present in their own; a deactivated member never appears at all (unlike a snapshot, which has no "still a member" concept to check) (migration `0044`). |
 | `POL-rsvps.priority_window` | a member without the perk is refused during the priority window; a member with it is not; after the window everyone is treated identically, whether or not they hold it (migration `0045`). |
+| `RPC-finalize_material_upload.authority` | A member who is neither the session's presenter nor an org admin is refused `42501`. (migration `0046`). |
+| `RPC-finalize_material_upload.size` | A byte size over the org's `limit_document_mb`/`limit_audio_mb`/`limit_image_mb` for the material's kind is refused `23514`, naming the limit. (migration `0046`). |
+| `RPC-finalize_material_upload.enqueues` | A `pdf`/`powerpoint` material enqueues `convert_document` keyed `conv:{version_id}`; an `image`/`audio`/`keynote` material does not, and its `render_status` is `not_applicable`. (migration `0046`). |
+| `RPC-finalize_material_upload.version_number` | A second call for the same material inserts version 2 and moves `current_version_id`, leaving version 1's row and its pages untouched (`REQ-MAT-010`). (migration `0046`). |
+| `RPC-award_badge_manually.admin_only` | a moderator and a stale admin are refused (migration `0047`). |
+| `RPC-award_badge_manually.reason_mandatory` | an empty reason raises before anything is written (member_badges' own check constraint backs this up structurally) (migration `0047`). |
+| `RPC-award_badge_manually.idempotent` | awarding the same badge twice to the same member is a no-op, not an error (migration `0047`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
 | `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
