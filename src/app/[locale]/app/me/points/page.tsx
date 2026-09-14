@@ -75,7 +75,12 @@ export default async function PointsPage({
         ) : null}
       </form>
 
-      <PointsHistoryList rows={history.rows} numerals={history.numerals} timeZone={history.timeZone} />
+      {/* A plain, unlabelled wrapper — not a landmark, just something to
+          scope a test locator to (the catalogue below repeats a rule's own
+          reasonAr, which can equal a specific award's reason here). */}
+      <div id="history">
+        <PointsHistoryList rows={history.rows} numerals={history.numerals} timeZone={history.timeZone} />
+      </div>
 
       <PointsCatalogue entries={history.catalogue} numerals={history.numerals} />
     </>

@@ -16,7 +16,7 @@ export async function PointsCatalogue({ entries, numerals }: { entries: Catalogu
   if (visible.length === 0) return null;
 
   return (
-    <section aria-labelledby="catalogue-heading" className="mt-12">
+    <section id="catalogue" aria-labelledby="catalogue-heading" className="mt-12">
       <h2 id="catalogue-heading" className="text-h2 text-fg-heading">
         {t("catalogue.heading")}
       </h2>

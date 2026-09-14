@@ -8,7 +8,7 @@
     },
     "you": "أنت",
     "empty": "لا بيانات كافية بعد لعرض هذه اللوحة.",
-    "pointsValue": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {<bdi>{value}</bdi> نقاط} many {<bdi>{value}</bdi> نقطة} other {<bdi>{value}</bdi> نقطة}}",
+    "pointsValue": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}}",
     "monthly": {
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
       "final": "نهائية"

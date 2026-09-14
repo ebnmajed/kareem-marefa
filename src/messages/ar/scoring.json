@@ -3,7 +3,7 @@
     "points": {
       "title": "نقاطي",
       "intro": "كل نقطة هنا لها سبب واضح — يمكنك معرفة سبب كل نقطة من دون سؤال أحد.",
-      "balance": "{count, plural, zero {رصيدك صفر نقطة} one {رصيدك نقطة واحدة} two {رصيدك نقطتان} few {رصيدك <bdi>{value}</bdi> نقاط} many {رصيدك <bdi>{value}</bdi> نقطة} other {رصيدك <bdi>{value}</bdi> نقطة}}",
+      "balance": "{count, plural, zero {رصيدك صفر نقطة} one {رصيدك نقطة واحدة} two {رصيدك نقطتان} few {رصيدك {value} نقاط} many {رصيدك {value} نقطة} other {رصيدك {value} نقطة}}",
       "empty": "لا نقاط بعد. أول تسجيل حضور يمنحك أول نقطة.",
       "filters": {
         "heading": "التصفية",

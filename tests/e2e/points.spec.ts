@@ -131,14 +131,19 @@ test("a member reads their whole points history and can explain every point with
   await page.goto("/ar/app/me/points");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("نقاطي");
 
+  // Scoped to the history list, not the catalogue below it — the catalogue
+  // repeats check_in's own reasonAr as its "what earns points" row, which
+  // would otherwise match the same text.
+  const history = page.locator("#history");
+
   // The check-in award: reason, amount, and a link to the session it came from.
-  const checkInRow = page.locator("li", { hasText: "تسجيل حضور مؤكَّد" });
+  const checkInRow = history.locator("li", { hasText: "تسجيل حضور مؤكَّد" });
   await expect(checkInRow).toContainText("+٢٠");
   await expect(checkInRow.getByText(sessionTitle)).toBeVisible();
   await expect(checkInRow.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
 
   // The manual adjustment: its own admin-written reason, tagged as manual.
-  const manualRow = page.locator("li", { hasText: "مكافأة تشجيعية للاختبار" });
+  const manualRow = history.locator("li", { hasText: "مكافأة تشجيعية للاختبار" });
   await expect(manualRow).toContainText("+٥");
   await expect(manualRow).toContainText("تعديل يدوي من الإدارة");
 
@@ -147,7 +152,7 @@ test("a member reads their whole points history and can explain every point with
 
   // "What earns what" is read live from scoring_rules — check_in's default appears.
   await expect(page.getByRole("heading", { name: "ماذا يمنحك نقاطًا؟" })).toBeVisible();
-  const catalogueRow = page.locator("li", { hasText: "تسجيل حضور مؤكَّد" }).last();
+  const catalogueRow = page.locator("#catalogue").locator("li", { hasText: "تسجيل حضور مؤكَّد" });
   await expect(catalogueRow).toContainText("نقطة");
 });
 
