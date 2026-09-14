@@ -1,4 +1,4 @@
--- console (wave 3, M7) — SCR-050/051/052's moderation queues. Closes two
+-- promoted by the lead at wave-3 sync 3 · console (wave 3, M7) — SCR-050/051/052's moderation queues. Closes two
 -- gaps `event`'s and `content`'s own notes already flagged as belonging to
 -- whoever builds the moderation UI (that's this migration):
 --

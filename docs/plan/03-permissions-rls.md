@@ -1414,6 +1414,11 @@ generated suite is the highest-value test in the product.
 | `POL-write_admin_export_audit.execute.admin` | An admin's export writes exactly one audit row naming the export type and the subject (`REQ-ADM-017`). (migration `0058`). |
 | `POL-write_admin_export_audit.execute.non_admin` | A moderator and a member are both refused — the boundary is `assert_fresh_admin()`, not the route handler. (migration `0058`). |
 | `POL-write_admin_export_audit.execute.own_org_only` | An admin cannot forge another org's export as their own subject; the audit row lands in the caller's own org. (migration `0058`). |
+| `POL-comments.removal_audit` | A staff removal of a comment writes an audit row with the reason; a self-delete writes none (`REQ-EVT-014`, `REQ-ADM-018`). (migration `0059`). |
+| `POL-remove_photo.staff_only` | `remove_photo()` is admin-or-moderator with a mandatory reason; a member is refused. (migration `0059`). |
+| `POL-remove_photo.resolves_takedown_and_report` | One call hides the photo and resolves any open takedown and report on it in the same transaction (DEC-005). (migration `0059`). |
+| `POL-remove_photo.reverses_points` | Removing a photo reverses its points the way a comment's removal does (`0032`'s deferred half). (migration `0059`). |
+| `POL-remove_photo.own_org_only` | A staff member cannot remove another org's photo. (migration `0059`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
