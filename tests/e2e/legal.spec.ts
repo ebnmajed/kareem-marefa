@@ -7,6 +7,11 @@
 // wording is the requirement.
 import { expect, test, type Page } from "@playwright/test";
 
+// DEC-051: while the platform is unconfigured (production until Launch)
+// /legal/* is a 404 like every other platform route; the unconfigured spec
+// asserts that, and these cases wait for a configured build.
+test.skip(process.env.E2E_PLATFORM_UNCONFIGURED === "1", "the legal pages are 404 by design on the unconfigured build (DEC-051)");
+
 const PHONE = { width: 390, height: 844 };
 
 async function review(p: Page, name: string) {
