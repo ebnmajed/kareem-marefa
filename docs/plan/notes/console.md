@@ -277,3 +277,66 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
    ±20% of the three built-in offsets; cite REQ-NTF-004; supersede nothing (additive to `08`'s
    frozen matrix, the same class of change `0026`'s two missing email defaults already made under
    DEC-047 itself).
+
+## Bug-fix pass against real e2e failures (post-bundle-7)
+
+Fixed and verified against a real local build + real local Supabase, `browse.spec.ts` /
+`admin-members.spec.ts` / `admin-attendance.spec.ts` / `admin-exports.ts` in scope:
+
+1. **Ambiguous PostgREST embed, three call sites** (`src/lib/dal/checkin.ts`'s
+   `getAttendanceReport()`, `src/lib/dal/admin-exports.ts`'s `exportAllAttendanceCsv()` and
+   `exportPointsCsv()`): `check_ins` has two FKs into `members` (`member_id`, `marked_by`) and
+   `points_ledger` has two (`member_id`, `actor_id`) — an unqualified `members(...)` embed is
+   ambiguous and PostgREST refuses it outright, a real server crash on SCR-044 for both admin and
+   moderator. Fixed with `members!check_ins_member_id_fkey(...)` /
+   `members!points_ledger_member_id_fkey(...)`, matching the precedent already in `event`'s
+   `comments.ts` (`author:members!comments_author_id_fkey(...)`). Verified against a real build.
+2. **admin-members role-change test race**: the `<select>` is uncontrolled, so
+   `selectOption()`'s DOM value is set instantly and is unaffected by whether the server action
+   ever completed — the test's DB assertion could run before the RPC committed. Added a `done`
+   flag to `changeRole`/`deactivate`'s returned state (`admin/members/{actions,state}.ts`) and a
+   visible confirmation the test now waits on instead (`member-row.tsx`,
+   `roleChanged`/`deactivateDone` in `admin.json`). Verified against a real build, 4/4 passing on
+   both projects.
+3. **390 px admin sub-nav overflow**: `admin/layout.tsx`'s nav used `overflow-x-auto
+   whitespace-nowrap`, a legitimate scroller, but the shared 390 px helper flags anything that
+   escapes the viewport regardless of container — switched to `flex-wrap`. Verified against a real
+   build, dashboard/lists/moderation 390 px cases green on the phone project.
+4. **SCR-011 own e2e, two test-side bugs** (mine to fix, not app bugs):
+   - The `phone` Playwright project runs at a narrow viewport by default, so the category chip and
+     the search field only exist inside `<FilterSheet>`'s mobile bottom sheet — the original tests
+     never opened it. Fixed with a shared `openMobileFilterSheetIfPresent()` helper.
+   - That helper needs to *poll* for the toggle rather than sample `.isVisible()` once: this
+     route's shell can still be resolving a streamed Suspense boundary for a few hundred ms after
+     `goto()` returns, during which the toggle briefly sits in a hidden placeholder — an unpolled
+     check reads that as "no toggle" indistinguishably from desktop. `waitFor({state:"visible"})`
+     fixed it.
+   - Once the sheet is open, `<FilterSheet>` (content's) has TWO copies of `<SearchFilters>` in
+     the DOM at once — the always-mounted, CSS-`hidden` desktop `<aside>`, and the dialog.
+     `getByRole` is accessibility-tree-scoped so the chip test's role lookup only ever saw the
+     dialog's copy; `getByLabel` is not, so the search test's label lookup hit a strict-mode
+     violation (2 matches) once the sheet opened. Scoped the search test to the dialog's own
+     locator, returned by the shared helper. Verified: `browse.spec.ts`, 10/10 (excluding the
+     bookmark case below and the 390 px capture, not re-run this pass), both projects, twice in a
+     row for stability.
+
+**Not mine to fix — reported to the lead, `content`'s files**: `REQ-DSC-006` bookmarking from the
+list is a **genuine, deterministic server bug**, not a test race (confirmed by direct REST
+reproduction, not just the e2e run — see the team-lead message). `public.bookmarks` (`0037_m5_
+schema.sql`) grants only `select, insert, delete` to `authenticated`; `toggleBookmark()`'s
+(`src/lib/dal/bookmarks.ts`) `.upsert(..., {onConflict:"member_id,session_id"})` compiles to
+`INSERT ... ON CONFLICT (member_id, session_id) DO UPDATE ...` regardless of whether a conflict
+ever actually occurs — Postgres checks the privileges the *parsed* statement references, not the
+runtime path, so every first-time bookmark hits `42501 permission denied for table bookmarks`.
+PostgREST's own error hints the missing grant. The function's own comment says the intent was a
+harmless no-op on a repeat bookmark, which points at `ignoreDuplicates: true` (→ `ON CONFLICT DO
+NOTHING`, no UPDATE privilege needed) as the more targeted fix over adding a grant + policy this
+table was never meant to have. `tests/e2e/browse.spec.ts`'s own `REQ-DSC-006` test was fixed to
+`expect.poll()` the DB instead of trusting the button's optimistic label (the same test-race class
+as item 2 above) and now fails for the right reason — it stays red until `content` lands the fix.
+
+**Housekeeping**: Supabase's local containers were found stopped, then Kong's cached DNS to a
+restarted `auth` container went stale, mid-investigation — both fixed with `supabase start` and
+`docker restart supabase_kong_kareem-marefa` since nothing else here could produce a trustworthy
+green/red signal. Flagged to the lead since the console track's own rules say not to touch the
+Supabase lifecycle.

@@ -181,7 +181,12 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   const [sessionRes, rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state").eq("id", sessionId).maybeSingle(),
     supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
-    supabase.from("check_ins").select("member_id, arrived_at, method, members(display_name)").eq("session_id", sessionId),
+    // `!check_ins_member_id_fkey`: `check_ins` has TWO foreign keys into
+    // `members` (`member_id` and `marked_by`, for a manual mark's actor) —
+    // an unqualified `members(...)` embed is ambiguous and PostgREST
+    // refuses it outright, a real bug this had until an e2e run against a
+    // real build actually exercised the query for the first time.
+    supabase.from("check_ins").select("member_id, arrived_at, method, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;

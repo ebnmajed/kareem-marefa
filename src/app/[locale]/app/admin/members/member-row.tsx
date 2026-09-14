@@ -79,6 +79,11 @@ export function MemberRow({
           <Button type="submit" variant="secondary" disabled={rolePending} className="h-11 px-4 text-body-sm">
             {t("changeRole")}
           </Button>
+          {roleState.done ? (
+            <p role="status" className="text-body-sm text-fg-muted">
+              {t("roleChanged")}
+            </p>
+          ) : null}
         </form>
 
         {isSelf ? null : active ? (
@@ -104,6 +109,10 @@ export function MemberRow({
               {deactivateState.error ? (
                 <p role="alert" className="mt-2 text-body-sm text-fg-heading">
                   {t(`error.${deactivateState.error}`)}
+                </p>
+              ) : deactivateState.done ? (
+                <p role="status" className="mt-2 text-body-sm text-fg-muted">
+                  {t("deactivateDone")}
                 </p>
               ) : null}
             </form>

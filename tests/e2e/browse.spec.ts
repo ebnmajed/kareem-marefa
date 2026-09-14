@@ -92,6 +92,38 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// The `phone` project runs every test at a narrow viewport by default
+// (playwright.config.ts, Pixel 7) — the filter form lives inside
+// `<SearchFilters>`'s bottom sheet (`FilterSheet`), opened only through this
+// toggle; the desktop rail shows the same content unconditionally, so the
+// toggle is simply absent there. `.isVisible()` alone is not enough to
+// decide "absent on desktop" from "not yet streamed in on phone": this
+// route's shell can still be resolving a Suspense boundary for a few
+// hundred ms after `goto()` returns, during which the toggle briefly sits
+// inside a hidden placeholder and every locator against it reports empty —
+// indistinguishable, to a single unpolled `.isVisible()` check, from
+// "desktop, no toggle at all". `waitFor` polls instead of sampling once.
+// Returns the scope the filter FORM now lives in: `<FilterSheet>` (content's,
+// `src/components/browse/filter-sheet.tsx`) renders `<SearchFilters>` as
+// `children` in TWO places at once — the desktop `<aside>` (always mounted,
+// `hidden md:block`) and, once opened, the mobile dialog — so once the
+// sheet is open there are two real `<input name="q">`s in the DOM. A
+// role-based locator (`getByRole`) only matches the accessibility tree,
+// which excludes the CSS-`hidden` aside, but `getByLabel` matches both and
+// a caller doing `.fill()` on it hits a strict-mode violation. Callers on
+// phone must scope every filter-form lookup to the returned locator;
+// desktop callers can use `page` directly since only the aside ever exists.
+async function openMobileFilterSheetIfPresent(page: Page): Promise<Page | ReturnType<Page["getByRole"]>> {
+  const toggle = page.getByRole("button", { name: "الفلاتر" });
+  const present = await toggle
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!present) return page;
+  await toggle.click();
+  return page.getByRole("dialog");
+}
+
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
@@ -143,13 +175,7 @@ test("REQ-DSC-005: a category filter narrows the results, and its chip clears it
   await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
   await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).not.toBeVisible();
 
-  // The `phone` project runs every test at a narrow viewport by default
-  // (playwright.config.ts, Pixel 7) — the chip lives inside `<SearchFilters>`,
-  // which on mobile only renders once the bottom sheet is open (09 §4: "not
-  // a sidebar"). The desktop rail shows the same content unconditionally, so
-  // this button is simply absent there — open it only if it exists.
-  const filtersToggle = page.getByRole("button", { name: "الفلاتر" });
-  if (await filtersToggle.isVisible().catch(() => false)) await filtersToggle.click();
+  await openMobileFilterSheetIfPresent(page);
 
   // The active filter is visible as a removable chip (content's own
   // filters-form.tsx renders the raw param value, so the chip's own text is
@@ -165,8 +191,17 @@ test("REQ-DSC-005: a category filter narrows the results, and its chip clears it
 test("REQ-DSC-003: a text search matches the session whose title carries it", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
-  await page.getByLabel("ابحث عن جلسة").fill("الذكاء الاصطناعي");
-  await page.getByRole("button", { name: "تطبيق" }).click();
+  // Same mobile-sheet gap as the category-chip test above: on the `phone`
+  // project the search field lives inside `<SearchFilters>`'s bottom sheet,
+  // closed by default, while the desktop rail shows it unconditionally —
+  // open the sheet only if the toggle exists. Unlike the chip test's
+  // role-based lookup, `getByLabel` is not accessibility-tree-scoped, so
+  // once the sheet is open both the hidden desktop copy and the open
+  // dialog's copy of the search field match — scope to the sheet's own
+  // returned locator to get the one dialog actually holds.
+  const scope = await openMobileFilterSheetIfPresent(page);
+  await scope.getByLabel("ابحث عن جلسة").fill("الذكاء الاصطناعي");
+  await scope.getByRole("button", { name: "تطبيق" }).click();
   await expect(page).toHaveURL(/[?&]q=/);
   await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
   await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).not.toBeVisible();
@@ -178,10 +213,19 @@ test("REQ-DSC-006: bookmarking from the list toggles the button and persists", a
   const card = page.locator("li", { has: page.getByText("جلسة الذكاء الاصطناعي التوليدي") });
   await expect(card.getByRole("button", { name: "أضف إلى المحفوظات" })).toBeVisible();
   await card.getByRole("button", { name: "أضف إلى المحفوظات" }).click();
+  // Not a reliable "the server call finished" signal: `BookmarkButton`
+  // (content's own component) flips this label from its optimistic
+  // `setBookmarked(next)`, which runs synchronously on click, before
+  // `toggleBookmarkAction`'s round trip to Postgres has even started. The
+  // DB assertion right after would then race a write that has not landed
+  // yet — the same class of bug already found in the admin-members role
+  // change test (`admin-members.spec.ts`). `expect.poll` retries the query
+  // instead of trusting the button text as a completion signal.
   await expect(card.getByRole("button", { name: "إزالة من المحفوظات" })).toBeVisible();
 
-  const { rows } = await db.query(`select 1 from public.bookmarks where session_id = $1`, [sessionAiId]);
-  expect(rows).toHaveLength(1);
+  await expect
+    .poll(async () => (await db.query(`select 1 from public.bookmarks where session_id = $1`, [sessionAiId])).rows.length)
+    .toBe(1);
 
   await page.reload();
   const cardAfterReload = page.locator("li", { has: page.getByText("جلسة الذكاء الاصطناعي التوليدي") });

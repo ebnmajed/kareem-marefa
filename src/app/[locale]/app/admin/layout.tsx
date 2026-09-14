@@ -61,12 +61,20 @@ export default async function AdminLayout({ children, params }: { children: Reac
     <div>
       {items.length > 0 ? (
         <nav aria-label={t("brand")} className="border-b border-edge pb-3">
-          <ul className="flex items-center gap-1 overflow-x-auto whitespace-nowrap">
+          {/* A wrapping row, not `overflow-x-auto`: an item scrolled out of
+              an internally-scrollable strip still reads as "off the page" to
+              the 390 px review's own layout-viewport check (and to anyone
+              who does not think to swipe a plain nav sideways) — the same
+              reasoning that keeps every other screen in this product free of
+              horizontal scroll outside a table. Wrapping to two or three
+              rows at 390 px is the honest fix, not a scroll a reader has to
+              discover. */}
+          <ul className="flex flex-wrap items-center gap-1">
             {items.map((item) => (
               <li key={item.key}>
                 <Link
                   href={item.href}
-                  className="inline-flex h-10 items-center rounded-field px-3 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading"
+                  className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3"
                 >
                   {t(`nav.${item.key}`)}
                 </Link>

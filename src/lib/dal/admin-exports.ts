@@ -155,7 +155,11 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
 
   const { data, error } = await supabase
     .from("check_ins")
-    .select("arrived_at, method, session_id, member_id, sessions(title), members(display_name)")
+    // `!check_ins_member_id_fkey`: `check_ins` has two FKs into `members`
+    // (`member_id`, `marked_by`) — an unqualified embed is ambiguous and
+    // PostgREST refuses it (`getAttendanceReport()`'s own header explains
+    // the discovery).
+    .select("arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
     .order("arrived_at", { ascending: false });
   if (error) throw new Error(`check_ins: ${error.message}`);
@@ -214,7 +218,11 @@ export async function exportPointsCsv(locale: string): Promise<string | null> {
 
   const { data, error } = await supabase
     .from("points_ledger")
-    .select("amount, source, reason, occurred_at, member_id, members(display_name)")
+    // `!points_ledger_member_id_fkey`: `points_ledger` has two FKs into
+    // `members` (`member_id`, the recipient, and `actor_id`, who wrote a
+    // manual adjustment) — the same ambiguous-embed shape
+    // `getAttendanceReport()`'s header explains.
+    .select("amount, source, reason, occurred_at, member_id, members!points_ledger_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
     .order("occurred_at", { ascending: false });
   if (error) throw new Error(`points_ledger: ${error.message}`);

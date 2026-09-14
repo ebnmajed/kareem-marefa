@@ -11,23 +11,23 @@ import type { Locale } from "@/i18n/routing";
 // `03` §1.3 describes. This module only shapes form data into their
 // parameters and turns a raised identifier into a state the form can show.
 
-export type RowState = { error: string | null };
+export type RowState = { error: string | null; done: boolean };
 
 export async function changeRole(locale: Locale, memberId: string, _prev: RowState, formData: FormData): Promise<RowState> {
   const parsed = roleChangeInput.safeParse({ memberId, role: formData.get("role")?.toString() });
-  if (!parsed.success) return { error: "failed" };
+  if (!parsed.success) return { error: "failed", done: false };
   const { error } = await setMemberRole(locale, parsed.data);
-  if (error) return { error };
+  if (error) return { error, done: false };
   revalidatePath(`/${locale}/app/admin/members`);
-  return { error: null };
+  return { error: null, done: true };
 }
 
 export async function deactivate(locale: Locale, memberId: string, _prev: RowState, formData: FormData): Promise<RowState> {
   const reason = formData.get("reason")?.toString() ?? "";
   const { error } = await deactivateMember(locale, { memberId, reason });
-  if (error) return { error };
+  if (error) return { error, done: false };
   revalidatePath(`/${locale}/app/admin/members`);
-  return { error: null };
+  return { error: null, done: true };
 }
 
 /** No `useActionState` here, matching `admin/venues/actions.ts`'s
