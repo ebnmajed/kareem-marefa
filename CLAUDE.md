@@ -299,7 +299,7 @@ Tier A on every render (D66, A28, DEC-048); goldens change only through a lead-r
 day one; `console` publishes the admin shell with every admin route. `worker/src/index.ts` and the
 image stay the lead's. Branding, the brand-kit screen and the platform library are wave 4's.
 
-### Ownership map (wave 4 — M8 · M7-branding, proposed; the owner confirms before spawn)
+### Ownership map (wave 4 — M8 · M7-branding, DEC-052)
 
 | Teammate | Model | Tracks | Edits only |
 |---|---|---|---|
@@ -314,6 +314,8 @@ wires** the banner and the platform nav link into the shell, the org `@theme` la
 layout, the `brand` field of the render context into the worker's renderer and mail, and the six
 task registrations. NFR-004/005 (the accessibility and performance closing pass) run after both
 tracks land and touch every folder, so they are the lead's.
+The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
+org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
 
 ### Lead-only paths

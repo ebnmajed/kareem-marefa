@@ -20,7 +20,7 @@ along its own seams**.
 | **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4, plus the never-built SCR-011) | M6 needs M5; the console half that needs no templates runs alongside | both demonstrables locally: every A12 variant, the detach, both QRs, the serial not-found, 28 parity assertions; a second org invisible to the first with the moderator scope proven by policy; `wave-3/m6-m7` PR green |
-| **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | M8's demonstrable and branding's (one edit, four consumers, goldens untouched); `wave-4/m8-branding` PR green; the lead's NFR-004/005 closing pass; Launch follows, owner-run |
+| **4 — running** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | M8's demonstrable and branding's (one edit, four consumers, goldens untouched); `wave-4/m8-branding` PR green; the lead's NFR-004/005 closing pass; Launch follows, owner-run |
 
 ### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046)
 
@@ -98,7 +98,7 @@ wave 1 and wave 2 carved out (`proposals`, `sessions`, `venues` — DEC-042; `sc
   already defines, calls `searchSessions()`, and renders `content`'s `<SearchFilters>` and
   `<BookmarkButton>` unchanged.
 
-### Ownership for wave 4 (proposed by the wave-4 lead 2026-09-14; the owner confirms before spawn — DEC-052 when confirmed)
+### Ownership for wave 4 (confirmed by the owner 2026-09-14, DEC-052)
 
 The agent definitions `.claude/agents/{platform,branding}.md` are authoritative for a teammate.
 `platform` takes M8 minus the two cross-cutting closing stories; `branding` takes the half of M7
@@ -110,7 +110,7 @@ and `app/admin/branding/` do not exist.
 | `platform` | opus | `src/app/[locale]/app/platform/**` (SCR-080 … 085), `src/app/[locale]/legal/**` (SCR-005, public), `src/app/[locale]/app/me/privacy/**` (the self export and the deactivation request, `REQ-PRF-006/007`), `src/app/api/platform/**`, `src/app/api/me/export/**`, `src/lib/dal/platform*.ts`, `src/lib/dal/privacy.ts`, `src/components/{platform,legal,privacy}/**`, `worker/src/platform/**`, `worker/src/tasks/{enforce_retention,anonymise_members,assert_storage_prefixes,expire_impersonation,build_data_export,delete_org}.ts`, add-only platform-library functions in `src/lib/dal/templates.ts` (SCR-083, `REQ-DSG-008`), `messages/*/{platform,legal,privacy}.json`, `supabase/proposed/platform/**`, `tests/rls/{platform,impersonation,retention,privacy,delete-org}*.test.ts`, `tests/unit/{platform,legal,privacy}*`, `tests/e2e/{platform,legal,privacy}*.spec.ts`, `docs/plan/notes/platform.md` |
 | `branding` | sonnet | `src/app/[locale]/app/admin/branding/**` (SCR-059), `src/app/api/admin/branding/**` (the logo upload — a Route Handler, sniffed, raster only, DEC-009), `src/lib/brand/**`, `src/components/branding/**`, `packages/storage-paths/src/brand.ts` (new), **add-only** `resolveBrand()` in `packages/designer-runtime/src/brand.ts`, `messages/*/branding.json`, `supabase/proposed/branding/**`, `tests/rls/brand*.test.ts`, `tests/unit/brand*`, `tests/e2e/branding*.spec.ts`, `tests/components/branding/**`, `docs/plan/notes/branding.md` |
 
-**Wave-4 contracts (proposed):**
+**Wave-4 contracts (DEC-052):**
 
 - **The super admin has no data plane** (DEC-014, invariant 8, `REQ-ADM-002`). `platform`'s DAL
   selects from `orgs`, `org_domains`, `platform_admins` (through a `security definer`
@@ -142,6 +142,13 @@ and `app/admin/branding/` do not exist.
   edits do not reach it). Authoring stays in an org's editor (`designer`'s SCR-057), because a super
   admin has no org and the editor is org-scoped. The default in force unless the owner says
   otherwise.
+- **The A27 baseline is seeded, platform-owned, and present for every org from creation** (DEC-052):
+  the five poster families and three certificate families of `0061`, light and dark by the brand
+  scheme, RTL-first, readable by every org and writable by none — `create_org()` seeds nothing
+  because platform scope is org-independent. Promotion adds to the library; it never supplies the
+  baseline. `platform` proves it: SCR-083 lists the eight as the baseline (never retirable below
+  one default per purpose), an RLS case creates an org and reads all eight, an e2e renders a poster
+  and a certificate family for a freshly created org in both schemes before it publishes anything.
 - **`branding` publishes `getBrandKit(orgId)`** from `src/lib/brand/kit.ts` on day one — the full
   token set of `06` §8.3 (`BRAND_COLOUR_TOKENS` light and dark, `logoAssetId`, the face) with the
   platform defaults filled in wherever the org has no override — and `public.brand_kit(p_org uuid)
@@ -152,8 +159,8 @@ and `app/admin/branding/` do not exist.
   referencing `design_assets` (raster, sniffed), nine light and nine dark colour tokens, the
   heading and body faces referencing `fonts` at `parity_status = 'passed'`, `updated_by`; every
   change writes `scoring_config_history` (`02` §4.1 made it general enough on purpose). `02` is
-  frozen and has no `brand_kits`, so the promotion is a `DECISIONS.md` entry that amends
-  `02` §4.12 — the lead writes it at sync 1.
+  frozen; `ENT-brand_kits` is written into §4.13 under DEC-052 — the promotion at sync 1 must
+  match it.
 - **The four consumers, and who wires each** (`06` §8.3): the CSS `@theme` layer — the lead reads
   `getBrandKit()` in `src/app/[locale]/app/layout.tsx` and emits the org's tokens as CSS custom
   properties over `globals.css`'s defaults (DEC-003's theme layers); the designer templates —

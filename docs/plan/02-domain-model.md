@@ -780,6 +780,8 @@ Volume is hundreds per month (A24), so the row-lock contention this introduces i
 
 ### 4.13 The designer
 
+**Amended under DEC-052 (wave 4):** `ENT-brand_kits` — the org brand kit (`REQ-DSG-021`, `06` §8.3): one row per org (`unique (org_id)`), `logo_asset_id uuid references design_assets(id)` (raster, sniffed — DEC-009), nine light and nine dark colour tokens as `text` each constrained to `#rrggbb` (the `BRAND_COLOUR_TOKENS` of the runtime), `heading_font_id` and `body_font_id` `uuid references fonts(id)` (selectable at `parity_status = 'passed'` only), `updated_by uuid references members(id)`, `updated_at`. No row means the platform defaults — the identity override. Every change writes `ENT-scoring_config_history` (§4.1). Standard P1 read / P2 write (`03` §5.9), the write through an `assert_fresh_admin()` RPC.
+
 **Amended under DEC-050 (wave 3):** `design_documents.draft_for_template_id uuid unique` (a template's one working draft; the one-binding check becomes poster | certificate | template draft — `0057`); `export_artifacts.render_context jsonb` (the pinned faces and bindings a render is reproduced from — `0060`); `fonts` gains the materialisation columns of `0064`; `design_templates_single_default` keeps exactly one default per (org, purpose, family) (`0057`). `ENT-fonts` carries no `org_id` (DEC-049, §7).
 
 #### `ENT-design_templates` · `ENT-design_template_versions`
