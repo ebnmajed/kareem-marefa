@@ -166,6 +166,37 @@ export interface AttendanceReport {
 }
 
 /**
+ * SCR-044's own manual-mark picker (`REQ-CHK-008`) — deliberately broader
+ * than `listUncheckedConfirmedRsvps()` above (the presenter's own host
+ * view, scoped on purpose to who actually holds a confirmed seat). Staff
+ * doing event-day operations also need to mark someone who was on the
+ * waitlist and simply showed up — not a fabricated "walk-in" so much as an
+ * RSVP holder who never got promoted, a real e2e run against SCR-044's own
+ * page surfaced this gap (a waitlisted attendee was never selectable).
+ * Staff-only, like `getAttendanceReport()` right below; a member or an
+ * unauthenticated caller gets the empty list rather than an error, since
+ * this backs a form's own option list, not a page gate.
+ */
+export async function listUncheckedForAdminManualMark(locale: string, sessionId: string): Promise<UncheckedAttendee[]> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return [];
+
+  const [rsvpsRes, checkInsRes] = await Promise.all([
+    supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).in("status", ["confirmed", "waitlisted"]),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+  ]);
+  if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
+  if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
+  const checkedIn = new Set((checkInsRes.data ?? []).map((c) => c.member_id));
+  return (rsvpsRes.data ?? [])
+    .filter((r) => !checkedIn.has(r.member_id))
+    .map((r) => {
+      const member = Array.isArray(r.members) ? r.members[0] : r.members;
+      return { memberId: r.member_id, displayName: (member as { display_name: string | null } | null)?.display_name ?? null };
+    });
+}
+
+/**
  * SCR-044 (`REQ-CHK-008`, `REQ-CHK-012`). Staff-only — admin or moderator,
  * REQ-ADM-020's "event-day operations." `rsvps`/`check_ins` are already
  * staff-readable for the whole session (0010's `rsvps_read`/`checkins_read`

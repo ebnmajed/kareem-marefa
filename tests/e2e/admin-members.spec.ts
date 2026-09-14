@@ -138,7 +138,12 @@ test("REQ-ADM-009: deactivation needs a written reason, and the reason lands in 
   await page.goto("/ar/app/admin/members");
   const row = page.locator("li", { has: page.getByText("عضو تحت الاختبار", { exact: true }) });
 
-  await row.getByRole("button", { name: "عطّل العضوية" }).click();
+  // `member-row.tsx`'s "deactivate" control is a bare `<summary>` (the
+  // `<details>` disclosure itself, not a `<button>`) — Chromium's
+  // accessibility tree does not give it an implicit "button" role, so
+  // `getByRole("button", ...)` never matches it and this line used to hang
+  // for the full 30 s timeout. `getByText` matches the summary's own text.
+  await row.getByText("عطّل العضوية", { exact: true }).click();
   await row.getByRole("button", { name: "أرسل" }).click();
   await expect(row.getByText("اكتب سبب التعطيل أولًا")).toBeVisible();
 

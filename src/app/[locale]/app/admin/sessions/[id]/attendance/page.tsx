@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { getAttendanceReport, listUncheckedConfirmedRsvps } from "@/lib/dal/checkin";
+import { getAttendanceReport, listUncheckedForAdminManualMark } from "@/lib/dal/checkin";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getRatingsForAdmin } from "@/lib/dal/ratings";
 import { requireSession } from "@/lib/dal/session";
@@ -32,7 +32,7 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
 
   const [report, unchecked, prefs, session, t] = await Promise.all([
     getAttendanceReport(locale, id),
-    listUncheckedConfirmedRsvps(locale, id),
+    listUncheckedForAdminManualMark(locale, id),
     getOrgPrefs(locale),
     requireSession(locale),
     getTranslations("admin.attendance"),
