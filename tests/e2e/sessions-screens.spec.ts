@@ -107,6 +107,19 @@ async function phone(page: Page, who: string): Promise<Page> {
  * Both directories are gitignored.
  */
 async function review(p: Page, name: string, primary?: string | RegExp) {
+  // Namespaced by project: both device projects run this file concurrently
+  // and would otherwise write the same path, last writer winning.
+  //
+  // They are not the same picture. Both lay out at 390 CSS pixels — the
+  // assertion below proves it — but the phone project inherits Pixel 7's
+  // 2.625 device pixel ratio, so its PNG is 1024 px wide. Measuring a
+  // capture's pixel width is therefore NOT how you check the review width;
+  // that is what `viewportSize()` is for.
+  const project = test.info().project.name;
+  // The review is worthless if it is not actually 390 px, and a wrong
+  // viewport is invisible in the result: every assertion below passes more
+  // easily at 1024, and the capture just looks like a wide page.
+  expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
   const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
@@ -114,7 +127,7 @@ async function review(p: Page, name: string, primary?: string | RegExp) {
     const box = (await p.getByRole("button", { name: primary }).first().boundingBox())!;
     expect(box.height, `${name}: the primary action must be at least 44 px tall`).toBeGreaterThanOrEqual(44);
   }
-  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl.png`, fullPage: true });
+  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
 test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {

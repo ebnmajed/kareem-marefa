@@ -625,7 +625,17 @@ in M2 budgets for. **Flagged for the lead, not worked around.**
   literally needs a custom picker, which nothing in M2 budgets for. **Left for the lead** as either
   a `09` correction or a backlog item.
 
-### 12.7 Where a capture must not be written
+### 12.7 A capture's pixel width is not its review width
+
+The phone project's captures are 1024 px wide and the desktop project's are 390 px, for the same
+page. Both lay out at **390 CSS pixels**; the phone project inherits Pixel 7's 2.625 device pixel
+ratio, so its PNG is 390 × 2.625. I spent a while treating that as a broken viewport. Measuring the
+PNG is not how you check a 390 px review — `viewportSize()` is, and `review()` now asserts it,
+because every other assertion in that helper passes *more easily* at a wider viewport and a wrong
+one is invisible in the result. The two projects also write per-project filenames now, since they
+run concurrently and were overwriting each other.
+
+### 12.8 Where a capture must not be written
 
 `test-results/` is emptied by Playwright at the **start** of every run, so in a shared tree another
 teammate's run deletes your evidence between taking it and looking at it — three of mine vanished
