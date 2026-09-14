@@ -1,0 +1,34 @@
+{
+  "privacy": {
+    "page": {
+      "title": "My data and privacy",
+      "intro": "Export everything the platform holds about you, and request that your account be deactivated. The privacy policy says what is collected, why, and for how long.",
+      "policyLink": "Read the privacy policy",
+      "exportTitle": "Export my data",
+      "exportIntro": "One machine-readable file with your profile, RSVPs, check-ins, comments, photos, the ratings you wrote, your points ledger and your certificates.",
+      "exportNote": "The file carries no other member's personal data. A comment you replied to appears by its author's display name alone, with no address and no id.",
+      "exportRequest": "Request the export",
+      "exportDownload": "Download the file",
+      "exportAgain": "Request a fresh copy",
+      "statusQueued": "Queued. It will be ready in a few minutes.",
+      "statusBuilding": "Being built.",
+      "statusReady": "Ready.",
+      "statusFailed": "Building it failed. Ask again.",
+      "statusExpired": "The previous copy expired and its contents were erased. Ask for a fresh one.",
+      "requestedAt": "Requested",
+      "readyAt": "Ready",
+      "expiryNote": "The file is kept for seven days, then its contents are erased.",
+      "deactivateTitle": "Deactivate my account",
+      "deactivateIntro": "Your request goes to your org's admin, who performs it. It appears in the org's audit log with the reason you write.",
+      "deactivateHonest": "There is no immediate self-service deletion, and here is why rather than a silence: what you wrote is depended on by other members, and deleting it tears holes in pages that are not only yours. Twelve months after deactivation your personal data is erased, what you wrote stays attributed to a former member, and your ledger rows keep a pseudonymous id so the org's balances still reconcile.",
+      "deactivateReasonLabel": "Reason for the request",
+      "deactivateSubmit": "Send the request",
+      "deactivateSent": "Your request was sent. Your org's admin will see it in the audit log."
+    },
+    "errors": {
+      "failed": "That did not go through. Try again.",
+      "reason_required": "Write a reason of at least three characters.",
+      "export_rate_limited": "You requested an export in the last twenty-four hours. Wait until that window passes."
+    }
+  }
+}
