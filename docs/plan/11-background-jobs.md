@@ -278,9 +278,10 @@ the platform.
 | `JOB-enforce_retention` | nightly | `retain:{date}` | `REQ-NFR-012`, OQ-019 |
 | `JOB-anonymise_members` | nightly | `anon:{date}` | `REQ-PRF-007`, OQ-023 |
 | `JOB-assert_storage_prefixes` | nightly | `storageck:{date}` | `REQ-TEN-003`, `03` §6 |
-| `JOB-expire_impersonation` | every minute | `impexp:{session_id}` | `REQ-ADM-002` |
+| `JOB-expire_impersonation` | at `expires_at`, scheduled by `start_impersonation()` (DEC-054; a run expires every due session, so a missed one self-heals) | `impexp:{session_id}` | `REQ-ADM-002` |
 | `JOB-build_data_export` | on request | `export:{member_id}:{requested_at}` | `REQ-PRF-006` |
 | `JOB-delete_org` | on request (DEC-052) | `orgdel:{org_id}` | `REQ-NFR-014`, `12` §5.5 |
+| `JOB-evaluate_alerts` | every minute (DEC-053) | `alerts:{minute}` | `REQ-NFR-016`, §3.2 |
 | `JOB-rebuild_search` | on category/company rename | `search:{org_id}` | `REQ-DSC-003` |
 
 **`JOB-assert_storage_prefixes` deserves its place here.** Storage paths are the only point in the
@@ -346,6 +347,7 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-expire_impersonation` | `REQ-ADM-002` |
 | `JOB-build_data_export` | `REQ-PRF-006` |
 | `JOB-delete_org` | `REQ-NFR-014` |
+| `JOB-evaluate_alerts` | `REQ-NFR-016` |
 
 ## 5. Proposed entities
 

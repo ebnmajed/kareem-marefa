@@ -203,6 +203,7 @@ after both land. Open for the owner: the SCR-083 default (managed, not authored)
 | Sync | What was promoted / wired | Gates |
 |---|---|---|
 | 0 (2026-09-14) | DEC-052 logged (`8a3cdc4`); `platform` and `branding` spawned — first task: the first proposed file and `docs/plan/notes/<name>.md` | the pre-spawn gates above |
+| 1 (2026-09-14) | `0068_brand_kits` (branding, DEC-053) and `0069_m8_schema` (platform, DEC-054) promoted; `03` +25 rows (§8.2) +3 (§5); `fixture-m7.ts` (a kit and an export request per org); the four brand consumers wired — request-time `brandBindings()` in both worker composition paths and the designer preview, `brand_kit()` in the mail sender, the nonced `.brand-org` theme layer in the shell; `JOB-evaluate_alerts` and the three M8 entities into `11`/`02`; DEC-052's impersonation readers widened to staff per `03` | tsc clean · lint 0 errors · unit 502 · RLS 57 files / 674 passed · policy-diff agrees · traceability 68 entities no gaps · parity 21/28 local (converter path at wave end) · e2e shell smoke 19/19; auth + second-org + designer e2e on the new hook: see sync 2 |
 
 ### Next for the lead
 

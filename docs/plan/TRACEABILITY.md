@@ -9,10 +9,10 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **251** |
-| Entities (`ENT-*`) | **64** |
+| Entities (`ENT-*`) | **68** |
 | Stories (`STORY-*`) | **112** |
 | Screens cited (`SCR-*`) | 53 |
-| Jobs cited (`JOB-*`) | 35 |
+| Jobs cited (`JOB-*`) | 36 |
 | Messages cited (`MSG-*`) | 20 |
 
 ## Cross-cutting requirements
@@ -63,7 +63,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-012` | — | — | `SCR-054` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-013` | — | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-014` | — | — | `SCR-058` | — | — | `STORY-ADM-007` | M7 |
-| `REQ-ADM-015` | — | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
+| `REQ-ADM-015` | `ENT-brand_kits` `ENT-fonts` `ENT-scoring_config_history` | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-016` | — | — | `SCR-060` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-017` | — | `POL-write_admin_export_audit.execute.admin` | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-018` | `ENT-audit_log` | `POL-comments.removal_audit` | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
@@ -132,7 +132,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` +1 | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-011` `SCR-043` `SCR-045` +2 | — | `MSG-reminder_generic` | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
-| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` | — | `SCR-023` | — | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` | — | `SCR-023` `SCR-059` | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
 
 ### DSC
 
@@ -162,7 +162,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-010` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-011` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-012` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
-| `REQ-DSG-013` | `ENT-export_artifacts` | `POL-export_artifacts.cache` `POL-export_artifacts.select` | — | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
+| `REQ-DSG-013` | `ENT-export_artifacts` | `POL-export_artifacts.cache` `POL-export_artifacts.select` | `SCR-059` | `JOB-evaluate_alerts` `JOB-regenerate_poster` +1 | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-014` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-007` | M6 |
 | `REQ-DSG-015` | — | — | `SCR-011` `SCR-043` `SCR-057` | — | `MSG-certificate_issued` | `STORY-DSG-007` | M6 |
 | `REQ-DSG-016` | `ENT-fonts` | — | `SCR-011` `SCR-043` `SCR-044` +5 | — | — | `STORY-DSG-008` | M6 |
@@ -258,9 +258,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-011` | — | — | — | — | — | `STORY-NFR-005` | M8 |
 | `REQ-NFR-012` | — | — | — | `JOB-anonymise_members` `JOB-enforce_retention` | — | `STORY-NFR-006` | M8 |
 | `REQ-NFR-013` | — | — | `SCR-021` | — | — | `STORY-NFR-006` | M8 |
-| `REQ-NFR-014` | `ENT-brand_kits` | — | `SCR-080` `SCR-083` | `JOB-delete_org` | — | `STORY-NFR-006` | M8 |
+| `REQ-NFR-014` | `ENT-brand_kits` `ENT-data_export_requests` `ENT-platform_audit_log` +1 | — | `SCR-080` `SCR-083` | `JOB-delete_org` | — | `STORY-NFR-006` | M8 |
 | `REQ-NFR-015` | — | — | `SCR-005` | — | — | `STORY-NFR-006` | M8 |
-| `REQ-NFR-016` | `ENT-brand_kits` `ENT-email_deliveries` `ENT-impersonation_sessions` | — | `SCR-057` `SCR-059` `SCR-083` +1 | — | — | `STORY-NFR-007` | M0 |
+| `REQ-NFR-016` | `ENT-brand_kits` `ENT-email_deliveries` `ENT-impersonation_sessions` | — | `SCR-057` `SCR-059` `SCR-083` +1 | `JOB-evaluate_alerts` | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-017` | — | — | — | — | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-018` | — | — | — | — | — | `STORY-NFR-008` | M0 |
 | `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` | — | — | `STORY-NFR-008` | M0 |
@@ -288,7 +288,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-020` | — | — | `STORY-PRF-002` | M1 |
 | `REQ-PRF-005` | — | — | `SCR-019` | — | — | `STORY-PRF-003` | M2 |
-| `REQ-PRF-006` | — | — | `SCR-005` `SCR-021` `SCR-080` +1 | `JOB-build_data_export` | — | `STORY-PRF-004` | M8 |
+| `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-021` `SCR-080` +1 | `JOB-build_data_export` `JOB-expire_impersonation` | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-007` | — | — | `SCR-021` | `JOB-anonymise_members` `JOB-enforce_retention` | — | `STORY-PRF-004` | M8 |
 
 ### PRO

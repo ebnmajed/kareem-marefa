@@ -38,7 +38,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 | 2 | **`registrations` is never dropped, altered, or read by platform code** | Frozen legacy holding real pre-launch signups (DEC-002). |
 | 3 | **Every migration is forward-only** and tested against production-shaped data first | There is one Supabase project today and it is production. |
 | 4 | **`main` stays deployable** | Every milestone ships to the live domain. |
-| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Five documented exceptions only (`02` §7; the fifth, `fonts`, is DEC-049). |
+| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Seven documented exceptions only (`02` §7; the fifth, `fonts`, is DEC-049; the sixth and seventh, `retention_periods` and `platform_audit_log`, are DEC-054). |
 | 6 | **Every policy has a matching `grant`** | A policy without one fails `42501`. Migration `0002` exists *solely* because `0001` forgot it. |
 | 7 | **`service_role` is never on Vercel** | Anything needing it is a worker job. |
 | 8 | **No super-admin disjunct in any RLS policy** | DEC-014. It would reduce D3 to "one claim is correct". |

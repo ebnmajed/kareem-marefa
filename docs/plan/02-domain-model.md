@@ -317,6 +317,23 @@ second of exactly two tables without one. Super admins hold **no data-plane acce
 `ended_at`. Append-only. **Visible to the org's own admins** — that is the point of the table.
 `check (expires_at > started_at and expires_at <= started_at + interval '4 hours')`.
 
+#### `ENT-retention_periods` · `ENT-platform_audit_log` · `ENT-data_export_requests`
+**Added under DEC-054 (wave 4, migration `0069`).**
+`retention_periods` — `12` §5.3 as rows, one per data class (`data_class` pk, `table_name`,
+`age_column`, `days`, `action` — `retain` has no days, the others must — `note`, `updated_at`).
+**No `org_id`**: platform-level configuration, the `platform_admins` shape exactly — RLS enabled,
+no policy, no grant; the retention job reads it through `retention_period()`.
+`platform_audit_log` — the platform-side trail (`actor_user_id`, `action`, `subject_org` with
+**no foreign key on purpose**, `subject_type`, `subject_id`, `before`, `after`, `reason`,
+`occurred_at`). **No `org_id`**: an `org.deleted` row must outlive the org it records
+(`REQ-NFR-014`); `audit_log.org_id` cascades from `orgs`, so the evidence cannot live there.
+Same shape as `platform_admins`; written by `security definer` functions only.
+`data_export_requests` — org-scoped: `member_id`, `status` (`queued` · `building` · `ready` ·
+`failed` · `expired`), `requested_at`, `completed_at`, `storage_path`, `byte_size`, `error`; one
+open request per member by partial unique index; a `ready` row has a path. P3 self read; insert
+through `request_data_export()` alone (`REQ-PRF-006`). `status` and `retention_periods.action`
+ship as `text` + check and are converted to enum types by a follow-up migration (DEC-054).
+
 ### 4.2 Taxonomy and venues
 
 #### `ENT-categories`
@@ -780,7 +797,11 @@ Volume is hundreds per month (A24), so the row-lock contention this introduces i
 
 ### 4.13 The designer
 
-**Amended under DEC-052 (wave 4):** `ENT-brand_kits` — the org brand kit (`REQ-DSG-021`, `06` §8.3): one row per org (`unique (org_id)`), `logo_asset_id uuid references design_assets(id)` (raster, sniffed — DEC-009), nine light and nine dark colour tokens as `text` each constrained to `#rrggbb` (the `BRAND_COLOUR_TOKENS` of the runtime), `heading_font_id` and `body_font_id` `uuid references fonts(id)` (selectable at `parity_status = 'passed'` only), `updated_by uuid references members(id)`, `updated_at`. No row means the platform defaults — the identity override. Every change writes `ENT-scoring_config_history` (§4.1). Standard P1 read / P2 write (`03` §5.9), the write through an `assert_fresh_admin()` RPC.
+**Amended under DEC-052 (wave 4):** the org brand kit joins this section as `ENT-brand_kits` (below, after the templates).
+
+#### `ENT-brand_kits`
+**Serves:** `REQ-DSG-021`, `REQ-ADM-015`, `06` §8.3 · **Added under DEC-052.**
+One row per org (`unique (org_id)`), `logo_asset_id uuid references design_assets(id)` (raster, sniffed — DEC-009), nine light and nine dark colour tokens as `text` each constrained to `#rrggbb` (the `BRAND_COLOUR_TOKENS` of the runtime), `heading_font_id` and `body_font_id` `uuid references fonts(id)` (selectable at `parity_status = 'passed'` only), `updated_by uuid references members(id)`, `updated_at`. No row means the platform defaults — the identity override. Every change writes `ENT-scoring_config_history` (§4.1). Standard P1 read / P2 write (`03` §5.9), the write through an `assert_fresh_admin()` RPC.
 
 **Amended under DEC-050 (wave 3):** `design_documents.draft_for_template_id uuid unique` (a template's one working draft; the one-binding check becomes poster | certificate | template draft — `0057`); `export_artifacts.render_context jsonb` (the pinned faces and bindings a render is reproduced from — `0060`); `fonts` gains the materialisation columns of `0064`; `design_templates_single_default` keeps exactly one default per (org, purpose, family) (`0057`). `ENT-fonts` carries no `org_id` (DEC-049, §7).
 
@@ -1314,8 +1335,8 @@ Losing someone's hand-tuned design to an automatic rerender is the worse of the 
 
 ## 7. Tenancy key coverage
 
-Every table in §4 carries `org_id not null`, with exactly **five** exceptions, each deliberate and
-each named (the fifth added under DEC-049):
+Every table in §4 carries `org_id not null`, with exactly **seven** exceptions, each deliberate and
+each named (the fifth added under DEC-049; the sixth and seventh under DEC-054):
 
 | Table | Why no `org_id` |
 |---|---|
@@ -1324,6 +1345,8 @@ each named (the fifth added under DEC-049):
 | `ENT-design_templates` where `scope = 'platform'` | A platform template belongs to no org by requirement (D67). Nullable, with an explicitly written policy in `03`. |
 | `ENT-registrations` | Frozen legacy, predating the platform (DEC-002). |
 | `ENT-fonts` | Content-addressed and platform-wide by requirement (`REQ-DSG-016`, `06` §6.4, §7.3): the editor, the worker's Chromium and LibreOffice must read the **same bytes**, and the `fonts` bucket is deliberately not org-prefixed. `sha256` is unique platform-wide; `parity_status` is written by the job alone. DEC-049. |
+| `ENT-retention_periods` | Platform-level configuration (`12` §5.3 as rows), the `platform_admins` shape: no policy, no grant, read by the retention job through `retention_period()`. DEC-054. |
+| `ENT-platform_audit_log` | Platform-side evidence with no foreign key to `orgs`: an `org.deleted` row must outlive the org it records (`REQ-NFR-014`), and `audit_log` cascades. Written by `security definer` functions only. DEC-054. |
 
 Everything else — join tables, ledgers, snapshots, audit rows, storage metadata — carries it, even
 where it is derivable. An RLS policy that has to join to find the tenant is a policy that can be
