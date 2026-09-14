@@ -1,0 +1,25 @@
+{
+  "leaderboards": {
+    "title": "لوحات الصدارة",
+    "tabs": {
+      "allTime": "كل الأوقات",
+      "monthly": "هذا الشهر",
+      "company": "سباق الشركات"
+    },
+    "you": "أنت",
+    "empty": "لا بيانات كافية بعد لعرض هذه اللوحة.",
+    "pointsValue": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {<bdi>{value}</bdi> نقاط} many {<bdi>{value}</bdi> نقطة} other {<bdi>{value}</bdi> نقطة}}",
+    "monthly": {
+      "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
+      "final": "نهائية"
+    },
+    "company": {
+      "totalPoints": "مجموع النقاط",
+      "perActiveMember": "نقاط لكل عضو نشط",
+      "rankedBy": "الترتيب حسب {metric}",
+      "asOf": "محسوبة بعدد الأعضاء النشطين وقت الحساب — لا يتغيّر لاحقًا",
+      "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
+      "final": "نهائية"
+    }
+  }
+}

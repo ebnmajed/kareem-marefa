@@ -1,0 +1,25 @@
+{
+  "leaderboards": {
+    "title": "Leaderboards",
+    "tabs": {
+      "allTime": "All time",
+      "monthly": "This month",
+      "company": "Company race"
+    },
+    "you": "You",
+    "empty": "Not enough data yet to show this board.",
+    "pointsValue": "{count, plural, =0 {zero points} one {one point} other {{value} points}}",
+    "monthly": {
+      "provisional": "Provisional — refreshed nightly until the month closes",
+      "final": "Final"
+    },
+    "company": {
+      "totalPoints": "Total points",
+      "perActiveMember": "Points per active member",
+      "rankedBy": "Ranked by {metric}",
+      "asOf": "Computed against the active member count at the time — it does not change later",
+      "provisional": "Provisional — refreshed nightly until the month closes",
+      "final": "Final"
+    }
+  }
+}
