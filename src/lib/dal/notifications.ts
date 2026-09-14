@@ -81,7 +81,10 @@ export interface CategoryPreference {
 
 export interface PreferenceMatrix {
   rows: CategoryPreference[];
-  /** The org's display settings, carried here so SCR-026 fetches once. */
+  /** The org's display settings, carried here so SCR-026 fetches once.
+   *  `public.numeral_system` spells the second value `arabic_indic`; the
+   *  shared `NumeralSystem` of components/sessions/numerals.ts spells it
+   *  `arabic`, so the mapping happens here, once, at the boundary. */
   numerals: "western" | "arabic";
   timeZone: string;
 }
@@ -123,7 +126,11 @@ export async function getPreferenceMatrix(locale: string): Promise<PreferenceMat
     };
   });
 
-  return { rows, numerals: settings?.numerals ?? "western", timeZone: settings?.time_zone ?? "Asia/Riyadh" };
+  return {
+    rows,
+    numerals: settings?.numerals === "arabic_indic" ? "arabic" : "western",
+    timeZone: settings?.time_zone ?? "Asia/Riyadh",
+  };
 }
 
 export const preferenceInput = z.object({
