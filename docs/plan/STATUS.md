@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-3/m6-m7` (**draft PR #14** → `main`) · **`main` @ `6f6a7f2`:** M1 live, M2–M5 complete · **Phase:** **wave 3 (M6 · M7-console) COMPLETE on the branch — twelve sync points, migrations `0055`–`0066`, both demonstrables run on the real images; next session is the wave-4 lead after the owner merges**
+**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (cut from `main` @ `6381208`, PR #14 merged) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 pre-spawn — the lead's handoff items are done (DEC-051); the wave-4 plan is presented and WAITS for the owner's confirmation before `platform` and `branding` are spawned**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -144,6 +144,67 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## Wave 4 (M8 · M7-branding) — pre-spawn on `wave-4/m8-branding`
+
+**Nobody is spawned.** The plan is in `TEAM.md` §1 (wave-4 rows and contracts, marked proposed),
+`CLAUDE.md` § Agent team (the map) and `.claude/agents/{platform,branding}.md`; it waits for the
+owner. Two owner decisions are logged in DEC-051: render concurrency stays serial until measured;
+the repository stays public until Launch.
+
+### Done before spawn (DEC-051)
+
+1. **The proxy gates every public platform route.** `isPublicPlatformPath()` (`/verify/**`,
+   `/legal/**`) and `isUnconfiguredGatedPath()` in `src/lib/auth/next-path.ts`; `proxy.ts` 404s
+   all of it while unconfigured and gives the public routes the nonce, never the sign-in redirect.
+   `tests/e2e/unconfigured.spec.ts` asserts `/ar/verify/…` and `/ar/legal/privacy`.
+2. **`0067` grants `service_role` a read on `public.fonts`** — read only; `record_font()` stays the
+   one write door. `POL-fonts.select.service_role` in `tests/rls/designer-fonts.test.ts`; `03` §5.9
+   and §8.2 carry it; `npm run policy-diff` agrees.
+3. **The two certificate captures were retaken** on a fresh build and looked at: the 24-character
+   code wraps inside its card on SCR-023; SCR-045 is clean; nothing past 390 px on the phone project.
+4. **The full history was scanned for secrets** (8 refs, 335 commits, every added line and path):
+   nothing. The 45 pattern hits are local `postgres:postgres` URLs, CI container URLs and test
+   placeholders; the only env-shaped file ever committed is `.env.example`. Detail in DEC-051.
+5. **No session changes repository, billing, org or GitHub settings** — `CLAUDE.md` § Git in a
+   shared tree, `.claude/settings.json` (19 new deny entries), TEAM.md §4 constraint 6, both agent
+   definitions.
+
+### Verification on the branch (pre-spawn)
+
+- `npx tsc --noEmit` clean · `npm run lint` 0 errors (17 pre-existing warnings, none in the files
+  touched) · `npm test` 58 files / 483 passed · `npm run policy-diff` agrees ·
+  `npm run db:reset` + `npm run test:rls` 55 files / 627 passed with `0067` ·
+  `tests/e2e/certificates.spec.ts` 8/8 on the fresh build.
+- `npm run qa` 44/44 · `npm run visual compare m0-final wave-4-pre` 0.000% on all six pairs ·
+  `npm run test:e2e:unconfigured` 16 passed (the two new public paths included) · `.next` rebuilt
+  configured afterwards · `node scripts/traceability.mjs` no gaps.
+- Commits: `c1834c6` (proxy), `6092a69` (`0067`), `62c0f66` (settings rule), then the plan documents.
+
+### The wave-4 plan, in one paragraph (TEAM.md §1 has the contracts)
+
+`platform` (opus) takes M8 minus the two cross-cutting closing stories: the super-admin console
+with no data plane (`assert_platform_admin()` re-reads the row; no policy ever names
+`platform_admins`), break-glass impersonation that lands in the org's own audit log, the managed
+platform template library (SCR-083 — promote an org's published version; authoring stays in an
+org's editor), retention / anonymisation / the nightly storage-prefix assertion / the member's
+own export / org deletion (six jobs, the `delete_org` job new), the legal pages. It publishes
+`<ImpersonationBanner />`. `branding` (sonnet) takes M7's deferred half: `brand_kits` (a new entity
+— `02` is frozen, a DEC at sync 1), `getBrandKit()` and `public.brand_kit()` with the platform
+default as the identity override so the goldens do not move, SCR-059 with the raster logo upload
+and the contrast check, the `export_render_context()` seam. The lead wires the banner, the theme
+layer, the render and mail seams, the six registrations; NFR-004/005 are the lead's closing pass
+after both land. Open for the owner: the SCR-083 default (managed, not authored) and the `delete_org` job.
+
+### Next session, if the owner confirms as proposed
+
+1. Log DEC-052 (the wave-4 ownership as confirmed, `11` §4 gains the `delete_org` job).
+2. `supabase status` up, `npm run db:reset`, `npm run test:rls` green (done today; repeat if the
+   tree moved).
+3. Spawn `platform` and `branding` from `.claude/agents/`; first tasks are their first proposed
+   files (the M8 schema; `brand_kits`) and `docs/plan/notes/{platform,branding}.md`.
+4. Sync 1 early: promote both schemas as `0068`/`0069` so the sweep covers `impersonation_sessions`
+   and `brand_kits` within hours; wire `<ImpersonationBanner />` and the `@theme` layer.
 
 ## Wave 3 (M6 · M7-console) — COMPLETE on `wave-3/m6-m7` (PR #14, the owner merges)
 

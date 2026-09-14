@@ -20,7 +20,7 @@ along its own seams**.
 | **1** | `sessions` · `checkin` · `event` | Disjoint tables, DAL modules, screens, jobs; the one shared surface, the event page, is `sessions`' with three slots the others fill from their own folders. `sessions` also holds `app/admin/{proposals,sessions,venues}/**` and `messages/*/admin.json` for this wave (DEC-042); `console` inherits them at wave 3 | M2 demonstrable in a real room; `wave-1/m2` PR green |
 | **2** | `notify` (M3) · `scoring` (M4) · `content` (M5) | Each depends only on M2 | each milestone's demonstrable, locally |
 | **3** | `designer` (M6) · `console` (M7: CRUD, moderation, exports, audit viewer — the surfaces that need only M2–M4, plus the never-built SCR-011) | M6 needs M5; the console half that needs no templates runs alongside | both demonstrables locally: every A12 variant, the detach, both QRs, the serial not-found, 28 parity assertions; a second org invisible to the first with the moderator scope proven by policy; `wave-3/m6-m7` PR green |
-| **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | Launch follows, owner-run |
+| **4** | `platform` (M8) · `branding` (M7: brand kit, templates) | both need M6 and M7-console | M8's demonstrable and branding's (one edit, four consumers, goldens untouched); `wave-4/m8-branding` PR green; the lead's NFR-004/005 closing pass; Launch follows, owner-run |
 
 ### Ownership for wave 2 (confirmed by the owner 2026-09-14, DEC-046)
 
@@ -98,12 +98,81 @@ wave 1 and wave 2 carved out (`proposals`, `sessions`, `venues` — DEC-042; `sc
   already defines, calls `searchSessions()`, and renders `content`'s `<SearchFilters>` and
   `<BookmarkButton>` unchanged.
 
-### Ownership for wave 4 (draft — the lead confirms at the wave's start)
+### Ownership for wave 4 (proposed by the wave-4 lead 2026-09-14; the owner confirms before spawn — DEC-052 when confirmed)
 
-| Teammate | Edits only |
-|---|---|
-| `platform` | `src/app/[locale]/app/platform/**`, `src/lib/dal/platform*.ts`, `worker/src/tasks/{retention_*,anonymise_*,storage_prefix_assert}.ts`, `messages/*/platform.json`, `supabase/proposed/platform/**` |
-| `branding` | `src/app/[locale]/app/admin/branding/**`, `src/lib/brand/**`, `messages/*/branding.json`, `supabase/proposed/branding/**` |
+The agent definitions `.claude/agents/{platform,branding}.md` are authoritative for a teammate.
+`platform` takes M8 minus the two cross-cutting closing stories; `branding` takes the half of M7
+DEC-048 deferred. Neither has a screen today: `src/app/[locale]/app/platform/`, `src/lib/brand/`
+and `app/admin/branding/` do not exist.
+
+| Teammate | Model | Edits only |
+|---|---|---|
+| `platform` | opus | `src/app/[locale]/app/platform/**` (SCR-080 … 085), `src/app/[locale]/legal/**` (SCR-005, public), `src/app/[locale]/app/me/privacy/**` (the self export and the deactivation request, `REQ-PRF-006/007`), `src/app/api/platform/**`, `src/app/api/me/export/**`, `src/lib/dal/platform*.ts`, `src/lib/dal/privacy.ts`, `src/components/{platform,legal,privacy}/**`, `worker/src/platform/**`, `worker/src/tasks/{enforce_retention,anonymise_members,assert_storage_prefixes,expire_impersonation,build_data_export,delete_org}.ts`, add-only platform-library functions in `src/lib/dal/templates.ts` (SCR-083, `REQ-DSG-008`), `messages/*/{platform,legal,privacy}.json`, `supabase/proposed/platform/**`, `tests/rls/{platform,impersonation,retention,privacy,delete-org}*.test.ts`, `tests/unit/{platform,legal,privacy}*`, `tests/e2e/{platform,legal,privacy}*.spec.ts`, `docs/plan/notes/platform.md` |
+| `branding` | sonnet | `src/app/[locale]/app/admin/branding/**` (SCR-059), `src/app/api/admin/branding/**` (the logo upload — a Route Handler, sniffed, raster only, DEC-009), `src/lib/brand/**`, `src/components/branding/**`, `packages/storage-paths/src/brand.ts` (new), **add-only** `resolveBrand()` in `packages/designer-runtime/src/brand.ts`, `messages/*/branding.json`, `supabase/proposed/branding/**`, `tests/rls/brand*.test.ts`, `tests/unit/brand*`, `tests/e2e/branding*.spec.ts`, `tests/components/branding/**`, `docs/plan/notes/branding.md` |
+
+**Wave-4 contracts (proposed):**
+
+- **The super admin has no data plane** (DEC-014, invariant 8, `REQ-ADM-002`). `platform`'s DAL
+  selects from `orgs`, `org_domains`, `platform_admins` (through a `security definer`
+  `assert_platform_admin()` that re-reads the row — never a claim alone) and the aggregate metrics
+  views it proposes; it never selects from an org's tables. Reaching into an org is an
+  impersonation session (`ENT-impersonation_sessions`, `02` §4.1, ≤ 4 h by constraint) that mints
+  an ordinary member's claims and lands in **that org's own audit log** the moment it starts. The
+  metrics are aggregate only (`REQ-ADM-003`): no member, title or content in any query.
+- **`platform` publishes `<ImpersonationBanner locale />`** from `@/components/platform/impersonation-banner`
+  as a no-op placeholder on day one; the lead wires it into `src/app/[locale]/app/layout.tsx`
+  above every screen («أنت تتصفح كـ …» with a stop control, SCR-085). Same slot rules as §2:
+  server component, own data through its DAL, no heading of its own.
+- **`platform`'s first proposed file** is the M8 schema: `impersonation_sessions` per `02` §4.1 with
+  RLS (`P2` read for the org's admins — the point of the table; insert through the RPC alone; no
+  update, no delete: append-only like `audit_log`), `assert_platform_admin()`, `start_impersonation()`
+  / `end_impersonation()`, `create_org()` / `suspend_org()` / `set_first_admin()` (each writing
+  `platform.*` audit rows), and the `03` §8.2 rows. The lead promotes it at sync 1 so the isolation
+  sweep covers the table within hours.
+- **The six M8 jobs** enqueue only through `public.enqueue_job()` with `11`'s keys verbatim
+  (`retain:{date}`, `anon:{date}`, `storageck:{date}`, `impexp:{session_id}`,
+  `export:{member_id}:{requested_at}`); the `delete_org` job is new — `11` does not list it and the lead
+  amends `11` §4 under the DEC that confirms this wave. Retention periods are `12` §5.3's, in a
+  table the job reads, never constants in the task. `assert_storage_prefixes` walks every bucket
+  through the service-role client — `fonts` is the one un-prefixed bucket (`06` §6.4, DEC-049) and
+  the assertion says so rather than skipping it.
+- **The platform template library (SCR-083, `REQ-DSG-008`) is managed, not authored, on
+  `/app/platform/templates`**: list, publish, retire, and promote an org's published template
+  version into the platform library through `promote_template_to_platform()` (a copy — later org
+  edits do not reach it). Authoring stays in an org's editor (`designer`'s SCR-057), because a super
+  admin has no org and the editor is org-scoped. The default in force unless the owner says
+  otherwise.
+- **`branding` publishes `getBrandKit(orgId)`** from `src/lib/brand/kit.ts` on day one — the full
+  token set of `06` §8.3 (`BRAND_COLOUR_TOKENS` light and dark, `logoAssetId`, the face) with the
+  platform defaults filled in wherever the org has no override — and `public.brand_kit(p_org uuid)
+  returns jsonb` (`security invoker`, `P1` read) for the SQL consumers. **The platform default is
+  the identity override**: with no `brand_kits` row every consumer renders exactly what it renders
+  today, which is why the parity goldens do not move this wave.
+- **`branding`'s first proposed file** is `brand_kits` — one row per org, `logo_asset_id`
+  referencing `design_assets` (raster, sniffed), nine light and nine dark colour tokens, the
+  heading and body faces referencing `fonts` at `parity_status = 'passed'`, `updated_by`; every
+  change writes `scoring_config_history` (`02` §4.1 made it general enough on purpose). `02` is
+  frozen and has no `brand_kits`, so the promotion is a `DECISIONS.md` entry that amends
+  `02` §4.12 — the lead writes it at sync 1.
+- **The four consumers, and who wires each** (`06` §8.3): the CSS `@theme` layer — the lead reads
+  `getBrandKit()` in `src/app/[locale]/app/layout.tsx` and emits the org's tokens as CSS custom
+  properties over `globals.css`'s defaults (DEC-003's theme layers); the designer templates —
+  `branding` proposes a `create or replace` of `export_render_context()` (`0060`) that adds a `brand`
+  object, and `resolveBrand(overrides)` in the runtime; the lead wires the one call in
+  `worker/src/render/**`; the email templates — the lead wires the one call in `worker/src/mail/**`
+  against `public.brand_kit()`. The editor's preview reads `getBrandKit()` through `designer`'s DAL
+  — an add-only function, the lead promotes it.
+- **Hooks into earlier waves are SQL only**, as in waves 2 and 3. `worker/src/index.ts`, the image,
+  the shell, the locale layout, Sentry (`REQ-NFR-016`) and the six task registrations are the lead's.
+- **STORY-NFR-004 and STORY-NFR-005 are the lead's closing pass** after both tracks land: the WCAG
+  2.2 AA audit, the performance budgets and the scale check touch every folder in the tree, so no
+  teammate owns them. The real-device pass (`13` §8) and the two QR/ICS checks are the owner's.
+
+**The wave's gate:** M8's demonstrable (`14`) — a super admin creates an org, sets its first admin,
+and **cannot read a single row of its data**; a break-glass session appears in the org's own audit
+log and expires on its own; every `11` §3.2 alert fires in a drill — and branding's: change one
+colour and the logo on SCR-059 and see the UI theme, a poster re-render and an email preview all
+change, with the goldens untouched. Then the `wave-4/m8-branding` PR is green and the owner merges.
 
 ---
 
@@ -256,9 +325,10 @@ Then, before spawning anyone:
    run supabase db reset / start / stop, run npm run build, npm run qa, npm run visual, push,
    open the PR, edit STATUS.md and DECISIONS.md.
 6. Constraints that never lift: do not merge any PR; do not push to main; never supabase db push,
-   supabase link, vercel env, fly; never force-push; the frozen marketing routes and public/ stay
-   byte-identical (npm run visual 0.000%); Arabic first; every commit conventional with Refs: in
-   the trailer paragraph.
+   supabase link, vercel env, fly; never force-push; never change repository visibility, billing,
+   organisation or GitHub settings, or the remotes — stop and ask the owner (DEC-051); the frozen
+   marketing routes and public/ stay byte-identical (npm run visual 0.000%); Arabic first; every
+   commit conventional with Refs: in the trailer paragraph.
 7. When M2's demonstrable holds locally — propose → approve → schedule → publish → RSVP →
    check in with a rotating code → comment → rate — open the PR wave-1/m2 → main, update
    STATUS.md per the handoff protocol, and stop for the owner's review.
