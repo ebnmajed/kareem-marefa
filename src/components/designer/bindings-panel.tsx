@@ -12,9 +12,14 @@ import { useTranslations } from "next-intl";
 export interface BindingsPanelProps {
   declared: string[];
   values: Record<string, string>;
+  /** The template's own fallback per binding, when it declares one. An
+   *  unbound field whose template ships a fallback still PRINTS something,
+   *  and a panel that says only «unbound» beside a canvas showing text
+   *  reads as a contradiction — found by looking at the 390 px capture. */
+  fallbacks?: Record<string, string>;
 }
 
-export function BindingsPanel({ declared, values }: BindingsPanelProps) {
+export function BindingsPanel({ declared, values, fallbacks = {} }: BindingsPanelProps) {
   const t = useTranslations("designer.bindings");
   // `brand.*` resolves from the platform theme and is never interesting here;
   // the fields an admin can get wrong are the data ones.
@@ -37,6 +42,10 @@ export function BindingsPanel({ declared, values }: BindingsPanelProps) {
               {value ? (
                 <p className="text-body-sm text-fg-heading">
                   <bdi>{value}</bdi>
+                </p>
+              ) : fallbacks[binding] ? (
+                <p className="text-body-sm text-fg-heading">
+                  {t.rich("unboundWithFallback", { fallback: fallbacks[binding] as string, bdi: (c) => <bdi>{c}</bdi> })}
                 </p>
               ) : (
                 <p className="text-body-sm text-fg-heading">{t("unbound")}</p>

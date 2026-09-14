@@ -82,7 +82,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
-  const placeholderLabel = useCallback((binding: string) => tb("value", { value: `‹ ${binding} ›` }), [tb]);
+  // The canvas draws a STRING, so this must be one. `t.rich` returns a
+  // ReactNode the renderer cannot use, and a message carrying a tag called
+  // through plain `t()` renders the raw key — which is exactly what shipped
+  // here until the e2e read «designer.bindings.value» off the canvas
+  // (DEC-047's lesson, in a place no catalogue guard could see). So the
+  // label is composed from an untagged key, and the renderer bidi-isolates
+  // the result itself.
+  const placeholderLabel = useCallback((binding: string) => `${tb("unbound")} · ${binding}`, [tb]);
 
   // The SAME faces the canvas loads, declared in this document too, because
   // the pre-export checks measure here (checks-panel.tsx). Measuring against
@@ -192,6 +199,17 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
   const selected = useMemo(() => document.layers.find((l) => l.id === selectedLayerId) ?? null, [document.layers, selectedLayerId]);
+  // What each binding's template fallback is, so an unbound field can say
+  // what will actually print rather than only that nothing bound.
+  const fallbacks = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const layer of document.layers) {
+      const binding = layer.kind === "text" ? layer.text.binding : layer.kind === "dynamic_field" ? layer.field.binding : undefined;
+      const fallback = layer.kind === "text" ? layer.text.fallback : layer.kind === "dynamic_field" ? layer.field.fallback : undefined;
+      if (binding && fallback) out[binding.replace(/^\{\{|\}\}$/g, "").trim()] = fallback;
+    }
+    return out;
+  }, [document.layers]);
   const fontFamilies = useMemo(() => [...new Set(props.faces.map((f) => f.family))], [props.faces]);
 
   const status = (() => {
@@ -311,7 +329,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           <h2 id="dr-bindings-m" className="text-body font-medium text-fg-heading">
             {tb("heading")}
           </h2>
-          <BindingsPanel declared={props.declaredBindings} values={props.bindings} />
+          <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
         </section>
       </div>
 
@@ -362,7 +380,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             <h2 id="dr-bindings" className="text-body font-medium text-fg-heading">
               {tb("heading")}
             </h2>
-            <BindingsPanel declared={props.declaredBindings} values={props.bindings} />
+            <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
           </section>
 
           <section aria-labelledby="dr-checks" className="flex flex-col gap-3">

@@ -42,6 +42,7 @@ export async function TemplateLibrary({ data, numerals }: { data: TemplateLibrar
             ))}
           </ul>
         )}
+        <SectionHints templates={data.platform} />
       </section>
 
       <section aria-labelledby="tpl-org" className="flex flex-col gap-4">
@@ -60,6 +61,7 @@ export async function TemplateLibrary({ data, numerals }: { data: TemplateLibrar
             ))}
           </ul>
         )}
+        <SectionHints templates={data.org} />
       </section>
 
       {data.canManage ? (
@@ -101,6 +103,24 @@ export async function TemplateLibrary({ data, numerals }: { data: TemplateLibrar
   );
 }
 
+/** The two explanations that used to sit on every card. Six cards repeating
+ *  the same three lines made the 390 px page eleven thousand pixels tall and
+ *  buried the cards themselves — found by looking at the capture, which is
+ *  the only thing that could have found it. Once per section, and only when
+ *  a card in that section needs it. */
+async function SectionHints({ templates }: { templates: TemplateSummary[] }) {
+  const t = await getTranslations("templates.card");
+  const locked = templates.some((x) => x.lockedRegionCount > 0);
+  const hasDefault = templates.some((x) => x.isDefault);
+  if (!locked && !hasDefault) return null;
+  return (
+    <div className="flex flex-col gap-2 text-body-sm text-fg-muted">
+      {locked ? <p>{t("lockedHint")}</p> : null}
+      {hasDefault ? <p>{t("defaultHint")}</p> : null}
+    </div>
+  );
+}
+
 async function Card({ template, canManage, numerals }: { template: TemplateSummary; canManage: boolean; numerals: NumeralSystem }) {
   const t = await getTranslations("templates");
   const isPlatform = template.scope === "platform";
@@ -127,8 +147,6 @@ async function Card({ template, canManage, numerals }: { template: TemplateSumma
         {t("card.lockedRegions", { count: template.lockedRegionCount, value: formatNumber(template.lockedRegionCount, numerals) })}
       </p>
 
-      {template.lockedRegionCount > 0 ? <p className="mt-2 text-body-sm text-fg-muted">{t("card.lockedHint")}</p> : null}
-      {template.isDefault ? <p className="mt-2 text-body-sm text-fg-muted">{t("card.defaultHint")}</p> : null}
 
       {canManage ? (
         <div className="mt-4 flex flex-wrap gap-2">

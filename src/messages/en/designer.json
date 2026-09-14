@@ -75,9 +75,9 @@
       "heading": "Dynamic fields",
       "bound": "Bound",
       "unbound": "Unbound",
-      "value": "<bdi>{value}</bdi>",
       "unboundHint": "An unbound field draws a marked box on the canvas, never a blank — a blank exports as white space nobody notices until it is printed.",
-      "empty": "This document carries no dynamic fields."
+      "empty": "This document carries no dynamic fields.",
+      "unboundWithFallback": "Unbound — the fallback will print: <bdi>{fallback}</bdi>"
     },
     "presets": {
       "heading": "Sizes",
