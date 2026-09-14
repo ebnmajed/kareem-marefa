@@ -126,31 +126,40 @@ them once, through one path. `REQ-DSG-015` wants **each** export path.
 | 1 | poster **PNG** | the screen-preset page, as today | pixel diff vs golden |
 | 2 | poster **PDF** | the same page under `emulateMediaType('print')` at the A3 box — print emulation changes line breaking, which is the whole risk | advisory (no rasteriser in the image) |
 | 3 | certificate **PDF** | the `cert_landscape` box with the certificate face (Amiri), print-emulated | advisory |
-| 4 | **slide page images** | see question 2 — this path is LibreOffice + poppler, which lives in the converter, not the worker image | advisory |
+| 4 | **slide page images** | **settled: the harness posts a generated deck to `CONVERTER_URL`** — this path is LibreOffice + poppler, which lives in the converter, not the worker image | advisory |
 
 7 × 4 = **28 Tier-A assertions, all blocking**. Tier B stays on the raster path
 where a raster exists; claiming a pixel diff on a PDF nobody rasterises would
 be the "test that tests nothing" `06` §9.3 warns about.
 
-### 0.6 Questions for the lead
+**The lead settled path 4 as option (a):** the harness posts a generated deck
+to `CONVERTER_URL` and **skips loudly** when it is unset — a line reading
+`21 of 28 — converter path not configured`, never a silent pass — and CI's
+`worker` job starts `kareem-converter` so CI runs all 28. Built at DSG-007.
 
-1. **`fonts` with no `org_id` needs a DECISIONS entry** (§0.3). If promoted as
-   written, the promotion commit must add `"fonts"` to **both** `NO_ORG_ID` and
-   the non-vacuity exclusion list in `tests/rls/isolation.test.ts` — the sweep
-   asserts every table has the column, and then that org A sees its own rows,
-   which a table with no `org_id` cannot satisfy. Say if you would rather have
-   `fonts.org_id` nullable (platform set = null); I will rewrite.
-2. **The fourth export path.** Slide page images are produced by the
-   **converter** (LibreOffice → PDF → poppler), not by the worker image. Either
-   (a) the harness posts a generated deck to `CONVERTER_URL` and skips when it
-   is unset, so 28 is the fully-configured count and CI's `worker` job runs 21,
-   or (b) the fourth path becomes the **certificate PNG** (1600 px,
-   `REQ-CRT-005`) and slide-page shaping stays with `npm run converter:test`'s
-   substitution report. (a) is literally `REQ-DSG-015`; (b) is 28 blocking
-   assertions in every environment. My recommendation is (a) with the skip made
-   loud, because the substitution report does not measure shaping.
-3. **`worker/src/index.ts`** (yours): the four task registrations and the
-   `render` queue at concurrency 2 (`11` §1.4) come at DSG-006, not now.
+### 0.6 Questions for the lead — all three answered
+
+1. **`fonts` with no `org_id`** — **accepted as written.** The fifth exception
+   is **DEC-049**; the lead added `fonts` to both `NO_ORG_ID` and the
+   non-vacuity exclusion list in `tests/rls/isolation.test.ts` and wrote
+   `tests/rls/fixture-m6.ts`.
+2. **The fourth export path** — **option (a)**, recorded in §0.5.
+3. **`worker/src/index.ts`** (the lead's): the four task registrations and the
+   `render` queue at concurrency 2 (`11` §1.4) are handed over at DSG-006.
+
+### 0.7 Two rules this bundle learned the hard way
+
+- **Keep `npm run build -w @kareem/designer-runtime` green in the WORKING
+  TREE, not only at commit.** The root build runs it first, so a half-finished
+  runtime file blocks the lead's sync-point build even though it is
+  uncommitted. It did once, for a `possibly undefined` on a
+  `String.prototype.split` result.
+- **Every RLS case here starts from an empty M6 world.** `fixture-m6.ts` seeds
+  all nine tables on both orgs so the isolation sweep is not vacuous, so a
+  case that COUNTS rows or allocates a serial must clear its tables in
+  `setup()` inside the rolled-back transaction, or count by id. The lead added
+  that clearing after fourteen cases counted against a populated world; it is
+  the notify-contract pattern (`TEAM.md` §3) and it stays.
 
 ---
 
