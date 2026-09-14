@@ -201,3 +201,31 @@ test("★ REQ-MAT-003/010: the viewer's arrows follow the RTL reading direction 
 
   await review(page, "materials-viewer");
 });
+
+test("★ REQ-MAT-001/012: the presenter drives a real upload through the form end to end — initiate, PUT, sniff-and-complete, sniffed on content", async ({ context, page }) => {
+  const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  await signIn(context, presenterEmail);
+  await page.goto(`/ar/app/sessions/${sessionId}`);
+
+  await page.getByLabel("نوع المادة").selectOption("image");
+  await page.getByLabel("عنوان المادة").fill("صورة من الجلسة");
+  await page.getByLabel("الملف").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
+  await page.getByRole("button", { name: "رفع" }).click();
+
+  // completeMaterialUpload() downloads the object it just wrote through the
+  // uploader's own RLS-bound client to sniff it, before finalize_material_
+  // upload() creates the material_versions row materials_storage_read
+  // otherwise joins through (supabase/proposed/content/0010) — if that
+  // pre-finalize read is ever broken again, this is what catches it: the
+  // upload never leaves "تعذّر رفع الملف" for "صورة من الجلسة" to appear.
+  await expect(page.getByText("صورة من الجلسة")).toBeVisible();
+  await expect(page.getByText("تعذّر رفع الملف")).not.toBeVisible();
+
+  const { rows } = await db.query<{ sniffed_mime: string; render_status: string }>(
+    `select mv.sniffed_mime, m.render_status from public.materials m
+       join public.material_versions mv on mv.id = m.current_version_id
+      where m.title = 'صورة من الجلسة'`,
+  );
+  expect(rows[0].sniffed_mime).toBe("image/png");
+  expect(rows[0].render_status).toBe("not_applicable"); // image — never enqueued for conversion
+});
