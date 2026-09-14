@@ -82,11 +82,10 @@ export interface CategoryPreference {
 
 export interface PreferenceMatrix {
   rows: CategoryPreference[];
-  /** The org's display settings, carried here so SCR-026 fetches once.
-   *  `public.numeral_system` spells the second value `arabic_indic`; the
-   *  shared `NumeralSystem` of components/sessions/numerals.ts spells it
-   *  `arabic`, so the mapping happens here, once, at the boundary. */
-  numerals: "western" | "arabic_indic";
+  /** The org's display settings, carried here so SCR-026 fetches once. The
+   *  spelling is `public.numeral_system`'s own, so there is no second place
+   *  for the database and the formatter to disagree. */
+  numerals: NumeralSystem;
   timeZone: string;
 }
 
