@@ -139,3 +139,36 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
   bundle 1 had to link forward.
 - The SCR-049 list is what `scoring.md`'s carried-over member-picker item (SCR-053's manual-
   adjustment form) will eventually search against — not built yet; noted for the bundle-9 touch.
+
+### Bundle 4 — SCR-044, and the moderator/`/sessions` question closed for real
+
+- **The manual-mark RPC already existed.** `mark_checked_in_manually()` (`0015`, `checkin`'s
+  wave-1 work) already does everything `REQ-CHK-008` asks: admin-or-moderator, a mandatory
+  reason, `REQ-CHK-011`-safe, and it only works while the session is `in_progress` — the screen
+  surfaces that constraint rather than fighting it (a note, not a hidden form). `listUncheckedConfirmedRsvps()`
+  (also `checkin`'s) is exactly the picker source SCR-044's manual-mark form needs.
+- **The attendance report itself is new** (`getAttendanceReport()`, `src/lib/dal/checkin.ts`,
+  added under this track's "admin-only functions in checkin.ts" allowance) — a caller-side join
+  of `rsvps`/`check_ins`, both already staff-readable for the whole session. A no-show is
+  computed the *same way* `worker/src/tasks/evaluate_no_shows.ts` defines one (confirmed RSVP, no
+  check-in) so the report and the points job can never quietly disagree about what counts.
+- **REQ-RAT-005 needed nothing new either** — `getRatingsForAdmin()` (`event`'s `ratings.ts`,
+  already calling the audited `list_session_ratings_admin()` from DEC-044) is imported directly
+  and gated `admin`-only within this otherwise staff-accessible screen.
+- **The moderator/`/sessions` gap flagged at bundle 1 is closed.** `admin/sessions/page.tsx` now
+  branches on role at its very top: an admin gets the exact same page as before (byte-for-byte
+  unchanged code path below the branch), and a moderator gets `ModeratorSessionsView` — a new,
+  separate render with id/title/state/start-time and one link to `/attendance`, backed by the new
+  `listSessionsForAttendance()` (`src/lib/dal/sessions.ts`). No pipeline, no direct-create form,
+  no `SessionControls`: `REQ-ADM-005`'s scheduling actions are absent from the render, not hidden
+  by CSS, because `listSessionsForAdmin()` (the only thing that could produce them) is never
+  called on the moderator path.
+- **One new proposed migration, generic on purpose:** `write_admin_export_audit()`
+  (`supabase/proposed/console/0002_admin_export_audit.sql`) is REQ-ADM-017's "every export is
+  audited," written to take a plain export-type label so SCR-061's org-wide exports (sessions,
+  RSVPs, ratings, points, certificates, members — bundle 7) can call the same function rather than
+  each getting their own. The attendance CSV (`src/app/api/admin/exports/attendance/[sessionId]/
+  route.ts`) is its first caller.
+- `src/lib/dal/admin-exports.ts`'s `buildCsv()`/`csvField()` (BOM, RFC 4180 quoting, CRLF records)
+  is the shared CSV builder every future export in this track should reuse rather than
+  reimplementing — flagged here so bundle 7 finds it before writing a second one.
