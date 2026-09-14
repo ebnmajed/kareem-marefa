@@ -130,7 +130,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-009` | `ENT-certificates` | `POL-certificates.verify.anon` `POL-verify_certificate.public` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
 | `REQ-CRT-010` | `ENT-certificates` | — | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
 | `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` +1 | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
-| `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-045` | — | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-045` `SCR-054` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` | — | `SCR-023` | — | — | `STORY-CRT-006` | M6 |
 
