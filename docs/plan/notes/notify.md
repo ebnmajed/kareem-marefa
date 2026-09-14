@@ -89,24 +89,34 @@ something else touches it; I have not edited `08`.
 
 ---
 
-## 1. Order of work
+## 1. What shipped
 
-| # | Story | What lands |
-|---|---|---|
-| 1 | contract | `0001_notification_contract.sql` — the six M3 tables, RLS, grants, the matrix, `notify()` |
-| 2 | STORY-NTF-001 | preferences (`REQ-NTF-003`): the DAL, SCR-026's settings half, the non-optional rows rendered as fixed |
-| 3 | STORY-NTF-002 | `send_notification` + the mail transport (DEC-046) + templates + `email_deliveries` (`REQ-NTF-008`) |
-| 4 | STORY-NTF-003 | reminders that MOVE — `schedule_reminders`, `send_reminder`, `rsvp_nudge`, `rating_prompt` (`REQ-NTF-004`, `REQ-RAT-007`) |
-| 5 | STORY-NTF-004 | the inbox SCR-026 + `NotificationBell` (`REQ-NTF-006`) |
-| 6 | STORY-CAL-001 | ICS at `/api/sessions/[id]/ics`, 75-**octet** folding, `VTIMEZONE` (`REQ-CAL-001`) |
-| 7 | STORY-CAL-002 | add-to-calendar links, Arabic-safe encoding (`REQ-CAL-002`) |
-| 8 | STORY-CAL-003 | Google connect/disconnect, `calendar_upsert`/`_delete`/`refresh_calendar_tokens` |
-| 9 | STORY-CAL-004 | SCR-025, the member's calendar view |
-| 10 | the M2 deferrals (DEC-045) | proposed SQL at the `TODO(notify, M3)` call sites, plus triggers for `REQ-SES-009`, `REQ-EVT-007`, `REQ-PRO-005`, `REQ-PRO-007` |
+Every story on the track, in the order it landed. Each row's SQL was proposed
+under `supabase/proposed/notify/` and promoted by the lead; the migration
+numbers are theirs.
 
-The M2 deferrals are last because every one of them is a two-line `perform public.notify(...)`
-once the contract is promoted, and each needs `notify()` to already be in `supabase/migrations/`
-rather than in a rolled-back test transaction.
+| Story | What | Migration | Test |
+|---|---|---|---|
+| the contract | the six M3 tables, RLS, grants, `notification_matrix()`, `notify()` | `0026` | `notify-contract` (22) |
+| STORY-NTF-001 | two channels and only two, with the test that notices a third | — | `notify-channels` (6) |
+| STORY-NTF-002 | SCR-026's preference matrix (`REQ-NTF-003`) | — | in `notify-contract` |
+| STORY-NTF-004 | the inbox, `NotificationBell`, the mail transport, the 24 Arabic templates, `email_deliveries` | `0030` | `notify-send` (12), `mail-*` (39) |
+| STORY-NTF-003 | reminders that MOVE, the nudge, the rating prompt | `0034`, `0035`, `0040` | `notify-reminders` (24), `notify-schedule-change` (5) |
+| `REQ-SES-009` | change notices with both values, publish, cancel, complete | `0037` | `notify-session-notices` (8) |
+| STORY-CAL-001/002 | the ICS at 75 octets, the add-to-calendar links | — | `ics` (16), `ics-links` (8) |
+| STORY-CAL-002/003/004 | connect, disconnect, the three sync jobs, SCR-025 | `0038` | `calendar-sync` (12), `notify-calendar-api` (8) |
+| the M2 deferrals | replies, mentions, decisions, co-presenters, the assigned presenter, removals, reports | `0039` | `notify-m2-notices` (12) |
+| `REQ-ADM-014`/`016` | SCR-058 and the reminder schedule screen | — | — |
+| — | the jobs' branching, against fake helpers | — | `notify-jobs` (14) |
+
+**Screens:** SCR-026 (`/app/me/notifications`), SCR-025 (`/app/me/calendar`),
+SCR-058 (`/app/admin/emails`), `/app/admin/reminders`, and the two slots the
+lead wires — `NotificationBell` in the shell and `AddToCalendar` on SCR-012.
+
+**Jobs:** `send_notification`, `schedule_reminders`, `send_reminder`,
+`rating_prompt`, `rsvp_nudge`, `calendar_upsert`, `calendar_delete`,
+`refresh_calendar_tokens` — all eight registered in `worker/src/index.ts`,
+with `refresh_calendar_tokens` on an hourly crontab.
 
 ## 2. The tables (`02` §4.14, `03` §5.9)
 
