@@ -430,6 +430,10 @@
       "saved": "Settings saved.",
       "failed": "That could not be saved — try again.",
       "invalid": "Check the fields before saving."
+    },
+    "memberPicker": {
+      "placeholder": "Type a member's name or email",
+      "noMatches": "No matching member"
     }
   }
 }
