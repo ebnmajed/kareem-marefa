@@ -200,6 +200,14 @@ async function review(p: Page, name: string) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 
+  // ★ THE SIDEWAYS CHECK RUNS ON THE PHONE PROJECT ONLY. A desktop
+  // context resized to 390 px carries a classic 12 px scrollbar that a
+  // mobile one does not, so every page measures 402 px and the assertion
+  // fails on an artifact of the harness (the lead's finding at sync 8,
+  // TEAM.md §5). The screenshot above is still taken in both projects —
+  // two renderings of the same screen is more to look at, not less.
+  if (project !== "phone") return;
+
   // Does the PAGE scroll sideways? One number, and the widest element
   // outside any `overflow-x` scroller is named so the failure says what to
   // fix. Measured against the layout viewport: in an RTL document the
@@ -268,7 +276,13 @@ test("★ REQ-CRT-011: a revoked certificate still resolves — as ملغاة, a
   const reason = "صدرت لشخص لم يحضر الورشة فعليًا";
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await page.getByRole("group").filter({ hasText: cert.serial }).getByRole("button", { name: "ألغِ" }).click();
+  // ★ NOT `getByRole("button", { name: "ألغِ" })`. The control is a
+  // `<summary>`, and Chromium exposes a disclosure triangle rather than a
+  // button role — so a role-based locator here waits thirty seconds and
+  // then says the element does not exist, which is true and unhelpful. The
+  // row is found by its serial and the summary by its tag.
+  const row = page.locator("li").filter({ hasText: cert.serial });
+  await row.locator("summary").click();
   await page.getByLabel("سبب الإلغاء").fill(reason);
   await page.getByRole("button", { name: "أكِّد الإلغاء" }).click();
   await expect(page.getByRole("status")).toContainText("أُلغيت الشهادة");
@@ -295,15 +309,18 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   const cert = await arrangeAttendance("review");
   expect(cert.state).toBe("held");
 
-  // The recipient first: their own list is empty while it is held.
+  // The recipient first: THIS certificate is absent from their own list
+  // while it is held. Not «the list is empty» — the cases above this one
+  // issued automatic certificates to the same member, and those are
+  // `issued` and correctly visible. The property under test is the state,
+  // not the count.
   const member = await context.browser()!.newContext();
   const memberPage = await member.newPage();
   await signIn(member, memberEmail);
   await memberPage.setViewportSize(PHONE);
   await memberPage.goto("/ar/app/me/certificates");
-  await expect(memberPage.getByText("لا شهادات بعد.", { exact: false })).toBeVisible();
   await expect(memberPage.getByText(cert.serial)).toHaveCount(0);
-  await review(memberPage, "scr-023-certificates-empty");
+  await expect(memberPage.getByText("بانتظار المراجعة")).toHaveCount(0);
 
   // The admin releases it.
   await signIn(context, adminEmail);

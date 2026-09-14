@@ -87,7 +87,7 @@ export default async function SessionCertificatesPage({
                       <bdi>{c.recipientName}</bdi>
                     </span>
                     <span className="text-body-sm text-fg-muted">{t(`kind.${c.kind}`)}</span>
-                    <span className="text-body-sm text-fg-muted">
+                    <span className="min-w-0 break-all text-body-sm text-fg-muted">
                       {t("review.serial")} <bdi dir="ltr">{c.serial}</bdi>
                     </span>
                   </label>
@@ -166,7 +166,7 @@ async function Row({
       <span className="text-body-sm text-fg-muted">{t(`kind.${c.kind}`)}</span>
       {/* `dir="ltr"` inside `<bdi>`: a serial is a Latin-and-digit string
           and reorders against its Arabic neighbours without both. */}
-      <span className="text-body-sm text-fg-muted">
+      <span className="min-w-0 break-all text-body-sm text-fg-muted">
         {t("review.serial")} <bdi dir="ltr">{c.serial}</bdi>
       </span>
       {c.revokedAt ? (

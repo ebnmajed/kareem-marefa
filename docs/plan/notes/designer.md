@@ -609,6 +609,37 @@ itself did not change, which is why no rebuild was needed to prove it.
 the same empty face list. Recovery is a fresh publish (or re-enqueuing
 `regenerate_poster`), not a retry.
 
+## 2.13 What the 390 px captures actually caught
+
+Three e2e traps and one copy bug, none of which a unit test could see.
+
+- **`<summary>` is not a button.** `getByRole("button", { name: "ألغِ" })`
+  waited thirty seconds and then reported the element does not exist,
+  which is true: Chromium exposes a disclosure triangle. The row is
+  found by its serial and the control by its tag. `console` hit the
+  same thing at sync 6.
+- **«the list is empty» was never the property under test.** The HOLDS
+  case asserted an empty `/app/me/certificates`, but the two cases
+  before it issue `automatic` certificates to the same member and those
+  are correctly visible. It now asserts that THIS serial is absent
+  while held, which is what REQ-CRT-004 actually says.
+- **The desktop project's 12 px scrollbar, again.** SCR-045 measured
+  402 px in a 390 px viewport with no element wider than the screen.
+  The lead diagnosed this at sync 8 and `designer.spec.ts` skips the
+  sideways check off the phone project; my copy of `review()` had not
+  inherited that. It now returns early off `phone` and still takes the
+  screenshot in both.
+- **A real overflow underneath it.** SCR-023 measured 432 px, which is
+  the 12 px scrollbar PLUS 30 px of genuine overflow: a verification
+  code is 24 unbroken base64url characters with no break opportunity,
+  so the flex item refused to shrink. `break-all` and `min-w-0` on the
+  serial and the code, on both screens. Breaking a Latin code
+  mid-string is fine — the rule against clipping is about Arabic text
+  lines, and nothing is clipped.
+- **The copy bug only a screenshot finds.** The status row read
+  «الشهادات صالحة»: I had reused the namespace's own label where a
+  field label belonged. It is «الحالة» now. Nothing typechecks that.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for

@@ -49,16 +49,27 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
                 {/* ★ `dir="ltr"` INSIDE a `<bdi>`. The serial and the code are
                     Latin-and-digit strings; unisolated they reorder against
                     their Arabic label and print as nonsense (09 SCR-023). */}
+                {/* ★ `break-all` on the two codes, and `min-w-0` on their
+                    rows. A verification code is 24 unbroken base64url
+                    characters and a serial is 14 — neither has a break
+                    opportunity, so at 390 px the flex item refuses to
+                    shrink below its own min-content width and the page
+                    scrolls sideways. The 390 px review caught it: 432 px
+                    of content in a 390 px viewport with NO single element
+                    wider than the screen, which is what a row of
+                    unbreakable tokens looks like. Breaking a Latin code
+                    mid-string is fine; the rule against clipping is about
+                    Arabic text lines, and nothing here is clipped. */}
                 <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-body-sm sm:grid-cols-2">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex min-w-0 flex-wrap gap-2">
                     <dt className="text-fg-muted">{t("mine.serial")}</dt>
-                    <dd className="text-fg-heading">
+                    <dd className="min-w-0 break-all text-fg-heading">
                       <bdi dir="ltr">{c.serial}</bdi>
                     </dd>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex min-w-0 flex-wrap gap-2">
                     <dt className="text-fg-muted">{t("mine.code")}</dt>
-                    <dd className="text-fg-heading">
+                    <dd className="min-w-0 break-all text-fg-heading">
                       <bdi dir="ltr">{c.verificationCode}</bdi>
                     </dd>
                   </div>
@@ -69,7 +80,10 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
                     </dd>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <dt className="text-fg-muted">{t("mode.label")}</dt>
+                    {/* «الحالة», not «الشهادات» — the 390 px capture read
+                        «الشهادات صالحة», which is the namespace's own label
+                        reused where a field label belonged. */}
+                    <dt className="text-fg-muted">{t("mine.status")}</dt>
                     <dd className={c.state === "revoked" ? "font-medium text-fg-heading" : "text-fg-heading"}>{t(`state.${c.state}`)}</dd>
                   </div>
                 </dl>

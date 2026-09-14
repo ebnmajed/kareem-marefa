@@ -27,7 +27,8 @@
       "preparing": "الشهادة قيد التجهيز",
       "verify": "صفحة التحقّق",
       "revokedReason": "سبب الإلغاء: <bdi>{reason}</bdi>",
-      "count": "{count, plural, zero {لا شهادات} one {شهادة واحدة} two {شهادتان} few {{value} شهادات} many {{value} شهادة} other {{value} شهادة}}"
+      "count": "{count, plural, zero {لا شهادات} one {شهادة واحدة} two {شهادتان} few {{value} شهادات} many {{value} شهادة} other {{value} شهادة}}",
+      "status": "الحالة"
     },
     "review": {
       "title": "شهادات الجلسة",

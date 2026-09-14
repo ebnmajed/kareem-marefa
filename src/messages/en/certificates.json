@@ -27,7 +27,8 @@
       "preparing": "The certificate is being prepared",
       "verify": "Verification page",
       "revokedReason": "Reason for revocation: <bdi>{reason}</bdi>",
-      "count": "{count, plural, one {One certificate} other {{value} certificates}}"
+      "count": "{count, plural, one {One certificate} other {{value} certificates}}",
+      "status": "Status"
     },
     "review": {
       "title": "Session certificates",
