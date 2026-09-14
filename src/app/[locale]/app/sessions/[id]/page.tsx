@@ -4,6 +4,7 @@ import { RsvpPanel } from "@/components/checkin/rsvp-panel";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { Materials } from "@/components/materials/list";
 import { Photos } from "@/components/photos/gallery";
+import { Tasks } from "@/components/tasks/panel";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
@@ -225,6 +226,14 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           <p className="mt-3 whitespace-pre-line text-body text-fg-body">
             <bdi>{session.abstract}</bdi>
           </p>
+        </section>
+        {/* 6. مهام ما قبل الجلسة — the content slot for tasks (REQ-TSK-001…005): reminder-only,
+            never consulted by check-in; presenters and admins add them inline. */}
+        <section aria-labelledby="tasks" className="mt-10">
+          <h2 id="tasks" className="text-h2 text-fg-heading">
+            {t("tasksLabel")}
+          </h2>
+          <Tasks sessionId={session.id} memberId={me.memberId} locale={locale} />
         </section>
         {/* 7. المواد — the content slot (TEAM.md §2, wave 2): the page owns the
             landmark and the heading; the list is phase-gated by its own read policy. */}

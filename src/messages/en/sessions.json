@@ -42,7 +42,8 @@
       },
       "unpublishedNote": "This session is not published yet. You can see it because you are staff or one of its presenters.",
       "materialsLabel": "Materials",
-      "photosLabel": "Photos"
+      "photosLabel": "Photos",
+      "tasksLabel": "Before the session"
     }
   }
 }
