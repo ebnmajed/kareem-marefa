@@ -1,6 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (**PR #12** → `main`, awaiting the owner's merge) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged · **Phase:** **M2 wave 1 complete on the branch — the demonstrable holds locally end to end; next session is the wave-2 lead after the owner merges**
-
-**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`; **draft PR #12**) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
+**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (cut from `main` @ `e0b448d`, not yet pushed) · **`main` @ `e0b448d`:** M1 live, M2 complete (PR #12 merged) · **Phase:** **wave 2 prepared — migration `0024` committed (`29ffbef`), DEC-046 logged, the three agent definitions written; the plan is presented and the lead is WAITING for the owner's approval before spawning `notify`, `scoring`, `content`**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -147,7 +145,41 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## M2 — wave 1 — COMPLETE on `wave-1/m2` (PR #12, the owner merges)
+## Wave 2 (M3 · M4 · M5) — PREPARED on `wave-2/m3-m4-m5`, waiting for the owner's approval
+
+**Done this session (the wave-2 lead, 2026-09-14), before anyone is spawned:**
+
+- **`main` @ `e0b448d`** (PR #12 merged, CI green on the last three pushes to `main`); local Supabase
+  healthy; `wave-2/m3-m4-m5` cut from it.
+- **Migration `0024_session_transition_guard`** — the table-level guard on `sessions.state` DEC-045
+  deferred, plus `occurred_at default clock_timestamp()` on `audit_log` and
+  `session_state_transitions`. The guard exposed a real conflict: `0020`'s presenter-decline trigger
+  returns a session to `draft`, an edge the frozen `02` §6.2 never drew but `REQ-PRO-007` defines;
+  `02` is amended under **DEC-046** rather than the guard breaking the decline. Two fixtures that
+  jumped states now walk legal edges; `tests/rls/sessions-guard.test.ts` adds six cases.
+  **Gates:** `supabase db reset` ✅ `0001`–`0024` · `npm run test:rls` ✅ **212 passed / 4 todo, 20
+  files** · `policy-diff` ✅ · traceability ✅ (matrix regenerated) · tsc ✅ · lint 0 errors.
+  Commit `29ffbef`.
+- **DEC-046** also records the owner's two standing decisions: **OQ-027 closes for wave 2 without
+  a host** (the worker stays a host-agnostic Docker image, locally and in CI; the production host
+  is chosen at Launch with PR C) and **email in development and CI goes to a sink, never a
+  provider** (Mailpit on `:54324`/SMTP `:54325` locally, an in-memory transport in CI; Resend is
+  wired at Launch).
+- **`.claude/agents/{notify,scoring,content}.md`** written from the wave-1 template with the
+  ownership globs below. Not committed until the owner approves the plan.
+
+**The lead's pre-spawn tasks once the plan is approved (in this order):**
+
+1. Migration `0025_enqueue_job` — `public.enqueue_job(name, payload, key)` wrapping
+   `graphile_worker.add_job(… job_key_mode => 'replace')`, the single door every RPC uses; install
+   the `graphile_worker` schema with `graphile-worker --schema-only` after every `supabase db reset`
+   (a `scripts/` wrapper `npm run test:rls` calls) and in CI's `rls` job after the migrations.
+2. `worker/Dockerfile` + a CI job that builds it and runs the boot probe inside the image.
+3. `supabase/config.toml` `[local_smtp] smtp_port = 54325` (needs `supabase stop && start`).
+4. `TEAM.md` §1 and `CLAUDE.md` § Agent team: the wave-2 ownership rows (settled docs, under DEC-046).
+5. Push the branch, open the **draft PR** at the first push, spawn.
+
+## M2 — wave 1 — COMPLETE on `wave-1/m2` (merged as PR #12)
 
 **The M2 demonstrable holds locally, end to end, through the real screens**, as one serial Playwright
 test against real local Supabase (`tests/e2e/sessions-screens.spec.ts`, commits `a3f8497`, `38e72d8`): add a
@@ -409,9 +441,14 @@ reachable through PostgREST; a `revoke` would touch the frozen table's privilege
 
 **Nothing.** The owner ran DEC-037's `REVOKE` in the hosted SQL editor on 2026-09-14; verified read-only with `supabase db query --linked`: `anon` has no `truncate`, keeps `insert` only, and the 19 registrations are intact. M2 starts on local Supabase and CI.
 
-**Due at M3, not now:** OQ-027 — where the worker and converter run. Both are host-agnostic;
-the choice must provide a session-mode Postgres connection and either private networking to the
-converter or an endpoint token on it.
+**OQ-027 answered for wave 2 (DEC-046):** the worker and converter run as host-agnostic Docker
+images locally and in CI; the production host is chosen at Launch with PR C. Nothing in wave 2
+waits on it. **Owner input due at Launch, not now:** a Google OAuth client with calendar scopes
+(the M3 sync runs against a stub in tests) and the Resend account.
+
+**Open for the owner at the wave-2 plan:** approval of the ownership globs; whether `content`
+runs on Opus rather than Sonnet (it holds the storage-prefix boundary, the one place isolation
+depends on application correctness).
 
 ## Blockers
 
@@ -497,20 +534,13 @@ unaffected.
 
 ## Next session should
 
-1. **Wait for the owner to merge PR #12** (`wave-1/m2` → `main`); nothing on the branch is merged
-   by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
-2. Be the **wave-2 lead**: read this file, `CLAUDE.md`, `DECISIONS.md` (DEC-042 … DEC-045), `TEAM.md`
-   (§3 and §5 grew this wave — the working rules are there), and the three
-   `docs/plan/notes/{sessions,checkin,event}.md`.
-3. **Before spawning anyone:** write migration `0024` — the table-level guard on `sessions.state`
-   and, if decided, `audit_log.occurred_at default clock_timestamp()` — move the fixtures that set
-   state directly onto the RPCs, `supabase db reset`, `npm run test:rls` green. Log the DEC.
-4. Confirm the wave-2 ownership map (`TEAM.md` §1 drafts): `notify` (M3), `scoring` (M4),
-   `content` (M5). OQ-027 (worker + converter hosting) is **due at M3** — the `notify` track cannot
-   deliver reminders without a running worker; decide hosting with the owner at the wave-2 plan.
-5. Cut `wave-2/m3-m4-m5`, present the plan, WAIT, spawn from `.claude/agents/` (write the three new
-   definitions first; the wave-1 ones are the template).
-6. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
-7. `.next` on disk is the **unconfigured** build from the final gate; run `npm run build` before
-   `npm run qa` / `visual` / `test:e2e:local`.
-8. Update this file before finishing.
+1. You are on `wave-2/m3-m4-m5` (unpushed). **If the owner approved the wave-2 plan**, run the five
+   pre-spawn tasks listed under *Wave 2 — PREPARED* above, commit the agent definitions, push,
+   open the draft PR, spawn `notify`, `scoring`, `content` from `.claude/agents/`, and run
+   `TEAM.md` §3 every few hours. **If not**, apply the owner's changes to the globs first.
+2. Read `DECISIONS.md` DEC-046 and the three `docs/plan/notes/{sessions,checkin,event}.md` handoffs
+   (the `TODO(notify, M3)` / `TODO(scoring, M4)` call sites in `0014`/`0015` are wave 2's hooks).
+3. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. `RESEND_API_KEY` stays
+   unset everywhere (DEC-046).
+4. `.next` on disk is stale; run `npm run build` before `npm run qa` / `visual` / `test:e2e:local`.
+5. Update this file before finishing.
