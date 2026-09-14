@@ -1,5 +1,56 @@
 {
   "admin": {
+    "shell": {
+      "brand": "Organisation console",
+      "moderatorEmpty": "The moderation console is still being built. Comment, photo and report queues and the audit log are coming.",
+      "nav": {
+        "dashboard": "Dashboard",
+        "proposals": "Proposals",
+        "sessions": "Sessions",
+        "venues": "Venues",
+        "categories": "Categories",
+        "companies": "Companies",
+        "members": "Members",
+        "moderationComments": "Comments",
+        "moderationPhotos": "Photos",
+        "moderationReports": "Reports",
+        "scoring": "Scoring",
+        "recognition": "Recognition",
+        "templatesPosters": "Poster templates",
+        "templatesCertificates": "Certificate templates",
+        "emails": "Emails",
+        "reminders": "Reminders",
+        "exports": "Exports",
+        "audit": "Audit log",
+        "settings": "Settings"
+      }
+    },
+    "dashboard": {
+      "title": "Organisation dashboard",
+      "intro": "A quick look at your organisation. Every figure here links to the list it summarises.",
+      "pipelineTitle": "Proposal pipeline",
+      "pipeline": {
+        "draft": "Draft",
+        "submitted": "Waiting for review",
+        "inReview": "Under review",
+        "changesRequested": "Changes requested",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "attendanceTitle": "Attendance",
+      "rsvpsConfirmed": "Confirmed RSVPs",
+      "checkInsTotal": "Check-ins",
+      "attendanceRateLabel": "Attendance rate",
+      "attendanceRateEmpty": "No sessions have started yet to compute a rate.",
+      "attendanceRateValue": "{value}%",
+      "activeMembersTitle": "Active members",
+      "pointsIssuedTitle": "Points issued",
+      "topPresentersTitle": "Most active presenters",
+      "topCategoriesTitle": "Busiest categories",
+      "topCompaniesTitle": "Most active companies",
+      "topEmpty": "Not enough data yet.",
+      "viewList": "View the list"
+    },
     "proposals": {
       "title": "Review proposals",
       "intro": "Every proposal members have sent, waiting on your decision. Rejecting and requesting changes each need a written reason, which reaches the proposer.",

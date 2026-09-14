@@ -1,5 +1,56 @@
 {
   "admin": {
+    "shell": {
+      "brand": "لوحة إدارة المؤسسة",
+      "moderatorEmpty": "لوحة الإشراف قيد الإنشاء. سنضيف قوائم التعليقات والصور والبلاغات وسجل التدقيق تباعًا.",
+      "nav": {
+        "dashboard": "لوحة التحكم",
+        "proposals": "المقترحات",
+        "sessions": "الجلسات",
+        "venues": "الأماكن",
+        "categories": "التصنيفات",
+        "companies": "الشركات",
+        "members": "الأعضاء",
+        "moderationComments": "التعليقات",
+        "moderationPhotos": "الصور",
+        "moderationReports": "البلاغات",
+        "scoring": "التسجيل",
+        "recognition": "التكريم",
+        "templatesPosters": "قوالب الملصقات",
+        "templatesCertificates": "قوالب الشهادات",
+        "emails": "البريد الإلكتروني",
+        "reminders": "التذكيرات",
+        "exports": "التصدير",
+        "audit": "سجل التدقيق",
+        "settings": "الإعدادات"
+      }
+    },
+    "dashboard": {
+      "title": "لوحة المؤسسة",
+      "intro": "نظرة سريعة على مؤسستك. كل رقم هنا رابط إلى القائمة التي يلخّصها.",
+      "pipelineTitle": "مسار المقترحات",
+      "pipeline": {
+        "draft": "مسودة",
+        "submitted": "بانتظار المراجعة",
+        "inReview": "قيد المراجعة",
+        "changesRequested": "بانتظار تعديل",
+        "approved": "معتمدة",
+        "rejected": "مرفوضة"
+      },
+      "attendanceTitle": "الحضور",
+      "rsvpsConfirmed": "حجوزات مؤكَّدة",
+      "checkInsTotal": "تسجيلات حضور",
+      "attendanceRateLabel": "معدّل الحضور",
+      "attendanceRateEmpty": "لا جلسات بدأت بعد لحساب المعدّل.",
+      "attendanceRateValue": "{value}٪",
+      "activeMembersTitle": "الأعضاء النشطون",
+      "pointsIssuedTitle": "النقاط الممنوحة",
+      "topPresentersTitle": "أكثر المُقدِّمين مشاركة",
+      "topCategoriesTitle": "أكثر التصنيفات جلسات",
+      "topCompaniesTitle": "أكثر الشركات مشاركة",
+      "topEmpty": "لا بيانات كافية بعد.",
+      "viewList": "عرض القائمة"
+    },
     "proposals": {
       "title": "مراجعة المقترحات",
       "intro": "كل مقترح وصل من الأعضاء وينتظر قرارك. الرفض وطلب التعديل يحتاجان سببًا مكتوبًا يصل صاحب المقترح.",
