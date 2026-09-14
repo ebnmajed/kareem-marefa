@@ -11,22 +11,18 @@
 //     transaction so a rollback returns the number (DEC-010);
 //   · `review` HOLDS — invisible to the recipient and unemailed — and a
 //     release is an admin's audited act that notifies once.
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["designer/0007_certificates.sql"];
 const CHECK_VIOLATION = "23514";
 
+// Promoted as `0065_certificates.sql`; nothing is applied from
+// `supabase/proposed/` here any more.
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
   await tx.asOwner();
   // fixture-m6 seeds certificates on both orgs (DEC-049); these cases count
   // rows and allocate serials, so they start from an empty world.
@@ -358,6 +354,171 @@ describe("POL-revoke_certificate.reason", () => {
       const id = await issued(tx, f);
       await tx.asOwner();
       expect(await errorCode(() => tx.q(`update public.certificates set state = 'revoked', revoked_at = now() where id = $1`, [id]))).toBe(CHECK_VIOLATION);
+    });
+  });
+});
+
+describe("POL-verify_certificate.public", () => {
+  /** Issues one, released, so /verify has something real to resolve. */
+  async function issued(tx: Tx, f: Awaited<ReturnType<typeof setup>>) {
+    await tx.asServiceRole();
+    const [row] = await tx.q<{ id: string; serial: string; verification_code: string }>(
+      `select id, serial, verification_code from public.issue_certificate($1, $2, 'attendance'::public.certificate_kind)`,
+      [f.m2.a.completed, f.a.members[1].memberId],
+    );
+    return row;
+  }
+
+  it("★ REQ-CRT-009: a SERIAL at /verify is NOT FOUND — only the code resolves", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const cert = await issued(tx, f);
+
+      await tx.asAnon();
+      expect(await tx.q(`select * from public.verify_certificate($1)`, [cert.verification_code])).toHaveLength(1);
+      // The serial is printed on the document and is the obvious thing to
+      // type. It must not resolve, or the register becomes walkable: serials
+      // are sequential and gapless BY DESIGN (DEC-010), so one valid serial
+      // hands an attacker every other one.
+      expect(await tx.q(`select * from public.verify_certificate($1)`, [cert.serial])).toEqual([]);
+    });
+  });
+
+  it("★ REQ-CRT-007: unknown and revoked-nonexistent are the SAME answer", async () => {
+    await withTx(async (tx) => {
+      await setup(tx);
+      await tx.asAnon();
+      const unknown = await tx.q(`select * from public.verify_certificate('aB3-_xYz9QwErTyUiOpAsDfG')`);
+      const alsoUnknown = await tx.q(`select * from public.verify_certificate('ZZZZZZZZZZZZZZZZZZZZZZZZ')`);
+      expect(unknown).toEqual([]);
+      expect(alsoUnknown).toEqual([]);
+    });
+  });
+
+  it("★ a HELD certificate does not verify — it is not issued yet", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      await tx.q(`update public.sessions set certificate_mode = 'review' where id = $1`, [f.m2.a.completed]);
+      const cert = await issued(tx, f);
+
+      await tx.asAnon();
+      // Same empty answer as an unknown code: the public page must not be a
+      // way to learn that a certificate is being prepared for someone.
+      expect(await tx.q(`select * from public.verify_certificate($1)`, [cert.verification_code])).toEqual([]);
+    });
+  });
+
+  it("★ a revoked certificate DOES verify — as revoked, and without the reason", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const cert = await issued(tx, f);
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select public.revoke_certificate($1, $2)`, [cert.id, "صدرت بالخطأ لشخص لم يحضر"]);
+
+      await tx.asAnon();
+      const [row] = await tx.q<Record<string, unknown>>(`select * from public.verify_certificate($1)`, [cert.verification_code]);
+      // REQ-CRT-011: an old printed copy keeps resolving, to «ملغاة». The
+      // PDF is not deleted and the row is not removed.
+      expect(row.state).toBe("revoked");
+      // A13 / OQ-015: the reason is not in the RETURN TYPE, so it cannot be
+      // selected here by accident and cannot be added by a later column.
+      expect(Object.keys(row).sort()).toEqual(
+        ["achievement_name", "issued_at", "kind", "org_name", "recipient_name", "session_date", "session_title", "state"].sort(),
+      );
+    });
+  });
+
+  it("`anon` has no policy on `certificates` at all — the function is the only door", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await issued(tx, f);
+      await tx.asAnon();
+      expect(await errorCode(() => tx.q(`select id from public.certificates`))).toBe(PERMISSION_DENIED);
+    });
+  });
+});
+
+describe("POL-allocate_serial.gapless", () => {
+  it("★ DEC-010: serials are consecutive, per org, and a ROLLBACK RETURNS THE NUMBER", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asServiceRole();
+
+      const a1 = (await tx.q<{ allocate_serial: string }>(`select public.allocate_serial($1)`, [f.a.id]))[0].allocate_serial;
+      const a2 = (await tx.q<{ allocate_serial: string }>(`select public.allocate_serial($1)`, [f.a.id]))[0].allocate_serial;
+      const b1 = (await tx.q<{ allocate_serial: string }>(`select public.allocate_serial($1)`, [f.b.id]))[0].allocate_serial;
+
+      const n = (s: string) => Number(s.split("-")[2]);
+      expect(n(a2)).toBe(n(a1) + 1);
+      // Per ORG: org B's counter is its own and starts over.
+      expect(n(b1)).toBe(1);
+      expect(a1.split("-")[0]).not.toBe(b1.split("-")[0]);
+
+      // ★ The rollback half, and the whole reason the counter is a LOCKED
+      // ROW rather than a sequence: `nextval` is non-transactional by
+      // design, so a failed issuance would burn its number and the register
+      // would have a hole in it. Here the allocation happens inside a
+      // statement that then raises, `tx.q` rolls the statement's savepoint
+      // back, and the number comes back.
+      //
+      // `f.a.id` is interpolated because a `do` block takes no parameters.
+      // It is a uuid this file created two lines up, not input.
+      expect(
+        await errorCode(() => tx.q(`do $$ begin perform public.allocate_serial('${f.a.id}'::uuid); raise exception 'rolled_back'; end $$`)),
+      ).not.toBeNull();
+
+      const after = (await tx.q<{ allocate_serial: string }>(`select public.allocate_serial($1)`, [f.a.id]))[0].allocate_serial;
+      expect(n(after)).toBe(n(a2) + 1);
+    });
+  });
+
+  it("allocating is service_role only — no member, admin or moderator may", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      for (const claims of [f.a.admin.claims, f.a.mod.claims, f.a.members[0].claims]) {
+        await tx.as(claims);
+        expect(await errorCode(() => tx.q(`select public.allocate_serial($1)`, [f.a.id]))).toBe(PERMISSION_DENIED);
+      }
+    });
+  });
+});
+
+describe("POL-design_documents.certificate_read", () => {
+  it("★ 03 §5.9b: the recipient reads their OWN certificate's document, and nobody else's", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asServiceRole();
+      const [cert] = await tx.q<{ id: string }>(`select id from public.issue_certificate($1, $2, 'attendance'::public.certificate_kind)`, [
+        f.m2.a.completed,
+        f.a.members[1].memberId,
+      ]);
+      // The template's own document, read as the owner: `design_template_
+      // versions` is revoked from service_role too, and the worker gets it
+      // through `certificate_render_context()` rather than by selecting.
+      await tx.asOwner();
+      const [version] = await tx.q<{ document: unknown }>(
+        `select v.document from public.design_template_versions v
+           join public.certificates c on c.template_version_id = v.id where c.id = $1`,
+        [cert.id],
+      );
+      await tx.asServiceRole();
+      const [doc] = await tx.q<{ record_certificate_document: string }>(`select public.record_certificate_document($1, $2::jsonb)`, [
+        cert.id,
+        JSON.stringify(version.document),
+      ]);
+      const documentId = doc.record_certificate_document;
+
+      // The recipient.
+      await tx.as(f.a.members[1].claims);
+      expect(await tx.q(`select id from public.design_documents where id = $1`, [documentId])).toHaveLength(1);
+      // Another member of the same org — the document carries someone's
+      // NAME, so this is a personal-data boundary, not a tidiness one.
+      await tx.as(f.a.members[0].claims);
+      expect(await tx.q(`select id from public.design_documents where id = $1`, [documentId])).toEqual([]);
+      // The other org's admin.
+      await tx.as(f.b.admin.claims);
+      expect(await tx.q(`select id from public.design_documents where id = $1`, [documentId])).toEqual([]);
     });
   });
 });
