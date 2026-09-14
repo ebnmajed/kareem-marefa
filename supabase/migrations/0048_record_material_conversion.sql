@@ -1,4 +1,4 @@
--- content, follow-up — the two doors JOB-convert_document and
+-- promoted by the lead at wave-2 sync 10 · content, follow-up — the two doors JOB-convert_document and
 -- JOB-render_pages write through. 11 §2.4, 07 §4.
 --
 -- Both are SECURITY DEFINER, service_role-only EXECUTE — the worker holds

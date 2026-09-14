@@ -129,7 +129,7 @@ describe("RPC-record_material_conversion", () => {
   it("service_role_only: authenticated and anon are refused on the grant; service_role succeeds", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims);
@@ -148,7 +148,7 @@ describe("RPC-record_material_conversion", () => {
   it("enqueues render_pages, keyed pages:{version_id}, only on success with a page count", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId: okVersion } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
       const { versionId: failedVersion } = await seedMaterial(tx, f.a.id, f.m2.a.completed, f.a.members[0].memberId);
 
@@ -167,7 +167,7 @@ describe("RPC-record_material_conversion", () => {
   it("★ REQ-MAT-011: names the substituted family on the material, not only in a log", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.asServiceRole();
@@ -186,7 +186,7 @@ describe("RPC-record_material_conversion", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       // finalize_material_upload() is already promoted (0046) — no applyProposed needed for it.
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId: v1, materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims);
@@ -205,7 +205,7 @@ describe("RPC-record_material_pages", () => {
   it("service_role_only: authenticated is refused on the grant; service_role succeeds and moves render_status to ready", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
       const pages = JSON.stringify([
         { page_number: 1, image_path: "p1.webp", thumbnail_path: "t1.webp" },
@@ -234,7 +234,7 @@ describe("RPC-record_material_pages", () => {
   it("upsert: a second call for the same page number replaces its paths rather than duplicating the row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0004_record_material_conversion.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.asServiceRole();
@@ -252,7 +252,7 @@ describe("RPC-record_material_download.admin_only", () => {
   it("a member and a moderator are refused; an admin writes one audit row naming the material and the version", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0005_record_material_download.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.as(f.a.members[1].claims);
@@ -277,7 +277,7 @@ describe("RPC-record_material_download.admin_only", () => {
   it("another org's material is refused, even to that org's own admin", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0005_record_material_download.sql");
+      // Promoted at wave-2 sync 10 (0048–0049): applied by `supabase db reset`.
       const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.as(f.b.admin.claims);

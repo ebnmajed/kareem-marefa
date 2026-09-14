@@ -26,6 +26,12 @@ import { schedule_reminders } from "./tasks/schedule_reminders.js";
 import { calendar_upsert } from "./tasks/calendar_upsert.js";
 import { calendar_delete } from "./tasks/calendar_delete.js";
 import { refresh_calendar_tokens } from "./tasks/refresh_calendar_tokens.js";
+import { convert_document } from "./tasks/convert_document.js";
+import { render_pages } from "./tasks/render_pages.js";
+import { evaluate_streaks } from "./tasks/evaluate_streaks.js";
+import { evaluate_badges } from "./tasks/evaluate_badges.js";
+import { evaluate_levels_perks } from "./tasks/evaluate_levels_perks.js";
+import { snapshot_leaderboards } from "./tasks/snapshot_leaderboards.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const probeOnly = process.argv.includes("--probe-only");
@@ -61,7 +67,7 @@ const runner = await run({
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
   pollInterval: 60_000,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries
@@ -69,7 +75,7 @@ const runner = await run({
   // 11 §2.2: Google access tokens last an hour; the hourly sweep refreshes every
   // connection expiring within thirty minutes so no sync job meets a 401.
   // 11 §2.3: the balance audit runs nightly (03:00 Asia/Riyadh = 00:00 UTC).
-  crontab: ["* * * * * start_session", "* * * * * complete_session", "0 * * * * refresh_calendar_tokens", "0 0 * * * audit_balances"].join("\n") + "\n",
+  crontab: ["* * * * * start_session", "* * * * * complete_session", "0 * * * * refresh_calendar_tokens", "0 0 * * * audit_balances", "0 1 * * * evaluate_streaks", "0 1 * * * evaluate_badges", "0 1 * * * evaluate_levels_perks", "0 2 * * * snapshot_leaderboards"].join("\n") + "\n",
 });
 
 console.log("worker: running — queues dispatch over LISTEN/NOTIFY; polling every 60 s as a fallback");

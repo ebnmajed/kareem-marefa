@@ -1279,6 +1279,13 @@ generated suite is the highest-value test in the product.
 | `RPC-award_badge_manually.admin_only` | a moderator and a stale admin are refused (migration `0047`). |
 | `RPC-award_badge_manually.reason_mandatory` | an empty reason raises before anything is written (member_badges' own check constraint backs this up structurally) (migration `0047`). |
 | `RPC-award_badge_manually.idempotent` | awarding the same badge twice to the same member is a no-op, not an error (migration `0047`). |
+| `RPC-record_material_conversion.service_role_only` | `authenticated` and `anon` are both refused on the grant; `service_role` succeeds. (migration `0048`). |
+| `RPC-record_material_conversion.enqueues` | A successful call with a page count enqueues `render_pages` keyed `pages:{version_id}`; a failed call (or one with no page count) enqueues nothing. (migration `0048`). |
+| `RPC-record_material_conversion.superseded` | A call naming a version that is no longer `current_version_id` changes nothing on `materials`, but still enqueues (the version's own row is still worth rendering, if it somehow gets there — in practice the job that would do that was itself for the version that superseded it). (migration `0048`). |
+| `RPC-record_material_pages.service_role_only` | Same as above. (migration `0048`). |
+| `RPC-record_material_pages.upsert` | A second call for the same version and page number replaces that page's paths rather than duplicating the row (`unique (material_version_id, page_number)`, 0037). (migration `0048`). |
+| `RPC-record_material_pages.ready` | A successful call moves `render_status` to `ready`. (migration `0048`). |
+| `RPC-record_material_download.admin_only` | A member and a moderator are both refused `42501`; an admin writes one audit row naming the material and the version. (migration `0049`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
 | `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |

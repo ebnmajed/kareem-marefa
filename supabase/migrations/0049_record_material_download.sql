@@ -1,4 +1,4 @@
--- content, follow-up — REQ-MAT-005's "an admin download is always
+-- promoted by the lead at wave-2 sync 10 · content, follow-up — REQ-MAT-005's "an admin download is always
 -- permitted, and audited". The APP cannot write `audit_log` directly
 -- (`POL-audit_log.insert`: direct insert is rejected for every role,
 -- `write_audit()` succeeds — and `write_audit()` itself is granted to
