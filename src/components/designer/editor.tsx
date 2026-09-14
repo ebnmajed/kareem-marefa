@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DesignDocument, Layer, PresetName } from "@kareem/designer-runtime";
-import { derive, fontFaceCss, PRESETS, presetsFor, validateDocument } from "@kareem/designer-runtime";
+import { derive, fontFaceCss, PRESETS, presetsFor, snap, snapTargets, snapTargetsBlock, validateDocument } from "@kareem/designer-runtime";
 import type { NumeralSystem } from "@/components/sessions/numerals";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { LayerList } from "@/components/designer/layer-list";
@@ -60,6 +60,9 @@ type SaveState =
  *  closing the tab a second after a change does not lose it. */
 const AUTOSAVE_DELAY_MS = 1200;
 
+/** 06 §10: fifty steps. */
+const UNDO_STEPS = 50;
+
 export function DesignerEditor(props: DesignerEditorProps) {
   const t = useTranslations("designer.editor");
   const ts = useTranslations("designer.save");
@@ -72,6 +75,12 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>({ kind: "clean" });
+  // 06 §10: undo/redo is document-level, fifty steps. A layer-level history
+  // would let an undo half-apply an edit that touched two layers, and the
+  // whole document is a few kilobytes.
+  const past = useRef<DesignDocument[]>([]);
+  const future = useRef<DesignDocument[]>([]);
+  const [depth, setDepth] = useState({ past: 0, future: 0 });
   const presets = useMemo(() => presetsFor(props.purpose), [props.purpose]);
   const [preset, setPreset] = useState<PresetName>(() => presetsFor(props.purpose)[0] ?? "master");
   // On by default for print, where crossing a safe area is expensive and the
@@ -167,12 +176,47 @@ export function DesignerEditor(props: DesignerEditorProps) {
         setSave({ kind: "invalid", issue: first ? `${first.path} — ${first.code}` : "" });
         return;
       }
-      setDocument(next);
+      setDocument((current) => {
+        past.current = [...past.current, current].slice(-UNDO_STEPS);
+        // A new edit ends the redo branch: keeping it would let a redo jump
+        // to a document that never followed from what is on screen.
+        future.current = [];
+        setDepth({ past: past.current.length, future: 0 });
+        return next;
+      });
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void push(next), AUTOSAVE_DELAY_MS);
     },
     [push],
   );
+
+  const step = useCallback(
+    (direction: "undo" | "redo") => {
+      const from = direction === "undo" ? past : future;
+      const to = direction === "undo" ? future : past;
+      const previous = from.current[from.current.length - 1];
+      if (!previous) return;
+      from.current = from.current.slice(0, -1);
+      setDocument((current) => {
+        to.current = [...to.current, current].slice(-UNDO_STEPS);
+        setDepth({ past: past.current.length, future: future.current.length });
+        return previous;
+      });
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => void push(previous), AUTOSAVE_DELAY_MS);
+    },
+    [push],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      e.preventDefault();
+      step(e.shiftKey ? "redo" : "undo");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [step]);
 
   useEffect(
     () => () => {
@@ -185,7 +229,23 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const patchLayer = useCallback(
     (layerId: string, patch: Partial<Layer>) => {
       if (props.lockedLayerIds.includes(layerId)) return setSave({ kind: "locked", layerId });
-      mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? ({ ...l, ...patch } as Layer) : l)) });
+      // Alignment guides, applied to a TYPED frame. 06 §10 wants guides and
+      // snapping; dragging is REQ-DSG-022's and is deliberately absent, so
+      // the guides act where frames are actually edited. They are LOGICAL
+      // (start/end), so they mirror with direction rather than jumping to
+      // the far side when a template is mirrored for English.
+      const snapped =
+        patch.frame
+          ? {
+              ...patch,
+              frame: {
+                ...patch.frame,
+                x: snap(patch.frame.x, snapTargets(document, layerId)),
+                y: snap(patch.frame.y, snapTargetsBlock(document, layerId)),
+              },
+            }
+          : patch;
+      mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? ({ ...l, ...snapped } as Layer) : l)) });
     },
     [document, mutate, props.lockedLayerIds],
   );
@@ -305,6 +365,26 @@ export function DesignerEditor(props: DesignerEditorProps) {
           >
             {status.node}
           </p>
+        ) : null}
+        {props.canEdit ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => step("undo")}
+              disabled={depth.past === 0}
+              className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body disabled:opacity-40"
+            >
+              {t("undo")}
+            </button>
+            <button
+              type="button"
+              onClick={() => step("redo")}
+              disabled={depth.future === 0}
+              className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body disabled:opacity-40"
+            >
+              {t("redo")}
+            </button>
+          </div>
         ) : null}
         {!props.canEdit ? (
           <p role="status" className="text-body-sm text-fg-muted">

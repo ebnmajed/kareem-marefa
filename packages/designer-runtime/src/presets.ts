@@ -302,3 +302,53 @@ export function safeAreaViolations(doc: DesignDocument, target: PresetName): Saf
 export function allSafeAreaViolations(doc: DesignDocument): SafeAreaViolation[] {
   return presetsFor(doc.purpose).flatMap((preset) => safeAreaViolations(doc, preset))
 }
+
+/* ── alignment guides and snapping (06 §10, REQ-DSG-022) ────────────────── */
+
+/**
+ * The edges a layer can snap to, in LOGICAL coordinates.
+ *
+ * «Guides are logical (start/end), so they mirror with direction.» That is
+ * the whole reason this returns numbers in the document's own coordinate
+ * space rather than screen pixels: a guide computed from a rendered position
+ * would be a guide that jumps to the other side when the template is
+ * mirrored for English (A27).
+ */
+export function snapTargets(doc: DesignDocument, exceptLayerId: string): number[] {
+  const box = sourceSafeBox(doc)
+  const targets = new Set<number>([box.x, box.x + box.w, Math.round(box.x + box.w / 2), 0, doc.master.width])
+  for (const layer of doc.layers) {
+    if (layer.id === exceptLayerId || layer.hidden) continue
+    targets.add(layer.frame.x)
+    targets.add(layer.frame.x + layer.frame.w)
+  }
+  return [...targets].sort((a, b) => a - b)
+}
+
+export function snapTargetsBlock(doc: DesignDocument, exceptLayerId: string): number[] {
+  const box = sourceSafeBox(doc)
+  const targets = new Set<number>([box.y, box.y + box.h, Math.round(box.y + box.h / 2), 0, doc.master.height])
+  for (const layer of doc.layers) {
+    if (layer.id === exceptLayerId || layer.hidden) continue
+    targets.add(layer.frame.y)
+    targets.add(layer.frame.y + layer.frame.h)
+  }
+  return [...targets].sort((a, b) => a - b)
+}
+
+/** The nearest target within `tolerance`, or the value unchanged. Snapping a
+ *  TYPED number rather than a dragged one: the properties panel is where
+ *  frames are edited (dragging is deliberately absent), and 3 px of slop on
+ *  a 1080 px canvas is the difference between "aligned" and "nearly". */
+export function snap(value: number, targets: readonly number[], tolerance = 8): number {
+  let best = value
+  let distance = tolerance + 1
+  for (const target of targets) {
+    const d = Math.abs(target - value)
+    if (d <= tolerance && d < distance) {
+      distance = d
+      best = target
+    }
+  }
+  return best
+}

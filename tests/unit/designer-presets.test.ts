@@ -15,6 +15,9 @@ import {
   presetsFor,
   safeAreaViolations,
   safeBox,
+  snap,
+  snapTargets,
+  snapTargetsBlock,
   type DesignDocument,
   type Layer,
   type TextMeasurer,
@@ -211,5 +214,48 @@ describe("REQ-DSG-025 — shrink, then wrap, then warn", () => {
     // 06 §9.3 compares the FITTED SIZE exactly; a fractional search would make
     // that a coincidence rather than a property.
     expect(Number.isInteger(computeAutoFit(spec(), fake).size)).toBe(true);
+  });
+});
+
+describe("REQ-DSG-022 / 06 §10 — alignment guides are LOGICAL", () => {
+  const doc: DesignDocument = {
+    schemaVersion: 1,
+    purpose: "poster",
+    master: { width: 1080, height: 1350, unit: "px" },
+    direction: "rtl",
+    layers: [layer({ id: "a", frame: { x: 80, y: 300, w: 400, h: 100 } }), layer({ id: "b", frame: { x: 600, y: 800, w: 300, h: 100 } })],
+  };
+
+  it("offers the safe box's edges and centre, and every other layer's edges", () => {
+    const targets = snapTargets(doc, "b");
+    // The master's safe box is 80…1000 on the inline axis.
+    expect(targets).toContain(80);
+    expect(targets).toContain(1000);
+    expect(targets).toContain(540);
+    // Layer `a` runs 80…480.
+    expect(targets).toContain(480);
+    // ...and never the layer being moved, which would snap it to itself.
+    expect(snapTargets(doc, "a")).not.toContain(480);
+  });
+
+  it("★ the targets are DOCUMENT coordinates, so they mirror with direction", () => {
+    // A guide computed from a rendered position would jump to the other
+    // side when the template is mirrored for English (A27). The same
+    // document in LTR yields the same numbers.
+    expect(snapTargets({ ...doc, direction: "ltr" }, "b")).toEqual(snapTargets(doc, "b"));
+  });
+
+  it("snaps within tolerance and leaves anything further alone", () => {
+    expect(snap(83, [80, 540, 1000])).toBe(80);
+    expect(snap(97, [80, 540, 1000])).toBe(97);
+    // The nearest wins when two are in range.
+    expect(snap(84, [80, 88])).toBe(84 - 4 === 80 ? 80 : 88);
+  });
+
+  it("the block axis has its own targets — a vertical guide is not a horizontal one", () => {
+    const targets = snapTargetsBlock(doc, "b");
+    expect(targets).toContain(80);
+    expect(targets).toContain(1270);
+    expect(targets).toContain(400);
   });
 });

@@ -352,3 +352,16 @@ export async function detachPoster(locale: string, sessionId: string): Promise<{
   const { error } = await supabase.rpc("detach_poster", { p_session: sessionId });
   return error ? { status: "not_authorized" } : { status: "ok" };
 }
+
+/** A signed URL for a design asset, five minutes. `null` when the id names
+ *  no asset this org may read — which the canvas renders as a marked
+ *  placeholder rather than a broken image (REQ-DSG-006). */
+export async function signDesignAssetUrl(locale: string, assetId: string): Promise<string | null> {
+  // Already a URL (wave 4 may hand one over directly) — nothing to sign.
+  if (/^https?:\/\//.test(assetId)) return assetId;
+  const { supabase } = await sessionClient(locale);
+  const { data: asset } = await supabase.from("design_assets").select("storage_path").eq("id", assetId).maybeSingle();
+  if (!asset?.storage_path) return null;
+  const { data } = await supabase.storage.from("design-assets").createSignedUrl(asset.storage_path as string, 300);
+  return data?.signedUrl ?? null;
+}

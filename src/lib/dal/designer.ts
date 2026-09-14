@@ -17,6 +17,7 @@ import {
   type ValidationIssue,
 } from "@kareem/designer-runtime";
 import { listEditorFaces } from "@/lib/dal/fonts";
+import { signDesignAssetUrl } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
 import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
 
@@ -204,6 +205,18 @@ export async function getDesignerDocument(locale: string, documentId: string, or
     ...sessionBindings(sessionRow as SessionRow | null, bindingOptions),
     ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),
   };
+
+  // REQ-DSG-021 / 06 §8.3: the logo is BOUND, never embedded, which is what
+  // makes replacing it update every template at once. Wave 4's brand kit
+  // supplies the asset id; until then nothing binds and the image layer
+  // draws a marked placeholder, which is the correct answer for an org that
+  // has not uploaded one.
+  const logoAssetId = bindings["brand.logoAssetId"];
+  if (logoAssetId) {
+    const url = await signDesignAssetUrl(locale, logoAssetId);
+    if (url) bindings["brand.logoAssetId"] = url;
+    else delete bindings["brand.logoAssetId"];
+  }
 
   const templateLayers = (version?.document as { layers?: { id?: string; locked?: boolean }[] } | null)?.layers ?? [];
   const lockedLayerIds = templateLayers.filter((l) => l.locked === true && typeof l.id === "string").map((l) => l.id as string);

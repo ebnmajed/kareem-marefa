@@ -12,7 +12,9 @@
       "readOnly": "You can view this. Designing is an org admin's act.",
       "mobileNotice": "On a small screen this is preview and approval only. The layer editor needs a wider window; a cramped one is a bad tool pretending to be a feature.",
       "previewHeading": "Preview",
-      "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text."
+      "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text.",
+      "undo": "Undo",
+      "redo": "Redo"
     },
     "save": {
       "saving": "Saving…",
