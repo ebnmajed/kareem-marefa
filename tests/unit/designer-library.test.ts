@@ -10,7 +10,7 @@
 // The last block is the anti-drift check: the seed migration's JSON must
 // deep-equal this library. The library is the source, the SQL is a copy, and
 // a copy nobody compares is a copy that diverges.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -183,7 +183,6 @@ describe("the seed migration is a copy of this library, and has not drifted", ()
     let body: string | null = null;
     if (existsSync(sql)) body = readFileSync(sql, "utf8");
     else {
-      const { readdirSync } = require("node:fs") as typeof import("node:fs");
       const promotedFile = readdirSync(promoted).find((f) => f.endsWith("_baseline_library.sql"));
       if (promotedFile) body = readFileSync(join(promoted, promotedFile), "utf8");
     }
