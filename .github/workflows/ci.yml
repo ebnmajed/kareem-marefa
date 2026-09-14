@@ -286,6 +286,22 @@ jobs:
       - name: the image's probe passes on a session-mode connection
         run: docker run --rm --network host -e DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres kareem-worker node worker/dist/index.js --probe-only
 
+      # DEC-048: the image now carries headless Chromium, the designer runtime
+      # and the font set (REQ-DSG-016). The shaping parity harness runs INSIDE
+      # it against the committed goldens, so the Chromium and the font bytes
+      # that would render a poster in production are the ones proven here —
+      # Tier A is a property of the font bytes and the layout algorithm, not
+      # the rasteriser (DEC-028), which is what lets a Linux image match
+      # goldens made on a Mac. The sandbox is dropped only inside the
+      # container (CHROME_NO_SANDBOX), never on a developer's machine.
+      - name: the image's Chromium and fonts pass the shaping parity suite
+        run: >-
+          docker run --rm
+          -v "$PWD/scripts:/app/scripts:ro"
+          -v "$PWD/packages/fonts:/app/packages/fonts:ro"
+          -e CHROME_NO_SANDBOX=1
+          kareem-worker node scripts/parity/harness.mjs
+
   # ── main stays deployable with the platform unconfigured. DEC-038. ────
   # Production has no NEXT_PUBLIC_ Supabase variables until PR C. This job
   # builds exactly that way and proves the platform routes are 404s while the
