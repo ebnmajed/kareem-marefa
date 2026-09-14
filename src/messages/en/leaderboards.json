@@ -16,7 +16,7 @@
     "company": {
       "totalPoints": "Total points",
       "perActiveMember": "Points per active member",
-      "rankedBy": "Ranked by {metric}",
+      "rankedBy": "Ranked by <bdi>{metric}</bdi>",
       "asOf": "Computed against the active member count at the time — it does not change later",
       "provisional": "Provisional — refreshed nightly until the month closes",
       "final": "Final"

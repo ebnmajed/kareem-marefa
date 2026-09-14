@@ -27,7 +27,7 @@ export async function CompanyBoard({
 
   return (
     <>
-      <p className="mt-2 text-body-sm text-fg-muted">{t("company.rankedBy", { metric: metricLabel })}</p>
+      <p className="mt-2 text-body-sm text-fg-muted">{t.rich("company.rankedBy", { metric: metricLabel, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
       <ol className="mt-4 space-y-2">
         {rows.map((row) => (
           <li key={row.companyId} className="rounded-field border border-edge p-3">

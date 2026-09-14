@@ -16,7 +16,7 @@
     "company": {
       "totalPoints": "مجموع النقاط",
       "perActiveMember": "نقاط لكل عضو نشط",
-      "rankedBy": "الترتيب حسب {metric}",
+      "rankedBy": "الترتيب حسب <bdi>{metric}</bdi>",
       "asOf": "محسوبة بعدد الأعضاء النشطين وقت الحساب — لا يتغيّر لاحقًا",
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
       "final": "نهائية"
