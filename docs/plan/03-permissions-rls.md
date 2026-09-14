@@ -1482,6 +1482,7 @@ generated suite is the highest-value test in the product.
 | `RPC-evaluate_alerts.eight` | It returns exactly the eight alerts of `11` §3.2, every call, whether or not any is firing. (migration `0075`). |
 | `RPC-evaluate_alerts.isolation` | Seeding any ONE condition fires that alert and leaves the other seven quiet; clearing it stops the alert. (migration `0075`). |
 | `RPC-evaluate_alerts.no_queue` | Without the `graphile_worker` schema the queue alert reports `not_installed` rather than raising — the drill runs in an environment that may not have it. (migration `0075`). |
+| `RPC-platform_job_health.due` | A job scheduled in the future counts as neither pending nor old; a job overdue by an hour counts as both, and the age is never negative. (migration `0076`). |
 | `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
 | `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
 | `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |

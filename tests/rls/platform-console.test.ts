@@ -217,11 +217,10 @@ describe("platform — the console's reads (0002)", () => {
       // Exactly the shape that put «-1,679» on SCR-084: `expire_impersonation`
       // is enqueued at the session's `expires_at`, an hour ahead, and the
       // first version measured `now() - run_at` over it.
-      await tx.q(
-        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
-         select null, t.id, '{}'::json, now() + interval '1 hour', 25
-           from graphile_worker._private_tasks t limit 1`,
-      );
+      // Through add_job(), which creates the task row: after a fresh reset
+      // `_private_tasks` is empty until a worker has run, and an insert that
+      // selects from it inserts nothing (the lead, closing the wave).
+      await tx.q(`select graphile_worker.add_job('expire_impersonation', '{}'::json, run_at => now() + interval '1 hour')`);
 
       await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
       const scheduled = await tx.q<{ task_identifier: string; pending: string; oldest_pending_seconds: string }>(
@@ -234,11 +233,7 @@ describe("platform — the console's reads (0002)", () => {
 
       // An OVERDUE job counts on both numbers.
       await tx.asOwner();
-      await tx.q(
-        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
-         select null, t.id, '{}'::json, now() - interval '20 minutes', 25
-           from graphile_worker._private_tasks t limit 1`,
-      );
+      await tx.q(`select graphile_worker.add_job('expire_impersonation', '{}'::json, run_at => now() - interval '20 minutes')`);
       await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
       const overdue = await tx.q<{ pending: string; oldest_pending_seconds: string }>(
         `select pending::text, oldest_pending_seconds::text from public.platform_job_health()`,
