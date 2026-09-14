@@ -1478,6 +1478,10 @@ generated suite is the highest-value test in the product.
 | `RPC-record_data_export.worker` | Only `service_role` may mark a request ready or failed; the member can read their own row and write none of it. (migration `0073`). |
 | `RPC-request_data_export.rate_limited` | A second request inside 24 hours is refused `42501` while an already-queued one is returned unchanged (`REQ-NFR-005`, `REQ-PRF-006`). (migration `0073`). |
 | `RPC-my_data_export.self` | A member handed another member's request id gets their OWN latest row, never the other's archive. (migration `0073`). |
+| `RPC-evaluate_alerts.worker` | `service_role` only — `authenticated`, a platform admin and `anon` are all refused on the grant. (migration `0075`). |
+| `RPC-evaluate_alerts.eight` | It returns exactly the eight alerts of `11` §3.2, every call, whether or not any is firing. (migration `0075`). |
+| `RPC-evaluate_alerts.isolation` | Seeding any ONE condition fires that alert and leaves the other seven quiet; clearing it stops the alert. (migration `0075`). |
+| `RPC-evaluate_alerts.no_queue` | Without the `graphile_worker` schema the queue alert reports `not_installed` rather than raising — the drill runs in an environment that may not have it. (migration `0075`). |
 | `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
 | `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
 | `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
