@@ -29,11 +29,14 @@ let leaderMemberId = "";
 let companyId = "";
 let companyName = "";
 
-test.beforeAll(async () => {
+test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
-  const tag = `${Date.now()}`;
+  // desktop and phone share one database (TEAM.md §5's trap) — a tag by
+  // time alone can collide when both workers hit beforeAll in the same
+  // millisecond, which is exactly what happened once here.
+  const tag = `${testInfo.workerIndex}-${Date.now()}`;
   domain = `leaderboards-e2e-${tag}.example`;
   companyName = `شركة اللوحة ${tag}`;
 
@@ -106,7 +109,11 @@ test("a member sees the all-time board, and both metrics on the company race", a
   await db.query(`select public.snapshot_leaderboard($1, 'company', null, null, null, false)`, [orgId]);
   await page.goto("/ar/app/leaderboards");
   const companySection = page.locator("#company");
-  await expect(companySection.getByText(companyName)).toBeVisible();
-  await expect(companySection.getByText("مجموع النقاط")).toBeVisible();
-  await expect(companySection.getByText("نقاط لكل عضو نشط")).toBeVisible();
+  // Scoped to the row itself: "نقاط لكل عضو نشط" also appears, correctly,
+  // in the section's "ranked by" summary line above the list — REQ-LDR-004
+  // means the label legitimately shows up twice on this screen.
+  const companyRow = companySection.locator("li", { hasText: companyName });
+  await expect(companyRow).toBeVisible();
+  await expect(companyRow.getByText("مجموع النقاط")).toBeVisible();
+  await expect(companyRow.getByText("نقاط لكل عضو نشط")).toBeVisible();
 });

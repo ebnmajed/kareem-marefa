@@ -33,11 +33,14 @@ let memberId = "";
 let sessionId = "";
 let sessionTitle = "";
 
-test.beforeAll(async () => {
+test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
-  const tag = `${Date.now()}`;
+  // desktop and phone share one database (TEAM.md §5's trap) — a tag by
+  // time alone can collide when both workers hit beforeAll in the same
+  // millisecond, which is exactly what happened once here.
+  const tag = `${testInfo.workerIndex}-${Date.now()}`;
   domain = `points-e2e-${tag}.example`;
   sessionTitle = `جلسة النقاط ${tag}`;
 
