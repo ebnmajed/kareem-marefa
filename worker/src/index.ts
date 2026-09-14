@@ -15,6 +15,7 @@ import { rotate_codes } from "./tasks/rotate_codes.js";
 import { start_session } from "./tasks/start_session.js";
 import { complete_session } from "./tasks/complete_session.js";
 import { award_points } from "./tasks/award_points.js";
+import { send_notification } from "./tasks/send_notification.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const probeOnly = process.argv.includes("--probe-only");
@@ -50,7 +51,7 @@ const runner = await run({
   // from masking a LISTEN regression: if dispatch ever degrades to polling,
   // jobs visibly wait up to a minute instead of a barely-noticeable 2 s.
   pollInterval: 60_000,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries

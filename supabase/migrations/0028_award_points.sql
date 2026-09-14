@@ -1,4 +1,4 @@
--- scoring/0002_award_points.sql — award_points() (05 §2.2) and the hook into
+-- promoted by the lead at wave-2 sync 2 · scoring/0002_award_points.sql — award_points() (05 §2.2) and the hook into
 -- check_in()'s marked call site. STORY-PTS-001.
 -- Serves: REQ-PTS-001, REQ-PTS-002, REQ-PTS-004, REQ-PTS-006, REQ-PTS-007,
 --         REQ-PTS-012, REQ-CHK-009, A10 · 11 §2.3 JOB-award_points.

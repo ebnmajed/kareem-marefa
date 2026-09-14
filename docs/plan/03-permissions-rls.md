@@ -1188,6 +1188,16 @@ generated suite is the highest-value test in the product.
 | `POL-leaderboard_entries.select.opt_out` | an opted-out member is absent from others' view, present in their own; company rows unaffected (REQ-LDR-008) (migration `0027`). |
 | `POL-leaderboard_entries.immutable` | entries of a final snapshot refuse update and delete (migration `0027`). |
 | `POL-orgs.seed_scoring` | inserting a row into orgs seeds all five M4 catalogues for it (proven on the fixture orgs, which insert into orgs directly) (migration `0027`). |
+| `RPC-award_points.definer_only` | no client role can call it; only service_role (the worker) and the function owner can (migration `0028`). |
+| `RPC-award_points.silent_skip` | a disabled rule, an exhausted cap, or a live cooldown award nothing and raise nothing (migration `0028`). |
+| `RPC-award_points.idempotent` | the same (rule, source, source_id, member) quadruple inserts at most one row, via on conflict do nothing (migration `0028`). |
+| `POL-check_in.award_points_hook` | a successful check-in enqueues exactly one `award_points` job, keyed `pts:check_in:<check_in.id>` (migration `0028`). |
+| `POL-ratings.award_points_hook` | a rating insert enqueues one `award_points` job keyed `pts:rating:<rating.id>` (migration `0029`). |
+| `POL-comments.award_points_hook` | a comment insert (top-level or a reply) enqueues one `award_points` job keyed `pts:comment:<comment.id>` (migration `0029`). |
+| `RPC-notification_send_context.definer_only` | `anon`, `authenticated` and an org admin are refused on the grant: it returns another member's email address. (migration `0030`). |
+| `RPC-notification_send_context.recheck` | It reports the preference as it stands NOW, not as it stood when the job was enqueued (`11` §2.6). (migration `0030`). |
+| `RPC-record_email_delivery.append` | The worker records a send it has not made yet as `queued`, then moves it to `sent`, `delivered`, `bounced` or `failed` — no send is unlogged. (migration `0030`). |
+| `RPC-update_email_delivery_by_provider.scoped` | The provider webhook can only move a row it can name by `provider_message_id`, and cannot invent one. (migration `0030`). |
 | `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
 | `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
 | `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |

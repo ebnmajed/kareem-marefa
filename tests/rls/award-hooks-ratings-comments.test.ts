@@ -5,7 +5,7 @@
 // 03 §8.2 rows proven here: POL-ratings.award_points_hook,
 // POL-comments.award_points_hook.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx } from "./db";
+import { pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -14,8 +14,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0002_award_points.sql");
-  await applyProposed(tx, "scoring/0003_award_hooks_ratings_comments.sql");
+  // Promoted as migrations 0028 and 0029 at wave-2 sync 2: applied by `supabase db reset`.
   return f;
 }
 

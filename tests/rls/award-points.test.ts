@@ -14,7 +14,7 @@
 // sweep is never vacuous for points_ledger/points_balances — exactly the
 // row that would otherwise contaminate an "award nothing" assertion here.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -23,7 +23,7 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0002_award_points.sql");
+  // Promoted as migration 0028 at wave-2 sync 2: applied by `supabase db reset`.
   return f;
 }
 

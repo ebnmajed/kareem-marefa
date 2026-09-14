@@ -10,13 +10,12 @@
 // The proposed file is applied inside each test's transaction and rolled back
 // with it (DEC-040). Migration 0026 (the contract) is already on the database.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "notify/0002_send_notification.sql";
 
 interface SendContext {
   key: string;
@@ -34,7 +33,7 @@ interface SendContext {
  *  tests/rls/notify-contract.test.ts. */
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  await applyProposed(tx, PROPOSED);
+  // Promoted as migration 0030 at wave-2 sync 2: applied by `supabase db reset`.
   for (const table of ["email_deliveries", "notifications", "notification_preferences", "notification_templates"]) {
     await tx.q(`delete from public.${table}`);
   }

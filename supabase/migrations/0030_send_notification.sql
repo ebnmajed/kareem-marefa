@@ -1,4 +1,4 @@
--- notify (wave 2, M3) — what JOB-send_notification reads and writes.
+-- promoted by the lead at wave-2 sync 2 · notify (wave 2, M3) — what JOB-send_notification reads and writes.
 --
 -- Serves:  REQ-NTF-002 (send-time preference re-check) · REQ-NTF-003 ·
 --          REQ-NTF-007 (the org's template, or the worker's Arabic default) ·

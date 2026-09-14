@@ -1,4 +1,4 @@
--- scoring/0003_award_hooks_ratings_comments.sql — rating_submitted and
+-- promoted by the lead at wave-2 sync 2 · scoring/0003_award_hooks_ratings_comments.sql — rating_submitted and
 -- comment points, hooked in as triggers rather than editing `event`'s RPCs
 -- (docs/plan/notes/scoring.md's "Hooks into other tracks' tables": `ratings`
 -- is explicitly named in CLAUDE.md's sanctioned-hook list; `comments` gets
