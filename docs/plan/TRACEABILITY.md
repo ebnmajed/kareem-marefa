@@ -222,7 +222,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-005` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |
-| `REQ-LDR-008` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
+| `REQ-LDR-008` | — | `POL-leaderboard_entries.select.opt_out` | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 
 ### MAT
 
@@ -310,7 +310,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-PTS-001` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-022` | — | — | `STORY-PTS-001` | M4 |
 | `REQ-PTS-002` | `ENT-points_ledger` | — | `SCR-022` | — | — | `STORY-PTS-001` | M4 |
-| `REQ-PTS-003` | — | — | `SCR-010` `SCR-022` | — | — | `STORY-PTS-006` | M4 |
+| `REQ-PTS-003` | — | `POL-scoring_rules.select` | `SCR-010` `SCR-022` | — | — | `STORY-PTS-006` | M4 |
 | `REQ-PTS-004` | `ENT-scoring_rules` | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
 | `REQ-PTS-005` | `ENT-scoring_config_history` `ENT-scoring_rules` | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
 | `REQ-PTS-006` | `ENT-scoring_rules` | — | `SCR-022` `SCR-053` | `JOB-award_points` `JOB-award_presenter_points` | — | `STORY-PTS-004` | M4 |
@@ -339,7 +339,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-REC-001` | `ENT-badges` `ENT-member_badges` | — | `SCR-054` | — | — | `STORY-REC-001` | M4 |
+| `REQ-REC-001` | `ENT-badges` `ENT-member_badges` | `POL-badges.select` `POL-badges.update.admin` | `SCR-054` | — | — | `STORY-REC-001` | M4 |
 | `REQ-REC-002` | `ENT-badges` `ENT-member_badges` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-001` | M4 |
 | `REQ-REC-003` | `ENT-levels` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
 | `REQ-REC-004` | `ENT-levels` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |

@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Wordmark } from "@/components/wordmark";
+import { NotificationBell } from "@/components/notifications/bell";
 
 // The platform shell. NO auth check here [v16]: a layout does not re-render
 // on navigation under Partial Rendering, so the check lives in the DAL, at
@@ -26,6 +27,13 @@ export default async function AppLayout({ children, params }: { children: React.
               <Link href="/app/me" className="inline-flex h-10 items-center rounded-field px-3 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading">
                 {t("profile")}
               </Link>
+            </li>
+            {/* The notify slot (TEAM.md §2, wave 2): a server component that reads the
+                session's own unread count through its DAL on every render of the
+                shell. Under Partial Rendering the shell does not re-render on
+                navigation, so the count refreshes on the next full request. */}
+            <li>
+              <NotificationBell locale={locale} />
             </li>
           </ul>
           <form method="post" action="/api/auth/sign-out">
