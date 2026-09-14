@@ -282,3 +282,83 @@ lead would rather add the workspace package — flagging rather than deciding al
 
 Next: `api/upload/material` (STORY-MAT-001) — Zod first, sniffed on content after the bytes land,
 an SVG named `.png` rejected, the signed-upload flow from `07` §1.
+
+---
+
+## 4. Status at handoff — every story on the lead's list, in order
+
+All of MAT-001…006, EVT-005/006, TSK-001/002, DSC-001/002/003, `REQ-PRO-004` are built, committed,
+and green (`npx tsc --noEmit`, `npm run lint`, `npm test`, full `npm run test:rls`). Commits, in
+order: `89efe88` (path builder + MAT-001) → `aa5d9c3` (MAT-002: conversion/render/viewer) →
+`155b87b` (MAT-004: phase/download + its audit row) → `81e3c18` (MAT-005: the upload form) →
+`3eb3e36` (EVT-005/006: the photo pipeline) → `bafcbb4` (TSK-001/002) → `e09b1dc`
+(DSC-001/002/003) → `27ce5ae` (`REQ-PRO-004`). MAT-003/006 were satisfied by MAT-001/002's own
+work and never got a separate commit.
+
+**§0.1's open question resolved itself**: the worker port (`worker/src/content/paths.ts`) is the
+shape actually used — no `packages/storage-paths` workspace member was ever needed, since nothing
+past `render_pages`/`process_photo` grew complex enough to make the duplication costly. Still
+flagged, still true, just never revisited.
+
+### 4.1 EVT-005/006 — why the photo strip runs in the worker, not the Route Handler
+
+This is the one place this track's usual shape (Route Handler downloads → sniffs → finalizes, like
+`completeMaterialUpload`) does not work. `photos_storage_read` (`03` §6) denies everyone — including
+the uploader — until a matching `photos` row exists, and that row cannot exist unstripped
+(`check (exif_stripped)`, 0037; proven by `tests/rls/storage-content.test.ts`'s own "no RETURNING
+here" case). So the app's RLS-bound client can never read the raw bytes back to strip them; only
+`service_role` can, and invariant 7 keeps that off Vercel. Byte-level EXIF/XMP/ICC stripping
+(`src/lib/storage/exif.ts`, ported to `worker/src/content/exif.ts`, parity-tested in
+`tests/unit/storage-exif.test.ts`) runs in `process_photo` instead — no image library, no pixel
+decode, just JPEG marker / PNG chunk / WebP RIFF-chunk removal. `record_photo_upload()` is the only
+door that can ever create a `photos` row (service_role-only), and returns DEC-043's envelope shape
+(`{status, photo?}` / `{status:'file_too_large', limit_mb}`) since the strip and re-upload already
+happened by the time a size decision is made — raising would not undo either.
+
+`photoPath()` (`src/lib/storage/paths.ts`) now takes the sniffed kind's own extension instead of
+forcing `.webp` unconditionally — `07` §3's literal table predates DEC-047's amendment, which
+defers re-encoding to WebP as a size optimisation, not a correctness requirement. Extension
+defaults to `webp` so nothing else needed to change.
+
+### 4.2 DSC-001/002/003 — no `JOB-rebuild_search`, on purpose
+
+`11-background-jobs.md`'s sketch has `JOB-rebuild_search` fire "on category/company rename," which
+only makes sense if a session's searchable text caches a category/company NAME somewhere.
+`sessions.search_vector` (0037) does not — it is `generated always … stored` over `title`/`abstract`
+only. `src/lib/dal/search.ts` matches tags/presenter/company/material-title by querying those
+tables LIVE, through the caller's own RLS-bound client (so `materials_read`'s phase gate, REQ-MAT-006,
+is what decides which material titles are even visible to match against — REQ-DSC-007's "metadata
+only" and REQ-MAT-006 fall out of the same choice, never reimplemented). A rename is reflected on
+the very next search; there is nothing to go stale, so no job was built. `arNormalize()` is a JS
+port of `public.ar_normalize()`, proven byte-for-byte against it in `tests/unit/search-normalize.test.ts`.
+
+### 4.3 `REQ-PRO-004` — the riskiest single change this track made
+
+Modified three already-tested `materials` table policies, two `materials` bucket storage policies,
+and the `materials_guard` trigger, all in `supabase/proposed/content/0009_proposal_materials.sql`,
+to add a `proposal_id` branch alongside every `session_id` one. Every session-shaped branch is
+copied verbatim, never re-derived — `is_presenter_of(null)` already returns false rather than
+raising (it is not `strict`), so nothing needed defensive rewriting, only the proposal branch and a
+top-level `is_staff()` shortcut (pulled out of what was an inline OR, logically unchanged) are new.
+Both the new cases AND the full existing suite were re-run after this change
+(`tests/rls/materials-schema.test.ts`, 38 cases; full `npm run test:rls`, 492 cases, 45 files) —
+worth doing again for any future change that rewrites an already-shipped policy rather than only
+adding a new one.
+
+The carry-over (proposal → session) is a trigger on `public.sessions`, not a change to whichever
+RPC the `sessions` track's own publish flow calls — same "additive DDL on a table this track does
+not own the app code for" pattern 0037 used for `sessions.search_vector`. It fires on any session
+insert naming a `proposal_id`, so nothing in `sessions`' own RPCs needs to know this exists.
+
+### 4.4 Still outstanding — flagged, not done
+
+**No e2e specs and no 390 px RTL screenshots for any story built this session** (materials, the
+viewer, photos, tasks, search/filters, bookmarks, proposal materials). Every story above is proven
+at the unit/component/RLS level only. This is the real gap before a demo — asked the lead whether
+`.next` is fresh before attempting `npm run test:e2e:local`, per the standing rule, rather than
+guessing at build state.
+
+`worker/src/index.ts`'s `taskList` needs `process_photo` registered alongside `convert_document`/
+`render_pages` — flagged to the lead when EVT-005/006 landed; their own sync commit (`37595b5`)
+suggests this is already done, not independently re-verified here (lead-owned file, never read
+directly by this track).
