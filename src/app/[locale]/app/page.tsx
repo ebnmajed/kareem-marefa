@@ -21,7 +21,7 @@ export default async function AppHomePage({ params }: { params: Promise<{ locale
       {/* The scoring slot (TEAM.md §2, wave 2): the member's balance and a link to
           the full history, SCR-022. Own data through its DAL; no heading. */}
       <section aria-label={t("pointsStrip")} className="mt-8">
-        <PointsStrip locale={locale} />
+        <PointsStrip memberId={me.id} locale={locale} />
       </section>
       {!me.companyId ? (
         <div role="status" className="mt-8 rounded-field border border-edge bg-silver-100 p-5">
