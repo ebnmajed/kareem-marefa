@@ -76,8 +76,22 @@ async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(0);
+  // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
+  // document the vertical scrollbar sits on the left, so that difference is the
+  // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
+  // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
+  const overflow = await p.evaluate(() => {
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right > limit + 1 || box.left < -1) offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+    }
+    return offenders.slice(0, 6);
+  });
+  expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
