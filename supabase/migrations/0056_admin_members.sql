@@ -1,4 +1,4 @@
--- console (wave 3, M7) — admin_list_members(), REQ-ADM-009's "view a
+-- promoted by the lead at wave-3 sync 2 · console (wave 3, M7) — admin_list_members(), REQ-ADM-009's "view a
 -- member's full record."
 --
 -- Serves:  01 §20 REQ-ADM-009, 09 SCR-049

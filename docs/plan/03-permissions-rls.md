@@ -1408,6 +1408,9 @@ generated suite is the highest-value test in the product.
 | `POL-certificates.select.held` | A held certificate is invisible to its recipient and visible to the admin (`REQ-CRT-004`); writes are RPC-only for every role. (migration `0055`). |
 | `POL-certificates.serial` | A rolled-back issuance leaves `next_value` unchanged; two orgs both issue `…-000001`; the counter table has no policy and no grant (`REQ-CRT-008`, DEC-010). (migration `0055`). |
 | `POL-certificates.verify.anon` | `verify_certificate()` resolves by code and returns the A13 fields and nothing else; a serial returns not-found; unknown and held are the same empty answer (`REQ-CRT-007`, `REQ-CRT-009`). (migration `0055`). |
+| `POL-admin_list_members.select.admin` | An admin reads every member of their org **with email** through `admin_list_members()`, and none of org B's (`REQ-ADM-009`). (migration `0056`). |
+| `POL-admin_list_members.select.non_admin` | A member and a moderator get zero rows from the function, not an error. (migration `0056`). |
+| `POL-admin_list_members.select.no_base_grant` | The base table's column grant still hides `email` from a direct select, admin included — the function is the only door (A33, DEC-044's pattern). (migration `0056`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
