@@ -156,4 +156,106 @@ be the "test that tests nothing" `06` §9.3 warns about.
 
 ## 1. Findings
 
-*(Appended as they are found. Bundle 1's read-through findings are in §0.2.)*
+Appended as they are found. Bundle 1's read-through findings are in §0.2; the
+rest came from building against the tree.
+
+### 1.1 Three things §0 got wrong, corrected by the code
+
+- **The serial prefix already existed.** `orgs.certificate_prefix` has been
+  there since `0004_tenancy.sql`, `^[A-Z]{2,5}$`, and the RLS fixture already
+  gives org A `KM` and org B `OT`. `allocate_serial()` reads it; no new column
+  and no `ALTER` on a table this track does not own. §0.6's question 3 is
+  withdrawn.
+- **The three buckets and their five storage policies already existed** in
+  `0037_m5_schema.sql` (`03` §6.9). The M6 schema creates none of them.
+- **`fonts` with no `org_id`** — the lead took it as written and put `fonts`
+  in both the `NO_ORG_ID` set and the non-vacuity exclusion list of
+  `tests/rls/isolation.test.ts`. §0.6's question 1 is closed.
+
+### 1.2 Reem Kufi and Amiri are not in the font set — this blocks DSG-011
+
+`packages/fonts/manifest.json` carries **IBM Plex Sans** and **IBM Plex Sans
+Arabic** and nothing else (nine web faces, six TrueType). `06` §7.1 names a
+**Kufi display face (Reem Kufi)** for headings and posters and a **Naskh face
+(Amiri)** for certificates, and §3.3's baseline library is written around
+them: a certificate family is "formal Naskh".
+
+So the baseline templates of STORY-DSG-011 can be built in Plex Arabic today
+and in the faces the document actually specifies only after those two enter
+the set. Two ways in, and **the choice is the lead's** because
+`packages/fonts/**` is not this track's:
+
+1. the lead runs `fonts:extract` with the two families added to
+   `src/lib/fonts.ts` — they become platform faces, shipped in the repository
+   and covered by `fonts:check`; or
+2. they arrive as **materialised Google fonts** through `JOB-materialise_font`
+   (STORY-DSG-008) — stored in the `fonts` bucket and `ENT-fonts`, gated by
+   the goldens, never in the package.
+
+(2) is what `06` §7.2 describes for an org's own choice, but the baseline
+library is the PLATFORM's, so (1) is the honest home for it. Either way it is
+work that has to happen before a certificate template can be what the
+document says it is.
+
+### 1.3 Two subsets of one family do not merge coverage
+
+`packages/fonts/manifest.json` lists IBM Plex Sans Arabic **twice per weight**,
+once for the Arabic subset and once for the Latin one, with different hashes.
+Declared as two `@font-face` rules with no `unicode-range`, the LAST one wins
+for every character — so a mixed «جلسة عن Next.js 16» loses its Latin to
+whatever the host machine has, which is a different render per machine and
+exactly what D66 forbids.
+
+`ManifestFont.unicodeRange` is now optional on the runtime's face type and
+`fontFaceCss()` emits it when present. The editor sets it on the Arabic face
+(`ARABIC_UNICODE_RANGE`); the parity harness passes manifest entries with no
+range, so its output is byte-identical and the goldens did not move.
+
+**For DSG-006:** when the worker builds its face CSS, it must build it the
+same way the editor does, which means moving that construction into the
+runtime and giving the harness the ranges too. That will move the goldens,
+and it is a **lead-reviewed diff** (`REQ-DSG-015`), not an `--update` run.
+
+### 1.4 Two deployment items for the lead, neither urgent before Launch
+
+- **`packages/fonts` is read from `process.cwd()`**, not imported:
+  `@kareem/fonts` is not a declared dependency of the app (root
+  `package.json` lists only `@kareem/storage-paths`), and `package.json` is
+  lead-only. `src/lib/dal/fonts.ts` reads the manifest and the binaries by
+  path, so nothing undeclared is imported — but Next's tracer cannot see a
+  dynamic read, so a Vercel deploy needs either `@kareem/fonts` as a root
+  dependency or `outputFileTracingIncludes` for `packages/fonts/**` on the
+  designer routes. Local and CI are unaffected.
+- **The `fonts` bucket is empty** until `JOB-materialise_font` seeds it
+  (DSG-008). `getFontBinary()` tries the bucket first and falls back to the
+  package, so the editor works today and needs no change when the bucket
+  fills.
+
+### 1.5 How a template is edited, and why it needed a column
+
+A published version is immutable — no update policy, no update grant, because
+an artifact references a `template_version_id` and publishing v4 must not
+reach a certificate issued against v3 (`REQ-DSG-007`, `REQ-CRT-014`). So a
+template is edited through a working **document** and published **as** the
+next version: the same model, the same editor and the same renderer as a
+poster, rather than a second editing path nobody exercises.
+
+That is `design_documents.draft_for_template_id` in
+`supabase/proposed/designer/0002_template_drafts.sql`, `unique` so two admins
+opening the library do not each create a draft and then publish over each
+other. The same file adds `design_templates_single_default`, because
+0055's partial unique indexes allow at most one default per family but do not
+stop an application half-performing a clear-then-set — and a family with no
+default is a publish with no template to bind (DEC-012).
+
+### 1.6 What bundle 1 leaves open
+
+- **e2e and the 390 px RTL captures for SCR-055, SCR-056 and SCR-057.**
+  SCR-055/056 read `draft_for_template_id`, which lands with `0002`; and
+  `.next` on disk predates these commits, so nothing serves the new routes
+  until the lead rebuilds. Not faked, not skipped — waiting on both.
+- **The `render` queue and the four task registrations** for
+  `worker/src/index.ts` come with STORY-DSG-006.
+- **Dragging, snapping, alignment guides and undo/redo** are `REQ-DSG-022`
+  and land with STORY-DSG-010. The properties panel edits frames numerically,
+  which is what DSG-003 needs and is also the only thing that is exact.
