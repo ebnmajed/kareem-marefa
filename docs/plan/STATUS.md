@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (cut from `main` @ `e0b448d`, not yet pushed) · **`main` @ `e0b448d`:** M1 live, M2 complete (PR #12 merged) · **Phase:** **wave 2 prepared — migration `0024` committed (`29ffbef`), DEC-046 logged, the three agent definitions written; the plan is presented and the lead is WAITING for the owner's approval before spawning `notify`, `scoring`, `content`**
+**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (cut from `main` @ `e0b448d`; **draft PR #13**, CI green at sync 0) · **`main` @ `e0b448d`:** M1 live, M2 complete · **Phase:** **wave 2 in progress — the plan approved, migrations `0024`/`0025` and the worker image on the branch, `notify` (opus), `scoring`, `content` (sonnet) spawned (DEC-046)**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
