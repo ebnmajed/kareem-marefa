@@ -168,16 +168,26 @@ plugs into the same seven cases.
 - **`.claude/agents/{notify,scoring,content}.md`** written from the wave-1 template with the
   ownership globs below. Not committed until the owner approves the plan.
 
-**The lead's pre-spawn tasks once the plan is approved (in this order):**
+**The owner approved the plan as presented (2026-09-14; `content` stays on Sonnet) and set the
+wave goal:** every wave-2 story done by its teammate, the definition of done proven on the branch,
+the three demonstrables passing locally, decisions logged, the wave-3 handoff here, teammates shut
+down, PR open with CI green; no merge, no hosted Supabase, no Vercel, no real mail provider.
 
-1. Migration `0025_enqueue_job` — `public.enqueue_job(name, payload, key)` wrapping
-   `graphile_worker.add_job(… job_key_mode => 'replace')`, the single door every RPC uses; install
-   the `graphile_worker` schema with `graphile-worker --schema-only` after every `supabase db reset`
-   (a `scripts/` wrapper `npm run test:rls` calls) and in CI's `rls` job after the migrations.
-2. `worker/Dockerfile` + a CI job that builds it and runs the boot probe inside the image.
-3. `supabase/config.toml` `[local_smtp] smtp_port = 54325` (needs `supabase stop && start`).
-4. `TEAM.md` §1 and `CLAUDE.md` § Agent team: the wave-2 ownership rows (settled docs, under DEC-046).
-5. Push the branch, open the **draft PR** at the first push, spawn.
+**Pre-spawn tasks — all done (lead, 2026-09-14):**
+
+| # | Task | Commit / proof |
+|---|---|---|
+| 1 | `0025_enqueue_job` — `public.enqueue_job()`, the one door to the queue; `scripts/rls.mjs` installs the `graphile_worker` schema before every RLS run, CI's `rls` job after the migrations | `74ba237` · `test:rls` **217 passed / 4 todo, 21 files** · policy-diff ✅ · traceability ✅ |
+| 2 | `worker/Dockerfile` (host-agnostic, worker workspace only, runs as `node`) + CI builds it and runs the probe inside | `08863a7` · local build 394 MB, in-image probe against local Supabase **OK, 6 ms** |
+| 3 | `[local_smtp] smtp_port = 54325` — Supabase stopped and started, port answers | `08863a7` |
+| 4 | `TEAM.md` §1 (confirmed rows + the wave-2 contracts) and `CLAUDE.md` § Agent team | `52d9e49` |
+| 5 | Pushed; **draft PR #13** open at the first push; `notify` (opus), `scoring`, `content` (sonnet) spawned with their first tasks (plan in `docs/plan/notes/<name>.md`, then the milestone schema as proposed SQL, then the first story) | — |
+
+### Sync log
+
+| Sync | Promoted | Gates |
+|---|---|---|
+| 0 (2026-09-14) | 0024, 0025 (lead, pre-spawn) | CI on the first push of PR #13 (`52d9e49`) **all jobs green** — the `rls` job with the schema install and the new in-image worker probe included; `.next` rebuilt fresh after spawn |
 
 ## M2 — wave 1 — COMPLETE on `wave-1/m2` (merged as PR #12)
 
