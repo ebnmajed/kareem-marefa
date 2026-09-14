@@ -1468,6 +1468,16 @@ generated suite is the highest-value test in the product.
 | `RPC-platform_impersonations.own` | A platform admin lists their OWN sessions across orgs; another platform admin's do not appear. The org's admins read the same fact through the table's own policy (`REQ-ADM-019`). (migration `0070`). |
 | `POL-save_brand_kit.regenerates_live_posters` | Saving a kit enqueues `regenerate_poster` once per org session with a LIVE poster, with `11` §2.5's key; a `detached` (customised) poster is left alone. (migration `0071`). |
 | `POL-reset_brand_kit.regenerates_live_posters` | Resetting a kit does the same; resetting an org with no kit enqueues nothing. (migration `0071`). |
+| `RPC-platform_promotable_versions.platform_only` | An org admin, a moderator and a member are refused `42501`; a platform admin gets one row per PUBLISHED org version with its purpose, family, name and version number — and no document, no `published_by`, and nothing from a draft. (migration `0072`). |
+| `RPC-platform_promotable_versions.scope` | Platform-scope versions never appear: the library does not offer to promote itself (`REQ-DSG-008`). (migration `0072`). |
+| `RPC-enforce_retention.periods` | The sweep reads `retention_periods` and nothing else: a class marked `retain` deletes nothing, and the job is worker-only — `authenticated` and a platform admin are both refused. (migration `0073`). |
+| `RPC-enforce_retention.idempotent` | A second run in the same window deletes nothing further, and never touches `points_ledger`. (migration `0073`). |
+| `RPC-anonymise_members.total` | After anonymisation every org-level points total is UNCHANGED and no ledger row is gone; the member's personal columns are rewritten, `anonymised_at` is set, and the row keeps its id as the pseudonymous key (`REQ-PRF-007`, `12` §5.4). (migration `0073`). |
+| `RPC-anonymise_members.window` | A member deactivated yesterday is left alone; only the period in `retention_periods` decides. (migration `0073`). |
+| `RPC-build_data_export_payload.self_only` | The archive carries the member's own rows and no other member's personal data — another member's comment appears by display name alone, with no address and no id (`REQ-PRF-006`). (migration `0073`). |
+| `RPC-record_data_export.worker` | Only `service_role` may mark a request ready or failed; the member can read their own row and write none of it. (migration `0073`). |
+| `RPC-request_data_export.rate_limited` | A second request inside 24 hours is refused `42501` while an already-queued one is returned unchanged (`REQ-NFR-005`, `REQ-PRF-006`). (migration `0073`). |
+| `RPC-my_data_export.self` | A member handed another member's request id gets their OWN latest row, never the other's archive. (migration `0073`). |
 | `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
 | `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
 | `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
