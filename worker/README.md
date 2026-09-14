@@ -3,7 +3,7 @@
 `11-background-jobs.md` §1 · `04-architecture.md` §7.2 · DEC-018 · DEC-034
 
 The only process that will ever hold `service_role`, and only through `SECURITY DEFINER`
-functions (invariant 7). **Hosting is undecided until M3** (OQ-027); it runs locally and in CI.
+functions (invariant 7). **Host-agnostic Docker image** (`worker/Dockerfile`, built from the repo root; DEC-046): it runs locally and in CI, and the production host is chosen at Launch with PR C (OQ-027).
 
 ```bash
 npm run worker:build                       # tsc → worker/dist
