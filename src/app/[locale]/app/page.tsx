@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMe } from "@/lib/dal/members";
 import { getOrg } from "@/lib/dal/org";
+import { PointsStrip } from "@/components/scoring/points-strip";
 
 // The platform home. M1's placeholder: a greeting, the org, and the nudge
 // REQ-PRF-001 asks for when no company is set. Sessions arrive in M2.
@@ -17,6 +18,11 @@ export default async function AppHomePage({ params }: { params: Promise<{ locale
       </h1>
       <p className="mt-2 text-body text-fg-muted">{t.rich("org", { value: org.name, org: (chunks) => <bdi>{chunks}</bdi> })}</p>
       <p className="mt-6 max-w-prose text-body-lg">{t("intro")}</p>
+      {/* The scoring slot (TEAM.md §2, wave 2): the member's balance and a link to
+          the full history, SCR-022. Own data through its DAL; no heading. */}
+      <section aria-label={t("pointsStrip")} className="mt-8">
+        <PointsStrip locale={locale} />
+      </section>
       {!me.companyId ? (
         <div role="status" className="mt-8 rounded-field border border-edge bg-silver-100 p-5">
           <p className="text-body text-fg-heading">{t("companyMissing")}</p>
