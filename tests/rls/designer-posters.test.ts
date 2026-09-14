@@ -116,6 +116,36 @@ describe("POL-session_posters.publish", () => {
     });
   });
 
+  it("★ the trigger fires AS A MEMBER, not only as the owner", async () => {
+    // The bug this case exists for, found at promotion: both hooks were
+    // invoker functions, so a PRESENTER editing their own session called
+    // `enqueue_job()` as that member and got «permission denied for
+    // function enqueue_job» — three wave-1 cases went red. A trigger that
+    // enqueues or notifies is `security definer` (0034's `rsvps_notify()`
+    // is the precedent), and a test that only ever runs as the owner cannot
+    // see the difference, which is why this one changes identity first.
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.q(`delete from graphile_worker._private_jobs`);
+
+      // members[0] is the fixture's accepted presenter of every session.
+      await tx.as(f.a.members[0].claims);
+      const refused = await errorCode(() =>
+        tx.q(`update public.session_presenters set accepted = false where session_id = $1 and member_id = $2`, [
+          f.m2.a.published,
+          f.a.members[0].memberId,
+        ]),
+      );
+      // Whatever the row policy decides about the edit itself, the TRIGGER
+      // must never be the thing that refuses it.
+      expect(refused).not.toBe("42501");
+
+      await tx.asOwner();
+      // And when the edit lands, the job is enqueued all the same.
+      if (refused === null) expect(await posterJobs(tx)).toHaveLength(1);
+    });
+  });
+
   it("a presenter joining or leaving changes the poster too (A5)", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);

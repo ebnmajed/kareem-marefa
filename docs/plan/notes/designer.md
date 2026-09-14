@@ -469,6 +469,25 @@ document is 402 px wide. The offender is the sign-out `form`/`button` at
 measured at `left: -12`. That is the lead's file and the same class of
 defect `TEAM.md` §5 already records for that layout.
 
+### 2.8 ★ A trigger that enqueues or notifies is `security definer`
+
+The lead had to change both poster hooks at promotion (0063). As invoker
+functions they fired on a PRESENTER's own title edit and on a decline,
+called `enqueue_job()` as that member, and turned three wave-1 cases red
+with «permission denied for function enqueue_job». `0034`'s `rsvps_notify()`
+is the precedent and I should have followed it.
+
+**Why my own tests could not see it.** Every case in
+`tests/rls/designer-posters.test.ts` drove the trigger as the OWNER, who
+may call anything. A trigger's authorisation only shows up when something
+other than the owner fires it. `designer-posters.test.ts` now has a case
+that changes identity to a member first, asserts the trigger is never the
+thing that refuses the edit, and checks the job is enqueued anyway.
+
+**The rule for everything after this:** a trigger function that calls
+`enqueue_job()`, `notify()` or `write_audit()` is
+`security definer set search_path = ''`, and its test runs AS A MEMBER.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for

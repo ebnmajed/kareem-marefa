@@ -283,6 +283,12 @@ export interface SessionPosterData {
   staleSince: string | null;
   /** A signed URL for the variant asked for, when one has rendered. */
   imageUrl: string | null;
+  /** The artifact's own pixel size, for reserving the box before the image
+   *  arrives. The master's ratio is a reasonable constant but it is the
+   *  WRONG one for `square` or `og`, and a box reserved at the wrong ratio
+   *  shifts the page exactly as badly as no box at all. */
+  width: number | null;
+  height: number | null;
   /** Every variant's state, for the picker's queue line. */
   ready: number;
   total: number;
@@ -310,6 +316,8 @@ export async function getSessionPoster(locale: string, sessionId: string, varian
 
   const documentId = (poster.document_id as string | null) ?? null;
   let imageUrl: string | null = null;
+  let width: number | null = null;
+  let height: number | null = null;
   let ready = 0;
   let total = 0;
 
@@ -318,7 +326,7 @@ export async function getSessionPoster(locale: string, sessionId: string, varian
     // a session that has since changed (REQ-DSG-013).
     const { data: artifacts } = await supabase
       .from("export_artifacts")
-      .select("preset, format, status, storage_path, source_fingerprint, rendered_at")
+      .select("preset, format, status, storage_path, source_fingerprint, rendered_at, width_px, height_px")
       .eq("document_id", documentId)
       .order("rendered_at", { ascending: false });
 
@@ -331,6 +339,8 @@ export async function getSessionPoster(locale: string, sessionId: string, varian
     if (match?.storage_path) {
       const { data } = await supabase.storage.from("exports").createSignedUrl(match.storage_path as string, 300);
       imageUrl = data?.signedUrl ?? null;
+      width = (match.width_px as number | null) ?? null;
+      height = (match.height_px as number | null) ?? null;
     }
   }
 
@@ -341,6 +351,8 @@ export async function getSessionPoster(locale: string, sessionId: string, varian
     binding: poster.binding as PosterBinding,
     staleSince: (poster.stale_since as string | null) ?? null,
     imageUrl,
+    width,
+    height,
     ready,
     total,
   };
