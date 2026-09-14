@@ -18,10 +18,15 @@
 // this rendering path at all, and LCP on a throttled profile against a
 // laptop's `next start` is not the number a member on a CDN sees. What
 // FAILS is a REGRESSION against the committed baseline
-// (tests/e2e/budgets.baseline.json): more than 10 % worse on LCP, TBT or
-// JS, or 0.02 worse on CLS. The baseline moves only through a reviewed
-// commit, like a golden. Enforced, honestly, on the thing this harness can
-// measure; the absolute numbers are the owner's to re-plan (DEC-055).
+// (tests/e2e/budgets.baseline.json): more than 25 % worse on LCP or TBT,
+// 10 % more JS, or 0.02 worse on CLS. Each screen is the MEDIAN OF THREE
+// Lighthouse runs: two single runs on the same build differed by a third
+// on LCP while a teammate's suite shared the machine, so one sample is not
+// a measurement here. JS bytes are deterministic and get the tight bound.
+// The baseline moves only through a reviewed commit, like a golden, and is
+// taken from a run with nothing else on the machine. Enforced, honestly, on
+// the thing this harness can measure; the absolute numbers are the owner's
+// to re-plan (DEC-055).
 //
 // Lighthouse drives a Chromium that Playwright launched with a debugging
 // port, so the browser is the one every other e2e uses and CI needs no
@@ -63,7 +68,7 @@ type Reading = { lcp: number; tbt: number; cls: number; js: number };
 const BASELINE: Record<string, Reading> = JSON.parse(readFileSync(join(process.cwd(), "tests", "e2e", "budgets.baseline.json"), "utf8"));
 
 test.describe.configure({ mode: "serial" });
-test.setTimeout(300_000);
+test.setTimeout(900_000);
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -125,7 +130,16 @@ async function cookieHeader(email: string): Promise<string> {
   return jar.map((c) => `${c.name}=${c.value}`).join("; ");
 }
 
+const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
 async function measure(url: string, cookie: string | null): Promise<Reading> {
+  // Sequential on purpose: three runs at once on one browser would throttle each other.
+  const runs: Reading[] = [];
+  for (let i = 0; i < 3; i++) runs.push(await measureOnce(url, cookie));
+  return { lcp: median(runs.map((r) => r.lcp)), tbt: median(runs.map((r) => r.tbt)), cls: median(runs.map((r) => r.cls)), js: median(runs.map((r) => r.js)) };
+}
+
+async function measureOnce(url: string, cookie: string | null): Promise<Reading> {
   const result = await lighthouse(
     url,
     {
@@ -177,8 +191,8 @@ test("every budgeted screen is within 13 §7 on the throttled mobile profile", a
       const base = BASELINE[name];
       const worse: string[] = [];
       if (base) {
-        if (r.lcp > base.lcp * 1.1) worse.push(`LCP ${Math.round(r.lcp)} vs baseline ${base.lcp} ms`);
-        if (r.tbt > Math.max(base.tbt * 1.1, base.tbt + 50)) worse.push(`TBT ${Math.round(r.tbt)} vs baseline ${base.tbt} ms`);
+        if (r.lcp > base.lcp * 1.25) worse.push(`LCP ${Math.round(r.lcp)} vs baseline ${base.lcp} ms`);
+        if (r.tbt > Math.max(base.tbt * 1.25, base.tbt + 50)) worse.push(`TBT ${Math.round(r.tbt)} vs baseline ${base.tbt} ms`);
         if (r.cls > base.cls + 0.02) worse.push(`CLS ${r.cls.toFixed(3)} vs baseline ${base.cls}`);
         if (r.js > base.js * 1.1) worse.push(`JS ${Math.round(r.js)} vs baseline ${base.js} KB`);
       }
