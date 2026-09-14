@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { routing } from "@/i18n/routing";
-import { isAuthScreenPath, isPlatformPath } from "@/lib/auth/next-path";
+import { isPlatformPath, isPublicPlatformPath, isUnconfiguredGatedPath } from "@/lib/auth/next-path";
 import { platformConfigured } from "@/lib/supabase/env";
 
 // proxy.ts — three jobs, none of them authorization (04 §6, REQ-NFR-003,
@@ -45,11 +45,17 @@ export default async function proxy(request: NextRequest) {
   // (REQ-NFR-019). Nonce-less, their HTML stays exactly the build's, and
   // the reports simply say what an enforced policy would break there.
   const platform = isPlatformPath(pathname);
+  // Platform code that serves a visitor with NO session — /verify and
+  // /legal. It gets the nonce and the unconfigured gate like the rest of
+  // the platform, and never the sign-in redirect.
+  const publicPlatform = isPublicPlatformPath(pathname);
   // The platform is unconfigured (no NEXT_PUBLIC_ Supabase variables — the
-  // state of production until PR C): every platform route and auth screen
-  // is a 404, rendered by the marketing catch-all so it looks like any other
-  // unknown path. The frozen routes never enter this branch (DEC-038).
-  if ((platform || isAuthScreenPath(pathname)) && !platformConfigured()) {
+  // state of production until PR C): every platform route, auth screen and
+  // public platform route is a 404, rendered by the marketing catch-all so
+  // it looks like any other unknown path. The frozen routes never enter
+  // this branch (DEC-038). /verify used to sit outside this gate and served
+  // a 500 on the live site (DEC-050) — the predicate now names every route.
+  if (isUnconfiguredGatedPath(pathname) && !platformConfigured()) {
     const url = request.nextUrl.clone();
     url.pathname = `/${pathname.slice(1, 3)}/platform-unconfigured`;
     url.search = "";
@@ -58,14 +64,15 @@ export default async function proxy(request: NextRequest) {
     return notFound;
   }
 
-  const nonce = platform ? Buffer.from(crypto.randomUUID()).toString("base64") : null;
+  const nonced = platform || publicPlatform;
+  const nonce = nonced ? Buffer.from(crypto.randomUUID()).toString("base64") : null;
   const csp = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
-  if (platform && nonce) {
+  if (nonced && nonce) {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("content-security-policy-report-only", csp);
   }
-  const forwarded = platform ? new NextRequest(request, { headers: requestHeaders }) : request;
+  const forwarded = nonced ? new NextRequest(request, { headers: requestHeaders }) : request;
 
   let response: NextResponse;
   if (platform) {

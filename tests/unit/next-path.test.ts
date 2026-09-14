@@ -1,7 +1,7 @@
 // REQ-AUT-005: the stored destination is validated as an internal path; an
 // external URL is discarded.
 import { describe, expect, it } from "vitest";
-import { appHome, isPlatformPath, safeNextPath } from "@/lib/auth/next-path";
+import { appHome, isPlatformPath, isPublicPlatformPath, isUnconfiguredGatedPath, safeNextPath } from "@/lib/auth/next-path";
 
 describe("safeNextPath", () => {
   it("keeps a platform path, with its query", () => {
@@ -48,5 +48,31 @@ describe("safeNextPath", () => {
     expect(isPlatformPath("/ar/app/me")).toBe(true);
     expect(isPlatformPath("/ar/apply")).toBe(false);
     expect(isPlatformPath("/ar")).toBe(false);
+    // The public platform routes are NOT the session-required platform: a
+    // stranger with a printed certificate is never sent to sign-in.
+    expect(isPlatformPath("/ar/verify/abc")).toBe(false);
+    expect(isPlatformPath("/ar/legal/privacy")).toBe(false);
+  });
+
+  it("isPublicPlatformPath — /verify and /legal, never the frozen routes", () => {
+    expect(isPublicPlatformPath("/ar/verify/abc")).toBe(true);
+    expect(isPublicPlatformPath("/en/verify/abc")).toBe(true);
+    expect(isPublicPlatformPath("/ar/legal/privacy")).toBe(true);
+    expect(isPublicPlatformPath("/ar/legal")).toBe(true);
+    expect(isPublicPlatformPath("/ar/verify")).toBe(true);
+    expect(isPublicPlatformPath("/ar/verified")).toBe(false);
+    expect(isPublicPlatformPath("/ar/app/verify")).toBe(false);
+    for (const frozen of ["/", "/ar", "/en", "/ar/register", "/og.png"]) {
+      expect(isPublicPlatformPath(frozen), frozen).toBe(false);
+    }
+  });
+
+  it("isUnconfiguredGatedPath covers every platform route and no frozen one (DEC-038)", () => {
+    for (const p of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access", "/ar/verify/abc", "/ar/legal/terms"]) {
+      expect(isUnconfiguredGatedPath(p), p).toBe(true);
+    }
+    for (const p of ["/", "/ar", "/en", "/ar/register", "/og.png", "/ar/apply", "/ar/signal", "/ar/verified"]) {
+      expect(isUnconfiguredGatedPath(p), p).toBe(false);
+    }
   });
 });

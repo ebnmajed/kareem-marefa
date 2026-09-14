@@ -2,7 +2,7 @@
 // is one function; the proxy and the auth Route Handlers key off it.
 import { afterEach, describe, expect, it } from "vitest";
 import { platformConfigured } from "@/lib/supabase/env";
-import { isAuthScreenPath, isPlatformPath } from "@/lib/auth/next-path";
+import { isUnconfiguredGatedPath } from "@/lib/auth/next-path";
 
 const saved = { url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY };
 afterEach(() => {
@@ -30,12 +30,12 @@ describe("platformConfigured", () => {
 });
 
 describe("the paths the guard covers", () => {
-  it("platform routes and the auth screens, never the frozen routes", () => {
-    for (const p of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access?reason=suspended".split("?")[0]]) {
-      expect(isPlatformPath(p) || isAuthScreenPath(p)).toBe(true);
+  it("platform routes, the auth screens and the public platform routes — never the frozen routes", () => {
+    for (const p of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access?reason=suspended".split("?")[0], "/ar/verify/abc", "/ar/legal/privacy"]) {
+      expect(isUnconfiguredGatedPath(p), p).toBe(true);
     }
     for (const p of ["/", "/ar", "/en", "/ar/register", "/og.png", "/ar/apply", "/ar/signal"]) {
-      expect(isPlatformPath(p) || isAuthScreenPath(p)).toBe(false);
+      expect(isUnconfiguredGatedPath(p), p).toBe(false);
     }
   });
 });
