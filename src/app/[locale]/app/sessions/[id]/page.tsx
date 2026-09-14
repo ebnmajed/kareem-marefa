@@ -230,12 +230,19 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           <Comments sessionId={session.id} memberId={me.memberId} locale={locale} />
         </section>
 
-        <section aria-labelledby="rating" className="mt-12 border-t border-edge pt-8">
-          <h2 id="rating" className="text-h2 text-fg-heading">
-            {t("ratingLabel")}
-          </h2>
-          <Ratings sessionId={session.id} memberId={me.memberId} locale={locale} />
-        </section>
+        {/* 10. التقييم — «after completion, for checked-in attendees only»
+            (09 SCR-012). The slot decides the per-viewer half and correctly
+            renders nothing for anyone with no stake; the SECTION is this
+            page's, so the heading has to go with it or a member sees an empty
+            «التقييم» on every published session. Found by `event` at 390 px. */}
+        {session.state === "completed" || session.state === "archived" ? (
+          <section aria-labelledby="rating" className="mt-12 border-t border-edge pt-8">
+            <h2 id="rating" className="text-h2 text-fg-heading">
+              {t("ratingLabel")}
+            </h2>
+            <Ratings sessionId={session.id} memberId={me.memberId} locale={locale} />
+          </section>
+        ) : null}
       </div>
     </article>
   );

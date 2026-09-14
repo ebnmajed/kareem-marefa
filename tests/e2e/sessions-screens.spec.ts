@@ -1,7 +1,18 @@
-// The 390 px RTL review of every screen this track adds, taken by walking
-// M2's demonstrable through the real screens rather than seeding rows:
-// add a venue → propose → approve → create the session → schedule → publish
-// → open the event page.
+// ★ THE M2 DEMONSTRABLE, and the 390 px RTL review, in one walk.
+//
+// Every step goes through a real screen against real local Supabase — no
+// seeded rows, no SQL shortcuts except where the point IS the SQL (the clock).
+// It crosses all three wave-1 tracks: the screens and transitions are
+// `sessions`, the RSVP panel and check-in are `checkin`, the comments and the
+// rating are `event`. If this passes, M2 works in a room.
+//
+//   add a venue → propose → approve → create the session → schedule → publish
+//   → reserve a seat → the CLOCK starts the session → staff read the code
+//   → check in with it → comment → the ADMIN completes → rate
+//
+// Both transition paths are exercised on purpose: the clock starts it
+// (JOB-start_session, REQ-SES-004) and a person completes it (REQ-SES-005),
+// so the audit trail shows one row with no actor and one with an admin.
 //
 // Screens captured: SCR-046 venues, SCR-018 my proposal, SCR-042 sessions,
 // SCR-043 schedule and publish, SCR-012 the event page. SCR-017 and SCR-041
@@ -54,7 +65,10 @@ test.beforeAll(async ({}, testInfo) => {
     [`e2e-scr-${tag}`, adminEmail],
   );
   orgId = rows[0].id;
-  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  // rating_min_aggregate 1 so a presenter can see an aggregate built from the
+  // single rating this walk produces; the default 3 exists to protect a real
+  // presenter from a sample of one (REQ-RAT-004), not to make the walk lie.
+  await db.query(`insert into public.org_settings (org_id, rating_min_aggregate) values ($1, 1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   await db.query(`insert into public.categories (org_id, name) values ($1,'فني'), ($1,'درس من تجربة')`, [orgId]);
 
@@ -130,8 +144,8 @@ async function review(p: Page, name: string, primary?: string | RegExp) {
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
-test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {
-  test.slow(); // six screens and two sign-ins
+test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", async ({ page }) => {
+  test.slow(); // seven screens, three sign-ins, and the whole chain
 
   // ── SCR-046 · venues ──────────────────────────────────────────────────────
   const boss = await phone(page, adminEmail);
@@ -248,6 +262,152 @@ test("the demonstrable, screen by screen, at 390 px RTL", async ({ page }) => {
   expect(language.y + language.height, "the spoken language is not covered by the action panel").toBeLessThanOrEqual(action.y);
 
   await review(attendee, "scr-012-event-page");
+
+  // Before completion the rating section is absent entirely — the slot renders
+  // nothing for a viewer with no stake, so the heading has to go too or every
+  // published session shows an empty «التقييم» (09 SCR-012 item 11).
+  await expect(attendee.getByRole("heading", { name: "التقييم" })).toHaveCount(0);
+
+  // ── RSVP · REQ-RSV-001, through `checkin`'s slot ──────────────────────────
+  await expect(attendee.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
+  await attendee.getByRole("button", { name: "احجز مقعدك" }).click();
+  await expect(attendee.getByText("تم تأكيد حجزك")).toBeVisible();
+  await expect(attendee.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
+
+  const attendeeId = (
+    await db.query<{ id: string }>(`select m.id from public.members m join auth.users u on u.id = m.auth_user_id where u.email = $1`, [attendeeEmail])
+  ).rows[0].id;
+  const reserved = await db.query<{ status: string }>(`select status from public.rsvps where session_id = $1 and member_id = $2`, [sessionId, attendeeId]);
+  expect(reserved.rows).toHaveLength(1);
+  expect(reserved.rows[0].status).toBe("confirmed");
+
+  // ── The CLOCK starts it · REQ-SES-004, JOB-start_session ──────────────────
+  // The admin is offered the manual start, and does not take it: the clock
+  // path is the one 11 §2.1 runs every minute, so that is the one proved.
+  await boss.goto("/ar/app/admin/sessions");
+  await expect(boss.getByRole("button", { name: "ابدأ الجلسة الآن" })).toBeVisible();
+
+  await db.query(
+    `update public.sessions set starts_at = now() - interval '2 minutes', ends_at = now() + interval '58 minutes',
+            rsvp_deadline_at = now() - interval '2 minutes', cancellation_cutoff_at = now() - interval '2 minutes'
+      where id = $1`,
+    [sessionId],
+  );
+  const started = await db.query<{ session_id: string }>(`select public.clock_start_sessions() as session_id`);
+  expect(started.rows.map((r) => r.session_id)).toContain(sessionId);
+  expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("in_progress");
+  const clockRow = await db.query<{ actor_id: string | null; is_manual: boolean }>(
+    `select actor_id, is_manual from public.session_state_transitions where session_id = $1 and to_state = 'in_progress'`,
+    [sessionId],
+  );
+  expect(clockRow.rows[0], "the clock is not a person").toEqual({ actor_id: null, is_manual: false });
+
+  // ── SCR-016 · the host view issues and shows the code ─────────────────────
+  await boss.goto(`/ar/app/sessions/${sessionId}/host`);
+  await expect(boss.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
+  const code = (await boss.locator("p[dir='ltr']").first().textContent())!.trim();
+  expect(code, "the alphabet drops 0/O, 1/I/L, 5/S, 2/Z and 8/B").toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
+
+  // ── SCR-014 · check in with it · REQ-CHK-003 ──────────────────────────────
+  await attendee.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(attendee.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
+  const boxes = attendee.locator("input[maxlength='1']");
+  await expect(boxes).toHaveCount(6);
+  for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+  await attendee.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  await expect(attendee.getByRole("status")).toHaveText("تم تسجيل حضورك");
+
+  const checkIn = await db.query<{ method: string }>(`select method from public.check_ins where session_id = $1 and member_id = $2`, [sessionId, attendeeId]);
+  expect(checkIn.rows).toHaveLength(1);
+  expect(checkIn.rows[0].method, "the code path, not a manual mark").toBe("code");
+
+  // ── SCR-012 · comment · REQ-EVT-002, through `event`'s slot ───────────────
+  const said = "سؤال عن الأداة التي استخدمتموها في القياس.";
+  await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await attendee.getByPlaceholder("اكتب تعليقًا…").fill(said);
+  await attendee.getByRole("button", { name: "نشر" }).click();
+  await expect(attendee.getByText(said)).toBeVisible();
+
+  const comment = await db.query<{ author_id: string }>(`select author_id from public.comments where session_id = $1 and body = $2`, [sessionId, said]);
+  expect(comment.rows).toHaveLength(1);
+  expect(comment.rows[0].author_id).toBe(attendeeId);
+
+  // ── SCR-042 · the ADMIN completes it · REQ-SES-005 ────────────────────────
+  await boss.goto("/ar/app/admin/sessions");
+  await boss.getByRole("button", { name: "أنهِ الجلسة" }).click();
+  expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("completed");
+  const manualRow = await db.query<{ is_manual: boolean; actor_id: string | null }>(
+    `select is_manual, actor_id from public.session_state_transitions where session_id = $1 and to_state = 'completed'`,
+    [sessionId],
+  );
+  expect(manualRow.rows[0].is_manual, "a person completed it, and the row says so").toBe(true);
+  expect(manualRow.rows[0].actor_id).not.toBeNull();
+  // REQ-CHK-004: completing closes the check-in window in the same transaction.
+  const live = await db.query<{ n: string }>(
+    `select count(*) as n from public.check_in_codes where session_id = $1 and valid_until > now() and revoked_at is null`,
+    [sessionId],
+  );
+  expect(Number(live.rows[0].n), "the code stops working the moment the session ends").toBe(0);
+
+  // ── SCR-015 · rate · REQ-RAT-001, through `event` ─────────────────────────
+  await attendee.goto(`/ar/app/sessions/${sessionId}/rate`);
+  await expect(attendee.getByRole("heading", { name: "قيّم الجلسة" })).toBeVisible();
+  const groups = attendee.getByRole("radiogroup");
+  await expect(groups).toHaveCount(2);
+  await groups.nth(0).getByRole("radio", { name: "5" }).check();
+  await groups.nth(1).getByRole("radio", { name: "4" }).check();
+  await attendee.getByLabel("ملاحظات (اختياري)").fill("جلسة عملية ومباشرة.");
+  await attendee.getByRole("button", { name: "إرسال التقييم" }).click();
+
+  const rating = await db.query<{ session_stars: number; presenter_stars: number; check_in_id: string }>(
+    `select session_stars, presenter_stars, check_in_id from public.ratings where session_id = $1 and member_id = $2`,
+    [sessionId, attendeeId],
+  );
+  expect(rating.rows).toHaveLength(1);
+  expect(rating.rows[0].session_stars).toBe(5);
+  expect(rating.rows[0].presenter_stars).toBe(4);
+  // REQ-RAT-001 made structural: a rating cannot exist without a check-in.
+  expect(rating.rows[0].check_in_id).not.toBeNull();
+
+  // The rating section exists now that the session is complete, and the
+  // attendee is told their rating landed.
+  await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await expect(attendee.getByRole("heading", { name: "التقييم" })).toBeVisible();
+  await expect(attendee.getByText("شكرًا على تقييمك")).toBeVisible();
+
+  // REQ-RAT-004, the D36 boundary: the presenter reads an aggregate, never a
+  // name and never an attributed score. `member` is this session's presenter.
+  await member.goto(`/ar/app/sessions/${sessionId}`);
+  await expect(member.getByRole("heading", { name: "التقييم" })).toBeVisible();
+  await expect(member.getByText("حاضرة الاختبار")).toHaveCount(0);
+
+  // ── The audit trail of the whole walk ─────────────────────────────────────
+  const chain = await db.query<{ from_state: string | null; to_state: string }>(
+    `select from_state, to_state from public.session_state_transitions where session_id = $1 order by occurred_at, ctid`,
+    [sessionId],
+  );
+  expect(chain.rows.map((r) => `${r.from_state}→${r.to_state}`)).toEqual([
+    "null→draft",
+    "draft→submitted",
+    "submitted→in_review",
+    "in_review→approved",
+    "approved→published",
+    "published→in_progress",
+    "in_progress→completed",
+  ]);
+  const audited = await db.query<{ action: string }>(
+    `select action from public.audit_log where org_id = $1 and subject_type in ('proposal','session') order by occurred_at, ctid`,
+    [orgId],
+  );
+  expect(audited.rows.map((r) => r.action)).toEqual([
+    "proposal.submitted",
+    "proposal.in_review",
+    "proposal.approved",
+    "session.created_from_proposal",
+    "session.scheduled",
+    "session.published",
+    "session.complete",
+  ]);
 
   await boss.context().close();
   await member.context().close();
