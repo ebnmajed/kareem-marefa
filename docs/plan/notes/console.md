@@ -118,3 +118,24 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
   `setVenueActive` (`sessions`'s SCR-046 code, inherited) already did.
 - The dashboard's "busiest categories"/"most active companies" figures, which bundle 1 had to
   link forward, now point at real screens; "active members" still 404s until SCR-049 (bundle 3).
+
+### Bundle 3
+
+- SCR-049 (members and roles) turned out to need **no new writes**: `set_member_role`,
+  `deactivate_member`, `reactivate_member` already exist in migration `0005` — the last-admin
+  guard, the audit row and the `claims_version` bump REQ-ADM-009/REQ-TEN-005 ask for were already
+  built and already proven in `tests/rls/rpcs.test.ts`. This screen is a thin caller, and its own
+  job was turning a raised identifier (`last_admin`, `cannot_deactivate_self`, …) into a real
+  Arabic sentence per row rather than one generic "failed."
+- **One real gap, closed with new SQL:** `03`'s role×resource matrix says an org admin has full
+  read on `members`, but `0004`'s column grant never actually included `email` for ANY role but
+  the member's own `me()` RPC (`0005`'s own comment on `me()` says so). REQ-ADM-009's "view a
+  member's full record" had no path until `admin_list_members()`
+  (`supabase/proposed/console/0001_admin_members.sql`) — `me()`'s shape widened to "my org, admin
+  only." A column grant can't do this: it would hand every member in the org everyone else's
+  email, not only an admin's (the same reasoning DEC-044 gave for `list_session_ratings_admin()`).
+  Flagged to the lead with the `03` §8.2 rows in the commit.
+- Every dashboard figure now has a real destination — `/app/admin/members` was the last one
+  bundle 1 had to link forward.
+- The SCR-049 list is what `scoring.md`'s carried-over member-picker item (SCR-053's manual-
+  adjustment form) will eventually search against — not built yet; noted for the bundle-9 touch.
