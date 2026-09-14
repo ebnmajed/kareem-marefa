@@ -1,0 +1,36 @@
+{
+  "search": {
+    "filters": {
+      "queryLabel": "ابحث عن جلسة",
+      "categoryLabel": "التصنيف",
+      "venueLabel": "المكان",
+      "companyLabel": "الشركة",
+      "levelLabel": "المستوى",
+      "languageLabel": "لغة الجلسة",
+      "presenterLabel": "المُقدِّم",
+      "dateFromLabel": "من تاريخ",
+      "dateToLabel": "إلى تاريخ",
+      "any": "الكل",
+      "apply": "تطبيق",
+      "clearAll": "مسح الكل",
+      "level": {
+        "introductory": "تمهيدي",
+        "intermediate": "متوسط",
+        "advanced": "متقدم"
+      },
+      "language": {
+        "ar": "العربية",
+        "en": "الإنجليزية"
+      }
+    },
+    "bookmarkButton": {
+      "add": "أضف إلى المحفوظات",
+      "remove": "إزالة من المحفوظات"
+    },
+    "bookmarksPage": {
+      "heading": "المحفوظات",
+      "empty": "لم تحفظ أي جلسة بعد.",
+      "count": "{count, plural, zero {لا توجد جلسات محفوظة} one {جلسة محفوظة واحدة} two {جلستان محفوظتان} few {{value} جلسات محفوظة} many {{value} جلسة محفوظة} other {{value} جلسة محفوظة}}"
+    }
+  }
+}
