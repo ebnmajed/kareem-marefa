@@ -4,6 +4,7 @@ import type { SlotProps } from "@/components/sessions/slots";
 import { getMaterialsPageData } from "@/lib/dal/materials";
 import { formatNumber } from "@/components/sessions/numerals";
 import { SettingsForm } from "@/components/materials/settings-form";
+import { UploadForm } from "@/components/materials/upload-form";
 
 // The `Materials` slot (TEAM.md §2 / DEC-046) — the session's materials
 // list, phase-gated entirely by `materials_read` (03 §5.5a): this component
@@ -23,7 +24,12 @@ export async function Materials({ sessionId, locale }: SlotProps) {
   const canManage = canManageAll || presenterOfSession;
 
   if (materials.length === 0) {
-    return <p className="text-body-sm text-fg-muted">{t("empty")}</p>;
+    return (
+      <div>
+        <p className="text-body-sm text-fg-muted">{t("empty")}</p>
+        {canManage ? <UploadForm locale={locale} sessionId={sessionId} /> : null}
+      </div>
+    );
   }
 
   return (
@@ -69,6 +75,7 @@ export async function Materials({ sessionId, locale }: SlotProps) {
           </li>
         ))}
       </ul>
+      {canManage ? <UploadForm locale={locale} sessionId={sessionId} /> : null}
     </div>
   );
 }

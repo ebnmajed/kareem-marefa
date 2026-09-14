@@ -16,6 +16,13 @@ interface SettingsFormProps {
  *  display only — the write is still RLS-gated regardless). */
 export function SettingsForm({ locale, materialId, phase, allowDownload }: SettingsFormProps) {
   const t = useTranslations("materials.list");
+  // The field's own label lives under "materials.upload" (shared with the
+  // upload form's identical field) — a translator scoped to "materials.list"
+  // cannot reach across namespaces, so a second translator is needed rather
+  // than the dotted "upload.phaseLabel" path this used to call, which
+  // silently rendered as the literal key (MISSING_MESSAGE, next-intl's
+  // default fallback) instead of "التوقيت".
+  const tUpload = useTranslations("materials.upload");
   const [pending, startTransition] = useTransition();
   const [localPhase, setLocalPhase] = useState(phase);
   const [localAllow, setLocalAllow] = useState(allowDownload);
@@ -23,7 +30,7 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
   return (
     <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-edge pt-3">
       <label className="flex items-center gap-2 text-body-sm text-fg-body">
-        {t("upload.phaseLabel")}
+        {tUpload("phaseLabel")}
         <select
           value={localPhase}
           disabled={pending}

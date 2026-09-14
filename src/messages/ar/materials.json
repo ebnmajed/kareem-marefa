@@ -42,7 +42,11 @@
       "submit": "رفع",
       "titleLabel": "عنوان المادة",
       "phaseLabel": "التوقيت",
-      "kindLabel": "نوع المادة"
+      "kindLabel": "نوع المادة",
+      "fileLabel": "الملف",
+      "fileRequired": "اختر ملفًا أولًا.",
+      "urlLabel": "الرابط",
+      "uploadFailed": "تعذّر رفع الملف. حاول مرة أخرى."
     },
     "remove": {
       "action": "إزالة",

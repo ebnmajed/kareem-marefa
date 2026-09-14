@@ -42,7 +42,11 @@
       "submit": "Upload",
       "titleLabel": "Material title",
       "phaseLabel": "Timing",
-      "kindLabel": "Material kind"
+      "kindLabel": "Material kind",
+      "fileLabel": "File",
+      "fileRequired": "Choose a file first.",
+      "urlLabel": "Link",
+      "uploadFailed": "The upload failed. Try again."
     },
     "remove": {
       "action": "Remove",

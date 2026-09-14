@@ -10,6 +10,14 @@ vi.mock("@/lib/dal/materials", () => ({ getMaterialsPageData: vi.fn() }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "materials.list" }),
 }));
+// The slot renders `UploadForm` whenever the viewer can manage this
+// session's materials (canManageAll/presenterOfSession) — it calls
+// useRouter() for its post-upload refresh, which jsdom has no app router
+// mounted for (comment-item.test.tsx's own convention).
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 const { getMaterialsPageData } = await import("@/lib/dal/materials");
 const { Materials } = await import("@/components/materials/list");
