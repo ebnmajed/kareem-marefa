@@ -17,18 +17,35 @@
 // graphile_worker schema is installed by scripts/rls.mjs locally and by CI's
 // `rls` job, and every job enqueued below vanishes at rollback.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const CONTRACT = "notify/0001_notification_contract.sql";
+// Promoted as migration 0026 at wave-2 sync 1: the contract is applied by
+// `supabase db reset`, so nothing here applies it.
+//
+// The M3 fixture (tests/rls/fixture-m3.ts) seeds one row in every notify
+// table on BOTH orgs, so the generated isolation sweep is never vacuous.
+// These per-policy cases arrange their own world instead — a case that
+// asserts "the member sees exactly their own row" cannot also be counting
+// someone else's history — so they clear those rows first, as the owner,
+// inside the same transaction that rolls back at the end of the test.
+const M3_TABLES = [
+  "email_deliveries",
+  "notifications",
+  "notification_preferences",
+  "notification_templates",
+  "calendar_events",
+  "calendar_connections",
+] as const;
 
-/** Applies the contract, then seeds both orgs. Returns the fixture. */
 async function setup(tx: Tx) {
-  await applyProposed(tx, CONTRACT);
-  return seed(tx);
+  const f = await seed(tx);
+  await tx.asOwner();
+  for (const table of M3_TABLES) await tx.q(`delete from public.${table}`);
+  return f;
 }
 
 /** notify(), as the owner — which is how a definer RPC reaches it. */
@@ -67,7 +84,6 @@ const sendJobs = (tx: Tx) =>
 describe("notification_matrix — 08 §1", () => {
   it("carries every message in the document and nothing else", async () => {
     await withTx(async (tx) => {
-      await applyProposed(tx, CONTRACT);
       const rows = await tx.q<{ key: string }>(`select key from public.notification_matrix() order by key`);
       expect(rows).toHaveLength(38);
       // A message in no category cannot have a preference; a category outside
@@ -86,7 +102,6 @@ describe("notification_matrix — 08 §1", () => {
 
   it("marks 08 §1.7's set non-optional, and every message of a not-switchable category with it", async () => {
     await withTx(async (tx) => {
-      await applyProposed(tx, CONTRACT);
       const nonOptional = (
         await tx.q<{ key: string }>(`select key from public.notification_matrix() where not optional order by key`)
       ).map((r) => r.key);
