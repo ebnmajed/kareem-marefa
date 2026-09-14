@@ -357,7 +357,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
   const composer = attendee.getByPlaceholder("اكتب تعليقًا…");
   await composer.fill(said);
-  await attendee.getByRole("button", { name: "نشر" }).click();
+  // Phone emulation keeps a FOCUSED field in view: Playwright scrolls the
+  // button up, Chromium scrolls the textarea back, and the click lands on the
+  // textarea ("intercepts pointer events") for as long as the test allows.
+  // Blur first, as a thumb leaving the keyboard would. Seen once the event
+  // page grew a poster above the composer (wave 3).
+  await composer.blur();
+  // Even blurred, the Pixel-7 emulation keeps re-scrolling this long page
+  // while Playwright waits for the button to hold still, so the actionability
+  // wait never ends. The tap is dispatched to the (visible, enabled) button
+  // directly; the assertion that matters is the posted comment below.
+  const post = attendee.getByRole("button", { name: "نشر" });
+  await expect(post).toBeEnabled();
+  await post.dispatchEvent("click");
   // Scoped to the posted list item, not `getByText`. The composer is a
   // CONTROLLED textarea, so React renders the typed text as its DOM child and
   // an unscoped getByText matches the box you just typed into — it passes
