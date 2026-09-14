@@ -20,7 +20,9 @@ import { seed } from "./fixture";
 // 02 §7 — exactly five, each named. `design_templates` is nullable for
 // platform-scope rows and still carries the column; `fonts` is the fifth
 // exception (DEC-049): content-addressed and platform-wide by design.
-const NO_ORG_ID = new Set(["orgs", "platform_admins", "registrations", "fonts"]);
+// `retention_periods` and `platform_audit_log` are platform-level like `platform_admins` (0069, DEC-054):
+// no org_id, no policy, no grant — the sweep proves them by refusal.
+const NO_ORG_ID = new Set(["orgs", "platform_admins", "registrations", "fonts", "retention_periods", "platform_audit_log"]);
 // Frozen legacy: outside the policy model by decision (DEC-002).
 const EXEMPT = new Set(["registrations"]);
 
@@ -96,7 +98,7 @@ describe("a member of org A selecting with no org predicate", () => {
         // and reports (the fixture's are another member's), and M3's two
         // admin-only tables (templates, the delivery log — 0026). Their own
         // per-policy tests prove the scoping; the sweep proves the wall.
-        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts"].includes(table)) {
+        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions"].includes(table)) {
           expect(rows.some((r) => r.org_id === f.a.id)).toBe(true);
         }
       });

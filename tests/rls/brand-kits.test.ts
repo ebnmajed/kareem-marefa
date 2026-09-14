@@ -49,6 +49,15 @@ async function setup(tx: Tx) {
   for (const file of PROPOSED) {
     if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
   }
+  // The lead's fixture (tests/rls/fixture-m7.ts) seeds one kit per org so
+  // the isolation sweep is non-vacuous; these cases start from "no row" —
+  // the identity override — so they clear the table in their own setup, as
+  // TEAM.md §3 asks (the lead, at sync 1).
+  await tx.asOwner();
+  await tx.q(`delete from public.brand_kits`);
+  // The fixture's inserts fired the history trigger too; the history cases
+  // count from zero.
+  await tx.q(`delete from public.scoring_config_history where scope = 'branding'`);
   return f;
 }
 

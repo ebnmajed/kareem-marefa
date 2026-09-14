@@ -319,6 +319,9 @@ Legend: pattern per action, `—` = no policy and no grant.
 | `members` | §5.1b | — | §5.1c | — | Provisioning is an RPC; tiering is a view. |
 | `member_interests` | P1 | P3 | P3 | P3 | |
 | `platform_admins` | — | — | — | — | **No policy at all.** Read only by the auth hook, which runs as `supabase_auth_admin`. |
+| `retention_periods` | — | — | — | — | **No policy at all.** Platform-level configuration; read through `retention_period()` by the retention job. |
+| `platform_audit_log` | — | — | — | — | **No policy at all.** Platform-side evidence; written by `security definer` functions only. |
+| `data_export_requests`| P3 self | — | — | — | Insert through `request_data_export()`; the archive path is never client-writable. |
 | `impersonation_sessions` | P1 + `is_staff()` | — | — | — | Insert by super-admin RPC. Readable by the org's staff **by design** (`REQ-ADM-019`). |
 
 #### §5.1a — `orgs`
@@ -1436,6 +1439,31 @@ generated suite is the highest-value test in the product.
 | `POL-fonts.record.worker` | `record_font()` is `service_role` only; an admin calling it is refused. (migration `0064`). |
 | `POL-fonts.gate` | A font recorded as `failed` carries the report naming which checks failed and stays unselectable (A39). (migration `0064`). |
 | `POL-fonts.select.service_role` | `service_role` reads the manifest (a bucket-walking job sees every font) and still cannot write a row directly — the only write path stays `record_font()`. (migration `0067`). |
+| `POL-brand_kits.select.member` | Any member of the org reads the kit; a member of another org gets nothing. (migration `0068`). |
+| `POL-brand_kits.write.rpc_only` | `brand_kits` has no insert/update/delete grant to `authenticated`: a direct write is refused on the grant, even by an admin. (migration `0068`). |
+| `POL-save_brand_kit.admin_only` | A member and a moderator are refused `42501`; an admin's save succeeds. (migration `0068`). |
+| `POL-save_brand_kit.history` | A save writes one `scoring_config_history` row per changed column (`scope = 'branding'`) and one `audit_log` row, in the same transaction. (migration `0068`). |
+| `POL-save_brand_kit.logo_ownership` | A logo asset belonging to another org is refused. (migration `0068`). |
+| `POL-save_brand_kit.font_gate` | A font at `parity_status <> 'passed'` is refused for either face (A39). (migration `0068`). |
+| `POL-reset_brand_kit.admin_only` | A moderator's reset is refused; an admin's deletes the row and is audited. (migration `0068`). |
+| `POL-brand_kit.identity_default` | `public.brand_kit(p_org)` for an org with no row returns the platform defaults, matching `packages/designer-runtime/src/brand.ts` byte-for-byte. (migration `0068`). |
+| `POL-brand_kit.override` | With a row, `public.brand_kit(p_org)` returns the org's own colours, not the platform defaults. (migration `0068`). |
+| `POL-export_render_context.brand_identity` | For an org with no `brand_kits` row, the new `brand` column is `{}` and every previously-existing column is unchanged (the identity override, DEC-052). (migration `0068`). |
+| `POL-export_render_context.brand_override` | For an org with a row, the `brand` column carries exactly its light/dark overrides and `logoAssetId`. (migration `0068`). |
+| `POL-impersonation_sessions.append_only` | No role — `authenticated` or `service_role` — may insert, update or delete a row; `end_impersonation()` is the only writer of `ended_at`. (migration `0069`). |
+| `RPC-start_impersonation.platform_only` | A member, an org admin and a stale admin are all refused `42501`; only a row in `platform_admins` passes, and the audit row lands in the target org's log with `platform_admin`. (migration `0069`). |
+| `RPC-end_impersonation.actor` | The starting super admin and `service_role` (the expiry job) may end a session; another super admin and the org's own admin cannot. Ending twice is a no-op. (migration `0069`). |
+| `POL-auth_hook.impersonation` | With an active session the hook mints `org_id`, `org_role = 'member'`, `status`, `org_status` and the session id, and NO `member_id`; after `ended_at` it mints none. It still never raises. (migration `0069`). |
+| `RPC-set_first_admin.platform_only` | Only a platform admin may name an org's first admin; an existing member with that address is promoted and their `claims_version` bumps; the org's log records it. (migration `0069`). |
+| `RPC-add_org_domain.platform_only` | A platform admin adds and removes a domain on an org it is not a member of; the audit row is attributed `platform_admin`, not `system` (`REQ-TEN-007`). (migration `0069`). |
+| `POL-retention_periods.none` | RLS enabled, no policy, no grant — every client role and `service_role` are refused on the grant; `12` §5.3's periods are read through `retention_period()` alone. (migration `0069`). |
+| `POL-platform_audit_log.none` | Same shape. The platform-side trail has no foreign key to `orgs`, so an `org.deleted` row survives the org. (migration `0069`). |
+| `POL-data_export_requests.select.self` | A member reads their own export requests and nobody else's; no role may insert, update or delete directly — `request_data_export()` is the only door (`REQ-PRF-006`). (migration `0069`). |
+| `RPC-platform_metrics.aggregate_only` | Both metrics functions refuse a non-platform-admin, and the two views expose counts alone — no member, no session title, no content column (`REQ-ADM-003`). (migration `0069`). |
+| `RPC-promote_template_to_platform` | A published org version becomes a platform template by COPY; a later edit of the org template does not reach it; an unpublished version and a platform version are both refused (`REQ-DSG-008`). (migration `0069`). |
+| `RPC-retire_platform_template.floor` | Retiring the last non-retired default for a purpose is refused — the A27 baseline never falls below one default per purpose (DEC-052). (migration `0069`). |
+| `RPC-delete_org.slug` | Deletion needs the org's slug typed back; a wrong slug changes nothing. The org is suspended in the same transaction, the platform trail records it, and `orgdel:{org_id}` is enqueued once (`REQ-NFR-014`, `12` §5.5). (migration `0069`). |
+| `RPC-assert_org_deleted` | After `perform_org_deletion()` no table with an `org_id` column holds a row for the id, walked dynamically so a table added later is covered the day it is created. (migration `0069`). |
 | `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
 | `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
 | `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
