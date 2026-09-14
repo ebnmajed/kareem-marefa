@@ -517,6 +517,22 @@ proved nothing about the trigger if it had. The member-reachable path is
 and asserts the fan-out job IS enqueued — positively. A negative assertion
 would have been satisfied by a trigger that quietly enqueued nothing.
 
+## 2.10 `/verify` is public, and the proxy's unconfigured gate does not cover it
+
+`isPlatformPath()` matches `/{locale}/app` only, and SCR-006 is
+deliberately outside it: a stranger holding a printed sheet has no
+session. The consequence is that DEC-038's «the platform is
+unconfigured, so every platform route 404s» does NOT apply to
+`/{locale}/verify/[code]`, and without a guard `supabaseEnv()` throws
+inside `createServerClient()` and serves a **500 on a public URL of a
+live site** for as long as production has no `NEXT_PUBLIC_SUPABASE_*`.
+
+The page now calls `notFound()` when `platformConfigured()` is false,
+which is what every other unconfigured platform route already renders.
+The alternative — widening the proxy's predicate — is the lead's file,
+and is the better fix if `/verify` is ever joined by another public
+platform route. Flagged at sync.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for

@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { platformConfigured } from "@/lib/supabase/env";
 import { verifyCertificate } from "@/lib/dal/certificates";
 
 // SCR-006 · `/verify/[code]` — REQ-CRT-007, REQ-CRT-009, REQ-CRT-010,
@@ -35,6 +37,18 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 export default async function VerifyPage({ params }: { params: Promise<{ locale: string; code: string }> }) {
   const { locale, code } = await params;
   setRequestLocale(locale);
+
+  // ★ DEC-038, and this route is the ONE public platform screen the proxy's
+  // unconfigured gate does not cover: `isPlatformPath` matches
+  // `/{locale}/app`, and /verify is deliberately outside it because a
+  // stranger with a printed sheet has no session. Without this line, the
+  // platform being unconfigured — the state of production until PR C —
+  // would make `supabaseEnv()` throw here and serve a 500 on a public URL
+  // of a live site. A 404 is what every other unconfigured platform route
+  // already does. Told to the lead: the alternative is widening the
+  // proxy's predicate, which is their file.
+  if (!platformConfigured()) notFound();
+
   const t = await getTranslations("certificates.verify");
 
   // REQ-NFR-005. The forwarded address is the key — it is the only thing
