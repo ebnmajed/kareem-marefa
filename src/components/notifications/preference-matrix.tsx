@@ -15,7 +15,10 @@ import type { CategoryPreference } from "@/lib/dal/notifications";
 // Each cell is its own form. No client JavaScript, no optimistic state to get
 // wrong, and the whole screen works on a phone with a slow connection.
 
-const cell = "flex h-11 w-full items-center justify-center rounded-field border text-label transition-colors duration-150";
+// `min-h-11` rather than `h-11`: «لا يُرسل على هذه القناة» wraps to two lines
+// in a half-width cell at 390 px, and a fixed height would clip it — which
+// 10 §2 forbids on a text line, because clipping is what eats tashkeel.
+const cell = "flex min-h-11 w-full items-center justify-center rounded-field border px-2 py-2 text-center text-label transition-colors duration-150";
 
 function Toggle({
   category,
@@ -70,7 +73,10 @@ export async function PreferenceMatrix({ rows }: { rows: CategoryPreference[] })
 
           {row.switchable ? (
             <>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {/* Two columns at EVERY width, not just from `sm`. Stacked, the
+                  eleven categories make SCR-026 ten thousand pixels tall on a
+                  phone; side by side the labels still fit in ~180 px. */}
+              <div className="mt-3 grid grid-cols-2 gap-3">
                 {channels.map((channel) => (
                   <div key={channel.id}>
                     <span className="block text-body-sm text-fg-muted">{channel.label}</span>

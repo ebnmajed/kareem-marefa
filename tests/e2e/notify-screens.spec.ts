@@ -8,6 +8,7 @@
 //
 // Needs supabase/proposed/notify/*.sql promoted into supabase/migrations/ —
 // the lead does that at a sync point.
+import { randomUUID } from "node:crypto";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext } from "@playwright/test";
@@ -38,7 +39,11 @@ test.beforeAll(async () => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
-  const tag = `${Date.now()}`;
+  // DEC-045's third e2e trap: the `desktop` and `phone` projects share one
+  // database and start within milliseconds of each other, so `Date.now()`
+  // alone collides on `orgs_slug_key`. A uuid fragment makes each project's
+  // fixture its own.
+  const tag = `${Date.now()}-${randomUUID().slice(0, 8)}`;
   domain = `notify-e2e-${tag}.example`;
   sessionTitle = `جلسة الإشعارات ${tag}`;
 
@@ -106,7 +111,7 @@ test("SCR-026 — the member reads their inbox, marks one read, and switches a c
   // Real notifications, through the real door: public.notify() is the only
   // way anything lands in the inbox, so the screen is read against what the
   // product actually writes rather than against a shaped fixture.
-  await db.query(`select public.notify($1, $2, 'my_sessions', jsonb_build_object('session_id', $3::uuid, 'title', $4), 'MSG-rsvp_confirmed')`, [
+  await db.query(`select public.notify($1, $2, 'my_sessions', jsonb_build_object('session_id', $3::uuid, 'title', $4::text), 'MSG-rsvp_confirmed')`, [
     orgId,
     memberId,
     sessionId,
@@ -234,4 +239,78 @@ test("REQ-CAL-007 — disconnecting deletes the tokens immediately and tells the
     [id],
   );
   expect(notices).toHaveLength(1);
+});
+
+/** Every element that escapes the layout viewport, named.
+ *
+ *  Measured against `window.innerWidth`, and that took three tries to get
+ *  right. In an RTL document the vertical scrollbar sits on the LEFT, so on a
+ *  390 px viewport `documentElement`'s box is x ∈ [11, 401] while
+ *  `innerWidth` is 401 and `clientWidth` is 390. Two of the obvious checks
+ *  are therefore false positives on every page that scrolls vertically:
+ *  `scrollWidth > clientWidth` is always true by exactly the scrollbar's
+ *  width, and comparing against `documentElement`'s box flags the app shell,
+ *  whose full-width row legitimately starts at x = 0, under the scrollbar.
+ *  The layout viewport is the only frame in which "escapes the screen" means
+ *  what it sounds like.
+ *
+ *  A boolean would say the page scrolls sideways. This says what to fix. */
+async function widerThanViewport(page: import("@playwright/test").Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const limit = window.innerWidth;
+    const offenders: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue; // Next parks it off-screen on purpose
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      if (box.right > limit + 1 || box.left < -1) {
+        offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      }
+    }
+    return offenders.slice(0, 6);
+  });
+}
+
+// ── The 390 px RTL review (definition of done) ──────────────────────────────
+//
+// One capture per new screen, at the width most members will actually use,
+// saved under `.qa-shots/rtl/` and LOOKED AT. Never under `test-results/`:
+// Playwright empties that at the start of every run, and in a shared tree
+// another teammate's run deletes the captures between taking them and
+// looking at them (DEC-045).
+//
+// `phone` only — the same shot from the desktop project would overwrite it
+// at the wrong width.
+test("390 px RTL captures of every new screen", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "one capture per screen, at phone width");
+  await signIn(context, memberEmail);
+  await page.setViewportSize({ width: 390, height: 900 });
+
+  for (const [name, path] of [
+    ["scr-026-notifications", "/ar/app/me/notifications"],
+    ["scr-025-calendar", "/ar/app/me/calendar"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // The page is RTL all the way down, not merely wrapped in a dir attribute.
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    // 10 §2: nothing may scroll sideways at 390 px.
+    expect(await widerThanViewport(page), `${path} scrolls horizontally at 390 px`).toEqual([]);
+    await page.screenshot({ path: `.qa-shots/rtl/${name}.png`, fullPage: true });
+  }
+
+  // The two admin screens need an admin, which this member is not yet.
+  await db.query(`update public.members set org_role = 'admin' where id = (select id from public.members where email = $1)`, [memberEmail]);
+  await context.clearCookies();
+  await signIn(context, memberEmail);
+
+  for (const [name, path] of [
+    ["scr-058-admin-emails", "/ar/app/admin/emails"],
+    ["admin-reminders", "/ar/app/admin/reminders"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await widerThanViewport(page), `${path} scrolls horizontally at 390 px`).toEqual([]);
+    await page.screenshot({ path: `.qa-shots/rtl/${name}.png`, fullPage: true });
+  }
 });

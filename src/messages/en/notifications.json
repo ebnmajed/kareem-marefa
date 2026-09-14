@@ -151,7 +151,7 @@
           "status": "Status",
           "reason": "Reason",
           "sentAt": "Sent",
-          "retention": "The log is kept for 180 days.",
+          "retention": "The log is kept for <bdi>{days}</bdi> days.",
           "state": {
             "queued": "Queued",
             "sent": "Sent",
@@ -165,11 +165,11 @@
         "title": "Reminder schedule",
         "intro": "Reminders arrive these many minutes before a session. Changing the schedule moves pending reminders rather than duplicating them.",
         "offsets": "Minutes before the session (comma separated)",
-        "offsetsHint": "The default is 10080, 1440 and 120 — a week, a day and two hours.",
+        "offsetsHint": "The default is <bdi>{week}</bdi>, <bdi>{day}</bdi> and <bdi>{hours}</bdi> — a week, a day and two hours.",
         "promptDelay": "Minutes after a session ends before the rating prompt",
         "save": "Save schedule",
         "saved": "Schedule saved and pending reminders moved",
-        "error": "That could not be saved. Each value must be between 5 minutes and 30 days.",
+        "error": "That could not be saved. Each value must be between five minutes and thirty days.",
         "current": "Current schedule"
       }
     }

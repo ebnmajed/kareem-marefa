@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatDateTime } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { getPreferenceMatrix, getTemplateCatalogue, listDeliveries } from "@/lib/dal/notifications";
 import { removeEmailTemplate, saveEmailTemplate } from "./actions";
 
@@ -137,7 +137,14 @@ export default async function EmailsPage({
         <h2 id="deliveries-heading" className="text-h2 text-fg-heading">
           {t("admin.emails.deliveries.heading")}
         </h2>
-        <p className="mt-2 text-body-sm text-fg-muted">{t("admin.emails.deliveries.retention")}</p>
+        <p className="mt-2 text-body-sm text-fg-muted">
+          {/* OQ-019's 180 days, in the org's numeral system like every other
+              number on the screen (REQ-INT-006). */}
+          {t.rich("admin.emails.deliveries.retention", {
+            days: formatNumber(180, prefs.numerals),
+            bdi: (chunks) => <bdi>{chunks}</bdi>,
+          })}
+        </p>
 
         {deliveries.length === 0 ? (
           <p className="mt-4 rounded-field border border-edge p-4 text-body text-fg-muted">{t("admin.emails.deliveries.empty")}</p>

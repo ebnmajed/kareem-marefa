@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { formatNumber } from "@/components/sessions/numerals";
 import { getReminderSchedule } from "@/lib/dal/notifications";
 import { saveReminderSchedule } from "./actions";
 
@@ -64,7 +65,12 @@ export default async function RemindersPage({
             aria-describedby="offsets-hint"
           />
           <p id="offsets-hint" className="mt-1 text-body-sm text-fg-muted">
-            {t("offsetsHint")}
+            {t.rich("offsetsHint", {
+              week: formatNumber(10080, schedule.numerals),
+              day: formatNumber(1440, schedule.numerals),
+              hours: formatNumber(120, schedule.numerals),
+              bdi: (chunks) => <bdi>{chunks}</bdi>,
+            })}
           </p>
         </div>
         <div>

@@ -467,6 +467,10 @@ export async function listDeliveries(locale: string, opts: { limit?: number } = 
 export interface ReminderSchedule {
   offsetsMinutes: number[];
   ratingPromptDelayMinutes: number;
+  /** REQ-INT-006: the screen prints these numbers, so it needs the org's
+   *  system. Without it the hint under the input rendered «١٠٠٨٠» while the
+   *  input itself held «10080» — two numeral systems, one screen. */
+  numerals: NumeralSystem;
 }
 
 export async function getReminderSchedule(locale: string): Promise<ReminderSchedule | null> {
@@ -475,13 +479,14 @@ export async function getReminderSchedule(locale: string): Promise<ReminderSched
   const { session, supabase } = client;
   const { data, error } = await supabase
     .from("org_settings")
-    .select("reminder_offsets_minutes, rating_prompt_delay_minutes")
+    .select("reminder_offsets_minutes, rating_prompt_delay_minutes, numerals")
     .eq("org_id", session.orgId)
     .maybeSingle();
   if (error) throw new Error(`org_settings: ${error.message}`);
   return {
     offsetsMinutes: data?.reminder_offsets_minutes ?? [10080, 1440, 120],
     ratingPromptDelayMinutes: data?.rating_prompt_delay_minutes ?? 60,
+    numerals: data?.numerals === "arabic_indic" ? "arabic_indic" : "western",
   };
 }
 
