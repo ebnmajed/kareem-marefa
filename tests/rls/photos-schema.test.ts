@@ -1,0 +1,261 @@
+// photos / photo_takedowns, plus the reports.photo_id FK — 02 §4.7, 03 §5.6c
+// (verbatim), DEC-005, REQ-EVT-009…014 (schema half). Applied with
+// applyProposed() inside each test's rolled-back transaction (DEC-040).
+import { afterAll, describe, expect, it } from "vitest";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { seed } from "./fixture";
+
+afterAll(() => pool.end());
+
+const CHECK_VIOLATION = "23514";
+
+async function insertPhoto(tx: Tx, orgId: string, sessionId: string, uploaderId: string, sha: string) {
+  await tx.asOwner(); // a pure fixture helper — never inherits whatever role the caller happens to be in
+  const [p] = await tx.q<{ id: string }>(
+    `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+     values ($1, $2, $3, 'x.webp', 1000, $4, true) returning id`,
+    [orgId, sessionId, uploaderId, sha],
+  );
+  return p.id as string;
+}
+
+describe("POL-photos.insert.checked_in", () => {
+  it("a member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      await tx.asOwner();
+      const [session] = await tx.q<{ id: string }>(
+        `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
+         values ($1, 'جلسة للصور', 'ملخص الجلسة', $2, 'introductory', now() - interval '1 hour', 60, now(), $3, 30, 'published', now() - interval '1 day')
+         returning id`,
+        [f.a.id, f.a.categoryId, f.a.venueId],
+      );
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [
+        f.a.id,
+        session.id,
+        f.a.members[0].memberId,
+      ]);
+      await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [
+        f.a.id,
+        session.id,
+        f.a.members[1].memberId,
+      ]);
+
+      await tx.as(f.a.members[1].claims);
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'x.webp', 1000, $4, true)`,
+            [f.a.id, session.id, f.a.members[1].memberId, "b".repeat(64)],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
+
+      await tx.asOwner();
+      const [code] = await tx.q<{ id: string }>(
+        `insert into public.check_in_codes (org_id, session_id, code, valid_from, valid_until)
+         values ($1, $2, 'ACDEFG', now() - interval '1 minute', now() + interval '10 minutes') returning id`,
+        [f.a.id, session.id],
+      );
+      await tx.q(
+        `insert into public.check_ins (org_id, session_id, member_id, method, code_id, session_window) values ($1, $2, $3, 'code', $4, 'empty'::tstzrange)`,
+        [f.a.id, session.id, f.a.members[1].memberId, code.id],
+      );
+
+      await tx.as(f.a.members[1].claims);
+      const [ok] = await tx.q<{ id: string }>(
+        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+         values ($1, $2, $3, 'y.webp', 1000, $4, true) returning id`,
+        [f.a.id, session.id, f.a.members[1].memberId, "c".repeat(64)],
+      );
+      expect(ok.id).toBeTruthy();
+    });
+  });
+
+  it("the presenter and an admin can upload without a check-in", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+
+      await tx.as(f.a.members[0].claims); // presenter of `published`, not checked in
+      const [ok] = await tx.q<{ id: string }>(
+        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+         values ($1, $2, $3, 'p.webp', 1000, $4, true) returning id`,
+        [f.a.id, f.m2.a.published, f.a.members[0].memberId, "d".repeat(64)],
+      );
+      expect(ok.id).toBeTruthy();
+
+      await tx.as(f.a.admin.claims);
+      const [ok2] = await tx.q<{ id: string }>(
+        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+         values ($1, $2, $3, 'a.webp', 1000, $4, true) returning id`,
+        [f.a.id, f.m2.a.published, f.a.admin.memberId, "e".repeat(64)],
+      );
+      expect(ok2.id).toBeTruthy();
+    });
+  });
+});
+
+describe("POL-photos.insert.exif", () => {
+  it("inserting with exif_stripped = false is rejected — by the policy for an authenticated writer, and by the table constraint even for service_role", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      await tx.as(f.a.members[1].claims); // already checked in to `published` (fixture-m2)
+      // The policy's own `with check` also requires exif_stripped, so an authenticated
+      // writer is refused on the grant/policy (42501) before the table constraint is
+      // even reached — the constraint is defense-in-depth for a writer RLS can't gate.
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'x.webp', 1000, $4, false)`,
+            [f.a.id, f.m2.a.published, f.a.members[1].memberId, "f".repeat(64)],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
+
+      await tx.asOwner(); // bypasses RLS and grants entirely — only the table CHECK stands
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'x.webp', 1000, $4, false)`,
+            [f.a.id, f.m2.a.published, f.a.members[1].memberId, "g".repeat(64)],
+          ),
+        ),
+      ).toBe(CHECK_VIOLATION);
+    });
+  });
+});
+
+describe("POL-photos.select.hidden", () => {
+  it("a hidden photo is invisible to a member, visible to staff", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "1".repeat(64));
+      await tx.asOwner();
+      await tx.q(`update public.photos set hidden_at = now(), hidden_reason = 'x' where id = $1`, [photoId]);
+
+      await tx.as(f.a.members[0].claims);
+      expect(await tx.q(`select id from public.photos where id = $1`, [photoId])).toEqual([]);
+
+      await tx.as(f.a.mod.claims);
+      expect((await tx.q(`select id from public.photos where id = $1`, [photoId])).length).toBe(1);
+    });
+  });
+});
+
+describe("POL-photo_takedowns.insert", () => {
+  it("inserting hides the photo in the same transaction, before any other read", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "2".repeat(64));
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3)`, [f.a.id, photoId, f.a.members[0].memberId]);
+
+      expect(await tx.q(`select id from public.photos where id = $1`, [photoId])).toEqual([]); // hidden already, even to the requester
+
+      await tx.as(f.a.mod.claims);
+      const rows = await tx.q<{ id: string; hidden_at: string | null }>(`select id, hidden_at from public.photos where id = $1`, [photoId]);
+      expect(rows.length).toBe(1);
+      expect(rows[0].hidden_at).not.toBeNull();
+    });
+  });
+
+  it("a member cannot file a takedown against another org's photo, nor as anyone but themselves", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoIdB = await insertPhoto(tx, f.b.id, f.m2.b.published, f.b.members[0].memberId, "3".repeat(64));
+
+      await tx.as(f.a.members[0].claims);
+      expect(
+        await errorCode(() => tx.q(`insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3)`, [f.a.id, photoIdB, f.a.members[0].memberId])),
+      ).toBe(PERMISSION_DENIED);
+
+      const photoIdA = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "4".repeat(64));
+      await tx.as(f.a.members[0].claims);
+      expect(
+        await errorCode(() =>
+          tx.q(`insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3)`, [f.a.id, photoIdA, f.a.members[1].memberId])),
+      ).toBe(PERMISSION_DENIED);
+    });
+  });
+});
+
+describe("POL-photo_takedowns.restore", () => {
+  it("a moderator resolving with restored unhides the photo; resolved_by is stamped, never trusted from the client", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "5".repeat(64));
+
+      await tx.as(f.a.members[0].claims);
+      const [takedown] = await tx.q<{ id: string }>(
+        `insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3) returning id`,
+        [f.a.id, photoId, f.a.members[0].memberId],
+      );
+
+      await tx.as(f.a.mod.claims);
+      await tx.q(`update public.photo_takedowns set resolved_at = now(), resolution = 'restored', resolved_by = $1 where id = $2`, [
+        f.a.admin.memberId, // impersonation attempt — should be overridden by the trigger
+        takedown.id,
+      ]);
+
+      const [row] = await tx.q<{ resolved_by: string }>(`select resolved_by from public.photo_takedowns where id = $1`, [takedown.id]);
+      expect(row.resolved_by).toBe(f.a.mod.memberId);
+
+      await tx.asOwner();
+      const [photo] = await tx.q<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [photoId]);
+      expect(photo.hidden_at).toBeNull();
+    });
+  });
+
+  it("a member cannot resolve a takedown", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "6".repeat(64));
+      await tx.as(f.a.members[0].claims);
+      const [takedown] = await tx.q<{ id: string }>(
+        `insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3) returning id`,
+        [f.a.id, photoId, f.a.members[0].memberId],
+      );
+      // Not staff — the p6_staff_update policy's `using` excludes this row, so the
+      // UPDATE matches and changes nothing (no error; that's how a non-matching
+      // UPDATE behaves in Postgres — see docs/plan/notes/content.md §1.4a).
+      await tx.q(`update public.photo_takedowns set resolved_at = now(), resolution = 'restored' where id = $1`, [takedown.id]);
+      await tx.asOwner();
+      const [row] = await tx.q<{ resolved_at: string | null }>(`select resolved_at from public.photo_takedowns where id = $1`, [takedown.id]);
+      expect(row.resolved_at).toBeNull();
+    });
+  });
+});
+
+describe("reports.photo_id", () => {
+  it("a member can report a photo; the reporter is hidden from other members but visible to staff", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "7".repeat(64));
+      await tx.as(f.a.members[0].claims);
+      const [report] = await tx.q<{ id: string }>(
+        `insert into public.reports (org_id, target, photo_id, reporter_id, reason) values ($1, 'photo', $2, $3, 'محتوى غير لائق') returning id`,
+        [f.a.id, photoId, f.a.members[0].memberId],
+      );
+      expect(report.id).toBeTruthy();
+
+      await tx.as(f.a.members[1].claims);
+      expect(await tx.q(`select id from public.reports where id = $1`, [report.id])).toEqual([]);
+
+      await tx.as(f.a.mod.claims);
+      expect((await tx.q(`select id from public.reports where id = $1`, [report.id])).length).toBe(1);
+    });
+  });
+});
