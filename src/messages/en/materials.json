@@ -1,0 +1,54 @@
+{
+  "materials": {
+    "list": {
+      "count": "{count, plural, zero {No materials} one {One material} two {Two materials} few {{value} materials} many {{value} materials} other {{value} materials}}",
+      "empty": "No materials for this session yet.",
+      "downloadOnly": "Download only",
+      "downloadOnlyHint": "To view the slides inside the platform, export the deck to PDF and upload it — it will then appear in the viewer page by page.",
+      "phase": {
+        "before": "Before the session",
+        "after": "After the session"
+      },
+      "kind": {
+        "pdf": "PDF",
+        "powerpoint": "Presentation",
+        "keynote": "Keynote",
+        "image": "Image",
+        "audio": "Audio recording",
+        "video_link": "Video link",
+        "external_link": "External link"
+      },
+      "renderStatus": {
+        "pending": "Waiting to be processed",
+        "rendering": "Converting…",
+        "failed": "Could not convert this file"
+      },
+      "substitutionWarning": {
+        "title": "Fonts may differ from your original file.",
+        "body": "The font \"{family}\" was substituted during conversion. For an exact match, export the deck to PDF and upload it."
+      },
+      "openViewer": "Open viewer",
+      "download": "Download",
+      "downloadAudited": "This download will be recorded in the audit log.",
+      "openExternal": "Open link — leaves the platform",
+      "removedByAdmin": "This material was removed."
+    },
+    "upload": {
+      "notice": "This file will be available to every member of the organization on the schedule you choose.",
+      "sizeLimitExceeded": "The file is larger than the allowed limit ({limitMb} MB).",
+      "sniffMismatch": "The file's actual content does not match the declared type — check the file and try again.",
+      "notAuthorized": "You do not have permission to add materials to this session.",
+      "submit": "Upload",
+      "titleLabel": "Material title",
+      "phaseLabel": "Timing",
+      "kindLabel": "Material kind"
+    },
+    "remove": {
+      "action": "Remove",
+      "confirmTitle": "Remove this material?",
+      "reasonLabel": "Reason for removal",
+      "reasonRequired": "A reason for removal is required.",
+      "sessionCompleted": "A presenter cannot remove a material after the session is complete — contact the org admin."
+    }
+  }
+}
