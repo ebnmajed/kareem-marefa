@@ -191,3 +191,115 @@ edit never changes what an old row says produced it (`REQ-PTS-004`).
 `POL-points_ledger.update`, `POL-points_ledger.select`, `POL-points_ledger.idempotency`,
 `POL-leaderboard_entries.select.opt_out`, plus new rows for badges/levels/perks/streaks
 select-only policies (P1/P2 pattern, `03` §5.7).
+
+## Handoff to wave 3
+
+M4 is done: the ledger engine (`0027`–`0033`, `0041`–`0043`, `0047`), the four boards
+(`0044`), the priority RSVP hook (`0045`), and five screens (`SCR-022`, `SCR-027`/`028`,
+`SCR-053`/`054`). `console` inherits `app/admin/{scoring,recognition}/**` at wave 3, the
+same DEC-042 pattern `sessions` handed `console` for the M2 admin screens. What follows is
+what a wave-3 lead would otherwise have to rediscover.
+
+### ⚠️ Four evaluator jobs are built, tested and NOT scheduled
+
+`evaluate_streaks`, `evaluate_badges`, `evaluate_levels_perks` and `snapshot_leaderboards`
+each have a working `security definer` SQL function (`0041`, `0042`), a thin worker task
+(`worker/src/tasks/evaluate_{streaks,badges,levels_perks}.ts`,
+`worker/src/tasks/snapshot_leaderboards.ts`), and RLS tests proving the SQL is correct — but
+none of the four is in `worker/src/index.ts`'s `taskList` or `crontab`, unlike
+`award_points`, `award_presenter_points`, `evaluate_no_shows` and `audit_balances`, which
+are. **Until this is fixed, no badge, level, perk or leaderboard snapshot is ever produced
+by a running worker** — only by a test calling the SQL function directly. This is not a
+design gap, it is an unfinished sync: `worker/src/index.ts` is the lead's file, not mine,
+and the four tasks landed at syncs 6–7 without a matching registration. Fix:
+
+```ts
+import { evaluate_streaks } from "./tasks/evaluate_streaks.js";
+import { evaluate_badges } from "./tasks/evaluate_badges.js";
+import { evaluate_levels_perks } from "./tasks/evaluate_levels_perks.js";
+import { snapshot_leaderboards } from "./tasks/snapshot_leaderboards.js";
+// add all four to taskList, and to crontab:
+// "0 1 * * * evaluate_streaks", "0 1 * * * evaluate_badges",
+// "0 1 * * * evaluate_levels_perks", "0 2 * * * snapshot_leaderboards"
+```
+Run the streaks/badges/levels evaluators before the snapshot (a level or badge earned
+overnight should be reflected in that night's boards) — 1 AM and 2 AM Asia/Riyadh (22:00 and
+23:00 UTC) is one reasonable split; `audit_balances` already runs at `0 0 * * *` (00:00 UTC =
+03:00 Riyadh) for comparison. None of the three evaluators or the snapshot job need to run
+more than nightly — `11` §2.3 says nightly for all four, and `evaluate_levels_perks`'s
+"also on balance change" half (job-key-replace on every `award_points` call) was never built;
+the nightly run is the only trigger that exists today, which is a legitimate reading of `11`
+but worth knowing is the whole of it.
+
+### What `console`'s screens actually do, so a review doesn't relitigate it
+
+- **`/app/admin/scoring` (SCR-053), the catalogue editor**: a plain Supabase table `UPDATE`
+  on `scoring_rules` (`points`, `enabled`, `cap_per_session`, `cooldown`) — no RPC. The
+  version bump and the `scoring_config_history` row are **not** written by the DAL
+  (`src/lib/dal/scoring-admin.ts`); they happen inside `0027`'s
+  `scoring_rules_before_update`/`scoring_rules_history` triggers on the table itself, so
+  they fire no matter what writes the row (this screen, a future API, a one-off fix). Don't
+  add a second version-bump anywhere upstream of the table — the trigger already owns it.
+- **The manual-adjustment form** on the same screen calls `adjust_points_manually(p_member,
+  p_amount, p_reason)` (`0032`) directly via `supabase.rpc()` — `assert_fresh_admin()` inside
+  the RPC is the real gate; the DAL's `assertAdmin()` (`session.role === "admin"`) is only
+  there to 404 the screen early for a non-admin, exactly like `notify`'s reminders screen.
+  The member is identified by raw UUID typed into a text field — there is no member picker
+  or search here. That's a real gap for `console` to close with whatever member-search
+  component `admin/members` ends up building; wiring one in is a UI change, not a new RPC.
+- **The perk toggle** (`/app/admin/recognition`, SCR-054) is a plain `UPDATE` on `perks.enabled`
+  — no RPC, no side effect beyond the column. It is the *only* switch for the priority-RSVP
+  window's very existence (see the promotion decision below) — turning `priority_rsvp` on
+  is a real behaviour change for every future publish, not a cosmetic toggle, and the screen
+  doesn't say so as strongly as it probably should. Worth a copy pass at wave 3.
+- **The manual badge-award form** calls `award_badge_manually(p_member, p_badge, p_reason)`
+  (`0047`) the same way — idempotent on `(member, badge)`, so resubmitting is harmless.
+
+### Two decisions the lead made at promotion that changed my files, and why they matter to whoever edits these tables next
+
+1. **`points_ledger`, `leaderboard_snapshots` and `leaderboard_entries` each got a
+   `before update or delete` trigger that raises for *every* writer, including the table
+   owner** (`points_ledger_append_only`, `leaderboard_snapshot_guard`,
+   `leaderboard_entry_guard`, all in `0027`). My original design only revoked the client
+   roles' grants — correct for `authenticated`/`service_role`, but a `security definer`
+   function (including every RPC in this file) runs as the table owner, and ownership isn't
+   subject to `revoke`. The trigger is what actually makes invariant 9 true. **Each trigger
+   has one exception**: `if tg_op = 'DELETE' and not exists (select 1 from orgs where id =
+   old.org_id) then return old` — an org deletion cascades through, because by the time the
+   cascade reaches these tables the parent `orgs` row is already gone. If you add a new
+   append-only table under this pattern, copy the exception, not just the raise, or cascading
+   deletes on that table will fail loudly instead of proceeding.
+2. **`priority_rsvp` ships `enabled = false`, like `can_host`, and the whole priority-window
+   block in `reserve_seat()` (`0045`) is wrapped in `exists (select 1 from perks where
+   key = 'priority_rsvp' and enabled)`.** My first version shipped the perk enabled by
+   default with a 24-hour window (OQ-012's literal default) — with nobody holding the perk
+   yet, that closed general RSVP for a day after every publish, which broke the M2
+   demonstrable and four wave-1 RSVP tests that reserve immediately at publish. An org turns
+   the window on deliberately by enabling the perk on `/app/admin/recognition`; until then,
+   `reserve_seat()` behaves exactly as it did before M4 existed.
+
+### The M4 fixture baseline (`tests/rls/fixture-m4.ts`, wired into `seed()`, not mine to edit)
+
+Per org, for **`members[0]` only** (never `members[1]`, `mod`, or `admin`): one
+`points_ledger` row (`check_in`, 10 points, `occurred_at` 30 days back so it's outside any
+cooldown, on the `m2.completed` session — `points_balances` for that member reads 10), one
+`member_badges` row (the org's first badge by key), one `streak_awards` row for the current
+month, one `member_perks` row (`priority_rsvp`, regardless of whether the perk is enabled —
+the fixture arranges history directly, it doesn't call `reserve_seat()`), and one **final**
+`all_time` `leaderboard_snapshots` row with a `members[0]` entry (rank 1, 10 points) and a
+company entry (rank 1, 10 points, `points_per_active_member = 3.33`). Every scoring RLS test
+in this repo that asserts an exact count, an exact balance, or "nothing happened yet" for
+`members[0]` must account for this baseline or use a different member — I lost real time to
+this twice before adopting `members[1]` as the default test subject; grep this file's own
+tests for the pattern (`f.a.members[1]`) rather than rediscovering it.
+
+### Everything else that's genuinely settled, not just untested
+
+Seasonal leaderboards (`leaderboard_kind = 'seasonal'`) have no snapshot job wired to them —
+nothing in `02`'s frozen domain model or `org_settings` defines a season's boundaries, so
+there was nothing to schedule. `evaluate_levels_perks`'s never-demote rule and `can_host`'s
+disabled-by-default are both enforced in the SQL function itself, not the screen — a
+`console` UI bug on `/app/admin/recognition` cannot violate either invariant no matter what
+it lets an admin click. The RLS suite's isolation sweep already covers every M4 table
+automatically (it's generated over `pg_tables`); a new M4-adjacent table needs `org_id`, RLS,
+and a policy, and the sweep finds it the same day.
