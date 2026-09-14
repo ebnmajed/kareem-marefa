@@ -155,6 +155,13 @@ test("resetting deletes the row — every consumer returns to the platform defau
 
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows).toEqual([]);
+
+  // The identity override, symmetrically: no row means the SHELL'S OWN CSS
+  // layer stops emitting `.brand-org` altogether (DEC-053 decision 3), so
+  // the heading reverts to the platform default — packages/designer-runtime/
+  // src/brand.ts's LIGHT.fgHeading, #0b1220.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(11, 18, 32)");
 });
 
 test("SCR-059 at 390 px RTL: the branding form reads down the page, never sideways", async ({ context, page }) => {
