@@ -172,3 +172,29 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
 - `src/lib/dal/admin-exports.ts`'s `buildCsv()`/`csvField()` (BOM, RFC 4180 quoting, CRLF records)
   is the shared CSV builder every future export in this track should reuse rather than
   reimplementing — flagged here so bundle 7 finds it before writing a second one.
+
+### Bundle 5 — SCR-050/051/052, and why there are three screens, not one
+
+- **The three-way split, decided here and worth restating if it's ever questioned:** comments
+  have exactly one moderation path (a report — nothing hides a comment instantly the way a photo
+  takedown does), so SCR-050 is the comment report queue. Photos have two, and DEC-005 requires
+  they never merge: SCR-051 is the takedown queue (already hidden, urgent), SCR-052 is the photo
+  report queue (not yet hidden, a different urgency). "Reports" (SCR-052) is therefore
+  photo-specific, not a general inbox — comment reports live entirely on SCR-050.
+- **Two real gaps, both explicitly flagged by earlier waves' own notes for whoever built this UI**
+  (found by reading `content.md` §1.4 and migration `0032`'s own header before writing anything):
+  `remove_photo()` is the RPC `content`'s note called "STORY-EVT-006's RPC, not this schema
+  pass," and `_reverse_photo_points()` is the trigger `scoring`'s note called "the same shape
+  [as `_reverse_comment_points()`] applies the day [photos] does." Both now exist, plus a third
+  gap neither note mentioned: comment removal never wrote an `audit_log` row at all —
+  `comments_audit_staff_actions()` closes it, mirroring `photos_audit_staff_actions()` (`0051`).
+- **`removal_reason` is a new column on both `comments` and `photos`** — REQ-EVT-014's "audited
+  with actor AND REASON" had nowhere to put the reason on either table. Extending `moderateComment()`
+  itself (event's) wasn't an option (not this track's file to edit), so this track's own writes in
+  `admin-moderation.ts` set the column directly, using the `p6_staff_update` grant `0003_moderation.sql`
+  extends to include it.
+- `remove_photo()` also sets `hidden_at` on removal (not just `removed_at`) — `photos_read`'s
+  policy checks `hidden_at`, not `removed_at`, so without this a "removed" photo with `hidden_at`
+  still null would stay visible to ordinary members through the policy itself, with only the DAL's
+  own `.is("removed_at", null)` filter (defence in depth, never the boundary) standing between it
+  and them.
