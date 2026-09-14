@@ -350,15 +350,71 @@ RPC the `sessions` track's own publish flow calls — same "additive DDL on a ta
 not own the app code for" pattern 0037 used for `sessions.search_vector`. It fires on any session
 insert naming a `proposal_id`, so nothing in `sessions`' own RPCs needs to know this exists.
 
-### 4.4 Still outstanding — flagged, not done
+### 4.4 §4.3's own aftershock — a real upload had never been driven through a browser
 
-**No e2e specs and no 390 px RTL screenshots for any story built this session** (materials, the
-viewer, photos, tasks, search/filters, bookmarks, proposal materials). Every story above is proven
-at the unit/component/RLS level only. This is the real gap before a demo — asked the lead whether
-`.next` is fresh before attempting `npm run test:e2e:local`, per the standing rule, rather than
-guessing at build state.
+Writing `tests/e2e/proposal-materials.spec.ts` — the first spec anywhere in this track to drive
+the actual upload form against real local Supabase instead of seeding `materials`/`material_
+versions` directly through SQL — found that no material's own upload could ever complete, for any
+kind, session or proposal. `completeMaterialUpload()` downloads the just-landed object through the
+uploader's own RLS-bound client before `finalize_material_upload()` creates the `material_
+versions` row `materials_storage_read` joins through to decide who may read; no uploader could
+ever pass that join, so the download always failed. `supabase/proposed/content/0010_materials_
+storage_read_preupload.sql` (promoted `0054`) closes it: a read branch mirroring `materials_
+storage_write`'s own shape (checking the path's own `sessions`/`{id}` or `proposals`/`{id}`
+segments against the same authority the write already trusted, no join at all) for exactly the
+pre-finalize window. `tests/e2e/materials.spec.ts` got the same real-upload case added afterward,
+for the ordinary session path. The lesson, worth repeating for whoever reads this later: **a mocked
+Storage client, or seeding rows directly, cannot catch a policy gap in the sequence between two
+real HTTP calls** — only a spec that drives the actual browser flow against the actual database
+found this, and it had been silently broken since STORY-MAT-001.
 
-`worker/src/index.ts`'s `taskList` needs `process_photo` registered alongside `convert_document`/
-`render_pages` — flagged to the lead when EVT-005/006 landed; their own sync commit (`37595b5`)
-suggests this is already done, not independently re-verified here (lead-owned file, never read
-directly by this track).
+### 4.5 Everything closed out
+
+Every e2e spec this track owns is green against real local Supabase, rebuilt and reset past every
+fix above: `tests/e2e/{materials,photos,tasks,proposal-materials,bookmarks}.spec.ts`, 11 cases, run
+serially (`--workers=1`) since a couple depend on timing that heavier parallel load on the shared
+local Postgres made measurably slower without ever being wrong (`tests/e2e/photos.spec.ts`'s own
+takedown case polls the database for `hidden_at` rather than a component's own transient
+confirmation text — `revalidatePath` can legitimately race that text away for a viewer who is not
+staff, since the photo they just hid also drops out of their own list in the same commit). 390 px
+RTL captures for every new screen are under `.qa-shots/rtl/`, looked at: `materials-event-page`,
+`materials-viewer`, `photos-event-page`, `tasks-event-page`, `proposal-materials`,
+`bookmarks-page`. Two more real bugs the captures/specs found on the way, both fixed: a `self-start`
+button with no border/padding inside a `flex-col` can collapse to an unclickable width in
+Chromium (`w-fit` fixes it, applied everywhere the pattern appears in this track's components —
+`f3d8d73`), and the viewer's own font-substitution message was missed when `cc7ee3e` moved every
+other caller of that string to `t.rich()` for its `<bdi>` wrapper (`3af402a`). `npm run
+converter:test` is green (16/16).
+
+## 5. Handoff to wave 3
+
+Every story on the lead's list — MAT-001…006, EVT-005/006, TSK-001/002, DSC-001/002/003, `REQ-PRO-004`
+— is built, tested at every level (`tsc`, lint, unit/component, RLS, e2e against real local
+Supabase), and captured at 390 px RTL. Nothing from this track is left mid-story.
+
+**What a wave-3 owner of this surface should know:**
+
+- **DSC-003/005's live filtering, and a real "bookmark from the list" flow, are not e2e-tested
+  through any actual page** — `<SearchFilters locale />` and `<BookmarkButton>` are components for
+  another track's page to embed (SCR-011, the browse page, is `sessions`'), and neither is wired
+  anywhere as of this handoff. `src/lib/dal/search.ts`'s own contract (the URL param names
+  `q`/`category`/`venue`/`company`/`level`/`language`/`presenter`/`from`/`to`) is what a browse
+  page needs to read and call `searchSessions()` with. Component-level coverage exists
+  (`tests/components/search/filters-form.test.tsx`); a real page rendering it does not yet.
+- **No `JOB-rebuild_search` exists, on purpose** — §4.2 above explains why; nothing here caches a
+  category/company name, so nothing needs rebuilding on a rename.
+- **The `worker/src/content/{paths,exif}.ts` ports are still ports**, not a shared package — §0.1/
+  §4's own note. `tests/unit/storage-paths-parity.test.ts` and the parity block in
+  `tests/unit/storage-exif.test.ts` are what keep the two copies checked-identical; extend both
+  files if either canonical copy (`src/lib/storage/paths.ts`, `src/lib/storage/exif.ts`) grows a
+  new shared shape.
+- **Re-encoding photos to WebP through the converter was deferred (DEC-047)** and never revisited
+  — a real size optimisation, not a correctness gap; the stored bytes keep whatever format was
+  sniffed (jpeg/png/webp) with a matching extension.
+- **Materials/photos "obey every materials rule" for a proposal's own draft** is a property of the
+  shared upload/sniff/limit pipeline (`REQ-PRO-004` reuses `initiateMaterialUpload`/
+  `completeMaterialUpload` wholesale), not of `ProposalMaterials`' own — deliberately minimal —
+  UI, which has no viewer link and no phase/`allow_download` toggle since a draft is never rendered.
+- **The one lesson worth carrying to any future upload-shaped feature**: prove the real sequence —
+  initiate, PUT, complete — against real local Supabase before calling it done. §4.4 is what
+  happens when that step is skipped for three stories in a row.
