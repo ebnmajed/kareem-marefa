@@ -132,6 +132,31 @@
       "queuedNotice": "The sizes were added to the export queue.",
       "retriedNotice": "Retried.",
       "notAuthorized": "Exporting is an org admin's act."
+    },
+    "poster": {
+      "alt": "Poster for <bdi>{title}</bdi>",
+      "pending": "Rendering… <bdi>{ready}</bdi> of <bdi>{total}</bdi>",
+      "none": "This session has no poster yet.",
+      "stale": "The session's details changed — review the poster.",
+      "staleWhy": "This poster is customised, so it is not regenerated automatically: an edit that erases someone's work is worse than a prompt asking them to look.",
+      "picker": {
+        "heading": "Poster",
+        "intro": "Every published session has a poster. The automatic path produces every size with no design work at all.",
+        "auto": "Automatic",
+        "autoHint": "Built from the template and the session's data, and rebuilt whenever the title, time, venue or presenters change.",
+        "customise": "Customise",
+        "customiseHint": "Opens the designer. The first edit detaches the poster from its template, one way: after that it is never regenerated automatically, only flagged when details change.",
+        "upload": "Upload a finished poster",
+        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start: there is no template to regenerate it from.",
+        "openDesigner": "Open the designer",
+        "state": {
+          "auto": "Automatic",
+          "customised": "Customised",
+          "uploaded": "Uploaded"
+        },
+        "live": "Linked to its template",
+        "detached": "Detached"
+      }
     }
   }
 }

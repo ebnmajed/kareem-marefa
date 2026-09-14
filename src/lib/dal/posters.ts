@@ -267,3 +267,88 @@ export async function assetSizesFor(locale: string, document: DesignDocument): P
   }
   return out;
 }
+
+/* ── the session's poster, for the slots (REQ-DSG-001 … REQ-DSG-003) ────── */
+
+export type PosterMode = "auto" | "customised" | "uploaded";
+export type PosterBinding = "live" | "detached";
+
+export interface SessionPosterData {
+  sessionId: string;
+  documentId: string | null;
+  mode: PosterMode;
+  binding: PosterBinding;
+  /** Set when session details moved under a DETACHED poster. The prompt, not
+   *  an overwrite — DEC-012's asymmetry made visible. */
+  staleSince: string | null;
+  /** A signed URL for the variant asked for, when one has rendered. */
+  imageUrl: string | null;
+  /** Every variant's state, for the picker's queue line. */
+  ready: number;
+  total: number;
+}
+
+/** The preset each surface asks for. `og` is 1200×630 and reads at about
+ *  600 px in an email client; a browse card wants the square. */
+export type PosterVariant = "master" | "square" | "og" | "landscape";
+
+/**
+ * The poster for one session. `null` when the session has none — which the
+ * slot renders as nothing rather than as a broken frame, because a session
+ * whose render has not finished is the same to a reader as one with no
+ * poster at all.
+ */
+export async function getSessionPoster(locale: string, sessionId: string, variant: PosterVariant = "master"): Promise<SessionPosterData | null> {
+  const { supabase } = await sessionClient(locale);
+
+  const { data: poster } = await supabase
+    .from("session_posters")
+    .select("session_id, document_id, mode, binding, stale_since")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+  if (!poster) return null;
+
+  const documentId = (poster.document_id as string | null) ?? null;
+  let imageUrl: string | null = null;
+  let ready = 0;
+  let total = 0;
+
+  if (documentId) {
+    // Only the newest fingerprint's artifacts matter: an older one describes
+    // a session that has since changed (REQ-DSG-013).
+    const { data: artifacts } = await supabase
+      .from("export_artifacts")
+      .select("preset, format, status, storage_path, source_fingerprint, rendered_at")
+      .eq("document_id", documentId)
+      .order("rendered_at", { ascending: false });
+
+    const newest = artifacts?.find((a) => a.status === "ready")?.source_fingerprint ?? artifacts?.[0]?.source_fingerprint;
+    const current = (artifacts ?? []).filter((a) => a.source_fingerprint === newest);
+    total = current.length;
+    ready = current.filter((a) => a.status === "ready").length;
+
+    const match = current.find((a) => a.preset === variant && a.status === "ready" && a.storage_path) ?? current.find((a) => a.status === "ready" && a.storage_path);
+    if (match?.storage_path) {
+      const { data } = await supabase.storage.from("exports").createSignedUrl(match.storage_path as string, 300);
+      imageUrl = data?.signedUrl ?? null;
+    }
+  }
+
+  return {
+    sessionId,
+    documentId,
+    mode: poster.mode as PosterMode,
+    binding: poster.binding as PosterBinding,
+    staleSince: (poster.stale_since as string | null) ?? null,
+    imageUrl,
+    ready,
+    total,
+  };
+}
+
+/** DEC-012 / REQ-DSG-003 — the one-way flip, on the admin's first edit. */
+export async function detachPoster(locale: string, sessionId: string): Promise<{ status: "ok" } | { status: "not_authorized" }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("detach_poster", { p_session: sessionId });
+  return error ? { status: "not_authorized" } : { status: "ok" };
+}

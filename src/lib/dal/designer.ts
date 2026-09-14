@@ -4,12 +4,15 @@ import { z } from "zod";
 import {
   type BindingContext,
   type DesignDocument,
+  type BindingOptions,
   declaredBindingsOf,
   type FingerprintSource,
   fingerprintSource,
   platformBrand,
   PRESETS,
   presetsFor,
+  resolveCertificateBindings,
+  resolveSessionBindings,
   validateDocument,
   type ValidationIssue,
 } from "@kareem/designer-runtime";
@@ -87,29 +90,8 @@ type SessionRow = {
   custom_venue_name: string | null;
   custom_venue_address: string | null;
   time_zone: string | null;
+  session_presenters?: { members: { display_name: string } | null; accepted: boolean }[] | null;
 };
-
-/** 06 §2.3's table, resolved from the row the document is bound to. A key that
- *  is absent (not empty) is what makes the canvas draw a marked placeholder. */
-function sessionBindings(row: SessionRow | null, numerals: NumeralSystem, timeZone: string, origin: string): Record<string, string> {
-  if (!row) return {};
-  const out: Record<string, string> = { "session.title": row.title };
-  if (row.abstract) out["session.abstract"] = row.abstract;
-  // The SESSION's time zone, not the org's, when it carries an override
-  // (0010) — a poster printed for a session in another city states that
-  // city's time.
-  if (row.starts_at) out["session.startsAt"] = formatDateTime(row.starts_at, numerals, row.time_zone ?? timeZone);
-  // A session names a venue from the list OR carries a one-off (0010's own
-  // check). Neither is authoritative over the other, so the listed venue wins
-  // only when there is one.
-  const venueName = row.venues?.name ?? row.custom_venue_name;
-  if (venueName) out["session.venueName"] = venueName;
-  const venueAddress = row.venues?.address ?? row.custom_venue_address;
-  if (venueAddress) out["session.venueAddress"] = venueAddress;
-  // Absolute: a phone camera needs a URL, not a path (REQ-DSG-023).
-  out["session.eventUrl"] = `${origin}/ar/app/sessions/${row.id}`;
-  return out;
-}
 
 type CertificateRow = {
   id: string;
@@ -119,19 +101,40 @@ type CertificateRow = {
   recipient_name_snapshot: string;
 };
 
-function certificateBindings(row: CertificateRow | null, numerals: NumeralSystem, timeZone: string, origin: string): Record<string, string> {
+/** The row shape this module reads, mapped onto the runtime's binding
+ *  resolver. The RESOLUTION itself lives in the runtime because the worker
+ *  needs the same answer — a preview that is not the artifact is DEC-017
+ *  failing quietly. */
+function sessionBindings(row: SessionRow | null, options: BindingOptions): Record<string, string> {
   if (!row) return {};
-  const out: Record<string, string> = {
-    // Frozen, not live: a certificate records what was PRINTED, and a member
-    // later changing their display name must not retroactively change a
-    // document someone is holding (REQ-CRT-014).
-    "recipient.name": row.recipient_name_snapshot,
-    "certificate.serial": row.serial,
-    "certificate.verificationCode": row.verification_code,
-    "certificate.verifyUrl": `${origin}/ar/verify/${row.verification_code}`,
-  };
-  if (row.issued_at) out["certificate.issuedAt"] = formatDateTime(row.issued_at, numerals, timeZone);
-  return out;
+  return resolveSessionBindings(
+    {
+      id: row.id,
+      title: row.title,
+      abstract: row.abstract,
+      startsAt: row.starts_at,
+      timeZone: row.time_zone,
+      // A session names a venue from the list OR carries a one-off (0010's
+      // own check); the listed venue wins only when there is one.
+      venueName: row.venues?.name ?? row.custom_venue_name,
+      venueAddress: row.venues?.address ?? row.custom_venue_address,
+      presenters: (row.session_presenters ?? []).filter((p) => p.accepted).map((p) => p.members?.display_name ?? ""),
+    },
+    options,
+  );
+}
+
+function certificateBindings(row: CertificateRow | null, options: BindingOptions): Record<string, string> {
+  if (!row) return {};
+  return resolveCertificateBindings(
+    {
+      serial: row.serial,
+      verificationCode: row.verification_code,
+      issuedAt: row.issued_at,
+      recipientNameSnapshot: row.recipient_name_snapshot,
+    },
+    options,
+  );
 }
 
 /** Every `{{binding}}` a document names. One definition, in the runtime, so
@@ -191,14 +194,15 @@ export async function getDesignerDocument(locale: string, documentId: string, or
       : Promise.resolve({ data: null }),
   ]);
 
+  const bindingOptions: BindingOptions = { numerals, timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
+
   const bindings: Record<string, string> = {
     // The platform theme until wave 4's brand kit supplies the org override
     // (DEC-048 decision 2). The CONTRACT is the same either way — a template
     // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021).
     ...platformBrand("light"),
-    ...(org?.name ? { "org.name": org.name as string } : {}),
-    ...sessionBindings(sessionRow as SessionRow | null, numerals, timeZone, origin),
-    ...certificateBindings(certificateRow as CertificateRow | null, numerals, timeZone, origin),
+    ...sessionBindings(sessionRow as SessionRow | null, bindingOptions),
+    ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),
   };
 
   const templateLayers = (version?.document as { layers?: { id?: string; locked?: boolean }[] } | null)?.layers ?? [];
