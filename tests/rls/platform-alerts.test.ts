@@ -286,10 +286,12 @@ describe("platform — the alert drill (11 §3.2)", () => {
       // Straight into the queue, with a run_at in the past: this is what a
       // degraded LISTEN/NOTIFY looks like (11 §1.2), and it is the only
       // symptom that distinguishes it from a healthy idle worker.
+      // Through add_job(), which CREATES the task row. `_private_tasks` is
+      // empty after a fresh reset until a worker has run, so an insert that
+      // selects a task id inserts nothing and the case proves nothing — the
+      // lead found exactly that in this track's job-health case.
       await tx.q(
-        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
-         select null, t.id, '{}'::json, now() - interval '30 minutes', 25
-           from graphile_worker._private_tasks t limit 1`,
+        `select graphile_worker.add_job('expire_impersonation', '{}'::json, run_at => now() - interval '30 minutes')`,
       );
       expect(await firing(tx)).toEqual(["queue_stalled"]);
 
@@ -344,9 +346,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
         [f.a.id, f.platformAdmin.authUserId],
       );
       await tx.q(
-        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
-         select null, t.id, '{}'::json, now() - interval '30 minutes', 25
-           from graphile_worker._private_tasks t limit 1`,
+        `select graphile_worker.add_job('expire_impersonation', '{}'::json, run_at => now() - interval '30 minutes')`,
       );
       await tx.asServiceRole();
       await tx.q(`select public.write_platform_audit('storage.prefix_violation', null, 'bucket', null, null, '{}'::jsonb, 'drill')`);
