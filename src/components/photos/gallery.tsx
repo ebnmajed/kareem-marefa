@@ -23,7 +23,12 @@ export async function Photos({ sessionId, locale }: SlotProps) {
           <p className="text-body-sm text-fg-muted">{t("count", { count: photos.length, value: formatNumber(photos.length, numerals) })}</p>
           <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {photos.map((p) => (
-              <li key={p.id} className="flex flex-col gap-2 rounded-field border border-edge p-2">
+              // min-w-0: a grid item's default `min-width: auto` keeps it as
+              // wide as its longest unbroken content (the takedown button's
+              // own Arabic phrase) even inside a 2-column track — at 390 px
+              // that forced the whole page to scroll sideways. `min-w-0`
+              // lets the track shrink to the column width and the text wrap.
+              <li key={p.id} className="flex min-w-0 flex-col gap-2 rounded-field border border-edge p-2">
                 {p.url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a signed URL, not a static/optimizable asset
                   <img src={p.url} alt="" className="aspect-square w-full rounded-field object-cover" />
