@@ -1,4 +1,4 @@
--- scoring/0011_award_badge_manually.sql — award_badge_manually() (05 §5.1,
+-- promoted by the lead at wave-2 sync 9 · scoring/0011_award_badge_manually.sql — award_badge_manually() (05 §5.1,
 -- REQ-REC-001, REQ-REC-002). SCR-054's manual half: the `annual` badge's
 -- `rule ->> 'metric' = 'manual'` is deliberately skipped by
 -- evaluate_badges() (0041) — this is the only door it can come through.
