@@ -10,6 +10,7 @@
       "exportRequest": "Request the export",
       "exportDownload": "Download the file",
       "exportAgain": "Request a fresh copy",
+      "rateLimited": "You requested an export in the last twenty-four hours. You can ask for a fresh copy once that window passes.",
       "statusQueued": "Queued. It will be ready in a few minutes.",
       "statusBuilding": "Being built.",
       "statusReady": "Ready.",

@@ -26,6 +26,13 @@ export interface DataExportRequest {
   completedAt: string | null;
   byteSize: number | null;
   error: string | null;
+  /**
+   * REQ-NFR-005, decided here rather than in the screen: reading the clock
+   * during render is an impure call, and a member should learn that the limit
+   * applies BEFORE they press a button, not from an error afterwards. The RPC
+   * enforces it either way — this only tells the truth earlier.
+   */
+  canRequestAgain: boolean;
 }
 
 type ExportRow = {
@@ -53,6 +60,7 @@ export async function getMyExportRequest(locale: string): Promise<DataExportRequ
     completedAt: r.completed_at,
     byteSize: count(r.byte_size),
     error: r.error,
+    canRequestAgain: Date.parse(r.requested_at) < Date.now() - 24 * 60 * 60 * 1000,
   };
 }
 

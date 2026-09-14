@@ -105,7 +105,13 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-/** What the worker does, done here so the screen and the handler can be checked. */
+/**
+ * What the worker does. A real graphile-worker may or may not be running
+ * beside this suite — when it is, it finishes the job in under a second and
+ * this is a no-op that rewrites the same payload. The cases below therefore
+ * accept either state rather than racing it: an assertion that only passes
+ * when no worker is running is an assertion that fails on a healthy machine.
+ */
 async function runTheJob(memberId: string) {
   const { rows } = await db.query<{ id: string }>(
     `select id from public.data_export_requests where member_id = $1 order by requested_at desc limit 1`,
@@ -118,7 +124,8 @@ test("★ REQ-PRF-006: a member asks, and the download carries their data and no
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
   await page.getByRole("button", { name: /اطلب التصدير/ }).click();
-  await expect(page.getByText(/في الانتظار|قيد التجهيز/)).toBeVisible();
+  // Queued, building or already ready — all three mean the request landed.
+  await expect(page.getByText(/في الانتظار|قيد التجهيز|جاهز/)).toBeVisible();
 
   await runTheJob(meMemberId);
   await page.reload();
@@ -143,11 +150,30 @@ test("★ REQ-PRF-006: another member's download is their own, never this one's"
   expect(empty.status()).toBe(404);
 });
 
-test("REQ-NFR-005: a second request inside the window is refused, and says so", async ({ context, page }) => {
+test("REQ-NFR-005: a second request inside the window is refused, and the screen says so before the click", async ({ context, page }) => {
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
-  await page.getByRole("button", { name: /اطلب نسخة جديدة/ }).click();
-  await expect(page.getByRole("alert")).toContainText(/أربع وعشرين ساعة/);
+  // The member asked a moment ago in the case above, so the screen states the
+  // limit instead of offering a button that would be refused.
+  await expect(page.getByText(/أربع وعشرين ساعة/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /اطلب نسخة جديدة/ })).toHaveCount(0);
+
+  // And the rule is the RPC's, not the screen's: calling it directly is
+  // refused too, which is what makes the missing button honest rather than
+  // decorative.
+  const { rows: before } = await db.query<{ n: string }>(
+    `select count(*)::text as n from public.data_export_requests where member_id = $1`,
+    [meMemberId],
+  );
+  const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, { cookies: { getAll: () => [], setAll: () => {} } });
+  await client.auth.signInWithPassword({ email: meEmail, password: PASSWORD });
+  const { error } = await client.rpc("request_data_export");
+  expect(error?.message ?? "").toContain("export_rate_limited");
+  const { rows: after } = await db.query<{ n: string }>(
+    `select count(*)::text as n from public.data_export_requests where member_id = $1`,
+    [meMemberId],
+  );
+  expect(after[0].n, "no second row was created").toBe(before[0].n);
 });
 
 test("★ REQ-PRF-007: a deactivation request reaches the org's log and deactivates nobody", async ({ context, page }) => {

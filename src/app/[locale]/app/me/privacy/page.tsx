@@ -92,10 +92,17 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
           </div>
         ) : null}
 
-        <RequestExportForm
-          label={request ? t("exportAgain") : t("exportRequest")}
-          action={requestExportAction.bind(null, locale as Locale)}
-        />
+        {/* REQ-NFR-005 said before the click, not after it. The RPC refuses a
+            second request inside the window whatever this renders; showing the
+            reason here is the difference between a rule and a rebuke. */}
+        {request && !request.canRequestAgain ? (
+          <p className="mt-6 text-body-sm text-fg-muted">{t("rateLimited")}</p>
+        ) : (
+          <RequestExportForm
+            label={request ? t("exportAgain") : t("exportRequest")}
+            action={requestExportAction.bind(null, locale as Locale)}
+          />
+        )}
       </section>
 
       <section aria-labelledby="deactivate" className="mt-12 max-w-2xl border-t border-edge pt-8">

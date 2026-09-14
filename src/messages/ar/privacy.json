@@ -10,6 +10,7 @@
       "exportRequest": "اطلب التصدير",
       "exportDownload": "نزّل الملف",
       "exportAgain": "اطلب نسخة جديدة",
+      "rateLimited": "طلبت تصديرًا خلال آخر أربع وعشرين ساعة. يمكنك طلب نسخة جديدة بعد انقضائها.",
       "statusQueued": "في الانتظار. سيجهز خلال دقائق.",
       "statusBuilding": "قيد التجهيز.",
       "statusReady": "جاهز.",
