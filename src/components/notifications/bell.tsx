@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { DotIcon } from "@/components/ui/icons";
 import { getUnreadCount } from "@/lib/dal/notifications";
 
 // The shell slot (TEAM.md §2): <NotificationBell memberId locale /> — a
@@ -26,7 +27,11 @@ export async function NotificationBell({ locale, numerals = "western" }: { membe
       aria-label={t("bell.unread", { count: unread, value: formatNumber(unread, numerals) })}
       className="inline-flex h-10 items-center gap-1 rounded-field px-2 text-label md:gap-2 md:px-3 text-fg-body hover:bg-silver-100 hover:text-fg-heading"
     >
-      <span aria-hidden="true">{t("bell.label")}</span>
+      {/* Compact at phone width (the shell must stay one row at 390 px, REQ-SES-013):
+          the house dot glyph carries the link, the label appears from md up; the
+          aria-label above names it for everyone. */}
+      <DotIcon aria-hidden="true" className="h-2 w-2 md:hidden" />
+      <span aria-hidden="true" className="hidden md:inline">{t("bell.label")}</span>
       {unread > 0 ? (
         <span
           aria-hidden="true"
