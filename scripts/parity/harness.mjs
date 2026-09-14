@@ -214,7 +214,15 @@ async function renderDomPath(path) {
   const rects = {}
   for (const c of CASES) {
     const layer = doc.layers.find((l) => l.id === `case-${c.id}`)
-    rects[c.id] = { x: layer.frame.x, y: layer.frame.y, w: layer.frame.w, h: layer.frame.h }
+    // ★ PHYSICAL coordinates, not logical. The renderer positions a layer
+    // with `inset-inline-start`, so in an RTL document `x: 0` is the RIGHT
+    // edge and the box extends leftward. Cropping at the logical x takes the
+    // empty half of the page: three cases came back 0.000% inked against the
+    // real converter, and the two that did not were simply long enough to
+    // spill into the wrong rectangle. Same RTL origin trap DEC-024 already
+    // records twice, in a third disguise.
+    const physicalX = doc.direction === 'rtl' ? doc.master.width - (layer.frame.x + layer.frame.w) : layer.frame.x
+    rects[c.id] = { x: physicalX, y: layer.frame.y, w: layer.frame.w, h: layer.frame.h }
     // The PDF paths produce no per-case raster here — nothing in this
     // process rasterises a PDF — so Tier B is reported as not applicable
     // rather than faked from the screen capture.

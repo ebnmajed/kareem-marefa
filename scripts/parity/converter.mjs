@@ -41,10 +41,16 @@ async function stand(pdf) {
     res.writeHead(404)
     res.end()
   })
-  server.listen(0, '127.0.0.1')
+  // Loopback by default. A converter running in Docker on a Mac cannot reach
+  // the host's 127.0.0.1, so PARITY_CALLBACK_HOST (host.docker.internal, the
+  // same knob converter/test/smoke.mjs calls CALLBACK_HOST) binds all
+  // interfaces and names the host the container should call back. On a
+  // Linux runner both containers share --network host and nothing is set.
+  const callbackHost = process.env.PARITY_CALLBACK_HOST
+  server.listen(0, callbackHost ? '0.0.0.0' : '127.0.0.1')
   await once(server, 'listening')
   const { port } = server.address()
-  return { uploads, base: `http://127.0.0.1:${port}`, close: () => new Promise((r) => server.close(r)) }
+  return { uploads, base: `http://${callbackHost ?? '127.0.0.1'}:${port}`, close: () => new Promise((r) => server.close(r)) }
 }
 
 async function post(base, path, body) {
