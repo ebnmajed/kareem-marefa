@@ -641,3 +641,47 @@ run concurrently and were overwriting each other.
 teammate's run deletes your evidence between taking it and looking at it — three of mine vanished
 between the `ls` that listed them and the read that followed. Captures go to `.qa-shots/rtl/`,
 gitignored the same way, cleared by nothing.
+
+---
+
+## 13. The wave gate: the M2 demonstrable in one walk
+
+`tests/e2e/sessions-screens.spec.ts` now runs the whole chain through the real screens, crossing
+all three wave-1 tracks. Nothing is seeded except the org and its accounts; the only SQL in the walk
+is the clock call, where the SQL *is* the point.
+
+    add a venue → propose → approve → create the session → schedule → publish
+    → reserve a seat → the CLOCK starts it → staff read the code → check in
+    → comment → the ADMIN completes → rate
+
+**Both transition paths on purpose.** The clock starts it, so `JOB-start_session` is proved against
+a real published row and its transition row has a null actor; a person completes it, so
+`REQ-SES-005` is proved and that row names the admin. The two rows side by side are the clearest
+statement of what "the clock moves sessions, not people" means. The console's manual start is shown
+to be *offered* and declined, so that control stays covered.
+
+**Rows asserted:** `rsvps.status` confirmed · `check_ins.method = 'code'` · the comment's
+`author_id` · the rating's stars and its non-null `check_in_id` (`REQ-RAT-001` made structural) ·
+no live code survives completion (`REQ-CHK-004`) · the seven-step transition chain · the seven
+`audit_log` actions in order.
+
+### 13.1 Four races, one false positive, two wrong assertions — all mine
+
+Nothing in the product was wrong. What was wrong is worth writing down because four of the six were
+the same mistake.
+
+**Clicking a Server Action returns immediately, so reading the database on the next line beats the
+write.** Posting a comment, completing the session and submitting a rating each needed the UI to
+confirm first: the composer clearing, «أرشف» appearing, the `?rated=1` redirect.
+
+The comment one hid behind a **false positive worth knowing**: the composer is a *controlled*
+textarea, so React renders the typed text as its DOM child and `getByText` matched the box I had
+just typed into. It passed instantly, waited for nothing, and the row was not there. Scope such an
+assertion to the posted list item, never to the page.
+
+Two assertions were simply wrong about other people's code. A rater still inside the window sees
+«عدّل تقييمك»; «شكرًا على تقييمك» is the *closed-window* state. And I asserted the presenter could
+not see "5" — nonsense, since the average of one rating is 5 and the presenter is meant to see it.
+**The D36 boundary is attribution, not the number.** The check is now that the rater's *name* never
+appears beside the score, scoped to the ratings section, because she also commented and a comment is
+attributed by design (`REQ-EVT-002`).
