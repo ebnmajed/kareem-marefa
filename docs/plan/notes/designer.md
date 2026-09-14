@@ -206,24 +206,45 @@ library is the PLATFORM's, so (1) is the honest home for it. Either way it is
 work that has to happen before a certificate template can be what the
 document says it is.
 
-### 1.3 Two subsets of one family do not merge coverage
+### 1.3 ★ CORRECTED — the unicode-range "fix" was a bug, and I shipped it
 
-`packages/fonts/manifest.json` lists IBM Plex Sans Arabic **twice per weight**,
-once for the Arabic subset and once for the Latin one, with different hashes.
-Declared as two `@font-face` rules with no `unicode-range`, the LAST one wins
-for every character — so a mixed «جلسة عن Next.js 16» loses its Latin to
-whatever the host machine has, which is a different render per machine and
-exactly what D66 forbids.
+**What I claimed in bundle 1, and it was wrong.** `packages/fonts` lists a
+family's Arabic and Latin subsets as two files, and I reasoned that two
+`@font-face` rules with no `unicode-range` cannot merge coverage — the last
+declared wins for every character, so a mixed «جلسة عن Next.js 16» would
+lose its Latin. I added a range to the Arabic face and recorded it as a
+finding.
 
-`ManifestFont.unicodeRange` is now optional on the runtime's face type and
-`fontFaceCss()` emits it when present. The editor sets it on the Arabic face
-(`ARABIC_UNICODE_RANGE`); the parity harness passes manifest entries with no
-range, so its output is byte-identical and the goldens did not move.
+**What is actually true, measured.** With no ranges at all, CSS font
+matching already does the right thing: the last face wins, and WHEN IT LACKS
+THE GLYPH the search continues through the rest of the family before leaving
+it. Adding a range to one subset breaks that continuation — the unranged
+Latin face still matches every character and still wins, but the missing
+Arabic glyph now resolves to a SYSTEM font instead of to the Arabic face
+beside it.
 
-**For DSG-006:** when the worker builds its face CSS, it must build it the
-same way the editor does, which means moving that construction into the
-runtime and giving the harness the ranges too. That will move the goldens,
-and it is a **lead-reviewed diff** (`REQ-DSG-015`), not an `--update` run.
+    «محمد» in IBM Plex Sans Arabic, 40 px
+      no ranges .................. 88.05   the face
+      range on the Arabic subset . 76.02   the system fallback
+
+So the change made Arabic strictly worse everywhere a page declares both
+subsets. It is reverted; `ARABIC_UNICODE_RANGE` is kept only to name what
+was tried, `fontFaceCss` still emits a range when one is asked for, and
+`tests/unit/designer-render.test.ts` now asserts the faces are declared
+plainly.
+
+**Why nothing caught it for two bundles.** The parity harness is insensitive
+either way — pixel diff 0.000 % before and after, both times — so the gate
+that exists precisely to catch font drift could not see this. What found it
+was building the DSG-008 font gate and running it against fonts already in
+the set: three Arabic families that must pass all failed «arabic_coverage».
+`document.fonts.check(…, 'لا')` returns TRUE throughout, because it reports
+whether SOME face in the family can render the character, not which face
+wins — so the harness's own usable-face guard was satisfied the whole time.
+
+**The lesson worth keeping:** a font assertion that is not a COMPARISON
+between two measured strings is not an assertion. Every check in
+`font-gate.ts` is now comparative for this reason.
 
 ### 1.4 Two deployment items for the lead, neither urgent before Launch
 

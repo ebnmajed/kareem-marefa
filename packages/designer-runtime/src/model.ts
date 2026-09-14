@@ -168,9 +168,23 @@ export interface ManifestFont {
   unicodeRange?: string
 }
 
-/** The Arabic subset's range, as Google Fonts publishes it — the editor and
- *  the worker declare the Arabic face over exactly this and let the Latin
- *  face keep everything else. */
+/**
+ * The Arabic subset's range, as Google Fonts publishes it.
+ *
+ * ★ NOT APPLIED, and the reason is measured rather than reasoned. A family
+ * whose Arabic and Latin subsets are two files looks like it needs a range
+ * on each — and giving one to the Arabic face alone makes Arabic WORSE: the
+ * unranged Latin face still matches every character and, being declared
+ * last, still wins, but now the browser resolves the missing glyph to a
+ * SYSTEM font instead of falling back to the Arabic face in the same
+ * family. Measured on IBM Plex Sans Arabic: «محمد» is 88.05 with no ranges
+ * and 76.02 — the system fallback's own width — with the range.
+ *
+ * With no ranges at all, CSS font matching does the right thing by itself:
+ * the last face wins, and when it lacks the glyph the search continues
+ * through the rest of the family before leaving it. So the faces are
+ * declared plainly and this constant is kept only to name what was tried.
+ */
 export const ARABIC_UNICODE_RANGE =
   'U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+200C-200E, U+2010-2011, U+204F, ' +
   'U+2E41, U+FB50-FDFF, U+FE70-FEFF, U+10E60-10E7E, U+1EE00-1EEFF'

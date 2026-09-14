@@ -1,7 +1,6 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ARABIC_UNICODE_RANGE } from "@kareem/designer-runtime";
 import { storagePaths } from "@/lib/storage/paths";
 import { sessionClient } from "@/lib/dal/session";
 
@@ -81,12 +80,10 @@ export interface ManifestFace {
   weight: number;
   style: string;
   sha256: string;
-  /** Set on the Arabic-subset face so the Latin face of the same family keeps
-   *  everything else. Without it the LAST declaration wins for every
-   *  character and a mixed «جلسة عن Next.js 16» loses its Latin to whatever
-   *  the host has — which is a different render per machine, the exact thing
-   *  D66 forbids. */
-  unicodeRange?: string;
+  /** Which subset this file carries. Recorded, not turned into a
+   *  `unicode-range`: see ARABIC_UNICODE_RANGE's comment — ranging one
+   *  subset of a family sends the other's characters to a system font. */
+  script?: string;
 }
 
 export async function listEditorFaces(locale: string): Promise<ManifestFace[]> {
@@ -127,7 +124,6 @@ export async function readPackageManifest(): Promise<ManifestFace[]> {
         weight: f.weight,
         style: f.style,
         sha256: f.sha256,
-        ...(f.script === "arabic" ? { unicodeRange: ARABIC_UNICODE_RANGE } : {}),
       });
     }
     return out;

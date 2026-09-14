@@ -35,7 +35,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
-import { ARABIC_UNICODE_RANGE, renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runtime'
+import { renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runtime'
 import { CASES } from './cases.mjs'
 import { ASSERTIONS, buildDocument, CONTROL_CSS, PATHS } from './paths.mjs'
 import { runConverterPath } from './converter.mjs'
@@ -62,12 +62,9 @@ function facesFor(family) {
     .map((m) => ({
       ...m,
       base64: readFileSync(join(FONTS, m.file)).toString('base64'),
-      // The Arabic subset is narrowed to its own range so the Latin face of
-      // the same family keeps everything else. Without it the LAST
-      // declaration wins for every character and a mixed «جلسة عن Next.js 16»
-      // loses its Latin to whatever the host machine has — a different
-      // render per machine, which is the thing D66 forbids.
-      ...(m.script === 'arabic' ? { unicodeRange: ARABIC_UNICODE_RANGE } : {}),
+      // NO unicode-range, deliberately — see ARABIC_UNICODE_RANGE's own
+      // comment. Declaring one on the Arabic subset alone sends Arabic to a
+      // system font, measured.
     }))
 }
 

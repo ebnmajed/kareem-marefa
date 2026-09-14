@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ARABIC_UNICODE_RANGE } from "@kareem/designer-runtime";
 import { storagePaths } from "@kareem/storage-paths";
 import { downloadObject } from "../content/storage.js";
 
@@ -88,7 +87,6 @@ export async function inlineFaces(rows: readonly ManifestRow[]): Promise<WorkerF
       style: row.style,
       sha256: row.sha256,
       base64: await faceBase64(row.sha256),
-      ...(row.script === "arabic" ? { unicodeRange: ARABIC_UNICODE_RANGE } : {}),
     })),
   );
 }

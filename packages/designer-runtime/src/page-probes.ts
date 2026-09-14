@@ -215,3 +215,30 @@ export function inkedRatio(base64Png: string): Promise<number> {
     img.src = 'data:image/png;base64,' + base64Png
   })
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Probe 3 — advances for a list of strings in one family.
+ *
+ * Self-contained, like the others. Used to gate a newly materialised font
+ * (REQ-DSG-017): the checks in `font-gate.ts` are COMPARATIVE, so they need
+ * several strings measured in the same face rather than one signature.
+ * ──────────────────────────────────────────────────────────────────────── */
+export function advancesBatch(input: { family: string; size: number; texts: string[] }): number[] {
+  const el = document.createElement('div')
+  el.setAttribute('aria-hidden', 'true')
+  el.style.cssText =
+    'position:fixed;top:-10000px;inset-inline-start:0;visibility:hidden;pointer-events:none;' +
+    'white-space:nowrap;letter-spacing:0;overflow:visible;margin:0;padding:0;border:0'
+  el.dir = 'rtl'
+  el.style.fontFamily = "'" + input.family.replace(/[\\'"]/g, '\\$&') + "'"
+  el.style.fontSize = input.size + 'px'
+  document.body.appendChild(el)
+
+  const out: number[] = []
+  for (const text of input.texts) {
+    el.textContent = text
+    out.push(Math.round(el.getBoundingClientRect().width * 100) / 100)
+  }
+  el.remove()
+  return out
+}

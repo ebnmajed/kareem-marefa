@@ -113,16 +113,22 @@ describe("A30 — the typographic invariants are CSS, not advice", () => {
 describe("REQ-DSG-016 — a face is addressed by its bytes", () => {
   const face = { family: "IBM Plex Sans Arabic", weight: 400, style: "normal", sha256: "a".repeat(64) };
 
-  it("declares the Arabic subset over its own unicode-range, so the Latin face keeps the rest", () => {
-    // Without the range the LAST declaration wins for every character, and a
-    // mixed «جلسة عن Next.js» loses its Latin to whatever the host has —
-    // which is a different render per machine.
+  it("★ declares the two subsets of a family PLAINLY, with no unicode-range", () => {
+    // Measured, not reasoned. Ranging the Arabic subset alone makes Arabic
+    // WORSE: the unranged Latin face still matches every character and still
+    // wins, but the missing glyph then resolves to a SYSTEM font instead of
+    // falling back to the Arabic face in the same family. «محمد» goes from
+    // 88.05 to 76.02 — the system fallback's own width.
     const css = fontFaceCss([
-      { ...face, url: "/api/fonts/x" },
-      { ...face, url: "/api/fonts/y", unicodeRange: ARABIC_UNICODE_RANGE },
+      { ...face, url: "/api/fonts/latin" },
+      { ...face, url: "/api/fonts/arabic" },
     ]);
     expect(css.match(/@font-face/g)).toHaveLength(2);
-    expect(css).toContain("unicode-range:U+0600-06FF");
+    expect(css).not.toContain("unicode-range");
+  });
+
+  it("still EMITS a range when one is asked for — the mechanism stays, the policy changed", () => {
+    expect(fontFaceCss([{ ...face, url: "/f", unicodeRange: ARABIC_UNICODE_RANGE }])).toContain("unicode-range:U+0600-06FF");
   });
 
   it("inlines bytes when given base64 and links by hash when given a url — same bytes, different transport", () => {
