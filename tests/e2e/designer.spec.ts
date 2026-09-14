@@ -289,6 +289,7 @@ test("the certificate library is the same screen over the certificate families",
 });
 
 test("SCR-055 at 390 px", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto("/ar/app/admin/templates/posters");
@@ -297,6 +298,7 @@ test("SCR-055 at 390 px", async ({ context, page }) => {
 });
 
 test("SCR-056 at 390 px", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto("/ar/app/admin/templates/certificates");
@@ -385,6 +387,7 @@ test("★ REQ-DSG-024: a locked region cannot be edited, and the screen says why
 });
 
 test("★ SCR-057 at 390 px is VIEW AND APPROVE — no layer editor at all", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/designer/${documentId}`);

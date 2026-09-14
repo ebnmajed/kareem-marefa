@@ -121,18 +121,32 @@ test("an unknown export type 404s", async ({ context, page }) => {
 });
 
 test("SCR-061 at 390 px RTL: the exports list reads down the page, never sideways", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/exports");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await page.evaluate(() => {
+  const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+    // phone project innerWidth already includes no classic scrollbar.)
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    // Second: which element is responsible. An element inside an
+    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+    // tables), and a `position: fixed` overlay spans the visual viewport by
+    // design; neither makes the page scroll, so neither is named.
     const limit = window.innerWidth;
     const offenders: string[] = [];
     for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
       if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
       const box = el.getBoundingClientRect();
       if (box.width === 0) continue;
-      if (box.right > limit + 1 || box.left < -1) offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
     }
     return offenders.slice(0, 6);
   });

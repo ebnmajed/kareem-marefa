@@ -100,14 +100,27 @@ async function review(p: Page, name: string) {
   // document the vertical scrollbar sits on the left, so that difference is the
   // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
   // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
-  const overflow = await p.evaluate(() => {
+  const overflow = await p.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+    // phone project innerWidth already includes no classic scrollbar.)
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    // Second: which element is responsible. An element inside an
+    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+    // tables), and a `position: fixed` overlay spans the visual viewport by
+    // design; neither makes the page scroll, so neither is named.
     const limit = window.innerWidth;
     const offenders: string[] = [];
     for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
       if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
       const box = el.getBoundingClientRect();
       if (box.width === 0) continue;
-      if (box.right > limit + 1 || box.left < -1) offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
     }
     return offenders.slice(0, 6);
   });
@@ -129,6 +142,14 @@ test("REQ-DSC-005: a category filter narrows the results, and its chip clears it
 
   await expect(page.getByText("جلسة الذكاء الاصطناعي التوليدي")).toBeVisible();
   await expect(page.getByText("جلسة إدارة الوقت الفعّالة")).not.toBeVisible();
+
+  // The `phone` project runs every test at a narrow viewport by default
+  // (playwright.config.ts, Pixel 7) — the chip lives inside `<SearchFilters>`,
+  // which on mobile only renders once the bottom sheet is open (09 §4: "not
+  // a sidebar"). The desktop rail shows the same content unconditionally, so
+  // this button is simply absent there — open it only if it exists.
+  const filtersToggle = page.getByRole("button", { name: "الفلاتر" });
+  if (await filtersToggle.isVisible().catch(() => false)) await filtersToggle.click();
 
   // The active filter is visible as a removable chip (content's own
   // filters-form.tsx renders the raw param value, so the chip's own text is
@@ -177,6 +198,7 @@ test("the empty state offers a way back when a filter matches nothing", async ({
 });
 
 test("SCR-011 at 390 px RTL: results read down the page, and the mobile filter sheet opens without sideways scroll", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
@@ -185,14 +207,27 @@ test("SCR-011 at 390 px RTL: results read down the page, and the mobile filter s
   await page.getByRole("button", { name: "الفلاتر" }).click();
   await expect(page.getByRole("dialog", { name: "فلترة الجلسات" })).toBeVisible();
   // Layout-viewport measurement, as above (TEAM.md §5).
-  const overflow = await page.evaluate(() => {
+  const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+    // phone project innerWidth already includes no classic scrollbar.)
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    // Second: which element is responsible. An element inside an
+    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+    // tables), and a `position: fixed` overlay spans the visual viewport by
+    // design; neither makes the page scroll, so neither is named.
     const limit = window.innerWidth;
     const offenders: string[] = [];
     for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
       if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
       const box = el.getBoundingClientRect();
       if (box.width === 0) continue;
-      if (box.right > limit + 1 || box.left < -1) offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      if (box.right <= limit + 1 && box.left >= -1) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+      }
+      if (contained) continue;
+      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
     }
     return offenders.slice(0, 6);
   });
