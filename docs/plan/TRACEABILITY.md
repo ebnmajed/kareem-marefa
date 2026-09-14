@@ -157,7 +157,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-005` | `ENT-design_documents` | `POL-design_template_versions.guard` | `SCR-057` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-006` | `ENT-design_documents` | — | `SCR-057` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-007` | `ENT-design_template_versions` `ENT-design_templates` | `POL-design_template_versions.read` | `SCR-055` | — | — | `STORY-DSG-004` | M6 |
-| `REQ-DSG-008` | `ENT-brand_kits` `ENT-design_template_versions` `ENT-design_templates` +1 | `POL-design_templates.update.platform` | `SCR-005` `SCR-055` `SCR-057` +4 | — | — | `STORY-DSG-004` | M6 |
+| `REQ-DSG-008` | `ENT-brand_kits` `ENT-design_template_versions` `ENT-design_templates` +1 | `POL-design_templates.update.platform` | `SCR-005` `SCR-055` `SCR-057` +4 | `JOB-evaluate_alerts` | — | `STORY-DSG-004` | M6 |
 | `REQ-DSG-009` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-010` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-011` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
@@ -206,7 +206,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-INT-003` | — | — | — | — | — | `STORY-INT-002` | M1 |
 | `REQ-INT-004` | — | — | — | — | — | `STORY-INT-001` | M1 |
 | `REQ-INT-005` | — | — | — | — | — | `STORY-INT-003` | M1 |
-| `REQ-INT-006` | — | — | `SCR-063` | — | `MSG-presenter_assigned` `MSG-proposal_submitted` +1 | `STORY-INT-003` | M1 |
+| `REQ-INT-006` | — | — | `SCR-063` `SCR-083` | `JOB-evaluate_alerts` | `MSG-presenter_assigned` `MSG-proposal_submitted` +1 | `STORY-INT-003` | M1 |
 | `REQ-INT-007` | — | — | `SCR-012` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-008` | — | — | — | — | — | `STORY-INT-004` | M1 |
 | `REQ-INT-009` | `ENT-fonts` | — | — | — | — | `STORY-INT-004` | M1 |
@@ -288,8 +288,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-020` | — | — | `STORY-PRF-002` | M1 |
 | `REQ-PRF-005` | — | — | `SCR-019` | — | — | `STORY-PRF-003` | M2 |
-| `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-021` `SCR-080` +1 | `JOB-build_data_export` `JOB-expire_impersonation` | — | `STORY-PRF-004` | M8 |
-| `REQ-PRF-007` | — | — | `SCR-021` | `JOB-anonymise_members` `JOB-enforce_retention` | — | `STORY-PRF-004` | M8 |
+| `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-021` `SCR-080` +1 | `JOB-build_data_export` `JOB-evaluate_alerts` +1 | — | `STORY-PRF-004` | M8 |
+| `REQ-PRF-007` | — | — | `SCR-021` `SCR-083` | `JOB-anonymise_members` `JOB-enforce_retention` +1 | — | `STORY-PRF-004` | M8 |
 
 ### PRO
 
