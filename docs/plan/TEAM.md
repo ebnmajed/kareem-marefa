@@ -223,6 +223,10 @@ Every few hours, or when a teammate says "ready for sync":
 - **A teammate's promotion file may reference a column the DTO lacks.** CI's build is the only
   gate that sees a committed component reading a property only an uncommitted DAL adds; a
   teammate commits the DAL and the component together, always.
+- **`npm run test:e2e:unconfigured` replaces `.next` with the UNCONFIGURED build**, which answers
+  404 on every platform route by design (DEC-038). Run it last, and `npm run build` again before
+  any `test:e2e:local`: a suite that suddenly fails 68 of 101 cases with «الصفحة غير موجودة» on
+  every signed-in page, with Kong and auth healthy and no server error, is serving that build.
 - **The M5 pipeline had never run for real before wave 3.** A converter and a worker container on
   the local Supabase network, two real decks, one hour: nothing was wrong, and now that is known
   rather than hoped. Run every image-backed pipeline once against local Supabase before the wave

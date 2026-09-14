@@ -165,7 +165,7 @@ test("REQ-CHK-012: the summary counts and the per-member table are correct", asy
   await expect(ddFor("معدّل الحضور")).toHaveText("100٪");
 
   await expect(page.getByText("حاضر مسجَّل")).toBeVisible();
-  await expect(page.getByText("بانتظار الحجز")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "بانتظار الحجز" })).toBeVisible();
   await expect(page.getByText("رمز الحضور")).toBeVisible();
 });
 
@@ -179,7 +179,8 @@ test("REQ-CHK-008: a manual mark records a check-in with the manual method, and 
 
   await page.getByLabel("السبب").fill("حضر ولم يُسجَّل رمزه");
   await page.getByRole("button", { name: "سجّل حضوره" }).click();
-  await expect(page.getByText("تسجيل يدوي").first()).toBeVisible();
+  // The method column says «يدوي» on the marked member's row (the code path says «رمز الحضور»).
+  await expect(page.getByRole("row", { name: /بانتظار الحجز/ }).getByRole("cell", { name: "يدوي", exact: true })).toBeVisible();
 
   const { rows } = await db.query<{ method: string; manual_reason: string }>(`select method, manual_reason from public.check_ins where session_id = $1 and member_id = $2`, [
     sessionId,

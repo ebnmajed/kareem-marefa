@@ -33,7 +33,10 @@ export function ManualMarkForm({
         <label htmlFor="manual-member" className="text-label text-fg-heading">
           {t("memberLabel")}
         </label>
-        <select id="manual-member" name="memberId" required defaultValue="" className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading">
+        {/* `key`: React's form reset restores a <select> to its options' original
+            `selected` state, so a new defaultValue alone does not re-select the
+            member the admin chose; remounting with the echoed value does. */}
+        <select key={`member-${state.memberId ?? ""}-${state.error ?? ""}`} id="manual-member" name="memberId" required defaultValue={state.memberId ?? ""} className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading">
           <option value="" disabled>
             {t("memberPlaceholder")}
           </option>
@@ -51,7 +54,8 @@ export function ManualMarkForm({
         <textarea
           id="manual-reason"
           name="reason"
-          required
+          aria-required="true"
+          defaultValue={state.reason ?? ""}
           rows={2}
           maxLength={300}
           className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"

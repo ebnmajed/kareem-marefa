@@ -204,7 +204,12 @@ test("the Materials slot shows the substitution warning on the material, and lin
   await expect(page.getByText("Amiri")).toBeVisible();
   await review(page, "materials-event-page");
 
-  await page.getByRole("link", { name: "فتح العارض" }).click();
+  // Phone emulation keeps re-scrolling this long page while Playwright waits
+  // for the link to hold still (TEAM.md §5); the tap is dispatched to the
+  // (visible) link and the viewer page below is the assertion that matters.
+  const open = page.getByRole("link", { name: "فتح العارض" });
+  await expect(open).toBeVisible();
+  await open.dispatchEvent("click");
   await expect(page).toHaveURL(new RegExp(`/materials/${materialId}$`));
 });
 
@@ -213,6 +218,11 @@ test("★ REQ-MAT-003/010: the viewer's arrows follow the RTL reading direction 
   await signIn(context, memberEmail);
   await page.goto(`/ar/app/sessions/${sessionId}/materials/${materialId}`);
   await expect(page.getByTestId("page-indicator")).toHaveText(/1.*3/);
+  // The arrows are a window keydown handler attached on hydration; a key
+  // pressed before the client bundle has run is lost (deterministic on the
+  // desktop project since the event page grew heavier in wave 3). Wait for
+  // the network to settle — hydration included — before the first press.
+  await page.waitForLoadState("networkidle");
 
   await page.keyboard.press("ArrowLeft"); // RTL: left = forward
   await expect(page.getByTestId("page-indicator")).toHaveText(/2.*3/);
