@@ -130,17 +130,28 @@ test.beforeAll(async ({}, testInfo) => {
 
   // An unbound poster document: the editor opens it and every dynamic field
   // is a marked placeholder, which is REQ-DSG-006's own case.
+  // Bound to the platform template's version, so `lockedLayerIds` comes
+  // from the template — the path `design_documents_guard` actually enforces
+  // — rather than only from the layer's own flag.
+  const { rows: version } = await db.query<{ id: string }>(
+    `select id from public.design_template_versions where template_id = $1 order by version desc limit 1`,
+    [platformTemplateId],
+  );
   const { rows: doc } = await db.query<{ id: string }>(
-    `insert into public.design_documents (org_id, purpose, document) values ($1, 'poster', $2::jsonb) returning id`,
-    [orgId, JSON.stringify(DOC)],
+    `insert into public.design_documents (org_id, purpose, document, template_version_id) values ($1, 'poster', $2::jsonb, $3) returning id`,
+    [orgId, JSON.stringify(DOC), version[0].id],
   );
   documentId = doc[0].id;
 });
 
 test.afterAll(async () => {
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
-  if (platformTemplateId) await db.query(`delete from public.design_templates where id = $1`, [platformTemplateId]);
+  // The ORG first. Its documents pin the platform template's version with
+  // ON DELETE RESTRICT — a version that produced an artifact must outlive
+  // it (REQ-CRT-014) — so deleting the template before the org that
+  // references it is refused, and the cleanup leaves rows behind.
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
+  if (platformTemplateId) await db.query(`delete from public.design_templates where id = $1`, [platformTemplateId]);
   await db.end();
 });
 
@@ -308,7 +319,20 @@ test("SCR-056 at 390 px", async ({ context, page }) => {
 
 /* ── SCR-057 ────────────────────────────────────────────────────────────── */
 
+// THE EDITOR IS A DESKTOP SCREEN, and the phone project cannot show it.
+//
+// `devices["Pixel 7"]` sets `isMobile: true`, so Chromium emulates a mobile
+// viewport and `setViewportSize` does not widen the CSS viewport — the `xl`
+// breakpoint never applies however large the window is told to be. That is
+// not a limitation to work around: SCR-057's mobile view is VIEW AND APPROVE
+// (09), the layer list and the properties panel genuinely do not exist
+// there, and a locked-region notice explaining a refused edit has no edit to
+// explain. So the editor's own cases run on the desktop project and the
+// phone project asserts the absence instead, in the 390 px case below.
+const editorOnly = () => test.skip(test.info().project.name === "phone", "SCR-057's editor is desktop-only (09); the phone case asserts its absence");
+
 test("★ REQ-DSG-006: the designer previews with real data, and an unbound field is a MARKED placeholder", async ({ context, page }) => {
+  editorOnly();
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/designer/${documentId}`);
@@ -345,6 +369,7 @@ test("★ REQ-DSG-006: the designer previews with real data, and an unbound fiel
 });
 
 test("★ the autosave is a real PUT, and the layer tree survives a reload", async ({ context, page }) => {
+  editorOnly();
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/designer/${documentId}`);
@@ -374,6 +399,7 @@ test("★ the autosave is a real PUT, and the layer tree survives a reload", asy
 });
 
 test("★ REQ-DSG-024: a locked region cannot be edited, and the screen says why", async ({ context, page }) => {
+  editorOnly();
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/designer/${documentId}`);

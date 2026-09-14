@@ -98,6 +98,16 @@ export function DesignerEditor(props: DesignerEditorProps) {
   // (DEC-047's lesson, in a place no catalogue guard could see). So the
   // label is composed from an untagged key, and the renderer bidi-isolates
   // the result itself.
+  /** Locked by the TEMPLATE, or by the layer's own flag. The database
+   *  enforces the first (design_documents_guard compares against the pinned
+   *  version); the second is the document's own statement, and ignoring it
+   *  would make `locked: true` decoration — an uploaded poster's single
+   *  locked layer could then be dragged. */
+  const isLocked = useCallback(
+    (layerId: string) => props.lockedLayerIds.includes(layerId) || document.layers.some((l) => l.id === layerId && l.locked === true),
+    [document.layers, props.lockedLayerIds],
+  );
+
   const placeholderLabel = useCallback((binding: string) => `${tb("unbound")} · ${binding}`, [tb]);
 
   // The SAME faces the canvas loads, declared in this document too, because
@@ -228,7 +238,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   const patchLayer = useCallback(
     (layerId: string, patch: Partial<Layer>) => {
-      if (props.lockedLayerIds.includes(layerId)) return setSave({ kind: "locked", layerId });
+      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
       // Alignment guides, applied to a TYPED frame. 06 §10 wants guides and
       // snapping; dragging is REQ-DSG-022's and is deliberately absent, so
       // the guides act where frames are actually edited. They are LOGICAL
@@ -247,15 +257,15 @@ export function DesignerEditor(props: DesignerEditorProps) {
           : patch;
       mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? ({ ...l, ...snapped } as Layer) : l)) });
     },
-    [document, mutate, props.lockedLayerIds],
+    [document, mutate, isLocked],
   );
 
   const toggleHidden = useCallback(
     (layerId: string) => {
-      if (props.lockedLayerIds.includes(layerId)) return setSave({ kind: "locked", layerId });
+      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
       mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? { ...l, hidden: !l.hidden } : l)) });
     },
-    [document, mutate, props.lockedLayerIds],
+    [document, mutate, isLocked],
   );
 
   const selected = useMemo(() => document.layers.find((l) => l.id === selectedLayerId) ?? null, [document.layers, selectedLayerId]);
@@ -426,7 +436,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             selectedLayerId={selectedLayerId}
             onSelect={setSelectedLayerId}
             onToggleHidden={toggleHidden}
-            lockedLayerIds={props.lockedLayerIds}
+            lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
             canEdit={props.canEdit}
             numerals={props.numerals}
           />
@@ -449,7 +459,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             <PropertiesPanel
               document={document}
               layer={selected}
-              locked={selected ? props.lockedLayerIds.includes(selected.id) : false}
+              locked={selected ? isLocked(selected.id) : false}
               canEdit={props.canEdit}
               onChange={patchLayer}
               fontFamilies={fontFamilies}
