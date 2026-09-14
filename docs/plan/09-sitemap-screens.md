@@ -470,6 +470,10 @@ visible to a super admin anywhere in this console.
 constraint).
 **States:** none active · active (a **persistent banner across every screen**: «أنت تتصفح كـ …»
 with a stop control) · expired
+**Amended under DEC-055 (wave 4):** an impersonation session carries no `member_id` (`02` §4.1), so the
+platform sends it to `/no-access` on every member screen this wave; the banner is persistent on the
+platform screens and on `/no-access`, which is everywhere such a session can be. Browsing the org's
+screens needs a fourth session state in `session.ts` — the next wave's (DEC-055 decision 3, option A).
 **Note:** ★ the record lands in **that org's own audit log**, where its admins can see it
 (`REQ-ADM-019`). The honest consequence, which this screen states to the super admin before they
 start: **you cannot look at an org's data without the org knowing.** That is the intended property

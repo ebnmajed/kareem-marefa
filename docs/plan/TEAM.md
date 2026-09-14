@@ -308,6 +308,24 @@ Every few hours, or when a teammate says "ready for sync":
   rather than hoped. Run every image-backed pipeline once against local Supabase before the wave
   that builds on it.
 
+**Learned in wave 4 (DEC-055):**
+
+- **A reset leaves Kong pointing at the old Auth container.** Every `/auth/v1` call answers 502 and
+  an e2e dies in `beforeAll` on `createUser()` with "invalid response from the upstream server"
+  while the RLS suite (direct Postgres) stays green. `npm run db:reset` now probes
+  `/auth/v1/health` through Kong afterwards and restarts Kong once on a 502; a teammate that sees the
+  502 tells the lead rather than restarting anything.
+- **The brand override is composed at request time, before the fingerprint** — never at render time.
+  The worker renders pinned bindings (`0060`); a value merged at render time is a value the cache key
+  never saw.
+- **A lead's fixture row fires a teammate's history trigger.** Per-policy cases that count from zero
+  clear their own tables — and their history — in `setup()`; the sweep's non-vacuity rows are the
+  lead's.
+- **`(f()).*` calls a composite-returning plpgsql function once per column**; an RLS case against a
+  composite RPC uses `select * from f()`.
+- **A budget the framework's own baseline cannot meet is a plan number, not a gate.** Measure first;
+  enforce no-regression against a committed baseline; send the absolute numbers back to the plan.
+
 ## 4. The spawn prompt for the lead
 
 Paste this into a fresh Claude Code session in the checkout. The lead runs whatever model the
