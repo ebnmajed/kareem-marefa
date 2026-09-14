@@ -2,7 +2,7 @@
 // (verbatim), DEC-005, REQ-EVT-009…014 (schema half). Applied with
 // applyProposed() inside each test's rolled-back transaction (DEC-040).
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
@@ -256,6 +256,33 @@ describe("reports.photo_id", () => {
 
       await tx.as(f.a.mod.claims);
       expect((await tx.q(`select id from public.reports where id = $1`, [report.id])).length).toBe(1);
+    });
+  });
+});
+
+describe("RPC-photo_takedowns_hide.notifies", () => {
+  it("inserting a takedown writes an in-app MSG-photo_hidden notification to the uploader, never naming the requester", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const photoId = await insertPhoto(tx, f.a.id, f.m2.a.published, f.a.members[1].memberId, "8".repeat(64));
+      await applyProposed(tx, "content/0002_photo_hidden_notify.sql");
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3)`, [f.a.id, photoId, f.a.members[0].memberId]);
+
+      await tx.as(f.a.members[1].claims); // the uploader — p7_self_read
+      const rows = await tx.q<{ key: string; payload: { photo_id: string; session_id: string; requester_id?: string } }>(
+        `select key, payload from public.notifications where member_id = $1 and key = 'MSG-photo_hidden'`,
+        [f.a.members[1].memberId],
+      );
+      expect(rows.length).toBe(1);
+      expect(rows[0].payload.photo_id).toBe(photoId);
+      expect(rows[0].payload.session_id).toBe(f.m2.a.published);
+      expect(rows[0].payload.requester_id).toBeUndefined();
+
+      // The requester (members[0]) gets no notification of their own request.
+      await tx.as(f.a.members[0].claims);
+      expect(await tx.q(`select id from public.notifications where member_id = $1 and key = 'MSG-photo_hidden'`, [f.a.members[0].memberId])).toEqual([]);
     });
   });
 });
