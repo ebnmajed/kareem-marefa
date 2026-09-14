@@ -29,8 +29,8 @@
         "intro": "هذا الجدول قراءة مباشرة من إعدادات مؤسستك — إن تغيّرت قيمة، تظهر هنا فورًا.",
         "disabled": "غير مُفعَّل حاليًا",
         "noCap": "بلا حد لكل جلسة",
-        "cap": "{count, plural, zero {بلا حد لكل جلسة} one {مرة واحدة لكل جلسة} two {مرتان لكل جلسة} few {# مرات لكل جلسة} many {# مرة لكل جلسة} other {# مرة لكل جلسة}}",
-        "pointsValue": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {# نقاط} many {# نقطة} other {# نقطة}}"
+        "cap": "{count, plural, zero {بلا حد لكل جلسة} one {مرة واحدة لكل جلسة} two {مرتان لكل جلسة} few {{value} مرات لكل جلسة} many {{value} مرة لكل جلسة} other {{value} مرة لكل جلسة}}",
+        "pointsValue": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}}"
       },
       "strip": {
         "cta": "عرض سجل نقاطي كاملاً"
