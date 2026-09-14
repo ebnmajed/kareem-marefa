@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-3/m6-m7` (**draft PR #14** → `main`) · **`main` @ `6f6a7f2`:** M1 live, M2–M5 complete · **Phase:** **wave 3 (M6 · M7-console) IN PROGRESS — four sync points, `0055`–`0060` promoted; CI back on `eb4f0d0` after the owner made the repository public (sync 5)**
+**Last updated:** 2026-09-14 · **Branch:** `wave-3/m6-m7` (**draft PR #14** → `main`) · **`main` @ `6f6a7f2`:** M1 live, M2–M5 complete · **Phase:** **wave 3 (M6 · M7-console) COMPLETE on the branch — twelve sync points, migrations `0055`–`0066`, both demonstrables run on the real images; next session is the wave-4 lead after the owner merges**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -145,7 +145,54 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## Wave 3 (M6 · M7-console) — IN PROGRESS on `wave-3/m6-m7` (draft PR #14)
+## Wave 3 (M6 · M7-console) — COMPLETE on `wave-3/m6-m7` (PR #14, the owner merges)
+
+**Both demonstrables hold locally, run against the real images, not reasoned about:**
+
+- **M6** — `scratchpad/m6-demo.sh` (sync 12): `publish_session()` as an admin → **every A12 variant** (12 artifacts: master, square, story, landscape, og × png + webp, A4 and A3 PDF) ready with Tier A; `detach_poster()` → detached/customised and a later title change marks the poster **stale with nothing re-rendered**; a checked-in attendee and the completion edge → attendance and presenter certificates with **consecutive serials from the locked counter** (`MDM-2026-000001/2`, `next=3`), six certificate artifacts (landscape PNG, landscape and portrait PDF each) ready with Tier A; `verify_certificate(code)` as `anon` → the A13 fields, **`verify_certificate(serial)` → not found**. The parity suite: **28 of 28** with the converter, 21 loudly-skipped without. **Owner's manual check at Launch:** scan both QRs on paper at print size — nothing here has ever decoded one of its symbols (`notes/designer.md` §3), beside notify's open-the-ICS-in-Outlook.
+- **M7** — `tests/e2e/second-org.spec.ts`: ★ a second org stands up with its own admins, members and sessions; each admin walks the dashboard, members, sessions, categories, the audit log, browse and pulls the members export and **sees nothing of the other**; a member of A opening B's session by id gets the not-found boundary; the RLS isolation sweep stays the per-table proof. The moderator scope is a policy (`REQ-ADM-020`): the moderator's `/admin/sessions` view carries no scheduling control because the function that lists them is never called on that path, and the RLS cases call the scheduling and scoring RPCs as a moderator and get `42501`.
+
+### Shipped
+
+Migrations **`0055`–`0066`** (12; `supabase/proposed/` empty) · SCR-011 (browse, never built in wave 1), the admin shell `admin/layout.tsx`, SCR-040, 042 (moderator view), 044 + CSV, 047, 048, 049, 050/051/052, 055, 056, 057, 061, 062, 063, 045, 006 (`/verify/[code]`), 023 (`/app/me/certificates`), the RTL date-time picker on SCR-043, the member picker on SCR-053, `08`'s fourth reminder message, the four designer slots wired by the lead · DAL modules `admin-dashboard`, `admin-lists`, `admin-members`, `admin-moderation`, `admin-exports`, `admin-audit`, `admin-settings`, `designer`, `templates`, `posters`, `certificates`, `fonts` · worker tasks `render_variant`, `regenerate_poster`, `materialise_font`, `issue_certificates` · `@kareem/storage-paths` · the font set at 21 faces / 12 TrueType (Reem Kufi, Amiri) · the worker image with Chromium, the runtime and the fonts by hash, the parity harness running inside it in CI with the converter beside it · message namespaces `browse`, `designer`, `templates`, `certificates` (Arabic first) · **DEC-048, DEC-049, DEC-050**.
+
+### Definition of done on `8e2c4ad`
+
+| Check | Result |
+|---|---|
+| `npm run db:reset` | ✅ `0001`–`0066` (with the queue schema reinstalled) |
+| `npm run test:rls` | ✅ **626 passed / 4 todo, 55 files**, the sweep over every table incl. the twelve wave-3 ones |
+| `npm run policy-diff` | ✅ |
+| `node scripts/traceability.mjs` | ✅ 251 / 64 / 112, no gaps, matrix current |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run lint` | ✅ 0 errors (17 warnings, all pre-existing `eslint-disable` directives) |
+| `npm test` (unit + components) | ✅ **481 passed, 58 files** |
+| `npm run worker:build` · `fonts:check` · `converter:test` | ✅ · ✅ **21 faces / 12 TTF**, build matches · ✅ 16/16 on the rebuilt image |
+| `npm run parity` with the converter | ✅ **28 of 28 assertions, 7 cases × 4 paths**; in the worker image without it: 21 of 28, skipped loudly |
+| `npm run build` | ✅ |
+| `npm run qa` | ✅ **44/44** |
+| `npm run visual compare m0-final wave3-final` | ✅ **0.000%** on all six captures |
+| `npm run test:e2e:local` | ✅ **218 passed / 23 skipped by design / 1 flaky** (two workers, both profiles; every wave-1, 2 and 3 spec, the three demonstrables and `second-org` included) — the one failure is `event-comments` "a reply-less comment vanishes", the refresh race `comment-list.tsx` documents; **6/6 alone**. The gate run before the last four fixes was 207 / 22 / 4 |
+| `npm run test:e2e:unconfigured` | ✅ 16 passed, 226 skipped by design — **run last: it replaces `.next`; rebuild after** |
+| CI on PR #14 | ✅ **all 11 jobs green on `8e2c4ad`** (run 34868589043, the gate commit; the worker job ran 28/28 with the converter beside the image); the STATUS commit after it is docs only |
+| 390 px RTL captures, looked at | ✅ console 12 · designer 13 (`.qa-shots/rtl/`); two to retake (handoff item 9) |
+
+### Handoff for the wave-4 lead (`platform` M8 · `branding` M7-branding, TEAM.md §1)
+
+1. **Read** `DECISIONS.md` DEC-048 … DEC-050, `TEAM.md` §3 and §5 (grown this wave), and the two handoff sections: `docs/plan/notes/designer.md` §2–§3 and `console.md` "Bug-fix pass" onward.
+2. **The brand kit is a token contract, not a screen.** `designer` resolves `{{brand.*}}` from the platform defaults (`packages/designer-runtime/src/brand.ts`); `branding` supplies the org override through `src/lib/brand/**` and SCR-059 — the four consumers of `06` §8.3 (`@theme`, the org kit, templates, email). The baseline library (`0061`) binds by token, never hex; a template version with a hex literal is refused by `0055`'s guard.
+3. **Render concurrency is 1** (a named graphile-worker queue is serial; `worker/src/index.ts`'s comment). Two is two queue names chosen by hash in `request_render()`, a `11` §1.4 decision for the wave that measures a need.
+4. **`public.fonts` is revoked from `service_role`**; the worker reads it as the owner. A job that runs as `service_role` would need the grant.
+5. **Widen `proxy.ts`'s `isPlatformPath`** to public platform routes: `/verify/[code]` served a 500 on the unconfigured live site until `designer` made the page answer `notFound()` itself; the predicate is the honest fix and it is the lead's file.
+6. **The M2 e2e drives a picker now** (`sessions-screens.spec.ts`), and the 390 px review is phone-only everywhere with the scroller-aware helper; copy that helper, never `scrollWidth - clientWidth`.
+7. **Launch inputs** (unchanged from wave 2, plus): the Google OAuth client and its secret on Vercel; the Resend account; the worker host with a session-mode connection, `CHROME_PATH` is in the image, `CONVERTER_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; **`@kareem/fonts` is a root dependency** so Next's tracer ships the package; the QR scan and the ICS-in-Outlook checks are the owner's.
+8. **The fixtures** `tests/rls/fixture-m6.ts` seed every M6 table on both orgs; `rpcs.test.ts`'s `no_match` scopes its audit count to the transaction — do the same for any global emptiness check.
+9. **Two captures to retake** after the next build: `scr-023-certificates` and `scr-045-certificates` show the markup before `ca10bd8`'s break-all fix (the fix is in the tree and the build; the shots were taken before it).
+10. `.next` on disk is the wave-final build; `npm run db:reset` (with the reset lock, teammates down) before any RLS run.
+
+### The wave as it ran
+
+## Wave 3 (M6 · M7-console) — the sync log on `wave-3/m6-m7`
 
 **Owner's decisions (2026-09-14, DEC-048):** the designer engine stays DOM/SVG with headless-Chromium
 exports as the parity harness proves (D66, A28); the console half that needs templates waits for
@@ -644,10 +691,10 @@ unaffected.
 
 ## Next session should
 
-1. **Wait for the owner to merge PR #13** (`wave-2/m3-m4-m5` → `main`); nothing is merged by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
-2. Be the **wave-3 lead** (`designer` M6 · `console` M7-console, TEAM.md §1): read this file, `CLAUDE.md`, `DECISIONS.md` DEC-046/DEC-047, `TEAM.md` §3 and §5, and the three handoff sections named under *Handoff for the wave-3 lead* above.
-3. **Before spawning anyone:** build SCR-011 (`/app/sessions`, browse) or assign it as `console`'s first story, and wire `SearchFilters`/`BookmarkButton` onto it; turn the path-builder port into `@kareem/storage-paths` (a lockfile regeneration); decide whether the M6 image work (Chromium + fonts in `worker/Dockerfile`) goes first.
-4. **Run the M5 pipeline once for real** — converter image + worker against local Supabase with the three variables — before M6 builds on `material_pages`; the steps are in `docs/plan/notes/content.md` §4.
-5. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. Launch inputs are listed above.
-6. `.next` on disk is the wave-final configured build; `npm run db:reset` before any RLS run.
+1. **Wait for the owner to merge PR #14** (`wave-3/m6-m7` → `main`); nothing is merged by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
+2. Be the **wave-4 lead** (`platform` M8 · `branding` M7-branding, TEAM.md §1): read this file, `CLAUDE.md`, `DECISIONS.md` DEC-048 … DEC-050, `TEAM.md` §3 and §5, and the handoff under *Handoff for the wave-4 lead* above.
+3. **Before spawning anyone:** confirm the draft rows for `platform` and `branding` in TEAM.md §1 and write `.claude/agents/{platform,branding}.md`; widen `proxy.ts`'s `isPlatformPath` to the public platform routes (`/verify/[code]`); decide the render concurrency (two hashed queue names) only if a measured need appears; retake the two SCR-023/SCR-045 captures.
+4. **Run the M6 demonstrable once yourself** (`scratchpad/m6-demo.sh` is the record in STATUS sync 12; the worker and converter images on the local Supabase network) before `branding` touches templates — a brand-kit change must re-render a live poster and leave a detached one stale.
+5. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only. Launch inputs are listed in the handoff.
+6. `.next` on disk is the wave-final configured build; `npm run db:reset` (with the reset lock, no teammate running) before any RLS run; `npm run test:e2e:unconfigured` last, and rebuild after it.
 7. Update this file before finishing.
