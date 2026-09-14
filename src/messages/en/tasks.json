@@ -1,0 +1,40 @@
+{
+  "tasks": {
+    "list": {
+      "empty": "No preparation tasks for this session yet.",
+      "count": "{count, plural, zero {No preparation tasks} one {One preparation task} two {Two preparation tasks} few {{value} preparation tasks} many {{value} preparation tasks} other {{value} preparation tasks}}",
+      "completedOf": "You have completed {value} of them.",
+      "kind": {
+        "read_material": "Read a material",
+        "form": "Questionnaire",
+        "checklist": "Checklist item",
+        "external": "External task"
+      },
+      "openMaterial": "Open the material",
+      "openExternal": "Open the link — leaves the platform",
+      "markDone": "Mark as done",
+      "markUndone": "Undo completion",
+      "completedBadge": "Done"
+    },
+    "form": {
+      "submit": "Submit",
+      "submitted": "Your answer was submitted.",
+      "submitFailed": "Could not submit the answer. Try again.",
+      "edit": "Edit answer"
+    },
+    "create": {
+      "kindLabel": "Task kind",
+      "titleLabel": "Task title",
+      "descriptionLabel": "Description (optional)",
+      "materialLabel": "Material",
+      "materialRequired": "Choose a material first.",
+      "externalUrlLabel": "Link",
+      "formQuestionsLabel": "Questionnaire questions (one per line)",
+      "formQuestionsRequired": "Add at least one question.",
+      "noMaterials": "No materials for this session yet — add one first.",
+      "submit": "Add",
+      "notAuthorized": "You do not have permission to add tasks to this session.",
+      "createFailed": "Could not add the task. Try again."
+    }
+  }
+}

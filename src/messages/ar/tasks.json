@@ -1,0 +1,40 @@
+{
+  "tasks": {
+    "list": {
+      "empty": "لا توجد مهام تحضيرية لهذه الجلسة.",
+      "count": "{count, plural, zero {لا توجد مهام تحضيرية} one {مهمة تحضيرية واحدة} two {مهمتان تحضيريتان} few {{value} مهام تحضيرية} many {{value} مهمة تحضيرية} other {{value} مهمة تحضيرية}}",
+      "completedOf": "أنجزت {value} منها.",
+      "kind": {
+        "read_material": "قراءة مادة",
+        "form": "استبيان",
+        "checklist": "بند تحضيري",
+        "external": "مهمة خارجية"
+      },
+      "openMaterial": "فتح المادة",
+      "openExternal": "فتح الرابط — يغادر المنصة",
+      "markDone": "أنجزتها",
+      "markUndone": "التراجع عن الإنجاز",
+      "completedBadge": "أُنجزت"
+    },
+    "form": {
+      "submit": "إرسال",
+      "submitted": "تم إرسال إجابتك.",
+      "submitFailed": "تعذّر إرسال الإجابة. حاول مرة أخرى.",
+      "edit": "تعديل الإجابة"
+    },
+    "create": {
+      "kindLabel": "نوع المهمة",
+      "titleLabel": "عنوان المهمة",
+      "descriptionLabel": "وصف (اختياري)",
+      "materialLabel": "المادة",
+      "materialRequired": "اختر مادة أولًا.",
+      "externalUrlLabel": "الرابط",
+      "formQuestionsLabel": "أسئلة الاستبيان (سؤال في كل سطر)",
+      "formQuestionsRequired": "أضف سؤالًا واحدًا على الأقل.",
+      "noMaterials": "لا توجد مواد لهذه الجلسة بعد — أضف مادة أولًا.",
+      "submit": "إضافة",
+      "notAuthorized": "لا تملك صلاحية إضافة مهام لهذه الجلسة.",
+      "createFailed": "تعذّرت إضافة المهمة. حاول مرة أخرى."
+    }
+  }
+}
