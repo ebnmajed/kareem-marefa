@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — the designer and certificates schema. Tables,
+-- promoted by the lead at wave-3 sync 1 · designer (wave 3, M6) — the designer and certificates schema. Tables,
 -- constraints, RLS, grants, the serial allocator and the public verification
 -- function. No render RPCs and no session hooks: those are proposed
 -- separately, the same discipline 0010 and 0037 set.

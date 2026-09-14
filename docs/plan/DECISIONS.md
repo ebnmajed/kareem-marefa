@@ -1248,6 +1248,18 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-049 — Wave-3 sync 1: `fonts` is the fifth table without `org_id`; the fourth parity export path is the converter's slide pages, skipped loudly when unconfigured
+
+- **Date:** 2026-09-14 · **Decided by:** session (the wave-3 lead), promoting `designer`'s M6 schema as migration `0055`
+- **Decision 1 — `ENT-fonts` carries no `org_id`.** `02` §4.13 already gave it none and made `sha256` platform-wide unique; `06` §6.4 and §7.3 make the point of the table that the editor, the worker's Chromium and the worker's LibreOffice read the same bytes, and `03` §6 leaves the `fonts` bucket un-prefixed for the same reason. A per-org font table would contradict both and produce three copies. `02` §7 (frozen) gains the fifth exception under this entry; `tests/rls/isolation.test.ts` lists `fonts` in `NO_ORG_ID` and in the non-vacuity exclusion; the read policy is `fonts_read` (every member), the write path is the job alone. CLAUDE.md's invariant 5 ("four documented exceptions") is updated to five with this entry.
+- **Decision 2 — the parity suite's fourth export path is the converter's slide-page images**, as `06` §9.2 lists, exercised by posting a generated deck to `CONVERTER_URL`; when the variable is unset the harness reports "21 of 28 — converter path not configured" and passes on 21 **loudly**, never silently. CI's `worker` job starts `kareem-converter` beside the worker image so CI runs all 28. The alternative — a certificate PNG as the fourth path — would have measured a rasteriser twice and slide shaping never.
+- **Decision 3 — the M6 fixture** (`tests/rls/fixture-m6.ts`): one platform poster template and version and one platform font row once; per org a certificate template and version, an asset, a poster document bound to the published session with its poster row and one ready artifact, one issued presenter certificate for `members[0]` on the completed session, and the counter row issuance leaves behind. A per-policy case counts by id or clears its tables in `setup()`.
+- **Rationale:** the schema is `02`'s as frozen; the one departure it needed (`fonts`) is the model's own intent written down; the export-path question was the only place the plan and the images disagreed, and the honest answer is the one that measures shaping where shaping happens.
+- **Supersedes:** the "four exceptions" count in `02` §7 and CLAUDE.md invariant 5.
+- **Documents changed:** `02-domain-model.md` §7 (frozen, changed under this entry), `03-permissions-rls.md` §8.2 (+16 rows), `CLAUDE.md` invariant 5, `TEAM.md` (nothing), `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

@@ -1306,8 +1306,8 @@ Losing someone's hand-tuned design to an automatic rerender is the worse of the 
 
 ## 7. Tenancy key coverage
 
-Every table in §4 carries `org_id not null`, with exactly **four** exceptions, each deliberate and
-each named:
+Every table in §4 carries `org_id not null`, with exactly **five** exceptions, each deliberate and
+each named (the fifth added under DEC-049):
 
 | Table | Why no `org_id` |
 |---|---|
@@ -1315,6 +1315,7 @@ each named:
 | `ENT-platform_admins` | Platform-level. No policy anywhere references it (`REQ-ADM-002`). |
 | `ENT-design_templates` where `scope = 'platform'` | A platform template belongs to no org by requirement (D67). Nullable, with an explicitly written policy in `03`. |
 | `ENT-registrations` | Frozen legacy, predating the platform (DEC-002). |
+| `ENT-fonts` | Content-addressed and platform-wide by requirement (`REQ-DSG-016`, `06` §6.4, §7.3): the editor, the worker's Chromium and LibreOffice must read the **same bytes**, and the `fonts` bucket is deliberately not org-prefixed. `sha256` is unique platform-wide; `parity_status` is written by the job alone. DEC-049. |
 
 Everything else — join tables, ledgers, snapshots, audit rows, storage metadata — carries it, even
 where it is derivable. An RLS policy that has to join to find the tenant is a policy that can be

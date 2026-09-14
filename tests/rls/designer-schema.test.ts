@@ -38,6 +38,13 @@ async function setup(tx: Tx) {
     if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
   }
   await tx.asOwner();
+  // The lead's fixture-m6 seeds every M6 table on both orgs so the isolation
+  // sweep is never vacuous (DEC-049). These cases count rows and allocate
+  // serials, so they start from an empty M6 world inside the rolled-back
+  // transaction — the notify-contract pattern (TEAM.md §3).
+  for (const t of ["certificates", "export_artifacts", "session_posters", "design_documents", "design_assets", "design_template_versions", "design_templates", "fonts", "certificate_serial_counters"]) {
+    await tx.q(`delete from public.${t}`);
+  }
   return f;
 }
 

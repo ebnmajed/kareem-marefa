@@ -1392,6 +1392,22 @@ generated suite is the highest-value test in the product.
 | `POL-audit_log.insert` | Direct insert is rejected; `write_audit()` succeeds. |
 | `POL-audit_log.update` | `update` and `delete` raise for every role. |
 | `POL-audit_log.select.moderator` | A moderator sees their own actions and not the admin's. |
+| `POL-design_templates.select.platform` | An org admin reads a platform template; org B's own templates are invisible. (migration `0055`). |
+| `POL-design_templates.update.platform` | An org admin cannot update a platform template (`REQ-DSG-008`). (migration `0055`). |
+| `POL-design_templates.insert.org` | An admin cannot create a platform-scope template; a plain member cannot create any. The scope/`org_id` and family/purpose constraints hold. (migration `0055`). |
+| `POL-design_template_versions.read` | Read follows the parent; a platform template's version is readable and not writable; a published version has no update and no delete grant (`REQ-DSG-007`); `org_id` mirrors the parent. (migration `0055`). |
+| `POL-design_template_versions.guard` | A hard-coded colour, an unknown layer kind or a duplicate layer id is refused by the trigger (`REQ-DSG-021`, `REQ-DSG-005`). (migration `0055`). |
+| `POL-design_documents.read` | The presenter of the bound session sees the document, another member does not, the admin does; a member sees the document behind their own certificate only. (migration `0055`). |
+| `POL-design_documents.write` | Design is an admin act (`REQ-DSG-002`): a presenter cannot edit their own poster document. (migration `0055`). |
+| `POL-design_documents.locked` | A locked region cannot be moved, resized, hidden, unlocked or deleted (`REQ-DSG-024`). (migration `0055`). |
+| `POL-design_assets.insert.mime` | An SVG named `.png` is rejected on `sniffed_mime`, never on the filename (DEC-009); a plain member cannot add or remove an asset; an asset is never updated in place. (migration `0055`). |
+| `POL-fonts.select` | Every member reads the manifest; only the job writes it; a font cannot reach `passed` without Arabic coverage (A39). (migration `0055`). |
+| `POL-export_artifacts.select` | Select follows the document; no client role writes one; `source_fingerprint` is the cache key — the same source cannot be stored twice (`REQ-DSG-013`). (migration `0055`). |
+| `POL-session_posters.*` | An `auto` poster is always live (structural); every member reads the poster, only an admin writes it, nobody deletes it. (migration `0055`). |
+| `POL-certificates.constraints` | An attendee certificate without a `check_in_id` is refused by the table (`REQ-CRT-001`); the same session, member and kind cannot be certified twice (`REQ-CRT-003`); a revoked certificate must carry a reason (`REQ-CRT-011`). (migration `0055`). |
+| `POL-certificates.select.held` | A held certificate is invisible to its recipient and visible to the admin (`REQ-CRT-004`); writes are RPC-only for every role. (migration `0055`). |
+| `POL-certificates.serial` | A rolled-back issuance leaves `next_value` unchanged; two orgs both issue `…-000001`; the counter table has no policy and no grant (`REQ-CRT-008`, DEC-010). (migration `0055`). |
+| `POL-certificates.verify.anon` | `verify_certificate()` resolves by code and returns the A13 fields and nothing else; a serial returns not-found; unknown and held are the same empty answer (`REQ-CRT-007`, `REQ-CRT-009`). (migration `0055`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
