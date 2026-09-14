@@ -75,6 +75,16 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   }
   if (!ctx.member.email) throw new Error(`send_notification: member ${p.member_id} has no address`);
 
+  // 06 §8.3's email-template leg (wave 4, DEC-052): the org's brand kit,
+  // merged over the platform defaults in SQL, so the mail carries the same
+  // colours as the UI and the posters. One read, one shape.
+  const { rows: kitRows } = await helpers.query<{ kit: { light?: { fgBody?: string; fgMuted?: string; surface?: string } } | null }>(
+    `select public.brand_kit($1::uuid) as kit`,
+    [p.org_id],
+  );
+  const light = kitRows[0]?.kit?.light;
+  const brand = light?.fgBody && light.fgMuted && light.surface ? { fgBody: light.fgBody, fgMuted: light.fgMuted, surface: light.surface } : null;
+
   let rendered;
   try {
     rendered = renderEmail({
@@ -83,6 +93,7 @@ export const send_notification: Task = async (rawPayload, helpers) => {
       payload: p.payload ?? {},
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, numerals: ctx.org.numerals, timeZone: ctx.org.time_zone },
+      brand,
     });
   } catch (error) {
     // A missing template is a matrix bug, not a transient fault: retrying it

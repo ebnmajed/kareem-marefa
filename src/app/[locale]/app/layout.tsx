@@ -1,7 +1,46 @@
+import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Wordmark } from "@/components/wordmark";
 import { NotificationBell } from "@/components/notifications/bell";
+import { getSessionState } from "@/lib/dal/session";
+import { getBrandKit, type BrandKit } from "@/lib/brand/kit";
+
+// The org theme layer — 06 §8.3's first consumer, DEC-003's layering, wave 4
+// (DEC-052). The brand kit's tokens are emitted as CSS custom properties
+// scoped to the shell, over globals.css's platform values: `.brand-org`
+// beats `:root` and `.brand-org .theme-dark` beats `.theme-dark`, and the
+// `@theme inline` block resolves `var(--fg-heading)` at use, so every
+// `bg-canvas` / `text-fg-body` utility below picks the org's value up. No
+// row is the identity override: nothing is emitted and every page is
+// byte-identical to today. This is a READ, not an auth check — the pages
+// still gate themselves at the data (the [v16] rule below); the layout only
+// asks whether a member session exists so it never redirects.
+const CSS_VAR: Record<keyof BrandKit["light"], string> = {
+  canvas: "--canvas",
+  surface: "--surface",
+  fgHeading: "--fg-heading",
+  fgBody: "--fg-body",
+  fgMuted: "--fg-muted",
+  edge: "--edge",
+  edgeStrong: "--edge-strong",
+  spine: "--spine",
+  node: "--node",
+};
+
+function themeCss(kit: BrandKit): string {
+  const block = (set: BrandKit["light"]) =>
+    (Object.keys(CSS_VAR) as (keyof BrandKit["light"])[]).map((token) => `${CSS_VAR[token]}:${set[token]}`).join(";");
+  return `.brand-org{${block(kit.light)}}.brand-org .theme-dark{${block(kit.dark)}}`;
+}
+
+async function orgTheme(locale: string): Promise<{ css: string; nonce: string | undefined } | null> {
+  const state = await getSessionState();
+  if (state.kind !== "member") return null;
+  const kit = await getBrandKit(locale, state.session.orgId);
+  if (!kit.isOverridden) return null;
+  return { css: themeCss(kit), nonce: (await headers()).get("x-nonce") ?? undefined };
+}
 
 // The platform shell. NO auth check here [v16]: a layout does not re-render
 // on navigation under Partial Rendering, so the check lives in the DAL, at
@@ -10,8 +49,10 @@ export default async function AppLayout({ children, params }: { children: React.
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("app.shell");
+  const theme = await orgTheme(locale);
   return (
-    <div className="min-h-dvh bg-canvas text-fg-body">
+    <div className={theme ? "brand-org min-h-dvh bg-canvas text-fg-body" : "min-h-dvh bg-canvas text-fg-body"}>
+      {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
       <nav aria-label={t("brand")} className="border-b border-edge bg-canvas">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-1 px-3 md:px-8">
           <ul className="flex items-center gap-1">

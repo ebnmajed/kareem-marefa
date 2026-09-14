@@ -1,10 +1,10 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
 import { renderFaces } from "../render/fonts.js";
+import { brandBindings } from "../render/brand.js";
 import {
   fingerprintSource,
   PRESETS,
-  platformBrand,
   presetsFor,
   resolveSessionBindings,
   validateDocument,
@@ -104,9 +104,10 @@ export const regenerate_poster: Task = async (payload, helpers) => {
 
   const origin = process.env.PUBLIC_ORIGIN ?? "http://localhost:3000";
   const bindings = {
-    // Wave 4's brand kit replaces this with the org's own palette; the
-    // CONTRACT is the same either way (06 §8.3, DEC-048).
-    ...platformBrand("light"),
+    // The org's brand override over the platform palette, composed HERE so
+    // the fingerprint below sees it: a changed colour is a new artifact
+    // (06 §8.3, DEC-052, REQ-DSG-013). No row is the identity override.
+    ...(await brandBindings(helpers, ctx.org_id, "light")),
     ...resolveSessionBindings(
       {
         id: ctx.session_id,

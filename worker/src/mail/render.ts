@@ -34,6 +34,10 @@ export interface RenderInput {
   payload: Record<string, unknown>;
   member: { name: string | null; email: string };
   org: { name: string; numerals: NumeralSystem; timeZone: string };
+  /** The org brand kit's light palette (06 §8.3's email-template leg, DEC-052),
+   *  read from `public.brand_kit()` by the sender. Absent in a unit test, the
+   *  renderer keeps its neutral defaults — the identity override again. */
+  brand?: { fgBody: string; fgMuted: string; surface: string } | null;
 }
 
 export interface RenderedEmail {
@@ -156,8 +160,11 @@ function toParagraphs(text: string): string[] {
 }
 
 /** Tables for layout, `dir="rtl"` on every cell, inline CSS only. */
-function toHtml(paragraphs: string[], org: string): string {
-  const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:#1a1a1a;padding:0 0 16px 0;text-align:right;"`;
+function toHtml(paragraphs: string[], org: string, brand?: RenderInput["brand"]): string {
+  const fgBody = brand?.fgBody ?? "#1a1a1a";
+  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
+  const surface = brand?.surface ?? "#ffffff";
+  const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
   const rows = paragraphs
     .map((p) => `      <tr><td ${cell}>${escapeHtml(p).replace(/\n/g, "<br />")}</td></tr>`)
     .join("\n");
@@ -169,10 +176,10 @@ function toHtml(paragraphs: string[], org: string): string {
     `<body dir="rtl" style="margin:0;padding:0;background:#f5f5f5;">`,
     `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:24px 0;">`,
     `    <tr><td dir="rtl" align="center">`,
-    `      <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border-radius:12px;padding:24px;">`,
+    `      <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${surface};border-radius:12px;padding:24px;">`,
     rows,
     `        <tr><td ${cell.replace("padding:0 0 16px 0", "padding:16px 0 0 0")} >`,
-    `          <span style="font-size:13px;color:#6b6b6b;">${escapeHtml(org)} · ${escapeHtml(SIGNATURE)}</span>`,
+    `          <span style="font-size:13px;color:${fgMuted};">${escapeHtml(org)} · ${escapeHtml(SIGNATURE)}</span>`,
     `        </td></tr>`,
     `      </table>`,
     `    </td></tr>`,
@@ -215,6 +222,6 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   return {
     subject,
     text: `${paragraphs.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: toHtml(paragraphs, input.org.name),
+    html: toHtml(paragraphs, input.org.name, input.brand),
   };
 }
