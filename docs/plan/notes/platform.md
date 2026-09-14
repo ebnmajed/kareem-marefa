@@ -259,4 +259,107 @@ and the metrics functions.
 
 ## 1. Findings
 
-_(as they are found)_
+Eight things that cost time or changed a design. Each is here because it will
+recur, not because it was interesting.
+
+### 1.1 `(f()).*` calls a composite plpgsql function ONCE PER OUTPUT COLUMN
+
+`select (public.start_impersonation(...)).*` expands to `(f()).col1, (f()).col2, …`
+and calls the function once for each. The first impersonation case refused its
+own second call with `impersonation_already_active`, which looked like a bug in
+the RPC and was a bug in the test. **Call a composite-returning RPC as a table
+source: `select * from public.f(...)`.**
+
+### 1.2 `design_templates` reads as a leak in the ★ sweep and is not one
+
+The no-data-plane sweep walks every table with an `org_id` column and expects
+zero rows for a platform admin. `design_templates` returns rows, because its
+PLATFORM-scope rows are readable by every authenticated user **by requirement**
+(`03` §5.9a, D67) and carry a null `org_id`. The sweep asserts on
+`where org_id is not null`, which is the claim that was actually meant.
+
+### 1.3 Replacing `org_domains_audit()` silently dropped `0008`'s escape
+
+Adding platform-admin attribution to the trigger meant rewriting its body from
+`0005`'s — and `0008` exists precisely because that body had to learn not to
+write an audit row during an org-deletion cascade. Dropping the guard made
+`delete_org()` impossible with a foreign-key violation, which is the bug `0008`
+was written to fix. The test caught it. **Every other append-only trigger on
+the cascade path already carries the same escape** (`points_ledger_append_only`,
+both leaderboard guards, `calendar_disconnected`), which is why a single
+`delete from public.orgs` is enough and nothing has to disable a trigger.
+
+### 1.4 `exports_storage_read` has no member conjunct — so the archive is a column
+
+`REQ-PRF-006`'s archive cannot live in the `exports` bucket: `0037`'s policy is
+`bucket_id = 'exports' and the first segment = auth_org_id()`, with nothing
+about the member, because everything else in that bucket is an org's own poster
+or certificate. A personal archive there would be readable by every member of
+the org, and **a storage policy is permissive — an extra policy can only
+widen**, so the subtree could not be narrowed without rewriting M5's.
+
+The alternatives were a seventh bucket (`03` §6 says six) or a Route Handler
+holding `service_role` (invariant 7). A `jsonb` column on the request row needs
+neither: `data_export_read_self` is already exactly the right boundary.
+
+### 1.5 `tests/rls/fixture-m7.ts` seeds a `data_export_requests` row
+
+It arrived mid-session (wave-4 isolation coverage) and writes `storage_path` on
+a `ready` row for `members[0]` of each org. Two consequences:
+
+- **`storage_path` stays on the table**, unused. Dropping a column out from
+  under a file this track does not own would break a teammate's suite to tidy a
+  schema. It can go once that fixture writes `payload` instead — the lead's
+  call, not this track's.
+- **The privacy cases use `members[1]`**, because `members[0]` already has an
+  export and a second request is correctly rate-limited. That also makes the
+  rate-limit case honest: a member with no history.
+
+### 1.6 ICU's `#` formats with the LOCALE's numbering system
+
+`{count, plural, few {# مؤسسات}}` renders Arabic-Indic digits under `ar`, which
+contradicts `REQ-INT-006` — numerals follow the **org setting**, not the locale.
+Every plural in this track selects on `count` and prints a pre-formatted
+`{value}`, the way `templates.json` already did.
+`tests/unit/platform-messages.test.ts` refuses a `#` in any plural.
+
+### 1.7 The column names in the export payload are not the obvious ones
+
+`points_ledger.amount`/`occurred_at` (not `delta`/`created_at`),
+`comments.author_id` (not `member_id`), `photos.uploader_id`,
+`ratings.session_stars`/`presenter_stars`/`submitted_at`,
+`check_ins.arrived_at`, `rsvps.reserved_at`. plpgsql does not resolve columns
+in a function body until the body runs, so `create function` succeeded and the
+first real call failed. **Smoke-test a definer function against a seeded row,
+not against an empty database.**
+
+### 1.8 An impersonating session cannot reach an org's screens — the lead's call
+
+`02` §4.1 gives the session an `org_id` and no target member, so the hook mints
+no `member_id`, which is what makes break-glass read-only. But
+`getSessionState()` requires **both** `org_id` and `member_id` for its `member`
+branch, so an impersonating super admin falls to `no_org` and every org screen
+sends them to `/no-access`. Today break-glass reaches the console and nothing
+else, which is narrower than SCR-085's "a persistent banner across every
+screen".
+
+Three ways out were put to the lead: add one state to `session.ts`, widen
+`Session.memberId` to nullable (touches every DAL — too large for this wave),
+or accept the narrower behaviour for M8. **The M8 demonstrable holds either
+way**: a super admin creates an org, reads no row of it, and the session lands
+in the org's audit log and expires on its own. `<ImpersonationBanner />` stays
+a no-op placeholder until the lead decides.
+
+---
+
+## 2. What is owed at the next sync
+
+1. **A build.** `tests/e2e/{platform-console,legal,privacy}.spec.ts` are
+   committed, typecheck and are marked NOT YET RUN: `next start` serves the
+   existing `.next`, which predates `/app/platform/**`, `/legal/**` and
+   `/app/me/privacy`. They also write the eight remaining 390 px captures.
+2. **Four proposed files** to promote, in order: `0003_platform_library.sql`,
+   `0004_retention_and_privacy.sql` (`0001` and `0002` are already `0069` and
+   `0070`).
+3. **Six task registrations and three crontab lines** in `worker/src/index.ts`.
+4. **`03` rows** for everything in the file headers.
