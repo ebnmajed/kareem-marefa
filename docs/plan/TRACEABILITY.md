@@ -52,7 +52,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-001` | `ENT-platform_admins` | — | `SCR-080` | — | — | `STORY-ADM-001` | M8 |
 | `REQ-ADM-002` | `ENT-impersonation_sessions` `ENT-platform_admins` | `POL-super_admin.no_data_plane` | `SCR-085` | `JOB-expire_impersonation` | — | `STORY-ADM-002` | M8 |
 | `REQ-ADM-003` | — | — | `SCR-080` `SCR-084` | — | — | `STORY-ADM-001` | M8 |
-| `REQ-ADM-004` | — | — | `SCR-040` | — | — | `STORY-ADM-003` | M7 |
+| `REQ-ADM-004` | — | — | `SCR-011` `SCR-040` `SCR-043` +5 | — | — | `STORY-ADM-003` | M7 |
 | `REQ-ADM-005` | — | — | `SCR-042` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-006` | — | `POL-categories.update.admin` `POL-companies.update.admin` +1 | `SCR-046` | — | — | `STORY-ADM-004` | M7 |
 | `REQ-ADM-007` | — | — | `SCR-047` | — | — | `STORY-ADM-004` | M7 |
@@ -61,9 +61,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-010` | — | — | `SCR-050` | — | — | `STORY-ADM-006` | M7 |
 | `REQ-ADM-011` | — | — | `SCR-053` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-012` | — | — | `SCR-054` | — | — | `STORY-ADM-007` | M7 |
-| `REQ-ADM-013` | — | — | `SCR-055` | — | — | `STORY-ADM-007` | M7 |
+| `REQ-ADM-013` | — | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-014` | — | — | `SCR-058` | — | — | `STORY-ADM-007` | M7 |
-| `REQ-ADM-015` | — | — | `SCR-059` | — | — | `STORY-ADM-007` | M7 |
+| `REQ-ADM-015` | — | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-016` | — | — | `SCR-060` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-017` | — | — | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-018` | `ENT-audit_log` | — | `SCR-059` `SCR-061` `SCR-062` | — | — | `STORY-ADM-008` | M7 |
@@ -164,8 +164,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-012` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-013` | `ENT-export_artifacts` | — | — | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-014` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-007` | M6 |
-| `REQ-DSG-015` | — | — | `SCR-057` | — | — | `STORY-DSG-007` | M6 |
-| `REQ-DSG-016` | `ENT-fonts` | — | `SCR-057` | — | — | `STORY-DSG-008` | M6 |
+| `REQ-DSG-015` | — | — | `SCR-011` `SCR-043` `SCR-057` | — | `MSG-certificate_issued` | `STORY-DSG-007` | M6 |
+| `REQ-DSG-016` | `ENT-fonts` | — | `SCR-011` `SCR-043` `SCR-044` +5 | — | — | `STORY-DSG-008` | M6 |
 | `REQ-DSG-017` | `ENT-fonts` | — | `SCR-057` | `JOB-materialise_font` | — | `STORY-DSG-008` | M6 |
 | `REQ-DSG-018` | `ENT-design_assets` | — | `SCR-057` | — | — | `STORY-DSG-009` | M6 |
 | `REQ-DSG-019` | `ENT-design_assets` | — | `SCR-057` | — | — | `STORY-DSG-009` | M6 |
@@ -238,7 +238,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-MAT-008` | `ENT-materials` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-009` | `ENT-materials` `ENT-org_settings` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-010` | `ENT-material_versions` `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-005` | M5 |
-| `REQ-MAT-011` | `ENT-materials` | — | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-006` | M5 |
+| `REQ-MAT-011` | `ENT-materials` | — | `SCR-011` `SCR-013` `SCR-043` +5 | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-006` | M5 |
 | `REQ-MAT-012` | `ENT-material_versions` | — | `SCR-013` | — | — | `STORY-MAT-001` | M5 |
 
 ### NFR

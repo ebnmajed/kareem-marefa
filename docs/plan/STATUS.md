@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-2/m3-m4-m5` (**PR #13** → `main`, ready for the owner's review) · **`main` @ `e0b448d`:** M1 live, M2 complete · **Phase:** **M2 wave 2 (M3 · M4 · M5) COMPLETE on the branch — thirteen sync points, migrations `0024`–`0054`, the three demonstrables proven by e2e against real local Supabase; next session is the wave-3 lead after the owner merges**
+**Last updated:** 2026-09-14 · **Branch:** `wave-3/m6-m7` (**draft PR #14** → `main`) · **`main` @ `6f6a7f2`:** M1 live, M2–M5 complete · **Phase:** **wave 3 (M6 · M7-console) IN PROGRESS — prepared by the lead, teammates `designer` and `console` spawned after the pre-spawn gate**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -144,6 +144,35 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## Wave 3 (M6 · M7-console) — IN PROGRESS on `wave-3/m6-m7` (draft PR #14)
+
+**Owner's decisions (2026-09-14, DEC-048):** the designer engine stays DOM/SVG with headless-Chromium
+exports as the parity harness proves (D66, A28); the console half that needs templates waits for
+wave 4. **The lead's assignments:** SCR-011 (browse, never built in wave 1) is `console`'s first
+story; `console` inherits the seven carved-out admin screens and three carried-over items; the M6
+image work went first; the M5 pipeline ran once for real before M6 builds on it.
+
+#### Wave 3 — PREPARED (kept as written at the start)
+
+**Done by the lead before anyone was spawned:**
+
+| # | Task | Commit / proof |
+|---|---|---|
+| 1 | **`@kareem/storage-paths`** — the wave-2 port (`worker/src/content/paths.ts`) and its parity test are gone; the app imports through `src/lib/storage/paths.ts` (keeps `server-only`), the worker directly; the M6 shapes in `src/designer.ts` are the one package file `designer` edits; workspace packages build from a root `prepare` (npm runs a linked workspace's `prepare` inside `npm ci --workspace` even under `--ignore-scripts`) | `7c5e280` · lock regenerated in Docker (**twice** — a local `npm install` after the first run rewrote it with npm 11 and dropped the nested `@swc/helpers`, the trap CLAUDE.md names) · tsc ✅ · unit **327 passed / 45 files** · lint 0 errors · `worker:build` ✅ |
+| 2 | **Worker image with Chromium, the runtime and the font set** — Debian `chromium` at `CHROME_PATH`, `puppeteer-core`, `@kareem/designer-runtime`, `packages/fonts` installed through the converter's hash-verified step | `7c5e280` · 1.42 GB · probe OK in-image · `fc-list` shows IBM Plex Sans + Arabic (Debian's `chromium` also pulls in DejaVu — the renderer inlines faces by hash, so nothing falls through to it) |
+| 3 | **The parity harness runs inside the image**, locally and in CI's `worker` job | `a58b6c5` · **7 cases, Tier A identical, Tier B 0.4–2.8% (advisory cross-platform, DEC-028)** — `CHROME_NO_SANDBOX` inside the container only |
+| 4 | **The M5 pipeline for real** — `kareem-converter` + `kareem-worker` on the local Supabase network with `CONVERTER_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `converter/fixtures/{plex-arabic,cairo-missing}.pptx` uploaded to `materials` and enqueued through `public.enqueue_job()` | both `render_status = ready`, one `material_pages` row each, `font_substitution_warning = 'Cairo'` on the second (`REQ-MAT-011`); nothing in M5 changed. The 143 orphan jobs a previous reset left in `graphile_worker._private_jobs` (notifications for members that no longer exist) were deleted locally — a reset does not clear the queue |
+| 5 | **DEC-048**, `TEAM.md` §1 (wave-3 rows + contracts, wave-4 draft), `CLAUDE.md` § Agent team, `.claude/agents/{designer,console}.md` | `5cfef70` |
+| 6 | Pre-spawn gate: `npm run db:reset` ✅ `0001`–`0054` · `npm run test:rls` — see below · `policy-diff` · traceability | `db:reset` ✅ · `test:rls` ✅ **495 passed / 4 todo, 45 files** · policy-diff ✅ · traceability ✅ (matrix regenerated) |
+| 7 | Pushed; **draft PR #14** at the first push; `designer` (opus) and `console` (sonnet) spawned with their first tasks (plan in `docs/plan/notes/<name>.md`, then `designer`'s M6 schema as proposed SQL and `console`'s SCR-011) | — |
+
+**Stale notes found while preparing (recorded in DEC-048):** `notes/scoring.md`'s "four evaluators are NOT scheduled" no longer holds — all four are registered in `worker/src/index.ts`; the three `TODO(notify, M3)` comments stay.
+
+### Sync log
+
+| Sync | Promoted | Gates |
+|---|---|---|
 
 ## Wave 2 (M3 · M4 · M5) — COMPLETE on `wave-2/m3-m4-m5` (PR #13, the owner merges)
 
