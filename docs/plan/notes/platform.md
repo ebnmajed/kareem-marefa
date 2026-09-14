@@ -350,6 +350,66 @@ way**: a super admin creates an org, reads no row of it, and the session lands
 in the org's audit log and expires on its own. `<ImpersonationBanner />` stays
 a no-op placeholder until the lead decides.
 
+### 1.9 The app shell made the whole console unreachable
+
+`src/app/[locale]/app/layout.tsx` rendered `<NotificationBell />` for every
+route under `/app/**`, including `/app/platform/**`. The bell's DAL calls
+`requireSession()`, a super admin has no member row, and so **every console
+screen redirected to `/no-access`** before any of this track's code ran. A
+nested layout cannot opt out of its parent, so nothing here could prevent it;
+the lead's one-line guard fixed it (`753788d`).
+
+Worth keeping because of what it says about test coverage: **35 RLS cases, the
+policies, the RPCs and the DAL were all correct, and the screens had never
+rendered for anyone.** Only a real session against a real build through the
+real shell shows this. It is the concrete version of "a mocked client never
+catches a policy gap between two real calls".
+
+### 1.10 Two assertions that passed while the thing failed
+
+Both cost a sync, and both are easy to repeat:
+
+- **`page.goto()` reports the status of the FINAL response.** A redirect to
+  `/no-access` answers 200, so `expect(response.status()).toBe(200)` passed on
+  every screen while none of them rendered. Assert `page.url()` beside it.
+- **`page.request.get()` follows redirects by default.** The members-export
+  check landed on an HTML page with status 200 and read as "the export
+  succeeded" when `requireSession()` had bounced it. Use `maxRedirects: 0`.
+
+A third, related: `/ar/app/sessions` renders for a super admin and comes back
+**empty** rather than redirecting, because a session with no `org_id` claim
+matches no row under any policy. That satisfies `REQ-ADM-002` exactly as well
+as a redirect. The spec asserts the property — no org data — rather than the
+mechanism, because demanding a redirect couples this track's spec to another
+track's choice of where it calls its DAL.
+
+### 1.11 `next start` serves the build, not the source
+
+Obvious in hindsight, and it cost a confusing half hour: only the lead runs
+`npm run build`, so **every source change is invisible to the e2e until the
+next sync**. A spec that asserts new copy fails for an environment reason, and
+— worse — a 390 px capture taken after a fix is the render from BEFORE it.
+
+The rule this track follows now: a capture is evidence only when `.next/BUILD_ID`
+is newer than the file it renders. The diagnosis from a stale capture is still
+sound; the fix is unverified until the rebuild.
+
+### 1.12 What the captures actually caught
+
+Three things no test would have:
+
+- **An empty `<option>` renders as a blank line.** SCR-085's org picker looked
+  like a broken control rather than a prompt.
+- **The one number that matters was inside the scroller.** SCR-084 put `oldest
+  pending` last, so at 390 px a reader saw the two columns that look healthy
+  either way and had to scroll for the one that catches a stalled queue.
+- **The A27 baseline names each template after its family**, so SCR-083 read
+  «إعلان إعلان» on every row.
+
+And one the drill caught instead: a real worker beside the suite finishes
+`build_data_export` in under a second, so an assertion that expected `queued`
+only passed on a machine where nothing was running.
+
 ---
 
 ## 1b. `JOB-evaluate_alerts` — the drill (planned before code, lead's addition at sync 1)
@@ -417,12 +477,18 @@ conditions, eight alerts, and each one proven not to fire the other seven.**
 
 ## 2. What is owed at the next sync
 
-1. **A build.** `tests/e2e/{platform-console,legal,privacy}.spec.ts` are
-   committed, typecheck and are marked NOT YET RUN: `next start` serves the
-   existing `.next`, which predates `/app/platform/**`, `/legal/**` and
-   `/app/me/privacy`. They also write the eight remaining 390 px captures.
-2. **Four proposed files** to promote, in order: `0003_platform_library.sql`,
-   `0004_retention_and_privacy.sql` (`0001` and `0002` are already `0069` and
-   `0070`).
-3. **Six task registrations and three crontab lines** in `worker/src/index.ts`.
-4. **`03` rows** for everything in the file headers.
+1. **One rebuild.** `platform-console` is 16/16 and `legal` is green, but the
+   served build predates the three capture fixes and the export rate-limit
+   change (§1.11). One case in `privacy.spec.ts` is red for that reason alone.
+   After the rebuild: re-run both, re-look at the captures.
+2. **Two proposed files** to promote, in order: `0005_enum_types.sql`, then
+   `0006_alerts.sql`. (`0001`–`0004` are `0069`, `0070`, `0072`, `0073`.)
+   Four `03` §8.2 rows for `0006`; none for `0005`.
+3. **Seven task registrations and four crontab lines** in `worker/src/index.ts`
+   — `evaluate_alerts` joined the six, every minute.
+4. **`<ImpersonationBanner />` on `/no-access`.** The platform shell renders it
+   already; under DEC-055 the other slot is the more important one, because
+   `/no-access` is where an impersonating operator actually lands.
+5. **Two readings in `0006`'s header** for the lead to confirm or correct: the
+   sources for ledger divergence and parity failure, and "> 3 consecutive"
+   renders implemented as three in a row.
