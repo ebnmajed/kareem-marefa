@@ -15,7 +15,7 @@
       "intro": "Create orgs, suspend them and set their first admin. No session, member or piece of content appears here — the figures are aggregates only.",
       "empty": "No orgs yet. Start by creating one.",
       "newLink": "New org",
-      "count": "{count, plural, =0 {No orgs} one {One org} other {{count} orgs}}",
+      "count": "{count, plural, =0 {No orgs} one {One org} other {{value} orgs}}",
       "statusActive": "Active",
       "statusSuspended": "Suspended",
       "members": "Members",
@@ -65,7 +65,7 @@
       "add": "Add the domain",
       "remove": "Remove",
       "empty": "No domains. Nobody can be provisioned into this org right now.",
-      "domainCount": "{count, plural, =0 {No domains} one {One domain} other {{count} domains}}",
+      "domainCount": "{count, plural, =0 {No domains} one {One domain} other {{value} domains}}",
       "firstAdminTitle": "First admin",
       "firstAdminIntro": "If that address is already a member they become an admin at once; if not, on their first sign-in.",
       "firstAdminLabel": "First admin's email",
@@ -73,6 +73,32 @@
       "firstAdminNone": "Not set",
       "setFirstAdmin": "Save",
       "saved": "Saved."
+    },
+    "templates": {
+      "title": "Platform template library",
+      "intro": "This library is managed, not authored here. A platform admin has no org and the designer's editor is org-scoped, so authoring stays in an org's editor. What happens here: list, promote a published org version, set the default, retire.",
+      "baselineNote": "The eight baseline templates ship with the platform and are ready for every org from the moment it is created, before it publishes anything. The last default for a purpose cannot be retired.",
+      "libraryTitle": "The library",
+      "purposePoster": "Posters",
+      "purposeCertificate": "Certificates",
+      "isDefault": "Default",
+      "retired": "Retired",
+      "versions": "{count, plural, =0 {No versions} one {One version} other {{value} versions}}",
+      "setDefault": "Make it the default",
+      "retire": "Retire",
+      "unretire": "Return to service",
+      "promoteTitle": "Promote an org's template",
+      "promoteIntro": "Promotion is a copy. An org's later edits never reach the promoted version, which is what makes improving a platform template safe.",
+      "promoteNote": "Only published versions appear here, by name, family and number. No template's content is shown on this page.",
+      "promoteEmpty": "No published version is available to promote.",
+      "promoteNameLabel": "Name in the library",
+      "promoteNameHint": "Leave it empty to keep the org's name for it.",
+      "promote": "Promote the version",
+      "alreadyPromoted": "Already promoted",
+      "version": "Version <bdi>{value}</bdi>",
+      "org": "Org",
+      "promoted": "The template was promoted into the library.",
+      "empty": "The library is empty."
     },
     "metrics": {
       "title": "Platform metrics",
@@ -92,8 +118,8 @@
       "jobFailed": "Failed",
       "jobOldest": "Oldest pending",
       "jobsEmpty": "Nothing in the queue.",
-      "seconds": "{count, plural, =0 {Just now} one {One second} other {{count} seconds}}",
-      "minutes": "{count, plural, =0 {Just now} one {One minute} other {{count} minutes}}",
+      "seconds": "{count, plural, =0 {Just now} one {One second} other {{value} seconds}}",
+      "minutes": "{count, plural, =0 {Just now} one {One minute} other {{value} minutes}}",
       "perOrgTitle": "By org"
     },
     "impersonate": {
@@ -114,12 +140,12 @@
       "expiresAt": "Expires",
       "endedAt": "Ended",
       "stillOpen": "Still open",
-      "sessionCount": "{count, plural, =0 {No sessions} one {One session} other {{count} sessions}}"
+      "sessionCount": "{count, plural, =0 {No sessions} one {One session} other {{value} sessions}}"
     },
     "banner": {
       "viewingAs": "You are browsing another org with break-glass access.",
       "remaining": "The session ends in {minutes}",
-      "minutes": "{count, plural, =0 {under a minute} one {one minute} other {{count} minutes}}",
+      "minutes": "{count, plural, =0 {under a minute} one {one minute} other {{value} minutes}}",
       "stop": "End"
     },
     "errors": {

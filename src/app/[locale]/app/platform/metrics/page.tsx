@@ -28,9 +28,14 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
   ]);
   const num = (n: number) => formatNumber(n, PLATFORM_NUMERALS);
   // Seconds below a minute, minutes above: a queue age of «٤٬٣٢٠ ثانية» is a
-  // number nobody converts in their head.
-  const age = (seconds: number) =>
-    seconds < 60 ? t("seconds", { count: Math.round(seconds) }) : t("minutes", { count: Math.round(seconds / 60) });
+  // number nobody converts in their head. And ICU's `#` formats with the
+  // LOCALE's numbering system, which for `ar` is Arabic-Indic and would
+  // contradict this console's Western digits — so every plural in this
+  // namespace selects on `count` and prints a pre-formatted `value`.
+  const age = (seconds: number) => {
+    const n = seconds < 60 ? Math.round(seconds) : Math.round(seconds / 60);
+    return t(seconds < 60 ? "seconds" : "minutes", { count: n, value: num(n) });
+  };
 
   const TOTALS = [
     ["orgs", totals?.orgs ?? 0],

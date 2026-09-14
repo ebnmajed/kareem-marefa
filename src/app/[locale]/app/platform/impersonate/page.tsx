@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listMyImpersonations, listOrgs, PLATFORM_NUMERALS } from "@/lib/dal/platform";
 import { endImpersonationAction, startImpersonationAction } from "./actions";
@@ -70,7 +70,7 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
         <h2 id="history" className="text-h2 text-fg-heading">
           {t("historyTitle")}
         </h2>
-        <p className="mt-3 text-body-sm text-fg-muted">{t("sessionCount", { count: sessions.length })}</p>
+        <p className="mt-3 text-body-sm text-fg-muted">{t("sessionCount", { count: sessions.length, value: formatNumber(sessions.length, PLATFORM_NUMERALS) })}</p>
 
         {sessions.length === 0 ? (
           <p className="mt-3 text-body text-fg-body">{t("historyEmpty")}</p>

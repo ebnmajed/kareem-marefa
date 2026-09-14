@@ -41,7 +41,7 @@ export default async function PlatformOrgsPage({ params }: { params: Promise<{ l
         <ButtonLink href="/app/platform/orgs/new">{t("newLink")}</ButtonLink>
       </p>
 
-      <p className="mt-8 text-body-sm text-fg-muted">{t("count", { count: orgs.length })}</p>
+      <p className="mt-8 text-body-sm text-fg-muted">{t("count", { count: orgs.length, value: num(orgs.length) })}</p>
 
       {orgs.length === 0 ? (
         <p className="mt-4 text-body text-fg-body">{t("empty")}</p>

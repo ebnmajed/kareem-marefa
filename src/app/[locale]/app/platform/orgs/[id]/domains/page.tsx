@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { getOrgDetail } from "@/lib/dal/platform";
+import { formatNumber } from "@/components/sessions/numerals";
+import { getOrgDetail, PLATFORM_NUMERALS } from "@/lib/dal/platform";
 import { addDomainAction, removeDomainAction, setFirstAdminAction } from "./actions";
 import { AddDomainForm, FirstAdminForm } from "./forms";
 
@@ -55,7 +56,7 @@ export default async function OrgDomainsPage({
             removal revokes access has removed the wrong thing (REQ-TEN-007). */}
         <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("removalNote")}</p>
 
-        <p className="mt-6 text-body-sm text-fg-muted">{t("domainCount", { count: org.domains.length })}</p>
+        <p className="mt-6 text-body-sm text-fg-muted">{t("domainCount", { count: org.domains.length, value: formatNumber(org.domains.length, PLATFORM_NUMERALS) })}</p>
 
         {org.domains.length === 0 ? (
           <p className="mt-3 text-body text-fg-body">{t("empty")}</p>
