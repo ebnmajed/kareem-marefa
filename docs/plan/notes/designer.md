@@ -488,6 +488,35 @@ thing that refuses the edit, and checks the job is enqueued anyway.
 `enqueue_job()`, `notify()` or `write_audit()` is
 `security definer set search_path = ''`, and its test runs AS A MEMBER.
 
+### 2.9 Two hours lost to a trigger I did not know existed
+
+Both cost me a wrong hypothesis, and both are worth writing down because
+the next track to touch `check_ins` or `sessions` from a test will hit
+them.
+
+**`check_ins.session_window` is not the value you insert.** `0010` puts a
+BEFORE INSERT trigger (`check_ins_window`) on the table that overwrites
+`session_window` with `tstzrange(s.starts_at, s.ends_at, '[)')` from the
+named session, and `org_id` with the session's. The fixture passing
+`'empty'::tstzrange` is therefore decorative — the stored windows are the
+sessions' real hours. I spent a long time proving that empty ranges do not
+overlap, which is true and entirely beside the point: my test cloned a
+fixture session at the SOURCE's hours, so the clone's derived window was
+byte-identical to the original's, and `check_ins_member_id_session_window_
+excl` correctly refused a second check-in for a member already checked
+into the original. The fix is one line — each clone takes a week of its
+own — but it is invisible unless you read the trigger.
+
+**There is no admin UPDATE policy on `public.sessions`.** Every state move
+is an RPC. My definer case asserted `expect(refused).not.toBe("42501")`
+after a direct `update … set state = 'completed'` as an admin; the 42501
+came from the row policy, so the assertion could never pass and would have
+proved nothing about the trigger if it had. The member-reachable path is
+`transition_session(p_session, 'complete')` (`0023`, granted to
+`authenticated`, REQ-SES-005's manual complete). The case now calls that
+and asserts the fan-out job IS enqueued — positively. A negative assertion
+would have been satisfied by a trigger that quietly enqueued nothing.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for
