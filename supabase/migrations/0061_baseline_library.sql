@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — the baseline template library, as PLATFORM templates.
+-- promoted by the lead at wave-3 sync 5 · designer (wave 3, M6) — the baseline template library, as PLATFORM templates.
 -- Follows 0057/the render pipeline.
 --
 -- Serves:  02 §4.13 (design_templates, design_template_versions), 03 §5.9a
