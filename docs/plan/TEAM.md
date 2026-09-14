@@ -220,3 +220,10 @@ Then, before spawning anyone:
   contains it.
 - **Only the lead resets, and only when nothing else runs** — a reset mid-e2e cuts a teammate's run
   silently; check `pgrep -fl "vitest|playwright"` before `npm run db:reset`, not only the RLS runner.
+- **A mocked client never catches a policy gap between two real HTTP calls.** Every material upload's
+  complete step 403'd from STORY-MAT-001 until the first e2e drove the real form against real
+  Storage (migration `0054`): unit tests mocked the DAL, RLS tests never ran the download-before-
+  finalize sequence together. Each track's e2e must exercise its real Route Handlers at least once.
+- **The shell is in every capture.** A no-wrap label in `app/layout.tsx` overflowed every `/app`
+  page by 23 px at 390 px and only a teammate's capture helper saw it; a shell change is a
+  390 px review of any page.
