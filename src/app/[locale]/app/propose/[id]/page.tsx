@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, getProposal } from "@/lib/dal/proposals";
 import { answerPresenterInvite, dropCoPresenter } from "../actions";
+import { ProposalMaterials } from "@/components/materials/proposal-list";
 
 // SCR-018 · /app/propose/[id] — my proposal.
 //
@@ -104,6 +105,15 @@ export default async function ProposalPage({
         <p className="mt-2 whitespace-pre-line text-body text-fg-body">
           <bdi>{proposal.abstract}</bdi>
         </p>
+      </section>
+
+      {/* The content slot for draft materials on a proposal (REQ-PRO-004, DEC-045's deferral,
+          migration 0053): reassigned to the session the moment one is created from it. */}
+      <section aria-labelledby="materials" className="mt-8 max-w-2xl">
+        <h2 id="materials" className="text-label text-fg-heading">
+          {t("materialsLabel")}
+        </h2>
+        <ProposalMaterials proposalId={proposal.id} locale={locale} />
       </section>
 
       {proposal.viewerInvite === "pending" ? (

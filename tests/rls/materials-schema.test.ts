@@ -610,7 +610,7 @@ describe("is_proposal_owner_of", () => {
   it("★ true for the proposer and an ACCEPTED co-presenter; false for a not-yet-accepted invitee and an unrelated member", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
 
       await tx.as(f.a.members[0].claims); // the proposer
       expect(await tx.q<{ v: boolean }>(`select public.is_proposal_owner_of($1) as v`, [f.m2.a.proposal])).toEqual([{ v: true }]);
@@ -633,7 +633,7 @@ describe("POL-materials.proposal.visibility", () => {
   it("★ a draft proposal's material is visible to the proposer and to staff, never to an unrelated member", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims); // proposer
@@ -650,7 +650,7 @@ describe("POL-materials.proposal.visibility", () => {
   it("★ REQ-PRO-004: not visible to a member with no connection to the proposal", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
 
       // members[1] is a NOT-YET-accepted co-presenter, so still "a member" for this purpose.
@@ -664,7 +664,7 @@ describe("POL-materials.proposal.write", () => {
   it("the proposer can insert; an unrelated member (and a not-yet-accepted co-presenter) is refused; an admin can", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
 
       await tx.as(f.a.members[1].claims); // not yet accepted
       expect(
@@ -698,7 +698,7 @@ describe("RPC-finalize_material_upload — proposal branch", () => {
   it("★ the proposer can finalize; a pdf is NOT enqueued for conversion while session_id is still null", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims);
@@ -721,7 +721,7 @@ describe("RPC-remove_material — proposal branch", () => {
   it("the proposer can remove their own proposal's material; an unrelated member cannot", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
 
       await tx.as(f.a.members[1].claims); // not yet accepted
@@ -738,7 +738,7 @@ describe("RPC-carry_over_proposal_materials", () => {
   it("★ REQ-PRO-004: publishing a proposal into a session reassigns its materials (session_id set, proposal_id cleared), retaining phase/allow_download", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
       await tx.asOwner();
       await tx.q(`update public.materials set phase = 'before', allow_download = false where id = $1`, [materialId]);
@@ -763,7 +763,7 @@ describe("RPC-carry_over_proposal_materials", () => {
   it("★ enqueues convert_document for a pending pdf/powerpoint material once it has a real session_id", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
       await tx.asOwner();
       const [version] = await tx.q<{ id: string }>(
@@ -791,7 +791,7 @@ describe("POL-storage.materials.proposal_write", () => {
   it("the proposer's write under the proposals/ prefix succeeds; an unrelated member's is refused", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const okName = `${f.a.id}/proposals/${f.m2.a.proposal}/materials/${crypto.randomUUID()}/deck.pdf`;
 
       await tx.as(f.a.members[1].claims); // not yet accepted
@@ -809,7 +809,7 @@ describe("regression — session-based materials after 0009", () => {
   it("the original session presenter/phase/storage behavior is unchanged once 0009 is also applied", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.
       const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "before");
 
       await tx.as(f.a.members[0].claims); // presenter of `published`

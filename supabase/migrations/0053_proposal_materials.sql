@@ -1,4 +1,4 @@
--- content, follow-up — REQ-PRO-004, deferred from M2 (DEC-045: the entity
+-- promoted by the lead at wave-2 sync 12 · content, follow-up — REQ-PRO-004, deferred from M2 (DEC-045: the entity
 -- `materials` needed to exist, and it didn't until this track's own 0037).
 -- "Draft مواد attached to a proposal are visible to admins only until the
 -- session is published. They obey every materials rule. On publication

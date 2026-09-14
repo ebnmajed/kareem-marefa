@@ -5,7 +5,8 @@ import { UploadForm } from "@/components/materials/upload-form";
 
 interface ProposalMaterialsProps {
   proposalId: string;
-  memberId: string;
+  // Optional: the slot reads for the session's own member (the cookie is the authority).
+  memberId?: string;
   locale: string;
 }
 

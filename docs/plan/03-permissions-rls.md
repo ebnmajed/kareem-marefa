@@ -1286,6 +1286,10 @@ generated suite is the highest-value test in the product.
 | `RPC-record_material_pages.upsert` | A second call for the same version and page number replaces that page's paths rather than duplicating the row (`unique (material_version_id, page_number)`, 0037). (migration `0048`). |
 | `RPC-record_material_pages.ready` | A successful call moves `render_status` to `ready`. (migration `0048`). |
 | `RPC-record_material_download.admin_only` | A member and a moderator are both refused `42501`; an admin writes one audit row naming the material and the version. (migration `0049`). |
+| `POL-materials.proposal.visibility` | A proposal's own materials are visible to its proposer, an accepted co-presenter, and staff — never to a plain member — until the proposal becomes a session. (migration `0053`). |
+| `POL-materials.proposal.write` | The same three may upload/update a proposal's materials; nobody else. (migration `0053`). |
+| `RPC-carry_over_proposal_materials.trigger` | A session inserted with a `proposal_id` reassigns every material with that `proposal_id` to the new session (`session_id` set, `proposal_id` cleared), leaving `phase`/`allow_download` untouched. (migration `0053`). |
+| `POL-storage.materials.proposal_write` | The `materials` bucket's write policy accepts a `{org}/proposals/{proposal_id}/materials/…` prefix for the proposal's owner/co-presenter/staff, the same shape the `{org}/sessions/{session_id}/materials/…` prefix already had. (migration `0053`). |
 | `POL-materials.phase_change.audited` | Changing `phase` writes one `audit_log` row naming the old and new value; changing `title` or `allow_download` alone writes none. (migration `0052`). |
 | `RPC-initiate_photo_processing.authority` | A member with a confirmed RSVP and no check-in, who is not the session's presenter or org staff, is refused `42501` — REQ-EVT-009, mirroring `photos_storage_write`. (migration `0050`). |
 | `RPC-initiate_photo_processing.size` | A declared byte size over the org's `limit_image_mb` is refused `23514`, naming the limit — the courtesy check; `record_photo_upload`'s is the control, against the REAL (post-strip) size. (migration `0050`). |

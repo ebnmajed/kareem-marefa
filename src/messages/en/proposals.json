@@ -90,7 +90,8 @@
       "accept": "Accept and present",
       "decline": "Decline",
       "remove": "Remove from presenters",
-      "removeLabel": "Remove <t>{name}</t> from the presenters"
+      "removeLabel": "Remove <t>{name}</t> from the presenters",
+      "materialsLabel": "Attached materials"
     }
   }
 }
