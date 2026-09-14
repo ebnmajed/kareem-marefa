@@ -355,3 +355,73 @@ No crontab line — `render_variant` is enqueued, never scheduled.
 New worker environment: none. `CHROME_PATH` is already in the image and
 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are already required by the
 content tasks.
+
+
+### 2.4 STORY-DSG-009 — the uploaded poster is a document, not a second pipeline
+
+A32 wants every variant after an upload with a per-variant crop override,
+and the document model already does exactly that: one full-bleed image
+layer, `scale: fill` on every preset, a focal point overridable per preset.
+So an upload produces a document and goes through `derive()` and the same
+render queue. No smart-crop service, no second place for a variant to be
+wrong, and the crop override is a field rather than a feature.
+
+**A per-preset entry overrides `default` FIELD BY FIELD.** Declaring a crop
+for `og` must not silently drop the anchor `default` set — that is how an
+override quietly re-tops a centred layer while looking like it only changed
+the crop. Pinned by a test.
+
+Image dimensions are read from real headers in the runtime, and the JPEG
+reader walks the segment chain rather than trusting an offset: EXIF and ICC
+come first and their sizes vary with whatever wrote the file.
+
+### 2.5 STORY-DSG-007 — what each parity path actually asserts
+
+Paths 1-3 are DOM-measured, so Tier A is `06` §9.3's structural comparison in
+full. **Path 4 is measured differently and the harness says so** rather than
+implying otherwise: a page image out of poppler has no line boxes, so what
+it asserts is that our PDF embeds its faces and substitutes none
+(`REQ-CRT-005`'s «renders on a machine with no fonts installed», which fails
+invisibly because the PDF still opens and still looks like Arabic) plus
+per-case pixel parity against a golden crop.
+
+The Tier A probe is now the runtime's `tierASignatureBatch` — the same
+function the worker runs on every export. It was a copy living in the
+harness, and a copy is what this suite exists to prevent: a harness
+measuring differently from the worker can be green while the worker's own
+Tier A is wrong.
+
+### 2.6 STORY-DSG-011 — the QR encoder, and the two bugs the method found
+
+No independent QR implementation is available, none may be added, and this
+Chromium exposes no `BarcodeDetector`. So the encoder is checked against
+**properties the specification fixes, each by a route the encoder does not
+use**: Reed-Solomon syndromes vanishing over GF(256) computed from the field
+alone, the published generator rows, the thirty-two format strings forming a
+BCH code of minimum distance seven, and a hand-worked byte-mode stream.
+
+It found two real bugs on the first run, and both would have shipped:
+
+1. the generator polynomial was built lowest-degree-first while the division
+   loop assumed highest-first, so **every** error-correction codeword was
+   wrong and every QR unreadable — while looking perfectly plausible;
+2. the dark module was cleared by its own format-area reservation, which
+   reserved eight modules down the bottom-left column where the
+   specification reserves seven.
+
+The baseline library lives in TypeScript and the seed migration is generated
+from it, with a test that parses the JSON back out of the SQL and
+deep-equals it. A copy nobody compares is a copy that diverges.
+
+---
+
+## 3. Owner checks that no test here can stand in for
+
+- ★ **Scan both QRs with a real phone, on paper, at print size.** The
+  encoder is verified against the specification's own invariants and that
+  found two genuine bugs, but nothing in this repository has ever decoded
+  one of these symbols. The M6 demonstrable says «scan both QRs», and this
+  is the half of it a machine here cannot do. Alongside `notify`'s
+  open-the-ICS-in-Outlook check.
+- **Look at a printed A3.** The PPI guard, the 3 mm bleed and the RGB
+  caveat are all reasoning about paper.
