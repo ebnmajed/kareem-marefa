@@ -823,3 +823,68 @@ describe("regression — session-based materials after 0009", () => {
     });
   });
 });
+
+// supabase/proposed/content/0010_materials_storage_read_preupload.sql — a
+// real bug tests/e2e/proposal-materials.spec.ts found against real local
+// Supabase: completeMaterialUpload() downloads the object through the
+// uploader's own RLS-bound client BEFORE finalize_material_upload() ever
+// creates the material_versions row materials_storage_read (0037/0053)
+// joins through — so no upload's own "complete" step could ever read the
+// object it had just written. True for ordinary session uploads too, not
+// only proposals; never previously exercised end to end through a browser.
+describe("POL-storage.materials.preupload_self_read", () => {
+  it("★ before any material_versions row exists, the session's presenter can read back the object they just wrote; an unrelated member cannot", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      const versionId = "99999999-9999-9999-9999-999999999999";
+      const name = `${f.a.id}/sessions/${f.m2.a.published}/materials/${versionId}/deck.pdf`;
+
+      // The presenter writes it (materials_storage_write, 0037/0053) — no
+      // materials/material_versions row exists anywhere yet.
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`insert into storage.objects (bucket_id, name) values ('materials', $1)`, [name]);
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).length).toBe(1);
+
+      await tx.as(f.a.members[1].claims); // not this session's presenter
+      expect(await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).toEqual([]);
+
+      await tx.as(f.a.admin.claims);
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).length).toBe(1);
+    });
+  });
+
+  it("★ REQ-PRO-004: the same window applies to a proposal's own draft material — the owner reads it back, an unrelated member does not", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      const versionId = "88888888-8888-8888-8888-888888888888";
+      const name = `${f.a.id}/proposals/${f.m2.a.proposal}/materials/${versionId}/deck.pdf`;
+
+      await tx.as(f.a.members[0].claims); // the proposer
+      await tx.q(`insert into storage.objects (bucket_id, name) values ('materials', $1)`, [name]);
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).length).toBe(1);
+
+      await tx.as(f.a.mod.claims); // staff, unrelated to the proposal
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).length).toBe(1);
+    });
+  });
+
+  it("does not weaken the ordinary post-finalize read: an unrelated member still sees only what phase/allow_download already allowed", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0010_materials_storage_read_preupload.sql");
+      const { materialId, versionId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
+      await tx.asOwner();
+      await tx.q(`update public.materials set allow_download = false where id = $1`, [materialId]);
+      const name = `${f.a.id}/sessions/${f.m2.a.published}/materials/${versionId}/deck.pdf`;
+      await tx.q(`insert into storage.objects (bucket_id, name) values ('materials', $1)`, [name]);
+
+      await tx.as(f.a.members[1].claims); // plain member, phase='after', allow_download=false
+      expect(await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).toEqual([]);
+
+      await tx.as(f.a.members[0].claims); // the presenter — bypasses allow_download for their own material
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [name])).length).toBe(1);
+    });
+  });
+});
