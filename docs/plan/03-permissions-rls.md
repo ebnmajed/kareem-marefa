@@ -1215,6 +1215,11 @@ generated suite is the highest-value test in the product.
 | `RPC-send_rsvp_nudge.non_responders` | Only members with NO rsvp row are nudged, and never a presenter of the session. (migration `0035`). |
 | `RPC-send_rating_prompt.unrated` | Filtered at SEND time: a member who rated in the first hour is not prompted (`REQ-RAT-007`). (migration `0035`). |
 | `RPC-send_*.definer_only` | All three are the worker's; no client role may fan out a notification to an org. (migration `0035`). |
+| `POL-sessions.change_notice` | Moving a published session notifies confirmed AND waitlisted members with both values, moves their reminders, and enqueues one calendar upsert per confirmed seat. (migration `0036`). |
+| `POL-sessions.change_notice.non_optional` | `MSG-session_changed` and `MSG-session_cancelled` reach a member who muted `my_sessions` on both channels (`08` §1.7). (migration `0036`). |
+| `POL-sessions.change_notice.unpublished` | Editing a draft notifies nobody: there is nobody holding a seat to mislead. (migration `0036`). |
+| `POL-sessions.cancel_notice` | Cancelling removes every reminder key and the nudge, enqueues a calendar delete per seat, and tells confirmed and waitlisted members why. (migration `0036`). |
+| `POL-sessions.publish_notice` | Publishing announces the session once, to active members, and never twice for one session. (migration `0036`). |
 | `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
 | `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
 | `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |

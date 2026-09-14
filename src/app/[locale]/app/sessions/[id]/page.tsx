@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
+import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
@@ -182,6 +183,9 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           On desktop it is the sticky rail 09 asks for. */}
       <aside className="mt-8 border-t border-edge pt-4 md:sticky md:top-6 md:mt-0 md:border-t-0 md:pt-0">
         <RsvpPanel sessionId={session.id} memberId={me.memberId} locale={locale} />
+        {/* The notify slot (TEAM.md §2, wave 2): ICS + add-to-calendar links, REQ-CAL-001/002.
+            Renders nothing for an unscheduled or cancelled session. */}
+        <AddToCalendar sessionId={session.id} memberId={me.memberId} locale={locale} />
 
         {session.capacity !== null ? (
           <p className="mt-3 text-body-sm text-fg-muted">

@@ -1,4 +1,4 @@
--- notify (wave 2, M3) — the session notices M2 deferred (DEC-045).
+-- promoted by the lead at wave-2 sync 4 · notify (wave 2, M3) — the session notices M2 deferred (DEC-045).
 --
 -- Serves:  REQ-SES-009 / REQ-NTF-005 (a time or venue change tells the member
 --          the OLD value and the NEW one) · REQ-SES-010 (cancellation) ·

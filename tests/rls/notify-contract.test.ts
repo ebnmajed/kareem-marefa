@@ -45,6 +45,9 @@ async function setup(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
   for (const table of M3_TABLES) await tx.q(`delete from public.${table}`);
+  // Since 0034 the fixture's RSVP inserts enqueue notices of their own; the
+  // queue assertions below count only what THIS case enqueues.
+  await tx.q(`delete from graphile_worker._private_jobs`);
   return f;
 }
 

@@ -10,7 +10,7 @@
 // the NEW one. "Session details have changed, please check the page" makes
 // them do the diffing, and some of them will not.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx } from "./db";
+import { pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -20,11 +20,10 @@ afterAll(() => pool.end());
 // so `supabase db reset` applies them; only the file still under review is
 // applied here. Listing it by name rather than globbing the folder keeps the
 // test honest about what it is proving.
-const PROPOSED = ["notify/0005_session_notices.sql"];
 
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  for (const file of PROPOSED) await applyProposed(tx, file);
+  // Promoted as migration 0036 at wave-2 sync 4: applied by `supabase db reset`.
   for (const table of ["notifications", "notification_preferences"]) await tx.q(`delete from public.${table}`);
   return f;
 }
