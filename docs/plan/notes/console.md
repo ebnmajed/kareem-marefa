@@ -340,3 +340,23 @@ restarted `auth` container went stale, mid-investigation — both fixed with `su
 `docker restart supabase_kong_kareem-marefa` since nothing else here could produce a trustworthy
 green/red signal. Flagged to the lead since the console track's own rules say not to touch the
 Supabase lifecycle.
+
+## Second pass — sync-6's full-suite run
+
+Two more real bugs, neither visible from source review, both fixed and verified:
+
+- `admin-members.spec.ts`'s deactivation test hung the full 30 s: `member-row.tsx`'s "deactivate"
+  control is a bare `<summary>` (the `<details>` disclosure itself), which does not get an
+  implicit ARIA "button" role in Chromium — `getByRole("button", ...)` never matched it. Switched
+  to `getByText`. Test-only fix, verified immediately (no rebuild needed): 9/9 passing.
+- SCR-044's manual-mark form reused `listUncheckedConfirmedRsvps()` — the presenter host view's
+  own function, scoped on purpose to confirmed RSVP holders — so a waitlisted attendee who showed
+  up was never selectable, and the whole form silently doesn't render once nobody unchecked
+  qualifies. Added `listUncheckedForAdminManualMark()` to `checkin.ts` (admin-only, additive,
+  `listUncheckedConfirmedRsvps()` itself untouched) scoped to confirmed OR waitlisted, wired
+  SCR-044's page to it instead. **Source-verified, not yet e2e-green**: this needs a rebuild
+  (`.next/BUILD_ID` predates the fix) — `tsc`/lint are clean and the translation keys
+  (`memberLabel`, `mark`, `reasonLabel`) match the test's locators exactly.
+
+`content` has already landed the bookmark fix I reported (`ignoreDuplicates: true` in
+`toggleBookmark()`) — confirmed by reading the diff, not yet rebuilt/re-run.
