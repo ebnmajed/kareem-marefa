@@ -1,4 +1,4 @@
--- notify (wave 2, M3) — the notification contract: the six M3 tables, the
+-- proposed by `notify` (wave 2, M3), promoted by the lead at sync 1 — the notification contract: the six M3 tables, the
 -- normative matrix as a function, and public.notify(), the one door every
 -- track uses to send anything.
 --

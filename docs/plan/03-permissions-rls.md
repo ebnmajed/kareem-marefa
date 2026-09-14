@@ -1157,6 +1157,20 @@ generated suite is the highest-value test in the product.
 | `RPC-enqueue_job.definer_only` | No client role can call `public.enqueue_job()` — `anon`, `authenticated` and a stale admin are refused on the grant; a `security definer` RPC and the worker's role can (migration `0025`, DEC-046). |
 | `RPC-enqueue_job.replace` | Enqueuing twice with one key leaves **one** pending job, moved to the later `run_at` — a rescheduled reminder moves rather than duplicating (`REQ-NTF-004`, `11` §1.1). |
 | `RPC-enqueue_job.loud` | Without the `graphile_worker` schema the call raises `3F000` naming the fix; a job is never silently dropped. A task name that is not a snake_case identifier is refused with `22023`. |
+| `POL-notifications.insert` | **No role** may insert: job-written through `notify()`. (migration `0026`). |
+| `POL-notifications.update.read_at` | A member marks their own row read; `key`, `payload` and `member_id` are outside the column grant. (migration `0026`). |
+| `POL-notification_preferences.self` | A member reads and writes only their own preferences. (migration `0026`). |
+| `POL-notification_preferences.not_switchable` | A row disabling `certificates`, `moderation` or `account` is rejected by the constraint (`08` §2). (migration `0026`). |
+| `POL-notification_templates.select.admin` | A plain member reads no template; the org admin does. (migration `0026`). |
+| `POL-notification_templates.required_fields` | A template whose body omits a declared `required_fields` entry is refused **before it is saved** (`REQ-NTF-007`). (migration `0026`). |
+| `POL-notification_templates.matrix` | A template for a key or channel absent from `08` §1 is refused (`REQ-NTF-002`). (migration `0026`). |
+| `POL-email_deliveries.select.admin` | An org admin sees bounces with the reason; a member sees nothing, not even their own. (migration `0026`). |
+| `POL-calendar_events.select.self` | A member sees only their own sync rows; insert and update have no policy and no grant. (migration `0026`). |
+| `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
+| `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
+| `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |
+| `RPC-notify.definer_only` | `anon`, `authenticated` and an org admin are all refused on the grant; a definer RPC and `service_role` succeed. (migration `0026`). |
+| `RPC-notify.enqueues_in_transaction` | The `notify:{message_id}` job and the `notifications` row commit or roll back together (`02` §4.17). (migration `0026`). |
 | `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
 | `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
 | `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |
