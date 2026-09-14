@@ -166,4 +166,72 @@ old-offset keys and adds the new ones.
 
 ## 5. Findings
 
-_(appended as they happen)_
+Things the plan did not know, found by building. Each is either fixed here and
+flagged, or left alone and flagged, and none is a re-litigation.
+
+### 5.1 `08` §3.2 is two templates short of `08` §1
+
+`08` §1 gives **24** messages an email channel; `08` §3.2 lists **22**
+templates. **`MSG-proposal_submitted`** and **`MSG-presenter_assigned`** have
+none, and `REQ-NTF-002`'s acceptance is "every matrix row has an Arabic
+template". Both are written in `worker/src/mail/templates.ts`;
+`tests/unit/mail-render.test.ts` reads the matrix out of migration `0026` and
+diffs it against the template file, so the gap cannot reopen quietly. `08`
+wants the two rows added.
+
+### 5.2 `08` §1.2 defines three reminder messages for a free `int[]`
+
+`org_settings.reminder_offsets_minutes` is org-configurable (`REQ-NTF-004`)
+and `08` §1.2 names exactly three messages: 7 d, 1 d, 2 h. An org that sets a
+3-day offset has no message of its own. `public.reminder_message_key()` gives
+it the nearest by magnitude, so the subject reads «بعد أسبوع» above a body
+carrying the real moment. Better than a reminder that is never sent; the
+honest fix is a fourth, offset-agnostic message, which is a plan decision.
+
+### 5.3 `08` §1.7's heading says eleven and its list names seventeen
+
+Several rows pack two keys behind a slash. `REQ-NTF-003` names four
+explicitly and says "certain notifications", so the list is authoritative and
+the heading's count is wrong. The matrix function carries all seventeen and
+`tests/rls/notify-contract.test.ts` pins them by name.
+
+### 5.4 `MSG-rsvp_deadline_soon` has no job
+
+It is in `08` §1.3 and `11` §7 defines no job key for it. Not implemented and
+not faked; it needs a job name and key from `11`.
+
+### 5.5 The numeral enum was spelled two ways
+
+`public.numeral_system` (migration `0003`) is `western | arabic_indic`; the
+shared `NumeralSystem` said `arabic`, so `formatNumber` never matched and an
+org set to Arabic-Indic rendered Western digits everywhere. Found while
+writing `notification_send_context`; fixed repo-wide during wave 2. The
+worker and my DAL both use the database's spelling, with no mapping — a
+mapping is a second place for the two to disagree.
+
+### 5.6 `graphile_worker.jobs` has no `payload` column
+
+In graphile-worker 0.18 `jobs` is a view; the payload lives on
+`_private_jobs`, joined on `id`. Any test asserting what was enqueued needs
+the join.
+
+### 5.7 The single-runner check for the RLS suite gives false positives
+
+`ps aux | grep 'vitest run --project rls'` matches another agent's **waiter**,
+whose own command line contains that string — so two waiters block each
+other. `pgrep -fl "node_modules/.bin/vitest"` matches the real runner only.
+Adopted into the three agent definitions during wave 2.
+
+### 5.8 Two byte-level traps, same shape, different formats
+
+The RFC 2047 email subject and the RFC 5545 ICS fold are the same bug twice:
+a length limit measured in **octets**, applied to text where one character is
+two of them. Both split on characters and measure with `Buffer.byteLength`;
+both have a test that a length-counting implementation fails. `ics` and
+`ical-generator` both fold by string length, which is why neither is used.
+
+### 5.9 `URLSearchParams` is wrong for an add-to-calendar link
+
+It encodes a space as `+` (form encoding, not percent-encoding). Google
+tolerates it; Outlook shows the member literal plus signs, and Arabic titles
+are full of spaces. `08` §6.2's "naive encoding breaks" is this.
