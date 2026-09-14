@@ -198,3 +198,82 @@ included in the shell's nav from day one**, per the spawn note: `designer/`, `te
   still null would stay visible to ordinary members through the policy itself, with only the DAL's
   own `.is("removed_at", null)` filter (defence in depth, never the boundary) standing between it
   and them.
+
+### Bundle 6 — SCR-061/062/063, and every REQ-ADM-004…020 screen is now built
+
+- SCR-061 (exports), SCR-062 (audit) and SCR-063 (settings) needed no new SQL at all —
+  `write_admin_export_audit()` (bundle 4) is generic across every export type, `audit_read_admin`/
+  `audit_read_moderator_own` (0004) already pre-scope the audit query by role, and `p2_admin_update`
+  plus `org_settings_history()` (both 0004) already cover every settings field and its own history.
+- Ratings' export is deliberately aggregate (`session_rating_aggregates`), not per-rater —
+  `list_session_ratings_admin()` is audited once per session on SCR-044; looping it across an
+  entire org for one CSV would multiply its audit rows for a shape nobody asked for.
+- Settings deliberately excludes the reminder schedule (`/admin/reminders`) and the recognition
+  perks (`/admin/recognition`, including `priority_rsvp`'s own enablement) — both already own
+  their slice of `org_settings`.
+- **Every REQ-ADM-004…020 screen this track was assigned is now built.** What remains is exactly
+  the three carried-over items — bundle 7.
+
+### Bundle 7 — the three carried-over items, closing the track
+
+1. **SCR-043's RTL date-time picker** (DEC-045) — `<RtlDateTimePicker>`
+   (`src/components/admin/rtl-datetime-picker.tsx`), replacing all four native `datetime-local`
+   fields on the schedule form. Fully custom DOM, no OS overlay, so it actually inherits the
+   page's `dir="rtl"`; digits follow the org's numeral system. **Known collateral, not fixed
+   here** (the file is out of this track's edit globs): `tests/e2e/sessions-screens.spec.ts:205`
+   (the M2 demonstrable's own walk) calls `.fill()` on the field labelled «التاريخ والوقت», which
+   now opens a picker rather than accepting typed text. Suggested replacement for that one line,
+   for whoever owns that file:
+   ```ts
+   const when = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+   await boss.getByRole("button", { name: new RegExp("^التاريخ والوقت:") }).click();
+   await boss.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).click();
+   await boss.getByLabel("الساعة").selectOption("18");
+   await boss.getByLabel("الدقيقة").selectOption("0");
+   await boss.getByRole("button", { name: "تم" }).click();
+   ```
+   Two component test files prove the picker itself
+   (`tests/components/admin/rtl-datetime-picker.test.tsx`, 7 cases) — not yet run against a real
+   page, same e2e-build blocker as everything else this wave.
+2. **SCR-053's member picker** (`scoring.md`'s flagged gap) — `<MemberPicker>`
+   (`src/components/admin/member-picker.tsx`), a client-side filter over `listMembersForAdmin()`.
+   Zero e2e collateral: neither `scoring-screens.spec.ts` (this track's) nor `points.spec.ts`
+   (scoring's, checked before touching anything) drives the manual-adjustment form's member field
+   through the UI.
+3. **08's fourth reminder message** (DEC-047) — `reminder_message_key()` and `notification_
+   matrix()` both extended (`supabase/proposed/console/0004_reminder_generic_message.sql`), proven
+   at the database layer (`tests/rls/reminder-generic-message.test.ts`, 4 cases). **Genuinely
+   incomplete, and said so in the commit**: the actual subject/body text for `MSG-reminder_generic`
+   lives in `worker/src/mail/templates.ts` (email) and `notifications.json`'s `message.MSG-*` map
+   (in-app) — both outside every one of this track's edit globs, and DEC-047's own words call the
+   message itself "a plan decision, not mine." Both files WERE read (read access is unrestricted;
+   only writes are globbed) to draft this accurately rather than guess. Drafted in full below for
+   the lead to apply; nothing here is faked or silently skipped.
+
+   **For `worker/src/mail/templates.ts`** (add alongside the other `MSG-reminder_*` entries — same
+   shape, `{{title}}`/`{{startsAt}}`/`{{venue}}`/`{{tasks}}`/`{{url}}` all already populated by
+   `send_reminder_notification()`'s existing payload for every reminder key alike):
+   ```ts
+   "MSG-reminder_generic": {
+     subject: "تذكير: {{title}}",
+     body: `${greeting}\n\nتذكير بجلسة «{{title}}» القادمة.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
+   },
+   ```
+   **For `src/messages/{ar,en}/notifications.json`'s `notifications.message` map** — checked
+   against the real file first: every entry there (`MSG-reminder_7d`, `MSG-session_changed`,
+   `MSG-badge_earned`, …) is a short, STATIC headline string with no interpolation at all — the
+   inbox component reads the session title/date from `notification.payload` itself and renders
+   this phrase alongside it, not inside it. So the addition is one short phrase per locale, not an
+   object:
+   ```json
+   "MSG-reminder_generic": "تذكير بجلسة قادمة"
+   ```
+   ```json
+   "MSG-reminder_generic": "Upcoming session reminder"
+   ```
+   **A `DECISIONS.md` entry is needed** per DEC-047's own framing ("a plan decision"). Suggested
+   content: record that `08` §1.2 gains a fourth reminder message, `MSG-reminder_generic`,
+   category `reminders`, channels in-app + email, for any `reminder_offsets_minutes` value outside
+   ±20% of the three built-in offsets; cite REQ-NTF-004; supersede nothing (additive to `08`'s
+   frozen matrix, the same class of change `0026`'s two missing email defaults already made under
+   DEC-047 itself).
