@@ -64,6 +64,22 @@ interface LayerBase {
    *  binding or the literal, so a template author is not forced to name
    *  every layer twice. */
   name?: string
+  /** Per-preset anchor and scale behaviour (06 §5.1). `default` applies to
+   *  every preset that names no override. Typed loosely here and resolved in
+   *  `presets.ts`, so the model does not import the preset table and the
+   *  preset table does not have to re-declare the layer. */
+  presets?: { default?: LayerPresetOverride } & Partial<Record<string, LayerPresetOverride>>
+  /** Presets this layer does not survive. 06 §5.1: «layers that do not
+   *  survive a crop are DECLARED, not discovered» — an `og` card is 1200×630
+   *  and a three-line abstract does not belong on it, and finding that out
+   *  from a cramped link preview is finding it out too late. */
+  hideAt?: string[]
+}
+
+/** The shape of one per-preset override. `presets.ts` owns the meaning. */
+export interface LayerPresetOverride {
+  anchor?: 'block-start' | 'block-end' | 'center'
+  scale?: 'proportional' | 'fixed' | 'fill'
 }
 
 export interface TextLayer extends LayerBase {

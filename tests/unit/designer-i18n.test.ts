@@ -42,8 +42,21 @@ describe("REQ-INT-006 — no numeral system is frozen into the copy", () => {
   });
 
   it("contains no literal Western digit outside ICU syntax either", () => {
-    const offenders = arabic.filter(([, v]) => WESTERN.test(v.replace(/=\d+\s*\{/g, ""))).map(([p, v]) => `${p}: ${v}`);
+    // Two exemptions, both narrow and both proper nouns rather than counts:
+    // ICU's own `=0` selector, and the ISO 216 paper names. «A4» is what a
+    // print shop is told, in every locale and under either numeral system —
+    // rendering it «A٤» would be wrong, not localised. The screens wrap them
+    // in <bdi dir="ltr"> so they do not scramble against Arabic neighbours.
+    const ISO_PAPER = /\bA[0-9]\b/g;
+    const offenders = arabic
+      .filter(([, v]) => WESTERN.test(v.replace(/=\d+\s*\{/g, "").replace(ISO_PAPER, "")))
+      .map(([p, v]) => `${p}: ${v}`);
     expect(offenders).toEqual([]);
+  });
+
+  it("the ISO paper exemption stays narrow — only the preset names use it", () => {
+    const withPaper = arabic.filter(([, v]) => /\bA[0-9]\b/.test(v)).map(([p]) => p);
+    expect(withPaper).toEqual(["designer.presets.name.a4", "designer.presets.name.a3"]);
   });
 });
 

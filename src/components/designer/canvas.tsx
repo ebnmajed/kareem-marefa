@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { type DesignDocument, renderDocumentToHtml } from "@kareem/designer-runtime";
+import { type DesignDocument, PRESETS, type PresetName, renderDocumentToHtml, safeBox } from "@kareem/designer-runtime";
 import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
 
 // SCR-057's canvas — RTL-first (06 §10), and rendered by THE renderer.
@@ -39,6 +39,12 @@ export interface DesignerCanvasProps {
   numerals: NumeralSystem;
   /** The placeholder label an unbound field draws, translated. */
   placeholderLabel: (binding: string) => string;
+  /** The preset the canvas is showing. The document handed in is already
+   *  derived for it; this names it so the overlays can be drawn. */
+  preset: PresetName;
+  /** Safe-area and bleed overlays — on by default for print presets
+   *  (06 §10), because a print preset is where crossing one is expensive. */
+  showOverlays: boolean;
 }
 
 export function DesignerCanvas({
@@ -51,6 +57,8 @@ export function DesignerCanvas({
   lockedLayerIds,
   numerals,
   placeholderLabel,
+  preset,
+  showOverlays,
 }: DesignerCanvasProps) {
   const t = useTranslations("designer.canvas");
   const tl = useTranslations("designer.layers");
@@ -83,6 +91,8 @@ export function DesignerCanvas({
   }, [doc.master.width]);
 
   const { width, height } = doc.master;
+  const presetSpec = PRESETS[preset];
+  const safe = safeBox(presetSpec);
   // `transform-origin` is physical, so it is chosen from the DOCUMENT's own
   // direction: an RTL canvas grows from its start edge, which is the right.
   const originSide = doc.direction === "rtl" ? "top right" : "top left";
@@ -109,6 +119,35 @@ export function DesignerCanvas({
             className="pointer-events-none absolute top-0 border-0"
             style={{ insetInlineStart: 0, transform: `scale(${scale})`, transformOrigin: originSide }}
           />
+
+          {/* Safe-area and bleed guides. Drawn by the EDITOR and never by the
+              renderer: a guide that could reach an export is a guide that
+              will, on the one poster nobody re-checked. Logical insets, so
+              they mirror with the canvas. */}
+          {showOverlays ? (
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true" dir={doc.direction}>
+              <div
+                className="absolute border border-dashed border-fg-muted/70"
+                style={{
+                  insetInlineStart: safe.x * scale,
+                  top: safe.y * scale,
+                  width: safe.w * scale,
+                  height: safe.h * scale,
+                }}
+              />
+              {presetSpec.bleed > 0 ? (
+                <div
+                  className="absolute border border-dotted border-fg-heading/50"
+                  style={{
+                    insetInlineStart: presetSpec.bleed * scale,
+                    top: presetSpec.bleed * scale,
+                    width: (width - presetSpec.bleed * 2) * scale,
+                    height: (height - presetSpec.bleed * 2) * scale,
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           {/* The selection overlay, in document coordinates × scale. Logical
               positioning, so it mirrors with the canvas instead of drifting

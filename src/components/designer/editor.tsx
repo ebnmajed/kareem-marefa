@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { DesignDocument, Layer } from "@kareem/designer-runtime";
-import { validateDocument } from "@kareem/designer-runtime";
+import type { DesignDocument, Layer, PresetName } from "@kareem/designer-runtime";
+import { derive, fontFaceCss, PRESETS, presetsFor, validateDocument } from "@kareem/designer-runtime";
 import type { NumeralSystem } from "@/components/sessions/numerals";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { LayerList } from "@/components/designer/layer-list";
 import { PropertiesPanel } from "@/components/designer/properties-panel";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
+import { ChecksPanel } from "@/components/designer/checks-panel";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-057 — the shared designer. REQ-DSG-004, REQ-DSG-005, REQ-DSG-006.
 //
@@ -62,15 +64,53 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const tb = useTranslations("designer.bindings");
   const tl = useTranslations("designer.layers");
   const tp = useTranslations("designer.properties");
+  const tpr = useTranslations("designer.presets");
+  const tc = useTranslations("designer.checks");
 
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>({ kind: "clean" });
+  const presets = useMemo(() => presetsFor(props.purpose), [props.purpose]);
+  const [preset, setPreset] = useState<PresetName>(() => presetsFor(props.purpose)[0] ?? "master");
+  // On by default for print, where crossing a safe area is expensive and the
+  // blade is not negotiable (06 §10).
+  const [overlays, setOverlays] = useState(() => PRESETS[presetsFor(props.purpose)[0] ?? "master"].bleed > 0);
+  const [fontsReady, setFontsReady] = useState(false);
   const baseUpdatedAt = useRef(props.initialUpdatedAt);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
   const placeholderLabel = useCallback((binding: string) => tb("value", { value: `‹ ${binding} ›` }), [tb]);
+
+  // The SAME faces the canvas loads, declared in this document too, because
+  // the pre-export checks measure here (checks-panel.tsx). Measuring against
+  // a fallback face would produce a warning list that disagrees with the
+  // export — worse than no list. The family names are the manifest's plain
+  // ones; next/font emits hashed names for the app's own type, so nothing
+  // collides.
+  const faceCss = useMemo(
+    () => fontFaceCss(props.faces.map((f) => ({ ...f, url: `${props.origin}/api/fonts/${f.sha256}` }))),
+    [props.faces, props.origin],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const families = [...new Set(props.faces.map((f) => f.family))];
+    // `document.fonts.ready` alone is not enough: a face declared but never
+    // exercised is not "pending", so ready resolves while the glyphs are
+    // still unloaded (DEC-024). Load each family explicitly first.
+    void Promise.all(families.map((family) => window.document.fonts.load(`400 40px "${family}"`)))
+      .then(() => window.document.fonts.ready)
+      .then(() => {
+        if (!cancelled) setFontsReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setFontsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [props.faces]);
 
   const push = useCallback(
     async (next: DesignDocument) => {
@@ -173,9 +213,52 @@ export function DesignerEditor(props: DesignerEditorProps) {
     }
   })();
 
+  // What the canvas shows IS the derived variant, not the master with a
+  // label — REQ-DSG-009's «no manual step» is only true if the editor
+  // exercises the same derivation the export will.
+  const shown = useMemo(() => derive(document, preset), [document, preset]);
+
+  const presetTabs = (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {presets.map((name) => (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={name === preset}
+            onClick={() => {
+              setPreset(name);
+              setOverlays(PRESETS[name].bleed > 0);
+            }}
+            className={`h-11 rounded-field border px-3 text-body-sm ${
+              name === preset ? "border-edge-strong bg-silver-100 text-fg-heading" : "border-edge text-fg-body"
+            }`}
+          >
+            <bdi>{tpr(`name.${name}`)}</bdi>
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => setOverlays((v) => !v)} className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body">
+          {overlays ? tpr("overlaysHide") : tpr("overlaysShow")}
+        </button>
+        <p className="text-body-sm text-fg-muted">
+          {tpr.rich("size", {
+            width: formatNumber(PRESETS[preset].width, props.numerals),
+            height: formatNumber(PRESETS[preset].height, props.numerals),
+            bdi: (c) => <bdi>{c}</bdi>,
+          })}
+        </p>
+        {PRESETS[preset].bleed > 0 ? <p className="text-body-sm text-fg-muted">{tpr("bleedHint")}</p> : null}
+      </div>
+    </div>
+  );
+
   const canvas = (
     <DesignerCanvas
-      document={document}
+      document={shown}
+      preset={preset}
+      showOverlays={overlays}
       bindings={props.bindings}
       faces={props.faces}
       origin={props.origin}
@@ -189,6 +272,10 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* eslint-disable-next-line react/no-danger -- generated by the runtime's
+          own fontFaceCss() from the manifest; no user input reaches it, and
+          the family names are escaped there. */}
+      <style dangerouslySetInnerHTML={{ __html: faceCss }} />
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-body-sm text-fg-muted">{t(`purpose.${props.purpose}`)}</p>
         {status ? (
@@ -210,7 +297,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
           note that says why the editor is not here. */}
       <div className="flex flex-col gap-6 xl:hidden">
         <p className="rounded-field border border-edge bg-silver-100 p-3 text-body-sm text-fg-body">{t("mobileNotice")}</p>
+        {presetTabs}
         {canvas}
+        <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
+          <h2 id="dr-checks-m" className="text-body font-medium text-fg-heading">
+            {tc("heading")}
+          </h2>
+          <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} />
+        </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
           <h2 id="dr-bindings-m" className="text-body font-medium text-fg-heading">
             {tb("heading")}
@@ -243,6 +337,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             {t("previewHeading")}
           </h2>
           <p className="text-body-sm text-fg-muted">{t("realDataNote")}</p>
+          {presetTabs}
           {canvas}
         </section>
 
@@ -266,6 +361,13 @@ export function DesignerEditor(props: DesignerEditorProps) {
               {tb("heading")}
             </h2>
             <BindingsPanel declared={props.declaredBindings} values={props.bindings} />
+          </section>
+
+          <section aria-labelledby="dr-checks" className="flex flex-col gap-3">
+            <h2 id="dr-checks" className="text-body font-medium text-fg-heading">
+              {tc("heading")}
+            </h2>
+            <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} />
           </section>
         </div>
       </div>
