@@ -122,7 +122,7 @@ export function BrandKitForm({
             <p className="text-label text-fg-heading">{t("contrast.title")}</p>
             <ContrastBadge foreground={active.fgHeading} background={active.canvas} use="large" label={t("contrast.large")} numerals={numerals} />
             <ContrastBadge foreground={active.fgBody} background={active.canvas} use="body" label={t("contrast.body")} numerals={numerals} />
-            <ContrastBadge foreground={active.fgMuted} background={active.canvas} use="body" label={t("contrast.body")} numerals={numerals} />
+            <ContrastBadge foreground={active.fgMuted} background={active.canvas} use="body" label={t("contrast.muted")} numerals={numerals} />
             <ContrastBadge foreground={active.edgeStrong} background={active.canvas} use="ui" label={t("contrast.ui")} numerals={numerals} />
           </div>
         </fieldset>

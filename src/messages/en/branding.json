@@ -51,6 +51,7 @@
     "contrast": {
       "title": "Contrast (WCAG 2.2 AA)",
       "body": "Body text",
+      "muted": "Muted text",
       "large": "Large text",
       "ui": "UI component",
       "pass": "Passes",
