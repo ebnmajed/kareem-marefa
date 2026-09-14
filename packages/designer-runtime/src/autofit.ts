@@ -11,40 +11,23 @@
  *
  * TWO PROPERTIES THIS FILE EXISTS TO HOLD.
  *
- * It is a PURE function over an injected measurer. The editor measures with
- * the browser's DOM and the worker measures with Chromium's — the same engine
- * and the same font bytes — so the fitted size is the same number in both,
- * which is one of the things Tier A compares (06 §9.3: «same fitted size»).
- * A measurement baked into this module would be a second text engine.
+ * The DECISION is pure and the MEASUREMENT is injected. The editor measures
+ * with the browser's DOM and the worker measures with Chromium's — the same
+ * engine and the same font bytes — so the fitted size is the same number in
+ * both, which is one of the things Tier A compares (06 §9.3: «same fitted
+ * size»). A measurement baked in here would be a second text engine.
  *
  * It searches in INTEGER PIXEL STEPS, downward, and takes the first size that
  * fits. Not a binary search and not a fractional one: two renderers agreeing
- * on 47.318 px is luck, and 06 §9.3's «not a tolerance — a structural
- * comparison» does not survive luck. Determinism is worth the extra
- * measurements on a box that is measured once per export.
+ * on 47.318 px is luck, and «not a tolerance — a structural comparison» does
+ * not survive luck. Determinism is worth the extra measurements on a box
+ * measured once per export.
  */
 
 import type { AutoFit, FontSpec, Frame } from './model.js'
+import { measureTextBatch, type MeasureRequest, type TextMetrics } from './page-probes.js'
 
-export interface MeasureRequest {
-  text: string
-  family: string
-  weight: number
-  /** Integer pixels. */
-  size: number
-  lineHeight: number
-  /** The frame's width; wrapping happens against it. */
-  maxWidth: number
-}
-
-export interface TextMetrics {
-  /** Wrapped line boxes. */
-  lines: number
-  /** Total laid-out height, including the leading A30 asks for. */
-  height: number
-  /** The widest line. */
-  width: number
-}
+export type { MeasureRequest, TextMetrics } from './page-probes.js'
 
 export type TextMeasurer = (request: MeasureRequest) => TextMetrics
 
@@ -69,107 +52,101 @@ export interface AutoFitInput {
   frame: Pick<Frame, 'w' | 'h'>
   font: FontSpec
   autoFit?: AutoFit
+  direction?: 'rtl' | 'ltr'
 }
 
 /**
- * The fitted size for one text box.
+ * Every size to try, largest first. Exposed because the worker drives the
+ * page over a bridge: measuring sixty candidates in one `page.evaluate` is
+ * one round-trip instead of sixty, and the search stays identical either way
+ * because the CANDIDATES are the same list.
+ */
+export function autoFitCandidates(input: AutoFitInput): number[] {
+  const start = Math.max(1, Math.round(input.font.size))
+  if (!input.autoFit) return [start]
+  const floor = Math.max(1, Math.round(input.font.minSize ?? input.font.size))
+  const out: number[] = []
+  for (let size = start; size >= floor; size--) out.push(size)
+  return out.length ? out : [start]
+}
+
+/** The measurement request for one candidate. One shape, so the editor and
+ *  the worker cannot ask the page two different questions. */
+export function autoFitRequest(input: AutoFitInput, size: number): MeasureRequest {
+  return {
+    text: input.text,
+    family: input.font.family,
+    weight: input.font.weight ?? 400,
+    size,
+    lineHeight: input.font.lineHeight ?? 1.7,
+    maxWidth: input.frame.w,
+    direction: input.direction ?? 'rtl',
+  }
+}
+
+/**
+ * The decision, given the candidates' measurements in the same order. Pure:
+ * no DOM, no async, testable with a table.
+ */
+export function pickAutoFit(input: AutoFitInput, candidates: readonly number[], metrics: readonly TextMetrics[]): AutoFitResult {
+  const maxLines = input.autoFit?.maxLines
+
+  for (let i = 0; i < candidates.length; i++) {
+    const m = metrics[i]
+    const size = candidates[i]
+    if (!m || size === undefined) continue
+    if (m.height <= input.frame.h && (maxLines === undefined || m.lines <= maxLines)) {
+      return { size, lines: m.lines, height: m.height, fits: true }
+    }
+  }
+
+  // Nothing fit. The floor is the last candidate, and the template's minimum
+  // is not negotiable (REQ-DSG-025) — so this warns rather than shrinking.
+  const last = candidates.length - 1
+  const size = candidates[last] ?? Math.round(input.font.size)
+  const m = metrics[last] ?? { lines: 1, height: 0, width: 0 }
+  return {
+    size,
+    lines: m.lines,
+    height: m.height,
+    fits: false,
+    // Which warning is which matters to the admin: «it will not get smaller»
+    // and «it wrapped onto a fourth line» call for different fixes.
+    warning: m.height <= input.frame.h ? 'max_lines_exceeded' : 'min_size_reached',
+  }
+}
+
+/**
+ * The synchronous convenience, for a caller that can measure in-process — the
+ * editor, and any test with a table-driven measurer.
  *
  * With no `autoFit` declared the template is stating a fixed size, so nothing
  * is shrunk — but the result still reports whether it fits, because
  * REQ-DSG-010 wants the overflow flagged before export either way.
  */
 export function computeAutoFit(input: AutoFitInput, measure: TextMeasurer): AutoFitResult {
-  const { text, frame, font, autoFit } = input
-  const lineHeight = font.lineHeight ?? 1.7
-  const weight = font.weight ?? 400
-  const maxLines = autoFit?.maxLines
-  const start = Math.max(1, Math.round(font.size))
-  const floor = Math.max(1, Math.round(font.minSize ?? font.size))
-
-  const at = (size: number) => measure({ text, family: font.family, weight, size, lineHeight, maxWidth: frame.w })
-
-  const verdict = (size: number, m: TextMetrics): AutoFitResult => {
-    const withinBox = m.height <= frame.h
-    const withinLines = maxLines === undefined || m.lines <= maxLines
-    if (withinBox && withinLines) return { size, lines: m.lines, height: m.height, fits: true }
-    return {
-      size,
-      lines: m.lines,
-      height: m.height,
-      fits: false,
-      // Which warning is which matters to the admin: «it will not get smaller»
-      // and «it wrapped onto a fourth line» call for different fixes.
-      warning: withinBox ? 'max_lines_exceeded' : 'min_size_reached',
-    }
+  const candidates = autoFitCandidates(input)
+  const metrics: TextMetrics[] = []
+  for (const size of candidates) {
+    const m = measure(autoFitRequest(input, size))
+    metrics.push(m)
+    // Stop at the first that fits: measuring the rest would be work for an
+    // answer already known, and `pickAutoFit` takes the first anyway.
+    if (m.height <= input.frame.h && (input.autoFit?.maxLines === undefined || m.lines <= input.autoFit.maxLines)) break
   }
-
-  // No auto-fit: the size is the template's word, and overflow is reported.
-  if (!autoFit) return verdict(start, at(start))
-
-  for (let size = start; size >= floor; size--) {
-    const m = at(size)
-    if (m.height <= frame.h && (maxLines === undefined || m.lines <= maxLines)) {
-      return { size, lines: m.lines, height: m.height, fits: true }
-    }
-  }
-
-  // At the floor and still over. The minimum is not negotiable (REQ-DSG-025),
-  // so this is a warning rather than a smaller font.
-  return verdict(floor, at(floor))
+  return pickAutoFit(input, candidates.slice(0, metrics.length), metrics)
 }
 
 /**
- * A measurer over a real DOM — the editor's `document` and the worker page's
- * are both this one, which is the point: the same code, the same engine, the
- * same bytes, so the fitted size cannot differ between what an admin approves
- * and what is printed (DEC-017).
- *
- * The probe carries the renderer's own typographic invariants, because
- * measuring with different CSS than the render uses is measuring a different
- * layout: `letter-spacing: 0` (A30 — spacing breaks the cursive join),
- * `overflow: visible` (a clipped probe under-reports its height and a stacked
- * tashkeel is exactly what gets clipped), and `white-space: pre-wrap`.
+ * A measurer over a real DOM. Both the editor's `document` and the worker
+ * page's go through `measureTextBatch`, the one self-contained probe in
+ * `page-probes.ts` — the same code, the same engine, the same bytes, so the
+ * fitted size cannot differ between what an admin approves and what is
+ * printed (DEC-017).
  */
-export function domTextMeasurer(doc: Document, direction: 'rtl' | 'ltr' = 'rtl'): TextMeasurer {
-  let probe: HTMLElement | null = null
-
-  const element = (): HTMLElement => {
-    if (probe?.isConnected) return probe
-    const el = doc.createElement('div')
-    el.setAttribute('aria-hidden', 'true');
-    // `fixed`, off-screen: an absolutely positioned probe in an RTL document
-    // overflows LEFTWARD, growing scrollWidth and shifting the scroll origin,
-    // which made element screenshots capture the wrong region and produced
-    // blank goldens twice (DEC-024). A fixed element contributes nothing to
-    // scroll size.
-    el.style.cssText =
-      'position:fixed;top:-10000px;inset-inline-start:0;visibility:hidden;pointer-events:none;' +
-      'letter-spacing:0;overflow:visible;white-space:pre-wrap;text-align:start;margin:0;padding:0;border:0';
-    el.dir = direction
-    doc.body.appendChild(el)
-    probe = el
-    return el
-  }
-
-  return ({ text, family, weight, size, lineHeight, maxWidth }) => {
-    const el = element()
-    el.style.fontFamily = `'${family.replace(/[\\'"]/g, '\\$&')}'`
-    el.style.fontWeight = String(weight)
-    el.style.fontSize = `${size}px`
-    el.style.lineHeight = String(lineHeight)
-    el.style.width = `${maxWidth}px`
-    el.textContent = text
-
-    const rect = el.getBoundingClientRect()
-    const range = doc.createRange()
-    range.selectNodeContents(el)
-    // Client rects grouped by their top edge ARE the line boxes; a line count
-    // read from `height / lineHeight` rounds wrong on the last line whenever
-    // a mark sits above the em box, which in Arabic is often.
-    const tops = new Set<number>()
-    for (const r of Array.from(range.getClientRects())) {
-      if (r.width > 0) tops.add(Math.round(r.top * 100) / 100)
-    }
-    return { lines: Math.max(1, tops.size), height: rect.height, width: rect.width }
+export function domTextMeasurer(_doc: Document, direction: 'rtl' | 'ltr' = 'rtl'): TextMeasurer {
+  return (request) => {
+    const [only] = measureTextBatch([{ ...request, direction: request.direction ?? direction }])
+    return only ?? { lines: 1, height: 0, width: 0 }
   }
 }

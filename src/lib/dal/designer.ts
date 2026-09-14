@@ -1,12 +1,18 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   type BindingContext,
   type DesignDocument,
+  type FingerprintSource,
+  fingerprintSource,
   platformBrand,
+  PRESETS,
+  presetsFor,
   validateDocument,
   type ValidationIssue,
 } from "@kareem/designer-runtime";
+import { listEditorFaces } from "@/lib/dal/fonts";
 import { sessionClient } from "@/lib/dal/session";
 import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
 
@@ -304,4 +310,136 @@ export async function saveDesignDocument(locale: string, documentId: string, inp
   if (!data) return { status: "not_authorized" };
 
   return { status: "saved", updatedAt: data.updated_at as string };
+}
+
+/* ── the export pipeline (REQ-DSG-011 … REQ-DSG-014, 06 §6) ─────────────── */
+
+export type ExportStatus = "queued" | "rendering" | "ready" | "failed";
+
+export interface ExportArtifact {
+  id: string;
+  preset: string;
+  format: "png" | "webp" | "pdf" | "jpeg";
+  status: ExportStatus;
+  storagePath: string | null;
+  /** What failed, in the worker's own words. REQ-DSG-012: «a failed export
+   *  states what failed and offers a retry» — a bare "failed" is neither. */
+  error: string | null;
+  renderedAt: string | null;
+}
+
+/**
+ * The source fingerprint — REQ-DSG-013.
+ *
+ * SHA-256 of the runtime's canonical source string. The canonicalisation is
+ * shared with the worker so the two cannot disagree about what "unchanged"
+ * means; the hashing is one line of `node:crypto` on each side, which is what
+ * keeps the runtime package dependency-free for the worker image and the
+ * parity harness.
+ */
+export function exportFingerprint(source: FingerprintSource): string {
+  return createHash("sha256").update(fingerprintSource(source)).digest("hex");
+}
+
+/** Every screen and print target for a document's purpose, in A29's order.
+ *  WebP accompanies every screen PNG for in-app display; JPEG is offered
+ *  only where the org enabled it, and that check is the worker's. */
+export function exportTargets(purpose: DesignerPurpose): Array<{ preset: string; format: ExportArtifact["format"] }> {
+  const targets: Array<{ preset: string; format: ExportArtifact["format"] }> = [];
+  for (const preset of presetsFor(purpose)) {
+    // A29: print is PDF at 300 dpi with the bleed the geometry already
+    // carries; screen is PNG at the exact preset size plus a WebP copy for
+    // in-app display. JPEG is offered only where the org enabled it, and
+    // that check belongs to the worker, which can see org_settings.
+    if (PRESETS[preset].bleed > 0) targets.push({ preset, format: "pdf" });
+    else targets.push({ preset, format: "png" }, { preset, format: "webp" });
+  }
+  return targets;
+}
+
+export interface ExportQueueData {
+  fingerprint: string;
+  artifacts: ExportArtifact[];
+  /** True once every target for this fingerprint is `ready` — what the
+   *  approve action on mobile waits for (SCR-057, view and approve). */
+  complete: boolean;
+}
+
+function toArtifact(row: Record<string, unknown>): ExportArtifact {
+  return {
+    id: row.id as string,
+    preset: row.preset as string,
+    format: row.format as ExportArtifact["format"],
+    status: row.status as ExportStatus,
+    storagePath: (row.storage_path as string | null) ?? null,
+    error: (row.error as string | null) ?? null,
+    renderedAt: (row.rendered_at as string | null) ?? null,
+  };
+}
+
+/** What already exists for this exact source. Nothing is rendered here: the
+ *  cache IS the unique constraint, and re-opening a session must render
+ *  nothing (REQ-DSG-013). */
+export async function getExportQueue(locale: string, documentId: string, fingerprint: string): Promise<ExportQueueData> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase
+    .from("export_artifacts")
+    .select("id, preset, format, status, storage_path, error, rendered_at")
+    .eq("document_id", documentId)
+    .eq("source_fingerprint", fingerprint)
+    .order("preset");
+  const artifacts = (data ?? []).map(toArtifact);
+  return { fingerprint, artifacts, complete: artifacts.length > 0 && artifacts.every((a) => a.status === "ready") };
+}
+
+/**
+ * Queue every variant for the document as it stands — REQ-DSG-011/012.
+ *
+ * The bindings and the faces are pinned into the request rather than
+ * re-resolved by the worker: a second resolution of 06 §2.3 is a second thing
+ * that can disagree with what the admin previewed, and for a certificate it
+ * would break REQ-CRT-014 outright.
+ */
+export async function requestExports(locale: string, documentId: string, origin: string): Promise<ExportQueueData | { status: "not_authorized" }> {
+  const data = await getDesignerDocument(locale, documentId, origin);
+  if (!data) return { status: "not_authorized" };
+
+  const { supabase } = await sessionClient(locale);
+  const faces = await listEditorFaces(locale);
+  const fingerprint = exportFingerprint({
+    document: data.document,
+    templateVersionId: data.templateVersionId,
+    bindings: data.bindings,
+    fontHashes: faces.map((f) => f.sha256),
+  });
+
+  const { data: rows, error } = await supabase.rpc("request_render", {
+    p_document: documentId,
+    p_fingerprint: fingerprint,
+    p_context: { bindings: data.bindings, faces },
+    p_targets: exportTargets(data.purpose),
+  });
+  if (error) {
+    if (error.code === "42501") return { status: "not_authorized" };
+    throw new Error(`designer: request_render failed — ${error.message}`);
+  }
+
+  const artifacts = ((rows ?? []) as Record<string, unknown>[]).map(toArtifact);
+  return { fingerprint, artifacts, complete: artifacts.length > 0 && artifacts.every((a) => a.status === "ready") };
+}
+
+export async function retryExport(locale: string, artifactId: string): Promise<{ status: "ok" } | { status: "not_authorized" }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("retry_export_artifact", { p_artifact: artifactId });
+  if (error) return { status: "not_authorized" };
+  return { status: "ok" };
+}
+
+/** A short-lived signed URL for a finished artifact. `exports_storage_read`
+ *  (0037) is the boundary — org-prefixed, and the path came from the one
+ *  builder (03 §6). */
+export async function signExportUrl(locale: string, storagePath: string): Promise<string | null> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.storage.from("exports").createSignedUrl(storagePath, 300);
+  return data?.signedUrl ?? null;
 }

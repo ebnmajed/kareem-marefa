@@ -108,6 +108,27 @@
       "minSize": "The layer <bdi>{layer}</bdi> reached the smallest size the template allows on <bdi>{preset}</bdi> and is still taller than its frame. The template will not shrink it further.",
       "maxLines": "The layer <bdi>{layer}</bdi> wrapped past the line limit on <bdi>{preset}</bdi>.",
       "measuring": "Measuring the text…"
+    },
+    "exports": {
+      "heading": "Export queue",
+      "intro": "Each size exports as its own job and its status appears here. The preview you approve is the file that goes to print, not a picture of it.",
+      "none": "No export has been requested for this version yet.",
+      "request": "Export every size",
+      "requestAgain": "Request whatever is missing",
+      "retry": "Try again",
+      "download": "Download",
+      "status": {
+        "queued": "Queued",
+        "rendering": "Rendering",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "failed": "Why it failed: <bdi>{reason}</bdi>",
+      "rgbCaveat": "Print files are RGB, not CMYK. The print shop will convert them and the navy may shift slightly in the conversion — tell them before the run. Saying it costs one line; discovering it costs two hundred posters.",
+      "cacheNote": "Nothing re-renders while the source is unchanged: the same key means the same file. Any edit to the design, to the session's data, or to the template version produces a new key, and only that is rendered again.",
+      "queuedNotice": "The sizes were added to the export queue.",
+      "retriedNotice": "Retried.",
+      "notAuthorized": "Exporting is an org admin's act."
     }
   }
 }
