@@ -1,5 +1,5 @@
 // A port of src/lib/storage/exif.ts's byte-level EXIF/XMP/ICC stripping —
-// same reason worker/src/content/paths.ts exists (a separate TypeScript
+// same reason the wave-2 path-builder port existed (a separate TypeScript
 // project with no import path back into `src/`, flagged to the lead as an
 // open question, docs/plan/notes/content.md §3). Every function here MUST
 // stay byte-for-byte identical to its src/lib/storage/exif.ts counterpart;

@@ -1,5 +1,7 @@
-# The worker image — graphile-worker behind the LISTEN/NOTIFY boot probe.
-# 04 §7, 11 §1, DEC-034, DEC-046. Build from the REPO ROOT, like the converter:
+# The worker image — graphile-worker behind the LISTEN/NOTIFY boot probe, plus
+# headless Chromium, the designer runtime and the one font set for M6's
+# renders. 04 §7, 11 §1, DEC-017, DEC-031, DEC-034, DEC-046, DEC-048.
+# Build from the REPO ROOT, like the converter:
 #
 #   docker build -f worker/Dockerfile -t kareem-worker .
 #   docker run --rm -e DATABASE_URL=postgres://…:5432/postgres kareem-worker            # run
@@ -12,12 +14,11 @@
 # probe refuses to start otherwise) and a place for `service_role` that is
 # not Vercel. Locally and in CI it runs against the local database.
 #
-# What is deliberately NOT here yet: headless Chromium, the designer runtime
-# and the platform fonts (04 §7.4, DEC-031). They join the image with M6, and
-# the font layer is verified by hash then (REQ-DSG-016), exactly as
-# converter/Dockerfile does today. Nothing in M3–M5 renders.
+# Three workspace packages ride along: @kareem/storage-paths (the one path
+# builder), @kareem/designer-runtime (THE renderer, DEC-017) and
+# @kareem/fonts (the one font set, verified by hash below — REQ-DSG-016).
 
-# ── build: the workspace's TypeScript, with dev dependencies ────────────────
+# ── build: the workspaces' TypeScript, with dev dependencies ────────────────
 FROM node:22-slim AS build
 WORKDIR /app
 # npm workspaces need every workspace's package.json to reconcile the lock,
@@ -25,25 +26,63 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY worker/package.json worker/
 COPY packages/designer-runtime/package.json packages/designer-runtime/
+COPY packages/storage-paths/package.json packages/storage-paths/
 COPY packages/fonts/package.json packages/fonts/
 RUN npm ci --workspace @kareem/worker --ignore-scripts
+COPY packages/storage-paths/ packages/storage-paths/
+COPY packages/designer-runtime/ packages/designer-runtime/
+RUN npm run build --workspace @kareem/storage-paths \
+ && npm run build --workspace @kareem/designer-runtime
 COPY worker/ worker/
 RUN npm run build --workspace @kareem/worker
 
 # ── runtime: production dependencies of the worker workspace only ───────────
 FROM node:22-slim
 ENV NODE_ENV=production
+
+# Headless Chromium for designer exports (A28, D66): Debian's build, driven by
+# puppeteer-core at CHROME_PATH. No download at build or run time, so the
+# binary is the same on every boot. fontconfig is what makes the font set
+# below visible to it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      chromium \
+      fontconfig \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/bin/chromium
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY worker/package.json worker/
 COPY packages/designer-runtime/package.json packages/designer-runtime/
+COPY packages/storage-paths/package.json packages/storage-paths/
 COPY packages/fonts/package.json packages/fonts/
 RUN npm ci --workspace @kareem/worker --omit=dev --ignore-scripts \
  && npm cache clean --force
+COPY --from=build /app/packages/storage-paths/dist packages/storage-paths/dist
+COPY --from=build /app/packages/designer-runtime/dist packages/designer-runtime/dist
 COPY --from=build /app/worker/dist worker/dist
 
+# ── The one font set (invariant 12, REQ-DSG-016). ──────────────────────────
+# The same step converter/Dockerfile runs: copy the manifest and its files,
+# PROVE they are what the manifest says, install the TrueType files where
+# fontconfig — and therefore Chromium — finds them. An image that fails this
+# step does not exist. The renderer also inlines faces by SHA-256 from the
+# same manifest, so a poster never depends on fontconfig's fallback chain.
+COPY packages/fonts ./packages/fonts
+COPY scripts/fonts/check.mjs scripts/fonts/extract.mjs ./scripts/fonts/
+RUN node scripts/fonts/check.mjs --no-build \
+ && mkdir -p /usr/local/share/fonts/kareem \
+ && cp packages/fonts/*.ttf /usr/local/share/fonts/kareem/ \
+ && fc-cache -f \
+ && fc-list : family | grep -q "IBM Plex Sans Arabic" \
+ && fc-list : family | grep -q "IBM Plex Sans"
+
 # The worker holds service_role (through SECURITY DEFINER functions only,
-# CLAUDE.md data-access rule 6); it does not also need to be root.
+# CLAUDE.md data-access rule 6); it does not also need to be root. Chromium
+# as a non-root user in a container still needs `--no-sandbox` unless the
+# host grants user namespaces; the render driver passes it and says why.
 USER node
 
 # Boot = probe, then run. A failed probe is a failed boot (exit 1), which is

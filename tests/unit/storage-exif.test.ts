@@ -167,7 +167,7 @@ describe("assertsNoExifRemains", () => {
 describe("worker/src/content/exif.ts — parity with src/lib/storage/exif.ts", () => {
   // worker/src/content/exif.ts is a port (that file's own header explains
   // why: a separate TypeScript project with no import back into `src/`,
-  // the same reason worker/src/content/paths.ts exists). Every fixture
+  // the same reason the wave-2 path-builder port existed). Every fixture
   // above, run through BOTH copies, must come out byte-for-byte identical —
   // a mismatch here would mean the worker strips differently from what its
   // own unit tests would lead a reviewer to believe.

@@ -5,15 +5,21 @@
   "description": "graphile-worker: the only process that holds service_role, and only through SECURITY DEFINER functions. 11-background-jobs.md.",
   "type": "module",
   "main": "./dist/index.js",
-  "engines": { "node": ">=22.18.0" },
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "probe": "node dist/index.js --probe-only"
   },
   "dependencies": {
+    "@kareem/designer-runtime": "0.1.0",
+    "@kareem/fonts": "0.1.0",
+    "@kareem/storage-paths": "0.1.0",
     "graphile-worker": "^0.18.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "puppeteer-core": "^25.3.0"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1"
