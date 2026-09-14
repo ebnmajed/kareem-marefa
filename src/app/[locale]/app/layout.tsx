@@ -13,7 +13,7 @@ export default async function AppLayout({ children, params }: { children: React.
   return (
     <div className="min-h-dvh bg-canvas text-fg-body">
       <nav aria-label={t("brand")} className="border-b border-edge bg-canvas">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-8">
+        <div className="mx-auto flex min-h-14 max-w-6xl flex-wrap items-center justify-between gap-y-1 px-4 py-1 md:px-8">
           <ul className="flex items-center gap-1">
             <li className="me-2">
               <Wordmark />
