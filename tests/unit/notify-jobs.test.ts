@@ -12,7 +12,7 @@ import { MemoryTransport } from "../../worker/src/mail/memory";
 import { send_notification, setMailTransport } from "../../worker/src/tasks/send_notification";
 import { calendar_upsert, setCalendarApi } from "../../worker/src/tasks/calendar_upsert";
 import { calendar_delete } from "../../worker/src/tasks/calendar_delete";
-import { StubCalendarApi } from "../../worker/src/calendar/index";
+import { StubCalendarApi, type CalendarEventBody } from "../../worker/src/calendar/index";
 
 type Reply = { rows: Record<string, unknown>[] };
 
@@ -175,6 +175,17 @@ const TARGET = {
   },
 };
 
+/** The shape the API takes, which is NOT the shape the RPC returns — the job
+ *  is what maps one to the other, so a test seeding the stub must build it. */
+const eventBody = (summary: string): CalendarEventBody => ({
+  summary,
+  description: TARGET.session.description,
+  location: TARGET.session.location,
+  startsAt: TARGET.session.starts_at,
+  endsAt: TARGET.session.ends_at,
+  timeZone: TARGET.session.time_zone,
+});
+
 const calendarAnswers = (target: unknown, tokens: unknown = { connection_id: "c-1", access_token: "tok", refresh_token: "ref" }) =>
   [
     [/calendar_sync_target/, () => ({ rows: [{ target }] })],
@@ -200,7 +211,7 @@ describe("JOB-calendar_upsert", () => {
   it("updates the existing event rather than creating a second (REQ-CAL-004, REQ-CAL-005)", async () => {
     const api = new StubCalendarApi();
     setCalendarApi(api);
-    const { id } = await api.createEvent("tok", { ...TARGET.session, summary: "قديم", startsAt: TARGET.session.starts_at, endsAt: TARGET.session.ends_at });
+    const { id } = await api.createEvent("tok", eventBody("قديم"));
     const { helpers } = fakeHelpers(calendarAnswers({ ...TARGET, provider_event_id: id }));
 
     await calendar_upsert({ rsvp_id: "r-1" }, helpers);
@@ -257,7 +268,7 @@ describe("JOB-calendar_delete", () => {
   it("removes the event and records it", async () => {
     const api = new StubCalendarApi();
     setCalendarApi(api);
-    const { id } = await api.createEvent("tok", { ...TARGET.session, summary: "س", startsAt: TARGET.session.starts_at, endsAt: TARGET.session.ends_at });
+    const { id } = await api.createEvent("tok", eventBody("س"));
     const { helpers, calls } = fakeHelpers(calendarAnswers({ ...TARGET, provider_event_id: id }));
 
     await calendar_delete({ rsvp_id: "r-1" }, helpers);
