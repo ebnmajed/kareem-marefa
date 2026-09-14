@@ -33,7 +33,7 @@
     "worker:probe": "npm run probe -w @kareem/worker",
     "worker:start": "npm run start -w @kareem/worker",
     "lockfile": "node scripts/lockfile.mjs",
-    "db:reset": "supabase db reset && node scripts/worker-schema.mjs"
+    "db:reset": "node scripts/db-reset.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

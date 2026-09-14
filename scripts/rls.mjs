@@ -12,6 +12,15 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+// A reset in flight (scripts/db-reset.mjs holds /tmp/db-reset.lock) would make
+// every case fail with "function … does not exist"; wait for it instead.
+const RESET_LOCK = "/tmp/db-reset.lock";
+if (existsSync(RESET_LOCK)) {
+  console.error("rls: a database reset is in flight — waiting for it to finish");
+  const deadline = Date.now() + 10 * 60_000;
+  while (existsSync(RESET_LOCK) && Date.now() < deadline) spawnSync("sleep", ["2"]);
+}
+
 const url = process.env.RLS_DATABASE_URL;
 if (!url) {
   console.error("rls: RLS_DATABASE_URL is not set — run `npm run test:rls`");
