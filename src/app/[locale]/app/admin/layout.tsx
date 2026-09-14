@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "venues", href: "/app/admin/venues", adminOnly: true, built: true },
   { key: "categories", href: "/app/admin/categories", adminOnly: true, built: true },
   { key: "companies", href: "/app/admin/companies", adminOnly: true, built: true },
-  { key: "members", href: "/app/admin/members", adminOnly: true, built: false },
+  { key: "members", href: "/app/admin/members", adminOnly: true, built: true },
   { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: false },
   { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: false },
   { key: "moderationReports", href: "/app/admin/moderation/reports", adminOnly: false, built: false },

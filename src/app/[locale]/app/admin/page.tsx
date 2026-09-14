@@ -39,12 +39,10 @@ function TopList({ rows, numerals, emptyLabel, linkFor }: { rows: TopRow[]; nume
 // screens use: `getAdminDashboardData()` returns null for a moderator, this
 // page never learns why.
 //
-// "Active members" links forward to `/app/admin/members` — the next story
-// on this track's list (console.md) — which does not exist yet and 404s
-// until it lands. "Busiest categories" and "most active companies" now
-// link to real screens (SCR-047/048, bundle 2). Every other figure links
-// to a screen that already existed at bundle 1. REQ-ADM-004's "every
-// figure is clickable" is the acceptance criterion this note tracks.
+// Every figure now links to a real screen: proposals (bundle 1), sessions
+// (bundle 1), scoring (bundle 1), categories/companies (bundle 2), members
+// (bundle 3, SCR-049). REQ-ADM-004's "every figure is clickable" is the
+// acceptance criterion this note tracks.
 
 export default async function AdminDashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

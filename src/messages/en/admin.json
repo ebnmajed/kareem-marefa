@@ -242,6 +242,36 @@
       "memberCount": "{count, plural, =0 {no members} one {one member} other {{value} members}}",
       "failed": "That could not be saved — try again.",
       "invalid": "Check the fields: a name is required."
+    },
+    "members": {
+      "title": "Members and roles",
+      "intro": "Every member of your organisation, their email address (visible to you only), and their role on the platform.",
+      "empty": "No members yet.",
+      "roleLabel": "Role",
+      "role": {
+        "admin": "Org admin",
+        "moderator": "Moderator",
+        "member": "Member"
+      },
+      "changeRole": "Change role",
+      "statusActive": "Active",
+      "statusDeactivated": "Deactivated",
+      "deactivate": "Deactivate membership",
+      "reactivate": "Reactivate membership",
+      "reasonLabel": "The deactivation reason recorded in the audit log",
+      "reasonHint": "The member never sees this reason; it stays in your organisation's audit log.",
+      "send": "Send",
+      "viewProfile": "View the full record",
+      "deactivatedNote": "Deactivated since <bdi>{date}</bdi> — <bdi>{reason}</bdi>",
+      "error": {
+        "last_admin": "The organisation cannot be left without an admin — assign another admin first.",
+        "not_an_admin": "You no longer have admin access — reload the page.",
+        "member_not_found": "That member could not be found.",
+        "stale_claims": "Your session's data changed — reload the page and try again.",
+        "reason_required": "Write the deactivation reason first.",
+        "cannot_deactivate_self": "You cannot deactivate your own membership.",
+        "failed": "That action could not be carried out — try again."
+      }
     }
   }
 }
