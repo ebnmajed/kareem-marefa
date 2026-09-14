@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (cut from `main` @ `6381208`, PR #14 merged) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 pre-spawn — the lead's handoff items are done (DEC-051); the wave-4 plan is presented and WAITS for the owner's confirmation before `platform` and `branding` are spawned**
+**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (draft PR #15 → `main`) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 RUNNING — `platform` and `branding` spawned after DEC-052; the lead's pre-spawn items are DEC-051**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -145,12 +145,14 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## Wave 4 (M8 · M7-branding) — pre-spawn on `wave-4/m8-branding`
+## Wave 4 (M8 · M7-branding) — RUNNING on `wave-4/m8-branding` (draft PR #15)
 
-**Nobody is spawned.** The plan is in `TEAM.md` §1 (wave-4 rows and contracts, marked proposed),
-`CLAUDE.md` § Agent team (the map) and `.claude/agents/{platform,branding}.md`; it waits for the
-owner. Two owner decisions are logged in DEC-051: render concurrency stays serial until measured;
-the repository stays public until Launch.
+**Confirmed by the owner (DEC-052) and spawned.** The ownership is `TEAM.md` §1, `CLAUDE.md`
+§ Agent team and `.claude/agents/{platform,branding}.md`. The owner's amendment: the A27 baseline
+ships seeded as platform-owned templates for every org from creation (`0061` already does; `platform`
+proves it); `JOB-delete_org` is in `11` §2.7; `ENT-brand_kits` is in `02` §4.13. DEC-051 holds the
+pre-spawn work and the two standing decisions (serial renders until measured; the repository public
+until Launch).
 
 ### Done before spawn (DEC-051)
 
@@ -196,15 +198,19 @@ and the contrast check, the `export_render_context()` seam. The lead wires the b
 layer, the render and mail seams, the six registrations; NFR-004/005 are the lead's closing pass
 after both land. Open for the owner: the SCR-083 default (managed, not authored) and the `delete_org` job.
 
-### Next session, if the owner confirms as proposed
+### Sync log
 
-1. Log DEC-052 (the wave-4 ownership as confirmed, `11` §4 gains the `delete_org` job).
-2. `supabase status` up, `npm run db:reset`, `npm run test:rls` green (done today; repeat if the
-   tree moved).
-3. Spawn `platform` and `branding` from `.claude/agents/`; first tasks are their first proposed
-   files (the M8 schema; `brand_kits`) and `docs/plan/notes/{platform,branding}.md`.
-4. Sync 1 early: promote both schemas as `0068`/`0069` so the sweep covers `impersonation_sessions`
+| Sync | What was promoted / wired | Gates |
+|---|---|---|
+| 0 (2026-09-14) | DEC-052 logged (`8a3cdc4`); `platform` and `branding` spawned — first task: the first proposed file and `docs/plan/notes/<name>.md` | the pre-spawn gates above |
+
+### Next for the lead
+
+1. Sync 1 early: promote both schemas as `0068`/`0069` so the sweep covers `impersonation_sessions`
    and `brand_kits` within hours; wire `<ImpersonationBanner />` and the `@theme` layer.
+2. The render and mail seams once `branding` hands over `export_render_context()` and `brand_kit()`.
+3. The six task registrations and crontab lines from `platform`.
+4. NFR-004/005 after both tracks land; the wave PR is already open as draft #15.
 
 ## Wave 3 (M6 · M7-console) — COMPLETE on `wave-3/m6-m7` (PR #14, the owner merges)
 
