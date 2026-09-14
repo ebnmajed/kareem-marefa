@@ -30,6 +30,37 @@ async function setup(tx: Tx) {
 
 const fontJobs = (tx: Tx) => tx.q<{ key: string; queue_name: string }>(`select key, queue_name from graphile_worker.jobs where task_identifier = 'materialise_font'`);
 
+describe("POL-fonts.select.service_role", () => {
+  it("service_role reads the manifest and cannot write a row directly — record_font() stays the one door (0067)", async () => {
+    await withTx(async (tx) => {
+      await setup(tx);
+      await tx.asOwner();
+      await tx.q(
+        `insert into public.fonts (family, style, weight, source, storage_path, sha256, subsets, parity_status)
+         values ('Lateef', 'normal', 400, 'google', 'fonts/' || $1 || '.woff2', $1, '{arabic,latin}', 'passed')`,
+        [SHA("a")],
+      );
+
+      await tx.asServiceRole();
+      const rows = await tx.q<{ family: string }>(`select family from public.fonts`);
+      expect(rows.map((r) => r.family)).toEqual(["Lateef"]);
+
+      // bypassrls does not confer a privilege: no insert, update or delete grant.
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.fonts (family, style, weight, source, storage_path, sha256, subsets, parity_status)
+             values ('Amiri', 'normal', 400, 'google', 'fonts/' || $1 || '.woff2', $1, '{arabic,latin}', 'passed')`,
+            [SHA("b")],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
+      expect(await errorCode(() => tx.q(`update public.fonts set parity_status = 'failed'`))).toBe(PERMISSION_DENIED);
+      expect(await errorCode(() => tx.q(`delete from public.fonts`))).toBe(PERMISSION_DENIED);
+    });
+  });
+});
+
 describe("POL-fonts.materialise.admin", () => {
   it("an admin requests a family and one job is enqueued with 11 §2.5's key", async () => {
     await withTx(async (tx) => {

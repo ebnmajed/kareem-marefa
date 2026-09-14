@@ -816,7 +816,7 @@ because the limit is per-IP and the database does not see IPs.
 | `design_documents` | §5.9b | P2 | P2 | P2 | |
 | `design_assets` | P1 | P2 | — | P2 | |
 | `export_artifacts` | follows document | — | — | — | Job-written. |
-| `fonts` | P1 | P2 | — | — | `parity_status` written by the job only. |
+| `fonts` | P1 | P2 | — | — | `parity_status` written by the job only. `service_role` reads (`0067`, DEC-051), never writes — `record_font()` is its one door. |
 | `session_posters` | P1 | P2 | P2 | — | |
 | `notification_templates` | P1 + `is_org_admin()` | P2 | P2 | P2 | |
 | `notifications` | P7 | — | P7 (`read_at`) | P7 | Job-written. |
@@ -1435,6 +1435,7 @@ generated suite is the highest-value test in the product.
 | `POL-fonts.materialise.admin` | An org admin requests a Google family and one `materialise_font` job is enqueued with `11` §2.5's key; a moderator is refused (`REQ-DSG-017`). (migration `0064`). |
 | `POL-fonts.record.worker` | `record_font()` is `service_role` only; an admin calling it is refused. (migration `0064`). |
 | `POL-fonts.gate` | A font recorded as `failed` carries the report naming which checks failed and stays unselectable (A39). (migration `0064`). |
+| `POL-fonts.select.service_role` | `service_role` reads the manifest (a bucket-walking job sees every font) and still cannot write a row directly — the only write path stays `record_font()`. (migration `0067`). |
 | `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
 | `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
 | `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
