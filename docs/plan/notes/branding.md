@@ -147,6 +147,28 @@ unbound (§0.5, DEC-053 decision 5); no dedicated unit test asserts the SQL lite
 `tests/rls/brand-kits.test.ts`'s `POL-brand_kit.identity_default` case already does at the
 integration level (sufficient — it is the same guarantee, proven against the real function).
 
-Ready for sync. Track complete: `getBrandKit()`, the schema, the RLS proof, SCR-059 with a real
-logo upload, live preview, contrast display and reset, and a component test suite — all green
-except the e2e admin flow, which needs a rebuild.
+## 2. Third pass — a save re-renders the org's live posters
+
+The lead's request after reviewing SCR-059: the demonstrable needs a poster to actually re-render
+when an admin saves, not just a colour to persist. `supabase/proposed/branding/0002_regenerate_
+posters_on_save.sql` — a new file on top of `0068` (never an edit to a promoted migration) —
+`create or replace`s `save_brand_kit()`/`reset_brand_kit()` to enqueue `regenerate_poster` (`0063`,
+key `poster:{session_id}`) for every session in the org with a **live** poster. A customised one is
+left alone (DEC-012's asymmetry — the same one `0063`'s own session hooks respect). Included in
+both save and reset, though the ask named only "save" — a reset reverts the override to the
+platform default, which is symmetrically a brand change; flagged to the lead to confirm or narrow.
+
+`tests/rls/brand-kits.test.ts` grew from 14 to 19 cases: one job per org (isolation holds), a burst
+of saves collapses to one job via the enqueue key, a customised poster gets nothing, reset
+enqueues on an actual change and nothing on a no-op. All green against the real `0068` plus the new
+proposed layer. Two DB gotchas worth recording: `graphile_worker.jobs` is a **view** — deleting
+from it fails ("cannot delete from view"), the underlying table is `_private_jobs`; and that table
+has no `task_identifier` or `payload` column (those live on `_private_tasks` / elsewhere) — the
+view exposes `task_identifier` for reads, so filter reads through the view and clear with an
+unconditional `delete from graphile_worker._private_jobs` in setup, matching every other RLS file
+in the tree.
+
+Ready for sync. Track complete: `getBrandKit()`, the schema (`0068` + this proposed addition),
+19 RLS cases, SCR-059 with a real logo upload, live preview, contrast display and reset, a
+component test suite, and the poster-regeneration seam the demonstrable needs — all green except
+the e2e admin flow, which needs a rebuild to pick up the new route.
