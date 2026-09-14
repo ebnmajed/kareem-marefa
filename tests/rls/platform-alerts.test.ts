@@ -55,6 +55,25 @@ async function firing(tx: Tx): Promise<string[]> {
   return (await evaluate(tx)).filter((r) => r.fired).map((r) => r.alert).sort();
 }
 
+/**
+ * ★ Make all eight quiet before each case arranges exactly one.
+ *
+ * Two of the eight read state that is NOT part of any fixture:
+ * `graphile_worker`'s schema is shared and outlives every transaction, so a job
+ * another run left overdue fires `queue_stalled` in every case here; and the
+ * M3 fixture sends its own email, which moves a one-hour bounce rate. Both are
+ * neutralised inside the transaction and rolled back with it, so no real job
+ * and no real delivery is touched.
+ *
+ * Without this the drill passes or fails on what the machine happened to be
+ * doing, which is the one thing a drill must not do.
+ */
+async function quiesce(tx: Tx) {
+  await tx.asOwner();
+  await tx.q(`delete from graphile_worker._private_jobs where run_at <= now()`);
+  await tx.q(`update public.email_deliveries set created_at = now() - interval '2 days'`);
+}
+
 describe("platform — the alert drill (11 §3.2)", () => {
   it("RPC-evaluate_alerts.worker — worker-only", async () => {
     await withTx(async (tx) => {
@@ -73,6 +92,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
+      await quiesce(tx);
       const readings = await evaluate(tx);
       expect(readings.map((r) => r.alert).sort()).toEqual([...ALERTS].sort());
       // Every one carries a detail a human can act on — a bare boolean tells
@@ -85,6 +105,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
+      await quiesce(tx);
       expect(await firing(tx)).toEqual([]);
     });
   });
@@ -98,7 +119,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       const [row] = await tx.q<{ id: string }>(
         `insert into public.audit_log (org_id, actor_role, action, subject_type)
          values ($1, 'system', 'points.balance_divergence', 'points_balances') returning id`,
@@ -118,7 +139,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       const sha = "f".repeat(64);
       await tx.q(
         `insert into public.fonts (family, style, weight, source, storage_path, sha256, subsets, parity_status, parity_report)
@@ -137,7 +158,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       // One pending event older than fifteen minutes: the OR arm that catches
       // a stuck sync long before fifty pile up.
       const [row] = await tx.q<{ id: string }>(
@@ -163,13 +184,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
-      // The fixture seeds its own deliveries, and this case is arithmetic on a
-      // one-hour window: age them out so the numerator and the denominator are
-      // exactly the rows below. Without this the case passes or fails on how
-      // many notifications an unrelated fixture happened to send.
-      await tx.q(`update public.email_deliveries set created_at = now() - interval '2 days'`);
-
+      await quiesce(tx);
       // Three sends, all bounced: a 100 % rate on a denominator of three. It
       // must NOT fire — one bad address in a small batch is not a mail-server
       // change, and paging on it is how people learn to ignore the page.
@@ -201,7 +216,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       const add = (status: string, i: number) =>
         tx.q(
           `insert into public.export_artifacts (org_id, document_id, preset, format, width_px, height_px,
@@ -228,6 +243,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
+      await quiesce(tx);
       await tx.asServiceRole();
       // Written exactly the way `assert_storage_prefixes` writes it.
       await tx.q(
@@ -246,7 +262,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       // Inside the table's four-hour cap and past the two-hour warning.
       const [s] = await tx.q<{ id: string }>(
         `insert into public.impersonation_sessions (org_id, platform_admin_id, reason, started_at, expires_at)
@@ -266,7 +282,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
       // Straight into the queue, with a run_at in the past: this is what a
       // degraded LISTEN/NOTIFY looks like (11 §1.2), and it is the only
       // symptom that distinguishes it from a healthy idle worker.
@@ -287,7 +303,7 @@ describe("platform — the alert drill (11 §3.2)", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
-      await tx.asOwner();
+      await quiesce(tx);
 
       await tx.q(
         `insert into public.audit_log (org_id, actor_role, action) values ($1, 'system', 'points.balance_divergence')`,
