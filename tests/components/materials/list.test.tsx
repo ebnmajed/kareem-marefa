@@ -1,6 +1,6 @@
 // The `Materials` slot — real ar/materials.json through next-intl's
 // createTranslator, only src/lib/dal/materials.ts mocked.
-import { createTranslator } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/materials.json";
@@ -15,7 +15,7 @@ const { getMaterialsPageData } = await import("@/lib/dal/materials");
 const { Materials } = await import("@/components/materials/list");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
-const base: MaterialsPageData = { materials: [], numerals: "western" };
+const base: MaterialsPageData = { materials: [], numerals: "western", canManageAll: false, presenterOfSession: false };
 
 describe("Materials slot", () => {
   it("shows the empty state when the session has no materials visible to this viewer", async () => {
@@ -41,6 +41,8 @@ describe("Materials slot", () => {
         },
       ],
       numerals: "western",
+      canManageAll: false,
+      presenterOfSession: false,
     });
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
     const title = screen.getByText("شرائح الجلسة الافتتاحية");
@@ -66,6 +68,8 @@ describe("Materials slot", () => {
         },
       ],
       numerals: "western",
+      canManageAll: false,
+      presenterOfSession: false,
     });
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("للتحميل فقط")).toBeInTheDocument();
@@ -89,6 +93,8 @@ describe("Materials slot", () => {
         },
       ],
       numerals: "western",
+      canManageAll: false,
+      presenterOfSession: false,
     });
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText(/استُبدل الخط "Amiri"/)).toBeInTheDocument();
@@ -111,11 +117,43 @@ describe("Materials slot", () => {
         },
       ],
       numerals: "western",
+      canManageAll: false,
+      presenterOfSession: false,
     });
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
     const link = screen.getByRole("link", { name: /يغادر المنصة/ });
     expect(link).toHaveAttribute("href", "https://youtube.com/watch?v=x");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
     expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("REQ-MAT-005/006: the phase/allow_download toggle is shown to the session's presenter, hidden from a plain member", async () => {
+    const oneMaterial = {
+      materials: [
+        {
+          id: "mat5",
+          kind: "pdf" as const,
+          title: "ملف",
+          phase: "after" as const,
+          allowDownload: true,
+          renderStatus: "ready",
+          fontSubstitutionWarning: null,
+          externalUrl: null,
+          currentVersionId: "v1",
+          createdAt: "2026-09-14T00:00:00Z",
+        },
+      ],
+      numerals: "western" as const,
+    };
+
+    vi.mocked(getMaterialsPageData).mockResolvedValue({ ...oneMaterial, canManageAll: false, presenterOfSession: false });
+    const hidden = await Materials({ sessionId, memberId: "m1", locale: "ar" });
+    render(<NextIntlClientProvider locale="ar" messages={ar}>{hidden}</NextIntlClientProvider>);
+    expect(screen.queryByText("السماح بالتحميل")).not.toBeInTheDocument();
+
+    vi.mocked(getMaterialsPageData).mockResolvedValue({ ...oneMaterial, canManageAll: false, presenterOfSession: true });
+    const shown = await Materials({ sessionId, memberId: "m1", locale: "ar" });
+    render(<NextIntlClientProvider locale="ar" messages={ar}>{shown}</NextIntlClientProvider>);
+    expect(screen.getByText("السماح بالتحميل")).toBeInTheDocument();
   });
 });

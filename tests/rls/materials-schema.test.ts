@@ -286,6 +286,42 @@ describe("RPC-record_material_download.admin_only", () => {
   });
 });
 
+describe("POL-materials.phase_change.audited", () => {
+  it("★ REQ-MAT-006: changing phase writes one audit row naming the old and new value", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0006_materials_audit_phase_change.sql");
+      const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`update public.materials set phase = 'before' where id = $1`, [materialId]);
+
+      await tx.asOwner();
+      const rows = await tx.q<{ before: { phase: string }; after: { phase: string } }>(
+        `select before, after from public.audit_log where action = 'material.phase_changed' and subject_id = $1`,
+        [materialId],
+      );
+      expect(rows.length).toBe(1);
+      expect(rows[0].before.phase).toBe("after");
+      expect(rows[0].after.phase).toBe("before");
+    });
+  });
+
+  it("changing title or allow_download alone writes no phase-change audit row", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0006_materials_audit_phase_change.sql");
+      const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "after");
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`update public.materials set title = 'عنوان جديد', allow_download = false where id = $1`, [materialId]);
+
+      await tx.asOwner();
+      expect(await tx.q(`select id from public.audit_log where action = 'material.phase_changed' and subject_id = $1`, [materialId])).toEqual([]);
+    });
+  });
+});
+
 describe("POL-materials.select.phase", () => {
   it("an 'after' material is invisible to a member until the session is completed; visible to the presenter throughout", async () => {
     await withTx(async (tx) => {

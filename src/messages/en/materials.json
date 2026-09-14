@@ -31,7 +31,8 @@
       "download": "Download",
       "downloadAudited": "This download will be recorded in the audit log.",
       "openExternal": "Open link — leaves the platform",
-      "removedByAdmin": "This material was removed."
+      "removedByAdmin": "This material was removed.",
+      "allowDownloadLabel": "Allow download"
     },
     "upload": {
       "notice": "This file will be available to every member of the organization on the schedule you choose.",

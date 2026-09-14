@@ -242,18 +242,56 @@ export async function listMaterials(locale: string, sessionId: string): Promise<
 export interface MaterialsPageData {
   materials: MaterialSummary[];
   numerals: "western" | "arabic_indic";
+  /** REQ-MAT-005/006: can this viewer change `phase`/`allow_download` on THEIR OWN materials?
+   *  An admin can manage every material; a presenter only the ones on a session they present —
+   *  `canManageAll` covers the admin case, `presenterOfSession` narrows it for everyone else. */
+  canManageAll: boolean;
+  presenterOfSession: boolean;
 }
 
 /** The event page's `Materials` slot needs the list plus the org's numeral
- *  setting (REQ-INT-006) for its count line. */
+ *  setting (REQ-INT-006) for its count line, and whether this viewer may
+ *  manage phase/allow_download at all (materials_update_presenter/admin,
+ *  0037 — this mirrors that policy for the UI, never replaces it: the
+ *  update itself is still checked by RLS regardless of what this returns). */
 export async function getMaterialsPageData(locale: string, sessionId: string): Promise<MaterialsPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { materials: [], numerals: "western" };
+  if (!z.uuid().safeParse(sessionId).success) return { materials: [], numerals: "western", canManageAll: false, presenterOfSession: false };
   const { session, supabase } = await sessionClient(locale);
-  const [materials, { data: settings }] = await Promise.all([
+  const [materials, { data: settings }, { data: presenterRow }] = await Promise.all([
     listMaterials(locale, sessionId),
     supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
   ]);
-  return { materials, numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western" };
+  return {
+    materials,
+    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
+    canManageAll: session.role === "admin",
+    presenterOfSession: !!presenterRow,
+  };
+}
+
+const materialSettingsInput = z.object({
+  materialId: z.uuid(),
+  phase: z.enum(["before", "after"]).optional(),
+  allowDownload: z.boolean().optional(),
+});
+
+/** REQ-MAT-005/006 — a plain RLS-gated update, no RPC: `title`/`phase`/
+ *  `allow_download` are the only columns the client column grant covers
+ *  (0037), and `materials_update_presenter`/`_admin` are the real
+ *  authority — a member who is neither writes nothing (silently, 0 rows —
+ *  that is how a non-matching UPDATE behaves, docs/plan/notes/content.md
+ *  §1.4a) rather than raising, so this checks the row actually changed. */
+export async function updateMaterialSettings(locale: string, input: z.infer<typeof materialSettingsInput>): Promise<boolean> {
+  const parsed = materialSettingsInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const patch: Record<string, unknown> = {};
+  if (parsed.phase !== undefined) patch.phase = parsed.phase;
+  if (parsed.allowDownload !== undefined) patch.allow_download = parsed.allowDownload;
+  if (Object.keys(patch).length === 0) return true;
+  const { data, error } = await supabase.from("materials").update(patch).eq("id", parsed.materialId).select("id");
+  if (error) throw new Error(`materials: ${error.message}`);
+  return (data ?? []).length > 0;
 }
 
 export interface ViewerPage {

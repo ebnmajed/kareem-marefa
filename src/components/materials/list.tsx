@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getMaterialsPageData } from "@/lib/dal/materials";
 import { formatNumber } from "@/components/sessions/numerals";
+import { SettingsForm } from "@/components/materials/settings-form";
 
 // The `Materials` slot (TEAM.md §2 / DEC-046) — the session's materials
 // list, phase-gated entirely by `materials_read` (03 §5.5a): this component
@@ -18,7 +19,8 @@ import { formatNumber } from "@/components/sessions/numerals";
 // REQ-MAT-007) — they render their own affordance instead.
 export async function Materials({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("materials.list");
-  const { materials, numerals } = await getMaterialsPageData(locale, sessionId);
+  const { materials, numerals, canManageAll, presenterOfSession } = await getMaterialsPageData(locale, sessionId);
+  const canManage = canManageAll || presenterOfSession;
 
   if (materials.length === 0) {
     return <p className="text-body-sm text-fg-muted">{t("empty")}</p>;
@@ -62,6 +64,8 @@ export async function Materials({ sessionId, locale }: SlotProps) {
                 {t("openExternal")}
               </a>
             ) : null}
+
+            {canManage ? <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} /> : null}
           </li>
         ))}
       </ul>
