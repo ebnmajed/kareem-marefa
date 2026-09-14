@@ -42,6 +42,8 @@ export interface DesignerEditorProps {
   canEdit: boolean;
   numerals: NumeralSystem;
   origin: string;
+  /** Each image layer's intrinsic pixel size, for the PPI guard. */
+  assetSizes: Record<string, { width: number; height: number }>;
 }
 
 type SaveState =
@@ -303,7 +305,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           <h2 id="dr-checks-m" className="text-body font-medium text-fg-heading">
             {tc("heading")}
           </h2>
-          <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} />
+          <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} assetSizes={props.assetSizes} />
         </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
           <h2 id="dr-bindings-m" className="text-body font-medium text-fg-heading">
@@ -367,7 +369,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             <h2 id="dr-checks" className="text-body font-medium text-fg-heading">
               {tc("heading")}
             </h2>
-            <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} />
+            <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} assetSizes={props.assetSizes} />
           </section>
         </div>
       </div>

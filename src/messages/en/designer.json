@@ -107,7 +107,10 @@
       "safeArea": "The layer <bdi>{layer}</bdi> crosses the safe area on <bdi>{preset}</bdi> by <bdi>{px}</bdi>.",
       "minSize": "The layer <bdi>{layer}</bdi> reached the smallest size the template allows on <bdi>{preset}</bdi> and is still taller than its frame. The template will not shrink it further.",
       "maxLines": "The layer <bdi>{layer}</bdi> wrapped past the line limit on <bdi>{preset}</bdi>.",
-      "measuring": "Measuring the text…"
+      "measuring": "Measuring the text…",
+      "ppiWarn": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below what print wants. It will look soft.",
+      "ppiBlock": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below the print minimum. Export for that size is blocked until a higher-resolution image is uploaded.",
+      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes."
     },
     "exports": {
       "heading": "Export queue",

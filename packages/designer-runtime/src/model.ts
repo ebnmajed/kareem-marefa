@@ -80,6 +80,12 @@ interface LayerBase {
 export interface LayerPresetOverride {
   anchor?: 'block-start' | 'block-end' | 'center'
   scale?: 'proportional' | 'fixed' | 'fill'
+  /** The per-variant crop override (A32, REQ-DSG-020). Automatic cropping
+   *  gets some cases wrong — a poster with its title at the bottom, a logo
+   *  in a corner a 16:9 crop would cut — and this is the escape hatch: the
+   *  admin adjusts the crop for THAT variant, and the others keep the
+   *  layer's own focal point. */
+  focal?: { x: number; y: number }
 }
 
 export interface TextLayer extends LayerBase {

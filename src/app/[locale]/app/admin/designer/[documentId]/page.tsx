@@ -5,6 +5,7 @@ import { exportFingerprint, getDesignerDocument, getExportQueue } from "@/lib/da
 import { listEditorFaces } from "@/lib/dal/fonts";
 import { DesignerEditor } from "@/components/designer/editor";
 import { ExportPanel } from "@/components/designer/export-panel";
+import { assetSizesFor } from "@/lib/dal/posters";
 
 // SCR-057 · /app/admin/designer/[documentId] — the shared designer.
 // REQ-DSG-005, REQ-DSG-006, REQ-DSG-010, REQ-DSG-022, 06 §10.
@@ -51,7 +52,7 @@ export default async function DesignerPage({
     bindings: data.bindings,
     fontHashes: faces.map((f) => f.sha256),
   });
-  const queue = await getExportQueue(locale, documentId, fingerprint);
+  const [queue, assetSizes] = await Promise.all([getExportQueue(locale, documentId, fingerprint), assetSizesFor(locale, data.document)]);
 
   const boundLabel = data.boundSessionId ? t("boundSession") : data.boundCertificateId ? t("boundCertificate") : t("unbound");
 
@@ -82,6 +83,7 @@ export default async function DesignerPage({
           canEdit={data.canEdit}
           numerals={data.numerals}
           origin={origin}
+          assetSizes={assetSizes}
         />
       </div>
 

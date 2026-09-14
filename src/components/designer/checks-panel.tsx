@@ -7,6 +7,7 @@ import {
   computeAutoFit,
   derive,
   domTextMeasurer,
+  ppiFindings,
   presetsFor,
   resolveText,
   type AutoFitWarning,
@@ -37,13 +38,18 @@ export interface ChecksPanelProps {
   /** Set once the canvas's faces are usable; measuring before that measures a
    *  fallback face, and every number would be wrong. */
   fontsReady: boolean;
+  /** Each image layer's intrinsic pixel size, for the PPI guard
+   *  (REQ-DSG-019). Keyed by LAYER id: the same logo in two frames has two
+   *  answers. */
+  assetSizes: Record<string, { width: number; height: number }>;
 }
 
 type Finding =
   | { kind: "safeArea"; preset: PresetName; layerId: string; overflowPx: number }
+  | { kind: "ppi"; preset: PresetName; layerId: string; ppi: number; severity: "warn" | "block" }
   | { kind: AutoFitWarning; preset: PresetName; layerId: string };
 
-export function ChecksPanel({ document: doc, bindings, numerals, fontsReady }: ChecksPanelProps) {
+export function ChecksPanel({ document: doc, bindings, numerals, fontsReady, assetSizes }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");
   const [fitFindings, setFitFindings] = useState<Finding[]>([]);
@@ -58,6 +64,13 @@ export function ChecksPanel({ document: doc, bindings, numerals, fontsReady }: C
         overflowPx: Math.max(...v.edges.map((e) => e.overflowPx)),
       })),
     [doc],
+  );
+
+  // REQ-DSG-019, and it needs no measurement either: the asset's pixel count
+  // against the frame's physical size is arithmetic.
+  const ppi = useMemo<Finding[]>(
+    () => ppiFindings(doc, assetSizes).map((f) => ({ kind: "ppi" as const, preset: f.preset, layerId: f.layerId, ppi: f.ppi, severity: f.severity })),
+    [doc, assetSizes],
   );
 
   useEffect(() => {
@@ -107,9 +120,10 @@ export function ChecksPanel({ document: doc, bindings, numerals, fontsReady }: C
     };
   }, [doc, bindings, fontsReady]);
 
-  const findings = [...safeFindings, ...fitFindings];
+  const findings = [...safeFindings, ...ppi, ...fitFindings];
+  const blocked = ppi.some((f) => f.kind === "ppi" && f.severity === "block");
 
-  if (!fontsReady && safeFindings.length === 0) return <p className="text-body-sm text-fg-muted">{t("measuring")}</p>;
+  if (!fontsReady && findings.length === 0) return <p className="text-body-sm text-fg-muted">{t("measuring")}</p>;
 
   return (
     <div className="flex flex-col gap-3">
@@ -120,7 +134,14 @@ export function ChecksPanel({ document: doc, bindings, numerals, fontsReady }: C
         <ul className="flex flex-col gap-2">
           {findings.map((f, i) => (
             <li key={`${f.kind}-${f.preset}-${f.layerId}-${i}`} className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
-              {f.kind === "safeArea"
+              {f.kind === "ppi"
+                ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", {
+                    layer: f.layerId,
+                    preset: tp(`name.${f.preset}`),
+                    ppi: formatNumber(f.ppi, numerals),
+                    bdi: (c) => <bdi>{c}</bdi>,
+                  })
+                : f.kind === "safeArea"
                 ? t.rich("safeArea", {
                     layer: f.layerId,
                     preset: tp(`name.${f.preset}`),
@@ -136,6 +157,7 @@ export function ChecksPanel({ document: doc, bindings, numerals, fontsReady }: C
           ))}
         </ul>
       )}
+      {blocked ? <p className="text-body-sm text-fg-muted">{t("ppiHint")}</p> : null}
     </div>
   );
 }

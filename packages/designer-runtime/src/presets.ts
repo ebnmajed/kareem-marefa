@@ -147,11 +147,20 @@ export interface LayerPresetBehaviour {
   anchor?: Anchor
   /** How its frame responds. */
   scale?: ScaleMode
+  /** The per-variant crop override (A32). */
+  focal?: { x: number; y: number }
 }
 
-function behaviourFor(layer: Layer, target: PresetName): Required<LayerPresetBehaviour> {
-  const declared = layer.presets?.[target] ?? layer.presets?.default ?? {}
-  return { anchor: declared.anchor ?? 'block-start', scale: declared.scale ?? 'proportional' }
+function behaviourFor(layer: Layer, target: PresetName): LayerPresetBehaviour & Required<Pick<LayerPresetBehaviour, 'anchor' | 'scale'>> {
+  // A per-preset entry overrides `default` field by field, so declaring a
+  // crop for `og` does not silently drop the anchor `default` set.
+  const fallback = layer.presets?.default ?? {}
+  const declared = layer.presets?.[target] ?? {}
+  return {
+    anchor: declared.anchor ?? fallback.anchor ?? 'block-start',
+    scale: declared.scale ?? fallback.scale ?? 'proportional',
+    ...(declared.focal ?? fallback.focal ? { focal: declared.focal ?? fallback.focal } : {}),
+  }
 }
 
 /* ── derivation ─────────────────────────────────────────────────────────── */
@@ -177,7 +186,7 @@ export function derive(doc: DesignDocument, target: PresetName): DesignDocument 
   const layers = doc.layers
     .filter((l) => !(l.hideAt ?? []).includes(target))
     .map((layer): Layer => {
-      const { anchor, scale } = behaviourFor(layer, target)
+      const { anchor, scale, focal } = behaviourFor(layer, target)
       const f = layer.frame
 
       let w: number
@@ -220,6 +229,14 @@ export function derive(doc: DesignDocument, target: PresetName): DesignDocument 
       }
 
       const scaled: Layer = { ...layer, frame: { ...f, x: round(x), y: round(y), w: round(w), h: round(h) } }
+
+      // A32: the crop this variant should centre on. Automatic cropping is
+      // centre-weighted and gets some posters wrong; a declared focal point
+      // for THIS preset is the admin's correction, and it must not leak to
+      // the others.
+      if (focal && scaled.kind === 'image') {
+        scaled.image = { ...scaled.image, focal }
+      }
 
       // Text re-fits per preset, so the `og` variant's title is genuinely
       // smaller rather than a downscaled raster (06 §5.1). Auto-fit then runs
