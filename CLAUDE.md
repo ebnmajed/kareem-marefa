@@ -299,7 +299,22 @@ Tier A on every render (D66, A28, DEC-048); goldens change only through a lead-r
 day one; `console` publishes the admin shell with every admin route. `worker/src/index.ts` and the
 image stay the lead's. Branding, the brand-kit screen and the platform library are wave 4's.
 
-Wave 4 (M8 · M7-branding) is in `TEAM.md`.
+### Ownership map (wave 4 — M8 · M7-branding, proposed; the owner confirms before spawn)
+
+| Teammate | Model | Tracks | Edits only |
+|---|---|---|---|
+| `platform` | opus | ADM-001 … 003, ADM-019, DSG-008 (the platform library), PRF-006/007, NFR-012 … 015, the six M8 jobs; **owns the super-admin console, break-glass and the `ImpersonationBanner` slot** | `app/platform/**`, `legal/**`, `app/me/privacy/**`, `app/api/{platform,me/export}/**`, `lib/dal/platform*.ts`, `lib/dal/privacy.ts`, `components/{platform,legal,privacy}/**`, `worker/src/platform/**` + `worker/src/tasks/{enforce_retention,anonymise_members,assert_storage_prefixes,expire_impersonation,build_data_export,delete_org}.ts`, add-only platform-library functions in `lib/dal/templates.ts`, `messages/*/{platform,legal,privacy}.json`, `supabase/proposed/platform/**`, its tests, its note |
+| `branding` | sonnet | DSG-021, ADM-015, SCR-059; **owns the brand kit — the entity, `getBrandKit()`, `public.brand_kit()` — and the org override the four consumers read** | `app/admin/branding/**`, `app/api/admin/branding/**`, `lib/brand/**`, `components/branding/**`, `packages/storage-paths/src/brand.ts`, add-only `resolveBrand()` in `packages/designer-runtime/src/brand.ts`, `messages/*/branding.json`, `supabase/proposed/branding/**`, its tests, its note |
+
+**Wave-4 rules:** the super admin has **no data plane** (DEC-014, invariant 8) — `platform`'s DAL
+reads org tables only inside an impersonation session that carries an ordinary member's claims;
+`branding` never carries a hex literal past `0055`'s guard — the platform default is the identity
+override, so the parity goldens do not move. Hooks into earlier waves are SQL only. **The lead
+wires** the banner and the platform nav link into the shell, the org `@theme` layer into the locale
+layout, the `brand` field of the render context into the worker's renderer and mail, and the six
+task registrations. NFR-004/005 (the accessibility and performance closing pass) run after both
+tracks land and touch every folder, so they are the lead's.
+
 
 ### Lead-only paths
 
@@ -333,6 +348,14 @@ Teammates never `stash`, `rebase`, `reset --hard`, `clean`, or switch branches: 
 tree. **Only the lead switches branches**, and only between waves. Small conventional commits,
 `Refs:` in the trailer paragraph. The lead pushes and opens the wave's PR; **the owner merges**
 (`gh pr merge` is denied to every session by the shared settings, on purpose).
+
+**No session — lead or teammate — changes repository visibility, billing, organisation or GitHub
+settings.** Not the repo's visibility, archive state, default branch, rulesets, secrets, variables,
+deploy keys, workflows' enabled state, collaborators, or anything under the account or org
+settings; not the remotes either. The deny list refuses `gh repo edit`, `gh api`, `gh secret`,
+`gh variable`, `gh ruleset`, `gh org` and `git remote set-url` outright. When a task seems to need
+one of these, the session **stops and asks the owner** — it never works around the denial. The
+repository is public until Launch by the owner's decision (DEC-051); nothing here changes that.
 
 ### Definition of done (every story, every teammate)
 

@@ -76,7 +76,26 @@
       "Bash(gh auth logout:*)",
       "Bash(gh auth refresh:*)",
       "Bash(gh auth token:*)",
-      "Bash(gh auth setup-git:*)"
+      "Bash(gh auth setup-git:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(gh repo archive:*)",
+      "Bash(gh repo unarchive:*)",
+      "Bash(gh repo rename:*)",
+      "Bash(gh repo transfer:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(gh repo deploy-key:*)",
+      "Bash(gh api:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh variable:*)",
+      "Bash(gh ruleset:*)",
+      "Bash(gh org:*)",
+      "Bash(gh workflow enable:*)",
+      "Bash(gh workflow disable:*)",
+      "Bash(gh extension:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote rm:*)",
+      "Bash(git remote rename:*)"
     ]
   },
   "hooks": {
