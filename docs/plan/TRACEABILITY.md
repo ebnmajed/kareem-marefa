@@ -13,7 +13,7 @@
 | Stories (`STORY-*`) | **112** |
 | Screens cited (`SCR-*`) | 53 |
 | Jobs cited (`JOB-*`) | 34 |
-| Messages cited (`MSG-*`) | 17 |
+| Messages cited (`MSG-*`) | 19 |
 
 ## Cross-cutting requirements
 
@@ -140,7 +140,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-DSC-001` | `ENT-categories` | — | `SCR-011` `SCR-047` | — | — | `STORY-DSC-001` | M5 |
 | `REQ-DSC-002` | `ENT-session_tags` `ENT-tags` | — | `SCR-011` `SCR-047` | — | — | `STORY-DSC-001` | M5 |
-| `REQ-DSC-003` | — | — | `SCR-011` | `JOB-rebuild_search` | — | `STORY-DSC-002` | M5 |
+| `REQ-DSC-003` | `ENT-sessions` | — | `SCR-011` | `JOB-rebuild_search` | `MSG-presenter_assigned` `MSG-proposal_submitted` +1 | `STORY-DSC-002` | M5 |
 | `REQ-DSC-004` | `ENT-session_tags` `ENT-tags` | — | `SCR-047` | — | — | `STORY-DSC-002` | M5 |
 | `REQ-DSC-005` | — | — | `SCR-011` | — | — | `STORY-DSC-002` | M5 |
 | `REQ-DSC-006` | `ENT-bookmarks` | — | `SCR-024` | — | — | `STORY-DSC-003` | M5 |
@@ -206,7 +206,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-INT-003` | — | — | — | — | — | `STORY-INT-002` | M1 |
 | `REQ-INT-004` | — | — | — | — | — | `STORY-INT-001` | M1 |
 | `REQ-INT-005` | — | — | — | — | — | `STORY-INT-003` | M1 |
-| `REQ-INT-006` | — | — | `SCR-063` | — | — | `STORY-INT-003` | M1 |
+| `REQ-INT-006` | — | — | `SCR-063` | — | `MSG-presenter_assigned` `MSG-proposal_submitted` +1 | `STORY-INT-003` | M1 |
 | `REQ-INT-007` | — | — | `SCR-012` | — | — | `STORY-INT-003` | M1 |
 | `REQ-INT-008` | — | — | — | — | — | `STORY-INT-004` | M1 |
 | `REQ-INT-009` | `ENT-fonts` | — | — | — | — | `STORY-INT-004` | M1 |

@@ -126,6 +126,27 @@ Every few hours, or when a teammate says "ready for sync":
 - **Open the wave PR as a draft at the first push.** CI triggers on `pull_request`, not on
   `wave-*` branch pushes.
 
+**Learned in wave 2 (DEC-047):**
+
+- **The runner check is `pgrep -fl "node_modules/.bin/vitest"`.** The old `ps aux | grep` matched
+  another agent's waiting shell, and two waiters could block each other for good. A reset is not
+  visible to `pgrep`: `npm run db:reset` holds `/tmp/db-reset.lock` and `scripts/rls.mjs` waits on it.
+- **Never save a failing test under `tests/rls/`** — everyone's `npm run test:rls` runs it; `describe.skip`
+  until green. A test may guard `applyProposed()` with `existsSync` so a promotion mid-session does
+  not turn it red (notify's pattern).
+- **The promotion commit `git rm`s the proposed path.** A teammate's committed proposed file stays
+  tracked after `mv`; CI then applied `0039` twice through an `existsSync` guard. Commit with an
+  explicit array of paths, never a `&&` chain that a failed edit can empty.
+- **A namespace's JSON and its `index.ts` line go in one commit** — CI's build failed twice on
+  `Cannot find module './ar/materials.json'`.
+- **Every promotion that adds tables adds fixture rows** (`tests/rls/fixture-m<N>.ts`, the lead's): the
+  isolation sweep is non-vacuous, and the teammate's per-policy cases then count by id or clear the
+  table in their own `setup()` inside the rolled-back transaction.
+- **Messages between agents arrive late and out of order.** Restate a fact with a command that proves
+  it (`stat -f %Sm .next/BUILD_ID`, `git merge-base --is-ancestor`), not with a memory of a message.
+- **A Sonnet teammate idles at "checkpoints".** Its task ends at its last story; the lead re-drives it
+  with that sentence and the next concrete unit.
+
 ---
 
 ## 4. The spawn prompt for the lead
@@ -187,3 +208,15 @@ Then, before spawning anyone:
 - **Never keep a 390 px capture under `test-results/`.** Playwright empties it at the start of every
   run, and in a shared tree another teammate's run deletes your screenshots between taking them and
   looking at them. Captures go to `.qa-shots/rtl/` (gitignored, never cleared).
+- **The 390 px capture measures overflow against the layout viewport.** In an RTL document the
+  vertical scrollbar sits on the left, so `scrollWidth > clientWidth` is true by the scrollbar's width
+  on every page that scrolls; the helper in `tests/e2e/notify-screens.spec.ts` has the reasoning.
+- **Look at the capture for two things tests cannot see:** two numeral systems on one screen, and a
+  fixed `h-*` on a cell whose Arabic label can wrap (`min-h-*`). `tests/unit/<track>-i18n.test.ts`
+  forbids literal digits in the Arabic catalogue and checks `<bdi>` on every text placeholder; a
+  message containing a tag must be called through `t.rich`, or plain `t()` prints the key.
+- **An orphaned `next start` from an earlier session** (`ppid 1`, no gate lock) can hold port 3000;
+  `pgrep -fl next-server`, and never `pgrep -f "next start"` from a shell whose own command line
+  contains it.
+- **Only the lead resets, and only when nothing else runs** — a reset mid-e2e cuts a teammate's run
+  silently; check `pgrep -fl "vitest|playwright"` before `npm run db:reset`, not only the RLS runner.

@@ -363,6 +363,8 @@ form-validation rule.
 #### `ENT-sessions`
 **Serves:** `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-003`, `REQ-SES-011`
 
+**Amended under DEC-047 (migration `0037`):** `search_vector tsvector generated always as (…ar_normalize(title)… ‖ …ar_normalize(abstract)…) stored`, with a GIN index and a trigram index on the normalised title (`REQ-DSC-003`).
+
 | Column | Type | Notes |
 |---|---|---|
 | `proposal_id` | `uuid references proposals(id)` | null when admin-created — `REQ-PRO-007` |
@@ -570,6 +572,8 @@ check ((target = 'comment') = (comment_id is not null))
 check ((target = 'photo') = (photo_id is not null))
 ```
 
+**Amended under DEC-047 (migration `0037`):** `photo_id` now carries its foreign key to `photos`, which `0010` left bare because the table did not exist.
+
 ### 4.8 Ratings
 
 #### `ENT-ratings`
@@ -625,6 +629,8 @@ rather than six.
 #### `ENT-points_ledger`
 **Serves:** `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-012`, DEC-016
 **Append-only. `revoke update, delete … from anon, authenticated, service_role`.**
+
+**Amended under DEC-046/DEC-047 (migration `0027`):** `occurred_at timestamptz not null default clock_timestamp()`; update and delete raise for every writer by trigger, except an org deletion's cascade.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -882,10 +888,14 @@ Index `(org_id, member_id, read_at nulls first, created_at desc)` — the unread
 Categories the member **cannot** disable are enforced in the send path and listed in `08`:
 certificate issued, seat promoted, session cancelled, session time or venue changed.
 
+**Amended under DEC-047 (migration `0026`):** `updated_at`, per the repo-wide `set_updated_at()` convention.
+
 #### `ENT-email_deliveries`
 **Serves:** `REQ-NTF-008`
 `member_id`, `key`, `provider_message_id`, `status delivery_status not null`, `error`,
 `sent_at`, `delivered_at`. Retained 180 days (OQ-019).
+
+**Amended under DEC-047 (migration `0026`):** `notification_id uuid references notifications on delete set null` — null when the message was email-only.
 
 #### `ENT-calendar_connections`
 **Serves:** `REQ-CAL-003`, `REQ-CAL-007`, A33

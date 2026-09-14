@@ -255,12 +255,14 @@ rights, no drift.
 **Server-side, before the file is stored.** Not as a cleanup job.
 
 ```
-upload → strip EXIF (GPS, device, timestamps) → re-encode WebP → store → insert row
+upload → strip EXIF/XMP/ICC (GPS, device, timestamps) in place → store → insert row
 ```
 
 `ENT-photos` carries `check (exif_stripped)` — so **a row cannot exist for an unstripped image**,
 even if a future code path forgets to strip. The constraint and the policy conjunct (`03` §5.6c)
 say the same thing twice on purpose.
+
+**Amended under DEC-047 (wave 2):** the strip is byte-level — the JPEG APP segments, PNG ancillary chunks and WebP RIFF chunks that carry metadata are removed without decoding the image, in the worker, with no image library; the e2e asserts on the stored bytes. Re-encoding to WebP through the converter is a later size optimisation, not part of the correctness requirement.
 
 A phone photo taken in a meeting room carries GPS coordinates, a device identifier, and a precise
 timestamp. Sharing it org-wide with that intact tells everyone in the organization where a
