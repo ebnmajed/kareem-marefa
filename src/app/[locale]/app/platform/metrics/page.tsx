@@ -82,7 +82,7 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
           // content a keyboard user cannot reach at all. Every scroller in
           // this track carries the same three attributes.
           <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label={t("jobsTitle")}>
-            <table className="w-full min-w-xl border-collapse text-body">
+            <table className="w-full min-w-md border-collapse text-body">
               <thead>
                 <tr className="border-b border-edge text-start">
                   <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
@@ -93,7 +93,7 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
                       the 390 px capture showed it scrolled off the edge while
                       two columns that look healthy either way stayed in view.
                       A scroller is fine; putting the answer inside it is not. */}
-                  <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
+                  <th scope="col" className="py-2 pe-4 whitespace-nowrap text-start text-label text-fg-muted">
                     {t("jobOldest")}
                   </th>
                   <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
@@ -112,7 +112,7 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
                     <td className="py-3 pe-4 font-mono text-body-sm text-fg-heading">
                       <bdi dir="ltr">{job.task}</bdi>
                     </td>
-                    <td className="py-3 pe-4 text-fg-body">{age(job.oldestPendingSeconds)}</td>
+                    <td className="py-3 pe-4 whitespace-nowrap text-fg-body">{age(job.oldestPendingSeconds)}</td>
                     <td className="py-3 pe-4 text-fg-body">{num(job.pending)}</td>
                     <td className="py-3 text-fg-body">{num(job.failed)}</td>
                   </tr>

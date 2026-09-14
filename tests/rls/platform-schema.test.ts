@@ -1,4 +1,4 @@
-// platform — the M8 schema (supabase/proposed/platform/0001_m8_schema.sql).
+// platform — the M8 schema (migration `0069`, proposed as 0001).
 // Applied with applyProposed() inside this test's transaction, which is rolled
 // back, so the shared database never sees it (DEC-040). The existsSync guard
 // means a promotion mid-session turns nothing red: once the lead moves the file

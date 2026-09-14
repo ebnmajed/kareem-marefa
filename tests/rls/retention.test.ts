@@ -1,4 +1,4 @@
-// platform — retention and anonymisation (supabase/proposed/platform/0004).
+// platform — retention and anonymisation (migration `0073`, proposed as 0004).
 // Applied with applyProposed() inside this test's transaction, rolled back.
 //
 // The case that matters is `RPC-anonymise_members.total`: `REQ-PRF-007`'s

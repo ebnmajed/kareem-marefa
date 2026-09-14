@@ -12,6 +12,10 @@
 // transition logic itself — fire once, clear once — is the sink's and is
 // drilled separately in tests/unit/platform-alerts.test.ts.
 //
+// The SQL is migration `0075_alerts.sql` (proposed as platform/0006). The
+// `applyProposed` guard below is what lets this file survive the promotion:
+// once the migration exists the proposed copy is gone and the guard skips it.
+//
 // REQ-NFR-016 · 11 §3.1 · 11 §3.2
 
 import { existsSync } from "node:fs";

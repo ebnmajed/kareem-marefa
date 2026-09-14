@@ -1,7 +1,7 @@
-// platform — the console's reads (supabase/proposed/platform/0002_platform_console_reads.sql).
+// platform — the console's reads (migration `0070`, proposed as 0002).
 // Applied with applyProposed() inside this test's transaction, rolled back.
 //
-// 0002 opens exactly two doors a super admin does not otherwise have: an org's
+// It opens exactly two doors a super admin does not otherwise have: an org's
 // own row with its domain list, and their own impersonation history. The cases
 // below are about what does NOT come back through them.
 //
@@ -17,6 +17,7 @@ const FILES = [
   "platform/0001_m8_schema.sql",
   "platform/0002_platform_console_reads.sql",
   "platform/0003_platform_library.sql",
+  "platform/0007_job_health_due.sql",
 ];
 
 async function apply(tx: Tx) {
@@ -204,6 +205,46 @@ describe("platform — the console's reads (0002)", () => {
         [f.a.id],
       );
       expect(rows.find((r) => r.version_id === f.m6.a.certTemplateVersionId)!.already_promoted).toBe(true);
+    });
+  });
+
+  it("RPC-platform_job_health.due — a future job is neither pending nor old, and the age is never negative", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.asOwner();
+
+      // Exactly the shape that put «-1,679» on SCR-084: `expire_impersonation`
+      // is enqueued at the session's `expires_at`, an hour ahead, and the
+      // first version measured `now() - run_at` over it.
+      await tx.q(
+        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
+         select null, t.id, '{}'::json, now() + interval '1 hour', 25
+           from graphile_worker._private_tasks t limit 1`,
+      );
+
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      const scheduled = await tx.q<{ task_identifier: string; pending: string; oldest_pending_seconds: string }>(
+        `select task_identifier, pending::text, oldest_pending_seconds::text from public.platform_job_health()`,
+      );
+      for (const row of scheduled) {
+        expect(Number(row.oldest_pending_seconds), `${row.task_identifier} age is never negative`).toBeGreaterThanOrEqual(0);
+      }
+      const total = scheduled.reduce((n, r) => n + Number(r.pending), 0);
+
+      // An OVERDUE job counts on both numbers.
+      await tx.asOwner();
+      await tx.q(
+        `insert into graphile_worker._private_jobs (job_queue_id, task_id, payload, run_at, max_attempts)
+         select null, t.id, '{}'::json, now() - interval '20 minutes', 25
+           from graphile_worker._private_tasks t limit 1`,
+      );
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      const overdue = await tx.q<{ pending: string; oldest_pending_seconds: string }>(
+        `select pending::text, oldest_pending_seconds::text from public.platform_job_health()`,
+      );
+      expect(overdue.reduce((n, r) => n + Number(r.pending), 0)).toBe(total + 1);
+      expect(Math.max(...overdue.map((r) => Number(r.oldest_pending_seconds)))).toBeGreaterThan(1000);
     });
   });
 });

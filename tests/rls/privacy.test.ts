@@ -1,4 +1,4 @@
-// platform — the member's own data (supabase/proposed/platform/0004).
+// platform — the member's own data (migration `0073`, proposed as 0004).
 // Applied with applyProposed() inside this test's transaction, rolled back.
 //
 // `REQ-PRF-006`'s first acceptance criterion is a NEGATIVE — "contains no other
