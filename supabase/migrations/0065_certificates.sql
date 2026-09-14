@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — issuance, release, revocation.
+-- promoted by the lead at wave-3 sync 10 · designer (wave 3, M6) — issuance, release, revocation.
 -- Follows 0064.
 --
 -- Serves:  02 §4.12, 03 §5.8/§5.8a

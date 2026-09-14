@@ -108,7 +108,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-006` | `ENT-check_in_attempts` `ENT-check_ins` | `POL-check_ins.rate_limit` `POL-check_ins.single_use` | `SCR-014` | — | — | `STORY-CHK-003` | M2 |
 | `REQ-CHK-007` | `ENT-check_in_codes` | — | `SCR-016` | `JOB-rotate_check_in_code` | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-008` | `ENT-check_ins` | — | `SCR-044` | — | — | `STORY-CHK-004` | M2 |
-| `REQ-CHK-009` | `ENT-certificates` `ENT-check_ins` | — | `SCR-014` | `JOB-issue_certificates` | — | `STORY-CHK-005` | M2 |
+| `REQ-CHK-009` | `ENT-certificates` `ENT-check_ins` | `POL-issue_certificate.check_in` | `SCR-014` | `JOB-issue_certificates` | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-010` | — | — | `SCR-014` | — | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-012` | — | — | `SCR-014` `SCR-044` | — | — | `STORY-CHK-006` | M2 |
@@ -120,16 +120,16 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-CRT-001` | `ENT-certificates` | `POL-certificates.constraints` | `SCR-045` | — | — | `STORY-CRT-001` | M6 |
-| `REQ-CRT-002` | `ENT-certificates` | — | `SCR-043` `SCR-057` | — | — | `STORY-CRT-001` | M6 |
-| `REQ-CRT-003` | `ENT-certificates` | `POL-certificates.constraints` | `SCR-045` | `JOB-issue_certificates` | — | `STORY-CRT-002` | M6 |
-| `REQ-CRT-004` | `ENT-certificates` | `POL-certificates.select.held` | `SCR-045` | — | — | `STORY-CRT-002` | M6 |
+| `REQ-CRT-002` | `ENT-certificates` | `POL-certificates.fanout` | `SCR-043` `SCR-057` | — | — | `STORY-CRT-001` | M6 |
+| `REQ-CRT-003` | `ENT-certificates` | `POL-certificates.constraints` `POL-issue_certificate.idempotent` | `SCR-045` | `JOB-issue_certificates` | — | `STORY-CRT-002` | M6 |
+| `REQ-CRT-004` | `ENT-certificates` | `POL-certificates.select.held` `POL-issue_certificate.mode` | `SCR-045` | — | — | `STORY-CRT-002` | M6 |
 | `REQ-CRT-005` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-006` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-007` | `ENT-certificates` | `POL-certificates.verify.anon` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
-| `REQ-CRT-008` | `ENT-certificate_serial_counters` `ENT-certificates` | `POL-certificates.serial` | — | `JOB-issue_certificates` | — | `STORY-CRT-004` | M6 |
+| `REQ-CRT-008` | `ENT-certificate_serial_counters` `ENT-certificates` | `POL-certificates.serial` `POL-issue_certificate.idempotent` | — | `JOB-issue_certificates` | — | `STORY-CRT-004` | M6 |
 | `REQ-CRT-009` | `ENT-certificates` | `POL-certificates.verify.anon` | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
 | `REQ-CRT-010` | `ENT-certificates` | — | `SCR-006` | — | — | `STORY-CRT-005` | M6 |
-| `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | — | `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` | — | `SCR-023` | — | — | `STORY-CRT-006` | M6 |
