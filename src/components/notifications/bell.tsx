@@ -24,7 +24,7 @@ export async function NotificationBell({ locale, numerals = "western" }: { membe
     <Link
       href="/app/me/notifications"
       aria-label={t("bell.unread", { count: unread, value: formatNumber(unread, numerals) })}
-      className="inline-flex h-10 items-center gap-2 rounded-field px-3 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading"
+      className="inline-flex h-10 items-center gap-1 rounded-field px-2 text-label md:gap-2 md:px-3 text-fg-body hover:bg-silver-100 hover:text-fg-heading"
     >
       <span aria-hidden="true">{t("bell.label")}</span>
       {unread > 0 ? (
