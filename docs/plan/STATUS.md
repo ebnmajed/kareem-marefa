@@ -1,4 +1,4 @@
-# STATUS — read this first, write it last
+**Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (**PR #12** → `main`, awaiting the owner's merge) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged · **Phase:** **M2 wave 1 complete on the branch — the demonstrable holds locally end to end; next session is the wave-2 lead after the owner merges**
 
 **Last updated:** 2026-09-14 · **Branch:** `wave-1/m2` (cut from `main` @ `5378555`; **draft PR #12**) · **`main` @ `5378555`:** M1 live, M2 wave 0 merged (PR #10, #11) · **Phase:** **M2 wave 1 in progress — the lead session with `sessions`, `checkin`, `event` spawned (DEC-040)**
 
@@ -40,7 +40,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 |---|---|---|---|
 | — | `_source-brief.md` | `frozen` | The brief verbatim. **Never edit.** D1–D68, A1–A32. |
 | — | `STATUS.md` | live | This file. |
-| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-040**. |
+| — | `DECISIONS.md` | append-only | DEC-001 … **DEC-045**. |
 | 00 | `00-overview.md` | `settled` | Glossary, personas, ID scheme, owning-document table. |
 | 01 | `01-prd.md` | `settled` | **251 requirements.** The only document that may define one. |
 | 02 | `02-domain-model.md` | **`frozen`** | **64 entities.** Cited by nine documents. |
@@ -147,7 +147,70 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
 
-## M2 — wave 1 (in progress, the lead session)
+## M2 — wave 1 — COMPLETE on `wave-1/m2` (PR #12, the owner merges)
+
+**The M2 demonstrable holds locally, end to end, through the real screens**, as one serial Playwright
+test against real local Supabase (`tests/e2e/sessions-screens.spec.ts`, commits `a3f8497`, `38e72d8`): add a
+venue → propose → approve → create the session → schedule → publish → reserve a seat → **the clock
+starts it** (`clock_start_sessions()`, audit row with no actor) → staff read the rotating code →
+check in with it → comment → **an admin completes it** (audit row naming the admin) → rate. Rows
+asserted at every step: `rsvps.status`, `check_ins.method = 'code'`, the comment's author, the
+rating's stars and non-null `check_in_id`, no live code after completion, the seven-step transition
+chain, the seven `audit_log` actions in order.
+
+**Shipped:** migrations **`0011`–`0023`** (13, `supabase/proposed/` empty) · screens SCR-011, 012,
+014, 015, 016, 017, 018, 041, 042, 043, 046 · DAL modules `proposals`, `sessions`, `rsvp`,
+`checkin`, `comments`, `reactions`, `reports`, `ratings` · the slot contract and all three slots ·
+worker tasks `promote_waitlist`, `rotate_codes`, `start_session`, `complete_session` (clock on an
+every-minute crontab) · message namespaces `proposals`, `sessions`, `admin`, `rsvp`, `checkin`,
+`event`, `ratings` (Arabic first) · **DEC-042 … DEC-045**.
+
+**Definition of done on `b430871` (the lead's final gate run, all on local Supabase; app code last changed at `a3f8497`):**
+
+| Check | Result |
+|---|---|
+| `supabase db reset` | ✅ `0001`–`0023` |
+| `npm run test:rls` | ✅ **206 passed / 4 todo**, 19 files, sweep over 24 tables |
+| `npm run policy-diff` | ✅ |
+| `node scripts/traceability.mjs` | ✅ 251 / 64 / 112, no gaps, matrix current |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run lint` | ✅ 0 errors (8 warnings) |
+| `npm test` (unit + components) | ✅ **117 passed** |
+| `npm run worker:build` · `npm run fonts:check` | ✅ |
+| `npm run build` | ✅ 25 routes |
+| `npm run qa` | ✅ **44/44** |
+| `npm run visual compare m0-final wave1-final` | ✅ **0.000%** on all six captures — the live site is unchanged |
+| `npm run test:e2e:local` | ✅ **78 passed / 0 failed / 6 skipped by design** (two workers, both profiles; includes the end-to-end demonstrable) — final code `b430871` on the build of `a3f8497` (later commits are test/docs only) |
+| `npm run test:e2e:unconfigured` | ✅ 16 passed, 68 skipped by design (both `NEXT_PUBLIC_` variables empty: every platform route 404, frozen routes untouched) |
+| CI on PR #12 | ✅ **13/13** on `a3f8497` and on every push since sync 3; final run on `b430871` **13/13 green** (the STATUS commit after it is docs only) |
+| 390 px RTL captures, looked at | ✅ SCR-012, 014, 015, 016, 017, 018, 041, 042, 043, 046 (`.qa-shots/rtl/`; the lead looked at SCR-012) |
+
+**Observed once, recorded honestly:** the first full-suite gate run on this build failed the
+demonstrable on both profiles, and the artefacts show `next start` stopped answering mid-run
+(`net::ERR_CONNECTION_REFUSED` on a plain navigation on the phone project; Next's own "This page
+couldn't load" on desktop) while two other agents were running suites on the same machine. The
+rerun with the identical two-worker configuration passed 78/78, and the walk passes alone on both
+profiles. Nothing in the product was wrong; `38e72d8` also fixed six test-side races and wrong
+assertions found on the way. **For the wave-2 lead:** the demonstrable is the heaviest test in the
+suite and runs twice concurrently against one `next start` and one Postgres; if this recurs, give
+it `workers: 1` or a serial project dependency in `playwright.config.ts` (lead-only), and keep the
+stub server's log — a crash names the route, a teardown race does not.
+
+**Deferred, not faked (DEC-045):** `REQ-PRO-004` (M5 materials) · the poster gate of `REQ-SES-001`
+(M6) · `REQ-EVT-007` reply notifications (M3) · job enqueueing from the RSVP/check-in RPCs (worker
+hosting, OQ-027 at M3; call sites marked) · the native date picker's locale on SCR-043 (M7-console).
+
+**First migration of wave 2, before anyone is spawned:** a table-level guard on `sessions.state`
+(and move the fixtures that set state directly onto the RPCs); decide `audit_log.occurred_at` →
+`clock_timestamp()` at the same time.
+
+**Security findings closed this wave** (each a real hole in the plan or in `0010`): a named
+presenter could be pulled across the tenancy boundary (`0012`); the `03` §7.2 host-topic sample
+had no org check (`0016`); the admin's direct select on `ratings` was an unaudited read of per-rater
+data (`0017`); `check_in()` as sketched rolled back its own attempt row (`0015`, DEC-043).
+
+### Sync log
+
 
 **Started 2026-09-14** after the owner approved the wave plan. Pre-flight on `main` @ `5378555`: CI
 green on the last five pushes, five frozen routes answer, `/ar/app` 404 by design, local Supabase
@@ -422,11 +485,20 @@ unaffected.
 
 ## Next session should
 
-1. Be the **lead**: paste `docs/plan/TEAM.md` §4 into a fresh session in this checkout.
-2. Read this file, `/CLAUDE.md` (the "Agent team" section is new), `DECISIONS.md` (DEC-040), then
-   `TEAM.md`. Confirm `main` green and local Supabase up; `supabase db reset`; `npm run test:rls`.
-3. Cut `wave-1/m2`, present the wave plan, WAIT for the owner, then spawn the three teammates from
-   `.claude/agents/`.
-4. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
-5. **Do not re-litigate anything in `DECISIONS.md`.** A reversal is a new entry, not an edit.
-6. Update this file before finishing.
+1. **Wait for the owner to merge PR #12** (`wave-1/m2` → `main`); nothing on the branch is merged
+   by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
+2. Be the **wave-2 lead**: read this file, `CLAUDE.md`, `DECISIONS.md` (DEC-042 … DEC-045), `TEAM.md`
+   (§3 and §5 grew this wave — the working rules are there), and the three
+   `docs/plan/notes/{sessions,checkin,event}.md`.
+3. **Before spawning anyone:** write migration `0024` — the table-level guard on `sessions.state`
+   and, if decided, `audit_log.occurred_at default clock_timestamp()` — move the fixtures that set
+   state directly onto the RPCs, `supabase db reset`, `npm run test:rls` green. Log the DEC.
+4. Confirm the wave-2 ownership map (`TEAM.md` §1 drafts): `notify` (M3), `scoring` (M4),
+   `content` (M5). OQ-027 (worker + converter hosting) is **due at M3** — the `notify` track cannot
+   deliver reminders without a running worker; decide hosting with the owner at the wave-2 plan.
+5. Cut `wave-2/m3-m4-m5`, present the plan, WAIT, spawn from `.claude/agents/` (write the three new
+   definitions first; the wave-1 ones are the template).
+6. **PR C / Launch stays untouched** (DEC-039). Local Supabase and CI only.
+7. `.next` on disk is the **unconfigured** build from the final gate; run `npm run build` before
+   `npm run qa` / `visual` / `test:e2e:local`.
+8. Update this file before finishing.
