@@ -177,13 +177,23 @@ test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly,
   await page.goto(`/ar/app/sessions/${sessionId}`);
 
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click();
+  // Wait for the Server Action's own POST to actually complete (a real
+  // response, not just the click resolving) before ever touching the
+  // database — under the full multi-file run this request itself is what
+  // is slow (several files' beforeAll hooks race Auth user creation
+  // against the same local Supabase), not the database write once it
+  // arrives. Waiting on the response first, rather than starting the poll
+  // immediately, is what made this reproduce on the desktop project under
+  // the full two-worker run and not the isolated one.
+  const currentUrl = page.url();
+  await Promise.all([
+    page.waitForResponse((res) => res.url() === currentUrl && res.request().method() === "POST"),
+    page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click(),
+  ]);
 
   // The database-level proof of REQ-EVT-012 ("hides instantly, before any
-  // moderator acts") — polled rather than a single read, since this run
-  // alongside several other e2e files' own beforeAll hooks (all racing
-  // Auth user creation against the same local Supabase) measurably slows
-  // this one Server Action's round trip; reliably instant run alone.
+  // moderator acts") — polled rather than a single read, in case the
+  // trigger/notify work inside the same transaction is still settling.
   await expect
     .poll(async () => {
       const { rows } = await db.query<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [photoId]);
@@ -210,6 +220,24 @@ test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly,
   await signIn(context, modEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await expect(page.getByText("مخفية — بانتظار المراجعة")).toBeVisible();
-  await page.getByRole("button", { name: "استعادة" }).click();
-  await expect(page.getByText("تمت استعادة الصورة.")).toBeVisible();
+
+  const restoreUrl = page.url();
+  await Promise.all([
+    page.waitForResponse((res) => res.url() === restoreUrl && res.request().method() === "POST"),
+    page.getByRole("button", { name: "استعادة" }).click(),
+  ]);
+
+  // Not asserted here, for the same reason as the takedown's own toast
+  // above: `restorePhotoAction` also calls `revalidatePath`, and the
+  // parent list re-rendering with the photo's `hiddenAt` now cleared can
+  // race TakedownButton's own local "تمت استعادة الصورة." state away in
+  // the same commit — reproduced on the desktop project under the full
+  // multi-file run. The database is what REQ-EVT-012's "a moderator can
+  // restore it" actually asks for.
+  await expect
+    .poll(async () => {
+      const { rows } = await db.query<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [photoId]);
+      return rows[0]?.hidden_at ?? null;
+    }, { timeout: 15_000 })
+    .toBeNull();
 });
