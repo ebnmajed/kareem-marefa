@@ -37,7 +37,7 @@ export default async function AppLayout({ children, params }: { children: React.
             </li>
           </ul>
           <form method="post" action="/api/auth/sign-out">
-            <button type="submit" className="inline-flex h-10 items-center rounded-field px-3 text-label text-fg-muted hover:bg-silver-100 hover:text-fg-heading">
+            <button type="submit" className="inline-flex h-10 items-center rounded-field px-3 text-label text-fg-muted hover:bg-silver-100 hover:text-fg-heading whitespace-nowrap">
               {t("signOut")}
             </button>
           </form>
