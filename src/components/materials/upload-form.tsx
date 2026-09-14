@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { MaterialKind } from "@/lib/dal/materials";
@@ -51,7 +51,7 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [kind, setKind] = useState<UploadKind>("pdf");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
 
   const isFileKind = (FILE_KINDS as readonly string[]).includes(kind);
   const isLinkKind = (LINK_KINDS as readonly string[]).includes(kind);
@@ -190,12 +190,12 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   );
 }
 
-function errorMessage(body: { error?: string; limitMb?: number; sniffedKind?: string }, t: ReturnType<typeof useTranslations>): string {
+function errorMessage(body: { error?: string; limitMb?: number; sniffedKind?: string }, t: ReturnType<typeof useTranslations>): ReactNode {
   switch (body.error) {
     case "not_authorized":
       return t("notAuthorized");
     case "file_too_large":
-      return t("sizeLimitExceeded", { limitMb: body.limitMb ?? 0 });
+      return t.rich("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => <bdi>{chunks}</bdi> });
     case "sniff_mismatch":
       return t("sniffMismatch");
     default:

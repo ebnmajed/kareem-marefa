@@ -25,7 +25,7 @@
       },
       "substitutionWarning": {
         "title": "قد تختلف الخطوط عن ملفك الأصلي.",
-        "body": "استُبدل الخط \"{family}\" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه."
+        "body": "استُبدل الخط \"<bdi>{family}</bdi>\" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه."
       },
       "openViewer": "فتح العارض",
       "download": "تحميل",
@@ -36,7 +36,7 @@
     },
     "upload": {
       "notice": "سيُتاح هذا الملف لجميع أعضاء المؤسسة وفق الجدول الزمني الذي تختاره.",
-      "sizeLimitExceeded": "الملف أكبر من الحد المسموح ({limitMb} م.ب).",
+      "sizeLimitExceeded": "الملف أكبر من الحد المسموح (<bdi>{limitMb}</bdi> م.ب).",
       "sniffMismatch": "لا يطابق محتوى الملف الفعلي النوع المُعلَن — تحقق من الملف وحاول مرة أخرى.",
       "notAuthorized": "لا تملك صلاحية إضافة مواد لهذه الجلسة.",
       "submit": "رفع",
@@ -57,9 +57,9 @@
     },
     "viewer": {
       "back": "الرجوع إلى مواد الجلسة",
-      "pageOf": "صفحة {current} من {total}",
+      "pageOf": "صفحة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
       "thumbnailsLabel": "الصفحات",
-      "thumbnailLabel": "الانتقال إلى الصفحة {number}",
+      "thumbnailLabel": "الانتقال إلى الصفحة <bdi>{number}</bdi>",
       "previous": "الصفحة السابقة",
       "next": "الصفحة التالية",
       "firstPage": "أول صفحة",

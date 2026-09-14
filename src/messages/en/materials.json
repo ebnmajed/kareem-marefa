@@ -25,7 +25,7 @@
       },
       "substitutionWarning": {
         "title": "Fonts may differ from your original file.",
-        "body": "The font \"{family}\" was substituted during conversion. For an exact match, export the deck to PDF and upload it."
+        "body": "The font \"<bdi>{family}</bdi>\" was substituted during conversion. For an exact match, export the deck to PDF and upload it."
       },
       "openViewer": "Open viewer",
       "download": "Download",
@@ -36,7 +36,7 @@
     },
     "upload": {
       "notice": "This file will be available to every member of the organization on the schedule you choose.",
-      "sizeLimitExceeded": "The file is larger than the allowed limit ({limitMb} MB).",
+      "sizeLimitExceeded": "The file is larger than the allowed limit (<bdi>{limitMb}</bdi> MB).",
       "sniffMismatch": "The file's actual content does not match the declared type — check the file and try again.",
       "notAuthorized": "You do not have permission to add materials to this session.",
       "submit": "Upload",
@@ -57,9 +57,9 @@
     },
     "viewer": {
       "back": "Back to session materials",
-      "pageOf": "Page {current} of {total}",
+      "pageOf": "Page <bdi>{current}</bdi> of <bdi>{total}</bdi>",
       "thumbnailsLabel": "Pages",
-      "thumbnailLabel": "Go to page {number}",
+      "thumbnailLabel": "Go to page <bdi>{number}</bdi>",
       "previous": "Previous page",
       "next": "Next page",
       "firstPage": "First page",

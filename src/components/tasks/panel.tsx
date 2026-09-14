@@ -23,7 +23,9 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
       ) : (
         <>
           <p className="text-body-sm text-fg-muted">{t("count", { count: tasks.length, value: formatNumber(tasks.length, numerals) })}</p>
-          {completedCount > 0 ? <p className="text-body-sm text-fg-muted">{t("completedOf", { value: formatNumber(completedCount, numerals) })}</p> : null}
+          {completedCount > 0 ? (
+            <p className="text-body-sm text-fg-muted">{t.rich("completedOf", { value: formatNumber(completedCount, numerals), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+          ) : null}
           <ul className="mt-4 flex flex-col gap-3">
             {tasks.map((task) => (
               <TaskItem key={task.id} locale={locale} sessionId={sessionId} task={task} />

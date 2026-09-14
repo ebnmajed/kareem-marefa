@@ -16,7 +16,7 @@
       "fileLabel": "File",
       "fileRequired": "Choose a photo first.",
       "notAuthorized": "You do not have permission to upload photos to this session.",
-      "sizeLimitExceeded": "The photo is larger than the allowed limit ({limitMb} MB).",
+      "sizeLimitExceeded": "The photo is larger than the allowed limit (<bdi>{limitMb}</bdi> MB).",
       "unsupportedType": "Unsupported image type — use JPEG, PNG or WebP.",
       "uploadFailed": "The upload failed. Try again.",
       "processing": "Processing the photo…"

@@ -16,7 +16,7 @@
       "fileLabel": "الملف",
       "fileRequired": "اختر صورة أولًا.",
       "notAuthorized": "لا تملك صلاحية رفع صور لهذه الجلسة.",
-      "sizeLimitExceeded": "الصورة أكبر من الحد المسموح ({limitMb} م.ب).",
+      "sizeLimitExceeded": "الصورة أكبر من الحد المسموح (<bdi>{limitMb}</bdi> م.ب).",
       "unsupportedType": "نوع الصورة غير مدعوم — استخدم JPEG أو PNG أو WebP.",
       "uploadFailed": "تعذّر رفع الصورة. حاول مرة أخرى.",
       "processing": "تتم معالجة الصورة الآن…"

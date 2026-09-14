@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { PhotoKind } from "@/lib/dal/photos";
@@ -38,7 +38,7 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -104,12 +104,12 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
     }
   }
 
-  function errorMessage(body: { error?: string; limitMb?: number }): string {
+  function errorMessage(body: { error?: string; limitMb?: number }): ReactNode {
     switch (body.error) {
       case "not_authorized":
         return t("notAuthorized");
       case "file_too_large":
-        return t("sizeLimitExceeded", { limitMb: body.limitMb ?? 0 });
+        return t.rich("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => <bdi>{chunks}</bdi> });
       default:
         return t("uploadFailed");
     }

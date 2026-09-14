@@ -68,7 +68,9 @@ describe("ProposalMaterials slot", () => {
     });
     const title = screen.getByText("شرائح المقترح");
     expect(title.closest("bdi")).not.toBeNull();
-    expect(screen.getByText(/استُبدل الخط "Amiri"/)).toBeInTheDocument();
+    // The family name is now inside its own <bdi>, so the sentence spans
+    // multiple text nodes — match on the paragraph's own full textContent.
+    expect(screen.getByText((_, el) => el?.textContent === 'استُبدل الخط "Amiri" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه.')).toBeInTheDocument();
     expect(screen.queryByText("فتح العارض")).not.toBeInTheDocument();
   });
 });

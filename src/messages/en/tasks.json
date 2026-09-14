@@ -3,7 +3,7 @@
     "list": {
       "empty": "No preparation tasks for this session yet.",
       "count": "{count, plural, zero {No preparation tasks} one {One preparation task} two {Two preparation tasks} few {{value} preparation tasks} many {{value} preparation tasks} other {{value} preparation tasks}}",
-      "completedOf": "You have completed {value} of them.",
+      "completedOf": "You have completed <bdi>{value}</bdi> of them.",
       "kind": {
         "read_material": "Read a material",
         "form": "Questionnaire",

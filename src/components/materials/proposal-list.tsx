@@ -46,7 +46,9 @@ export async function ProposalMaterials({ proposalId, locale }: ProposalMaterial
             <p className="text-body-sm text-fg-muted">{t(`kind.${m.kind}`)}</p>
 
             {m.fontSubstitutionWarning ? (
-              <p className="mt-2 text-body-sm text-fg-heading">{t("substitutionWarning.body", { family: m.fontSubstitutionWarning })}</p>
+              <p className="mt-2 text-body-sm text-fg-heading">
+                {t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+              </p>
             ) : null}
 
             {m.externalUrl ? (

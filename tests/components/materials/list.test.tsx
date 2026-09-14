@@ -105,7 +105,9 @@ describe("Materials slot", () => {
       presenterOfSession: false,
     });
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByText(/استُبدل الخط "Amiri"/)).toBeInTheDocument();
+    // The family name is now inside its own <bdi>, so the sentence spans
+    // multiple text nodes — match on the paragraph's own full textContent.
+    expect(screen.getByText((_, el) => el?.textContent === 'استُبدل الخط "Amiri" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه.')).toBeInTheDocument();
   });
 
   it("an external link opens with rel=noopener noreferrer and leaves-the-platform copy (REQ-MAT-007)", async () => {

@@ -50,7 +50,8 @@ describe("Tasks slot", () => {
       materials: [],
     });
     expect(screen.getByText("مهمتان تحضيريتان")).toBeInTheDocument();
-    expect(screen.getByText("أنجزت 1 منها.")).toBeInTheDocument();
+    // The count is now inside its own <bdi>, so the sentence spans multiple text nodes.
+    expect(screen.getByText((_, el) => el?.textContent === "أنجزت 1 منها.")).toBeInTheDocument();
   });
 
   it("REQ-TSK-001: shows the create-task form to a presenter/admin", async () => {

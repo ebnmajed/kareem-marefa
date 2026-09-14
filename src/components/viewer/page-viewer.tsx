@@ -88,7 +88,7 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
   // stealing focus from the viewer itself.
   useEffect(() => {
     if (liveRegionRef.current) {
-      liveRegionRef.current.textContent = t("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals) });
+      liveRegionRef.current.textContent = t.markup("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals), bdi: (chunks) => chunks });
     }
   }, [index, total, numerals, t]);
 
@@ -117,7 +117,7 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
           <p data-testid="page-indicator" className="text-body-sm text-fg-muted">
-            {t("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals) })}
+            {t.rich("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals), bdi: (chunks) => <bdi>{chunks}</bdi> })}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setZoomStep((z) => Math.max(0, z - 1))} disabled={zoomStep === 0} className="rounded-field border border-edge px-3 py-1 text-label text-fg-body disabled:opacity-40">
@@ -136,7 +136,15 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
 
         <div className="relative mt-3 overflow-auto rounded-field border border-edge">
           <div style={{ transform: `scale(${zoom})`, transformOrigin: rtl ? "top right" : "top left" }}>
-            <Image src={current.imageUrl} alt={`${title} — ${t("pageOf", { current: index + 1, total })}`} width={1600} height={900} className="h-auto w-full" unoptimized priority={index === 0} />
+            <Image
+              src={current.imageUrl}
+              alt={`${title} — ${t.markup("pageOf", { current: index + 1, total, bdi: (chunks) => chunks })}`}
+              width={1600}
+              height={900}
+              className="h-auto w-full"
+              unoptimized
+              priority={index === 0}
+            />
           </div>
         </div>
 
@@ -161,7 +169,7 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
                 type="button"
                 onClick={() => goTo(i)}
                 aria-current={i === index}
-                aria-label={t("thumbnailLabel", { number: formatNumber(p.pageNumber, numerals) })}
+                aria-label={t.markup("thumbnailLabel", { number: formatNumber(p.pageNumber, numerals), bdi: (chunks) => chunks })}
                 className={`block overflow-hidden rounded-field border ${i === index ? "border-edge-strong" : "border-edge"}`}
               >
                 <Image src={p.thumbnailUrl} alt="" width={320} height={180} className="h-auto w-20 md:w-full" unoptimized />

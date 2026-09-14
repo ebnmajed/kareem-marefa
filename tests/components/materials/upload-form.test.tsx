@@ -77,7 +77,8 @@ describe("UploadForm", () => {
     fireEvent.change(screen.getByLabelText(ar.materials.upload.fileLabel), { target: { files: [makeFile("big.pdf", "application/pdf")] } });
     fireEvent.click(screen.getByRole("button", { name: ar.materials.upload.submit }));
 
-    await waitFor(() => expect(screen.getByText("الملف أكبر من الحد المسموح (50 م.ب).")).toBeInTheDocument());
+    // The limit is now inside its own <bdi>, so the sentence spans multiple text nodes.
+    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === "الملف أكبر من الحد المسموح (50 م.ب).")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

@@ -3,7 +3,7 @@
     "list": {
       "empty": "لا توجد مهام تحضيرية لهذه الجلسة.",
       "count": "{count, plural, zero {لا توجد مهام تحضيرية} one {مهمة تحضيرية واحدة} two {مهمتان تحضيريتان} few {{value} مهام تحضيرية} many {{value} مهمة تحضيرية} other {{value} مهمة تحضيرية}}",
-      "completedOf": "أنجزت {value} منها.",
+      "completedOf": "أنجزت <bdi>{value}</bdi> منها.",
       "kind": {
         "read_material": "قراءة مادة",
         "form": "استبيان",

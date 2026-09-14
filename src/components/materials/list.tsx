@@ -56,7 +56,9 @@ export async function Materials({ sessionId, locale }: SlotProps) {
             {m.renderStatus === "failed" ? <p className="mt-2 text-body-sm text-fg-heading">{t("renderStatus.failed")}</p> : null}
 
             {m.fontSubstitutionWarning ? (
-              <p className="mt-2 text-body-sm text-fg-heading">{t("substitutionWarning.body", { family: m.fontSubstitutionWarning })}</p>
+              <p className="mt-2 text-body-sm text-fg-heading">
+                {t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+              </p>
             ) : null}
 
             {(m.kind === "pdf" || m.kind === "powerpoint") && m.renderStatus === "ready" ? (
