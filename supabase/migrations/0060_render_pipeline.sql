@@ -1,4 +1,4 @@
--- designer (wave 3, M6) — the export pipeline's four doors.
+-- promoted by the lead at wave-3 sync 4 · designer (wave 3, M6) — the export pipeline's four doors.
 -- Follows 0057.
 --
 -- Serves:  02 §4.13 (export_artifacts), 03 §5.9 (export_artifacts is

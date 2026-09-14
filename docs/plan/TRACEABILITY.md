@@ -162,7 +162,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-010` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-011` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-012` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
-| `REQ-DSG-013` | `ENT-export_artifacts` | `POL-export_artifacts.select` | — | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
+| `REQ-DSG-013` | `ENT-export_artifacts` | `POL-export_artifacts.cache` `POL-export_artifacts.select` | — | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-014` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-007` | M6 |
 | `REQ-DSG-015` | — | — | `SCR-011` `SCR-043` `SCR-057` | — | `MSG-certificate_issued` | `STORY-DSG-007` | M6 |
 | `REQ-DSG-016` | `ENT-fonts` | — | `SCR-011` `SCR-043` `SCR-044` +5 | — | — | `STORY-DSG-008` | M6 |

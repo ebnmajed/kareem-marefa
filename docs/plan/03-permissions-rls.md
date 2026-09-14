@@ -1419,6 +1419,10 @@ generated suite is the highest-value test in the product.
 | `POL-remove_photo.resolves_takedown_and_report` | One call hides the photo and resolves any open takedown and report on it in the same transaction (DEC-005). (migration `0059`). |
 | `POL-remove_photo.reverses_points` | Removing a photo reverses its points the way a comment's removal does (`0032`'s deferred half). (migration `0059`). |
 | `POL-remove_photo.own_org_only` | A staff member cannot remove another org's photo. (migration `0059`). |
+| `POL-export_artifacts.request.admin` | A moderator's `request_render()` is refused; an admin's queues one row per target and returns them. (migration `0060`). |
+| `POL-export_artifacts.cache` | Re-requesting an unchanged document re-renders nothing — the `ready` rows come back as they are (`REQ-DSG-013`). (migration `0060`). |
+| `POL-export_artifacts.record.worker` | `record_export_artifact()` and `export_render_context()` are `service_role` only; an admin calling them is refused; `service_role`'s direct select on the table is refused too — the definer functions are the boundary. (migration `0060`). |
+| `POL-export_artifacts.retry.admin` | An admin retries a `failed` artifact and it returns to `queued`; a `ready` one is left alone. (migration `0060`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
