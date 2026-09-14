@@ -84,6 +84,23 @@ export function materialSourcePath(orgId: string, sessionId: string, versionId: 
   ].join("/");
 }
 
+/** `materials/{org_id}/proposals/{proposal_id}/materials/{version_id}/{filename}` — REQ-PRO-004's
+ *  draft materials, before the proposal ever becomes a session. Same segment shape and position
+ *  as `materialSourcePath` (org/‹kind›/id/materials/version/filename) other than the literal
+ *  `proposals` in place of `sessions` — `materials_storage_write`/`_read` (03 §6, amended
+ *  proposed/content/0009) read segment [2] to tell the two apart and segment [5] (the version id)
+ *  identically either way. */
+export function proposalMaterialSourcePath(orgId: string, proposalId: string, versionId: string, filename: string): string {
+  return [
+    assertUuid(orgId, "orgId"),
+    "proposals",
+    assertUuid(proposalId, "proposalId"),
+    "materials",
+    assertUuid(versionId, "versionId"),
+    assertSafeFilename(filename, "filename"),
+  ].join("/");
+}
+
 /** `materials/{org_id}/sessions/{session_id}/materials/{version_id}/converted.pdf` — the intermediate
  *  PDF `convert_document` produces from a PowerPoint before `render_pages` reads it. Same bucket and
  *  version folder as the source (07 §4.2's converter never needs credentials to read it: the worker

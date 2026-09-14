@@ -34,12 +34,13 @@ function guessKindFromFilename(name: string): Exclude<UploadKind, "video_link" |
   return null;
 }
 
-interface UploadFormProps {
-  locale: string;
-  sessionId: string;
-}
+type UploadFormProps = { locale: string } & ({ sessionId: string; proposalId?: undefined } | { proposalId: string; sessionId?: undefined });
 
-export function UploadForm({ locale, sessionId }: UploadFormProps) {
+/** REQ-PRO-004: the same form, for either a session's materials or a proposal's draft materials —
+ *  exactly one of `sessionId`/`proposalId` is passed, matching `initiateMaterialUploadInput`'s own
+ *  either/or (src/lib/dal/materials.ts). A proposal upload hides the phase selector: "before/after
+ *  the session" has no meaning yet for a draft that carries no session at all. */
+export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   const t = useTranslations("materials.upload");
   // Kind/phase option labels reuse the `materials.list` namespace's own
   // `kind.*`/`phase.*` keys (message keys are stable — CLAUDE.md, Naming —
@@ -82,7 +83,7 @@ export function UploadForm({ locale, sessionId }: UploadFormProps) {
         method: "POST",
         headers: { "content-type": "application/json", "x-locale": locale },
         body: JSON.stringify({
-          sessionId,
+          ...(sessionId ? { sessionId } : { proposalId }),
           kind,
           title,
           phase,
@@ -142,13 +143,15 @@ export function UploadForm({ locale, sessionId }: UploadFormProps) {
         <input name="title" required maxLength={200} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
       </label>
 
-      <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-        {t("phaseLabel")}
-        <select name="phase" defaultValue="after" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
-          <option value="before">{tList("phase.before")}</option>
-          <option value="after">{tList("phase.after")}</option>
-        </select>
-      </label>
+      {sessionId ? (
+        <label className="flex flex-col gap-1 text-body-sm text-fg-body">
+          {t("phaseLabel")}
+          <select name="phase" defaultValue="after" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+            <option value="before">{tList("phase.before")}</option>
+            <option value="after">{tList("phase.after")}</option>
+          </select>
+        </label>
+      ) : null}
 
       {isFileKind ? (
         <label className="flex flex-col gap-1 text-body-sm text-fg-body">

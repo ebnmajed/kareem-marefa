@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import { materialSourcePath } from "@/lib/storage/paths";
+import { materialSourcePath, proposalMaterialSourcePath } from "@/lib/storage/paths";
 import { sniffContent, sniffedKindMatchesDeclared, type SniffedKind } from "@/lib/storage/sniff";
 
 // Materials — REQ-MAT-001 … REQ-MAT-012, 02 §4.6, 03 §5.5a, 07 §1/§2.
@@ -27,7 +27,9 @@ const LINK_KINDS = ["video_link", "external_link"] as const;
 
 export const initiateMaterialUploadInput = z
   .object({
-    sessionId: z.uuid(),
+    // REQ-PRO-004: a material belongs to a session XOR a proposal — never both.
+    sessionId: z.uuid().optional(),
+    proposalId: z.uuid().optional(),
     kind: materialKindSchema,
     title: z.string().trim().min(1).max(200),
     phase: z.enum(["before", "after"]).default("after"),
@@ -44,6 +46,9 @@ export const initiateMaterialUploadInput = z
     externalUrl: z.url().optional(),
   })
   .superRefine((val, ctx) => {
+    if (!val.sessionId === !val.proposalId) {
+      ctx.addIssue({ code: "custom", message: "exactly one of sessionId or proposalId is required", path: ["sessionId"] });
+    }
     const isFile = (FILE_KINDS as readonly string[]).includes(val.kind);
     const isLink = (LINK_KINDS as readonly string[]).includes(val.kind);
     if (isFile) {
@@ -84,7 +89,8 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
       .from("materials")
       .insert({
         org_id: session.orgId,
-        session_id: input.sessionId,
+        session_id: input.sessionId ?? null,
+        proposal_id: input.proposalId ?? null,
         kind: input.kind,
         title: input.title,
         phase: input.phase,
@@ -115,7 +121,8 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
     .from("materials")
     .insert({
       org_id: session.orgId,
-      session_id: input.sessionId,
+      session_id: input.sessionId ?? null,
+      proposal_id: input.proposalId ?? null,
       kind: input.kind,
       title: input.title,
       phase: input.phase,
@@ -126,7 +133,9 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
   if (error) throw new Error(mapMaterialsInsertError(error));
 
   const versionId = randomUUID();
-  const path = materialSourcePath(session.orgId, input.sessionId, versionId, input.filename!);
+  const path = input.sessionId
+    ? materialSourcePath(session.orgId, input.sessionId, versionId, input.filename!)
+    : proposalMaterialSourcePath(session.orgId, input.proposalId!, versionId, input.filename!);
   const { data: signed, error: signError } = await supabase.storage.from("materials").createSignedUploadUrl(path);
   if (signError || !signed) throw new Error(`storage: ${signError?.message ?? "could not sign an upload URL"}`);
 
@@ -267,6 +276,42 @@ export async function getMaterialsPageData(locale: string, sessionId: string): P
     numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     canManageAll: session.role === "admin",
     presenterOfSession: !!presenterRow,
+  };
+}
+
+export interface ProposalMaterialsPageData {
+  materials: MaterialSummary[];
+  numerals: "western" | "arabic_indic";
+  /** REQ-PRO-004: the proposer or an accepted co-presenter (`is_proposal_owner_of`,
+   *  proposed/content/0009) — this mirrors that policy for the UI, never replaces it. */
+  canManage: boolean;
+}
+
+/** `<ProposalMaterials proposalId memberId locale />`'s data — REQ-PRO-004: draft materials,
+ *  visible only to admins and the proposal's own owner until it becomes a session. `materials_
+ *  read`'s proposal branch (proposed/content/0009) is what actually filters this — a plain
+ *  member's query against a proposal they do not own returns nothing, not an error. */
+export async function getProposalMaterialsPageData(locale: string, proposalId: string): Promise<ProposalMaterialsPageData> {
+  if (!z.uuid().safeParse(proposalId).success) return { materials: [], numerals: "western", canManage: false };
+  const { session, supabase } = await sessionClient(locale);
+
+  const [{ data: rows, error }, { data: settings }, { data: proposal }, { data: presenterRow }] = await Promise.all([
+    supabase
+      .from("materials")
+      .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at")
+      .eq("proposal_id", proposalId)
+      .order("created_at", { ascending: true }),
+    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("proposals").select("proposer_id").eq("id", proposalId).maybeSingle(),
+    supabase.from("proposal_presenters").select("member_id").eq("proposal_id", proposalId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
+  ]);
+  if (error) throw new Error(`materials: ${error.message}`);
+
+  const isOwner = proposal?.proposer_id === session.memberId || !!presenterRow;
+  return {
+    materials: (rows ?? []).map(toMaterialSummary),
+    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
+    canManage: session.role === "admin" || isOwner,
   };
 }
 

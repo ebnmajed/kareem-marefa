@@ -591,3 +591,235 @@ describe("isolation", () => {
     });
   });
 });
+
+// supabase/proposed/content/0009_proposal_materials.sql — REQ-PRO-004,
+// deferred from M2 (DEC-045). `f.m2.a.proposal` (fixture-m2.ts) is a draft
+// proposal by members[0] (proposer) naming members[1] as a co-presenter
+// NOT yet accepted — exactly the shape needed to prove the accepted-only
+// half of `is_proposal_owner_of()`.
+async function seedProposalMaterial(tx: Tx, orgId: string, proposalId: string, addedBy: string) {
+  await tx.asOwner();
+  const [material] = await tx.q<{ id: string }>(
+    `insert into public.materials (org_id, proposal_id, kind, title, added_by) values ($1, $2, 'pdf', 'مادة المقترح', $3) returning id`,
+    [orgId, proposalId, addedBy],
+  );
+  return material.id as string;
+}
+
+describe("is_proposal_owner_of", () => {
+  it("★ true for the proposer and an ACCEPTED co-presenter; false for a not-yet-accepted invitee and an unrelated member", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+
+      await tx.as(f.a.members[0].claims); // the proposer
+      expect(await tx.q<{ v: boolean }>(`select public.is_proposal_owner_of($1) as v`, [f.m2.a.proposal])).toEqual([{ v: true }]);
+
+      await tx.as(f.a.members[1].claims); // co-presenter, not yet accepted (fixture-m2)
+      expect(await tx.q<{ v: boolean }>(`select public.is_proposal_owner_of($1) as v`, [f.m2.a.proposal])).toEqual([{ v: false }]);
+
+      await tx.asOwner();
+      await tx.q(`update public.proposal_presenters set accepted = true where proposal_id = $1 and member_id = $2`, [f.m2.a.proposal, f.a.members[1].memberId]);
+      await tx.as(f.a.members[1].claims);
+      expect(await tx.q<{ v: boolean }>(`select public.is_proposal_owner_of($1) as v`, [f.m2.a.proposal])).toEqual([{ v: true }]);
+
+      await tx.as(f.a.mod.claims); // unrelated org member, not staff-privileged in this function's own logic
+      expect(await tx.q<{ v: boolean }>(`select public.is_proposal_owner_of($1) as v`, [f.m2.a.proposal])).toEqual([{ v: false }]);
+    });
+  });
+});
+
+describe("POL-materials.proposal.visibility", () => {
+  it("★ a draft proposal's material is visible to the proposer and to staff, never to an unrelated member", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[0].claims); // proposer
+      expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
+
+      await tx.as(f.a.mod.claims); // staff, unrelated to the proposal
+      expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
+
+      await tx.as(f.a.admin.claims);
+      expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
+    });
+  });
+
+  it("★ REQ-PRO-004: not visible to a member with no connection to the proposal", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+
+      // members[1] is a NOT-YET-accepted co-presenter, so still "a member" for this purpose.
+      await tx.as(f.a.members[1].claims);
+      expect(await tx.q(`select id from public.materials where id = $1`, [materialId])).toEqual([]);
+    });
+  });
+});
+
+describe("POL-materials.proposal.write", () => {
+  it("the proposer can insert; an unrelated member (and a not-yet-accepted co-presenter) is refused; an admin can", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+
+      await tx.as(f.a.members[1].claims); // not yet accepted
+      expect(
+        await errorCode(() =>
+          tx.q(`insert into public.materials (org_id, proposal_id, kind, title, added_by) values ($1, $2, 'pdf', 'محاولة', $3)`, [
+            f.a.id,
+            f.m2.a.proposal,
+            f.a.members[1].memberId,
+          ]),
+        ),
+      ).toBe(PERMISSION_DENIED);
+
+      await tx.as(f.a.members[0].claims); // the proposer
+      const [ok] = await tx.q<{ id: string }>(
+        `insert into public.materials (org_id, proposal_id, kind, title, added_by) values ($1, $2, 'pdf', 'شرائح', $3) returning id`,
+        [f.a.id, f.m2.a.proposal, f.a.members[0].memberId],
+      );
+      expect(ok.id).toBeTruthy();
+
+      await tx.as(f.a.admin.claims);
+      const [ok2] = await tx.q<{ id: string }>(
+        `insert into public.materials (org_id, proposal_id, kind, title, added_by) values ($1, $2, 'pdf', 'شرائح الإدارة', $3) returning id`,
+        [f.a.id, f.m2.a.proposal, f.a.admin.memberId],
+      );
+      expect(ok2.id).toBeTruthy();
+    });
+  });
+});
+
+describe("RPC-finalize_material_upload — proposal branch", () => {
+  it("★ the proposer can finalize; a pdf is NOT enqueued for conversion while session_id is still null", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[0].claims);
+      const [version] = await tx.q<{ id: string }>(`select r.id from public.finalize_material_upload($1, 'x.pdf', 1000, 'application/pdf', $2) r`, [
+        materialId,
+        "a".repeat(64),
+      ]);
+      expect(version.id).toBeTruthy();
+
+      await tx.asOwner();
+      const [row] = await tx.q<{ render_status: string; session_id: string | null }>(`select render_status, session_id from public.materials where id = $1`, [materialId]);
+      expect(row.render_status).toBe("pending");
+      expect(row.session_id).toBeNull();
+      expect(await tx.q(`select task_identifier from graphile_worker.jobs where key = $1`, [`conv:${version.id}`])).toEqual([]);
+    });
+  });
+});
+
+describe("RPC-remove_material — proposal branch", () => {
+  it("the proposer can remove their own proposal's material; an unrelated member cannot", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[1].claims); // not yet accepted
+      expect(await errorCode(() => tx.q(`select r.id from public.remove_material($1, $2) r`, [materialId, "لا حاجة له"]))).toBe(PERMISSION_DENIED);
+
+      await tx.as(f.a.members[0].claims);
+      const [removed] = await tx.q<{ id: string }>(`select r.id from public.remove_material($1, $2) r`, [materialId, "لم يعد مطلوبًا"]);
+      expect(removed.id).toBe(materialId);
+    });
+  });
+});
+
+describe("RPC-carry_over_proposal_materials", () => {
+  it("★ REQ-PRO-004: publishing a proposal into a session reassigns its materials (session_id set, proposal_id cleared), retaining phase/allow_download", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+      await tx.asOwner();
+      await tx.q(`update public.materials set phase = 'before', allow_download = false where id = $1`, [materialId]);
+
+      const [session] = await tx.q<{ id: string }>(
+        `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, venue_id, capacity, state)
+         values ($1, $2, 'جلسة من مقترح', 'ملخص', $3, 'introductory', $4, 30, 'draft') returning id`,
+        [f.a.id, f.m2.a.proposal, f.a.categoryId, f.a.venueId],
+      );
+
+      const [row] = await tx.q<{ session_id: string | null; proposal_id: string | null; phase: string; allow_download: boolean }>(
+        `select session_id, proposal_id, phase, allow_download from public.materials where id = $1`,
+        [materialId],
+      );
+      expect(row.session_id).toBe(session.id);
+      expect(row.proposal_id).toBeNull();
+      expect(row.phase).toBe("before");
+      expect(row.allow_download).toBe(false);
+    });
+  });
+
+  it("★ enqueues convert_document for a pending pdf/powerpoint material once it has a real session_id", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
+      await tx.asOwner();
+      const [version] = await tx.q<{ id: string }>(
+        `insert into public.material_versions (org_id, material_id, version, storage_path, byte_size, sniffed_mime, sha256, uploaded_by)
+         values ($1, $2, 1, 'x/y.pdf', 1000, 'application/pdf', $3, $4) returning id`,
+        [f.a.id, materialId, "b".repeat(64), f.a.members[0].memberId],
+      );
+      await tx.q(`update public.materials set current_version_id = $1, render_status = 'pending' where id = $2`, [version.id, materialId]);
+
+      const [session] = await tx.q<{ id: string }>(
+        `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, venue_id, capacity, state)
+         values ($1, $2, 'جلسة أخرى من مقترح', 'ملخص', $3, 'introductory', $4, 30, 'draft') returning id`,
+        [f.a.id, f.m2.a.proposal, f.a.categoryId, f.a.venueId],
+      );
+      void session;
+
+      expect((await tx.q<{ task_identifier: string }>(`select task_identifier from graphile_worker.jobs where key = $1`, [`conv:${version.id}`]))[0]?.task_identifier).toBe(
+        "convert_document",
+      );
+    });
+  });
+});
+
+describe("POL-storage.materials.proposal_write", () => {
+  it("the proposer's write under the proposals/ prefix succeeds; an unrelated member's is refused", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const okName = `${f.a.id}/proposals/${f.m2.a.proposal}/materials/${crypto.randomUUID()}/deck.pdf`;
+
+      await tx.as(f.a.members[1].claims); // not yet accepted
+      expect(await errorCode(() => tx.q(`insert into storage.objects (bucket_id, name) values ('materials', $1)`, [okName]))).toBe(PERMISSION_DENIED);
+
+      await tx.as(f.a.members[0].claims);
+      await tx.q(`insert into storage.objects (bucket_id, name) values ('materials', $1)`, [okName]);
+      await tx.asOwner();
+      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [okName])).length).toBe(1);
+    });
+  });
+});
+
+describe("regression — session-based materials after 0009", () => {
+  it("the original session presenter/phase/storage behavior is unchanged once 0009 is also applied", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "content/0009_proposal_materials.sql");
+      const { materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "before");
+
+      await tx.as(f.a.members[0].claims); // presenter of `published`
+      expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
+
+      await tx.as(f.a.members[1].claims); // plain member, phase = 'before' — always visible
+      expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
+
+      await tx.as(f.b.admin.claims); // another org
+      expect(await tx.q(`select id from public.materials where id = $1`, [materialId])).toEqual([]);
+    });
+  });
+});

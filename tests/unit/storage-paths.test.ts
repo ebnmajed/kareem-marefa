@@ -15,6 +15,7 @@ import {
   materialPageThumbnailPath,
   materialSourcePath,
   photoPath,
+  proposalMaterialSourcePath,
   storagePaths,
 } from "@/lib/storage/paths";
 
@@ -25,6 +26,7 @@ const PHOTO = "44444444-4444-4444-4444-444444444444";
 const ASSET = "55555555-5555-5555-5555-555555555555";
 const DOCUMENT = "66666666-6666-6666-6666-666666666666";
 const SHA = "a".repeat(64);
+const PROPOSAL = "77777777-7777-7777-7777-777777777777";
 
 describe("materialSourcePath", () => {
   it("matches materials/{org}/sessions/{session}/materials/{version}/{filename}", () => {
@@ -60,6 +62,19 @@ describe("materialPagePath / materialPageThumbnailPath", () => {
     expect(() => materialPagePath(ORG, SESSION, VERSION, -1)).toThrow(InvalidStoragePathError);
     expect(() => materialPagePath(ORG, SESSION, VERSION, 1.5)).toThrow(InvalidStoragePathError);
     expect(() => materialPagePath(ORG, SESSION, VERSION, 1_000_000)).toThrow(InvalidStoragePathError);
+  });
+});
+
+describe("proposalMaterialSourcePath", () => {
+  it("★ REQ-PRO-004: matches materials/{org}/proposals/{proposal}/materials/{version}/{filename} — the same segment[5] position as materialSourcePath", () => {
+    expect(proposalMaterialSourcePath(ORG, PROPOSAL, VERSION, "deck.pdf")).toBe(`${ORG}/proposals/${PROPOSAL}/materials/${VERSION}/deck.pdf`);
+    const proposalSegments = proposalMaterialSourcePath(ORG, PROPOSAL, VERSION, "deck.pdf").split("/");
+    const sessionSegments = materialSourcePath(ORG, SESSION, VERSION, "deck.pdf").split("/");
+    expect(proposalSegments[4]).toBe(sessionSegments[4]); // index 4 = the storage policy's foldername()[5]
+  });
+
+  it("rejects a non-UUID proposal id", () => {
+    expect(() => proposalMaterialSourcePath(ORG, "not-a-uuid", VERSION, "deck.pdf")).toThrow(InvalidStoragePathError);
   });
 });
 
