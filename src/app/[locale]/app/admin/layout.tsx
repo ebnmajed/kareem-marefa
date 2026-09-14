@@ -45,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "emails", href: "/app/admin/emails", adminOnly: true, built: true },
   { key: "reminders", href: "/app/admin/reminders", adminOnly: true, built: true },
   { key: "exports", href: "/app/admin/exports", adminOnly: true, built: true },
-  { key: "audit", href: "/app/admin/audit", adminOnly: false, built: false },
+  { key: "audit", href: "/app/admin/audit", adminOnly: false, built: true },
   { key: "settings", href: "/app/admin/settings", adminOnly: true, built: false },
 ];
 

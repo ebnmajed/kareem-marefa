@@ -368,6 +368,28 @@
       "points": { "title": "Points", "note": "The full ledger for every member, with source, reason and date." },
       "certificates": { "title": "Certificates", "note": "Serial, member, kind and status for every certificate." },
       "members": { "title": "Members", "note": "Name, email, role and status for every member." }
+    },
+    "audit": {
+      "title": "Audit log",
+      "introAdmin": "Every admin and moderator action in your organisation. The log cannot be edited or deleted.",
+      "introModerator": "Your own actions only. You cannot see other moderators' actions.",
+      "actorLabel": "Actor",
+      "actionLabel": "Action",
+      "subjectTypeLabel": "Subject type",
+      "dateFromLabel": "From date",
+      "dateToLabel": "To date",
+      "any": "Any",
+      "apply": "Apply",
+      "clearAll": "Clear filters",
+      "empty": "No entries match your search.",
+      "colDate": "Date",
+      "colActor": "Actor",
+      "colAction": "Action",
+      "colSubject": "Subject",
+      "colReason": "Reason",
+      "systemActor": "System",
+      "noSubject": "—",
+      "noReason": "—"
     }
   }
 }
