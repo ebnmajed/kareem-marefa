@@ -25,15 +25,32 @@ import {
 // releases, in `review` mode an admin does on SCR-045. Either way the
 // transport is notify's, never this task's (08 §1).
 
-interface Payload {
+// Two shapes, because an achievement certificate has no session. The
+// session fan-out sends `session_id`; the badge and leaderboard hooks send
+// `badge_id` or `snapshot_id` and `kind: 'achievement'`. The job KEY puts
+// whichever source it is in the slot 11 §2.5 gives the session, so a
+// re-award or a re-run still collapses to one job.
+interface SessionPayload {
   session_id: string;
   member_id: string;
-  kind: "attendance" | "presenter" | "achievement";
+  kind: "attendance" | "presenter";
 }
+interface AchievementPayload {
+  member_id: string;
+  kind: "achievement";
+  badge_id?: string;
+  snapshot_id?: string;
+}
+type Payload = SessionPayload | AchievementPayload;
 
 function isPayload(p: unknown): p is Payload {
-  const v = p as Partial<Payload> | null;
-  return !!v && typeof v.session_id === "string" && typeof v.member_id === "string" && typeof v.kind === "string";
+  // Read as a loose record, not as `Partial<Session & Achievement>`: the two
+  // `kind` literals have no overlap, so that intersection collapses to
+  // `never` and every property access on it is an error.
+  const v = p as Record<string, unknown> | null;
+  if (!v || typeof v.member_id !== "string") return false;
+  if (v.kind === "achievement") return typeof v.badge_id === "string" || typeof v.snapshot_id === "string";
+  return (v.kind === "attendance" || v.kind === "presenter") && typeof v.session_id === "string";
 }
 
 interface Context {
@@ -45,7 +62,7 @@ interface Context {
   verification_code: string;
   issued_at: string | null;
   recipient_name: string;
-  kind: Payload["kind"];
+  kind: "attendance" | "presenter" | "achievement";
   session_title: string | null;
   achievement_name: string | null;
   org_name: string;
@@ -86,21 +103,30 @@ export const issue_certificates: Task = async (payload, helpers) => {
   // every issuance in the org behind it.
   let certificateId: string;
   try {
-    const { rows } = await helpers.query<{ id: string }>(`select id from public.issue_certificate($1, $2, $3::public.certificate_kind, null, $4)`, [
-      payload.session_id,
-      payload.member_id,
-      payload.kind,
-      faces.map((f) => f.sha256),
-    ]);
+    const { rows } =
+      payload.kind === "achievement"
+        ? await helpers.query<{ id: string }>(`select id from public.issue_achievement_certificate($1, $2, $3, $4)`, [
+            payload.member_id,
+            payload.badge_id ?? null,
+            payload.snapshot_id ?? null,
+            faces.map((f) => f.sha256),
+          ])
+        : await helpers.query<{ id: string }>(`select id from public.issue_certificate($1, $2, $3::public.certificate_kind, null, $4)`, [
+            payload.session_id,
+            payload.member_id,
+            payload.kind,
+            faces.map((f) => f.sha256),
+          ]);
     certificateId = rows[0].id;
   } catch (error) {
     const code = (error as { code?: string }).code;
-    // `no_check_in` and `certificates_off` are both 42501 and both mean the
-    // world changed between the fan-out and this job — a check-in undone, a
-    // session switched to `off`. Neither is a fault worth retrying twelve
-    // times; the absence of a certificate is the correct outcome.
+    // Every eligibility refusal is 42501 — `no_check_in`,
+    // `certificates_off`, a badge whose `issues_certificate` was turned back
+    // off, a snapshot no longer final — and all of them mean the world
+    // changed between the fan-out and this job. None is a fault worth twelve
+    // retries: the absence of a certificate IS the correct outcome.
     if (code === "42501") {
-      helpers.logger.info(`issue_certificates: ${payload.member_id} is no longer eligible for ${payload.session_id} (${payload.kind}) — nothing issued`);
+      helpers.logger.info(`issue_certificates: ${payload.member_id} is no longer eligible (${payload.kind}) — nothing issued`);
       return;
     }
     throw error;

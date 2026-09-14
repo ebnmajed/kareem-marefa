@@ -74,6 +74,10 @@
       "achievement": "Achievement",
       "org": "Issued by",
       "issuedAt": "Issued"
+    },
+    "achievements": {
+      "heading": "Achievement certificates awaiting release",
+      "intro": "Leaderboard certificates are prepared from a frozen snapshot and do not reach their recipients until you release them. A later leaderboard change cannot alter who won a closed period."
     }
   }
 }

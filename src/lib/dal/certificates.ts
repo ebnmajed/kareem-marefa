@@ -326,3 +326,36 @@ export async function getOrgTimeZone(locale: string): Promise<string> {
   const { data } = await supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle();
   return (data?.time_zone as string | undefined) ?? "Asia/Riyadh";
 }
+
+/* ── the held achievement certificates (REQ-CRT-012) ───────────────────── */
+
+/**
+ * Every `held` achievement certificate in the org.
+ *
+ * SCR-045 is per session, and an achievement certificate has no session, so
+ * there is no screen in `09` that can release one. `<HeldAchievements>` is
+ * this track's answer: a slot the recognition screen renders, published the
+ * same way as the three event-page slots (TEAM.md §2) so the wiring is one
+ * import rather than a new route in somebody else's folder.
+ */
+export async function listHeldAchievements(locale: string): Promise<{ certificates: CertificateRow[]; canRelease: boolean }> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return { certificates: [], canRelease: false };
+
+  const { data } = await supabase
+    .from("certificates")
+    .select("id, kind, state, serial, verification_code, recipient_name_snapshot, issued_at, revoked_at, revocation_reason, session_id, sessions(title), badges(name), design_documents(id), leaderboard_snapshots(kind, period_start, period_end)")
+    .eq("kind", "achievement")
+    .eq("state", "held")
+    .order("serial");
+
+  type Raw = RawRow & { leaderboard_snapshots: { kind: string; period_start: string | null; period_end: string | null } | null };
+  const rows = ((data ?? []) as unknown as Raw[]).map((r) => ({
+    ...toRow(r),
+    // The achievement's own name when it is a badge; the period when it is a
+    // leaderboard, because «الشهر الماضي» is what an admin recognises and a
+    // snapshot uuid is not.
+    achievementName: one(r.badges)?.name ?? (r.leaderboard_snapshots?.period_start ?? null),
+  }));
+  return { certificates: rows, canRelease: true };
+}

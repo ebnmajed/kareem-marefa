@@ -533,6 +533,38 @@ The alternative — widening the proxy's predicate — is the lead's file,
 and is the better fix if `/verify` is ever joined by another public
 platform route. Flagged at sync.
 
+## 2.11 REQ-CRT-012 has no screen, so it got a slot
+
+«Leaderboard certificates … released by an admin» is the requirement.
+SCR-045 is `/app/admin/sessions/[id]/certificates` and an achievement
+certificate has no session, so `09` gives that release nowhere to live:
+built as specified, every leaderboard certificate would sit `held`
+forever and the feature would be a dead end.
+
+`<HeldAchievements locale />` is the answer — a fourth designer slot,
+and the only one that writes. It renders nothing unless something is
+actually held, carries its own `"use server"` action beside the
+component, and calls `revalidatePath` rather than redirecting, because a
+slot does not own the route it renders on. `scoring`'s SCR-054 imports
+one component and nothing else. **Needs the lead to wire it.**
+
+Two assumptions in `0008` that want a second pair of eyes:
+
+- **«top 3 annual» is read as any FINAL member-ranked snapshot.**
+  `leaderboard_kind` has no `annual` member, and 0042 fills
+  `leaderboard_entries` with member ranks for `monthly`, `seasonal` and
+  `topic`. `topic` is excluded deliberately — a per-category board is
+  neither of the two the requirement names, and including it would
+  issue certificates for every category every month.
+- **A badge certificate issues outright; a snapshot one is held.**
+  REQ-CRT-012 says «released by an admin» only of the leaderboard case,
+  and awarding a badge already was somebody's decision.
+
+The trigger is on `leaderboard_entries`, STATEMENT-level with a
+transition table, not on `leaderboard_snapshots`. 0042 inserts the
+snapshot row first and the ranks after, so a row trigger on the
+snapshot would fan out over an empty entries table and issue nothing.
+
 ---
 
 ## 3. Owner checks that no test here can stand in for
