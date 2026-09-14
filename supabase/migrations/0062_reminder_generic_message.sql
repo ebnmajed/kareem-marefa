@@ -1,4 +1,4 @@
--- console (wave 3, M7) — the fourth, offset-agnostic reminder message
+-- promoted by the lead at wave-3 sync 6 · console (wave 3, M7) — the fourth, offset-agnostic reminder message
 -- (DEC-047, console.md's story order item 3): "08 §1.2 defines exactly
 -- THREE reminder messages … `reminder_message_key()` picks the nearest by
 -- magnitude … a fourth, offset-agnostic message is the honest fix, left to

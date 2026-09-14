@@ -1423,6 +1423,9 @@ generated suite is the highest-value test in the product.
 | `POL-export_artifacts.cache` | Re-requesting an unchanged document re-renders nothing — the `ready` rows come back as they are (`REQ-DSG-013`). (migration `0060`). |
 | `POL-export_artifacts.record.worker` | `record_export_artifact()` and `export_render_context()` are `service_role` only; an admin calling them is refused; `service_role`'s direct select on the table is refused too — the definer functions are the boundary. (migration `0060`). |
 | `POL-export_artifacts.retry.admin` | An admin retries a `failed` artifact and it returns to `queued`; a `ready` one is left alone. (migration `0060`). |
+| `POL-reminder_message_key.tolerance_band` | `reminder_message_key()` picks a fixed reminder message within ±20% of its offset and `MSG-reminder_generic` for anything else (`08` §1.2's fourth message, DEC-047). (migration `0062`). |
+| `POL-reminder_message_key.default_unaffected` | Every default org offset still maps to the message it mapped to before. (migration `0062`). |
+| `POL-notification_matrix.generic_key_accepted` | `MSG-reminder_generic` is in the matrix under `reminders`, so a template for it is accepted and a reminder carrying it is deliverable. (migration `0062`). |
 | `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
 | `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
 | `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |

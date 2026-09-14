@@ -98,6 +98,7 @@
       "MSG-reminder_7d": "In a week",
       "MSG-reminder_1d": "Tomorrow",
       "MSG-reminder_2h": "In two hours",
+      "MSG-reminder_generic": "Upcoming session reminder",
       "MSG-rsvp_nudge": "A session you have not answered",
       "MSG-rsvp_confirmed": "Your seat is confirmed",
       "MSG-rsvp_waitlisted": "You are on the waitlist",

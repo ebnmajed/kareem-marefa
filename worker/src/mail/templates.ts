@@ -85,6 +85,13 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
     subject: "بعد ساعتين: {{title}}",
     body: `${greeting}\n\nجلسة «{{title}}» بعد ساعتين.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{url}}`,
   },
+  // 08 §1.2's fourth, offset-agnostic reminder (DEC-047, migration 0062): any
+  // org offset outside ±20% of the three fixed ones. Names no distance, so it
+  // is honest at every offset.
+  "MSG-reminder_generic": {
+    subject: "تذكير: {{title}}",
+    body: `${greeting}\n\nتذكير بجلسة «{{title}}» القادمة.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
+  },
   "MSG-rating_prompt": {
     subject: "كيف كانت جلسة {{title}}؟",
     body: `${greeting}\n\nحضرت جلسة «{{title}}». رأيك يساعد المقدّم والمنظمين، ولا يستغرق دقيقة.\n\n{{url}}`,

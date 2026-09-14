@@ -2,7 +2,7 @@
 //
 // Each constraint below has a mail client that breaks without it, and none of
 // them can be checked by looking at the mail in one's own inbox.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { changeBlock, changesFromPayload, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "../../worker/src/mail/render";
@@ -18,7 +18,16 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
   // The matrix is read out of the promoted migration rather than restated
   // here: a message added to 08 §1 with an email channel and no template would
   // otherwise be found by a member receiving nothing.
-  const sql = readFileSync(join(process.cwd(), "supabase", "migrations", "0026_notification_contract.sql"), "utf8");
+  // Forward-only migrations: `notification_matrix()` was born in 0026 and is
+  // replaced whole by any later migration that adds a message (0062 added
+  // MSG-reminder_generic, DEC-047's fourth reminder), so the LAST definition
+  // on disk is the matrix in force.
+  const migrationsDir = join(process.cwd(), "supabase", "migrations");
+  const defining = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .filter((f) => /function public\.notification_matrix\(\)/.test(readFileSync(join(migrationsDir, f), "utf8")));
+  const sql = readFileSync(join(migrationsDir, defining[defining.length - 1]!), "utf8");
   const matrix = [...sql.matchAll(/\('(MSG-[a-z0-9_]+)',\s*'[a-z_]+',\s*(true|false),\s*(true|false),\s*(true|false)\s*\)/g)].map((m) => ({
     key: m[1],
     inApp: m[2] === "true",
@@ -26,7 +35,7 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
   }));
 
   it("parsed the matrix out of the migration at all", () => {
-    expect(matrix).toHaveLength(38);
+    expect(matrix).toHaveLength(39);
   });
 
   it("has a subject and a body for every message with an email channel", () => {

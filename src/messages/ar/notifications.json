@@ -98,6 +98,7 @@
       "MSG-reminder_7d": "بعد أسبوع",
       "MSG-reminder_1d": "غدًا",
       "MSG-reminder_2h": "بعد ساعتين",
+      "MSG-reminder_generic": "تذكير بجلسة قادمة",
       "MSG-rsvp_nudge": "جلسة لم تردّ عليها بعد",
       "MSG-rsvp_confirmed": "تأكّد مقعدك",
       "MSG-rsvp_waitlisted": "أنت في قائمة الانتظار",

@@ -201,8 +201,14 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await review(boss, "scr-043-schedule", "احفظ الجدولة");
 
   const when = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-  const local = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")}T18:00`;
-  await boss.getByLabel("التاريخ والوقت").fill(local);
+  // SCR-043's field is console's RTL date-time picker since wave 3 (DEC-045's
+  // carried-over item): a trigger whose accessible name carries its value, a
+  // day grid whose cells are labelled by full date, hour and minute selects.
+  await boss.getByRole("button", { name: new RegExp("^التاريخ والوقت:") }).click();
+  await boss.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).first().click();
+  await boss.getByLabel("الساعة").selectOption("18");
+  await boss.getByLabel("الدقيقة").selectOption("0");
+  await boss.getByRole("button", { name: "تم" }).click();
   await boss.getByLabel("المدة").fill("60");
   await boss.getByLabel("المكان", { exact: true }).selectOption({ label: "قاعة الابتكار" });
   await boss.getByRole("button", { name: "احفظ الجدولة" }).click();
