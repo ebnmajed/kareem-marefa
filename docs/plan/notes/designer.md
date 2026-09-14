@@ -268,3 +268,90 @@ default is a publish with no template to bind (DEC-012).
 - **Dragging, snapping, alignment guides and undo/redo** are `REQ-DSG-022`
   and land with STORY-DSG-010. The properties panel edits frames numerically,
   which is what DSG-003 needs and is also the only thing that is exact.
+
+
+---
+
+## 2. Bundle 2
+
+### 2.1 STORY-DSG-005 — presets, safe areas, auto-fit
+
+`packages/designer-runtime/src/presets.ts` and `autofit.ts`.
+
+**Everything is expressed against the SAFE BOX, not the page.** A layer 80 px
+below the master's top edge is a layer at the TOP of the safe area, and on
+`story` — whose inset is 120 — it belongs at 120. Anchoring to the page would
+drift every print preset inward by the difference, and nobody would notice
+until the bleed was trimmed. Print margins are held in millimetres, so
+changing a dpi cannot silently move them.
+
+**`reflow: stack | inline` is NOT in the model, deliberately.** `06` §5.1
+lists it beside anchor, scale and hide-at, and the workshop family's task
+strip is its only stated use. Reflow needs a GROUP or a REPEAT concept — a
+strip of tasks that can stack or inline — and the layer model has neither.
+Inventing one now would be inventing a shape for a template that does not
+exist yet. It lands with STORY-DSG-011, where the workshop family forces the
+question with a real template in hand. The other three behaviours are
+implemented and tested.
+
+**Auto-fit's search is integer-stepped and downward, not binary.** Two
+renderers agreeing on 47.318 px is luck, and `06` §9.3's «not a tolerance — a
+structural comparison» does not survive luck. The extra measurements cost
+nothing on a box measured once per export.
+
+### 2.2 STORY-DSG-006 — the export pipeline
+
+`supabase/proposed/designer/0003_render_pipeline.sql`, `worker/src/render/**`,
+`worker/src/tasks/render_variant.ts`, and the queue on SCR-057.
+
+**The fingerprint does not include the preset or the format.** They are their
+own columns in `unique (document_id, preset, format, source_fingerprint)`, so
+folding them in would give one source seven fingerprints and make "has this
+source been rendered?" a question with seven answers. Caught while wiring
+`request_render()`, which takes one fingerprint for every target.
+
+**The render context is PINNED into the request, the document is not.** The
+resolved bindings and the exact faces travel with the artifact row; the
+worker renders THOSE rather than re-resolving `06` §2.3, because a second
+resolution can disagree with what the admin previewed and for a certificate
+it would break `REQ-CRT-014` outright. The document is read live and the
+worker **re-derives the fingerprint from what it actually loaded**, refusing
+on a mismatch — so a document edited between request and render fails loudly
+instead of rendering new content under an old key.
+
+**Two page probes, and they must stay self-contained.**
+`packages/designer-runtime/src/page-probes.ts` holds the text measurer and
+the Tier-A signature reader. `page.evaluate(fn)` ships `fn.toString()`, so a
+reference to anything outside the body is `undefined is not a function` in
+the worker, on the one export nobody re-ran. Keeping them closed is what lets
+the editor and the worker share one measurer instead of two that drift.
+
+**What Tier A actually compares, so nobody has to reconstruct it:** the face
+resolved (advance against a face that certainly does not exist), letter-spacing
+is zero, the fitted size and line count the measurement chose survived the
+layout, and — when a previous render of the same fingerprint exists — the
+geometry is unchanged. It does **not** prove the shaping is correct; nothing
+at export time can. Correctness is the parity suite's seven cases against
+reviewed goldens. Tier A proves the export matches what was decided, which is
+the failure that reaches a printed page.
+
+### 2.3 For the lead — `worker/src/index.ts` (yours)
+
+```ts
+import { render_variant } from "./tasks/render_variant.js";
+// taskList: { …, render_variant }
+```
+
+The `render` queue's concurrency is **2** (`11` §1.4). graphile-worker sizes
+concurrency per process, so the figure belongs to a second runner rather than
+to the `default` one — `index.ts`'s own comment already says «render and
+convert get their own processes when M6 and M4 introduce them». The jobs are
+enqueued onto the named queue `render` by `request_render()`, so a single
+runner would still pick them up; the reason for the separate process is `11`
+§1.4's: one thirty-second A3 must never starve a reminder.
+
+No crontab line — `render_variant` is enqueued, never scheduled.
+
+New worker environment: none. `CHROME_PATH` is already in the image and
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are already required by the
+content tasks.
