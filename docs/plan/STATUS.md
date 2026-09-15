@@ -216,6 +216,63 @@ step. Secret values are never printed; `vercel env ls` and `gh secret list` prin
 | `npm run test:e2e:local tests/e2e/materials.spec.ts` | 6 passed on a fresh configured build (the seeded material is now a `pdf`) |
 | `npm run qa` / `npm run visual` | not needed — nothing under `(marketing)/**`, `public/**` or the locale layout changed |
 
+### Variable inventory — DRAFT before step 3 (the «exists» column is the owner's `! vercel env ls` / `! gh secret list`)
+
+Built from what the code **actually reads** (`grep process.env` over `src/`, `worker/src/`, `scripts/`, `ci.yml`),
+not from the handoff's list. Two names the handoff carried are **read by nothing** and are recorded, not set.
+
+**Vercel — project `kareem-marefa` (team `peninsula-pictures-projects`).** Set at Vercel → Project → Settings →
+Environment Variables (or `vercel env add NAME production`, which the owner runs).
+
+| Name | Env | Issued by · where | Public / secret | Read by | Exists? |
+|---|---|---|---|---|---|
+| `SUPABASE_URL` | Production, Preview | Supabase → Project Settings → Data API → *Project URL* (`https://qnwbgzsgkftqaixzuhdo.supabase.co`) | public | the frozen registration form, `src/lib/supabase.ts` | **live today** — confirm |
+| `SUPABASE_PUBLISHABLE_KEY` | Production, Preview | Supabase → Project Settings → API Keys → *Publishable key* (`sb_publishable_…`) | public (publishable) | the frozen form | **live today** — confirm |
+| `FORM_TOKEN_SECRET` | Production, Preview | generated: `openssl rand -hex 32` | **secret** | `src/lib/anti-spam.ts` | **live today** — confirm |
+| `SITE_URL` | Production only | the domain: `https://kareem.pp.sa` (Preview falls back to Vercel's own URL) | public | the locale layout's `metadataBase` | **live today** — confirm |
+| `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview | the same *Project URL* | public (inlined into the bundle) | `src/proxy.ts`, `src/lib/supabase/env.ts`, the browser client | **new** — unset until PR C by design (DEC-038) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Production, Preview | the same *Publishable key* | public (publishable, inlined) | same | **new** |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Production (Preview optional) | generated once, kept stable: `openssl rand -base64 32` (Next wants 32 bytes, base64) | **secret** | Next.js itself (`04` §9.2) | **new** |
+| `GOOGLE_CALENDAR_CLIENT_ID` | Production | Google Cloud → APIs & Services → Credentials → the OAuth 2.0 client (same client as the Supabase provider) → *Client ID* | public-ish (treat as config) | `src/app/api/calendar/oauth.ts` | **new** |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | Production | the same client → *Client secret* | **secret** | same | **new** |
+| `VERCEL_PROJECT_PRODUCTION_URL` | system | Vercel sets it when *Automatically expose System Environment Variables* is on (Settings → Environment Variables) | public | the locale layout's fallback | check the toggle |
+| `SENTRY_DSN` | — | **not read by any code** (no Sentry SDK is installed); post-launch with the `AlertSink` transport (DEC-059) | — | nothing | do not set |
+| `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` | — | **never on Vercel** (invariant 7) | — | — | must be absent |
+
+The calendar client's **authorised redirect URI** is `https://kareem.pp.sa/api/calendar/callback` (built from the request
+URL in `api/calendar/connect/route.ts`); the Supabase provider's is `https://qnwbgzsgkftqaixzuhdo.supabase.co/auth/v1/callback`.
+Both go on the same Google OAuth client.
+
+**Railway — one service from `worker/Dockerfile`.** Set at Railway → the service → Variables (raw editor takes
+`NAME=value` lines; the owner pastes, this session never sees a value).
+
+| Name | Value / issued by · where | Public / secret | Read by | Exists? |
+|---|---|---|---|---|
+| `DATABASE_URL` | Supabase → *Connect* (top bar) → **Session pooler**, port **5432**: `postgresql://postgres.qnwbgzsgkftqaixzuhdo:<db-password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres` (Railway is IPv4; the direct connection is IPv6-only without the add-on; **never** the transaction pooler on 6543 — the boot probe refuses it) | **secret** | `worker/src/index.ts`, the probe | new |
+| `SUPABASE_URL` | the *Project URL* | public | `worker/src/content/storage.ts`, `platform/storage.ts` | new |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → *Secret keys* → create one (`sb_secret_…`); the legacy `service_role` JWT under *Legacy API keys* is the fallback if Storage answers 401 at step 5 | **secret** | the two storage helpers (Bearer + `apikey`) | new |
+| `PUBLIC_ORIGIN` | `https://kareem.pp.sa` | public | `issue_certificates`, `regenerate_poster` (the QR targets) | new |
+| `MAIL_TRANSPORT` | `resend` — the only value that reaches a provider (DEC-046) | public | `worker/src/mail/transport.ts` | new |
+| `RESEND_API_KEY` | Resend → API Keys → *Create API key* (sending access, restricted to the domain) | **secret** | `worker/src/mail/resend.ts` | new |
+| `MAIL_FROM_ADDRESS` | optional; default `no-reply@kareem.pp.sa` — the domain must be **verified** at Resend → Domains first | public | `fromAddress()` | optional |
+| `GOOGLE_OAUTH_CLIENT_ID` | the same Google client's *Client ID* (the worker refreshes calendar tokens with it) | config | `worker/src/calendar/index.ts` | new |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | the same client's *Client secret* | **secret** | same | new |
+| `CALENDAR_API` | **leave unset** (`stub` would silence the real API) | — | same | absent |
+| `CHROME_NO_SANDBOX` | `1` — the container runs as `node` without user namespaces (CI sets the same) | public | `worker/src/render/chromium.ts` | new |
+| `CHROME_PATH`, `NODE_ENV` | baked into the image (`/usr/bin/chromium`, `production`) | — | — | in the image |
+| `RESEND_WEBHOOK_SECRET` | **not read** — no `/api/webhooks/resend` route exists in the code (`08` §3.6 planned it); post-launch | — | nothing | do not set |
+| `SENTRY_DSN` | **not read** (see above) | — | nothing | do not set |
+| Railway service settings | Build → *Dockerfile path* `worker/Dockerfile` (or the variable `RAILWAY_DOCKERFILE_PATH=worker/Dockerfile`), root directory `/`, region **Singapore**, **no public networking** (the worker listens on nothing), restart on failure, **app sleeping off** | — | — | new |
+
+**GitHub Actions secrets:** **none.** `ci.yml` references no `secrets.*`; every job runs on placeholders and
+containers (DEC-025). `! gh secret list` should print nothing; if it prints a name, it is stale and unused.
+
+**Supabase dashboard inputs (not variables):** Auth → Providers → Google (client ID + secret, the same client);
+Auth → URL Configuration → Site URL `https://kareem.pp.sa`, redirect allow-list `https://kareem.pp.sa/api/auth/callback`
+and `https://*-peninsula-pictures-projects.vercel.app/api/auth/callback`; Auth → Hooks → *Customize Access Token*
+→ `public.custom_access_token_hook`, *Before User Created* → `public.before_user_created_hook`; Auth → Settings →
+JWT expiry **900**; Auth → JWT keys → asymmetric signing (DEC-036). Each is its own gated step in step 3.
+
 **Two files changed on disk during the session that are not this branch's:** `.env.example`
 (`SITE_URL="https://kareem.pp.sa"`) and `supabase/config.toml` (local `site_url`, a callback redirect,
 `[auth.external.google]` reading `env(GOOGLE_OAUTH_CLIENT_ID/SECRET)`, `skip_nonce_check`). Neither
