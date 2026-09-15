@@ -137,7 +137,7 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
         <p className="text-body text-fg-body">{t.rich("membersOnly", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
         <a
           href={signInHref}
-          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-field bg-fg-heading px-6 py-3 text-label text-silver-050"
+          className="mt-4 inline-flex min-h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
         >
           {t("signIn")}
         </a>

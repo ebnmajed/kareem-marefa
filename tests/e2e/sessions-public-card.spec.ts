@@ -36,10 +36,18 @@ let venueName = "";
 let publishedId = "";
 let draftId = "";
 let ogPath = "";
+// `supabase/proposed/sessions/0001_public_session_card.sql` is proven inside a
+// rolled-back transaction by `tests/rls/sessions-public-card.test.ts`; the
+// shared local database only has the function once the lead promotes it
+// (TEAM.md §2). Until then these cases skip LOUDLY rather than failing
+// somebody else's run.
+let promoted = false;
 
 test.beforeAll(async ({}, testInfo) => {
   db = new pg.Client(DB_URL);
   await db.connect();
+  promoted = (await db.query(`select to_regprocedure('public.session_public_card(uuid)') is not null as ok`)).rows[0].ok;
+  if (!promoted) return;
   const tag = `${testInfo.workerIndex}-${Date.now()}`;
   orgName = `نادي البطاقة ${testInfo.workerIndex}`;
   venueName = "قاعة الابتكار";
@@ -55,11 +63,9 @@ test.beforeAll(async ({}, testInfo) => {
     org.id,
     venueName,
   ]);
-  const admin = await one<{ id: string }>(
-    `insert into public.members (org_id, auth_user_id, display_name, email, org_role, status)
-     values ($1, gen_random_uuid(), 'مشرفة', $2, 'admin', 'active') returning id`,
-    [org.id, `boss@e2e-card-${tag}.example`],
-  );
+  // No member row: this walk never signs in, and `design_documents.updated_by`
+  // is nullable. A member would need an `auth.users` row to satisfy its FK,
+  // which is an account created for nothing.
 
   const session = async (title: string, state: string) =>
     (
@@ -81,8 +87,8 @@ test.beforeAll(async ({}, testInfo) => {
   // The poster, and one ready `og` render of it — what the crawler fetches.
   const doc = await one<{ id: string }>(
     `insert into public.design_documents (org_id, purpose, document, bound_session_id, updated_by)
-     values ($1, 'poster', $2::jsonb, $3, $4) returning id`,
-    [org.id, JSON.stringify({ schemaVersion: 1, layers: [] }), publishedId, admin.id],
+     values ($1, 'poster', $2::jsonb, $3, null) returning id`,
+    [org.id, JSON.stringify({ schemaVersion: 1, layers: [] }), publishedId],
   );
   await db.query(`insert into public.session_posters (org_id, session_id, document_id) values ($1, $2, $3)`, [org.id, publishedId, doc.id]);
   ogPath = `${org.id}/exports/${doc.id}/og.png`;
@@ -103,6 +109,10 @@ test.afterAll(async () => {
   await db?.end();
 });
 
+function needsPromotion() {
+  test.skip(!promoted, "needs supabase/proposed/sessions/0001_public_session_card.sql promoted and applied (ask the lead)");
+}
+
 async function one<T extends pg.QueryResultRow>(sql: string, params: unknown[]): Promise<T> {
   return (await db.query<T>(sql, params)).rows[0];
 }
@@ -118,6 +128,7 @@ function meta(html: string, key: string): string | null {
 }
 
 test("a signed-out visitor sees the six public fields and nothing else", async ({ page, context }) => {
+  needsPromotion();
   await context.clearCookies();
   await page.setViewportSize(PHONE);
   const response = await page.goto(`/ar/s/${publishedId}`);
@@ -147,6 +158,7 @@ test("a signed-out visitor sees the six public fields and nothing else", async (
 });
 
 test("the Open Graph tags are absolute and carry the date and the venue", async ({ request }) => {
+  needsPromotion();
   const html = await (await request.get(`/ar/s/${publishedId}`)).text();
 
   expect(meta(html, "og:title")).toBe("كيف نكتب تقريرًا يُقرأ");
@@ -169,6 +181,7 @@ test("the Open Graph tags are absolute and carry the date and the venue", async 
 });
 
 test("the image is served to an unauthenticated crawler, with the poster's bytes", async ({ request }) => {
+  needsPromotion();
   const res = await request.get(`/api/s/${publishedId}/og`);
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toBe("image/png");
@@ -179,6 +192,7 @@ test("the image is served to an unauthenticated crawler, with the poster's bytes
 });
 
 test("a draft session's card is a 404, and so is its image", async ({ request }) => {
+  needsPromotion();
   const card = await request.get(`/ar/s/${draftId}`);
   expect(card.status()).toBe(404);
   expect(await card.text()).not.toContain("مسودة لا تُشارَك");
@@ -191,6 +205,7 @@ test("a draft session's card is a 404, and so is its image", async ({ request })
 });
 
 test("a cancelled session stops being a card, image included", async ({ request }) => {
+  needsPromotion();
   await db.query(`update public.sessions set state = 'cancelled', cancelled_at = now(), cancellation_reason = 'اختبار' where id = $1`, [
     publishedId,
   ]);
