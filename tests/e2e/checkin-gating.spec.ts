@@ -99,6 +99,13 @@ async function signIn(context: BrowserContext, email: string): Promise<string> {
   const { data: envelope, error: rpcError } = await client.rpc("provision_member");
   if (rpcError) throw rpcError;
   const memberId = (envelope as { member_id: string }).member_id;
+  // The token captured by signInWithPassword() was minted BEFORE
+  // provision_member() created the member row, so it carries no org claim
+  // yet (the custom access token hook re-reads members on every mint,
+  // refresh included) — a browser handed that cookie lands on /no-access.
+  // Re-mint after provisioning, same as checkin.spec.ts's signIn().
+  jar.length = 0;
+  await client.auth.refreshSession();
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
   return memberId;
 }
@@ -124,7 +131,7 @@ test("a confirmed member sees the calendar, the tasks heading, and the check-in 
   // reserve_seat() itself refuses a live session (16 §5.1's fix for ask 4) —
   // a direct insert is the only way to seed a confirmed RSVP made BEFORE the
   // session went live, exactly like the existing sessions in checkin.spec.ts.
-  await db.query(`insert into public.rsvps (session_id, member_id, status) values ($1, $2, 'confirmed')`, [liveSessionId, memberId]);
+  await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, liveSessionId, memberId]);
 
   await page.goto(`/ar/app/sessions/${liveSessionId}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسة اختبار البوابات");
