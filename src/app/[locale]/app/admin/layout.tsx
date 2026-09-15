@@ -18,8 +18,9 @@ import { requireStaffSession } from "@/lib/dal/admin-dashboard";
 // is generated from, and never change a path here without telling the lead.
 // `built: false` items are left out of the rendered nav on purpose: a
 // dead link that 404s is worse than a nav item that appears the day its
-// screen ships. `/app/admin/branding` (SCR-059, wave 4, DEC-048 Decision 2)
-// is never listed at all.
+// screen ships. The template libraries (wave 3) and branding (wave 4) are
+// listed since Launch — they had shipped with the flag still false, and the
+// owner found them reachable by URL only.
 type NavItem = { key: string; href: string; adminOnly: boolean; built: boolean };
 
 const NAV_ITEMS: NavItem[] = [
@@ -40,8 +41,9 @@ const NAV_ITEMS: NavItem[] = [
   { key: "recognition", href: "/app/admin/recognition", adminOnly: true, built: true },
   // designer's — admin-only per REQ-ADM-013, listed here so their pages
   // pick up this shell the moment they land.
-  { key: "templatesPosters", href: "/app/admin/templates/posters", adminOnly: true, built: false },
-  { key: "templatesCertificates", href: "/app/admin/templates/certificates", adminOnly: true, built: false },
+  { key: "templatesPosters", href: "/app/admin/templates/posters", adminOnly: true, built: true },
+  { key: "templatesCertificates", href: "/app/admin/templates/certificates", adminOnly: true, built: true },
+  { key: "branding", href: "/app/admin/branding", adminOnly: true, built: true },
   { key: "emails", href: "/app/admin/emails", adminOnly: true, built: true },
   { key: "reminders", href: "/app/admin/reminders", adminOnly: true, built: true },
   { key: "exports", href: "/app/admin/exports", adminOnly: true, built: true },

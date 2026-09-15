@@ -2,7 +2,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime } from "@/components/sessions/numerals";
 import { MemberBoard } from "@/components/scoring/member-board";
 import { CompanyBoard } from "@/components/scoring/company-board";
-import { getLeaderboards } from "@/lib/dal/leaderboards";
+import { CompanyPointsBreakdownSection } from "@/components/scoring/company-points-breakdown";
+import { getCompanyPointsBreakdown, getLeaderboards } from "@/lib/dal/leaderboards";
 
 // SCR-027 · /app/leaderboards — all-time, this month, and سباق الشركات
 // (SCR-028) as sections of one page rather than a tab widget, same
@@ -15,7 +16,11 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [t, boards] = await Promise.all([getTranslations("leaderboards"), getLeaderboards(locale)]);
+  const [t, boards, companyBreakdown] = await Promise.all([
+    getTranslations("leaderboards"),
+    getLeaderboards(locale),
+    getCompanyPointsBreakdown(locale),
+  ]);
 
   return (
     <>
@@ -31,6 +36,11 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
         <a href="#company" className="text-label text-fg-heading underline underline-offset-4">
           {t("tabs.company")}
         </a>
+        {companyBreakdown ? (
+          <a href="#company-breakdown" className="text-label text-fg-heading underline underline-offset-4">
+            {t("tabs.companyBreakdown")}
+          </a>
+        ) : null}
       </nav>
 
       <section id="all-time" aria-labelledby="all-time-heading" className="mt-10">
@@ -66,6 +76,8 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
         </div>
         <CompanyBoard rows={boards.company?.rows ?? []} numerals={boards.numerals} metric={boards.companyMetric} />
       </section>
+
+      {companyBreakdown ? <CompanyPointsBreakdownSection breakdown={companyBreakdown} locale={locale} timeZone={boards.timeZone} /> : null}
     </>
   );
 }

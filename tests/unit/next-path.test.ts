@@ -7,6 +7,9 @@ describe("safeNextPath", () => {
   it("keeps a platform path, with its query", () => {
     expect(safeNextPath("/ar/app/sessions/abc?tab=materials", "ar")).toBe("/ar/app/sessions/abc?tab=materials");
     expect(safeNextPath("/ar/app", "ar")).toBe("/ar/app");
+    // Every session id is a uuid: the hyphens must survive the control-character guard.
+    expect(safeNextPath("/ar/app/sessions/11111111-2222-3333-4444-555555555555", "ar")).toBe("/ar/app/sessions/11111111-2222-3333-4444-555555555555");
+    expect(safeNextPath("/ar/app/sessions/x" + String.fromCharCode(7), "ar")).toBe("/ar/app");
     expect(safeNextPath(encodeURIComponent("/ar/app/sessions/abc"), "ar")).toBe("/ar/app/sessions/abc");
   });
 
@@ -56,6 +59,8 @@ describe("safeNextPath", () => {
 
   it("isPublicPlatformPath — /verify and /legal, never the frozen routes", () => {
     expect(isPublicPlatformPath("/ar/verify/abc")).toBe(true);
+    expect(isPublicPlatformPath("/ar/s/11111111-2222-3333-4444-555555555555")).toBe(true); // the public session card
+    expect(isPublicPlatformPath("/ar/sessions/x")).toBe(false);
     expect(isPublicPlatformPath("/en/verify/abc")).toBe(true);
     expect(isPublicPlatformPath("/ar/legal/privacy")).toBe(true);
     expect(isPublicPlatformPath("/ar/legal")).toBe(true);

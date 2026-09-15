@@ -4,7 +4,7 @@ import { formatDateTime } from "@/components/sessions/numerals";
 import { MemberPicker } from "@/components/admin/member-picker";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getScoringAdminData } from "@/lib/dal/scoring-admin";
-import { saveManualAdjustment, saveScoringRule } from "./actions";
+import { saveCompanyHostingRule, saveCompanyPercentRule, saveManualAdjustment, saveScoringRule, saveSessionHostCompany } from "./actions";
 
 // SCR-053 · /app/admin/scoring — DEC-046's wave-2 carve-out for `scoring`;
 // `console` inherits this path at wave 3 (DEC-042's pattern for `sessions`).
@@ -108,6 +108,121 @@ export default async function ScoringAdminPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="company-rules-heading" className="mt-12">
+        <h2 id="company-rules-heading" className="text-h2 text-fg-heading">
+          {t("companyRules.heading")}
+        </h2>
+        <p className="mt-2 text-body text-fg-muted">{t("companyRules.intro")}</p>
+        <ul className="mt-4 space-y-4">
+          {data.companyRules.map((rule) =>
+            rule.actionKey === "company_hosting" ? (
+              <li key={rule.id} className="rounded-field border border-edge p-4">
+                <p className="text-label text-fg-heading">
+                  <bdi>{rule.reasonAr}</bdi> <span className="text-body-sm text-fg-muted">({rule.actionKey})</span>
+                </p>
+                <form action={saveCompanyHostingRule} className="mt-3 flex flex-wrap items-end gap-4">
+                  <input type="hidden" name="ruleId" value={rule.id} />
+                  <label className="flex flex-col gap-1">
+                    <span className="text-body-sm text-fg-muted">{t("companyRules.points")}</span>
+                    <input name="points" type="number" min={0} defaultValue={rule.points ?? 0} className={field} style={{ maxWidth: "8rem" }} />
+                  </label>
+                  <label className="flex items-center gap-2 pb-2">
+                    <input name="enabled" type="checkbox" defaultChecked={rule.enabled} className="size-5" />
+                    <span className="text-body-sm text-fg-heading">{t("rules.enabled")}</span>
+                  </label>
+                  <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
+                    {t("rules.save")}
+                  </button>
+                </form>
+              </li>
+            ) : (
+              <li key={rule.id} className="rounded-field border border-edge p-4">
+                <p className="text-label text-fg-heading">
+                  <bdi>{rule.reasonAr}</bdi> <span className="text-body-sm text-fg-muted">({rule.actionKey})</span>
+                </p>
+                <form action={saveCompanyPercentRule} className="mt-3 flex flex-wrap items-end gap-4">
+                  <input type="hidden" name="ruleId" value={rule.id} />
+                  <label className="flex flex-col gap-1">
+                    <span className="text-body-sm text-fg-muted">{t("companyRules.pointsPerPercent")}</span>
+                    <input
+                      name="pointsPerPercent"
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      defaultValue={rule.pointsPerPercent ?? 0}
+                      className={field}
+                      style={{ maxWidth: "8rem" }}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-body-sm text-fg-muted">{t("companyRules.capPoints")}</span>
+                    <input name="capPoints" type="number" min={1} defaultValue={rule.capPoints ?? 1} className={field} style={{ maxWidth: "8rem" }} />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-body-sm text-fg-muted">{t("companyRules.minActiveMembers")}</span>
+                    <input
+                      name="minActiveMembers"
+                      type="number"
+                      min={1}
+                      defaultValue={rule.minActiveMembers ?? 1}
+                      className={field}
+                      style={{ maxWidth: "8rem" }}
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 pb-2">
+                    <input name="enabled" type="checkbox" defaultChecked={rule.enabled} className="size-5" />
+                    <span className="text-body-sm text-fg-heading">{t("rules.enabled")}</span>
+                  </label>
+                  <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
+                    {t("rules.save")}
+                  </button>
+                </form>
+              </li>
+            ),
+          )}
+        </ul>
+
+        <div className="mt-8 max-w-xl">
+          <h3 className="text-label text-fg-heading">{t("companyRules.hostForm.heading")}</h3>
+          <p className="mt-2 text-body-sm text-fg-muted">{t("companyRules.hostForm.intro")}</p>
+          <form action={saveSessionHostCompany} className="mt-4 space-y-4">
+            <label className="block">
+              <span className="text-label text-fg-heading">{t("companyRules.hostForm.sessionId")}</span>
+              <input name="sessionId" type="text" required className={field} />
+            </label>
+            <label className="block">
+              <span className="text-label text-fg-heading">{t("companyRules.hostForm.company")}</span>
+              <select name="companyId" className={field}>
+                <option value="">{t("companyRules.hostForm.none")}</option>
+                {data.companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
+              {t("companyRules.hostForm.submit")}
+            </button>
+          </form>
+        </div>
+
+        {data.companyHistory.length > 0 ? (
+          <div className="mt-8">
+            <h3 className="text-label text-fg-heading">{t("history.heading")}</h3>
+            <ul className="mt-4 space-y-2">
+              {data.companyHistory.map((row, i) => (
+                <li key={i} className="rounded-field border border-edge p-3 text-body-sm text-fg-muted">
+                  <bdi>{row.field}</bdi>: <bdi>{JSON.stringify(row.oldValue)}</bdi> → <bdi>{JSON.stringify(row.newValue)}</bdi>
+                  {" — "}
+                  {formatDateTime(row.changedAt, data.numerals, "Asia/Riyadh", locale)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby="manual-heading" className="mt-12 max-w-xl">

@@ -984,6 +984,7 @@ create policy "photos_storage_write"         on storage.objects for insert to au
 create policy "design_assets_storage_read"   on storage.objects for select to authenticated;  -- org prefix
 create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
 create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
+create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
 
@@ -1343,6 +1344,21 @@ generated suite is the highest-value test in the product.
 | `POL-rsvps.select.member` | Member B cannot read member A's RSVP; staff and the presenter can. |
 | `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
 | `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
+| `RPC-check_in.reservation_required` | With `allow_walk_ins` off, a member with no confirmed reservation gets `reservation_required` — the attempt is recorded, the code is not revealed as right or wrong; with it on, the same member checks in (migration `0079`, DEC-065). |
+| `RPC-set_session_walk_ins.staff` | A member and a presenter are refused `42501`; an admin and a moderator flip the flag, audited as `session.walk_ins_changed` (migration `0079`). |
+| `POL-sessions.public_card.anon` | `session_public_card()` as `anon` on a published, in-progress or completed session returns exactly the public fields (title, times, time zone, venue name, org name, numerals, the poster's `og.png` path and size); the abstract, presenters, capacity and every other column are absent from the return type. A draft, approved, archived or cancelled session, a suspended org's session and an unknown uuid are the same empty answer. `anon` still has no policy on `sessions`, `venues`, `session_posters` or `export_artifacts` (migration `0080`, DEC-066). |
+| `POL-storage.exports.public_card` | `anon` reads the `og.png` object of a card-eligible session's poster and nothing else in `exports` — not the same poster's `master`, `a4`, `og.webp` or `cert_*`, not a draft's or a cancelled session's — and cannot write. A member of ANOTHER org reads the same object and no more: signing in never shows less than being a stranger (migration `0080`). |
+| `POL-company_scoring_rules.select` | Any org member reads the company rule catalogue; another org's rows are invisible (migration `0081`, DEC-067). |
+| `POL-company_scoring_rules.update.admin` | A moderator changing a value is rejected; an admin's edit succeeds and appends to `scoring_config_history` with scope `company_scoring` (`.history`). |
+| `POL-company_scoring_rules.catalogue` · `.shape` | An `action_key` outside the three is rejected; a hosting row cannot carry a percent configuration and vice versa. |
+| `POL-company_points_ledger.insert` · `.update` · `.select` · `.idempotency` | A direct insert is rejected for `authenticated` AND `service_role`; update and delete raise for every client role including `service_role` (append-only, invariant 9); the read is org-wide (a company has no session); evaluating the same session twice inserts no duplicate rows. |
+| `POL-company_points_balances.select` | Org-wide read, no client writes; the rollup trigger is the only writer. |
+| `RPC-evaluate_company_points.service_role_only` · `.hosting` · `.attendance_pct` · `.presenting_pct` | No client role may call it; a session with `host_company_id` set and the rule enabled credits the hosting points once; a company's share of its own active members who checked in (and, separately, who presented as accepted presenters) credits `round(percent × points_per_percent)` capped, only above `min_active_members`. |
+| `RPC-audit_company_balances.service_role_only` · `.no_self_heal` | Mirrors `audit_balances()` exactly: worker-only, reports divergence, never repairs it. |
+| `RPC-rebuild_company_points_balances.reproduces` | Truncate and re-sum always reproduces the same totals from the ledger. |
+| `POL-sessions.host_company_same_org` | A session cannot be assigned a host company from another org (`sessions_host_company_same_org`). |
+| `RPC-snapshot_leaderboard.company_ledger_included` | The company board's total is the member-derived sum plus the company ledger's sum for the period; the frozen `active_member_count` denominator is unchanged. |
+| `RPC-ensure_check_in_code.only_live` | The presenter of a `published` session is refused `not_open` before it starts and after it ends; once `in_progress` the same call returns a code (migration `0078`). |
 | `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
 | `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
 | `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. |

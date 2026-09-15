@@ -7,7 +7,7 @@ import { submitCheckInForm } from "./actions";
 // "The most operationally important input in the product" (09): used
 // standing, one-handed, under time pressure, reading six characters off a
 // screen across a room.
-const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "invalid_code", "overlap", "unknown"]);
+const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "reservation_required", "invalid_code", "overlap", "unknown"]);
 
 export default async function CheckInPage({
   params,

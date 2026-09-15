@@ -55,8 +55,8 @@ test.beforeAll(async ({}, testInfo) => {
   const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [orgId]);
 
   const { rows: sessRows } = await db.query<{ id: string }>(
-    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
-     values ($1, 'جلسة اختبار الحضور', 'ملخص الجلسة', $2, 'introductory', now() - interval '10 minutes', 60, now() + interval '50 minutes', $3, 40, 'in_progress', now() - interval '1 day')
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at, allow_walk_ins)
+     values ($1, 'جلسة اختبار الحضور', 'ملخص الجلسة', $2, 'introductory', now() - interval '10 minutes', 60, now() + interval '50 minutes', $3, 40, 'in_progress', now() - interval '1 day', true)
      returning id`,
     [orgId, catRows[0].id, venueRows[0].id],
   );
@@ -184,7 +184,10 @@ test("the RsvpPanel slot renders inside the real event page and reserves a seat,
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(context, attendeeEmail, false);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
-  await expect(page.getByRole("heading", { name: "الحضور" })).toBeVisible();
+  // The first event-page render under the full suite's parallel load can
+  // outlast the default 5 s (seen once per project on Launch day); alone,
+  // the same case takes 1–3 s. The wait is for the server, not the UI.
+  await expect(page.getByRole("heading", { name: "الحضور" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
 
   await page.getByRole("button", { name: "احجز مقعدك" }).click();

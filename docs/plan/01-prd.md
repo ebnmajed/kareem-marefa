@@ -617,13 +617,18 @@ by an admin toggle that bypasses the event.
 - Each of the four rights is derived from the check-in record in policy, and a test proves each is
   denied to a member with a confirmed RSVP and no check-in.
 
-#### REQ-CHK-010 — A reservation is not required to check in
-**Serves:** OQ-005 · D24
-A walk-in who enters a valid code is checked in and receives every attendance right. **السعة** is
-a planning limit on reservations, not a door policy.
+#### REQ-CHK-010 — Walk-in check-in is a per-session switch (amended by DEC-065)
+**Serves:** OQ-005 · D24 (as narrowed by the owner at Launch)
+By default a code is accepted only from a member whose reservation is **confirmed**. An admin or a
+moderator may open a session to walk-ins (`sessions.allow_walk_ins`, from the host view); on an
+opened session a walk-in who enters a valid code is checked in and receives every attendance right.
+**السعة** remains a planning limit on reservations.
 **Acceptance:**
-- A member with no حجز who checks in earns attendance points and receives a certificate.
-- Walk-ins are distinguishable in admin reporting.
+- With the switch off, a member with no confirmed حجز is refused with «reservation required», before
+  the code is checked, and the attempt is recorded.
+- With the switch on, a member with no حجز who checks in earns attendance points and receives a
+  certificate; walk-ins are distinguishable in admin reporting.
+- Only an admin or a moderator can flip the switch; the change is audited.
 
 #### REQ-CHK-011 — Presenters do not check in to their own session
 **Serves:** OQ-025 · D9

@@ -10,6 +10,8 @@ import { Ratings } from "@/components/event/ratings";
 import { SessionPoster } from "@/components/posters/session-poster";
 import { CertificateModeBadge } from "@/components/certificates/mode-badge";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
+import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
+import { ShareLink } from "@/components/sessions/share-link";
 import { Link } from "@/i18n/navigation";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getSessionForEvent } from "@/lib/dal/sessions";
@@ -36,6 +38,10 @@ import { requireSession } from "@/lib/dal/session";
 //
 // Who may see this is `sessions_read`, not a check here: a draft is visible to
 // staff and its own presenters and to nobody else, and no row is a 404.
+
+/** The states `session_public_card()` answers for — the share affordance
+ *  and the public card agree on this list or one of them lies. */
+const CARD_STATES: string[] = ["published", "in_progress", "completed"];
 
 export default async function EventPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
@@ -213,6 +219,16 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           </p>
         ) : null}
 
+        {/* REQ-CHK-001: a member checks in while the session is live — the
+            screen exists since M2, the link since Launch. Presenters cannot
+            check in (REQ-CHK-011), so they get the host view instead. */}
+        {session.state === "in_progress" && !session.viewerIsPresenter ? (
+          <p className="mt-4">
+            <Link href={`/app/sessions/${session.id}/check-in`} className="inline-flex h-11 items-center rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
+              {t("checkIn")}
+            </Link>
+          </p>
+        ) : null}
         {/* OQ-013, REQ-CHK-014: presenters, admins and moderators only. */}
         {session.viewerIsPresenter || session.viewerIsStaff ? (
           <p className="mt-4">
@@ -220,6 +236,38 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               {t("hostView")}
             </Link>
           </p>
+        ) : null}
+        {/* Staff reach the session's admin screens from the event itself. */}
+        {session.viewerIsStaff ? (
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
+            {me.role === "admin" ? (
+              <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
+                {t("manageSchedule")}
+              </Link>
+            ) : null}
+            <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+              {t("manageAttendance")}
+            </Link>
+            {me.role === "admin" ? (
+              <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
+                {t("manageCertificates")}
+              </Link>
+            ) : null}
+          </p>
+        ) : null}
+
+        {/* «شارك الرابط» — the owner's decision of 2026-09-15. Shown for
+            exactly the states `session_public_card()` answers for, so the
+            button never copies a link that 404s. What it copies is the PUBLIC
+            card's URL and not this page's: see the header of
+            `app/[locale]/s/[id]/page.tsx` for why they are two URLs. */}
+        {CARD_STATES.includes(session.state) ? (
+          <ShareLink
+            url={`${siteOrigin()}${publicCardPath(locale, session.id)}`}
+            label={t("shareLabel")}
+            copiedLabel={t("shareCopied")}
+            hint={t("shareHint")}
+          />
         ) : null}
       </aside>
 

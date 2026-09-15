@@ -132,3 +132,113 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
 
   return { allTime, monthly, company, companyMetric, numerals, timeZone: settingsRes.data?.time_zone ?? "Asia/Riyadh" };
 }
+
+// ── Company points breakdown (post-launch — docs/plan/notes/scoring.md
+// "Company points rules") ───────────────────────────────────────────────────
+//
+// The owner's three creditable rules (hosting, attendance %, presenting %)
+// write to a separate append-only company_points_ledger — REQ-PTS-003's
+// "explainable without asking anyone" extended to company scope: any
+// member of a company can see exactly why it holds the points it holds,
+// same shape as their own /app/me/points history. Scoped to the reading
+// member's own company (members.company_id) — there is no "which company"
+// picker on the leaderboards screen, only "your company's own breakdown",
+// same restraint SCR-022 uses for an individual member.
+
+export interface CompanyLedgerRow {
+  id: string;
+  occurredAt: string;
+  amount: number;
+  reason: string;
+  source: "company_hosting" | "company_attendance_pct" | "company_presenting_pct";
+  sessionId: string | null;
+  sessionTitle: string | null;
+  meta: { attended?: number; presenting?: number; active_members?: number; percent?: number } | null;
+}
+
+export interface CompanyRuleCatalogueEntry {
+  actionKey: "company_hosting" | "company_attendance_pct" | "company_presenting_pct";
+  enabled: boolean;
+  reasonAr: string;
+  points: number | null;
+  pointsPerPercent: number | null;
+  capPoints: number | null;
+  minActiveMembers: number | null;
+}
+
+export interface CompanyPointsBreakdown {
+  companyId: string;
+  companyName: string;
+  totalPoints: number;
+  rows: CompanyLedgerRow[];
+  catalogue: CompanyRuleCatalogueEntry[];
+  numerals: NumeralSystem;
+}
+
+export async function getCompanyPointsBreakdown(locale: string): Promise<CompanyPointsBreakdown | null> {
+  const { session, supabase } = await sessionClient(locale);
+
+  const { data: member, error: memberError } = await supabase.from("members").select("company_id").eq("id", session.memberId).maybeSingle();
+  if (memberError) throw new Error(`members: ${memberError.message}`);
+  if (!member?.company_id) return null;
+
+  const [{ data: company, error: companyError }, { data: balance }, { data: rows, error: rowsError }, { data: rules, error: rulesError }, { data: settings }] =
+    await Promise.all([
+      supabase.from("companies").select("id, name").eq("id", member.company_id).maybeSingle(),
+      supabase.from("company_points_balances").select("total_points").eq("company_id", member.company_id).maybeSingle(),
+      supabase
+        .from("company_points_ledger")
+        .select("id, occurred_at, amount, reason, source, session_id, meta, sessions(title)")
+        .eq("company_id", member.company_id)
+        .order("occurred_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("company_scoring_rules")
+        .select("action_key, enabled, reason_ar, points, points_per_percent, cap_points, min_active_members")
+        .eq("org_id", session.orgId)
+        .order("action_key"),
+      supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+    ]);
+  if (companyError) throw new Error(`companies: ${companyError.message}`);
+  if (rowsError) throw new Error(`company_points_ledger: ${rowsError.message}`);
+  if (rulesError) throw new Error(`company_scoring_rules: ${rulesError.message}`);
+  if (!company) return null;
+
+  type LedgerJoinRow = {
+    id: string;
+    occurred_at: string;
+    amount: number;
+    reason: string;
+    source: CompanyLedgerRow["source"];
+    session_id: string | null;
+    meta: CompanyLedgerRow["meta"];
+    sessions: { title: string } | { title: string }[] | null;
+  };
+  const titleOf = (s: LedgerJoinRow["sessions"]): string | null => (Array.isArray(s) ? (s[0]?.title ?? null) : (s?.title ?? null));
+
+  return {
+    companyId: company.id,
+    companyName: company.name,
+    totalPoints: balance?.total_points ?? 0,
+    rows: ((rows ?? []) as LedgerJoinRow[]).map((r) => ({
+      id: r.id,
+      occurredAt: r.occurred_at,
+      amount: r.amount,
+      reason: r.reason,
+      source: r.source,
+      sessionId: r.session_id,
+      sessionTitle: titleOf(r.sessions),
+      meta: r.meta,
+    })),
+    catalogue: (rules ?? []).map((r) => ({
+      actionKey: r.action_key as CompanyRuleCatalogueEntry["actionKey"],
+      enabled: r.enabled,
+      reasonAr: r.reason_ar,
+      points: r.points,
+      pointsPerPercent: r.points_per_percent,
+      capPoints: r.cap_points,
+      minActiveMembers: r.min_active_members,
+    })),
+    numerals: (settings?.numerals as NumeralSystem) ?? "western",
+  };
+}
