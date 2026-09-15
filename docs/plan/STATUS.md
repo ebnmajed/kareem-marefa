@@ -1245,6 +1245,22 @@ These are not housekeeping. Each one makes a rule in `16` §16 real rather than 
 | **Make `.claude/hooks/task-gate.sh` path-aware** (`DEC-088`) | It runs the full `npm run qa` on **every teammate's every task**, holding `/tmp/task-gate.lock`, 2400 s timeout. §16.1's "qa is lead-only" is a convention; the hook is the harness, and the harness wins. ~24 forced runs a wave that the plan believes are not happening |
 | **Ship `ui-lint` and `loading-coverage` with a shrinking allowlist** (`DEC-087`) | 65 files carry the copied class string today. Blocking from M9 blocks every PR until M13 |
 
+#### Step 2 — be the wave-5 lead. M9 is the system, and it runs FOUR teammates
+
+★ **Wave 5 was rebalanced after the owner asked whether teammates had been accounted for.** They
+were in the *estimate* — waves 1–4 each ran two or three teammates and each took one lead session —
+**but not in the table.** The lead held ~40 files against `console` 6, `content` 9 and `checkin`
+one DAL, on a lane the ownership audit had already named "the tightest single lane in the
+milestone" — and §7.4's failure model and §7.5's motion system were then added to it without
+re-balancing. `DEC-101` corrects it:
+
+- **`sessions` joins wave 5** and takes the whole form model — 8 primitives plus `form-state.ts`.
+  It owns the propose form, the largest in the product.
+- **`error.tsx` distributes to route owners.** The lead keeps only `RouteError` and
+  `global-error.tsx`, the file that cannot read the DAL or a translation provider.
+- **The motion system moves to M10** — you cannot build the reservation animation before the
+  reservation card exists, and that card is M10.
+
 #### Step 2 — be the wave-5 lead. M9 is the system
 
 `16` §16.2 has the file-level split: **lead 18 primitives + the shell + both layouts + the form and

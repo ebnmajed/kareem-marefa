@@ -1087,9 +1087,13 @@ and **every error state**. A failure that animates is a failure that is pleased 
 | **Frame budget** | the two Tier-1 moments traced on a throttled CPU profile; **any frame over 16 ms fails**. `REQ-NFR-008` |
 | **No layout animation** | a `ui-lint` rule: a `@keyframes` block touching anything but `transform`, `opacity` or `filter` fails, with a documented escape hatch |
 
-`REQ-UIX-018` … `REQ-UIX-020`, **`DEC-100`**. Owner: **the lead** builds the vocabulary in M9
-alongside the loading model — it is the same `ui/` surface and the same tokens — and each track
-wires its own moments in M10.
+`REQ-UIX-018` … `REQ-UIX-020`, **`DEC-100`**.
+
+★ **This is M10, not M9** (§16.2). Only the `--dur-*` and `--ease-out` tokens land in M9, where §4.1
+already puts them. The reason is not load-shedding: **you cannot build the reservation animation
+before the reservation card exists**, and that card is M10 — as is the check-in screen, per the
+eleven-screens table. The vocabulary and the two Tier-1 moments are the **lead's** in M10; each
+track wires its own Tier-2 moment in its own components.
 
 ---
 
@@ -1733,6 +1737,7 @@ area table — both are covered by `DEC-070`.
 | `DEC-094` | **The rating and the survey are written DECORRELATED in time** (§9.2a). `ratings.submitted_at` coarsens to the day; the small-n withhold covers every question type, not only free text. A guarantee that no policy test protects |
 | `DEC-095` | **Machine-readable surfaces are always Western digits** (§9.2b) — CSV, certificate serials, verification codes, URLs, filenames. Display follows the org setting; nothing a machine parses does |
 | `DEC-096` | **Align, distribute and rulers follow the DOCUMENT's direction, not the console's** (§10.2.2). The draft rule would have made a poster's render a function of the editor's locale and moved a parity golden. The overlay carries a documented exemption from the logical-properties rule |
+| `DEC-101` | **Wave 5 runs FOUR teammates, not three** — `sessions` takes the form model (8 primitives + `form-state.ts`), `error.tsx` distributes to route owners, and the motion system moves to M10. The lead held ~40 files against 6/9/one, on a lane the ownership audit had already called the tightest in the milestone |
 | `DEC-100` | **The app adopts the marketing site's motion vocabulary** (§7.5) — twelve keyframes already exist in `globals.css`, three files use them, all marketing, and `/app` has none. `dot-pulse` and `ripple-ring` *are* the reaction animation. Nine moments in three tiers; no motion library |
 | `DEC-099` | **Avatars are stored by the platform and the Google hotlink is retired** (§6.8) — `members.avatar_url` already exists and is already populated from Google's `picture` claim, the DAL already returns it in five modules, `proxy.ts:109` already allows `lh3.googleusercontent.com`, and **no component has ever rendered it**. Hotlinking discloses every viewer to Google; the CSP entry is removed |
 | `DEC-098` | **Three Coursera borrows are corrected for scale** (§2.2a): browse is a date-grouped schedule not a nine-facet catalogue, home is one «next up» card not five rails, and **the phone tab bar is contextual — hidden on detail screens and replaced by a bottom action bar**, which answers `REQ-SES-013` better than the in-flow card and removes the double-bar collision |
@@ -1808,9 +1813,10 @@ The foundation. Nothing else can start cleanly until it exists.
 |---|---|---|
 | **`ui/index.ts`: the 31 signatures + day-one stubs** — hour one, blocks everything | `S` | lead |
 | Tokens, motion tokens, the platform-fixed status colours | `M` | lead |
-| The form primitives and the form model — `Field`, `FormSummary`, `formStateFrom()` | `L` | lead |
+| The form primitives and the form model — `Field`, `FormSummary`, `formStateFrom()` | `L` | **`sessions`** ★ |
 | The loading model — `Link` + `RouteProgress`, `Splash`, `Skeleton`, ~12 `loading.tsx` | `M` | lead |
-| **The failure model** — `RouteError`, ~12 `error.tsx`, a `not-found.tsx` per dynamic segment, the hand-written Arabic `global-error.tsx` | `M` | lead |
+| **The failure model** — `RouteError` and the hand-written Arabic `global-error.tsx` | `S` | lead |
+| ~12 `error.tsx` + a `not-found.tsx` per dynamic segment, **each under its own track's routes** | `S` each | every track |
 | **Focus management** — the skip link, the `scroll-padding` tokens, and the focus-obscured Playwright gate | `S` | lead |
 | **`main`'s `padding-block-end`**, shipped in the same commit as the tab bar, proven on an untouched old screen | `S` | lead |
 | The shell: desktop two-row, phone tab bar, search entry, account menu; the `/app/me` tab shell | `L` | lead |
@@ -1836,6 +1842,7 @@ The foundation. Nothing else can start cleanly until it exists.
 | Tags — `0085`, combobox on propose, chips, facet | `M` |
 | Bookmark and share on every surface | `S` |
 | The member picker combobox, adopted by the proposal form | `S` |
+| **The motion system** (§7.5) — the vocabulary, the two Tier-1 moments, the five Tier-2, the reduced-motion and frame-budget gates | `M` |
 | Profiles, leaderboards, notifications, calendar on the system | `M` |
 | **Avatars end to end** — `0089`, the upload route, EXIF strip, the 96/192 derivatives, initials, the Google import prompt, the six placements, and retiring the `lh3.googleusercontent.com` CSP entry | `M` |
 
@@ -2021,9 +2028,10 @@ the track that builds it.
 
 | Teammate | Builds | Edits only |
 |---|---|---|
-| **lead** (18 files) | tokens; `ui/index.ts` + the day-one stubs; the shell; the three status functions; the whole form model; the whole loading model; **the cross-cutting type and layout primitives**; the gate scripts; the `(dev)` gallery | `src/app/globals.css`, `src/components/ui/{index,button,icon-button,link,field,input,textarea,select,checkbox,radio-group,switch,form-summary,skeleton,route-progress,splash,toast,page-header,section-header,prose}.tsx`, `src/app/[locale]/app/{layout,page}.tsx`, `src/app/[locale]/app/me/layout.tsx`, `src/lib/session-status.ts`, `src/lib/form-state.ts`, `src/proxy.ts`, the ~12 `loading.tsx` **named individually**, `src/app/[locale]/(dev)/**`, `src/messages/*/ui.json`, `scripts/**`, `.claude/hooks/task-gate.sh` |
-| `console` (6) | the two primitives where **no upstream library does the hard part**, plus the Radix shells | `src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`, `src/app/[locale]/app/admin/layout.tsx`, `src/messages/*/admin.json`, its tests |
-| `content` (8) | the card-shaped primitives, and the upload control it owns every consumer of | `src/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.tsx`, `src/messages/*/browse.json`, its tests |
+| **lead** (12 primitives + the spine) | tokens; `ui/index.ts` + the day-one stubs; the shell and both page shells; the three status functions; the loading model; **the cross-cutting type and layout primitives**; the shared `RouteError` and `global-error.tsx`; `proxy.ts`; the gate scripts; the `(dev)` gallery | `src/app/globals.css`, `src/components/ui/{index,button,icon-button,link,skeleton,route-progress,splash,toast,page-header,section-header,prose,route-error}.tsx`, `src/app/[locale]/app/{layout,page}.tsx`, `src/app/[locale]/app/me/layout.tsx`, `src/app/[locale]/global-error.tsx`, `src/lib/session-status.ts`, `src/proxy.ts`, the ~12 `loading.tsx` **named individually**, `src/app/[locale]/(dev)/**`, `src/messages/*/ui.json`, `scripts/**`, `.claude/hooks/task-gate.sh` |
+| **`sessions`** ★ (9) | **the whole form model** — it owns the propose form, the largest in the product, and is the track that will live with every rough edge | `src/components/ui/{field,input,textarea,select,checkbox,radio-group,switch,form-summary}.tsx`, `src/lib/form-state.ts`, `src/app/[locale]/app/{sessions,propose}/**` `error.tsx`, its tests |
+| `console` (6) | the two primitives where **no upstream library does the hard part**, plus the Radix shells | `src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`, `src/app/[locale]/app/admin/layout.tsx` + its `error.tsx`, `src/messages/*/admin.json`, its tests |
+| `content` (9) | the card-shaped primitives, and the upload control it owns every consumer of | `src/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.tsx`, `src/messages/*/browse.json`, its tests |
 | `checkin` | §5.3's affordance matrix, wired, **including the four §5.4 gates** | `src/components/checkin/**` (incl. `attendance-outcome.tsx`), `src/lib/dal/{rsvp,checkin}.ts`, its tests |
 
 **Why the split falls where it does**, since "by future consumer" is a rule with two exceptions:
@@ -2044,6 +2052,27 @@ the track that builds it.
 - **`file-drop` goes to `content`, not `console`.** `content` owns every upload path in the product
   (`app/api/{upload,materials,photos}/**`, `lib/storage/**`); `console` has no upload surface at all.
 
+★★ **This table was rebalanced after the ownership audit, and then again after the owner asked
+whether teammates had been accounted for.** They had been in the *estimate* — waves 1–4 each ran
+two or three teammates and each took one lead session, so "one wave per session" is already a
+with-teammates number — **but not in this table.** The lead held nineteen primitives plus the shell
+plus both page shells plus the form model plus the loading model plus `proxy.ts` plus every gate
+script, which the audit had already called "the tightest single lane in the milestone" — and then
+§7.4's failure model and §7.5's motion system were added to it afterwards without re-balancing.
+Three corrections:
+
+1. **The form model goes to `sessions`** — eight primitives plus `form-state.ts`. It owns the
+   propose form, which is the largest and most-complained-about form in the product, and it is an
+   opus track. Wave 5 therefore runs **four** teammates, which `CLAUDE.md` allows ("three to five").
+2. **`error.tsx` distributes to route owners**, not to the lead. The lead owns the shared
+   `RouteError` and `global-error.tsx` — the one file that cannot read the DAL or a translation
+   provider — and each track writes the boundaries under its own routes. Consistent with the
+   per-file principle in §16.0.
+3. ★ **The motion system moves out of M9 into M10** — and not only to shed load. **You cannot build
+   the reservation animation before the reservation card exists**, and the card is M10; check-in is
+   an M10 screen too, per the eleven-screens table. Only the `--dur-*` and `--ease-out` tokens stay
+   in M9, where §4.1 already puts them. The nine moments land with the screens they celebrate.
+
 **Ordering inside the wave.** The lead's `ui/index.ts` stub commit is **hour one** and blocks
 everything; after it, the four tracks are independent. `checkin` additionally waits on
 `src/lib/session-status.ts`, which is the lead's second commit, same day.
@@ -2059,7 +2088,7 @@ status — and **asks 4, 5 and 6 are already answered** before a single screen i
 
 | Teammate | Screens | Edits only | SQL |
 |---|---|---|---|
-| `sessions` | the event page frame, hero and objectives; the propose flow | `src/app/[locale]/app/sessions/[id]/page.tsx`, `src/app/[locale]/app/propose/**`, `src/lib/dal/{sessions,proposals}.ts`, `src/components/sessions/**`, `src/messages/*/{sessions,proposals}.json` | `proposed/sessions/` → **`0082`** objectives |
+| `sessions` | the event page frame, hero and objectives; the propose flow; **the reservation Tier-1 moment** | `src/app/[locale]/app/sessions/[id]/page.tsx`, `src/app/[locale]/app/propose/**`, `src/lib/dal/{sessions,proposals}.ts`, `src/components/sessions/**`, `src/messages/*/{sessions,proposals}.json` | `proposed/sessions/` → **`0082`** objectives |
 | `content` | browse, the cards, tags, bookmark + share slots, **the avatar upload route and its path-builder entry** | `src/app/api/upload/avatar/**`, `packages/storage-paths/src/content.ts`, `src/app/[locale]/app/sessions/page.tsx` ★, `src/components/{browse,search,materials,photos}/**`, `src/lib/dal/{search,bookmarks,tags}.ts`, `src/app/[locale]/app/me/bookmarks/**`, `src/messages/*/{browse,search}.json` | `proposed/content/` → **`0083`** tags |
 | `scoring` | profiles, leaderboards, the points tab, **avatars on every surface** | `src/app/[locale]/app/{leaderboards,me/points,members}/**`, `src/components/scoring/**`, `src/lib/dal/profiles.ts`, `src/messages/*/{scoring,leaderboards,recognition,profile}.json` | `proposed/scoring/` → **`0089`** ★ |
 | `notify` | the notifications and calendar tabs | `src/app/[locale]/app/me/{notifications,calendar}/**`, `src/components/{notifications,calendar}/**`, `src/messages/*/{notifications,calendar}.json` | — |
