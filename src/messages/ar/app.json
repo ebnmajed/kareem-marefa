@@ -25,7 +25,8 @@
       "bookmarks": "المحفوظات",
       "calendar": "التقويم",
       "staffSection": "الإدارة",
-      "proposeShort": "اقترح"
+      "proposeShort": "اقترح",
+      "toastClose": "إغلاق الإشعار"
     },
     "home": {
       "welcome": "أهلًا <name>{value}</name>",

@@ -98,6 +98,16 @@ export async function startStubbedServer({ log = console.log } = {}) {
     // anti-spam.ts THROWS when this is unset, which takes the register page's
     // render down with it. Locally .env.local hides that; CI has no .env.local.
     FORM_TOKEN_SECRET: process.env.FORM_TOKEN_SECRET ?? 'qa-stub-secret-not-used-in-production',
+    // ★ The (dev) component gallery at /[locale]/ui — DEC-083. `proxy.ts`
+    // 404s it unless this is "1", which is how a route can be BOTH excluded
+    // from the live domain AND capturable by the visual harness. NODE_ENV
+    // cannot do that job: this file serves the PRODUCTION build, so a route
+    // excluded from it 404s here too, and one included in it is public.
+    //
+    // Set for every consumer of this helper, not just visual-diff: the gallery
+    // is also where a Playwright a11y pass over the primitives will run, and a
+    // flag that only one script sets is a flag the next script forgets.
+    KAREEM_GALLERY: process.env.KAREEM_GALLERY ?? '1',
     // The platform's variables are inlined by `next build`, so these only
     // matter to server code that reads them at runtime (proxy's refresh).
     // Default them to the stub so nothing platform-side can reach a real

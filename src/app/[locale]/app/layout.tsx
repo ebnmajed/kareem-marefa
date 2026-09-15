@@ -10,6 +10,7 @@ import { AccountMenu } from "@/components/shell/account-menu";
 import { SearchEntry } from "@/components/shell/search-entry";
 import { TabBar, isImmersive } from "@/components/shell/tab-bar";
 import { ChevronIcon } from "@/components/ui/icons";
+import { ToastProvider } from "@/components/ui/toast";
 
 // The org theme layer — 06 §8.3's first consumer, DEC-003's layering, wave 4
 // (DEC-052). The brand kit's tokens are emitted as CSS custom properties
@@ -35,21 +36,35 @@ const CSS_VAR: Record<keyof BrandKit["light"], string> = {
 
 function themeCss(kit: BrandKit): string {
   const block = (set: BrandKit["light"]) =>
-    (Object.keys(CSS_VAR) as (keyof BrandKit["light"])[]).map((token) => `${CSS_VAR[token]}:${set[token]}`).join(";");
+    (Object.keys(CSS_VAR) as (keyof BrandKit["light"])[])
+      .map((token) => `${CSS_VAR[token]}:${set[token]}`)
+      .join(";");
   return `.brand-org{${block(kit.light)}}.brand-org .theme-dark{${block(kit.dark)}}`;
 }
 
-async function orgTheme(locale: string, state: Awaited<ReturnType<typeof getSessionState>>): Promise<{ css: string; nonce: string | undefined } | null> {
+async function orgTheme(
+  locale: string,
+  state: Awaited<ReturnType<typeof getSessionState>>,
+): Promise<{ css: string; nonce: string | undefined } | null> {
   if (state.kind !== "member") return null;
   const kit = await getBrandKit(locale, state.session.orgId);
   if (!kit.isOverridden) return null;
-  return { css: themeCss(kit), nonce: (await headers()).get("x-nonce") ?? undefined };
+  return {
+    css: themeCss(kit),
+    nonce: (await headers()).get("x-nonce") ?? undefined,
+  };
 }
 
 // The platform shell. NO auth check here [v16]: a layout does not re-render
 // on navigation under Partial Rendering, so the check lives in the DAL, at
 // the data, in every page. This shell only knows its links.
-export default async function AppLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
+export default async function AppLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("app.shell");
@@ -61,8 +76,12 @@ export default async function AppLayout({ children, params }: { children: React.
   const state = await getSessionState();
   const theme = await orgTheme(locale, state);
   const isMember = state.kind === "member";
-  const isStaff = isMember && (state.session.role === "admin" || state.session.role === "moderator");
-  const isPlatformAdmin = (isMember && state.session.platformAdmin) || (state.kind === "no_org" && state.platformAdmin);
+  const isStaff =
+    isMember &&
+    (state.session.role === "admin" || state.session.role === "moderator");
+  const isPlatformAdmin =
+    (isMember && state.session.platformAdmin) ||
+    (state.kind === "no_org" && state.platformAdmin);
   // `proxy.ts` forwards the path so the shell can decide, on the SERVER,
   // whether this screen carries the tab bar (DEC-098) — and `<main>`'s bottom
   // padding follows the same decision rather than a hydration result.
@@ -96,78 +115,101 @@ export default async function AppLayout({ children, params }: { children: React.
     : [];
 
   return (
-    <div className={theme ? "brand-org min-h-dvh bg-canvas text-fg-body" : "min-h-dvh bg-canvas text-fg-body"}>
-      {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
+    // ★ The provider wraps the shell rather than each screen: an action's
+    // acknowledgement must survive the navigation the action caused, and a
+    // per-screen provider unmounts with the screen that triggered it.
+    <ToastProvider closeLabel={t("toastClose")}>
+      <div
+        className={
+          theme
+            ? "brand-org min-h-dvh bg-canvas text-fg-body"
+            : "min-h-dvh bg-canvas text-fg-body"
+        }
+      >
+        {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
 
-      {/* ★ SC 2.4.1 — the first focusable element in the shell. Visually
+        {/* ★ SC 2.4.1 — the first focusable element in the shell. Visually
           hidden until focused (.skip-link in globals.css). Today it saves a
           keyboard user three tabs; after the account menu and M11's
           fifteen-item admin rail it is what stands between them and a long tab
           trap in front of every console page. */}
-      <a href="#main" className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white">
-        {t("skipToContent")}
-      </a>
+        <a
+          href="#main"
+          className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white"
+        >
+          {t("skipToContent")}
+        </a>
 
-      {/* The header. `--header-h` in globals.css is 68px and the scroll padding
+        {/* The header. `--header-h` in globals.css is 68px and the scroll padding
           computes from it, so this row's height and that token move together. */}
-      <header className="sticky top-0 z-30 border-b border-edge bg-canvas">
-        <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2 px-3 md:gap-4 md:px-8">
-          <Wordmark />
+        <header className="sticky top-0 z-30 border-b border-edge bg-canvas">
+          <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2 px-3 md:gap-4 md:px-8">
+            <Wordmark />
 
-          {/* تصفّح ▾ — desktop only; the phone reaches all of it from the tab
+            {/* تصفّح ▾ — desktop only; the phone reaches all of it from the tab
               bar and the account menu, which is the point of having them. */}
-          {browse.length ? (
-            <details className="group relative hidden md:block">
-              <summary className={`${navLink} cursor-pointer list-none gap-1 [&::-webkit-details-marker]:hidden`}>
-                {t("browse")}
-                <ChevronIcon direction="down" aria-hidden className="text-fg-muted" />
-              </summary>
-              <div className="absolute inset-inline-start-0 top-12 z-40 hidden w-56 rounded-card border border-edge bg-canvas p-2 shadow-[var(--shadow-card)] group-open:block">
-                <ul className="flex flex-col">
-                  {browse.map((link) => (
-                    <li key={link.href}>
-                      <Link href={link.href} className={`${navLink} w-full`}>
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </details>
-          ) : null}
+            {browse.length ? (
+              <details className="group relative hidden md:block">
+                <summary
+                  className={`${navLink} cursor-pointer list-none gap-1 [&::-webkit-details-marker]:hidden`}
+                >
+                  {t("browse")}
+                  <ChevronIcon
+                    direction="down"
+                    aria-hidden
+                    className="text-fg-muted"
+                  />
+                </summary>
+                <div className="absolute inset-inline-start-0 top-12 z-40 hidden w-56 rounded-card border border-edge bg-canvas p-2 shadow-[var(--shadow-card)] group-open:block">
+                  <ul className="flex flex-col">
+                    {browse.map((link) => (
+                      <li key={link.href}>
+                        <Link href={link.href} className={`${navLink} w-full`}>
+                          {link.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
+            ) : null}
 
-          {isMember ? <SearchEntry locale={locale} /> : <span className="flex-1" />}
+            {isMember ? (
+              <SearchEntry locale={locale} />
+            ) : (
+              <span className="flex-1" />
+            )}
 
-          {/* The bell keeps its wave-2 server-component contract and DEC-057's
+            {/* The bell keeps its wave-2 server-component contract and DEC-057's
               classification: a platform admin with no member row gets no bell
               and no org theme, because `getSessionState()` answered once for
               the whole shell. */}
-          {isMember ? <NotificationBell locale={locale} /> : null}
+            {isMember ? <NotificationBell locale={locale} /> : null}
 
-          <AccountMenu
-            memberId={me?.id ?? null}
-            displayName={me?.displayName ?? null}
-            avatarUrl={null}
-            isStaff={isStaff}
-            isPlatformAdmin={isPlatformAdmin}
-            labels={{
-              account: t("account"),
-              profile: t("profile"),
-              rsvps: t("rsvps"),
-              points: t("points"),
-              certificates: t("certificates"),
-              bookmarks: t("bookmarks"),
-              calendar: t("calendar"),
-              staffSection: t("staffSection"),
-              admin: t("admin"),
-              platform: t("platform"),
-              signOut: t("signOut"),
-            }}
-          />
-        </div>
-      </header>
+            <AccountMenu
+              memberId={me?.id ?? null}
+              displayName={me?.displayName ?? null}
+              avatarUrl={null}
+              isStaff={isStaff}
+              isPlatformAdmin={isPlatformAdmin}
+              labels={{
+                account: t("account"),
+                profile: t("profile"),
+                rsvps: t("rsvps"),
+                points: t("points"),
+                certificates: t("certificates"),
+                bookmarks: t("bookmarks"),
+                calendar: t("calendar"),
+                staffSection: t("staffSection"),
+                admin: t("admin"),
+                platform: t("platform"),
+                signOut: t("signOut"),
+              }}
+            />
+          </div>
+        </header>
 
-      {/* ★★ THE PADDING SHIPS IN THE SAME COMMIT AS THE BAR, and this is why:
+        {/* ★★ THE PADDING SHIPS IN THE SAME COMMIT AS THE BAR, and this is why:
           `<main>` had NO bottom padding, so a fixed, safe-area-padded bottom
           bar covers the last ~64 px of ALL 49 SCREENS EVER WRITTEN at once —
           including every one this milestone has not reached yet. The proof
@@ -176,37 +218,59 @@ export default async function AppLayout({ children, params }: { children: React.
 
           It is applied only when the bar is actually present, and only below
           `md`, where the bar is. */}
-      <main
-        id="main"
-        className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"
-        style={
-          hasTabBar
-            ? { paddingBlockEnd: "calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem)" }
-            : undefined
-        }
-      >
-        {children}
-      </main>
+        <main
+          id="main"
+          className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"
+          style={
+            hasTabBar
+              ? {
+                  paddingBlockEnd:
+                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
+                }
+              : undefined
+          }
+        >
+          {children}
+        </main>
 
-      <footer
-        className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-body-sm text-fg-muted md:px-8"
-        style={hasTabBar ? { paddingBlockEnd: "calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem)" } : undefined}
-      >
-        <Link href="/legal/privacy" className="underline underline-offset-4 hover:text-fg-heading">
-          {t("privacy")}
-        </Link>
-        {" · "}
-        <Link href="/legal/terms" className="underline underline-offset-4 hover:text-fg-heading">
-          {t("terms")}
-        </Link>
-      </footer>
+        <footer
+          className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-body-sm text-fg-muted md:px-8"
+          style={
+            hasTabBar
+              ? {
+                  paddingBlockEnd:
+                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
+                }
+              : undefined
+          }
+        >
+          <Link
+            href="/legal/privacy"
+            className="underline underline-offset-4 hover:text-fg-heading"
+          >
+            {t("privacy")}
+          </Link>
+          {" · "}
+          <Link
+            href="/legal/terms"
+            className="underline underline-offset-4 hover:text-fg-heading"
+          >
+            {t("terms")}
+          </Link>
+        </footer>
 
-      {isMember ? (
-        <TabBar
-          pathname={pathname}
-          labels={{ home: t("home"), sessions: t("sessions"), propose: t("proposeShort"), me: t("account") }}
-        />
-      ) : null}
-    </div>
+        {isMember ? (
+          <TabBar
+            pathname={pathname}
+            labels={{
+              home: t("home"),
+              sessions: t("sessions"),
+              propose: t("proposeShort"),
+              me: t("account"),
+            }}
+          />
+        ) : null}
+      </div>
+    </ToastProvider>
   );
 }

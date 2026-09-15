@@ -25,7 +25,8 @@
       "bookmarks": "Bookmarks",
       "calendar": "Calendar",
       "staffSection": "Administration",
-      "proposeShort": "Propose"
+      "proposeShort": "Propose",
+      "toastClose": "Dismiss notification"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",

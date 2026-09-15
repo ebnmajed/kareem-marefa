@@ -247,8 +247,19 @@ html[lang="en"] body {
    its own padding and this value. */
 :root {
   --header-h: 68px;
+  /* The event page's sticky sub-nav is M10; until it exists it takes no space,
+     and the scroll padding below computes correctly either way. */
   --subnav-h: 0px;
-  --tabbar-h: 0px;
+  /* ★ The phone tab bar is 64 px (`h-16`), and zero from `md` up where it does
+     not render. Anything that has to clear it — `<main>`, the toast viewport —
+     reads THIS, so a height change moves one number. */
+  --tabbar-h: 64px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --tabbar-h: 0px;
+  }
 }
 
 html {

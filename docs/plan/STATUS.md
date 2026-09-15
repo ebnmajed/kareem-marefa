@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-15 · **Branch:** `main` · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **post-launch — the design milestone is OPEN.** `docs/plan/16-ui-redesign.md` is **`settled` — approved by the owner 2026-09-15**: the UI/UX rebuild of the app *and* the marketing site, M9–M13, answering the owner's fifteen asks. **Implementation starts with wave 5 / M9.** The owner's hands-on checks and two secret rotations are still outstanding.
+**Last updated:** 2026-09-15 · **Branch:** `design/m9-m13-plan` (PR **#22**, draft — the owner merges) · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **the design milestone is RUNNING — wave 5 / M9.** Step 0 and Step 1 are **done**; M9 is in flight with four teammates. `docs/plan/16-ui-redesign.md` is `settled` and now **promoted into the plan set**: 301 requirements, 136 stories, DEC-069 … DEC-107, `trace` green. The owner's hands-on checks and two secret rotations are still outstanding.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -1195,7 +1195,147 @@ and check-in orchestrated at ~900 ms, five acknowledgements at 200–360 ms, and
 tissue of §7.1. No motion library — `element.animate()` does what `framer-motion` would, for 34 KB
 less, and the tell is not that a product has motion but that it has someone else's.
 
-### What the next session should do — the wave-5 lead's brief
+## Wave 5 · M9 — this session
+
+**Branch `design/m9-m13-plan`, PR #22 (draft).** The owner merges (DEC-041). Step 0 and Step 1 are
+complete; M9 is in flight with four teammates — `sessions`, `console`, `content`, `checkin`.
+
+### Step 0 — the plan set (commit `f20b5f7`)
+
+`16-ui-redesign.md` was `settled` and standing **outside** the set: it cited **50 requirements
+`01` had never defined**, two areas `00` did not list, two routes `04` did not carry and five
+milestones `14` did not have. **`trace` was red on this branch before the first commit**, for
+exactly that reason.
+
+| | |
+|---|---|
+| `DECISIONS.md` | **DEC-069 … DEC-101** promoted from `16` §13, expanded to the house format so each carries the evidence that produced it rather than a one-line summary |
+| `01-prd.md` | **301 requirements** (was 251). New areas **`UIX`** (§23, 20) and **`SUR`** (§24, 9); 21 additions across `PRF` `PRO` `SES` `DSC` `ADM` `DSG` `NTF` `INT`. *Out of scope* moved to §25 |
+| `00-overview.md` | the area table (24 areas), the owning-document table, and §8's counts |
+| `04-architecture.md` | §4 gains `(dev)/ui`, `admin/sessions/[id]/survey` and `s/[id]` — which shipped at Launch and was in no route tree; §11's glyph rule now reads per surface |
+| `09-sitemap-screens.md` | **SCR-007** (the public card) and **SCR-064** (survey results); §7.2 and §7.3 extended; **§8, the 59-route coverage table** |
+| `11-background-jobs.md` | `JOB-zip_session_photos`, the 35th |
+| `14` · `15` | M9–M13, the dependency graph, the demonstrables; **136 stories** (was 112) |
+| `scripts/traceability.mjs` | the milestone regex could not see above **M8** |
+
+**Five corrections of record**, appended rather than edited into `16` (rule 3): **DEC-102** (where
+the 59-route table lives; `trace`'s blind spot; `04` is `draft` not `settled`; 31 components in 34
+files), **DEC-104** (`typescript` not `ts-morph`; the measured allowlist baseline; three carve-outs),
+**DEC-105** (two rows of §5.1's totality table cannot happen, and corollary 2 is per-affordance not
+per-phase), **DEC-106** (the icon stroke and two glyphs), **DEC-107** (42 cells not 49; nine columns
+not eight; `allow_walk_ins`).
+
+### Step 1 — three blockers, before any teammate was spawned (commit `272282e`)
+
+| | What it fixed |
+|---|---|
+| **Ownership** (DEC-085, DEC-103) | `src/components/ui/**` was in **no teammate's edit list and no teammate's never-touch list**. All ten agent definitions regenerated with per-file `ui/` ownership as **literal lists, not globs**; the four wave-5 agents carry M9 briefs. DEC-103 closes a gap found while writing them: three of the five live bugs sit in files no wave-5 teammate owned, so the lead takes `page.tsx`, `slots.ts` and `getSessionForEvent()` for M9 and `checkin` gets its two screens back |
+| **The hook** (DEC-088) | It ran the full `npm run qa` on **every teammate's every task**, holding the gate lock with a 2400 s timeout — ~24 forced runs a wave. Now runs `tsc + lint + vitest` with no server and no lock, falling through to `qa` only when the changed paths can reach the frozen routes, **measured from the commit where qa last passed** (`.git/kareem-qa-verified`), so the lead pays once for `globals.css` and the team does not pay again. Verified on four cases |
+| **The gates** (DEC-087, DEC-104) | `ui-lint`, `loading-coverage`, `error-coverage`, in a new `system` CI job, each with a **committed allowlist that may only shrink** and a fourth step asserting the allowlists did not grow |
+
+★ **The measured baseline is bigger than `16` estimated.** 65 files carry
+`rounded-field border border-edge-strong` — correct — but §17's rule also catches the plain
+variant: **106 files, 425 violations** (265 class strings, 160 unwrapped controls). And **43 of the
+49 pages had no loading boundary, 49 had no error boundary, 12 dynamic pages had no
+`not-found.tsx`, and `global-error.tsx` did not exist.**
+
+### M9 — what has landed
+
+| Commit | |
+|---|---|
+| `3d93bcc` | **`src/lib/session-status.ts`** — three functions, not one enum. 34 unit tests including §17's totality sweep and DEC-090's direction sweep |
+| `51b19f7` | **`ui/index.ts` + 34 stubs** — the interface frozen before the implementations, so four tracks parallelised from hour one. `button.tsx` gains `ghost`, `danger`, three sizes and `pending` |
+| `b8a32ac` | **The tokens** — status colours (platform constants, with a contrast test that reads `globals.css`), motion tokens, `--shadow-raise`, `--space-section`, and the sticky-layer/scroll-padding layer |
+| `b163873` | **The shell, the failure model, the loading model, the icon set, the `(dev)` gallery** |
+| `9ac9e28` | **The five live affordance gates wired at the event page** |
+| + `sessions`' and `checkin`'s own commits | the form model; the 42-cell matrix and the five bug fixes |
+
+★ **`button.tsx` is deliberately NOT `"use client"`.** `(marketing)/page.tsx:8` imports `ButtonLink`
+from it and that page is the frozen contract until M13; a module-level directive would pull a live
+marketing page into the client graph. `useFormStatus` lives in `ui/submit-button.tsx`, one import
+away — which is the honest boundary anyway.
+
+★ **`global-error.tsx` is the one file that may hard-code Arabic and `dir="rtl"`.** `find src -name
+"error.tsx"` returned **zero** before this session. Every member who hit a DAL timeout met Next's
+English left-to-right default.
+
+### Evidence
+
+- **`npm run qa` 44/44** and **`npm run visual` 0.000 % on all six pairs**, run twice — after the
+  button change and after the tokens and shell. The baseline was captured from a build with
+  **`main`'s own `button.tsx` restored**, so it is `main`'s marketing render and not an older
+  snapshot.
+- **`tests/e2e/shell-tab-bar.spec.ts` 6/6**, including the proof `16` §3.1 demands: `/app/leaderboards`
+  — a **wave-2 screen M9 never touched** — at 390 px in Arabic, asserting `<main>`'s bottom edge sits
+  above the bar's top edge. `.qa-shots/rtl/m9-tabbar-old-screen-390.png`.
+- **`trace`** 301 requirements · 71 entities · 136 stories · no gaps.
+- **`loading-coverage` and `error-coverage` allowlists are now empty** of loading and error gaps —
+  43 and 49 closed in one pass. Twelve boundaries cover all 49 pages, because a boundary covers its
+  segment *and its children*.
+
+### What the 390 px review caught that no assertion could
+
+The tab bar's labels collided and «اقترح جلسة» wrapped into its neighbours. `text-caption` is
+**15 px in Arabic** and four of those do not fit across 390 px. Fixed by making the active dot
+absolute so it costs no layout height, shortening the label, and setting 12 px explicitly — on
+**one line**, because the alternative is `overflow: hidden`, which clips tashkeel.
+
+### ★ The traps this session hit, for the next lead
+
+1. **`export type { X }` still breaks a `"use server"` build.** `tsc` is clean; Turbopack's actions
+   manifest is built from the module's export *list* and tries to import a value that erased. It
+   blocked every build in the checkout for half an hour. **`tsc` does not see this class and
+   `npm run build` does** — and the build is lead-only, so a teammate touching a `"use server"`
+   export list has to ask.
+2. **A JSX comment between attributes** (`{/* … */}`) is a hard syntax error that fails `tsc` for
+   the whole repo. In a four-writer checkout nobody can tell whose file it is without looking.
+3. **A gate can fail its own documentation.** `error-coverage`'s next-intl check matched the prose
+   in `global-error.tsx` explaining why it cannot use next-intl. Comments are stripped before the
+   test now — a gate that punishes its own explanation gets deleted.
+4. **`toBeInViewport()` is satisfied by an intersection.** The skip link measured `y = -7.76`
+   mid-transition and passed it. Poll the geometry.
+5. **Playwright keeps attachments only on failure.** A capture wanted when the test passes goes to
+   `.qa-shots/rtl/` explicitly.
+6. **A one-off `visual` baseline can be taken without switching branches:** restore just the file
+   marketing depends on (`git show main:path > path`), build, capture, restore. Two builds, no
+   worktree, and the baseline is genuinely `main`'s.
+
+### What is NOT done, and is the next session's first move
+
+- **`sessions`, `console` and `content` are still running.** Their primitives are landing; the
+  propose-form adoption, the six data-dense primitives and the nine display primitives are in
+  flight. `checkin` is **done** — matrix, five bugs, and `tests/e2e/checkin-gating.spec.ts`.
+- **`checkin` is waiting on a green build** to run `checkin.spec.ts` and `checkin-gating.spec.ts`
+  live and take the refusal-state captures. Unblock it the moment `npm run build` is green.
+- **The `(dev)` gallery has no visual baseline yet.** `scripts/visual-diff.mjs`'s `ROUTES` still
+  hardcodes the three marketing routes; adding `/ar/ui` and setting `KAREEM_GALLERY=1` when it
+  spawns `next start` is the remaining half of DEC-083, and the reason the route exists.
+- **`ui-lint`'s allowlist has not shrunk yet** — 425 violations held. It shrinks as each track
+  adopts its own primitives, and flips to `--strict` in M13.
+- **The `RouteProgress` store and `ui/link`'s `useLinkStatus()` child are stubs.** §7.1.1's
+  corrected design is written down; the implementation is not.
+- **`ui/splash.tsx` is a stub.** §7.2 is explicit that it must be CSS-only and fade on the shell's
+  first paint, never a gate in front of content — and that if it costs LCP the splash is dropped,
+  not the budget.
+- **Avatars render initials only.** The account menu passes `avatarUrl={null}`; the storage half is
+  M10 (DEC-099), with `scoring` and `content`.
+- **The three `(auth)` screens** — sign-in, choose-org, no-access — are M9 per DEC-097 and have not
+  been touched.
+
+### For the wave-6 lead
+
+**Do not start M10 until the owner has looked at M9 running.** That was the owner's own framing:
+M9 ships the answers to asks 4, 5 and 6 and fixes five live bugs before a single screen is
+redesigned, which makes it the wave most worth seeing before committing to the other four.
+
+When M10 opens: the motion system is the lead's and the two Tier-1 moments are its spine;
+`0082` (objectives) and `0083` (tags) are promoted at sync 1; `0089` (avatars) is **numbered last
+and promoted in wave 6** — say so at sync 1 so no teammate assumes the numbers are contiguous with
+the waves.
+
+---
+
+### The wave-5 lead's brief (superseded — this session executed it; kept for the record)
 
 **The plan is `settled` — the owner approved it on 2026-09-15.** It lives on
 `design/m9-m13-plan` (pushed, four commits, no PR yet). The canvas is

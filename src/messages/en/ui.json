@@ -19,6 +19,9 @@
     "form": {
       "summaryTitle": "The form could not be submitted",
       "remaining": "Remaining: {value}"
+    },
+    "toast": {
+      "close": "Dismiss notification"
     }
   }
 }

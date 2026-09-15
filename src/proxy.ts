@@ -39,8 +39,11 @@ const EN_PLATFORM = /^\/en(\/(app|sign-in|choose-org|no-access)(\/|$))/;
 // reachable on the live domain. There is no third option through NODE_ENV.
 //
 // So it is gated HERE, at the edge: 404 unless the harness says otherwise.
-// `scripts/visual-diff.mjs` sets KAREEM_GALLERY=1 when it spawns `next start`
-// — it already overrides the environment for exactly this class of reason.
+// `scripts/lib/stubbed-server.mjs` sets KAREEM_GALLERY=1 when it spawns
+// `next start` — it already overrides the environment for exactly this class
+// of reason. It is set there rather than in `visual-diff.mjs` alone so every
+// consumer of the harness gets it: a flag only one script sets is a flag the
+// next script forgets.
 const GALLERY = /^\/(ar|en)\/ui(\/|$)/;
 
 export default async function proxy(request: NextRequest) {

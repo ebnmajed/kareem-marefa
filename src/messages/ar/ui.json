@@ -19,6 +19,9 @@
     "form": {
       "summaryTitle": "تعذّر إرسال النموذج",
       "remaining": "المتبقّي: {value}"
+    },
+    "toast": {
+      "close": "إغلاق الإشعار"
     }
   }
 }
