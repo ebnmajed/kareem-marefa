@@ -1,7 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { manualAdjustmentInput, scoringRuleUpdateInput, submitManualAdjustment, updateScoringRule } from "@/lib/dal/scoring-admin";
+import {
+  companyHostingRuleUpdateInput,
+  companyPercentRuleUpdateInput,
+  manualAdjustmentInput,
+  scoringRuleUpdateInput,
+  sessionHostCompanyInput,
+  setSessionHostCompany,
+  submitManualAdjustment,
+  updateCompanyHostingRule,
+  updateCompanyPercentRule,
+  updateScoringRule,
+} from "@/lib/dal/scoring-admin";
 
 // SCR-053. `"use server"` modules export async functions and types alone
 // (CLAUDE.md's own rule for this repository's build gate).
@@ -20,6 +31,56 @@ export async function saveScoringRule(formData: FormData) {
 
   try {
     await updateScoringRule("ar", parsed.data);
+  } catch {
+    redirect(`${SCREEN}?error=1`);
+  }
+  redirect(`${SCREEN}?saved=1`);
+}
+
+export async function saveCompanyHostingRule(formData: FormData) {
+  const parsed = companyHostingRuleUpdateInput.safeParse({
+    ruleId: formData.get("ruleId")?.toString(),
+    enabled: formData.get("enabled") === "on",
+    points: Number.parseInt(formData.get("points")?.toString() ?? "", 10),
+  });
+  if (!parsed.success) redirect(`${SCREEN}?error=1`);
+
+  try {
+    await updateCompanyHostingRule("ar", parsed.data);
+  } catch {
+    redirect(`${SCREEN}?error=1`);
+  }
+  redirect(`${SCREEN}?saved=1`);
+}
+
+export async function saveCompanyPercentRule(formData: FormData) {
+  const parsed = companyPercentRuleUpdateInput.safeParse({
+    ruleId: formData.get("ruleId")?.toString(),
+    enabled: formData.get("enabled") === "on",
+    pointsPerPercent: Number.parseFloat(formData.get("pointsPerPercent")?.toString() ?? ""),
+    capPoints: Number.parseInt(formData.get("capPoints")?.toString() ?? "", 10),
+    minActiveMembers: Number.parseInt(formData.get("minActiveMembers")?.toString() ?? "", 10),
+  });
+  if (!parsed.success) redirect(`${SCREEN}?error=1`);
+
+  try {
+    await updateCompanyPercentRule("ar", parsed.data);
+  } catch {
+    redirect(`${SCREEN}?error=1`);
+  }
+  redirect(`${SCREEN}?saved=1`);
+}
+
+export async function saveSessionHostCompany(formData: FormData) {
+  const companyId = formData.get("companyId")?.toString();
+  const parsed = sessionHostCompanyInput.safeParse({
+    sessionId: formData.get("sessionId")?.toString(),
+    companyId: companyId ? companyId : null,
+  });
+  if (!parsed.success) redirect(`${SCREEN}?error=1`);
+
+  try {
+    await setSessionHostCompany("ar", parsed.data);
   } catch {
     redirect(`${SCREEN}?error=1`);
   }
