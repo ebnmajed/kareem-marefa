@@ -42,9 +42,58 @@ import { SESSION_PHASES, type SeatState } from "@/lib/session-status";
 
 export const metadata = { robots: { index: false, follow: false } };
 
+// ★ DEC-079 asks for "a one-word Arabic name in the gallery" for every glyph,
+// and it is not decoration: the name is how a teammate finds the right icon,
+// and a Latin export name is exactly the reach for a stock set the three
+// conditions exist to prevent. Where a single word will not do the work the
+// phrase is as short as Arabic allows.
+const ICON_NAMES: Record<string, string> = {
+  AlertCircleIcon: "خطأ",
+  AlertTriangleIcon: "تحذير",
+  ArrowIcon: "سهم",
+  BellIcon: "الإشعارات",
+  BookmarkIcon: "حفظ",
+  BookmarkFilledIcon: "محفوظ",
+  CalendarIcon: "تقويم",
+  CheckIcon: "تم",
+  CheckCircleIcon: "مؤكَّد",
+  ChevronIcon: "شيفرون",
+  ClockIcon: "وقت",
+  CloseIcon: "إغلاق",
+  DotIcon: "نقطة",
+  DownloadIcon: "تنزيل",
+  EyeIcon: "رؤية",
+  FilterIcon: "تصفية",
+  HomeIcon: "الرئيسية",
+  ImageIcon: "صورة",
+  InfoIcon: "معلومة",
+  LineIcon: "خط",
+  LinkIcon: "رابط",
+  LockIcon: "مقفل",
+  MenuIcon: "قائمة",
+  MoreIcon: "المزيد",
+  PinIcon: "مكان",
+  PlusIcon: "إضافة",
+  SearchIcon: "بحث",
+  ShareIcon: "مشاركة",
+  SortIcon: "ترتيب",
+  SpinnerIcon: "تحميل",
+  StarIcon: "تقييم",
+  TrashIcon: "حذف",
+  UploadIcon: "رفع",
+  UserIcon: "عضو",
+  UsersIcon: "حضور",
+};
+
 const SEATS: SeatState[] = ["available", "full", "closed", "unlimited"];
 
-function Row({ title, children }: { title: string; children: React.ReactNode }) {
+function Row({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-10">
       <SectionHeader title={title} as="h2" />
@@ -53,13 +102,21 @@ function Row({ title, children }: { title: string; children: React.ReactNode }) 
   );
 }
 
-export default async function GalleryPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function GalleryPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 md:px-8">
-      <PageHeader title="نظام التصميم" eyebrow="dev" description="كل عنصر من عناصر الواجهة، بكل حالاته." />
+      <PageHeader
+        title="نظام التصميم"
+        eyebrow="dev"
+        description="كل عنصر من عناصر الواجهة، بكل حالاته."
+      />
 
       <Row title="الأزرار">
         <Button variant="primary">احجز مقعدًا</Button>
@@ -106,19 +163,33 @@ export default async function GalleryPage({ params }: { params: Promise<{ locale
       <Row title="الوسوم">
         <TagChip label="تقارير" href="/app/sessions?tag=reports" />
         <TagChip label="أتمتة" count={12} />
-        <TagChip label="إكسل" removeLabel="أزل الوسم: إكسل" onRemove={undefined} />
+        <TagChip
+          label="إكسل"
+          removeLabel="أزل الوسم: إكسل"
+          onRemove={undefined}
+        />
       </Row>
 
       <Row title="الصور الرمزية">
         {([24, 32, 34, 40, 56, 96, 160] as const).map((size) => (
-          <Avatar key={size} memberId={`m-${size}`} displayName="ريم العتيبي" size={size} />
+          <Avatar
+            key={size}
+            memberId={`m-${size}`}
+            displayName="ريم العتيبي"
+            size={size}
+          />
         ))}
         <Avatar memberId="m-none" displayName={null} size={56} />
       </Row>
 
       <Row title="التقدّم والأرقام">
         <div className="w-64">
-          <Progress value={42} max={60} label="المقاعد المحجوزة" valueText="٤٢ من ٦٠" />
+          <Progress
+            value={42}
+            max={60}
+            label="المقاعد المحجوزة"
+            valueText="٤٢ من ٦٠"
+          />
         </div>
         <Stat label="الحضور" value="١٢٤" hint="هذا الشهر" />
         <Stat label="الجلسات" value="١٨" href="/app/sessions" />
@@ -154,22 +225,47 @@ export default async function GalleryPage({ params }: { params: Promise<{ locale
       </Row>
 
       <section className="mt-10">
-        <SectionHeader title="الأيقونات" as="h2" description="٣٤ رمزًا، بخط واحد، مرسومة لهذا المنتج." />
+        <SectionHeader
+          title="الأيقونات"
+          as="h2"
+          description="٣٥ رمزًا، بخط واحد، مرسومة لهذا المنتج — ثمانية منها لغة الموقع التسويقي، والباقي للتطبيق."
+        />
         <ul className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-8">
           {Object.entries(Icons)
             .filter(([name]) => name.endsWith("Icon"))
             .map(([name, Glyph]) => {
-              const G = Glyph as (p: { className?: string; label?: string }) => React.ReactElement;
+              const G = Glyph as (p: {
+                className?: string;
+                label?: string;
+              }) => React.ReactElement;
               return (
-                <li key={name} className="flex flex-col items-center gap-2 rounded-field border border-edge p-3">
-                  {/* Each at three sizes, so weight drift between them is
-                      visible rather than inferred. The spinner needs a label. */}
-                  <span className="flex items-end gap-2 text-fg-heading">
-                    <G className="text-[1rem]" label={name === "SpinnerIcon" ? "تحميل" : undefined} />
-                    <G className="text-[1.25rem]" label={name === "SpinnerIcon" ? "تحميل" : undefined} />
-                    <G className="text-[1.5rem]" label={name === "SpinnerIcon" ? "تحميل" : undefined} />
-                  </span>
-                  <code className="text-caption text-fg-muted">{name.replace(/Icon$/, "")}</code>
+                <li key={name}>
+                  {/* ★ `Panel`, not a hand-rolled surface — `ui-lint` caught
+                      the first version here too, in the file that exists to
+                      show the system off. That is the gate working: the
+                      gallery is the last place that should own a class string
+                      the system already owns. */}
+                  <Panel className="flex flex-col items-center gap-2">
+                    {/* Each at three sizes, so weight drift between them is
+                        visible rather than inferred. The spinner needs a label. */}
+                    <span className="flex items-end gap-2 text-fg-heading">
+                      <G
+                        className="text-[1rem]"
+                        label={name === "SpinnerIcon" ? "تحميل" : undefined}
+                      />
+                      <G
+                        className="text-[1.25rem]"
+                        label={name === "SpinnerIcon" ? "تحميل" : undefined}
+                      />
+                      <G
+                        className="text-[1.5rem]"
+                        label={name === "SpinnerIcon" ? "تحميل" : undefined}
+                      />
+                    </span>
+                    <span className="text-caption text-fg-muted">
+                      {ICON_NAMES[name] ?? name}
+                    </span>
+                  </Panel>
                 </li>
               );
             })}

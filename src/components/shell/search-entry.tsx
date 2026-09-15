@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { SearchIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
 
 // Search in the bar — `16` §6.1 note 1, REQ-UIX-002, REQ-DSC-003.
 //
@@ -29,13 +30,17 @@ export async function SearchEntry({ locale }: { locale: string }) {
         </label>
         <div className="relative flex w-full max-w-lg items-center">
           <SearchIcon aria-hidden className="pointer-events-none absolute inset-inline-start-3 text-fg-muted" />
-          {/* ui-lint-disable-next-line field — the shell's search has no <Field>: it is one control with a visually hidden label, not a form row */}
-          <input
+          {/* ★ `ui/input`, not a hand-rolled control, and `ui-lint` is what
+              caught the first version: the shell had copied the house class
+              string, which is the sixty-five-file problem starting over in the
+              one file every screen renders. The system owns the field's look;
+              the shell supplies only what makes it a search box. */}
+          <Input
             id="shell-search"
             type="search"
             name="q"
             placeholder={t("searchPlaceholder")}
-            className="h-11 w-full rounded-field border border-edge-strong bg-canvas ps-10 pe-3 text-body text-fg-body placeholder:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+            className="w-full ps-10"
           />
         </div>
       </form>
