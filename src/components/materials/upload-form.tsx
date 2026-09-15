@@ -8,10 +8,8 @@ import type { MaterialKind } from "@/lib/dal/materials";
 // STORY-MAT-001, 07 §1 — the browser uploads directly to Storage; bytes
 // never traverse this app's own server. A plain `fetch(signedUrl, { method:
 // "PUT" })` does the actual transfer: `createSignedUploadUrl()`'s own
-// `signedUrl` is already a self-authenticating URL (the same shape
-// worker/src/content/storage.ts mints for the converter, whose own
-// `upload()` — converter/server.mjs — does exactly this, no extra header).
-// This avoids the one alternative, the browser Supabase client's
+// `signedUrl` is already a self-authenticating URL, so no extra header is
+// needed. This avoids the one alternative, the browser Supabase client's
 // `uploadToSignedUrl()` helper, which would be the first use of that client
 // for anything but auth UI/Realtime (DEC-020) — flagged to the lead rather
 // than decided here, since a plain fetch works and settles it without
@@ -19,7 +17,8 @@ import type { MaterialKind } from "@/lib/dal/materials";
 //
 // No third-party dependency: FormData + fetch, Node/Web built-ins only.
 
-const FILE_KINDS = ["pdf", "powerpoint", "keynote", "image", "audio"] as const;
+// DEC-058: uploads are PDF-only — no PowerPoint, no Keynote.
+const FILE_KINDS = ["pdf", "image", "audio"] as const;
 const LINK_KINDS = ["video_link", "external_link"] as const;
 
 type UploadKind = MaterialKind;
@@ -27,8 +26,6 @@ type UploadKind = MaterialKind;
 function guessKindFromFilename(name: string): Exclude<UploadKind, "video_link" | "external_link"> | null {
   const ext = name.toLowerCase().split(".").pop() ?? "";
   if (ext === "pdf") return "pdf";
-  if (ext === "ppt" || ext === "pptx") return "powerpoint";
-  if (ext === "key") return "keynote";
   if (["png", "jpg", "jpeg", "webp"].includes(ext)) return "image";
   if (["mp3", "m4a", "wav", "ogg"].includes(ext)) return "audio";
   return null;
@@ -44,7 +41,7 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   const t = useTranslations("materials.upload");
   // Kind/phase option labels reuse the `materials.list` namespace's own
   // `kind.*`/`phase.*` keys (message keys are stable — CLAUDE.md, Naming —
-  // so the same six kind labels and two phase labels shown on the list are
+  // so the same five kind labels and two phase labels shown on the list are
   // never re-authored a second time here).
   const tList = useTranslations("materials.list");
   const router = useRouter();
@@ -129,8 +126,6 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
         {t("kindLabel")}
         <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as UploadKind)} className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
           <option value="pdf">{tList("kind.pdf")}</option>
-          <option value="powerpoint">{tList("kind.powerpoint")}</option>
-          <option value="keynote">{tList("kind.keynote")}</option>
           <option value="image">{tList("kind.image")}</option>
           <option value="audio">{tList("kind.audio")}</option>
           <option value="video_link">{tList("kind.video_link")}</option>

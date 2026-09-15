@@ -59,37 +59,12 @@ describe("Materials slot", () => {
     expect(screen.getByText(/بعد الجلسة/)).toBeInTheDocument();
   });
 
-  it("★ marks a Keynote material download-only, with the export-to-PDF hint (DEC-006)", async () => {
-    vi.mocked(getMaterialsPageData).mockResolvedValue({
-      materials: [
-        {
-          id: "mat2",
-          kind: "keynote",
-          title: "عرض المؤتمر",
-          phase: "after",
-          allowDownload: true,
-          renderStatus: "not_applicable",
-          fontSubstitutionWarning: null,
-          externalUrl: null,
-          currentVersionId: "v1",
-          createdAt: "2026-09-14T00:00:00Z",
-        },
-      ],
-      numerals: "western",
-      canManageAll: false,
-      presenterOfSession: false,
-    });
-    render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByText("للتحميل فقط")).toBeInTheDocument();
-    expect(screen.getByText(/صدّر العرض إلى PDF/)).toBeInTheDocument();
-  });
-
   it("shows the font-substitution warning ON THE MATERIAL, naming the family (REQ-MAT-011)", async () => {
     vi.mocked(getMaterialsPageData).mockResolvedValue({
       materials: [
         {
           id: "mat3",
-          kind: "powerpoint",
+          kind: "pdf",
           title: "الشريحة الرئيسية",
           phase: "after",
           allowDownload: true,
@@ -107,7 +82,7 @@ describe("Materials slot", () => {
     render(await Materials({ sessionId, memberId: "m1", locale: "ar" }));
     // The family name is now inside its own <bdi>, so the sentence spans
     // multiple text nodes — match on the paragraph's own full textContent.
-    expect(screen.getByText((_, el) => el?.textContent === 'استُبدل الخط "Amiri" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه.')).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.textContent === 'الخط "Amiri" غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد.')).toBeInTheDocument();
   });
 
   it("an external link opens with rel=noopener noreferrer and leaves-the-platform copy (REQ-MAT-007)", async () => {

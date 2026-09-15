@@ -7,9 +7,10 @@
 //   node scripts/parity/harness.mjs --break-font   # prove the harness can fail
 //
 // SEVEN CASES × FOUR PATHS = 28 assertions (`scripts/parity/paths.mjs` says
-// what each path is and how it can go wrong). Path 4 needs the converter and
-// SKIPS LOUDLY without it — «21 of 28» — because a skip that reads like a
-// pass is how a suite comes to test nothing.
+// what each path is and how it can go wrong). Path 4 needs poppler and cwebp
+// on the PATH (the worker image has them, DEC-058) and SKIPS LOUDLY without
+// them — «21 of 28» — because a skip that reads like a pass is how a suite
+// comes to test nothing.
 //
 // TIER A — text identity. The browser exposes no API for shaped glyph IDs, so
 // the signature is the geometry shaping PRODUCES: line-box count, per-line
@@ -38,7 +39,7 @@ import puppeteer from 'puppeteer-core'
 import { renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runtime'
 import { CASES } from './cases.mjs'
 import { ASSERTIONS, buildDocument, CONTROL_CSS, PATHS } from './paths.mjs'
-import { runConverterPath } from './converter.mjs'
+import { runPopplerPath } from './poppler.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const GOLDENS = join(HERE, 'goldens')
@@ -215,7 +216,7 @@ async function renderDomPath(path) {
     // with `inset-inline-start`, so in an RTL document `x: 0` is the RIGHT
     // edge and the box extends leftward. Cropping at the logical x takes the
     // empty half of the page: three cases came back 0.000% inked against the
-    // real converter, and the two that did not were simply long enough to
+    // real poppler output, and the two that did not were simply long enough to
     // spill into the wrong rectangle. Same RTL origin trap DEC-024 already
     // records twice, in a third disguise.
     const physicalX = doc.direction === 'rtl' ? doc.master.width - (layer.frame.x + layer.frame.w) : layer.frame.x
@@ -253,7 +254,7 @@ async function renderDomPath(path) {
 /* ---------- run every path ---------- */
 const results = {}
 for (const path of PATHS) {
-  if (path.tier === 'converter') continue
+  if (path.tier === 'poppler') continue
   results[path.id] = await renderDomPath(path)
 }
 // Determinism: the screen path rendered twice in the same process must be
@@ -263,10 +264,16 @@ const determinism = await renderDomPath(PATHS[0])
 
 /* ---------- path 4: our PDF through poppler ---------- */
 const posterPdf = results.poster_pdf
-const converter = await runConverterPath(posterPdf?.pdf ?? Buffer.alloc(0), { pageCount: 1 })
+const poppler = await runPopplerPath(posterPdf?.pdf ?? Buffer.alloc(0), { pageCount: 1 })
+// Inside the worker image the tools are installed by the Dockerfile, so a
+// skip there is a broken image, not a developer machine without poppler.
+if (poppler.skipped && process.env.PARITY_REQUIRE_POPPLER) {
+  console.error(`FAILED  slide page images — ${poppler.reason}, and PARITY_REQUIRE_POPPLER is set: this environment must run all ${ASSERTIONS}.`)
+  process.exit(1)
+}
 let slidePages = null
-if (!converter.skipped && converter.pageBytes?.[0]) {
-  const pageB64 = converter.pageBytes[0].toString('base64')
+if (!poppler.skipped && poppler.pageBytes?.[0]) {
+  const pageB64 = poppler.pageBytes[0].toString('base64')
   // The PDF page is the document's own size, so the page image's scale is
   // just its width over the document's.
   const scale = await diffPage.evaluate(
@@ -324,7 +331,7 @@ if (UPDATE) {
     }
     for (const c of CASES) writeFileSync(imagePath('slide_pages', c.id), Buffer.from(slidePages.crops[c.id], 'base64'))
   } else {
-    console.log('NOTE  the converter path was not run, so its goldens were left as they are.')
+    console.log('NOTE  the poppler path was not run, so its goldens were left as they are.')
   }
   console.log(`goldens written for ${CASES.length} cases over ${Object.keys(record.paths).length + 1} DOM path(s) (font ${fontFingerprint})`)
   console.log('REVIEW THE DIFF — goldens are never refreshed unreviewed (REQ-DSG-015).')
@@ -451,14 +458,14 @@ checkTierAAgainstGolden('certificate_pdf', 'certificate PDF', results.certificat
 console.log('NOTE  the two PDF paths are Tier A only — nothing in this process rasterises a PDF, so a pixel claim there would be a claim nobody measures.')
 
 // Path 4 — our PDF through poppler.
-if (converter.skipped) {
+if (poppler.skipped) {
   console.log(
-    `\nSKIPPED  slide page images — ${converter.reason}.\n` +
-      `         ${asserted} of ${ASSERTIONS} assertions ran. Set CONVERTER_URL (and\n` +
-      `         CONVERTER_ALLOW_HTTP=1 on the converter) to run all ${ASSERTIONS}.`,
+    `\nSKIPPED  slide page images — ${poppler.reason}.\n` +
+      `         ${asserted} of ${ASSERTIONS} assertions ran. Install poppler and webp\n` +
+      `         (brew install poppler webp · apt-get install poppler-utils webp) to run all ${ASSERTIONS}.`,
   )
 } else {
-  const substituted = converter.substituted ?? []
+  const substituted = poppler.substituted ?? []
   if (substituted.length) {
     // Our Chromium PDF embeds its faces as subsets. A substitution means the
     // export claims a font it did not carry — REQ-CRT-005's «renders on a
@@ -481,7 +488,7 @@ if (converter.skipped) {
     }
     const gp = imagePath('slide_pages', c.id)
     if (!existsSync(gp)) {
-      problem(`slide page images · ${c.id}: no golden — run --update with the converter configured`)
+      problem(`slide page images · ${c.id}: no golden — run --update with poppler and webp installed`)
       continue
     }
     const r = await diffOf(crop, readFileSync(gp).toString('base64'))

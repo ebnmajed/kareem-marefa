@@ -52,7 +52,7 @@ describe("ProposalMaterials slot", () => {
       materials: [
         {
           id: "mat1",
-          kind: "powerpoint",
+          kind: "pdf",
           title: "شرائح المقترح",
           phase: "after",
           allowDownload: true,
@@ -70,7 +70,7 @@ describe("ProposalMaterials slot", () => {
     expect(title.closest("bdi")).not.toBeNull();
     // The family name is now inside its own <bdi>, so the sentence spans
     // multiple text nodes — match on the paragraph's own full textContent.
-    expect(screen.getByText((_, el) => el?.textContent === 'استُبدل الخط "Amiri" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه.')).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.textContent === 'الخط "Amiri" غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد.')).toBeInTheDocument();
     expect(screen.queryByText("فتح العارض")).not.toBeInTheDocument();
   });
 });

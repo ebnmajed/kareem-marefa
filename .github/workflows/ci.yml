@@ -129,7 +129,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
 
       # REQ-DSG-016: the fonts the build just emitted must be exactly the
-      # manifest's — the same bytes the worker's Chromium and LibreOffice get.
+      # manifest's — the same bytes the worker's Chromium and poppler get.
       # If Google's subset moves under next/font, this is where it shows.
       - name: font set matches the manifest
         run: node scripts/fonts/check.mjs
@@ -193,32 +193,6 @@ jobs:
           path: playwright-report
           retention-days: 7
 
-  # ── The credential-free converter. 04 §7.1, REQ-DSG-016. ─────────────
-  converter:
-    name: converter image (LibreOffice, no credentials)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '${{ env.NODE_VERSION }}' }
-      - uses: docker/setup-buildx-action@v3
-
-      # The image build IS a font test: it runs scripts/fonts/check.mjs and
-      # refuses to exist unless LibreOffice's fonts are exactly the manifest's.
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: converter/Dockerfile
-          tags: kareem-converter
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Boot guard, real conversions through the signed-URL contract, the
-      # substitution report, WebP pages at the specified size, content
-      # sniffing. See converter/test/smoke.mjs.
-      - run: SKIP_BUILD=1 node converter/test/smoke.mjs
-
   # ── The worker's LISTEN/NOTIFY boot probe. 04 §7.2, 11 §1.2, DEC-034. ──
   # The failure this guards is silent: on a transaction-pooled connection
   # LISTEN succeeds and never delivers. So the probe is run twice — straight
@@ -273,7 +247,7 @@ jobs:
       # DEC-046: the worker is a host-agnostic image, locally and in CI, until
       # Launch picks the host. Build it and run the same probe INSIDE it, so
       # the image that would ship is the one proven. Built from the repo root
-      # like the converter (worker/Dockerfile).
+      # (worker/Dockerfile).
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -294,32 +268,18 @@ jobs:
       # the rasteriser (DEC-028), which is what lets a Linux image match
       # goldens made on a Mac. The sandbox is dropped only inside the
       # container (CHROME_NO_SANDBOX), never on a developer's machine.
-      # DEC-049: the fourth export path is the converter's page images, so the
-      # converter image stands beside the worker image on the host network and
-      # the harness inside the worker container reaches it at 127.0.0.1:8080;
-      # the harness's own loopback server is reachable from the converter the
-      # same way. All 28 assertions run here; a missing converter would skip
+      # DEC-058: the fourth export path is poppler's page images, and poppler
+      # and cwebp live in this image now (the converter is gone with
+      # LibreOffice). All 28 assertions run here; a missing tool would skip
       # seven of them LOUDLY, and this job is where that must never happen.
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: converter/Dockerfile
-          tags: kareem-converter
-          load: true
-          cache-from: type=gha
-      - name: start the converter beside the worker image
-        run: docker run -d --rm --name kareem-converter --network host -e CONVERTER_ALLOW_HTTP=1 kareem-converter && sleep 3
-      - name: the image's Chromium and fonts pass the shaping parity suite — 28 of 28
+      - name: the image's Chromium, poppler and fonts pass the shaping parity suite — 28 of 28
         run: >-
           docker run --rm --network host
           -v "$PWD/scripts:/app/scripts:ro"
           -v "$PWD/packages/fonts:/app/packages/fonts:ro"
           -e CHROME_NO_SANDBOX=1
-          -e CONVERTER_URL=http://127.0.0.1:8080
+          -e PARITY_REQUIRE_POPPLER=1
           kareem-worker node scripts/parity/harness.mjs
-      - name: the converter path actually ran
-        if: always()
-        run: docker rm -f kareem-converter >/dev/null 2>&1 || true
 
   # ── main stays deployable with the platform unconfigured. DEC-038. ────
   # Production has no NEXT_PUBLIC_ Supabase variables until PR C. This job

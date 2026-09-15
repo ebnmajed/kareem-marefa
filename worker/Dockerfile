@@ -1,7 +1,8 @@
 # The worker image — graphile-worker behind the LISTEN/NOTIFY boot probe, plus
-# headless Chromium, the designer runtime and the one font set for M6's
-# renders. 04 §7, 11 §1, DEC-017, DEC-031, DEC-034, DEC-046, DEC-048.
-# Build from the REPO ROOT, like the converter:
+# headless Chromium, poppler and libwebp for the PDF page images, the designer
+# runtime and the one font set for M6's renders. 04 §7, 11 §1, DEC-017,
+# DEC-031, DEC-034, DEC-046, DEC-048, DEC-058.
+# Build from the REPO ROOT:
 #
 #   docker build -f worker/Dockerfile -t kareem-worker .
 #   docker run --rm -e DATABASE_URL=postgres://…:5432/postgres kareem-worker            # run
@@ -42,11 +43,16 @@ ENV NODE_ENV=production
 
 # Headless Chromium for designer exports (A28, D66): Debian's build, driven by
 # puppeteer-core at CHROME_PATH. No download at build or run time, so the
-# binary is the same on every boot. fontconfig is what makes the font set
-# below visible to it.
+# binary is the same on every boot. poppler-utils (pdfinfo, pdffonts,
+# pdftoppm) and webp (cwebp) render a PDF material's page images in this
+# image since DEC-058 — the same two packages the retired converter image
+# used, so 07 §4.5's outputs and the slide-page goldens are unchanged.
+# fontconfig is what makes the font set below visible to all of them.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium \
+      poppler-utils \
+      webp \
       fontconfig \
       ca-certificates \
  && rm -rf /var/lib/apt/lists/*
@@ -65,11 +71,11 @@ COPY --from=build /app/packages/designer-runtime/dist packages/designer-runtime/
 COPY --from=build /app/worker/dist worker/dist
 
 # ── The one font set (invariant 12, REQ-DSG-016). ──────────────────────────
-# The same step converter/Dockerfile runs: copy the manifest and its files,
-# PROVE they are what the manifest says, install the TrueType files where
-# fontconfig — and therefore Chromium — finds them. An image that fails this
-# step does not exist. The renderer also inlines faces by SHA-256 from the
-# same manifest, so a poster never depends on fontconfig's fallback chain.
+# Copy the manifest and its files, PROVE they are what the manifest says,
+# install the TrueType files where fontconfig — and therefore Chromium and
+# poppler — finds them. An image that fails this step does not exist. The
+# renderer also inlines faces by SHA-256 from the same manifest, so a poster
+# never depends on fontconfig's fallback chain.
 COPY packages/fonts ./packages/fonts
 COPY scripts/fonts/check.mjs scripts/fonts/extract.mjs ./scripts/fonts/
 RUN node scripts/fonts/check.mjs --no-build \

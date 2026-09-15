@@ -24,7 +24,6 @@
       "Bash(npm run fonts:check)",
       "Bash(npm run visual:*)",
       "Bash(npm run worker:*)",
-      "Bash(npm run converter:test)",
       "Bash(npm run parity)",
       "Bash(npx tsc:*)",
       "Bash(npx playwright:*)",

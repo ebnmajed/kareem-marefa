@@ -1,5 +1,5 @@
 // materials / material_versions / material_pages — 02 §4.6, 03 §5.5a
-// (verbatim), REQ-MAT-001…012, DEC-006. Applied with applyProposed() inside
+// (verbatim), REQ-MAT-001…012, DEC-058 (PDF-only). Applied with applyProposed() inside
 // each test's rolled-back transaction (DEC-040) — nothing here touches the
 // shared local database.
 import { afterAll, describe, expect, it } from "vitest";
@@ -61,12 +61,12 @@ describe("RPC-finalize_material_upload", () => {
         `select render_status, current_version_id from public.materials where id = $1`,
         [materialId],
       );
-      expect(row.render_status).toBe("pending"); // pdf/powerpoint enqueue a conversion
+      expect(row.render_status).toBe("pending"); // a pdf enqueues its page rendering (DEC-058)
       expect(row.current_version_id).not.toBeNull();
     });
   });
 
-  it("image and keynote materials go straight to not_applicable and enqueue nothing", async () => {
+  it("image and audio materials go straight to not_applicable and enqueue nothing", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       // Promoted as migration 0046 at wave-2 sync 8: applied by `supabase db reset`.
@@ -76,6 +76,23 @@ describe("RPC-finalize_material_upload", () => {
       await tx.q(`select public.finalize_material_upload($1, 'x/y/z.webp', 1000, 'image/webp', $2)`, [materialId, "c".repeat(64)]);
       const [row] = await tx.q<{ render_status: string }>(`select render_status from public.materials where id = $1`, [materialId]);
       expect(row.render_status).toBe("not_applicable");
+    });
+  });
+
+  it("★ POL-materials.kind_pdf_only — a powerpoint or keynote row is refused 23514 even by the owner (DEC-058, 0077)", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      for (const kind of ["powerpoint", "keynote"]) {
+        expect(
+          await errorCode(() =>
+            tx.q(
+              `insert into public.materials (org_id, session_id, kind, title, phase, added_by) values ($1, $2, $3::public.material_kind, 'عرض', 'after', $4)`,
+              [f.a.id, f.m2.a.published, kind, f.a.members[0].memberId],
+            ),
+          ),
+        ).toBe(CHECK_VIOLATION);
+      }
     });
   });
 
@@ -760,7 +777,7 @@ describe("RPC-carry_over_proposal_materials", () => {
     });
   });
 
-  it("★ enqueues convert_document for a pending pdf/powerpoint material once it has a real session_id", async () => {
+  it("★ enqueues convert_document for a pending pdf material once it has a real session_id", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       // Promoted as migration 0053 at wave-2 sync 12: applied by `supabase db reset`.

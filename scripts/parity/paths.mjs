@@ -14,8 +14,9 @@
 //                          different family with different GSUB coverage, on
 //                          the artifact somebody frames.
 //   4. slide page images — our PDF through poppler, the way a PDF material's
-//                          pages are produced (07 §4.5). Needs the converter;
-//                          skipped LOUDLY when CONVERTER_URL is unset.
+//                          pages are produced (07 §4.5, in the worker image
+//                          since DEC-058). Needs poppler and cwebp on the
+//                          PATH; skipped LOUDLY when they are missing.
 //
 // Paths 1-3 are measured in a DOM, so Tier A is 06 §9.3's structural
 // comparison in full. PATH 4 IS MEASURED DIFFERENTLY AND THE DIFFERENCE IS
@@ -45,7 +46,7 @@ export const PATHS = [
   },
   { id: 'poster_pdf', label: 'poster PDF', family: FAMILY, print: true, tier: 'dom', goldenKey: 'poster_pdf' },
   { id: 'certificate_pdf', label: 'certificate PDF', family: CERTIFICATE_FAMILY, print: true, tier: 'dom', goldenKey: 'certificate_pdf' },
-  { id: 'slide_pages', label: 'slide page images', family: FAMILY, print: true, tier: 'converter', goldenKey: 'slide_pages' },
+  { id: 'slide_pages', label: 'slide page images', family: FAMILY, print: true, tier: 'poppler', goldenKey: 'slide_pages' },
 ]
 
 export const ASSERTIONS = PATHS.length * CASES.length

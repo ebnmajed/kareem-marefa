@@ -44,15 +44,19 @@ select graphile_worker.add_job('ping', '{"hello": "world"}');
 
 Tasks live in `src/tasks/`, one file per snake_case job name (`11` §2).
 
-## Environment (wave 2, M5)
+## Environment (wave 2, M5 — amended by DEC-058)
 
-The content tasks need three more variables besides `DATABASE_URL`, all worker-only (`04` §10):
+The content tasks need two more variables besides `DATABASE_URL`, both worker-only (`04` §10):
 
 | Variable | Local value | Purpose |
 |---|---|---|
-| `CONVERTER_URL` | `http://127.0.0.1:8080` (the `kareem-converter` image, `docker run -p 8080:8080 kareem-converter`) | `convert_document` / `render_pages` call it with signed URLs in and out — no credentials cross |
-| `SUPABASE_URL` | `http://127.0.0.1:54321` | minting the signed Storage URLs the converter reads and writes |
+| `SUPABASE_URL` | `http://127.0.0.1:54321` | Storage's REST API — `convert_document` / `render_pages` / `process_photo` read and write their own bytes there |
 | `SUPABASE_SERVICE_ROLE_KEY` | from `supabase status` | the same — never on Vercel (invariant 7) |
+
+`CONVERTER_URL` is gone with the converter (DEC-058): uploads are PDF-only, and the page images are
+rendered here by poppler and cwebp, which `worker/Dockerfile` installs. Running the tasks outside
+the image needs `pdfinfo`, `pdffonts`, `pdftoppm` and `cwebp` on the PATH
+(`brew install poppler webp`).
 
 A task whose variable is missing throws at once and names it; nothing degrades silently. The
 production values are Launch inputs with the host (OQ-027, DEC-046).

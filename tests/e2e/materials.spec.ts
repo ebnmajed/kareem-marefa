@@ -3,8 +3,8 @@
 // versions/material_pages rows and their storage objects — never through
 // the worker: convert_document/render_pages are covered on their own
 // contract in tests/unit/worker-tasks.test.ts, and the lead runs the real
-// pipeline once at the gate with the converter image and the worker
-// against local Supabase (wave-2 sync 10). What this proves is the app
+// pipeline once at the gate with the worker image (poppler inside it since
+// DEC-058) against local Supabase. What this proves is the app
 // layer: the arrows follow the reading direction, the substitution warning
 // renders on the material, and the RTL layout holds at 390 px.
 //
@@ -112,7 +112,7 @@ test.beforeAll(async ({}, testInfo) => {
 
   const { rows: matRows } = await db.query<{ id: string }>(
     `insert into public.materials (org_id, session_id, kind, title, phase, render_status, font_substitution_warning, added_by)
-     values ($1, $2, 'powerpoint', 'الشريحة الافتتاحية', 'after', 'ready', 'Amiri', $3) returning id`,
+     values ($1, $2, 'pdf', 'الشريحة الافتتاحية', 'after', 'ready', 'Amiri', $3) returning id`,
     [orgId, sessionId, presenterMemberId],
   );
   materialId = matRows[0].id;
@@ -123,8 +123,8 @@ test.beforeAll(async ({}, testInfo) => {
   // would silently break a future download assertion.
   await db.query(
     `insert into public.material_versions (id, org_id, material_id, version, storage_path, byte_size, sniffed_mime, sha256, uploaded_by)
-     values ($1, $2, $3, 1, $4, 1000, 'application/vnd.openxmlformats-officedocument.presentationml.presentation', $5, $6)`,
-    [versionId, orgId, materialId, `${orgId}/sessions/${sessionId}/materials/${versionId}/deck.pptx`, "a".repeat(64), presenterMemberId],
+     values ($1, $2, $3, 1, $4, 1000, 'application/pdf', $5, $6)`,
+    [versionId, orgId, materialId, `${orgId}/sessions/${sessionId}/materials/${versionId}/deck.pdf`, "a".repeat(64), presenterMemberId],
   );
   await db.query(`update public.materials set current_version_id = $1 where id = $2`, [versionId, materialId]);
 

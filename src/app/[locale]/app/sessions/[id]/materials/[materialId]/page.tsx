@@ -25,15 +25,7 @@ export default async function MaterialViewerPage({ params }: { params: Promise<{
         <bdi>{data.title}</bdi>
       </h1>
 
-      {data.kind === "keynote" ? (
-        <div className="mt-6">
-          <p className="text-body text-fg-heading">{t("states.keynoteDownloadOnly")}</p>
-          <p className="mt-1 text-body-sm text-fg-muted">{t("states.keynoteHint")}</p>
-          <div className="mt-4">
-            <DownloadButton locale={locale} materialId={materialId} allowDownload={data.allowDownload} />
-          </div>
-        </div>
-      ) : data.renderStatus === "pending" || data.renderStatus === "rendering" ? (
+      {data.renderStatus === "pending" || data.renderStatus === "rendering" ? (
         <p className="mt-6 text-body text-fg-muted">{t("states.pending")}</p>
       ) : data.renderStatus === "failed" ? (
         <p className="mt-6 text-body text-fg-heading">{t("states.failed")}</p>

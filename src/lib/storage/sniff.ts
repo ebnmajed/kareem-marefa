@@ -100,15 +100,14 @@ export function sniffContent(buf: Uint8Array): SniffResult {
 }
 
 /** REQ-MAT-002: does the sniffed content actually match the kind the presenter declared? An SVG never matches anything. */
-export function sniffedKindMatchesDeclared(sniffed: SniffedKind, declaredKind: "pdf" | "powerpoint" | "keynote" | "image" | "audio"): boolean {
+export function sniffedKindMatchesDeclared(sniffed: SniffedKind, declaredKind: "pdf" | "image" | "audio"): boolean {
   if (sniffed === "svg" || sniffed === "unknown") return false;
+  // PowerPoint and Keynote are still RECOGNISED above so that a deck declared
+  // as something else is refused by name — but no declared kind accepts them:
+  // uploads are PDF-only from Launch (DEC-058).
   switch (declaredKind) {
     case "pdf":
       return sniffed === "pdf";
-    case "powerpoint":
-      return sniffed === "powerpoint_ooxml" || sniffed === "powerpoint_legacy";
-    case "keynote":
-      return sniffed === "keynote";
     case "image":
       return sniffed === "png" || sniffed === "jpeg" || sniffed === "webp";
     case "audio":

@@ -3,16 +3,12 @@
     "list": {
       "count": "{count, plural, zero {No materials} one {One material} two {Two materials} few {{value} materials} many {{value} materials} other {{value} materials}}",
       "empty": "No materials for this session yet.",
-      "downloadOnly": "Download only",
-      "downloadOnlyHint": "To view the slides inside the platform, export the deck to PDF and upload it — it will then appear in the viewer page by page.",
       "phase": {
         "before": "Before the session",
         "after": "After the session"
       },
       "kind": {
         "pdf": "PDF",
-        "powerpoint": "Presentation",
-        "keynote": "Keynote",
         "image": "Image",
         "audio": "Audio recording",
         "video_link": "Video link",
@@ -20,12 +16,12 @@
       },
       "renderStatus": {
         "pending": "Waiting to be processed",
-        "rendering": "Converting…",
-        "failed": "Could not convert this file"
+        "rendering": "Preparing pages…",
+        "failed": "Could not prepare this file’s pages"
       },
       "substitutionWarning": {
         "title": "Fonts may differ from your original file.",
-        "body": "The font \"<bdi>{family}</bdi>\" was substituted during conversion. For an exact match, export the deck to PDF and upload it."
+        "body": "The font \"<bdi>{family}</bdi>\" is not embedded in the PDF, so the Arabic text may differ from the original. Export the file with fonts embedded and upload it again."
       },
       "openViewer": "Open viewer",
       "download": "Download",
@@ -72,9 +68,7 @@
       "states": {
         "pending": "Preparing the deck…",
         "rendering": "Preparing the deck…",
-        "failed": "This file could not be converted. Try exporting the deck to PDF and uploading it again.",
-        "keynoteDownloadOnly": "Keynote files are available for download only.",
-        "keynoteHint": "To view the slides inside the platform, export the deck to PDF and upload it — it will then appear in the viewer page by page.",
+        "failed": "This file’s pages could not be prepared. Check that the PDF is valid and upload it again.",
         "noPages": "No pages to show."
       }
     }

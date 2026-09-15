@@ -1,12 +1,16 @@
-// Signed Storage URLs for the converter (DEC-032: it holds no credentials
-// of its own — it gets two short-lived signed URLs per request and
-// nothing else). Raw fetch to Supabase Storage's REST API, not the
-// @supabase/supabase-js client: worker/package.json carries only `pg` and
-// `graphile-worker`, and this needs nothing the SDK provides beyond two
-// POSTs. `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` are new worker env vars
-// — flagged to the lead alongside `CONVERTER_URL` (docs/plan/notes/
-// content.md §3b): this is the worker's first time talking to Supabase's
-// REST surface at all rather than only its own `DATABASE_URL`.
+// The worker's own reads and writes against Supabase Storage — 07 §4, DEC-047,
+// DEC-058. Raw fetch to Storage's REST API with the service-role Bearer
+// token, not the @supabase/supabase-js client: worker/package.json carries
+// only `pg`, `graphile-worker` and `puppeteer-core`, and this needs nothing
+// the SDK provides beyond three requests. `SUPABASE_URL` and
+// `SUPABASE_SERVICE_ROLE_KEY` are worker-only variables (04 §10) — never on
+// Vercel (CLAUDE.md invariant 7).
+//
+// Until DEC-058 this file also minted short-lived signed URLs for the
+// credential-free converter (DEC-032). With uploads PDF-only and the page
+// rendering done by poppler in this image, every content job reads and
+// writes its OWN bytes here, the way process_photo.ts always did, and there
+// is no third party left to hand a URL to.
 
 function requireEnv(): { url: string; key: string } {
   const url = process.env.SUPABASE_URL;
@@ -16,43 +20,6 @@ function requireEnv(): { url: string; key: string } {
   }
   return { url, key };
 }
-
-/** A signed GET URL, valid for `expiresInSeconds` (default 5 minutes, matching
- *  the source-download expiry 07 §6 sets for `materials`). */
-export async function signReadUrl(bucket: string, path: string, expiresInSeconds = 300): Promise<string> {
-  const { url, key } = requireEnv();
-  const res = await fetch(`${url}/storage/v1/object/sign/${bucket}/${path}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
-    body: JSON.stringify({ expiresIn: expiresInSeconds }),
-  });
-  if (!res.ok) throw new Error(`content/storage: sign (read) ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
-  const data = (await res.json()) as { signedURL?: string };
-  if (!data.signedURL) throw new Error(`content/storage: sign (read) ${bucket}/${path} returned no signedURL`);
-  return `${url}/storage/v1${data.signedURL}`;
-}
-
-/** A signed PUT URL — the converter uploads directly to it with a plain
- *  `PUT`, no extra header (converter/server.mjs's own `upload()`), so the
- *  token in the query string has to be everything it needs. */
-export async function signUploadUrl(bucket: string, path: string): Promise<string> {
-  const { url, key } = requireEnv();
-  const res = await fetch(`${url}/storage/v1/object/upload/sign/${bucket}/${path}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, apikey: key },
-  });
-  if (!res.ok) throw new Error(`content/storage: sign (upload) ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
-  const data = (await res.json()) as { url?: string };
-  if (!data.url) throw new Error(`content/storage: sign (upload) ${bucket}/${path} returned no url`);
-  return `${url}/storage/v1${data.url}`;
-}
-
-// process_photo.ts (REQ-EVT-011, DEC-047) is the worker reading/writing its
-// OWN bytes, never handing a URL to an untrusted third party — unlike
-// convert_document/render_pages, which sign URLs specifically because the
-// converter (DEC-032) holds no credentials of its own. There is nothing to
-// protect by minting a short-lived URL first, so these three call Storage's
-// REST API directly with the service_role Bearer token instead.
 
 /** The raw object's bytes — the one read `photos_storage_read` (03 §6) denies to every
  *  RLS-bound client until a `public.photos` row exists (docs/plan/notes/content.md §1.6),

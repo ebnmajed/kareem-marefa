@@ -44,8 +44,8 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 | 8 | **No super-admin disjunct in any RLS policy** | DEC-014. It would reduce D3 to "one claim is correct". |
 | 9 | **`points_ledger` and `audit_log` are append-only**, `revoke` including `service_role` | Balances must be recomputable; the audit log must be evidence. |
 | 10 | **Arabic is written in Arabic.** Never draft in English and translate | D5. Inverting this on day one is irreversible in practice. |
-| 11 | **No SVG uploads, anywhere** | DEC-009. It would render inside a privileged headless Chromium. |
-| 12 | **One font set** — editor, worker Chromium, worker LibreOffice, identical by SHA-256 | D66. Font drift breaks Arabic silently. |
+| 11 | **No SVG uploads, anywhere; document uploads are PDF-only** | DEC-009, DEC-058. An SVG would render inside a privileged headless Chromium; a PowerPoint would need LibreOffice, which no longer exists here. |
+| 12 | **One font set** — editor, worker Chromium, worker poppler, identical by SHA-256 | D66. Font drift breaks Arabic silently. |
 
 ---
 
@@ -114,8 +114,7 @@ src/
 ├── i18n/ · messages/{ar,en}.json
 packages/designer-runtime/      # THE renderer — shared by the app and the worker
 packages/fonts/                 # THE font set — manifest + files by SHA-256 (DEC-031)
-converter/                      # LibreOffice + poppler behind signed URLs, NO credentials (DEC-032)
-worker/                         # graphile-worker + the LISTEN/NOTIFY boot probe (DEC-034)
+worker/                         # graphile-worker + the LISTEN/NOTIFY boot probe (DEC-034); poppler renders PDF pages here (DEC-058)
 tests/                          # *.test.ts units · components/ (jsdom) · e2e/ (Playwright)
 scripts/fonts/                  # extract · derive-ttf · check — the REQ-DSG-016 gate
 ```
@@ -279,7 +278,7 @@ local Supabase**. The full model — waves, spawn prompt, contracts — is in
 |---|---|---|---|
 | `notify` | opus | NTF, CAL, the reminder and calendar jobs, the mail transport (sink in dev/CI, Resend at Launch); **owns `public.notify()`, the contract the other two call** | `app/me/{notifications,calendar}/**`, **`app/admin/{emails,reminders}/**` for wave 2**, `app/api/{sessions/[id]/ics,webhooks,calendar}/**`, `lib/dal/{notifications,calendar}.ts`, `components/{notifications,calendar}/**`, `worker/src/{mail,calendar}/**` + its eight tasks, `messages/*/{notifications,calendar}.json`, `supabase/proposed/notify/**`, its tests, `docs/plan/notes/notify.md` |
 | `scoring` | sonnet | PTS, LDR, REC | `app/{leaderboards,me/points}/**`, **`app/admin/{scoring,recognition}/**` for wave 2**, `lib/dal/{points,leaderboards,recognition,scoring-admin}.ts`, `components/scoring/**`, its eight worker tasks, `messages/*/{scoring,leaderboards,recognition}.json`, `supabase/proposed/scoring/**`, its tests, its note |
-| `content` | sonnet | MAT, TSK, photos (EVT-009…015), DSC, PRO-004 | `app/api/{upload,materials,photos}/**`, **`lib/storage/**` (the single path builder)**, `lib/dal/{materials,photos,tasks,search,bookmarks}.ts`, `app/sessions/[id]/materials/**`, `app/me/bookmarks/**`, `components/{materials,photos,viewer,tasks,search}/**`, its four worker tasks + `worker/src/content/**`, `converter/{fixtures,test}/**`, `messages/*/{materials,photos,tasks,search}.json`, `supabase/proposed/content/**`, its tests, its note |
+| `content` | sonnet | MAT, TSK, photos (EVT-009…015), DSC, PRO-004 | `app/api/{upload,materials,photos}/**`, **`lib/storage/**` (the single path builder)**, `lib/dal/{materials,photos,tasks,search,bookmarks}.ts`, `app/sessions/[id]/materials/**`, `app/me/bookmarks/**`, `components/{materials,photos,viewer,tasks,search}/**`, its four worker tasks + `worker/src/content/**`, `messages/*/{materials,photos,tasks,search}.json`, `supabase/proposed/content/**`, its tests, its note |
 
 **Wave-2 rules:** tracks never edit wave-1 app code — they hook into M2 from SQL only (a trigger,
 or a `create or replace` of an M2 RPC at its `TODO(notify, M3)` / `TODO(scoring, M4)` call site)

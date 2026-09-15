@@ -31,16 +31,6 @@ export function proposalMaterialSourcePath(orgId: string, proposalId: string, ve
   ].join("/");
 }
 
-/** `materials/{org_id}/sessions/{session_id}/materials/{version_id}/converted.pdf` — the intermediate
- *  PDF `convert_document` produces from a PowerPoint before `render_pages` reads it. Same bucket and
- *  version folder as the source (07 §4.2's converter never needs credentials to read it: the worker
- *  hands it two signed URLs), a fixed filename distinct from whatever the presenter uploaded. */
-export function convertedPdfPath(orgId: string, sessionId: string, versionId: string): string {
-  return [assertUuid(orgId, "orgId"), "sessions", assertUuid(sessionId, "sessionId"), "materials", assertUuid(versionId, "versionId"), "converted.pdf"].join(
-    "/",
-  );
-}
-
 /** `material-pages/{org_id}/sessions/{session_id}/pages/{version_id}/{n}.webp` — a rendered page image. */
 export function materialPagePath(orgId: string, sessionId: string, versionId: string, page: number): string {
   return [
