@@ -251,11 +251,16 @@ describe("POL-storage.exports.public_card", () => {
       for (const name of [ogPath, `${f.a.id}/exports/${f.m6.a.documentId}/og-2.png`]) {
         await expect(tx.q(`insert into storage.objects (bucket_id, name) values ('exports', $1)`, [name])).rejects.toThrow();
       }
-      // A delete never reaches RLS at all: storage's own `protect_delete()`
-      // trigger refuses a direct delete from every role, the worker included.
-      expect(await errorMessage(() => tx.q(`delete from storage.objects where bucket_id = 'exports' and name = $1`, [ogPath]))).toContain(
-        "Direct deletion from storage tables is not allowed",
-      );
+      // On real Supabase a delete never reaches RLS at all: storage's own
+      // `protect_delete()` trigger refuses a direct delete from every role,
+      // the worker included. CI's bare container (scripts/ci/roles.sql) has
+      // no such trigger, and there RLS simply matches no row. The property
+      // is the same on both: the object survives an anonymous delete.
+      const deleteError = await errorMessage(() => tx.q(`delete from storage.objects where bucket_id = 'exports' and name = $1`, [ogPath]));
+      if (deleteError !== null) expect(deleteError).toContain("Direct deletion from storage tables is not allowed");
+      await tx.asOwner();
+      const [survivor] = await tx.q<{ n: string }>(`select count(*) as n from storage.objects where bucket_id = 'exports' and name = $1`, [ogPath]);
+      expect(Number(survivor.n), "the og.png object survives an anonymous delete").toBe(1);
     });
   });
 });
