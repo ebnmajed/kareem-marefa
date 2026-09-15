@@ -131,3 +131,120 @@ future review doesn't mistake it for a gap introduced here.
   non-staff member both rendered exactly as authored, confirming REQ-CHK-014 is enforced by policy
   end to end (a real HTTP request from a real signed-in plain member got the refusal, not a hidden
   button).
+
+## Wave 5 (M9) — the affordance matrix and the five live bugs
+
+Read `.claude/agents/checkin.md` (rewritten for M9), `16` §5 in full, DEC-090, DEC-092, DEC-101,
+DEC-103, DEC-105. Two lead commits landed first: `src/components/ui/index.ts` (types only) and
+`src/lib/session-status.ts` (`sessionPhase`, `seatState`, `viewerRelation`, `closingSoon`,
+`canGrantOn`, `sessionPhaseSource`, `GRANTING_AFFORDANCES`, `storedPhase`,
+`neverGrantsMoreThanStored`) with 34 passing unit tests. Neither is mine to edit.
+
+### Scope decisions, flagged before building
+
+1. **`16` §5.3 says "7 phases × 7 relations = 49 cells"; the shipped `SESSION_PHASES` has SIX
+   values** (`draft, pending_schedule, open, live, ended, cancelled` — DEC-105 collapsed the
+   original nine-value draft into six, not seven). The matrix below is genuinely **6 × 7 = 42
+   cells**. I built and tested all 42; the "49" in the plan text is stale prose from before
+   `session-status.ts` was implemented, not a design decision I'm empowered to relitigate. Flagging
+   for the lead's record, not blocking.
+2. **The matrix carries NINE affordance columns, not the printed table's eight**: `16` §5.3's
+   printed columns (RSVP, Cancel, Calendar, Tasks, Check in, Rate, Share, Materials) omit
+   `hostConsole`, which `GRANTING_AFFORDANCES` in `session-status.ts` names explicitly. I added it
+   as a ninth column since it's a real, tested affordance the host screen needs and the lead's own
+   file already names it.
+3. **`checkIn`'s matrix value is `boolean | "walkInsOnly"`, not a plain boolean** — DEC-065's
+   per-session switch is a THIRD input (`allowWalkIns`) the phase/relation pair alone can't encode.
+   `checkInAllowed()` resolves the tri-state against the actual switch and additionally requires
+   `canGrantOn(session, "checkIn")` — the phase/relation cell alone is necessary but not sufficient;
+   the direction guard still applies on top of it.
+4. **`hostConsole` does NOT go through `canGrantOn`, deliberately, unlike `checkIn`.** I first
+   assumed it should (session-status.ts's `GRANTING_AFFORDANCES.live` lists both), then worked
+   through the actual failure mode and found it doesn't need it: `sessionPhase()` already returns
+   `ended` (never a clock-derived `live`) for `state = 'in_progress'` whose end has passed
+   (DEC-105's own worked example), so the matrix cell for `ended` already refuses `hostConsole`
+   before `canGrantOn` would ever need to. The other direction — `published` past its start, clock
+   says `live`, `start_session` hasn't run — is harmless for the host page specifically: the
+   underlying `ensure_check_in_code()` RPC still checks real `state`, still refuses `not_open`, and
+   the existing null-code fallback already renders the "not started" message. Unlike `checkIn`,
+   showing the host console page early never produces a confusing RPC refusal a member has to
+   puzzle out — it produces an accurate "not started yet" paragraph. So the page-level gate is the
+   plain matrix cell (`phase ∈ {open, live}`, `relation ∈ {presenter, staff}`), and the CODE
+   DISPLAY specifically stays gated by the RPC's own error, unchanged from wave 1. Writing this down
+   because it's exactly the kind of reasoning `neverGrantsMoreThanStored` is meant to force, and I
+   want the next reader to see why I didn't reach for `canGrantOn` reflexively.
+5. **No SQL changes this wave.** All five bugs are presentation-layer — `reserve_seat()`,
+   `cancel_rsvp()`, `check_in()`, `ensure_check_in_code()` are already correct and unchanged; the
+   RLS suite (`tests/rls/{rsvp,checkin,priority-rsvp}.test.ts`) needs no new cases and none of the
+   fixes below touch it. The bugs were always "the screen shows an affordance the RPC would refuse"
+   or "the screen shows nothing informative before the member wastes a keystroke" — never "the RPC
+   is wrong."
+6. **`AttendanceOutcome` reads `getRsvpPanelData()` a second time**, the same DAL call `RsvpPanel`
+   makes. Two round trips for the same page render, not one — DEC-092's own complaint about the
+   calendar/tasks slots. I'm doing it anyway this wave because `SlotProps` doesn't carry
+   `viewerRelation` yet (DEC-092 amends `slots.ts`, which is the lead's file, not mine, and hasn't
+   landed) — once it does, both components should take `viewerRelation` as a prop instead of
+   re-deriving it, collapsing back to one read. Flagging as a follow-up, not fixing now by reaching
+   into a file I don't own.
+7. **`RsvpPanel` no longer renders anything for `live` or `ended`** — not even the old "confirmed,
+   here's your cancel button" for `live`. `16` §5.3's `live/confirmed` row lists no cancel (you
+   can't back out of a seat once the session has started), and `ended` moves entirely to
+   `AttendanceOutcome`. This is a narrower panel than before, by design — DEC-090's whole point.
+
+### The matrix — `src/components/checkin/session-matrix.ts`
+
+`AFFORDANCE_MATRIX: Record<SessionPhase, Record<ViewerRelation, AffordanceCell>>`, a literal table,
+plus `affordancesFor(phase, relation)`, `checkInAllowed(session, relation, allowWalkIns, now)` and
+`rateAllowed(session, relation, now)` (the latter for `event`'s track to pick up in a later wave —
+not consumed anywhere this wave, built and tested because the lead asked for the whole matrix, not
+just checkin's three columns). `tests/unit/session-matrix.test.ts` has one `it()` per of the 42
+cells plus the two ask-4 starred cells called out by name and the walk-in tri-state.
+
+### The five bugs — what actually changed
+
+- **(a) + (b), `rsvp-panel.tsx`** — rewritten to read `data.phase`/`data.relation` (both now
+  computed in `getRsvpPanelData()`, not the component — the `getPhotosPageData()` pattern the lead
+  pointed at) and consult `affordancesFor()`. Returns null outside `open`. Fixes both: no cancel
+  form on a `completed`/`archived`/`in_progress`/`cancelled` session (a), no reserve button once
+  `live` (b) — `sessionPhase()`'s clock clause already does the "past the start" detection: nothing
+  new to compute here, just a component that finally asks.
+- **new `attendance-outcome.tsx`** — the `ended` read-only fact, «حضرت» / «لم تُسجّل حضورك»
+  (`rsvp.attended` / `rsvp.didNotAttend`, new keys). No heading, no section, self-gates to
+  `phase === "ended" && relation ∈ {attended, absent}`. **Not wired into the event page yet** — that
+  needs `page.tsx`, the lead's file this wave (DEC-103). Suggested spot: in `<aside>`, right where
+  `<RsvpPanel>` sits, rendered alongside it (`<RsvpPanel .../><AttendanceOutcome .../>` — each
+  self-gates on a disjoint phase so exactly one of them ever prints anything).
+- **(c), `check-in/page.tsx`** — new `getCheckInScreenData()` in `dal/checkin.ts` reads the session,
+  computes phase/relation/`canAttemptCheckIn` (via `checkInAllowed()`). The page now shows the
+  session's title (bdi'd) under the h1 always, and when `!canAttemptCheckIn` shows the reason in
+  place of the form — reusing the EXISTING `error.*` keys (`not_started`, `session_ended`,
+  `presenter_cannot_check_in`, `reservation_required`) for the reason banner too, since they already
+  say the right thing proactively, not just as a post-submit refusal. Two new keys only:
+  `error.not_published`, `error.cancelled`, for the two cases with no existing equivalent.
+- **(d), `host/page.tsx` + `getHostView()`** — `HostViewData.phase` widens from the old three-value
+  `"live" | "not_started" | "ended"` to the real `SessionPhase` (six values), computed by
+  `sessionPhase()` from the session row instead of guessed from the RPC's error string. New copy
+  for `draft`/`pending_schedule` (`host.notPublished`) and `cancelled` (`host.cancelled`). The
+  walk-in toggle and manual-marking sections now gate on `affordancesFor(phase, "staff").hostConsole`
+  (true only for `open`/`live`) instead of rendering unconditionally for any staff viewer of any
+  phase.
+- **(e), the predicate for the lead** — `canOfferCheckInLink(session: PhaseInput, relation:
+  ViewerRelation, allowWalkIns: boolean, now?)` exported from `dal/checkin.ts` (thin wrapper over
+  the matrix's `checkInAllowed()`). **The lead needs two DTO fields `getSessionForEvent()` doesn't
+  have yet**: `viewerRelation` (already promised by DEC-092) and **`allowWalkIns: boolean`**
+  (`sessions.allow_walk_ins`, not currently read by that function at all) — flagging the second one
+  explicitly since DEC-092 only mentions the first.
+
+### Tests
+
+- `tests/unit/session-matrix.test.ts` — new, 42 cells + the walk-in tri-state + the two ask-4
+  cells + a `neverGrantsMoreThanStored`-style direction check reused via `canGrantOn` for `checkIn`
+  and `rate` inside the matrix's own helpers.
+- `tests/components/checkin/rsvp-panel.test.tsx` — rewritten against the new DTO shape (`phase`,
+  `relation` instead of raw `state`/`isPresenter`/`deadlinePassed`), plus new cases for `live` and
+  `ended` rendering nothing.
+- `tests/components/checkin/attendance-outcome.test.tsx` — new.
+- No `tests/rls/*` changes — no SQL moved (scope decision 5 above).
+- `tests/e2e/checkin.spec.ts` — unchanged assertions still hold (checked against the rewrite before
+  running): the host-view h1 text, the live-session check-in flow with `allow_walk_ins = true`, the
+  not-authorized message, all independent of the phase-messaging changes. Re-ran after the rewrite.
