@@ -945,3 +945,57 @@ sends the member. Colour is never the only channel: `--color-error`, the `alert-
    positively»), but it is a visible copy change on a live screen and it should be yours to confirm
    rather than mine to assume. `proposals.propose.form.optional` stays in the catalogue either way —
    `admin/proposals` uses it too.
+
+## 19. What the build actually taught me — all six units
+
+**19.1 `<Field>` had to be a client component whatever I decided.** The context-vs-`cloneElement`
+argument in §17 turned out to be moot on a second ground: the day-one stub calls `useId()` with no
+`"use client"`, and `useId` is a client hook. The published stub would have thrown the first time a
+Server Component rendered it. Context is free once the file is client anyway.
+
+**19.2 Two accessible-name bugs, both the same shape, both found by the tests rather than the
+design.** A `<label>` that wraps more than the control's own name puts the extra text IN THE
+ACCESSIBLE NAME. `<RadioGroup>`'s per-option hint and `<Switch>`'s description were both inside the
+label, so each was read twice — once as part of the name, once as the description — and the control
+stopped being findable by its own name. Both now sit outside the label with logical `ps-*`
+indentation. **The same trap is waiting in every primitive with a rich label**, which is most of
+`console`'s and `content`'s; it is in my message to the lead.
+
+The third of the family: the required marker needed a **literal space**, not only `ms-2`. A margin
+is layout and contributes nothing to the name, so it read «عنوان الموضوعمطلوب».
+
+**19.3 `attempt` paid for itself three times**, as §16 predicted, and a fourth time I had not
+foreseen: `useEffect(() => setFixed([]), [state.attempt])` is an eslint error in this repo
+(`react-hooks/set-state-in-effect`). Stamping the fixed-field set with the attempt it belongs to —
+`{ attempt, fields }`, stale by comparison — removes the effect entirely. Better code, and the lint
+rule was right.
+
+**19.4 The summary does not shrink as fields are fixed, and that is deliberate.** It is
+`role="alert"`. Rewriting it on every keystroke re-announces the whole list. The inline error clears
+— that is the reward — and the summary is rebuilt by the next submit. GOV.UK's error summary
+behaves the same way for the same reason.
+
+**19.5 `text-body-sm` does not exist.** 115 files use it; `globals.css` defines `text-body-lg`,
+`text-body`, `text-caption` and `text-label` as `@utility` blocks and there is no `--text-*` theme
+key, so Tailwind emits nothing. Every hint, caption and error message using it renders at inherited
+body size. My primitives use `text-caption`, the real token, so they will look correctly smaller
+than the screens around them until the lead resolves it. Reported; not mine to fix.
+
+## 20. Still open at the end of my task
+
+1. **`tests/e2e/forms-propose.spec.ts` is written and has never been run.** There is no `.next` in
+   the tree — `scripts/lib/stubbed-server.mjs` refuses to start without one — and `npm run build`
+   is lead-only this milestone. Same reason there is no 390 px capture yet. Both need one build.
+   The jsdom equivalent is green: four «مطلوب» markers, three summary links with the right `href`s
+   and «الحقل: الرسالة» text, focus on the summary, `axe` clean.
+2. **`node scripts/route-coverage.mjs --prune` drops 6 `not-found` entries** — five of them mine,
+   the sixth `content`'s `materials/[materialId]`. `error` and `loading` are already at zero.
+3. **`axe-core` is still a transitive dependency** being imported directly by eight test files.
+4. **The optional-marker copy change** on SCR-017 shipped per `16` §8.2 item 2 («مطلوب» on the four
+   required fields, nothing on the rest). Flagged twice before landing it; reversible in one edit if
+   the lead wants «اختياري» back, but `FieldProps` has no slot for it.
+5. **A request against `RouteErrorProps`:** `retryLabel` and `reset` are required, so a
+   `not-found.tsx` — which Next hands no props and where the resource is *gone*, not transiently
+   unavailable — has to invent a retry. Both of mine wire it to `router.refresh()`, following
+   `content`'s precedent. If those two props became optional, a not-found could simply omit the
+   button. Not blocking.
