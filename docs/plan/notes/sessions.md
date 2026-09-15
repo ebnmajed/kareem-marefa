@@ -685,3 +685,138 @@ not see "5" — nonsense, since the average of one rating is 5 and the presenter
 **The D36 boundary is attribution, not the number.** The check is now that the rater's *name* never
 appears beside the score, scoped to the ratings section, because she also commented and a comment is
 attributed by design (`REQ-EVT-002`).
+
+---
+
+## 14. STORY — the public session card (post-launch, the owner's decision of 2026-09-15)
+
+**Covers:** `REQ-SES-006`, `REQ-SES-008`, `REQ-SES-013`, `REQ-INT-003`, `REQ-INT-006`,
+`REQ-NFR-001` · **Screens:** a new public route plus SCR-012's share affordance · **Size:** M
+
+### 14.1 Two URLs, not one page with a signed-out branch
+
+The event page is a member's page. It carries the abstract, the presenters by name, the capacity
+and the seats left, the RSVP panel, the tasks, the materials, the photos, every comment and the
+ratings — nine surfaces owned by three teammates, each of which will grow. Serving a second,
+poorer document from the same URL when the caller has no cookie means every future addition to
+that page has to be re-audited against «what does the signed-out branch render», forever, by
+whoever adds it. One missed slot is a leak.
+
+`/{locale}/s/{id}` makes the boundary a **route** instead of a conditional. The public page can
+only render what `session_public_card()` returns, because nothing else is reachable from it; the
+event page can only be reached with a session, because the proxy and `requireSession()` say so.
+Neither has a branch that can be got wrong.
+
+It also survives being pasted, which was the point: a crawler fetching `/app/sessions/{id}` gets
+the sign-in redirect and previews the sign-in screen.
+
+### 14.2 The read is a function, for the three reasons `verify_certificate()` is one
+
+`public.session_public_card(uuid)` — `security definer`, `stable`, granted to `anon` and
+`authenticated`. `anon` gains no policy on `sessions` and has none today.
+
+1. **The return type is the allowlist.** A column added to `sessions` next year cannot leak by
+   being selected accidentally, because there is no select.
+2. **It is reachable only by id** — no list, no filter, no ordering. One link does not open the
+   catalogue.
+3. **Draft, submitted, approved, archived, cancelled, another org's, a suspended org's and a uuid
+   that names nothing are all the SAME empty answer.** The card cannot confirm that an unpublished
+   session exists. A suspended org's cards go dark with the org, which is what suspension means.
+
+The venue's **name** is in the type; its address and map link are not. A stranger is told which
+hall, never how to find the side door — `12` T3's line, which the owner's decision moved for six
+fields and no further.
+
+### 14.3 The image, and the four ways it was not done
+
+The `og` preset (1200×630) is already rendered by the poster pipeline into the `exports` bucket,
+which `anon` cannot read. `GET /api/s/{id}/og` calls the same function and then reads the object
+**as the caller** through one additive storage policy.
+
+| Rejected | Why |
+|---|---|
+| `service_role` in the Route Handler | Invariant 7. A key that bypasses every policy, on a request any stranger can make. |
+| A signed URL in the `og:image` tag | It cuts both ways. A crawler caches the tag and re-fetches days later, after a five-minute signature has died — a broken preview on the one link that was shared. And a signature minted before a cancellation keeps working for its whole lifetime, so the image outlives the card. |
+| Making `exports` public | It holds every poster master, every A3 print PDF and every issued **certificate**, each with somebody's name on it, for every org. |
+| Re-rendering the card with `next/og` / satori | A second renderer. DEC-017 and D66 say `@kareem/designer-runtime` is THE renderer; a satori OG image is exactly the Arabic shaping drift the parity suite exists to catch, and it would drift silently because nothing compares the two. |
+
+`POL-storage.exports.public_card` is `for select to anon` over `bucket_id = 'exports'` and a
+definer predicate. **It has to be a definer predicate**: a policy expression referencing another
+table is evaluated as the CALLER, and `anon` has no policy on `export_artifacts`, `session_posters`
+or `sessions` — an inline subquery would see nothing and deny everything, looking correct and never
+granting.
+
+The policy is `to anon, authenticated` and not `anon` alone: the image route reads the object as
+whoever asked, and a signed-in member of ANOTHER org is `authenticated`, for whom
+`exports_storage_read` (org-prefixed) does not apply. Without it, signing in would show a person
+LESS than signing out — a broken image on a card a stranger sees fine. Promoted inside `0080`.
+
+**Stated, not hidden:** holding a select policy on `storage.objects` means `anon` can *list* the
+objects it matches. The paths are `{org_id}/exports/{document_id}/og.png` — two opaque uuids,
+neither of them a session id, so a listed path cannot be turned back into a card URL, and the bytes
+it names are exactly the bytes any link-holder may already fetch. Accepted.
+
+### 14.4 The bug the CTA did NOT find — a false alarm, recorded because the trap is real
+
+I reported `safeNextPath()` (`src/lib/auth/next-path.ts`, lead-only) as broken: its class rendered
+as `[\s -]`, where a trailing `-` is literal, so every path containing a hyphen would be discarded
+and every session id is a uuid. **I was wrong, and the way I was wrong is the point.** The class
+actually held `[\s␀-␟]` — a range whose two endpoints were literal control bytes, NUL and U+001F,
+which every viewer I read the file through drew as nothing. I then probed a regex I had RETYPED
+from what I saw, not the bytes on disk, and my probe faithfully confirmed my misreading.
+
+Nothing was broken: hyphens passed then and pass now, and the CTA lands on the session. The lead
+rewrote the class with explicit escapes (`\u0000-\u001f`) and added a uuid case to
+`tests/unit/next-path.test.ts` so the next reader cannot make the same mistake.
+
+**The lesson, which cost an hour: never probe a retyped copy of a pattern.** Read the bytes —
+`node -e` over the file's own source, not over what the terminal drew. An invisible character
+cannot be seen by looking harder.
+
+### 14.5 Tests
+
+| Test | File | What it pins |
+|---|---|---|
+| exactly the six public fields, and the key set IS the allowlist | `tests/rls/sessions-public-card.test.ts` | the return type, not the component, is the boundary |
+| draft / approved / archived / cancelled / unknown are one empty answer | same | the card cannot confirm an unpublished session exists |
+| a suspended org's cards go dark, the other org's do not | same | per-org, not a kill switch |
+| `anon` has no policy on the six tables behind the card | same | the function is the only door |
+| `anon` reads the `og.png` and nothing else in `exports` | same | master, A4, `og.webp`, a certificate and a draft's poster all stay refused |
+| a cancellation closes the image door too | same | the half a signed URL would have got wrong |
+| absolute `og:image` in both `url` and `secure_url` | `tests/components/sessions/public-card-metadata.test.tsx` | a relative one is no image at all in half the crawlers |
+| the description is date · venue · org in the ORG's numerals and zone | same | `REQ-INT-006` |
+| a missing part drops instead of leaving a stray separator | same | the thing that only ever shows up in somebody's WhatsApp |
+| signed out: six fields, no abstract, no address, no external link | `tests/e2e/sessions-public-card.spec.ts` | `REQ-SES-008` included |
+| the image is served to an unauthenticated crawler, bytes intact | same | the whole feature, end to end |
+| a draft's card and image are 404, same as a bad id | same | |
+
+### 14.5a What the 390 px capture actually settled
+
+The first capture looked as though «حتى ٣:١٦ م» had broken across lines with the meridiem left
+alone. **It had not.** Measuring the element said one line box, 358 px wide inside a 358 px column:
+in RTL the date starts at the right and the «… حتى ٣:١٦ م» clause runs to the LEFT END of the same
+line, which reads like a second row in a rasterised screenshot and is not one. The same shape
+appears on the event page's own «آخر موعد للحجز …» line, which has been correct since M2.
+
+So the lesson is the method, not the bug: **a screenshot cannot tell you where a line box ends in
+RTL.** The e2e now counts distinct `top` values among the clause's client rects — rects alone are
+no good, because bidi splits an inline element into one rect per directional run even on a single
+line. The `whitespace-nowrap` and the `<bdi>` around the value stay: they are correct, and they
+stop a real break if a longer date ever pushes the clause to the edge.
+
+### 14.6 Open, with my default
+
+- **Indexing.** The card is `noindex` (the layout's default, repeated explicitly). Preview crawlers
+  read OG tags regardless, so previews work. The owner opened these fields to whoever **holds** the
+  link; being findable by searching for the venue is a different decision and not this one. Default:
+  keep `noindex` until the owner says otherwise.
+- **`/s/` is not localised by `pathnames`.** `/en/s/{id}` renders the English catalogue rather than
+  redirecting to Arabic, unlike `/en/app`. That is right for a shared link: the sharer's locale is
+  in the URL. Default: leave it.
+- **`SITE_URL` locally.** The share affordance copies `siteOrigin()` + the card path, and with no
+  `SITE_URL` in a local production build that resolves to `https://kareem.pp.sa` — the right answer
+  on Vercel, a misleading one on a laptop. Default: leave it; setting a localhost fallback would
+  put a localhost URL in a member's clipboard the day someone runs a production build for a demo.
+- **Cache 300 s.** Short for a public image, on purpose: a cancellation must stop serving quickly,
+  and the poster is re-rendered when details change. Crawlers keep their own copy far longer; that
+  is their cache, and it is the trade-off the owner accepted.

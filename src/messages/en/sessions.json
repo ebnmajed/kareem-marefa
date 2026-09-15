@@ -47,7 +47,22 @@
       "checkIn": "Check in",
       "manageSchedule": "Schedule",
       "manageAttendance": "Attendance",
-      "manageCertificates": "Certificates"
+      "manageCertificates": "Certificates",
+      "shareLabel": "Share link",
+      "shareCopied": "Link copied",
+      "shareHint": "A public link showing only the title, time, venue, organisation name and poster."
+    },
+    "card": {
+      "presentedBy": "Hosted by <bdi>{org}</bdi>",
+      "whenLabel": "When",
+      "toTime": "until <bdi>{value}</bdi>",
+      "whereLabel": "Where",
+      "notScheduled": "Not scheduled yet",
+      "noVenue": "Venue not set yet",
+      "inPersonNote": "In the room only.",
+      "membersOnly": "The full session page is for members of <bdi>{org}</bdi>.",
+      "signIn": "Sign in to reserve your seat",
+      "posterAlt": "Session poster"
     }
   }
 }

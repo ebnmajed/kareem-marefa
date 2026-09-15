@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { createServerClient } from "@/lib/supabase/server";
+import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
 //
@@ -576,4 +578,99 @@ export async function setVenueActive(locale: string, venueId: string, active: bo
     .update({ deactivated_at: active ? null : new Date().toISOString() })
     .eq("id", venueId);
   if (error) throw new Error(`venues.update: ${error.message}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The public session card — the owner's decision of 2026-09-15
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ★ THE ONE PLACE IN THIS MODULE THAT DOES NOT CALL requireSession(), and the
+// reason is the whole point of the feature: a shared link has to preview in
+// WhatsApp, X and LinkedIn, where the fetch carries no cookie and never will.
+// `verifyCertificate()` (lib/dal/certificates.ts) is the same shape for the
+// same reason — a stranger with a printed code.
+//
+// What keeps it honest is that the READ is a narrow SECURITY DEFINER function
+// (`session_public_card`), not a widened policy: `anon` still has no policy on
+// `sessions`, and the function's RETURN TYPE is the allowlist. Nothing here
+// chooses which columns to expose — it cannot, because nothing else is
+// reachable. A draft or a cancelled session answers with no row, which the
+// route renders as notFound().
+
+export interface PublicSessionCard {
+  id: string;
+  title: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  timeZone: string;
+  /** The venue's NAME. Never its address or its map link — 12 T3's line, and
+   *  the owner's decision did not move it. */
+  venueName: string | null;
+  orgName: string;
+  numerals: NumeralSystem;
+  /** Whether a poster `og` render exists. The PATH never leaves this module:
+   *  the page asks for `/api/s/{id}/og`, which asks again. */
+  hasImage: boolean;
+  imageWidth: number | null;
+  imageHeight: number | null;
+}
+
+interface PublicCardRow {
+  title: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  time_zone: string;
+  venue_name: string | null;
+  org_name: string;
+  numerals: NumeralSystem;
+  og_path: string | null;
+  og_width: number | null;
+  og_height: number | null;
+}
+
+async function publicCardRow(id: string): Promise<PublicCardRow | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("session_public_card", { p_session: id });
+  if (error) return null;
+  const row = (Array.isArray(data) ? data[0] : null) as PublicCardRow | null | undefined;
+  return row ?? null;
+}
+
+/** The card for a public link. `null` for anything that is not a published,
+ *  in-progress or completed session of an active org — including a draft and
+ *  a cancelled one, which are indistinguishable from an unknown id. */
+export async function getPublicSessionCard(id: string): Promise<PublicSessionCard | null> {
+  const row = await publicCardRow(id);
+  if (!row) return null;
+  return {
+    id,
+    title: row.title,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    timeZone: row.time_zone,
+    venueName: row.venue_name,
+    orgName: row.org_name,
+    numerals: row.numerals,
+    hasImage: Boolean(row.og_path),
+    imageWidth: row.og_width,
+    imageHeight: row.og_height,
+  };
+}
+
+/** The card's image bytes, for the Route Handler that crawlers fetch.
+ *
+ *  The object is read as the CALLER — `anon` for a crawler — through the one
+ *  storage policy that lets `anon` select an `og.png` of a card-eligible
+ *  session (`POL-storage.exports.public_card`). No `service_role` (invariant
+ *  7) and no signed URL: a signed URL would expire inside a cached `og:image`
+ *  tag, and it would keep working for its lifetime after the session was
+ *  cancelled. This stops at the same instant the card does. */
+export async function getPublicCardImage(id: string): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
+  const row = await publicCardRow(id);
+  if (!row?.og_path) return null;
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.storage.from("exports").download(row.og_path);
+  if (error || !data) return null;
+  return { bytes: await data.arrayBuffer(), contentType: "image/png" };
 }

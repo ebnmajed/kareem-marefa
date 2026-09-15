@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **251** |
-| Entities (`ENT-*`) | **68** |
+| Entities (`ENT-*`) | **71** |
 | Stories (`STORY-*`) | **112** |
 | Screens cited (`SCR-*`) | 53 |
 | Jobs cited (`JOB-*`) | 36 |
@@ -218,7 +218,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-001` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-001` | M4 |
 | `REQ-LDR-002` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-001` | M4 |
 | `REQ-LDR-003` | `ENT-categories` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-002` | M4 |
-| `REQ-LDR-004` | `ENT-companies` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
+| `REQ-LDR-004` | `ENT-companies` `ENT-company_points_balances` `ENT-company_points_ledger` +2 | — | `SCR-027` `SCR-028` `SCR-043` +1 | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-005` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | `POL-achievement.snapshot` | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |

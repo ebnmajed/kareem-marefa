@@ -4,7 +4,8 @@
     "tabs": {
       "allTime": "All time",
       "monthly": "This month",
-      "company": "Company race"
+      "company": "Company race",
+      "companyBreakdown": "My company's points"
     },
     "you": "You",
     "empty": "Not enough data yet to show this board.",
@@ -20,6 +21,28 @@
       "asOf": "Computed against the active member count at the time — it does not change later",
       "provisional": "Provisional — refreshed nightly until the month closes",
       "final": "Final"
+    },
+    "companyBreakdown": {
+      "heading": "How your company earned its points",
+      "intro": "Every point <bdi>{company}</bdi> earned from the company rules has a clear reason here.",
+      "balance": "{count, plural, =0 {Your company's balance from the company rules is zero points} one {Your company's balance from the company rules is one point} other {Your company's balance from the company rules is {value} points}}",
+      "empty": "No points from the company rules yet.",
+      "source": {
+        "hosting": "Hosted a session",
+        "attendance": "Company attendance share",
+        "presenting": "Company presenting share"
+      },
+      "catalogue": {
+        "heading": "What earns your company points?",
+        "flat": "{count, plural, =0 {zero points} one {one point} other {{value} points}} per hosted session",
+        "perPercent": "{count, plural, =0 {no points} one {one point} other {{value} points}} per percentage point",
+        "cap": "capped at {count, plural, =0 {zero points} one {one point} other {{value} points}} per session",
+        "min": "requires {count, plural, =0 {no minimum active members} one {at least one active member} other {at least {value} active members}}"
+      },
+      "meta": {
+        "attended": "<bdi>{attended}</bdi> of <bdi>{active}</bdi> active members attended (<bdi>{percent}</bdi>%)",
+        "presenting": "<bdi>{presenting}</bdi> of <bdi>{active}</bdi> active members presented (<bdi>{percent}</bdi>%)"
+      }
     }
   }
 }

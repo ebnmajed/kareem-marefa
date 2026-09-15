@@ -8,6 +8,18 @@ import type { Task } from "graphile-worker";
 // check-in, whether or not the org has turned the penalty on. That is what
 // lets an admin see what *would* have been penalised before deciding to
 // enable it.
+//
+// Post-launch (docs/plan/notes/scoring.md "Company points rules"): this
+// task also runs the three company-level rules for the same session, via
+// public.evaluate_company_points() (supabase/proposed/scoring/
+// 0001_company_points.sql). Deliberately NOT a second job: the owner's
+// company rules are "evaluated once, at completion", exactly the same
+// contract this job already has, and sessions_completion_fanout() already
+// enqueues exactly one evaluate_no_shows job per completed session — a
+// second job type would need a new worker/src/index.ts registration this
+// track does not own, for no behavioural difference. evaluate_company_points()
+// is independently idempotent (its own idempotency_key per rule per
+// company), so this being folded into a retried/replayed job is safe.
 interface EvaluateNoShowsPayload {
   session_id: string;
 }
@@ -30,5 +42,8 @@ export const evaluate_no_shows: Task = async (payload, helpers) => {
   for (const { rsvp_id, member_id } of rows) {
     await helpers.query(`select public.award_points('no_show', $1, 'no_show', $2, $3)`, [member_id, rsvp_id, payload.session_id]);
   }
-  helpers.logger.info(`evaluate_no_shows: session ${payload.session_id} — ${rows.length} no-show event(s) recorded`);
+
+  await helpers.query(`select public.evaluate_company_points($1)`, [payload.session_id]);
+
+  helpers.logger.info(`evaluate_no_shows: session ${payload.session_id} — ${rows.length} no-show event(s) recorded, company rules evaluated`);
 };

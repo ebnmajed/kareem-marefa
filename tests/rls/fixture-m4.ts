@@ -43,6 +43,15 @@ async function orgRows(tx: Tx, o: Org, m2: M2Org): Promise<M4Org> {
     [o.id, member.memberId, m2.completed, `check_in:check_in:${m2.completed}:${member.memberId}:v1`],
   );
 
+  // DEC-067 (0081): one company ledger row per org, as the owner (client
+  // roles are revoked on purpose; the rollup trigger writes the balance), so
+  // the generated isolation sweep sees org A's rows and is not vacuous.
+  await q(
+    `insert into public.company_points_ledger (org_id, company_id, amount, source, session_id, reason, rule_key, rule_version, idempotency_key, occurred_at)
+     values ($1, $2, 100, 'company_hosting', $3, 'استضافة جلسة', 'company_hosting', 1, $4, now() - interval '30 days')`,
+    [o.id, o.companyId, m2.completed, `company_hosting:${m2.completed}:${o.companyId}:v1`],
+  );
+
   const badgeId = (await q<{ id: string }>(`select id from public.badges where org_id = $1 order by key limit 1`, [o.id]))[0].id;
   const memberBadgeId = await one(
     `insert into public.member_badges (org_id, member_id, badge_id) values ($1, $2, $3) returning id`,

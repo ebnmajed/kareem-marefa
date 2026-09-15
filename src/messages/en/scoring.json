@@ -59,6 +59,22 @@
         "to": "To",
         "when": "Date"
       },
+      "companyRules": {
+        "heading": "Company points",
+        "intro": "Three company-level rules on top of its members' points: hosting sessions, attendance share, and presenting share. Each rule is evaluated once, when a session completes.",
+        "points": "Points per hosted session",
+        "pointsPerPercent": "Points per percentage point of participation share",
+        "capPoints": "Maximum points per session",
+        "minActiveMembers": "Minimum active members for the rule to apply",
+        "hostForm": {
+          "heading": "Assign a session's hosting company",
+          "intro": "Enter a session ID and choose its hosting company — a stopgap form until the scheduling screen gets its own field.",
+          "sessionId": "Session ID",
+          "company": "Hosting company",
+          "none": "No hosting company",
+          "submit": "Save"
+        }
+      },
       "manual": {
         "heading": "Manual adjustment",
         "intro": "Add or remove points for a member, with a reason that appears in their history.",
