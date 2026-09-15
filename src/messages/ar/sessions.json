@@ -47,7 +47,22 @@
       "checkIn": "تسجيل الحضور",
       "manageSchedule": "الجدولة",
       "manageAttendance": "الحضور",
-      "manageCertificates": "الشهادات"
+      "manageCertificates": "الشهادات",
+      "shareLabel": "شارك الرابط",
+      "shareCopied": "نُسخ الرابط",
+      "shareHint": "رابط عام يعرض العنوان والموعد والمكان واسم الجهة والملصق فقط."
+    },
+    "card": {
+      "presentedBy": "من تنظيم <bdi>{org}</bdi>",
+      "whenLabel": "الموعد",
+      "toTime": "حتى {value}",
+      "whereLabel": "المكان",
+      "notScheduled": "لم يُحدَّد الموعد بعد",
+      "noVenue": "لم يُحدَّد المكان بعد",
+      "inPersonNote": "الحضور في القاعة فقط.",
+      "membersOnly": "صفحة الجلسة الكاملة لأعضاء <bdi>{org}</bdi>.",
+      "signIn": "سجّل الدخول لحجز مقعدك",
+      "posterAlt": "ملصق الجلسة"
     }
   }
 }
