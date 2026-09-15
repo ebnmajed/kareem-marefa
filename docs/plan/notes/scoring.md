@@ -303,3 +303,180 @@ disabled-by-default are both enforced in the SQL function itself, not the screen
 it lets an admin click. The RLS suite's isolation sweep already covers every M4 table
 automatically (it's generated over `pg_tables`); a new M4-adjacent table needs `org_id`, RLS,
 and a policy, and the sweep finds it the same day.
+
+## Company points rules (post-launch, 2026-09-15)
+
+The owner's decision, verbatim in substance: "The company is awarded a certain number of
+points based on the employees' participation. Creditable rules: the company hosting; the
+percentage of attended employees; the percentage of presenting employees." Today's company
+score (`05` §6.2, `REQ-LDR-004`, `REQ-PRF-003`) is derived only — the sum of a company's
+members' points over the period, divided by the active-member count frozen at snapshot time.
+This section adds three company-level rules on top of that sum, built and tested; three
+design decisions follow, each with the alternative considered and why it lost, per the
+lead's request.
+
+### (a) "The company hosting" — the smallest honest link
+
+There is no venue→company link in `02`'s frozen domain model, and I did not add one.
+`venues` is an org-managed, reusable list (`ENT-venues`) — the same meeting room hosts
+sessions for many different presenting companies over time, and a session can also use
+`custom_venue_name` with no `venues` row at all. A permanent `venues.company_id` would
+conflate "where" with "who is credited for hosting," and would silently misattribute every
+session at a shared venue to whichever company the venue happened to be tagged for.
+
+Instead: a **nullable `sessions.host_company_id uuid references companies(id)`**, set per
+session. Null by default — hosting credit is opt-in per session, not inferred. A same-org
+guard trigger (`sessions_host_company_same_org`) mirrors `members_company_same_org` (0027)
+exactly. This is schema (SQL), proposed like every other M4 table; the lead logs the DEC at
+promotion since `sessions` is not my table to alter as app code, only as a proposed column.
+
+**Known gap, flagged rather than silently narrowed:** the real scheduling screen
+(`app/admin/sessions/**`) is `console`'s, not mine to edit. Until `console` adds a field,
+`/app/admin/scoring` carries a stopgap form — a session ID typed into a text field plus a
+company `<select>` — the same pattern the manual point-adjustment form already uses for a
+raw member ID (this file's wave-2 handoff section already flagged that one; this is the same
+trade twice). `setSessionHostCompany()` in `lib/dal/scoring-admin.ts` is the write path; the
+RLS boundary is `sessions`' own `sessions_update_admin` policy plus a new column grant
+(`grant update (host_company_id) on sessions to authenticated`) — no new policy of mine.
+
+### (b) The two percentage rules — scope and shape
+
+Evaluated once, per **completed** session (mirroring `no_show`'s "evaluated once, at
+completion" contract exactly), for **every company that had at least one active member
+attend or present at that session** — not scoped to the session's host company alone. This
+is an assumption, not a certainty: the owner's three bullets read as three independent
+company-level signals to me, matching how the derived leaderboard total is already
+company-agnostic (every company's members contribute regardless of who "hosted" what), so I
+built the general reading. The narrower reading — "did the *host* company's own people show
+up to the session it hosted" — is equally plausible and is a one-line `where` change in
+`evaluate_company_points()` if the owner means that instead (filter the attendance/presenting
+loops to `s.host_company_id` rather than iterating every company with a match). **Flagging
+this as the open question I did not guess past**, with my default stated and reasoned above.
+
+Each rule is **proportional**, not threshold pass/fail: `points = round(percent × 100 ×
+points_per_percent)`, capped at `cap_points`, admin-editable per rule (`points_per_percent`,
+`cap_points`) exactly like `scoring_rules`' existing knobs (`points`, `cap_per_session`) are
+editable on the same screen. A proportional design was closer to "percentage... is
+creditable" than a binary threshold, and is the more informative signal on the board
+(`REQ-LDR-004`'s own reasoning — show the real number, don't collapse it to pass/fail).
+
+**A fourth decision the owner did not ask for, stated as a recommendation, not a silent
+default:** `min_active_members` (seeded 3) gates both percentage rules. Without it, a
+one-person company hits 100% attendance and 100% presenting on every session it touches —
+exactly the small-denominator gaming `05` §6.2 already names and contains for the derived
+`points_per_active_member` metric (a required deactivation reason, both metrics always
+shown). The percentage rules have the identical shape of exposure with no existing
+containment, so I added the same kind of guard rather than leaving it open. Admin-editable,
+so an org that judges 3 too strict (or too lax) changes it without a migration.
+
+### (c) A separate append-only ledger, not a nullable `points_ledger.member_id`
+
+`company_points_ledger` mirrors `points_ledger` (0027) column for column, its own
+`company_points_balances` rollup, its own append-only trigger (with the identical org-deletion
+cascade exception), revoked from every client role including `service_role`, one door in
+(`evaluate_company_points()`, `SECURITY DEFINER`). I considered widening `points_ledger` to
+carry `company_id` alongside a now-nullable `member_id` (the `leaderboard_entries` shape,
+`num_nonnulls(member_id, company_id) = 1`) and rejected it: `points_ledger.member_id` is
+`not null` today and every one of its policies, its rollup trigger, and `getPointsHistory()`
+in the DAL assume a member is always present. Making that column nullable is not additive —
+it is a change to an invariant three other pieces of code already depend on, for a shape
+`leaderboard_entries` already proves is not free (it needed its own `check` constraint and a
+`member_id is null` branch in its own RLS policy). A dedicated table is the smaller, more
+honest change, and it is what the lead's own task message recommended by default.
+
+`company_points_ledger.meta jsonb` carries the raw counts behind a percentage row (`attended`/
+`presenting`, `active_members`, the computed `percent`) — REQ-PTS-003's "explainable without
+asking anyone" extended to company scope. `/app/leaderboards`' new "your company's points"
+section (`CompanyPointsBreakdownSection`) reads it directly, so a member can see "3 of 5
+active employees attended (60%)," not just the point amount.
+
+### How company points enter سباق الشركات (`REQ-LDR-004`)
+
+`snapshot_leaderboard()` (0042, my own function — a `create or replace`, not a hook into
+another track) now sums **member-derived points PLUS company-ledger points** in the period,
+per company, before ranking. `active_member_count` — the frozen denominator `05` §6.2
+requires — is unchanged: it was never derived from `points_ledger` in the first place, so
+adding a second points source changes only the numerator. Both `total_points` and
+`points_per_active_member` therefore already include the three new rules on every board that
+shows them, with no separate "company rules total" column needed — REQ-LDR-004's "both
+metrics always shown" continues to mean the same two numbers it always meant.
+
+### Idempotency keys (extending this file's existing table, `05` §2.1)
+
+| Action | Key |
+|---|---|
+| `company_hosting` | `company_hosting:session_delivered:<session.id>:<company.id>:v1` |
+| `company_attendance_pct` | `company_attendance_pct:session_completed:<session.id>:<company.id>:v1` |
+| `company_presenting_pct` | `company_presenting_pct:session_completed:<session.id>:<company.id>:v1` |
+
+### The hook into `sessions` — SQL only, per DEC-046's discipline
+
+`evaluate_company_points(session)` is called from **`worker/src/tasks/evaluate_no_shows.ts`**
+(a file I already own), not from a new job. `sessions_completion_fanout()` (0031, also mine)
+already enqueues exactly one `evaluate_no_shows` job per completed session, unconditionally —
+"evaluated once, at completion," the identical contract the owner's rules need. Folding the
+company evaluation into that existing job means this story needs **zero new job types and
+zero `worker/src/index.ts` registration** — the one task file this track already owns just
+does one more thing. `audit_balances.ts` (also already mine) got the same treatment: it now
+checks `audit_company_balances()` alongside `audit_balances()`, same non-self-healing
+contract, same separate `rebuild_company_points_balances()` response.
+
+### A genuine Postgres trap hit while building this, recorded so nobody else loses the hour
+
+`select * into r into a `%ROWTYPE` variable, then testing `r is not null` to mean "was a row
+found," is WRONG when the row itself legitimately has some `null` fields — which every rule
+row here does, by the shape `check` constraint itself (`company_hosting`'s `points_per_percent`
+is always null; the percent rules' `points` is always null). SQL row-wise `IS [NOT] NULL`
+requires **every** field to be null (or non-null) for the whole row to test true — a row with
+a mix of null and non-null fields is neither `IS NULL` nor `IS NOT NULL`. `evaluate_company_points()`
+tests `r_host.id is not null` (a column that is never null once a row exists), not `r_host is
+not null`, for exactly this reason — the same idiom `select ... into s; if not found then
+return; end if;` already uses one line above it, just spelled differently because that one
+tests `FOUND` immediately rather than the row itself. Caught by three RLS tests silently
+returning zero rows with no error before this was fixed.
+
+### Files, `03` §8.2 rows, and tests
+
+- **SQL:** `supabase/proposed/scoring/0001_company_points.sql` — `sessions.host_company_id`
+  (+ guard trigger + column grant), `scoring_config_history`'s scope `CHECK` widened
+  (wrapping the *current* definition, not retyping M1's original list — another track had
+  already widened it once for `'branding'`; retyping would have silently dropped that value),
+  `company_scoring_rules`, `company_points_ledger`, `company_points_balances`,
+  `evaluate_company_points()`, `audit_company_balances()` /
+  `rebuild_company_points_balances()`, `_seed_org_scoring()` extended (+ backfill for orgs
+  that already exist — including the live "kareem" org, once this is promoted and pushed),
+  `snapshot_leaderboard()` extended. The full `03` §8.2 list is in the migration's own header.
+- **Tests:** `tests/rls/scoring-company-points.test.ts` — 18 cases, all passing:
+  `POL-company_scoring_rules` (select, update.admin, catalogue, shape, history),
+  `POL-sessions.host_company_same_org`, `POL-company_points_ledger` (insert, update/delete,
+  select), `RPC-evaluate_company_points` (service_role_only, hosting incl. idempotent replay,
+  no-host case, attendance_pct with meta, presenting_pct, the `min_active_members` gate),
+  `ENT-company_points_balances rollup` (rebuild reproduces exactly, audit never self-heals),
+  `RPC-snapshot_leaderboard.company_ledger_included`.
+- **DAL:** `lib/dal/leaderboards.ts` (+`getCompanyPointsBreakdown()`), `lib/dal/scoring-admin.ts`
+  (+company rule CRUD, +`setSessionHostCompany()`, +`listCompaniesForAdmin()`, extended
+  `getScoringAdminData()`), add-only per the ownership rule.
+- **UI:** `/app/admin/scoring` (SCR-053) gained a "company rules" section plus the host-company
+  stopgap form; `/app/leaderboards` (SCR-028) gained a "your company's points" breakdown
+  section (`components/scoring/company-points-breakdown.tsx`), Arabic-first, all six ICU
+  plural forms where a count appears, `<bdi>` on every interpolated value, `formatNumber`
+  throughout (never ICU's bare `#`).
+- **Worker:** `worker/src/tasks/evaluate_no_shows.ts` and `worker/src/tasks/audit_balances.ts`
+  extended in place — no new task files, no `worker/src/index.ts` change needed.
+
+### Open questions for the lead / owner (not guessed past)
+
+1. **(b) above, restated as a decision to confirm:** are the two percentage rules meant to
+   apply to *any* company with attending/presenting members at a session (what I built), or
+   only to the session's *host* company (measuring the host's own turnout)? My default is the
+   former; the fix if wrong is a one-line `where s.host_company_id = rec.company_id` in
+   `evaluate_company_points()`.
+2. **`min_active_members = 3`** — my own anti-gaming addition, not something the owner asked
+   for by name. Confirm the default, or the org edits it on `/app/admin/scoring` regardless.
+3. **The host-company stopgap form** on `/app/admin/scoring` needs `console` (or the lead) to
+   replace it with a real field on the scheduling screen — flagged, not silently left as the
+   permanent UI.
+4. **Seed defaults** (`company_hosting` 100 pts flat; attendance 1 pt/1%, capped 100;
+   presenting 2 pts/1%, capped 150) are placeholders sized to be roughly comparable to the
+   existing catalogue's scale (`session_delivered` is 50, `attendee_bonus` caps at 60) — every
+   one is admin-editable from day one, so getting the exact numbers "right" was not the goal.
