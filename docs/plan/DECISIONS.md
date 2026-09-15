@@ -1447,6 +1447,17 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-063 — The sending domain is `peninsulapictures.dev`, sender `kareem-notifications@peninsulapictures.dev`
+
+- **Date:** 2026-09-15 · **Decided by:** owner, at Launch step 6
+- **Decision:** All platform mail is sent from **`kareem-notifications@peninsulapictures.dev`** through Resend, on the owner's already-registered `peninsulapictures.dev` domain, not from `no-reply@kareem.pp.sa` as `08` §3.4 assumed. Configured entirely by variables on the worker: `MAIL_TRANSPORT=resend`, `RESEND_API_KEY` (sending access, restricted to that domain), **`MAIL_FROM_ADDRESS=kareem-notifications@peninsulapictures.dev`** (the code's default remains `no-reply@kareem.pp.sa`; the variable overrides it — `worker/src/mail/transport.ts`). The display name stays the org's. No code change.
+- **Rationale:** the domain the owner already operates and has in Resend; `kareem.pp.sa` carries no mail records and adding them would put DNS changes on the launch's critical path for no member-visible gain. The sender's domain differing from the site's domain costs nothing for deliverability with Resend's DKIM on the sending domain; a DMARC-aligned `kareem.pp.sa` sender can be adopted later by changing one variable.
+- **Verification (this session):** no Resend DNS records were visible at `resend._domainkey.` / `send.` of either domain from the session's resolver at the time of the decision; the owner reports the domain verified in Resend. The first send of the smoke test is the proof; a rejection shows as a 403 in the worker log.
+- **Supersedes:** `08` §3.4's «one platform-verified sending domain» is unchanged in principle; its example address is.
+- **Documents changed:** `STATUS.md` (the inventory: `MAIL_FROM_ADDRESS` required, not optional)
+
+---
+
 ## Template for new entries
 
 ```markdown
