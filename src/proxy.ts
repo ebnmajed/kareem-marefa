@@ -27,8 +27,33 @@ const PLATFORM_LOCALE = routing.defaultLocale;
 // /en/app/* and the auth screens redirect to Arabic; marketing /en stays.
 const EN_PLATFORM = /^\/en(\/(app|sign-in|choose-org|no-access)(\/|$))/;
 
+// The (dev) component gallery — `16` §4.3, DEC-083. It is not a product
+// surface: it reads no data and renders only props, and it exists so the
+// 390 px RTL review and the visual baseline have somewhere to happen.
+//
+// ★★ "dev-only" and "visually baselined" are in direct tension and NODE_ENV
+// does not resolve it. `scripts/lib/stubbed-server.mjs` refuses to start
+// without `.next` and serves the PRODUCTION build through `next start`, which
+// is the entire reason it exists (DEC-023). So a route excluded from that
+// build makes `npm run visual` 404, and a route included in it is publicly
+// reachable on the live domain. There is no third option through NODE_ENV.
+//
+// So it is gated HERE, at the edge: 404 unless the harness says otherwise.
+// `scripts/visual-diff.mjs` sets KAREEM_GALLERY=1 when it spawns `next start`
+// — it already overrides the environment for exactly this class of reason.
+const GALLERY = /^\/(ar|en)\/ui(\/|$)/;
+
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  if (GALLERY.test(pathname) && process.env.KAREEM_GALLERY !== "1") {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${pathname.slice(1, 3)}/platform-unconfigured`;
+    url.search = "";
+    const notFound = NextResponse.rewrite(url, { status: 404 });
+    notFound.headers.set("x-content-type-options", "nosniff");
+    return notFound;
+  }
 
   if (EN_PLATFORM.test(pathname)) {
     const url = request.nextUrl.clone();
@@ -72,6 +97,17 @@ export default async function proxy(request: NextRequest) {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("content-security-policy-report-only", csp);
   }
+  // ★ The shell needs the path, and a layout cannot read one — DEC-098's tab
+  // bar is CONTEXTUAL: it hides on detail and immersive screens, where a
+  // bottom ACTION bar replaces it, because a universal tab bar plus a sticky
+  // action card is two fixed bottom bars on one screen.
+  //
+  // The alternative was a client component calling `usePathname()`, which
+  // would make the shell's layout a hydration result: `<main>`'s bottom
+  // padding has to match the bar's presence, and a client-decided bar means a
+  // visible shift on every immersive screen. One request header keeps the
+  // whole decision on the server, where it can also be tested.
+  if (platform) requestHeaders.set("x-pathname", pathname);
   const forwarded = nonced ? new NextRequest(request, { headers: requestHeaders }) : request;
 
   let response: NextResponse;

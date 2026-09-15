@@ -133,3 +133,328 @@ export function PlusIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE HOUSE APP SET — `16` §4.2.1, DEC-079, and `04` §11 as amended.
+
+   The eight glyphs above are the MARKETING vocabulary and do not change: the
+   landing page is the frozen public contract until M13, and `npm run visual`
+   is 0.000% on it. The rule below them splits by surface, on the owner's
+   decision of 2026-09-15:
+
+     marketing  the eight, unchanged — the constellation is the language there
+     the app    this set, drawn for this product
+
+   A landing page carries its meaning in one metaphor and any stock icon
+   cheapens it. A console of 31 admin and platform screens is the opposite
+   problem: a bottom tab bar with no icons is not a tab bar, a dense admin
+   table with no row affordances is a wall of text, and every control forced to
+   carry a word makes the interface HEAVIER, not purer.
+
+   Three conditions carry the brief's real intent forward, and they are what
+   keeps the set from looking bought:
+
+   1. HAND-AUTHORED INLINE SVG. NO ICON DEPENDENCY, EVER. Not Lucide, not
+      Heroicons, not Phosphor. The tell is not that an interface has icons — it
+      is that it has someone else's.
+   2. ONE DRAWING SPEC, so the set reads as one hand: a 24 px grid, round caps
+      and joins, a 2 px minimum interior gap, and geometry built from the same
+      circles and straight lines the eight use. The dot and the line stay the
+      family's ancestors — a notification count is a dot, a live session is a
+      dot, an active tab is a dot.
+      ★ The stroke is 2, not the 1.7 `16` §4.2.1 names. The eight ancestors are
+        drawn at 2 and cannot be redrawn — they are on a frozen page — and one
+        hand matters more than the number (DEC-106).
+   3. THE FORBIDDEN IMAGERY STANDS, on both surfaces: no open books, graduation
+      caps, lightbulbs, mortarboards, cartoon illustrations or any other
+      education cliché. This is a professional platform for people who grade
+      footage for a living. A calendar is a calendar; a lightbulb is never an
+      idea.
+
+   ★ AN ICON NEVER TRAVELS ALONE IN A PRIMARY ACTION. A tab bar label plus
+   icon, a table row action with an accessible name, a bookmark button with
+   `aria-label` — an icon-only control ships only where the meaning is
+   unambiguous and the name is ON the element. That is REQ-NFR-007, not a style
+   rule, and `ui/icon-button` makes the name a required prop so it cannot be
+   forgotten.
+
+   Direction: a glyph that points flips by the LOGICAL axis, exactly as the
+   chevron and the arrow above do. Everything else never mirrors.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** البحث — the shell's search entry, and every filter box. */
+export function SearchIcon({ className = "", ...props }: IconProps) {
+  return (
+    <Svg className={`rtl:-scale-x-100 ${className}`} {...props}>
+      <circle cx="11" cy="11" r="6" />
+      <path d="m20 20-4.5-4.5" />
+    </Svg>
+  );
+}
+
+/** التصفية — the chip row's overflow, and the filter sheet. */
+export function FilterIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h16M7 12h10M10 17h4" />
+    </Svg>
+  );
+}
+
+/** الترتيب — a sortable column, and the browse sort control. */
+export function SortIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3" />
+    </Svg>
+  );
+}
+
+/** الحفظ — bookmark, outline. The filled twin is `BookmarkFilledIcon`. */
+export function BookmarkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 4h12v16l-6-4.5L6 20z" />
+    </Svg>
+  );
+}
+
+/** محفوظ — bookmark, filled. The 120 ms fill is the whole animation (DEC-100). */
+export function BookmarkFilledIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 4h12v16l-6-4.5L6 20z" fill="currentColor" />
+    </Svg>
+  );
+}
+
+/** المشاركة — three nodes and two lines: the network, at icon scale. */
+export function ShareIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="m8.3 10.8 7.4-4.3m0 11-7.4-4.3" />
+    </Svg>
+  );
+}
+
+/** التنزيل — a signed URL, always. Never a client-side blob (CSP). */
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" />
+    </Svg>
+  );
+}
+
+/** الرفع — the file-drop control, and nothing else. */
+export function UploadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 20V9m0 0-4 4m4-4 4 4M5 5h14" />
+    </Svg>
+  );
+}
+
+/** التقويم — a calendar. Not a date, not an event, not a clipboard. */
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="6" width="16" height="14" rx="2" />
+      <path d="M4 11h16M9 4v3m6-3v3" />
+    </Svg>
+  );
+}
+
+/** الوقت — a clock. The hands read 10:10 in both directions; it never mirrors. */
+export function ClockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7.5V12l3 2" />
+    </Svg>
+  );
+}
+
+/** المكان — a venue. A pin and a dot; the dot is the family's ancestor. */
+export function PinIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 21s6-5.2 6-9.8A6 6 0 0 0 6 11.2C6 15.8 12 21 12 21z" />
+      <circle cx="12" cy="11" r="2" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** الحضور — a group. Attendance counts, the member directory. */
+export function UsersIcon({ className = "", ...props }: IconProps) {
+  return (
+    <Svg className={`rtl:-scale-x-100 ${className}`} {...props}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 6.2a3.2 3.2 0 0 1 0 5.6M17.5 14.4A5.5 5.5 0 0 1 20.5 19" />
+    </Svg>
+  );
+}
+
+/** العضو — one person. The account menu, a presenter row, a profile. */
+export function UserIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+    </Svg>
+  );
+}
+
+/** التقييم — a rating. Staff surfaces and a presenter's own view only. */
+export function StarIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props}>
+      <path
+        d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8z"
+        fill={filled ? "currentColor" : "none"}
+      />
+    </Svg>
+  );
+}
+
+/** تم — a confirmed state. The check inside a circle, not a badge. */
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="m8.5 12 2.4 2.4 4.6-5" />
+    </Svg>
+  );
+}
+
+/** خطأ — a field error. Colour is never the only channel; this is the other. */
+export function AlertCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4.5" />
+      <circle cx="12" cy="16" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** تحذير — something needs attention but nothing has failed yet. */
+export function AlertTriangleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4.5 21 19.5H3z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** معلومة — a hint, never a warning. */
+export function InfoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 11.5V16" />
+      <circle cx="12" cy="8.2" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** القائمة — the phone drawer. Three lines; the line is an ancestor. */
+export function MenuIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Svg>
+  );
+}
+
+/** المزيد — a row's overflow. Three dots; the dot is an ancestor. */
+export function MoreIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** صورة — a poster, a photo, the media box's placeholder. */
+export function ImageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="m5 17 4.5-4.5L13 16l2.5-2.5L19 17" />
+    </Svg>
+  );
+}
+
+/** مقفل — a locked layer, a restricted screen, a closed registration. */
+export function LockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+    </Svg>
+  );
+}
+
+/** الرؤية — visible. Used by the designer's layer list and the moderation queue. */
+export function EyeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </Svg>
+  );
+}
+
+/** الحذف — destructive, and always behind a dialog that names the object. */
+export function TrashIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 7h15M9.5 7V5h5v2M6.5 7l1 13h9l1-13M10.5 11v5m3-5v5" />
+    </Svg>
+  );
+}
+
+/** الرابط — a link that leaves, or a copied URL. */
+export function LinkIcon({ className = "", ...props }: IconProps) {
+  return (
+    <Svg className={`rtl:-scale-x-100 ${className}`} {...props}>
+      <path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7l-1.2 1.2" />
+      <path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.3 2.3a4 4 0 0 0 5.7 5.7l1.2-1.2" />
+    </Svg>
+  );
+}
+
+/** الإشعارات — the bell. A dot rides it when there is an unread count. */
+export function BellIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5S6.5 14 6.5 10z" />
+      <path d="M10 18.5a2.2 2.2 0 0 0 4 0" />
+    </Svg>
+  );
+}
+
+/**
+ * الرئيسية — home. Two additions the §4.2.1 list does not name and the shell
+ * needs (DEC-106): this and the bell. A house is not on the brief's forbidden
+ * list — that bans education clichés: books, caps, lightbulbs, mortarboards.
+ * Drawn from the same straight lines as the rest, with no chimney, no door and
+ * no window, because each of those is a detail that reads as a stock icon.
+ */
+export function HomeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 10.5 12 4l8 6.5V20H4z" />
+    </Svg>
+  );
+}

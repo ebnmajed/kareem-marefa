@@ -1954,6 +1954,18 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-106 — The house icon set is drawn at the ancestors' stroke, not §4.2.1's number, and it is thirty-four exports rather than thirty-two
+
+- **Date:** 2026-09-15 · **Decided by:** the wave-5 lead session, implementing `DEC-079`
+- **1 · The stroke is 2, not 1.7.** `16` §4.2.1 condition 2 specifies «a 24 px grid, **1.7 px stroke**, round caps and joins». The eight existing glyphs in `src/components/ui/icons.tsx` are drawn at **2**, and they cannot be redrawn: they are the marketing site's entire vocabulary, `/`, `/ar`, `/en` and `/ar/register` are the frozen public contract until M13, and `npm run visual` is 0.000 % on them. Condition 2's *purpose* is that **the set reads as one hand**, and its own text names the eight as «the family's ancestors» — so a set drawn at 1.7 beside ancestors drawn at 2 fails the condition in order to satisfy the number. **The number yields; the hand does not.** Everything else in the spec is followed exactly: the 24 px grid, round caps and joins, the 2 px minimum interior gap, and geometry built from the same circles and straight lines.
+- **2 · Two glyphs the list does not name, and the shell needs.** §4.2.1 lists thirty-two. The shell adds **`bell`** — §6.1's own diagram shows 🔔 in both the desktop and phone rows, so the list simply omits what its neighbouring section requires — and **`home`**, for the tab bar's first tab. A house is **not** on the brief's forbidden list, which bans *education clichés*: books, graduation caps, lightbulbs, mortarboards, cartoon illustration. It is drawn from the same straight lines as the rest, with no chimney, no door and no window, because each of those is the detail that makes an icon read as bought. `icons.tsx` therefore exports **thirty-four** functions: the eight marketing ancestors (seven of which the app set also uses) plus twenty-six drawn for the app.
+- **3 · Both surfaces keep their bans.** No icon dependency, ever — not Lucide, not Heroicons, not Phosphor. No education imagery, on marketing or in the app. An icon never travels alone in a primary action, and `ui/icon-button` makes the accessible name a **required prop** so it cannot be forgotten.
+- **Rationale for writing this down rather than quietly using 2:** a number in a `settled` document is exactly the kind of thing a later session re-derives from the document and "fixes" in the code, and the fix would break the one hand the condition exists to protect. The gallery (`/[locale]/ui`, `DEC-083`) renders every glyph at 16, 20 and 24 px so any future drift is visible rather than inferred.
+- **Supersedes:** `16` §4.2.1's stroke figure and its count of thirty-two.
+- **Documents changed:** `src/components/ui/icons.tsx`, `04-architecture.md` §11, `16` §4.2.1
+
+---
+
 ## Template for new entries
 
 ```markdown

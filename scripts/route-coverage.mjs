@@ -135,8 +135,13 @@ if (KINDS.includes('error')) {
     if (!/dir\s*=\s*["'{`]?\s*rtl/.test(body)) {
       failures.push('src/app/[locale]/global-error.tsx does not contain dir="rtl" — it has no provider above it (DEC-091)')
     }
-    if (/getTranslations|useTranslations|NextIntlClientProvider/.test(body)) {
-      failures.push('src/app/[locale]/global-error.tsx references next-intl — it replaces the root layout, so there is no provider; hand-write the two sentences (DEC-091)')
+    // ★ Comments are stripped before this test, and that is not fussiness: the
+    // first version matched the file's own explanation of why it cannot use
+    // next-intl, which is exactly the prose that has to be there for the next
+    // reader. A gate that punishes its own documentation gets deleted.
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+    if (/from\s+['"]next-intl/.test(code) || /\b(getTranslations|useTranslations)\s*\(/.test(code)) {
+      failures.push('src/app/[locale]/global-error.tsx uses next-intl — it replaces the root layout, so there is no provider; hand-write the two sentences (DEC-091)')
     }
   }
 }
