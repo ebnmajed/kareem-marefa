@@ -820,3 +820,128 @@ stop a real break if a longer date ever pushes the clause to the edge.
 - **Cache 300 s.** Short for a public image, on purpose: a cancellation must stop serving quickly,
   and the poster is re-rendered when details change. Crawlers keep their own copy far longer; that
   is their cache, and it is the trade-off the owner accepted.
+
+---
+---
+
+# Wave 5 · M9 — the form model
+
+`16` §8, `REQ-UIX-009` / `-010` / `-011`, DEC-091, DEC-101. **Nothing here redesigns a screen** —
+the screens are M10/M11 and they are mine then. This is the eight primitives every form in the
+product will sit on, `src/lib/form-state.ts`, and the five route boundaries under my own routes.
+
+## 15. The plan, in the order I will build it
+
+| # | Unit | Files | Why this order |
+|---|---|---|---|
+| 1 | `formStateFrom()` | `src/lib/form-state.ts`, `tests/unit/form-state.test.ts` | Smallest, no strings, no DOM. Everything below reads better once the state shape exists. |
+| 2 | the wrapper + three controls | `ui/{field,input,textarea,select}.tsx` + 4 jsdom tests | `<Field>` is item 1 of §8.2 and the other three are what it wraps. |
+| 3 | the summary | `ui/form-summary.tsx` + its test | Ask 5's literal answer. Depends on `summaryErrors()` from unit 1. |
+| 4 | the three toggles | `ui/{checkbox,radio-group,switch}.tsx` + 3 tests | Independent of 2 and 3; grouped because they share the «label is the wrapper» shape. |
+| 5 | adoption | `app/propose/**`, `tests/e2e/forms-propose.spec.ts` | Proves the set on the largest form in the product. Deletes one of the fourteen `FIELD` constants. |
+| 6 | the boundaries | 5 files under `app/{sessions,propose}/**` | Independent of everything above; last because `<RouteError>` is still a stub. |
+
+## 16. `src/lib/form-state.ts` — the shape, and why each field is in it
+
+`ProposeState` (`app/propose/actions.ts`) is the existing good case and it is what generalises. Four
+of its five fields survive unchanged; one is added.
+
+```ts
+type FormState<F extends string> = {
+  errors:    Partial<Record<F, string>>   // field → message KEY, never a message
+  formError: string | null                // whole-form failure, same key space
+  values:    Partial<Record<F, string>>   // what was typed, handed straight back
+  lists:     Record<string, string[]>     // multi-value controls (co-presenters)
+  attempt:   number                       // ★ NEW
+}
+```
+
+**`errors` holds keys, not messages.** A Server Action cannot call `useTranslations`, and a message
+crossing the action boundary is a message that cannot be re-rendered when the locale changes. The
+action names the failure; the form renders it. That is already how `ProposeState` works.
+
+**`attempt` is new and it earns its place three times.** It is the round-trip counter, incremented
+by every failed return.
+
+1. **Focus.** Today `proposal-form.tsx` re-focuses the summary from
+   `useEffect(…, [failed, state])` — a dependency on object identity. `useActionState` does hand
+   back a new object each time, so it works, but only by accident of how React stores it. With
+   `attempt` the caller writes `key={state.attempt}` on `<FormSummary>`, React remounts it, and its
+   own mount effect focuses it. **Exactly once per round trip**, including two consecutive failures
+   with identical errors.
+2. **§8.2 item 5 — «inline validation on blur, AFTER THE FIRST SUBMIT ATTEMPT ONLY».** The form
+   needs to know a submit has happened. `attempt > 0` is that fact, and it survives the round trip,
+   which a `useState` flag set in an `onSubmit` handler does not (React 19 resets the form).
+3. It makes the initial state distinguishable from a state that came back clean, which nothing else
+   in the shape does.
+
+**`lists` is separate from `values`** because `FormData.getAll()` is a different question from
+`.get()`, and collapsing the two into `Record<string, string | string[]>` pushes a type narrowing
+into every `defaultValue={…}` on every form. `ProposeState` already keeps `coPresenters` apart; this
+just stops the next form inventing its own name for it.
+
+### The functions
+
+| Function | Where it runs | What it does |
+|---|---|---|
+| `emptyFormState<F>()` | both | The `useActionState` initial value. Replaces `emptyProposeState`. |
+| `formStateFrom(formData, fields, lists?)` | the action | Reads every declared field out of `FormData` **once**, trimming nothing — a trim would silently change what the member typed. Returns `{ values, lists }`. |
+| `failedWith(captured, errors, formError?, prev?)` | the action | Builds the failure state and increments `attempt` off `prev`. |
+| `zodErrors(error, key)` | the action | First issue per path wins, mapped through the caller's `key(field, code, empty)`. `errorKey()` in `propose/actions.ts` is already exactly that function and becomes the argument. |
+| `hasFailed(state)` | the form | `formError !== null \|\| Object.keys(errors).length > 0`. |
+| `was(state, field)` / `wasList(state, field)` | the form | The read-back. This is the `was()` that §8.2 item 6 names. |
+| `summaryErrors(state, options)` | the form | `FormState` → `FormSummaryError[]`, **in declared field order**. |
+
+★ **`summaryErrors` orders by the caller's field list, not by `Object.keys(errors)`.** Object key
+order is Zod's issue order, which is schema order, which usually matches the page but is not the
+same fact. A summary whose first link is not the first problem on the page sends the member
+upward. The declared order is the page's order and the caller already has it — it is the array it
+passes to `formStateFrom`.
+
+★ **`formError` does not go in the summary and that is deliberate.** `FormSummaryError.fieldId` is
+"the control's id, used as the link target and the focus target" and a whole-form failure has no
+control. It is also **mutually exclusive with field errors by construction** — look at
+`submitProposal`: it returns `errors` from the Zod branch and `formError` from the `catch`, never
+both. So the form renders one or the other, one alert region either way, and nothing is invented to
+fill a slot in a frozen type.
+
+## 17. `<Field>` — the two decisions that are not obvious
+
+**1. Context, not `cloneElement`.** `Field` must wire `aria-describedby`, `aria-invalid` and
+`aria-required` onto **the control**, and its `children` is `ReactNode`. Cloning the single child
+works only while the child *is* the control — and the propose form's duration field is
+`<div class="flex"><input/><span>دقيقة</span></div>`, where cloning would put `aria-invalid` on a
+`<div>`. So `Field` publishes `{ id, describedBy, invalid, required }` through a context and
+`Input` / `Textarea` / `Select` read it. **An explicit prop always wins**, and a control used
+outside a `Field` is a plain control.
+
+The cost is `"use client"` on those four files. It is not really a cost: **`field.tsx` has to be a
+client component anyway** — it calls `useId()` to generate the id when one is not passed, and
+`useId` is a client hook. The stub calls it with no `"use client"`, which would throw the first time
+a Server Component rendered it.
+
+**2. The field's own error is NOT `role="alert"`.** The stub has one. With `<FormSummary>` also
+`role="alert"`, a six-error submission announces seven alerts. The summary is the announcement; the
+field error is the detail found on arrival, and it is wired into the control's
+`aria-describedby`, so it is read when focus lands — which is precisely where the summary's link
+sends the member. Colour is never the only channel: `--color-error`, the `alert-circle` glyph and a
+1 px `--color-error-border` on the control, all three.
+
+## 18. Requests to the lead
+
+1. **`ui.field.required` — «مطلوب» — in `src/messages/{ar,en}/ui.json`.** ★ Blocking for unit 2.
+   `FieldProps` has no slot for the marker text (frozen, append-only) and `ui.json` is lead-only, so
+   `Field` reads `useTranslations("ui")` → `t("field.required")`. It is the **only** string any of my
+   eight primitives needs — every other label in the set is a prop.
+2. ~~`alert-circle`~~ — **landed** while I was planning. Using `AlertCircleIcon` from
+   `ui/icons.tsx`, no placeholder.
+3. **`axe-core` as an explicit `devDependency`.** It is on disk at 4.12.1, hoisted from
+   `@axe-core/playwright`, so `import "axe-core"` resolves today and under `npm ci`. It is still a
+   transitive dependency being imported directly, and `package.json` is lead-only.
+4. **`scripts/route-coverage-allowlist.json` prunes after unit 6** — `--prune` should drop 8 `error`
+   entries and 6 `not-found` entries. Mine to write, yours to prune.
+5. **`FieldProps` has no «اختياري» slot**, so on adoption the propose form's optional marker is
+   replaced by «مطلوب» on the required fields. That is §8.2 item 2 («required is marked
+   positively»), but it is a visible copy change on a live screen and it should be yours to confirm
+   rather than mine to assume. `proposals.propose.form.optional` stays in the catalogue either way —
+   `admin/proposals` uses it too.
