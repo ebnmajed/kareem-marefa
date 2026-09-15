@@ -1424,6 +1424,26 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Rationale:** an internal app with one org and one operator gains nothing from a paid error tracker that the deploy log does not already show; wiring it would add a secret and a network destination for a service nobody would watch.
 - **Supersedes:** the `SENTRY_DSN` rows of `04` §10 and the Launch handoff's step 10; DEC-059's «Sentry as the `AlertSink` transport» post-launch item.
 - **Documents changed:** `STATUS.md` (the inventory)
+## DEC-061 — `0016` guards its `alter table realtime.messages`; the rehearsal proves schema shape, not the hosted role's DDL rights
+
+- **Date:** 2026-09-15 · **Decided by:** session, on Launch day, with the owner's push output in hand
+- **What happened:** `supabase db push` (step 3) applied `0003` … `0015` and stopped at `0016`'s first statement, `alter table realtime.messages enable row level security`, with `42501 must be owner of table messages`. Production is at `0015`; each migration runs in its own transaction, so nothing of `0016` landed and `registrations` is untouched. On the hosted project `postgres` owns none of `realtime.messages`, `storage.objects`, `storage.buckets` (owners `supabase_realtime_admin` / `supabase_storage_admin`, no inherited privilege — the owner's introspection query), RLS is already on for all three, and **`create policy` on them is allowed anyway** through Supabase's `supautils` policy grants, which is how every project's storage and realtime policies are created. `alter table` is not.
+- **Decision:** `0016` is edited in place — it was never applied anywhere permanent, so a new migration could not make it succeed — to run the `alter table` only when `pg_class.relrowsecurity` is false (a local or CI database, where `postgres` may), and skip it where RLS is already on (hosted). The policies and the `grant` stay as written; a `grant` by a non-owner without grant option warns and grants nothing rather than failing, and Supabase's own migrations already grant `authenticated` on `realtime.messages`. No other migration alters a Supabase-owned table (grepped); `0037`/`0053`/`0054` only create and drop policies on `storage.objects` and insert into `storage.buckets`, which `postgres` may.
+- **The rehearsal's gap, recorded:** step 2 ran on a plain `postgres:17` container where `postgres` is a superuser; the hosted `postgres` is not, so the rehearsal proves that the migrations fit production's **schema** and hold under its default privileges, not that the hosted role may run every statement. The dry run plus per-migration transactions are the backstop, and they held. **Post-launch:** make `scripts/ci/roles.sql` apply the migrations as a non-superuser `postgres` with the hosted grants, so CI catches this class.
+- **Supersedes:** nothing.
+- **Documents changed:** `supabase/migrations/0016_realtime_authorization.sql`, `STATUS.md`
+
+---
+
+## DEC-062 — The RLS fixture's slugs carry a per-run token, so the drill can run against a database that already holds the real org
+
+- **Date:** 2026-09-15 · **Decided by:** session, on Launch day, from the owner's drill output
+- **What happened:** step 5's alert drill (`tests/rls/platform-alerts.test.ts`, run by the owner against production over the session pooler, every case inside a rolled-back transaction) failed 12 of 12 at the fixture's first insert with `orgs_slug_key`: the fixture named its first org `kareem`, and the real org `kareem` had been created an hour earlier. Nothing was written. Local and CI databases are empty, so the literal had never collided. The live half of the drill — `evaluate_alerts()` on production returning all eight alerts clear, twelve cron entries registered, the queue empty — had already passed.
+- **Decision:** `tests/rls/fixture.ts` suffixes its two slugs with an eight-character token generated once per process (`kareem-<token>`, `other-<token>`). Every test reads the slug from the fixture object (`f.a.slug`), none from a literal; `tenancy.test.ts`'s immutability case still sets `slug = 'other'` and is still refused by the guard, literal or not. The full RLS suite passed locally with the change (61 files / 713). Every other fixture row is org-scoped or randomly keyed; `orgs.slug` was the one platform-wide literal, and the drill's purpose — the same SQL, the same roles, production's shape — is exactly what a fixture that can coexist with real rows preserves.
+- **Rationale:** the alternative, a separate production-only drill without the fixture, would have proven less than the suite already does; the alternative of skipping the production run would have left «the drill against production» as an untested claim in the launch record.
+- **Also recorded:** the owner's drill command carried the database password into the session transcript; the password is to be rotated after the smoke test and `DATABASE_URL` on Railway updated (STATUS post-launch list).
+- **Supersedes:** nothing.
+- **Documents changed:** `tests/rls/fixture.ts`, `STATUS.md`
 
 ---
 

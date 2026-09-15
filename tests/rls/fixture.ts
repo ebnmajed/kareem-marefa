@@ -109,15 +109,23 @@ export async function seed(tx: Tx): Promise<M7Fixture> {
   return seedM7(tx, await seedM6(tx, await seedM5(tx, await seedM4(tx, await seedM3(tx, await seedM2(tx, await seedBase(tx)))))));
 }
 
+/** A per-run token on the two slugs. `orgs.slug` is unique platform-wide, and
+ *  the drill (tests/rls/platform-alerts.test.ts) is run against PRODUCTION at
+ *  Launch inside a rolled-back transaction: on Launch day the real org
+ *  `kareem` already existed there and every case failed on
+ *  `orgs_slug_key` before seeding anything (DEC-062). Every other fixture row
+ *  is org-scoped or randomly keyed; the slug was the one global literal. */
+const RUN = randomUUID().slice(0, 8);
+
 export async function seedBase(tx: Tx): Promise<Fixture> {
   await tx.asOwner();
-  const a = await org(tx, "كريم معرفة", "kareem", "KM", "kareem.example", [
+  const a = await org(tx, "كريم معرفة", `kareem-${RUN}`, "KM", "kareem.example", [
     ["admin", "مشرف كريم"],
     ["mod", "منظم كريم"],
     ["sara", "سارة العتيبي"],
     ["yaman", "يمان رضا"],
   ]);
-  const b = await org(tx, "مؤسسة أخرى", "other", "OT", "other.example", [
+  const b = await org(tx, "مؤسسة أخرى", `other-${RUN}`, "OT", "other.example", [
     ["admin", "مشرف أخرى"],
     ["mod", "منظم أخرى"],
     ["nora", "نورة"],
