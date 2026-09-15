@@ -2,6 +2,7 @@
   "admin": {
     "shell": {
       "brand": "Organisation console",
+      "skipToContent": "Skip to content",
       "moderatorEmpty": "The moderation console is still being built. Comment, photo and report queues and the audit log are coming.",
       "nav": {
         "dashboard": "Dashboard",
@@ -462,8 +463,35 @@
       "placeholder": "Type a member's name or email",
       "noMatches": "No matching member"
     },
+    "combobox": {
+      "removeChip": "Remove <t>{name}</t>",
+      "createOption": "Add “<t>{name}</t>”",
+      "resultsCount": "{count, plural, one {{value} result} other {{value} results}}"
+    },
+    "dateTime": {
+      "triggerLabel": "Date and time",
+      "clear": "Clear",
+      "today": "Today",
+      "done": "Done",
+      "hour": "Hour",
+      "minute": "Minute",
+      "empty": "Not set yet"
+    },
+    "dataTable": {
+      "selectRow": "Select row",
+      "selectAll": "Select all",
+      "sortAscending": "sorted ascending",
+      "sortDescending": "sorted descending",
+      "sortNone": "not sorted"
+    },
     "reminders": {
       "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day."
+    },
+    "error": {
+      "title": "This page could not be shown",
+      "description": "Something went wrong in the admin console. Try again, or go back to the dashboard.",
+      "retry": "Try again",
+      "back": "Back to the dashboard"
     }
   }
 }
