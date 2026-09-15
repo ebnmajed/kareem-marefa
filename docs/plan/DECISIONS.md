@@ -1428,6 +1428,18 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-062 — The RLS fixture's slugs carry a per-run token, so the drill can run against a database that already holds the real org
+
+- **Date:** 2026-09-15 · **Decided by:** session, on Launch day, from the owner's drill output
+- **What happened:** step 5's alert drill (`tests/rls/platform-alerts.test.ts`, run by the owner against production over the session pooler, every case inside a rolled-back transaction) failed 12 of 12 at the fixture's first insert with `orgs_slug_key`: the fixture named its first org `kareem`, and the real org `kareem` had been created an hour earlier. Nothing was written. Local and CI databases are empty, so the literal had never collided. The live half of the drill — `evaluate_alerts()` on production returning all eight alerts clear, twelve cron entries registered, the queue empty — had already passed.
+- **Decision:** `tests/rls/fixture.ts` suffixes its two slugs with an eight-character token generated once per process (`kareem-<token>`, `other-<token>`). Every test reads the slug from the fixture object (`f.a.slug`), none from a literal; `tenancy.test.ts`'s immutability case still sets `slug = 'other'` and is still refused by the guard, literal or not. The full RLS suite passed locally with the change (61 files / 713). Every other fixture row is org-scoped or randomly keyed; `orgs.slug` was the one platform-wide literal, and the drill's purpose — the same SQL, the same roles, production's shape — is exactly what a fixture that can coexist with real rows preserves.
+- **Rationale:** the alternative, a separate production-only drill without the fixture, would have proven less than the suite already does; the alternative of skipping the production run would have left «the drill against production» as an untested claim in the launch record.
+- **Also recorded:** the owner's drill command carried the database password into the session transcript; the password is to be rotated after the smoke test and `DATABASE_URL` on Railway updated (STATUS post-launch list).
+- **Supersedes:** nothing.
+- **Documents changed:** `tests/rls/fixture.ts`, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
