@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { createProposal, proposalInput, removeCoPresenter, respondToPresenterInvite } from "@/lib/dal/proposals";
+import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
+import { PROPOSAL_VALUE_FIELDS, type ProposalField, type ProposeState } from "./state";
 import { z } from "zod";
 
 // SCR-017's Server Action. Zod before anything else (REQ-NFR-002), then the
@@ -12,28 +14,18 @@ import { z } from "zod";
 //
 // ★ No date, time or venue is read from this FormData, because
 // `proposalInput` is `.strict()` and has no such key — a smuggled field is a
-// parse failure, not a dropped one (REQ-PRO-001).
+// parse failure, not a dropped one (REQ-PRO-001). The capture list in
+// `state.ts` has no key for one either, so a smuggled value is not even handed
+// back to the form.
+//
+// ★ M9: the hand-rolled `values` / `coPresenters` carry-back is now
+// `lib/form-state` (`16` §8.2 item 6). The behaviour is identical and the
+// reason is unchanged — React 19 RESETS a form once its action resolves, so a
+// 2000-character abstract would be thrown away by a validation round trip
+// while the copy on screen promises «بياناتك ما زالت في النموذج».
+// `tests/e2e/sessions-propose.spec.ts` found that; nothing else would have.
 
-export type ProposeState = {
-  /** field name → message key under `proposals.propose.errors`. */
-  errors: Record<string, string>;
-  /** A whole-form failure, same key space. */
-  formError: string | null;
-  /**
-   * What the member typed, handed straight back.
-   *
-   * ★ React 19 RESETS a form after its action resolves. An uncontrolled
-   * textarea therefore comes back empty on a validation failure, which would
-   * throw away a 2000-character abstract and break the promise the copy makes
-   * («بياناتك ما زالت في النموذج»). The fields read their `defaultValue` from
-   * here, so the reset restores what was typed instead of clearing it.
-   * tests/e2e/sessions-propose.spec.ts found this; nothing else would have.
-   */
-  values: Record<string, string>;
-  /** The co-presenters that were ticked, for the same reason. */
-  coPresenters: string[];
-};
-
+export type { ProposeState };
 
 /**
  * The message key for a failed field.
@@ -42,7 +34,7 @@ export type ProposeState = {
  * told the wrong thing, so "missing" and "too short" are different keys even
  * though Zod raises one code for both.
  */
-function errorKey(field: string, code: string, empty: boolean): string {
+function errorKey(field: ProposalField, code: string, empty: boolean): string {
   switch (field) {
     case "title":
       return empty ? "titleRequired" : code === "too_big" ? "titleTooLong" : "titleTooShort";
@@ -63,50 +55,39 @@ function errorKey(field: string, code: string, empty: boolean): string {
   }
 }
 
-function optional(formData: FormData, name: string): string | null {
-  const raw = formData.get(name)?.toString().trim();
-  return raw ? raw : null;
+/** An optional text field: trimmed, and absent rather than empty. */
+function blank(raw: string): string | null {
+  const trimmed = raw.trim();
+  return trimmed ? trimmed : null;
 }
 
-export async function submitProposal(locale: Locale, _prev: ProposeState, formData: FormData): Promise<ProposeState> {
-  const duration = optional(formData, "expectedDurationMinutes");
-  const raw = {
-    title: formData.get("title")?.toString() ?? "",
-    abstract: formData.get("abstract")?.toString() ?? "",
-    categoryId: formData.get("categoryId")?.toString() ?? "",
-    level: formData.get("level")?.toString() ?? "",
-    targetAudience: optional(formData, "targetAudience"),
-    expectedDurationMinutes: duration === null ? null : Number(duration),
-    adminNotes: optional(formData, "adminNotes"),
-  };
+export async function submitProposal(locale: Locale, prev: ProposeState, formData: FormData): Promise<ProposeState> {
+  const captured = formStateFrom<ProposalField>(formData, {
+    fields: PROPOSAL_VALUE_FIELDS,
+    lists: ["coPresenters"],
+    previous: prev,
+  });
 
   // The picker's own list is the only source of these ids, and the same-org
-  // trigger refuses anything else at the write; parsing them here just keeps
-  // a malformed value out of the RPC.
-  const coPresenters = formData.getAll("coPresenters").map(String).filter((v) => z.uuid().safeParse(v).success);
-  const typed: Record<string, string> = {
-    title: raw.title,
-    abstract: raw.abstract,
-    categoryId: raw.categoryId,
-    level: raw.level,
-    targetAudience: raw.targetAudience ?? "",
-    expectedDurationMinutes: duration ?? "",
-    adminNotes: raw.adminNotes ?? "",
+  // trigger refuses anything else at the write; parsing them here just keeps a
+  // malformed value out of the RPC — and out of what is handed back.
+  const coPresenters = wasList(captured, "coPresenters").filter((v) => z.uuid().safeParse(v).success);
+  const state: ProposeState = { ...captured, lists: { coPresenters } };
+
+  const duration = was(state, "expectedDurationMinutes").trim();
+  const raw = {
+    title: was(state, "title"),
+    abstract: was(state, "abstract"),
+    categoryId: was(state, "categoryId"),
+    level: was(state, "level"),
+    targetAudience: blank(was(state, "targetAudience")),
+    expectedDurationMinutes: duration === "" ? null : Number(duration),
+    adminNotes: blank(was(state, "adminNotes")),
   };
 
   const parsed = proposalInput.safeParse(raw);
-  if (!parsed.success) {
-    const errors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0] ?? "");
-      if (field in errors) continue;
-      const value = raw[field as keyof typeof raw];
-      errors[field] = errorKey(field, issue.code, value === null || value === "");
-    }
-    // The member's text stays in the form — a 2000-character abstract must
-    // never be thrown away by a validation round trip.
-    return { errors, formError: null, values: typed, coPresenters };
-  }
+  // The member's text stays in the form — see the header.
+  if (!parsed.success) return withErrors(state, zodErrors<ProposalField>(parsed.error, errorKey, raw));
 
   const submit = formData.get("intent")?.toString() !== "draft";
   let created: { id: string };
@@ -114,9 +95,9 @@ export async function submitProposal(locale: Locale, _prev: ProposeState, formDa
     created = await createProposal(locale, parsed.data, submit, coPresenters);
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
-    if (message.includes("too_many_presenters")) return { errors: { coPresenters: "coPresentersTooMany" }, formError: null, values: typed, coPresenters };
-    if (message.includes("presenter_not_in_org")) return { errors: { coPresenters: "coPresentersUnknown" }, formError: null, values: typed, coPresenters };
-    return { errors: {}, formError: "failed", values: typed, coPresenters };
+    if (message.includes("too_many_presenters")) return withErrors(state, { coPresenters: "coPresentersTooMany" });
+    if (message.includes("presenter_not_in_org")) return withErrors(state, { coPresenters: "coPresentersUnknown" });
+    return withFormError(state, "failed");
   }
 
   // Outside the try: redirect() signals by throwing, and catching it here
