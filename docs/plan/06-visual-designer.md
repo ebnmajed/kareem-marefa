@@ -322,7 +322,7 @@ fonts/{sha256}.{woff2|ttf}          ← deliberately NOT org-prefixed
 ```
 
 The `fonts` bucket is content-addressed and shared platform-wide because the **entire point** is
-that the editor, the worker's Chromium and the worker's LibreOffice load the **same bytes**
+that the editor, the worker's Chromium and the worker's poppler load the **same bytes**
 (`REQ-DSG-016`). Org-prefixing them would guarantee three copies and eventually three versions.
 
 ---
@@ -365,7 +365,7 @@ Five properties, each doing real work:
    it. Only the Arabic goldens catch it.
 4. **Templates pin the font hash** — so reissuing a 2026 certificate in 2031 is byte-reproducible
    (`REQ-CRT-014`), even if the family was later removed from the picker.
-5. **Same bytes everywhere** — editor, worker Chromium, worker LibreOffice, by SHA-256.
+5. **Same bytes everywhere** — editor, worker Chromium, worker poppler (DEC-058), by SHA-256.
 
 This is how the owner gets open font choice without losing D66. The font is chosen freely, then
 **frozen**.
@@ -373,7 +373,7 @@ This is how the owner gets open font choice without losing D66. The font is chos
 ### 7.3 The single font set (`REQ-DSG-016`)
 
 `ENT-fonts` is the **manifest** — the only way a font enters the editor, the worker's Chromium or
-the worker's LibreOffice. CI asserts the three sets are identical by hash; a font present in one
+the worker's poppler. CI asserts the three sets are identical by hash; a font present in one
 and absent from another is a **build failure**, not a production surprise.
 
 **Font drift is the likeliest silent Arabic killer in this product.** Two Chromium builds with

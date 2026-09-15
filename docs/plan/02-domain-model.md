@@ -520,6 +520,7 @@ form backed by a unique index, wrong for code guessing. Retained 90 days (OQ-019
 ```sql
 check ((kind in ('video_link','external_link')) = (external_url is not null))
 check (kind <> 'keynote' or render_status = 'not_applicable')   -- DEC-006
+check (kind not in ('powerpoint', 'keynote'))                    -- DEC-058: PDF-only (0077); the enum keeps the values
 ```
 
 #### `ENT-material_versions`

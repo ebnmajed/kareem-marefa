@@ -50,8 +50,8 @@ from a client that may be lying. The only trustworthy check is on the stored byt
 | Kind | Accepted magic bytes / container | Note |
 |---|---|---|
 | `pdf` | `%PDF-` | |
-| `powerpoint` | ZIP + `ppt/presentation.xml` | OOXML; legacy `.ppt` (OLE2) also accepted |
-| `keynote` | ZIP + `index.apxl` / `Index.zip` | **download-only** (DEC-006) |
+| `powerpoint` | ZIP + `ppt/presentation.xml` | **recognised to be refused** — uploads are PDF-only (DEC-058) |
+| `keynote` | ZIP + `index.apxl` / `Index.zip` | **recognised to be refused** (DEC-058; DEC-006's download-only is withdrawn) |
 | `image` | PNG / JPEG / WebP magic | **SVG rejected** (DEC-009) |
 | `audio` | MP3 / M4A / WAV / OGG | |
 | `video_link`, `external_link` | URL validation | no file |
@@ -107,10 +107,8 @@ prefix.
 ```mermaid
 flowchart LR
     U["upload complete"] --> K{kind?}
-    K -->|pdf| PDF["pdftoppm → page PNGs"]
-    K -->|powerpoint| LO["LibreOffice → PDF"] --> PDF
-    K -->|keynote| NA["render_status = not_applicable<br/>DEC-006 — no job enqueued"]
-    K -->|image / audio / link| NA2["no conversion"]
+    K -->|pdf| PDF["pdftoppm → page PNGs<br/>(in the worker image, DEC-058)"]
+    K -->|image / audio / link| NA2["no rendering"]
     PDF --> WEBP["→ WebP, 1600px long edge<br/>+ 320px thumbnails"]
     WEBP --> SUB{"font substitution<br/>detected?"}
     SUB -->|yes| WARN["material.font_substitution_warning<br/>REQ-MAT-011"]
@@ -118,42 +116,35 @@ flowchart LR
     WARN --> OK
 ```
 
-### 4.2 Where conversion runs
+### 4.2 Where rendering runs — amended by DEC-058
 
-**In the converter Fly app, which holds no database credentials** (`04` §7.1).
+**Inside the worker image.** Until DEC-058 a separate credential-free app ran LibreOffice for
+PowerPoint (`04` §7.1); with uploads PDF-only there is no LibreOffice, and poppler (`pdfinfo`,
+`pdffonts`, `pdftoppm`) plus `cwebp` are installed in `worker/Dockerfile` beside Chromium, with
+the one font set (`REQ-DSG-016`). `JOB-convert_document` keeps its name for the enqueue contract
+but **inspects** — page count and font table — and `JOB-render_pages` renders. Both read and write
+their own bytes through Storage's REST API with the worker's own key (`worker/src/content/`).
 
-LibreOffice parsing a user-supplied PowerPoint is the most hostile input in the product, handled by
-a large C++ codebase with a long CVE history. It receives a signed input URL, a signed output URL,
-and nothing else — **no Postgres connection string, no `service_role` key, no Supabase URL**. An
-RCE there yields two short-lived signed URLs instead of RLS-bypassing access to every org.
+### 4.3 PowerPoint and Keynote are refused — DEC-058 (DEC-006 withdrawn)
 
-### 4.3 Keynote is download-only — DEC-006, `REQ-MAT-004`
+Both are still **recognised** by the sniffer (§2.1) so that a deck declared as anything else is
+refused by name, and neither is a kind an upload can declare. `materials_kind_pdf_only` (`0077`)
+makes the row impossible. The presenter exports to PDF first; the upload form offers PDF, image,
+audio and the two link kinds.
 
-`.key` is **accepted, stored, downloadable** and gets **no page images and no viewer**.
-`render_status = 'not_applicable'` (a table constraint, `02` §4.6), and **no job is enqueued**.
+### 4.4 Font substitution detection — `REQ-MAT-011`, for a PDF
 
-At upload the presenter sees, in Arabic:
+poppler substitutes silently when a PDF **names a font it does not embed** and the image lacks
+it. For Arabic, substitution does not merely change the look — it can change **shaping**, and the
+result is a page that reads wrong.
 
-> **«ملفات Keynote متاحة للتحميل فقط.»**
-> «لعرض الشرائح داخل المنصة، صدّر العرض إلى PDF وارفعه — سيظهر حينها في العارض صفحةً صفحة.»
-
-**Why not convert it anyway:** LibreOffice's Keynote import is lossy and unpredictable, and D66
-disqualifies any export path that cannot guarantee Arabic shaping. A silently mangled Arabic deck
-that *looks* fine to a non-Arabic-reading eye is worse than an honest download link.
-
-### 4.4 Font substitution detection — `REQ-MAT-011`
-
-LibreOffice substitutes silently when a deck uses a font the worker lacks. For Arabic, substitution
-does not merely change the look — it can change **shaping**, and the result is a slide that reads
-wrong.
-
-Detection: the converter runs with a font-substitution log enabled, compares the deck's embedded
-font list against the manifest, and records every substituted family. The result is written to
+Detection: `JOB-convert_document` reads `pdffonts`' table, keeps every font with `emb = no` whose
+family fontconfig does not know, and records those names. The result is written to
 `materials.font_substitution_warning` and surfaced **on the material itself**, not only in a job
 log:
 
 > **«قد تختلف الخطوط عن ملفك الأصلي.»**
-> «استُبدل الخط "{family}" أثناء التحويل. للحصول على مطابقة دقيقة، صدّر العرض إلى PDF وارفعه.»
+> «الخط "{family}" غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد.»
 
 ### 4.5 Outputs
 
@@ -312,7 +303,7 @@ Owned by `11-background-jobs.md`; listed here so the pipeline reads end to end.
 
 | Job | Trigger | Idempotency key |
 |---|---|---|
-| `JOB-convert_document` | material version ready, kind ∈ {pdf, powerpoint} | `conv:{version_id}` |
+| `JOB-convert_document` | material version ready, kind = pdf (DEC-058) | `conv:{version_id}` |
 | `JOB-render_pages` | conversion produced a PDF | `pages:{version_id}` |
 | `JOB-process_photo` | photo uploaded | `photo:{photo_id}` |
 | `JOB-transcode_audio` | audio version ready | `audio:{version_id}` |

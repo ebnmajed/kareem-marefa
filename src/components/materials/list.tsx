@@ -15,9 +15,9 @@ import { UploadForm } from "@/components/materials/upload-form";
 // heading (TEAM.md §3, learned in wave 1: a slot repeating it is announced
 // twice by a screen reader).
 //
-// A `pdf`/`powerpoint` material links to SCR-013 (the viewer) once it has
-// finished rendering; Keynote and links never get a viewer link (DEC-006 /
-// REQ-MAT-007) — they render their own affordance instead.
+// A `pdf` material links to SCR-013 (the viewer) once it has finished
+// rendering; links never get a viewer link (REQ-MAT-007) — they render their
+// own affordance instead. Uploads are PDF-only (DEC-058).
 export async function Materials({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("materials.list");
   const { materials, numerals, canManageAll, presenterOfSession } = await getMaterialsPageData(locale, sessionId);
@@ -47,10 +47,7 @@ export async function Materials({ sessionId, locale }: SlotProps) {
                   {t(`kind.${m.kind}`)} · {t(`phase.${m.phase}`)}
                 </p>
               </div>
-              {m.kind === "keynote" ? <span className="text-body-sm text-fg-muted">{t("downloadOnly")}</span> : null}
             </div>
-
-            {m.kind === "keynote" ? <p className="mt-2 text-body-sm text-fg-muted">{t("downloadOnlyHint")}</p> : null}
 
             {m.renderStatus === "pending" || m.renderStatus === "rendering" ? <p className="mt-2 text-body-sm text-fg-muted">{t("renderStatus.pending")}</p> : null}
             {m.renderStatus === "failed" ? <p className="mt-2 text-body-sm text-fg-heading">{t("renderStatus.failed")}</p> : null}
@@ -61,7 +58,7 @@ export async function Materials({ sessionId, locale }: SlotProps) {
               </p>
             ) : null}
 
-            {(m.kind === "pdf" || m.kind === "powerpoint") && m.renderStatus === "ready" ? (
+            {m.kind === "pdf" && m.renderStatus === "ready" ? (
               <Link href={`/${locale}/app/sessions/${sessionId}/materials/${m.id}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
                 {t("openViewer")}
               </Link>

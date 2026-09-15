@@ -1246,7 +1246,8 @@ generated suite is the highest-value test in the product.
 | `POL-materials.update.window` | A presenter removes their own material before completion; the same presenter is refused after completion; an admin removes it anyway. (migration `0037`). |
 | `POL-materials.hard_delete.admin_only` | A member and a presenter are refused a hard `delete`; an admin succeeds. (migration `0037`). |
 | `POL-material_versions.select.phase` | Follows the parent material's phase gate exactly. (migration `0037`). |
-| `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006); follows the parent's phase gate with no `allow_download` conjunct. (migration `0037`). |
+| `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006; no such row can exist at all since DEC-058); follows the parent's phase gate with no `allow_download` conjunct. (migration `0037`). |
+| `POL-materials.kind_pdf_only` | An insert with kind `powerpoint` or `keynote` is refused `23514` by `materials_kind_pdf_only`, for every role including the owner (DEC-058). (migration `0077`). |
 | `POL-session_tasks.write.presenter` | A member who is not a presenter cannot insert, update or delete a session task; the presenter and an admin can. (migration `0037`). |
 | `POL-task_completions.self` | A member reads and writes only their own completions; a presenter reads the session's (migration `0037`). |
 | `RPC-store_calendar_connection.self` | A member can store only their OWN connection: the function takes no member id and reads `auth_member_id()`. (migration `0038`). |
@@ -1277,7 +1278,7 @@ generated suite is the highest-value test in the product.
 | `POL-rsvps.priority_window` | a member without the perk is refused during the priority window; a member with it is not; after the window everyone is treated identically, whether or not they hold it (migration `0045`). |
 | `RPC-finalize_material_upload.authority` | A member who is neither the session's presenter nor an org admin is refused `42501`. (migration `0046`). |
 | `RPC-finalize_material_upload.size` | A byte size over the org's `limit_document_mb`/`limit_audio_mb`/`limit_image_mb` for the material's kind is refused `23514`, naming the limit. (migration `0046`). |
-| `RPC-finalize_material_upload.enqueues` | A `pdf`/`powerpoint` material enqueues `convert_document` keyed `conv:{version_id}`; an `image`/`audio`/`keynote` material does not, and its `render_status` is `not_applicable`. (migration `0046`). |
+| `RPC-finalize_material_upload.enqueues` | A `pdf` material enqueues `convert_document` keyed `conv:{version_id}`; an `image`/`audio` material does not, and its `render_status` is `not_applicable`. (migration `0046`, amended `0077` — DEC-058). |
 | `RPC-finalize_material_upload.version_number` | A second call for the same material inserts version 2 and moves `current_version_id`, leaving version 1's row and its pages untouched (`REQ-MAT-010`). (migration `0046`). |
 | `RPC-award_badge_manually.admin_only` | a moderator and a stale admin are refused (migration `0047`). |
 | `RPC-award_badge_manually.reason_mandatory` | an empty reason raises before anything is written (member_badges' own check constraint backs this up structurally) (migration `0047`). |

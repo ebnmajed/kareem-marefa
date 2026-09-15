@@ -19,10 +19,15 @@ import { sniffContent, sniffedKindMatchesDeclared, type SniffedKind } from "@/li
 // re-derivation (proposed/content/0003) — this module's checks are shape,
 // never authority (CLAUDE.md, "Validation").
 
-export const materialKindSchema = z.enum(["pdf", "powerpoint", "keynote", "image", "audio", "video_link", "external_link"]);
+// DEC-058: uploads are PDF-only from Launch. `powerpoint` and `keynote` are
+// still values of the Postgres enum (an enum value cannot be dropped, and
+// migrations are forward-only) but no upload declares them, the CHECK
+// `materials_kind_pdf_only` (0077) refuses them, and finalize_material_upload()
+// enqueues a conversion for `pdf` alone.
+export const materialKindSchema = z.enum(["pdf", "image", "audio", "video_link", "external_link"]);
 export type MaterialKind = z.infer<typeof materialKindSchema>;
 
-const FILE_KINDS = ["pdf", "powerpoint", "keynote", "image", "audio"] as const;
+const FILE_KINDS = ["pdf", "image", "audio"] as const;
 const LINK_KINDS = ["video_link", "external_link"] as const;
 
 export const initiateMaterialUploadInput = z
@@ -70,7 +75,7 @@ export interface InitiatedUpload {
   upload: { versionId: string; bucket: "materials"; path: string; signedUrl: string; token: string } | null;
 }
 
-const DOCUMENT_KINDS = ["pdf", "powerpoint", "keynote"] as const;
+const DOCUMENT_KINDS = ["pdf"] as const;
 
 function orgLimitColumn(kind: MaterialKind): "limit_document_mb" | "limit_audio_mb" | "limit_image_mb" | null {
   if ((DOCUMENT_KINDS as readonly string[]).includes(kind)) return "limit_document_mb";
@@ -368,7 +373,7 @@ export interface ViewerData {
  *  used elsewhere in this codebase.
  *
  *  Signed URLs for EVERY page are minted up front (page images are
- *  small and a deck is capped at 500 pages by the converter itself) rather
+ *  small and a deck is bounded by the org's document size limit) rather
  *  than one Route Handler per page on scroll — a reasonable v1 given 07 §6's
  *  60-minute page-image expiry; windowed/lazy signing for very large decks
  *  is a follow-up, not a correctness requirement. */

@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (PR #15 → `main`, ready for the owner's review) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 (M8 · M7-branding) COMPLETE on the branch — migrations `0067`–`0076`, DEC-051 … DEC-057, both demonstrables run on the real images, the full gate below; next session is the Launch session, with the handoff further down**
+**Last updated:** 2026-09-15 · **Branch:** `fix/launch-pdf-only` (step 1 of Launch, PR → `main`, the owner merges when green) · **`main`:** M1 live, M2–M8 complete (PR #15 merged as `48c858a`) · **Phase:** **LAUNCH — step 1 (pre-launch fixes) on the branch; steps 2–7 gated on the owner's explicit go, one at a time — see *Launch session* below**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -144,6 +144,140 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## Launch session — 2026-09-15 — one gated step at a time
+
+**The owner's instructions, verbatim in substance** (they override the handoff below where they differ):
+uploads are **PDF-only** from launch — remove the converter, PDF page rendering in the worker, record
+the decision superseding D26 and DEC-032 (**DEC-058**); the worker host is **Railway** (existing Hobby
+subscription), `worker/Dockerfile`, Singapore, auto-sleep off, `DATABASE_URL` on port 5432; repository
+visibility stays as it is (the owner changes it after launch); the owner's hands-on checks (QRs at print
+size, ICS in Outlook, the main flows on a real phone in Arabic) happen after step 6 on the live site.
+**Every action that touches production waits for the owner's explicit «go».** STATUS is updated after
+each step.
+
+**Environment variables:** before step 3 a complete inventory goes in this file as a table — every
+variable the app, the worker and CI need in production, grouped by where it lives (Vercel Production,
+Vercel Preview, Railway worker, GitHub Actions secrets), with the exact name, the issuing service, the
+page or command to obtain it, public/secret, and whether it already exists. **Never a secret value in a
+tracked file**; `.env.example` gets every new name with a placeholder and a one-line comment. Before
+step 6 each service's log is checked for what it actually read.
+
+**The deny list and the owner's hands** (`.claude/settings.json`, DEC-051): this session cannot run
+`vercel …`, `gh secret …`, `gh api …`, `supabase db push`, `supabase db dump --linked`,
+`supabase db query --linked`, or `gh pr merge` — on purpose. Where a step needs one, the owner runs it
+by typing `! <command>` in the prompt (the output lands in the conversation) or lifts the rule for one
+step. Secret values are never printed; `vercel env ls` and `gh secret list` print names only.
+
+### The order
+
+| Step | What | State |
+|---|---|---|
+| 1 | Pre-launch fixes on `fix/launch-pdf-only` → PR → owner merges when green: PDF-only (DEC-058) · terminal handling for a deleted subject (DEC-059) · the other DEC-057 items recorded as post-launch | **PR #16 ready for review, CI 12/12 green** — awaiting the owner's merge |
+| 2 | Rehearsal: schema-only dump of production → fresh local database → every migration on top → full suite green → show the result and **WAIT** | **ready to run** — `scratchpad/rehearse.sh <dump>` (a postgres:17 container + `scripts/ci/roles.sql` + the dump + `0003`…`0077` + graphile schema + the RLS suite) dry-ran green with `0001`+`0002` standing in for the dump: 61 files / 713 passed. Needs the owner's `supabase db dump --linked --schema-only` (denied to this session) |
+| 3 | `supabase db push` after the go; then the hosted dashboard one step at a time — Google provider, the Custom Access Token hook, JWT expiry — asking for each input as it comes up, **WAITING before each** | todo |
+| 4 | Vercel: the inventory's variables, a production deploy, the frozen routes and the platform routes checked live; the first org by one-off SQL from the owner's details | todo |
+| 5 | Worker on Railway: connect the repo, variables from the inventory, the LISTEN/NOTIFY probe in the deploy log, the alerts drill against production | todo |
+| 6 | Email provider wiring; the end-to-end smoke test on production with the owner's account (sign in, propose, schedule, RSVP, check in, comment, rate, certificate issued, QR verified, ICS downloaded); report what differs from local; then the owner's hands-on checks | todo |
+| 7 | Post-launch fixes as a branch → PR → owner merges; close STATUS with the launch record, the final variable inventory and the post-launch list | todo |
+
+### Step 1 — what changed (DEC-058, DEC-059)
+
+- **PDF-only, end to end.** Upload form, `materialKindSchema`, the Route Handlers' declared kinds,
+  `sniffedKindMatchesDeclared()` (PowerPoint/Keynote still recognised, matched to nothing), the list
+  and viewer screens (no Keynote branches), `ar/` then `en/` copy (the substitution warning now speaks of
+  a font **not embedded in the PDF**), migration **`0077_pdf_only`** (`materials_kind_pdf_only` CHECK;
+  `finalize_material_upload()` and `carry_over_proposal_materials()` re-created for `pdf` alone).
+- **The converter is gone**: `converter/`, its CI job, `npm run converter:test`, `CONVERTER_URL`, the
+  signed-URL minting, `convertedPdfPath()`. **poppler + cwebp are in the worker image**
+  (`worker/Dockerfile`); `worker/src/content/pdf.ts` wraps them; `convert_document` inspects
+  (page count + `pdffonts`' non-embedded fonts against `fc-list`), `render_pages` renders and uploads
+  with the worker's own key. Parity path 4 is `scripts/parity/poppler.mjs`; CI runs it inside the worker
+  image with `PARITY_REQUIRE_POPPLER=1` so a missing tool fails rather than skips.
+- **Terminal handling** (DEC-059): `build_data_export` re-reads its request row and returns on a gone
+  row / a foreign member / `member_not_found` / `request_not_found` (recorded on the row, never
+  rethrown); everything else still rethrows. `delete_org`, `expire_impersonation`,
+  `anonymise_members` verified terminal by construction, unchanged. The content jobs return on a
+  non-PDF object. `send_notification`'s `no context` throw is recorded as a post-launch item.
+- **Post-launch list (from DEC-057, per the owner):** DEC-055 option A · the check-in budget ·
+  `data_export_requests.storage_path` · the two unbound kit font ids (DEC-053) · STORY-NFR-005's load
+  test · Sentry as the `AlertSink` transport · `send_notification` missing-context return ·
+  photo WebP re-encoding (now a worker-side `cwebp`).
+
+### Step 1 — gates on the branch
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` · `npm run lint` | clean · 0 errors (21 pre-existing warnings) |
+| `npx vitest run` (unit + components) | 65 files / 588 passed (`worker-tasks` rewritten, `worker-pdf` + `platform-tasks` new, `storage-signing` retired) |
+| `npm run db:reset` + `npm run test:rls` with `0077` | 61 files / 713 passed, 4 todo (`POL-materials.kind_pdf_only` new) |
+| `npm run policy-diff` · `node scripts/traceability.mjs` | agree · 251 requirements, 68 entities, no gaps (matrix regenerated: +`POL-materials.kind_pdf_only`, the two content jobs on `REQ-DSG-016`) |
+| the worker image (`worker/Dockerfile` with poppler) · probe · parity inside it | rebuilt on arm64 · `LISTEN/NOTIFY probe OK — 4 ms` · **28 of 28 with `PARITY_REQUIRE_POPPLER=1`, every face embedded, all seven slide-page crops 0.000% vs the goldens** |
+| `npm run test:e2e:local tests/e2e/materials.spec.ts` | 6 passed on a fresh configured build (the seeded material is now a `pdf`) |
+| `npm run qa` / `npm run visual` | not needed — nothing under `(marketing)/**`, `public/**` or the locale layout changed |
+
+### Variable inventory — DRAFT before step 3 (the «exists» column is the owner's `! vercel env ls` / `! gh secret list`)
+
+Built from what the code **actually reads** (`grep process.env` over `src/`, `worker/src/`, `scripts/`, `ci.yml`),
+not from the handoff's list. Two names the handoff carried are **read by nothing** and are recorded, not set.
+
+**Vercel — project `kareem-marefa` (team `peninsula-pictures-projects`).** Set at Vercel → Project → Settings →
+Environment Variables (or `vercel env add NAME production`, which the owner runs).
+
+| Name | Env | Issued by · where | Public / secret | Read by | Exists? |
+|---|---|---|---|---|---|
+| `SUPABASE_URL` | Production, Preview | Supabase → Project Settings → Data API → *Project URL* (`https://qnwbgzsgkftqaixzuhdo.supabase.co`) | public | the frozen registration form, `src/lib/supabase.ts` | **live today** — confirm |
+| `SUPABASE_PUBLISHABLE_KEY` | Production, Preview | Supabase → Project Settings → API Keys → *Publishable key* (`sb_publishable_…`) | public (publishable) | the frozen form | **live today** — confirm |
+| `FORM_TOKEN_SECRET` | Production, Preview | generated: `openssl rand -hex 32` | **secret** | `src/lib/anti-spam.ts` | **live today** — confirm |
+| `SITE_URL` | Production only | the domain: `https://kareem.pp.sa` (Preview falls back to Vercel's own URL) | public | the locale layout's `metadataBase` | **live today** — confirm |
+| `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview | the same *Project URL* | public (inlined into the bundle) | `src/proxy.ts`, `src/lib/supabase/env.ts`, the browser client | **new** — unset until PR C by design (DEC-038) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Production, Preview | the same *Publishable key* | public (publishable, inlined) | same | **new** |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Production (Preview optional) | generated once, kept stable: `openssl rand -base64 32` (Next wants 32 bytes, base64) | **secret** | Next.js itself (`04` §9.2) | **new** |
+| `GOOGLE_CALENDAR_CLIENT_ID` | Production | Google Cloud → APIs & Services → Credentials → the OAuth 2.0 client (same client as the Supabase provider) → *Client ID* | public-ish (treat as config) | `src/app/api/calendar/oauth.ts` | **new** |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | Production | the same client → *Client secret* | **secret** | same | **new** |
+| `VERCEL_PROJECT_PRODUCTION_URL` | system | Vercel sets it when *Automatically expose System Environment Variables* is on (Settings → Environment Variables) | public | the locale layout's fallback | check the toggle |
+| `SENTRY_DSN` | — | **not read by any code** (no Sentry SDK is installed); post-launch with the `AlertSink` transport (DEC-059) | — | nothing | do not set |
+| `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` | — | **never on Vercel** (invariant 7) | — | — | must be absent |
+
+The calendar client's **authorised redirect URI** is `https://kareem.pp.sa/api/calendar/callback` (built from the request
+URL in `api/calendar/connect/route.ts`); the Supabase provider's is `https://qnwbgzsgkftqaixzuhdo.supabase.co/auth/v1/callback`.
+Both go on the same Google OAuth client.
+
+**Railway — one service from `worker/Dockerfile`.** Set at Railway → the service → Variables (raw editor takes
+`NAME=value` lines; the owner pastes, this session never sees a value).
+
+| Name | Value / issued by · where | Public / secret | Read by | Exists? |
+|---|---|---|---|---|
+| `DATABASE_URL` | Supabase → *Connect* (top bar) → **Session pooler**, port **5432**: `postgresql://postgres.qnwbgzsgkftqaixzuhdo:<db-password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres` (Railway is IPv4; the direct connection is IPv6-only without the add-on; **never** the transaction pooler on 6543 — the boot probe refuses it) | **secret** | `worker/src/index.ts`, the probe | new |
+| `SUPABASE_URL` | the *Project URL* | public | `worker/src/content/storage.ts`, `platform/storage.ts` | new |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → *Secret keys* → create one (`sb_secret_…`); the legacy `service_role` JWT under *Legacy API keys* is the fallback if Storage answers 401 at step 5 | **secret** | the two storage helpers (Bearer + `apikey`) | new |
+| `PUBLIC_ORIGIN` | `https://kareem.pp.sa` | public | `issue_certificates`, `regenerate_poster` (the QR targets) | new |
+| `MAIL_TRANSPORT` | `resend` — the only value that reaches a provider (DEC-046) | public | `worker/src/mail/transport.ts` | new |
+| `RESEND_API_KEY` | Resend → API Keys → *Create API key* (sending access, restricted to the domain) | **secret** | `worker/src/mail/resend.ts` | new |
+| `MAIL_FROM_ADDRESS` | optional; default `no-reply@kareem.pp.sa` — the domain must be **verified** at Resend → Domains first | public | `fromAddress()` | optional |
+| `GOOGLE_OAUTH_CLIENT_ID` | the same Google client's *Client ID* (the worker refreshes calendar tokens with it) | config | `worker/src/calendar/index.ts` | new |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | the same client's *Client secret* | **secret** | same | new |
+| `CALENDAR_API` | **leave unset** (`stub` would silence the real API) | — | same | absent |
+| `CHROME_NO_SANDBOX` | `1` — the container runs as `node` without user namespaces (CI sets the same) | public | `worker/src/render/chromium.ts` | new |
+| `CHROME_PATH`, `NODE_ENV` | baked into the image (`/usr/bin/chromium`, `production`) | — | — | in the image |
+| `RESEND_WEBHOOK_SECRET` | **not read** — no `/api/webhooks/resend` route exists in the code (`08` §3.6 planned it); post-launch | — | nothing | do not set |
+| `SENTRY_DSN` | **not read** (see above) | — | nothing | do not set |
+| Railway service settings | Build → *Dockerfile path* `worker/Dockerfile` (or the variable `RAILWAY_DOCKERFILE_PATH=worker/Dockerfile`), root directory `/`, region **Singapore**, **no public networking** (the worker listens on nothing), restart on failure, **app sleeping off** | — | — | new |
+
+**GitHub Actions secrets:** **none.** `ci.yml` references no `secrets.*`; every job runs on placeholders and
+containers (DEC-025). `! gh secret list` should print nothing; if it prints a name, it is stale and unused.
+
+**Supabase dashboard inputs (not variables):** Auth → Providers → Google (client ID + secret, the same client);
+Auth → URL Configuration → Site URL `https://kareem.pp.sa`, redirect allow-list `https://kareem.pp.sa/api/auth/callback`
+and `https://*-peninsula-pictures-projects.vercel.app/api/auth/callback`; Auth → Hooks → *Customize Access Token*
+→ `public.custom_access_token_hook`, *Before User Created* → `public.before_user_created_hook`; Auth → Settings →
+JWT expiry **900**; Auth → JWT keys → asymmetric signing (DEC-036). Each is its own gated step in step 3.
+
+**Two files changed on disk during the session that are not this branch's:** `.env.example`
+(`SITE_URL="https://kareem.pp.sa"`) and `supabase/config.toml` (local `site_url`, a callback redirect,
+`[auth.external.google]` reading `env(GOOGLE_OAUTH_CLIENT_ID/SECRET)`, `skip_nonce_check`). Neither
+holds a secret value; both look like the owner's local preparation and are **left uncommitted** for the
+owner to decide.
 
 ## Wave 4 (M8 · M7-branding) — COMPLETE on `wave-4/m8-branding` (PR #15, the owner merges)
 

@@ -347,6 +347,10 @@ question closes with no change to any document. If not, the entry names what mov
   host-agnostic Docker image running locally and in CI; the production host is decided at Launch
   with PR C. Nothing in wave 2 waits on hosting; the `graphile_worker` schema is installed wherever
   the RLS suite runs. The question stays open only for the host's name.
+- **Owner's answer at Launch (2026-09-15, DEC-058):** **Railway** (the existing Hobby subscription),
+  one service from `worker/Dockerfile`, Singapore, auto-sleep off, `DATABASE_URL` on the session-mode
+  port 5432. **There is no converter to host** — uploads are PDF-only and poppler runs in the worker
+  image. **Closed.**
 
 ## OQ-028 — Does `style-src` admit inline style attributes on the platform routes?
 

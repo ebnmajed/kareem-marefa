@@ -667,30 +667,31 @@ There are no standalone uploads. A **مادة** always has a parent **جلسة**
 - Deleting a session deletes or archives its materials with it; no orphan is left in storage.
 
 #### REQ-MAT-002 — Supported material types
-**Serves:** D26
-PDF; PowerPoint; Keynote; Google Slides and other external links; video links (YouTube and
-similar); images; voice/audio recordings.
+**Serves:** D26 (as narrowed by DEC-058)
+PDF; Google Slides and other external links; video links (YouTube and similar); images;
+voice/audio recordings. **Document uploads are PDF-only** (DEC-058, the owner's Launch decision):
+PowerPoint and Keynote are not accepted — a deck is exported to PDF before it is uploaded.
 **Acceptance:**
 - Every type is validated **server-side by content sniffing, not by file extension** (DEC-009).
 - An unsupported type is rejected with a message naming what is accepted.
+- A PowerPoint or Keynote file, whatever its extension, is refused at upload; no row of that kind
+  can exist (`materials_kind_pdf_only`, migration `0077`).
 
 #### REQ-MAT-003 — Slides are read in an in-browser page-by-page viewer
 **Serves:** D27
-PDF and PowerPoint are converted to page images and presented in **العارض** — page by page,
-keyboard operable, progressively loaded.
+A PDF is rendered to page images (by poppler, inside the worker image — DEC-058) and presented in
+**العارض** — page by page, keyboard operable, progressively loaded.
 **Acceptance:**
 - The viewer works without downloading the source file.
 - Page navigation is RTL-correct: in an Arabic interface, "next" advances in the reading
   direction the member expects (`REQ-INT-004`).
 - The viewer is keyboard operable and screen-reader labelled in Arabic (`REQ-NFR-007`).
 
-#### REQ-MAT-004 — Keynote is download-only
-**Serves:** DEC-006 · D26
-`.key` files are accepted, stored and downloadable. They receive **no page images and no viewer**.
-At upload the presenter sees guidance to export to PDF for the viewer experience.
+#### REQ-MAT-004 — Keynote is download-only · **withdrawn by DEC-058**
+**Serves:** DEC-006 · D26 — **superseded**: uploads are PDF-only from Launch, so `.key` files are
+refused at upload like PowerPoint (`REQ-MAT-002`). Kept as an ID so citations resolve.
 **Acceptance:**
-- A `.key` upload succeeds and appears in the materials list marked **«للتحميل فقط»**.
-- No conversion job is enqueued for a `.key` file.
+- A `.key` upload is refused with the message naming what is accepted; no `keynote` row exists.
 
 #### REQ-MAT-005 — Per-item download control
 **Serves:** D27
@@ -739,12 +740,14 @@ Replacing a material keeps prior versions in a version list.
 - The version list shows who replaced it and when.
 - Members see the current version; admins can retrieve any prior version.
 
-#### REQ-MAT-011 — Font substitution in converted slides is surfaced
+#### REQ-MAT-011 — Font substitution in rendered slides is surfaced
 **Serves:** §6 Arabic typography · D66
-When a converted deck uses a font the worker does not have, the presenter is **warned** that
-Arabic may have been re-shaped by a substitute face, and is offered PDF upload instead.
+When an uploaded PDF names a font it does **not embed** and the worker's image does not have it,
+the page images are drawn with a substitute face and Arabic may have been re-shaped; the presenter
+is **warned**, by font name, and told to export with fonts embedded (DEC-058 — until then the
+same check ran on a converted PowerPoint's font list).
 **Acceptance:**
-- The conversion job detects substitution and records which fonts were missing.
+- The inspection job (`JOB-convert_document`) detects the non-embedded fonts and records which.
 - The warning names the missing font and appears on the material, not only in a job log.
 
 #### REQ-MAT-012 — Uploads are scanned before they are served

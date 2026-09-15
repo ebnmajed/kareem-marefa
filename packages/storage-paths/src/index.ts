@@ -19,17 +19,13 @@ export * from "./designer.js";
 export * from "./brand.js";
 
 import type { StorageLocation } from "./guards.js";
-import { convertedPdfPath, materialPagePath, materialPageThumbnailPath, materialSourcePath, photoPath } from "./content.js";
+import { materialPagePath, materialPageThumbnailPath, materialSourcePath, photoPath } from "./content.js";
 import { designAssetPath, exportPath, fontPath } from "./designer.js";
 
 export const storagePaths = {
   materialSource: (orgId: string, sessionId: string, versionId: string, filename: string): StorageLocation => ({
     bucket: "materials",
     path: materialSourcePath(orgId, sessionId, versionId, filename),
-  }),
-  convertedPdf: (orgId: string, sessionId: string, versionId: string): StorageLocation => ({
-    bucket: "materials",
-    path: convertedPdfPath(orgId, sessionId, versionId),
   }),
   materialPage: (orgId: string, sessionId: string, versionId: string, page: number): StorageLocation => ({
     bucket: "material-pages",

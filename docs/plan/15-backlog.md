@@ -196,9 +196,9 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - ★ Arrow keys follow the reading direction in Arabic.
 - The source file is never fetched to view.
 
-#### STORY-MAT-003 — Keynote, download-only
+#### STORY-MAT-003 — Keynote, download-only · **withdrawn by DEC-058**
 **Covers:** `REQ-MAT-004` · **M5** · **S**
-- No conversion job is enqueued; the material is marked «للتحميل فقط» with export guidance.
+- Delivered in M5, then withdrawn at Launch: uploads are PDF-only, Keynote is refused at upload.
 
 #### STORY-MAT-004 — Download control and phase gating
 **Covers:** `REQ-MAT-005`, `REQ-MAT-006` · **M5** · **M**

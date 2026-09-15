@@ -90,16 +90,20 @@ describe("sniffedKindMatchesDeclared — the SVG-as-.png case DEC-009 names expl
     expect(sniffedKindMatchesDeclared(pdf, "image")).toBe(false);
   });
 
-  it("both OOXML and legacy PowerPoint match the declared kind 'powerpoint'", () => {
+  it("a PowerPoint or a Keynote matches NO declared kind — uploads are PDF-only (DEC-058)", () => {
     const ooxml = sniffContent(concat(bytes(0x50, 0x4b, 0x03, 0x04), ascii("ppt/presentation.xml"))).kind;
-    expect(sniffedKindMatchesDeclared(ooxml, "powerpoint")).toBe(true);
     const legacy = sniffContent(bytes(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1)).kind;
-    expect(sniffedKindMatchesDeclared(legacy, "powerpoint")).toBe(true);
+    const keynote = sniffContent(concat(bytes(0x50, 0x4b, 0x03, 0x04), ascii("index.apxl"))).kind;
+    for (const sniffed of [ooxml, legacy, keynote]) {
+      for (const kind of ["pdf", "image", "audio"] as const) {
+        expect(sniffedKindMatchesDeclared(sniffed, kind)).toBe(false);
+      }
+    }
   });
 
   it("an unknown sniff never matches any declared kind", () => {
     const unknown = sniffContent(bytes(9, 9, 9)).kind;
-    for (const kind of ["pdf", "powerpoint", "keynote", "image", "audio"] as const) {
+    for (const kind of ["pdf", "image", "audio"] as const) {
       expect(sniffedKindMatchesDeclared(unknown, kind)).toBe(false);
     }
   });

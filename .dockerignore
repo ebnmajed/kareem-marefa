@@ -1,5 +1,5 @@
-# Image builds use the repo root as context (converter/Dockerfile, and the
-# worker's when it lands) so they can COPY packages/*. Keep the context small.
+# The worker image builds with the repo root as context (worker/Dockerfile)
+# so it can COPY packages/*. Keep the context small.
 node_modules
 **/node_modules
 .next

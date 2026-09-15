@@ -13,7 +13,7 @@
 | `scripts/qa.mjs` | **Fixed (DEC-023).** 44/44, repeatable. Run it with `npm run qa` — never directly |
 | **jsdom, `@testing-library/*`** | **Installed** (M0, DEC-033) — `npm test`, `tests/components/` |
 | **Playwright** | **Installed** (M0, DEC-033) — `npm run test:e2e`, `tests/e2e/`, served through the QA stub; CI `e2e` job |
-| GitHub Actions | **Configured** (DEC-028) — the four blocking gates plus `e2e` and the `converter` image job |
+| GitHub Actions | **Configured** (DEC-028) — the four blocking gates plus `e2e`; the `converter` image job retired with the converter (DEC-058), its parity path 4 now runs inside the worker image |
 | Supabase projects | One, and it is production. **Dev is local, CI is a container** (DEC-025) — no new hosted projects |
 
 **`scripts/qa.mjs` was stale, and it could write to production.** Both fixed in DEC-023. Two
@@ -174,7 +174,7 @@ has broken something.
 
 ### 4.5 Font manifest drift
 
-CI asserts the editor's, the worker Chromium's and the worker LibreOffice's font sets are
+CI asserts the editor's, the worker Chromium's and the worker poppler's font sets are
 **identical by SHA-256**. A font in one and not another is a **build failure**.
 
 Font drift is the likeliest silent Arabic killer: different font files produce different line

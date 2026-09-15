@@ -349,9 +349,8 @@ graph LR
         CH["headless Chromium<br/>+ designer-runtime"]
         FO["platform fonts"]
     end
-    subgraph Fly2["app 2 — converter (NO DB CREDENTIALS)"]
-        LO["LibreOffice + pdftoppm"]
-        FO2["the same fonts"]
+    subgraph Fly2["app 2 — converter — REMOVED (DEC-058)"]
+        LO["LibreOffice: gone. poppler now runs in app 1"]
     end
     NEXT -->|"authenticated JWT"| PG
     NEXT -->|"signed URLs"| ST
@@ -364,16 +363,20 @@ graph LR
     W --> GCAL["Google Calendar API"]
 ```
 
-### 7.1 Why the converter is a separate app with no database credentials
+### 7.1 Why the converter was a separate app with no database credentials — and why it is gone (DEC-058)
 
-The converter parses **PowerPoint files uploaded by users**. That is the most hostile input in the
-product, handled by LibreOffice, which is a large C++ codebase with a long CVE history. It gets:
-a signed input URL, a signed output URL, and **no Postgres connection string, no `service_role`
-key, no Supabase URL**.
+The converter parsed **PowerPoint files uploaded by users**. That was the most hostile input in
+the product, handled by LibreOffice, which is a large C++ codebase with a long CVE history, so it
+got a signed input URL, a signed output URL, and **no Postgres connection string, no
+`service_role` key, no Supabase URL** — an RCE there yielded two short-lived URLs, not `service_role`.
 
-A remote-code-execution in LibreOffice then yields a container with two short-lived signed URLs.
-In a single-app design it would yield `service_role`, which bypasses RLS on every table in every
-org. The isolation costs one extra app.
+**Uploads are PDF-only from Launch (DEC-058).** With no PowerPoint there is no LibreOffice, and
+with no LibreOffice the isolation has nothing left to isolate: the PDF page images are rendered by
+poppler (`pdftoppm`) and `cwebp` **inside the worker image** (`worker/src/content/pdf.ts`), with
+the same font set (`REQ-DSG-016`). The `converter/` directory, `CONVERTER_URL` and the second
+container are removed. The residual risk is poppler parsing a member's PDF with `service_role` in
+the same process — mitigated by content sniffing at upload (`REQ-MAT-012`) and again in the job,
+and accepted by the owner as the trade for one fewer service at Launch.
 
 ### 7.2 The graphile-worker connection trap
 
@@ -468,7 +471,7 @@ Four properties worth naming:
 | Web | **Vercel** | The **same project and domain** already serving the live pre-launch site (A38) |
 | Database, Auth, Storage, Realtime | **Supabase cloud** | Today: one project, `ap-southeast-1`, and it is production |
 | Worker | **host TBD** (OQ-027, DEC-034) — local + CI until M3 | ~2 GB: Chromium + `designer-runtime` + fonts |
-| Converter | **host TBD**, separate app | LibreOffice + fonts, **no DB credentials** |
+| Converter | **removed** (DEC-058) | poppler runs in the worker image |
 | Email | **Resend** | Alternative: Postmark |
 | Errors | **Sentry** | Alternative: Bugsnag |
 | Analytics | **PostHog** (optional, A22) | Alternative: none — it is optional by assumption |
@@ -511,17 +514,17 @@ it is on the critical path — M1 retrofits auth and RLS onto a live database wh
 
 | Secret | Held by | Never |
 |---|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Worker only | Vercel; the converter; any client bundle |
+| `SUPABASE_SERVICE_ROLE_KEY` | Worker only | Vercel; any client bundle |
 | `NEXT_PUBLIC_SUPABASE_URL`, publishable key | Vercel + browser | — (public by design; DEC-020) |
-| `DATABASE_URL` (session mode, :5432) | Worker only | Vercel; the converter |
+| `DATABASE_URL` (session mode, :5432) | Worker only | Vercel |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Vercel, **stable across builds** | Rotated casually — see §9.2 |
 | `RESEND_API_KEY` | Worker only | Vercel — all mail is sent from jobs |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Vercel (auth callback) + worker (refresh) | Client bundles |
 | `GOOGLE_FONTS_API_KEY` | Vercel only | Worker — it has a no-network policy |
 | `SENTRY_DSN` | Both | — |
 
-Two rules: **the converter app holds no secrets at all** (§7.1; a host without private networking adds one endpoint token, OQ-027), and
-**Vercel never holds `service_role`** — anything needing it is a job.
+One rule: **Vercel never holds `service_role`** — anything needing it is a job. (The converter's
+«no secrets at all» rule retired with the converter, DEC-058.)
 
 ---
 
@@ -569,7 +572,7 @@ worker writes it.
 ### 12.3 Content pipeline runtime → `07-content-pipeline.md`
 Uploads are Route Handlers issuing signed upload URLs; the browser uploads **directly to Storage**,
 never through Vercel — a 200 MB audio file must not traverse a serverless function. The handler
-then enqueues `JOB-convert_document`, which calls the credential-free converter app.
+then enqueues `JOB-convert_document`, which inspects the PDF with poppler in the worker image (DEC-058).
 
 ### 12.4 Notification runtime → `08-notifications-calendar.md`
 **All mail is sent from the worker**, never from a request handler — which is why `RESEND_API_KEY`
