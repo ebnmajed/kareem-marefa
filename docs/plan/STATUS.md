@@ -209,7 +209,7 @@ step. Secret values are never printed; `vercel env ls` and `gh secret list` prin
 | Gate | Result |
 |---|---|
 | `npx tsc --noEmit` · `npm run lint` | clean · 0 errors (21 pre-existing warnings) |
-| `npx vitest run` (unit + components) | 66 files / 601 passed (`worker-tasks` rewritten, `worker-pdf` + `platform-tasks` new, `storage-signing` retired) |
+| `npx vitest run` (unit + components) | 65 files / 588 passed (`worker-tasks` rewritten, `worker-pdf` + `platform-tasks` new, `storage-signing` retired) |
 | `npm run db:reset` + `npm run test:rls` with `0077` | 61 files / 713 passed, 4 todo (`POL-materials.kind_pdf_only` new) |
 | `npm run policy-diff` · `node scripts/traceability.mjs` | agree · 251 requirements, 68 entities, no gaps (matrix regenerated: +`POL-materials.kind_pdf_only`, the two content jobs on `REQ-DSG-016`) |
 | the worker image (`worker/Dockerfile` with poppler) · probe · parity inside it | rebuilt on arm64 · `LISTEN/NOTIFY probe OK — 4 ms` · **28 of 28 with `PARITY_REQUIRE_POPPLER=1`, every face embedded, all seven slide-page crops 0.000% vs the goldens** |
