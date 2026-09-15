@@ -21,6 +21,8 @@
 // is exactly what the percentage rules' min_active_members=3 default
 // needs without building extra fixture rows for most cases.
 import { afterAll, describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
@@ -30,7 +32,10 @@ afterAll(() => pool.end());
 async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
-  await applyProposed(tx, "scoring/0001_company_points.sql");
+  // Promoted as migration 0081 by the lead: the proposed copy is gone and
+  // `supabase db reset` applies it; the guard is what lets this file survive
+  // the promotion (the pattern every promoted file in this suite uses).
+  if (existsSync(join(process.cwd(), "supabase", "proposed", "scoring", "0001_company_points.sql"))) await applyProposed(tx, "scoring/0001_company_points.sql");
   return f;
 }
 

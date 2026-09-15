@@ -1473,6 +1473,18 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-067 — Companies earn points of their own: hosting, attendance share, presenting share
+
+- **Date:** 2026-09-15 · **Decided by:** owner («the company is awarded points based on the employees' participation: the company hosting, the percentage of attended employees, the percentage of presenting employees»), designed and built by the `scoring` teammate, promoted by the lead as `0081`
+- **Decision:** three company-level rules on top of the derived company score (`05` §6.2 stands): **`company_hosting`** (flat, default 100) credits the session's host company once on completion; **`company_attendance_pct`** and **`company_presenting_pct`** credit `round(percent × points_per_percent)` capped (defaults 1.00/100 and 2.00/150) per completed session, where the percent is the company's share of its own active members who checked in, respectively who presented as accepted presenters, and only when the company has at least `min_active_members` (default 3 — the small-denominator guard `05` §6.2 already applies to the derived metric; without it a one-person company scores 100 % on every session). All three are catalogue rows an admin edits on SCR-053 (`company_scoring_rules`, history in `scoring_config_history` with scope `company_scoring`), evaluated by `evaluate_company_points()` from the `evaluate_no_shows` job that already fires once per completed session — no new job type — and recorded in **`company_points_ledger`**, append-only like `points_ledger` (invariant 9, `service_role` revoked), with `company_points_balances` as the rollup and `audit_company_balances()` in the nightly audit. `snapshot_leaderboard()` folds the company ledger into the company board's total; the frozen active-member denominator is untouched. The host is **`sessions.host_company_id`** (nullable, same-org guarded), per session rather than per venue: a venue is reused by many hosts over time and some sessions have no venue row. `02` §4 gains the three entities and the column under this entry. `_seed_org_scoring()` seeds the three rules for every new org and the promotion backfills existing ones (the live `kareem` on push).
+- **Two readings left to the owner, with the teammate's default in force:** (1) the two percent rules are evaluated for **every company** with a member present at the session, not only the host company — the derived board is company-agnostic in the same way; the narrower reading is one condition in `evaluate_company_points()`. (2) `min_active_members = 3` is the teammate's anti-gaming addition, not a number the owner named.
+- **Known gap:** the host company is set today from a stopgap form on SCR-053 (session id typed in, company chosen); the real field belongs on the schedule screen (SCR-043, `console`'s) and goes there with the design milestone.
+- **A Postgres trap, recorded for the next reader:** `select … into r; if r is not null` is false for a row with any null column (row-wise `IS NOT NULL` requires every field non-null); test `r.id is not null`. Three cases inserted zero rows silently before the teammate found it.
+- **Supersedes:** nothing — `REQ-LDR-004` and `05` §6 are extended, not replaced.
+- **Documents changed:** `02` §4 (three entities, one column), `03` §8.2 (+10 rows), `supabase/migrations/0081_company_points.sql`, `worker/src/tasks/{evaluate_no_shows,audit_balances}.ts`, `lib/dal/{leaderboards,scoring-admin}.ts`, SCR-053 and SCR-028, `messages/*/{scoring,leaderboards}.json` (Arabic first), `tests/rls/scoring-company-points.test.ts` (18), `tests/e2e/scoring-company-points.spec.ts`, `docs/plan/notes/scoring.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

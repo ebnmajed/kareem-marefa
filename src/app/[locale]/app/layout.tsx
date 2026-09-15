@@ -124,11 +124,15 @@ export default async function AppLayout({ children, params }: { children: React.
               {t("signOut")}
             </button>
           </form>
-          <details className="md:hidden">
+          {/* `group` + `group-open:block`: a closed <details> keeps its content's
+              layout box under content-visibility in Chromium, and an absolute
+              panel with a box registers as sideways overflow in the 390 px
+              review even though nothing is painted. `hidden` until open. */}
+          <details className="group md:hidden">
             <summary className="inline-flex h-10 cursor-pointer list-none items-center rounded-field px-2 text-label text-fg-heading hover:bg-silver-100 [&::-webkit-details-marker]:hidden">
               {t("more")}
             </summary>
-            <div className="absolute inset-inline-0 top-14 z-20 border-b border-edge bg-canvas px-3 py-2 shadow-lg">
+            <div className="absolute inset-inline-0 top-14 z-20 hidden border-b border-edge bg-canvas px-3 py-2 shadow-lg group-open:block">
               <ul className="flex flex-col">
                 {secondary.map((item) => (
                   <li key={item.href}>

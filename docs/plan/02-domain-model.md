@@ -397,6 +397,7 @@ form-validation rule.
 | `rsvp_deadline_at`, `cancellation_cutoff_at` | `timestamptz` | |
 | `certificate_mode` | `certificate_mode not null default 'off'` | `REQ-CRT-002` |
 | `allow_walk_ins` | `boolean not null default false` | `REQ-CHK-010` as amended — DEC-065 (`0079`) |
+| `host_company_id` | `uuid references companies(id)`, nullable, same-org guarded | the hosting company — DEC-067 (`0081`) |
 | `state` | `session_state not null default 'draft'` | |
 | `published_at`, `completed_at`, `cancelled_at`, `cancellation_reason` | | |
 
@@ -648,6 +649,16 @@ Append-only. `scope text not null` (`'scoring'` | `'org_settings'` | `'badges'` 
 `entity_id uuid`, `field text not null`, `old_value jsonb`, `new_value jsonb`, `actor_id`,
 `changed_at`. General enough to carry every configuration surface, so there is one history to read
 rather than six.
+
+#### `ENT-company_scoring_rules` · `ENT-company_points_ledger` · `ENT-company_points_balances` — DEC-067 (`0081`)
+**Serves:** `REQ-LDR-004` (extended)
+Company-level scoring on top of the derived company metric (§6.2 of `05`): the three-row catalogue
+per org (`company_hosting`, `company_attendance_pct`, `company_presenting_pct`; `points` xor
+`points_per_percent` + `cap_points` + `min_active_members`, edits appended to
+`scoring_config_history` with scope `company_scoring`), the **append-only** company ledger
+(`org_id`, `company_id`, `session_id`, `source company_ledger_source`, `amount`, `occurred_at`,
+`idempotency_key unique`; update and delete raise for every role including `service_role`), and its
+rollup by trigger. All three carry `org_id`, RLS and a full policy set (`03` §8.2).
 
 #### `ENT-points_ledger`
 **Serves:** `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-012`, DEC-016

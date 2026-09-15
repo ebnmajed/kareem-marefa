@@ -1,3 +1,4 @@
+-- promoted by the lead at post-launch (2026-09-15) · scoring — company points rules (DEC-067: the owner's three creditable rules). The file below is supabase/proposed/scoring/0001_company_points.sql, verbatim; its 03 §8.2 rows are in the header and in 03 itself.
 -- proposed by `scoring` (post-launch) · scoring/0001_company_points.sql —
 -- company-level points, per the owner's decision of 2026-09-15 (STATUS.md
 -- "Launch session"), verbatim in substance: "The company is awarded a
