@@ -20,8 +20,21 @@
 -- order and that `send()` inserts directly into `realtime.messages`.
 
 -- ── §7.2 RLS on realtime.messages ───────────────────────────────────────────
--- Idempotent — Supabase already enables RLS on this table.
-alter table realtime.messages enable row level security;
+-- Supabase already enables RLS on this table, and on a HOSTED project the
+-- `postgres` role is not its owner: `alter table realtime.messages …` fails
+-- with 42501 there (Launch day, 2026-09-15 — the push stopped here at
+-- statement 0), while `create policy` on it is allowed through supautils'
+-- policy grants. So the statement runs only where it is needed and permitted
+-- — a local or CI database whose owner-privileged `postgres` finds RLS off —
+-- and is skipped where it is already on. DEC-061.
+do $$
+begin
+  if not (select c.relrowsecurity
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'realtime' and c.relname = 'messages') then
+    execute 'alter table realtime.messages enable row level security';
+  end if;
+end $$;
 
 -- session:{session_id} — the event page: comments, reactions, and (from the
 -- checkin/sessions tracks) RSVP and check-in counts. Any member of the
