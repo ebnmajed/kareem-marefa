@@ -173,8 +173,8 @@ step. Secret values are never printed; `vercel env ls` and `gh secret list` prin
 
 | Step | What | State |
 |---|---|---|
-| 1 | Pre-launch fixes on `fix/launch-pdf-only` → PR → owner merges when green: PDF-only (DEC-058) · terminal handling for a deleted subject (DEC-059) · the other DEC-057 items recorded as post-launch | **in progress** — see below |
-| 2 | Rehearsal: schema-only dump of production → fresh local database → every migration on top → full suite green → show the result and **WAIT** | todo |
+| 1 | Pre-launch fixes on `fix/launch-pdf-only` → PR → owner merges when green: PDF-only (DEC-058) · terminal handling for a deleted subject (DEC-059) · the other DEC-057 items recorded as post-launch | **PR #16 ready for review, CI 12/12 green** — awaiting the owner's merge |
+| 2 | Rehearsal: schema-only dump of production → fresh local database → every migration on top → full suite green → show the result and **WAIT** | **ready to run** — `scratchpad/rehearse.sh <dump>` (a postgres:17 container + `scripts/ci/roles.sql` + the dump + `0003`…`0077` + graphile schema + the RLS suite) dry-ran green with `0001`+`0002` standing in for the dump: 61 files / 713 passed. Needs the owner's `supabase db dump --linked --schema-only` (denied to this session) |
 | 3 | `supabase db push` after the go; then the hosted dashboard one step at a time — Google provider, the Custom Access Token hook, JWT expiry — asking for each input as it comes up, **WAITING before each** | todo |
 | 4 | Vercel: the inventory's variables, a production deploy, the frozen routes and the platform routes checked live; the first org by one-off SQL from the owner's details | todo |
 | 5 | Worker on Railway: connect the repo, variables from the inventory, the LISTEN/NOTIFY probe in the deploy log, the alerts drill against production | todo |
