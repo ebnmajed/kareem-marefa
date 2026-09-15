@@ -1320,6 +1320,47 @@ search box had copied the house control string — the sixty-five-file problem s
 one file every screen renders — and the gallery's icon tiles had a hand-rolled surface, in the file
 that exists to show the system off.
 
+### ★★ The finding that outlives the wave: `text-body-sm` was dead in 123 files
+
+**`sessions` found it while adopting the form primitives, and it is the most valuable thing anyone
+found this wave.** `globals.css` declares thirteen `@utility text-*` blocks and `text-body-sm` is
+not one of them; there is no `--text-*` theme key either. Verified against the **compiled**
+stylesheet rather than the source: `.text-caption` and `.text-body` are both in
+`.next/static/chunks/*.css`, `.text-body-sm` is **absent**. **123 files use it.** Every caption,
+hint, error and meta line among them has rendered at inherited body size — **17 px on mobile in
+Arabic where its author meant 15 px** — since M0.
+
+**Why four milestones of green gates sailed over it:** a missing utility is not a type error, not a
+lint error and not a test failure; the class reads as real in every file that uses it, and it is one
+letter from `text-body-lg`, which does exist. And **`npm run visual` covers only the three marketing
+routes, which do not use it.** It took a teammate adopting the *correct* token on a new primitive
+and noticing their own text was visibly smaller than the screens around it.
+
+Fixed as an alias of the caption ramp (`DEC-108`), not a codemod, and
+`tests/unit/typography-utilities.test.ts` now fails on any house `text-*` used under `src/` with no
+definition. `npm run visual` stayed **0.000 %** after the change, because marketing never used it.
+
+★ **The gate found a false positive on its first run and that was the useful part:**
+`[text-indent:-1.25rem]` is Tailwind v4 arbitrary-**property** syntax, not a utility. The regex now
+refuses a `[` lead-in and a trailing `:` — it was reading class strings the way Tailwind does, one
+case short.
+
+### ★ Two catches NO TOOL IN THIS PROJECT COULD HAVE MADE
+
+Correcting this file's own first draft, which credited the gates:
+
+1. **The switch's off-track failed contrast at 1.6:1** against the canvas and 1.3:1 against the
+   thumb — and those two boundaries are what carry the switch's state, so the state was invisible.
+   **jsdom has no layout engine and axe has no non-text-contrast rule**; nothing here could have
+   found it. `sessions` found it by reading the token.
+2. **`FormSummary`'s links were `inline-flex`**, which made the `<bdi>`, the colon and the message
+   three flex items — so at 390 px a wrapping message stranded the field name on its own line. The
+   **accessible name is identical either way**, which is why eight jsdom assertions and twelve e2e
+   assertions passed straight over it. Only the 390 px capture caught it.
+
+**Both are the argument for keeping the phone capture in the definition of done rather than
+treating it as ceremony.**
+
 ### Three findings from the team worth keeping
 
 1. **`checkin`: a `getByText` over the whole page can resolve to two nodes DURING HYDRATION on a
@@ -1337,6 +1378,30 @@ that exists to show the system off.
 
 - **`ui-lint`'s allowlist still holds 416 violations across 103 files.** It shrinks as each screen
   adopts the primitives — which is M10's and M11's work — and flips to `--strict` in M13.
+- **`ui.form.summaryTitle` and `ui.form.remaining` are unused** and deliberately so (`DEC-109`):
+  the first is the default for the fourteen forms that have no summary yet, the second is §8.2
+  item 7's counter, **deferred to M10** because it adds a visible element to a live screen and
+  belongs beside the step indicator the same item asks for. The six-form ICU block is already
+  written and correct.
+- **`RouteErrorProps.retryLabel` and `.reset` are required**, so a `not-found.tsx` — which Next
+  hands no props, and where the resource is *gone* rather than transiently unavailable — has to
+  invent a retry. Both of `sessions`' wire it to `router.refresh()`. Making them optional is a
+  two-line append to `ui/index.ts` in M10.
+- **`rtl-datetime-picker.tsx`'s prev/next-month buttons have no accessible name** — a real WCAG
+  4.1.2 bug found by `console`'s axe assertion, in a file outside its edit list. Two message keys
+  and the fix are in `docs/plan/notes/console.md`; M11 is where that file is touched.
+- **`tests/e2e/sessions-propose.spec.ts:126` uses a bare `form` selector** and now silently
+  includes the shell's own search and sign-out forms. It still passes, but it is weaker than it
+  reads. Any spec doing the same is in the same position.
+
+### ★ A process note, because it cost this wave real time
+
+**Four of my messages to teammates described work they had already finished**, and two told a track
+to fix something that was already fixed in the committed tree. I was checking against a `tsc` run
+taken minutes earlier rather than against `HEAD`. In a four-writer checkout, **verify against
+`git log` before sending a correction** — `console` was right to reply with commit hashes and ask
+for something concrete, and right again when it pushed back on a skip-link target I had asserted
+without checking. A lead who states a stale reading as fact spends a teammate's turn on nothing.
 - **The `RouteProgress` store and `ui/link`'s `useLinkStatus()` child are stubs.** §7.1.1's
   corrected design is written down; the implementation is not.
 - **`ui/splash.tsx` is a stub.** §7.2 is explicit that it must be CSS-only and fade on the shell's
