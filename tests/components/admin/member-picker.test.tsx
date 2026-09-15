@@ -1,9 +1,18 @@
 // MemberPicker — SCR-053's carried-over item (scoring.md's flagged gap,
-// console.md's story order item 2). No NextIntlClientProvider needed: every
-// string is a prop.
+// console.md's story order item 2). Wave 5 (`16` §4.2, `.claude/agents/
+// console.md`) PROMOTED this into `ui/combobox.tsx`; this file is now a
+// thin wrapper over it, kept at its exact original external shape because
+// its one caller, `admin/scoring/page.tsx`, is outside this track's M9 edit
+// list. It now needs `NextIntlClientProvider` — `ui/combobox`'s own
+// non-zero results announcement falls back to a translated string when the
+// caller (this wrapper) doesn't override it, unlike the zero-count case,
+// which still uses the exact prop-supplied `noMatches` text this test
+// already asserts below.
 import { render, screen, fireEvent } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { MemberPicker, type PickableMember } from "@/components/admin/member-picker";
+import ar from "@/messages/ar/admin.json";
 
 const MEMBERS: PickableMember[] = [
   { id: "m1", displayName: "سارة العتيبي", email: "sara@example.com" },
@@ -13,7 +22,9 @@ const MEMBERS: PickableMember[] = [
 
 function renderPicker() {
   const { container } = render(
-    <MemberPicker members={MEMBERS} name="memberId" label="العضو" required placeholder="اكتب اسم العضو" noMatches="لا يوجد عضو مطابق" />,
+    <NextIntlClientProvider locale="ar" messages={ar}>
+      <MemberPicker members={MEMBERS} name="memberId" label="العضو" required placeholder="اكتب اسم العضو" noMatches="لا يوجد عضو مطابق" />
+    </NextIntlClientProvider>,
   );
   return container;
 }
