@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { createServerClient } from "@/lib/supabase/server";
 import type { NumeralSystem } from "@/components/sessions/numerals";
+import { sessionPhase, viewerRelation as deriveRelation, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
 //
@@ -384,6 +385,27 @@ export interface EventSession {
   /** The viewer presents this session, so SCR-016 is offered (REQ-CHK-014). */
   viewerIsPresenter: boolean;
   viewerIsStaff: boolean;
+  /**
+   * ★ The viewer's relation to this session, derived ONCE — DEC-092.
+   *
+   * An amendment to DEC-045's "ids as props and never rows" slot contract,
+   * made explicitly rather than by drift. `16` §5.4.1's claim that gating the
+   * four slots on the viewer's relation "is not a new query" was WRONG: this
+   * DTO carried `viewerIsPresenter` and `viewerIsStaff` and no RSVP at all —
+   * the seat was read inside `RsvpPanel`, through `getRsvpPanelData`. Gating
+   * four slots on it would have meant four slots each re-reading it: four
+   * extra round trips on the product's most important page.
+   *
+   * A derived enum is not a row, so the spirit of the contract survives.
+   */
+  viewerRelation: ViewerRelation;
+  /**
+   * ★ `sessions.allow_walk_ins` (DEC-065). Not in DEC-092's amendment and
+   * needed by it: `canOfferCheckInLink()` takes a THIRD input the
+   * (phase, relation) pair cannot encode, because a walk-in switch turns
+   * `none` from ineligible into eligible for that session alone.
+   */
+  allowWalkIns: boolean;
 }
 
 /**
@@ -404,7 +426,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, abstract, state, level, language, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+      "id, title, abstract, state, level, language, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -424,13 +446,35 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
         }
       : null;
 
-  const { data: presenters, error: pErr } = await supabase
-    .from("session_presenters")
-    .select("member_id, accepted")
-    .eq("session_id", id)
-    .eq("accepted", true);
+  // ★ The two reads DEC-092 buys: the viewer's own seat and their own
+  // check-in. In parallel with the presenters, and once — the alternative was
+  // four slots each re-reading the RSVP on the product's most important page.
+  // RLS scopes both to the viewer, so neither can return anyone else's row.
+  const [presentersRes, mineRes, checkInRes] = await Promise.all([
+    supabase.from("session_presenters").select("member_id, accepted").eq("session_id", id).eq("accepted", true),
+    supabase.from("rsvps").select("status").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
+  ]);
+  const { data: presenters, error: pErr } = presentersRes;
   if (pErr) throw new Error(`session_presenters: ${pErr.message}`);
   const names = await namesFor(supabase, (presenters ?? []).map((p) => p.member_id));
+
+  const viewerIsPresenter = (presenters ?? []).some((p) => p.member_id === session.memberId);
+  const viewerIsStaff = session.role === "admin" || session.role === "moderator";
+  const phase = sessionPhase({
+    state: row.state as SessionState,
+    startsAt: (row.starts_at as string) ?? null,
+    endsAt: (row.ends_at as string) ?? null,
+  });
+  const relation = deriveRelation(
+    {
+      isStaff: viewerIsStaff,
+      isPresenter: viewerIsPresenter,
+      rsvpStatus: (mineRes.data?.status as "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | undefined) ?? null,
+      checkedIn: Boolean(checkInRes.data),
+    },
+    phase,
+  );
 
   return {
     id: row.id as string,
@@ -449,8 +493,10 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     cancellationCutoffAt: (row.cancellation_cutoff_at as string) ?? null,
     cancellationReason: (row.cancellation_reason as string) ?? null,
     presenters: (presenters ?? []).map((p) => ({ memberId: p.member_id, displayName: names.get(p.member_id) ?? null })),
-    viewerIsPresenter: (presenters ?? []).some((p) => p.member_id === session.memberId),
-    viewerIsStaff: session.role === "admin" || session.role === "moderator",
+    viewerIsPresenter,
+    viewerIsStaff,
+    viewerRelation: relation,
+    allowWalkIns: Boolean(row.allow_walk_ins),
   };
 }
 

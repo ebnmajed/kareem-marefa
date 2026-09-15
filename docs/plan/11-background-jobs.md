@@ -203,6 +203,16 @@ PDF is marked `failed` once and not retried — terminal, not a throw.
 generates variants; it is **not** where stripping first happens, because a job is asynchronous and
 the photo must never be retrievable with EXIF intact for even a moment.
 
+#### `JOB-zip_session_photos` ★ the thirty-fifth job
+**Serves:** `REQ-ADM-021`, DEC-076 · **Trigger:** a staff «تنزيل الكل» on a session's album
+**Out:** one zip written to storage under the session's own org prefix, plus `public.notify()` when
+it is ready; the audit row is written by the request that enqueued it, not by the job
+**Key:** `zipphotos:{session_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
+**Notes:** ★ **this is a job precisely because it cannot be a request** — an album of 300 photographs
+would block a Vercel function past its limit. It zips the **EXIF-stripped** objects, which are the
+only ones that exist (`REQ-EVT-012`). The zip is short-lived and expires on the retention schedule;
+a re-request re-enqueues under the same key, which moves the job rather than duplicating it.
+
 #### `JOB-transcode_audio` · `JOB-cleanup_rejected`
 **Keys:** `audio:{version_id}` · `cleanup:{date}`
 
@@ -343,6 +353,7 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-evaluate_streaks`, `JOB-evaluate_badges`, `JOB-evaluate_levels_perks` | `REQ-REC-002` … `REQ-REC-006` |
 | `JOB-snapshot_leaderboards` | `REQ-LDR-002`, `REQ-LDR-006` |
 | `JOB-audit_balances` | `REQ-PTS-011` |
+| `JOB-zip_session_photos` | `REQ-ADM-021` |
 | `JOB-convert_document`, `JOB-render_pages` | `REQ-MAT-003`, `REQ-MAT-011` |
 | `JOB-process_photo` | `REQ-EVT-011` |
 | `JOB-render_variant`, `JOB-regenerate_poster` | `REQ-DSG-003`, `REQ-DSG-011` … `REQ-DSG-014` |

@@ -61,6 +61,21 @@ export default async function AdminLayout({ children, params }: { children: Reac
 
   return (
     <div>
+      {/* ★ REQ-UIX-017 — console pages carry a SECOND skip link, past the
+          nav. The app shell's own skip link (`app/layout.tsx`) already
+          clears the header/account-menu tab stop and lands on `#main`,
+          which is this layout's own root; from there a keyboard user still
+          faces this nav's ~20 items before reaching the actual page. That is
+          the "long tab trap in front of every console page" `app/layout.tsx`'s
+          own comment already names, and it exists today — the visual rail
+          replacing this nav is M11's, but the trap it wards off is real now.
+          `tabIndex={-1}` so activating the link actually MOVES focus, not
+          just scroll position (WebAIM's standard skip-link pattern) — the
+          shell's own skip link targets `id="main"` without one; this one
+          adds it for correctness rather than silently repeating that gap. */}
+      <a href="#admin-content" className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white">
+        {t("skipToContent")}
+      </a>
       {items.length > 0 ? (
         <nav aria-label={t("brand")} className="border-b border-edge pb-3">
           {/* A wrapping row, not `overflow-x-auto`: an item scrolled out of
@@ -87,7 +102,9 @@ export default async function AdminLayout({ children, params }: { children: Reac
       ) : (
         <p className="max-w-2xl text-body text-fg-muted">{t("moderatorEmpty")}</p>
       )}
-      <div className={items.length > 0 ? "mt-8" : "mt-6"}>{children}</div>
+      <div id="admin-content" tabIndex={-1} className={`outline-none ${items.length > 0 ? "mt-8" : "mt-6"}`}>
+        {children}
+      </div>
     </div>
   );
 }

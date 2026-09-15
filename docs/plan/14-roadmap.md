@@ -23,6 +23,11 @@ These hold across **every** milestone, without exception (A38, `REQ-NFR-019`, `R
 6. **Deploys are frozen during scheduled sessions** once M2 ships — Server Action IDs rotate on
    deploy, and this product is used live in a room (`04` §9.2).
 
+★ **Constraint 3 is re-cut in M13, and only there** (`DEC-078`). From M13 the frozen contract is
+the **URLs, the registration behaviour and the accessibility floor** — appearance may change through
+a `DECISIONS.md` entry and a re-baselined visual diff. Until M13 it holds verbatim: `npm run qa`
+stays 44/44 and `npm run visual` stays 0.000 % for every milestone before it.
+
 ---
 
 ## 2. Milestones
@@ -44,6 +49,12 @@ gantt
     section Operate
     M7 org console and branding       :m7, after m4, 3
     M8 super admin and hardening      :m8, after m7, 2
+    section Design
+    M9 the system and the shell       :m9, after m8, 2
+    M10 the member surfaces           :m10, after m9, 3
+    M11 the console                   :m11, after m10, 3
+    M12 the two studios               :m12, after m11, 3
+    M13 marketing and the closing pass:m13, after m12, 2
 ```
 
 `M3`, `M4` and `M5` all depend on `M2` and on nothing else, so they can run in parallel if there is
@@ -292,6 +303,194 @@ that a rollback (disable the hook, remove the two variables — the guard return
 
 ---
 
+---
+
+## The design milestone — M9 … M13 · `DEC-069`
+
+**Opened by the owner on 2026-09-15**, the day after Launch, with fifteen asks
+(«the pages are plain and the UI/UX is nearly non-existent … do not build on the current UI/UX.
+Rebuild from scratch»). The specification is **[`16-ui-redesign.md`](16-ui-redesign.md)**, which is
+`settled` and may only change through a `DECISIONS.md` entry. It is a **rebuild, not a refinement**,
+and it is rolled out **in place, group by group** — no `v2` tree, no long-lived branch, no flag.
+
+★ **This is five milestones and five waves, not one.** The repository's unit is one wave per lead
+session; plan on **six or seven sessions**. Three things force that boundary whatever the pace:
+context fills on a lead driving four teammates, the gate lock serialises at roughly 6–8 hours of
+held wall time per wave, and **the owner merges every PR** (DEC-041), which is a human checkpoint
+between waves by design. **A rebuild is also slower than the greenfield waves were:** M1–M8 wrote
+new screens against a spec on an empty slate with four blocking gates; this replaces 49 existing
+screens without breaking them, rebuilds two studios, replaces the mail system and unfreezes
+marketing — against fourteen (`DEC-087`).
+
+★ **If the milestone needs to be shorter, the lever is scope.** M9 + M10 deliver **ten of the
+fifteen asks** and are the half a member actually touches. **Finish M9, let the owner look at it
+running, and let M10 confirm the direction before committing to M11–M13.**
+
+---
+
+## ★★ RESEQUENCED 2026-09-15 by the owner — read this before M9 below
+
+The owner reviewed M9 running locally and **reordered the milestone** (`DEC-110`). The tables for
+M9–M13 below are still the right *contents*; their **sequence is superseded**.
+
+**What changed and why.** `16` §15 shipped the system first and the screens after. That is correct
+engineering and it produced an increment nobody can review: M9 redesigns no screens, so the app
+looks exactly as it did while every primitive underneath it changed. The owner's words —
+«the designs aren't matching the mockups… is everything clear?» — are the sequencing failing, not
+the work.
+
+**The new order.**
+
+| | |
+|---|---|
+| **Next** | **The screens, to the canvas, including the admin console** (`DEC-110`). Every app screen at phone and desktop in Arabic RTL. The admin console is in from the start; it has had no design attention at all. |
+| With them | **The landing screen becomes the sessions timeline** (`DEC-112`) — `/app` renders what a member can attend, one column, filters in the list. `16` §6.6's dashboard is withdrawn. |
+| With them | **The shell defect sweep** (`DEC-111`) — the disclosures do not close on navigation, outside click or `Escape`, and two can be open at once. Blocking, with a gate. |
+| With them | **Check-in becomes a manual switch** (`DEC-113`) — opened and closed by the presenter, a moderator or an admin, with a hard ceiling at `ends_at + 2 h`. |
+| Alongside | M9's remaining system work — the motion system, `RouteProgress`, `Splash`, the three `(auth)` screens — carried **with the screens that need it**, not ahead of them. |
+| Unchanged | The marketing half stays frozen until last (invariant 1, `DEC-078`). `registrations` is never touched. The DAL, RLS, migrations, worker and renderer are unaffected. |
+
+★ **The design system M9 built is not wasted and is not re-litigated.** It is what every rebuilt
+screen now consumes: 34 primitives, the status vocabulary, the loading and failure models, the form
+model, the focus layer. The sequencing changed; the foundation did not.
+
+★ **The canvas is a reference, not a specification** (`DEC-114`). Where it disagrees with
+`01-prd.md` the PRD wins; where it disagrees with a `DECISIONS.md` entry the entry wins. A mockup
+that contradicts a requirement is a **question**, not an instruction.
+
+---
+
+## M9 — النظام · the system and the shell
+
+**The foundation. Nothing else can start cleanly until it exists, and no screen is redesigned in
+it.** Four teammates plus the lead (`DEC-101`).
+
+| Work | Requirements |
+|---|---|
+| `src/components/ui/index.ts` — every signature, day-one stubs, **hour one**; the 31 primitives in 34 files | `REQ-UIX-001` |
+| Tokens, motion tokens, the platform-fixed status colours | `REQ-UIX-003`, `REQ-UIX-014` |
+| The shell: desktop two-row, contextual phone tab bar, search entry, account menu; both page shells | `REQ-UIX-002` |
+| The form model — `Field`, `FormSummary`, `formStateFrom()` | `REQ-UIX-009`, `REQ-UIX-010`, `REQ-UIX-011` |
+| The loading model — `Link` + `RouteProgress`, `Splash`, `Skeleton`, ~12 `loading.tsx` | `REQ-UIX-005`, `REQ-UIX-006`, `REQ-UIX-007` |
+| The failure model — `RouteError`, the hand-written Arabic `global-error.tsx`, ~12 `error.tsx`, a `not-found.tsx` per dynamic segment | `REQ-UIX-016` |
+| Focus — the skip link, the scroll-padding tokens, the focus-obscured gate | `REQ-UIX-017` |
+| `sessionPhase()` · `seatState()` · `viewerRelation()` + `SessionStatusBadge` | `REQ-UIX-003`, `REQ-UIX-004` |
+| §5.3's **49-cell affordance matrix**, wired — **and the five live bugs of `16` §5.4.1** | `REQ-UIX-015` |
+| `ui-lint`, `loading-coverage`, `error-coverage`, the `(dev)` gallery and its visual baseline | `REQ-UIX-001`, `REQ-NFR-018` |
+| The three `(auth)` screens, which were in no milestone | `REQ-UIX-011`, `SC 3.3.8` |
+| Empty states and the destructive-action dialog, as primitives | `REQ-UIX-012`, `REQ-UIX-013` |
+
+**Demonstrable:** ★ **every existing screen still works, on the new shell, with loading and status —
+and asks 4, 5 and 6 are already answered before a single screen has been redesigned.** A member
+cannot register for a session that has ended; a failed form says which fields were missed and links
+to them; a finished session is visibly finished. The five live affordance bugs are gone — including
+the check-in link that was the primary button on every live session for every member and whose RPC
+refused.
+
+**Risk:** the bottom tab bar covers the last ~64 px of **all 49 existing screens at once**. The
+`padding-block-end` ships in the **same commit** as the bar and the proof capture is a 390 px
+screenshot of an **old, untouched** screen.
+
+---
+
+## M10 — عضو · the member surfaces
+
+| Work | Requirements |
+|---|---|
+| Home — one «التالية لك» card, not five rails; when nothing is upcoming, home **becomes** browse | `REQ-UIX-002`, `REQ-UIX-012` |
+| Browse — the date-grouped schedule, the chip row, the tag cloud, the card in four densities | `REQ-DSC-001` … `REQ-DSC-006` |
+| The event page — hero on a dark band, the two-state action card, sub-nav, presenter cards | `REQ-SES-013`, `REQ-UIX-004`, `REQ-UIX-015` |
+| `/app/me` as a tabbed hub, and the six screens under it | `REQ-PRF-001` |
+| **Objectives** — `0082`, the proposal field, the event-page section | `REQ-SES-014`, `REQ-PRO-010` |
+| **Tags** — `0083`, the combobox on propose, chips, the cloud | `REQ-DSC-002`, `REQ-DSC-004` |
+| Bookmark and share on every surface that shows a session | `REQ-DSC-006` |
+| The member-picker combobox, adopted by the proposal form | `REQ-UIX-008` |
+| **The motion system** — the vocabulary, two Tier-1 moments, five Tier-2, the reduced-motion and frame-budget gates | `REQ-UIX-018`, `REQ-UIX-019`, `REQ-UIX-020` |
+| **Avatars end to end** — `0089`, the upload route, EXIF strip, derivatives, initials, the Google import prompt, six placements, and **the `lh3.googleusercontent.com` CSP entry removed** | `REQ-PRF-008` … `REQ-PRF-011` |
+| The five screens that were in no milestone — check-in, host, rate, the viewer, `s/[id]` | `REQ-CHK-003`, `REQ-MAT-002`, `REQ-DSC-006` |
+
+**Demonstrable:** asks **2, 8, 9, 11**, plus avatars and motion. A member reserves a seat, the card
+cross-fades to its confirmed state, a dot ignites and a line draws to two neighbours — and the
+calendar button appears **where the reserve button was**, because it was never offered before there
+was a seat to put in a calendar.
+
+---
+
+## M11 — إدارة · the console
+
+| Work | Requirements |
+|---|---|
+| The admin left rail and a real dashboard — counts that are links, queues with ages | `REQ-ADM-004` |
+| `DataTable` across every list, **with a stacked card list below `md`** | `REQ-ADM-005` … `REQ-ADM-009` |
+| `create_session()` carries **every** proposal field — `0084`, promoted at sync 1 | `REQ-PRO-009` |
+| The two-tab schedule and the content-edit diff, on top of `0084` | `REQ-PRO-009`, `REQ-SES-001` |
+| **The survey** — `0085`, four entities, the combined rate screen, SCR-064, the CSV | `REQ-SUR-001` … `REQ-SUR-009` |
+| **Downloads** — the poster menu reuses `signExportUrl()`; photos need their own signer, `JOB-zip_session_photos` and `0086` | `REQ-DSG-027`, `REQ-ADM-021` |
+| **Tag management** — rename, merge, delete, usage counts | `REQ-DSC-008` |
+| Moderation queues, exports, audit and settings on the system | `REQ-ADM-010`, `REQ-ADM-017`, `REQ-ADM-018` |
+
+**Demonstrable:** asks **3, 7, 10**. An admin schedules an approved proposal **without re-typing a
+word of it**; a presenter cannot see the survey results, proven by policy and not by a hidden link;
+staff download the poster and the album, and both downloads are in the audit log.
+
+★ The platform console moves to **M13** — cosmetic work on screens only the owner sees — which keeps
+this wave at four teammates with one hard ordering instead of five with two.
+
+---
+
+## M12 — الاستوديو · the studio and the email studio
+
+| Work | Requirements |
+|---|---|
+| The editor shell — top bar, left-rail tabs, inspector accordion, variant strip | `REQ-DSG-029` |
+| **Direct manipulation** — drag, resize, rotate, marquee, align/distribute, snapping | `REQ-DSG-028` |
+| **The single-pointer path for every dragged operation**, and the keyboard pass | `REQ-DSG-028`, `SC 2.5.7` |
+| Focal-point cropping through derivation — `0087` | `REQ-DSG-030` |
+| The poster three-card chooser with working controls and the one-way detach dialog | `REQ-DSG-020`, `REQ-UIX-013` |
+| The certificate three-step flow with preflight and per-item status | `REQ-DSG-031` |
+| Template management and the platform-library separation | `REQ-DSG-008` |
+| **The email block model**, the compiler and the generated text alternative — `0088` | `REQ-NTF-009`, `REQ-NTF-013` |
+| The three-pane editor with the **production-renderer** preview and three modes | `REQ-NTF-010` |
+| «أرسل اختبارًا» through the live transport, and the checks panel | `REQ-NTF-011` |
+| The eight designed platform templates, light and dark, AR and EN | `REQ-NTF-014` |
+| Binding declaration per message key, enforced by the trigger | `REQ-NTF-012` |
+| `verify/[code]`, which was in no milestone — and where `REQ-INT-010` fails silently | `REQ-CRT-007`, `REQ-INT-010` |
+
+**Demonstrable:** ask **12** and ask **13**. An admin positions a layer with a finger and with a
+tap, and the parity goldens do not move. An admin designs a reminder, previews it in three modes,
+sends it to themselves, and opens it in Outlook on Windows.
+
+**Constraint:** parity stays 0.000 %. Any golden diff is a lead-reviewed change (DEC-048).
+
+---
+
+## M13 — الواجهة العامة · marketing and the closing pass
+
+**The only milestone that touches a page serving real visitors, sequenced last for that reason.**
+
+| Work | Requirements |
+|---|---|
+| `qa.mjs` split into `qa:contract` (28, still blocking) and `qa:appearance` (13, rewritten) | `REQ-NFR-019`, `DEC-078` |
+| The marketing rebuild on the system, keeping the constellation, the sting and the dark hero | `REQ-NFR-019` |
+| The register form re-presented — action, names, validation and no-JS path **byte-identical** | `REQ-NFR-019` |
+| The platform console on the system, deferred from M11 | `REQ-ADM-001` … `REQ-ADM-003` |
+| `app/me/privacy` and the legal pages, which were in no milestone | `REQ-PRF-006`, `REQ-NFR-015` |
+| **Status-colour contrast enforced** — `save_brand_kit()` refuses a palette on which a badge fails AA | `REQ-NFR-007`, `DEC-073` |
+| `REQ-NFR-007` accessibility pass over every screen — WCAG 2.2 AA, each track in its own folders | `REQ-NFR-007` |
+| `REQ-NFR-008` performance pass — the per-screen budgets | `REQ-NFR-008` |
+| `templates.ts`'s string path retired once every key has a block template | `REQ-NTF-014` |
+| The visual re-baseline, a new `og.png`, `STATUS.md` | `REQ-NFR-019` |
+
+**Demonstrable:** the live marketing site is rebuilt on the same system as the app, **`qa:contract`
+is green and was never allowed to go red**, `registrations` was never touched, and a real phone
+opens the preview URL before anything is promoted.
+
+**Risk:** this is the one milestone that can break a live signup. Mitigated by the split — the
+behavioural two-thirds of the suite stays blocking throughout — and by the register form's
+behaviour being preserved byte-for-byte while only its presentation changes.
+
+---
+
 ## 3. Dependencies
 
 ```mermaid
@@ -303,7 +502,7 @@ graph LR
     M5 --> M6
     M4 --> M7
     M6 --> M7
-    M7 --> M8
+    M7 --> M8 --> M9 --> M10 --> M11 --> M12 --> M13
 ```
 
 | Dependency | Why it is hard |
@@ -314,6 +513,11 @@ graph LR
 | M5 → M6 | The designer reuses M5's storage layout and job plumbing |
 | M4 + M6 → M7 | The console configures what M4 and M6 built |
 | M7 → M8 | A super admin manages orgs; a second org must exist first |
+| M8 → M9 | The design milestone rebuilds screens that must all exist first — it is a rebuild, not a build |
+| M9 → M10 … M13 | Nothing is redesigned before the system, the shell and the status vocabulary exist (`16` §16.0) |
+| M10 → M11 | The console's tables and forms sit on primitives the member surfaces exercise first |
+| M11 → M12 | `0084`'s proposal fields and the survey precede the studios; the studios precede nothing |
+| M12 → M13 | Marketing is unfrozen **last**, after the system is proven across 49 app screens (`DEC-078`) |
 
 ---
 
@@ -330,6 +534,11 @@ graph LR
 | **M6** | A printed A3 poster and certificate; both QRs work; the serial does not |
 | **M7** | A **second org**, with its own brand and scoring, invisible to the first |
 | **M8** | A super admin who cannot read org data, and whose attempt is in the org's own log |
+| **M9** | Every existing screen works on the new shell, with loading and status — **asks 4, 5 and 6 answered before a screen is redesigned** |
+| **M10** | A member reserves a seat and the calendar button appears **where the reserve button was** |
+| **M11** | An admin schedules an approved proposal without re-typing a word; a presenter is refused the survey results by policy |
+| **M12** | A layer positioned by finger **and** by tap; an email designed, previewed in three modes and opened in Outlook |
+| **M13** | The live marketing site rebuilt on the same system, `qa:contract` never once red, `registrations` untouched |
 
 ---
 

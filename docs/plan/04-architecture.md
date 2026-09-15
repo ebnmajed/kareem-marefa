@@ -125,11 +125,15 @@ src/
 │   │   │   ├── sign-in/page.tsx
 │   │   │   ├── choose-org/page.tsx   # REQ-AUT-004, only when the domain is ambiguous
 │   │   │   └── no-access/page.tsx    # REQ-AUT-006
+│   │   ├── (dev)/                    # ← DEC-083: lead-only, not a product surface
+│   │   │   └── ui/page.tsx           # the component gallery — 404 unless KAREEM_GALLERY=1
 │   │   ├── legal/
 │   │   │   ├── privacy/page.tsx      # unauthenticated (D58)
 │   │   │   └── terms/page.tsx
 │   │   ├── verify/
 │   │   │   └── [code]/page.tsx       # unauthenticated, rate-limited (REQ-CRT-007)
+│   │   ├── s/
+│   │   │   └── [id]/page.tsx         # SCR-007 public session card (DEC-066) — how members arrive
 │   │   │
 │   │   └── app/                      # ─── everything below requires a session ───
 │   │       ├── layout.tsx            # shell only — NO auth check here [v16]
@@ -164,6 +168,7 @@ src/
 │   │       │   ├── page.tsx          # dashboard
 │   │       │   ├── proposals/
 │   │       │   ├── sessions/[id]/schedule/
+│   │       │   ├── sessions/[id]/survey/     # SCR-064, survey results  [DEC-074, DEC-083]
 │   │       │   ├── venues/ · categories/ · companies/ · members/
 │   │       │   ├── moderation/{comments,photos,reports}/
 │   │       │   ├── scoring/ · recognition/
@@ -198,7 +203,12 @@ transpiles workspace packages automatically under the App Router**, so there is 
 ### 4.2 Why route groups now, when the repo has none
 
 `(auth)` groups the three unauthenticated platform routes so they share a layout without adding a
-URL segment. The frozen marketing routes stay exactly where they are — **`REQ-NFR-019` means
+URL segment. **`(dev)` groups the component gallery** (`DEC-083`), which is not a product surface:
+it reads no data, renders only props, and is **gated at the edge** — `proxy.ts` returns 404 for
+`/[locale]/ui` unless `KAREEM_GALLERY=1`, which `scripts/visual-diff.mjs` sets when it spawns
+`next start`. `NODE_ENV` cannot do this job: `stubbed-server.mjs` refuses to start without `.next`
+and serves the **production build**, so a route excluded from that build makes `npm run visual`
+404, and a route included in it is publicly reachable on the live domain. The frozen marketing routes stay exactly where they are — **`REQ-NFR-019` means
 `/`, `/ar`, `/en`, `/ar/register` and `/og.png` do not move**, and a route group would not change
 their URLs but would change their files, which is a diff on a live page for no benefit.
 
@@ -538,8 +548,16 @@ that was wanted. The half that was not: a Tailwind layer written against `--back
 `--foreground`, a **second token vocabulary** competing with the shipped `--color-canvas` /
 `.theme-dark` system, and `lucide-react`, which **brand policy bans**.
 
-The existing hand-written `button.tsx` already proves the house style. The permitted glyph set —
-dots, lines, chevron, check, spinner — ships as roughly **eight inline SVGs**.
+The existing hand-written `button.tsx` already proves the house style.
+
+★ **The glyph rule reads per surface (`DEC-079`, `DEC-084`).** **Marketing** (`/`, `/ar`, `/en`,
+`/ar/register`) keeps the permitted set — dots, lines, chevron, check, spinner — as roughly **eight
+inline SVGs**; the constellation is the language there and nothing is added. **The app, the consoles
+and the studio** carry a **house icon set of thirty-two**, hand-authored inline SVG on one drawing
+spec (24 px grid, 1.7 px stroke, round caps and joins, 2 px minimum interior gap, geometry built
+from the same circles and lines the eight use). **The ban on `lucide-react` — and on any icon
+library as a dependency — is unaffected and stands**, and so does the ban on education-cliché
+imagery: no books, caps, lightbulbs, mortarboards or cartoon illustration, on either surface.
 
 **Rejected:** shadcn re-themed onto the existing tokens (permanent divergence from upstream, for
 components we would restyle anyway); hand-rolling every primitive (accessible combobox and dialog

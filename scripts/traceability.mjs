@@ -29,7 +29,8 @@ const RE = {
   job: /\bJOB-[a-z_]+\b/g,
   msg: /\bMSG-[a-z_]+\b/g,
   story: /^####\s+(STORY-[A-Z]{3}-\d{3})\s+—/gm,
-  milestone: /\bM[0-8]\b/g,
+  // Longest alternative first, or `M13` matches as `M1` and drops the 3 (DEC-102).
+  milestone: /\bM(?:1[0-3]|[0-9])\b/g,
 }
 
 // TRACEABILITY.md is excluded: it is generated FROM this analysis, so feeding
@@ -172,6 +173,16 @@ const CROSS_CUTTING = {
   'REQ-NFR-017': 'the environments themselves',
   'REQ-NFR-018': 'the test suites',
   'REQ-NFR-020': 'every migration',
+  // Added with the design milestone (DEC-070). Each is a property of the whole
+  // interface rather than of one screen; the rest of UIX names its screens in
+  // 09 §7.2, which is where a requirement belongs when it has one.
+  'REQ-UIX-001': 'the component system behind every control on every screen',
+  'REQ-UIX-006': 'every navigation in the app',
+  'REQ-UIX-007': 'every action control in the product',
+  'REQ-UIX-014': 'every animated surface, by token',
+  'REQ-UIX-016': 'every route segment, plus the root error page',
+  'REQ-UIX-017': 'the shell, and every screen rendered under it',
+  'REQ-UIX-020': 'every animation in the product',
 }
 
 // ── gap reports ───────────────────────────────────────────────────────────

@@ -170,9 +170,15 @@ SQL the moment a table is renamed; `ENT-check_ins` cannot, because the name *is*
 | `TSK` | Pre-session tasks | `ADM` | Admin consoles |
 | `EVT` | Event page | `DSC` | Discovery and search |
 | `INT` | i18n, RTL, typography | `NFR` | Non-functional |
+| `UIX` | Interface system ★ | `SUR` | Survey ★ |
 
 Sequences are **per area**, not global. A global sequence tempts renumbering, and a renumbered
 requirement breaks every citation pointing at it.
+
+★ **`UIX` and `SUR` were added by `DEC-070`**, with the design milestone (`16-ui-redesign.md`).
+`UIX` owns the design system, the shell, the loading and failure models, the form model, the
+affordance rule, focus management and motion; `SUR` owns the staff-read survey, which is a
+different instrument from the rating (`DEC-074`) and is filed apart from `RAT` for that reason.
 
 ## 6. How the documents fit together
 
@@ -229,6 +235,7 @@ If two documents disagree, **the owner wins** and the other one is wrong.
 | Job catalogue, triggers, retries, idempotency keys | `11-background-jobs.md` | cites `JOB-*` |
 | Threat model, rate limits, retention, PDPL | `12-security-privacy.md` | |
 | Milestones and their order | `14-roadmap.md` | |
+| **The interface system, the shell, the IA, loading, failure, forms, motion, the studio workflow** | `16-ui-redesign.md` | `09` keeps the screen inventory; `16` owns what those screens become (`DEC-086`) |
 
 ### Coupled-change table
 
@@ -263,15 +270,15 @@ are the pairs that drift when someone is in a hurry.
 
 | | Count |
 |---|---|
-| Requirements (`REQ-*`), across 22 areas | **251** |
-| Entities (`ENT-*`) | **64** |
-| Screens (`SCR-*`) | **53** |
-| Jobs (`JOB-*`) | **34** |
+| Requirements (`REQ-*`), across 24 areas | **301** |
+| Entities (`ENT-*`) | **71** |
+| Screens (`SCR-*`) | **55** |
+| Jobs (`JOB-*`) | **35** |
 | Messages (`MSG-*`) | **17**, plus the full matrix in `08` |
-| Stories (`STORY-*`) | **112**, every one citing a requirement |
+| Stories (`STORY-*`) | **136**, every one citing a requirement |
 | Assumptions (`A*`) | **40** — A1–A32 from the brief, A33–A40 added |
 | Open questions (`OQ-*`) | **26**, each with a default already in force |
-| Decisions (`DEC-*`) | **20** seeded from the planning session |
+| Decisions (`DEC-*`) | **102** — 20 seeded from the planning session, the rest taken as the product was built |
 
 `node scripts/traceability.mjs` proves the set holds together: no orphan requirement, no broken
 citation, no requirement without a story or a milestone.

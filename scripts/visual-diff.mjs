@@ -30,7 +30,16 @@ const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Conte
 // 0.1% of pixels — the parity harness's own bar. Below it is anti-aliasing.
 const THRESHOLD = Number(process.env.VISUAL_THRESHOLD ?? 0.001)
 
-const ROUTES = ['/ar', '/en', '/ar/register']
+// The three frozen marketing routes, plus ★ the (dev) component gallery
+// (DEC-083). The gallery is the design system's OWN regression net: it renders
+// every primitive in every variant with no data behind it, so a diff there is
+// a change to the system rather than to a screen's content — which is exactly
+// what a visual gate can prove and a unit test cannot.
+//
+// It is also why the gallery is not behind admin auth: this script drives a
+// browser at public URLs and has no authentication path at all. An
+// admin-gated gallery would have been a gate that could never run.
+const ROUTES = ['/ar', '/en', '/ar/register', '/ar/ui']
 const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844, deviceScaleFactor: 1 },
   { name: 'desktop', width: 1440, height: 900, deviceScaleFactor: 1 },

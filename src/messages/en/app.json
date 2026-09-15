@@ -13,7 +13,20 @@
       "platform": "Platform",
       "privacy": "Privacy policy",
       "terms": "Terms",
-      "more": "More"
+      "more": "More",
+      "skipToContent": "Skip to content",
+      "browse": "Browse",
+      "searchLabel": "Search sessions",
+      "searchPlaceholder": "Search for a session, presenter or tag…",
+      "account": "My account",
+      "rsvps": "My reservations",
+      "points": "My points",
+      "certificates": "My certificates",
+      "bookmarks": "Bookmarks",
+      "calendar": "Calendar",
+      "staffSection": "Administration",
+      "proposeShort": "Propose",
+      "toastClose": "Dismiss notification"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",

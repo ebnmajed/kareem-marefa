@@ -1,0 +1,117 @@
+import { Link } from "@/i18n/navigation";
+import { CalendarIcon, HomeIcon, PlusIcon, UserIcon } from "@/components/ui/icons";
+
+// The phone tab bar — `16` §6.1 note 2, DEC-072, DEC-098, REQ-UIX-002.
+//
+// It replaces the `<details>` disclosure that held both consoles and sign-out
+// behind one «المزيد» summary. The current shell shows THREE items on a phone
+// and eight on a desktop, and the disclosure is where everything else went.
+//
+// ★★ IT IS CONTEXTUAL, NOT UNIVERSAL. On detail and immersive screens — the
+// event page, check-in, the host view, the materials viewer, the studio — it
+// is absent, and from M10 a bottom ACTION bar carrying that screen's one
+// primary action takes its place. Three reasons, and the third is the one that
+// matters:
+//
+//   · a universal tab bar plus a sticky action card is TWO fixed bottom bars
+//     on one screen, and §17's gate asserts there is never more than one;
+//   · navigation is not what a member came to a detail screen to do;
+//   · it is a better answer to REQ-SES-013 than the first draft's in-flow
+//     card — a member who scrolls past an in-flow card has no route back to
+//     «احجز مقعدًا» on the one screen where the requirement demands
+//     reachability, and a bottom bar is reachable at every scroll position.
+//
+// ★ The decision is made on the SERVER, from the `x-pathname` header
+// `proxy.ts` forwards. A client component calling `usePathname()` would make
+// `<main>`'s bottom padding a hydration result, and a client-decided bar is a
+// visible layout shift on every immersive screen.
+//
+// It adds `env(safe-area-inset-bottom)` to its own padding — the standing rule
+// from the mobile pass — and `<main>` gains a matching `padding-block-end` IN
+// THE SAME COMMIT, because `app/layout.tsx` had none and a fixed bottom bar
+// covers the last ~64 px of all 49 screens ever written at once.
+
+/**
+ * Routes where the bar is replaced by that screen's own bottom action bar.
+ * Matched against the path with the locale stripped.
+ *
+ * `/app/sessions/[id]` matches, but `/app/sessions` must not — browse is a
+ * list and keeps the tab bar. Hence the trailing-segment test rather than a
+ * prefix.
+ */
+const IMMERSIVE: RegExp[] = [
+  /^\/app\/sessions\/[^/]+(\/|$)/, // the event page and everything under it
+  /^\/app\/admin\/designer\//, // the studio
+  /^\/app\/admin\/emails(\/|$)/, // the email studio
+];
+
+export function isImmersive(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const withoutLocale = pathname.replace(/^\/(ar|en)(?=\/|$)/, "");
+  return IMMERSIVE.some((r) => r.test(withoutLocale));
+}
+
+export interface TabBarProps {
+  /** The path with its locale, from `x-pathname`. */
+  pathname: string | null;
+  labels: { home: string; sessions: string; propose: string; me: string };
+}
+
+const TABS = [
+  { href: "/app", key: "home", Icon: HomeIcon },
+  { href: "/app/sessions", key: "sessions", Icon: CalendarIcon },
+  { href: "/app/propose", key: "propose", Icon: PlusIcon },
+  { href: "/app/me", key: "me", Icon: UserIcon },
+] as const;
+
+export function TabBar({ pathname, labels }: TabBarProps) {
+  if (isImmersive(pathname)) return null;
+  const withoutLocale = (pathname ?? "").replace(/^\/(ar|en)(?=\/|$)/, "");
+
+  return (
+    <nav
+      aria-label={labels.home}
+      // `--tabbar-h` is declared in globals.css and consumed BY THE BAR, so a
+      // height change moves one number and the scroll padding follows it.
+      className="fixed inset-inline-0 bottom-0 z-30 border-t border-edge bg-canvas md:hidden"
+      style={{ paddingBlockEnd: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <ul className="mx-auto flex max-w-6xl items-stretch justify-around">
+        {TABS.map(({ href, key, Icon }) => {
+          // `/app` is exact; the rest match their subtree. Without the exact
+          // test every tab is current on every screen.
+          const current = href === "/app" ? withoutLocale === "/app" : withoutLocale.startsWith(href);
+          return (
+            <li key={href} className="flex-1">
+              <Link
+                href={href}
+                aria-current={current ? "page" : undefined}
+                className={`relative flex h-16 flex-col items-center justify-center gap-1 px-1 ${
+                  current ? "text-fg-heading" : "text-fg-muted"
+                }`}
+              >
+                {/* ★ The dot is ABSOLUTE, so it costs no layout height. The
+                    390 px review is what found this: with the dot in flow, the
+                    icon, the label and the dot did not fit in 64 px and the
+                    labels collided with their neighbours. An active tab is a
+                    dot (DEC-079 condition 2) — it just is not a row. */}
+                <span
+                  aria-hidden
+                  className={`absolute top-1.5 block h-1 w-1 rounded-full ${current ? "bg-fg-heading" : "bg-transparent"}`}
+                />
+                <Icon className="text-[1.375rem]" />
+                {/* ★ An explicit size, not `text-caption`: Arabic caption is
+                    15 px, which does not fit four labels across 390 px. 12 px
+                    with `leading-tight` does, on ONE line — and one line is the
+                    requirement, because the alternative is `overflow: hidden`,
+                    which clips tashkeel (`10` §1). The labels are short for the
+                    same reason: «اقترح» here, «اقترح جلسة» everywhere else. */}
+                <span className="text-[0.75rem] leading-tight">{labels[key]}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

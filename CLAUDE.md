@@ -316,6 +316,30 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
+### Ownership map (wave 5 — M9 the system, DEC-101 · DEC-103)
+
+The design milestone (`docs/plan/16-ui-redesign.md`, `settled`) runs **five waves**. Wave 5 is M9 —
+**the system, and no screen is redesigned in it.** Four teammates, because the lead otherwise holds
+~40 files on the lane the ownership audit called the tightest in the milestone.
+
+| Teammate | Model | Builds | Edits only |
+|---|---|---|---|
+| **lead** | — | tokens; `ui/index.ts` + the day-one stubs; the shell and both page shells; the three status functions; the loading model; the cross-cutting type and layout primitives; `RouteError` and `global-error.tsx`; `proxy.ts`; the gate scripts; the `(dev)` gallery | `src/app/globals.css`, `src/components/ui/{index,button,icon-button,link,skeleton,route-progress,splash,toast,page-header,section-header,prose,route-error,icons,dialog}.tsx`, `src/app/[locale]/app/{layout,page}.tsx`, `src/app/[locale]/app/me/layout.tsx`, `src/app/[locale]/global-error.tsx`, `src/lib/session-status.ts`, `src/proxy.ts`, the ~12 `loading.tsx` **named individually**, `src/app/[locale]/(dev)/**`, `src/messages/*/ui.json`, `scripts/**`, `.claude/hooks/task-gate.sh`, **and for M9 only** `src/app/[locale]/app/sessions/[id]/page.tsx`, `src/components/sessions/slots.ts` and `getSessionForEvent()` in `src/lib/dal/sessions.ts` (DEC-092, DEC-103) |
+| `sessions` | opus | **the whole form model** — it owns the propose form, the largest in the product, and is the track that will live with every rough edge | `src/components/ui/{field,input,textarea,select,checkbox,radio-group,switch,form-summary}.tsx`, `src/lib/form-state.ts`, the `error.tsx`/`not-found.tsx` under `app/{sessions,propose}/**`, its tests, `messages/*/{sessions,proposals}.json` |
+| `console` | sonnet | the two primitives where **no upstream library does the hard part**, plus the Radix shells | `src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`, `src/app/[locale]/app/admin/{layout,error}.tsx`, `src/components/admin/member-picker.tsx` (to re-export `ui/combobox`), `messages/*/admin.json`, its tests |
+| `content` | sonnet | the card-shaped and status primitives, and the upload control it owns every consumer of | `src/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.tsx`, its `error.tsx`/`not-found.tsx`, `messages/*/browse.json`, its tests |
+| `checkin` | sonnet | §5.3's **49-cell affordance matrix** and the **five live bugs** of §5.4.1 | `src/components/checkin/**` (incl. `attendance-outcome.tsx`), `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`, `src/lib/dal/{rsvp,checkin}.ts`, `messages/*/{rsvp,checkin}.json`, its tests |
+
+**Wave-5 rules.** `ui/index.ts` is the lead's **hour-one** commit and blocks everything; after it the
+four tracks are independent. `checkin` additionally waits on `src/lib/session-status.ts`, the lead's
+second commit, same day. **A teammate never edits a primitive it does not own** — it opens a request
+in its note and the lead does it at the next sync. **`npm run qa`, `npm run visual` and
+`npm run build` are lead-only for this milestone**; the `TaskCompleted` hook is path-aware since
+DEC-088 and runs tsc + lint + vitest for a teammate, falling through to the full `qa` only when the
+change can reach the frozen marketing routes. `ui-lint` and `loading-coverage` ship with a
+**committed, shrinking** allowlist — 65 files carry the copied control-class string today — and flip
+to hard-fail in M13.
+
 
 ### Lead-only paths
 
@@ -324,6 +348,23 @@ org from creation (`0061`, DEC-052); promotion adds, it never supplies the basel
 `src/app/[locale]/(marketing)/**` · `public/**` · `src/proxy.ts` · `src/lib/supabase/**` ·
 `src/lib/dal/session.ts` · `src/i18n/**` · `src/messages/*/marketing.json` · `scripts/**` ·
 `vitest.config.ts` · `playwright.config.ts`.
+
+★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
+`src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:
+
+`src/components/ui/index.ts` · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` ·
+`src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/me/layout.tsx` ·
+`src/lib/session-status.ts` · `src/lib/form-state.ts` · `src/app/[locale]/(dev)/**` ·
+`src/messages/*/ui.json`.
+
+**Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
+is the exact failure `TEAM.md` exists to prevent. The three literal file lists are in the wave-5
+table below and in each `.claude/agents/*.md`. **Ownership lives in those never-touch paragraphs or
+it does not exist**, which is why all ten were regenerated in the same commit as this list.
+
+`src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A
+runtime barrel would drag `toast`, `combobox` and `route-progress` — all `"use client"` — into the
+client graph of every server page that imports `Card`.
 
 ### The migration rule
 
@@ -338,7 +379,11 @@ moves, resets, runs the suite, commits. **Only the lead runs `supabase db reset`
 
 `npm run qa`, `npm run visual`, Playwright's web server, `npm run test:e2e:unconfigured` and the
 `TaskCompleted` hook all take **`/tmp/task-gate.lock`** (`scripts/lib/gate-lock.mjs`): one server on
-port 3000 and one `.next` at a time. Waiters queue for up to 20 minutes and say so. **Only the lead
+port 3000 and one `.next` at a time. ★ **The hook is path-aware since DEC-088**: it runs
+`tsc + lint + vitest` — no server, no lock — and takes the lock for a full `npm run qa` only when the
+change can reach the frozen marketing routes, measured from the commit at which qa last passed
+(`.git/kareem-qa-verified`). Before that it ran the full suite on every teammate's every task, about
+twenty-four times a wave, which made "qa is lead-only" unenforceable. Waiters queue for up to 20 minutes and say so. **Only the lead
 runs `npm run build`**; teammates run `tsc`, lint, `npm test`, `npm run test:rls`, and their e2e
 through the lock.
 
@@ -392,6 +437,7 @@ repository is public until Launch by the owner's decision (DEC-051); nothing her
 | [`13-testing-quality.md`](docs/plan/13-testing-quality.md) | Test strategy, budgets, device matrix, CI |
 | [`14-roadmap.md`](docs/plan/14-roadmap.md) | M0–M8, no phase-2 bucket |
 | [`15-backlog.md`](docs/plan/15-backlog.md) | 112 stories, each citing `REQ-*` |
+| [`16-ui-redesign.md`](docs/plan/16-ui-redesign.md) | **The UI/UX rebuild** — system, IA, loading, forms, the studio, the email studio. `draft` |
 | [`ASSUMPTIONS.md`](docs/plan/ASSUMPTIONS.md) | A1–A40 with status |
 | [`OPEN-QUESTIONS.md`](docs/plan/OPEN-QUESTIONS.md) | 26 gaps, each with a default in force |
 | [`TRACEABILITY.md`](docs/plan/TRACEABILITY.md) | **Generated.** `node scripts/traceability.mjs` |

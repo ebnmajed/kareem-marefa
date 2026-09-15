@@ -13,7 +13,20 @@
       "platform": "المنصة",
       "privacy": "سياسة الخصوصية",
       "terms": "الشروط والأحكام",
-      "more": "المزيد"
+      "more": "المزيد",
+      "skipToContent": "تخطَّ إلى المحتوى",
+      "browse": "تصفّح",
+      "searchLabel": "ابحث في الجلسات",
+      "searchPlaceholder": "ابحث عن جلسة أو مُقدِّم أو وسم…",
+      "account": "حسابي",
+      "rsvps": "حجوزاتي",
+      "points": "نقاطي",
+      "certificates": "شهاداتي",
+      "bookmarks": "المحفوظات",
+      "calendar": "التقويم",
+      "staffSection": "الإدارة",
+      "proposeShort": "اقترح",
+      "toastClose": "إغلاق الإشعار"
     },
     "home": {
       "welcome": "أهلًا <name>{value}</name>",

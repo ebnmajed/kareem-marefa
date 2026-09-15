@@ -16,7 +16,9 @@
       "invalid_code": "That code isn't correct — check the code shown right now",
       "overlap": "You're checked in to another session at this same time",
       "unknown": "Something went wrong — try again",
-      "reservation_required": "This session is for confirmed reservations only. Reserve a seat from the session page, or ask staff to check you in."
+      "reservation_required": "This session is for confirmed reservations only. Reserve a seat from the session page, or ask staff to check you in.",
+      "not_published": "This session hasn't been published yet",
+      "cancelled": "This session was cancelled"
     },
     "host": {
       "title": "Check-in code",
@@ -41,6 +43,8 @@
       },
       "notStarted": "The session has not started yet. The check-in code appears here automatically when it does.",
       "ended": "The session has ended and its check-in code is no longer valid.",
+      "notPublished": "This session hasn't been published yet. The check-in code appears once it's published and scheduled.",
+      "cancelled": "This session was cancelled. There is no check-in code.",
       "walkIns": {
         "title": "Walk-ins",
         "on": "Allowed: the code is accepted from any member in the room.",

@@ -18,6 +18,9 @@
     "test:e2e": "playwright test",
     "test:e2e:local": "node scripts/e2e-local.mjs",
     "test:e2e:unconfigured": "node scripts/e2e-unconfigured.mjs",
+    "ui-lint": "node scripts/ui-lint.mjs",
+    "loading-coverage": "node scripts/route-coverage.mjs --kind=loading",
+    "error-coverage": "node scripts/route-coverage.mjs --kind=error",
     "test:rls": "RLS_DATABASE_URL=${RLS_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres} node scripts/rls.mjs",
     "policy-diff": "node scripts/policy-diff.mjs",
     "serve:stub": "node scripts/serve-stub.mjs",
@@ -33,6 +36,7 @@
     "worker:start": "npm run start -w @kareem/worker",
     "lockfile": "node scripts/lockfile.mjs",
     "db:reset": "node scripts/db-reset.mjs",
+    "seed:dev": "node scripts/seed-dev.mjs",
     "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime"
   },
   "dependencies": {
@@ -59,6 +63,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "axe-core": "^4.12.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "jsdom": "^30.0.1",

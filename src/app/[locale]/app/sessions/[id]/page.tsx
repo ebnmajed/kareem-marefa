@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { RsvpPanel } from "@/components/checkin/rsvp-panel";
+import { AttendanceOutcome } from "@/components/checkin/attendance-outcome";
+import { affordancesFor } from "@/components/checkin/session-matrix";
+import { canOfferCheckInLink } from "@/lib/dal/checkin";
+import { sessionPhase } from "@/lib/session-status";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { Materials } from "@/components/materials/list";
 import { Photos } from "@/components/photos/gallery";
@@ -66,6 +70,18 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
         : when(session.endsAt)
       : null;
   const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
+
+  // ★ The affordance gates for THIS viewer on THIS session, derived once from
+  // `checkin`'s 42-cell matrix rather than re-written as a condition at each
+  // call site (`16` §5.3, REQ-UIX-015, DEC-090, DEC-103).
+  //
+  // RLS and the RPCs remain authoritative (REQ-NFR-001): a hidden control is a
+  // courtesy, and the database refuses the write regardless. What these fix is
+  // the opposite failure — offering an action the database will refuse.
+  const phase = sessionPhase(session);
+  const can = affordancesFor(phase, session.viewerRelation);
+  const canCheckIn = canOfferCheckInLink(session, session.viewerRelation, session.allowWalkIns);
+  const canHostConsole = can.hostConsole;
 
   return (
     <article className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:items-start md:gap-10">
@@ -199,9 +215,24 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           On desktop it is the sticky rail 09 asks for. */}
       <aside className="mt-8 border-t border-edge pt-4 md:sticky md:top-6 md:mt-0 md:border-t-0 md:pt-0">
         <RsvpPanel sessionId={session.id} memberId={me.memberId} locale={locale} />
+        {/* ★ The ended read-only fact — «حضرت» / «لم تُسجّل حضورك» — replacing
+            the live «إلغاء الحجز» form `rsvp-panel.tsx` used to render on a
+            completed session (`16` §5.4.1a, DEC-090). */}
+        {can.attendanceOutcome ? <AttendanceOutcome sessionId={session.id} memberId={me.memberId} locale={locale} /> : null}
         {/* The notify slot (TEAM.md §2, wave 2): ICS + add-to-calendar links, REQ-CAL-001/002.
-            Renders nothing for an unscheduled or cancelled session. */}
-        <AddToCalendar sessionId={session.id} memberId={me.memberId} locale={locale} />
+
+            ★★ GATED, and this is the owner's own instance of DEC-090:
+            «how can a user add a session to their calendar without registering
+            for it? It should be an option after the registration flow.»
+            `add-to-calendar.tsx` gates on `!session || session.cancelled` AND
+            NOTHING ELSE, so any viewer sees it on any scheduled session — and
+            a waitlist place is not a seat either. Commitment before
+            convenience: it appears when the seat does, which is also how a
+            member learns the calendar exists at all.
+
+            The gate is HERE, not in the slot, because the page owns the
+            landmark — so `notify`'s file does not change (DEC-103). */}
+        {can.calendar ? <AddToCalendar sessionId={session.id} memberId={me.memberId} locale={locale} /> : null}
 
         {session.capacity !== null ? (
           <p className="mt-3 text-body-sm text-fg-muted">
@@ -219,18 +250,35 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           </p>
         ) : null}
 
-        {/* REQ-CHK-001: a member checks in while the session is live — the
-            screen exists since M2, the link since Launch. Presenters cannot
-            check in (REQ-CHK-011), so they get the host view instead. */}
-        {session.state === "in_progress" && !session.viewerIsPresenter ? (
+        {/* ★★ REQ-CHK-001, AND THE WORST OF THE FIVE LIVE BUGS `16` §5.4.1
+            found (DEC-090 row 4). This gated on `state === "in_progress" &&
+            !viewerIsPresenter` AND NOTHING ELSE, and rendered as the PRIMARY
+            NAVY BUTTON — so every member saw it on every live session, while
+            `check-in/page.tsx` listed `reservation_required` among its known
+            errors, meaning the RPC refused. The full loop was: a primary
+            button → a screen where you type six characters standing up, under
+            time pressure → «لم تحجز مقعدًا».
+
+            `canOfferCheckInLink()` is `checkin`'s predicate (DEC-103): it
+            folds the relation, the phase, DEC-065's per-session walk-in switch
+            and `canGrantOn()`'s direction guard into one answer. The direction
+            guard matters here as much as the seat does — a `published` session
+            past its start reads `live` on the clock while `start_session` has
+            not run, and the check-in RPC would refuse that too. */}
+        {canCheckIn ? (
           <p className="mt-4">
             <Link href={`/app/sessions/${session.id}/check-in`} className="inline-flex h-11 items-center rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
               {t("checkIn")}
             </Link>
           </p>
         ) : null}
-        {/* OQ-013, REQ-CHK-014: presenters, admins and moderators only. */}
-        {session.viewerIsPresenter || session.viewerIsStaff ? (
+        {/* OQ-013, REQ-CHK-014: presenters, admins and moderators only —
+            ★ AND NOW A PHASE. This had no phase condition at all (DEC-090
+            row 6), so a presenter was offered a live-attendance console for a
+            talk that ended in March. The host view is `live`, and `open` for
+            the pre-flight; `affordancesFor()` is the single table that says so
+            rather than a condition written out again here. */}
+        {(session.viewerIsPresenter || session.viewerIsStaff) && canHostConsole ? (
           <p className="mt-4">
             <Link href={`/app/sessions/${session.id}/host`} className="text-label text-fg-heading underline underline-offset-4">
               {t("hostView")}
@@ -283,13 +331,27 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           </p>
         </section>
         {/* 6. مهام ما قبل الجلسة — the content slot for tasks (REQ-TSK-001…005): reminder-only,
-            never consulted by check-in; presenters and admins add them inline. */}
-        <section aria-labelledby="tasks" className="mt-10">
-          <h2 id="tasks" className="text-h2 text-fg-heading">
-            {t("tasksLabel")}
-          </h2>
-          <Tasks sessionId={session.id} memberId={me.memberId} locale={locale} />
-        </section>
+            never consulted by check-in; presenters and admins add them inline.
+
+            ★★ GATED WITH ITS SECTION AND ITS HEADING, which is the rule `16`
+            §5.4.1a(b) states once so the remaining slots inherit it:
+            *a slot that can render nothing must have its `<section>` and
+            heading gated with it.* `tasks/panel.tsx` called
+            `getTasksPageData()` with no RSVP condition (DEC-090 row 3), so
+            «المهام التحضيرية» — preparation for attending — was offered to
+            someone who is not attending. Gating the panel alone would have
+            left every non-attendee an empty heading on every session.
+
+            The page owns the landmark, so the page owns the condition — and
+            `content`'s file does not change (DEC-103). */}
+        {can.tasks ? (
+          <section aria-labelledby="tasks" className="mt-10">
+            <h2 id="tasks" className="text-h2 text-fg-heading">
+              {t("tasksLabel")}
+            </h2>
+            <Tasks sessionId={session.id} memberId={me.memberId} locale={locale} />
+          </section>
+        ) : null}
         {/* 7. المواد — the content slot (TEAM.md §2, wave 2): the page owns the
             landmark and the heading; the list is phase-gated by its own read policy. */}
         <section aria-labelledby="materials" className="mt-10">

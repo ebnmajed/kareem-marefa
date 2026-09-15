@@ -2,6 +2,25 @@
   "ui": {
     "dialog": {
       "close": "Close"
+    },
+    "error": {
+      "title": "This section could not be loaded",
+      "description": "Something went wrong while fetching the data. Try again, and if it keeps happening go back to the home page.",
+      "retry": "Try again",
+      "back": "Back to the platform",
+      "notFoundTitle": "We could not find that",
+      "notFoundDescription": "It may have been removed, or the link may be wrong.",
+      "notFoundBack": "Browse sessions"
+    },
+    "field": {
+      "required": "Required"
+    },
+    "form": {
+      "summaryTitle": "The form could not be submitted",
+      "remaining": "{count, plural, =0 {All required fields are complete} one {Remaining: one field} other {Remaining: {value} fields}}"
+    },
+    "toast": {
+      "close": "Dismiss notification"
     }
   }
 }
