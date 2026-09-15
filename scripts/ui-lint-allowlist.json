@@ -188,13 +188,6 @@
     "src/app/[locale]/app/propose/page.tsx": {
       "class-string": 2
     },
-    "src/app/[locale]/app/propose/proposal-form.tsx": {
-      "field": 1,
-      "class-string": 2
-    },
-    "src/app/[locale]/app/sessions/[id]/check-in/page.tsx": {
-      "class-string": 3
-    },
     "src/app/[locale]/app/sessions/[id]/host/page.tsx": {
       "field": 2,
       "class-string": 9
@@ -217,10 +210,6 @@
     },
     "src/app/[locale]/app/sessions/page.tsx": {
       "class-string": 1
-    },
-    "src/components/admin/member-picker.tsx": {
-      "field": 1,
-      "class-string": 2
     },
     "src/components/admin/rtl-datetime-picker.tsx": {
       "field": 2,

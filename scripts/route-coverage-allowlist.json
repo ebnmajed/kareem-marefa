@@ -8,13 +8,7 @@
     "src/app/[locale]/app/admin/sessions/[id]/certificates",
     "src/app/[locale]/app/admin/sessions/[id]/schedule",
     "src/app/[locale]/app/members/[id]",
-    "src/app/[locale]/app/platform/orgs/[id]/domains",
-    "src/app/[locale]/app/propose/[id]",
-    "src/app/[locale]/app/sessions/[id]",
-    "src/app/[locale]/app/sessions/[id]/check-in",
-    "src/app/[locale]/app/sessions/[id]/host",
-    "src/app/[locale]/app/sessions/[id]/materials/[materialId]",
-    "src/app/[locale]/app/sessions/[id]/rate"
+    "src/app/[locale]/app/platform/orgs/[id]/domains"
   ],
   "globalError": false
 }
