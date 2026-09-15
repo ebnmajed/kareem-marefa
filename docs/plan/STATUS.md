@@ -1300,18 +1300,43 @@ absolute so it costs no layout height, shortening the label, and setting 12 px e
    marketing depends on (`git show main:path > path`), build, capture, restore. Two builds, no
    worktree, and the baseline is genuinely `main`'s.
 
+### All four tracks closed
+
+| Track | Delivered |
+|---|---|
+| **`sessions`** | `form-state.ts`, the eight form primitives, the propose-form adoption (its own `const FIELD` **deleted** — one of the fourteen copies), and five route boundaries |
+| **`console`** | `menu`, `tabs`, `sheet` (Radix), `date-time` (the SCR-043 picker adopted, not replaced), `combobox` (**promoted** from `member-picker.tsx`, plus Arabic normalisation and multi-select), `data-table` with the phone card stack, the admin layout and its second skip link |
+| **`content`** | `badge` with all nine §5.2 rows, `card` in four densities, `avatar` with the stable-hash initials, `empty-state`, `tag-chip`, `progress`, `stat`, `panel`, `file-drop`, and three boundaries |
+| **`checkin`** | the 42-cell matrix, all five live bugs, `attendance-outcome`, `getCheckInScreenData()`, and `tests/e2e/checkin-gating.spec.ts` |
+
+★ **The allowlists SHRANK, which is the mechanism working.** `ui-lint` went 425 → **416** across
+106 → **103** files, entirely from tracks adopting their own primitives instead of the copied class
+string — `checkin`'s five status banners onto `ui/panel`, the shell's search box onto `ui/input`,
+the gallery's icon tiles onto `ui/panel`. `route-coverage`'s `not-found` list went 12 → **6**.
+Loading and error are **empty**.
+
+★ **The gate caught the lead twice**, in the two files that should have known better: the shell's
+search box had copied the house control string — the sixty-five-file problem starting over in the
+one file every screen renders — and the gallery's icon tiles had a hand-rolled surface, in the file
+that exists to show the system off.
+
+### Three findings from the team worth keeping
+
+1. **`checkin`: a `getByText` over the whole page can resolve to two nodes DURING HYDRATION on a
+   dynamic route**, while `page.content()` after hydration shows one — 2 of 3 runs, `--workers=1`
+   included. The fix is general: **scope text and role assertions to the nearest landmark, not
+   `page`**. Written up in `docs/plan/notes/checkin.md`.
+2. **`content`: `axe-core` was an undeclared transitive** (via lighthouse and
+   eslint-plugin-jsx-a11y) imported directly by three tracks' tests. A lockfile regen could have
+   dropped it and taken a hundred tests down with no code change to blame. Now declared.
+3. **`content`: reading `document.documentElement.lang` during render is a real SSR/hydration
+   hazard**, not a lint nicety — which is why `TagChip.count` takes a pre-formatted string like
+   `Stat.value` and `Progress.valueText` do.
+
 ### What is NOT done, and is the next session's first move
 
-- **`sessions`, `console` and `content` are still running.** Their primitives are landing; the
-  propose-form adoption, the six data-dense primitives and the nine display primitives are in
-  flight. `checkin` is **done** — matrix, five bugs, and `tests/e2e/checkin-gating.spec.ts`.
-- **`checkin` is waiting on a green build** to run `checkin.spec.ts` and `checkin-gating.spec.ts`
-  live and take the refusal-state captures. Unblock it the moment `npm run build` is green.
-- **The `(dev)` gallery has no visual baseline yet.** `scripts/visual-diff.mjs`'s `ROUTES` still
-  hardcodes the three marketing routes; adding `/ar/ui` and setting `KAREEM_GALLERY=1` when it
-  spawns `next start` is the remaining half of DEC-083, and the reason the route exists.
-- **`ui-lint`'s allowlist has not shrunk yet** — 425 violations held. It shrinks as each track
-  adopts its own primitives, and flips to `--strict` in M13.
+- **`ui-lint`'s allowlist still holds 416 violations across 103 files.** It shrinks as each screen
+  adopts the primitives — which is M10's and M11's work — and flips to `--strict` in M13.
 - **The `RouteProgress` store and `ui/link`'s `useLinkStatus()` child are stubs.** §7.1.1's
   corrected design is written down; the implementation is not.
 - **`ui/splash.tsx` is a stub.** §7.2 is explicit that it must be CSS-only and fade on the shell's
