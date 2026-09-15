@@ -746,18 +746,32 @@ table is evaluated as the CALLER, and `anon` has no policy on `export_artifacts`
 or `sessions` — an inline subquery would see nothing and deny everything, looking correct and never
 granting.
 
+The policy is `to anon, authenticated` and not `anon` alone: the image route reads the object as
+whoever asked, and a signed-in member of ANOTHER org is `authenticated`, for whom
+`exports_storage_read` (org-prefixed) does not apply. Without it, signing in would show a person
+LESS than signing out — a broken image on a card a stranger sees fine. Promoted inside `0080`.
+
 **Stated, not hidden:** holding a select policy on `storage.objects` means `anon` can *list* the
 objects it matches. The paths are `{org_id}/exports/{document_id}/og.png` — two opaque uuids,
 neither of them a session id, so a listed path cannot be turned back into a card URL, and the bytes
 it names are exactly the bytes any link-holder may already fetch. Accepted.
 
-### 14.4 The bug the CTA found, which is not mine to fix
+### 14.4 The bug the CTA did NOT find — a false alarm, recorded because the trap is real
 
-`safeNextPath()` (`src/lib/auth/next-path.ts`, lead-only) rejects any candidate matching
-`/[\s -]/`. The `-` there is literal, so **every path containing a hyphen is discarded** — and
-every session id is a uuid. `?next=/ar/app/sessions/<uuid>` falls back to `/ar/app` today, which is
-`REQ-AUT-005`'s poster-QR promise not being kept. `tests/unit/next-path.test.ts` never caught it
-because its fixture id is `abc`. Handed to the lead with the one-line fix.
+I reported `safeNextPath()` (`src/lib/auth/next-path.ts`, lead-only) as broken: its class rendered
+as `[\s -]`, where a trailing `-` is literal, so every path containing a hyphen would be discarded
+and every session id is a uuid. **I was wrong, and the way I was wrong is the point.** The class
+actually held `[\s␀-␟]` — a range whose two endpoints were literal control bytes, NUL and U+001F,
+which every viewer I read the file through drew as nothing. I then probed a regex I had RETYPED
+from what I saw, not the bytes on disk, and my probe faithfully confirmed my misreading.
+
+Nothing was broken: hyphens passed then and pass now, and the CTA lands on the session. The lead
+rewrote the class with explicit escapes (`\u0000-\u001f`) and added a uuid case to
+`tests/unit/next-path.test.ts` so the next reader cannot make the same mistake.
+
+**The lesson, which cost an hour: never probe a retyped copy of a pattern.** Read the bytes —
+`node -e` over the file's own source, not over what the terminal drew. An invisible character
+cannot be seen by looking harder.
 
 ### 14.5 Tests
 
