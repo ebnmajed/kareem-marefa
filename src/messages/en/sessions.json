@@ -43,7 +43,11 @@
       "unpublishedNote": "This session is not published yet. You can see it because you are staff or one of its presenters.",
       "materialsLabel": "Materials",
       "photosLabel": "Photos",
-      "tasksLabel": "Before the session"
+      "tasksLabel": "Before the session",
+      "checkIn": "Check in",
+      "manageSchedule": "Schedule",
+      "manageAttendance": "Attendance",
+      "manageCertificates": "Certificates"
     }
   }
 }

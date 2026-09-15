@@ -396,6 +396,7 @@ form-validation rule.
 | `capacity` | `int` | |
 | `rsvp_deadline_at`, `cancellation_cutoff_at` | `timestamptz` | |
 | `certificate_mode` | `certificate_mode not null default 'off'` | `REQ-CRT-002` |
+| `allow_walk_ins` | `boolean not null default false` | `REQ-CHK-010` as amended — DEC-065 (`0079`) |
 | `state` | `session_state not null default 'draft'` | |
 | `published_at`, `completed_at`, `cancelled_at`, `cancellation_reason` | | |
 

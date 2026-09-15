@@ -22,7 +22,8 @@
         "reminders": "التذكيرات",
         "exports": "التصدير",
         "audit": "سجل التدقيق",
-        "settings": "الإعدادات"
+        "settings": "الإعدادات",
+        "branding": "الهوية البصرية"
       }
     },
     "dashboard": {
@@ -139,7 +140,9 @@
       "actionFailed": "تعذّر تنفيذ الإجراء — حاول مرة أخرى.",
       "cancelReasonRequired": "اكتب سبب الإلغاء أولًا.",
       "completeNote": "الإنهاء المبكر يغلق تسجيل الحضور فورًا.",
-      "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>"
+      "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>",
+      "certificates": "الشهادات",
+      "attendance": "الحضور"
     },
     "schedule": {
       "title": "جدولة الجلسة ونشرها",

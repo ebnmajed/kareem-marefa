@@ -135,9 +135,16 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
                     {s.fromProposal ? t("fromProposal") : t("directBadge")}
                     {declined ? ` · ${t("presenterDeclined")}` : pending ? ` · ${t("presenterPending")}` : ""}
                   </p>
-                  <p className="mt-2 text-body-sm">
+                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
                     <Link href={`/app/admin/sessions/${s.id}/schedule`} className="text-fg-heading underline underline-offset-4">
                       {t("schedule")}
+                    </Link>
+                    <Link href={`/app/admin/sessions/${s.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+                      {t("attendance")}
+                    </Link>
+                    {/* SCR-045 — the review-and-release screen had no link until Launch. */}
+                    <Link href={`/app/admin/sessions/${s.id}/certificates`} className="text-fg-heading underline underline-offset-4">
+                      {t("certificates")}
                     </Link>
                   </p>
                   {/* REQ-SES-005: start, complete, cancel, archive, reopen —

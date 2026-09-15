@@ -15,7 +15,8 @@
       "not_open": "Check-in is only open during the session",
       "invalid_code": "That code isn't correct — check the code shown right now",
       "overlap": "You're checked in to another session at this same time",
-      "unknown": "Something went wrong — try again"
+      "unknown": "Something went wrong — try again",
+      "reservation_required": "This session is for confirmed reservations only. Reserve a seat from the session page, or ask staff to check you in."
     },
     "host": {
       "title": "Check-in code",
@@ -37,6 +38,16 @@
         "member_not_found": "That member isn't in this organisation",
         "presenter_cannot_check_in": "The session's presenter cannot be marked present",
         "unknown": "Something went wrong — try again"
+      },
+      "notStarted": "The session has not started yet. The check-in code appears here automatically when it does.",
+      "ended": "The session has ended and its check-in code is no longer valid.",
+      "walkIns": {
+        "title": "Walk-ins",
+        "on": "Allowed: the code is accepted from any member in the room.",
+        "off": "Not allowed: the code is accepted from confirmed reservations only.",
+        "open": "Allow walk-ins",
+        "close": "Confirmed reservations only",
+        "saved": "Saved."
       }
     }
   }

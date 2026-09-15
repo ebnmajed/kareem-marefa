@@ -55,28 +55,54 @@ export default async function AppLayout({ children, params }: { children: React.
   // session gets no bell and no org theme, which is also the honest answer.
   const state = await getSessionState();
   const theme = await orgTheme(locale, state);
+  const navLink = "inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3";
+  const navLinkStrong = "inline-flex h-10 items-center rounded-field px-2 text-label text-fg-heading hover:bg-silver-100 md:px-3";
+  const isMember = state.kind === "member";
+  const isStaff = isMember && (state.session.role === "admin" || state.session.role === "moderator");
+  const isPlatformAdmin = (isMember && state.session.platformAdmin) || (state.kind === "no_org" && state.platformAdmin);
+  const secondary: { href: string; label: string; strong?: boolean }[] = [
+    ...(isMember
+      ? [
+          { href: "/app/propose", label: t("propose") },
+          { href: "/app/members", label: t("members") },
+          { href: "/app/leaderboards", label: t("leaderboards") },
+        ]
+      : []),
+    ...(isStaff ? [{ href: "/app/admin", label: t("admin"), strong: true }] : []),
+    ...(isPlatformAdmin ? [{ href: "/app/platform", label: t("platform"), strong: true }] : []),
+  ];
   return (
     <div className={theme ? "brand-org min-h-dvh bg-canvas text-fg-body" : "min-h-dvh bg-canvas text-fg-body"}>
       {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
-      <nav aria-label={t("brand")} className="border-b border-edge bg-canvas">
+      {/* Every feature has a way in from here (Launch, 2026-09-15 — the owner's
+          instruction after the smoke test: nothing is URL-only). ONE ROW at
+          390 px: REQ-SES-013 keeps the event page's RSVP action inside the first
+          screenful, and a second shell row pushed it 57 px past it (found by
+          tests/e2e/sessions-screens.spec.ts on the first attempt). So on a
+          phone the secondary links — propose, members, leaderboards, the admin
+          and platform consoles, sign-out — sit behind a native <details>
+          disclosure that drops a panel over the page; from `md` up everything
+          is inline. No client component: <details>/<summary> is keyboard- and
+          screen-reader-native. */}
+      <nav aria-label={t("brand")} className="relative border-b border-edge bg-canvas">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-1 px-3 md:px-8">
-          <ul className="flex items-center gap-1">
+          <ul className="flex min-w-0 items-center gap-1">
             <li className="me-1 md:me-2">
               <Wordmark />
             </li>
             <li>
-              <Link href="/app" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3">
+              <Link href="/app" className={navLink}>
                 {t("home")}
               </Link>
             </li>
             <li>
               {/* SCR-011, browse — built in wave 3 (DEC-048); the shell link is the lead's. */}
-              <Link href="/app/sessions" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3">
+              <Link href="/app/sessions" className={navLink}>
                 {t("sessions")}
               </Link>
             </li>
             <li>
-              <Link href="/app/me" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3">
+              <Link href="/app/me" className={navLink}>
                 {t("profile")}
               </Link>
             </li>
@@ -85,17 +111,56 @@ export default async function AppLayout({ children, params }: { children: React.
                 shell. Under Partial Rendering the shell does not re-render on
                 navigation, so the count refreshes on the next full request. */}
             <li>{state.kind === "member" ? <NotificationBell locale={locale} /> : null}</li>
+            {secondary.map((item) => (
+              <li key={item.href} className="hidden md:block">
+                <Link href={item.href} className={item.strong ? navLinkStrong : navLink}>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
-          <form method="post" action="/api/auth/sign-out">
+          <form method="post" action="/api/auth/sign-out" className="hidden md:block">
             <button type="submit" className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-muted hover:bg-silver-100 hover:text-fg-heading whitespace-nowrap md:px-3">
               {t("signOut")}
             </button>
           </form>
+          <details className="md:hidden">
+            <summary className="inline-flex h-10 cursor-pointer list-none items-center rounded-field px-2 text-label text-fg-heading hover:bg-silver-100 [&::-webkit-details-marker]:hidden">
+              {t("more")}
+            </summary>
+            <div className="absolute inset-inline-0 top-14 z-20 border-b border-edge bg-canvas px-3 py-2 shadow-lg">
+              <ul className="flex flex-col">
+                {secondary.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className={`${item.strong ? navLinkStrong : navLink} w-full`}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <form method="post" action="/api/auth/sign-out">
+                    <button type="submit" className="inline-flex h-10 w-full items-center rounded-field px-2 text-label text-fg-muted hover:bg-silver-100 hover:text-fg-heading">
+                      {t("signOut")}
+                    </button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+          </details>
         </div>
       </nav>
       <main id="main" className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
         {children}
       </main>
+      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-body-sm text-fg-muted md:px-8">
+        <Link href="/legal/privacy" className="underline underline-offset-4 hover:text-fg-heading">
+          {t("privacy")}
+        </Link>
+        {" · "}
+        <Link href="/legal/terms" className="underline underline-offset-4 hover:text-fg-heading">
+          {t("terms")}
+        </Link>
+      </footer>
     </div>
   );
 }

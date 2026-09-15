@@ -10,9 +10,15 @@ import { sessionClient } from "@/lib/dal/session";
 
 export interface HostViewData {
   sessionId: string;
-  code: string;
-  validFrom: string;
-  validUntil: string;
+  /** Null outside the session window — a code exists only while the session is live (REQ-CHK-004, migration 0078). */
+  code: string | null;
+  /** Why there is no code: the session has not started, or it has ended. */
+  phase: "live" | "not_started" | "ended";
+  startsAt: string | null;
+  /** DEC-065: off means a code is accepted only from a member with a confirmed reservation. */
+  allowWalkIns: boolean;
+  validFrom: string | null;
+  validUntil: string | null;
   checkInCount: number;
   rotationSeconds: number;
 }
@@ -22,26 +28,41 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { supabase } = await sessionClient(locale);
 
-  const [codeRes, countRes, settingsRes] = await Promise.all([
+  const [codeRes, countRes, settingsRes, sessionRes] = await Promise.all([
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
     supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
+    supabase.from("sessions").select("state, starts_at, allow_walk_ins").eq("id", sessionId).maybeSingle(),
   ]);
-  if (codeRes.error) {
-    if (codeRes.error.message.includes("not_authorized") || codeRes.error.message.includes("not_found")) return null;
-    throw new Error(`ensure_check_in_code: ${codeRes.error.message}`);
-  }
+  // Authorisation is the RPC's (REQ-CHK-014): a member gets `not_authorized`
+  // whatever the state, so the window is never revealed to someone who may
+  // not see the code either.
+  if (codeRes.error && (codeRes.error.message.includes("not_authorized") || codeRes.error.message.includes("not_found"))) return null;
+  if (codeRes.error && !codeRes.error.message.includes("not_open")) throw new Error(`ensure_check_in_code: ${codeRes.error.message}`);
   if (countRes.error) throw new Error(`check_ins count: ${countRes.error.message}`);
 
+  const rotationSeconds = settingsRes.data?.check_in_rotation_seconds ?? 600;
+  const checkInCount = countRes.count ?? 0;
+  const startsAt = (sessionRes.data?.starts_at as string | null) ?? null;
+  const allowWalkIns = sessionRes.data?.allow_walk_ins === true;
+  if (codeRes.error) {
+    const state = sessionRes.data?.state as string | undefined;
+    const ended = state === "completed" || state === "archived" || state === "cancelled";
+    return { sessionId, code: null, phase: ended ? "ended" : "not_started", startsAt, allowWalkIns, validFrom: null, validUntil: null, checkInCount, rotationSeconds };
+  }
+
   const c = codeRes.data as { code: string; valid_from: string; valid_until: string };
-  return {
-    sessionId,
-    code: c.code,
-    validFrom: c.valid_from,
-    validUntil: c.valid_until,
-    checkInCount: countRes.count ?? 0,
-    rotationSeconds: settingsRes.data?.check_in_rotation_seconds ?? 600,
-  };
+  return { sessionId, code: c.code, phase: "live", startsAt, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds };
+}
+
+/** DEC-065: staff open or close a session to walk-ins. The RPC re-derives the role; a member is refused. */
+export async function setWalkIns(locale: string, sessionId: string, allow: boolean): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("set_session_walk_ins", { p_session: sessionId, p_allow: allow });
+  if (error) {
+    if (error.message.includes("not_authorized")) throw new Error("not_authorized");
+    throw new Error(`set_session_walk_ins: ${error.message}`);
+  }
 }
 
 export async function revokeCode(locale: string, sessionId: string): Promise<void> {

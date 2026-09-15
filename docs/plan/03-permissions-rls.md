@@ -1343,6 +1343,9 @@ generated suite is the highest-value test in the product.
 | `POL-rsvps.select.member` | Member B cannot read member A's RSVP; staff and the presenter can. |
 | `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
 | `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
+| `RPC-check_in.reservation_required` | With `allow_walk_ins` off, a member with no confirmed reservation gets `reservation_required` — the attempt is recorded, the code is not revealed as right or wrong; with it on, the same member checks in (migration `0079`, DEC-065). |
+| `RPC-set_session_walk_ins.staff` | A member and a presenter are refused `42501`; an admin and a moderator flip the flag, audited as `session.walk_ins_changed` (migration `0079`). |
+| `RPC-ensure_check_in_code.only_live` | The presenter of a `published` session is refused `not_open` before it starts and after it ends; once `in_progress` the same call returns a code (migration `0078`). |
 | `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
 | `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
 | `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. |

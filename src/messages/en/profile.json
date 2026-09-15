@@ -19,6 +19,15 @@
     },
     "memberSince": "Member since {date}",
     "notFound": "Member not found",
-    "noBio": "No bio yet"
+    "noBio": "No bio yet",
+    "nav": {
+      "label": "My pages",
+      "notifications": "Notifications",
+      "calendar": "Calendar",
+      "certificates": "My certificates",
+      "points": "My points",
+      "bookmarks": "Bookmarks",
+      "privacy": "Privacy and data"
+    }
   }
 }

@@ -22,7 +22,8 @@
         "reminders": "Reminders",
         "exports": "Exports",
         "audit": "Audit log",
-        "settings": "Settings"
+        "settings": "Settings",
+        "branding": "Branding"
       }
     },
     "dashboard": {
@@ -139,7 +140,9 @@
       "actionFailed": "That action could not be carried out — try again.",
       "cancelReasonRequired": "Write the reason for cancelling first.",
       "completeNote": "Ending early closes check-in immediately.",
-      "createFromProposalLabel": "Create the session from <t>{title}</t>"
+      "createFromProposalLabel": "Create the session from <t>{title}</t>",
+      "certificates": "Certificates",
+      "attendance": "Attendance"
     },
     "schedule": {
       "title": "Schedule and publish",

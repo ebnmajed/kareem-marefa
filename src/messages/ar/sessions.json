@@ -43,7 +43,11 @@
       "unpublishedNote": "هذه الجلسة لم تُنشر بعد، وأنت تراها لأنك من فريق الإشراف أو من مُقدِّميها.",
       "materialsLabel": "المواد",
       "photosLabel": "الصور",
-      "tasksLabel": "مهام ما قبل الجلسة"
+      "tasksLabel": "مهام ما قبل الجلسة",
+      "checkIn": "تسجيل الحضور",
+      "manageSchedule": "الجدولة",
+      "manageAttendance": "الحضور",
+      "manageCertificates": "الشهادات"
     }
   }
 }

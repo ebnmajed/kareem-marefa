@@ -121,6 +121,10 @@ test("another member's profile renders at the member tier", async ({ context, pa
 test("signing out ends the session", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app");
+  // On a phone the secondary shell items, sign-out included, sit behind the
+  // native «المزيد» disclosure (DEC-064: one shell row at 390 px).
+  const more = page.getByRole("group").locator("summary", { hasText: "المزيد" });
+  if (await more.isVisible()) await more.click();
   await page.getByRole("button", { name: "تسجيل الخروج" }).click();
   await expect(page).toHaveURL(/\/ar\/sign-in$/);
   await page.goto("/ar/app");

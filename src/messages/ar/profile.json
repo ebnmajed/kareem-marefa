@@ -19,6 +19,15 @@
     },
     "memberSince": "عضو منذ {date}",
     "notFound": "العضو غير موجود",
-    "noBio": "لا توجد نبذة بعد"
+    "noBio": "لا توجد نبذة بعد",
+    "nav": {
+      "label": "صفحاتي",
+      "notifications": "الإشعارات",
+      "calendar": "التقويم",
+      "certificates": "شهاداتي",
+      "points": "نقاطي",
+      "bookmarks": "المحفوظات",
+      "privacy": "الخصوصية والبيانات"
+    }
   }
 }

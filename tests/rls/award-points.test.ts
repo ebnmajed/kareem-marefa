@@ -31,12 +31,13 @@ async function ready(tx: Tx) {
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {
   const [row] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
-                                   venue_id, capacity, state, published_at, completed_at)
+                                   venue_id, capacity, state, published_at, completed_at, allow_walk_ins)
      values ($1, 'جلسة تسجيل نقاط', 'ملخص', $2, 'introductory',
              now() + ($3 || ' minutes')::interval, 60, now() + ($4 || ' minutes')::interval,
              $5, 40, $6::public.session_state,
              case when $6 in ('published','in_progress','completed','archived') then now() - interval '1 day' end,
-             case when $6 = 'completed' then now() - interval '1 hour' end)
+             case when $6 = 'completed' then now() - interval '1 hour' end,
+             true)  -- the award hook is drilled without a reservation; the door policy is checkin.test.ts's (DEC-065)
      returning id`,
     [org.id, org.categoryId, String(opts.startsInMinutes), String(opts.endsInMinutes), org.venueId, opts.state],
   );

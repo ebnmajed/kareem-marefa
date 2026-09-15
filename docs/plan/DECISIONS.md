@@ -1440,6 +1440,28 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-064 — A check-in code exists only while the session is live; every feature is reachable from the navigation
+
+- **Date:** 2026-09-15 · **Decided by:** owner (the smoke-test finds), implemented by session
+- **Decision 1 — the code window is enforced at issuance.** `ensure_check_in_code()` (0015) checked who may read the code and not when; the host view minted a code for a published session days before it started. `0078` re-creates it to raise `not_open` (P0001) unless `sessions.state = 'in_progress'`, after the `not_authorized` check so a member is still refused by role and never learns the window (REQ-CHK-014). `getHostView()` returns `code: null` with a `phase` (`not_started` / `ended`) and the host view says so instead of showing a code; the revoke control appears only with a code. `check_in()`'s own refusal outside the window (REQ-CHK-004) is unchanged — the two now agree at both ends. `RPC-ensure_check_in_code.only_live` in `03` §8.2 and `tests/rls/checkin.test.ts`.
+- **Decision 2 — nothing is URL-only.** The shell links home, sessions, propose, members, leaderboards, profile, the bell, and — by role — the admin console and the platform console (the `platform_admin` claim now rides on the member `Session` DTO); the member's profile hub links its six pages; the admin nav lists the two template libraries and branding (built since waves 3 and 4, hidden by a stale `built: false`); every admin session row links schedule, attendance and certificates; the event page links check-in for a member while the session is live, and the three admin screens for staff; the app shell's footer and the sign-in card link the legal pages. The audit was a script over every `page.tsx` looking for an inbound `href` (eleven routes had none).
+- **Not changed, by the plan's own decision:** the owner asked that only registered members be able to check in. `REQ-CHK-010` (D24, OQ-005) says the opposite on purpose — a walk-in with a valid code is checked in and earns everything, capacity being a planning limit and not a door policy. Left as specified pending the owner's explicit decision; changing it is one condition in `check_in()` plus that requirement's text.
+- **Supersedes:** nothing.
+- **Documents changed:** `03` §8.2 (+1 row), `STATUS.md`, `supabase/migrations/0078_check_in_code_only_live.sql`, the shell and hub screens, the message files (Arabic first)
+
+---
+
+## DEC-065 — Walk-in check-in is a per-session switch that staff turn on; off by default
+
+- **Date:** 2026-09-15 · **Decided by:** owner («make the walk-in rule a feature the admin or moderator can enable per session»), implemented by session
+- **Decision:** `sessions.allow_walk_ins boolean not null default false` (`0079`; `02` §4 amended under this entry). `check_in()` is re-created: after the window check and before the code lookup, a member with no `confirmed` reservation is answered `reservation_required` unless the session allows walk-ins — the attempt row and the rate limit are untouched (DEC-015), and the answer never reveals whether the code was right. `set_session_walk_ins(p_session, p_allow)` flips the flag for an admin or a moderator (`is_staff()`), refuses everyone else including the session's presenter, and audits `session.walk_ins_changed` with the before and after. The host view (SCR-016) carries the switch for staff with its state in words; the member's check-in screen explains the refusal and points at the reservation. `REQ-CHK-010` is amended in `01` (the only place a requirement is defined); `03` §8.2 gains `RPC-check_in.reservation_required` and `RPC-set_session_walk_ins.staff`, both in `tests/rls/checkin.test.ts`. The existing check-in cases keep walk-ins on through the test helper because they drill the code, the window and the rate limit, not the door.
+- **Rationale:** the plan's walk-in rule (D24, OQ-005: capacity is a planning limit, not a door policy) was written before anyone ran a room; the owner, who does, wants the door policy by default and the exception in staff hands per session. Everything a walk-in earned before is unchanged on an opened session, and reporting still distinguishes walk-ins (no reservation row).
+- **Not in this change:** the switch on the admin schedule screen (SCR-043) — the host view is where both roles stand when it matters; the design milestone can add it to the schedule form.
+- **Supersedes:** `REQ-CHK-010`'s unconditional walk-in (narrows D24 on this point); nothing else.
+- **Documents changed:** `01` REQ-CHK-010, `02` §4 (the column), `03` §8.2 (+2 rows), `supabase/migrations/0079_walk_ins_per_session.sql`, `src/lib/dal/checkin.ts`, the host view and check-in screens, `messages/*/checkin.json` (Arabic first), `tests/rls/checkin.test.ts`, `tests/e2e/checkin.spec.ts`
+
+---
+
 ## Template for new entries
 
 ```markdown
