@@ -50,6 +50,14 @@ const one = async (sql, args = []) => (await db.query(sql, args)).rows[0]
 // fixed parameters. Branching the column list on whether a session is scheduled
 // meant two positional-parameter layouts in one template, which is how the
 // first version of this script put `allow_walk_ins` where `capacity` belonged.
+// ★ A LIVE SESSION MUST STAY LIVE LONG ENOUGH TO BE LOOKED AT. The first
+// version gave these a 60-minute window starting 30 minutes ago, so they were
+// live for half an hour after seeding and `ended` by the time anyone opened
+// them — which made the app correctly offer no check-in link and looked exactly
+// like the bug this seed exists to demonstrate the absence of. Twelve hours
+// covers a working day, and `refresh` below re-centres them on every run.
+const LIVE_MINS = 12 * 60
+
 const at = (hoursFromNow) => new Date(Date.now() + hoursFromNow * 3_600_000).toISOString()
 const plus = (iso, minutes) => new Date(Date.parse(iso) + minutes * 60_000).toISOString()
 
@@ -83,8 +91,8 @@ const PLAN = [
     key: 'live-clock',
     title: 'جلسة بدأت والمهمة لم تُشغَّل',
     state: 'published', // ★ the clock says live; `start_session` has not run
-    startH: -0.5,
-    mins: 60,
+    startH: -1,
+    mins: LIVE_MINS,
     capacity: 30,
     rsvp: 'confirmed',
     note: '★★ live DERIVED FROM THE CLOCK — no «احجز مقعدًا» (ask 4), and NO check-in link either, because the RPC would refuse it. DEC-090 corollary 2.',
@@ -93,8 +101,8 @@ const PLAN = [
     key: 'live-row',
     title: 'جلسة جارية الآن',
     state: 'in_progress',
-    startH: -0.5,
-    mins: 60,
+    startH: -1,
+    mins: LIVE_MINS,
     capacity: 30,
     rsvp: 'confirmed',
     note: '★ live FROM THE ROW, and you hold a seat — the check-in link DOES appear.',
@@ -103,8 +111,8 @@ const PLAN = [
     key: 'live-none',
     title: 'جلسة جارية بلا حجز',
     state: 'in_progress',
-    startH: -0.5,
-    mins: 60,
+    startH: -1,
+    mins: LIVE_MINS,
     capacity: 30,
     rsvp: null,
     note: '★ live / none, walk-ins OFF — NO check-in link. This is the bug: it used to be the primary navy button here.',
@@ -113,8 +121,8 @@ const PLAN = [
     key: 'live-walkin',
     title: 'جلسة جارية تقبل الحضور المباشر',
     state: 'in_progress',
-    startH: -0.5,
-    mins: 60,
+    startH: -1,
+    mins: LIVE_MINS,
     capacity: 30,
     rsvp: null,
     walkIns: true,
@@ -302,6 +310,19 @@ for (const p of PLAN) {
     [org.id, p.title],
   )
   if (existing) {
+    // ★ REFRESH, don't skip. A dev seed whose `live` rows age into `ended`
+    // between runs is worse than no seed: it shows the right UI for the wrong
+    // reason. Re-running re-centres every window on now.
+    if (p.startH !== undefined) {
+      const startsAt = at(p.startH)
+      const endsAt = plus(startsAt, p.mins ?? 60)
+      await db.query(
+        `update public.sessions
+            set starts_at = $2, ends_at = $3, rsvp_deadline_at = $4, cancellation_cutoff_at = $5
+          where id = $1`,
+        [existing.id, startsAt, endsAt, plus(startsAt, -24 * 60), plus(startsAt, -12 * 60)],
+      )
+    }
     created.push({ ...p, id: existing.id })
     continue
   }
