@@ -328,6 +328,38 @@ running, and let M10 confirm the direction before committing to M11–M13.**
 
 ---
 
+## ★★ RESEQUENCED 2026-09-15 by the owner — read this before M9 below
+
+The owner reviewed M9 running locally and **reordered the milestone** (`DEC-110`). The tables for
+M9–M13 below are still the right *contents*; their **sequence is superseded**.
+
+**What changed and why.** `16` §15 shipped the system first and the screens after. That is correct
+engineering and it produced an increment nobody can review: M9 redesigns no screens, so the app
+looks exactly as it did while every primitive underneath it changed. The owner's words —
+«the designs aren't matching the mockups… is everything clear?» — are the sequencing failing, not
+the work.
+
+**The new order.**
+
+| | |
+|---|---|
+| **Next** | **The screens, to the canvas, including the admin console** (`DEC-110`). Every app screen at phone and desktop in Arabic RTL. The admin console is in from the start; it has had no design attention at all. |
+| With them | **The landing screen becomes the sessions timeline** (`DEC-112`) — `/app` renders what a member can attend, one column, filters in the list. `16` §6.6's dashboard is withdrawn. |
+| With them | **The shell defect sweep** (`DEC-111`) — the disclosures do not close on navigation, outside click or `Escape`, and two can be open at once. Blocking, with a gate. |
+| With them | **Check-in becomes a manual switch** (`DEC-113`) — opened and closed by the presenter, a moderator or an admin, with a hard ceiling at `ends_at + 2 h`. |
+| Alongside | M9's remaining system work — the motion system, `RouteProgress`, `Splash`, the three `(auth)` screens — carried **with the screens that need it**, not ahead of them. |
+| Unchanged | The marketing half stays frozen until last (invariant 1, `DEC-078`). `registrations` is never touched. The DAL, RLS, migrations, worker and renderer are unaffected. |
+
+★ **The design system M9 built is not wasted and is not re-litigated.** It is what every rebuilt
+screen now consumes: 34 primitives, the status vocabulary, the loading and failure models, the form
+model, the focus layer. The sequencing changed; the foundation did not.
+
+★ **The canvas is a reference, not a specification** (`DEC-114`). Where it disagrees with
+`01-prd.md` the PRD wins; where it disagrees with a `DECISIONS.md` entry the entry wins. A mockup
+that contradicts a requirement is a **question**, not an instruction.
+
+---
+
 ## M9 — النظام · the system and the shell
 
 **The foundation. Nothing else can start cleanly until it exists, and no screen is redesigned in

@@ -2005,6 +2005,73 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-110 — The redesign is the whole app to the canvas, admin console included, and it comes BEFORE M9's remaining system work
+
+- **Date:** 2026-09-15 · **Decided by:** owner, after reviewing M9 running locally
+- **The instruction, in the owner's terms:** «redesign the whole app to match the mockups 100% and make sure to include the admin dashboard, it hasn't even been touched by the redesign».
+- **What this changes about the plan.** `16` §15 sequences the milestone as **system first, screens after** — M9 the design system, M10 the member surfaces, M11 the console. The owner has reviewed M9 and the sequencing does not serve them: a system with no redesigned screens is not a reviewable increment. **The screens move first.** M9's remaining system work — the motion system, `RouteProgress`, `Splash`, the `(auth)` screens — is carried alongside the screens that need it rather than shipped ahead of them.
+- **Decision.** (1) **Every app screen is rebuilt to the canvas** — <https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>, eighteen artboards over three pages — at phone and desktop, in Arabic RTL. (2) ★ **The admin console is in scope from the start, not deferred to M11.** It has had no design attention at all, and `16` §16.4's sequencing put it two waves out. (3) **The canvas is the reference, not the specification** — see `DEC-114` for the errors in it that must not be reproduced.
+- ★ **The comments surface becomes a Notion-style comment experience** (`16` §6.3's «النقاش» slot, `REQ-EVT-001` … `REQ-EVT-008`), which is a larger change than "re-skin the comment list". It carries: inline composition with a real editing affordance rather than a bare textarea; **the reaction/like animation** — which `DEC-100` already specifies as `dot-pulse` + `ripple-ring`, Tier 2, «a whisper, not an achievement»; **proper upload controls** with visible affordances rather than a hidden input; and **feedback behaviour throughout** — pending, success and failure states on every action, per `REQ-UIX-007` and `16` §7.3. The upload path is `content`'s and the sniff-on-content rule is unchanged (`DEC-009`, invariant 11: no SVG, anywhere).
+- **What does NOT change:** the frozen marketing contract until M13 (invariant 1, `DEC-078`); `registrations`; the DAL, RLS, migrations, worker and renderer; Arabic-first authoring; and the design system itself, which M9 built and which every rebuilt screen now consumes rather than re-deriving.
+- **Supersedes:** `16` §15's milestone ordering and §16.3–§16.4's wave assignment. The milestones' *contents* stand; their sequence does not.
+- **Documents changed:** `14-roadmap.md`, `16` §15 · §16, `STATUS.md`
+
+---
+
+## DEC-111 — The shell ships with defects: a sweep of every behaviour and position is a blocking task, not a polish pass
+
+- **Date:** 2026-09-15 · **Decided by:** owner, from the running app
+- **The instruction:** «the nav dropdown is stuck when clicking on an item and the icons aren't correctly positioned, so do a thorough sweep to check all behaviours and positions are correct».
+- **Root cause of the stuck dropdown, found by inspection and not in doubt.** Both menus in the shell — «تصفّح» in `app/layout.tsx` and the account menu in `components/shell/account-menu.tsx` — are native `<details>` elements. **A `<details>` has no reason to close when a link inside it is followed**, and under Next's Partial Rendering **the layout does not re-render on navigation**, so `open` survives the transition and the panel is still hanging over the new page. The comment in `account-menu.tsx` justifying `<details>` — no JavaScript, keyboard-native — is right about what it buys and silent about what it costs.
+- **Four behaviours the native element does not give us, all required:** it does not close on navigation; it does not close on an outside click; it does not close on `Escape`; and **two panels can be open at once**. A disclosure that stays open over the screen it navigated to is the defect the owner hit, and the other three are the same omission.
+- **A positioning defect of the same family, confirmed in the code.** `components/shell/search-entry.tsx` passes `ps-10` to `ui/input` to clear the search glyph, while `controlClass`'s `md` size contributes `px-4`. **Both set `padding-inline-start`**, and which wins is decided by the order Tailwind emits them in the stylesheet, not by the order they appear in the class attribute. It renders correctly today by luck of that ordering. The house rule this establishes: **never pair a directional padding utility with an axis one on the same element** — set `ps-*` and `pe-*`, or set neither.
+- **Decision.** (1) The sweep is a **task with a deliverable**, not a review: every interactive element in the shell and the primitives, at 390 px and desktop, in Arabic RTL, against open/close, focus, `Escape`, outside click, navigation, and icon alignment. (2) **The two shell menus move to `ui/menu`** — `console` built it over Radix in M9, and Radix owns exactly the four behaviours the native element lacks. The no-JavaScript argument does not survive: the panels are navigation convenience, and the same destinations are reachable from the tab bar and the account page without them. (3) **`16` §17 gains a gate** so this class cannot return: a Playwright pass that opens every disclosure in the shell, follows a link inside it, and asserts the panel is closed on the destination.
+- **Supersedes:** `account-menu.tsx`'s and `app/layout.tsx`'s use of `<details>`, and the reasoning recorded in their comments.
+- **Documents changed:** `src/components/shell/**`, `src/app/[locale]/app/layout.tsx`, `16` §6.1 · §17, `13-testing-quality.md`
+
+---
+
+## DEC-112 — `/app` IS the sessions list: a timeline of what a member can attend, not a dashboard
+
+- **Date:** 2026-09-15 · **Decided by:** owner, from the running app
+- **The instruction:** «the landing page is the sessions list — the user lands on the available ones, not the current one, which has no purpose and no meaning at all. The sessions list should look and feel like a social-media timeline, with filters properly positioned and experienced by the user».
+- **Decision.** (1) **`/app` renders the sessions list.** The «أهلًا ريم» dashboard of `16` §6.6 and the `Home.dc.html` artboard is withdrawn as the landing experience. (2) **The list is a timeline, not a catalogue grid** — a single vertical column a member scrolls, date-grouped, showing what they can attend now and next. Social-media in *rhythm and scanning*, not in ornament: one column, generous cards, state legible at a glance, no sidebar competing with the content. (3) **Filters are part of the timeline, not a rail beside it** — reachable, visibly reflecting the active set, and clearable, with the phone treatment as a sheet (`ui/sheet`, built in M9). `REQ-DSC-005`'s "the active set is visible and clearable" is unchanged and is now the primary interaction rather than a footnote.
+- **What survives from the withdrawn design, and where it goes.** The «التالية لك» card — the member's next committed session — is the **first item of the timeline**, not a separate hero. «يحتاج انتباهك» for staff moves to the **admin dashboard**, which `DEC-110` brings into scope and where it belongs. The `member_interests` rail is withdrawn entirely: `16` §6.6 already recorded that it is empty for most members in most orgs, and a timeline has no rails.
+- ★ **This is consistent with `16` §6.6's own zero state** — «when nothing is upcoming, home *becomes* browse» — promoted from the empty case to the only case. The document had already reasoned its way to the right screen and kept the dashboard in front of it.
+- **Consequence for the route table:** `/app` and `/app/sessions` now render the same thing. `04` §4 keeps both — the second is the canonical, linkable, filterable URL and the first redirects or renders it — and the shell's «الجلسات» tab and «الرئيسية» tab must not become two names for one destination. Resolving that is part of the work, not a detail.
+- **Supersedes:** `16` §6.6 in full, and the `Home.dc.html` artboard as the landing design.
+- **Documents changed:** `16` §6.2 · §6.6, `04-architecture.md` §4, `09-sitemap-screens.md` SCR-010 · SCR-011, `01-prd.md` (`REQ-UIX-002`, `REQ-DSC-005`)
+
+---
+
+## DEC-113 — Check-in is opened and closed by hand, by the presenter or staff, with a two-hour ceiling after the session ends
+
+- **Date:** 2026-09-15 · **Decided by:** owner
+- **The instruction:** «for the check-in, make it manual, not time-bound. The presenter, the moderator and the admin can lock or unlock it whenever they want, until 2 hours after the session's scheduled time has ended».
+- **What this replaces.** Check-in is currently gated by the session's *phase*: the `check_in()` RPC and the screen both require `in_progress`, which the clock job sets. That makes the room's most operationally important act depend on a background job firing on time, and it is why `16` §5.4.1 row 4 and `DEC-090` needed a direction guard for `checkIn` at all — a clock-derived `live` had to be refused because the RPC would refuse it.
+- **Decision.** (1) **A per-session switch, `check_in_open`,** opened and closed at will by the session's **accepted presenters**, any **moderator** and any **org admin**. (2) **A hard ceiling:** the switch cannot be opened, and an open switch stops admitting, **from `ends_at + 2 hours`**. The ceiling is absolute and is enforced in the RPC, not in the UI. (3) **The phase no longer gates check-in.** A presenter may open it before the session starts — setting up a room early is a real thing — and the ceiling, not the phase, is what closes it. (4) **Every open and close is audited** with who and when: it decides whether attendance can be recorded, and `REQ-PTS-*` pays points off attendance.
+- **Two readings the owner has not specified, with the default I will implement unless told otherwise.** (a) **The switch starts CLOSED** and is opened deliberately — an attendance window nobody opened is safer than one nobody closed, and the host view makes opening a one-tap act on the screen already projected in the room. (b) **Closing it does not revoke check-ins already recorded**; it stops admitting new ones.
+- **What is unaffected.** The **code itself** — six characters, rotating, with its grace period (`REQ-CHK-002`) — is unchanged; the switch decides whether a correct code is accepted. **Presenters still cannot check in to their own session** (`REQ-CHK-011`). **Walk-ins remain a separate switch** (`DEC-065`): `check_in_open` decides *whether anyone may check in*, `allow_walk_ins` decides *whether a member with no reservation may*. They are orthogonal and both are needed.
+- ★ **A consequence worth stating: this removes `checkIn` from the direction-guard problem.** Once the switch is the gate, the clock no longer grants check-in and `canGrantOn(…, "checkIn")` has nothing to protect against — the switch is a stored fact like any other. `GRANTING_AFFORDANCES` keeps `rate`, `survey`, `certificate` and `attendanceOutcome`, which are still clock-adjacent, and loses `checkIn`. `DEC-090`'s corollary 2 stands; one of its four instances dissolves.
+- **Supersedes:** `REQ-CHK-004`'s window rule as the gate on check-in, and the `live`-phase condition in `session-matrix.ts`'s `checkIn` column and `canOfferCheckInLink()`.
+- **Documents changed:** `01-prd.md` (`REQ-CHK-015`, `REQ-CHK-016`, amends `REQ-CHK-004`), `02-domain-model.md` (`sessions.check_in_open`), `03-permissions-rls.md` (the RPC and its policy), `09-sitemap-screens.md` SCR-016, `16` §5.3, a migration
+
+---
+
+## DEC-114 — The canvas is a reference, not a specification: three classes of error in it must not be reproduced
+
+- **Date:** 2026-09-15 · **Decided by:** owner («there are slight errors in the mockups, so be sure not to make them»), catalogued by the lead
+- **Decision.** Where the canvas and `01-prd.md` disagree, **the PRD wins**; where the canvas and a `DECISIONS.md` entry disagree, **the entry wins**; where the canvas is internally inconsistent, it is resolved in favour of the rule stated in `16`. The canvas is the visual reference for **layout, rhythm, density and hierarchy** — not for behaviour, copy, or which elements exist.
+- **Three classes found on inspection, and the owner is asked to add any others they have in mind** (this entry is amendable by a follow-up entry, not by editing):
+  1. ★ **`Home.dc.html` is withdrawn entirely** by `DEC-112` — the landing page is the sessions timeline, not the «أهلًا ريم» dashboard. Do not build that artboard.
+  2. **Any rating shown on a browse card or a public surface.** `REQ-RAT-004` makes ratings anonymous and `REQ-RAT-006` withholds them below three; `16` §2.2 is explicit that stars belong to the presenter's own view and the staff console and **never** to a browse card. The canvas does not appear to show one, which is worth recording as *checked* rather than assumed.
+  3. **Numerals on machine-readable surfaces.** `DEC-095` and `REQ-INT-010`: display follows the org setting, but CSV, serials, verification codes, URLs and filenames are always Western. An artboard showing Arabic-Indic digits in any of those is an error, not a style.
+- **The standing rule this sets, because it will come up on every screen:** a mockup that contradicts a requirement is a **question**, not an instruction. Raise it; do not implement it and do not silently correct it either.
+- **Supersedes:** nothing. It governs how the canvas is read.
+- **Documents changed:** `16` §0, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

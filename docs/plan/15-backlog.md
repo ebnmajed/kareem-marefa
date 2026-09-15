@@ -217,6 +217,16 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - Overlapping attendance is rejected by the exclusion constraint, naming the conflict.
 - A checked-in member requesting the host view is denied by **policy**.
 
+#### STORY-CHK-006 — Check-in is opened and closed by hand, with a two-hour ceiling
+**Covers:** `REQ-CHK-015`, `REQ-CHK-016` · **M9** · **M**
+- The switch starts closed and is one tap from the host view.
+- The phase no longer gates check-in; the switch and the ceiling do.
+- The ceiling is `ends_at + 2h`, enforced in the RPC — a forged request past it is refused.
+- Closing stops new check-ins and revokes none.
+- Every open and close is audited with who and when.
+- ★ `checkIn` leaves `GRANTING_AFFORDANCES`: once a stored switch is the gate, the clock can no
+  longer grant it and there is nothing for the direction guard to protect against.
+
 ## EPIC-MAT — Materials
 
 #### STORY-MAT-001 — Uploads belong to sessions and are sniffed
@@ -786,6 +796,29 @@ file-level split; these are the stories the traceability gate counts.*
 - Each Tier-1 moment names its own **static** state, and the 390 px review looks at both.
 - A reduced-motion pass asserts the end state is reached and nothing is mid-transition; a throttled
   CPU trace shows **no frame over 16 ms**.
+
+#### STORY-UIX-012 — The landing screen is the sessions timeline
+**Covers:** `REQ-UIX-021`, `REQ-UIX-022` · **M9** · **L**
+- `/app` renders the sessions a member can attend, one column, grouped by date.
+- Their next committed session is the first item, not a hero above the list.
+- The active filter set is visible without opening anything; each is individually removable.
+- Below `md` the controls open as a sheet rather than pushing the list sideways.
+- The empty case is the same screen with an invitation to propose.
+
+#### STORY-UIX-013 — Every disclosure closes when it has been used
+**Covers:** `REQ-UIX-023` · **M9** · **S**
+- Following a link inside a menu leaves no panel over the destination — the defect the owner hit,
+  and one a test must hold, because under Partial Rendering the layout does not re-render.
+- Outside click and `Escape` both close; `Escape` returns focus to the trigger.
+- No two disclosures are open at once.
+- The sweep covers every interactive element in the shell and the primitives at 390 px and desktop.
+
+#### STORY-UIX-014 — The discussion becomes a composition surface
+**Covers:** `REQ-UIX-024` · **M10** · **L**
+- A real editing affordance, not a bare textarea; visible upload controls, not a hidden input.
+- Pending, success and failure on every action.
+- The reaction is `dot-pulse` + `ripple-ring` — a whisper, because `REQ-EVT-004` earns nothing.
+- The server still sniffs the bytes and still refuses SVG.
 
 ## EPIC-SUR — The survey
 

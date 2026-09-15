@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **301** |
+| Requirements (`REQ-*`) | **307** |
 | Entities (`ENT-*`) | **71** |
-| Stories (`STORY-*`) | **136** |
+| Stories (`STORY-*`) | **140** |
 | Screens cited (`SCR-*`) | 55 |
 | Jobs cited (`JOB-*`) | 37 |
 | Messages cited (`MSG-*`) | 20 |
@@ -111,17 +111,19 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-001` | — | — | `SCR-007` `SCR-016` `SCR-064` | — | — | `STORY-CHK-001` | M2 |
 | `REQ-CHK-002` | `ENT-check_in_codes` | — | `SCR-016` | `JOB-rotate_check_in_code` | — | `STORY-CHK-001` | M2 |
 | `REQ-CHK-003` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
-| `REQ-CHK-004` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
+| `REQ-CHK-004` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-005` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-006` | `ENT-check_in_attempts` `ENT-check_ins` | `POL-check_ins.rate_limit` `POL-check_ins.single_use` | `SCR-014` | — | — | `STORY-CHK-003` | M2 |
 | `REQ-CHK-007` | `ENT-check_in_codes` | — | `SCR-016` | `JOB-rotate_check_in_code` | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-008` | `ENT-check_ins` | — | `SCR-044` | — | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-009` | `ENT-certificates` `ENT-check_ins` | `POL-issue_certificate.check_in` | `SCR-014` | `JOB-issue_certificates` | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-010` | — | — | `SCR-014` `SCR-016` `SCR-043` | — | — | `STORY-CHK-005` | M2 |
-| `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-005` | M2 |
+| `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-012` | — | — | `SCR-014` `SCR-044` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-013` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-014` | — | — | `SCR-016` | — | — | `STORY-CHK-006` | M2 |
+| `REQ-CHK-015` | — | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-006` | M9 |
+| `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-006` | M9 |
 
 ### CRT
 
@@ -346,7 +348,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PTS-009` | — | — | `SCR-022` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-010` | `ENT-reactions` `ENT-scoring_rules` | `POL-scoring_rules.catalogue` | `SCR-045` `SCR-053` `SCR-054` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-011` | `ENT-points_balances` | — | — | `JOB-audit_balances` | — | `STORY-PTS-006` | M4 |
-| `REQ-PTS-012` | `ENT-points_ledger` | — | — | `JOB-award_points` `JOB-award_presenter_points` | — | `STORY-PTS-002` | M4 |
+| `REQ-PTS-012` | `ENT-points_ledger` | — | `SCR-016` | `JOB-award_points` `JOB-award_presenter_points` | — | `STORY-PTS-002` | M4 |
 | `REQ-PTS-013` | — | — | `SCR-022` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-014` | — | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
 
@@ -472,5 +474,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-018` | — | — | `SCR-012` | — | — | `STORY-UIX-011` | M10 |
 | `REQ-UIX-019` | — | — | `SCR-012` `SCR-014` | — | — | `STORY-UIX-011` | M10 |
 | `REQ-UIX-020` | — | — | — | — | — | `STORY-UIX-011` | M10 |
+| `REQ-UIX-021` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-012` | M9 |
+| `REQ-UIX-022` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-012` | M9 |
+| `REQ-UIX-023` | — | — | `SCR-010` | — | — | `STORY-UIX-013` | M9 |
+| `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
 
 <!-- TRACEABILITY:END -->

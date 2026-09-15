@@ -734,6 +734,30 @@ exclusion constraint rather than by a validation check.
 - An attempt to check in to a session overlapping one already attended is rejected with a message
   naming the conflicting session.
 
+#### REQ-CHK-015 — Check-in is opened and closed by hand
+**Serves:** owner 2026-09-15 · DEC-113
+A session carries a **switch** that decides whether check-in is accepting anyone. The session's
+accepted **مُقدِّمون**, any **مُنظِّم** and any **مشرف المؤسسة** may open or close it at any time.
+The session's *phase* does not gate check-in: a presenter may open the window before the session
+starts, and closing it is a deliberate act rather than a clock event.
+**Acceptance:**
+- The switch starts **closed**; an attendance window nobody opened is safer than one nobody closed.
+- Opening and closing are one tap from the host view (SCR-016), the screen already projected in
+  the room.
+- Closing stops admitting new check-ins and **never revokes one already recorded**.
+- Every open and close writes an audit row naming who and when — it decides whether attendance can
+  be recorded, and attendance is what `REQ-PTS-012` pays points on.
+- A member may not open it, and a presenter of a *different* session may not open this one.
+
+#### REQ-CHK-016 — Check-in closes two hours after the session's scheduled end, absolutely
+**Serves:** owner 2026-09-15 · DEC-113
+From **`ends_at` + 2 hours** the switch can no longer be opened, and an open switch stops admitting.
+**Acceptance:**
+- The ceiling is enforced by the RPC, not by the screen — a forged request past it is refused.
+- The ceiling is computed from the session's **scheduled** end, not from when it actually finished.
+- A session with no scheduled end cannot accept a check-in at all, which is already true: nothing
+  reaches `published` without both ends (`REQ-SES-001`).
+
 #### REQ-CHK-014 — Host-view access
 **Serves:** OQ-013 · A1
 The host view — and therefore the live code — is visible to the session's presenters, org admins
@@ -2469,6 +2493,49 @@ a hidden control is a courtesy.
 - An empty slot renders no heading, proven by one component test per slot.
 - The derived phase never adds an affordance the stored state would not permit, proven for every
   phase pair.
+
+#### REQ-UIX-021 — The member's landing screen is the sessions timeline
+**Serves:** owner 2026-09-15 · DEC-112
+`/app` renders **the sessions a member can attend**, as a single scrollable timeline grouped by
+date — not a dashboard of links and not a grid of rails. The member's next committed session is the
+first item of that timeline, not a separate hero above it.
+**Acceptance:**
+- A member lands on something they can act on, without a second navigation.
+- There is one column: nothing competes with the list for horizontal space.
+- A session's state is legible while scrolling, without stopping to read (`REQ-UIX-003`).
+- The empty case is the same screen with an invitation to propose, never a different page.
+
+#### REQ-UIX-022 — Filters belong to the timeline, and their state is always visible
+**Serves:** owner 2026-09-15 · DEC-112 · `REQ-DSC-005`
+Filtering is part of the list, not a rail beside it. The active set is visible at all times,
+each filter is individually removable, and the whole set is clearable in one action. Below `md`
+the control set opens as a sheet rather than pushing the list sideways.
+**Acceptance:**
+- A member can tell what they are filtered to without opening anything.
+- Removing one filter never clears the others.
+- The filtered-empty state names the filter that emptied it and offers to drop just that one
+  (`REQ-UIX-012`).
+
+#### REQ-UIX-023 — A disclosure closes when it has been used
+**Serves:** owner 2026-09-15 · DEC-111
+Any menu, dropdown or disclosure in the shell closes when the member follows a link inside it,
+clicks outside it, or presses `Escape`; and no two are open at once.
+**Acceptance:**
+- Following a link inside a menu leaves no panel over the destination — asserted by a test, because
+  under Partial Rendering the layout does not re-render and the panel survives the navigation.
+- `Escape` returns focus to the control that opened the panel.
+
+#### REQ-UIX-024 — The discussion is a composition surface, not a comment log
+**Serves:** owner 2026-09-15 · DEC-110 · `REQ-EVT-001` … `REQ-EVT-008`
+The discussion on a session supports real composition and real feedback: an editing affordance
+rather than a bare textarea, visible upload controls rather than a hidden input, a reaction whose
+acknowledgement is felt, and a pending, success and failure state on every action.
+**Acceptance:**
+- Every action shows it is working, and says so if it fails (`REQ-UIX-007`, `REQ-UIX-010`).
+- The upload control states what it accepts and how large before a file is chosen
+  (`REQ-MAT-008`); the server still sniffs the bytes and still refuses SVG.
+- The reaction is a whisper, not a celebration: `REQ-EVT-004` earns no points, so nothing about it
+  should read as an achievement (`REQ-UIX-018`).
 
 #### REQ-UIX-016 — Every route boundary with a loading state has an error boundary
 **Serves:** DEC-091

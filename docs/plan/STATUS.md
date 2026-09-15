@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-15 · **Branch:** `design/m9-m13-plan` (PR **#22**, draft — the owner merges) · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **the design milestone is RUNNING — wave 5 / M9.** Step 0 and Step 1 are **done**; M9 is in flight with four teammates. `docs/plan/16-ui-redesign.md` is `settled` and now **promoted into the plan set**: 301 requirements, 136 stories, DEC-069 … DEC-107, `trace` green. The owner's hands-on checks and two secret rotations are still outstanding.
+**Last updated:** 2026-09-15 · **Branch:** `design/m9-m13-plan` (PR **#22** — the owner merges) · **`main`:** **LAUNCHED 2026-09-15** · **Phase:** ★★ **RESEQUENCED BY THE OWNER — the screens come first.** M9's system work is built and green, and the owner has reordered the milestone (`DEC-110` … `DEC-114`): the whole app is rebuilt to the canvas **including the admin console**, `/app` becomes the sessions timeline, the shell's disclosures are swept, and check-in becomes a manual switch. **Nothing further is implemented in this session — the next session executes it.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -1194,6 +1194,77 @@ the personality already owner-approved in `.impeccable.md`. Nine moments in thre
 and check-in orchestrated at ~900 ms, five acknowledgements at 200–360 ms, and the connective
 tissue of §7.1. No motion library — `element.animate()` does what `framer-motion` would, for 34 KB
 less, and the tell is not that a product has motion but that it has someone else's.
+
+## ★★ What the next session does — the owner's four directives, 2026-09-15
+
+The owner ran M9 locally and gave four instructions. They are recorded as **`DEC-110` … `DEC-114`**
+and the requirements are in `01-prd.md` (`REQ-CHK-015`, `REQ-CHK-016`, `REQ-UIX-021` … `REQ-UIX-024`).
+**Nothing below was implemented in this session.** `trace` is green at 307 requirements and 140
+stories, so the next session can start on code.
+
+### 1 · Rebuild the whole app to the canvas, admin console included (`DEC-110`)
+
+Every app screen at phone and desktop in Arabic RTL, against
+<https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>. ★ **The admin console is in from the start** —
+it has had no design attention at all, and the old plan put it two waves out.
+
+★ **The discussion becomes a Notion-style composition surface** (`REQ-UIX-024`): a real editing
+affordance rather than a bare textarea, visible upload controls rather than a hidden input, the
+reaction animation `DEC-100` already specifies (`dot-pulse` + `ripple-ring` — a whisper, because
+`REQ-EVT-004` earns nothing), and pending/success/failure on every action.
+
+### 2 · Sweep the shell (`DEC-111`) — and the root cause is already found
+
+**Both shell menus are native `<details>`.** A `<details>` has no reason to close when a link
+inside it is followed, and under Partial Rendering **the layout does not re-render on navigation**,
+so the panel survives and hangs over the destination. That is the owner's "stuck dropdown", and it
+is not a styling bug. The same element also fails to close on outside click or `Escape`, and **two
+can be open at once**.
+
+★ **Move both to `ui/menu`** — `console` built it over Radix in M9 and Radix owns exactly those four
+behaviours. The "no JavaScript" argument in `account-menu.tsx`'s comment does not survive: the
+panels are navigation convenience and every destination is reachable without them.
+
+★ **A positioning defect of the same family, confirmed in code:** `search-entry.tsx` passes `ps-10`
+to `ui/input` while `controlClass`'s `md` size contributes `px-4`. **Both set
+`padding-inline-start`**, and which wins is decided by Tailwind's emission order, not by the class
+attribute. It looks right today by luck. **House rule: never pair a directional padding utility
+with an axis one on the same element.**
+
+### 3 · `/app` becomes the sessions timeline (`DEC-112`)
+
+The «أهلًا ريم» dashboard is **withdrawn** — `16` §6.6 and `Home.dc.html` both. `/app` renders what
+a member can attend: one column, date-grouped, their next committed session as the **first item**
+rather than a hero above the list. Filters live **in** the timeline, always showing the active set,
+each individually removable, as a sheet below `md`.
+
+★ `16` §6.6 had already reasoned its way here — «when nothing is upcoming, home *becomes* browse» —
+and kept the dashboard in front of it. The zero state was the right screen all along.
+
+★ **Resolve `/app` vs `/app/sessions` deliberately.** They now render the same thing, and the shell
+has a tab for each. That is part of the work, not a detail.
+
+### 4 · Check-in becomes a manual switch (`DEC-113`)
+
+**Opened and closed at will** by the session's accepted presenters, any moderator and any org
+admin, with a **hard ceiling at `ends_at + 2 hours`** enforced in the RPC. The phase no longer gates
+check-in — a presenter may open it before the session starts.
+
+**Two defaults I chose and the owner has not confirmed:** the switch starts **closed**, and closing
+**does not revoke** check-ins already recorded.
+
+★ **This dissolves one of `DEC-090`'s four instances.** Once a stored switch is the gate, the clock
+cannot grant check-in, so `checkIn` leaves `GRANTING_AFFORDANCES` — `rate`, `survey`, `certificate`
+and `attendanceOutcome` stay. Corollary 2 itself is unaffected.
+
+### ★ The one thing blocked on the owner
+
+**Which errors in the mockups.** `DEC-114` sets the rule — the PRD wins over the canvas, and a
+mockup that contradicts a requirement is a *question*, not an instruction — and catalogues three
+classes found by inspection. The owner said there are others. **Ask before building a screen whose
+artboard looks wrong**; do not silently correct it either.
+
+---
 
 ## Wave 5 · M9 — this session
 
