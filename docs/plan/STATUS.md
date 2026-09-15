@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-15 · **Branch:** `launch/record` → the closing PR to `main` · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend; PRs #16–#20 merged · **Phase:** **post-launch** — the owner's hands-on checks, two secret rotations, the post-launch list below; the design milestone deferred (DEC-068)
+**Last updated:** 2026-09-15 · **Branch:** `main` · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **post-launch — the design milestone is OPEN.** `docs/plan/16-ui-redesign.md` is written (`draft`, awaiting the owner's approval): the UI/UX rebuild of the app *and* the marketing site, M9–M13, answering the owner's thirteen asks. The owner's hands-on checks and two secret rotations are still outstanding.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -55,6 +55,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. §1 updated under DEC-033. |
 | 14 | `14-roadmap.md` | `settled` | M0–M8 + **Launch** (DEC-039). No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
+| 16 | `16-ui-redesign.md` | **`draft`** | **The UI/UX rebuild** — the design system, the IA, loading, forms, the session-lifecycle vocabulary, the studio and the email studio. M9–M13. Awaiting the owner's approval. |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
 | — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) closes at Launch with PR C (DEC-046); OQ-012 implemented behind the perk (DEC-047). |
 | — | `TEAM.md` | `settled` | The agent team: waves, ownership, contracts, the lead's spawn prompt (DEC-040). |
@@ -1012,7 +1013,205 @@ with the owner's approval of the step-1 plan ("Option A"), the branch landed in 
 run `gh auth switch --user ebnmajed` before any `gh` call. Pushes use the SSH alias and are
 unaffected.
 
-## Next session should
+## The design milestone — opened 2026-09-15 (this session)
+
+**DEC-068 deferred the design milestone «until the owner asks with a short brief». The owner
+asked.** The brief was thirteen items; the answer is
+**[`16-ui-redesign.md`](16-ui-redesign.md)** (`draft`, 1181 lines) plus a visual canvas of
+fourteen artboards: <https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>
+
+**Nothing was implemented.** No `src/`, `supabase/` or `worker/` file changed. The repository is
+exactly as PR #21 left it apart from the new plan document and one line in `.impeccable.md`.
+
+### The three framing decisions the owner took before the document was written
+
+1. **Scope: the app *and* the marketing site, one system** — invariant 1 is deliberately unfrozen
+   and **re-cut**, not deleted (`16` §14). Sequenced last, in M13, behind a split `qa` suite whose
+   behavioural two-thirds never stop being blocking.
+2. **Deliverable:** the plan plus the visual canvas, approved before code.
+3. **Rollout: in place, group by group.** No `v2` tree, no flag, no long-lived branch. Every group
+   is a mergeable PR that ships.
+
+### What the audit found, in one line each
+
+- `src/components/ui/` holds **three** files; `rounded-field border border-edge-strong` is copied
+  into **20**.
+- The shell is one row of text links with **no search anywhere** in a product whose core object is
+  searchable.
+- **One `loading.tsx` in the whole repository, zero `<Suspense>`** — and because every `/app` route
+  is dynamic, Next 16 skips prefetching for all of them.
+- **`completed` is badged on no surface**, and `rsvp-panel.tsx:21` still offers «إلغاء الحجز» on a
+  finished session.
+- **Objectives and the survey do not exist**; **tags exist in the database since `0037` with no UI
+  at all**; bookmark is on the browse card only and share on the event page only.
+- `editor.tsx:243` records that **dragging is deliberately absent** — `REQ-DSG-022` has required
+  snapping and focal-point cropping since the PRD was written.
+- `posters/picker.tsx` describes three paths and gives a control for **one**.
+- The 22 email templates are **plain subject/body strings**; `admin/emails` is two textareas with
+  no preview.
+
+### Decisions logged in `16` §13, awaiting promotion into `DECISIONS.md`
+
+`DEC-069` … `DEC-090`. Four are worth naming here:
+
+- **`DEC-071`** — a derived `sessionStatus()` governs what a session offers. **The clock is
+  authoritative for the screen, the clock *job* for the database**, so a worker outage can never
+  again show a register button for a talk that finished last week.
+- **`DEC-079`** — the client brief's icon ban is **split by surface**, on the owner's instruction:
+  the marketing site keeps the eight glyphs, the app gets a house-drawn set of ~28 under three
+  conditions (no icon-library dependency ever, one drawing spec, education clichés still banned).
+  `.impeccable.md` was updated to match — the only file outside `docs/plan/` this session touched.
+- **`DEC-090`** — the affordance rule of §5.4, above.
+- **`DEC-081`** — email templates are **block-based, not canvas-based**. The designer runtime is
+  *not* reused for mail: table HTML with inline CSS and no web fonts cannot come from a free canvas
+  and stay correct.
+
+### The plan was stress-tested before anyone acted on it
+
+Three independent audits ran against the draft — a code-claim verification, an executability audit
+against `TEAM.md`, and a best-practice benchmark — plus the lead's own pass. **The draft did not
+survive intact, which is the point.** Every finding below was verified against the tree by the lead
+before it was applied.
+
+**The plan's own claims were wrong in fifteen places.** The worst were not typos:
+
+- Every accessibility citation pointed at the wrong requirement — `REQ-NFR-004` is *server-side data
+  access*; WCAG 2.2 AA is `REQ-NFR-007`. Also `016`→`009` (mobile-first) and `005`→`008` (performance).
+- «`completed` is badged nowhere» was **false** — it renders as «انتهت» at
+  `admin/sessions/page.tsx:134,189`. The true gap is member-facing only.
+- «No download affordance exists» was **false for the poster** — `designer/export-panel.tsx:71-75`
+  already ships `<a download>` over `signExportUrl()`. Ask 7 is reach, not plumbing, and drops to `S`.
+- «None of `REQ-DSG-022` is built» was **false** — snapping is built (`editor.tsx:6`, `:250-253`)
+  and only number entry drives it. M12 shrinks accordingly.
+- The duplication was **understated 3×**: 65 files, not 20. The message count is **25**, not 22 —
+  and 22 was written into two CI gates, so a golden suite built to it would silently miss three keys.
+- The primitive count is **31**, not 26. The app has **49** pages under `app/[locale]/app/**`, not 59.
+
+**Four design defects, found by stress-testing rather than by reading:**
+
+1. **The status model conflated three axes.** One enum mixed lifecycle, capacity and *who is
+   looking*, and was not total — a `published` session with a null `starts_at` matched no branch.
+   Replaced by `sessionPhase()` · `seatState()` · `viewerRelation()`, 7×7 = 49 assertions.
+2. **The navigation progress bar could not work.** `useLinkStatus` must be a descendant of a
+   `<Link>`; one bar in the shell cannot be driven by it. §7.1.1 has the architecture that can.
+3. **★ The affordance fallacies (§5.4), raised by the owner.** «أضف إلى التقويم» was offered to
+   viewers with no RSVP. Sweeping the class found six, **two of them live in the shipped app**:
+   `components/calendar/add-to-calendar.tsx:22-23` and `components/tasks/panel.tsx:16` have **no
+   RSVP condition at all**. The rule is now *commitment before convenience*, plus a correction to
+   the plan's own §5.1: **the derived phase may only ever remove an affordance, never add one**,
+   because RLS is authoritative. `getPhotosPageData()` already does this correctly and is the
+   pattern to copy.
+4. **The gallery gate could never have run.** `scripts/visual-diff.mjs:33` hardcodes three public
+   routes with no auth path, and `stubbed-server.mjs:41-44` serves the production build — so a
+   dev-only route either 404s in the harness or is public on the live domain. Now gated in
+   `proxy.ts` by an env var the harness sets.
+
+**Three execution defects that would have broken the wave:**
+
+- **`src/components/ui/**` is in no teammate's edit list *and no teammate's never-touch list*.**
+  `console.md:26` names fourteen component directories to avoid and omits `ui`. `globals.css` is
+  lead-only by folklore only. **All ten `.claude/agents/*.md` must be regenerated before wave 5.**
+- **`.claude/settings.json`'s `TaskCompleted` hook runs the full `npm run qa`** — stub, `next start`,
+  Puppeteer — holding the gate lock, on *every teammate's every task*. The plan's "qa is lead-only"
+  rule was unenforceable; the hook is made path-aware first (`DEC-088`).
+- **Migrations were numbered out of promotion order** — `0082` in M11 below `0083` in M10 would
+  break `supabase db reset` for everyone. Renumbered contiguous, 0082–0088.
+
+Also: axe would have **passed by skipping** (`a11y.spec.ts:26` skips without local Supabase, and CI
+serves the stub), and `ui-lint` as specified would have failed the primitives it exists to protect.
+
+### The benchmark's turn — two regressions the plan itself introduced
+
+The third audit was a best-practice benchmark, and its most valuable output was not a comparison.
+It found **two defects created by this plan** that no existing test would have caught, plus a third
+class the plan had left out entirely. All verified against the tree before being applied.
+
+**1 · A privacy regression, from a submit button.** §9.2 put the rating and the survey on one
+screen with **one submit, one transaction**. Read from the migrations: `ratings` carries
+`member_id` and `submitted_at` (`0010:375,380`); anonymity is enforced by a **view**, not by
+storage; `ratings_read_admin` (`0010:576`) means an **admin** may already attribute a rating, and
+`is_org_admin()` is `role = 'admin'` **only** (`0003:40-43`) — a **moderator** may not. §9.2 grants
+survey results to admin **and moderator**. Writing both rows in one transaction turns a deliberate,
+enforced role boundary into a property of two timestamps, leaked into every backup, audited CSV,
+worker log and `--data-only` dump. **No policy changes, so the RLS suite stays green.** Fixed in
+§9.2a: decorrelated writes, `submitted_at` coarsened to the day, small-n withhold extended to
+distributions, and the one test that would have caught it. `DEC-094`.
+
+**2 · An RTL correctness regression, dormant until English ships.** §10.2 said the align buttons
+follow the **console's** direction. But `model.ts:19` defines `LogicalAlign = 'start'|'center'|'end'`
+— alignment is stored **logically**, which is what makes an LTR template a direction flip rather
+than a second layout. So "align start" from an English console writes a *left* intent into a
+logical-start field on an Arabic poster. **A document's render would become a function of the
+editor's locale** — a parity-golden drift source that is not a font, not a renderer and not a
+binding, and invisible in the diff. Dormant until someone completes `en.json`. Fixed in §10.2.2,
+with an explicit exemption for the overlay from the logical-properties rule so nobody "fixes" it
+back. `DEC-096`.
+
+**3 · WCAG 2.5.7, and a judgement reversed.** The plan answered dragging with keyboard parity —
+that is `SC 2.1.1`. **`SC 2.5.7` Dragging Movements is separate** and needs a *single-pointer,
+non-dragging* path. Dragging turned out to appear in **five** places. The reversal that matters:
+§10.2 called positioning by typing numbers "the single biggest usability failure in the product",
+which reads as licence to delete the numeric fields — **they are the conformance path.** They are
+now demoted, not removed, with that fact written down. `REQ-DSG-028` amended; `ui/reorderable-list`
+built once for objectives, email blocks and survey questions. `DEC-093`.
+
+**4 · Eleven screens were in no milestone at all** — including `sign-in` (the first screen any
+member sees, and the only place `SC 3.3.8` applies), `check-in`, the host view, the material viewer
+and the public card `/s/[id]`, which is **how members actually arrive**. §15 now carries a coverage
+table of all 59 routes. `DEC-097`.
+
+**5 · Numerals.** `REQ-SUR-007` exported CSV «in the org's numerals» — Arabic-Indic digits break
+Excel and Sheets, and a certificate serial rendered Arabic-Indic against a Western `/verify/[code]`
+**fails to verify the one public artefact the platform has**. Display follows the org; machine-
+readable surfaces never do. `DEC-095`.
+
+Also: the affordance sweep grew from six to **eight**, of which **five are live in the shipped app**
+— the check-in link at `page.tsx:225` is the **primary navy button** on any live session for any
+member, and `check-in/page.tsx:10` lists `reservation_required`, so the RPC refuses. And two
+corrections to the plan's own fixes: "none of them is a new query" was false (the event DTO has no
+RSVP — `DEC-092` amends DEC-045's slot contract), and gating a slot leaves its page-owned heading
+behind, which `event` learned for Ratings in wave 1 and nobody generalised.
+
+### Two late additions from the owner, both smaller than they looked
+
+**Avatars (`DEC-099`, §6.8).** The owner asked for profile pictures. `members.avatar_url` **already
+exists** (`0004_tenancy.sql:243`), is **already populated from Google's `picture` claim** at
+provisioning (`0005_tenancy_rpcs.sql:124`), is already returned by **five DAL modules**, and
+`proxy.ts:109` already allows `lh3.googleusercontent.com` in the CSP — **and no component has ever
+rendered it.** The value travels the whole stack and is discarded at the last step. So the work is
+to draw it and to fix how it got there: hotlinking Google discloses every viewer's IP and Referer to
+a third party on every page render, the URLs rotate, no member consented or can change it, and it
+sits outside moderation, anonymisation and the data export. Avatars move into our own storage,
+EXIF-stripped like session photos, with initials as the permanent fallback — **and the CSP entry is
+removed**, so this is a net security improvement.
+
+**Motion (`DEC-100`, §7.5).** The owner asked for animation and fun. `globals.css` already defines
+**twelve** keyframes — including `dot-pulse` and `ripple-ring`, which *are* the like-button
+animation being asked for, and `sting-ignite`/`sting-draw`, which are "a dot joins the network".
+**Three files use them, all marketing. `/app` has no motion of any kind.** So the app is not missing
+an animation library; it is missing the motion language its own landing page already speaks, with
+the personality already owner-approved in `.impeccable.md`. Nine moments in three tiers: reservation
+and check-in orchestrated at ~900 ms, five acknowledgements at 200–360 ms, and the connective
+tissue of §7.1. No motion library — `element.animate()` does what `framer-motion` would, for 34 KB
+less, and the tell is not that a product has motion but that it has someone else's.
+
+### What the next session should do
+
+**Nothing in this plan is approved yet.** The first job is to walk the canvas with the owner.
+
+1. **Get §0's scope decision confirmed in writing**, then **promote `DEC-069` … `DEC-082` into
+   `DECISIONS.md`** (append-only) and add the new requirements to `01-prd.md` — `REQ-UIX-001…014`,
+   `REQ-SUR-001…008`, `REQ-NTF-009…014` and the eleven additions in `16` §12.3. Two new areas
+   (`UIX`, `SUR`) also amend `00-overview.md`'s area table, which `DEC-070` covers.
+2. **Add the M9–M13 stories to `15-backlog.md`** and the milestones to `14-roadmap.md`, then run
+   `node scripts/traceability.mjs` — it must stay at zero gaps.
+3. **Be the wave-5 lead** (`16` §16): the lead owns `src/components/ui/**`, the shell, the loading
+   model, the form model and `sessionStatus()`; `console` takes `DataTable`/`combobox`/`menu`/
+   `tabs`; `checkin` takes the §5.3 action table. M9 ships the answer to asks 4, 5 and 6 on its own.
+4. **Do not touch the marketing routes before M13.** `npm run qa` stays 44/44 and
+   `npm run visual` stays at 0.000% for every milestone before it.
+
+## Next session should (superseded — see *The design milestone* above; kept for the history)
 
 1. **Wait for the owner to merge PR #14** (`wave-3/m6-m7` → `main`); nothing is merged by a session (DEC-041). After the merge: `git checkout main && git pull --ff-only`.
 2. Be the **wave-4 lead** (`platform` M8 · `branding` M7-branding, TEAM.md §1): read this file, `CLAUDE.md`, `DECISIONS.md` DEC-048 … DEC-050, `TEAM.md` §3 and §5, and the handoff under *Handoff for the wave-4 lead* above.

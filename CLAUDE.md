@@ -392,6 +392,7 @@ repository is public until Launch by the owner's decision (DEC-051); nothing her
 | [`13-testing-quality.md`](docs/plan/13-testing-quality.md) | Test strategy, budgets, device matrix, CI |
 | [`14-roadmap.md`](docs/plan/14-roadmap.md) | M0–M8, no phase-2 bucket |
 | [`15-backlog.md`](docs/plan/15-backlog.md) | 112 stories, each citing `REQ-*` |
+| [`16-ui-redesign.md`](docs/plan/16-ui-redesign.md) | **The UI/UX rebuild** — system, IA, loading, forms, the studio, the email studio. `draft` |
 | [`ASSUMPTIONS.md`](docs/plan/ASSUMPTIONS.md) | A1–A40 with status |
 | [`OPEN-QUESTIONS.md`](docs/plan/OPEN-QUESTIONS.md) | 26 gaps, each with a default in force |
 | [`TRACEABILITY.md`](docs/plan/TRACEABILITY.md) | **Generated.** `node scripts/traceability.mjs` |
