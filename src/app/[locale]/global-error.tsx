@@ -67,6 +67,16 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             >
               أعد المحاولة
             </button>
+            {/* ★ A PLAIN `<a>`, DELIBERATELY, and the lint rule is wrong here.
+                `@next/next/no-html-link-for-pages` wants `<Link>` — but this
+                page renders when something has already gone wrong badly enough
+                to replace the root layout, and a client-side navigation asks
+                the router to do more work in exactly the state where the
+                router may be the thing that broke. `<a>` is a full document
+                load: it always works, and it discards whatever corrupt client
+                state produced this page. That is the behaviour a last-resort
+                error screen wants. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/ar/app"
               style={{

@@ -25,7 +25,18 @@ import { z } from "zod";
 // while the copy on screen promises «بياناتك ما زالت في النموذج».
 // `tests/e2e/sessions-propose.spec.ts` found that; nothing else would have.
 
-export type { ProposeState };
+// ★ NO `export type { ProposeState }` HERE, and this note is the reason.
+//
+// A `"use server"` module's exports become an actions manifest, and the
+// manifest is built from the export LIST — so a re-exported TYPE is still in
+// it, and Turbopack then tries to import a value that erased at compile time:
+// «Export ProposeState doesn't exist in target module». `tsc` sees nothing
+// wrong; only `npm run build` catches it, and the build is lead-only for this
+// milestone. It blocked every build in the checkout for a quarter of an hour.
+//
+// `state.ts:3` already states the rule — "a `use server` module may export
+// async functions and nothing else" — and it means types too. Import the type
+// from `./state`, which is what that file is for.
 
 /**
  * The message key for a failed field.
