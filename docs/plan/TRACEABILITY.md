@@ -165,7 +165,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-013` | `ENT-export_artifacts` | `POL-export_artifacts.cache` `POL-export_artifacts.select` | `SCR-059` | `JOB-evaluate_alerts` `JOB-regenerate_poster` +1 | — | `STORY-DSG-006` | M6 |
 | `REQ-DSG-014` | `ENT-export_artifacts` | — | `SCR-057` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-007` | M6 |
 | `REQ-DSG-015` | — | — | `SCR-011` `SCR-043` `SCR-057` | — | `MSG-certificate_issued` | `STORY-DSG-007` | M6 |
-| `REQ-DSG-016` | `ENT-fonts` | — | `SCR-011` `SCR-043` `SCR-044` +5 | — | — | `STORY-DSG-008` | M6 |
+| `REQ-DSG-016` | `ENT-fonts` | — | `SCR-011` `SCR-043` `SCR-044` +5 | `JOB-convert_document` `JOB-render_pages` | — | `STORY-DSG-008` | M6 |
 | `REQ-DSG-017` | `ENT-fonts` | `POL-fonts.materialise.admin` | `SCR-057` | `JOB-materialise_font` | — | `STORY-DSG-008` | M6 |
 | `REQ-DSG-018` | `ENT-design_assets` | — | `SCR-057` | — | — | `STORY-DSG-009` | M6 |
 | `REQ-DSG-019` | `ENT-design_assets` | — | `SCR-057` | — | — | `STORY-DSG-009` | M6 |
@@ -229,17 +229,17 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-MAT-001` | `ENT-materials` | — | `SCR-012` | — | — | `STORY-MAT-001` | M5 |
-| `REQ-MAT-002` | `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-001` | M5 |
+| `REQ-MAT-002` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-001` | M5 |
 | `REQ-MAT-003` | `ENT-material_pages` `ENT-materials` | — | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-002` | M5 |
-| `REQ-MAT-004` | `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-003` | M5 |
+| `REQ-MAT-004` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-003` | M5 |
 | `REQ-MAT-005` | `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-004` | M5 |
 | `REQ-MAT-006` | `ENT-materials` | — | `SCR-012` | — | — | `STORY-MAT-004` | M5 |
 | `REQ-MAT-007` | `ENT-materials` | — | `SCR-012` `SCR-013` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-008` | `ENT-materials` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-009` | `ENT-materials` `ENT-org_settings` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-010` | `ENT-material_versions` `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-005` | M5 |
-| `REQ-MAT-011` | `ENT-materials` | — | `SCR-011` `SCR-013` `SCR-043` +5 | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-006` | M5 |
-| `REQ-MAT-012` | `ENT-material_versions` | — | `SCR-013` | — | — | `STORY-MAT-001` | M5 |
+| `REQ-MAT-011` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-011` `SCR-013` `SCR-043` +5 | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-006` | M5 |
+| `REQ-MAT-012` | `ENT-material_versions` | `POL-materials.kind_pdf_only` | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-001` | M5 |
 
 ### NFR
 

@@ -61,7 +61,7 @@ duplicates, and `on conflict do nothing` absorbs the rest.
 |---|---|---|
 | `default` | 10 | points, notifications, state transitions — small and fast |
 | `render` | 2 | headless Chromium is memory-hungry; more concurrency means OOM, not throughput |
-| `convert` | 2 | LibreOffice, on the separate credential-free app |
+| `convert` | 2 | poppler + cwebp in the worker image (DEC-058; LibreOffice and the separate app are gone) |
 | `external` | 5 | calendar and email — network-bound, rate-limited upstream |
 
 Separating `render` matters: one 30-second A3 export must not starve the queue that delivers a
@@ -181,17 +181,17 @@ not self-heal** — a rollup that silently corrects itself hides the bug that ca
 ### 2.4 Content
 
 #### `JOB-convert_document`
-**Serves:** `REQ-MAT-003`, `REQ-MAT-011`, DEC-006 · **Trigger:** material version ready, kind ∈
-{pdf, powerpoint}
-**Out:** a PDF (for PowerPoint) and a font-substitution report
+**Serves:** `REQ-MAT-003`, `REQ-MAT-011`, DEC-058 · **Trigger:** material version ready, kind = pdf
+**Out:** the page count and the non-embedded-font report (the name is the enqueue contract's;
+nothing is converted since DEC-058 — the job inspects the PDF with `pdfinfo`/`pdffonts`)
 **Key:** `conv:{version_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
-**Notes:** runs on the **credential-free converter app** (`04` §7.1) — the code parsing hostile
-PPTX holds a signed input URL, a signed output URL, and nothing else. **Never enqueued for
-Keynote** (DEC-006).
+**Notes:** runs **in the worker image** (`04` §7.1 as amended). A stored object that is not a
+PDF is marked `failed` once and not retried — terminal, not a throw.
 
 #### `JOB-render_pages`
-**Serves:** `REQ-MAT-003` · **Trigger:** conversion produced a PDF
-**Out:** WebP page images (1600 px) + thumbnails (320 px) + `ENT-material_pages`
+**Serves:** `REQ-MAT-003` · **Trigger:** `JOB-convert_document` reported a page count
+**Out:** WebP page images (1600 px) + thumbnails (320 px) + `ENT-material_pages`, rendered by
+`pdftoppm` + `cwebp` in the worker image (DEC-058)
 **Key:** `pages:{version_id}` · **Queue:** `convert`
 
 #### `JOB-process_photo`
@@ -283,6 +283,13 @@ the platform.
 | `JOB-delete_org` | on request (DEC-052) | `orgdel:{org_id}` | `REQ-NFR-014`, `12` §5.5 |
 | `JOB-evaluate_alerts` | every minute (DEC-053) | `alerts:{minute}` | `REQ-NFR-016`, §3.2 |
 | `JOB-rebuild_search` | on category/company rename | `search:{org_id}` | `REQ-DSC-003` |
+
+**A deleted subject is terminal (DEC-059).** `JOB-build_data_export` re-reads its request row and
+returns when the row is gone or names another member; `member_not_found` / `request_not_found`
+are recorded on the row and returned, everything else is recorded and rethrown. `JOB-delete_org`
+is a no-op-plus-assertion for a missing org; `JOB-expire_impersonation` and `JOB-anonymise_members`
+are set-based and have no subject to lose. A job that can never succeed does not retry twenty-five
+times.
 
 **`JOB-assert_storage_prefixes` deserves its place here.** Storage paths are the only point in the
 design where isolation depends on application correctness rather than on a constraint (`03` §6).

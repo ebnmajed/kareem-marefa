@@ -175,8 +175,8 @@ Full-text search *inside* documents is not planned.
 Documents 50 MB, audio 200 MB, images 20 MB, poster uploads 30 MB, all org-configurable.
 Replacing a material keeps prior versions in a version list.
 
-Kept, **narrowed by DEC-006**: `.key` (Keynote) is accepted within the document limit but is
-**download-only** — no page images, no viewer. Also narrowed by **DEC-009**: image uploads are
+Kept, **narrowed by DEC-058** (which withdraws DEC-006): document uploads are **PDF-only** —
+PowerPoint and Keynote are refused at upload. Also narrowed by **DEC-009**: image uploads are
 PNG/JPG/WebP, validated by **content sniffing, not extension**; SVG is rejected.
 
 ## A17 — Ratings structure · **kept**
@@ -435,7 +435,7 @@ Four rules the matrix encodes:
 
 **No photo tagging at launch.** "Photos" on a profile means photos that member **uploaded**.
 
-## A34 — Worker hosted on Fly.io · **superseded by owner** (DEC-034 — no Fly; hosting is OQ-027, decided by M3)
+## A34 — Worker hosted on Fly.io · **superseded by owner** (DEC-034 — no Fly; OQ-027 closed at Launch by DEC-058: Railway, and no converter)
 
 **Fly.io**, not Railway. Justification: burst economics for a ~2 GB Chromium + LibreOffice image,
 and — decisively — it lets the document converter run as a **separate app holding no database
@@ -483,7 +483,7 @@ A font chosen in the certificate builder is not referenced — it is **captured*
 1. Pick, from the Google Fonts developer API, filtered `subset=arabic`.
 2. Download the binary **once**; store it in Supabase Storage; record its **SHA-256**.
 3. Register it in the **font manifest** — the single list the editor, the worker's Chromium and
-   the LibreOffice converter all read.
+   the worker's poppler all read (DEC-058).
 4. Run the **shaping-parity goldens** against it. It becomes selectable only if they pass.
 5. Templates pin the **font hash**, so reissuing a 2027 certificate in 2031 is byte-reproducible.
 

@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-14 · **Branch:** `wave-4/m8-branding` (PR #15 → `main`, ready for the owner's review) · **`main`:** M1 live, M2–M7-console complete · **Phase:** **wave 4 (M8 · M7-branding) COMPLETE on the branch — migrations `0067`–`0076`, DEC-051 … DEC-057, both demonstrables run on the real images, the full gate below; next session is the Launch session, with the handoff further down**
+**Last updated:** 2026-09-15 · **Branch:** `fix/launch-pdf-only` (step 1 of Launch, PR → `main`, the owner merges when green) · **`main`:** M1 live, M2–M8 complete (PR #15 merged as `48c858a`) · **Phase:** **LAUNCH — step 1 (pre-launch fixes) on the branch; steps 2–7 gated on the owner's explicit go, one at a time — see *Launch session* below**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -144,6 +144,83 @@ passed everything. The harness now refuses to write a golden below 0.1% inked pi
 **Not yet covered:** the four export paths of `REQ-DSG-015` (poster PNG/PDF, certificate PDF, slide
 page images). Those need the worker image and the designer — M6. The suite is built so each path
 plugs into the same seven cases.
+
+## Launch session — 2026-09-15 — one gated step at a time
+
+**The owner's instructions, verbatim in substance** (they override the handoff below where they differ):
+uploads are **PDF-only** from launch — remove the converter, PDF page rendering in the worker, record
+the decision superseding D26 and DEC-032 (**DEC-058**); the worker host is **Railway** (existing Hobby
+subscription), `worker/Dockerfile`, Singapore, auto-sleep off, `DATABASE_URL` on port 5432; repository
+visibility stays as it is (the owner changes it after launch); the owner's hands-on checks (QRs at print
+size, ICS in Outlook, the main flows on a real phone in Arabic) happen after step 6 on the live site.
+**Every action that touches production waits for the owner's explicit «go».** STATUS is updated after
+each step.
+
+**Environment variables:** before step 3 a complete inventory goes in this file as a table — every
+variable the app, the worker and CI need in production, grouped by where it lives (Vercel Production,
+Vercel Preview, Railway worker, GitHub Actions secrets), with the exact name, the issuing service, the
+page or command to obtain it, public/secret, and whether it already exists. **Never a secret value in a
+tracked file**; `.env.example` gets every new name with a placeholder and a one-line comment. Before
+step 6 each service's log is checked for what it actually read.
+
+**The deny list and the owner's hands** (`.claude/settings.json`, DEC-051): this session cannot run
+`vercel …`, `gh secret …`, `gh api …`, `supabase db push`, `supabase db dump --linked`,
+`supabase db query --linked`, or `gh pr merge` — on purpose. Where a step needs one, the owner runs it
+by typing `! <command>` in the prompt (the output lands in the conversation) or lifts the rule for one
+step. Secret values are never printed; `vercel env ls` and `gh secret list` print names only.
+
+### The order
+
+| Step | What | State |
+|---|---|---|
+| 1 | Pre-launch fixes on `fix/launch-pdf-only` → PR → owner merges when green: PDF-only (DEC-058) · terminal handling for a deleted subject (DEC-059) · the other DEC-057 items recorded as post-launch | **in progress** — see below |
+| 2 | Rehearsal: schema-only dump of production → fresh local database → every migration on top → full suite green → show the result and **WAIT** | todo |
+| 3 | `supabase db push` after the go; then the hosted dashboard one step at a time — Google provider, the Custom Access Token hook, JWT expiry — asking for each input as it comes up, **WAITING before each** | todo |
+| 4 | Vercel: the inventory's variables, a production deploy, the frozen routes and the platform routes checked live; the first org by one-off SQL from the owner's details | todo |
+| 5 | Worker on Railway: connect the repo, variables from the inventory, the LISTEN/NOTIFY probe in the deploy log, the alerts drill against production | todo |
+| 6 | Email provider wiring; the end-to-end smoke test on production with the owner's account (sign in, propose, schedule, RSVP, check in, comment, rate, certificate issued, QR verified, ICS downloaded); report what differs from local; then the owner's hands-on checks | todo |
+| 7 | Post-launch fixes as a branch → PR → owner merges; close STATUS with the launch record, the final variable inventory and the post-launch list | todo |
+
+### Step 1 — what changed (DEC-058, DEC-059)
+
+- **PDF-only, end to end.** Upload form, `materialKindSchema`, the Route Handlers' declared kinds,
+  `sniffedKindMatchesDeclared()` (PowerPoint/Keynote still recognised, matched to nothing), the list
+  and viewer screens (no Keynote branches), `ar/` then `en/` copy (the substitution warning now speaks of
+  a font **not embedded in the PDF**), migration **`0077_pdf_only`** (`materials_kind_pdf_only` CHECK;
+  `finalize_material_upload()` and `carry_over_proposal_materials()` re-created for `pdf` alone).
+- **The converter is gone**: `converter/`, its CI job, `npm run converter:test`, `CONVERTER_URL`, the
+  signed-URL minting, `convertedPdfPath()`. **poppler + cwebp are in the worker image**
+  (`worker/Dockerfile`); `worker/src/content/pdf.ts` wraps them; `convert_document` inspects
+  (page count + `pdffonts`' non-embedded fonts against `fc-list`), `render_pages` renders and uploads
+  with the worker's own key. Parity path 4 is `scripts/parity/poppler.mjs`; CI runs it inside the worker
+  image with `PARITY_REQUIRE_POPPLER=1` so a missing tool fails rather than skips.
+- **Terminal handling** (DEC-059): `build_data_export` re-reads its request row and returns on a gone
+  row / a foreign member / `member_not_found` / `request_not_found` (recorded on the row, never
+  rethrown); everything else still rethrows. `delete_org`, `expire_impersonation`,
+  `anonymise_members` verified terminal by construction, unchanged. The content jobs return on a
+  non-PDF object. `send_notification`'s `no context` throw is recorded as a post-launch item.
+- **Post-launch list (from DEC-057, per the owner):** DEC-055 option A · the check-in budget ·
+  `data_export_requests.storage_path` · the two unbound kit font ids (DEC-053) · STORY-NFR-005's load
+  test · Sentry as the `AlertSink` transport · `send_notification` missing-context return ·
+  photo WebP re-encoding (now a worker-side `cwebp`).
+
+### Step 1 — gates on the branch
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` · `npm run lint` | clean · 0 errors (21 pre-existing warnings) |
+| `npx vitest run` (unit + components) | 66 files / 601 passed (`worker-tasks` rewritten, `worker-pdf` + `platform-tasks` new, `storage-signing` retired) |
+| `npm run db:reset` + `npm run test:rls` with `0077` | 61 files / 713 passed, 4 todo (`POL-materials.kind_pdf_only` new) |
+| `npm run policy-diff` · `node scripts/traceability.mjs` | agree · 251 requirements, 68 entities, no gaps (matrix regenerated: +`POL-materials.kind_pdf_only`, the two content jobs on `REQ-DSG-016`) |
+| the worker image (`worker/Dockerfile` with poppler) · probe · parity inside it | rebuilt on arm64 · `LISTEN/NOTIFY probe OK — 4 ms` · **28 of 28 with `PARITY_REQUIRE_POPPLER=1`, every face embedded, all seven slide-page crops 0.000% vs the goldens** |
+| `npm run test:e2e:local tests/e2e/materials.spec.ts` | 6 passed on a fresh configured build (the seeded material is now a `pdf`) |
+| `npm run qa` / `npm run visual` | not needed — nothing under `(marketing)/**`, `public/**` or the locale layout changed |
+
+**Two files changed on disk during the session that are not this branch's:** `.env.example`
+(`SITE_URL="https://kareem.pp.sa"`) and `supabase/config.toml` (local `site_url`, a callback redirect,
+`[auth.external.google]` reading `env(GOOGLE_OAUTH_CLIENT_ID/SECRET)`, `skip_nonce_check`). Neither
+holds a secret value; both look like the owner's local preparation and are **left uncommitted** for the
+owner to decide.
 
 ## Wave 4 (M8 · M7-branding) — COMPLETE on `wave-4/m8-branding` (PR #15, the owner merges)
 

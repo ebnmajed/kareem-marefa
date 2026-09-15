@@ -65,7 +65,7 @@ capacity. `M6` needs `M5`'s storage and job plumbing.
 | Radix + the ~8 inline SVG glyphs | DEC-019 |
 | **Monorepo restructure** for `designer-runtime` | Touches the live site — do it first, with a visual diff |
 | graphile-worker + the **`LISTEN`/`NOTIFY` boot probe**, run locally and in CI (no Fly — DEC-034) | `11` §1.2 — the failure is silent |
-| The credential-free converter app | `04` §7.1 |
+| ~~The credential-free converter app~~ — removed at Launch (DEC-058) | `04` §7.1 |
 | **Wire the browser Supabase client** (DEC-020, **DEC-021**) | No longer a spike — the owner confirmed the trade. Retire the `README.md:35` invariant here, pointing at both entries |
 | ✅ **Shaping parity harness** (DEC-024) | **Done and green.** Chromium is deterministic to 0.000%; substitution caught at 2–10%. D66 is achievable — M6 can be planned on it. Export-path coverage still belongs to M6 |
 | **Decide the hosting region** (OQ-026) | Cheap now; a data migration later |
@@ -180,18 +180,18 @@ the platform does not do.
 |---|---|
 | Direct-to-Storage uploads with server-side sniffing | `REQ-MAT-002`, `REQ-MAT-012` |
 | Six buckets, prefix policies, the **single path builder** | `03` §6 |
-| `JOB-convert_document` on the credential-free app | `04` §7.1 |
+| `JOB-convert_document` — since DEC-058, poppler in the worker image | `04` §7.1 |
 | Page rendering + the viewer, with **RTL navigation** | `REQ-MAT-003` |
-| **Keynote download-only** | `REQ-MAT-004` |
+| ~~Keynote download-only~~ — withdrawn, uploads PDF-only (DEC-058) | `REQ-MAT-004` |
 | Font-substitution detection and its warning | `REQ-MAT-011` |
 | `allow_download`, phase gating, versioning | `REQ-MAT-005`, `REQ-MAT-006`, `REQ-MAT-010` |
 | Photos: **EXIF stripping**, the check-in gate, instant takedown | `REQ-EVT-009` … `REQ-EVT-014` |
 | Pre-session tasks | `REQ-TSK-001` … `REQ-TSK-005` |
 | Search with Arabic normalisation | `REQ-DSC-001` … `REQ-DSC-007` |
 
-**Demonstrable:** upload an Arabic PowerPoint, read it page by page in the viewer with the arrows
-going the right way, and see the font-substitution warning when the deck uses a font the worker
-lacks. Upload a photo and confirm the stored bytes carry **no EXIF**.
+**Demonstrable:** upload an Arabic PDF, read it page by page in the viewer with the arrows going
+the right way, and see the font-substitution warning when the file names a font it does not embed
+(as amended by DEC-058). Upload a photo and confirm the stored bytes carry **no EXIF**.
 
 ---
 

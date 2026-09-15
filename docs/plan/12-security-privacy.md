@@ -16,7 +16,7 @@ Who this product is actually exposed to, and what each party can try.
 | T2 | **A member of another org** | Valid session, different `org_id` | Any cross-org read | `org_id` immutable claim + RLS on every table (`REQ-TEN-003`) |
 | T3 | **A curious outsider** | Unauthenticated, has a certificate QR | Enumerate recipients; learn about the org | Random verification code + rate limiting (DEC-010) |
 | T4 | **A leaked check-in code** | The code, forwarded outside the room | Attendance points without attending | Rotation + grace + in-transaction rate limiting + burn (DEC-015) |
-| T5 | **A malicious upload** | Member-uploaded PPTX or image | RCE in the converter; XSS in the renderer | Credential-free converter app + content sniffing + **no SVG** (DEC-009) |
+| T5 | **A malicious upload** | Member-uploaded PDF or image | RCE in poppler (in the worker); XSS in the renderer | PDF-only uploads (DEC-058 — no LibreOffice at all) + content sniffing at upload and in the job + **no SVG** (DEC-009) |
 | T6 | **A compromised Vercel function** | Env vars, request context | Database-wide access | `service_role` **never on Vercel**; RLS applies to app queries |
 | T7 | **A super admin** | Platform access | Reading an org's data unobserved | **No data-plane access**; break-glass only, audited in the org's own log (DEC-014) |
 | T8 | **A departing employee** | Valid session until deactivated | Bulk-exporting member data | Export audited and rate-limited; deactivation ends access immediately |
@@ -298,8 +298,9 @@ Recorded as **OQ-026** below so it is tracked rather than buried in a paragraph.
 
 - **`service_role` is never on Vercel.** Anything needing it is a job. A compromised Vercel
   function (T6) gets the user's own RLS-scoped access, not the database.
-- **The converter app holds no secrets at all** beyond its Fly token. The code parsing hostile PPTX
-  (T5) gets two short-lived signed URLs. An RCE there yields those two URLs, not `service_role`.
+- **There is no converter** (DEC-058). The hostile-parser surface is poppler reading a PDF the
+  Route Handler already sniffed (T5); it runs in the worker beside `service_role`, which the owner
+  accepted at Launch as the trade for removing LibreOffice and a second service entirely.
 
 Rotation: quarterly for API keys; **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` is stable across builds
 by design** (`04` §9.2) and rotated only deliberately, because rotating it invalidates in-flight
