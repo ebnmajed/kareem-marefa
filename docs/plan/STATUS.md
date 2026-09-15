@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-15 · **Branch:** `main` · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **post-launch — the design milestone is OPEN.** `docs/plan/16-ui-redesign.md` is written (`draft`, awaiting the owner's approval): the UI/UX rebuild of the app *and* the marketing site, M9–M13, answering the owner's thirteen asks. The owner's hands-on checks and two secret rotations are still outstanding.
+**Last updated:** 2026-09-15 · **Branch:** `main` · **`main`:** **LAUNCHED 2026-09-15** — Supabase at `0081`, Vercel, the worker on Railway, mail through Resend · **Phase:** **post-launch — the design milestone is OPEN.** `docs/plan/16-ui-redesign.md` is **`settled` — approved by the owner 2026-09-15**: the UI/UX rebuild of the app *and* the marketing site, M9–M13, answering the owner's fifteen asks. **Implementation starts with wave 5 / M9.** The owner's hands-on checks and two secret rotations are still outstanding.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -55,7 +55,7 @@ rule that keeps a later session from casually rewriting a considered decision.
 | 13 | `13-testing-quality.md` | `settled` | RLS plan, parity suite, budgets, CI. §1 updated under DEC-033. |
 | 14 | `14-roadmap.md` | `settled` | M0–M8 + **Launch** (DEC-039). No phase-2 bucket. |
 | 15 | `15-backlog.md` | `settled` | **112 stories**, every one citing `REQ-*`. |
-| 16 | `16-ui-redesign.md` | **`draft`** | **The UI/UX rebuild** — the design system, the IA, loading, forms, the session-lifecycle vocabulary, the studio and the email studio. M9–M13. Awaiting the owner's approval. |
+| 16 | `16-ui-redesign.md` | **`settled`** | **The UI/UX rebuild** — the design system, the IA, loading, forms, motion, the session-lifecycle vocabulary, avatars, the studio and the email studio. M9–M13. **Approved 2026-09-15; changes now need a `DECISIONS.md` entry.** |
 | — | `ASSUMPTIONS.md` | `settled` | **A1–A40**, each with a status. |
 | — | `OPEN-QUESTIONS.md` | `settled` | **27**, each with a default in force. OQ-027 (worker hosting) closes at Launch with PR C (DEC-046); OQ-012 implemented behind the perk (DEC-047). |
 | — | `TEAM.md` | `settled` | The agent team: waves, ownership, contracts, the lead's spawn prompt (DEC-040). |
@@ -1197,8 +1197,15 @@ less, and the tell is not that a product has motion but that it has someone else
 
 ### What the next session should do — the wave-5 lead's brief
 
-**The plan is committed on `design/m9-m13-plan` (`b6c3790`) and is `draft`. Nothing in it is
-approved.** Walk the canvas with the owner first: <https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>
+**The plan is `settled` — the owner approved it on 2026-09-15.** It lives on
+`design/m9-m13-plan` (pushed, four commits, no PR yet). The canvas is
+<https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>.
+
+★ **`settled` changes the rules that apply to it.** Rule 3 of the handoff protocol now holds:
+**`16` may only change through a `DECISIONS.md` entry.** If implementation shows a section is
+wrong — and it will, somewhere — that is a decision to append, not an edit to make. The plan
+already carries fourteen such self-corrections from its own stress test; add the fifteenth the
+same way.
 
 #### ★ This milestone is NOT one session. Do not try.
 

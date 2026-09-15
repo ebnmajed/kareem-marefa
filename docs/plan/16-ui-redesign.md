@@ -1,13 +1,13 @@
 # 16 — إعادة بناء الواجهة · The UI/UX rebuild
 
-**Status:** `draft` · **Owns:** the design system, the shell, the information architecture, the
+**Status:** **`settled`** — approved by the owner 2026-09-15 · **Owns:** the design system, the shell, the information architecture, the
 loading and feedback model, the form model, the session-lifecycle vocabulary, the studio (designer
 and certificates) workflow · **Cites:** `01-prd.md` for every requirement · **Supersedes no
 document** — `09-sitemap-screens.md` keeps the screen inventory and this document specifies what
 those screens become.
 
 > This is the design milestone deferred at Launch by **DEC-068**, opened by the owner on
-> 2026-09-15 with thirteen asks. It is a **rebuild, not a refinement**: the current app UI is
+> 2026-09-15 with fifteen asks. It is a **rebuild, not a refinement**: the current app UI is
 > replaced, not adjusted (the owner's instruction, 2026-09-15 — «do not build on the current
 > UI/UX. Rebuild from scratch»).
 
