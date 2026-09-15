@@ -14,12 +14,20 @@
 // POL-sessions.host_company_same_org;
 // RPC-snapshot_leaderboard.company_ledger_included.
 //
-// Applied inside the test's own rolled-back transaction (applyProposed,
-// DEC-040) — nothing here touches the real migrations or the shared
-// database. The base fixture (tests/rls/fixture.ts) puts every member of
-// an org — admin, mod, members[0], members[1] — in the SAME company, which
-// is exactly what the percentage rules' min_active_members=3 default
-// needs without building extra fixture rows for most cases.
+// Promoted as migration 0081 by the lead: applied by `supabase db reset`,
+// the existsSync guard below lets this file survive the promotion (the
+// pattern every promoted file in this suite uses). Applied inside the
+// test's own rolled-back transaction (applyProposed, DEC-040) before that —
+// nothing here ever touched the real migrations or the shared database.
+// The base fixture (tests/rls/fixture.ts) puts every member of an org —
+// admin, mod, members[0], members[1] — in the SAME company, which is
+// exactly what the percentage rules' min_active_members=3 default needs
+// without building extra fixture rows for most cases. Since DEC-067 (0081),
+// fixture-m4.ts also seeds one 100-point company_points_ledger row per
+// org's own company (so the isolation sweep is non-vacuous) — every test
+// below that asserts an exact company total reads that baseline first
+// rather than hard-coding it, the same lesson this file's own header
+// already records for the M4 fixture's member-scoped 10-point row.
 import { afterAll, describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -205,13 +213,17 @@ describe("POL-company_points_ledger", () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       await tx.asOwner();
+      // The fixture (DEC-067, 0081) already seeds one company_points_ledger
+      // row for org A's own company — counted here, not assumed, so this
+      // test does not hard-code the fixture's row count.
+      const before = await tx.q(`select id from public.company_points_ledger where org_id = $1`, [f.a.id]);
       await tx.q(
         `insert into public.company_points_ledger (org_id, company_id, amount, source, reason, idempotency_key)
          values ($1, $2, 100, 'company_hosting', 'x', 'test:cledger:2')`,
         [f.a.id, f.a.companyId],
       );
       await tx.as(f.a.members[1].claims); // an ordinary member, not the company's own concept of "self"
-      expect(await tx.q(`select id from public.company_points_ledger where org_id = $1`, [f.a.id])).toHaveLength(1);
+      expect(await tx.q(`select id from public.company_points_ledger where org_id = $1`, [f.a.id])).toHaveLength(before.length + 1);
       await tx.as(f.b.admin.claims);
       expect(await tx.q(`select id from public.company_points_ledger where org_id = $1`, [f.a.id])).toEqual([]);
     });
@@ -340,6 +352,14 @@ describe("ENT-company_points_balances rollup", () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       await tx.asOwner();
+      // The fixture (DEC-067, 0081) already seeds a 100-point company_
+      // points_ledger row for org A's own company — read here, not
+      // hard-coded, so this test's expected total tracks the fixture.
+      const [before] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
+        f.a.companyId,
+      ]);
+      const baseline = before?.total_points ?? 0;
+
       await tx.q(
         `insert into public.company_points_ledger (org_id, company_id, amount, source, reason, idempotency_key) values
            ($1, $2, 100, 'company_hosting', 'x', 'test:croll:1'),
@@ -349,7 +369,7 @@ describe("ENT-company_points_balances rollup", () => {
       const [balance] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
         f.a.companyId,
       ]);
-      expect(balance.total_points).toBe(140);
+      expect(balance.total_points).toBe(baseline + 140);
 
       await tx.q(`update public.company_points_balances set total_points = 1 where company_id = $1`, [f.a.companyId]);
       await tx.asServiceRole();
@@ -358,7 +378,7 @@ describe("ENT-company_points_balances rollup", () => {
       const [rebuilt] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
         f.a.companyId,
       ]);
-      expect(rebuilt.total_points).toBe(140);
+      expect(rebuilt.total_points).toBe(baseline + 140);
 
       await tx.asServiceRole();
       expect(await tx.q(`select company_id from public.audit_company_balances()`)).toEqual([]);
@@ -369,6 +389,11 @@ describe("ENT-company_points_balances rollup", () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       await tx.asOwner();
+      const [before] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
+        f.a.companyId,
+      ]);
+      const baseline = before?.total_points ?? 0; // the fixture's own seeded row (DEC-067, 0081)
+
       await tx.q(
         `insert into public.company_points_ledger (org_id, company_id, amount, source, reason, idempotency_key)
          values ($1, $2, 100, 'company_hosting', 'x', 'test:croll:3')`,
@@ -379,7 +404,7 @@ describe("ENT-company_points_balances rollup", () => {
       await tx.asServiceRole();
       const rows = await tx.q<{ company_id: string; expected_total: number; actual_total: number }>(`select * from public.audit_company_balances()`);
       const mine = rows.find((r) => r.company_id === f.a.companyId);
-      expect(mine).toMatchObject({ expected_total: 100, actual_total: 999 });
+      expect(mine).toMatchObject({ expected_total: baseline + 100, actual_total: 999 });
 
       await tx.asOwner();
       const [balance] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
@@ -395,14 +420,21 @@ describe("RPC-snapshot_leaderboard.company_ledger_included", () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
       await tx.asOwner();
-      // Member-derived points, same as before this migration. The M4 fixture
-      // baseline (fixture-m4.ts) already carries a 10-point check_in row for
-      // members[0] — and every base-fixture member of org A shares ONE
-      // company (fixture.ts), so that 10 is already part of this company's
-      // total before this test adds anything, regardless of which member
-      // this insert targets. Accounted for in the expected total below,
-      // not avoided — there is no member to pick that dodges a COMPANY
-      // aggregate the way members[1] dodges a per-member one.
+      // Both the member-derived and the company-ledger totals already carry
+      // fixture baselines — the M4 fixture's 10-point check_in row
+      // (members[0]) and, since DEC-067 (0081), the company ledger's own
+      // seeded 100-point row — and every base-fixture member of org A
+      // shares ONE company (fixture.ts), so both baselines land in this
+      // company's total regardless of which member/insert this test adds.
+      // Read here, not hard-coded, so the expected total tracks the fixture.
+      const [memberBefore] = await tx.q<{ total: string | null }>(`select sum(amount)::text as total from public.points_ledger pl
+         join public.members m on m.id = pl.member_id where m.company_id = $1`, [f.a.companyId]);
+      const [companyBefore] = await tx.q<{ total_points: number }>(`select total_points from public.company_points_balances where company_id = $1`, [
+        f.a.companyId,
+      ]);
+      const baseline = Number(memberBefore?.total ?? 0) + (companyBefore?.total_points ?? 0);
+
+      // Member-derived points, same as before this migration.
       await tx.q(
         `insert into public.points_ledger (org_id, member_id, amount, source, reason, idempotency_key)
          values ($1, $2, 30, 'check_in', 'x', 'test:snap:member')`,
@@ -427,11 +459,11 @@ describe("RPC-snapshot_leaderboard.company_ledger_included", () => {
           where snapshot_id = $1 and company_id = $2`,
         [snapRow.snapshot_leaderboard, f.a.companyId],
       );
-      // 10 (the M4 fixture baseline, members[0]) + 30 (this test's insert) +
-      // 100 (company ledger) = 140, over 4 active members (05 §6.2's frozen
-      // denominator — unchanged by this migration).
-      expect(entry.points).toBe(140);
-      expect(Number(entry.points_per_active_member)).toBeCloseTo(140 / 4, 5);
+      // baseline (both fixtures) + 30 (this test's member insert) + 100
+      // (this test's company insert), over 4 active members (05 §6.2's
+      // frozen denominator — unchanged by this migration).
+      expect(entry.points).toBe(baseline + 130);
+      expect(Number(entry.points_per_active_member)).toBeCloseTo((baseline + 130) / 4, 5);
     });
   });
 });
