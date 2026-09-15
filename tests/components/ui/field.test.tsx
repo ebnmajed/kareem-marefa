@@ -224,6 +224,22 @@ describe("Field — the wiring survives a wrapper", () => {
     expect(input.parentElement).not.toHaveAttribute("aria-invalid");
   });
 
+  it("★ MERGES a caller's own aria-describedby instead of replacing the wiring", () => {
+    render(
+      <Wrap>
+        <Field id="abstract" label="نبذة عن موضوعك" hint="اشرح فكرتك" error="فضلًا اكتب نبذة">
+          <>
+            <Input name="abstract" aria-describedby="abstract-count" />
+            <span id="abstract-count">بقي ٥٠٠ حرف</span>
+          </>
+        </Field>
+      </Wrap>,
+    );
+    // A character counter ADDS to the description; it is not an alternative to
+    // the error, which is the one association nothing else in the tree gives.
+    expect(screen.getByRole("textbox")).toHaveAccessibleDescription("فضلًا اكتب نبذة اشرح فكرتك بقي ٥٠٠ حرف");
+  });
+
   it("lets an explicit prop on the control win over the context", () => {
     render(
       <Wrap>

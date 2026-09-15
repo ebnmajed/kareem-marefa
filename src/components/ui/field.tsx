@@ -50,6 +50,21 @@ export function useFieldWiring(): FieldWiring | null {
   return useContext(FieldContext);
 }
 
+/**
+ * ★ `aria-describedby` MERGES; it does not override.
+ *
+ * Every other prop on a control wins over the context, which is the right rule
+ * — a caller who says `invalid={false}` means it. This one is the exception,
+ * because the two are not alternatives: a caller pointing at a character
+ * counter or a format note is ADDING to the description, and silently dropping
+ * the Field's own error and hint would remove the one association nothing else
+ * in the tree supplies.
+ */
+export function describedIds(...ids: (string | undefined)[]): string | undefined {
+  const joined = ids.filter(Boolean).join(" ");
+  return joined || undefined;
+}
+
 // The one place the control class string is written down (`ui-lint` excludes
 // `src/components/ui/` for exactly this reason, DEC-087). Everything else in
 // the product imports it from here.

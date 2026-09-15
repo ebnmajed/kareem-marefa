@@ -1,7 +1,7 @@
 "use client";
 
 import type { InputProps } from "@/components/ui";
-import { controlClass, useFieldWiring } from "@/components/ui/field";
+import { controlClass, describedIds, useFieldWiring } from "@/components/ui/field";
 
 // The house text input — `16` §4.2, REQ-UIX-009.
 //
@@ -14,7 +14,7 @@ import { controlClass, useFieldWiring } from "@/components/ui/field";
 // `InputProps` omits the native one, and the design value must not reach the
 // element or the browser sizes the box in characters.
 
-export function Input({ invalid, size = "md", className = "", ...props }: InputProps) {
+export function Input({ invalid, size = "md", className = "", "aria-describedby": describedBy, ...props }: InputProps) {
   const field = useFieldWiring();
   const isInvalid = invalid ?? field?.invalid ?? false;
 
@@ -22,7 +22,10 @@ export function Input({ invalid, size = "md", className = "", ...props }: InputP
     // ui-lint-disable-next-line field — this IS what <Field> wraps (`16` §17)
     <input
       id={field?.id}
-      aria-describedby={field?.describedBy}
+      // ★ MERGED, not overridden. A caller pointing at one more element — a
+      // character counter, a format note — must not silently drop the Field's
+      // own error and hint, which is the one association nothing else supplies.
+      aria-describedby={describedIds(field?.describedBy, describedBy)}
       aria-invalid={isInvalid || undefined}
       aria-required={field?.required || undefined}
       className={controlClass(isInvalid, size, className)}

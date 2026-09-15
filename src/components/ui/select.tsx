@@ -1,7 +1,7 @@
 "use client";
 
 import type { SelectProps } from "@/components/ui";
-import { controlClass, useFieldWiring } from "@/components/ui/field";
+import { controlClass, describedIds, useFieldWiring } from "@/components/ui/field";
 
 // The house select — `16` §4.2, REQ-UIX-009. Same contract as `ui/input`.
 //
@@ -15,7 +15,7 @@ import { controlClass, useFieldWiring } from "@/components/ui/field";
 // Arabic-normalised control is `ui/combobox`, which is `console`'s and is a
 // different component for a different job (`16` §4.2 ★).
 
-export function Select({ invalid, className = "", children, ...props }: SelectProps) {
+export function Select({ invalid, className = "", children, "aria-describedby": describedBy, ...props }: SelectProps) {
   const field = useFieldWiring();
   const isInvalid = invalid ?? field?.invalid ?? false;
 
@@ -23,7 +23,7 @@ export function Select({ invalid, className = "", children, ...props }: SelectPr
     // ui-lint-disable-next-line field — this IS what <Field> wraps (`16` §17)
     <select
       id={field?.id}
-      aria-describedby={field?.describedBy}
+      aria-describedby={describedIds(field?.describedBy, describedBy)}
       aria-invalid={isInvalid || undefined}
       aria-required={field?.required || undefined}
       className={controlClass(isInvalid, "md", className)}
