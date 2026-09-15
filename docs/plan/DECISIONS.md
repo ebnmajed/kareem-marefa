@@ -1417,6 +1417,13 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-060 — No Sentry at Launch; the alerts stay on the console sink
+
+- **Date:** 2026-09-15 · **Decided by:** owner
+- **Decision:** Sentry is not used — the platform is an internal app, not public, and observability-as-a-service is «a big maybe» later. `SENTRY_DSN` is set nowhere (no code reads it: no SDK was ever installed). `JOB-evaluate_alerts` keeps the console `AlertSink`; the eight `11` §3.2 alerts are read from the worker's log on Railway. The handoff's step 10 (the DSN into Vercel and the worker, the transport swap) is dropped, not deferred.
+- **Rationale:** an internal app with one org and one operator gains nothing from a paid error tracker that the deploy log does not already show; wiring it would add a secret and a network destination for a service nobody would watch.
+- **Supersedes:** the `SENTRY_DSN` rows of `04` §10 and the Launch handoff's step 10; DEC-059's «Sentry as the `AlertSink` transport» post-launch item.
+- **Documents changed:** `STATUS.md` (the inventory)
 ## DEC-061 — `0016` guards its `alter table realtime.messages`; the rehearsal proves schema shape, not the hosted role's DDL rights
 
 - **Date:** 2026-09-15 · **Decided by:** session, on Launch day, with the owner's push output in hand
@@ -1437,6 +1444,17 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **Also recorded:** the owner's drill command carried the database password into the session transcript; the password is to be rotated after the smoke test and `DATABASE_URL` on Railway updated (STATUS post-launch list).
 - **Supersedes:** nothing.
 - **Documents changed:** `tests/rls/fixture.ts`, `STATUS.md`
+
+---
+
+## DEC-063 — The sending domain is `peninsulapictures.dev`, sender `kareem-notifications@peninsulapictures.dev`
+
+- **Date:** 2026-09-15 · **Decided by:** owner, at Launch step 6
+- **Decision:** All platform mail is sent from **`kareem-notifications@peninsulapictures.dev`** through Resend, on the owner's already-registered `peninsulapictures.dev` domain, not from `no-reply@kareem.pp.sa` as `08` §3.4 assumed. Configured entirely by variables on the worker: `MAIL_TRANSPORT=resend`, `RESEND_API_KEY` (sending access, restricted to that domain), **`MAIL_FROM_ADDRESS=kareem-notifications@peninsulapictures.dev`** (the code's default remains `no-reply@kareem.pp.sa`; the variable overrides it — `worker/src/mail/transport.ts`). The display name stays the org's. No code change.
+- **Rationale:** the domain the owner already operates and has in Resend; `kareem.pp.sa` carries no mail records and adding them would put DNS changes on the launch's critical path for no member-visible gain. The sender's domain differing from the site's domain costs nothing for deliverability with Resend's DKIM on the sending domain; a DMARC-aligned `kareem.pp.sa` sender can be adopted later by changing one variable.
+- **Verification (this session):** no Resend DNS records were visible at `resend._domainkey.` / `send.` of either domain from the session's resolver at the time of the decision; the owner reports the domain verified in Resend. The first send of the smoke test is the proof; a rejection shows as a 403 in the worker log.
+- **Supersedes:** `08` §3.4's «one platform-verified sending domain» is unchanged in principle; its example address is.
+- **Documents changed:** `STATUS.md` (the inventory: `MAIL_FROM_ADDRESS` required, not optional)
 
 ---
 
@@ -1482,6 +1500,19 @@ decision. Every decision taken **after** the source brief gets an entry here.
 - **A Postgres trap, recorded for the next reader:** `select … into r; if r is not null` is false for a row with any null column (row-wise `IS NOT NULL` requires every field non-null); test `r.id is not null`. Three cases inserted zero rows silently before the teammate found it.
 - **Supersedes:** nothing — `REQ-LDR-004` and `05` §6 are extended, not replaced.
 - **Documents changed:** `02` §4 (three entities, one column), `03` §8.2 (+10 rows), `supabase/migrations/0081_company_points.sql`, `worker/src/tasks/{evaluate_no_shows,audit_balances}.ts`, `lib/dal/{leaderboards,scoring-admin}.ts`, SCR-053 and SCR-028, `messages/*/{scoring,leaderboards}.json` (Arabic first), `tests/rls/scoring-company-points.test.ts` (18), `tests/e2e/scoring-company-points.spec.ts`, `docs/plan/notes/scoring.md`
+
+---
+
+
+---
+
+## DEC-068 — Launch closed: the company-rule defaults stand, the design milestone is deferred, the hands-on checks are post-launch
+
+- **Date:** 2026-09-15 · **Decided by:** owner («1, 2, 3 ok, do the closing PR, and defer the design»)
+- **Decisions:** (1) DEC-067's two readings are confirmed as the owner's: the two percentage rules credit **every company** with a member present at a completed session, not only the host, and **`min_active_members = 3`** stands (admin-editable on SCR-053). (2) The **design milestone** (a component layer, the shell and navigation, then screen by screen — raised by the owner on Launch day as «the pages are plain and the UI/UX is nearly non-existent», never a story in the plan) is **deferred** and starts with a short brief when the owner asks; nothing else waits on it. (3) The owner's **hands-on checks** — the poster and certificate QRs on paper at print size, the ICS in Outlook on Windows, the main flows on a real phone in Arabic — and the **two secret rotations** (the database password and the Google client secret, both of which reached the session transcript) are the owner's, post-launch; whatever they surface comes back as a fix on a branch. (4) The attendee half of the smoke test runs with the first real member.
+- **The launch record** is `STATUS.md` → *Launch session*, closed by the same PR as this entry; the post-launch list there is the backlog for the next session.
+- **Supersedes:** nothing.
+- **Documents changed:** `STATUS.md`
 
 ---
 
