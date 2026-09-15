@@ -28,17 +28,21 @@ async function addMember(tx: Tx, org: Org, local: string, name: string): Promise
 }
 
 /** A session in a chosen state, with explicit start/end, for check-in-window tests. */
-async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {
+// `allowWalkIns` defaults to TRUE here: the cases below check in without a
+// reservation on purpose (they drill the code, the window, the rate limit).
+// The door policy (DEC-065, 0079) has its own describe block further down.
+async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number; allowWalkIns?: boolean }): Promise<string> {
   const [row] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
-                                   venue_id, capacity, state, published_at, completed_at)
+                                   venue_id, capacity, state, published_at, completed_at, allow_walk_ins)
      values ($1, 'جلسة حضور', 'ملخص', $2, 'introductory',
              now() + ($3 || ' minutes')::interval, 60, now() + ($4 || ' minutes')::interval,
              $5, 40, $6::public.session_state,
              case when $6 in ('published','in_progress','completed','archived') then now() - interval '1 day' end,
-             case when $6 = 'completed' then now() - interval '1 hour' end)
+             case when $6 = 'completed' then now() - interval '1 hour' end,
+             $7)
      returning id`,
-    [org.id, org.categoryId, String(opts.startsInMinutes), String(opts.endsInMinutes), org.venueId, opts.state],
+    [org.id, org.categoryId, String(opts.startsInMinutes), String(opts.endsInMinutes), org.venueId, opts.state, opts.allowWalkIns ?? true],
   );
   return row.id;
 }
@@ -59,6 +63,101 @@ async function checkIn(tx: Tx, sessionId: string, code: string): Promise<CheckIn
   const [row] = await tx.q<{ r: CheckInEnvelope }>(`select public.check_in($1, $2) as r`, [sessionId, code]);
   return row.r;
 }
+
+describe("DEC-065 — walk-ins are a per-session switch staff turn on (0079)", () => {
+  it("★ RPC-check_in.reservation_required — off: a member with no confirmed reservation is refused without learning about the code; on: the same member checks in", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50, allowWalkIns: false });
+      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
+      await tx.as(f.a.members[0].claims);
+      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+
+      // No reservation, a WRONG code: reservation_required, not invalid_code — the policy answers first.
+      await tx.as(f.a.members[1].claims);
+      expect((await checkIn(tx, sessionId, "AAAAAA")).status).toBe("reservation_required");
+      // No reservation, the RIGHT code: still refused, and the attempts were recorded (DEC-015).
+      expect((await checkIn(tx, sessionId, code.code)).status).toBe("reservation_required");
+      await tx.asOwner();
+      const [attempts] = await tx.q<{ n: string }>(`select count(*) as n from public.check_in_attempts where session_id = $1 and member_id = $2`, [sessionId, f.a.members[1].memberId]);
+      expect(Number(attempts.n)).toBe(2);
+
+      // A confirmed reservation opens the door with the policy still off.
+      await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [f.a.id, sessionId, f.a.members[1].memberId]);
+      await tx.as(f.a.members[1].claims);
+      expect((await checkIn(tx, sessionId, code.code)).status).toBe("ok");
+
+      // A second member with no reservation: refused while off, admitted once a moderator opens the session.
+      await tx.asOwner();
+      const walkIn = await addMember(tx, f.a, "walk-in", "زائر بلا حجز");
+      await tx.as(walkIn.claims);
+      expect((await checkIn(tx, sessionId, code.code)).status).toBe("reservation_required");
+      await tx.as(f.a.mod.claims);
+      const [opened] = await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, true)`, [sessionId]);
+      expect(opened.allow_walk_ins).toBe(true);
+      await tx.as(walkIn.claims);
+      expect((await checkIn(tx, sessionId, code.code)).status).toBe("ok");
+    });
+  });
+
+  it("RPC-set_session_walk_ins.staff — a member and a presenter are refused; an admin and a moderator flip it, audited", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const sessionId = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60, endsInMinutes: 120, allowWalkIns: false });
+      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[1].claims);
+      expect(await errorMessage(() => tx.q(`select * from public.set_session_walk_ins($1, true)`, [sessionId]))).toMatch(/not_authorized/);
+      await tx.as(f.a.members[0].claims); // the presenter is not staff
+      expect(await errorMessage(() => tx.q(`select * from public.set_session_walk_ins($1, true)`, [sessionId]))).toMatch(/not_authorized/);
+
+      await tx.as(f.a.admin.claims);
+      expect((await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, true)`, [sessionId]))[0].allow_walk_ins).toBe(true);
+      await tx.as(f.a.mod.claims);
+      expect((await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, false)`, [sessionId]))[0].allow_walk_ins).toBe(false);
+
+      await tx.asOwner();
+      const audit = await tx.q<{ actor_role: string; after: { allow_walk_ins: boolean } }>(
+        `select actor_role, after from public.audit_log where subject_id = $1 and action = 'session.walk_ins_changed' order by occurred_at`,
+        [sessionId],
+      );
+      expect(audit.map((a) => [a.actor_role, a.after.allow_walk_ins])).toEqual([["admin", true], ["moderator", false]]);
+    });
+  });
+});
+
+describe("RPC-ensure_check_in_code.only_live — a code exists only while the session is live (0078)", () => {
+  it("★ the presenter of a published session is refused not_open before it starts; once in_progress the same call returns a code; after completion it is refused again", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const sessionId = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60, endsInMinutes: 120 });
+      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
+
+      await tx.as(f.a.members[0].claims);
+      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
+      // Staff are refused the same way — the window is not a role question.
+      await tx.as(f.a.admin.claims);
+      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
+      // A member is still refused by ROLE, never told about the window (REQ-CHK-014).
+      await tx.as(f.a.members[1].claims);
+      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_authorized/);
+
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'in_progress', starts_at = now() - interval '5 minutes', ends_at = now() + interval '55 minutes' where id = $1`, [sessionId]);
+      await tx.as(f.a.members[0].claims);
+      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      expect(code.code).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
+
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now(), ends_at = now() - interval '1 minute' where id = $1`, [sessionId]);
+      await tx.as(f.a.members[0].claims);
+      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
+    });
+  });
+});
 
 describe("POL-check_in_codes.select.member and .select.presenter — ensure_check_in_code authorization", () => {
   it("a member cannot read the current code, including a checked-in member; the presenter and staff can", async () => {
