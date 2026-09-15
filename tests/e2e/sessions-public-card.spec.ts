@@ -158,6 +158,17 @@ test("a signed-out visitor sees the six public fields and nothing else", async (
   await expect(cta).toHaveAttribute("href", `/ar/sign-in?next=${encodeURIComponent(`/ar/app/sessions/${publishedId}`)}`);
   expect((await cta.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 
+  // ★ The end-time clause sits on ONE line. At 390 px it used to break
+  // between «٣:١٦» and «م» and leave the meridiem alone on the next line —
+  // found in the RTL capture. A screenshot cannot assert this; client rects
+  // can, and a second rect means it wrapped again.
+  // Count distinct line boxes, not rects: bidi alone splits an inline element
+  // into one rect per directional run, so «حتى ٣:١٦ م» is several rects on a
+  // single line. What must not happen is several `top` values.
+  const until = page.locator("dd span").filter({ hasText: "حتى" }).first();
+  const lines = await until.evaluate((el) => new Set([...el.getClientRects()].map((r) => Math.round(r.top))).size);
+  expect(lines).toBe(1);
+
   // 390 px, RTL, and no sideways scroll.
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

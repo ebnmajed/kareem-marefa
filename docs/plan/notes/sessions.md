@@ -776,6 +776,20 @@ because its fixture id is `abc`. Handed to the lead with the one-line fix.
 | the image is served to an unauthenticated crawler, bytes intact | same | the whole feature, end to end |
 | a draft's card and image are 404, same as a bad id | same | |
 
+### 14.5a What the 390 px capture actually settled
+
+The first capture looked as though «حتى ٣:١٦ م» had broken across lines with the meridiem left
+alone. **It had not.** Measuring the element said one line box, 358 px wide inside a 358 px column:
+in RTL the date starts at the right and the «… حتى ٣:١٦ م» clause runs to the LEFT END of the same
+line, which reads like a second row in a rasterised screenshot and is not one. The same shape
+appears on the event page's own «آخر موعد للحجز …» line, which has been correct since M2.
+
+So the lesson is the method, not the bug: **a screenshot cannot tell you where a line box ends in
+RTL.** The e2e now counts distinct `top` values among the clause's client rects — rects alone are
+no good, because bidi splits an inline element into one rect per directional run even on a single
+line. The `whitespace-nowrap` and the `<bdi>` around the value stay: they are correct, and they
+stop a real break if a longer date ever pushes the clause to the edge.
+
 ### 14.6 Open, with my default
 
 - **Indexing.** The card is `noindex` (the layout's default, repeated explicitly). Preview crawlers
@@ -785,6 +799,10 @@ because its fixture id is `abc`. Handed to the lead with the one-line fix.
 - **`/s/` is not localised by `pathnames`.** `/en/s/{id}` renders the English catalogue rather than
   redirecting to Arabic, unlike `/en/app`. That is right for a shared link: the sharer's locale is
   in the URL. Default: leave it.
+- **`SITE_URL` locally.** The share affordance copies `siteOrigin()` + the card path, and with no
+  `SITE_URL` in a local production build that resolves to `https://kareem.pp.sa` — the right answer
+  on Vercel, a misleading one on a laptop. Default: leave it; setting a localhost fallback would
+  put a localhost URL in a member's clipboard the day someone runs a production build for a demo.
 - **Cache 300 s.** Short for a public image, on purpose: a cancellation must stop serving quickly,
   and the poster is re-rendered when details change. Crawlers keep their own copy far longer; that
   is their cache, and it is the trade-off the owner accepted.
