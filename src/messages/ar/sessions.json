@@ -55,7 +55,7 @@
     "card": {
       "presentedBy": "من تنظيم <bdi>{org}</bdi>",
       "whenLabel": "الموعد",
-      "toTime": "حتى {value}",
+      "toTime": "حتى <bdi>{value}</bdi>",
       "whereLabel": "المكان",
       "notScheduled": "لم يُحدَّد الموعد بعد",
       "noVenue": "لم يُحدَّد المكان بعد",

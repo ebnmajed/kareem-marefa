@@ -55,7 +55,7 @@
     "card": {
       "presentedBy": "Hosted by <bdi>{org}</bdi>",
       "whenLabel": "When",
-      "toTime": "until {value}",
+      "toTime": "until <bdi>{value}</bdi>",
       "whereLabel": "Where",
       "notScheduled": "Not scheduled yet",
       "noVenue": "Venue not set yet",

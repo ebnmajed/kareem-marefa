@@ -108,10 +108,14 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
             {when ? (
               <>
                 <bdi>{when}</bdi>
+                {/* `whitespace-nowrap`, because at 390 px the clause broke
+                    between «3:03» and «م» and left the meridiem alone on the
+                    next line — seen in the RTL capture, not reasoned about.
+                    The clause moves as a whole instead. */}
                 {until ? (
-                  <span className="text-fg-muted">
+                  <span className="whitespace-nowrap text-fg-muted">
                     {" · "}
-                    {t("toTime", { value: until })}
+                    {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
                   </span>
                 ) : null}
               </>

@@ -14,14 +14,15 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = "sessions/0001_public_session_card.sql";
-const present = existsSync(join(process.cwd(), "supabase", "proposed", PROPOSED));
+// Promoted as a migration each file stops existing; the suite then proves what
+// `supabase db reset` applied, with no branch to keep correct.
+const PROPOSED = ["sessions/0001_public_session_card.sql", "sessions/0002_public_card_image_for_members.sql"].filter((f) =>
+  existsSync(join(process.cwd(), "supabase", "proposed", f)),
+);
 
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  // Promoted as a migration the file stops existing; the suite then proves
-  // what `supabase db reset` applied, with no branch to keep correct.
-  if (present) await applyProposed(tx, PROPOSED);
+  for (const file of PROPOSED) await applyProposed(tx, file);
   await tx.asOwner();
   return f;
 }
@@ -205,6 +206,21 @@ describe("POL-storage.exports.public_card", () => {
       expect(seen).toContain(ogPath);
       expect(seen).toContain(bOg);
       for (const name of [...others, draftDoc]) expect(seen, name).not.toContain(name);
+    });
+  });
+
+  it("a member of another org sees the card's image too — signing in never shows less", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const ogPath = await ogRender(tx, f.a.id, f.m6.a.documentId);
+      const master = `${f.a.id}/exports/${f.m6.a.documentId}/master.png`;
+      await tx.q(`insert into storage.objects (bucket_id, name) values ('exports', $1) on conflict do nothing`, [master]);
+
+      // An ordinary member of org B, who has no business in org A's exports.
+      await tx.as(f.b.members[0].claims);
+      expect(await tx.q(`select name from storage.objects where bucket_id = 'exports' and name = $1`, [ogPath])).toHaveLength(1);
+      // And still nothing else of A's.
+      expect(await tx.q(`select name from storage.objects where bucket_id = 'exports' and name = $1`, [master])).toEqual([]);
     });
   });
 

@@ -35,7 +35,9 @@ let orgName = "";
 let venueName = "";
 let publishedId = "";
 let draftId = "";
-let ogPath = "";
+// Its own session: `0024`'s guard is forward-only, so a cancellation cannot be
+// undone and the card session must not be the one we cancel.
+let cancellableId = "";
 // `supabase/proposed/sessions/0001_public_session_card.sql` is proven inside a
 // rolled-back transaction by `tests/rls/sessions-public-card.test.ts`; the
 // shared local database only has the function once the lead promotes it
@@ -83,26 +85,31 @@ test.beforeAll(async ({}, testInfo) => {
 
   publishedId = await session("كيف نكتب تقريرًا يُقرأ", "published");
   draftId = await session("مسودة لا تُشارَك", "draft");
+  cancellableId = await session("جلسة ستُلغى", "published");
 
-  // The poster, and one ready `og` render of it — what the crawler fetches.
-  const doc = await one<{ id: string }>(
-    `insert into public.design_documents (org_id, purpose, document, bound_session_id, updated_by)
-     values ($1, 'poster', $2::jsonb, $3, null) returning id`,
-    [org.id, JSON.stringify({ schemaVersion: 1, layers: [] }), publishedId],
-  );
-  await db.query(`insert into public.session_posters (org_id, session_id, document_id) values ($1, $2, $3)`, [org.id, publishedId, doc.id]);
-  ogPath = `${org.id}/exports/${doc.id}/og.png`;
-  await db.query(
-    `insert into public.export_artifacts (org_id, document_id, preset, format, width_px, height_px,
-                                          storage_path, byte_size, status, source_fingerprint, rendered_at)
-     values ($1, $2, 'og', 'png', 1200, 630, $3, $4, 'ready', $5, now())`,
-    [org.id, doc.id, ogPath, PNG.byteLength, `fp-${doc.id}`],
-  );
-
-  // The bytes themselves, written the way the worker writes them.
+  // A poster with one ready `og` render, and its bytes in the bucket — what a
+  // crawler actually fetches. Written the way the worker writes them.
   const service = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
-  const { error } = await service.storage.from("exports").upload(ogPath, PNG, { contentType: "image/png", upsert: true });
-  expect(error, error?.message).toBeNull();
+  const poster = async (sessionId: string): Promise<string> => {
+    const doc = await one<{ id: string }>(
+      `insert into public.design_documents (org_id, purpose, document, bound_session_id, updated_by)
+       values ($1, 'poster', $2::jsonb, $3, null) returning id`,
+      [org.id, JSON.stringify({ schemaVersion: 1, layers: [] }), sessionId],
+    );
+    await db.query(`insert into public.session_posters (org_id, session_id, document_id) values ($1, $2, $3)`, [org.id, sessionId, doc.id]);
+    const path = `${org.id}/exports/${doc.id}/og.png`;
+    await db.query(
+      `insert into public.export_artifacts (org_id, document_id, preset, format, width_px, height_px,
+                                            storage_path, byte_size, status, source_fingerprint, rendered_at)
+       values ($1, $2, 'og', 'png', 1200, 630, $3, $4, 'ready', $5, now())`,
+      [org.id, doc.id, path, PNG.byteLength, `fp-${doc.id}`],
+    );
+    const { error } = await service.storage.from("exports").upload(path, PNG, { contentType: "image/png", upsert: true });
+    expect(error, error?.message).toBeNull();
+    return path;
+  };
+  await poster(publishedId);
+  await poster(cancellableId);
 });
 
 test.afterAll(async () => {
@@ -206,15 +213,18 @@ test("a draft session's card is a 404, and so is its image", async ({ request })
 
 test("a cancelled session stops being a card, image included", async ({ request }) => {
   needsPromotion();
-  await db.query(`update public.sessions set state = 'cancelled', cancelled_at = now(), cancellation_reason = 'اختبار' where id = $1`, [
-    publishedId,
-  ]);
-  expect((await request.get(`/ar/s/${publishedId}`)).status()).toBe(404);
-  // ★ And the BYTES stop too. A signed URL minted before the cancellation
-  // would have kept working; reading the object per request does not.
-  expect((await request.get(`/api/s/${publishedId}/og`)).status()).toBe(404);
+  // It is a card while it is published…
+  expect((await request.get(`/ar/s/${cancellableId}`)).status()).toBe(200);
+  expect((await request.get(`/api/s/${cancellableId}/og`)).status()).toBe(200);
 
-  await db.query(`update public.sessions set state = 'published', cancelled_at = null, cancellation_reason = null where id = $1`, [
-    publishedId,
+  await db.query(`update public.sessions set state = 'cancelled', cancelled_at = now(), cancellation_reason = 'اختبار' where id = $1`, [
+    cancellableId,
   ]);
+
+  expect((await request.get(`/ar/s/${cancellableId}`)).status()).toBe(404);
+  // ★ And the BYTES stop too. A signed URL minted before the cancellation
+  // would have kept working; reading the object per request does not. There is
+  // no restore here: `0024`'s transition guard is forward-only, which is why
+  // this case has a session of its own.
+  expect((await request.get(`/api/s/${cancellableId}/og`)).status()).toBe(404);
 });
