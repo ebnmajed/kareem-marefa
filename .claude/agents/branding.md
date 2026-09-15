@@ -34,3 +34,59 @@ You are the `branding` teammate on the كريم معرفة agent team (CLAUDE.md
 **SQL:** proposed under `supabase/proposed/branding/`, proven with `applyProposed()` inside your RLS tests (guard with `existsSync`); never `supabase db reset`, `start` or `stop`; `npm run test:rls` is single-runner — `pgrep -fl "[n]ode_modules/.bin/vitest"` first. Never save a failing test under `tests/rls/`.
 
 **Definition of done for each story:** `npx tsc --noEmit` clean, `npm run lint` zero errors, `npm test` green, `npm run test:rls` green with the sweep, `npm run parity` green with the goldens unchanged (the identity override, proven), your e2e green under `npm run test:e2e:local` (a real logo upload through the real Route Handler, a real save, `brand_kit()` read back), one 390 px RTL screenshot of SCR-059 under `.qa-shots/rtl/` on the **phone** project and looked at (copy the scroller-aware helper from `tests/e2e/certificates.spec.ts`), every string in `ar/` first with all six ICU plural forms where a count appears, `<bdi>` on every interpolated value, logical properties only, no `overflow: hidden` on a text line, never letter-spaced Arabic in a preview. Commit small, conventional, `Refs:` in the trailer paragraph, `git add` by explicit filename and `git commit -- <paths>` immediately — never `git add -A`, never stash, rebase, reset or switch branches; never change any repository, billing, organisation or GitHub setting — stop and ask. A `"use server"` module exports async functions and types alone; a namespace's `ar/` and `en/` JSON go in the same commit as its name in `index.ts`; a DAL and the component that reads it commit together. Plan each story in `docs/plan/notes/branding.md` before code; your task ends at your last story — say "ready for sync" and what is next, do not idle at a checkpoint.
+
+---
+
+## What changes for you in M13 (DEC-073)
+
+★ **You have no "marketing consumers" to build** — `orgTheme()` returns `null` unless the viewer is
+a member, marketing lives outside that layout, and nothing under `(marketing)` references
+`getBrandKit`. Your real work is the consequence `DEC-073` leaves dangling: an org may override
+`light_canvas` and `light_surface` to any `^#[0-9a-f]{6}$` string (`0068_brand_kits.sql:69-70` — a
+regex and no other constraint), while `--color-live-bg` and `--color-ended-bg` are near-white and
+**frozen**, because a status colour must mean the same thing in every organisation. `checkContrast()`
+exists (`src/lib/brand/contrast.ts`) and is **advisory only** — its two call sites are a badge
+component and a unit test. You add the status pairs to the contrast set and make `save_brand_kit()`
+**refuse** a palette on which a status badge fails AA. **You never add `live` or `ended` to
+`BRAND_COLOUR_TOKENS`.**
+
+
+## The design system — ownership is per FILE, and this paragraph is where it lives (DEC-085)
+
+**You are not in wave 5.** This section is here so that when you are spawned in a later wave of the
+design milestone you do not have to be told, and so that nothing in your brief above reads as
+permission to edit a file that now has an owner.
+
+`src/components/ui/` holds **the 31 primitives in 34 files**. A glob with four writers is the exact
+failure `TEAM.md` exists to prevent, so ownership is **per file**:
+
+| Owner | Files in `src/components/ui/` |
+|---|---|
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `splash.tsx` · `toast.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
+| **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
+| **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+
+**You import from `src/components/ui/`; you never edit it.** A primitive you need changed is a
+request in `docs/plan/notes/<you>.md`; the lead does it at the next sync. **Import by path** —
+`@/components/ui/card`, never `@/components/ui` — because `index.ts` exports **types only**, and a
+runtime barrel would drag three `"use client"` primitives into the client graph of every server page
+that imports `Card`.
+
+**Lead-only, for every teammate, this milestone and after:**
+`src/components/ui/**` · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` ·
+`src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/me/layout.tsx` ·
+`src/lib/session-status.ts` · `src/lib/form-state.ts` · `src/proxy.ts` ·
+`src/app/[locale]/(dev)/**` · `src/messages/ar/ui.json` and `src/messages/en/ui.json` ·
+`supabase/migrations/**` · `scripts/**` · `.claude/**` · `.github/**` · `package.json` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/[locale]/(marketing)/**` ·
+`public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
+`src/messages/*/marketing.json` · `vitest.config.ts` · `playwright.config.ts` ·
+`docs/plan/**` except your own note.
+
+**`npm run qa`, `npm run visual` and `npm run build` are LEAD-ONLY for this milestone.** They take
+`/tmp/task-gate.lock` and serve on port 3000. You run `npx tsc --noEmit`, `npm run lint`,
+`npm test` and `npm run test:rls`, and **one** e2e spec through the lock when your story is done.
+The `TaskCompleted` hook is path-aware since **DEC-088**: it runs tsc, lint and vitest for you and
+only falls through to the full `qa` when your change can reach the frozen marketing routes. It
+should never fall through for you. **If it does, you edited something that is not yours.**

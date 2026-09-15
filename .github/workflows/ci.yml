@@ -49,6 +49,42 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
 
+  # ── The design-system gates (DEC-087). Cheap: a TSX parse and a directory
+  # walk, no server and no build, so they sit beside lint rather than in the
+  # heavy jobs. Both carry a committed allowlist that MAY ONLY SHRINK — 106
+  # files hold 425 pre-existing violations today and 43 of the 49 pages have
+  # no loading boundary, so a gate that hard-failed from M9 would block every
+  # PR until M13. They flip to --strict in M13.
+  system:
+    name: design system gates (ui-lint, coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm }
+      - run: npm ci
+
+      # REQ-UIX-001: no screen declares its own control styles, and no <input>
+      # lives outside <Field>. Excludes src/components/ui/ for BOTH rules —
+      # without that it fails the primitives it exists to protect.
+      - name: ui-lint
+        run: npm run ui-lint
+
+      # REQ-UIX-005: every segment with a page has a loading.tsx at or above
+      # it. "At or above" is the whole point — a dozen files, not forty-nine.
+      - name: loading-coverage
+        run: npm run loading-coverage
+
+      # REQ-UIX-016: the same walk for error.tsx, a not-found.tsx per dynamic
+      # segment, and global-error.tsx carrying dir="rtl" — the one file in the
+      # product with no translation provider above it.
+      - name: error-coverage
+        run: npm run error-coverage
+
+      # An allowlist that grew is a gate that was worked around.
+      - name: the allowlists did not grow
+        run: git diff --exit-code scripts/ui-lint-allowlist.json scripts/route-coverage-allowlist.json
+
   unit:
     name: unit tests
     runs-on: ubuntu-latest
