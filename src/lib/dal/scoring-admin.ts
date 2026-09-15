@@ -43,6 +43,13 @@ export interface ConfigHistoryRow {
 export interface ScoringAdminData {
   rules: ScoringRule[];
   history: ConfigHistoryRow[];
+  // Post-launch — docs/plan/notes/scoring.md "Company points rules":
+  // company_scoring_rules and its own slice of scoring_config_history
+  // (scope='company_scoring'), read alongside the member catalogue so the
+  // admin screen loads in one round trip, same as everything else here.
+  companyRules: CompanyScoringRule[];
+  companyHistory: ConfigHistoryRow[];
+  companies: CompanyOption[];
   numerals: NumeralSystem;
 }
 
@@ -62,7 +69,14 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
   if (!client) return null;
   const { session, supabase } = client;
 
-  const [{ data: rules, error }, { data: history, error: historyError }, { data: settings }] = await Promise.all([
+  const [
+    { data: rules, error },
+    { data: history, error: historyError },
+    { data: settings },
+    { data: companyRules, error: companyRulesError },
+    { data: companyHistory, error: companyHistoryError },
+    { data: companies, error: companiesError },
+  ] = await Promise.all([
     supabase
       .from("scoring_rules")
       .select("id, action_key, actor, points, enabled, cap_per_session, cooldown, reason_ar, version")
@@ -76,9 +90,25 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
       .order("changed_at", { ascending: false })
       .limit(50),
     supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+    supabase
+      .from("company_scoring_rules")
+      .select("id, action_key, enabled, points, points_per_percent, cap_points, min_active_members, reason_ar, version")
+      .eq("org_id", session.orgId)
+      .order("action_key"),
+    supabase
+      .from("scoring_config_history")
+      .select("field, old_value, new_value, actor_id, changed_at")
+      .eq("org_id", session.orgId)
+      .eq("scope", "company_scoring")
+      .order("changed_at", { ascending: false })
+      .limit(50),
+    supabase.from("companies").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
   ]);
   if (error) throw new Error(`scoring_rules: ${error.message}`);
   if (historyError) throw new Error(`scoring_config_history: ${historyError.message}`);
+  if (companyRulesError) throw new Error(`company_scoring_rules: ${companyRulesError.message}`);
+  if (companyHistoryError) throw new Error(`scoring_config_history (company): ${companyHistoryError.message}`);
+  if (companiesError) throw new Error(`companies: ${companiesError.message}`);
 
   return {
     rules: (rules ?? []).map((r) => ({
@@ -93,6 +123,19 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
       version: r.version,
     })),
     history: (history ?? []).map((h) => ({ field: h.field, oldValue: h.old_value, newValue: h.new_value, actorId: h.actor_id, changedAt: h.changed_at })),
+    companyRules: (companyRules ?? []).map((r) => ({
+      id: r.id,
+      actionKey: r.action_key as CompanyScoringRule["actionKey"],
+      enabled: r.enabled,
+      points: r.points,
+      pointsPerPercent: r.points_per_percent,
+      capPoints: r.cap_points,
+      minActiveMembers: r.min_active_members,
+      reasonAr: r.reason_ar,
+      version: r.version,
+    })),
+    companyHistory: (companyHistory ?? []).map((h) => ({ field: h.field, oldValue: h.old_value, newValue: h.new_value, actorId: h.actor_id, changedAt: h.changed_at })),
+    companies: companies ?? [],
     numerals: (settings?.numerals as NumeralSystem) ?? "western",
   };
 }
@@ -124,6 +167,130 @@ export async function updateScoringRule(locale: string, input: ScoringRuleUpdate
     })
     .eq("id", input.ruleId);
   if (error) throw new Error(`scoring_rules: ${error.message}`);
+}
+
+// ── Company rules (post-launch — docs/plan/notes/scoring.md "Company
+// points rules") ────────────────────────────────────────────────────────
+//
+// A plain table UPDATE, same technique as updateScoringRule — 0001's
+// column grant plus its p2_admin_update policy is the whole boundary;
+// company_scoring_rules_before_update / _history (also 0001) log the
+// change the same way scoring_rules already does.
+
+export interface CompanyScoringRule {
+  id: string;
+  actionKey: "company_hosting" | "company_attendance_pct" | "company_presenting_pct";
+  enabled: boolean;
+  points: number | null;
+  pointsPerPercent: number | null;
+  capPoints: number | null;
+  minActiveMembers: number | null;
+  reasonAr: string;
+  version: number;
+}
+
+export async function getCompanyScoringRules(locale: string): Promise<CompanyScoringRule[] | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const { data, error } = await supabase
+    .from("company_scoring_rules")
+    .select("id, action_key, enabled, points, points_per_percent, cap_points, min_active_members, reason_ar, version")
+    .eq("org_id", session.orgId)
+    .order("action_key");
+  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    actionKey: r.action_key as CompanyScoringRule["actionKey"],
+    enabled: r.enabled,
+    points: r.points,
+    pointsPerPercent: r.points_per_percent,
+    capPoints: r.cap_points,
+    minActiveMembers: r.min_active_members,
+    reasonAr: r.reason_ar,
+    version: r.version,
+  }));
+}
+
+export const companyHostingRuleUpdateInput = z.object({
+  ruleId: z.uuid(),
+  enabled: z.boolean(),
+  points: z.number().int().min(0).max(10000),
+});
+export type CompanyHostingRuleUpdateInput = z.infer<typeof companyHostingRuleUpdateInput>;
+
+export async function updateCompanyHostingRule(locale: string, input: CompanyHostingRuleUpdateInput): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_an_admin");
+  const { error } = await client.supabase
+    .from("company_scoring_rules")
+    .update({ enabled: input.enabled, points: input.points })
+    .eq("id", input.ruleId);
+  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
+}
+
+export const companyPercentRuleUpdateInput = z.object({
+  ruleId: z.uuid(),
+  enabled: z.boolean(),
+  pointsPerPercent: z.number().min(0).max(100),
+  capPoints: z.number().int().min(1).max(10000),
+  minActiveMembers: z.number().int().min(1).max(1000),
+});
+export type CompanyPercentRuleUpdateInput = z.infer<typeof companyPercentRuleUpdateInput>;
+
+export async function updateCompanyPercentRule(locale: string, input: CompanyPercentRuleUpdateInput): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_an_admin");
+  const { error } = await client.supabase
+    .from("company_scoring_rules")
+    .update({
+      enabled: input.enabled,
+      points_per_percent: input.pointsPerPercent,
+      cap_points: input.capPoints,
+      min_active_members: input.minActiveMembers,
+    })
+    .eq("id", input.ruleId);
+  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
+}
+
+// Stopgap: the scheduling screen (console's app/admin/sessions/**) has no
+// "host company" field yet — this is a session ID typed into a text field,
+// the same stopgap the manual point adjustment form already uses for a
+// member ID (docs/plan/notes/scoring.md flags both for whoever builds the
+// real pickers). The write itself is a plain column-grant UPDATE on
+// sessions.host_company_id (0001's grant), gated by sessions' own
+// sessions_update_admin RLS policy — this module never re-implements that
+// check, only 404s the screen early like assertAdmin() does everywhere else.
+export const sessionHostCompanyInput = z.object({
+  sessionId: z.uuid(),
+  companyId: z.uuid().nullable(),
+});
+export type SessionHostCompanyInput = z.infer<typeof sessionHostCompanyInput>;
+
+export async function setSessionHostCompany(locale: string, input: SessionHostCompanyInput): Promise<void> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_an_admin");
+  const { error } = await client.supabase.from("sessions").update({ host_company_id: input.companyId }).eq("id", input.sessionId);
+  if (error) throw new Error(`sessions: ${error.message}`);
+}
+
+export interface CompanyOption {
+  id: string;
+  name: string;
+}
+
+export async function listCompaniesForAdmin(locale: string): Promise<CompanyOption[] | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const { data, error } = await supabase
+    .from("companies")
+    .select("id, name")
+    .eq("org_id", session.orgId)
+    .is("deactivated_at", null)
+    .order("name");
+  if (error) throw new Error(`companies: ${error.message}`);
+  return data ?? [];
 }
 
 export const manualAdjustmentInput = z.object({
