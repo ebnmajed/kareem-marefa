@@ -4,7 +4,8 @@
     "tabs": {
       "allTime": "كل الأوقات",
       "monthly": "هذا الشهر",
-      "company": "سباق الشركات"
+      "company": "سباق الشركات",
+      "companyBreakdown": "نقاط شركتي"
     },
     "you": "أنت",
     "empty": "لا بيانات كافية بعد لعرض هذه اللوحة.",
@@ -20,6 +21,28 @@
       "asOf": "محسوبة بعدد الأعضاء النشطين وقت الحساب — لا يتغيّر لاحقًا",
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
       "final": "نهائية"
+    },
+    "companyBreakdown": {
+      "heading": "كيف حصلت شركتك على نقاطها",
+      "intro": "كل نقطة كسبتها <bdi>{company}</bdi> من قواعد الشركات لها سبب واضح هنا.",
+      "balance": "{count, plural, zero {رصيد شركتك من قواعد الشركات صفر نقطة} one {رصيد شركتك من قواعد الشركات نقطة واحدة} two {رصيد شركتك من قواعد الشركات نقطتان} few {رصيد شركتك من قواعد الشركات {value} نقاط} many {رصيد شركتك من قواعد الشركات {value} نقطة} other {رصيد شركتك من قواعد الشركات {value} نقطة}}",
+      "empty": "لا نقاط من قواعد الشركات بعد.",
+      "source": {
+        "hosting": "استضافة جلسة",
+        "attendance": "نسبة حضور موظفي الشركة",
+        "presenting": "نسبة تقديم موظفي الشركة"
+      },
+      "catalogue": {
+        "heading": "ماذا يمنح شركتك نقاطًا؟",
+        "flat": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}} لكل جلسة مُستضافة",
+        "perPercent": "{count, plural, zero {بلا نقاط} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}} لكل نقطة مئوية",
+        "cap": "بحد أقصى {count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}} لكل جلسة",
+        "min": "بشرط {count, plural, zero {بلا حد أدنى للأعضاء النشطين} one {عضو نشط واحد على الأقل} two {عضوين نشطين على الأقل} few {{value} أعضاء نشطين على الأقل} many {{value} عضوًا نشطًا على الأقل} other {{value} عضو نشط على الأقل}}"
+      },
+      "meta": {
+        "attended": "<bdi>{attended}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين حضروا (<bdi>{percent}</bdi>٪)",
+        "presenting": "<bdi>{presenting}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين قدّموا (<bdi>{percent}</bdi>٪)"
+      }
     }
   }
 }
