@@ -1506,6 +1506,16 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-068 — Launch closed: the company-rule defaults stand, the design milestone is deferred, the hands-on checks are post-launch
+
+- **Date:** 2026-09-15 · **Decided by:** owner («1, 2, 3 ok, do the closing PR, and defer the design»)
+- **Decisions:** (1) DEC-067's two readings are confirmed as the owner's: the two percentage rules credit **every company** with a member present at a completed session, not only the host, and **`min_active_members = 3`** stands (admin-editable on SCR-053). (2) The **design milestone** (a component layer, the shell and navigation, then screen by screen — raised by the owner on Launch day as «the pages are plain and the UI/UX is nearly non-existent», never a story in the plan) is **deferred** and starts with a short brief when the owner asks; nothing else waits on it. (3) The owner's **hands-on checks** — the poster and certificate QRs on paper at print size, the ICS in Outlook on Windows, the main flows on a real phone in Arabic — and the **two secret rotations** (the database password and the Google client secret, both of which reached the session transcript) are the owner's, post-launch; whatever they surface comes back as a fix on a branch. (4) The attendee half of the smoke test runs with the first real member.
+- **The launch record** is `STATUS.md` → *Launch session*, closed by the same PR as this entry; the post-launch list there is the backlog for the next session.
+- **Supersedes:** nothing.
+- **Documents changed:** `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
