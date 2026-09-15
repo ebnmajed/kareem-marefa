@@ -1417,6 +1417,17 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-061 — `0016` guards its `alter table realtime.messages`; the rehearsal proves schema shape, not the hosted role's DDL rights
+
+- **Date:** 2026-09-15 · **Decided by:** session, on Launch day, with the owner's push output in hand
+- **What happened:** `supabase db push` (step 3) applied `0003` … `0015` and stopped at `0016`'s first statement, `alter table realtime.messages enable row level security`, with `42501 must be owner of table messages`. Production is at `0015`; each migration runs in its own transaction, so nothing of `0016` landed and `registrations` is untouched. On the hosted project `postgres` owns none of `realtime.messages`, `storage.objects`, `storage.buckets` (owners `supabase_realtime_admin` / `supabase_storage_admin`, no inherited privilege — the owner's introspection query), RLS is already on for all three, and **`create policy` on them is allowed anyway** through Supabase's `supautils` policy grants, which is how every project's storage and realtime policies are created. `alter table` is not.
+- **Decision:** `0016` is edited in place — it was never applied anywhere permanent, so a new migration could not make it succeed — to run the `alter table` only when `pg_class.relrowsecurity` is false (a local or CI database, where `postgres` may), and skip it where RLS is already on (hosted). The policies and the `grant` stay as written; a `grant` by a non-owner without grant option warns and grants nothing rather than failing, and Supabase's own migrations already grant `authenticated` on `realtime.messages`. No other migration alters a Supabase-owned table (grepped); `0037`/`0053`/`0054` only create and drop policies on `storage.objects` and insert into `storage.buckets`, which `postgres` may.
+- **The rehearsal's gap, recorded:** step 2 ran on a plain `postgres:17` container where `postgres` is a superuser; the hosted `postgres` is not, so the rehearsal proves that the migrations fit production's **schema** and hold under its default privileges, not that the hosted role may run every statement. The dry run plus per-migration transactions are the backstop, and they held. **Post-launch:** make `scripts/ci/roles.sql` apply the migrations as a non-superuser `postgres` with the hosted grants, so CI catches this class.
+- **Supersedes:** nothing.
+- **Documents changed:** `supabase/migrations/0016_realtime_authorization.sql`, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
