@@ -1195,21 +1195,57 @@ and check-in orchestrated at ~900 ms, five acknowledgements at 200–360 ms, and
 tissue of §7.1. No motion library — `element.animate()` does what `framer-motion` would, for 34 KB
 less, and the tell is not that a product has motion but that it has someone else's.
 
-### What the next session should do
+### What the next session should do — the wave-5 lead's brief
 
-**Nothing in this plan is approved yet.** The first job is to walk the canvas with the owner.
+**The plan is committed on `design/m9-m13-plan` (`b6c3790`) and is `draft`. Nothing in it is
+approved.** Walk the canvas with the owner first: <https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>
 
-1. **Get §0's scope decision confirmed in writing**, then **promote `DEC-069` … `DEC-082` into
-   `DECISIONS.md`** (append-only) and add the new requirements to `01-prd.md` — `REQ-UIX-001…014`,
-   `REQ-SUR-001…008`, `REQ-NTF-009…014` and the eleven additions in `16` §12.3. Two new areas
-   (`UIX`, `SUR`) also amend `00-overview.md`'s area table, which `DEC-070` covers.
-2. **Add the M9–M13 stories to `15-backlog.md`** and the milestones to `14-roadmap.md`, then run
+#### Step 0 — the paperwork, before any code
+
+1. **Promote `DEC-069` … `DEC-100` into `DECISIONS.md`** (append only, never edit).
+2. **Add the new requirements to `01-prd.md`** — `REQ-UIX-001…020`, `REQ-SUR-001…009`,
+   `REQ-NTF-009…014`, `REQ-PRF-008…011`, `REQ-INT-010`, and the additions in `16` §12.3.
+   Verified clear of collisions: highest existing are UIX/SUR unused, NTF 008, PRF 007, INT 009,
+   SES 013, PRO 008, DSC 007, ADM 020, DSG 026.
+3. **Two new areas (`UIX`, `SUR`) amend `00-overview.md`'s area table** — `DEC-070`.
+4. **Amend `04-architecture.md`** §4 (the `(dev)` gallery route and the survey route, `DEC-083`) and
+   §11 (the icon split, `DEC-084`). Both are `settled`, so both need their entries first.
+5. **Add M9–M13 to `14-roadmap.md` and the stories to `15-backlog.md`**, then
    `node scripts/traceability.mjs` — it must stay at zero gaps.
-3. **Be the wave-5 lead** (`16` §16): the lead owns `src/components/ui/**`, the shell, the loading
-   model, the form model and `sessionStatus()`; `console` takes `DataTable`/`combobox`/`menu`/
-   `tabs`; `checkin` takes the §5.3 action table. M9 ships the answer to asks 4, 5 and 6 on its own.
-4. **Do not touch the marketing routes before M13.** `npm run qa` stays 44/44 and
-   `npm run visual` stays at 0.000% for every milestone before it.
+
+#### Step 1 — three blockers that must land BEFORE any teammate is spawned
+
+These are not housekeeping. Each one makes a rule in `16` §16 real rather than aspirational.
+
+| | Why it blocks |
+|---|---|
+| **Amend `CLAUDE.md`'s lead-only list and regenerate all ten `.claude/agents/*.md`** (`DEC-085`) | `src/components/ui/**` is in **no** teammate's edit list *and no teammate's never-touch list*. `globals.css` is lead-only by folklore. `sessions`, `checkin` and `event` forbid neither it nor the app shell. Ownership lives in those files or it does not exist |
+| **Make `.claude/hooks/task-gate.sh` path-aware** (`DEC-088`) | It runs the full `npm run qa` on **every teammate's every task**, holding `/tmp/task-gate.lock`, 2400 s timeout. §16.1's "qa is lead-only" is a convention; the hook is the harness, and the harness wins. ~24 forced runs a wave that the plan believes are not happening |
+| **Ship `ui-lint` and `loading-coverage` with a shrinking allowlist** (`DEC-087`) | 65 files carry the copied class string today. Blocking from M9 blocks every PR until M13 |
+
+#### Step 2 — be the wave-5 lead. M9 is the system
+
+`16` §16.2 has the file-level split: **lead 18 primitives + the shell + both layouts + the form and
+loading and motion models + `proxy.ts` + the gate scripts; `console` 6; `content` 8; `checkin` the
+49-cell affordance matrix.** The commit that unblocks everyone is **`ui/index.ts` with all 31 type
+signatures and stub implementations, in hour one** — wave 1's `slots/` pattern, and the reason wave 1
+parallelised at all. `index.ts` exports **types only**; implementations import by path.
+
+**M9 ships the answer to asks 4, 5 and 6 before a single screen is redesigned** — and it carries the
+five live bugs of `16` §5.4.1, of which the check-in link (`page.tsx:225`) is the worst.
+
+#### Step 3 — the traps, learned the hard way in this session
+
+- **Do not touch the marketing routes before M13.** `npm run qa` stays 44/44 and `npm run visual`
+  stays 0.000% for every milestone before it.
+- **`main` is not this branch.** `design/m9-m13-plan` holds the plan; the owner merges (DEC-041).
+- **The bottom tab bar covers the last ~64 px of all 49 existing screens** — `app/layout.tsx:156`
+  has no bottom padding. The `padding-block-end` ships in the **same commit** as the bar, and the
+  proof capture is a 390 px screenshot of an **untouched old** screen.
+- **`0089` is out of sequence on purpose** (`16` §16.3) — say so at sync 1.
+- **Verify what an audit tells you.** Three ran against this plan; two reported findings against
+  stale snapshots, and one was wrong about `member_interests` existing. Every finding in `16` was
+  re-checked against the tree before it was written down.
 
 ## Next session should (superseded — see *The design milestone* above; kept for the history)
 
