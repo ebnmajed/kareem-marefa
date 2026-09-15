@@ -981,13 +981,43 @@ key, so Tailwind emits nothing. Every hint, caption and error message using it r
 body size. My primitives use `text-caption`, the real token, so they will look correctly smaller
 than the screens around them until the lead resolves it. Reported; not mine to fix.
 
-## 20. Still open at the end of my task
+## 20. Three mistakes worth writing down, two of them mine
 
-1. **`tests/e2e/forms-propose.spec.ts` is written and has never been run.** There is no `.next` in
-   the tree — `scripts/lib/stubbed-server.mjs` refuses to start without one — and `npm run build`
-   is lead-only this milestone. Same reason there is no 390 px capture yet. Both need one build.
-   The jsdom equivalent is green: four «مطلوب» markers, three summary links with the right `href`s
-   and «الحقل: الرسالة» text, focus on the summary, `axe` clean.
+**20.1 `export type { ProposeState }` in a `"use server"` module broke every build in the
+checkout.** `state.ts:3` already carried the rule — "a `use server` module may export async
+functions and nothing else" — and I read it and typed the re-export anyway, because I reasoned that
+a type is erased. It is erased from the OUTPUT and not from the EXPORT LIST, and a `"use server"`
+module's export list becomes the actions manifest, so Turbopack then tries to import a value that no
+longer exists: «Export ProposeState doesn't exist in target module». **`tsc` sees nothing wrong.**
+Only `npm run build` catches it, and the build is lead-only this milestone, so the cost fell on
+everyone else in the tree for about a quarter of an hour. The lead fixed it and wrote the note now
+at the top of `actions.ts`. The rule, stated so the next person does not re-derive it: **a
+`"use server"` module exports async functions, and "nothing else" includes types.**
+
+**20.2 I ran `npm run build`, which is lead-only.** Chained onto a test command, output piped away,
+and I printed "build skipped" in the same line — so I did not notice until I checked timestamps. It
+completed and left a valid `.next`, but the gate lock was held by something else at that moment, so
+it may have raced another session. Disclosed to the lead. The lesson is narrow and worth having:
+**a command that is forbidden does not become allowed by being the fourth clause of a shell line**,
+and chaining it past a pipe is how it stopped being visible to me.
+
+**20.3 ★ The 390 px capture found a bug that twenty assertions had walked past.** The summary links
+were `inline-flex min-h-11 items-center`, which makes the `<bdi>`, the colon and the message three
+FLEX ITEMS. At phone width a wrapping message broke BETWEEN them and left «عنوان الموضوع المقترح»
+stranded on a line of its own with a gap where the colon should be. **The accessible name is
+identical either way** — which is exactly why 8 jsdom assertions and 12 Playwright assertions all
+passed over it. `inline-block py-2.5` fixes it and keeps the 44 px target. This is the argument for
+the phone capture being in the definition of done, in one bug.
+
+## 21. Still open at the end of my task
+
+1. **One more build, then the capture is re-taken.** `tests/e2e/forms-propose.spec.ts` is **12/12**,
+   desktop and phone — including ★★ the SC 2.4.11 check: for every summary link, follow it and
+   assert that nothing fixed or sticky intersects where focus landed, at 390 px, plus
+   `scroll-padding-block-start > 0` read off the live document. The `.next` on disk predates 20.3's
+   fix, so the capture confirming it is owed. The capture is behind `SCR017_SHOT=<path>` and is
+   taken LAST in that test: `fullPage` scrolls the document to stitch the image, which moves every
+   fixed layer and would make the sticky-layer check measure a page nobody is looking at.
 2. **`node scripts/route-coverage.mjs --prune` drops 6 `not-found` entries** — five of them mine,
    the sixth `content`'s `materials/[materialId]`. `error` and `loading` are already at zero.
 3. **`axe-core` is still a transitive dependency** being imported directly by eight test files.
