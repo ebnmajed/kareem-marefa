@@ -13,12 +13,11 @@
       "notFoundBack": "تصفّح الجلسات"
     },
     "field": {
-      "required": "مطلوب",
-      "optional": "اختياري"
+      "required": "مطلوب"
     },
     "form": {
       "summaryTitle": "تعذّر إرسال النموذج",
-      "remaining": "المتبقّي: {value}"
+      "remaining": "{count, plural, zero {اكتملت الحقول المطلوبة} one {المتبقّي: حقل واحد} two {المتبقّي: حقلان} few {المتبقّي: {value} حقول} many {المتبقّي: {value} حقلًا} other {المتبقّي: {value} حقل}}"
     },
     "toast": {
       "close": "إغلاق الإشعار"

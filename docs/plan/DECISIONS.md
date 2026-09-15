@@ -1979,6 +1979,32 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-108 — `text-body-sm` was undefined and used in 123 files; it is aliased to the caption ramp, and a gate now refuses the next one
+
+- **Date:** 2026-09-15 · **Decided by:** found by the `sessions` teammate during wave 5, verified and decided by the lead
+- **The finding.** `src/app/globals.css` declares `text-display`, `text-mega`, `text-chapter`, `text-statement`, `text-index`, `text-h1`, `text-h2`, `text-h3`, `text-body-lg`, `text-body`, `text-caption`, `text-label` and `text-eyebrow` as `@utility` blocks. **`text-body-sm` is not among them, there is no `--text-*` theme key for Tailwind v4 to generate one from — and it is used in 123 files under `src/`.** Verified against the compiled stylesheet rather than inferred: `.text-caption` and `.text-body` are both present in `.next/static/chunks/*.css`; **`.text-body-sm` is absent.** So every hint, caption, error message and meta line using it has rendered at **inherited body size — 17 px on mobile in Arabic — where its author meant 15 px.** Since M0.
+- **Why nothing caught it, which is the part worth keeping.** A missing utility is **not a type error, not a lint error and not a test failure**. The class reads as real in every file that uses it, and it is one letter from `text-body-lg`, which does exist. `npm run visual` covers only the three marketing routes, and **marketing does not use it** — the frozen pages and every component they import use it zero times, which is exactly why four milestones of visual diffs stayed green over it. It took a teammate adopting the *correct* token (`text-caption`) on a new primitive and noticing their own text was visibly smaller than the screens around it.
+- **Decision.** (1) **`@utility text-body-sm` is defined as an alias of the caption ramp** — `--fs-caption` / `--lh-caption` — which is the size every caller intended. (2) **Not a codemod.** Rewriting 123 files to `text-caption` would touch every track's ownership mid-wave for the same rendered result, and `text-body-sm` is a reasonable name for that step of the ramp. (3) **`tests/unit/typography-utilities.test.ts` now fails if any house `text-*` class used under `src/` has no definition in `globals.css`** — two file reads and a regex, and the only thing standing between the next invented token and another 123 files.
+- **Safe for invariant 1, and proved rather than assumed:** the frozen routes use it zero times, and `npm run visual` was **0.000 % on all six pairs** after the change.
+- **A false positive the new gate found on its first run, kept as a note:** `[text-indent:-1.25rem]` in `legal/privacy` is Tailwind v4's arbitrary-**property** syntax, which emits real CSS and is not a utility. The regex now refuses a `[` lead-in and a trailing `:`. That is the right kind of false positive — it meant the test was reading class strings the way Tailwind does, one case short.
+- **Supersedes:** nothing. `10-i18n-rtl.md`'s typography ramp is unchanged; this makes one step of it real.
+- **Documents changed:** `src/app/globals.css`, `tests/unit/typography-utilities.test.ts`, `10-i18n-rtl.md` §1
+
+---
+
+## DEC-109 — The «مطلوب» marker replaces «اختياري» on SCR-017, and that is the requirement landing rather than drift
+
+- **Date:** 2026-09-15 · **Decided by:** the lead, answering a question the `sessions` teammate raised three times and did not act on unilaterally
+- **The conflict, stated plainly.** The lead's brief for the propose-form adoption said «adoption only: no redesign, no new layout, **no copy change**». `16` §8.2 item 2 and `REQ-UIX-011` say **required is marked positively** — «مطلوب» on the label, **never an asterisk**, because an asterisk collides with the RTL run and because a member should never have to infer "required" from the *absence* of «اختياري». Applying the requirement to SCR-017 removes its «اختياري» markers, which is a visible copy change on a live screen. Both instructions were mine and they contradict each other.
+- **Decision: the requirement wins, and the markers stand.** «no copy change» was written to prevent a redesign smuggled in under an adoption; `REQ-UIX-011` is the thing the adoption exists to deliver. A form that marks only its optional fields is the pattern the requirement replaces, and leaving one screen on the old pattern while thirteen others move to the new one is worse than either alone.
+- **Consequences.** (1) **`ui.field.optional` is removed** from `ar/ui.json` and `en/ui.json`. `FieldProps` has `required?: boolean` and no `optional`, so the key had nowhere to be used — and now it has no reason to exist either. `proposals.propose.form.optional` stays in the catalogue because `admin/proposals` still uses it. (2) **`ui.form.summaryTitle` stays and SCR-017 keeps its own heading.** «تعذّر إرسال النموذج» names the failure; SCR-017's shipped M2 copy «يرجى تصحيح الأخطاء التالية:» names the *remedy*, which is better copy for the screen that has it. `FormSummary.title` is a required prop, so the house key is the default for the fourteen forms that have no summary today — it is unused, not dead. (3) **`ui.form.remaining` carries the full six-form ICU block** the teammate designed, so it is correct the day M10 wires it: `zero` says «اكتملت الحقول المطلوبة» rather than «المتبقّي: ٠ حقول», and `one`/`two` carry no `{value}` because «حقل واحد» and «حقلان» already say the number.
+- **§8.2 item 7's counter is DEFERRED to M10**, and the teammate was right to refuse it. A remaining-fields counter is a new visible element on a live screen — squarely what «no copy change» forbids — and it belongs beside the step indicator the same item asks for, which is the M10 redesign.
+- **The general rule this settles:** when a lead's scoping instruction collides with a requirement, **the requirement wins and the collision is recorded here.** A teammate that flags it rather than choosing is behaving correctly; a teammate that chooses silently is how a requirement quietly does not ship.
+- **Supersedes:** the lead's «no copy change» instruction, for `REQ-UIX-011` on SCR-017 only.
+- **Documents changed:** `src/messages/{ar,en}/ui.json`, `src/app/[locale]/app/propose/**`, `docs/plan/notes/sessions.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

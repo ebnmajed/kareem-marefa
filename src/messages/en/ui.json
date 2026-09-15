@@ -13,12 +13,11 @@
       "notFoundBack": "Browse sessions"
     },
     "field": {
-      "required": "Required",
-      "optional": "Optional"
+      "required": "Required"
     },
     "form": {
       "summaryTitle": "The form could not be submitted",
-      "remaining": "Remaining: {value}"
+      "remaining": "{count, plural, =0 {All required fields are complete} one {Remaining: one field} other {Remaining: {value} fields}}"
     },
     "toast": {
       "close": "Dismiss notification"

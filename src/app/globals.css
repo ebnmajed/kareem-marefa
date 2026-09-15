@@ -382,6 +382,33 @@ body {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
 }
+/* ★★ `text-body-sm` — DEAD SINCE M0, AND USED IN 123 FILES (DEC-108).
+   Found by `sessions` during wave 5 while adopting the form primitives.
+
+   It was never defined. There is no `@utility text-body-sm` and no `--text-*`
+   theme key for Tailwind v4 to generate one from, so `.text-body-sm` emitted
+   NOTHING — verified against the compiled stylesheet, where `.text-caption`
+   and `.text-body` are both present and `.text-body-sm` is absent. Every hint,
+   caption, error message and meta line using it has been rendering at
+   INHERITED body size — 17 px on mobile in Arabic — where its author meant
+   15 px.
+
+   Nothing could catch it: a missing utility is not a type error, not a lint
+   error, and not a test failure. It reads as a real class in every file that
+   uses it, and it is one letter away from `text-body-lg`, which does exist.
+
+   Defined here as an alias of the caption ramp, which is the size every caller
+   intended, rather than codemodding 123 files across four tracks' ownership
+   mid-wave. `tests/unit/typography-utilities.test.ts` now fails if any
+   `text-*` class used under `src/` has no definition, so this cannot recur.
+
+   ★ Safe for invariant 1: the frozen marketing routes and every component
+   they import use it ZERO times, and `npm run visual` stayed 0.000 %. */
+@utility text-body-sm {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+}
+
 @utility text-caption {
   font-size: var(--fs-caption);
   line-height: var(--lh-caption);
