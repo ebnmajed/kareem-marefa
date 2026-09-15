@@ -10,6 +10,8 @@ import ar from "@/messages/ar/rsvp.json";
 import type { RsvpPanelData } from "@/lib/dal/rsvp";
 
 vi.mock("@/lib/dal/rsvp", () => ({ getRsvpPanelData: vi.fn() }));
+// The panel formats its counts with the org's numerals (REQ-INT-006, DEC-056).
+vi.mock("@/lib/dal/designer", () => ({ getOrgNumerals: vi.fn(async () => "western") }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "rsvp" }),
 }));

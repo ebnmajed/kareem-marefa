@@ -56,3 +56,6 @@ worker/dist/
 # Claude Code — local-only; .claude/settings.json and .claude/hooks/ stay tracked
 .claude/worktrees/
 .claude/settings.local.json
+
+# lead demo scripts run against local Supabase (the record is STATUS.md, not the script)
+scratchpad/

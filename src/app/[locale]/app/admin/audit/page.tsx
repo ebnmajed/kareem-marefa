@@ -49,7 +49,8 @@ export default async function AuditLogPage({
           {entries.length === 0 ? (
             <p className="text-body text-fg-body">{t("empty")}</p>
           ) : (
-            <div className="overflow-x-auto">
+            // REQ-NFR-007: a scrollable region is a keyboard stop (axe scrollable-region-focusable).
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("title")}>
               <table className="w-full min-w-[640px] text-start text-body-sm">
                 <thead>
                   <tr className="border-b border-edge text-fg-muted">

@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
+import { getOrgNumerals } from "@/lib/dal/designer";
+import { formatNumber } from "@/components/sessions/numerals";
 import { cancelRsvpAction, reserveSeatAction } from "./actions";
 
 // The RsvpPanel slot (TEAM.md §2). REQ-RSV-001, REQ-RSV-005, REQ-RSV-006,
@@ -8,7 +10,8 @@ import { cancelRsvpAction, reserveSeatAction } from "./actions";
 // attendance from the host view, not the RSVP panel (REQ-CHK-011's
 // presenter/attendee split starts here).
 export async function RsvpPanel({ sessionId, locale }: SlotProps) {
-  const [data, t] = await Promise.all([getRsvpPanelData(locale, sessionId), getTranslations("rsvp")]);
+  // REQ-INT-006: the counts print with the org's numerals, never ICU's `#` (DEC-056).
+  const [data, t, numerals] = await Promise.all([getRsvpPanelData(locale, sessionId), getTranslations("rsvp"), getOrgNumerals(locale)]);
   if (!data || data.isPresenter) return null;
   // Nothing to reserve on a session that was never published, and no
   // history to show either — the panel simply isn't part of the page yet.
@@ -32,8 +35,8 @@ export async function RsvpPanel({ sessionId, locale }: SlotProps) {
       {!holdsOrWaits ? (
         <>
           <p className="mt-2 text-body text-fg-muted">
-            {seatsLeft !== null ? t("seatsLeft", { count: seatsLeft }) : null}
-            {data.waitlistCount > 0 ? <> · {t("waitlistLength", { count: data.waitlistCount })}</> : null}
+            {seatsLeft !== null ? t("seatsLeft", { count: seatsLeft, value: formatNumber(seatsLeft, numerals) }) : null}
+            {data.waitlistCount > 0 ? <> · {t("waitlistLength", { count: data.waitlistCount, value: formatNumber(data.waitlistCount, numerals) })}</> : null}
           </p>
           {deadlinePassed ? (
             <p role="status" className="mt-3 text-body text-fg-muted">

@@ -283,6 +283,13 @@ loaded by then, so the page can be nearly nothing: one field, one button.
 **The marketing landing must not regress.** It is live, it was measured, and `scripts/qa.mjs`
 already guards it (`REQ-NFR-019`).
 
+**Measured, wave 4 (DEC-055):** `tests/e2e/budgets.spec.ts` measures these six screens on Lighthouse's
+mobile profile against the served build. Every `/app` screen carries ~164 KB of gzipped JS on this
+stack (the App Router shell, React, the catalogue), so the check-in row's 80 KB is not reachable on this
+rendering path; the spec reports the absolute numbers as advisories and fails a regression against
+`tests/e2e/budgets.baseline.json`. The owner re-measures against production at Launch and either amends
+this table or schedules the shell split (DEC-055 decision 5).
+
 ---
 
 ## 8. Real-device matrix

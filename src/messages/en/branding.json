@@ -1,0 +1,85 @@
+{
+  "branding": {
+    "title": "Brand kit",
+    "intro": "The org's logo, colours and fonts — one source that feeds the app UI, designer templates and email templates. Changing a colour or a font here changes it everywhere at once.",
+    "logo": {
+      "title": "Logo",
+      "current": "Current logo",
+      "none": "No custom logo — the platform's default identity is used.",
+      "replace": "Replace logo",
+      "upload": "Upload a logo",
+      "uploading": "Uploading…",
+      "remove": "Remove logo",
+      "minResolutionHint": "For crisp printing up to A3, upload an image at least {width} × {height} px (300 PPI).",
+      "formatHint": "PNG, JPG or WebP only — SVG is not accepted.",
+      "ppiResult": "Used at full A3 size, this logo would print at {ppi} PPI.",
+      "ppiSufficient": "Sufficient for printing up to A3.",
+      "ppiWarning": "Below the recommended 300 PPI — large exports may warn.",
+      "ppiInsufficient": "Below 200 PPI — an A3 export with this logo will be refused.",
+      "errors": {
+        "rejected_content": "This file is not a valid PNG, JPG or WebP image.",
+        "file_too_large": "The file is larger than the allowed size.",
+        "unreadable": "The image could not be read.",
+        "not_authorized": "You do not have permission to upload a logo.",
+        "unknown": "The logo could not be uploaded. Try again."
+      }
+    },
+    "colours": {
+      "title": "Colours",
+      "schemeLight": "Light mode",
+      "schemeDark": "Dark mode",
+      "tokens": {
+        "canvas": "Canvas",
+        "surface": "Surface",
+        "fgHeading": "Heading colour",
+        "fgBody": "Body text colour",
+        "fgMuted": "Muted colour",
+        "edge": "Edge colour",
+        "edgeStrong": "Strong edge colour",
+        "spine": "Spine colour",
+        "node": "Node colour"
+      }
+    },
+    "preview": {
+      "title": "Live preview",
+      "headingSample": "Kareem Marefa",
+      "bodySample": "This is how body text looks in the app, in designer templates, and in email.",
+      "buttonSample": "Action button",
+      "cardTitle": "Card title",
+      "cardBody": "Explanatory text inside a card, in the colours chosen above."
+    },
+    "contrast": {
+      "title": "Contrast (WCAG 2.2 AA)",
+      "body": "Body text",
+      "muted": "Muted text",
+      "large": "Large text",
+      "ui": "UI component",
+      "pass": "Passes",
+      "fail": "Fails — {ratio}:1 (needs at least {threshold}:1)",
+      "ratioLabel": "{ratio}:1"
+    },
+    "fonts": {
+      "title": "Fonts",
+      "headingLabel": "Heading font",
+      "bodyLabel": "Body font",
+      "platformDefault": "Platform default font",
+      "noneSelectable": "No approved fonts yet — see the designer's font list."
+    },
+    "actions": {
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "The brand kit was saved.",
+      "reset": "Reset to platform default",
+      "cancel": "Cancel",
+      "resetConfirm": "This will delete the org's customisation, and every screen will return to the platform's default identity. Continue?",
+      "resetting": "Resetting…",
+      "resetDone": "The brand kit was reset to the platform default."
+    },
+    "errors": {
+      "invalid": "Check the values you entered.",
+      "notAdmin": "This action requires admin permission.",
+      "badReference": "The selected logo or font is not valid.",
+      "unknown": "Something went wrong. Try again."
+    }
+  }
+}

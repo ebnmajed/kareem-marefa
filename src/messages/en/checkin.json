@@ -20,7 +20,7 @@
     "host": {
       "title": "Check-in code",
       "notAuthorized": "This page is for the session's presenters and staff only",
-      "checkInCount": "{count, plural, =0 {No one has checked in yet} one {# person checked in} other {# people checked in}}",
+      "checkInCount": "{count, plural, =0 {No one has checked in yet} one {{value} person checked in} other {{value} people checked in}}",
       "revoke": "Burn this code now",
       "revoked": "Code revoked — a new one has been issued",
       "manualTitle": "Manual attendance",

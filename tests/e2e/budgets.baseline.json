@@ -1,0 +1,39 @@
+{
+  "_note": "Lighthouse mobile-profile readings on the wave-4 final build, local `next start` on a quiet laptop, median of three runs per screen (DEC-057). The spec fails a screen that regresses more than 25% on LCP/TBT, 10% on JS, or 0.02 on CLS against these; 13 §7's absolute budgets are reported as advisories until the owner re-measures against production and amends the table or schedules the shell split (DEC-055). Refresh only through a reviewed commit, from a run with nothing else on the machine.",
+  "marketing landing [FROZEN]": {
+    "lcp": 3163,
+    "tbt": 243,
+    "cls": 0,
+    "js": 174
+  },
+  "event page (SCR-012)": {
+    "lcp": 2861,
+    "tbt": 6,
+    "cls": 0,
+    "js": 164
+  },
+  "session list (SCR-011)": {
+    "lcp": 2861,
+    "tbt": 6,
+    "cls": 0,
+    "js": 164
+  },
+  "check-in (SCR-014)": {
+    "lcp": 2712,
+    "tbt": 7,
+    "cls": 0,
+    "js": 164
+  },
+  "leaderboard (SCR-027)": {
+    "lcp": 2870,
+    "tbt": 6,
+    "cls": 0,
+    "js": 164
+  },
+  "admin dashboard (SCR-040)": {
+    "lcp": 3665,
+    "tbt": 9,
+    "cls": 0,
+    "js": 164
+  }
+}

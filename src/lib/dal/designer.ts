@@ -8,7 +8,8 @@ import {
   declaredBindingsOf,
   type FingerprintSource,
   fingerprintSource,
-  platformBrand,
+  resolveBrand,
+  type BrandOverrides,
   PRESETS,
   presetsFor,
   resolveCertificateBindings,
@@ -198,10 +199,12 @@ export async function getDesignerDocument(locale: string, documentId: string, or
   const bindingOptions: BindingOptions = { numerals, timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
 
   const bindings: Record<string, string> = {
-    // The platform theme until wave 4's brand kit supplies the org override
-    // (DEC-048 decision 2). The CONTRACT is the same either way — a template
-    // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021).
-    ...platformBrand("light"),
+    // The org's brand override over the platform palette (wave 4, DEC-052,
+    // 06 §8.3) — the same composition the worker's request path makes, so
+    // the preview an admin approves is what the export renders. A template
+    // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021); no row is
+    // the identity override.
+    ...resolveBrand(await editorBrandOverrides(supabase, session.orgId), "light"),
     ...sessionBindings(sessionRow as SessionRow | null, bindingOptions),
     ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),
   };
@@ -442,4 +445,17 @@ export async function signExportUrl(locale: string, storagePath: string): Promis
   const { supabase } = await sessionClient(locale);
   const { data } = await supabase.storage.from("exports").createSignedUrl(storagePath, 300);
   return data?.signedUrl ?? null;
+}
+
+/* ── the org brand override for the editor's preview (wave 4, DEC-052) ──── */
+
+/** `public.brand_kit()` already merges the platform defaults, so its output
+ *  is a complete override; `resolveBrand` over it is exact. RLS scopes the
+ *  read to the caller's org whatever id is passed (`security invoker`). */
+async function editorBrandOverrides(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], orgId: string): Promise<BrandOverrides | null> {
+  const { data, error } = await supabase.rpc("brand_kit", { p_org: orgId });
+  if (error || !data) return null;
+  const kit = data as { isOverridden?: boolean; light?: BrandOverrides["light"]; dark?: BrandOverrides["dark"]; logoAssetId?: string | null };
+  if (!kit.isOverridden) return null;
+  return { light: kit.light, dark: kit.dark, logoAssetId: kit.logoAssetId ?? null };
 }

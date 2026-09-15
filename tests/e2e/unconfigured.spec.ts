@@ -8,9 +8,12 @@ import { expect, test } from "@playwright/test";
 test.skip(process.env.E2E_PLATFORM_UNCONFIGURED !== "1", "needs a build made without NEXT_PUBLIC_SUPABASE_*: `npm run test:e2e:unconfigured`");
 
 test("platform routes and auth screens are 404 with the marketing 404 page", async ({ page, request }) => {
-  for (const path of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access"]) {
+  // The public platform routes too — /verify served a 500 on the live site
+  // until DEC-050; the proxy's predicate now covers them (DEC-051).
+  for (const path of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access", "/ar/verify/AbCdEfGhIjKlMnOpQrStUvWx", "/ar/legal/privacy"]) {
     const res = await request.get(path);
     expect(res.status(), path).toBe(404);
+    expect(await res.text(), path).toContain("الصفحة غير موجودة");
   }
   await page.goto("/ar/app");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("الصفحة غير موجودة");

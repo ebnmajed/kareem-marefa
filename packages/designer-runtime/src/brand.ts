@@ -75,3 +75,43 @@ export function platformBrand(scheme: BrandScheme = 'light'): Record<string, str
   for (const token of BRAND_COLOUR_TOKENS) out[`brand.${token}`] = palette[token]
   return out
 }
+
+/**
+ * `resolveBrand()` — wave 4's `branding` track (DEC-052), added under this
+ * file's own add-only rule: the exports above and the platform default
+ * values do not change.
+ *
+ * The org override, as `supabase/proposed/branding/0001_brand_kits.sql`'s
+ * `export_render_context()` amendment hands it to the render worker: a
+ * RAW override (a full light set, a full dark set, or neither — a brand
+ * kit is always saved whole, never a partial scheme), never pre-merged.
+ * The merge happens exactly once, here, which is what keeps the platform
+ * default in ONE place rather than two SQL functions and this file each
+ * carrying their own copy of it.
+ *
+ * `{}` — no row, i.e. every org before it first visits SCR-059 — resolves
+ * to exactly `platformBrand(scheme)`: the identity override 06 §8.3 and
+ * DEC-052 both name, and the reason the parity goldens do not move this
+ * wave.
+ */
+export interface BrandOverrides {
+  light?: Partial<Record<BrandColourToken, string>>
+  dark?: Partial<Record<BrandColourToken, string>>
+  logoAssetId?: string | null
+}
+
+export function resolveBrand(
+  overrides: BrandOverrides | null | undefined,
+  scheme: BrandScheme = 'light',
+): Record<string, string> {
+  const out = platformBrand(scheme)
+  const schemeOverride = scheme === 'dark' ? overrides?.dark : overrides?.light
+  if (schemeOverride) {
+    for (const token of BRAND_COLOUR_TOKENS) {
+      const value = schemeOverride[token]
+      if (value) out[`brand.${token}`] = value
+    }
+  }
+  if (overrides?.logoAssetId) out['brand.logoAssetId'] = overrides.logoAssetId
+  return out
+}

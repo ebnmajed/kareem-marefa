@@ -38,15 +38,10 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
   const { locale, code } = await params;
   setRequestLocale(locale);
 
-  // ★ DEC-038, and this route is the ONE public platform screen the proxy's
-  // unconfigured gate does not cover: `isPlatformPath` matches
-  // `/{locale}/app`, and /verify is deliberately outside it because a
-  // stranger with a printed sheet has no session. Without this line, the
-  // platform being unconfigured — the state of production until PR C —
-  // would make `supabaseEnv()` throw here and serve a 500 on a public URL
-  // of a live site. A 404 is what every other unconfigured platform route
-  // already does. Told to the lead: the alternative is widening the
-  // proxy's predicate, which is their file.
+  // ★ DEC-038. The proxy's `isPublicPlatformPath` now answers 404 for
+  // /verify before this page runs (DEC-051); this line stays as defence in
+  // depth — the page must never reach `supabaseEnv()` unconfigured and serve
+  // a 500 on a public URL of a live site, whatever the proxy's matcher does.
   if (!platformConfigured()) notFound();
 
   const t = await getTranslations("certificates.verify");

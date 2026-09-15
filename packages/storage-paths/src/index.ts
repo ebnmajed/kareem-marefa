@@ -16,6 +16,7 @@
 export { InvalidStoragePathError, type Bucket, type StorageLocation } from "./guards.js";
 export * from "./content.js";
 export * from "./designer.js";
+export * from "./brand.js";
 
 import type { StorageLocation } from "./guards.js";
 import { convertedPdfPath, materialPagePath, materialPageThumbnailPath, materialSourcePath, photoPath } from "./content.js";

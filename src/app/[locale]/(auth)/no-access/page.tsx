@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 
 // SCR-004 · /no-access — a dead end with an explanation. Names no org, lists
 // no domain (REQ-AUT-006). Also the suspended-org (REQ-TEN-006) and the
@@ -25,6 +26,12 @@ export default async function NoAccessPage({
 
   return (
     <>
+      {/* SCR-085 under DEC-055 option C: a break-glass session carries no
+          member id, so this is the screen an impersonating operator lands
+          on from any org route. The banner (platform's slot, DEC-057) shows
+          the org, the time left and the stop control; it renders nothing
+          for everyone else. */}
+      <ImpersonationBanner locale={locale} />
       <h1 className="text-h2 text-fg-heading">{title}</h1>
       <p className="mt-3 text-body text-fg-muted">{body}</p>
       <div className="mt-8 flex flex-wrap gap-3">

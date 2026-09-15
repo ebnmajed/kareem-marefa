@@ -72,6 +72,9 @@ const PAYLOAD = {
 const sendAnswers = (context: unknown = CONTEXT) =>
   [
     [/notification_send_context/, () => ({ rows: [{ notification_send_context: context }] })],
+    // 06 §8.3's email leg (wave 4, DEC-053): the sender reads the org's brand
+    // kit before rendering. An org with no row gets the platform defaults.
+    [/brand_kit/, () => ({ rows: [{ kit: { light: { fgBody: "#33415c", fgMuted: "#5b6780", surface: "#ffffff" } } }] })],
     [/record_email_delivery/, () => ({ rows: [{ record_email_delivery: "d-1" }] })],
   ] as Array<[RegExp, () => Reply]>;
 
@@ -95,9 +98,9 @@ describe("JOB-send_notification", () => {
     // The delivery row is written BEFORE the send and moved after, so a
     // worker that dies mid-send leaves a `queued` row an admin can see.
     const order = calls.map((c) => c.sql.match(/public\.(\w+)/)?.[1]);
-    expect(order).toEqual(["notification_send_context", "record_email_delivery", "update_email_delivery"]);
-    expect(calls[2].sql).toContain("'sent'");
-    expect(calls[2].params).toEqual(["d-1", transport.sent[0].providerMessageId]);
+    expect(order).toEqual(["notification_send_context", "brand_kit", "record_email_delivery", "update_email_delivery"]);
+    expect(calls[3].sql).toContain("'sent'");
+    expect(calls[3].params).toEqual(["d-1", transport.sent[0].providerMessageId]);
     setMailTransport(null);
   });
 
