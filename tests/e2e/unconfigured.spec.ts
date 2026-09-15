@@ -10,7 +10,7 @@ test.skip(process.env.E2E_PLATFORM_UNCONFIGURED !== "1", "needs a build made wit
 test("platform routes and auth screens are 404 with the marketing 404 page", async ({ page, request }) => {
   // The public platform routes too — /verify served a 500 on the live site
   // until DEC-050; the proxy's predicate now covers them (DEC-051).
-  for (const path of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access", "/ar/verify/AbCdEfGhIjKlMnOpQrStUvWx", "/ar/legal/privacy"]) {
+  for (const path of ["/ar/app", "/ar/app/me", "/ar/sign-in", "/ar/choose-org", "/ar/no-access", "/ar/verify/AbCdEfGhIjKlMnOpQrStUvWx", "/ar/legal/privacy", "/ar/s/11111111-2222-3333-4444-555555555555"]) {
     const res = await request.get(path);
     expect(res.status(), path).toBe(404);
     expect(await res.text(), path).toContain("الصفحة غير موجودة");

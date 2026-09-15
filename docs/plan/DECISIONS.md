@@ -1462,6 +1462,17 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-066 — Every session has a public card: a shared link previews title, time, venue and the poster
+
+- **Date:** 2026-09-15 · **Decided by:** owner («each and every session gets its own public metadata … yes to the scope»), built by the `sessions` teammate, promoted by the lead
+- **Decision:** a public, unauthenticated route **`/{locale}/s/[id]`** renders the session card — title, date and time in the org's time zone and numerals, venue name, org name, the poster's `og.png` — with the Open Graph and Twitter tags for link crawlers and one action, sign in with `next` set to the session. The event page carries a «share the link» affordance that copies the card's URL, never the event URL. The read is **`session_public_card(uuid)`** (`0080`): SECURITY DEFINER, granted to `anon` and `authenticated`, returning exactly those fields and only for a session in `published`, `in_progress` or `completed` of an active org — an empty answer, not an error, for everything else. The image reaches crawlers through **`/api/s/[id]/og`**, a Route Handler that reads the object under one additive storage policy, `exports_storage_read_public_card` for `anon`, whose predicate `export_is_public_card(name)` admits only the `og.png` of a card-eligible session's poster; every other object in `exports` stays refused and nothing is writable. `isPublicPlatformPath()` matches `/s/`, so the proxy gives the route the nonce, never the sign-in redirect, and 404s it while unconfigured (DEC-038). Alternatives the teammate rejected: a signed URL minted by the app (needs `service_role` on Vercel — invariant 7); copying `og.png` into a public bucket from the worker (a second copy to keep in step and to revoke on cancellation); serving the tags from the event page (the proxy redirects a crawler to sign-in before any page code runs).
+- **The trade-off, stated:** anyone holding the link, member or not, learns the session's title, time, venue and poster, and crawlers cache them; `12` T3 kept a link-holding outsider out. The owner chose the opening for exactly those fields and no more — no abstract, presenters, capacity, comments, materials or attendee counts leave the org. A cancellation or a suspension closes both the card and the image door at once (the same predicate).
+- **Also fixed on the way:** `safeNextPath()`'s control-character class carried its range endpoints as literal invisible bytes; rewritten with explicit escapes and pinned by a uuid case — no behaviour change (the teammate had read it as «space or hyphen»).
+- **Supersedes:** narrows `12` T3 for those fields; `REQ-SES-008` stands (no stream link, no remote-attendance affordance on the card).
+- **Documents changed:** `03` §6 (+1 storage policy) and §8.2 (+2 rows), `supabase/migrations/0080_public_session_card.sql`, `src/lib/auth/next-path.ts`, the `s/[id]` page, the `api/s/[id]/og` handler, the event page's share affordance, `messages/*/sessions.json`, `tests/rls/sessions-public-card.test.ts`, `tests/e2e/sessions-public-card.spec.ts`, `tests/e2e/unconfigured.spec.ts`, `docs/plan/notes/sessions.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
