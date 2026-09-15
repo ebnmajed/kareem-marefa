@@ -22,18 +22,32 @@ import { CloseIcon } from "@/components/ui/icons";
 // setting the way the other two primitives do. Flagged in
 // `docs/plan/notes/content.md` §6.0 for whoever wires a real facet count.
 export function TagChip({ label, href, count, onRemove, removeLabel, className = "" }: TagChipProps) {
-  const body = (
-    <>
-      <bdi>{label}</bdi>
-      {typeof count === "number" ? <bdi className="text-fg-muted">{count}</bdi> : null}
-    </>
-  );
+  const labelNode = <bdi>{label}</bdi>;
+  // ★ Gallery finding (390 px review): with no separator this glued to the
+  // label as e.g. «أمنة12», reading as a chip literally named that. Fixed
+  // two ways at once — an explicit `gap-1` between label and count (JSX
+  // places no whitespace between adjacent elements) and parenthesising the
+  // count, which is unambiguous and needs no gap to read correctly even if
+  // one is later lost to a style change. The count stays muted relative to
+  // the label — the label is what is being chosen, the count is a hint —
+  // and stays in its own `<bdi>`: a Western-digit count after an Arabic
+  // label is a bidi boundary («١٢» and «12» sit differently without it).
+  const countNode =
+    typeof count === "number" ? (
+      <span className="text-fg-muted">
+        (<bdi>{count}</bdi>)
+      </span>
+    ) : null;
   const content = href ? (
-    <Link href={href} className="hover:text-fg-heading">
-      {body}
+    <Link href={href} className="inline-flex items-center gap-1 hover:text-fg-heading">
+      {labelNode}
+      {countNode}
     </Link>
   ) : (
-    <span>{body}</span>
+    <span className="inline-flex items-center gap-1">
+      {labelNode}
+      {countNode}
+    </span>
   );
   return (
     <span

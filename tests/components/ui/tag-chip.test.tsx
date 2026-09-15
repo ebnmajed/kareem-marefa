@@ -42,6 +42,22 @@ describe("TagChip", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
   });
 
+  it("★ never glues the count onto the label — 390 px review found «أمنة12» with no separator", () => {
+    // Regression for a real gallery finding: jsdom cannot see the visual
+    // gap, but it can prove the label and the count are never the SAME
+    // text node (which is what "glued" actually was) and that the count is
+    // parenthesised and separately bidi-isolated.
+    const { container } = render(<TagChip label="أمنة" count={12} />);
+    const labelNode = screen.getByText("أمنة");
+    const countNode = screen.getByText("12");
+    expect(labelNode).not.toBe(countNode);
+    expect(labelNode.textContent).toBe("أمنة");
+    expect(countNode.tagName).toBe("BDI");
+    expect(countNode.parentElement?.textContent).toBe("(12)");
+    // The flex row carrying both provides the gap `getByText` cannot see.
+    expect(container.querySelector(".gap-1")).toBeInTheDocument();
+  });
+
   it("shows no count when omitted", () => {
     render(<TagChip label="تقارير" />);
     expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument();
