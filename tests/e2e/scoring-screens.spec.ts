@@ -23,6 +23,7 @@ let domain = "";
 let memberUserId = "";
 let memberEmail = "";
 let memberId = "";
+let shotCompanyId = "";
 
 test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
@@ -38,7 +39,10 @@ test.beforeAll(async ({}, testInfo) => {
   orgId = orgRows[0].id;
   await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
-  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة اللقطات')`, [orgId]);
+  const { rows: shotCompanyRows } = await db.query<{ id: string }>(`insert into public.companies (org_id, name) values ($1, 'شركة اللقطات') returning id`, [
+    orgId,
+  ]);
+  shotCompanyId = shotCompanyRows[0].id;
 
   memberEmail = `member@${domain}`;
   const { data: memberAuth, error } = await admin.auth.admin.createUser({
@@ -103,10 +107,18 @@ test("390 px RTL captures of every new scoring screen", async ({ context, page }
 
   // Real content, not an empty state: a check-in award and a manual
   // adjustment, so SCR-022 and SCR-027 show an actual row and an actual
-  // rank rather than the empty-state copy.
+  // rank rather than the empty-state copy. The company points ledger row
+  // (post-launch — docs/plan/notes/scoring.md "Company points rules") does
+  // the same for the new "your company's points" section on SCR-028.
+  await db.query(`update public.members set company_id = $1 where id = $2`, [shotCompanyId, memberId]);
   await db.query(
     `insert into public.points_ledger (org_id, member_id, amount, source, reason, idempotency_key) values ($1, $2, 20, 'check_in', 'تسجيل حضور مؤكَّد', $3)`,
     [orgId, memberId, `shot:${memberId}`],
+  );
+  await db.query(
+    `insert into public.company_points_ledger (org_id, company_id, amount, source, reason, idempotency_key, meta)
+     values ($1, $2, 30, 'company_hosting', 'استضافة جلسة', $3, '{}'::jsonb)`,
+    [orgId, shotCompanyId, `shot:company:${shotCompanyId}`],
   );
 
   await page.goto("/ar/app/me/points");
