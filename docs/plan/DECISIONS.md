@@ -1934,6 +1934,26 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-105 — Two rows of `16` §5.1's totality table cannot happen, and the «`open` forever» reading is the wrong answer for a session whose start has passed
+
+- **Date:** 2026-09-15 · **Decided by:** the wave-5 lead session, implementing `src/lib/session-status.ts`
+- **The constraint, read from the migration rather than assumed.** `0010_m2_schema.sql:102-104` is a table check constraint on `public.sessions`:
+
+  ```sql
+  check (state not in ('published', 'in_progress', 'completed', 'archived')
+         or (starts_at is not null and ends_at is not null and capacity is not null
+             and (venue_id is not null or custom_venue_name is not null)))
+  ```
+
+  So **a `published` session always has both ends and always has a capacity**, and has since M2. Nothing in `0011`–`0081` relaxes it; the only later `alter table public.sessions` statements add `search_vector`, `allow_walk_ins` and `host_company_id`.
+- **What that makes unreachable.** Two rows of `16` §5.1's totality table — «`published`, `starts_at` null» and «`published`, start set, `ends_at` null» — **describe states the database forbids**, and §5.0's «Sessions with no schedule exist» is true only of `draft`, `submitted`, `in_review`, `changes_requested` and `approved`. A third consequence follows: **`seatState()` can never return `unlimited` on a member-facing surface**, because the `open` phase comes only from `published` and `capacity` is not null from `published` onward — so §5.2's badge row «`open` + `available`/`unlimited`» has a dead half.
+- **Decision.** (1) **Totality is still implemented and still swept**, over every state × schedule × clock combination. A constraint is not a type; a `draft` on the schedule screen legitimately has nulls; and a total function that throws on a legal row is worse than a branch that never runs. (2) **The unreachable rows are marked in the code and in the tests**, so the next reader does not spend an afternoon on the «`open` forever» case and, more importantly, does not reason from it to a member-facing conclusion. (3) ★ **Where §5.1 and the ask disagree, the ask wins:** §5.1 resolves a `published` session with a passed start and no end to «`open` forever». That is the right answer for a session the clock cannot *place* and the wrong one for a session whose **start** has passed — «احجز مقعدًا» on a talk that began an hour ago is precisely ask 4. `sessionPhase()` returns **`live`** there. Because the source is then the clock rather than the row, `canGrantOn()` still refuses check-in, so the conservative direction of `DEC-090` holds in both directions at once.
+- **A fourth thing this session changed, and it is the more interesting one.** `DEC-090`'s corollary 2 — «the derived phase may only ever REMOVE an affordance, never add one» — **cannot be expressed as a scalar ordering over phases**, which was the first implementation and was wrong. Permissiveness is not one-dimensional: `ended` *removes* registration and cancellation and *grants* rating, the survey and the certificate. So a session the clock calls `ended` while `complete_session` has not run is safe to hide the register button on and **unsafe to offer a rate button on** — which is §5.4.1 row 5, the defect this plan introduced into itself. The rule is therefore implemented **per affordance**: `sessionPhaseSource()` says whether a phase came from the row or from the clock, `GRANTING_AFFORDANCES` lists the five affordances that no earlier phase offers, and **`canGrantOn()` is the single predicate every granting affordance calls** — it refuses whenever the source is the clock. `checkIn` is in that list for the same reason `rate` is: the check-in RPC refuses on a session `start_session` has not moved to `in_progress`, so a clock-derived `live` must not render the button either.
+- **Supersedes:** `16` §5.1's totality table, in the two unreachable rows and in the «`open` forever» resolution; and its implication that corollary 2 is a property of phases rather than of affordances.
+- **Documents changed:** `src/lib/session-status.ts`, `tests/unit/session-status.test.ts`, `16` §5.1 · §5.2 · §5.4
+
+---
+
 ## Template for new entries
 
 ```markdown
