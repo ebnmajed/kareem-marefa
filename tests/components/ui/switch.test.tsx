@@ -57,6 +57,18 @@ describe("Switch", () => {
     expect(track.className).toContain("peer-checked:justify-end");
   });
 
+  it("★ SC 1.4.11 — the OFF track is a 3:1 token, not a silver nobody can see", () => {
+    const { container } = render(<Switch name="allowDownload" label="السماح بالتنزيل" />);
+    const track = container.querySelector("[aria-hidden]")!;
+    // jsdom has no layout engine and axe has no non-text-contrast rule, so
+    // this asserts the TOKEN. `silver-300` (#c9ced6) is 1.6:1 against white
+    // and 1.3:1 against the white thumb — both boundaries that carry the
+    // switch's state, both invisible. `--edge-strong` is the token globals.css
+    // annotates «input borders on white must meet 3:1».
+    expect(track.className).toContain("bg-edge-strong");
+    expect(track.className).not.toMatch(/\bbg-silver-\d/);
+  });
+
   it("keeps the real control focusable — the track is decoration that follows it", async () => {
     const { container } = render(<Switch name="allowDownload" label="السماح بالتنزيل" />);
     const control = screen.getByRole("switch");

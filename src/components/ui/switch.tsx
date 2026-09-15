@@ -47,7 +47,14 @@ export function Switch({ label, description, checked, defaultChecked, onCheckedC
         />
         <span
           aria-hidden
-          className="flex h-6 w-11 shrink-0 items-center justify-start rounded-full bg-silver-300 p-0.5 transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] peer-checked:justify-end peer-checked:bg-[var(--btn-bg)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)] peer-disabled:opacity-60"
+          // ★ THE OFF TRACK IS `--edge-strong`, NOT A SILVER, AND THAT IS
+          // SC 1.4.11. The obvious `bg-silver-300` (#c9ced6) is 1.6:1 against
+          // white and the white thumb on it is 1.3:1 — a switch whose state
+          // nobody can see. `--edge-strong` (#767f8c) is the token globals.css
+          // already annotates «input borders on white must meet 3:1»: 3.4:1
+          // against the canvas AND against the thumb, so both boundaries that
+          // carry the state clear the bar. On, the navy fill carries it.
+          className="flex h-6 w-11 shrink-0 items-center justify-start rounded-full bg-edge-strong p-0.5 transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] peer-checked:justify-end peer-checked:bg-[var(--btn-bg)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)] peer-disabled:opacity-60"
         >
           <span className="size-5 rounded-full bg-canvas" />
         </span>
