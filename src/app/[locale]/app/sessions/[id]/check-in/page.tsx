@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getCheckInScreenData } from "@/lib/dal/checkin";
 import { CodeInput } from "@/components/checkin/code-input";
+import { Panel } from "@/components/ui/panel";
 import { submitCheckInForm } from "./actions";
 
 // SCR-014 — check-in (REQ-CHK-003, REQ-CHK-006, REQ-CHK-010, REQ-CHK-011,
@@ -43,27 +44,35 @@ export default async function CheckInPage({
       </p>
 
       {data.ineligibleReason ? (
-        <p role="status" className="mt-4 max-w-prose rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t(`error.${data.ineligibleReason}`)}
-        </p>
+        <div role="status">
+          <Panel tone="info" className="mt-4 max-w-prose text-body text-fg-heading">
+            {t(`error.${data.ineligibleReason}`)}
+          </Panel>
+        </div>
       ) : (
         <>
           <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
 
           {success ? (
-            <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-              {t("success")}
-            </p>
+            <div role="status">
+              <Panel tone="info" className="mt-4 text-body text-fg-heading">
+                {t("success")}
+              </Panel>
+            </div>
           ) : null}
           {already ? (
-            <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-              {t("alreadyCheckedIn")}
-            </p>
+            <div role="status">
+              <Panel tone="info" className="mt-4 text-body text-fg-heading">
+                {t("alreadyCheckedIn")}
+              </Panel>
+            </div>
           ) : null}
           {errorKey ? (
-            <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-              {t(`error.${errorKey}`)}
-            </p>
+            <div role="alert">
+              <Panel tone="error" className="mt-4 text-body text-fg-heading">
+                {t(`error.${errorKey}`)}
+              </Panel>
+            </div>
           ) : null}
 
           <form action={submitCheckInForm.bind(null, locale, id)} className="mt-8 max-w-sm space-y-4">

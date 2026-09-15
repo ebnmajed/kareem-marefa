@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
+import { Panel } from "@/components/ui/panel";
 
 // AttendanceOutcome — `16` §5.3's ★ ask-4 cells (`ended`/`attended` and
 // `ended`/`absent`), REQ-UIX-015, DEC-090, DEC-045.
@@ -33,8 +34,10 @@ export async function AttendanceOutcome({ sessionId, locale }: SlotProps) {
   if (data.relation !== "attended" && data.relation !== "absent") return null;
 
   return (
-    <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-      {data.relation === "attended" ? t("attended") : t("didNotAttend")}
-    </p>
+    <div role="status">
+      <Panel tone="info" className="mt-4 text-body text-fg-heading">
+        {data.relation === "attended" ? t("attended") : t("didNotAttend")}
+      </Panel>
+    </div>
   );
 }
