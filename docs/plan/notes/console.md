@@ -360,3 +360,141 @@ Two more real bugs, neither visible from source review, both fixed and verified:
 
 `content` has already landed the bookmark fix I reported (`ignoreDuplicates: true` in
 `toggleBookmark()`) — confirmed by reading the diff, not yet rebuilt/re-run.
+
+---
+
+## Wave 5 — M9, the system (this session)
+
+Read `.claude/agents/console.md` (regenerated for M9 — DEC-085), `CLAUDE.md`'s wave-5 table,
+DEC-019/069/085/087/101, `16` §4.2/§6.7/§16.2, `10` §7. The wave-3 track above is history; M9
+builds no screens (`16` §16.2: "nothing you build in M9 redesigns a screen"). This wave's job is
+six `ui/` primitives plus the admin shell's skip link, so M11 has real components to build the
+console from.
+
+### Scope
+
+`src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`, replacing the lead's
+day-one stubs against the FROZEN `ui/index.ts` contract; `app/admin/layout.tsx` (the second skip
+link past the nav, `REQ-UIX-017` — the rail itself is M11) + `app/admin/error.tsx` (the shared
+`RouteError`); `member-picker.tsx` re-exporting `ui/combobox`; `messages/*/admin.json`.
+
+### Order (easiest first)
+
+1. `menu.tsx`, `tabs.tsx`, `sheet.tsx` — Radix wrappers, `dialog.tsx` is the house precedent.
+2. `date-time.tsx` — adopts `src/components/admin/rtl-datetime-picker.tsx` unchanged (not in my
+   edit list; import only).
+3. `combobox.tsx` — promotes `src/components/admin/member-picker.tsx`'s pattern; Arabic
+   normalisation, multi-select with removable chips.
+4. `data-table.tsx` — sticky header, `aria-sort`, selection + bulk bar, phone stacked-card mode.
+5. `member-picker.tsx` → thin wrapper over `ui/combobox`, same external signature (the caller,
+   `admin/scoring/page.tsx`, is `scoring`'s file this wave — not in my edit list, so the wrapper
+   must stay byte-compatible with its existing call: `members`, `name`, `label`, `required`,
+   `placeholder`, `noMatches`).
+6. `admin/layout.tsx` + `admin/error.tsx`.
+7. Tests: one jsdom + axe-core test per primitive in `tests/components/ui/`.
+
+### Three real gaps found in the frozen contract, flagged here (not blocking — interim built, documented)
+
+1. **`DateTimeProps` and `ComboboxProps` carry no `label`.** Every other labelled control in `16`
+   §8.2's model expects `<Field>` to own the visible label via `<label htmlFor>`. That works
+   unmodified for `combobox` (a real `<input>` — `<label for>` on a labelable element is enough).
+   It does NOT work for `date-time`: the adopted picker's trigger is a `<button>` whose accessible
+   name must combine the field's meaning with the LIVE value (`rtl-datetime-picker.tsx`'s own
+   comment explains why — a plain `<label for>` would freeze the name at mount and never update as
+   the value changes). With no `label` prop to build that from, `ui/date-time.tsx` uses a GENERIC
+   internal string («التاريخ والوقت» — `admin.dateTime.triggerLabel`) for now. **Real consequence:**
+   until `DateTimeProps` gains a `label: string`, every `<DateTime>` on a page with more than one
+   date field (SCR-043 has four) is accessibly indistinguishable by name alone. Suggested fix for
+   the lead: append `label: string` to `DateTimeProps` (non-breaking — nothing consumes it yet).
+2. **Neither carries `numerals`/`locale`.** Every existing numerals-aware client component in the
+   repo (`schedule-form.tsx`, four call sites) takes `numerals: NumeralSystem` as a prop from its
+   server-rendered parent — there is no client context for it anywhere in `src/` (`grep -rn
+   createContext src/` is empty). `date-time.tsx` and `combobox.tsx`'s internal default
+   `resultsLabel` therefore accept `numerals` as an EXCESS optional prop beyond the frozen type
+   (`DateTimeProps & { numerals?: NumeralSystem }`), defaulting to `"western"` — matching
+   `org_settings.numerals`'s own DB default (`0004_tenancy.sql:113`), so an org that never
+   overrides the setting sees no drift. `locale` comes from `useLocale()` (next-intl, no prop
+   needed). Suggested fix: the same append, `numerals?: NumeralSystem`, to both types.
+3. **`DataTableProps` has no per-row selection label, and none is derivable from `columns`** (a
+   cell can render arbitrary `ReactNode`, not guaranteed text). Standard fix, no type change
+   needed: the selection checkbox is `aria-labelledby` over a shared hidden "تحديد الصف" span
+   *plus* the row's own first-column cell id — the visible content already there stands in for a
+   caller-supplied label, so nothing is invented and nothing is lost.
+
+None of these block M9 — nothing here is consumed by a real screen until M11, and by then either
+the lead has appended the two fields above or `console` (still me, in M11) migrates the interim
+default at the one call site it will actually matter.
+
+### axe-core in jsdom
+
+No `jest-axe`/`vitest-axe` wrapper is installed and `package.json` is lead-only, so I cannot add
+one. `axe-core` itself IS present (`node_modules/axe-core`, a transitive dep of
+`@axe-core/playwright`) and importable directly — `import axe from "axe-core"; const { violations
+} = await axe.run(container); expect(violations).toEqual([])`. Repeated per test file rather than
+factored into a shared helper, since my test-file edit list is the six exact filenames, not a
+helper module.
+
+### `combobox`'s Arabic normalisation
+
+`src/lib/dal/search.ts`'s `arNormalize()` cannot be imported into `ui/combobox.tsx` — that module
+starts `import "server-only"`, which throws if pulled into a client bundle. Duplicated verbatim
+(same transform, same order: strip tashkeel/tatweel, fold alef/yaa/taa-marbuta, collapse
+whitespace) with a comment pointing at the original, the same reasoning `numerals.ts:9` already
+uses for why `NumeralSystem` is declared twice rather than imported once.
+
+### `DataTableProps` has no `search`/`pagination` field
+
+`16` §6.7's prose describes a table with "a search box … pagination" but the frozen type
+(`index.ts:600`) carries neither — per DEC-102 ("§16.2 is authoritative" over §4.2's looser prose
+for a similar count mismatch), the type wins: search and pagination are the CALLING SCREEN's
+composition (filter `rows` before passing them in, render its own pager), not `DataTable`'s own
+job. Flagged so whoever builds the first real M11 screen doesn't go looking for a prop that was
+never meant to exist.
+
+### A real, pre-existing bug found by `date-time.test.tsx`'s axe assertion, outside my edit list
+
+`src/components/admin/rtl-datetime-picker.tsx`'s prev/next-month buttons (the ones with
+`<ChevronIcon direction="back"/>`+`<ChevronIcon direction="forward"/>`, no `label`, no `aria-label`
+of their own) fail WCAG 4.1.2/1.1.1 — axe's `button-name` rule, caught the moment the picker's
+popover is open. Not a false positive (unlike `color-contrast` and `region`, both jsdom-harness
+artifacts disabled the same way `tests/components/ui/badge.test.tsx` already does): a screen reader
+announces both buttons as bare "button" with no way to tell which direction is which. This file is
+explicitly **not** in this track's M9 edit list (DEC-045's file, "adopt, do not replace" per the
+spawn note), so `date-time.test.tsx` disables `button-name` for its one open-popover assertion,
+documents why in the same comment, and records it here rather than silently hiding it.
+
+**Suggested fix for whoever next touches that file:** `aria-label={prevMonthLabel}` /
+`aria-label={nextMonthLabel}` on the two buttons (or pass `label` into `<ChevronIcon>` instead),
+sourced the same way the picker's other six labels already are — as new required props on
+`RtlDateTimePickerProps`, threaded from `ui/date-time.tsx`'s own `admin.dateTime.*` keys the way
+`clearLabel`/`todayLabel`/etc. already are. Two new keys, `admin.dateTime.previousMonth` /
+`admin.dateTime.nextMonth`, would cover it.
+
+### A second, narrow exception to the file list: `tests/components/admin/member-picker.test.tsx`
+
+Not in this track's M9 edit list either, but changing `member-picker.tsx` to wrap `ui/combobox`
+(an explicit instruction this wave) broke its existing test two ways, both real: (1) it needed
+`NextIntlClientProvider` (the wrapper's non-zero results announcement now falls back to a
+translated string); (2) `getByRole("combobox", {name:...})` still resolved correctly since the
+external `<label htmlFor>` wiring is unchanged. Fixed with a provider wrapper, kept otherwise as
+close to the original as possible. `npm test` green was the overriding constraint — leaving a test
+red as a direct, foreseeable consequence of an explicitly requested change would not be.
+
+### Two real bugs `combobox.tsx`'s own test found before I wrote a report about them
+
+1. **`role="option"` was on the `<li>` wrapper while `onClick` lived on a nested `<button>`** — a
+   click event's target is the innermost element, so `fireEvent.click` on the `getByRole("option")`
+   element (the `<li>`) never reached the button's handler at all. Fixed by moving `role="option"`
+   onto the button itself, matching `member-picker.tsx`'s own original precedent
+   (`role="option"` was already on ITS button, not a wrapping `<li>` — a detail lost while
+   generalising it).
+2. **That same fix then broke `aria-required-children`/`aria-required-parent`**: `<ul
+   role="listbox">`'s direct children were `<li>` elements carrying their own implicit `listitem`
+   role, which breaks the ARIA-required `listbox` → `option` relationship once `option` moved one
+   level deeper. Fixed with `role="presentation"` on each `<li>`, which removes it from the
+   accessibility tree's structural requirements without changing anything a sighted or keyboard
+   user experiences.
+
+Neither would have been caught by reading the code — both came directly from the axe assertion and
+the `fireEvent.click` selection test the spawn note asked for by name ("axe cannot tell you whether
+`aria-activedescendant` follows the highlighted option").
