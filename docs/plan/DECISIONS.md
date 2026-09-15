@@ -1417,6 +1417,16 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-060 — No Sentry at Launch; the alerts stay on the console sink
+
+- **Date:** 2026-09-15 · **Decided by:** owner
+- **Decision:** Sentry is not used — the platform is an internal app, not public, and observability-as-a-service is «a big maybe» later. `SENTRY_DSN` is set nowhere (no code reads it: no SDK was ever installed). `JOB-evaluate_alerts` keeps the console `AlertSink`; the eight `11` §3.2 alerts are read from the worker's log on Railway. The handoff's step 10 (the DSN into Vercel and the worker, the transport swap) is dropped, not deferred.
+- **Rationale:** an internal app with one org and one operator gains nothing from a paid error tracker that the deploy log does not already show; wiring it would add a secret and a network destination for a service nobody would watch.
+- **Supersedes:** the `SENTRY_DSN` rows of `04` §10 and the Launch handoff's step 10; DEC-059's «Sentry as the `AlertSink` transport» post-launch item.
+- **Documents changed:** `STATUS.md` (the inventory)
+
+---
+
 ## Template for new entries
 
 ```markdown
