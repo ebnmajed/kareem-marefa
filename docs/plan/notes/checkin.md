@@ -248,3 +248,48 @@ cells plus the two ask-4 starred cells called out by name and the walk-in tri-st
 - `tests/e2e/checkin.spec.ts` — unchanged assertions still hold (checked against the rewrite before
   running): the host-view h1 text, the live-session check-in flow with `allow_walk_ins = true`, the
   not-authorized message, all independent of the phase-messaging changes. Re-ran after the rewrite.
+
+### ★ A streaming flake in `checkin.spec.ts`, and the general trap behind it
+
+Found running the suite for real against the M9 build, not in review. Worth writing down where the
+next reader hits it, because it is a repo-wide trap, not a `checkin`-specific one.
+
+**What failed.** `checkin.spec.ts`'s "the RsvpPanel slot renders inside the real event page and
+reserves a seat, at 390px" case — unmodified by me, passing before this wave — started failing with
+
+```
+Error: strict mode violation: getByText(/يتبقى \d+ مقعد/) resolved to 2 elements:
+    1) <p class="mt-2 text-body text-fg-muted">يتبقى 30 مقعدًا</p> aka getByRole('region', { name: 'الحضور' }).getByRole('paragraph')
+    2) <p class="mt-2 text-body text-fg-muted">يتبقى 30 مقعدًا</p> aka getByText('يتبقى 30 مقعدًا').nth(1)
+```
+
+**How often.** Reproducible, not a one-off — roughly 2 failures in 3 runs, `--workers=1` included, so
+not a cross-worker artifact either.
+
+**What I checked before concluding it wasn't a real duplicate render.** `rsvp-panel.tsx` has exactly
+one JSX branch that renders `t("seatsLeft", …)`, so a genuine second copy would mean the component
+runs twice, which nothing in the page calls for. To settle it rather than guess: a throwaway spec
+signed in the same way, navigated to a comparable session, waited a full second past navigation, and
+dumped `page.content()` — the FULLY SETTLED, post-hydration HTML — searching for the exact
+`class="mt-2 text-body text-fg-muted">يتبقى 30` string. **One match, every time.** The DOM the browser
+actually settles on never has two. And Playwright's own strict-mode error already named the fix
+without being asked: `aka getByRole('region', { name: 'الحضور' })` is stated as resolving to a SINGLE
+element even while the page-wide text search is ambiguous — if there were two regions, Playwright
+could not have produced that unqualified alias for element 1.
+
+**The rule.** This page is dynamic (`requireSession()` touches `cookies()` in the DAL — `04`
+§ architecture, `CLAUDE.md`'s "Cache Components is OFF" note), so Next 16 streams it. Somewhere in
+that streaming/hydration window — not before, not after — a text node matching `/يتبقى \d+ مقعد/`
+transiently exists twice in the live accessibility tree, even though neither the initial HTML nor the
+settled DOM ever does. `page.getByText(...)` searching the WHOLE PAGE is exactly the locator shape
+that can catch that window; `page.getByRole("region", { name: "…" }).getByText(...)` — scoped to the
+landmark the content actually belongs to — cannot, because (per the debugging above) the region
+itself is never duplicated, only, transiently, a stray copy of matching text somewhere else in the
+document. **Any spec asserting page-wide text on a dynamic route can hit this**, not just
+`checkin`'s. The general fix is to scope every text/role assertion to the nearest semantic landmark
+(`region`, `article`, a labelled `section`) instead of searching `page` directly — which is also just
+better Playwright practice regardless of the streaming mechanics underneath, per Playwright's own
+strict-mode guidance. Fixed in `checkin.spec.ts` by hoisting `const panel =
+page.getByRole("region", { name: "الحضور" })` once and scoping every assertion and the reserve-button
+click to it — 4/4 clean reruns afterward, 2/3 failing before. **Not fixed**: the streaming mechanics
+themselves, which are Next's, not this app's, and not something a test change should try to fix.
