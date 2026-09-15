@@ -36,6 +36,7 @@
     "worker:start": "npm run start -w @kareem/worker",
     "lockfile": "node scripts/lockfile.mjs",
     "db:reset": "node scripts/db-reset.mjs",
+    "seed:dev": "node scripts/seed-dev.mjs",
     "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime"
   },
   "dependencies": {
