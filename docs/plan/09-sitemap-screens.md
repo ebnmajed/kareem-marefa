@@ -24,6 +24,7 @@ thought about in the language it ships in. Every example string is **Arabic**.
 ├── /no-access                            SCR-004  ◐
 ├── /legal/privacy · /legal/terms         SCR-005  ◐
 ├── /verify/[code]                        SCR-006  ◐ public verification
+├── /s/[id]                               SCR-007  ◐ public session card (DEC-066)
 │
 └── /app                                          ● session required
     ├── /                                 SCR-010  home
@@ -51,6 +52,7 @@ thought about in the language it ships in. Every example string is **Arabic**.
     │   ├── /proposals                    SCR-041  review queue
     │   ├── /sessions                     SCR-042  management
     │   ├── /sessions/[id]/schedule       SCR-043  ★ schedule + publish
+    │   ├── /sessions/[id]/survey         SCR-064  survey results (DEC-074)
     │   ├── /sessions/[id]/attendance     SCR-044  attendance report
     │   ├── /sessions/[id]/certificates   SCR-045  review + release
     │   ├── /venues · /categories · /companies    SCR-046 · 047 · 048
@@ -124,6 +126,18 @@ after the choice — the permanence is enforced by `org_id`'s immutability, not 
 **Copy:** «كريم معرفة منصة خاصة بمؤسسات محددة. إن كنت تعتقد أن هذا خطأ، تواصل مع مسؤول مؤسستك.»
 **Note:** **names no org and lists no domains.** A dead end with an explanation, not a blank screen
 and not a redirect loop. No account, member row or audit subject is created.
+
+### SCR-007 · `/s/[id]` — the public session card
+**Purpose:** a shareable preview of one session. **Roles:** anyone, unauthenticated.
+**Serves:** `REQ-DSC-006`, `REQ-SES-013`, `REQ-UIX-003`, DEC-066
+**Primary action:** «افتح الجلسة» — which leads to sign-in, carrying `?next=` to that session.
+**States:** default · unlisted or draft session (a neutral «هذه الجلسة غير متاحة») · cancelled
+**Mobile:** this is the mobile screen — it is reached from a link pasted into WhatsApp.
+**RTL:** the poster's own direction is the document's; the card's chrome is the locale's.
+**Note:** shows title, time, venue, the poster and the **status badge** — and nothing that is not
+already on the OG image. It is how members actually arrive, so it is the first impression of the
+redesign for everyone outside the org. Never any member's name beyond the presenters.
+**`16` supersedes its visual notes:** §6.4 (the card) and §5.2 (the badge).
 
 ### SCR-006 · `/verify/[code]` ★
 **Purpose:** public certificate verification. **Roles:** anyone, unauthenticated.
@@ -403,6 +417,20 @@ date, time, venue, capacity and poster are all required.
 
 **Amended under DEC-050 (wave 3):** the date-time fields are the RTL picker DEC-045 deferred (a trigger whose accessible name carries its value, a day grid labelled by full date, hour and minute selects); the poster section («الملصق») hosts `designer`'s `PosterPicker` with DEC-012's three paths.
 
+### SCR-064 · `/app/admin/sessions/[id]/survey` — survey results
+**Purpose:** what the organisation learned from a session. **Roles:** **مشرف المؤسسة** and
+**مُنظِّم only** — a **مُقدِّم cannot reach it, by policy** (`REQ-SUR-005`).
+**Serves:** `REQ-SUR-005` … `REQ-SUR-008`, DEC-074, DEC-094
+**Primary action:** «تصدير CSV» — through the audited export path.
+**States:** no survey on this session · **withheld** (below the minimum response count) · results
+**Mobile:** distributions stack; each bar carries its own value, never a legend-only reading.
+**RTL:** bars grow from the **start** edge; the axis runs right to left.
+**Note:** the withhold of `REQ-SUR-006` covers **scale means and choice distributions as well as
+free text** — a five-point distribution over four responses in a twelve-person session identifies
+people by inference against an attendance list the same admin can already see. Response rate is
+against **eligible attendees**. The CSV is **UTF-8 with BOM and Western digits** (`REQ-INT-010`).
+**`16` supersedes its visual notes:** §9.2 and §9.2a.
+
 ### SCR-044 · `/app/admin/sessions/[id]/attendance`
 **Serves:** `REQ-CHK-008`, `REQ-CHK-012` · Reserved / confirmed / checked in / walked in /
 no-showed, with arrival times.
@@ -490,10 +518,11 @@ of DEC-014, not a limitation to route around.
 | Unauthenticated | SCR-002 … SCR-006 |
 | Member app | SCR-010 … SCR-028 |
 | Presenter | SCR-016 (host view), plus presenter states on SCR-012 and SCR-017 |
-| Org admin | SCR-040 … SCR-063 |
+| Org admin | SCR-040 … SCR-064 |
 | Moderator | SCR-044, SCR-050–052, SCR-062 (own actions) — **and nothing else** (`REQ-ADM-020`) |
 | Super admin | SCR-080 … SCR-085 |
 | Certificate verification | SCR-006 |
+| Public session card | SCR-007 |
 
 **Every screen above carries mobile, desktop and RTL notes**, per the brief's §8 quality bar. Where
 a screen's notes are the conventions in §2 and nothing more, the conventions **are** the notes —
@@ -506,52 +535,54 @@ The screens above are described in prose; this is the machine-checkable index be
 
 | Screen | Requirements it realises |
 |---|---|
-| SCR-002 sign-in | `REQ-AUT-001`, `REQ-AUT-002`, `REQ-AUT-005` |
+| SCR-002 sign-in | `REQ-AUT-001`, `REQ-AUT-002`, `REQ-AUT-005`, `REQ-UIX-011` |
 | SCR-003 choose-org | `REQ-AUT-004` |
 | SCR-004 no-access | `REQ-AUT-006`, `REQ-TEN-006` |
 | SCR-000 marketing landing · SCR-001 register | `REQ-NFR-019` — **frozen public contract** |
 | SCR-005 legal | `REQ-NFR-015` |
-| SCR-006 verify | `REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-010`, `REQ-CRT-011` |
-| SCR-010 home | `REQ-TSK-004`, `REQ-REC-009` |
-| SCR-011 sessions | `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-003`, `REQ-DSC-005`, `REQ-DSC-007`, `REQ-SES-011` |
-| SCR-012 event page | `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-010`, `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-001`, `REQ-MAT-006`, `REQ-MAT-007`, `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CAL-001`, `REQ-CAL-002`, `REQ-TSK-001` … `REQ-TSK-005` |
-| SCR-013 viewer | `REQ-MAT-002`, `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`, `REQ-MAT-007`, `REQ-MAT-010`, `REQ-MAT-011`, `REQ-MAT-012` |
-| SCR-014 check-in | `REQ-CHK-003` … `REQ-CHK-006`, `REQ-CHK-009` … `REQ-CHK-013` |
-| SCR-015 rate | `REQ-RAT-001` … `REQ-RAT-004`, `REQ-RAT-006` |
-| SCR-016 host view | `REQ-CHK-001`, `REQ-CHK-002`, `REQ-CHK-007`, `REQ-CHK-014` |
-| SCR-017 propose | `REQ-PRO-001` … `REQ-PRO-004`, `REQ-REC-008` |
+| SCR-007 public session card | `REQ-DSC-006`, `REQ-UIX-003` |
+| SCR-006 verify | `REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-010`, `REQ-CRT-011`, `REQ-INT-010` |
+| SCR-010 home | `REQ-TSK-004`, `REQ-REC-009`, `REQ-UIX-002`, `REQ-UIX-012` |
+| SCR-011 sessions | `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-003`, `REQ-DSC-005`, `REQ-DSC-007`, `REQ-SES-011`, `REQ-UIX-003`, `REQ-UIX-005`, `REQ-UIX-012` |
+| SCR-012 event page | `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-010`, `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-001`, `REQ-MAT-006`, `REQ-MAT-007`, `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CAL-001`, `REQ-CAL-002`, `REQ-TSK-001` … `REQ-TSK-005`, `REQ-SES-014`, `REQ-UIX-003`, `REQ-UIX-004`, `REQ-UIX-015`, `REQ-UIX-018`, `REQ-UIX-019`, `REQ-ADM-021`, `REQ-DSG-027` |
+| SCR-013 viewer | `REQ-MAT-002`, `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`, `REQ-MAT-007`, `REQ-MAT-010`, `REQ-MAT-011`, `REQ-MAT-012`, `REQ-UIX-005` |
+| SCR-014 check-in | `REQ-CHK-003` … `REQ-CHK-006`, `REQ-CHK-009` … `REQ-CHK-013`, `REQ-UIX-015`, `REQ-UIX-019` |
+| SCR-015 rate | `REQ-RAT-001` … `REQ-RAT-004`, `REQ-RAT-006`, `REQ-SUR-001` … `REQ-SUR-004`, `REQ-SUR-009` |
+| SCR-016 host view | `REQ-CHK-001`, `REQ-CHK-002`, `REQ-CHK-007`, `REQ-CHK-014`, `REQ-PRF-009` |
+| SCR-017 propose | `REQ-PRO-001` … `REQ-PRO-004`, `REQ-REC-008`, `REQ-PRO-010`, `REQ-UIX-008`, `REQ-UIX-009`, `REQ-UIX-010`, `REQ-UIX-011` |
 | SCR-018 my proposal | `REQ-PRO-006`, `REQ-PRO-008` |
 | SCR-019 directory | `REQ-PRF-005` |
-| SCR-020 profile | `REQ-PRF-001`, `REQ-PRF-003`, `REQ-PRF-004` |
-| SCR-021 my profile | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-006`, `REQ-PRF-007`, `REQ-NFR-013` |
+| SCR-020 profile | `REQ-PRF-001`, `REQ-PRF-003`, `REQ-PRF-004`, `REQ-PRF-009` |
+| SCR-021 my profile | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-006`, `REQ-PRF-007`, `REQ-NFR-013`, `REQ-PRF-008`, `REQ-PRF-010`, `REQ-PRF-011` |
 | SCR-022 my points | `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013` |
-| SCR-023 certificates | `REQ-CRT-005`, `REQ-CRT-006`, `REQ-CRT-013`, `REQ-CRT-014` |
+| SCR-023 certificates | `REQ-CRT-005`, `REQ-CRT-006`, `REQ-CRT-013`, `REQ-CRT-014`, `REQ-INT-010` |
 | SCR-024 bookmarks | `REQ-DSC-006` |
 | SCR-025 calendar | `REQ-CAL-001` … `REQ-CAL-008` |
 | SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006` |
 | SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008` |
 | SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006` |
 | SCR-040 dashboard | `REQ-ADM-004` |
-| SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007` |
+| SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
-| SCR-043 schedule | `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020` |
+| SCR-043 schedule | `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020`, `REQ-PRO-009`, `REQ-SES-014`, `REQ-DSG-027` |
 | SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005` |
-| SCR-045 certificates | `REQ-CRT-001`, `REQ-CRT-003`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-012` |
+| SCR-045 certificates | `REQ-CRT-001`, `REQ-CRT-003`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-012`, `REQ-DSG-031` |
 | SCR-046 venues | `REQ-ADM-006`, `REQ-SES-006` |
-| SCR-047 categories | `REQ-ADM-007`, `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-004` |
+| SCR-047 categories | `REQ-ADM-007`, `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-004`, `REQ-DSC-008` |
 | SCR-048 companies | `REQ-ADM-008`, `REQ-PRF-002` |
 | SCR-049 members | `REQ-ADM-009`, `REQ-TEN-005`, `REQ-AUT-007`, `REQ-AUT-008` |
 | SCR-050–052 moderation | `REQ-ADM-010`, `REQ-EVT-008`, `REQ-EVT-012`, `REQ-EVT-014` |
 | SCR-053 scoring | `REQ-ADM-011`, `REQ-PTS-004`, `REQ-PTS-005`, `REQ-PTS-007`, `REQ-PTS-008`, `REQ-PTS-010`, `REQ-PTS-014` |
 | SCR-054 recognition | `REQ-ADM-012`, `REQ-REC-001` … `REQ-REC-008` |
 | SCR-055–056 templates | `REQ-ADM-013`, `REQ-DSG-004`, `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-024`, `REQ-DSG-026` |
-| SCR-057 designer | `REQ-DSG-005`, `REQ-DSG-006`, `REQ-DSG-009` … `REQ-DSG-012`, `REQ-DSG-014`, `REQ-DSG-015`, `REQ-DSG-016` … `REQ-DSG-019`, `REQ-DSG-022`, `REQ-DSG-023`, `REQ-DSG-025` |
-| SCR-058 emails | `REQ-ADM-014`, `REQ-NTF-007` |
+| SCR-057 designer | `REQ-DSG-005`, `REQ-DSG-006`, `REQ-DSG-009` … `REQ-DSG-012`, `REQ-DSG-014`, `REQ-DSG-015`, `REQ-DSG-016` … `REQ-DSG-019`, `REQ-DSG-022`, `REQ-DSG-023`, `REQ-DSG-025`, `REQ-DSG-028`, `REQ-DSG-029`, `REQ-DSG-030`, `REQ-UIX-013` |
+| SCR-058 emails | `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-009` … `REQ-NTF-014` |
 | SCR-059 branding | `REQ-ADM-015`, `REQ-DSG-021` |
 | SCR-060 reminders | `REQ-ADM-016`, `REQ-NTF-004` |
-| SCR-061 exports | `REQ-ADM-017` |
+| SCR-061 exports | `REQ-ADM-017`, `REQ-INT-010` |
 | SCR-062 audit | `REQ-ADM-018`, `REQ-NFR-006` |
 | SCR-063 settings | `REQ-TEN-008`, `REQ-INT-006`, `REQ-MAT-008`, `REQ-MAT-009` |
+| SCR-064 survey results | `REQ-SUR-005`, `REQ-SUR-006`, `REQ-SUR-007`, `REQ-SUR-008` |
 | SCR-080 orgs | `REQ-ADM-001`, `REQ-TEN-001`, `REQ-TEN-002`, `REQ-TEN-006`, `REQ-NFR-014` |
 | SCR-081 create org | `REQ-TEN-002`, `REQ-TEN-004` |
 | SCR-082 domains | `REQ-TEN-007`, `REQ-AUT-003` |
@@ -578,3 +609,76 @@ would be a worse lie than listing them here.
 | `REQ-NFR-007` WCAG 2.2 AA | every interactive element |
 | `REQ-NFR-008` performance budgets | the eight budgeted screens: `SCR-000`, `SCR-011`, `SCR-012`, `SCR-013`, `SCR-014`, `SCR-027`, `SCR-040`, `SCR-057` |
 | `REQ-NFR-009` mobile-first | every screen at 375 px |
+| `REQ-UIX-001` the component system is the only source of primitives | every control on every screen |
+| `REQ-UIX-006` navigation progress | every navigation in the app |
+| `REQ-UIX-007` control pending state | every action control |
+| `REQ-UIX-014` reduced motion, by token | every animated surface |
+| `REQ-UIX-016` an error boundary at every loading boundary | every route segment, plus the root |
+| `REQ-UIX-017` skip link, and nothing fixed obscures focus | the shell, and every screen under it |
+| `REQ-UIX-020` transform/opacity/filter only, 60 fps | every animation in the product |
+
+---
+
+## 8. Route coverage — every one of the 59 routes has a milestone · `DEC-097`
+
+`16-ui-redesign.md` **specifies what these screens become**; this document keeps the inventory
+(`DEC-086`), so the table lives here rather than in `16` §15 (`DEC-102`). Each screen block above
+carries a one-line **«`16` supersedes its visual notes»** pointer where `16` reaches it; this table
+is the machine-checkable version of the same fact, and the rule behind it is:
+
+> **A screen absent from a plan is not a screen deferred — it is a screen nobody decided about.**
+
+Mapping all **59** `page.tsx` files under `src/app/[locale]/` against `16` §15's milestone tables
+found **eleven routes in no milestone at all**, marked ★ below. Four are public or pre-auth and so
+carry the *first* impression of the redesign; three are the operational core of the
+attend-and-be-recognised loop; one is the hardest RTL surface in the product.
+
+Three counts that are **not** interchangeable and are reconciled here once: **59 routes** (files on
+disk, this table), **53 screens** (`SCR-*`, §7.1 — some screens cover more than one route and two
+inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`** (the scope of the
+`loading-coverage` and `error-coverage` gates).
+
+| Route | Screen | M | Note |
+|---|---|---|---|
+| `(marketing)/page.tsx` · `/register` · `[...rest]` | SCR-000 · SCR-001 | **M13** | The frozen contract, re-cut by `DEC-078`. Untouched before M13 |
+| ★ `(auth)/sign-in` | SCR-002 | **M9** | The first screen every member sees, and the only place `SC 3.3.8` applies |
+| ★ `(auth)/choose-org` | SCR-003 | **M9** | The fork that decides which `org_id` the session carries, permanently |
+| ★ `(auth)/no-access` | SCR-004 | **M9** | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
+| `legal/privacy` · `legal/terms` | SCR-005 | **M13** | Public, and the home of the accessibility statement |
+| `verify/[code]` | SCR-006 | **M12** | Reached from a **printed** certificate; where `DEC-095`'s numeral bug fails silently |
+| ★ `s/[id]` | SCR-007 | **M10** | How members actually arrive — the WhatsApp entry path |
+| `app/page.tsx` | SCR-010 | **M10** | One «التالية لك» card, not five rails (`DEC-098`) |
+| `app/sessions` | SCR-011 | **M10** | A date-grouped schedule, not a nine-facet catalogue (`DEC-098`) |
+| `app/sessions/[id]` | SCR-012 | **M10** | The most important screen in the product — hero, action card, sub-nav |
+| ★ `app/sessions/[id]/materials/[materialId]` | SCR-013 | **M10** | The RTL document viewer; `10` §2.4's next/previous direction is the one that gets missed |
+| ★ `app/sessions/[id]/check-in` | SCR-014 | **M10** | «The most operationally important input in the product»; `DEC-090` row 5 rewrote it |
+| ★ `app/sessions/[id]/rate` | SCR-015 | **M10** | Never designed while `16` §9.2 rebuilt what sits on it; the survey lands on it in M11 |
+| ★ `app/sessions/[id]/host` | SCR-016 | **M10** | Projected in front of a room — the only screen with an audience rather than a user |
+| `app/propose` · `app/propose/[id]` | SCR-017 · SCR-018 | **M10** | The form model's first real consumer; objectives and tags land here |
+| `app/members/[id]` | SCR-020 | **M10** | Profiles, and the avatar's home surface |
+| `app/me` | SCR-021 | **M10** | The tabbed hub; the tab shell is the lead's |
+| `app/me/points` · `bookmarks` · `calendar` · `certificates` · `notifications` | SCR-022 … SCR-026 | **M10** | Re-skinned onto the system, under the hub's tab strip |
+| ★ `app/me/privacy` | — | **M13** | The screen a member uses when they are unhappy |
+| `app/leaderboards` | SCR-027 · SCR-028 | **M10** | Company board included; **no avatars here** (`DEC-099`) |
+| `app/admin` | SCR-040 | **M11** | Becomes a real dashboard: counts that are links, queues with ages |
+| `app/admin/proposals` | SCR-041 | **M11** | Gains the content-edit diff (`REQ-PRO-009`) |
+| `app/admin/sessions` | SCR-042 | **M11** | On `DataTable`, with the phone stack |
+| `app/admin/sessions/[id]/schedule` | SCR-043 | **M11** | Two tabs — المحتوى and الإعدادات — on top of `0084` |
+| `app/admin/sessions/[id]/attendance` | SCR-044 | **M11** | Avatars earn their highest-value placement on the host view, not here |
+| `app/admin/sessions/[id]/certificates` | SCR-045 | **M12** | The three-step flow (`REQ-DSG-031`) |
+| `app/admin/sessions/[id]/survey` | SCR-064 | **M11** | New — `DEC-074`, `DEC-083` |
+| `app/admin/venues` · `categories` · `companies` · `members` | SCR-046 … SCR-049 | **M11** | `categories` is renamed «التصنيفات والوسوم» and gains `REQ-DSC-008` |
+| `app/admin/moderation/{comments,photos,reports}` | SCR-050–052 | **M11** | Avatars join the queue's scope (`REQ-PRF-010`) |
+| `app/admin/scoring` · `recognition` | SCR-053 · SCR-054 | **M11** | `member-picker.tsx` here is promoted to `ui/combobox` in M9 |
+| `app/admin/templates/{posters,certificates}` | SCR-055–056 | **M12** | The card grid, with the platform library clearly separate |
+| `app/admin/designer/[documentId]` | SCR-057 | **M12** | Direct manipulation (`REQ-DSG-028` … `REQ-DSG-030`) |
+| `app/admin/emails` | SCR-058 | **M12** | The block editor; ownership returns to `notify` (`DEC-085`) |
+| `app/admin/branding` | SCR-059 | **M13** | Plus the status-colour contrast enforcement `DEC-073` leaves dangling |
+| `app/admin/reminders` | SCR-060 | **M11** | On the system with the rest of the console |
+| `app/admin/exports` · `audit` · `settings` | SCR-061 … SCR-063 | **M11** | `exports` carries `REQ-INT-010`'s Western-digit rule |
+| `app/platform/**` (7 routes) | SCR-080 … SCR-085 | **M13** | Deferred from M11 — cosmetic work on screens only the owner sees |
+| `(dev)/ui` | — | **M9** | Not a product screen: the component gallery, 404 unless `KAREEM_GALLERY=1` (`DEC-083`) |
+
+**Leave, with a reason:** none. Every route is placed. Two screens in §7.1's inventory — SCR-019
+(`/app/members`, the directory) and the companies leaderboard — have **no route on disk yet**; they
+are built with their milestone's work and are not a coverage gap in this table.
