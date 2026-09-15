@@ -84,7 +84,13 @@ export function FormSummary({ errors, title, className = "" }: FormSummaryProps)
             <a
               href={`#${e.fieldId}`}
               onClick={(event) => jump(event, e.fieldId)}
-              className="inline-flex min-h-11 items-center text-caption text-error underline underline-offset-4"
+              // ★ `inline-block`, NOT `inline-flex`. Flex makes the `<bdi>`,
+              // the colon and the message three FLEX ITEMS, so a message that
+              // wraps at 390 px breaks between them and the field name is left
+              // stranded on its own line. Found in the phone capture, not in
+              // jsdom — the accessible name is identical either way.
+              // `py-2.5` on a 24 px line box is the 44 px target (REQ-NFR-007).
+              className="inline-block py-2.5 text-caption text-error underline underline-offset-4"
             >
               {/* The field's own name is an interpolated value, so it is
                   bidi-isolated; the message is a whole sentence in the

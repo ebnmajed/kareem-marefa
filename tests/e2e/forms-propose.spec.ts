@@ -86,11 +86,18 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ SCOPED TO THE PROPOSAL FORM, and it has to be. Since M9 the shell carries
+// two forms of its own — the catalogue search and sign-out — so a bare
+// `locator("form")` is a strict-mode violation rather than a bug in the page.
+// `novalidate` is the proposal form's own marker: the model needs the round
+// trip, so the browser's validation stays off (`16` §8.2 items 3-5).
+const proposalForm = (page: Page) => page.locator("form[novalidate]");
+
 /** Submit with nothing filled in, which is the state ask 5 is about. */
 async function failTheForm(page: Page) {
   await page.goto("/ar/app/propose");
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
-  await expect(page.locator("form [role=alert]")).toBeVisible();
+  await expect(proposalForm(page).locator("[role=alert]")).toBeVisible();
 }
 
 test("★ required is «مطلوب» on the label, and there is no asterisk anywhere on the form", async ({ context, page }) => {
@@ -99,14 +106,14 @@ test("★ required is «مطلوب» on the label, and there is no asterisk anyw
 
   // REQ-UIX-011: an asterisk collides with the RTL run, so required is marked
   // positively — and the four the schema refuses to do without are the four.
-  const markers = page.locator("form label", { hasText: "مطلوب" });
+  const markers = proposalForm(page).locator("label", { hasText: "مطلوب" });
   await expect(markers).toHaveCount(4);
   for (const label of ["عنوان الموضوع المقترح", "نبذة عن موضوعك", "تصنيف الموضوع", "مستوى الجلسة"]) {
-    await expect(page.locator("form label", { hasText: label })).toContainText("مطلوب");
+    await expect(proposalForm(page).locator("label", { hasText: label })).toContainText("مطلوب");
   }
 
   // Not «the asterisk is styled away» — absent.
-  const text = (await page.locator("form").innerText()).replace(/\s+/g, "");
+  const text = (await proposalForm(page).innerText()).replace(/\s+/g, "");
   expect(text).not.toMatch(/[*٭]/);
 
   // And it is programmatic as well as visible.
@@ -118,7 +125,7 @@ test("★ the summary lists one LINK per failed field, in the order the page ren
   await signIn(context);
   await failTheForm(page);
 
-  const summary = page.locator("form [role=alert]");
+  const summary = proposalForm(page).locator("[role=alert]");
   await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
 
   // The M2 defect in one assertion: these used to be sentences.
@@ -137,7 +144,7 @@ test("★ a summary link focuses the control it names — «تصنيف المو�
   await signIn(context);
   await failTheForm(page);
 
-  await page.locator("form [role=alert]").getByRole("link", { name: /تصنيف الموضوع/ }).click();
+  await proposalForm(page).locator("[role=alert]").getByRole("link", { name: /تصنيف الموضوع/ }).click();
   const select = page.getByLabel("تصنيف الموضوع");
   await expect(select).toBeFocused();
   expect(await select.evaluate((el) => el.tagName)).toBe("SELECT");
@@ -159,7 +166,7 @@ test("★★ SC 2.4.11 — the control a summary link lands on is not behind a s
 
   // Then the thing the tokens exist to prevent: for EVERY link in the summary,
   // follow it and check that nothing fixed or sticky covers where focus landed.
-  const links = page.locator("form [role=alert] a");
+  const links = proposalForm(page).locator("[role=alert] a");
   for (let i = 0; i < (await links.count()); i += 1) {
     await links.nth(i).click();
     const covered = await page.evaluate(() => {
@@ -182,6 +189,12 @@ test("★★ SC 2.4.11 — the control a summary link lands on is not behind a s
     });
     expect(covered, `summary link ${i + 1} sent focus behind a sticky layer`).toBeNull();
   }
+
+  // The definition-of-done capture, on demand: `SCR017_SHOT=/path/to.png`.
+  // ★ LAST, and never earlier: `fullPage` scrolls the document to stitch the
+  // image, which moves every fixed layer and would make the check above
+  // measure a page nobody is looking at.
+  if (process.env.SCR017_SHOT) await page.screenshot({ path: process.env.SCR017_SHOT, fullPage: true });
 });
 
 test("★ the error is red, glyphed and bordered — not the colour of a heading", async ({ context, page }) => {
@@ -243,5 +256,5 @@ test("★ inline validation starts after the first submit and not before — rew
   // ★ And the summary does not move while any of that happens: it is
   // `role="alert"`, and rewriting it on every keystroke would re-announce the
   // whole list. It is a record of one attempt, rebuilt by the next submit.
-  await expect(page.locator("form [role=alert]").getByRole("link")).toHaveCount(3);
+  await expect(proposalForm(page).locator("[role=alert]").getByRole("link")).toHaveCount(3);
 });
