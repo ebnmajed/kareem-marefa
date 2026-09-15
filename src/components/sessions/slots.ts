@@ -1,3 +1,5 @@
+import type { ViewerRelation } from "@/lib/session-status";
+
 // The event-page slot contract (TEAM.md §2, DEC-040).
 //
 // `src/app/[locale]/app/sessions/[id]/page.tsx` renders the session and
@@ -27,6 +29,28 @@ export type SlotProps = {
   locale: string;
 };
 
+/**
+ * ★ The contract, widened once — DEC-092, DEC-103.
+ *
+ * A slot that must know the viewer's relation to the session takes it as a
+ * prop rather than re-reading it. `getSessionForEvent()` derives it once; four
+ * slots re-deriving it would be four extra round trips on the product's most
+ * important page.
+ *
+ * It is OPTIONAL on `SlotProps` deliberately: the three wave-1 slots do not
+ * need it and must not be forced to accept it, and a required prop here would
+ * be a breaking change to three teammates' files at once. A derived enum is
+ * not a row, so "ids, never rows" survives.
+ *
+ * ★★ In M9 almost nothing uses it, and that is the design: `16` §5.4.1a(b)
+ * says a slot that can render nothing must have its `<section>` AND heading
+ * gated with it, so THE PAGE owns the condition — gate the section, and the
+ * slot inside it never has to know. `event` learned this for Ratings at 390 px
+ * in wave 1 and nobody generalised it; this is the generalisation.
+ */
+export type RelationSlotProps = SlotProps & { viewerRelation: ViewerRelation };
+
 /** The three slot names the event page renders, in render order. */
-export const SLOT_NAMES = ["RsvpPanel", "Comments", "Ratings"] as const;
+/** ★ `AttendanceOutcome` joins in M9 (`16` §16.0): `checkin`'s, the ended read-only fact. */
+export const SLOT_NAMES = ["RsvpPanel", "AttendanceOutcome", "Comments", "Ratings"] as const;
 export type SlotName = (typeof SLOT_NAMES)[number];

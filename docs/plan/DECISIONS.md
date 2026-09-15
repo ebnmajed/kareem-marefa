@@ -1966,6 +1966,19 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-107 — The affordance matrix is 42 cells and nine columns, not 49 and eight; and `getSessionForEvent()` needs `allow_walk_ins` as well as `viewerRelation`
+
+- **Date:** 2026-09-15 · **Decided by:** the `checkin` teammate, flagged rather than decided; promoted by the wave-5 lead
+- **1 · 42 cells, not 49.** `16` §5.3's prose says «**7 phases × 7 relations = 49 cells**» and §17 repeats it as the gate's size. **§5.1's own `SessionPhase` union has six members** — `draft`, `pending_schedule`, `open`, `live`, `ended`, `cancelled` — and §5.3's own table lists six rows. The prose miscounts the table printed directly beneath it. The matrix is **6 × 7 = 42**, and `tests/unit/session-matrix.test.ts` asserts one cell each. §17's gate is satisfied in substance — *one assertion per cell* — and not in its arithmetic.
+- **2 · Nine affordance columns, not eight.** §5.3's table has eight — RSVP, cancel, calendar, tasks, check in, rate, share, materials — and the host console is decided in prose. It becomes a **column**: `session-status.ts`'s own `GRANTING_AFFORDANCES` already names `hostConsole` beside `checkIn`, and the host screen needs an answer from the table rather than a condition written out again at its call site. `attendanceOutcome` is the ninth, for §5.3's two ★ cells — the `ended` read-only fact that replaces the live cancel form.
+- **3 · `getSessionForEvent()` returns `allowWalkIns`, which `DEC-092` does not mention.** DEC-092 widens the DTO with `viewerRelation` and stops there. The check-in gate needs a **third input the (phase, relation) pair cannot encode**: DEC-065's per-session walk-in switch turns `none` from ineligible into eligible for that session alone. So `sessions.allow_walk_ins` joins the DTO's select — a column already on the table since `0079`, read by nothing on this page. Without it the gate either refuses every walk-in or re-reads the session inside the predicate, which is the round trip DEC-092 exists to avoid.
+- **4 · The gate is at the PAGE, and that is what keeps two tracks out of the wave.** Because `16` §5.4.1a(b)'s rule — *a slot that can render nothing must have its `<section>` and heading gated with it* — puts the condition on the page that owns the landmark, **`src/components/calendar/add-to-calendar.tsx` (`notify`'s) and `src/components/tasks/panel.tsx` (`content`'s) do not change at all.** Neither track is in wave 5. A design that gated inside the slots would have required both of them, and `SlotProps`' new `viewerRelation` would have had to be mandatory rather than optional.
+- **Rationale for an entry rather than a note:** the first two are arithmetic in a `settled` document, and arithmetic is exactly what a later reader re-derives and "corrects" back. The third is a gap in another decision, which is the kind of thing that gets discovered twice.
+- **Supersedes:** `16` §5.3's cell count and column list, and §17's «7 phases × 7 viewer relations = 49»; extends `DEC-092`.
+- **Documents changed:** `src/components/checkin/session-matrix.ts`, `src/lib/dal/sessions.ts`, `src/components/sessions/slots.ts`, `src/app/[locale]/app/sessions/[id]/page.tsx`, `16` §5.3 · §17
+
+---
+
 ## Template for new entries
 
 ```markdown
