@@ -1200,6 +1200,28 @@ less, and the tell is not that a product has motion but that it has someone else
 **The plan is committed on `design/m9-m13-plan` (`b6c3790`) and is `draft`. Nothing in it is
 approved.** Walk the canvas with the owner first: <https://claude.ai/artifact/3X5NcyyjigheNJG4M1wKKR>
 
+#### ★ This milestone is NOT one session. Do not try.
+
+`16` is five milestones. The repository's own unit is **one wave per lead session** — waves 1–3
+merged on 2026-09-14, wave 4 and Launch on 09-15 — and this milestone is **five waves**, so plan on
+**six or seven sessions**: one for Step 0 and Step 1, two for M9, then one each for M10–M13.
+
+Three things force the boundary whatever the pace: context fills on a lead driving four teammates
+(this file is the handoff), the gate lock serialises at roughly 6–8 hours of held wall time per
+wave, and **the owner merges every PR** (DEC-041), which is a human checkpoint between waves by
+design.
+
+**And a rebuild is slower than the greenfield waves were.** Waves 1–4 wrote new screens against a
+spec on an empty slate with four blocking gates. This replaces 49 existing screens without breaking
+them, rebuilds two studios, replaces the mail system and unfreezes marketing — against fourteen
+gates.
+
+**If the owner wants it shorter, the lever is scope.** M9 + M10 deliver **ten of the fifteen asks**
+— 1 (the app half), 2, 4, 5, 6, 8, 9, 11, plus avatars and motion — and are the half a member
+actually touches. M11 adds asks 3, 7 and 10; M12 adds 12 and 13; M13 is the marketing half of ask 1.
+**Finish M9, let the owner look at it running, and let M10 confirm the direction before committing
+to M11–M13.**
+
 #### Step 0 — the paperwork, before any code
 
 1. **Promote `DEC-069` … `DEC-100` into `DECISIONS.md`** (append only, never edit).
