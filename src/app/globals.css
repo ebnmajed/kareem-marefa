@@ -34,6 +34,26 @@
   --color-success-bg: #eff6f2;
   --color-success-on-dark: #8fbfa5;
 
+  /* ── M9 (DEC-073): the two status colours §5 needs, in the same desaturated
+     register as error/success. `live` reads as a warm amber-brown so it is
+     distinguishable from `success` green without adding chroma to the page;
+     `ended` is the slate the product already uses for muted text.
+
+     ★ THESE ARE PLATFORM CONSTANTS AND MUST NOT JOIN THE BRAND KIT.
+     `BRAND_COLOUR_TOKENS` (packages/designer-runtime/src/brand.ts) is a
+     nine-entry `as const` shared by the app theme, the designer templates —
+     where 0055's guard refuses a hex literal outright — and the email
+     renderer, and `brandColourSet` is `.strict()`. Adding these two would move
+     the parity goldens, widen a strict schema, and let an org recolour what
+     «أُلغيت» means. A status colour means the same thing in every
+     organisation, which is exactly why it is not a brand token. Same reasoning
+     as --color-error and --color-success, which are already outside the kit. */
+  --color-live: #8a5a1f;
+  --color-live-bg: #fbf5ea;
+  --color-live-on-dark: #d2a86b;
+  --color-ended: #5b6780;
+  --color-ended-bg: #f1f3f7;
+
   /* Radii: three steps only */
   --radius-field: 6px;
   --radius-card: 14px;
@@ -41,6 +61,23 @@
   /* The single shadow token (light context only) */
   --shadow-card:
     0 1px 2px rgba(11, 18, 32, 0.05), 0 12px 32px rgba(11, 18, 32, 0.07);
+  /* M9: the second elevation step — hover on a card, and nothing else. A card
+     RISES on hover; it never scales (the UI-library default the brief bans). */
+  --shadow-raise:
+    0 2px 4px rgba(11, 18, 32, 0.06), 0 18px 44px rgba(11, 18, 32, 0.10);
+
+  /* M9: the section rhythm, formalised. The four-step spacing scale was always
+     implicit in the utilities; this is the one value screens disagreed on. */
+  --space-section: 2.5rem;
+
+  /* M9 motion tokens (DEC-100). Only the tokens land in M9 — the nine moments
+     are M10, because you cannot build the reservation animation before the
+     reservation card exists. Every duration collapses to 0ms under
+     prefers-reduced-motion, declared ONCE, at the bottom of this file. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
 
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
   --font-arabic:
@@ -170,6 +207,9 @@ html[lang="ar"] {
 }
 
 @media (min-width: 768px) {
+  :root {
+    --space-section: 4rem;
+  }
   html[lang="en"] {
     --fs-h1: 2.5rem;       --lh-h1: 3rem;          /* 40/48 */
     --fs-h2: 2rem;         --lh-h2: 2.5rem;        /* 32/40 */
@@ -187,6 +227,57 @@ html[lang="ar"] body {
 }
 html[lang="en"] body {
   font-family: var(--font-sans);
+}
+
+/* ── The sticky layers, and the scroll padding that stops them covering the
+   focused element — `16` §3.1, REQ-UIX-017, SC 2.4.11 (DEC-091).
+
+   ★ THIS PLAN CREATES THE HAZARD IT FIXES. `grep -rn "scroll-padding\|scroll-margin"`
+   returned NOTHING before M9, and M9 adds four sticky layers: the header, the
+   event page's sub-nav, the action card, and the phone tab bar OR its
+   contextual replacement — never both (DEC-098).
+
+   It also silently breaks §8.2's own FormSummary, whose links "jump to and
+   focus the field": an anchor jump under a sticky header lands the focused
+   control BEHIND it, the accessibility feature defeating itself. The Playwright
+   gate asserts it rather than trusting this block.
+
+   The heights are declared here and CONSUMED by the bars themselves, so there
+   is one source of truth: a bar that changes height changes this value, not
+   its own padding and this value. */
+:root {
+  --header-h: 68px;
+  --subnav-h: 0px;
+  --tabbar-h: 0px;
+}
+
+html {
+  scroll-padding-block-start: calc(var(--header-h) + var(--subnav-h) + 0.5rem);
+  scroll-padding-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+/* An anchor target — a form field, a sub-nav section — clears the fixed layers
+   above it. `[id]` is broad on purpose: the alternative is remembering to add a
+   class to every jump target, and the one that gets forgotten is the one a
+   member lands on. */
+[id] {
+  scroll-margin-block-start: calc(var(--header-h) + var(--subnav-h) + 0.5rem);
+}
+
+/* The skip link — SC 2.4.1. First focusable element in the shell, visually
+   hidden until focused. Today it costs a keyboard user three tabs; after the
+   shell and the fifteen-item admin rail it is a long tab trap in front of
+   every console page. */
+.skip-link {
+  position: fixed;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  inset-inline-start: 0.5rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 /* Mobile base: stop iOS text auto-inflation on rotate, prevent scroll-chaining
@@ -863,6 +954,16 @@ html[data-sting="done"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* REQ-UIX-014: the duration tokens collapse HERE and nowhere else, so no
+     component declares its own duration and none can forget this.
+     ★ But collapsing a duration is not a reduced-motion DESIGN — each Tier-1
+     moment names its own static end state, and the 390 px review looks at
+     both (DEC-100). */
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
   *,
   ::before,
   ::after {
