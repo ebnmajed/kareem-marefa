@@ -63,7 +63,7 @@ describe("getSessionState", () => {
     getClaims.mockResolvedValue(member());
     expect(await getSessionState()).toEqual({
       kind: "member",
-      session: { userId: "u1", orgId: "o1", memberId: "m1", role: "member", claimsVersion: 1, email: "sara@kareem.example" },
+      session: { userId: "u1", orgId: "o1", memberId: "m1", role: "member", claimsVersion: 1, email: "sara@kareem.example", platformAdmin: false },
     });
   });
 });

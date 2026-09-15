@@ -20,6 +20,8 @@ export interface Session {
   role: OrgRole;
   claimsVersion: number;
   email: string | null;
+  /** The `platform_admin` claim (DEC-052): the shell shows the platform console's link on it. */
+  platformAdmin: boolean;
 }
 
 export type SessionState =
@@ -69,6 +71,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
       role: app.org_role ?? "member",
       claimsVersion: app.claims_version ?? 0,
       email: claims.email ?? null,
+      platformAdmin: app.platform_admin === true,
     },
   };
 });

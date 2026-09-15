@@ -5,7 +5,15 @@
       "sessions": "الجلسات",
       "profile": "ملفي",
       "signOut": "تسجيل الخروج",
-      "brand": "كريم معرفة"
+      "brand": "كريم معرفة",
+      "propose": "اقترح جلسة",
+      "members": "الأعضاء",
+      "leaderboards": "لوحة الصدارة",
+      "admin": "الإدارة",
+      "platform": "المنصة",
+      "privacy": "سياسة الخصوصية",
+      "terms": "الشروط والأحكام",
+      "more": "المزيد"
     },
     "home": {
       "welcome": "أهلًا <name>{value}</name>",

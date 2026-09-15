@@ -213,12 +213,40 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           </p>
         ) : null}
 
+        {/* REQ-CHK-001: a member checks in while the session is live — the
+            screen exists since M2, the link since Launch. Presenters cannot
+            check in (REQ-CHK-011), so they get the host view instead. */}
+        {session.state === "in_progress" && !session.viewerIsPresenter ? (
+          <p className="mt-4">
+            <Link href={`/app/sessions/${session.id}/check-in`} className="inline-flex h-11 items-center rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
+              {t("checkIn")}
+            </Link>
+          </p>
+        ) : null}
         {/* OQ-013, REQ-CHK-014: presenters, admins and moderators only. */}
         {session.viewerIsPresenter || session.viewerIsStaff ? (
           <p className="mt-4">
             <Link href={`/app/sessions/${session.id}/host`} className="text-label text-fg-heading underline underline-offset-4">
               {t("hostView")}
             </Link>
+          </p>
+        ) : null}
+        {/* Staff reach the session's admin screens from the event itself. */}
+        {session.viewerIsStaff ? (
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
+            {me.role === "admin" ? (
+              <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
+                {t("manageSchedule")}
+              </Link>
+            ) : null}
+            <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+              {t("manageAttendance")}
+            </Link>
+            {me.role === "admin" ? (
+              <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
+                {t("manageCertificates")}
+              </Link>
+            ) : null}
           </p>
         ) : null}
       </aside>

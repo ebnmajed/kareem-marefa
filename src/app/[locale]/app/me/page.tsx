@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getMe, listCompanies } from "@/lib/dal/members";
 import { saveProfile } from "./actions";
 
@@ -24,6 +25,18 @@ export default async function MePage({
       <p className="mt-2 text-body text-fg-muted">
         <bdi>{me.email}</bdi> · {t(`role.${me.role}`)}
       </p>
+      {/* The member's own pages, reachable from the hub (Launch, 2026-09-15). */}
+      <nav aria-label={t("nav.label")} className="mt-5">
+        <ul className="flex flex-wrap gap-2">
+          {(["notifications", "calendar", "certificates", "points", "bookmarks", "privacy"] as const).map((key) => (
+            <li key={key}>
+              <Link href={`/app/me/${key}`} className="inline-flex h-10 items-center rounded-field border border-edge px-3 text-label text-fg-heading hover:bg-silver-100">
+                {t(`nav.${key}`)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
       {saved ? (
         <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
           {t("saved")}

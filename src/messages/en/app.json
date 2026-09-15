@@ -5,7 +5,15 @@
       "sessions": "Sessions",
       "profile": "My profile",
       "signOut": "Sign out",
-      "brand": "Knowledge Kareem"
+      "brand": "Knowledge Kareem",
+      "propose": "Propose a session",
+      "members": "Members",
+      "leaderboards": "Leaderboards",
+      "admin": "Admin",
+      "platform": "Platform",
+      "privacy": "Privacy policy",
+      "terms": "Terms",
+      "more": "More"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",
