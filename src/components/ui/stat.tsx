@@ -1,19 +1,35 @@
-// STUB — content's file, published by the lead on day one of M9 so the four
-// tracks typecheck against the interface before the implementation exists
-// (`16` §16.0, DEC-085). Plain semantic HTML, no styling, no behaviour.
+import type { StatProps, Tone } from "@/components/ui";
+import { Link } from "@/i18n/navigation";
+
+// content's file — `16` §4.2 Type. One number and what it means.
 //
-// content REPLACES this file. Nobody else edits it. The contract is the type
-// in `@/components/ui` and it is append-only.
+// `value` arrives pre-formatted ("numerals follow the ORG setting,
+// REQ-INT-006") — this file never formats a number itself, only lays it out.
 
-import type { StatProps } from "@/components/ui";
+const TONE_TEXT: Partial<Record<Tone, string>> = {
+  success: "text-success",
+  live: "text-live",
+  ended: "text-ended",
+  error: "text-error",
+};
 
-export function Stat({ label, value, hint, href, className = "" }: StatProps) {
+export function Stat({ label, value, hint, tone, href, className = "" }: StatProps) {
+  const valueClass = (tone && TONE_TEXT[tone]) || "text-fg-heading";
   const body = (
     <>
-      <span>{label}</span>
-      <strong><bdi>{value}</bdi></strong>
-      {hint ? <span>{hint}</span> : null}
+      <span className="block text-caption text-fg-muted">{label}</span>
+      <strong className={`block text-h2 ${valueClass}`}>
+        <bdi>{value}</bdi>
+      </strong>
+      {hint ? <span className="block text-caption text-fg-muted">{hint}</span> : null}
     </>
   );
-  return href ? <a className={className} href={href}>{body}</a> : <div className={className}>{body}</div>;
+  const shared = `block rounded-card border border-edge bg-surface p-4 ${className}`;
+  return href ? (
+    <Link href={href} className={`${shared} transition-shadow duration-150 hover:shadow-raise`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={shared}>{body}</div>
+  );
 }
