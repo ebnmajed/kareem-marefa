@@ -13,7 +13,7 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-123`** | The resequencing, the check-in switch, walk-ins, multi-day sessions, and every known canvas error. **Do not re-litigate these.** |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-126`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, dark posters, and the marketing door. **Do not re-litigate these.** |
 | 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
@@ -23,6 +23,24 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 primitives, the shell, the status vocabulary, the loading and failure models, the form model, and
 the five live affordance fixes. `trace` is at **312 requirements · 145 stories · no gaps**; `qa`
 44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
+
+### ★ Four owner directives from 2026-09-16, all recorded
+
+1. **`DEC-124` — numerals are Western (`1 2 3`) everywhere, always.** No setting; `REQ-INT-006` is
+   rewritten, `numeral_system` and `orgs.numerals` are dropped, `DEC-095`/`REQ-INT-010` subsumed.
+   **The canvas contradicts this on all 18 artboards — 468 Arabic-Indic glyphs — and the rule wins.**
+   Debt in the tree: **84 glyphs in `src/`, 27 in `messages/`**, plus `src/components/sessions/numerals.ts`,
+   whose `NumeralSystem` parameter collapses to always-Western. ⚠ **Three of those glyphs are in
+   `(marketing)/page.tsx:16`, inside the frozen contract — they can only change in M13.**
+2. **`DEC-125` — a generated poster is dark by default.** `scheme` defaulted to `'light'` in all
+   three signatures, so posters render white while every poster in the canvas is dark. Certificates
+   stay light. **This moves the parity goldens** — a reviewed diff, the lead's.
+3. **`DEC-126` — the marketing site has no door**, and it was never in the plan. `REQ-UIX-025` and
+   `STORY-UIX-015` added, in **M13**, the only milestone allowed to touch the frozen routes.
+4. **Email: already covered, and no gap.** `REQ-NTF-009` … `REQ-NTF-014`, `16` §11's email studio,
+   brand-driven via `REQ-DSG-021`; `STORY-NTF-005`/`006` schedule it at **M12**. Not built yet —
+   no template rows are seeded and `worker/src/mail/render.ts` still renders plain paragraphs
+   against three brand tokens with hard-coded fallbacks.
 
 **What has NOT been done: any screen.** The owner reviewed M9 running and reordered the milestone —
 the screens come first, the admin console is in scope from the start, `/app` becomes the sessions

@@ -2214,13 +2214,17 @@ text anywhere**; kashida off by default; a **1.2× length allowance** for Arabic
 - A component setting letter-spacing on Arabic text fails review.
 - A text line clipping a diacritic is a defect, not a rendering quirk.
 
-#### REQ-INT-006 — The numeral system is an org setting
-**Serves:** A30
-Western or Arabic-Indic, **default Western**, applied consistently across the UI, notifications,
-templates and exports.
+#### REQ-INT-006 — Numerals are Western everywhere, and there is no setting
+**Serves:** owner 2026-09-16 · `DEC-124` (supersedes A30's numeral clause, `DEC-095`, `REQ-INT-010`)
+Every digit the product renders, anywhere, is **Western — `0123456789`**. This holds in Arabic
+strings, in the UI, in email and notifications, in posters and certificates, in CSV, ICS, filenames,
+serials, verification codes and URLs. **There is no org setting, no member preference and no
+platform override**; the `numeral_system` enum and `orgs.numerals` are dropped (`DEC-124`).
 **Acceptance:**
-- Changing the setting changes **every** surface, including PDFs and CSV exports.
-- A single screen never mixes the two systems.
+- No surface renders `U+0660`–`U+0669` or `U+06F0`–`U+06F9`. A test greps `src/messages/**` and
+  fails on either range — a digit typed into a translation string is the way this comes back.
+- The canvas is **not** authoritative here: it uses Arabic-Indic digits on all 18 artboards and
+  every one is an error to be read as Western (`DEC-124`).
 
 #### REQ-INT-007 — Mixed strings are bidi-isolated
 **Serves:** A30
@@ -2698,6 +2702,21 @@ No animation touches `width`, `height`, `top` or `margin`; a height change anima
 - A lint rule fails a `@keyframes` block touching anything but `transform`, `opacity` or `filter`,
   with a documented escape hatch.
 - The two orchestrated moments traced on a throttled CPU profile show **no frame over 16 ms**.
+
+
+#### REQ-UIX-025 — The public site has a visible way into the platform, and says the platform exists
+**Serves:** owner 2026-09-16 · `DEC-126` · A38
+The marketing site carries a **persistent, visible «تسجيل الدخول»** into `SCR-002`, and its content
+tells a visitor that the platform exists and what it is for. Today neither is true: the header and
+both CTAs point only at `/register`, so a member with an account must type `/sign-in` by hand.
+**Lands in M13**, the only milestone permitted to touch the frozen routes (`REQ-NFR-019`).
+**Acceptance:**
+- «تسجيل الدخول» is reachable from every marketing page, on phone and desktop, without scrolling
+  to the footer.
+- It is **visually distinct from «سجّل اهتمامك»** and never replaces it — the interest list and the
+  sign-in door are different things (`DEC-002`, invariant 2).
+- Nothing is added to the marketing header before M13; `npm run qa` stays 44/44 and the visual
+  baseline is re-cut in the same commit as the rebuild, never before it.
 
 ---
 

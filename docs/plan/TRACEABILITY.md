@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **312** |
+| Requirements (`REQ-*`) | **313** |
 | Entities (`ENT-*`) | **72** |
-| Stories (`STORY-*`) | **145** |
+| Stories (`STORY-*`) | **146** |
 | Screens cited (`SCR-*`) | 55 |
 | Jobs cited (`JOB-*`) | 37 |
 | Messages cited (`MSG-*`) | 22 |
@@ -281,7 +281,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-016` | `ENT-brand_kits` `ENT-email_deliveries` `ENT-impersonation_sessions` | — | `SCR-057` `SCR-059` `SCR-083` +1 | `JOB-evaluate_alerts` | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-017` | — | — | — | — | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-018` | — | — | — | — | — | `STORY-NFR-008` | M0 |
-| `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` `SCR-007` +1 | — | — | `STORY-NFR-008` | M0 |
+| `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` `SCR-002` +2 | — | — | `STORY-NFR-008` | M0 |
 | `REQ-NFR-020` | `ENT-registrations` | — | — | — | — | `STORY-NFR-008` | M0 |
 
 ### NTF
@@ -483,5 +483,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-022` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-012` | M9 |
 | `REQ-UIX-023` | — | — | `SCR-010` | — | — | `STORY-UIX-013` | M9 |
 | `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
+| `REQ-UIX-025` | — | — | `SCR-002` | — | — | `STORY-UIX-015` | M13 |
 
 <!-- TRACEABILITY:END -->

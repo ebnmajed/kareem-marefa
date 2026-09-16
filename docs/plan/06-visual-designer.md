@@ -149,6 +149,14 @@ mechanism.
 **Poster families**, each light and dark, RTL-first with a mirrored LTR variant reserved for
 English:
 
+> ★ **The poster default is the DARK scheme — `DEC-125`, 2026-09-16.** The variant is the *scheme*
+> (`brand.canvas`), not a second template row, and `scheme` defaulted to `'light'` in all three
+> signatures that take it, so generated posters were white while every poster in the canvas is dark.
+> **Certificates stay light** — they are printed. The canvas paints its posters as a *gradient*,
+> which `model.ts`'s `background: { type: 'solid' }` cannot express: the flat dark canvas is the
+> default, and a gradient fill is a scoped change to this document, not a template improvisation.
+> This **moves the parity goldens**, which is a reviewed diff and the lead's.
+
 | Family | العربية | For |
 |---|---|---|
 | `talk` | جلسة | the default single-presenter session |

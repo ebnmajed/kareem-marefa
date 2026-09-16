@@ -1931,6 +1931,7 @@ it is a screen nobody decided about. **`DEC-097`.**
 |---|---|
 | `qa.mjs` split into contract and appearance | `M` |
 | The marketing rebuild on the system — §14 | `L` |
+| ★ **«تسجيل الدخول» on the public site, and copy that says the platform exists** — `REQ-UIX-025`, `DEC-126` | `M` |
 | The register form re-presented, behaviour byte-identical | `M` |
 | `REQ-NFR-007` accessibility pass over every screen — WCAG 2.2 AA | `M` |
 | `REQ-NFR-008` performance pass — the per-screen budgets | `M` |

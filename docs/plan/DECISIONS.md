@@ -2394,3 +2394,124 @@ after looking at every surviving finding.
 
 - **Supersedes:** nothing. Verifies two of `DEC-114`'s three classes and adds the app fix.
 - **Documents changed:** `STATUS.md`
+
+---
+
+## DEC-124 — Numerals are Western everywhere, always. The org setting is withdrawn, and the canvas is wrong on every artboard
+
+- **Date:** 2026-09-16 · **Decided by:** owner («keep using arabic numerals 1,2,3,4 not the indian ones ١،٢،٣،٤. Never use the indian numerals anywhere never ever ever»)
+- **Decision.** The product renders **Western digits — `0123456789` — on every surface without exception**: UI, email, notifications, posters, certificates, CSV, ICS, filenames, serials, verification codes, URLs, and every Arabic string. **There is no setting.** A member cannot change it, an admin cannot change it, the platform cannot change it.
+
+### What this withdraws
+
+| | |
+|---|---|
+| `REQ-INT-006` — «The numeral system is an org setting» | **rewritten**: numerals are Western, full stop |
+| `A30`'s numeral clause | the choice it assumed does not exist |
+| `02` §2's `create type numeral_system as enum ('western', 'arabic_indic')` | **dropped** |
+| `02` §4's `orgs.numerals numeral_system not null default 'western'` | **dropped** |
+| `DEC-095` · `REQ-INT-010` — Western on machine-readable surfaces | **subsumed.** They carved out an exception to a setting that no longer exists; the carve-out is now the whole rule |
+| `01` §2134 (CSV headers follow the setting), §2777 (invitees in the org's numerals) | follow the rule instead |
+
+★ **The column is `not null default 'western'` and no production row has ever been set to
+`arabic_indic`**, so dropping it changes no rendered output. This is a forward-only migration that
+removes a capability, not a data migration.
+
+### ★★ The consequence for the canvas, which is the expensive part
+
+**The canvas uses Arabic-Indic digits on all 18 artboards — 468 glyphs.** «٥٤» attendees, «٢١» photos,
+«١٥ سبتمبر», «٣ جلسات», «٦:٠٠ م», «٤:٥». Under this decision **every one of them is wrong.**
+
+This collides head-on with «we are following the mockups designs to a t». **The numeral rule wins.**
+It is the owner's instruction, it is stated absolutely, and a mockup is a reference (`DEC-114`), not
+a specification. So this becomes **the fifth and largest canvas error class**, after `DEC-122`'s
+`box-sizing` overlap and `DEC-123`'s four:
+
+> **Read every number in the canvas as Western.** «٥٤» means `54`. Never transcribe the glyph.
+
+`DEC-123` recorded class 3 as *verified clean* — no Arabic-Indic digits in a machine-readable string.
+That finding stands and is now beside the point: the rule is no longer about machine-readable
+surfaces, it is about all of them.
+
+### Where the work lands
+
+A sweep of `src/`, `worker/`, `packages/` for the setting is the first task of whichever wave takes
+this; the admin settings form, its action, and the platform pages all read it today. The
+`numeral_system` drop is a lead-owned migration. **`messages/ar/*.json` must be swept too** — an
+Arabic-Indic digit typed into a translation string is not caught by removing the column.
+
+- **Supersedes:** `REQ-INT-006` as written, `DEC-095`, `REQ-INT-010`, `A30`'s numeral clause.
+- **Documents changed:** `01-prd.md` (`REQ-INT-006`), `02-domain-model.md` (§2 enum, §4 `orgs`), `CLAUDE.md`, `ASSUMPTIONS.md` (`A30`), `STATUS.md`
+
+---
+
+## DEC-125 — A generated poster is dark by default, because the canvas is and the renderer is not
+
+- **Date:** 2026-09-16 · **Decided by:** owner («since we are following the mockups designs to a t. This means that also the generated poster should also have dark backgrounds, correct?»), verified by the lead
+- **The owner is right, and the gap is real.** Every poster surface in the canvas is dark — `EventEnded`, `Browse` and `Home` all paint the card media as `linear-gradient(140deg, #111a2c, #1d2a42)`. The renderer ships **light**.
+
+### What the tree actually does today
+
+Each of the eight baseline families binds `background: { type: 'solid', color: '{{brand.canvas}}' }`
+(`packages/designer-runtime/src/library.ts:209`, `:350`; eight occurrences in
+`0061_baseline_library.sql`). `brand.canvas` is `#ffffff` in the light palette and `#0b1220` in the
+dark one — and **`scheme` defaults to `'light'` in all three places that take it**:
+`platformBrand()` (`brand.ts:72`), `resolveBrand()` (`:105`) and `brandBindings()`
+(`worker/src/render/brand.ts:53`). So a poster generated today is **white**.
+
+★ `06` §3.3 says the families ship "each light and dark", which is true but easy to misread: the
+variant is the **scheme**, not a second template row. `0061` seeds **8 families × 1 version**, and
+nothing chooses `dark`.
+
+### Decision
+
+**The default scheme for a generated poster is `dark`.** Certificates stay **light** — they are
+printed, and `06` §3.3's certificate families are formal Naskh on paper. The org can still override
+through its brand kit (`REQ-DSG-021`); the platform default changes, the mechanism does not.
+
+**One thing the canvas asks for that the model cannot express:** the mockups use a *gradient*, and
+`model.ts:144` allows only `background?: { type: 'solid'; color: string }`. Either the poster takes
+the flat dark canvas (`#0b1220`) or the layer model gains a gradient fill. **The flat colour is the
+default; a gradient is a scoped change to `06`, not something to improvise in a template.**
+
+★ **This moves the parity goldens**, which `DEC-052` was careful not to do. The golden refresh is a
+reviewed diff (`13`, `CLAUDE.md`) and the lead's, never automatic.
+
+- **Supersedes:** the light default in the three signatures above.
+- **Documents changed:** `06-visual-designer.md` §3.3, `STATUS.md`
+
+---
+
+## DEC-126 — The marketing site has no way into the platform, and that is a gap in the plan, not an oversight in the build
+
+- **Date:** 2026-09-16 · **Decided by:** owner («did we include in the plan the marketing page to be updated to include the login button and the content updated so it gives a way to access the platform?»), checked by the lead
+- **Answer: no, it is not in the plan.** Not as a requirement, not as a story, not in `M13`'s scope.
+
+### What the check found
+
+- `src/components/header.tsx:56` — the marketing header's **only** link is `/register`.
+- `(marketing)/page.tsx:87` and `:240` — both CTAs are `/register`.
+- `09` §1 lists `/sign-in` as `SCR-002` and `09`'s ownership table puts it in **M9** — it exists and it works. **Nothing public links to it.**
+- `M13`'s scope (`16` §15) is «the marketing rebuild on the system», «the register form re-presented, behaviour byte-identical», the accessibility and performance passes. **No entry point.**
+- `A38` asserts «sign-in leads into the platform», which is the assumption — but no requirement implements the link, so nothing was ever built and no gate noticed.
+
+★ **The live site therefore has no door.** A member with an account must type `/sign-in` by hand.
+`REQ-NFR-019` froze the marketing routes, which is exactly why the omission survived: the one
+guarded surface is the one nobody was allowed to add a link to.
+
+### Decision
+
+**`REQ-UIX-025` is added**: the public marketing site carries a persistent, visible way into the
+platform, and its content says the platform exists. It lands in **M13** with the marketing rebuild,
+because that is the milestone permitted to touch the frozen routes.
+
+Two constraints that are not negotiable and are the reason this is not a five-minute change:
+
+1. **`/`, `/ar`, `/en`, `/ar/register`, `/og.png` stay a frozen public contract until M13**
+   (invariant 1). **Nothing is added to the marketing header before then** — not as a quick win.
+2. `registrations` is untouched (invariant 2, `DEC-002`). **«تسجيل الدخول» and «سجّل اهتمامك» are
+   different doors** and the rebuild must not merge them: the register form is a pre-launch interest
+   list, not a sign-up.
+
+- **Supersedes:** nothing. Fills a hole.
+- **Documents changed:** `01-prd.md` (`REQ-UIX-025`), `15-backlog.md`, `16-ui-redesign.md` §15 M13, `STATUS.md`

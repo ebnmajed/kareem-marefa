@@ -348,6 +348,10 @@ the **رمز التحقق**, both printed — see DEC-010.
 
 ## A30 — Typography system · **superseded by owner** (for the certificate builder only)
 
+> ★ **The numeral half of this assumption is WITHDRAWN — `DEC-124`, 2026-09-16.** There is no
+> choice of numeral system: the product renders **Western digits everywhere, always**. The rest of
+> A30 stands.
+
 > **Original:** Arabic UI face a variable sans with full Arabic coverage (IBM Plex Sans Arabic or
 > Noto Sans Arabic), self-hosted and subsetted; a Kufi display face for headings and posters
 > (Reem Kufi or Cairo); a Naskh face for certificates (Amiri or Noto Naskh Arabic); Latin

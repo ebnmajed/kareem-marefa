@@ -144,7 +144,8 @@ erDiagram
 create type org_status        as enum ('active', 'suspended');
 create type org_role          as enum ('admin', 'moderator', 'member');
 create type member_status     as enum ('active', 'deactivated');
-create type numeral_system    as enum ('western', 'arabic_indic');
+-- ✗ WITHDRAWN by DEC-124 (2026-09-16): numerals are Western everywhere, always.
+-- create type numeral_system    as enum ('western', 'arabic_indic');
 
 -- Proposals and sessions
 create type proposal_state    as enum ('draft', 'submitted', 'in_review',
@@ -259,7 +260,7 @@ constraint violation rather than a runtime surprise.
 | Column | Type | Default |
 |---|---|---|
 | `time_zone` | `text not null` | `'Asia/Riyadh'` |
-| `numerals` | `numeral_system not null` | `'western'` |
+| ~~`numerals`~~ | ~~`numeral_system not null`~~ | **✗ dropped — `DEC-124`.** Numerals are Western everywhere; no row was ever `arabic_indic`, so the drop changes no output |
 | `check_in_rotation_seconds` | `int not null` | `600` |
 | `check_in_grace_seconds` | `int not null` | `120` |
 | `reminder_offsets_minutes` | `int[] not null` | `'{10080,1440,120}'` |

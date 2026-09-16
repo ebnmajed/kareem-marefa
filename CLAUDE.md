@@ -218,7 +218,8 @@ as you are done with it.
   Never justify text.
 - **Bidi-isolate every interpolated value** — `<bdi>` around titles, names, codes.
 - Body line-height **1.7**, headings **1.4**, base **17 px** on mobile.
-- Numerals follow the **org setting**, consistently across UI, email, templates and exports.
+- **Numerals are Western — `0123456789` — everywhere, always** (`DEC-124`). Never `١٢٣`, in any
+  string, on any surface, including Arabic copy. There is no org setting; it was dropped.
 
 ## Testing
 
