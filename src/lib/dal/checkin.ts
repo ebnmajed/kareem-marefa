@@ -1,17 +1,23 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import { sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
-import { affordancesFor, checkInAllowed } from "@/components/checkin/session-matrix";
+import { sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
+import { affordancesFor, checkInAllowed, checkInWindowAllowed } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
-// Check-in and the host view (REQ-CHK-001…014, STORY-CHK-001..006, REQ-UIX-015,
-// DEC-090). RPCs live in supabase/proposed/checkin/02_check_in.sql. check_in()
+// Check-in and the host view (REQ-CHK-001…017, STORY-CHK-001..006, REQ-UIX-015,
+// DEC-090, DEC-141). RPCs live in supabase/proposed/checkin/. check_in()
 // returns a JSON envelope rather than raising for expected outcomes (rate
-// limit, wrong code, wrong window, overlap) — see that file's header for why:
-// raising would roll back the check_in_attempts row DEC-015 requires to
-// survive. No SQL changed this wave — every fix below is presentation-layer,
-// re-reading the same authoritative RPCs (docs/plan/notes/checkin.md "Wave 5").
+// limit, wrong code, wrong window, overlap) — see 01_check_in_window.sql's
+// header for why: raising would roll back the check_in_attempts row DEC-015
+// requires to survive.
+//
+// ★ Wave 7's SQL (the window, walk-ins-as-publishing, the reversal) is
+// written and RLS-proven but NOT YET PROMOTED — supabase/proposed/checkin/
+// 01-06. `check_in_open` and `check_ins.removed_at` do not exist in the live
+// schema yet. Nothing in this file selects them until the lead posts
+// "promoted at <sha>" (docs/plan/notes/checkin.md, wave-7 plan) — nothing here
+// today reads through PostgREST for a column that isn't there.
 
 export interface HostViewData {
   sessionId: string;
@@ -68,15 +74,12 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
 }
 
-/** DEC-065: staff open or close a session to walk-ins. The RPC re-derives the role; a member is refused. */
-export async function setWalkIns(locale: string, sessionId: string, allow: boolean): Promise<void> {
-  const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("set_session_walk_ins", { p_session: sessionId, p_allow: allow });
-  if (error) {
-    if (error.message.includes("not_authorized")) throw new Error("not_authorized");
-    throw new Error(`set_session_walk_ins: ${error.message}`);
-  }
-}
+// ★ `setWalkIns()` is gone — DEC-117: walk-ins move to a publishing setting
+// (`schedule_session()`'s new parameter, supabase/proposed/checkin/
+// 02_walk_ins_publishing.sql, not yet promoted) and the host view loses the
+// toggle entirely. `set_session_walk_ins()` itself is still live in the
+// schema until that file promotes and drops it; nothing here calls it
+// anymore either way.
 
 export async function revokeCode(locale: string, sessionId: string): Promise<void> {
   const { supabase } = await sessionClient(locale);
@@ -169,6 +172,25 @@ function ineligibleReasonFor(phase: SessionPhase, relation: ViewerRelation): Che
  */
 export function canOfferCheckInLink(session: PhaseInput, relation: ViewerRelation, allowWalkIns: boolean, now: Date = new Date()): boolean {
   return checkInAllowed(session, relation, allowWalkIns, now);
+}
+
+/**
+ * ★ DEC-141 — supersedes `canOfferCheckInLink()` above, added BESIDE it per
+ * the lead's condition (a): never break a consumer's build. `sessions`
+ * switches the event page's call site to this once `EventSession` carries
+ * the raw `rsvpStatus`/`checkedIn` facts and `checkInOpen` (contract 2,
+ * docs/plan/notes/checkin.md) — `canOfferCheckInLink()` is deleted in its
+ * own commit once that lands, not before.
+ *
+ * Thin re-export of `checkInWindowAllowed()` (session-matrix.ts) — pure,
+ * self-contained, never routed through `sessionPhase()`/`viewerRelation()`,
+ * because the grace window (`ends_at + 2h`) outlives the phase they derive
+ * from. `viewer` is the RAW facts, not a derived `ViewerRelation` — that is
+ * the whole point (see session-matrix.ts's own header for the bug this
+ * avoids).
+ */
+export function canOfferCheckInFor(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
+  return checkInWindowAllowed(session, viewer, allowWalkIns, checkInOpen, now);
 }
 
 export const checkInInput = z.object({ code: z.string().trim().toUpperCase().length(6) });

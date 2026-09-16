@@ -46,12 +46,8 @@
       "notPublished": "This session hasn't been published yet. The check-in code appears once it's published and scheduled.",
       "cancelled": "This session was cancelled. There is no check-in code.",
       "walkIns": {
-        "title": "Walk-ins",
         "on": "Allowed: the code is accepted from any member in the room.",
-        "off": "Not allowed: the code is accepted from confirmed reservations only.",
-        "open": "Allow walk-ins",
-        "close": "Confirmed reservations only",
-        "saved": "Saved."
+        "off": "Not allowed: the code is accepted from confirmed reservations only."
       }
     }
   }

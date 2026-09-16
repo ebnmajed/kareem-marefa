@@ -1,18 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { manualCheckInInput, markCheckedInManually, revokeCode, setWalkIns } from "@/lib/dal/checkin";
+import { manualCheckInInput, markCheckedInManually, revokeCode } from "@/lib/dal/checkin";
 
 export async function revokeCodeAction(locale: string, sessionId: string) {
   await revokeCode(locale, sessionId);
   redirect(`/${locale}/app/sessions/${sessionId}/host?revoked=1`);
 }
 
-/** DEC-065: the walk-in switch, staff only — the RPC refuses anyone else. */
-export async function setWalkInsAction(locale: string, sessionId: string, allow: boolean) {
-  await setWalkIns(locale, sessionId, allow);
-  redirect(`/${locale}/app/sessions/${sessionId}/host?walkIns=${allow ? "1" : "0"}`);
-}
+// ★ `setWalkInsAction()` is gone — DEC-117: walk-ins move to a publishing
+// setting (`sessions`' schedule form), and the host view loses the toggle.
 
 const KNOWN_MANUAL_ERRORS = ["not_authorized", "reason_required", "not_found", "not_open", "member_not_found", "presenter_cannot_check_in", "unknown"] as const;
 
