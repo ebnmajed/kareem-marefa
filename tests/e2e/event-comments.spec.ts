@@ -116,7 +116,15 @@ test("a reply to a reply attaches to the parent thread, not a third level (REQ-E
   // the attempt outright regardless — tests/rls/m2-schema.test.ts already
   // proves that at the RLS layer; this is the UI-side half of the same
   // requirement.)
-  const replyRow = page.locator("li", { hasText: "إجابة أولى" }).first();
+  //
+  // ★ The lead's live-build run found `.first()` here resolves to the
+  // OUTER (parent) <li> — the reply's own <li> nests INSIDE it
+  // (comment-list.tsx), so a plain `hasText` match returns BOTH, and the
+  // outer one (which DOES have its own "رد" button, for the top-level
+  // comment) comes first in document order. `.last()` is the reply's own,
+  // innermost row — the same nesting trap the delete locator above already
+  // had to account for.
+  const replyRow = page.locator("li", { hasText: "إجابة أولى" }).last();
   await expect(replyRow.getByRole("button", { name: "رد" })).toHaveCount(0);
 });
 

@@ -125,8 +125,21 @@ export function CommentComposer({
       setMentioned(new Map());
       setCandidates([]);
       if (textareaRef.current) textareaRef.current.style.height = "";
-      toast.show({ tone: "success", title: t("toasts.postSuccess") });
       onPosted?.();
+      // ★ BLOCKER 1, the lead's live-build finding: router.refresh() used to
+      // be the last statement inside THIS SAME startTransition callback —
+      // the one this Button's own `pending`/`aria-busy` is read from. Reply
+      // to a comment, post at the top level, then react, and the MAIN
+      // composer's «نشر» was found stuck busy for 80+ seconds: three
+      // sibling components (this composer, a reply composer, a reaction)
+      // each call router.refresh() in close succession, and Next's router
+      // can fold overlapping refreshes into one underlying request without
+      // signalling every caller's own transition that ITS work is done —
+      // React then has no way to know this transition ever finished.
+      // `setTimeout(…, 0)` runs router.refresh() in a genuinely separate
+      // macrotask, outside any transition React is tracking here, so this
+      // component's own pending state resolves the moment postCommentAction
+      // itself settles and never depends on the refresh's own timing again.
       // The realtime echo (03 §7.4) is what shows this to everyone ELSE
       // live; the poster's own copy must not depend on a websocket round
       // trip completing, so a server-rendered refresh guarantees it — the
@@ -134,8 +147,11 @@ export function CommentComposer({
       // finished establishing yet by the time the insert commits leaves the
       // poster staring at their own empty composer with no comment to show
       // for it (caught by tests/e2e/event-comments.spec.ts against the real
-      // page, not assumed from the component test alone).
-      router.refresh();
+      // page, not assumed from the component test alone). The success toast
+      // that used to sit here is gone too (★ BLOCKER 2) — the comment
+      // appearing in the list IS the success feedback, and a full-width
+      // toast was covering exactly the new content it was announcing.
+      setTimeout(() => router.refresh(), 0);
     });
   }
 

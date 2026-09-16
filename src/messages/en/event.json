@@ -36,10 +36,6 @@
         "unlike": "Remove like"
       },
       "toasts": {
-        "postSuccess": "Your comment was posted",
-        "editSuccess": "Edit saved",
-        "moderateRemoveSuccess": "Comment removed",
-        "moderateRestoreSuccess": "Comment restored",
         "reactionFailed": "Could not record your reaction"
       },
       "report": {

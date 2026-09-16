@@ -83,6 +83,20 @@ export function CommentItem({
   );
   const [ignite, setIgnite] = useState(false);
 
+  // ★ BLOCKER 1, the lead's live-build finding (see comment-composer.tsx's
+  // identical note for the full reasoning): `router.refresh()` used to be
+  // the last statement inside the SAME `startTransition` these actions'
+  // own `pending` is read from. Reply, post and react in one visit and the
+  // composer's own button was found stuck busy for 80+ seconds — three
+  // sibling components' overlapping `router.refresh()` calls can leave an
+  // earlier caller's transition with no way to know it ever finished.
+  // `setTimeout(…, 0)` runs the refresh in a genuinely separate macrotask,
+  // outside this transition, so `pending` resolves the moment the action
+  // itself settles. ★ BLOCKER 2: the success toasts that used to sit next
+  // to these are gone too, except report's below — the comment's own
+  // visible change (the edit in place, the tombstone, the removal) IS the
+  // success feedback, and a full-width toast was covering exactly the
+  // content it was announcing.
   function saveEdit() {
     const trimmed = editBody.trim();
     if (!trimmed) return;
@@ -95,8 +109,7 @@ export function CommentItem({
         return;
       }
       setEditing(false);
-      toast.show({ tone: "success", title: t("toasts.editSuccess") });
-      router.refresh(); // see comment-composer.tsx — the actor's own copy must not wait on the realtime echo
+      setTimeout(() => router.refresh(), 0);
     });
   }
 
@@ -109,7 +122,7 @@ export function CommentItem({
         // The tombstone IS the confirmation — no toast for a member's own
         // delete, unlike moderation below, which can change what a DIFFERENT
         // member sees.
-        router.refresh();
+        setTimeout(() => router.refresh(), 0);
       }
     });
   }
@@ -120,8 +133,7 @@ export function CommentItem({
       if (result.error) {
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       } else {
-        toast.show({ tone: "success", title: t(action === "remove" ? "toasts.moderateRemoveSuccess" : "toasts.moderateRestoreSuccess") });
-        router.refresh();
+        setTimeout(() => router.refresh(), 0);
       }
     });
   }
@@ -140,7 +152,7 @@ export function CommentItem({
         toast.show({ tone: "error", title: t("toasts.reactionFailed") });
         return;
       }
-      router.refresh();
+      setTimeout(() => router.refresh(), 0);
     });
     window.setTimeout(() => setIgnite(false), 400); // clears after --dur-slow (360ms) + margin, both motion states
   }
@@ -153,6 +165,11 @@ export function CommentItem({
       if (!result.error) {
         setIsReported(true);
         onReported?.();
+        // Kept, unlike the others above: the report dialog has already
+        // closed by the time this resolves, so "تم إرسال بلاغك" replacing
+        // the action row is the only in-place confirmation a member sees —
+        // there is no full-width toast stacking risk here (report is a
+        // one-off, not a repeated action like posting).
         toast.show({ tone: "success", title: t("report.success") });
       } else {
         setError(result.error);
@@ -210,15 +227,23 @@ export function CommentItem({
 
         <div className="mt-2 flex flex-wrap items-center gap-1 text-body-sm text-fg-muted">
           <div className="inline-flex items-center gap-1">
-            <IconButton
-              label={t(optimisticReaction.reacted ? "reactions.unlike" : "reactions.like")}
-              onClick={toggleLike}
-              disabled={pending}
-              size="sm"
-              variant={optimisticReaction.reacted ? "secondary" : "ghost"}
-            >
+            {/* ★ the lead's live-build finding: a bare grey dot at rest
+                read as decoration, not a button, and reacted-vs-not was
+                barely distinguishable — the whisper motion cannot carry
+                that meaning alone, it only fires once, on the transition.
+                A literal filled circle (reacted) vs. an outline circle of
+                the SAME size (not reacted) reads as "react"/"reacted" at
+                rest, with no dependency on the animation having just
+                played — `DotIcon` itself has no outline form, so the
+                not-reacted state is a plain bordered span the same visual
+                size as the filled glyph, not a second icon. */}
+            <IconButton label={t(optimisticReaction.reacted ? "reactions.unlike" : "reactions.like")} onClick={toggleLike} disabled={pending} size="sm" variant="ghost">
               <span className="relative inline-flex size-4 items-center justify-center">
-                <DotIcon aria-hidden className={`${optimisticReaction.reacted ? "text-fg-heading" : "text-fg-muted"} ${ignite ? "reaction-ignite" : ""}`} />
+                {optimisticReaction.reacted ? (
+                  <DotIcon aria-hidden className={`text-fg-heading ${ignite ? "reaction-ignite" : ""}`} />
+                ) : (
+                  <span aria-hidden className="size-2 rounded-full border border-current text-fg-muted" />
+                )}
                 {ignite ? <span aria-hidden className="reaction-ring absolute inset-0 rounded-full border border-current text-fg-heading" /> : null}
               </span>
             </IconButton>

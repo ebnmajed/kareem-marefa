@@ -36,10 +36,6 @@
         "unlike": "إلغاء الإعجاب"
       },
       "toasts": {
-        "postSuccess": "تم نشر تعليقك",
-        "editSuccess": "تم حفظ التعديل",
-        "moderateRemoveSuccess": "تمت إزالة التعليق",
-        "moderateRestoreSuccess": "تمت استعادة التعليق",
         "reactionFailed": "تعذّر تسجيل تفاعلك"
       },
       "report": {
