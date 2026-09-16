@@ -2032,7 +2032,10 @@ never-touch paragraphs or it is not enforced at all. No wave-5 teammate is spawn
 
 > ★★ **DONE, and the wave structure after it is SUPERSEDED (`DEC-110`).** M9 shipped: 34 primitives,
 > the shell, the status vocabulary, the loading and failure models, the form model and the five live
-> affordance fixes. **The wave-6 onward split below no longer matches the work** — the screens come
+> affordance fixes. ⚠ **What it did NOT ship: the three `(auth)` screens** — `DEC-097` placed them
+> in M9 and all three import **zero** `ui/` primitives (`DEC-129`). They are carried into the next
+> wave, and `DEC-126`'s new «تسجيل الدخول» on the public site leads straight to them.
+> **The wave-6 onward split below no longer matches the work** — the screens come
 > first and the admin console is in from the start, so `console` is in the next wave rather than two
 > later. The next lead writes the new ownership map before spawning anyone (`DEC-085`'s rule still
 > holds: ownership lives in the agent files or it does not exist).
