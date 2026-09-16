@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { getTimelineSessionsByIds, type TimelineSession } from "@/lib/dal/search";
 
 // Bookmarks — REQ-DSC-006, 02 §4.15, SCR-024. `p3_self_*`/`p7_self_read`
 // (0037) are the entire authority: a plain insert/delete/select scoped to
@@ -44,6 +45,30 @@ export async function getBookmarksPageData(locale: string): Promise<BookmarksPag
     .filter((s): s is BookmarkedSession => s !== null);
 
   return { sessions };
+}
+
+/**
+ * SCR-024 on the system — the member's saved sessions as timeline cards, so
+ * `/app/me/bookmarks` renders `SessionCard` rather than a second card of its own.
+ *
+ * Most recently bookmarked first. Every row is `bookmarked: true` by
+ * construction: the ids come from the member's own bookmarks, and the card
+ * reader reads them back from the same table. A bookmark on a session the
+ * member can no longer see — a draft again, another org's, gone — has no card,
+ * because the cards are read through `sessions_read` like the timeline's.
+ */
+export async function getBookmarkedTimelineSessions(locale: string): Promise<TimelineSession[]> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select("session_id")
+    .eq("member_id", session.memberId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`bookmarks: ${error.message}`);
+  return getTimelineSessionsByIds(
+    locale,
+    (data ?? []).map((row) => row.session_id as string),
+  );
 }
 
 const toggleInput = z.object({ sessionId: z.uuid(), bookmarked: z.boolean() });
