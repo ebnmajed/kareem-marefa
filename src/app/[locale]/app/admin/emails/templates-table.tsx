@@ -31,14 +31,10 @@ export function TemplatesTable({ rows, timeZone, locale }: { rows: TemplateCatal
       key: "message",
       header: t("colMessage"),
       onCard: true,
-      cell: (r) => (
-        <div className="min-w-0">
-          <p className="text-label text-fg-heading">{r.name}</p>
-          <p className="mt-0.5 text-caption text-fg-muted">
-            <bdi dir="ltr">{r.key}</bdi>
-          </p>
-        </div>
-      ),
+      // The message's name alone: `MSG-proposal_submitted` is the plan's
+      // identifier, which an org admin has no use for (sync 2, as the audit
+      // card's raw key). The row still links by it, through `?key=`.
+      cell: (r) => <p className="text-label text-fg-heading">{r.name}</p>,
     },
     { key: "category", header: t("colCategory"), onCard: true, cell: (r) => <span>{r.category}</span> },
     {

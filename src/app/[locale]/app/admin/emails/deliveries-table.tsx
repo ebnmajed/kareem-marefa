@@ -26,14 +26,7 @@ export function DeliveriesTable({ rows, timeZone, locale, empty }: { rows: Deliv
       key: "message",
       header: t("colMessage"),
       onCard: true,
-      cell: (r) => (
-        <div className="min-w-0">
-          <p className="text-label text-fg-heading">{r.name}</p>
-          <p className="mt-0.5 text-caption text-fg-muted">
-            <bdi dir="ltr">{r.key}</bdi>
-          </p>
-        </div>
-      ),
+      cell: (r) => <p className="text-label text-fg-heading">{r.name}</p>,
     },
     { key: "recipient", header: t("colRecipient"), onCard: true, cell: (r) => <bdi>{r.member?.displayName ?? t("unknownRecipient")}</bdi> },
     {

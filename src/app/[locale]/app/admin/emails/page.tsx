@@ -97,9 +97,6 @@ export default async function EmailsPage({
             <h2 id="editor-heading" className="mt-3 text-h2 text-fg-heading">
               {t.rich("editor.heading", { name: messageName(selectedKey), bdi })}
             </h2>
-            <p className="mt-1 text-caption text-fg-muted">
-              <bdi dir="ltr">{selectedKey}</bdi>
-            </p>
             <div className="mt-4">
               <TemplateEditor
                 messageKey={selectedKey}

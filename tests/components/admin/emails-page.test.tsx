@@ -101,6 +101,9 @@ describe("EmailsPage", () => {
     expect(rows[0]).toHaveTextContent("الافتراضي");
     expect(rows[1]).toHaveTextContent("تصل دائمًا");
     expect(rows[1]).toHaveTextContent("قالب المؤسسة");
+    // Named, never by the plan's identifier (sync 2).
+    expect(rows[0]).toHaveTextContent("تذكير قبل الجلسة بيوم");
+    expect(container.textContent).not.toContain("MSG-");
     expect(screen.queryByText(/تعذّر إرسال/)).toBeNull();
   });
 
@@ -145,6 +148,7 @@ describe("EmailsPage", () => {
     expect(row).toHaveTextContent("رفض مزوّد البريد الرسالة.");
     expect(row).toHaveTextContent("resend 422");
     expect(row).toHaveTextContent("سارة العتيبي");
+    expect(row).not.toHaveTextContent("MSG-");
     expect(dal.listDeliveryLog).toHaveBeenCalledWith("ar", { status: "failed", before: undefined });
   });
 

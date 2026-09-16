@@ -48,35 +48,42 @@ export function DurationInput({
   const field = useFieldWiring();
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Input
-        name={amountName}
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={max}
-        step={1}
-        dir="ltr"
-        className="w-28 text-center"
-        value={amount}
-        defaultValue={amount === undefined ? defaultAmount : undefined}
-        onChange={onAmountChange ? (e) => onAmountChange(e.target.value) : undefined}
-      />
-      <Select
-        id={field ? `${field.id}-unit` : undefined}
-        name={unitName}
-        aria-label={t.markup("unitLabel", { field: label, bdi: (chunks) => chunks })}
-        className="w-auto"
-        value={unit}
-        defaultValue={unit === undefined ? defaultUnit : undefined}
-        onChange={onUnitChange ? (e) => onUnitChange(e.target.value as DurationUnit) : undefined}
-      >
-        {units.map((u) => (
-          <option key={u} value={u}>
-            {t(`units.${u}`)}
-          </option>
-        ))}
-      </Select>
+    // One row, the number narrow beside the unit. A width class on the control
+    // itself does nothing: `controlClass`' `w-full` is emitted after `w-28` and
+    // wins, which stacked two full-width controls per reminder on a phone
+    // (sync 2). The wrappers size them; each control fills its own.
+    <div className="flex items-center gap-2">
+      <div className="w-24 shrink-0">
+        <Input
+          name={amountName}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={max}
+          step={1}
+          dir="ltr"
+          className="text-center"
+          value={amount}
+          defaultValue={amount === undefined ? defaultAmount : undefined}
+          onChange={onAmountChange ? (e) => onAmountChange(e.target.value) : undefined}
+        />
+      </div>
+      <div className="min-w-0 flex-1 sm:max-w-48">
+        <Select
+          id={field ? `${field.id}-unit` : undefined}
+          name={unitName}
+          aria-label={t.markup("unitLabel", { field: label, bdi: (chunks) => chunks })}
+          value={unit}
+          defaultValue={unit === undefined ? defaultUnit : undefined}
+          onChange={onUnitChange ? (e) => onUnitChange(e.target.value as DurationUnit) : undefined}
+        >
+          {units.map((u) => (
+            <option key={u} value={u}>
+              {t(`units.${u}`)}
+            </option>
+          ))}
+        </Select>
+      </div>
     </div>
   );
 }
