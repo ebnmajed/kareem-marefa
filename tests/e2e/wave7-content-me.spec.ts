@@ -150,15 +150,17 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await capture(page, "tabstrip-privacy");
 });
 
-// ★ The lead's standard, restated: `useActionState`'s own fix for the old
-// `?saved=1` gap (a save submitted before hydration landed without the
-// confirmation) is only as good as what actually happens on a REAL no-JS
-// POST — nobody had checked whether Next renders the returned state for a
-// submission the client runtime never touched. `javaScriptEnabled: false`
-// disables the page's OWN scripts (no hydration, no React event handling)
-// while Playwright's own automation still drives the DOM directly, which
-// is exactly the "pressed before hydration" shape.
-test.describe("no-JS save", () => {
+// ★ Skipped, the lead's finding, certain rather than timing-dependent:
+// under `/app`, `loading.tsx` makes the response stream (the skeleton
+// flushes, the real page arrives in a `<div hidden>` React's own inline
+// `$RC` script reveals) — with JS off that script never runs, so no route
+// under `/app` can render for a no-JS client, a property of M9's loading
+// model (DEC-087/DEC-134), not of this form. The only no-JS contract in the
+// plan is the frozen register form (`16` §8.2, `qa:contract`); nothing asks
+// for one here. Left in place, skipped, rather than deleted, so the
+// reasoning stays attached to the code it would otherwise look like nobody
+// tested.
+test.describe.skip("no-JS save — loading.tsx streams under JS; see the comment above, not a bug in this form", () => {
   test.use({ javaScriptEnabled: false, viewport: PHONE });
 
   test("a save submitted with no JavaScript still shows the confirmation, with the value persisted", async ({ context, page }) => {
