@@ -1,7 +1,10 @@
 // SCR-052 · /app/admin/moderation/reports — the photo report queue, rebuilt
 // onto the system for wave 6 (`16` §6.7, `DEC-130`). Proves the Card grid
 // (not DataTable — DEC-130's own reasoning), the remove confirmation dialog
-// naming the session (REQ-UIX-013), and dismiss staying one click.
+// naming the session (REQ-UIX-013), and dismiss staying one click. Wave 7
+// (`DEC-137`) adds the shared `ModerationTabs` strip across all three
+// moderation queues — proved once here, since this file already seeds
+// exactly one open report and nothing on the other two queues.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -152,4 +155,16 @@ test("★ removing confirms in a dialog naming the session — cancel changes no
   const photo = await db.query<{ removed_at: string | null; hidden_at: string | null }>(`select removed_at, hidden_at from public.photos where id = $1`, [photoId]);
   expect(photo.rows[0].removed_at).not.toBeNull();
   expect(photo.rows[0].hidden_at).not.toBeNull();
+});
+
+test("wave 7: the shared ModerationTabs strip counts each queue separately, and moves without merging them (DEC-005)", async ({ context, page }) => {
+  await signIn(context);
+  await goto(page, "/ar/app/admin/moderation/reports");
+  const tabs = page.getByRole("tablist", { name: "قوائم الإشراف" });
+  await expect(tabs.getByRole("tab", { name: /بلاغات الصور.*1/ })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tab", { name: /التعليقات.*0/ })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: /طلبات الإخفاء.*0/ })).toBeVisible();
+
+  await tabs.getByRole("tab", { name: /التعليقات/ }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
 });

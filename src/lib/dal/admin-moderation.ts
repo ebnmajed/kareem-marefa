@@ -28,6 +28,38 @@ async function requireStaff(locale: string) {
   return client.session.role === "admin" || client.session.role === "moderator" ? client : null;
 }
 
+// ── the shared sub-nav's counts (wave 7, `DEC-137`, `16` §6.7's «الإشراف»
+// group) ────────────────────────────────────────────────────────────────
+//
+// One `head: true` count per queue's EXACT predicate — never the queues
+// merged into one number (that is precisely what DEC-005 forbids). All
+// three admin/moderation/{comments,photos,reports} pages call this once
+// each to badge a `ui/tabs` strip that lets a moderator move between the
+// three still-separate lists without a rail round-trip.
+
+export interface ModerationQueueCounts {
+  comments: number;
+  photos: number;
+  reports: number;
+}
+
+export async function listModerationCounts(locale: string): Promise<ModerationQueueCounts | null> {
+  const client = await requireStaff(locale);
+  if (!client) return null;
+  const { supabase } = client;
+
+  const [comments, photos, reports] = await Promise.all([
+    supabase.from("reports").select("id", { count: "exact", head: true }).eq("target", "comment").eq("status", "open"),
+    supabase.from("photo_takedowns").select("id", { count: "exact", head: true }).is("resolved_at", null),
+    supabase.from("reports").select("id", { count: "exact", head: true }).eq("target", "photo").eq("status", "open"),
+  ]);
+  if (comments.error) throw new Error(`reports (comment count): ${comments.error.message}`);
+  if (photos.error) throw new Error(`photo_takedowns (count): ${photos.error.message}`);
+  if (reports.error) throw new Error(`reports (photo count): ${reports.error.message}`);
+
+  return { comments: comments.count ?? 0, photos: photos.count ?? 0, reports: reports.count ?? 0 };
+}
+
 async function namesFor(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], ids: string[]): Promise<Map<string, string | null>> {
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return new Map();

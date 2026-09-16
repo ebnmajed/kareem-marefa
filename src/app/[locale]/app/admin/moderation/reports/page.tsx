@@ -2,19 +2,21 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
+import { ModerationTabs } from "@/components/admin/moderation-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { listPhotoReports } from "@/lib/dal/admin-moderation";
+import { listModerationCounts, listPhotoReports } from "@/lib/dal/admin-moderation";
 import { resolveReport } from "./actions";
 import { ReportCard } from "./report-card";
 
 // SCR-052 · /app/admin/moderation/reports (REQ-ADM-010, REQ-EVT-008,
-// DEC-005), rebuilt onto the system for wave 6 (`16` §6.7, `DEC-130`). Open
-// reports on PHOTOS that have NOT been hidden — distinct from SCR-051's
-// takedown queue (already hidden). "Reports" here is photo-specific, not a
-// merged all-content inbox: comment reports have their own screen (SCR-050,
-// not this track's this wave) because comments have no takedown concept to
-// contrast against, so nothing about them needs the same split.
+// DEC-005), rebuilt onto the system for wave 6 (`16` §6.7, `DEC-130`), with
+// the shared `ModerationTabs` strip added for wave 7 once `comments`/`photos`
+// joined it on the system (`DEC-137`). Open reports on PHOTOS that have NOT
+// been hidden — distinct from SCR-051's takedown queue (already hidden).
+// "Reports" here is photo-specific, not a merged all-content inbox: comment
+// reports have their own screen (SCR-050) because comments have no takedown
+// concept to contrast against, so nothing about them needs the same split.
 
 function ageInDays(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -24,8 +26,8 @@ export default async function PhotoReportsPage({ params }: { params: Promise<{ l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [reports, t] = await Promise.all([listPhotoReports(locale), getTranslations("admin.moderation")]);
-  if (reports === null) notFound();
+  const [reports, counts, t] = await Promise.all([listPhotoReports(locale), listModerationCounts(locale), getTranslations("admin.moderation")]);
+  if (reports === null || counts === null) notFound();
 
   const num = (n: number) => formatNumber(n);
   const action = (reportId: string, photoId: string) => resolveReport.bind(null, locale as Locale, reportId, photoId);
@@ -33,6 +35,9 @@ export default async function PhotoReportsPage({ params }: { params: Promise<{ l
   return (
     <>
       <PageHeader title={t("photosReportsTitle")} description={t("photosReportsIntro")} />
+      <div className="mt-6">
+        <ModerationTabs current="reports" counts={counts} />
+      </div>
 
       {reports.length === 0 ? (
         <div className="mt-8">

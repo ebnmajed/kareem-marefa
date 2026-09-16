@@ -206,14 +206,20 @@ test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the t
 test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/moderation/comments");
-  const card = page.locator("li", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
+  const card = page.locator("article", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
 
-  await card.getByText("أزل", { exact: true }).click();
-  await card.getByRole("button", { name: "أرسل" }).click();
-  await expect(card.getByText("اكتب السبب أولًا")).toBeVisible();
+  // ★ `ui/dialog`'s confirmation (`report-card.tsx`, REQ-UIX-013, wave 7) is
+  // portalled onto `document.body`, OUTSIDE this card's own DOM subtree —
+  // same trap the photo-report test below already names for its own queue.
+  // Scoped to the dialog, not the card, from here on.
+  await card.getByRole("button", { name: "أزل" }).click();
+  const dialog = page.getByRole("dialog", { name: "حذف تعليق من «جلسة الإشراف»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  await expect(dialog.getByText("اكتب السبب أولًا")).toBeVisible();
 
-  await card.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
-  await card.getByRole("button", { name: "أرسل" }).click();
+  await dialog.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
   await expect(page.getByText("تعليق مسيء يستحق المراجعة")).toHaveCount(0);
 
   const { rows: commentRows } = await db.query<{ deleted_at: string; removal_reason: string }>(`select deleted_at, removal_reason from public.comments where id = $1`, [commentId]);
@@ -275,10 +281,14 @@ test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sidew
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, modEmail);
+  // `wave7-console-…` — the row-cited path `docs/plan/notes/console.md`'s
+  // "Wave 7 plan" §2/§4 commits to for K1/K2, and `reports`' own missing
+  // capture (wave 6's own carried finding) closed in the same pass now that
+  // the shared `ModerationTabs` strip touches all three pages together.
   for (const [path, name] of [
-    ["comments", "scr-050-moderation-comments"],
-    ["photos", "scr-051-moderation-photos"],
-    ["reports", "scr-052-moderation-reports"],
+    ["comments", "wave7-console-moderation-comments-populated"],
+    ["photos", "wave7-console-moderation-photos-populated"],
+    ["reports", "wave7-console-moderation-reports-populated"],
   ] as const) {
     await goto(page, `/ar/app/admin/moderation/${path}`);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
