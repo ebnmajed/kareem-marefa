@@ -1876,3 +1876,27 @@ nothing else is open.
 `tsc` clean, lint 0 errors, `npm test` 1392/1392.
 
 Ready for sync.
+
+## §4 — contract 3 confirmed by the landed migration, a strict test, the real seed (`8ed4bf8`)
+
+`0087_attendance_removal.sql` is live: `remove_check_in()` writes `source = 'reversal'`,
+`amount = -original`, the fixed reason «أُلغي تسجيل الحضور» — exactly what `getPointsHistory()` and
+`PointsHistoryList` already rendered generically off `source`. Two asks, both done:
+
+1. **A test that fails if the sign or the `<bdi>` is lost**, not a loose regex — checks the actual DOM
+   node is a `<bdi>` element and its exact text content, stripped of bidi CONTROL characters only (not
+   digits), equals `-5`. Also added: the admin's own removal reason never reaches this screen (the
+   lead's ruling — it lives on `check_ins.removal_reason`/`audit_log` only, matching the certificate
+   path's own withholding), and this component renders no competing total of its own.
+2. **The e2e reversal capture now seeds through the real RPCs**, not hand-inserted ledger rows: a real
+   `check_ins` row, `award_points('check_in', …)`, then `remove_check_in()` as an admin. Wrote a
+   throwaway verification script first (never committed) against real local Supabase to prove the flow
+   before writing assertions against it — caught my own mistake doing that: the real award's reason is
+   «تسجيل حضور مؤكَّد», not the «تسجيل حضور» I'd have guessed, matching what the file's own pre-existing
+   first test already knew. `wave7-content-points-reversal.png`, as asked.
+
+`supabase/proposed/content/01_photos_broadcast.sql` untouched, waiting for "promoted at `<sha>`".
+
+`tsc` clean, lint 0 errors, `npm test` 1401/1401.
+
+Ready for sync.
