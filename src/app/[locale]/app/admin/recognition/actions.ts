@@ -175,10 +175,10 @@ export async function awardBadge(locale: Locale, previous: State, formData: Form
   const parsed = manualBadgeAwardInput.safeParse({ memberId, badgeId, reason });
   if (!parsed.success) return { ...withFormError(captured, "notFound"), saved: false };
   try {
-    const { alreadyHeldSince } = await submitManualBadgeAward(locale, parsed.data);
+    const { alreadyHeldSince, alreadyHeldBadge } = await submitManualBadgeAward(locale, parsed.data);
     if (alreadyHeldSince) {
       const refused = withErrors(captured, { memberId: "alreadyHeld" });
-      return { ...refused, values: { ...refused.values, alreadyHeldSince }, saved: false };
+      return { ...refused, values: { ...refused.values, alreadyHeldSince, alreadyHeldBadge: alreadyHeldBadge ?? "" }, saved: false };
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

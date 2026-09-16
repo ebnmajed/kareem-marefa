@@ -120,10 +120,19 @@ test("SCR-060 at 390 px: a refusal lands at its row, and nothing is written", as
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("link", { name: /التذكير 2/ })).toBeVisible();
   await expect(summary.getByRole("link", { name: /التذكير 3/ })).toBeVisible();
-  await expect(page.getByText("أقصر مدة للتذكير خمس دقائق.")).toBeVisible();
-  await expect(page.getByText("هذه المدة في تذكير آخر.")).toBeVisible();
+  // Each message appears twice by design — as the summary's link and under
+  // its own field — so the field's copy is asserted through the control's
+  // accessible description, which is also what proves the wiring.
+  await expect(page.getByLabel("التذكير 2", { exact: true })).toHaveAccessibleDescription("أقصر مدة للتذكير خمس دقائق.");
+  await expect(page.getByLabel("التذكير 3", { exact: true })).toHaveAccessibleDescription("هذه المدة في تذكير آخر.");
+  await expect(page.locator('p[id^="reminder-offset-"][id$="-error"]').filter({ hasText: "أقصر مدة للتذكير خمس دقائق." })).toBeVisible();
+  await expect(page.locator('p[id^="reminder-offset-"][id$="-error"]').filter({ hasText: "هذه المدة في تذكير آخر." })).toBeVisible();
   // What was typed survives the refusal (REQ-UIX-011).
   await expect(page.getByLabel("التذكير 2", { exact: true })).toHaveValue("2");
+  // …the units too: React resets the form after the action, and a select's
+  // default is never kept in step by React (`KeptSelect`).
+  await expect(page.getByRole("combobox", { name: "التذكير 2 — الوحدة" })).toHaveValue("minutes");
+  await expect(page.getByRole("combobox", { name: "التذكير 3 — الوحدة" })).toHaveValue("days");
 
   const { rows } = await db.query<{ reminder_offsets_minutes: number[] }>(`select reminder_offsets_minutes from public.org_settings where org_id = $1`, [orgId]);
   expect(rows[0].reminder_offsets_minutes).toEqual([10080, 1440, 120]);

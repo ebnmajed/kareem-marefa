@@ -35,6 +35,7 @@
         "confirm": "Release certificates",
         "released": "{count, plural, one {<bdi>{value}</bdi> certificate released} other {<bdi>{value}</bdi> certificates released}}",
         "failed": "The certificates could not be released. Try again.",
+        "notAuthorized": "The certificates were not released: releasing them is no longer within your permissions.",
         "empty": "No held certificates."
       },
       "badges": {
@@ -120,7 +121,7 @@
           "badgeRequired": "Choose the badge.",
           "reasonRequired": "Enter the reason.",
           "reasonTooLong": "Three hundred characters at most.",
-          "alreadyHeld": "This member has held the badge since <bdi>{since}</bdi>.",
+          "alreadyHeld": "This member has held the “<bdi>{badge}</bdi>” badge since <bdi>{since}</bdi>.",
           "notFound": "The member or the badge is no longer available. Refresh the page.",
           "failed": "The badge could not be awarded. Try again."
         }

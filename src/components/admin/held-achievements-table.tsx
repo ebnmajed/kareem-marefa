@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
-import { releaseAchievements } from "@/components/certificates/actions";
+import { releaseAchievements, type AchievementReleaseResult } from "@/components/certificates/actions";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { DataTableColumn } from "@/components/ui";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,9 @@ import { useToast } from "@/components/ui/toast";
 // counts the certificates and says what releasing does, and the period in
 // words (`listHeldAchievements()`'s `badgeName`/`period`, R-D2).
 //
-// ★ R-D1 is open: `releaseAchievements` returns nothing, so a refusal inside it
-// is invisible here. A thrown error is reported; a silent refusal is not, until
-// the action returns its `WriteResult`.
+// The release answers (`designer`'s R-D1, `246cfbf`): the toast counts what was
+// released, not what was selected, and a refusal says so and keeps the
+// selection — it used to close on nothing and say nothing.
 
 export interface HeldAchievementRow {
   id: string;
@@ -85,14 +85,18 @@ export function HeldAchievementsTable({ rows, locale }: { rows: HeldAchievementR
     startTransition(async () => {
       const data = new FormData();
       for (const id of ids) data.append("id", id);
+      let result: AchievementReleaseResult | null = null;
       try {
-        await releaseAchievements(data);
-        setSelected([]);
-        setConfirming(false);
-        toast.show({ title: t.markup("held.released", { count: ids.length, value: formatNumber(ids.length), bdi: (chunks) => chunks }), tone: "success" });
+        result = await releaseAchievements(data);
       } catch {
-        setConfirming(false);
-        toast.show({ title: t("held.failed"), tone: "error" });
+        result = null;
+      }
+      setConfirming(false);
+      if (result?.status === "ok") {
+        setSelected([]);
+        toast.show({ title: t.markup("held.released", { count: result.count, value: formatNumber(result.count), bdi: (chunks) => chunks }), tone: "success" });
+      } else {
+        toast.show({ title: t(result?.status === "not_authorized" ? "held.notAuthorized" : "held.failed"), tone: "error" });
       }
     });
   }

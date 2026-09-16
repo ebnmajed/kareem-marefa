@@ -82,6 +82,8 @@ describe("RemindersForm", () => {
     const summary = await screen.findByRole("alert");
     expect(within(summary).getByRole("link", { name: /التذكير 2/ })).toBeInTheDocument();
     expect(screen.getByLabelText("التذكير 2")).toHaveValue(24);
+    // The unit too, though React resets the form after the action (`KeptSelect`).
+    expect(screen.getByRole("combobox", { name: "التذكير 2 — الوحدة" })).toHaveValue("hours");
     expect(screen.getByLabelText("التذكير 2")).toHaveAccessibleDescription("هذه المدة في تذكير آخر.");
 
     fireEvent.click(within(summary).getByRole("link", { name: /التذكير 2/ }));

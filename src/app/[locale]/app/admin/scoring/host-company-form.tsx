@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { KeptSelect } from "@/components/admin/kept-select";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import { useActionToast } from "@/components/admin/use-action-toast";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
@@ -9,7 +10,6 @@ import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
-import { Select } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import type { CompanyOption, HostableSession } from "@/lib/dal/scoring-admin";
@@ -69,14 +69,14 @@ export function HostCompanyForm({ action, sessions, companies, timeZone, locale 
         />
       </Field>
       <Field id="host-company" label={t("companyLabel")} error={err("companyId")}>
-        <Select name="companyId" value={company} onChange={(e) => setCompany(e.target.value)}>
+        <KeptSelect name="companyId" value={company} onChange={(e) => setCompany(e.target.value)}>
           <option value="">{t("none")}</option>
           {companies.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
-        </Select>
+        </KeptSelect>
       </Field>
       {state.formError ? (
         <p className="flex items-start gap-2 text-body-sm text-error">

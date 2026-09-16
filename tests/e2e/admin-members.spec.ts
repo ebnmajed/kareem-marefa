@@ -160,6 +160,9 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   // the instant `selectOption` runs regardless of whether the action ever
   // completed.
   await expect(page.getByRole("status")).toContainText("غُيِّر الدور.");
+  // React resets the form after the action; the select must still show the
+  // role just saved, not the one the row mounted with (`KeptSelect`).
+  await expect(row.getByLabel("الدور")).toHaveValue("moderator");
 
   const { rows: memberRow } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [memberId]);
   expect(memberRow[0].org_role).toBe("moderator");

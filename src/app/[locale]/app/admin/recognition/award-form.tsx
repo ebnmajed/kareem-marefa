@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { KeptSelect } from "@/components/admin/kept-select";
 import { MemberPicker, type PickableMember } from "@/components/admin/member-picker";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import { useActionToast } from "@/components/admin/use-action-toast";
@@ -11,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 
@@ -23,8 +23,10 @@ import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 // member already held the badge: `award_badge_manually()` does nothing then,
 // but still writes an audit row. The member is now picked by name, the award is
 // confirmed by badge and member — a badge cannot be withdrawn once given — and
-// a badge already held is said at the member field, with since when, before
-// anything is written.
+// a badge already held is said at the member field, naming the badge and since
+// when, before anything is written — with the badge still chosen
+// (`KeptSelect`: React's reset after the refusal used to put the select back to
+// «اختر شارة»).
 
 type Action = (previous: SavedFormState, formData: FormData) => Promise<SavedFormState>;
 const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
@@ -47,14 +49,18 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
   );
   const attempted = hasAttempted(state);
   const since = state.values.alreadyHeldSince;
-  // The summary's message is a string; the field's error is a node, so the date it quotes is isolated.
+  // The refusal names the badge: the server's name for it, else the one chosen.
+  const heldBadge = state.values.alreadyHeldBadge || badges.find((b) => b.id === was(state, "badgeId"))?.name || "";
+  // The summary's message is a string; the field's error is a node, so the badge and the date it quotes are isolated.
   const errText = (field: string) => {
     const key = state.errors[field];
     if (!key) return undefined;
-    return key === "alreadyHeld" && since ? t.markup("errors.alreadyHeld", { since: formatDateTime(since, timeZone, locale), bdi: (chunks) => chunks }) : t(`errors.${key}`);
+    return key === "alreadyHeld" && since
+      ? t.markup("errors.alreadyHeld", { badge: heldBadge, since: formatDateTime(since, timeZone, locale), bdi: (chunks) => chunks })
+      : t(`errors.${key}`);
   };
   const err = (field: string) =>
-    state.errors[field] === "alreadyHeld" && since ? t.rich("errors.alreadyHeld", { since: formatDateTime(since, timeZone, locale), bdi }) : errText(field);
+    state.errors[field] === "alreadyHeld" && since ? t.rich("errors.alreadyHeld", { badge: heldBadge, since: formatDateTime(since, timeZone, locale), bdi }) : errText(field);
   const labels: Record<string, string> = { memberId: t("memberLabel"), badgeId: t("badgeLabel"), reason: t("reasonLabel") };
 
   function review() {
@@ -90,14 +96,14 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
           <MemberPicker members={members} name="memberId" placeholder={t("memberPlaceholder")} noMatches={t("noMatches")} defaultValue={attempted ? was(state, "memberId") || undefined : undefined} />
         </Field>
         <Field id="award-badge" label={t("badgeLabel")} required error={err("badgeId")}>
-          <Select name="badgeId" defaultValue={attempted ? was(state, "badgeId") : ""}>
+          <KeptSelect name="badgeId" defaultValue={attempted ? was(state, "badgeId") : ""}>
             <option value="">{t("badgeChoose")}</option>
             {badges.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
             ))}
-          </Select>
+          </KeptSelect>
         </Field>
         <Field id="award-reason" label={t("reasonLabel")} required error={err("reason")}>
           <Textarea name="reason" rows={2} maxLength={300} defaultValue={attempted ? was(state, "reason") : ""} />

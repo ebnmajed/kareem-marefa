@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { DeactivateToggle } from "@/components/admin/deactivate-toggle";
+import { KeptSelect } from "@/components/admin/kept-select";
 import { RowEditDialog } from "@/components/admin/row-edit-dialog";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -11,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
@@ -178,13 +178,13 @@ function BadgeFields({ state, badge, prefix, labels }: { state: SavedFormState; 
         <Textarea name="description" rows={2} maxLength={300} defaultValue={value("description", badge?.description ?? "")} />
       </Field>
       <Field id={`${prefix}-metric`} label={labels.metric} required error={err("metric")}>
-        <Select name="metric" value={metric} onChange={(e) => setMetric(e.target.value as BadgeMetric)}>
+        <KeptSelect name="metric" value={metric} onChange={(e) => setMetric(e.target.value as BadgeMetric)}>
           {METRICS.map((m) => (
             <option key={m} value={m}>
               {t(`metrics.${m}`)}
             </option>
           ))}
-        </Select>
+        </KeptSelect>
       </Field>
       {metric === "presenter_rating_avg" ? (
         <>

@@ -639,13 +639,19 @@ export type ManualBadgeAwardInput = z.infer<typeof manualBadgeAwardInput>;
  * The holding is read first and returned, so the screen says so instead — and
  * no second audit row is written for an award that did not happen.
  */
-export async function submitManualBadgeAward(locale: string, input: ManualBadgeAwardInput): Promise<{ alreadyHeldSince: string | null }> {
+export async function submitManualBadgeAward(locale: string, input: ManualBadgeAwardInput): Promise<{ alreadyHeldSince: string | null; alreadyHeldBadge: string | null }> {
   const { supabase } = await sessionClient(locale);
-  const { data: held, error: readError } = await supabase.from("member_badges").select("awarded_at").eq("member_id", input.memberId).eq("badge_id", input.badgeId).maybeSingle();
+  // The badge's name comes back with the refusal, so the message can name it
+  // even when the badge was retired after the page loaded and is no longer in
+  // the form's list.
+  const { data: held, error: readError } = await supabase.from("member_badges").select("awarded_at, badges(name)").eq("member_id", input.memberId).eq("badge_id", input.badgeId).maybeSingle();
   if (readError) throw new Error(`member_badges: ${readError.message}`);
-  if (held) return { alreadyHeldSince: held.awarded_at as string };
+  if (held) {
+    const badge = (Array.isArray(held.badges) ? held.badges[0] : held.badges) as { name: string } | null | undefined;
+    return { alreadyHeldSince: held.awarded_at as string, alreadyHeldBadge: badge?.name ?? null };
+  }
   const { error } = await supabase.rpc("award_badge_manually", { p_member: input.memberId, p_badge: input.badgeId, p_reason: input.reason });
-  if (!error) return { alreadyHeldSince: null };
+  if (!error) return { alreadyHeldSince: null, alreadyHeldBadge: null };
   if (error.code === "P0002") throw new Error("not_found");
   if (error.message.includes("reason_required")) throw new Error("reason_required");
   throw new Error(`award_badge_manually: ${error.message}`);

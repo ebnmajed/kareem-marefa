@@ -101,7 +101,7 @@ describe("RecognitionAdminPage", () => {
   });
 
   it("held certificates come first, named by badge or by period, and release after a confirmation that counts them", async () => {
-    releaseAchievements.mockResolvedValue(undefined);
+    releaseAchievements.mockResolvedValue({ status: "ok", count: 2 });
     const { container } = await renderPage([
       cert("c1", "ريم القحطاني", { badgeName: "مُقدِّم مُقيَّم" }),
       cert("c2", "خالد الحربي", { period: { kind: "monthly", start: "2026-08-01", end: "2026-08-31" } }),
@@ -122,6 +122,19 @@ describe("RecognitionAdminPage", () => {
     await waitFor(() => expect(releaseAchievements).toHaveBeenCalledTimes(1));
     expect((releaseAchievements.mock.calls[0][0] as FormData).getAll("id")).toEqual(["c1", "c2"]);
     expect(await screen.findByText("أُطلقت شهادتان")).toBeInTheDocument();
+  });
+
+  it("a refused release says so and keeps the selection", async () => {
+    releaseAchievements.mockResolvedValue({ status: "not_authorized" });
+    await renderPage([cert("c1", "ريم القحطاني", { badgeName: "مُقدِّم مُقيَّم" })]);
+    const [first] = cards(section(/شهادات إنجاز بانتظار الإطلاق/));
+    fireEvent.click(within(first).getByRole("checkbox"));
+    fireEvent.click(screen.getAllByRole("button", { name: "أطلِق المحدَّدة" })[0]);
+    const confirm = await screen.findByRole("dialog", { name: "إطلاق شهادة واحدة؟" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "أطلِق الشهادات" }));
+    expect(await screen.findByText("لم تُطلق الشهادات: إطلاقها لم يعد ضمن صلاحياتك.")).toBeInTheDocument();
+    expect(screen.queryByText("أُطلقت شهادة واحدة")).toBeNull();
+    expect(within(first).getByRole("checkbox")).toBeChecked();
   });
 
   it("badges read their rule in words, a retired one says so, and retiring asks first, naming the badge", async () => {
@@ -167,10 +180,15 @@ describe("RecognitionAdminPage", () => {
     });
     await renderPage();
     const award = section("منح شارة يدويًا");
+    const badge = within(award).getByRole("combobox", { name: /الشارة/ });
+    fireEvent.change(badge, { target: { value: (within(badge).getByRole("option", { name: "حاضر دائم" }) as HTMLOptionElement).value } });
     fireEvent.click(within(award).getByRole("button", { name: "امنح الشارة" }));
     await waitFor(() => expect(actions.awardBadge).toHaveBeenCalled());
-    // At the field, and in the summary that links to it.
-    expect((await within(award).findAllByText(/يحمل هذا العضو الشارة منذ .*2026/)).length).toBeGreaterThan(0);
+    // At the field, and in the summary that links to it — naming the badge.
+    const said = await within(award).findAllByText((_, el) => /^يحمل هذا العضو شارة «حاضر دائم» منذ .*2026/.test(el?.textContent ?? "") && el?.children.length !== 0);
+    expect(said.length).toBeGreaterThan(0);
+    // The badge chosen is still chosen after React's reset (REQ-UIX-011).
+    expect((badge as HTMLSelectElement).selectedOptions[0]).toHaveTextContent("حاضر دائم");
     // Retired badges are not offered.
     expect(within(award).queryByRole("option", { name: "كريم المعرفة السنوي" })).toBeNull();
   });

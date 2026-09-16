@@ -35,6 +35,7 @@
         "confirm": "أطلِق الشهادات",
         "released": "{count, plural, zero {أُطلقت <bdi>{value}</bdi> شهادة} one {أُطلقت شهادة واحدة} two {أُطلقت شهادتان} few {أُطلقت <bdi>{value}</bdi> شهادات} many {أُطلقت <bdi>{value}</bdi> شهادة} other {أُطلقت <bdi>{value}</bdi> شهادة}}",
         "failed": "تعذّر إطلاق الشهادات. حاول مرة أخرى.",
+        "notAuthorized": "لم تُطلق الشهادات: إطلاقها لم يعد ضمن صلاحياتك.",
         "empty": "لا شهادات محجوزة."
       },
       "badges": {
@@ -120,7 +121,7 @@
           "badgeRequired": "اختر الشارة.",
           "reasonRequired": "اكتب سبب المنح.",
           "reasonTooLong": "ثلاثمئة حرف على الأكثر.",
-          "alreadyHeld": "يحمل هذا العضو الشارة منذ <bdi>{since}</bdi>.",
+          "alreadyHeld": "يحمل هذا العضو شارة «<bdi>{badge}</bdi>» منذ <bdi>{since}</bdi>.",
           "notFound": "العضو أو الشارة لم يعد متاحًا. حدّث الصفحة.",
           "failed": "تعذّر منح الشارة. حاول مرة أخرى."
         }

@@ -217,7 +217,13 @@ test("REQ-REC-001 at 390 px: a badge the member already holds is said at the mem
   await award.getByRole("button", { name: "امنح الشارة" }).click();
   await page.getByRole("dialog", { name: "منح شارة «حاضر دائم» إلى «ريم القحطاني»؟" }).getByRole("button", { name: "امنح الشارة" }).click();
 
-  await expect(award.getByText(/يحمل هذا العضو الشارة منذ/).last()).toBeVisible();
+  // Named at the member field (its accessible description) and in the summary.
+  await expect(award.getByRole("combobox", { name: /العضو/ })).toHaveAccessibleDescription(/^يحمل هذا العضو شارة «حاضر دائم» منذ /);
+  await expect(award.getByRole("alert").getByRole("link", { name: /يحمل هذا العضو شارة «حاضر دائم» منذ/ })).toBeVisible();
+  // ★ The badge chosen is still chosen after the refusal — React resets the
+  // form after every action, and the select used to come back «اختر شارة».
+  await expect(award.getByLabel("الشارة", { exact: false }).locator("option:checked")).toHaveText("حاضر دائم");
+  await expect(award.getByLabel("السبب", { exact: false })).toHaveValue("تكريم الحضور");
   const { rows } = await db.query<{ n: string }>(`select count(*) n from public.audit_log where org_id = $1 and action = 'badge.manual_award'`, [orgId]);
   expect(rows[0].n).toBe("0");
   await award.getByRole("alert").scrollIntoViewIfNeeded();

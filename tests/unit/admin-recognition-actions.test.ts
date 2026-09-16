@@ -73,15 +73,18 @@ describe("savePerk — REQ-REC-006", () => {
 
 describe("awardBadge — REQ-REC-001's manual award", () => {
   it("a badge already held is refused at the member, with since when, and never «saved»", async () => {
-    submitManualBadgeAward.mockResolvedValueOnce({ alreadyHeldSince: "2026-08-01T10:00:00Z" });
+    submitManualBadgeAward.mockResolvedValueOnce({ alreadyHeldSince: "2026-08-01T10:00:00Z", alreadyHeldBadge: "حاضر دائم" });
     const result = await actions.awardBadge("ar", emptySavedState(), form({ memberId: ID, badgeId: ID2, reason: "تكريم سنوي" }));
     expect(result.saved).toBe(false);
     expect(result.errors).toEqual({ memberId: "alreadyHeld" });
     expect(result.values.alreadyHeldSince).toBe("2026-08-01T10:00:00Z");
+    // The badge is named by the server, and what was chosen is kept for the select.
+    expect(result.values.alreadyHeldBadge).toBe("حاضر دائم");
+    expect(result.values.badgeId).toBe(ID2);
   });
 
   it("a new award saves; missing fields are refused at each", async () => {
-    submitManualBadgeAward.mockResolvedValueOnce({ alreadyHeldSince: null });
+    submitManualBadgeAward.mockResolvedValueOnce({ alreadyHeldSince: null, alreadyHeldBadge: null });
     expect((await actions.awardBadge("ar", emptySavedState(), form({ memberId: ID, badgeId: ID2, reason: "تكريم" }))).saved).toBe(true);
     const missing = await actions.awardBadge("ar", emptySavedState(), form({ memberId: "", badgeId: "", reason: "" }));
     expect(missing.errors).toEqual({ memberId: "memberRequired", badgeId: "badgeRequired", reason: "reasonRequired" });

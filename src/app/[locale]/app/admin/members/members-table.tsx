@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { KeptSelect } from "@/components/admin/kept-select";
 import { formatDateTime } from "@/components/sessions/numerals";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
 import { MoreIcon } from "@/components/ui/icons";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import type { AdminMemberRow } from "@/lib/dal/admin-members";
@@ -75,11 +75,11 @@ function RoleCell({ member, action, isSelf }: { member: AdminMemberRow; action: 
     // always carries a value), but it fires a toast from `state.error` below,
     // which `16` §8.2's rule covers too; matches the dialog form's own note.
     <form action={formAction} noValidate className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
-      <Select name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-full text-body-sm md:w-auto">
+      <KeptSelect name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-full text-body-sm md:w-auto">
         <option value="admin">{t("role.admin")}</option>
         <option value="moderator">{t("role.moderator")}</option>
         <option value="member">{t("role.member")}</option>
-      </Select>
+      </KeptSelect>
       <Button type="submit" variant="secondary" size="sm" disabled={pending}>
         {t("changeRole")}
       </Button>
