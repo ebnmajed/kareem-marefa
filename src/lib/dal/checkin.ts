@@ -27,6 +27,12 @@ export interface HostViewData {
   startsAt: string | null;
   /** DEC-065: off means a code is accepted only from a member with a confirmed reservation. */
   allowWalkIns: boolean;
+  /** DEC-141/REQ-CHK-015 — the manual switch, independent of `allowWalkIns`
+   *  and of the code's own existence: `ensure_check_in_code()` still issues
+   *  a rotating code while closed (0084's own comment — the room can see
+   *  what reopening would accept), but `check_in()` refuses every attempt
+   *  with `check_in_closed` until it's flipped back open. */
+  checkInOpen: boolean;
   validFrom: string | null;
   validUntil: string | null;
   checkInCount: number;
@@ -44,7 +50,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
     supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId).is("removed_at", null),
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
-    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
   ]);
   // Authorisation is the RPC's (REQ-CHK-014): a member gets `not_authorized`
   // whatever the state, so the window is never revealed to someone who may
@@ -58,6 +64,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   const rotationSeconds = settingsRes.data?.check_in_rotation_seconds ?? 600;
   const checkInCount = countRes.count ?? 0;
   const allowWalkIns = s.allow_walk_ins === true;
+  const checkInOpen = s.check_in_open === true;
   const phase = sessionPhase({ state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes });
   // "staff" and "presenter" carry an identical cell (both are the console's
   // two eligible viewers) — `getHostView()` already only reaches this point
@@ -66,11 +73,31 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   const consoleActive = affordancesFor(phase, "staff").hostConsole;
 
   if (codeRes.error) {
-    return { sessionId, code: null, phase, startsAt: s.starts_at, allowWalkIns, validFrom: null, validUntil: null, checkInCount, rotationSeconds, consoleActive };
+    return { sessionId, code: null, phase, startsAt: s.starts_at, allowWalkIns, checkInOpen, validFrom: null, validUntil: null, checkInCount, rotationSeconds, consoleActive };
   }
 
   const c = codeRes.data as { code: string; valid_from: string; valid_until: string };
-  return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
+  return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, checkInOpen, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// the switch itself — REQ-CHK-015/016, DEC-141. A thin wrapper: authority,
+// the role set (presenter of THIS session, or staff) and the ceiling are
+// all `set_check_in_open()`'s own (0084) — this only turns its three named
+// exceptions into the DAL's usual result shape, the same pattern every
+// other RPC wrapper in this file already uses.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type SetCheckInOpenError = "not_found" | "not_authorized" | "not_open" | "ceiling_passed" | "unknown";
+
+export async function setCheckInOpen(locale: string, sessionId: string, open: boolean): Promise<{ ok: true } | { ok: false; error: SetCheckInOpenError }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("set_check_in_open", { p_session: sessionId, p_open: open });
+  if (error) {
+    const known: SetCheckInOpenError[] = ["not_found", "not_authorized", "not_open", "ceiling_passed"];
+    return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
+  }
+  return { ok: true };
 }
 
 // ★ `setWalkIns()` is gone — DEC-117: walk-ins move to a publishing setting

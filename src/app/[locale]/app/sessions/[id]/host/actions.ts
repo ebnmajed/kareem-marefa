@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { manualCheckInInput, markCheckedInManually, revokeCode } from "@/lib/dal/checkin";
+import { manualCheckInInput, markCheckedInManually, revokeCode, setCheckInOpen, type SetCheckInOpenError } from "@/lib/dal/checkin";
 
 export async function revokeCodeAction(locale: string, sessionId: string) {
   await revokeCode(locale, sessionId);
@@ -10,6 +10,24 @@ export async function revokeCodeAction(locale: string, sessionId: string) {
 
 // ★ `setWalkInsAction()` is gone — DEC-117: walk-ins move to a publishing
 // setting (`sessions`' schedule form), and the host view loses the toggle.
+
+const KNOWN_SWITCH_ERRORS: SetCheckInOpenError[] = ["not_found", "not_authorized", "not_open", "ceiling_passed", "unknown"];
+
+// DEC-141/REQ-CHK-015 — the switch. `open` is bound at the call site (two
+// buttons, not a single toggle with a hidden field), the same shape
+// `revokeCodeAction` already uses: no client state, the button's own
+// `formAction` IS the decision. `set_check_in_open()` re-derives authority
+// itself (presenter of THIS session, or staff) — a stale `consoleActive`
+// read in this render is not trusted for the write.
+export async function setCheckInOpenAction(locale: string, sessionId: string, open: boolean) {
+  const base = `/${locale}/app/sessions/${sessionId}/host`;
+  const result = await setCheckInOpen(locale, sessionId, open);
+  if (!result.ok) {
+    const error = KNOWN_SWITCH_ERRORS.includes(result.error) ? result.error : "unknown";
+    redirect(`${base}?switchError=${error}`);
+  }
+  redirect(`${base}?switch=${open ? "opened" : "closed"}`);
+}
 
 const KNOWN_MANUAL_ERRORS = ["not_authorized", "reason_required", "not_found", "not_open", "member_not_found", "presenter_cannot_check_in", "unknown"] as const;
 

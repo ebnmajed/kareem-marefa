@@ -49,6 +49,22 @@
       "walkIns": {
         "on": "Allowed: the code is accepted from any member in the room.",
         "off": "Not allowed: the code is accepted from confirmed reservations only."
+      },
+      "checkInSwitch": {
+        "statusOpen": "Check-in is open now",
+        "statusClosed": "Check-in is closed now",
+        "close": "Close check-in",
+        "open": "Open check-in",
+        "closedHint": "No new code will be accepted until check-in reopens. No existing check-in is reversed.",
+        "opened": "Check-in opened",
+        "closed": "Check-in closed",
+        "error": {
+          "not_found": "Session not found",
+          "not_authorized": "You don't have permission to control check-in",
+          "not_open": "Check-in can't be controlled for this session in its current state",
+          "ceiling_passed": "This session is past the window for reopening check-in",
+          "unknown": "Something went wrong — try again"
+        }
       }
     },
     "schedule": {
