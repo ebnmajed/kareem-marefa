@@ -1174,4 +1174,59 @@ it (`05f739a`) — exact match. No build ran against the broken state. Told `ses
 commit from here is `git commit -m "..." -- <explicit paths>`, which is what a shared index actually
 requires and what I should have been doing from my very first commit this wave.
 
+**★ Correction, same day:** the deletion was INTENTIONAL — the lead had moved `FocusClearance` into
+the shell and asked `sessions` to remove the event page's own copy; `sessions` had staged exactly
+that removal when my commit swept it in. My restore (`9a8340a`) brought back an orphan nothing
+imports, and `sessions` deleted it again at `17404f9`. The lead's rule going forward, stated plainly
+and correctly: **never restore, create or delete a file outside my ownership, even to undo my own
+mistake — tell the lead or the owner instead, since only that file's owner knows whether the state I
+see is intended.** Owning the mistake was right; acting on it unilaterally was not. Not touching that
+file again.
+
+---
+
+## 11. The discussion review — two blockers, one real debugging story — `44485b8`
+
+The lead's own capture pass of the owner-named discussion surface (five captures, 390 px phone,
+`68e645d` build) found two blockers and three judgement items. Full detail is in the commit; the part
+worth keeping here is how blocker 1 was actually found, because the first two hypotheses were wrong
+in instructive ways.
+
+**★★ BLOCKER 1 — the composer stayed `aria-busy` indefinitely after one post**, through typing new
+text and past 3890 characters, 80+ seconds observed live. My first hypothesis: `router.refresh()`,
+called as the last statement inside the SAME `startTransition` a component's own `pending` is read
+from, races with sibling components' own `router.refresh()` calls (a reply post, a reaction) and
+Next's router dedupes the underlying request in a way that starves an earlier caller's own "done"
+signal. I moved `router.refresh()` into `setTimeout(…, 0)` for all five actions across both files —
+genuinely outside the tracked transition — and wrote a test to prove it.
+
+**The test lied, in an instructive way.** `expect(button).toBeEnabled()` immediately after a
+successful clear FAILED — not because `pending` was stuck, but because the button is CORRECTLY
+disabled at that instant: an empty composer has nothing to submit (`body.trim().length === 0`,
+`Button`'s own `disabled || pending`), and that's a completely different reason than the bug. This is
+exactly the shape of assertion every earlier test here (including mine) would have written — check
+that something the action did (a toast, a cleared field) happened — and it is presumably WHY nothing
+caught this sooner: the button's `disabled` and the button's `pending` were never independently
+verified.
+
+**Bisecting properly**: removing `router.refresh()` ENTIRELY from the transition (not moving it,
+deleting the call outright) made NO DIFFERENCE to the false-positive test above — proving the
+`setTimeout` fix does not address whatever THAT specific jsdom symptom was, because that symptom
+was never `pending` in the first place. The test that actually exercises the real complaint — type
+fresh text AFTER a successful post, then check `aria-busy` directly rather than the button's overall
+enabled state — passes cleanly, with or without the `setTimeout` change, in jsdom's mocked
+environment.
+
+**Recorded honestly, not smoothed over**: I cannot confirm from here that `setTimeout` is what fixes
+the live-build failure specifically — jsdom cannot model Next's real router/RSC internals closely
+enough to know for certain, and the mocked `router.refresh()` in every test here resolves trivially
+either way. What I can say: the change removes a coupling I could identify and articulate, is
+unconditionally safe (a macrotask genuinely runs outside any transition), and matches the lead's own
+hypothesis. Whether it is the WHOLE fix is the next build's question, not something claimed here.
+
+**BLOCKER 2** (success toasts covering the thread) and the **reaction affordance redesign** (a literal
+filled vs. outline circle, not a colour/opacity shift on the same glyph) are more straightforward —
+see the commit for both. One e2e locator bug fixed alongside (`event-comments.spec.ts:103`, the same
+outer/inner `<li>` nesting trap the delete locator already had to account for).
+
 Ready for sync.
