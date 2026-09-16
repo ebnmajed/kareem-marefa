@@ -119,9 +119,15 @@ test("SCR-053: the fixed catalogue in three groups, the deductions closed at 0, 
   await expect(page.getByRole("heading", { name: "الخصومات" })).toBeVisible();
   const penalties = group(page, "penalty-heading");
   await expect(shown(page, penalties.getByText("تغيّب بعد الحجز", { exact: true }))).toBeVisible();
-  // The seeded member-facing reason equals the name, so no card repeats it
-  // under a «يظهر للعضو» caption (the a4d2886 run found the name twice).
-  await expect(shown(page, penalties.getByText(/يظهر للعضو/))).toHaveCount(0);
+  // «يظهر للعضو» appears only where the member's wording differs from the
+  // rule's name (the a4d2886 run found «تغيّب بعد الحجز» twice). The seed
+  // (`_seed_org_scoring`, 0083) words two deductions differently on purpose —
+  // the name is the action, the member reads what happened to them.
+  const entry = (name: string) => shown(page, penalties.locator("tr, li").filter({ hasText: name }));
+  await expect(entry("تغيّب بعد الحجز")).not.toContainText("يظهر للعضو");
+  await expect(entry("إلغاء متأخر")).not.toContainText("يظهر للعضو");
+  await expect(entry("حذف تعليق")).toContainText("يظهر للعضو: حُذف تعليق");
+  await expect(entry("حذف صورة")).toContainText("يظهر للعضو: حُذفت صورة");
   await expect(shown(page, penalties.getByText("لا خصم", { exact: true })).first()).toBeVisible();
   await expect(shown(page, penalties.getByText("مغلق", { exact: true })).first()).toBeVisible();
   await expect(page.getByText("الحجز", { exact: true })).toHaveCount(0);

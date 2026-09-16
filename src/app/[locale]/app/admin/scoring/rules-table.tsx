@@ -54,9 +54,10 @@ export function RulesTable({
       header: t("catalogue.colAction"),
       onCard: true,
       cell: (r) => {
-        // The seed's member-facing reason IS the Arabic label for twelve of the
-        // fourteen rules, so the caption appears only once an admin has made the
-        // two differ — otherwise every card would read its own name twice.
+        // The seed's member-facing reason IS the Arabic label for eleven of the
+        // fourteen rules, so the caption appears only where the two differ —
+        // otherwise most cards would read their own name twice. Three differ by
+        // design: «سلسلة: 3 حضور في الشهر», «حُذف تعليق», «حُذفت صورة».
         const name = t(`actions.${r.actionKey}`);
         return (
           <div className="min-w-0">
