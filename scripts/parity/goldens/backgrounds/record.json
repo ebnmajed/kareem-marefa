@@ -1,0 +1,21 @@
+{
+  "platform": "darwin-arm64",
+  "family": "talk",
+  "background": {
+    "type": "gradient",
+    "angle": 140,
+    "stops": [
+      {
+        "color": "{{brand.surface}}"
+      },
+      {
+        "color": "{{brand.canvasRaise}}"
+      }
+    ]
+  },
+  "scheme": "dark",
+  "size": [
+    540,
+    675
+  ]
+}
