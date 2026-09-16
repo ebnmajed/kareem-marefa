@@ -12,11 +12,20 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+// `E2E_SHOTS_DIR` lets a look-only run against a dev server keep its
+// pictures out of the directory the review reads (`event-page.spec.ts`'s
+// own convention, `wave7-content-me.spec.ts`'s own precedent for this
+// exact helper shape). A verification worktree sets this to the MAIN
+// checkout's `.qa-shots/rtl`, so a sync build's captures land where
+// STATUS.md's row cites them, not inside the worktree that produced them.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -226,7 +235,10 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   await page.goto(`/ar/app/sessions/${sessionId}/host`);
 
   await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
-  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-host-open.png", fullPage: true });
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-host-open.png"), fullPage: true });
+  }
 
   await page.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
   await expect(page).toHaveURL(/\?switch=closed$/);
@@ -236,7 +248,7 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   // and the code above (still valid the whole time — 0084's own comment:
   // the switch never gates issuance) still shows, unrevoked.
   await expect(page.getByText("لن يُقبل أي رمز جديد")).toBeVisible();
-  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-host-closed.png", fullPage: true });
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-host-closed.png"), fullPage: true });
 
   const { rows: closedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
   expect(closedRows[0].check_in_open).toBe(false);

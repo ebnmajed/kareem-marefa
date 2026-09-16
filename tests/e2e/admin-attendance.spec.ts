@@ -8,11 +8,20 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+// `E2E_SHOTS_DIR` lets a look-only run against a dev server keep its
+// pictures out of the directory the review reads (`event-page.spec.ts`'s
+// own convention, `wave7-content-me.spec.ts`'s own precedent for this
+// exact helper shape). A verification worktree sets this to the MAIN
+// checkout's `.qa-shots/rtl`, so a sync build's captures land where
+// STATUS.md's row cites them, not inside the worktree that produced them.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -281,7 +290,8 @@ test("SCR-044 at 390 px RTL: the report reads down the page, never sideways, wit
     return offenders.slice(0, 6);
   });
   expect(overflow, "the page itself must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-044-attendance-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: join(SHOTS, `scr-044-attendance-390-rtl-${test.info().project.name}.png`), fullPage: true });
 });
 
 // ★ REQ-CHK-017, C3 — last in the file (not fetch order — Playwright's
@@ -304,7 +314,10 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
   const isPhone = test.info().project.name === "phone";
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-populated.png", fullPage: true });
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-populated.png"), fullPage: true });
+  }
 
   const removeSection = page.locator("section", { has: page.getByRole("heading", { name: "إلغاء تسجيل حضور" }) });
   await removeSection.getByLabel("العضو المطلوب إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
@@ -320,7 +333,7 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
   // several sessions could too easily confuse.
   await expect(dialog.getByText("حاضر مسجَّل")).toBeVisible();
   await expect(dialog.getByText("جلسة قيد الحضور")).toBeVisible();
-  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-remove-dialog.png", fullPage: true });
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-remove-dialog.png"), fullPage: true });
 
   await dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
   await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
@@ -330,7 +343,7 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
   const row = page.getByRole("row", { name: /حاضر مسجَّل/ });
   await expect(row.getByText("أُلغي تسجيل حضوره")).toBeVisible();
   await expect(row.getByText("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ")).toBeVisible();
-  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-removed.png", fullPage: true });
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-removed.png"), fullPage: true });
 
   // The reversal itself, in the database — the RPC's own work, not this
   // page's: the check-in is soft-deleted, its points award (if any) is
