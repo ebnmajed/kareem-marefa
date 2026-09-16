@@ -259,6 +259,29 @@ describe("CommentItem", () => {
     expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
 
+  // ★ The `noValidate` fix: an empty `reason` used to be silently swallowed
+  // two ways at once — the browser's own `required`/`minLength` check blocked
+  // the submit before `submitReport` ran at all, AND the now-removed
+  // `if (reason.length < 3) return;` guard would have swallowed it a second
+  // time even if that check hadn't fired. Proving the submit reaches the
+  // action at all is the point, not just that the error text appears.
+  it("submitting the report dialog with an empty reason reaches the action and shows its own error, not silence", async () => {
+    const { reportCommentAction } = await import("@/components/event/actions");
+    vi.mocked(reportCommentAction).mockResolvedValueOnce({ error: "invalid_comment" });
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إبلاغ" }));
+    fireEvent.click(screen.getByRole("button", { name: "إرسال البلاغ" })); // reason left empty
+
+    await screen.findByText("تعليق غير صالح");
+    expect(reportCommentAction).toHaveBeenCalledWith("ar", "c1", "");
+  });
+
   it("pressing reply calls onReply, and only top-level comments offer it", () => {
     const onReply = vi.fn();
     renderItem(baseComment, { onReply });

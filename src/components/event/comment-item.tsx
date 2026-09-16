@@ -214,7 +214,6 @@ export function CommentItem({
 
   function submitReport(formData: FormData) {
     const reason = formData.get("reason")?.toString().trim() ?? "";
-    if (reason.length < 3) return;
     startTransition(async () => {
       let result: { error: string | null };
       try {
@@ -426,6 +425,7 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
       </DialogTrigger>
       <DialogContent title={t("dialogTitle")} closeLabel={t("cancel")}>
         <form
+          noValidate
           onSubmit={() => setOpen(false)}
           action={(formData) => {
             onSubmit(formData);
@@ -435,6 +435,13 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
             {t("reasonLabel")}
           </label>
           <p className="mt-1 text-body-sm text-fg-muted">{t("reasonHint")}</p>
+          {/* `noValidate` on the form above: `required`/`minLength` here are still real
+              constraints, but the browser's own blocking-before-submit check would silently
+              stop `onSubmit`/`action` from ever running for an empty or too-short reason —
+              the same failure mode `profile-form.tsx` had. `submitReport` no longer
+              short-circuits on a short reason either; it lets `reportCommentAction`'s own Zod
+              `min(3)` reject it and surface `errors.invalid_comment` through the same `Panel`
+              a network or server failure already uses. */}
           <Textarea id="reason" name="reason" required minLength={3} maxLength={1000} rows={3} className="mt-2" />
           <div className="mt-3 flex gap-2">
             <Button type="submit" pending={pending} pendingLabel={t("sending")} className="h-10 px-5">
