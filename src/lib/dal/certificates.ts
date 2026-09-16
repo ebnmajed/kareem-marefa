@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { type BrandScheme, type DesignDocument, formatBindingDate, orientationOf, validateDocument } from "@kareem/designer-runtime";
 import { createServerClient } from "@/lib/supabase/server";
+import { previewBrandBindings } from "@/lib/dal/designer";
 import { sessionClient } from "@/lib/dal/session";
 
 // Certificates — REQ-CRT-004 … REQ-CRT-014, 03 §5.8/§5.8a, A13.
@@ -190,6 +192,250 @@ export async function getSessionCertificates(locale: string, sessionId: string):
     revoked: all.filter((c) => c.state === "revoked"),
     canRelease: session.role === "admin",
   };
+}
+
+/* ── SCR-045 on the M9 system (wave 8): the design, who, and the render ── */
+
+export type CertificateRenderStatus = "none" | "queued" | "rendering" | "ready" | "failed";
+
+/** A session certificate with what SCR-045's rebuilt lists need on top of
+ *  `CertificateRow`: the member, the pinned design, and whether its files
+ *  rendered (REQ-DSG-031's «a failed certificate is re-issuable
+ *  individually»). */
+export interface SessionCertificateRow extends CertificateRow {
+  memberId: string;
+  /** Pinned at issue (DEC-148). `light` on a database before designer/0003. */
+  scheme: BrandScheme;
+  templateVersionId: string;
+  renderStatus: CertificateRenderStatus;
+  /** The failed artifact to retry, when the render failed. */
+  failedArtifactId: string | null;
+  renderError: string | null;
+}
+
+export interface SessionCertificatesV2 extends Omit<SessionCertificates, "held" | "issued" | "revoked"> {
+  held: SessionCertificateRow[];
+  issued: SessionCertificateRow[];
+  revoked: SessionCertificateRow[];
+}
+
+/** SCR-045's certificates with their render status. `*` rather than a column
+ *  list, so the pinned scheme is read where designer/0003 has added it
+ *  without failing where it has not. */
+export async function getSessionCertificatesWithRender(locale: string, sessionId: string): Promise<SessionCertificatesV2 | null> {
+  const base = await getSessionCertificates(locale, sessionId);
+  if (!base) return null;
+  const { supabase } = await sessionClient(locale);
+
+  const { data: raw } = await supabase.from("certificates").select("*").eq("session_id", sessionId);
+  const extra = new Map<string, { member_id: string; template_version_id: string; scheme?: BrandScheme }>();
+  for (const r of (raw ?? []) as Array<{ id: string; member_id: string; template_version_id: string; scheme?: BrandScheme }>) extra.set(r.id, r);
+
+  const documentIds = [...base.held, ...base.issued, ...base.revoked].map((c) => c.documentId).filter((v): v is string => v !== null);
+  const { data: artifacts } = documentIds.length
+    ? await supabase.from("export_artifacts").select("id, document_id, status, error, created_at").in("document_id", documentIds).order("created_at", { ascending: false })
+    : { data: [] as Array<{ id: string; document_id: string; status: string; error: string | null }> };
+
+  // The latest request per document decides: a render retried after a
+  // failure is `queued`, not failed, even though the old row still exists.
+  const byDocument = new Map<string, Array<{ id: string; status: string; error: string | null }>>();
+  for (const a of (artifacts ?? []) as Array<{ id: string; document_id: string; status: string; error: string | null }>) {
+    byDocument.set(a.document_id, [...(byDocument.get(a.document_id) ?? []), a]);
+  }
+
+  const enrich = (c: CertificateRow): SessionCertificateRow => {
+    const e = extra.get(c.id);
+    const list = c.documentId ? (byDocument.get(c.documentId) ?? []) : [];
+    const failed = list.find((a) => a.status === "failed");
+    const status: CertificateRenderStatus = list.length === 0
+      ? "none"
+      : failed
+        ? "failed"
+        : list.some((a) => a.status === "rendering")
+          ? "rendering"
+          : list.some((a) => a.status === "queued")
+            ? "queued"
+            : "ready";
+    return {
+      ...c,
+      memberId: e?.member_id ?? "",
+      scheme: e?.scheme ?? "light",
+      templateVersionId: e?.template_version_id ?? "",
+      renderStatus: status,
+      failedArtifactId: failed?.id ?? null,
+      renderError: failed?.error ?? null,
+    };
+  };
+
+  return { ...base, held: base.held.map(enrich), issued: base.issued.map(enrich), revoked: base.revoked.map(enrich) };
+}
+
+export type SessionCertificateKind = "attendance" | "presenter";
+
+export interface CertificateTemplateOption {
+  id: string;
+  name: string;
+  scope: "platform" | "org";
+  isDefault: boolean;
+  orientation: "landscape" | "portrait";
+  document: DesignDocument;
+}
+
+export interface CertificateDesignData {
+  kinds: Array<{
+    kind: SessionCertificateKind;
+    /** The design set for this session, or null — issuance then uses the
+     *  family default, light. */
+    chosen: { templateId: string; scheme: BrandScheme } | null;
+    /** What issuance would use right now: the chosen template, else the
+     *  family default (the org's, else the platform's). */
+    effectiveTemplateId: string | null;
+    options: CertificateTemplateOption[];
+    /** A certificate of this kind has reached a member — the design is fixed. */
+    locked: boolean;
+    heldCount: number;
+  }>;
+  /** The org's brand over the platform palette, in both schemes, so the
+   *  preview follows the scheme the admin is choosing without a round trip. */
+  brand: Record<BrandScheme, Record<string, string>>;
+  /** Real data for the preview (REQ-DSG-006): a real name from this session,
+   *  its title, the org. The serial and the code are the template's own
+   *  fallbacks until a certificate exists. */
+  sample: Record<string, string>;
+  canEdit: boolean;
+}
+
+/** SCR-045's «التصميم» — DEC-128, DEC-148. */
+export async function getCertificateDesign(locale: string, sessionId: string): Promise<CertificateDesignData | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+
+  const [{ data: sessionRow }, { data: templates }, { data: designs }, { data: certs }, { data: org }, { data: settings }, { data: attendee }] = await Promise.all([
+    supabase.from("sessions").select("id, title, completed_at, starts_at").eq("id", sessionId).maybeSingle(),
+    supabase.from("design_templates").select("id, name, scope, family, is_default, org_id").eq("purpose", "certificate").is("retired_at", null).in("family", ["attendance", "presenter"]),
+    // Absent before designer/0003 — an error there reads as «no design».
+    supabase.from("session_certificate_designs").select("kind, template_id, scheme").eq("session_id", sessionId),
+    supabase.from("certificates").select("kind, state, recipient_name_snapshot").eq("session_id", sessionId),
+    supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("check_ins").select("members(display_name)").eq("session_id", sessionId).is("removed_at", null).limit(1).maybeSingle(),
+  ]);
+  if (!sessionRow) return null;
+
+  const ids = (templates ?? []).map((t) => t.id as string);
+  const { data: versions } = ids.length
+    ? await supabase.from("design_template_versions").select("template_id, version, document, published_at").in("template_id", ids).not("published_at", "is", null).order("version", { ascending: false })
+    : { data: [] as Array<{ template_id: string; version: number; document: unknown }> };
+  const latest = new Map<string, DesignDocument>();
+  for (const v of (versions ?? []) as Array<{ template_id: string; document: unknown }>) {
+    if (latest.has(v.template_id)) continue;
+    const parsed = validateDocument(v.document);
+    if (parsed.ok) latest.set(v.template_id, parsed.document);
+  }
+
+  const rows = (templates ?? []) as Array<{ id: string; name: string; scope: "platform" | "org"; family: string; is_default: boolean; org_id: string | null }>;
+  const kinds = (["attendance", "presenter"] as const).map((kind) => {
+    const options: CertificateTemplateOption[] = rows
+      .filter((t) => t.family === kind && latest.has(t.id))
+      .map((t) => ({ id: t.id, name: t.name, scope: t.scope, isDefault: t.is_default, orientation: orientationOf(latest.get(t.id)!), document: latest.get(t.id)! }))
+      // The org's own first, then defaults, then landscape before portrait.
+      .sort((a, b) => Number(a.scope === "platform") - Number(b.scope === "platform") || Number(b.isDefault) - Number(a.isDefault) || a.orientation.localeCompare(b.orientation));
+    const design = ((designs ?? []) as Array<{ kind: string; template_id: string; scheme: BrandScheme }>).find((d) => d.kind === kind) ?? null;
+    const fallback = options.find((o) => o.scope === "org" && o.isDefault) ?? options.find((o) => o.isDefault) ?? options[0] ?? null;
+    const mine = ((certs ?? []) as Array<{ kind: string; state: string }>).filter((c) => c.kind === kind);
+    return {
+      kind,
+      chosen: design ? { templateId: design.template_id, scheme: design.scheme } : null,
+      effectiveTemplateId: design?.template_id ?? fallback?.id ?? null,
+      options,
+      locked: mine.some((c) => c.state === "issued" || c.state === "revoked"),
+      heldCount: mine.filter((c) => c.state === "held").length,
+    };
+  });
+
+  const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
+  const name =
+    ((certs ?? []) as Array<{ recipient_name_snapshot: string }>)[0]?.recipient_name_snapshot ??
+    (one((attendee as { members: { display_name: string } | { display_name: string }[] | null } | null)?.members ?? null)?.display_name ?? null);
+  const sample: Record<string, string> = { "session.title": sessionRow.title as string };
+  if (name) sample["recipient.name"] = name;
+  if (org?.name) sample["org.name"] = org.name as string;
+  const when = (sessionRow.completed_at as string | null) ?? (sessionRow.starts_at as string | null);
+  if (when) sample["certificate.issuedAt"] = formatBindingDate(when, timeZone, "ar");
+
+  const [light, dark] = await Promise.all([previewBrandBindings(locale, "light"), previewBrandBindings(locale, "dark")]);
+  return { kinds, brand: { light, dark }, sample, canEdit: session.role === "admin" };
+}
+
+export interface EligibleRecipient {
+  memberId: string;
+  name: string;
+  kind: SessionCertificateKind;
+  /** ★ A checked-in member whose attendance certificate was revoked — a
+   *  removed-then-re-added check-in, which today gets no new certificate
+   *  (the fan-out fires once, at completion). Shown so staff SEE the gap
+   *  rather than finding it (my note, W8.g). */
+  revokedButPresent: boolean;
+}
+
+/** SCR-045's «من يستحق» — exactly who `fan_out_certificates()` reads: active
+ *  check-ins and accepted presenters (REQ-CRT-001, DEC-141). */
+export async function listEligibleRecipients(locale: string, sessionId: string): Promise<EligibleRecipient[]> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return [];
+
+  const [{ data: checkIns }, { data: presenters }, { data: certs }] = await Promise.all([
+    supabase.from("check_ins").select("member_id, members(display_name)").eq("session_id", sessionId).is("removed_at", null),
+    supabase.from("session_presenters").select("member_id, members(display_name)").eq("session_id", sessionId).eq("accepted", true),
+    supabase.from("certificates").select("id, member_id, kind, state").eq("session_id", sessionId),
+  ]);
+  type Joined = { member_id: string; members: { display_name: string } | { display_name: string }[] | null };
+  const certsBy = (memberId: string, kind: string) => ((certs ?? []) as Array<{ member_id: string; kind: string; state: string }>).filter((c) => c.member_id === memberId && c.kind === kind);
+
+  const out: EligibleRecipient[] = [];
+  for (const [kind, list] of [
+    ["attendance", checkIns],
+    ["presenter", presenters],
+  ] as const) {
+    for (const r of (list ?? []) as Joined[]) {
+      const mine = certsBy(r.member_id, kind);
+      out.push({
+        memberId: r.member_id,
+        name: one(r.members)?.display_name ?? "",
+        kind,
+        revokedButPresent: mine.length > 0 && mine.every((c) => c.state === "revoked"),
+      });
+    }
+  }
+  return out.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name, "ar"));
+}
+
+export const certificateDesignInput = z.object({
+  sessionId: z.uuid(),
+  kind: z.enum(["attendance", "presenter"]),
+  templateId: z.uuid(),
+  scheme: z.enum(["light", "dark"]),
+});
+
+export type DesignWriteResult = { status: "ok"; count?: number } | { status: "locked" } | { status: "invalid" } | { status: "not_authorized" };
+
+export async function setCertificateDesign(locale: string, input: z.infer<typeof certificateDesignInput>): Promise<DesignWriteResult> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("set_certificate_design", {
+    p_session: input.sessionId,
+    p_kind: input.kind,
+    p_template: input.templateId,
+    p_scheme: input.scheme,
+  });
+  if (!error) return { status: "ok" };
+  return error.code === "55000" ? { status: "locked" } : error.code === "22023" ? { status: "invalid" } : { status: "not_authorized" };
+}
+
+export async function redesignHeldCertificates(locale: string, sessionId: string, kind: SessionCertificateKind): Promise<DesignWriteResult> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("redesign_held_certificates", { p_session: sessionId, p_kind: kind });
+  if (!error) return { status: "ok", count: typeof data === "number" ? data : 0 };
+  return error.code === "22023" ? { status: "invalid" } : { status: "not_authorized" };
 }
 
 /* ── the two writes, both RPCs, both audited in their own transaction ──── */
