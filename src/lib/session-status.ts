@@ -143,8 +143,8 @@ export function sessionPhase(session: PhaseInput, now: Date = new Date()): Sessi
     return "draft";
   }
 
-  const start = parse(session.startsAt);
-  const end = endOf(session, start);
+  const start = parseInstant(session.startsAt);
+  const end = scheduledEnd(session, start);
 
   // Approved is awaiting publication whether or not it has a date: the schedule
   // screen is where both cases are handled, and neither offers a member
@@ -164,14 +164,16 @@ export function sessionPhase(session: PhaseInput, now: Date = new Date()): Sessi
   return "open";
 }
 
-function parse(value: string | null | undefined): Date | null {
+/** A stored instant, or null when absent or unparseable. Exported for `checkInWindowAllowed()` (DEC-141). */
+export function parseInstant(value: string | null | undefined): Date | null {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function endOf(session: PhaseInput, start: Date | null): Date | null {
-  const explicit = parse(session.endsAt);
+/** The scheduled end: `endsAt`, else start + duration, else null. Exported for `checkInWindowAllowed()` (DEC-141). */
+export function scheduledEnd(session: PhaseInput, start: Date | null): Date | null {
+  const explicit = parseInstant(session.endsAt);
   if (explicit) return explicit;
   if (start && session.durationMinutes) return new Date(start.getTime() + session.durationMinutes * 60_000);
   return null;
@@ -202,7 +204,7 @@ export interface SeatInput {
  * never runs.
  */
 export function seatState(seats: SeatInput, now: Date = new Date()): SeatState {
-  const deadline = parse(seats.rsvpDeadlineAt);
+  const deadline = parseInstant(seats.rsvpDeadlineAt);
   if (deadline && deadline.getTime() <= now.getTime()) return "closed";
   if (seats.capacity == null) return "unlimited";
   return seats.confirmedCount >= seats.capacity ? "full" : "available";
@@ -210,7 +212,7 @@ export function seatState(seats: SeatInput, now: Date = new Date()): SeatState {
 
 /** «يُغلق التسجيل قريبًا» is a derivation of the deadline, not a state. */
 export function closingSoon(rsvpDeadlineAt: string | null, now: Date = new Date(), withinHours = 48): boolean {
-  const deadline = parse(rsvpDeadlineAt);
+  const deadline = parseInstant(rsvpDeadlineAt);
   if (!deadline) return false;
   const ms = deadline.getTime() - now.getTime();
   return ms > 0 && ms <= withinHours * 3_600_000;
@@ -315,8 +317,12 @@ export function storedPhase(state: SessionState): SessionPhase {
  * by a later phase (rsvp, cancel, calendar, tasks), and those read the derived
  * phase directly.
  */
+// ★ DEC-141: `checkIn` is no longer here. Check-in is gated by a stored switch
+// and a scheduled window whose ceiling (`ends_at + 2 h`) outlives `ended`, so no
+// phase grants it — `checkInWindowAllowed()` in `components/checkin/session-matrix.ts`
+// decides it from the schedule, the switch and the viewer's raw facts.
 export const GRANTING_AFFORDANCES = {
-  live: ["checkIn", "hostConsole"],
+  live: ["hostConsole"],
   ended: ["rate", "survey", "certificate", "attendanceOutcome"],
 } as const satisfies Partial<Record<SessionPhase, readonly string[]>>;
 
