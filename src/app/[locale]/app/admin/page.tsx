@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { getAdminDashboardData, type TopRow } from "@/lib/dal/admin-dashboard";
 
 /** A ranked "top N" list — module-level so it is not re-created on every
  *  render (react-hooks/static-components). */
-function TopList({ rows, numerals, emptyLabel, linkFor }: { rows: TopRow[]; numerals: NumeralSystem; emptyLabel: string; linkFor?: (row: TopRow) => string }) {
+function TopList({ rows, emptyLabel, linkFor }: { rows: TopRow[]; emptyLabel: string; linkFor?: (row: TopRow) => string }) {
   if (rows.length === 0) return <p className="mt-2 text-body-sm text-fg-muted">{emptyLabel}</p>;
   return (
     <ol className="mt-3 space-y-2">
@@ -14,7 +14,7 @@ function TopList({ rows, numerals, emptyLabel, linkFor }: { rows: TopRow[]; nume
         const content = (
           <>
             <bdi>{row.label}</bdi>
-            <span className="ms-2 text-fg-muted">{formatNumber(row.count, numerals)}</span>
+            <span className="ms-2 text-fg-muted">{formatNumber(row.count)}</span>
           </>
         );
         return (
@@ -51,7 +51,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const [data, t] = await Promise.all([getAdminDashboardData(locale), getTranslations("admin.dashboard")]);
   if (data === null) notFound();
 
-  const num = (n: number) => formatNumber(n, data.numerals);
+  const num = (n: number) => formatNumber(n);
 
   const pipelineRows: { key: keyof typeof data.proposalPipeline; label: string }[] = [
     { key: "draft", label: t("pipeline.draft") },
@@ -132,7 +132,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           <h2 id="top-presenters" className="text-h3 text-fg-heading">
             {t("topPresentersTitle")}
           </h2>
-          <TopList rows={data.topPresenters} numerals={data.numerals} emptyLabel={t("topEmpty")} linkFor={(row) => `/app/members/${row.id}`} />
+          <TopList rows={data.topPresenters} emptyLabel={t("topEmpty")} linkFor={(row) => `/app/members/${row.id}`} />
         </section>
 
         <section aria-labelledby="top-categories" className="rounded-field border border-edge p-5">
@@ -141,7 +141,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               {t("topCategoriesTitle")}
             </Link>
           </h2>
-          <TopList rows={data.topCategories} numerals={data.numerals} emptyLabel={t("topEmpty")} />
+          <TopList rows={data.topCategories} emptyLabel={t("topEmpty")} />
         </section>
 
         <section aria-labelledby="top-companies" className="rounded-field border border-edge p-5 md:col-span-2">
@@ -150,7 +150,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               {t("topCompaniesTitle")}
             </Link>
           </h2>
-          <TopList rows={data.topCompanies} numerals={data.numerals} emptyLabel={t("topEmpty")} />
+          <TopList rows={data.topCompanies} emptyLabel={t("topEmpty")} />
         </section>
       </div>
     </>

@@ -20,7 +20,7 @@ const LEVELS = [
 describe("RadioGroup", () => {
   it("★ is named by its legend — the question is part of the group, not a paragraph above it", () => {
     render(<RadioGroup name="level" legend="مستوى الجلسة" options={LEVELS} />);
-    // Without this a screen reader reads «تمهيدي، زر اختيار، ١ من ٣» and the
+    // Without this a screen reader reads «تمهيدي، زر اختيار، 1 من 3» and the
     // member never hears what is being asked.
     expect(screen.getByRole("radiogroup", { name: "مستوى الجلسة" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(3);

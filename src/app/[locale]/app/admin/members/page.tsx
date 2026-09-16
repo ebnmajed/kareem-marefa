@@ -45,7 +45,7 @@ export default async function MembersPage({ params }: { params: Promise<{ locale
               companyName={m.companyId ? (companyNames.get(m.companyId) ?? null) : null}
               isSelf={m.id === session.memberId}
               locale={locale}
-              deactivatedLabel={m.deactivatedAt ? formatDateTime(m.deactivatedAt, prefs.numerals, prefs.timeZone, locale) : ""}
+              deactivatedLabel={m.deactivatedAt ? formatDateTime(m.deactivatedAt, prefs.timeZone, locale) : ""}
             />
           ))}
         </ul>

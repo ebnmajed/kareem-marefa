@@ -16,7 +16,6 @@ import { sessionClient } from "@/lib/dal/session";
 
 export type ProposalLevel = "introductory" | "intermediate" | "advanced";
 export type ProposalState = "draft" | "submitted" | "in_review" | "changes_requested" | "approved" | "rejected";
-export type NumeralSystem = "western" | "arabic_indic";
 
 export interface ProposalCategory {
   id: string;
@@ -91,8 +90,6 @@ export async function listCategories(locale: string): Promise<ProposalCategory[]
 }
 
 export interface OrgPrefs {
-  /** REQ-INT-006. Every numeral this track renders follows it. */
-  numerals: NumeralSystem;
   /** A5 / OQ-021. The proposer is the (max + 1)th presenter, not an extra. */
   maxCoPresenters: number;
   /** OQ-018. A session happens in a room; its clock is the org's, not the reader's. */
@@ -101,10 +98,9 @@ export interface OrgPrefs {
 
 export async function getOrgPrefs(locale: string): Promise<OrgPrefs> {
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("org_settings").select("numerals, max_co_presenters, time_zone").eq("org_id", session.orgId).maybeSingle();
+  const { data, error } = await supabase.from("org_settings").select("max_co_presenters, time_zone").eq("org_id", session.orgId).maybeSingle();
   if (error) throw new Error(`org_settings: ${error.message}`);
   return {
-    numerals: (data?.numerals as NumeralSystem) ?? "western",
     maxCoPresenters: data?.max_co_presenters ?? 4,
     timeZone: data?.time_zone ?? "Asia/Riyadh",
   };

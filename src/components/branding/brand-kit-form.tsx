@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { BRAND_COLOUR_TOKENS, type BrandColourToken } from "@kareem/designer-runtime";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/i18n/routing";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import type { BrandFontRef, BrandKit } from "@/lib/brand/schema";
 import type { ResetBrandKitState, SaveBrandKitState } from "@/app/[locale]/app/admin/branding/actions";
 import { emptyResetState, emptySaveState } from "@/app/[locale]/app/admin/branding/state";
@@ -20,7 +19,6 @@ export function BrandKitForm({
   locale,
   kit,
   fonts,
-  numerals,
   logoPreviewUrl,
   saveAction,
   resetAction,
@@ -29,7 +27,6 @@ export function BrandKitForm({
   locale: Locale;
   kit: BrandKit;
   fonts: BrandFontRef[];
-  numerals: NumeralSystem;
   logoPreviewUrl: string | null;
   saveAction: (prev: SaveBrandKitState, formData: FormData) => Promise<SaveBrandKitState>;
   resetAction: (prev: ResetBrandKitState, formData: FormData) => Promise<ResetBrandKitState>;
@@ -75,7 +72,6 @@ export function BrandKitForm({
           locale={locale}
           assetId={logo.assetId}
           previewUrl={logo.previewUrl}
-          numerals={numerals}
           signPreview={signPreview}
           onChange={setLogo}
         />
@@ -120,10 +116,10 @@ export function BrandKitForm({
 
           <div className="space-y-2 border-t border-edge pt-4">
             <p className="text-label text-fg-heading">{t("contrast.title")}</p>
-            <ContrastBadge foreground={active.fgHeading} background={active.canvas} use="large" label={t("contrast.large")} numerals={numerals} />
-            <ContrastBadge foreground={active.fgBody} background={active.canvas} use="body" label={t("contrast.body")} numerals={numerals} />
-            <ContrastBadge foreground={active.fgMuted} background={active.canvas} use="body" label={t("contrast.muted")} numerals={numerals} />
-            <ContrastBadge foreground={active.edgeStrong} background={active.canvas} use="ui" label={t("contrast.ui")} numerals={numerals} />
+            <ContrastBadge foreground={active.fgHeading} background={active.canvas} use="large" label={t("contrast.large")} />
+            <ContrastBadge foreground={active.fgBody} background={active.canvas} use="body" label={t("contrast.body")} />
+            <ContrastBadge foreground={active.fgMuted} background={active.canvas} use="body" label={t("contrast.muted")} />
+            <ContrastBadge foreground={active.edgeStrong} background={active.canvas} use="ui" label={t("contrast.ui")} />
           </div>
         </fieldset>
 

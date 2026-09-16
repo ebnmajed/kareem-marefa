@@ -60,7 +60,7 @@ test.beforeAll(async ({}, testInfo) => {
     [`shell-e2e-${tag}`],
   );
   orgId = rows[0].id;
-  await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
 
   email = `member@${domain}`;

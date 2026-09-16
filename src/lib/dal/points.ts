@@ -1,6 +1,5 @@
 import "server-only";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // The member's points history (SCR-022, REQ-PTS-003, `05` §8). The test of
 // this screen is REQ-PTS-003's own wording: a member must be able to
@@ -54,7 +53,6 @@ export interface PointsHistory {
    *  (no_show, late_cancellation, comment_removed, photo_removed) explain
    *  themselves on the row that carries them instead. */
   catalogue: CatalogueEntry[];
-  numerals: NumeralSystem;
   timeZone: string;
 }
 
@@ -88,7 +86,7 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     // Unfiltered pass, session id and title only — the filter control's own
     // option list must not shrink just because a filter is applied.
     supabase.from("points_ledger").select("session_id, sessions(title)").eq("member_id", session.memberId).not("session_id", "is", null),
-    supabase.from("org_settings").select("numerals, time_zone").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("scoring_rules")
       .select("action_key, points, enabled, reason_ar, cap_per_session")
@@ -140,7 +138,6 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     catalogue: ((rulesRes.data ?? []) as Array<{ action_key: string; points: number; enabled: boolean; reason_ar: string; cap_per_session: number | null }>).map(
       (r) => ({ actionKey: r.action_key, points: r.points, enabled: r.enabled, reasonAr: r.reason_ar, capPerSession: r.cap_per_session }),
     ),
-    numerals: (settingsRes.data?.numerals as NumeralSystem) ?? "western",
     timeZone: settingsRes.data?.time_zone ?? "Asia/Riyadh",
   };
 }
@@ -150,14 +147,12 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
  * shape). No heading of its own; the page owns the landmark. */
 export interface PointsStripData {
   totalPoints: number;
-  numerals: NumeralSystem;
 }
 
 export async function getPointsStripData(locale: string): Promise<PointsStripData> {
   const { session, supabase } = await sessionClient(locale);
-  const [{ data: balance }, { data: settings }] = await Promise.all([
+  const [{ data: balance }] = await Promise.all([
     supabase.from("points_balances").select("total_points").eq("member_id", session.memberId).maybeSingle(),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
-  return { totalPoints: balance?.total_points ?? 0, numerals: (settings?.numerals as NumeralSystem) ?? "western" };
+  return { totalPoints: balance?.total_points ?? 0 };
 }

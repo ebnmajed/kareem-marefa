@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { getMyActiveImpersonation, PLATFORM_NUMERALS } from "@/lib/dal/platform";
+import { getMyActiveImpersonation } from "@/lib/dal/platform";
 import { stopImpersonationAction } from "./actions";
 import { StopImpersonationControl } from "./stop-control";
 
@@ -56,7 +56,7 @@ export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) 
           {t("remaining", {
             minutes: t("minutes", {
               count: active.minutesRemaining,
-              value: formatNumber(active.minutesRemaining, PLATFORM_NUMERALS),
+              value: formatNumber(active.minutesRemaining),
             }),
           })}
         </p>

@@ -8,7 +8,6 @@ import {
   resolveCertificateBindings,
   validateDocument,
   type DesignDocument,
-  type NumeralSystem,
 } from "@kareem/designer-runtime";
 
 // JOB-issue_certificates — 11 §2.5, REQ-CRT-001 … REQ-CRT-005, D50.
@@ -67,7 +66,6 @@ interface Context {
   session_title: string | null;
   achievement_name: string | null;
   org_name: string;
-  numerals: NumeralSystem;
   org_time_zone: string;
   template_version_id: string;
   template_document: unknown;
@@ -161,7 +159,7 @@ export const issue_certificates: Task = async (payload, helpers) => {
         sessionTitle: ctx.session_title,
         achievementName: ctx.achievement_name,
       },
-      { numerals: ctx.numerals, timeZone: ctx.org_time_zone, origin, orgName: ctx.org_name, locale: "ar" },
+      { timeZone: ctx.org_time_zone, origin, orgName: ctx.org_name, locale: "ar" },
     ),
   };
 

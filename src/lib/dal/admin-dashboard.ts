@@ -1,7 +1,6 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { sessionClient, type Session } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // SCR-040 · /app/admin — the org dashboard (REQ-ADM-004, D60).
 //
@@ -54,7 +53,6 @@ export interface TopRow {
 }
 
 export interface DashboardData {
-  numerals: NumeralSystem;
   proposalPipeline: PipelineCounts;
   rsvpsConfirmed: number;
   checkInsTotal: number;
@@ -91,7 +89,6 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     { data: ledgerRows, error: ledErr },
     { data: presenterRows, error: presErr },
     { data: categoryRows, error: catErr },
-    { data: settings },
   ] = await Promise.all([
     supabase.from("proposals").select("state").eq("org_id", session.orgId),
     supabase.from("rsvps").select("status, session_id, sessions!inner(starts_at)").eq("org_id", session.orgId).eq("status", "confirmed"),
@@ -104,7 +101,6 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
       .eq("org_id", session.orgId)
       .eq("accepted", true),
     supabase.from("sessions").select("category_id, categories(id, name)").eq("org_id", session.orgId).not("category_id", "is", null),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (propErr) throw new Error(`proposals: ${propErr.message}`);
   if (rsvpErr) throw new Error(`rsvps: ${rsvpErr.message}`);
@@ -190,7 +186,6 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
   }
 
   return {
-    numerals: (settings?.numerals as NumeralSystem | undefined) ?? "western",
     proposalPipeline: pipeline,
     rsvpsConfirmed,
     checkInsTotal,

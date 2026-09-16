@@ -78,10 +78,10 @@ export default async function BrowseSessionsPage({
             </div>
           ) : (
             <>
-              <p className="text-body-sm text-fg-muted">{t("count", { count: results.length, value: formatNumber(results.length, prefs.numerals) })}</p>
+              <p className="text-body-sm text-fg-muted">{t("count", { count: results.length, value: formatNumber(results.length) })}</p>
               <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {results.map((r, i) => (
-                  <SessionCard key={r.id} session={r} locale={locale} numerals={prefs.numerals} timeZone={prefs.timeZone} bookmarked={bookmarked[i]} />
+                  <SessionCard key={r.id} session={r} locale={locale} timeZone={prefs.timeZone} bookmarked={bookmarked[i]} />
                 ))}
               </ul>
             </>

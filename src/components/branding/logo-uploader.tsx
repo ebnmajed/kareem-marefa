@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { MIN_LOGO_PX_FOR_A3, type PpiRating } from "@/lib/brand/ppi";
 import type { Locale } from "@/i18n/routing";
 
@@ -19,14 +19,12 @@ export function LogoUploader({
   locale,
   assetId,
   previewUrl,
-  numerals,
   signPreview,
   onChange,
 }: {
   locale: Locale;
   assetId: string | null;
   previewUrl: string | null;
-  numerals: NumeralSystem;
   signPreview: (locale: Locale, assetId: string) => Promise<string | null>;
   onChange: (next: { assetId: string | null; previewUrl: string | null }) => void;
 }) {
@@ -83,7 +81,7 @@ export function LogoUploader({
       <legend className="text-h3 text-fg-heading">{t("title")}</legend>
 
       <p className="text-body-sm text-fg-muted">
-        {t("minResolutionHint", { width: formatNumber(MIN_LOGO_PX_FOR_A3.width, numerals), height: formatNumber(MIN_LOGO_PX_FOR_A3.height, numerals) })}
+        {t("minResolutionHint", { width: formatNumber(MIN_LOGO_PX_FOR_A3.width), height: formatNumber(MIN_LOGO_PX_FOR_A3.height) })}
       </p>
       <p className="text-body-sm text-fg-muted">{t("formatHint")}</p>
 
@@ -119,7 +117,7 @@ export function LogoUploader({
 
       {a3 ? (
         <p role="status" className={a3.rating === "sufficient" ? "text-body-sm text-fg-muted" : "text-body-sm font-semibold text-fg-heading"}>
-          {t("ppiResult", { ppi: formatNumber(a3.ppi, numerals) })}{" "}
+          {t("ppiResult", { ppi: formatNumber(a3.ppi) })}{" "}
           {a3.rating === "sufficient" ? t("ppiSufficient") : a3.rating === "warning" ? t("ppiWarning") : t("ppiInsufficient")}
         </p>
       ) : null}

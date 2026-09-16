@@ -12,7 +12,7 @@ import { TakedownButton } from "@/components/photos/takedown-button";
 // rule — this never re-filters on top of what the DAL already returned.
 export async function Photos({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("photos.gallery");
-  const { photos, canUpload, isStaff, numerals } = await getPhotosPageData(locale, sessionId);
+  const { photos, canUpload, isStaff } = await getPhotosPageData(locale, sessionId);
 
   return (
     <div>
@@ -20,7 +20,7 @@ export async function Photos({ sessionId, locale }: SlotProps) {
         <p className="text-body-sm text-fg-muted">{t("empty")}</p>
       ) : (
         <>
-          <p className="text-body-sm text-fg-muted">{t("count", { count: photos.length, value: formatNumber(photos.length, numerals) })}</p>
+          <p className="text-body-sm text-fg-muted">{t("count", { count: photos.length, value: formatNumber(photos.length) })}</p>
           <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {photos.map((p) => (
               // min-w-0: a grid item's default `min-width: auto` keeps it as

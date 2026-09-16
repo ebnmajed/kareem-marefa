@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { deleteMyCommentAction, editCommentAction, moderateCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
 import type { CommentDTO } from "@/lib/dal/comments";
 import type { ReactionSummary } from "@/lib/dal/reactions";
@@ -21,7 +21,6 @@ export function CommentItem({
   comment,
   reactions,
   reported,
-  numerals,
   onReply,
   isReplyOpen,
   onReported,
@@ -33,7 +32,6 @@ export function CommentItem({
    *  comment reaching this component always has replies, so a tombstone is
    *  always the right thing to show (docs/plan/notes/event.md §1). */
   reported: boolean;
-  numerals: NumeralSystem;
   onReply?: () => void;
   isReplyOpen?: boolean;
   /** Lets the list keep its own "already reported" set in sync (REQ-EVT-008). */
@@ -151,7 +149,7 @@ export function CommentItem({
 
       <div className="mt-2 flex flex-wrap items-center gap-4 text-body-sm text-fg-muted">
         <button type="button" onClick={toggleLike} disabled={pending} aria-pressed={iReacted} className={iReacted ? "font-semibold text-fg-heading" : ""}>
-          {t("reactions.like")} {likeCount > 0 ? `· ${formatNumber(likeCount, numerals)}` : ""}
+          {t("reactions.like")} {likeCount > 0 ? `· ${formatNumber(likeCount)}` : ""}
         </button>
         {onReply && !comment.parentId ? (
           <button type="button" onClick={onReply}>

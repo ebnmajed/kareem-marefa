@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getHostView, listUncheckedConfirmedRsvps } from "@/lib/dal/checkin";
-import { getOrgNumerals } from "@/lib/dal/designer";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { SessionPhase } from "@/lib/session-status";
 import { markManuallyAction, revokeCodeAction, setWalkInsAction } from "./actions";
@@ -53,12 +52,10 @@ export default async function HostPage({
   const { revoked, walkIns, manualSuccess, manualError, memberId: submittedMemberId, reason: submittedReason } = await searchParams;
   const isStaff = session.role === "admin" || session.role === "moderator";
 
-  const [view, candidates, t, numerals] = await Promise.all([
+  const [view, candidates, t] = await Promise.all([
     getHostView(locale, id),
     isStaff ? listUncheckedConfirmedRsvps(locale, id) : Promise.resolve([]),
     getTranslations("checkin"),
-    // REQ-INT-006: the count prints with the org's numerals, never ICU's `#` (DEC-056).
-    getOrgNumerals(locale),
   ]);
 
   if (!view) {
@@ -93,7 +90,7 @@ export default async function HostPage({
         </p>
       )}
 
-      <p className="mt-6 text-center text-body text-fg-muted">{t("host.checkInCount", { count: view.checkInCount, value: formatNumber(view.checkInCount, numerals) })}</p>
+      <p className="mt-6 text-center text-body text-fg-muted">{t("host.checkInCount", { count: view.checkInCount, value: formatNumber(view.checkInCount) })}</p>
 
       {view.code ? (
         <form action={revokeCodeAction.bind(null, locale, id)} className="mt-8 flex justify-center">

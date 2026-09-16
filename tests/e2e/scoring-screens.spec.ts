@@ -37,7 +37,7 @@ test.beforeAll(async ({}, testInfo) => {
     [`scoring-shots-${tag}`],
   );
   orgId = orgRows[0].id;
-  await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: shotCompanyRows } = await db.query<{ id: string }>(`insert into public.companies (org_id, name) values ($1, 'شركة اللقطات') returning id`, [
     orgId,

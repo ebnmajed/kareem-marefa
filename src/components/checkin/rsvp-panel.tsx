@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
-import { getOrgNumerals } from "@/lib/dal/designer";
 import { formatNumber } from "@/components/sessions/numerals";
 import { cancelRsvpAction, reserveSeatAction } from "./actions";
 
@@ -19,7 +18,7 @@ import { cancelRsvpAction, reserveSeatAction } from "./actions";
 // isn't `open` any more.
 export async function RsvpPanel({ sessionId, locale }: SlotProps) {
   // REQ-INT-006: the counts print with the org's numerals, never ICU's `#` (DEC-056).
-  const [data, t, numerals] = await Promise.all([getRsvpPanelData(locale, sessionId), getTranslations("rsvp"), getOrgNumerals(locale)]);
+  const [data, t] = await Promise.all([getRsvpPanelData(locale, sessionId), getTranslations("rsvp")]);
   if (!data || (!data.canReserve && !data.canCancel)) return null;
 
   const seatsLeft = data.capacity != null ? Math.max(0, data.capacity - data.confirmedCount) : null;
@@ -37,8 +36,8 @@ export async function RsvpPanel({ sessionId, locale }: SlotProps) {
       {data.canReserve ? (
         <>
           <p className="mt-2 text-body text-fg-muted">
-            {seatsLeft !== null ? t("seatsLeft", { count: seatsLeft, value: formatNumber(seatsLeft, numerals) }) : null}
-            {data.waitlistCount > 0 ? <> · {t("waitlistLength", { count: data.waitlistCount, value: formatNumber(data.waitlistCount, numerals) })}</> : null}
+            {seatsLeft !== null ? t("seatsLeft", { count: seatsLeft, value: formatNumber(seatsLeft) }) : null}
+            {data.waitlistCount > 0 ? <> · {t("waitlistLength", { count: data.waitlistCount, value: formatNumber(data.waitlistCount) })}</> : null}
           </p>
           {data.seat === "closed" ? (
             <p role="status" className="mt-3 text-body text-fg-muted">

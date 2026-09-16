@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { SessionPoster } from "@/components/posters/session-poster";
-import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatDateTime } from "@/components/sessions/numerals";
 import type { SearchResultSession } from "@/lib/dal/search";
 
 // One SCR-011 result card. `searchSessions()`'s own return shape
@@ -17,13 +17,11 @@ import type { SearchResultSession } from "@/lib/dal/search";
 export async function SessionCard({
   session,
   locale,
-  numerals,
   timeZone,
   bookmarked,
 }: {
   session: SearchResultSession;
   locale: string;
-  numerals: NumeralSystem;
   timeZone: string;
   bookmarked: boolean;
 }) {
@@ -47,7 +45,7 @@ export async function SessionCard({
           <div>
             <dt className="sr-only">{t("whenLabel")}</dt>
             <dd>
-              <bdi>{formatDateTime(session.startsAt, numerals, timeZone, locale)}</bdi>
+              <bdi>{formatDateTime(session.startsAt, timeZone, locale)}</bdi>
             </dd>
           </div>
         ) : null}

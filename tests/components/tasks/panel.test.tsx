@@ -20,7 +20,7 @@ const { getTasksPageData } = await import("@/lib/dal/tasks");
 const { Tasks } = await import("@/components/tasks/panel");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
-const base: TasksPageData = { tasks: [], canManage: false, numerals: "western", materials: [] };
+const base: TasksPageData = { tasks: [], canManage: false, materials: [] };
 
 async function renderSlot(data: TasksPageData) {
   vi.mocked(getTasksPageData).mockResolvedValue(data);
@@ -46,7 +46,6 @@ describe("Tasks slot", () => {
         { id: "t2", kind: "checklist", title: "اقرأ الملخص", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null },
       ],
       canManage: false,
-      numerals: "western",
       materials: [],
     });
     expect(screen.getByText("مهمتان تحضيريتان")).toBeInTheDocument();
@@ -66,7 +65,6 @@ describe("Tasks slot", () => {
         { id: "t2", kind: "external", title: "ثبّت التطبيق", description: null, materialId: null, formSchema: null, externalUrl: "https://example.com", sortOrder: 1, completed: false, myFormResponse: null },
       ],
       canManage: false,
-      numerals: "western",
       materials: [],
     });
     const title = screen.getByText("اقرأ الشرائح");

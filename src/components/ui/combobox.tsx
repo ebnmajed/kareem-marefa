@@ -3,7 +3,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CloseIcon } from "@/components/ui/icons";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { ComboboxOption, ComboboxProps } from "@/components/ui";
 
@@ -53,8 +52,7 @@ export function Combobox({
   invalid,
   resultsLabel,
   className = "",
-  numerals = "western",
-}: ComboboxProps & { numerals?: NumeralSystem }) {
+}: ComboboxProps & { }) {
   const generatedId = useId();
   const comboId = id ?? generatedId;
   const listboxId = `${comboId}-listbox`;
@@ -195,8 +193,8 @@ export function Combobox({
   const resultsText = useMemo(() => {
     if (!open) return "";
     if (resultsLabel) return resultsLabel(filtered.length);
-    return t("resultsCount", { count: filtered.length, value: formatNumber(filtered.length, numerals) });
-  }, [open, filtered.length, resultsLabel, t, numerals]);
+    return t("resultsCount", { count: filtered.length, value: formatNumber(filtered.length) });
+  }, [open, filtered.length, resultsLabel, t]);
 
   const activeDescendant =
     open && highlight >= 0

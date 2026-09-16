@@ -22,7 +22,7 @@ const { getPhotosPageData } = await import("@/lib/dal/photos");
 const { Photos } = await import("@/components/photos/gallery");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
-const base: PhotosPageData = { photos: [], canUpload: false, isStaff: false, myMemberId: "m1", numerals: "western" };
+const base: PhotosPageData = { photos: [], canUpload: false, isStaff: false, myMemberId: "m1" };
 
 function renderWithIntl(element: React.ReactElement) {
   return render(<NextIntlClientProvider locale="ar" messages={ar}>{element}</NextIntlClientProvider>);
@@ -52,7 +52,6 @@ describe("Photos slot", () => {
       canUpload: false,
       isStaff: false,
       myMemberId: "m1",
-      numerals: "western",
     });
     renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("صورتان")).toBeInTheDocument();
@@ -65,7 +64,6 @@ describe("Photos slot", () => {
       canUpload: false,
       isStaff: true,
       myMemberId: "m1",
-      numerals: "western",
     });
     renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("مخفية — بانتظار المراجعة")).toBeInTheDocument();

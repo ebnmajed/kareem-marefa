@@ -41,7 +41,6 @@ export interface TasksPageData {
   tasks: TaskSummary[];
   /** REQ-TSK-001's authoring side — a presenter of this session, or an admin. */
   canManage: boolean;
-  numerals: "western" | "arabic_indic";
   /** For the `canManage` create-task form's `read_material` picker only — {id, title} pairs. */
   materials: { id: string; title: string }[];
 }
@@ -59,13 +58,12 @@ function toFormSchema(raw: unknown): FormField[] | null {
 
 /** The event page's `Tasks` slot data — REQ-TSK-004: "progress is visible on the event page." */
 export async function getTasksPageData(locale: string, sessionId: string): Promise<TasksPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, numerals: "western", materials: [] };
+  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [] };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: taskRows, error }, { data: presenterRow }, { data: settings }, materialList] = await Promise.all([
+  const [{ data: taskRows, error }, { data: presenterRow }, materialList] = await Promise.all([
     supabase.from("session_tasks").select("id, kind, title, description, material_id, form_schema, external_url, sort_order").eq("session_id", sessionId).order("sort_order", { ascending: true }),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     listMaterials(locale, sessionId),
   ]);
   if (error) throw new Error(`session_tasks: ${error.message}`);
@@ -98,7 +96,6 @@ export async function getTasksPageData(locale: string, sessionId: string): Promi
   return {
     tasks,
     canManage: session.role === "admin" || !!presenterRow,
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     materials: materialList.map((m) => ({ id: m.id, title: m.title })),
   };
 }

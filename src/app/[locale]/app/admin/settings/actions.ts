@@ -16,7 +16,6 @@ export async function saveSettings(locale: Locale, _prev: SettingsState, formDat
 
   const parsed = orgSettingsInput.safeParse({
     timeZone: formData.get("timeZone")?.toString() ?? "",
-    numerals: formData.get("numerals")?.toString(),
     checkInRotationSeconds: num("checkInRotationSeconds"),
     checkInGraceSeconds: num("checkInGraceSeconds"),
     maxCoPresenters: num("maxCoPresenters"),

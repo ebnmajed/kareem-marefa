@@ -47,7 +47,7 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
         <h2 id="all-time-heading" className="text-h2 text-fg-heading">
           {t("tabs.allTime")}
         </h2>
-        <MemberBoard rows={boards.allTime} numerals={boards.numerals} />
+        <MemberBoard rows={boards.allTime} />
       </section>
 
       <section id="monthly" aria-labelledby="monthly-heading" className="mt-12">
@@ -59,7 +59,7 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
             <span className="text-body-sm text-fg-muted">{boards.monthly.isFinal ? t("monthly.final") : t("monthly.provisional")}</span>
           ) : null}
         </div>
-        <MemberBoard rows={boards.monthly?.rows ?? []} numerals={boards.numerals} />
+        <MemberBoard rows={boards.monthly?.rows ?? []} />
       </section>
 
       <section id="company" aria-labelledby="company-heading" className="mt-12">
@@ -70,11 +70,11 @@ export default async function LeaderboardsPage({ params }: { params: Promise<{ l
           {boards.company ? (
             <span className="text-body-sm text-fg-muted">
               {boards.company.isFinal ? t("company.final") : t("company.provisional")} ·{" "}
-              {formatDateTime(boards.company.takenAt, boards.numerals, boards.timeZone, locale)}
+              {formatDateTime(boards.company.takenAt, boards.timeZone, locale)}
             </span>
           ) : null}
         </div>
-        <CompanyBoard rows={boards.company?.rows ?? []} numerals={boards.numerals} metric={boards.companyMetric} />
+        <CompanyBoard rows={boards.company?.rows ?? []} metric={boards.companyMetric} />
       </section>
 
       {companyBreakdown ? <CompanyPointsBreakdownSection breakdown={companyBreakdown} locale={locale} timeZone={boards.timeZone} /> : null}

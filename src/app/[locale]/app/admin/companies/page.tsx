@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { listCompaniesForAdmin } from "@/lib/dal/admin-lists";
 import { addCompany, toggleCompany } from "./actions";
 import { CompanyForm } from "./company-form";
@@ -16,10 +15,10 @@ export default async function CompaniesPage({ params }: { params: Promise<{ loca
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [companies, prefs, t] = await Promise.all([listCompaniesForAdmin(locale), getOrgPrefs(locale), getTranslations("admin.companies")]);
+  const [companies, t] = await Promise.all([listCompaniesForAdmin(locale), getTranslations("admin.companies")]);
   if (companies === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
 
   return (
     <>

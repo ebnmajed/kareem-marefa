@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { listVenuesForAdmin } from "@/lib/dal/sessions";
 import { addVenue, toggleVenue } from "./actions";
 import { VenueForm } from "./venue-form";
@@ -21,10 +20,10 @@ export default async function VenuesPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [venues, prefs, t] = await Promise.all([listVenuesForAdmin(locale), getOrgPrefs(locale), getTranslations("admin.venues")]);
+  const [venues, t] = await Promise.all([listVenuesForAdmin(locale), getTranslations("admin.venues")]);
   if (venues === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
 
   return (
     <>

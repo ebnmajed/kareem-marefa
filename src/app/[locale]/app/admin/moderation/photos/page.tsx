@@ -3,7 +3,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listPhotoTakedowns } from "@/lib/dal/admin-moderation";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { resolveTakedown } from "./actions";
 import { TakedownCard } from "./takedown-card";
 
@@ -20,10 +19,10 @@ export default async function PhotoTakedownPage({ params }: { params: Promise<{ 
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [takedowns, prefs, t] = await Promise.all([listPhotoTakedowns(locale), getOrgPrefs(locale), getTranslations("admin.moderation")]);
+  const [takedowns, t] = await Promise.all([listPhotoTakedowns(locale), getTranslations("admin.moderation")]);
   if (takedowns === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
   const action = (takedownId: string, photoId: string) => resolveTakedown.bind(null, locale as Locale, takedownId, photoId);
 
   return (

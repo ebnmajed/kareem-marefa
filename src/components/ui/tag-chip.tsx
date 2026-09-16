@@ -31,7 +31,7 @@ export function TagChip({ label, href, count, onRemove, removeLabel, className =
   // one is later lost to a style change. The count stays muted relative to
   // the label — the label is what is being chosen, the count is a hint —
   // and stays in its own `<bdi>`: a Western-digit count after an Arabic
-  // label is a bidi boundary («١٢» and «12» sit differently without it).
+  // label is a bidi boundary (a digit run beside Arabic text reorders without it).
   const countNode =
     typeof count === "number" ? (
       <span className="text-fg-muted">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type DesignDocument, PRESETS, type PresetName, renderDocumentToHtml, safeBox } from "@kareem/designer-runtime";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-057's canvas — RTL-first (06 §10), and rendered by THE renderer.
 //
@@ -36,7 +36,6 @@ export interface DesignerCanvasProps {
   selectedLayerId: string | null;
   onSelect: (layerId: string | null) => void;
   lockedLayerIds: string[];
-  numerals: NumeralSystem;
   /** The placeholder label an unbound field draws, translated. */
   placeholderLabel: (binding: string) => string;
   /** The preset the canvas is showing. The document handed in is already
@@ -55,7 +54,6 @@ export function DesignerCanvas({
   selectedLayerId,
   onSelect,
   lockedLayerIds,
-  numerals,
   placeholderLabel,
   preset,
   showOverlays,
@@ -100,9 +98,9 @@ export function DesignerCanvas({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <p className="text-body-sm text-fg-muted">
-        {t.rich("size", { width: formatNumber(width, numerals), height: formatNumber(height, numerals), bdi: (c) => <bdi>{c}</bdi> })}
+        {t.rich("size", { width: formatNumber(width), height: formatNumber(height), bdi: (c) => <bdi>{c}</bdi> })}
         {" · "}
-        {t.rich("zoom", { value: formatNumber(Math.round(scale * 100), numerals), bdi: (c) => <bdi>{c}</bdi> })}
+        {t.rich("zoom", { value: formatNumber(Math.round(scale * 100)), bdi: (c) => <bdi>{c}</bdi> })}
       </p>
 
       <div ref={hostRef} className="min-w-0 overflow-x-auto">

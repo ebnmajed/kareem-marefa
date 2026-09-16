@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 export interface ViewerPageDTO {
   pageNumber: number;
@@ -13,7 +13,6 @@ export interface ViewerPageDTO {
 
 interface PageViewerProps {
   pages: ViewerPageDTO[];
-  numerals: NumeralSystem;
   /** `true` for an RTL reading direction (07 §5, SCR-013's ★ requirement). */
   rtl: boolean;
   title: string;
@@ -31,7 +30,7 @@ const ZOOM_STEPS = [1, 1.5, 2] as const;
  * and then RTL-mirrored only in its icons still advances on the wrong key.
  * Home/End and Page Up/Down are direction-independent, matching SCR-013.
  */
-export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
+export function PageViewer({ pages, rtl, title }: PageViewerProps) {
   const t = useTranslations("materials.viewer");
   const [index, setIndex] = useState(0); // 0-based into `pages`
   const [zoomStep, setZoomStep] = useState(0);
@@ -88,9 +87,9 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
   // stealing focus from the viewer itself.
   useEffect(() => {
     if (liveRegionRef.current) {
-      liveRegionRef.current.textContent = t.markup("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals), bdi: (chunks) => chunks });
+      liveRegionRef.current.textContent = t.markup("pageOf", { current: formatNumber(index + 1), total: formatNumber(total), bdi: (chunks) => chunks });
     }
-  }, [index, total, numerals, t]);
+  }, [index, total, t]);
 
   // ±2 pages prefetched (07 §5) — the browser has already fetched the
   // signed URL's image the moment it appears in this list.
@@ -117,7 +116,7 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
           <p data-testid="page-indicator" className="text-body-sm text-fg-muted">
-            {t.rich("pageOf", { current: formatNumber(index + 1, numerals), total: formatNumber(total, numerals), bdi: (chunks) => <bdi>{chunks}</bdi> })}
+            {t.rich("pageOf", { current: formatNumber(index + 1), total: formatNumber(total), bdi: (chunks) => <bdi>{chunks}</bdi> })}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setZoomStep((z) => Math.max(0, z - 1))} disabled={zoomStep === 0} className="rounded-field border border-edge px-3 py-1 text-label text-fg-body disabled:opacity-40">
@@ -169,7 +168,7 @@ export function PageViewer({ pages, numerals, rtl, title }: PageViewerProps) {
                 type="button"
                 onClick={() => goTo(i)}
                 aria-current={i === index}
-                aria-label={t.markup("thumbnailLabel", { number: formatNumber(p.pageNumber, numerals), bdi: (chunks) => chunks })}
+                aria-label={t.markup("thumbnailLabel", { number: formatNumber(p.pageNumber), bdi: (chunks) => chunks })}
                 className={`block overflow-hidden rounded-field border ${i === index ? "border-edge-strong" : "border-edge"}`}
               >
                 <Image src={p.thumbnailUrl} alt="" width={320} height={180} className="h-auto w-20 md:w-full" unoptimized />

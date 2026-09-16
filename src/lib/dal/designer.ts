@@ -20,7 +20,6 @@ import {
 import { listEditorFaces } from "@/lib/dal/fonts";
 import { signDesignAssetUrl } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
-import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
 
 // The designer — REQ-DSG-004, REQ-DSG-005, REQ-DSG-006, SCR-057.
 //
@@ -77,7 +76,6 @@ export interface DesignerDocumentData {
   declaredBindings: string[];
   fonts: DesignerFont[];
   canEdit: boolean;
-  numerals: NumeralSystem;
   timeZone: string;
 }
 
@@ -162,7 +160,7 @@ export async function getDesignerDocument(locale: string, documentId: string, or
       .select("id, purpose, document, template_version_id, bound_session_id, bound_certificate_id, updated_at")
       .eq("id", documentId)
       .maybeSingle(),
-    supabase.from("org_settings").select("numerals, time_zone").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
   ]);
   if (!row) return null;
@@ -175,8 +173,6 @@ export async function getDesignerDocument(locale: string, documentId: string, or
     throw new Error(`designer: stored document ${documentId} is invalid — ${parsed.issues.map((i) => `${i.path}:${i.code}`).join(", ")}`);
   }
   const document = parsed.document;
-
-  const numerals = (settings?.numerals as NumeralSystem | undefined) ?? "western";
   const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
 
   const [{ data: sessionRow }, { data: certificateRow }, { data: fontRows }, { data: version }] = await Promise.all([
@@ -196,7 +192,7 @@ export async function getDesignerDocument(locale: string, documentId: string, or
       : Promise.resolve({ data: null }),
   ]);
 
-  const bindingOptions: BindingOptions = { numerals, timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
+  const bindingOptions: BindingOptions = { timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
 
   const bindings: Record<string, string> = {
     // The org's brand override over the platform palette (wave 4, DEC-052,
@@ -243,17 +239,8 @@ export async function getDesignerDocument(locale: string, documentId: string, or
       parityStatus: f.parity_status as DesignerFont["parityStatus"],
     })),
     canEdit: session.role === "admin",
-    numerals,
     timeZone,
   };
-}
-
-/** The org's numeral system, for any designer screen that prints a count.
- *  One query rather than each screen remembering `org_settings` exists. */
-export async function getOrgNumerals(locale: string): Promise<NumeralSystem> {
-  const { session, supabase } = await sessionClient(locale);
-  const { data } = await supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle();
-  return (data?.numerals as NumeralSystem | undefined) ?? "western";
 }
 
 /* ── the autosave ───────────────────────────────────────────────────────── */

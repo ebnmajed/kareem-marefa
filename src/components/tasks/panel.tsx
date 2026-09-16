@@ -13,7 +13,7 @@ import { CreateTaskForm } from "@/components/tasks/create-form";
 // purely a reminder for the member who set it.
 export async function Tasks({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("tasks.list");
-  const { tasks, canManage, numerals, materials } = await getTasksPageData(locale, sessionId);
+  const { tasks, canManage, materials } = await getTasksPageData(locale, sessionId);
   const completedCount = tasks.filter((task) => task.completed).length;
 
   return (
@@ -22,9 +22,9 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
         <p className="text-body-sm text-fg-muted">{t("empty")}</p>
       ) : (
         <>
-          <p className="text-body-sm text-fg-muted">{t("count", { count: tasks.length, value: formatNumber(tasks.length, numerals) })}</p>
+          <p className="text-body-sm text-fg-muted">{t("count", { count: tasks.length, value: formatNumber(tasks.length) })}</p>
           {completedCount > 0 ? (
-            <p className="text-body-sm text-fg-muted">{t.rich("completedOf", { value: formatNumber(completedCount, numerals), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+            <p className="text-body-sm text-fg-muted">{t.rich("completedOf", { value: formatNumber(completedCount), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
           ) : null}
           <ul className="mt-4 flex flex-col gap-3">
             {tasks.map((task) => (

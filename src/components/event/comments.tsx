@@ -20,7 +20,7 @@ import { CommentList } from "@/components/event/comment-list";
 // real page rather than assumed from the component test alone.
 export async function Comments({ sessionId, memberId, locale }: SlotProps) {
   const t = await getTranslations("event.comments");
-  const { comments, editWindowMinutes, numerals, frozen, isStaffViewer } = await getCommentsPageData(locale, sessionId);
+  const { comments, editWindowMinutes, frozen, isStaffViewer } = await getCommentsPageData(locale, sessionId);
 
   const [reactions, reportedIds] = await Promise.all([
     getReactionTotalsForComments(locale, comments.map((c) => c.id)),
@@ -31,7 +31,7 @@ export async function Comments({ sessionId, memberId, locale }: SlotProps) {
 
   return (
     <div>
-      {activeCount > 0 ? <p className="text-body-sm text-fg-muted">{t("count", { count: activeCount, value: formatNumber(activeCount, numerals) })}</p> : null}
+      {activeCount > 0 ? <p className="text-body-sm text-fg-muted">{t("count", { count: activeCount, value: formatNumber(activeCount) })}</p> : null}
       <div className="mt-4">
         <CommentList
           locale={locale}
@@ -39,7 +39,6 @@ export async function Comments({ sessionId, memberId, locale }: SlotProps) {
           viewerMemberId={memberId}
           isStaffViewer={isStaffViewer}
           editWindowMinutes={editWindowMinutes}
-          numerals={numerals}
           initialComments={comments}
           initialReactions={reactions}
           initialReported={Array.from(reportedIds)}

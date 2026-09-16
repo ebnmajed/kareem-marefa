@@ -71,7 +71,6 @@ export interface CommentsPageData {
   comments: CommentDTO[];
   /** null when the org's setting could not be read — treated as "no window" (no self-edit offered), never as unlimited. */
   editWindowMinutes: number | null;
-  numerals: "western" | "arabic_indic";
   /** REQ-SES-010 — a cancelled session's comments are read-only. */
   frozen: boolean;
   /** admin or moderator — kept at the top level so an empty thread still knows. */
@@ -85,7 +84,7 @@ export interface CommentsPageData {
  */
 export async function getCommentsPageData(locale: string, sessionId: string): Promise<CommentsPageData> {
   if (!z.uuid().safeParse(sessionId).success) {
-    return { comments: [], editWindowMinutes: null, numerals: "western", frozen: false, isStaffViewer: false };
+    return { comments: [], editWindowMinutes: null, frozen: false, isStaffViewer: false };
   }
   const { session, supabase } = await sessionClient(locale);
 
@@ -98,7 +97,7 @@ export async function getCommentsPageData(locale: string, sessionId: string): Pr
       )
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true }),
-    supabase.from("org_settings").select("comment_edit_window_minutes, numerals").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("comment_edit_window_minutes").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("sessions").select("state").eq("id", sessionId).maybeSingle(),
   ]);
   if (error) throw new Error(`comments: ${error.message}`);
@@ -130,7 +129,6 @@ export async function getCommentsPageData(locale: string, sessionId: string): Pr
   return {
     comments,
     editWindowMinutes,
-    numerals: settings?.numerals ?? "western",
     frozen: sessionRow?.state === "cancelled",
     isStaffViewer: isStaff,
   };

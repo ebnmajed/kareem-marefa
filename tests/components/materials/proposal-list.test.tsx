@@ -22,7 +22,7 @@ const { getProposalMaterialsPageData } = await import("@/lib/dal/materials");
 const { ProposalMaterials } = await import("@/components/materials/proposal-list");
 
 const proposalId = "11111111-1111-1111-1111-111111111111";
-const base: ProposalMaterialsPageData = { materials: [], numerals: "western", canManage: false };
+const base: ProposalMaterialsPageData = { materials: [], canManage: false };
 
 async function renderSlot(data: ProposalMaterialsPageData) {
   vi.mocked(getProposalMaterialsPageData).mockResolvedValue(data);
@@ -63,7 +63,6 @@ describe("ProposalMaterials slot", () => {
           createdAt: "2026-09-14T00:00:00Z",
         },
       ],
-      numerals: "western",
       canManage: true,
     });
     const title = screen.getByText("شرائح المقترح");

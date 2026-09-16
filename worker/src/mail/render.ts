@@ -10,7 +10,7 @@
 //   · a declared fallback font stack, not a web font — web fonts do not load
 //     in most clients, so the mail is designed to look right in the fallback
 //     rather than to depend on the brand face;
-//   · numerals per the org setting, like every other surface;
+//   · Western digits, always — REQ-INT-006, DEC-124, like every other surface;
 //   · a plain-text alternative for every message — some corporate clients
 //     strip HTML entirely.
 //
@@ -20,20 +20,13 @@
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
 
-// The spelling is `public.numeral_system`'s own (migration 0003):
-// 'western' | 'arabic_indic'. The worker reads `org_settings.numerals`
-// straight out of the database, so it uses the database's value rather than
-// a friendlier alias that would have to be mapped somewhere and would be
-// mapped wrong somewhere else.
-export type NumeralSystem = "western" | "arabic_indic";
-
 export interface RenderInput {
   key: string;
   /** The org admin's template, when one exists (REQ-NTF-007). */
   override?: { subject: string | null; body: string | null } | null;
   payload: Record<string, unknown>;
   member: { name: string | null; email: string };
-  org: { name: string; numerals: NumeralSystem; timeZone: string };
+  org: { name: string; timeZone: string };
   /** The org brand kit's light palette (06 §8.3's email-template leg, DEC-052),
    *  read from `public.brand_kit()` by the sender. Absent in a unit test, the
    *  renderer keeps its neutral defaults — the identity override again. */
@@ -50,8 +43,12 @@ export class TemplateMissingError extends Error {}
 
 const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif`;
 
-function formatNumber(value: number, numerals: NumeralSystem): string {
-  return new Intl.NumberFormat(numerals === "arabic_indic" ? "ar-u-nu-arab" : "ar-u-nu-latn").format(value);
+// `latn` named explicitly: `ar`'s CLDR default is `arab`, the digits the owner
+// forbade everywhere (DEC-124).
+const numberFormat = new Intl.NumberFormat("ar-u-nu-latn");
+
+function formatNumber(value: number): string {
+  return numberFormat.format(value);
 }
 
 function escapeHtml(value: string): string {
@@ -75,11 +72,11 @@ function lookup(payload: Record<string, unknown>, path: string): unknown {
  * an empty value here means the payload lacked something optional, and a
  * blank reads better than a leaked template variable.
  */
-export function interpolate(template: string, payload: Record<string, unknown>, numerals: NumeralSystem): string {
+export function interpolate(template: string, payload: Record<string, unknown>): string {
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path: string) => {
     const value = lookup(payload, path);
     if (value === null || value === undefined) return "";
-    if (typeof value === "number") return formatNumber(value, numerals);
+    if (typeof value === "number") return formatNumber(value);
     if (typeof value === "boolean") return value ? "نعم" : "لا";
     return String(value);
   });
@@ -118,10 +115,10 @@ const CHANGE_LABELS: Readonly<Record<string, string>> = {
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
 
 /**
- * A raw value from the change trigger, in the org's zone and numerals.
+ * A raw value from the change trigger, in the org's zone and Western digits.
  *
  * The zone is the ORG's, not the reader's: a session happens in a room, and
- * «٦:٠٠ م» has to mean the clock on that room's wall whoever is reading the
+ * «6:00 م» has to mean the clock on that room's wall whoever is reading the
  * mail. Same rule as components/sessions/numerals.ts, for the same reason.
  */
 function formatChangeValue(value: unknown, org: RenderInput["org"]): string {
@@ -130,7 +127,7 @@ function formatChangeValue(value: unknown, org: RenderInput["org"]): string {
   if (!ISO_INSTANT.test(text)) return text;
   const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return text;
-  return new Intl.DateTimeFormat(`ar-u-nu-${org.numerals === "arabic_indic" ? "arab" : "latn"}`, {
+  return new Intl.DateTimeFormat("ar-u-nu-latn", {
     dateStyle: "full",
     timeStyle: "short",
     timeZone: org.timeZone,
@@ -215,8 +212,8 @@ export function renderEmail(input: RenderInput): RenderedEmail {
     org: input.org.name,
   };
 
-  const subject = interpolate(subjectSource, payload, input.org.numerals).replace(/\s+/g, " ").trim();
-  const body = interpolate(bodySource, payload, input.org.numerals);
+  const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
+  const body = interpolate(bodySource, payload);
   const paragraphs = toParagraphs(body);
 
   return {

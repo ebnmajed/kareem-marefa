@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { DotIcon } from "@/components/ui/icons";
 import { getUnreadCount } from "@/lib/dal/notifications";
 
@@ -17,14 +17,14 @@ import { getUnreadCount } from "@/lib/dal/notifications";
 // REQ-NTF-006 wants the count accurate across devices, so it is counted at
 // the database on every render rather than cached anywhere.
 
-export async function NotificationBell({ locale, numerals = "western" }: { memberId?: string; locale: string; numerals?: NumeralSystem }) {
+export async function NotificationBell({ locale }: { memberId?: string; locale: string; }) {
   const t = await getTranslations("notifications");
   const unread = await getUnreadCount(locale);
 
   return (
     <Link
       href="/app/me/notifications"
-      aria-label={t("bell.unread", { count: unread, value: formatNumber(unread, numerals) })}
+      aria-label={t("bell.unread", { count: unread, value: formatNumber(unread) })}
       className="inline-flex h-10 items-center gap-1 rounded-field px-2 text-label md:gap-2 md:px-3 text-fg-body hover:bg-silver-100 hover:text-fg-heading"
     >
       {/* Compact at phone width (the shell must stay one row at 390 px, REQ-SES-013):
@@ -37,7 +37,7 @@ export async function NotificationBell({ locale, numerals = "western" }: { membe
           aria-hidden="true"
           className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--btn-bg)] px-2 text-body-sm text-[var(--btn-fg)]"
         >
-          {formatNumber(unread, numerals)}
+          {formatNumber(unread)}
         </span>
       ) : null}
     </Link>

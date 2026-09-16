@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { DesignerSlotProps } from "@/components/posters/slots";
 import { getSessionPoster, MIN_UPLOADED_POSTER_SHORT_SIDE } from "@/lib/dal/posters";
-import { getOrgNumerals } from "@/lib/dal/designer";
 import { formatNumber } from "@/components/sessions/numerals";
 import { SessionPoster } from "@/components/posters/session-poster";
 
@@ -15,7 +14,7 @@ import { SessionPoster } from "@/components/posters/session-poster";
 // `console` owns SCR-043 and the lead wires this in. No heading of its own.
 
 export async function PosterPicker({ sessionId, locale }: DesignerSlotProps) {
-  const [t, poster, numerals] = await Promise.all([getTranslations("designer.poster.picker"), getSessionPoster(locale, sessionId), getOrgNumerals(locale)]);
+  const [t, poster] = await Promise.all([getTranslations("designer.poster.picker"), getSessionPoster(locale, sessionId)]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,7 +52,7 @@ export async function PosterPicker({ sessionId, locale }: DesignerSlotProps) {
         <li className="rounded-field border border-edge p-3">
           <p className="text-body-sm text-fg-heading">{t("upload")}</p>
           <p className="mt-1 text-body-sm text-fg-muted">
-            {t.rich("uploadHint", { minimum: formatNumber(MIN_UPLOADED_POSTER_SHORT_SIDE, numerals), bdi: (c) => <bdi>{c}</bdi> })}
+            {t.rich("uploadHint", { minimum: formatNumber(MIN_UPLOADED_POSTER_SHORT_SIDE), bdi: (c) => <bdi>{c}</bdi> })}
           </p>
         </li>
       </ul>

@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // Calendar — the ICS download, the add-to-calendar links and the Google
 // connection status (REQ-CAL-001 … REQ-CAL-008, SCR-025, the SCR-012 slot).
@@ -23,7 +22,6 @@ export interface CalendarSessionDTO {
   state: string;
   cancelled: boolean;
   venue: { name: string; address: string | null; mapUrl: string | null } | null;
-  numerals: NumeralSystem;
 }
 
 type VenueRow = { name: string; address: string | null; map_url: string | null };
@@ -37,15 +35,14 @@ type VenueRow = { name: string; address: string | null; map_url: string | null }
  */
 export async function getSessionForCalendar(locale: string, sessionId: string): Promise<CalendarSessionDTO | null> {
   if (!z.uuid().safeParse(sessionId).success) return null;
-  const { session, supabase } = await sessionClient(locale);
+  const { supabase } = await sessionClient(locale);
 
-  const [{ data, error }, { data: settings }] = await Promise.all([
+  const [{ data, error }] = await Promise.all([
     supabase
       .from("sessions")
       .select("id, title, abstract, starts_at, ends_at, time_zone, state, custom_venue_name, custom_venue_address, custom_venue_map_url, venues(name, address, map_url)")
       .eq("id", sessionId)
       .maybeSingle(),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`sessions: ${error.message}`);
   if (!data || !data.starts_at || !data.ends_at) return null;
@@ -72,7 +69,6 @@ export async function getSessionForCalendar(locale: string, sessionId: string): 
     state: data.state,
     cancelled: data.state === "cancelled",
     venue,
-    numerals: settings?.numerals === "arabic_indic" ? "arabic_indic" : "western",
   };
 }
 

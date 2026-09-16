@@ -10,14 +10,13 @@
  * one function decides what the words are.
  *
  * The formatting rules are `10` §4's, matching `src/components/sessions/
- * numerals.ts` exactly: the NUMERAL SYSTEM comes from the org setting rather
- * than from the locale, whose CLDR default for `ar` is `arab` and would
- * quietly disagree; and the TIME ZONE is the session's, not the reader's,
+ * numerals.ts` exactly: digits are WESTERN, always (REQ-INT-006, DEC-124) —
+ * named as `latn` rather than inherited from the locale, whose CLDR default
+ * for `ar` is `arab` and would quietly print the digits the owner forbade;
+ * and the TIME ZONE is the session's, not the reader's,
  * because a session happens in a room and the poster has to mean the clock
  * on that room's wall.
  */
-
-export type NumeralSystem = 'western' | 'arabic_indic'
 
 export interface SessionBindingRow {
   id: string
@@ -45,7 +44,6 @@ export interface CertificateBindingRow {
 }
 
 export interface BindingOptions {
-  numerals: NumeralSystem
   /** The org's zone, used when a session declares none. */
   timeZone: string
   /** Absolute — a phone camera needs a URL, not a path (REQ-DSG-023). */
@@ -54,16 +52,14 @@ export interface BindingOptions {
   orgName?: string | null
 }
 
-const nu = (numerals: NumeralSystem) => (numerals === 'arabic_indic' ? 'arab' : 'latn')
-
 /** Matches `formatDateTime` in the UI exactly; a poster whose date reads
  *  differently from the event page is a poster that is wrong. */
-export function formatBindingDateTime(iso: string, numerals: NumeralSystem, timeZone: string, locale = 'ar'): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-${nu(numerals)}`, { dateStyle: 'full', timeStyle: 'short', timeZone }).format(new Date(iso))
+export function formatBindingDateTime(iso: string, timeZone: string, locale = 'ar'): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { dateStyle: 'full', timeStyle: 'short', timeZone }).format(new Date(iso))
 }
 
-export function formatBindingDate(iso: string, numerals: NumeralSystem, timeZone: string, locale = 'ar'): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-${nu(numerals)}`, { dateStyle: 'long', timeZone }).format(new Date(iso))
+export function formatBindingDate(iso: string, timeZone: string, locale = 'ar'): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { dateStyle: 'long', timeZone }).format(new Date(iso))
 }
 
 /** 06 §2.3: presenters are joined with «و». */
@@ -87,7 +83,7 @@ export function resolveSessionBindings(row: SessionBindingRow, options: BindingO
   const out: Record<string, string> = { 'session.title': row.title }
 
   if (row.abstract) out['session.abstract'] = row.abstract
-  if (row.startsAt) out['session.startsAt'] = formatBindingDateTime(row.startsAt, options.numerals, zone, locale)
+  if (row.startsAt) out['session.startsAt'] = formatBindingDateTime(row.startsAt, zone, locale)
   if (row.venueName) out['session.venueName'] = row.venueName
   if (row.venueAddress) out['session.venueAddress'] = row.venueAddress
   const presenters = joinPresenters(row.presenters ?? [], locale)
@@ -107,7 +103,7 @@ export function resolveCertificateBindings(row: CertificateBindingRow, options: 
     'certificate.verificationCode': row.verificationCode,
     'certificate.verifyUrl': `${options.origin}/${locale}/verify/${row.verificationCode}`,
   }
-  if (row.issuedAt) out['certificate.issuedAt'] = formatBindingDate(row.issuedAt, options.numerals, options.timeZone, locale)
+  if (row.issuedAt) out['certificate.issuedAt'] = formatBindingDate(row.issuedAt, options.timeZone, locale)
   if (row.sessionTitle) out['session.title'] = row.sessionTitle
   if (row.achievementName) out['certificate.achievementName'] = row.achievementName
   if (options.orgName) out['org.name'] = options.orgName

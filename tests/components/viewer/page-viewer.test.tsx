@@ -16,7 +16,7 @@ const pages: ViewerPageDTO[] = [
 function renderViewer(rtl: boolean) {
   return render(
     <NextIntlClientProvider locale={rtl ? "ar" : "en"} messages={ar}>
-      <PageViewer pages={pages} numerals="western" rtl={rtl} title="عرض تجريبي" />
+      <PageViewer pages={pages} rtl={rtl} title="عرض تجريبي" />
     </NextIntlClientProvider>,
   );
 }
@@ -97,7 +97,7 @@ describe("PageViewer", () => {
   it("renders the no-pages state instead of crashing on an empty list", () => {
     render(
       <NextIntlClientProvider locale="ar" messages={ar}>
-        <PageViewer pages={[]} numerals="western" rtl title="فارغ" />
+        <PageViewer pages={[]} rtl title="فارغ" />
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("لا توجد صفحات لعرضها.")).toBeInTheDocument();

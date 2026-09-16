@@ -6,8 +6,8 @@
 // system the author happened to use, so an org set the other way shows two
 // systems on one screen.
 //
-// This is not hypothetical. The reminder screen shipped with «الافتراضي
-// ١٠٠٨٠ و١٤٤٠ و١٢٠» in Arabic-Indic directly under an input holding
+// This is not hypothetical. The reminder screen shipped with its three
+// defaults typed in Arabic-Indic digits directly under an input holding
 // «10080, 1440, 120» in Western — two systems, three centimetres apart, on a
 // screen whose entire subject is those three numbers. The 390 px review
 // caught it; this is what catches the next one.
@@ -43,8 +43,9 @@ describe("REQ-INT-006 — no numeral system is frozen into the copy", () => {
 
   it("contains no literal Western digit outside ICU syntax either", () => {
     // ICU's own `=0` selector and nothing else. A digit in prose is the same
-    // bug in the other direction: an org set to Arabic-Indic would read
-    // «١٨٠ يومًا» everywhere except the one sentence that says 180.
+    // bug in a quieter form since DEC-124: with one digit system there is no
+    // mismatch to see, but a count typed into prose cannot be pluralised —
+    // it belongs in `{value}` from `formatNumber()`.
     const offenders = arabic
       .filter(([, value]) => WESTERN.test(value.replace(/=\d+\s*\{/g, "")))
       .map(([path, value]) => `${path}: ${value}`);

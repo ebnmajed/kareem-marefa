@@ -3,7 +3,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listPhotoReports } from "@/lib/dal/admin-moderation";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { resolveReport } from "./actions";
 import { ReportCard } from "./report-card";
 
@@ -22,10 +21,10 @@ export default async function PhotoReportsPage({ params }: { params: Promise<{ l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [reports, prefs, t] = await Promise.all([listPhotoReports(locale), getOrgPrefs(locale), getTranslations("admin.moderation")]);
+  const [reports, t] = await Promise.all([listPhotoReports(locale), getTranslations("admin.moderation")]);
   if (reports === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
   const action = (reportId: string, photoId: string) => resolveReport.bind(null, locale as Locale, reportId, photoId);
 
   return (

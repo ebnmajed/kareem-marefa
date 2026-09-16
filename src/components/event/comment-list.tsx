@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { subscribeToSessionTopic } from "@/lib/realtime/channel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
@@ -56,7 +55,6 @@ export function CommentList({
   viewerMemberId,
   isStaffViewer,
   editWindowMinutes,
-  numerals,
   initialComments,
   initialReactions,
   initialReported,
@@ -67,7 +65,6 @@ export function CommentList({
   viewerMemberId: string;
   isStaffViewer: boolean;
   editWindowMinutes: number | null;
-  numerals: NumeralSystem;
   initialComments: CommentDTO[];
   initialReactions: Record<string, ReactionSummary>;
   initialReported: string[];
@@ -167,7 +164,6 @@ export function CommentList({
                   comment={comment}
                   reactions={reactions[comment.id] ?? emptySummary}
                   reported={reported.has(comment.id)}
-                  numerals={numerals}
                   onReply={frozen ? undefined : () => setOpenReplyFor((v) => (v === comment.id ? null : comment.id))}
                   isReplyOpen={openReplyFor === comment.id}
                   onReported={() => setReported((prev) => new Set(prev).add(comment.id))}
@@ -193,7 +189,6 @@ export function CommentList({
                           comment={reply}
                           reactions={reactions[reply.id] ?? emptySummary}
                           reported={reported.has(reply.id)}
-                          numerals={numerals}
                           onReported={() => setReported((prev) => new Set(prev).add(reply.id))}
                         />
                       </li>

@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
-import { renderEmail, TemplateMissingError, type NumeralSystem } from "../mail/render.js";
+import { renderEmail, TemplateMissingError } from "../mail/render.js";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
 // Key: `notify:{message_id}`, enqueued by `public.notify()` inside the
@@ -32,7 +32,7 @@ interface SendContext {
   category: string;
   optional: boolean;
   member: { id: string; email: string; display_name: string | null; status: string };
-  org: { name: string; from_name: string | null; reply_to: string | null; numerals: NumeralSystem; time_zone: string };
+  org: { name: string; from_name: string | null; reply_to: string | null; time_zone: string };
   template: { subject: string | null; body: string | null; locale: string } | null;
   email_allowed: boolean;
   in_app_allowed: boolean;
@@ -92,7 +92,7 @@ export const send_notification: Task = async (rawPayload, helpers) => {
       override: ctx.template,
       payload: p.payload ?? {},
       member: { name: ctx.member.display_name, email: ctx.member.email },
-      org: { name: ctx.org.name, numerals: ctx.org.numerals, timeZone: ctx.org.time_zone },
+      org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
       brand,
     });
   } catch (error) {

@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { listCategoriesForAdmin } from "@/lib/dal/admin-lists";
 import { addCategory, toggleCategory } from "./actions";
 import { CategoryForm } from "./category-form";
@@ -16,10 +15,10 @@ export default async function CategoriesPage({ params }: { params: Promise<{ loc
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [categories, prefs, t] = await Promise.all([listCategoriesForAdmin(locale), getOrgPrefs(locale), getTranslations("admin.categories")]);
+  const [categories, t] = await Promise.all([listCategoriesForAdmin(locale), getTranslations("admin.categories")]);
   if (categories === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
 
   return (
     <>

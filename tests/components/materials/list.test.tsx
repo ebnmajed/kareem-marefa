@@ -23,7 +23,7 @@ const { getMaterialsPageData } = await import("@/lib/dal/materials");
 const { Materials } = await import("@/components/materials/list");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
-const base: MaterialsPageData = { materials: [], numerals: "western", canManageAll: false, presenterOfSession: false };
+const base: MaterialsPageData = { materials: [], canManageAll: false, presenterOfSession: false };
 
 describe("Materials slot", () => {
   it("shows the empty state when the session has no materials visible to this viewer", async () => {
@@ -48,7 +48,6 @@ describe("Materials slot", () => {
           createdAt: "2026-09-14T00:00:00Z",
         },
       ],
-      numerals: "western",
       canManageAll: false,
       presenterOfSession: false,
     });
@@ -75,7 +74,6 @@ describe("Materials slot", () => {
           createdAt: "2026-09-14T00:00:00Z",
         },
       ],
-      numerals: "western",
       canManageAll: false,
       presenterOfSession: false,
     });
@@ -101,7 +99,6 @@ describe("Materials slot", () => {
           createdAt: "2026-09-14T00:00:00Z",
         },
       ],
-      numerals: "western",
       canManageAll: false,
       presenterOfSession: false,
     });
@@ -128,7 +125,6 @@ describe("Materials slot", () => {
           createdAt: "2026-09-14T00:00:00Z",
         },
       ],
-      numerals: "western" as const,
     };
 
     vi.mocked(getMaterialsPageData).mockResolvedValue({ ...oneMaterial, canManageAll: false, presenterOfSession: false });

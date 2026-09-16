@@ -24,22 +24,22 @@ async function expectAccessible(container: HTMLElement) {
 
 describe("Stat", () => {
   it("renders the label, the value wrapped in <bdi>, and the hint", () => {
-    const { container } = render(<Stat label="الحضور" value="٤٢" hint="من أصل ٥٠" />);
+    const { container } = render(<Stat label="الحضور" value="42" hint="من أصل 50" />);
     expect(screen.getByText("الحضور")).toBeInTheDocument();
-    expect(screen.getByText("من أصل ٥٠")).toBeInTheDocument();
+    expect(screen.getByText("من أصل 50")).toBeInTheDocument();
     const bdi = container.querySelector("bdi");
-    expect(bdi).toHaveTextContent("٤٢");
+    expect(bdi).toHaveTextContent("42");
   });
 
   it("renders as a plain block with no href", () => {
-    const { container } = render(<Stat label="النقاط" value="١٢٠" />);
+    const { container } = render(<Stat label="النقاط" value="120" />);
     expect(container.querySelector("a")).not.toBeInTheDocument();
   });
 
   it("renders as a link when href is given", () => {
     render(
       <Wrap>
-        <Stat label="النقاط" value="١٢٠" href="/app/me/points" />
+        <Stat label="النقاط" value="120" href="/app/me/points" />
       </Wrap>,
     );
     expect(screen.getByRole("link")).toHaveAttribute("href", expect.stringContaining("/app/me/points"));
@@ -51,12 +51,12 @@ describe("Stat", () => {
     ["ended", "text-ended"],
     ["error", "text-error"],
   ] as const)("tone=%s colours the value %s", (tone, cls) => {
-    const { container } = render(<Stat label="حالة" value="٣" tone={tone} />);
+    const { container } = render(<Stat label="حالة" value="3" tone={tone} />);
     expect(container.querySelector("strong")).toHaveClass(cls);
   });
 
   it("is accessible", async () => {
-    const { container } = render(<Stat label="الحضور" value="٤٢" hint="من أصل ٥٠" />);
+    const { container } = render(<Stat label="الحضور" value="42" hint="من أصل 50" />);
     await expectAccessible(container);
   });
 });

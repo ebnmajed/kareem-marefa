@@ -17,7 +17,6 @@ import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
 import { ShareLink } from "@/components/sessions/share-link";
 import { Link } from "@/i18n/navigation";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getSessionForEvent } from "@/lib/dal/sessions";
 import { requireSession } from "@/lib/dal/session";
 
@@ -51,22 +50,21 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [me, session, prefs, t] = await Promise.all([
+  const [me, session, t] = await Promise.all([
     requireSession(locale, `/${locale}/app/sessions/${id}`),
     getSessionForEvent(locale, id),
-    getOrgPrefs(locale),
     getTranslations("sessions.event"),
   ]);
   if (!session) notFound();
 
-  const when = (iso: string | null) => (iso ? formatDateTime(iso, prefs.numerals, session.timeZone, locale) : null);
+  const when = (iso: string | null) => (iso ? formatDateTime(iso, session.timeZone, locale) : null);
   // A session that starts and ends on the same day says the day once. Reading
-  // «الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٦:٠٠ م · حتى الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٧:٠٠ م»
+  // «الأربعاء 16 سبتمبر 2026 في 6:00 م · حتى الأربعاء 16 سبتمبر 2026 في 7:00 م»
   // out loud is enough to see why.
   const until =
     session.startsAt && session.endsAt
       ? sameDay(session.startsAt, session.endsAt, session.timeZone)
-        ? formatTime(session.endsAt, prefs.numerals, session.timeZone, locale)
+        ? formatTime(session.endsAt, session.timeZone, locale)
         : when(session.endsAt)
       : null;
   const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
@@ -236,7 +234,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 
         {session.capacity !== null ? (
           <p className="mt-3 text-body-sm text-fg-muted">
-            {t("capacityLabel")}: <bdi>{t("seats", { count: session.capacity, value: formatNumber(session.capacity, prefs.numerals) })}</bdi>
+            {t("capacityLabel")}: <bdi>{t("seats", { count: session.capacity, value: formatNumber(session.capacity) })}</bdi>
           </p>
         ) : null}
         {session.rsvpDeadlineAt ? (

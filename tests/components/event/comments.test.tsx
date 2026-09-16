@@ -31,7 +31,6 @@ const sessionId = "11111111-1111-1111-1111-111111111111";
 const emptyPage: CommentsPageData = {
   comments: [],
   editWindowMinutes: 15,
-  numerals: "western",
   frozen: false,
   isStaffViewer: false,
 };

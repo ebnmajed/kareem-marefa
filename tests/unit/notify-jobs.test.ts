@@ -50,7 +50,7 @@ const CONTEXT = {
   category: "my_sessions",
   optional: false,
   member: { id: "m1", email: "sara@kareem.example", display_name: "سارة العتيبي", status: "active" },
-  org: { name: "كريم معرفة", from_name: "كريم معرفة", reply_to: "admin@kareem.example", numerals: "western", time_zone: "Asia/Riyadh" },
+  org: { name: "كريم معرفة", from_name: "كريم معرفة", reply_to: "admin@kareem.example", time_zone: "Asia/Riyadh" },
   template: null,
   email_allowed: true,
   in_app_allowed: true,

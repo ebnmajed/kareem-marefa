@@ -44,7 +44,7 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
         categories={categories}
         members={members}
         maxCoPresenters={prefs.maxCoPresenters}
-        maxCoPresentersLabel={t("form.coPresentersLimit", { count: prefs.maxCoPresenters, value: formatNumber(prefs.maxCoPresenters, prefs.numerals) })}
+        maxCoPresentersLabel={t("form.coPresentersLimit", { count: prefs.maxCoPresenters, value: formatNumber(prefs.maxCoPresenters) })}
       />
 
       <section aria-labelledby="mine" className="mt-14 max-w-2xl border-t border-edge pt-8">
@@ -55,7 +55,7 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
           <p className="mt-3 text-body text-fg-muted">{t("mine.empty")}</p>
         ) : (
           <>
-            <p className="mt-2 text-body-sm text-fg-muted">{t("mine.count", { count: mine.length, value: formatNumber(mine.length, prefs.numerals) })}</p>
+            <p className="mt-2 text-body-sm text-fg-muted">{t("mine.count", { count: mine.length, value: formatNumber(mine.length) })}</p>
             <ul className="mt-4 space-y-3">
               {mine.map((p) => (
                 <li key={p.id} className="rounded-field border border-edge p-4">

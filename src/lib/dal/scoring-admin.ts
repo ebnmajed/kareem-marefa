@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // SCR-053 (scoring) and SCR-054 (recognition) admin screens — DEC-046's
 // wave-2 carve-out for `scoring`; `console` inherits these paths at wave 3,
@@ -50,7 +49,6 @@ export interface ScoringAdminData {
   companyRules: CompanyScoringRule[];
   companyHistory: ConfigHistoryRow[];
   companies: CompanyOption[];
-  numerals: NumeralSystem;
 }
 
 function cooldownToSeconds(pg: string | null): number | null {
@@ -72,7 +70,6 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
   const [
     { data: rules, error },
     { data: history, error: historyError },
-    { data: settings },
     { data: companyRules, error: companyRulesError },
     { data: companyHistory, error: companyHistoryError },
     { data: companies, error: companiesError },
@@ -89,7 +86,6 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
       .eq("scope", "scoring")
       .order("changed_at", { ascending: false })
       .limit(50),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("company_scoring_rules")
       .select("id, action_key, enabled, points, points_per_percent, cap_points, min_active_members, reason_ar, version")
@@ -136,7 +132,6 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
     })),
     companyHistory: (companyHistory ?? []).map((h) => ({ field: h.field, oldValue: h.old_value, newValue: h.new_value, actorId: h.actor_id, changedAt: h.changed_at })),
     companies: companies ?? [],
-    numerals: (settings?.numerals as NumeralSystem) ?? "western",
   };
 }
 

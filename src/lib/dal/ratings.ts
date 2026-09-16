@@ -201,7 +201,6 @@ export interface RatingsSummary {
   /** Only fetched when the viewer is staff/presenter and the aggregate is withheld. */
   countForWithheld: number | null;
   minAggregate: number;
-  numerals: "western" | "arabic_indic";
 }
 
 /**
@@ -217,19 +216,18 @@ export async function getRatingsSummary(locale: string, sessionId: string): Prom
   const [eligibility, isPresenter, { data: settings }] = await Promise.all([
     getRatingEligibility(locale, sessionId),
     isViewerPresenter(locale, sessionId),
-    supabase.from("org_settings").select("rating_min_aggregate, numerals").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("rating_min_aggregate").eq("org_id", session.orgId).maybeSingle(),
   ]);
 
   const minAggregate = settings?.rating_min_aggregate ?? 3;
-  const numerals = settings?.numerals ?? "western";
 
   if (!isPresenter && !isStaff) {
-    return { eligibility, isPresenter, isStaff, aggregate: null, countForWithheld: null, minAggregate, numerals };
+    return { eligibility, isPresenter, isStaff, aggregate: null, countForWithheld: null, minAggregate };
   }
 
   const aggregate = await getPresenterAggregate(locale, sessionId);
   const countForWithheld = aggregate ? null : await getRatingCount(locale, sessionId);
-  return { eligibility, isPresenter, isStaff, aggregate, countForWithheld, minAggregate, numerals };
+  return { eligibility, isPresenter, isStaff, aggregate, countForWithheld, minAggregate };
 }
 
 export interface AdminRatingRow extends RatingDTO {

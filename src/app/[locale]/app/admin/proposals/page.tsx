@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs, listProposalsForReview } from "@/lib/dal/proposals";
+import { listProposalsForReview } from "@/lib/dal/proposals";
 import { decideProposal } from "./actions";
 import { ReviewCard } from "./review-card";
 
@@ -23,16 +23,15 @@ export default async function AdminProposalsPage({ params }: { params: Promise<{
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [queue, prefs, t, tp] = await Promise.all([
+  const [queue, t, tp] = await Promise.all([
     listProposalsForReview(locale),
-    getOrgPrefs(locale),
     getTranslations("admin.proposals"),
     getTranslations("proposals.propose"),
   ]);
   if (queue === null) notFound();
 
   const action = decideProposal.bind(null, locale as Locale);
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
   const levelKey = (l: string) => `form.level${l === "introductory" ? "Introductory" : l === "intermediate" ? "Intermediate" : "Advanced"}`;
 
   return (

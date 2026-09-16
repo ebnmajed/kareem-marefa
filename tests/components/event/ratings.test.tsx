@@ -24,7 +24,6 @@ const base: RatingsSummary = {
   aggregate: null,
   countForWithheld: null,
   minAggregate: 3,
-  numerals: "western",
 };
 
 describe("Ratings slot", () => {

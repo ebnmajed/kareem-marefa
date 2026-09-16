@@ -21,7 +21,7 @@ import { getOrgTimeZone } from "@/lib/dal/certificates";
 export default async function MyCertificatesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const t = await getTranslations("certificates");
-  const [{ certificates, numerals }, timeZone] = await Promise.all([listMyCertificates(locale), getOrgTimeZone(locale)]);
+  const [{ certificates }, timeZone] = await Promise.all([listMyCertificates(locale), getOrgTimeZone(locale)]);
 
   const links = await Promise.all(certificates.map((c) => (c.pdfPath ? signCertificateUrl(locale, c.pdfPath) : Promise.resolve(null))));
 
@@ -35,7 +35,7 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
         <>
           <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("mine.intro")}</p>
           <p className="mt-1 text-body-sm text-fg-muted">
-            {t("mine.count", { count: certificates.length, value: formatNumber(certificates.length, numerals) })}
+            {t("mine.count", { count: certificates.length, value: formatNumber(certificates.length) })}
           </p>
 
           <ul className="mt-6 flex flex-col gap-4">
@@ -76,7 +76,7 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
                   <div className="flex flex-wrap gap-2">
                     <dt className="text-fg-muted">{t("mine.issuedAt")}</dt>
                     <dd className="text-fg-heading">
-                      {c.issuedAt ? <bdi>{formatDateTime(c.issuedAt, numerals, timeZone, locale)}</bdi> : t("mine.notIssued")}
+                      {c.issuedAt ? <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi> : t("mine.notIssued")}
                     </dd>
                   </div>
                   <div className="flex flex-wrap gap-2">

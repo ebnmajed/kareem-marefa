@@ -79,7 +79,7 @@ export async function exportAttendanceCsv(locale: string, sessionId: string): Pr
     r.displayName ?? "",
     r.rsvpStatus ? (RSVP_STATUS_AR[r.rsvpStatus] ?? r.rsvpStatus) : r.isWalkIn ? "بلا حجز (حضور مباشر)" : "",
     r.checkedIn ? "نعم" : "لا",
-    r.arrivedAt ? formatDateTime(r.arrivedAt, prefs.numerals, prefs.timeZone, locale) : "",
+    r.arrivedAt ? formatDateTime(r.arrivedAt, prefs.timeZone, locale) : "",
     r.method === "code" ? "رمز الحضور" : r.method === "manual" ? "تسجيل يدوي" : "",
     r.method === "manual" ? "نعم" : "لا",
   ]);
@@ -110,7 +110,7 @@ export async function exportSessionsCsv(locale: string): Promise<string | null> 
     s.state,
     s.level,
     s.language,
-    s.startsAt ? formatDateTime(s.startsAt, prefs.numerals, prefs.timeZone, locale) : "",
+    s.startsAt ? formatDateTime(s.startsAt, prefs.timeZone, locale) : "",
     s.presenters
       .filter((p) => p.accepted)
       .map((p) => p.displayName ?? "")
@@ -140,8 +140,8 @@ export async function exportRsvpsCsv(locale: string): Promise<string | null> {
       s?.title ?? "",
       m?.display_name ?? "",
       RSVP_STATUS_AR[r.status as string] ?? (r.status as string),
-      r.waitlist_position !== null ? formatNumber(r.waitlist_position as number, prefs.numerals) : "",
-      formatDateTime(r.reserved_at as string, prefs.numerals, prefs.timeZone, locale),
+      r.waitlist_position !== null ? formatNumber(r.waitlist_position as number) : "",
+      formatDateTime(r.reserved_at as string, prefs.timeZone, locale),
     ];
   });
   await auditExport(locale, "rsvps");
@@ -171,7 +171,7 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
     return [
       s?.title ?? "",
       m?.display_name ?? "",
-      formatDateTime(r.arrived_at as string, prefs.numerals, prefs.timeZone, locale),
+      formatDateTime(r.arrived_at as string, prefs.timeZone, locale),
       r.method === "code" ? "رمز الحضور" : "تسجيل يدوي",
       r.method === "manual" ? "نعم" : "لا",
     ];
@@ -200,8 +200,7 @@ export async function exportRatingsCsv(locale: string): Promise<string | null> {
     .select("session_id, rating_count, session_avg, presenter_avg, sessions(title)")
     .eq("org_id", session.orgId);
   if (error) throw new Error(`session_rating_aggregates: ${error.message}`);
-  const prefs = await getOrgPrefs(locale);
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
 
   const rows = (data ?? []).map((r) => {
     const s = (r as unknown as { sessions: { title: string } | null }).sessions;
@@ -230,7 +229,7 @@ export async function exportPointsCsv(locale: string): Promise<string | null> {
 
   const rows = (data ?? []).map((r) => {
     const m = (r as unknown as { members: { display_name: string | null } | null }).members;
-    return [m?.display_name ?? "", formatNumber(r.amount as number, prefs.numerals), r.source as string, r.reason as string, formatDateTime(r.occurred_at as string, prefs.numerals, prefs.timeZone, locale)];
+    return [m?.display_name ?? "", formatNumber(r.amount as number), r.source as string, r.reason as string, formatDateTime(r.occurred_at as string, prefs.timeZone, locale)];
   });
   await auditExport(locale, "points");
   return buildCsv(["العضو", "القيمة", "المصدر", "السبب", "التاريخ"], rows);
@@ -259,7 +258,7 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
       c.kind as string,
       s?.title ?? "",
       CERT_STATE_AR[c.state as string] ?? (c.state as string),
-      c.issued_at ? formatDateTime(c.issued_at as string, prefs.numerals, prefs.timeZone, locale) : "",
+      c.issued_at ? formatDateTime(c.issued_at as string, prefs.timeZone, locale) : "",
     ];
   });
   await auditExport(locale, "certificates");
@@ -278,7 +277,7 @@ export async function exportMembersCsv(locale: string): Promise<string | null> {
     m.email,
     MEMBER_ROLE_AR[m.role],
     MEMBER_STATUS_AR[m.status],
-    formatDateTime(m.createdAt, prefs.numerals, prefs.timeZone, locale),
+    formatDateTime(m.createdAt, prefs.timeZone, locale),
   ]);
   await auditExport(locale, "members");
   return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", "تاريخ الانضمام"], rows);

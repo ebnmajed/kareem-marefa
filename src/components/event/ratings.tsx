@@ -15,7 +15,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 // page already wraps this slot in its own landmark and "التقييم" heading.
 export async function Ratings({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("ratings");
-  const { eligibility, isPresenter, isStaff, aggregate, countForWithheld, minAggregate, numerals } = await getRatingsSummary(locale, sessionId);
+  const { eligibility, isPresenter, isStaff, aggregate, countForWithheld, minAggregate } = await getRatingsSummary(locale, sessionId);
 
   const showPresenterBlock = (isPresenter || isStaff) && eligibility.reason !== "not_completed";
   const showRaterBlock = !isPresenter && (eligibility.reason === null || eligibility.reason === "window_closed" || Boolean(eligibility.existing));
@@ -32,11 +32,11 @@ export async function Ratings({ sessionId, locale }: SlotProps) {
               <div className="flex gap-6">
                 <p>
                   <span className="block text-body-sm text-fg-muted">{t("presenter.sessionAvg")}</span>
-                  <span className="text-h3 text-fg-heading">{formatNumber(aggregate.sessionAvg ?? 0, numerals)}</span>
+                  <span className="text-h3 text-fg-heading">{formatNumber(aggregate.sessionAvg ?? 0)}</span>
                 </p>
                 <p>
                   <span className="block text-body-sm text-fg-muted">{t("presenter.presenterAvg")}</span>
-                  <span className="text-h3 text-fg-heading">{formatNumber(aggregate.presenterAvg ?? 0, numerals)}</span>
+                  <span className="text-h3 text-fg-heading">{formatNumber(aggregate.presenterAvg ?? 0)}</span>
                 </p>
               </div>
               <h4 className="mt-4 text-body-sm text-fg-muted">{t("presenter.commentsHeading")}</h4>
@@ -55,9 +55,9 @@ export async function Ratings({ sessionId, locale }: SlotProps) {
           ) : (
             <div className="mt-2">
               <p className="text-body text-fg-heading">
-                {t("presenter.countSoFar", { count: countForWithheld ?? 0, value: formatNumber(countForWithheld ?? 0, numerals) })}
+                {t("presenter.countSoFar", { count: countForWithheld ?? 0, value: formatNumber(countForWithheld ?? 0) })}
               </p>
-              <p className="mt-1 text-body-sm text-fg-muted">{t("presenter.withheldNote", { min: minAggregate, value: formatNumber(minAggregate, numerals) })}</p>
+              <p className="mt-1 text-body-sm text-fg-muted">{t("presenter.withheldNote", { min: minAggregate, value: formatNumber(minAggregate) })}</p>
             </div>
           )}
         </div>

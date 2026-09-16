@@ -22,7 +22,7 @@ interface SendContext {
   category: string;
   optional: boolean;
   member: { id: string; email: string; display_name: string | null; status: string };
-  org: { name: string; from_name: string | null; reply_to: string | null; numerals: string; time_zone: string };
+  org: { name: string; from_name: string | null; reply_to: string | null; time_zone: string };
   template: { subject: string; body: string; locale: string } | null;
   email_allowed: boolean;
   in_app_allowed: boolean;
@@ -68,7 +68,7 @@ describe("RPC-notification_send_context", () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.asOwner();
-      await tx.q(`update public.org_settings set email_from_name = $2, email_reply_to = $3, numerals = 'arabic_indic' where org_id = $1`, [
+      await tx.q(`update public.org_settings set email_from_name = $2, email_reply_to = $3 where org_id = $1`, [
         f.a.id,
         "كريم معرفة",
         "admin@kareem.example",
@@ -79,7 +79,6 @@ describe("RPC-notification_send_context", () => {
       expect(ctx.member.display_name).toBe("سارة العتيبي");
       expect(ctx.org.from_name).toBe("كريم معرفة");
       expect(ctx.org.reply_to).toBe("admin@kareem.example");
-      expect(ctx.org.numerals).toBe("arabic_indic");
       expect(ctx.org.time_zone).toBe("Asia/Riyadh");
       expect(ctx.category).toBe("my_sessions");
       expect(ctx.optional).toBe(false);

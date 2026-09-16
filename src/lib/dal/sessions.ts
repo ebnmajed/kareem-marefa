@@ -2,7 +2,6 @@ import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { createServerClient } from "@/lib/supabase/server";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { sessionPhase, viewerRelation as deriveRelation, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
@@ -653,7 +652,6 @@ export interface PublicSessionCard {
    *  the owner's decision did not move it. */
   venueName: string | null;
   orgName: string;
-  numerals: NumeralSystem;
   /** Whether a poster `og` render exists. The PATH never leaves this module:
    *  the page asks for `/api/s/{id}/og`, which asks again. */
   hasImage: boolean;
@@ -668,7 +666,6 @@ interface PublicCardRow {
   time_zone: string;
   venue_name: string | null;
   org_name: string;
-  numerals: NumeralSystem;
   og_path: string | null;
   og_width: number | null;
   og_height: number | null;
@@ -697,7 +694,6 @@ export async function getPublicSessionCard(id: string): Promise<PublicSessionCar
     timeZone: row.time_zone,
     venueName: row.venue_name,
     orgName: row.org_name,
-    numerals: row.numerals,
     hasImage: Boolean(row.og_path),
     imageWidth: row.og_width,
     imageHeight: row.og_height,

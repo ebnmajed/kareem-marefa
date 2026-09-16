@@ -188,11 +188,11 @@ export default async function GalleryPage({
             value={42}
             max={60}
             label="المقاعد المحجوزة"
-            valueText="٤٢ من ٦٠"
+            valueText="42 من 60"
           />
         </div>
-        <Stat label="الحضور" value="١٢٤" hint="هذا الشهر" />
-        <Stat label="الجلسات" value="١٨" href="/app/sessions" />
+        <Stat label="الحضور" value="124" hint="هذا الشهر" />
+        <Stat label="الجلسات" value="18" href="/app/sessions" />
       </Row>
 
       <Row title="الأسطح">
@@ -228,7 +228,7 @@ export default async function GalleryPage({
         <SectionHeader
           title="الأيقونات"
           as="h2"
-          description="٣٥ رمزًا، بخط واحد، مرسومة لهذا المنتج — ثمانية منها لغة الموقع التسويقي، والباقي للتطبيق."
+          description="35 رمزًا، بخط واحد، مرسومة لهذا المنتج — ثمانية منها لغة الموقع التسويقي، والباقي للتطبيق."
         />
         <ul className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-8">
           {Object.entries(Icons)

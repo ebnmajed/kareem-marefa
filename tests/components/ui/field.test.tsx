@@ -230,14 +230,14 @@ describe("Field — the wiring survives a wrapper", () => {
         <Field id="abstract" label="نبذة عن موضوعك" hint="اشرح فكرتك" error="فضلًا اكتب نبذة">
           <>
             <Input name="abstract" aria-describedby="abstract-count" />
-            <span id="abstract-count">بقي ٥٠٠ حرف</span>
+            <span id="abstract-count">بقي 500 حرف</span>
           </>
         </Field>
       </Wrap>,
     );
     // A character counter ADDS to the description; it is not an alternative to
     // the error, which is the one association nothing else in the tree gives.
-    expect(screen.getByRole("textbox")).toHaveAccessibleDescription("فضلًا اكتب نبذة اشرح فكرتك بقي ٥٠٠ حرف");
+    expect(screen.getByRole("textbox")).toHaveAccessibleDescription("فضلًا اكتب نبذة اشرح فكرتك بقي 500 حرف");
   });
 
   it("lets an explicit prop on the control win over the context", () => {

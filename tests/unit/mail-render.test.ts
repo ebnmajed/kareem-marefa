@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { changeBlock, changesFromPayload, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "../../worker/src/mail/render";
 import { DEFAULT_TEMPLATES } from "../../worker/src/mail/templates";
 
-const ORG: RenderInput["org"] = { name: "كريم معرفة", numerals: "western", timeZone: "Asia/Riyadh" };
+const ORG: RenderInput["org"] = { name: "كريم معرفة", timeZone: "Asia/Riyadh" };
 const MEMBER = { name: "سارة العتيبي", email: "sara@kareem.example" };
 
 const render = (key: string, payload: Record<string, unknown> = {}, org = ORG) =>
@@ -59,7 +59,7 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
 });
 
 describe("08 §3.1 — the constraints email clients impose", () => {
-  const out = render("MSG-session_published", { title: "الذكاء الاصطناعي في العمل", startsAt: "الأحد ٦:٠٠ م", venue: "قاعة الابتكار", url: "https://kareem.pp.sa/x" });
+  const out = render("MSG-session_published", { title: "الذكاء الاصطناعي في العمل", startsAt: "الأحد 6:00 م", venue: "قاعة الابتكار", url: "https://kareem.pp.sa/x" });
 
   it("puts dir=rtl on <html> and on every table cell", () => {
     expect(out.html).toContain('<html dir="rtl" lang="ar">');
@@ -101,35 +101,33 @@ describe("08 §3.1 — the constraints email clients impose", () => {
   });
 });
 
-describe("REQ-INT-006 — numerals follow the org setting", () => {
-  it("renders a count in Arabic-Indic digits when the org asks for them", () => {
-    const western = render("MSG-level_reached", { level: 7 });
-    const arabic = render("MSG-level_reached", { level: 7 }, { ...ORG, numerals: "arabic_indic" as const });
-    expect(western.subject).toContain("7");
-    expect(arabic.subject).toContain("٧");
-    expect(arabic.subject).not.toContain("7");
+describe("REQ-INT-006 — numerals are Western, always (DEC-124)", () => {
+  it("renders a count in Western digits, always — there is no setting (REQ-INT-006, DEC-124)", () => {
+    const mail = render("MSG-level_reached", { level: 7 });
+    expect(mail.subject).toContain("7");
+    for (const part of [mail.subject, mail.text, mail.html]) expect(part).not.toMatch(/[\u0660-\u0669\u06F0-\u06F9]/);
   });
 });
 
 describe("interpolate", () => {
   it("resolves a dotted path and blanks an unresolved one", () => {
-    expect(interpolate("{{a.b}} · {{missing}}", { a: { b: "قيمة" } }, "western")).toBe("قيمة · ");
+    expect(interpolate("{{a.b}} · {{missing}}", { a: { b: "قيمة" } })).toBe("قيمة · ");
   });
 
   it("leaves no template variable visible to a member", () => {
-    expect(interpolate("مرحبًا {{member.name}}", {}, "western")).toBe("مرحبًا ");
+    expect(interpolate("مرحبًا {{member.name}}", {})).toBe("مرحبًا ");
   });
 });
 
 describe("REQ-SES-009 / 08 §3.3 — the old value and the new one, side by side", () => {
   it("prints both values for a field that moved", () => {
-    const block = changeBlock([{ label: "الموعد", from: "الأحد ٦:٠٠ م", to: "الاثنين ٧:٠٠ م" }]);
-    expect(block).toBe("الموعد: الأحد ٦:٠٠ م ← الاثنين ٧:٠٠ م");
+    const block = changeBlock([{ label: "الموعد", from: "الأحد 6:00 م", to: "الاثنين 7:00 م" }]);
+    expect(block).toBe("الموعد: الأحد 6:00 م ← الاثنين 7:00 م");
   });
 
   it("renders ONLY changed lines — a venue change prints no unchanged time", () => {
     const block = changeBlock([
-      { label: "الموعد", from: "الأحد ٦:٠٠ م", to: "الأحد ٦:٠٠ م" },
+      { label: "الموعد", from: "الأحد 6:00 م", to: "الأحد 6:00 م" },
       { label: "المكان", from: "قاعة أ", to: "قاعة ب" },
     ]);
     expect(block).toBe("المكان: قاعة أ ← قاعة ب");
@@ -164,18 +162,18 @@ describe("REQ-NTF-007 — the org's template wins", () => {
 });
 
 describe("changesFromPayload — the raw values the 0005 trigger ships", () => {
-  const RIYADH: RenderInput["org"] = { name: "كريم معرفة", numerals: "arabic_indic", timeZone: "Asia/Riyadh" };
+  const RIYADH: RenderInput["org"] = { name: "كريم معرفة", timeZone: "Asia/Riyadh" };
 
-  it("formats a timestamp in the ORG's zone and numerals, not the reader's", () => {
+  it("formats a timestamp in the ORG's zone, not the reader's, in Western digits", () => {
     const block = changesFromPayload(
       [{ field: "starts_at", from: "2026-10-01T15:00:00+00:00", to: "2026-10-02T16:00:00+00:00" }],
       RIYADH,
     )!;
     expect(block).toContain("الموعد:");
     expect(block).toContain("←");
-    // 15:00 UTC is 18:00 in Riyadh, in Arabic-Indic digits.
-    expect(block).toContain("٦:٠٠");
-    expect(block).not.toMatch(/[0-9]/);
+    // 15:00 UTC is 18:00 in Riyadh, in Western digits.
+    expect(block).toContain("6:00");
+    expect(block).not.toMatch(/[\u0660-\u0669\u06F0-\u06F9]/);
   });
 
   it("labels the two fields 08 §3.3 names, and falls back to the field name rather than dropping one", () => {

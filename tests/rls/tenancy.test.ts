@@ -26,8 +26,8 @@ describe("POL-orgs", () => {
       const asMember = await tx.q<{ id: string }>(`update public.orgs set name = 'x' where id = $1 returning id`, [f.a.id]);
       expect(asMember).toEqual([]);
       await tx.as(f.a.admin.claims);
-      const asAdmin = await tx.q<{ name: string }>(`update public.orgs set name = 'كريم معرفة ٢' where id = $1 returning name`, [f.a.id]);
-      expect(asAdmin[0].name).toBe("كريم معرفة ٢");
+      const asAdmin = await tx.q<{ name: string }>(`update public.orgs set name = 'كريم معرفة 2' where id = $1 returning name`, [f.a.id]);
+      expect(asAdmin[0].name).toBe("كريم معرفة 2");
       expect(await errorCode(() => tx.q(`delete from public.orgs where id = $1`, [f.a.id]))).toBe(PERMISSION_DENIED);
       // The slug is outside the update grant even for an admin.
       expect(await errorCode(() => tx.q(`update public.orgs set slug = 'other' where id = $1`, [f.a.id]))).toBe(PERMISSION_DENIED);

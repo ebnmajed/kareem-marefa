@@ -46,7 +46,7 @@ const baseComment: CommentDTO = {
 function renderItem(comment: CommentDTO, extra: Partial<Parameters<typeof CommentItem>[0]> = {}) {
   return render(
     <NextIntlClientProvider locale="ar" messages={ar}>
-      <CommentItem locale="ar" comment={comment} reactions={{ totals: {}, mine: [] }} reported={false} numerals="western" {...extra} />
+      <CommentItem locale="ar" comment={comment} reactions={{ totals: {}, mine: [] }} reported={false} {...extra} />
     </NextIntlClientProvider>,
   );
 }

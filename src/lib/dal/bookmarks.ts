@@ -21,19 +21,17 @@ export interface BookmarkedSession {
 
 export interface BookmarksPageData {
   sessions: BookmarkedSession[];
-  numerals: "western" | "arabic_indic";
 }
 
 /** SCR-024 — the member's own saved sessions, most recently bookmarked first. */
 export async function getBookmarksPageData(locale: string): Promise<BookmarksPageData> {
   const { session, supabase } = await sessionClient(locale);
-  const [{ data, error }, { data: settings }] = await Promise.all([
+  const [{ data, error }] = await Promise.all([
     supabase
       .from("bookmarks")
       .select("created_at, sessions(id, title, abstract, starts_at, state)")
       .eq("member_id", session.memberId)
       .order("created_at", { ascending: false }),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`bookmarks: ${error.message}`);
 
@@ -45,7 +43,7 @@ export async function getBookmarksPageData(locale: string): Promise<BookmarksPag
     })
     .filter((s): s is BookmarkedSession => s !== null);
 
-  return { sessions, numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western" };
+  return { sessions };
 }
 
 const toggleInput = z.object({ sessionId: z.uuid(), bookmarked: z.boolean() });

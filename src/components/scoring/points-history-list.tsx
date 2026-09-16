@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { formatDateTime, formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import type { PointsLedgerRow } from "@/lib/dal/points";
 
 // SCR-022's list half. Every row shows its own reason — never a hard-coded
@@ -8,7 +8,7 @@ import type { PointsLedgerRow } from "@/lib/dal/points";
 // can explain every point without asking anyone, and the reason column is
 // the explanation (05 §8). A reversal or a manual adjustment gets a small
 // tag alongside its own reason, not instead of it.
-export async function PointsHistoryList({ rows, numerals, timeZone }: { rows: PointsLedgerRow[]; numerals: NumeralSystem; timeZone: string }) {
+export async function PointsHistoryList({ rows, timeZone }: { rows: PointsLedgerRow[]; timeZone: string }) {
   const t = await getTranslations("scoring.points");
 
   if (rows.length === 0) {
@@ -28,13 +28,13 @@ export async function PointsHistoryList({ rows, numerals, timeZone }: { rows: Po
               <p className="shrink-0 text-label text-fg-heading">
                 <bdi>
                   {sign}
-                  {formatNumber(row.amount, numerals)}
+                  {formatNumber(row.amount)}
                 </bdi>
               </p>
             </div>
             {row.isReversal ? <p className="mt-1 text-body-sm text-fg-muted">{t("row.reversal")}</p> : null}
             {row.isManualAdjustment ? <p className="mt-1 text-body-sm text-fg-muted">{t("row.manual")}</p> : null}
-            <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(row.occurredAt, numerals, timeZone)}</p>
+            <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(row.occurredAt, timeZone)}</p>
             {row.sessionId && row.sessionTitle ? (
               <p className="mt-1 text-body-sm text-fg-muted">
                 <bdi>{row.sessionTitle}</bdi>

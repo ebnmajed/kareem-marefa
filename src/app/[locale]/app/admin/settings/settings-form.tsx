@@ -31,13 +31,6 @@ export function SettingsForm({ action, settings }: { action: (prev: SettingsStat
           {t("timeZoneLabel")}
           <input name="timeZone" defaultValue={settings.timeZone} dir="ltr" maxLength={64} className={FIELD} />
         </label>
-        <label className="text-label text-fg-heading">
-          {t("numeralsLabel")}
-          <select name="numerals" defaultValue={settings.numerals} className={FIELD}>
-            <option value="western">{t("numeralsWestern")}</option>
-            <option value="arabic_indic">{t("numeralsArabicIndic")}</option>
-          </select>
-        </label>
       </div>
 
       <fieldset className="border-t border-edge pt-6">

@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { listOrgs, PLATFORM_NUMERALS } from "@/lib/dal/platform";
+import { listOrgs } from "@/lib/dal/platform";
 import { deleteOrgAction, reinstateOrgAction, suspendOrgAction } from "./actions";
 import { DeleteControl, SuspendControl } from "./org-controls";
 
@@ -29,8 +29,8 @@ export default async function PlatformOrgsPage({ params }: { params: Promise<{ l
   setRequestLocale(locale);
 
   const [orgs, t] = await Promise.all([listOrgs(locale), getTranslations("platform.orgs")]);
-  const num = (n: number) => formatNumber(n, PLATFORM_NUMERALS);
-  const when = (iso: string) => formatDateTime(iso, PLATFORM_NUMERALS, PLATFORM_TIME_ZONE, locale);
+  const num = (n: number) => formatNumber(n);
+  const when = (iso: string) => formatDateTime(iso, PLATFORM_TIME_ZONE, locale);
 
   return (
     <>

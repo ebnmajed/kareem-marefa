@@ -8,7 +8,7 @@ import type { RadioGroupProps } from "@/components/ui";
 // ★ THE GROUP'S NAME IS A `<legend>`, NOT A FLOATING LABEL, and that is in the
 // type (`RadioGroupProps.legend` is required). A set of radios whose question
 // is only a `<p>` above them reads, to a screen reader, as three unrelated
-// options — the member hears «تمهيدي، زر اختيار، ١ من ٣» and never hears what
+// options — the member hears «تمهيدي، زر اختيار، 1 من 3» and never hears what
 // is being asked.
 //
 // ★ SELF-LABELLING, so it does not go inside a `<Field>` — see `ui/checkbox`

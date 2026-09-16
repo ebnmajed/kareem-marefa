@@ -46,7 +46,7 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
   ]);
   if (sessions === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
 
   return (
     <>
@@ -131,7 +131,7 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
                     <bdi>{s.title}</bdi>
                   </Link>
                   <p className="mt-1 text-body-sm text-fg-muted">
-                    {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.numerals, prefs.timeZone, locale)}</bdi> : t("notScheduled")} ·{" "}
+                    {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.timeZone, locale)}</bdi> : t("notScheduled")} ·{" "}
                     {s.fromProposal ? t("fromProposal") : t("directBadge")}
                     {declined ? ` · ${t("presenterDeclined")}` : pending ? ` · ${t("presenterPending")}` : ""}
                   </p>
@@ -186,7 +186,7 @@ async function ModeratorSessionsView({ locale }: { locale: string }) {
                 <bdi>{s.title}</bdi>
               </p>
               <p className="mt-1 text-body-sm text-fg-muted">
-                {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.numerals, prefs.timeZone, locale)}</bdi> : t("notScheduled")}
+                {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.timeZone, locale)}</bdi> : t("notScheduled")}
               </p>
               <p className="mt-2 text-body-sm">
                 <Link href={`/app/admin/sessions/${s.id}/attendance`} className="text-fg-heading underline underline-offset-4">

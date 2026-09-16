@@ -291,7 +291,7 @@ export interface FileDropProps extends Styleable {
   accept: string[];
   maxBytes: number;
   multiple?: boolean;
-  /** Stated up front — «الحد الأدنى ١٢٠٠×١٥٠٠ بكسل» and so on. */
+  /** Stated up front — «الحد الأدنى 1200×1500 بكسل» and so on. */
   requirements?: string[];
   onFiles?: (files: File[]) => void;
   disabled?: boolean;
@@ -485,7 +485,7 @@ export interface AvatarStackProps extends Styleable {
   members: { memberId: string; displayName: string | null; src?: string | null }[];
   size?: 24 | 32;
   max?: number;
-  /** All six ICU plural forms — «و٣ آخرين». */
+  /** All six ICU plural forms — «و3 آخرين». */
   overflowLabel?: (count: number) => string;
 }
 
@@ -609,7 +609,7 @@ export interface DataTableProps<Row> extends Styleable {
   selection?: {
     selected: string[];
     onChange: (selected: string[]) => void;
-    /** All six ICU plural forms — «٣ عناصر محددة». */
+    /** All six ICU plural forms — «3 عناصر محددة». */
     label: (count: number) => string;
     actions: ReactNode;
   };

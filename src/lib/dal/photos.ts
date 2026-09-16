@@ -115,21 +115,19 @@ export interface PhotosPageData {
   canUpload: boolean;
   isStaff: boolean;
   myMemberId: string;
-  numerals: "western" | "arabic_indic";
 }
 
 /** The event page's `Photos` slot — REQ-EVT-010: `photos_read`'s own `hidden_at is null or
  *  is_staff()` clause (03 §6) is the entire visibility rule; this never adds a second filter
  *  on top of it, so a plain member's query already excludes hidden photos server-side. */
 export async function getPhotosPageData(locale: string, sessionId: string): Promise<PhotosPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { photos: [], canUpload: false, isStaff: false, myMemberId: "", numerals: "western" };
+  if (!z.uuid().safeParse(sessionId).success) return { photos: [], canUpload: false, isStaff: false, myMemberId: "" };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }] = await Promise.all([
+  const [{ data: rows, error }, { data: checkedIn }, { data: presents }] = await Promise.all([
     supabase.from("photos").select("id, uploader_id, storage_path, created_at, hidden_at").eq("session_id", sessionId).is("removed_at", null).order("created_at", { ascending: false }),
     supabase.rpc("has_checked_in", { p_session: sessionId }),
     supabase.rpc("is_presenter_of", { p_session: sessionId }),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
@@ -146,7 +144,6 @@ export async function getPhotosPageData(locale: string, sessionId: string): Prom
     canUpload: !!checkedIn || !!presents || isStaff,
     isStaff,
     myMemberId: session.memberId,
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
   };
 }
 

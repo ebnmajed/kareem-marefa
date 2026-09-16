@@ -20,7 +20,7 @@ import { UploadForm } from "@/components/materials/upload-form";
 // own affordance instead. Uploads are PDF-only (DEC-058).
 export async function Materials({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("materials.list");
-  const { materials, numerals, canManageAll, presenterOfSession } = await getMaterialsPageData(locale, sessionId);
+  const { materials, canManageAll, presenterOfSession } = await getMaterialsPageData(locale, sessionId);
   const canManage = canManageAll || presenterOfSession;
 
   if (materials.length === 0) {
@@ -34,7 +34,7 @@ export async function Materials({ sessionId, locale }: SlotProps) {
 
   return (
     <div>
-      <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length, numerals) })}</p>
+      <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length) })}</p>
       <ul className="mt-4 flex flex-col gap-3">
         {materials.map((m) => (
           <li key={m.id} className="rounded-field border border-edge p-4">

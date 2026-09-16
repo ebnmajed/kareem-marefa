@@ -23,7 +23,7 @@ interface ProposalMaterialsProps {
  *  pipeline this reuses, not of this component's own UI. */
 export async function ProposalMaterials({ proposalId, locale }: ProposalMaterialsProps) {
   const t = await getTranslations("materials.list");
-  const { materials, numerals, canManage } = await getProposalMaterialsPageData(locale, proposalId);
+  const { materials, canManage } = await getProposalMaterialsPageData(locale, proposalId);
 
   if (materials.length === 0) {
     return (
@@ -36,7 +36,7 @@ export async function ProposalMaterials({ proposalId, locale }: ProposalMaterial
 
   return (
     <div>
-      <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length, numerals) })}</p>
+      <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length) })}</p>
       <ul className="mt-4 flex flex-col gap-3">
         {materials.map((m) => (
           <li key={m.id} className="rounded-field border border-edge p-4">

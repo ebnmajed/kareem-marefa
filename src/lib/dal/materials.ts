@@ -255,7 +255,6 @@ export async function listMaterials(locale: string, sessionId: string): Promise<
 
 export interface MaterialsPageData {
   materials: MaterialSummary[];
-  numerals: "western" | "arabic_indic";
   /** REQ-MAT-005/006: can this viewer change `phase`/`allow_download` on THEIR OWN materials?
    *  An admin can manage every material; a presenter only the ones on a session they present —
    *  `canManageAll` covers the admin case, `presenterOfSession` narrows it for everyone else. */
@@ -269,16 +268,14 @@ export interface MaterialsPageData {
  *  0037 — this mirrors that policy for the UI, never replaces it: the
  *  update itself is still checked by RLS regardless of what this returns). */
 export async function getMaterialsPageData(locale: string, sessionId: string): Promise<MaterialsPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { materials: [], numerals: "western", canManageAll: false, presenterOfSession: false };
+  if (!z.uuid().safeParse(sessionId).success) return { materials: [], canManageAll: false, presenterOfSession: false };
   const { session, supabase } = await sessionClient(locale);
-  const [materials, { data: settings }, { data: presenterRow }] = await Promise.all([
+  const [materials, { data: presenterRow }] = await Promise.all([
     listMaterials(locale, sessionId),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
   ]);
   return {
     materials,
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     canManageAll: session.role === "admin",
     presenterOfSession: !!presenterRow,
   };
@@ -286,7 +283,6 @@ export async function getMaterialsPageData(locale: string, sessionId: string): P
 
 export interface ProposalMaterialsPageData {
   materials: MaterialSummary[];
-  numerals: "western" | "arabic_indic";
   /** REQ-PRO-004: the proposer or an accepted co-presenter (`is_proposal_owner_of`,
    *  proposed/content/0009) — this mirrors that policy for the UI, never replaces it. */
   canManage: boolean;
@@ -297,16 +293,15 @@ export interface ProposalMaterialsPageData {
  *  read`'s proposal branch (proposed/content/0009) is what actually filters this — a plain
  *  member's query against a proposal they do not own returns nothing, not an error. */
 export async function getProposalMaterialsPageData(locale: string, proposalId: string): Promise<ProposalMaterialsPageData> {
-  if (!z.uuid().safeParse(proposalId).success) return { materials: [], numerals: "western", canManage: false };
+  if (!z.uuid().safeParse(proposalId).success) return { materials: [], canManage: false };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: settings }, { data: proposal }, { data: presenterRow }] = await Promise.all([
+  const [{ data: rows, error }, { data: proposal }, { data: presenterRow }] = await Promise.all([
     supabase
       .from("materials")
       .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at")
       .eq("proposal_id", proposalId)
       .order("created_at", { ascending: true }),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("proposals").select("proposer_id").eq("id", proposalId).maybeSingle(),
     supabase.from("proposal_presenters").select("member_id").eq("proposal_id", proposalId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
   ]);
@@ -315,7 +310,6 @@ export async function getProposalMaterialsPageData(locale: string, proposalId: s
   const isOwner = proposal?.proposer_id === session.memberId || !!presenterRow;
   return {
     materials: (rows ?? []).map(toMaterialSummary),
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     canManage: session.role === "admin" || isOwner,
   };
 }
@@ -359,7 +353,6 @@ export interface ViewerData {
   fontSubstitutionWarning: string | null;
   externalUrl: string | null;
   pages: ViewerPage[];
-  numerals: "western" | "arabic_indic";
   /** null for a link kind, or a material with no version yet. */
   currentVersionId: string | null;
 }
@@ -379,20 +372,17 @@ export interface ViewerData {
  *  is a follow-up, not a correctness requirement. */
 export async function getViewerData(locale: string, materialId: string): Promise<ViewerData | null> {
   if (!z.uuid().safeParse(materialId).success) return null;
-  const { session, supabase } = await sessionClient(locale);
+  const { supabase } = await sessionClient(locale);
 
-  const [{ data: material, error }, { data: settings }] = await Promise.all([
+  const [{ data: material, error }] = await Promise.all([
     supabase
       .from("materials")
       .select("id, title, kind, allow_download, render_status, font_substitution_warning, external_url, current_version_id")
       .eq("id", materialId)
       .maybeSingle(),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`materials: ${error.message}`);
   if (!material) return null;
-
-  const numerals = (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western";
   const base = {
     id: material.id as string,
     title: material.title as string,
@@ -401,7 +391,6 @@ export async function getViewerData(locale: string, materialId: string): Promise
     renderStatus: material.render_status as string,
     fontSubstitutionWarning: (material.font_substitution_warning as string | null) ?? null,
     externalUrl: (material.external_url as string | null) ?? null,
-    numerals,
     currentVersionId: (material.current_version_id as string | null) ?? null,
   };
 

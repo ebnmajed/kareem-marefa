@@ -11,7 +11,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 export default async function BookmarksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const t = await getTranslations("search.bookmarksPage");
-  const { sessions, numerals } = await getBookmarksPageData(locale);
+  const { sessions } = await getBookmarksPageData(locale);
 
   return (
     <div>
@@ -21,7 +21,7 @@ export default async function BookmarksPage({ params }: { params: Promise<{ loca
         <p className="mt-4 text-body-sm text-fg-muted">{t("empty")}</p>
       ) : (
         <>
-          <p className="mt-2 text-body-sm text-fg-muted">{t("count", { count: sessions.length, value: formatNumber(sessions.length, numerals) })}</p>
+          <p className="mt-2 text-body-sm text-fg-muted">{t("count", { count: sessions.length, value: formatNumber(sessions.length) })}</p>
           <ul className="mt-4 flex flex-col gap-3">
             {sessions.map((s) => (
               <li key={s.id} className="rounded-field border border-edge p-4">

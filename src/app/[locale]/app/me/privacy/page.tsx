@@ -34,7 +34,7 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
     getOrgPrefs(locale),
     getTranslations("privacy.page"),
   ]);
-  const when = (iso: string) => formatDateTime(iso, prefs.numerals, prefs.timeZone, locale);
+  const when = (iso: string) => formatDateTime(iso, prefs.timeZone, locale);
 
   const statusKey = request
     ? ({ queued: "statusQueued", building: "statusBuilding", ready: "statusReady", failed: "statusFailed", expired: "statusExpired" } as const)[

@@ -49,11 +49,11 @@ describe("FileDrop — the two paths to the picker", () => {
   it("states the accepted-types/size rules up front, as text, not enforcement", () => {
     render(
       <Wrap>
-        <FileDrop name="material" accept={["application/pdf"]} maxBytes={1000} requirements={["PDF فقط", "بحد أقصى ١ كيلوبايت"]} />
+        <FileDrop name="material" accept={["application/pdf"]} maxBytes={1000} requirements={["PDF فقط", "بحد أقصى 1 كيلوبايت"]} />
       </Wrap>,
     );
     expect(screen.getByText("PDF فقط")).toBeInTheDocument();
-    expect(screen.getByText("بحد أقصى ١ كيلوبايت")).toBeInTheDocument();
+    expect(screen.getByText("بحد أقصى 1 كيلوبايت")).toBeInTheDocument();
   });
 
   it("the visible button is genuinely keyboard-reachable and opens the native picker", async () => {

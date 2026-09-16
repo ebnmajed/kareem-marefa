@@ -36,7 +36,7 @@ export default async function MaterialViewerPage({ params }: { params: Promise<{
               {tList.rich("substitutionWarning.body", { family: data.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
             </p>
           ) : null}
-          <PageViewer pages={data.pages} numerals={data.numerals} rtl={locale !== "en"} title={data.title} />
+          <PageViewer pages={data.pages} rtl={locale !== "en"} title={data.title} />
           <div className="mt-6">
             <DownloadButton locale={locale} materialId={materialId} allowDownload={data.allowDownload} />
           </div>
