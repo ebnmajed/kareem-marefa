@@ -2088,3 +2088,20 @@ All four sync-5 findings and both sync-5-message-2 findings are now closed. Hold
 sync 6, per the lead.
 
 Ready for sync.
+
+## §11 — correction: the «20-» finding was a misread, not a real reorder (`69c5853`)
+
+Sync 6 (build `1a95a59`): T1 and T2 close — the company select keeps its saved value at full
+resolution, and «-20» reads correctly. The lead's own correction: the original "20-" observation was
+a misread of a downscaled 5,358 px capture, and `sessions'` own measurement confirms a bare `<bdi>` in
+Chromium already puts the sign before the digits, with or without an LRM — `formatNumber` never
+dropped one. `bd517f6`'s comments (in `points-history-list.tsx`, its test, and `points.spec.ts`)
+asserted that cause as fact; reworded all three to say the direction is pinned deliberately, not that
+a reorder was ever observed, so the false cause doesn't outlive the finding that produced it.
+`dir="ltr"` itself stays — harmless, and correct on its own terms regardless of the mistaken diagnosis
+that first prompted it.
+
+`tsc` clean, lint clean, `points-history-list.test.tsx` 7/7 (comment-only change, no behavioural
+difference expected or found).
+
+Ready for sync.
