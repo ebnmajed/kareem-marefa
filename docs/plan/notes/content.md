@@ -1837,3 +1837,42 @@ Everything: `tsc` clean, lint 0 errors, `npm test` 1366/1366, the RLS trigger pr
 in a rolled-back-transaction reading. Nothing left on my wave-7 checklist.
 
 Ready for sync.
+
+## §3 — sync-3: three real findings, one build I still can't reproduce, R7 (`2f71a56`)
+
+Several messages arrived describing §1/§2's fixes as still open — checked against the actual git
+history rather than assumed either way: `d8f0af9` (what the lead's sync-2 review built) sits BEFORE
+`5abdbc6`/`c61ea3a`, and the photos-broadcast RLS failure was reported "at `7c6f9e5`" — my own very
+next commit, `63cfdc1`, already fixed it. Re-verified every sync-2 item against disk directly (not
+memory) before replying: all present, `npm test` 1392/1392, the RLS trigger green on the current
+promoted migrations (`npm run test:rls`, not just a transaction reading).
+
+Three real sync-3 findings, not stale ones:
+
+1. **`privacy.spec.ts:194` — the deactivation confirmation.** The dialog's confirm button submitted
+   via `type="submit" form="deactivate-form"`, a native HTML attribute lookup across Radix's own
+   portal boundary. Every line of reasoning said this should work, and my own jsdom test of the same
+   shape passed — which is exactly the trap: a mechanism that "should" work in theory is not the same
+   claim as "does," in a real build, and jsdom cannot reproduce every Flight/transition timing issue
+   (`DEC-135`'s own lesson). Switched to `formRef.current?.requestSubmit()`, called directly from code
+   that already holds the form — no cross-portal attribute lookup at all. **I could not reproduce this
+   myself** (`npm run build` is lead-only); this is the most defensible fix available without one, and
+   I said so plainly rather than claiming it's proven.
+2. **`bookmarks.spec.ts:147`** and **`wave7-content-notifications.spec.ts:109`** — both the same
+   underlying shape as bugs I'd already found and fixed elsewhere in this file: an unscoped
+   `getByText` matching more than one element (the card's own link AND its `<h3>` title; three fixed
+   categories instead of the one my own component test seeded). Scoped both.
+
+**R7** (`sessions`' request): `CardMedia` gains `placeholderTone="dark"`, narrowing the tint pick to
+`MEDIA_TINTS`' three navy entries while keeping the same hash. Tested both directions — dark never
+yields silver across ten titles, and the full pool stays reachable without the prop.
+
+Also confirmed for the record: `search.bookmarksPage.browseAction` (`2a05ea9`) is `sessions`' own
+commit, not mine — they said so directly after our requests crossed. Noted, not investigated further:
+`console`'s `d12499d` gave `ui/tabs` a scroll variant, which is what `MeTabStrip`'s own header said
+to watch for ("swap back if that lands") — lower priority than the fixes above, worth a look once
+nothing else is open.
+
+`tsc` clean, lint 0 errors, `npm test` 1392/1392.
+
+Ready for sync.
