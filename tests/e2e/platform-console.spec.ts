@@ -221,7 +221,12 @@ async function review(p: Page, name: string) {
  */
 async function scan(page: Page, path: string) {
   await page.goto(path);
-  await expect(page.locator("main, [role=main]").first()).toBeVisible();
+  // The page's own h1, not `main`: app/loading.tsx streams a skeleton inside
+  // `main` first, and `/app/platform`'s redirect to the org list then runs in
+  // the browser (DEC-134's streaming model). Evaluating before that navigation
+  // lands destroyed the context on the phone project, twice in sync 5.
+  // The skeleton carries no h1; every platform page's PageHeader does.
+  await expect(page.locator("main h1, [role=main] h1").first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
