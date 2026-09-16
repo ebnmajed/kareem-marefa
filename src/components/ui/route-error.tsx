@@ -14,7 +14,8 @@ import { AlertTriangleIcon } from "@/components/ui/icons";
 // What it says and does not say:
 //   · WHAT HAPPENED, in one sentence, in the member's language;
 //   · a RETRY wired to `reset()`, because most of these are transient — a
-//     Supabase timeout, a signed URL that expired while the tab was open;
+//     Supabase timeout, a signed URL that expired while the tab was open —
+//     and no retry at all where there is nothing to retry (a not-found page);
 //   · a way back to somewhere that works.
 //   · NEVER a stack trace. NEVER an error code as the headline — the digest is
 //     small, last, and for a support conversation.
@@ -32,13 +33,15 @@ export function RouteError({ title, description, retryLabel, backLabel, backHref
       <h1 className="text-h2 text-fg-heading">{title}</h1>
       <p className="mt-3 text-body text-fg-body">{description}</p>
       <p className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex h-12 items-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900"
-        >
-          {retryLabel}
-        </button>
+        {retryLabel && reset ? (
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex h-12 items-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900"
+          >
+            {retryLabel}
+          </button>
+        ) : null}
         <a
           href={backHref}
           className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100"

@@ -333,6 +333,8 @@ export interface FormSummaryProps extends Styleable {
   errors: FormSummaryError[];
   /** «تعذّر إرسال النموذج» — the heading above the list. */
   title: string;
+  /** One reassuring line under the title — «ما كتبته محفوظ كما هو». Optional (wave 7, `sessions`' R1). */
+  description?: string;
 }
 
 // ── Action (4) ────────────────────────────────────────────────────────────
@@ -648,10 +650,15 @@ export interface RouteErrorProps {
   /** One sentence. Not the exception's message. */
   title: string;
   description: string;
-  retryLabel: string;
+  /**
+   * The retry, rendered only when BOTH `retryLabel` and `reset` are given. A
+   * not-found page for something that is gone has nothing to retry, and an
+   * invented retry is a control that does nothing (wave 7, `sessions`' R5).
+   */
+  retryLabel?: string;
   backLabel: string;
   backHref: string;
-  reset: () => void;
+  reset?: () => void;
   /** Rendered small, for a support conversation. Never the headline. */
   digest?: string;
 }
