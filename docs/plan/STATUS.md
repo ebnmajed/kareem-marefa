@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. **Before merge the owner: rehearses `0083`–`0091` on a production schema dump, runs `DEC-143`'s scoped data fix, and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
+**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. ★ **`0082`–`0091` rehearsed on production's schema: all ten clean, RLS 791/791.** **The owner, in this order: (1) `supabase db push` `0082`–`0091` to production, (2) runs `DEC-143`'s scoped data fix, (3) merges PR #24 — the push precedes the merge (below) — and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -231,7 +231,8 @@ spot-checked hold. **Two fixes stand before promotion:** the predecessor comment
 and `schedule_session()` still writing `session.walk_ins_changed`. The lead's half landed ahead of it:
 `GRANTING_AFFORDANCES.live` without `checkIn`, and `parseInstant`/`scheduledEnd` exported (`d8f0af9`).
 ★ **Before merge**, the promoted migrations (they alter `check_ins`' constraints on a live table) are
-rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`).
+rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`). **Done — all ten, `0082`–`0091`;
+see «`0082`–`0091` — the rehearsal against production's schema».**
 
 **Contract changes the lead made:** `FormSummaryProps.description?`, `RouteErrorProps.retryLabel?`/`reset?`
 (`f9fa70e`); `CardMediaProps.placeholderTone?: "dark"` (`6232a8a`); `ui.combobox` strings (`3c92185`);
@@ -351,6 +352,56 @@ after un-bookmarking) and never alone. `notify-screens:108` (mark-as-read) faile
 post-action refetch of the current route. The spec now waits on the action's POST and then bounds the card's removal
 (`05f023b`), so if it recurs it separates «slow» from «never updates». **If it recurs as «never updates», treat it as
 `DEC-135`'s class first.** The `budgets` spec is noisy under suite contention; its real reading is the alone run.
+
+### `0082`–`0091` — the rehearsal against production's schema (invariant 3), and why the push precedes the merge
+
+**Production is at `0081`; `0082` through `0091` are unpushed.** Wave 6 merged without pushing `0082`, so all ten
+were rehearsed together, in order, against the owner's dump — not only wave 7's.
+
+**The dump** (15,607 lines) was checked before use: **schema only, zero `COPY`/`INSERT`**, exactly at `0081` (`0081`'s
+company-points objects present; `0082`'s `org_settings.numerals` and `numeral_system` still there; none of the objects
+`0084`–`0091` introduce). **Deleted once the rehearsal had run**, along with the rehearsal container.
+
+| Step | Result |
+|---|---|
+| A fresh `postgres:17` + `scripts/ci/roles.sql` + the `supabase_realtime` publication; the dump with its `supabase_vault` line stripped | **0 errors** |
+| **`0082`–`0091` applied in order, each in one transaction, `ON_ERROR_STOP=1`** | **all ten clean** — `numerals`/`numeral_system` gone, `sessions.check_in_open` default `true` |
+| Grants on the **17 functions the ten re-create** (`check_in`, `transition_session`, `_seed_org_scoring`, `award_points`, `issue_certificate`, `session_public_card`, …) | **every execute grant and `SECURITY DEFINER` flag identical before and after** |
+| New and dropped | 5 new (`admin_member_profile`, `remove_check_in`, `set_check_in_open`, the 14-argument `schedule_session`, the `photos_broadcast` trigger), 2 dropped (the 13-argument `schedule_session`, `set_session_walk_ins`, as `DEC-118` intends). The new `schedule_session` carries the old one's grant; `photos_broadcast` has the same `PUBLIC`-on-a-trigger ACL as `0016`'s `comments_broadcast`/`reactions_broadcast` |
+| ★ **Production + `0082`–`0091` against the local chain `0001`–`0091`**, catalog by catalog (columns, enums, function bodies and grants, policies, RLS flags, triggers, constraints, indexes, table and column grants, views) | **identical, except 9 lines, none from these migrations.** 3 are rendering (`extensions.citext` vs `citext`, `extensions.gin_trgm_ops`). 1 is a production-only platform event-trigger function (`rls_auto_enable`). One is **pre-existing production drift**, identical before and after the ten, recorded below |
+| RLS suite on the rehearsal database, as dumped | 45 failures in 9 files, **every one** a missing seed or a missing non-`public` policy: bucket rows (`objects_bucket_id_fkey`), the A27 templates (`no_certificate_template`), retention periods, and the `storage`/`realtime` policies a `public`-only dump leaves out |
+| ★ **The same suite after restoring exactly those** — 6 buckets, 7 retention periods, 8 platform templates and versions, 13 `storage`/`realtime` policies, copied from the local chain (platform seed, no member data) | **72 files, 791 passed, 4 todo, 0 deadlocks** |
+
+(`graphile-worker --schema-only`, the RLS runner's first step, fails on a schema-only dump: production's
+`graphile_worker` tables are there but its migration rows are not, so it re-creates `jobs`. The suite was run
+directly; `graphile_worker.add_job` is present from the dump.)
+
+★ **Pre-existing drift, not introduced by wave 7, for the owner.** Production's `org_domains_domain_check` is
+`CHECK ((domain)::text ~ '…'::text)`, a **case-sensitive** match. The chain's is `CHECK (domain ~ '…'::citext)`,
+where citext's `~` is **case-insensitive**. On production, a domain with an upper-case letter fails the check; on
+the chain it passes. It dates from how `0004` landed on production, and none of `0082`–`0091` touch `org_domains`.
+**Not changed here:** a fix is a migration of its own, with its own rehearsal.
+
+#### ★ For wave 7, the push precedes the merge
+
+**Order: `supabase db push` (`0082`–`0091`) → `DEC-143`'s data fix → merge PR #24.**
+
+`0082` could merge first because it was **subtractive**. It dropped a column and an enum that wave 6's app code had
+already stopped reading, so that code ran correctly on production's `0081` schema, and the drop could follow.
+**`0083`–`0091` are the opposite: additive, and the app depends on them.** Merging deploys, and the deployed code
+calls what only these migrations create:
+- `schedule_session(…, p_allow_walk_ins)`, whose 14-argument signature `0085` creates while dropping the 13-argument one;
+- `remove_check_in()`, `set_check_in_open()`, `admin_member_profile()`;
+- `sessions.check_in_open`, which the event page, timeline, check-in and host screens select;
+- `check_ins.removed_at`, which every attendance reader filters on.
+
+Merging first would put that code on a schema without them. The event page's select would fail on a missing
+column, scheduling would call a signature that does not exist, and staff would get errors on live sessions.
+Pushed first, the old deployed app keeps working on the new schema, with one exception:
+- `main`'s own calls were checked: its 13-argument `schedule_session` call resolves to the new function, because `p_allow_walk_ins` defaults to null, which means unchanged. Its check-in, code and transition calls keep their signatures.
+- The one incompatibility is `set_session_walk_ins()` (`main`'s `lib/dal/checkin.ts:74`), which `0085` drops. Between the push and the merge, **toggling walk-ins from the host view errors**, and **an early completion closes check-in (`0089`) with no reopen control yet**. Everything else the old app does keeps working.
+- So push and merge back to back, outside a scheduled session.
+- `0082` is in the same push and is safe in either order.
 
 ### Carried — diagnosed, each with an owner
 
