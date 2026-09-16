@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **311** |
+| Requirements (`REQ-*`) | **312** |
 | Entities (`ENT-*`) | **72** |
-| Stories (`STORY-*`) | **144** |
+| Stories (`STORY-*`) | **145** |
 | Screens cited (`SCR-*`) | 55 |
 | Jobs cited (`JOB-*`) | 37 |
 | Messages cited (`MSG-*`) | 22 |
@@ -251,7 +251,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-MAT-003` | `ENT-material_pages` `ENT-materials` | — | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-002` | M5 |
 | `REQ-MAT-004` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-003` | M5 |
 | `REQ-MAT-005` | `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-004` | M5 |
-| `REQ-MAT-006` | `ENT-materials` | — | `SCR-012` | — | — | `STORY-MAT-004` | M5 |
+| `REQ-MAT-006` | `ENT-materials` `ENT-session_days` | — | `SCR-012` `SCR-013` | — | — | `STORY-MAT-004` | M5 |
 | `REQ-MAT-007` | `ENT-materials` | — | `SCR-012` `SCR-013` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-008` | `ENT-materials` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-009` | `ENT-materials` `ENT-org_settings` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
@@ -416,6 +416,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-008` | M9 |
 | `REQ-SES-016` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-009` | M9 |
 | `REQ-SES-017` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-010` | M9 |
+| `REQ-SES-018` | — | — | `SCR-012` `SCR-013` | — | — | `STORY-SES-011` | M9 |
 
 ### SUR
 
@@ -449,7 +450,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-TSK-001` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-012` | — | — | `STORY-TSK-001` | M5 |
-| `REQ-TSK-002` | `ENT-session_days` `ENT-session_tasks` `ENT-task_completions` +1 | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-TSK-001` | M5 |
+| `REQ-TSK-002` | `ENT-session_days` `ENT-session_tasks` `ENT-task_completions` +1 | — | `SCR-012` `SCR-013` `SCR-014` +1 | `JOB-award_points` | `MSG-rsvp_promoted` | `STORY-TSK-001` | M5 |
 | `REQ-TSK-003` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-012` | — | — | `STORY-TSK-002` | M5 |
 | `REQ-TSK-004` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-010` `SCR-012` | — | — | `STORY-TSK-002` | M5 |
 | `REQ-TSK-005` | — | — | `SCR-012` | — | `MSG-rsvp_nudge` | `STORY-TSK-002` | M5 |

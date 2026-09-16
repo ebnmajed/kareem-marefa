@@ -580,6 +580,25 @@ sitting beside `certificate_mode` where that judgement already lives.
 - A certificate is never issued for partial attendance while the default stands — a printed
   artefact asserting attendance is a statement the org has to be able to defend.
 
+#### REQ-SES-018 — Content belongs to the session or to one of its days, and the member is never asked which
+**Serves:** owner 2026-09-16 · DEC-121
+Materials, pre-session tasks and photos each belong either to the **whole session** or to **one
+day**. Both may be used at once — a workshop may have a plan for the week and slides for Wednesday.
+**The scope is never a question put to the person adding the content**: it is implied by where they
+added it from, shown afterwards as a chip, and changeable in one tap.
+**Acceptance:**
+- ★ **A one-day session has no scope concept at all** — no groups, no headings, no chips. Its
+  content is session-scoped and renders exactly as it does today.
+- The member reads **one list per content type**, in day order, with the session's own content
+  first. A group with nothing in it is not rendered.
+- The add control lives in each group's header; pressing it *is* the scope choice. There is no
+  picker, no modal and no required field.
+- A photo is never scoped by hand, including by an attendee: it takes the day whose window contains
+  its upload time, and staff may re-scope it.
+- Adding a second day to an existing session **re-scopes nothing**.
+- Reordering days moves day-scoped content with its day; deleting a day that holds content asks,
+  and defaults to promoting that content to the session rather than deleting it.
+
 #### REQ-RSV-001 — A member reserves a seat
 **Serves:** D18
 A member can reserve a seat on any **published** session in their مؤسسة, before **آخر موعد
@@ -883,7 +902,11 @@ file is not downloadable.
 Each material is flagged **قبل الجلسة** (pre-reads, downloadables) or **بعد الجلسة** (slides,
 recordings).
 **Acceptance:**
-- A **بعد الجلسة** material is not visible to members until the session reaches `completed`.
+- A **بعد الجلسة** material is not visible to members until **its own scope** has finished
+  (`DEC-121`): a session-scoped one when the session reaches `completed`, a **day-scoped one when
+  that day ends**.
+- ★ That distinction is a fix, not a nicety. Without it, day 1's slides on a three-day workshop
+  would be withheld until Friday — long after the evening they are useful.
 - Changing the flag takes effect immediately and is audited.
 
 #### REQ-MAT-007 — Audio, video, images, links

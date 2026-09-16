@@ -445,9 +445,21 @@ unique (session_id, position)
 exclude using gist (session_id with =, tstzrange(starts_at, ends_at, '[)') with &&)
 ```
 
-**What hangs off the DAY, not the session:** `check_in_codes`, `check_ins`, `check_in_attempts`,
-`materials`, `session_tasks`, `calendar_events`. Attendance, content and the calendar are per
-meeting — and «notes» in the owner's ask meant exactly this content, not a text field (DEC-120).
+**What hangs off the DAY, always:** `check_in_codes`, `check_ins`, `check_in_attempts`,
+`calendar_events`. Attendance and the calendar are per meeting, with no session-level alternative.
+
+★ **What may hang off EITHER (DEC-121):** `materials`, `session_tasks` and `photos` carry a
+**nullable** `session_day_id`, where **null means the whole session**. One nullable column on three
+tables — no scope enum, no second table, no join table. A workshop can have a plan for the week and
+slides for Wednesday, and the person adding either is never asked which: the scope is implied by the
+place they added it from and is shown afterwards as a chip.
+
+★ **A one-day session's content is session-scoped (null), not day-1-scoped**, which buys a property
+worth having: **adding a second day to an existing session re-scopes nothing.**
+
+★ **`materials.phase` is relative to the SCOPE**, not to the session: a day-scoped «بعد» material is
+released when **that day** ends, not when the session completes. Without this, day 1's slides on a
+three-day workshop would be withheld until Friday (`REQ-MAT-006` as amended).
 
 ★ The entity is therefore **when, where and which meeting** and nothing else: no free text, no
 second policy set. A task for the whole workshop is a task on day 1, exactly as a session-level

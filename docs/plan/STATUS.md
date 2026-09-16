@@ -1310,6 +1310,30 @@ sole trigger today and `JOB-award_points` fires off it. A one-day session is unc
 idempotency key becomes per member **per session** so a re-run cannot double-pay a ledger that is
 append-only by invariant.
 
+★★ **Content can be session-scoped OR day-scoped, and the UX cost is zero for one-day sessions**
+(`DEC-121`). The owner raised the tension themselves — «can there be session materials, photos,
+pre-tasks and the same for each day … I am concerned it may create UX complexity».
+
+**The design, in one sentence: scope is implied by WHERE you are, shown afterwards as a chip you can
+change, and does not exist at all when there is one day.**
+
+- **The data is one nullable column** — `session_day_id` on `materials`, `session_tasks` and
+  `photos`, where **null means the whole session**. No scope enum, no second table, no join table.
+- **The member reads one grouped list** per content type — session content first, then day order,
+  empty groups omitted. **A one-day session has no groups and no headings**: it renders exactly as
+  it does today.
+- **The add control sits in each group's header**, so pressing it *is* the scope choice. No picker,
+  no modal, no required field. The item then carries a chip that re-scopes in one tap, so a mistake
+  costs a correction rather than a re-upload.
+- **Photos never ask**, including of attendees: a photo takes the day whose window contains its
+  upload time; staff may re-scope it.
+- **Adding a second day re-scopes nothing** — the syllabus does not become Wednesday's.
+
+★ **`materials.phase` is relative to the SCOPE, and this is a fix rather than a complication.**
+`REQ-MAT-006` today hides a «بعد الجلسة» material until the *session* completes — so on a three-day
+workshop day 1's slides would be withheld until Friday. A day-scoped «بعد» material releases when
+**that day** ends, which is the evening it is useful.
+
 ★ **Nothing about multi-day is waiting on the owner.** Both questions `DEC-119` raised are closed by
 `DEC-120`: «notes» was the day's content, and capacity stays on the session.
 

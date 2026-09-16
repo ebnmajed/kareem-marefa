@@ -189,6 +189,19 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - Partial attendance earns nothing by default, and the member's history says which day they missed.
 - The all-days rule is a per-session setting beside `certificate_mode`, which an admin may relax.
 
+#### STORY-SES-011 — Content is scoped by where you add it, and never by a question
+**Covers:** `REQ-SES-018` · **M9** · **M**
+- One nullable `session_day_id` on `materials`, `session_tasks` and `photos`; null is the session.
+- ★ A one-day session has no scope concept at all — no groups, no chips — and renders as today.
+- The member reads one grouped list per content type, session content first, empty groups omitted.
+- The add control sits in each group header: pressing it IS the choice. No picker, no modal.
+- A photo is never scoped by hand, including by an attendee: it takes the day containing its
+  upload time, and staff may re-scope it.
+- Adding a second day re-scopes nothing; deleting a day with content asks and defaults to
+  promoting it to the session.
+- ★ `materials.phase` is relative to the SCOPE — a day-scoped «بعد» material releases when that day
+  ends, so day 1's slides are not withheld until Friday.
+
 ## EPIC-RSV — RSVP
 
 #### STORY-RSV-001 — Reserve a seat, with capacity in the transaction

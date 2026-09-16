@@ -2177,6 +2177,82 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-121 — Content belongs to the session OR to a day, and the choice is made by WHERE you are, not by a field you fill in
+
+- **Date:** 2026-09-16 · **Decided by:** owner («can there be session materials, photos, pre-tasks and the same for each day, and the user can choose either or both? I am concerned it may create UX complexity — design the story and the UI in a way that doesn't limit the features and is still user friendly»)
+- **The tension is real, and `DEC-120` had resolved it the cheap way.** It said «a session-level file is a file on day 1». That is fine until someone looks for the syllabus on day 3 and it is filed under Wednesday, or reorders the days and the syllabus moves. Some content genuinely belongs to the **workshop** — the reading list, the plan, the certificate criteria — and some genuinely belongs to a **meeting** — day 2's slides, day 3's exercise. Forcing one onto the other is a lie in the data. But offering «session or day?» as a question on every upload is a tax paid by the ~95 % of sessions that have one day and no such distinction.
+- ★★ **The design, in one sentence: scope is implied by WHERE you are, shown afterwards as a chip you can change, and does not exist at all when there is one day.**
+
+### The data
+
+`session_day_id` is **nullable** on `materials`, `session_tasks` and `photos`. **Null means the
+whole session.** That is the entire model — one nullable column, three tables, no scope enum, no
+second table, no join table.
+
+★ **A one-day session's content is session-scoped (`null`), not day-1-scoped**, which gives a
+property worth having: **adding a second day to an existing session re-scopes nothing.** The
+syllabus does not suddenly become Wednesday's.
+
+### The member's view — one list, grouped, never a choice
+
+One «المواد» section, in day order, with the session's own content first:
+
+```
+المواد
+  للورشة كاملة          ← the group is omitted entirely when empty
+      الخطة الدراسية
+  اليوم الأول · الأربعاء
+      شرائح المقدمة
+  اليوم الثاني · الخميس
+      تمرين عملي
+```
+
+**For a one-day session there are no groups and no headings** — it renders exactly as it does
+today. The multi-day machinery is dormant, not hidden.
+
+### The uploader's view — the button carries the scope
+
+The same grouped list, with **«أضف» in each group's header**. Pressing add under «اليوم الثاني»
+uploads to day 2. There is **no dropdown, no modal and no question** — the place you pressed *is*
+the answer. Afterwards the item carries a scope chip («اليوم الثاني ▾») which can be changed in one
+tap, so a mistake costs a correction rather than a re-upload.
+
+**Photos never ask, including of attendees.** A photo has a moment: it is scoped to **the day whose
+window contains its upload time**, falling back to the nearest day. Staff can re-scope it; an
+attendee uploading from the gallery is never shown the concept.
+
+### ★ `phase` is relative to the scope, and this is the part that would have been got wrong
+
+`materials.phase` (**قبل** / **بعد**) already exists, and scope × phase reads like a grid. It is
+not one, because **phase is relative to whatever the material is attached to**: a session-scoped
+«بعد» material appears when the **session** completes; a day-scoped «بعد» material appears when
+**that day** ends.
+
+★ **That is a fix, not a complication.** `REQ-MAT-006` today says a «بعد الجلسة» material is hidden
+until the session reaches `completed` — so on a three-day workshop, day 1's slides would be withheld
+until Friday. Scoping phase to the day releases them on Wednesday evening, which is when they are
+useful.
+
+### Day deletion and reordering
+
+- **Reordering days** moves day-scoped content with its day. Session-scoped content does not move.
+- **Deleting a day that has content** asks, and **defaults to promoting that content to the
+  session**. Nothing is deleted silently as a side effect of a scheduling change.
+
+### What this deliberately does not do
+
+- No scope picker before an upload.
+- No second «materials» screen, tab set or navigation branch.
+- No scope concept anywhere in a one-day session.
+- No change to `REQ-TSK-002`: tasks remain reminder-only and are never read by check-in, at either
+  scope.
+- **Supersedes:** `DEC-120`'s «a task for the whole workshop is a task on day 1» and `DEC-119`'s
+  equivalent for files — both are now genuinely session-scoped. `REQ-MAT-006`'s visibility rule is
+  amended to be relative to the scope.
+- **Documents changed:** `01-prd.md` (`REQ-SES-018`, amends `REQ-MAT-006`), `02-domain-model.md` (three nullable FKs, under this entry), `09-sitemap-screens.md` SCR-012 · SCR-013, `07-content-pipeline.md`, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
