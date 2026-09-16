@@ -43,6 +43,13 @@ export interface CertificateRow {
    *  while the render is still in flight — which the screen says, rather
    *  than showing a download that 404s. */
   pdfPath: string | null;
+  /** An achievement certificate's badge, when it is one. Filled by
+   *  `listHeldAchievements()` (wave 8, `console`'s R-D2). */
+  badgeName?: string | null;
+  /** An achievement certificate's leaderboard period, when it is one — the
+   *  board's kind and the frozen snapshot's dates, so a screen can say
+   *  «المتصدّرون · أغسطس 2026» rather than print an ISO date (R-D2). */
+  period?: { kind: string; start: string | null; end: string | null } | null;
 }
 
 interface RawRow {
@@ -349,6 +356,10 @@ export async function listHeldAchievements(locale: string): Promise<{ certificat
     // leaderboard, because «الشهر الماضي» is what an admin recognises and a
     // snapshot uuid is not.
     achievementName: one(r.badges)?.name ?? (r.leaderboard_snapshots?.period_start ?? null),
+    badgeName: one(r.badges)?.name ?? null,
+    period: r.leaderboard_snapshots
+      ? { kind: r.leaderboard_snapshots.kind, start: r.leaderboard_snapshots.period_start, end: r.leaderboard_snapshots.period_end }
+      : null,
   }));
   return { certificates: rows, canRelease: true };
 }
