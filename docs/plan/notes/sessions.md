@@ -2348,3 +2348,26 @@ off".
 **Tests:** `tests/unit/sessions-schedule-walk-ins.test.ts` — null and an absent key parse to `null`;
 `false` and `true` survive; `.strict()` still refuses an unknown key; `null`, `false`, `true` reach
 the RPC as themselves (the key present); the read-back carries the stored value.
+
+## 44. Sync 4b (the lead's build at `34d4c08`)
+
+- **`a11y.spec` member case, `definition-list` + `dlitem`**: the action card's facts list put a glyph
+  and a wrapper `<div>` beside each other inside the `<dl>`'s own `<div>`. Fixed at `b4b06aa`:
+  each row's `<div>` holds only its `<dt>` and `<dd>`, and the glyph sits inside the `<dt>`,
+  absolutely placed in the row's `1.875rem` start inset, so the layout is unchanged. axe-core on the
+  two markups: the old gives `definition-list` x1 and `dlitem` x4, the new passes both. **The e2e
+  confirmation needs a new build**, which is the lead's to make.
+- **`sessions-screens` walk**: re-aimed at `172bf22`. An early completion now asserts
+  `check_in_open = false`, and that the host view's still-valid code is refused `check_in_closed`
+  (asked by the admin, because the presenter and the attendee are refused before the switch is
+  read). The rate step behind it was out of date too: it now presses the star's label and expects
+  the receipt on `rate?rated=1`.
+- ★ **A streamed `notFound()` can leave an empty hidden `S:0` behind for good.** The loading
+  boundary flushes a segment (`<div hidden id="S:0"><template id="P:1">…`), then the page throws,
+  and Fizz sends `$RX("B:0","NEXT_HTTP_ERROR_FALLBACK;404")` but never `$RC` for that segment. Read
+  from the raw HTML of the sync build; it happened in 1 of 2 diagnostic runs. A `S:`-count-zero
+  wait therefore must never come before a not-found assertion; wait for the not-found heading
+  instead. Fixed in `wave7-sessions-proposal` and `proposal-materials`. **The same latent wait is in
+  six of `console`'s specs** (`admin-managed-lists`, `admin-settings`, `admin-dashboard`,
+  `admin-moderation`, `admin-members`, `sessions-admin-proposals`): each has `goto()` wait for the
+  `S:` count to reach zero, then asserts the gated not-found. Reported to the lead.
