@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/components/ui/link";
 import type { CardActionsProps, CardBodyProps, CardDensity, CardMediaProps, CardProps } from "@/components/ui";
 
 // content's file — `16` §6.4. ONE component, four densities: `grid`
@@ -41,8 +41,14 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
       className={`group relative overflow-hidden rounded-card border border-edge bg-surface shadow-card transition-shadow duration-150 hover:shadow-raise ${className}`}
     >
       {href ? (
+        // ★ `quiet` (R-C4, `sessions`' request): the whole card is the
+        // link (`16` §6.4), so `ui/link`'s own inline pending dot would be
+        // noise on every hovered card — exactly the case its own header
+        // names. The store `RouteProgress` reads still counts the
+        // navigation either way.
         <Link
           href={href}
+          quiet
           className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
         >
           {inner}
@@ -107,7 +113,14 @@ function placeholderGlyph(title: string): string {
  * box: when `src` is absent it renders a generated typographic placeholder
  * built from `placeholderFrom` (`16` §6.4).
  */
-export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", overlay, priority, className = "" }: CardMediaProps) {
+export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", overlay, priority, dimmed, className = "" }: CardMediaProps) {
+  // ★ `dimmed` (R-C1, `sessions`' request, DEC-123 item 1): the grayscale/
+  // opacity wash goes on the IMAGE OR PLACEHOLDER ONLY, never on `overlay` —
+  // the canvas's own defect was nesting the status badge INSIDE the dimmed
+  // element, which took a compliant badge to a quarter of its contrast
+  // («انتهت» measured 1.87:1 that way; the badge's own tokens are 5.11:1).
+  // `overlay` renders in a sibling node below, entirely outside this wash.
+  const wash = dimmed ? "grayscale opacity-45" : "";
   return (
     <div data-slot="media" className={`relative shrink-0 overflow-hidden bg-navy-900 ${ASPECT[aspect]} ${className}`}>
       {src ? (
@@ -122,10 +135,13 @@ export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", over
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : undefined}
           decoding="async"
-          className="h-full w-full object-cover"
+          className={`h-full w-full object-cover ${wash}`}
         />
       ) : (
-        <div aria-hidden className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${MEDIA_TINTS[hashString(placeholderFrom) % MEDIA_TINTS.length]}`}>
+        <div
+          aria-hidden
+          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${MEDIA_TINTS[hashString(placeholderFrom) % MEDIA_TINTS.length]} ${wash}`}
+        >
           <bdi>{placeholderGlyph(placeholderFrom)}</bdi>
         </div>
       )}
