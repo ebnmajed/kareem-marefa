@@ -38,6 +38,18 @@ const expect = baseExpect.configure({ timeout: 15_000 });
 
 const PASSWORD = "correct-horse-battery-staple-9";
 
+
+/**
+ * Waits out React's streamed Suspense containers. After a navigation the page
+ * briefly holds a SECOND copy of a streamed section in `body > div[hidden][id^="S:"]`
+ * until its swap script runs, and a strict locator counts it (the lead
+ * reproduced it under a 6x CPU throttle: 400–800 ms). Called after every
+ * navigation, before any strict locator.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test.describe.configure({ mode: "serial" });
 
 let db: pg.Client;
@@ -171,6 +183,7 @@ test("before reserving: one primary «احجز مقعدك», no calendar, the he
   await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/ar/app/sessions/${openSessionId}`);
+  await streamed(page);
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("كيف اختصرنا وقت التقارير الشهرية");
   await expect(page.getByText("التسجيل مفتوح").first()).toBeVisible();
@@ -215,6 +228,7 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   await db.query(`delete from public.rsvps where session_id = $1 and member_id = $2`, [openSessionId, memberId]);
 
   await page.goto(`/ar/app/sessions/${openSessionId}`);
+  await streamed(page);
   // Hydrated first: a press before React owns the form is a race the member
   // never runs, and not what this test is about.
   await page.waitForLoadState("networkidle");
@@ -222,6 +236,7 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   await expect(page.getByText("تم تأكيد حجزك")).toBeVisible({ timeout: 45_000 });
 
   await page.reload();
+  await streamed(page);
   const region = page.getByRole("region", { name: "الحضور" });
   await expect(region.getByText("تم تأكيد حجزك")).toBeVisible();
   await expect(region.getByRole("button", { name: "أضِف إلى تقويمك" })).toBeVisible();
@@ -251,6 +266,7 @@ test("★ an ended session: the ribbon, «حضرت», «قيّم الجلسة» 
   );
 
   await page.goto(`/ar/app/sessions/${endedSessionId}`);
+  await streamed(page);
   await expect(page.getByText(/انتهت هذه الجلسة يوم/)).toBeVisible();
   const region = page.getByRole("region", { name: "الحضور" });
   await expect(region.getByText("حضرت")).toBeVisible();
@@ -274,6 +290,7 @@ test("★ nothing fixed or sticky covers the focused element, tabbing the whole 
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
   else await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/ar/app/sessions/${openSessionId}`);
+  await streamed(page);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   const obscured: string[] = [];
@@ -320,10 +337,12 @@ test("a sub-nav jump lands its section below the sticky layers, not behind them"
   await signIn(context);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/ar/app/sessions/${openSessionId}`);
+  await streamed(page);
 
   const nav = page.getByRole("navigation", { name: "أقسام الجلسة" });
   await nav.getByRole("link", { name: "المُقدِّمون" }).click();
   await expect(page).toHaveURL(/#presenters$/);
+  await streamed(page);
   const heading = page.getByRole("heading", { level: 2, name: "المُقدِّم" });
   const box = await heading.boundingBox();
   const navBox = await nav.boundingBox();

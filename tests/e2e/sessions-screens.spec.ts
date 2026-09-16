@@ -37,6 +37,18 @@ const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
 // One org per worker, and the whole walk is one ordered story.
+
+/**
+ * Waits out React's streamed Suspense containers. After a navigation the page
+ * briefly holds a SECOND copy of a streamed section in `body > div[hidden][id^="S:"]`
+ * until its swap script runs, and a strict locator counts it (the lead
+ * reproduced it under a 6x CPU throttle: 400–800 ms). Called after every
+ * navigation, before any strict locator.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test.describe.configure({ mode: "serial" });
 
 let admin: ReturnType<typeof createClient>;
@@ -174,6 +186,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-046 · venues ──────────────────────────────────────────────────────
   const boss = await phone(page, adminEmail);
   await boss.goto("/ar/app/admin/venues");
+  await streamed(boss);
   await expect(boss.getByRole("heading", { level: 1 })).toHaveText("الأماكن");
   await boss.getByLabel("الاسم").fill("قاعة الابتكار");
   await boss.getByLabel("العنوان").fill("الدور الثالث، مبنى الإدارة");
@@ -188,6 +201,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-018 · my proposal ─────────────────────────────────────────────────
   const member = await phone(page, memberEmail);
   await member.goto("/ar/app/propose");
+  await streamed(member);
   const title = "كيف اختصرنا وقت إعداد التقارير إلى النصف";
   await member.getByLabel("عنوان الموضوع المقترح").fill(title);
   await member.getByLabel("نبذة عن موضوعك").fill("تجربة عملية استغرقت ثلاثة أشهر، وما تعلمناه منها.");
@@ -195,16 +209,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await member.getByLabel("المدة المتوقعة").fill("45");
   await member.getByRole("button", { name: "أرسل المقترح" }).click();
   await expect(member).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
+  await streamed(member);
   await expect(member.getByRole("status")).toContainText("وصلنا مقترحك");
   await review(member, "scr-018-my-proposal");
 
   // ── SCR-041 → approve ─────────────────────────────────────────────────────
   await boss.goto("/ar/app/admin/proposals");
+  await streamed(boss);
   await boss.getByRole("button", { name: "اعتمد المقترح" }).first().click();
   await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
 
   // ── SCR-042 · sessions ────────────────────────────────────────────────────
   await boss.goto("/ar/app/admin/sessions");
+  await streamed(boss);
   // waiting under «جاهزة للجدولة». `visible`: console's DataTable renders the
   // rows twice — a table from md and a stacked card list below it, one of them
   // hidden by CSS — so the title is in the DOM twice at every width.
@@ -222,6 +239,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── SCR-043 · schedule and publish ────────────────────────────────────────
   await boss.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
+  await streamed(boss);
   // Incomplete first: REQ-SES-001's gate, naming what is missing.
   await expect(boss.getByText("لا يمكن النشر بعد — ينقص:")).toBeVisible();
   await expect(boss.getByRole("button", { name: "انشر الجلسة" })).toBeDisabled();
@@ -264,6 +282,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // The proposer carried across as the session's presenter, so REQ-CHK-011's
   // split starts here: no RSVP panel for them, and «شاشة التقديم» instead.
   await member.goto(`/ar/app/sessions/${sessionId}`);
+  await streamed(member);
   await expect(member.getByRole("heading", { level: 1 })).toContainText(title);
   await expect(member.getByRole("link", { name: "شاشة التقديم" })).toBeVisible();
   await expect(member.getByRole("button", { name: /احجز مقعدك/ })).toHaveCount(0);
@@ -271,6 +290,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-012 · the event page, as any member ───────────────────────────────
   const attendee = await phone(page, attendeeEmail);
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await streamed(attendee);
   await expect(attendee.getByRole("heading", { level: 1 })).toContainText(title);
   // The venue is one of the action card's facts (REQ-SES-013), so it is asked
   // for there: the page carried a second match outside #main on a build run.
@@ -323,6 +343,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // The admin is offered the manual start, and does not take it: the clock
   // path is the one 11 §2.1 runs every minute, so that is the one proved.
   await boss.goto("/ar/app/admin/sessions");
+  await streamed(boss);
   await expect(boss.getByRole("button", { name: "ابدأ الجلسة الآن" })).toBeVisible();
 
   await db.query(
@@ -342,12 +363,14 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── SCR-016 · the host view issues and shows the code ─────────────────────
   await boss.goto(`/ar/app/sessions/${sessionId}/host`);
+  await streamed(boss);
   await expect(boss.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
   const code = (await boss.locator("p[dir='ltr']").first().textContent())!.trim();
   expect(code, "the alphabet drops 0/O, 1/I/L, 5/S, 2/Z and 8/B").toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
 
   // ── SCR-014 · check in with it · REQ-CHK-003 ──────────────────────────────
   await attendee.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await streamed(attendee);
   await expect(attendee.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
   const boxes = attendee.locator("input[maxlength='1']");
   await expect(boxes).toHaveCount(6);
@@ -362,6 +385,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-012 · comment · REQ-EVT-002, through `event`'s slot ───────────────
   const said = "سؤال عن الأداة التي استخدمتموها في القياس.";
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await streamed(attendee);
   const composer = attendee.getByPlaceholder("اكتب تعليقًا…");
   await composer.fill(said);
   // Phone emulation keeps a FOCUSED field in view: Playwright scrolls the
@@ -391,6 +415,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── SCR-042 · the ADMIN completes it · REQ-SES-005 ────────────────────────
   await boss.goto("/ar/app/admin/sessions");
+  await streamed(boss);
   await boss.getByRole("button", { name: "أنهِ الجلسة" }).click();
   // Wait for the console to show the new state before reading the database.
   // Clicking a Server Action returns immediately; «أرشف» is only offered on a
@@ -412,6 +437,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── SCR-015 · rate · REQ-RAT-001, through `event` ─────────────────────────
   await attendee.goto(`/ar/app/sessions/${sessionId}/rate`);
+  await streamed(attendee);
   await expect(attendee.getByRole("heading", { name: "قيّم الجلسة" })).toBeVisible();
   const groups = attendee.getByRole("radiogroup");
   await expect(groups).toHaveCount(2);
@@ -424,6 +450,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // The form redirects back to the event page with ?rated=1; waiting for the
   // URL is what stops the database read below racing the action.
   await expect(attendee).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}\\?rated=1$`));
+  await streamed(attendee);
 
   const rating = await db.query<{ session_stars: number; presenter_stars: number; check_in_id: string }>(
     `select session_stars, presenter_stars, check_in_id from public.ratings where session_id = $1 and member_id = $2`,
@@ -445,6 +472,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // REQ-RAT-004, the D36 boundary: the presenter reads an aggregate, never a
   // name and never an attributed score. `member` is this session's presenter.
   await member.goto(`/ar/app/sessions/${sessionId}`);
+  await streamed(member);
   await expect(member.getByRole("heading", { name: "التقييم" })).toBeVisible();
   // Scoped to the ratings SECTION, not the page: she also commented, and a
   // comment is attributed by design (REQ-EVT-002). The D36 boundary is that

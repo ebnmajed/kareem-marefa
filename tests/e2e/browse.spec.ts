@@ -36,6 +36,18 @@ const expect = baseExpect.configure({ timeout: 15_000 });
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
+
+/**
+ * Waits out React's streamed Suspense containers. After a navigation the page
+ * briefly holds a SECOND copy of a streamed section in `body > div[hidden][id^="S:"]`
+ * until its swap script runs, and a strict locator counts it (the lead
+ * reproduced it under a 6x CPU throttle: 400–800 ms). Called after every
+ * navigation, before any strict locator.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test.describe.configure({ mode: "serial" });
 
 let admin: ReturnType<typeof createClient>;
@@ -122,6 +134,7 @@ async function capture(p: Page, name: string) {
 test("both sessions are on the unfiltered timeline, under one h1", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
+  await streamed(page);
   await expect(page.getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toBeVisible();
@@ -130,17 +143,20 @@ test("both sessions are on the unfiltered timeline, under one h1", async ({ cont
 test("★ a category toggle is a link to the filtered URL, pressed once applied, and its × removes it", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
+  await streamed(page);
   const nav = page.getByRole("navigation", { name: "تصفية الجلسات" });
   // `exact`: once applied, the chip's × is also a link whose name contains the
   // category («أزل عامل التصفية: ذكاء اصطناعي»).
   await nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`category=${categoryAiId}`));
+  await streamed(page);
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true })).toHaveAttribute("aria-current", "true");
 
   await page.getByRole("link", { name: "أزل عامل التصفية: ذكاء اصطناعي" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  await streamed(page);
   await expect(page.getByText(TIME)).toBeVisible();
 });
 
@@ -148,6 +164,7 @@ test("★ two filters, named not by id; removing one keeps the other (REQ-UIX-02
   await signIn(context, memberEmail);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/sessions?venue=${venueId}&level=introductory`);
+  await streamed(page);
 
   const applied = page.getByRole("list", { name: "عوامل التصفية المطبّقة" });
   await expect(applied.getByText("المكان: قاعة التصفّح")).toBeVisible();
@@ -160,6 +177,7 @@ test("★ two filters, named not by id; removing one keeps the other (REQ-UIX-02
 
   await applied.getByRole("link", { name: "أزل عامل التصفية: المستوى: تمهيدي" }).click();
   await expect(page).toHaveURL(new RegExp(`venue=${venueId}$`));
+  await streamed(page);
   await expect(page.getByRole("list", { name: "عوامل التصفية المطبّقة" }).getByText("المكان: قاعة التصفّح")).toBeVisible();
   await expect(page.getByText(TIME)).toBeVisible();
 });
@@ -168,6 +186,7 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
   await signIn(context, memberEmail);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await page.goto("/ar/app/sessions");
+  await streamed(page);
 
   await page.getByRole("button", { name: "المزيد من عوامل التصفية" }).click();
   const sheet = page.getByRole("dialog", { name: "عوامل التصفية" });
@@ -183,6 +202,7 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
 
   await sheet.getByRole("button", { name: "اعرض النتائج" }).click();
   await expect(page).toHaveURL(/tag=/);
+  await streamed(page);
   await expect(page.getByRole("list", { name: "عوامل التصفية المطبّقة" }).getByText("الوسم: تقارير")).toBeVisible();
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toHaveCount(0);
@@ -191,6 +211,7 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
 test("a bookmark toggles on the card without navigating, keeps its name, and survives a reload (REQ-DSC-006)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
+  await streamed(page);
   // Hydrated first: the toggle is a client control.
   await page.waitForLoadState("networkidle");
   const card = page.locator("article", { has: page.getByText(AI) });
@@ -199,11 +220,13 @@ test("a bookmark toggles on the card without navigating, keeps its name, and sur
   await save.click();
   await expect(save).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  await streamed(page);
   // The press is optimistic; the write is the server action behind it. Reload
   // only once it has landed, or the reload races the write.
   await page.waitForLoadState("networkidle");
 
   await page.reload();
+  await streamed(page);
   await expect(page.locator("article", { has: page.getByText(AI) }).getByRole("button", { name: "احفظ الجلسة" })).toHaveAttribute("aria-pressed", "true");
   // Leave it as found, for the other project.
   await page.locator("article", { has: page.getByText(AI) }).getByRole("button", { name: "احفظ الجلسة" }).click();

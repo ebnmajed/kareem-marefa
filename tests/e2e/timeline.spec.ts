@@ -35,6 +35,18 @@ const expect = baseExpect.configure({ timeout: 15_000 });
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
+
+/**
+ * Waits out React's streamed Suspense containers. After a navigation the page
+ * briefly holds a SECOND copy of a streamed section in `body > div[hidden][id^="S:"]`
+ * until its swap script runs, and a strict locator counts it (the lead
+ * reproduced it under a 6x CPU throttle: 400–800 ms). Called after every
+ * navigation, before any strict locator.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test.describe.configure({ mode: "serial" });
 
 let admin: ReturnType<typeof createClient>;
@@ -139,7 +151,9 @@ test("★ /app IS the timeline, and the member's next committed session is the f
   await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, committedId, memberId]);
 
   await page.goto("/ar/app");
+  await streamed(page);
   await expect(page).toHaveURL(/\/ar\/app$/);
+  await streamed(page);
   await expect(page.getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
 
   const cards = page.locator("article");
@@ -157,8 +171,10 @@ test("★ /app IS the timeline, and the member's next committed session is the f
 test("★ a filter applied on /app lands on the canonical /app/sessions (DEC-130)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app");
+  await streamed(page);
   await page.getByRole("navigation", { name: "تصفية الجلسات" }).getByRole("link", { name: "فني" }).click();
   await expect(page).toHaveURL(new RegExp(`/ar/app/sessions\\?category=${catId}$`));
+  await streamed(page);
   await expect(page.getByText(SOON)).toBeVisible();
   await expect(page.getByText(COMMITTED)).toHaveCount(0);
 });
@@ -167,6 +183,7 @@ test("★ the empty case is the same screen, inviting a proposal (REQ-UIX-021, R
   await signIn(context, emptyEmail);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await page.goto("/ar/app");
+  await streamed(page);
   await expect(page.getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
   await expect(page.getByText("لا جلسات قادمة بعد")).toBeVisible();
   await expect(page.getByRole("link", { name: "اقترح موضوعًا" })).toHaveAttribute("href", "/ar/app/propose");
@@ -180,6 +197,7 @@ test("★ filtered-empty names the filter that emptied it; «أزل» drops only
   // «فني» holds only the introductory session, so adding «متقدم» empties it —
   // and removing «متقدم» alone restores one session.
   await page.goto(`/ar/app/sessions?category=${catId}&level=advanced`);
+  await streamed(page);
   // Scoped to <main>. A build run once found a second match OUTSIDE #main while
   // the page was still streaming — not reproducible after load, and consistent
   // with React's hidden streaming container before its swap script runs under
@@ -192,5 +210,6 @@ test("★ filtered-empty names the filter that emptied it; «أزل» drops only
 
   await main.getByRole("link", { name: "أزل «\u2068متقدم\u2069»" }).click();
   await expect(page).toHaveURL(new RegExp(`category=${catId}$`));
+  await streamed(page);
   await expect(page.getByText(SOON)).toBeVisible();
 });
