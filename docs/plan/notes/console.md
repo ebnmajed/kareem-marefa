@@ -1170,3 +1170,276 @@ jsdom has neither a streaming HTTP response nor React's real commit ordering.
   Cannot confirm further without a fresh capture — reported to the lead rather than guessed at, since
   `globals.css` and that spec file are both outside this track's edit list either way.
 actual `DEC-130` bar.
+
+---
+
+## Wave 7 plan (DEC-137) — the fourteen-group rail, and the six remaining admin routes
+
+Written before code, per the spawn brief. `console` is opus this wave. Six routes —
+`moderation/{comments,photos}`, `venues`, `categories`, `companies`, `settings` — plus the admin
+layout's regroup (K0–K6 in `STATUS.md`'s checklist). `moderation/reports` (wave 6, already on M9)
+is not a checklist row this wave, but it sits inside my full edit glob
+(`app/admin/{moderation,venues,categories,companies,settings}/**`, unconditional — not the "five
+wave-6 routes, fixes only" list, which names only `proposals/**`, `sessions/`'s top level and
+`members/**`) and carries wave 6's one open finding (the uncaptured populated-report-card state), so
+§3 below touches it too.
+
+### 1. The rail's IA — `16` §6.7, `REQ-ADM-020`, `REQ-UIX-017`
+
+**The count in `16` §6.7 does not match its own label, and wave 6's note already repeated the error
+once.** The prose lists, verbatim: لوحة · المقترحات · الجلسات · الأعضاء · الشركات · التصنيفات
+والوسوم · الأماكن · الإشراف · النقاط والتقدير · التصاميم · الهوية · الإشعارات · التصدير · السجل ·
+الإعدادات — **fifteen** tokens, comma-counted twice. `STATUS.md`, `CLAUDE.md` and `DEC-137` all call
+it "the fourteen-group IA" regardless, and wave 6's note (`docs/plan/notes/console.md:571-581`)
+already transcribed the same fifteen under a "14 grouped Arabic labels" heading without recounting.
+**My working reading, pending the lead's confirmation (§5.1): لوحة is the rail's home/root link, not
+one of the fourteen navigational groups that organise the other routes underneath it** — the same
+relationship `admin/layout.tsx` already gives it today (`current: withoutLocale === item.href`
+computed specially, never prefix-matched, because nothing nests under it). Fourteen groups then
+map onto the current 19 (soon 20 — see below) flat items as:
+
+| Group (rail label) | Children (routes) | Disclosure? |
+|---|---|---|
+| المقترحات | proposals | no — direct link |
+| الجلسات | sessions | no |
+| الأعضاء | members | no |
+| الشركات | companies | no |
+| التصنيفات والوسوم | categories | no |
+| الأماكن | venues | no |
+| الإشراف | moderation/comments, moderation/photos, moderation/reports | **yes — 3** |
+| النقاط والتقدير | scoring, recognition | **yes — 2** |
+| التصاميم | designer, templates/posters, templates/certificates | **yes — 3** |
+| الهوية | branding | no |
+| الإشعارات | emails, reminders | **yes — 2** |
+| التصدير | exports | no |
+| السجل | audit | no |
+| الإعدادات | settings | no |
+
+Ten single-route groups render exactly as today (an `<a>`-equivalent rail item, unchanged
+`AdminRailItem` shape). Four groups disclose 2–3 children each — ten routes total inside disclosure,
+matching `admin/layout.tsx`'s own header comment that "13 routes I do not rebuild this wave" sit
+behind grouping decisions (12 of those 13 are the 10 disclosed here plus `designer`'s two; the 13th
+was `venues`, since wave 6 counted it before it was reassigned to me — no longer live).
+
+**A second, real discrepancy found in the same pass: `admin/designer` (the template-studio landing
+page, distinct from `designer/[documentId]`) is not in `NAV_ITEMS` at all today** —
+`grep -c` on the array (`admin/layout.tsx:52-85`) gives 20 entries, not the header comment's stated
+19, and `admin/designer/page.tsx` exists on disk but is reachable from nowhere in the rail (only
+`templates/{posters,certificates}` link into individual documents, and a document itself links back
+to its own template, never to the studio's own landing route). Adding it under `التصاميم` closes
+that gap in the same commit as the regroup — a one-line `NAV_ITEMS` addition, not a `designer`-owned
+file.
+
+**Data model.** `AdminRailItem` (`components/admin/admin-rail.tsx`) gains an optional
+`children?: AdminRailItem[]`. A leaf item (no `children`) renders exactly as today. A group item
+renders as a WAI-ARIA disclosure: `<button aria-expanded>` + a nested `<ul>` of its children,
+default-**expanded** if any child is `current`, default-**collapsed** otherwise, per-viewer
+`localStorage` (one key per group, same try/catch-and-render-expanded-on-failure discipline the
+rail's own whole-rail collapse already uses — `getServerSnapshot` always "expanded when current,
+else per the stored preference, defaulting to collapsed" so there is no hydration mismatch). The
+group row itself never carries `aria-current` (it is not a destination); a child does.
+
+**Collapsed (icon-only) rail — the interaction the disclosure pattern cannot use there.** When the
+whole rail is icon-only (the existing whole-rail toggle), a group's label and nested `<ul>` have no
+room. Rather than invent a flyout, a collapsed group's icon becomes a **`ui/menu`** trigger (mine
+already) opening its children as `href` items — `menu.tsx`'s own header comment records that
+`MenuItem.href` was fixed to route through `ui/link` (not a raw `<a>`) "while planning wave 6,"
+found writing this exact plan, so that mechanism is already correct to build on; no new bug to work
+around. A leaf item's collapsed behaviour (icon + `title` tooltip, direct link) is unchanged.
+
+**Phone drawer (`ui/sheet`).** Same disclosure widget as desktop, nested inside the sheet's `<ul>`
+(never a `Menu` flyout there — a full-height sheet has room for a real nested list, and a popover
+inside a popover-ish sheet is the wrong composition). Selecting any child closes the sheet
+(`onClick={() => setSheetOpen(false)}`, already wired per-item; extends to nested items unchanged).
+
+**Moderator view — `REQ-ADM-020`, listed exactly.** Filtering is unchanged in substance, just
+applied one level deeper: a leaf's own `adminOnly` gates it; a group renders **only if at least one
+child survives the filter**, and only its surviving children render inside it. Today's five
+moderator-visible flat items (`adminOnly: false`: `sessions`, `moderationComments`,
+`moderationPhotos`, `moderationReports`, `audit`) become, regrouped, **three top-level rail
+entries — الجلسات (direct), الإشراف (disclosed, all three children survive), السجل (direct) — five
+reachable routes, unchanged from today.** No `لوحة` (dashboard stays admin-only, matching
+`REQ-ADM-020`'s "and nothing else" — a moderator has never seen the dashboard and this regroup does
+not add it).
+
+**Current-route marking.** A leaf's `current` is unchanged (exact match or `startsWith` for nested
+paths, e.g. `sessions/[id]/attendance` still marks `sessions` current). A group is `current` in the
+sense of "contains the active route" (drives default-expanded above) but is never itself
+`aria-current` — only whichever child is.
+
+**Second skip link (`REQ-UIX-017`).** Unchanged target and position — first focusable element,
+`href="#admin-content"`, `tabIndex={-1}` — but the tab sequence it has to clear grows (a disclosure
+button plus, when expanded, its children, for four groups). Re-verified with the same
+walk-the-tab-sequence approach wave 6's bug-fix pass already adopted for `console.spec.ts` (bounded,
+not a pinned count) rather than reintroducing a pinned-position assertion the last teammate already
+found and removed once.
+
+**The untouched-screen capture (`16` §6.7's own requirement, plus the carried finding below).**
+`.qa-shots/rtl/wave7-console-layout-untouched.png` — `/app/admin/exports` (not on my edit list this
+wave, not `venues` again, since `venues` IS touched this wave and would no longer prove "the layout
+alone"), 390×844, phone project, after the layout lands.
+
+### 2. Per-route plan, K1–K6
+
+**Shared pattern for K3–K5 (venues, categories, companies) — "one list pattern three times," per
+`DEC-137`'s own framing.** One design, not one component: each keeps its own `*-table.tsx` (domain
+fields differ — venue carries address/capacity/timeZone/mapUrl, category and company carry only a
+usage count) built on `ui/data-table` exactly like `members/members-table.tsx`'s already-proven
+shape (primary column `bdi`-wrapped name `onCard`, a count column `onCard`, a status `Badge`
+`onCard`, an actions column not `onCard` since the phone card renders the row's primary action
+inline below the label:value pairs — `DataTable`'s own card layout, unchanged). What genuinely is
+identical across all three and worth extracting once: the deactivate/reactivate action shape —
+reactivate is a single `IconButton`, no confirmation (reversible, restorative, matches
+`members-table.tsx`'s own asymmetry); deactivate opens `ui/dialog` naming the entity
+(`REQ-UIX-013`'s pattern, generalised past proposals: "تعطيل «القاعة الكبرى»؟" / "تعطيل «شركة
+كذا»؟"), plain confirm/cancel, **no reason field** — `setCategoryActive()`/`setCompanyActive()`/
+venue's toggle action take no reason parameter today (`lib/dal/admin-lists.ts`, `lib/dal/sessions.ts`)
+and REQ-ADM-006/007/008's acceptance criteria do not ask for one, unlike `REQ-ADM-009`'s member
+deactivation. A shared `components/admin/deactivate-toggle.tsx` (my own file, under
+`components/admin/**`) takes the entity's rendered name, the two bound actions and a namespace key,
+and every one of the three tables uses it — the toast-in-body-vs-effect question doesn't arise here
+either way, since a toggled row never leaves its own table (unlike a resolved moderation card).
+
+**K3 — `/app/admin/venues`.** DAL: `listVenuesForAdmin`/`addVenue`-equivalent/`toggleVenue`
+already live in **`sessions`' `lib/dal/sessions.ts`**, unchanged this wave — the existing DTO
+(name, address, capacity, upcomingSessions, timeZone, mapUrl, deactivatedAt) already covers every
+column the rebuild needs, so **no DAL change and no request to `sessions`** — I only consume it.
+Add form: `venue-form.tsx` onto `Field` + `Input` + `Textarea` (notes) + `FormSummary`, using
+`lib/form-state.ts`'s `formStateFrom()`/`zodErrors()`/`was()` contract (sessions' shared module,
+imported not edited) instead of the current ad hoc `{error}` shape — the same "an uncontrolled field
+empties on a failed round trip" bug class `form-state.ts`'s own header names is live here today
+(five plain `<input>`s with no `was()` read-back). List: `venues-table.tsx` on `DataTable`, columns
+name/address (primary, `onCard`), capacity+upcoming-sessions (`onCard`, one combined body-sm line,
+matching the current page's own `·`-joined `<dl>`), status `Badge`, map link (kept as a plain
+external `<a>` inside the primary cell, `rel="noreferrer noopener"`, unchanged behaviour), actions
+via `DeactivateToggle`. States to capture: populated table (desktop + phone stacked cards), empty
+list, the add form with a `FormSummary` validation failure.
+
+**K4 — `/app/admin/categories`.** DAL: `lib/dal/admin-lists.ts` (already mine), unchanged shape —
+`listCategoriesForAdmin`/`createCategory`/`setCategoryActive` need no new fields. Form: `Field` +
+`Input` + `FormSummary`, same `form-state.ts` contract. List: `categories-table.tsx`, columns name
+(primary), session count (`onCard`), status `Badge`, `DeactivateToggle`. States: populated, empty,
+validation failure on add (duplicate-name handling stays server-side, unchanged — no unique
+constraint surfaced client-side today, not adding one this wave).
+
+**K5 — `/app/admin/companies`.** Same shape as K4, `listCompaniesForAdmin`/`createCompany`/
+`setCompanyActive`, member count instead of session count. States: populated, empty, validation
+failure.
+
+**K6 — `/app/admin/settings`.** DAL: `lib/dal/admin-settings.ts` (already mine, and already past
+the numerals sweep — no `numerals` field in `OrgSettingsAdmin` today, confirmed by reading the
+file). This is the one route where the rebuild is substantive, not a re-skin: fourteen fields across
+six `fieldset`s, all plain `<input>`/`<select>`/checkbox today, zero `ui/` imports beyond `Button`.
+Plan: `Field` wrapping every control (`Input` for text/number/email, `Select` for `companyMetric`,
+`Switch` for `allowJpegExport` — `Switch` posts a real value via `name`, so the existing
+`FormData.get("allowJpegExport") === "on"` parsing in `actions.ts` needs a one-line check against
+`Switch`'s actual posted value, not a DAL change), grouped under `ui/section-header`-headed
+`fieldset`s (replacing the plain `<legend className="text-h3">` pattern), `FormSummary` at the top
+fed by `form-state.ts` (replacing the current `state.error`/`state.saved` two-message shape — the
+saved confirmation becomes a `useToast()` call in the action's own body, not an effect, consistent
+with §3's toast-placement rule since nothing here unmounts but consistency costs nothing). States:
+the form populated with current values, a `FormSummary` validation failure (e.g. `emailReplyTo` not
+an email), the save-confirmation toast.
+
+**No DAL request to any other track for K1–K6.** `content`'s `lib/dal/photos.ts` is touched only via
+the existing `restorePhoto()` import `admin-moderation.ts` already has (wave 6); nothing new is
+needed there for K2's rebuild — it is a UI-only pass on data the DAL already returns.
+
+**K1 — `/app/admin/moderation/comments` and K2 — `/app/admin/moderation/photos`.** Both are
+UI-only rebuilds — `lib/dal/admin-moderation.ts` (already mine) needs no field changes, only two
+small additions used by §3's shared sub-nav (below). Bring both onto exactly the shape
+`moderation/reports/report-card.tsx` (wave 6) already proved: `Card`/`CardBody`/`CardActions` (K2
+also `CardMedia`, since a photo takedown has an image; K1 has none — plain `Card`/`CardBody` only),
+`ui/dialog` for the remove confirmation (`Field` + `Textarea` for the reason **inside** the dialog's
+own form, one step, matching `report-card.tsx`'s own comment on why there is no "reveal the reason
+first" two-step here), `useToast()`. **Toast fires from inside the action passed to
+`useActionState`, not from a `useEffect` keyed on `state`** — this is not a style preference, it is
+the exact bug wave 6's own note (§12) already found and fixed once for `moderation/reports`: a
+resolved card is a card that disappears from its list in the same commit the toast would have to
+fire from, so an effect on a discarded fiber never runs. K1/K2 get it right from the start instead of
+repeating the fix. `PageHeader` replaces the plain `<h1>`+`<p>` pair on both; `EmptyState` replaces
+the plain empty-state `<p>` on both (K1 currently has neither). Dismiss stays instant, no dialog
+(unchanged from today — only removal, which is permanent, confirms). States per route: populated
+list (desktop grid + phone), empty state, the remove-confirmation dialog open with a validation
+error (empty reason), the post-action toast.
+
+### 3. The two moderation queues never merge (`DEC-005`) — and a sub-nav that keeps them apart while tying them together
+
+`admin-moderation.ts`'s own header already states the rule precisely: comments have one moderation
+path (open reports — no "instant hide" concept exists for a comment), photos have two, and the two
+photo paths are **never merged into one list** because they carry opposite urgency — a takedown
+(`moderation/photos`, `REQ-EVT-012`) is already hidden, awaiting review; a report (`moderation/
+reports`, `REQ-EVT-008`) is still publicly visible, awaiting one. That separation is unchanged and
+is not mine to revisit.
+
+What I am adding: a `ui/tabs` strip, `href`-mode, atop all three moderation pages —
+`tabs.tsx`'s own header comment names this exact use case ("the admin sub-nav... uses this"), so it
+is not a new pattern, just its first real caller. Each tab carries a live open-count
+(`Tabs`' `count` prop, Western-formatted, matching `date-time`/`combobox`'s own documented numeral
+gap). This does not merge the two photo queues into one *list* — DEC-005's actual rule — it lets a
+moderator move between three still-separate lists without the rail round-trip, which is squarely
+inside `REQ-ADM-010`'s "queues for proposals, comments, photos and reports" being read as one
+functional group, matching §6.7's own `الإشراف` grouping. Requires two small count-only additions to
+`admin-moderation.ts` (mine, no request): `countCommentReports`/`countPhotoTakedowns` alongside the
+existing `countPhotoReports`-shaped query (a `head: true` count, not a full row fetch, on each of the
+three tables' existing predicates). `moderation/reports/page.tsx` gains the same strip in the same
+commit (inside my edit glob — see the note at the top of this section), closing the "reports" tab's
+own missing capture (§4) at the same time.
+
+### 4. Carried items, and how each closes
+
+- **`console.spec`'s "untouched route" capture** — wrong viewport (Pixel 7's 412 px, no explicit
+  size set) and, after this wave, the wrong route (`venues` stops being untouched). Fixed in the same
+  commit as §1's layout change: explicit `390×844`, retargeted to `/app/admin/exports` (§1's own
+  reasoning for the choice).
+- **The populated photo-report card on `moderation/reports`** — never captured in wave 6. Taken as
+  part of K1/K2's capture pass (§2), since the shared `Tabs` strip (§3) touches that page's markup
+  anyway and the capture should reflect the final shape, not a pre-strip one.
+- **The dashboard's «أكثر …» alignment** — investigated before planning further work: `page.tsx`'s
+  `TopList` (`app/admin/page.tsx:15-40`) already renders `flex items-baseline justify-between`, which
+  pushes the count to the row's far edge regardless of name length — i.e. it already reads as "the
+  pipeline"'s style, not "beside the name." Either this was fixed in a commit after the carried note
+  was written, or the note describes a visual impression from a capture that the class names don't
+  bear out. **Closing this without a code change**, pending one more look: I will pull
+  `scr-040-dashboard-390-rtl*.png` (whichever capture exists from wave 6) before writing it off
+  entirely, and only reopen it if that capture actually shows misalignment the classes above don't
+  explain.
+- **`admin.attendance.*` and the walk-in keys, after `checkin` moves them.** `admin.json`'s
+  `attendance` namespace (`ar.json:360-408`, `en` twin) is SCR-044's strings — the screen transfers to
+  `checkin` this wave (`DEC-137`: `★ admin/sessions/[id]/attendance` — C3). **Not touched by me until
+  `checkin` confirms the strings are live under its own `checkin.json` namespace** (`DEC-137`'s "one
+  writer per file" rule: the screen's owner moves its strings, the old file's owner deletes the old
+  keys on request). I will delete `admin.json`'s `attendance` object (both locales) in a single small
+  commit once that confirmation lands — **not** `admin.json`'s `exports.attendance` (a different,
+  unrelated key path — the CSV-export label — which stays). No walk-in keys exist under `admin.json`
+  yet (grepped; none found), so there is nothing to delete there today — `checkin`'s C6 adds and
+  presumably keeps its own walk-in strings in its own namespace from the start, so this half of the
+  carried item may already be moot; confirming with `checkin` rather than assuming (§5.2).
+
+### 5. Requests and questions
+
+**5.1 — For the lead.**
+
+1. **The 14-vs-15 count in `16` §6.7.** My working reading (§1): `لوحة` is the root/home link, not
+   one of the fourteen groups. If that's wrong, tell me which of the other fourteen tokens is not
+   its own group (a merge I haven't guessed, e.g. `الأعضاء`+`الشركات`) before I build the grouping
+   table above into code.
+2. **`admin/designer`'s missing nav entry** (§1) — a real gap (the studio landing page is
+   unreachable from the rail today), not something I introduced. I'm adding it under `التصاميم` in
+   the same commit as the regroup, since it's a one-line `NAV_ITEMS` entry and `admin/designer/**`
+   itself stays untouched. Flagging in case `designer` would rather land it themselves.
+3. **Four rail icons still on interim/reused glyphs** since wave 6 (tag, building, palette/swatch,
+   gear — `docs/plan/notes/console.md:582-592`, still open). Not blocking this wave's build; repeating
+   the request since the regroup is the natural point to also carry it into `icons.tsx` if it's
+   landed by then.
+
+**5.2 — For `checkin`.** Confirm (a) the `checkin.json` namespace and key names the attendance
+screen's strings land under, so I know `admin.json`'s `attendance` object is safe to delete, and
+(b) whether any walk-in-setting string is going into `admin.json` at all (my grep found none there
+today) or staying entirely inside `checkin`'s own files — if the latter, §4's "walk-in keys" item
+closes as a non-issue rather than a delete.
+
+**5.3 — For `sessions`.** None this wave — `listVenuesForAdmin` and its write actions in
+`lib/dal/sessions.ts` need no change for K3's rebuild (§2). Flagging only for visibility: `venues`
+stops being "already built, wave 1, untouched" (`console.md:23-24`'s original framing) as of this
+wave.
