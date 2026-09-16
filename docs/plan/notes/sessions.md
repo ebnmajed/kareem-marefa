@@ -2115,7 +2115,7 @@ branch; «نوع المادة» exists once in the catalogue). The spec fails th
    React's hidden streamed copy (`body > div[hidden][id^="S:"]`) is still in the document beside the
    visible one — `185fbb1` found and fixed exactly this in `materials`, `photos` and
    `event-comments` with `waitForStreamsToSettle()`, and this spec was not in that commit. On this
-   page the slot does four reads before it streams, so the window is wide.
+   page the slot awaits several reads before it streams, so the window is wide.
 2. **Line 147 would fail next.** `getByLabel("الملف")` names nothing since wave 6 moved the upload
    onto `ui/file-drop`, whose native input is `hidden` and unlabelled; `materials.spec.ts:265`
    already selects `input[type="file"]` for this reason.
