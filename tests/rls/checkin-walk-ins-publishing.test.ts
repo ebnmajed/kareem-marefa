@@ -1,28 +1,18 @@
 // Walk-ins as a publishing setting — DEC-117, DEC-118, DEC-141 correction B.
-// supabase/proposed/checkin/02_walk_ins_publishing.sql, applied with
-// applyProposed() inside this test's rolled-back transaction (DEC-040).
+// Migration 0085_walk_ins_at_publication (promoted 7b2ac81).
 //
 // `03` §8.2 rows: RPC-schedule_session.walk_ins,
 // RPC-schedule_session.walk_ins_unchanged,
 // RPC-schedule_session.walk_ins_changed_audited, RPC-set_session_walk_ins.retired.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["checkin/02_walk_ins_publishing.sql"];
-
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 /** A bare `approved` session, ready to be scheduled — schedule_session()'s

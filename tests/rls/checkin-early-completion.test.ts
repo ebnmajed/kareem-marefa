@@ -1,30 +1,19 @@
 // REQ-SES-005's "completing early closes the check-in window immediately" —
-// re-implemented on the switch, DEC-141 — supabase/proposed/checkin/{01,06}.
-// applyProposed() inside this test's rolled-back transaction (DEC-040). 01
-// first: 06's re-created transition_session() writes check_in_open, which
-// 01 adds.
+// re-implemented on the switch, DEC-141 — migrations 0084_check_in_window
+// and 0089_early_completion_closes_check_in (promoted 7b2ac81).
 //
 // `03` §8.2 rows: RPC-transition_session.check_in_open_early,
 // RPC-transition_session.check_in_open_cancel,
 // RPC-transition_session.check_in_open_reopenable.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Tx } from "./db";
+import { pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["checkin/01_check_in_window.sql", "checkin/06_early_completion_hook.sql"];
-
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {

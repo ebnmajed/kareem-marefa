@@ -1,7 +1,6 @@
 // Every cross-track SQL hook the reader inventory found — DEC-141 —
-// supabase/proposed/checkin/{01,04,05}. applyProposed() inside this test's
-// rolled-back transaction (DEC-040). 01 for check_in_open (04's re-created
-// check_in() references it), 04 for removed_at itself, 05 for the hooks.
+// migrations 0084_check_in_window, 0087_attendance_removal and
+// 0088_removed_check_in_hooks (promoted 7b2ac81).
 //
 // `03` §8.2 rows: RPC-award_points.skips_removed_check_in,
 // RPC-issue_certificate.no_check_in_when_removed,
@@ -11,23 +10,14 @@
 // RPC-build_data_export_payload.shows_removal.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Claims, type Tx } from "./db";
+import { pool, withTx, type Claims, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["checkin/01_check_in_window.sql", "checkin/04_attendance_removal.sql", "checkin/05_late_job_hooks.sql"];
-
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 /** `seed()`'s own fixture gives members[0] a baseline badge and streak_award

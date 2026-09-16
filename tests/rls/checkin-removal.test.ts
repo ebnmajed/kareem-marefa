@@ -1,7 +1,5 @@
-// The reversal — REQ-CHK-017, DEC-141 — supabase/proposed/checkin/{01,04}.
-// applyProposed() inside this test's rolled-back transaction (DEC-040).
-// Needs 01 first: file 04's re-created check_in() references
-// sessions.check_in_open, which 01 adds.
+// The reversal — REQ-CHK-017, DEC-141 — migrations 0084_check_in_window and
+// 0087_attendance_removal (promoted 7b2ac81).
 //
 // `03` §8.2 rows: RPC-remove_check_in.{admin_only,reason_required,reversal,
 // certificate_revoked,no_show_symmetry,not_found,readd},
@@ -9,15 +7,11 @@
 // POL-ratings.write_self_excludes_removed.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
-
-const PROPOSED = ["checkin/01_check_in_window.sql", "checkin/04_attendance_removal.sql"];
 
 /** Org A's fixture only carries two plain members (sara, yaman) — a third,
  *  uninvolved bystander for the role-refusal case. */
@@ -36,12 +30,7 @@ async function addMember(tx: Tx, org: Org, local: string, name: string): Promise
 }
 
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {

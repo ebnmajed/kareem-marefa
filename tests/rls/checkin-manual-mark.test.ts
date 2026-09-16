@@ -1,27 +1,17 @@
-// Manual attendance marking's window — DEC-141 ruling 6 —
-// supabase/proposed/checkin/03_manual_mark.sql, applied with
-// applyProposed() inside this test's rolled-back transaction (DEC-040).
+// Manual attendance marking's window — DEC-141 ruling 6 — migration
+// 0086_manual_mark_window (promoted 7b2ac81).
 //
 // `03` §8.2 rows: RPC-mark_checked_in_manually.window,
 // RPC-mark_checked_in_manually.award_points.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorMessage, pool, withTx, type Tx } from "./db";
+import { errorMessage, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["checkin/03_manual_mark.sql"];
-
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {

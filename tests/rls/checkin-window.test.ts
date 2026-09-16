@@ -1,30 +1,19 @@
-// Check-in window — DEC-141, supabase/proposed/checkin/01_check_in_window.sql.
-// Applied with applyProposed() inside this test's rolled-back transaction
-// (DEC-040) — not yet promoted, so every case here re-derives from a real
-// database, not a mock.
+// Check-in window — DEC-141, migration 0084_check_in_window (promoted
+// 7b2ac81).
 //
 // `03` §8.2 rows: RPC-check_in.floor, RPC-check_in.ceiling,
 // RPC-check_in.switch_closed, RPC-check_in.attendance_states,
 // RPC-set_check_in_open.role_set, RPC-set_check_in_open.ceiling,
 // RPC-set_check_in_open.audited, RPC-ensure_check_in_code.floor_ceiling.
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorMessage, pool, withTx, type Tx } from "./db";
+import { errorMessage, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["checkin/01_check_in_window.sql"];
-
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
+  return seed(tx);
 }
 
 /** Mirrors checkin.test.ts's own makeSession() — this file predates 04's

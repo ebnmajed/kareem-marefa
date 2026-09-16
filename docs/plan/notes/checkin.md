@@ -797,3 +797,48 @@ c.session_id = ratings.session_id and c.member_id = auth_member_id())` **directl
 independent reference to the table, never through `has_checked_in()`. Both need the `removed_at is
 null` filter; both are in file `04` below, since `04` is the file that makes the column exist and
 every direct reader of it correct on arrival, not a later hook.
+
+---
+
+## Contracts 1–3 — final, against the landed SQL (promoted 7b2ac81, `supabase/migrations/0084…0089`)
+
+Supersedes §5's draft, which predated Correction B and the grace-window fix. Both `sessions` and
+`content` can build against this directly.
+
+**1 · `checkin` → `sessions` — `schedule_session()`'s new parameter. ALREADY WIRED, confirmed, not a
+request.** `sessions` independently landed `p_allow_walk_ins boolean default null` (null = unchanged,
+Correction B) at `src/lib/dal/sessions.ts:369-397` — `scheduleSession()`'s own `allowWalkIns:
+z.boolean().nullable().default(null)` input and `p_allow_walk_ins: input.allowWalkIns` on the RPC call
+match the landed `0085_walk_ins_at_publication` signature exactly. Nothing further needed here.
+
+**2 · `checkin` → `sessions` — the switch as raw facts, not a derived relation.** Supersedes §5 item 2's
+draft (`canOfferCheckInLink()` gaining a parameter) — that was written before the grace-window fix
+(`checkInWindowAllowed()`, `docs/plan/notes/checkin.md` "Found while applying `DEC-141`") replaced it.
+The landed shape:
+
+- `dal/checkin.ts` exports **`canOfferCheckInFor(session, viewer, allowWalkIns, checkInOpen, now?)`**
+  (already committed, beside the untouched `canOfferCheckInLink()` per condition (a)) — `viewer` is
+  `{isPresenter, isStaff, rsvpStatus, checkedIn}` (`ViewerInput` from `@/lib/session-status`), never a
+  derived `ViewerRelation`. This is the fix itself: the ceiling (`ends_at + 2h`) outlives the phase a
+  derived relation is bucketed by, so a derived relation cannot answer this question correctly during
+  the grace window.
+- `EventSession` (`src/lib/dal/sessions.ts:526-571`) needs **three** new fields, not one — `checkInOpen:
+  boolean` (new: `sessions.check_in_open`, not yet in the `select` at line 591 — needs adding to that
+  column list) and `rsvpStatus`/`checkedIn` raw. The second pair costs `sessions` **nothing new to
+  fetch**: `getSessionForEvent()` already computes both as locals right before deriving `relation`
+  (`mineRes.data?.status` and `Boolean(checkInRes.data)`, lines 645-646) — DEC-092's "the two reads it
+  buys" read at lines 611-622 already exist; this just also returns them.
+- The event page's call site (`src/app/[locale]/app/sessions/[id]/page.tsx:29,87`, currently `import {
+  canOfferCheckInLink} ...` / `canOfferCheckInLink(session, relation, session.allowWalkIns)`) switches
+  to `canOfferCheckInFor(session, {isPresenter: session.viewerIsPresenter, isStaff:
+  session.viewerIsStaff, rsvpStatus: session.rsvpStatus, checkedIn: session.checkedIn},
+  session.allowWalkIns, session.checkInOpen)`. **Once that lands, `checkin` deletes
+  `canOfferCheckInLink()` in its own commit** — condition (a)'s deal, not before.
+
+**3 · `checkin` → `content` — the reversal entry's shape for `me/points`.** Unchanged from §5 item 3,
+confirmed against the landed `remove_check_in()` (`0087_attendance_removal`): `points_ledger.source =
+'reversal'`, `reason` is the **fixed, already-Arabic literal** «أُلغي تسجيل الحضور» (not a translation
+key — render literally, in `<bdi>`, same pattern as `0032`'s «حُذف المحتوى»). The admin's own free-text
+reason is **not** on this row (`check_ins.removal_reason` and the audit log only) — `REQ-CHK-017` asks
+only that the reversal read "as an entry," and the lead already approved the fixed phrase. `content`
+needs no special-casing beyond treating `source: 'reversal'` like any other `points_ledger` row.

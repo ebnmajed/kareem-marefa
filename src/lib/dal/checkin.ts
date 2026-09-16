@@ -6,18 +6,17 @@ import { affordancesFor, checkInAllowed, checkInWindowAllowed } from "@/componen
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
 // Check-in and the host view (REQ-CHK-001…017, STORY-CHK-001..006, REQ-UIX-015,
-// DEC-090, DEC-141). RPCs live in supabase/proposed/checkin/. check_in()
-// returns a JSON envelope rather than raising for expected outcomes (rate
-// limit, wrong code, wrong window, overlap) — see 01_check_in_window.sql's
-// header for why: raising would roll back the check_in_attempts row DEC-015
-// requires to survive.
+// DEC-090, DEC-141). RPCs live in supabase/migrations/0084-0089 (promoted
+// 7b2ac81). check_in() returns a JSON envelope rather than raising for
+// expected outcomes (rate limit, wrong code, wrong window, overlap) — see
+// 0084's header for why: raising would roll back the check_in_attempts row
+// DEC-015 requires to survive.
 //
-// ★ Wave 7's SQL (the window, walk-ins-as-publishing, the reversal) is
-// written and RLS-proven but NOT YET PROMOTED — supabase/proposed/checkin/
-// 01-06. `check_in_open` and `check_ins.removed_at` do not exist in the live
-// schema yet. Nothing in this file selects them until the lead posts
-// "promoted at <sha>" (docs/plan/notes/checkin.md, wave-7 plan) — nothing here
-// today reads through PostgREST for a column that isn't there.
+// ★ REQ-CHK-017: `check_ins.removed_at is null` means "still counts as
+// checked in." RLS does not hide a removed row (it is a staff-readable
+// history row, not a secret), so every read below that decides "is this
+// member checked in" filters it explicitly — a bug found post-promotion,
+// not caught by the RLS suite because RLS was never the boundary here.
 
 export interface HostViewData {
   sessionId: string;
@@ -43,7 +42,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
 
   const [codeRes, countRes, settingsRes, sessionRes] = await Promise.all([
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
-    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
+    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId).is("removed_at", null),
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
     supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
   ]);
@@ -75,11 +74,9 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
 }
 
 // ★ `setWalkIns()` is gone — DEC-117: walk-ins move to a publishing setting
-// (`schedule_session()`'s new parameter, supabase/proposed/checkin/
-// 02_walk_ins_publishing.sql, not yet promoted) and the host view loses the
-// toggle entirely. `set_session_walk_ins()` itself is still live in the
-// schema until that file promotes and drops it; nothing here calls it
-// anymore either way.
+// (`schedule_session()`'s new `p_allow_walk_ins` parameter, 0085) and the
+// host view loses the toggle entirely. `set_session_walk_ins()` itself is
+// dropped as of 0085 too; nothing here calls it anymore either way.
 
 export async function revokeCode(locale: string, sessionId: string): Promise<void> {
   const { supabase } = await sessionClient(locale);
@@ -123,7 +120,7 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("rsvps").select("status").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -240,7 +237,7 @@ export async function listUncheckedConfirmedRsvps(locale: string, sessionId: str
   const { supabase } = await sessionClient(locale);
   const [rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).eq("status", "confirmed"),
-    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId).is("removed_at", null),
   ]);
   if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
@@ -326,7 +323,7 @@ export async function listUncheckedForAdminManualMark(locale: string, sessionId:
 
   const [rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).in("status", ["confirmed", "waitlisted"]),
-    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId).is("removed_at", null),
   ]);
   if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
@@ -360,7 +357,11 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     // an unqualified `members(...)` embed is ambiguous and PostgREST
     // refuses it outright, a real bug this had until an e2e run against a
     // real build actually exercised the query for the first time.
-    supabase.from("check_ins").select("member_id, arrived_at, method, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId),
+    // ★ Filtered to active rows for now — REQ-CHK-017's report redesign
+    // (showing a removed row too, with its reason) is C3's, not this fix's;
+    // this stopgap stops a removed member from still reading as "checked
+    // in" here, which is the actual bug this task is about.
+    supabase.from("check_ins").select("member_id, arrived_at, method, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
