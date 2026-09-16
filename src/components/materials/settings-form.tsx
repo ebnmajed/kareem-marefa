@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { saveMaterialSettings } from "@/components/materials/actions";
 import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SettingsFormProps {
   locale: string;
@@ -42,10 +44,15 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
   usePendingNudge(pending);
 
   return (
+    // ★ The lead's real-build finding, materials capture 296aec4 row 8: this
+    // row used to be a raw native `<select>` and a raw native checkbox — a
+    // blue browser-default box next to the system's own controls at 390 px.
+    // `ui/select`/`ui/checkbox` are `sessions`' files, imported here, not
+    // edited (per-file ownership, `16` §17 / DEC-085).
     <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-edge pt-3">
       <label className="flex items-center gap-2 text-body-sm text-fg-body">
         {tUpload("phaseLabel")}
-        <select
+        <Select
           value={localPhase}
           disabled={pending}
           onChange={(e) => {
@@ -70,34 +77,30 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
               }
             });
           }}
-          className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading"
         >
           <option value="before">{t("phase.before")}</option>
           <option value="after">{t("phase.after")}</option>
-        </select>
+        </Select>
       </label>
 
-      <label className="flex items-center gap-2 text-body-sm text-fg-body">
-        <input
-          type="checkbox"
-          checked={localAllow}
-          disabled={pending}
-          onChange={(e) => {
-            const next = e.target.checked;
-            const previous = localAllow;
-            setLocalAllow(next);
-            startTransition(async () => {
-              try {
-                await saveMaterialSettings(locale, materialId, { allowDownload: next });
-              } catch {
-                setLocalAllow(previous);
-                toast.show({ tone: "error", title: t("settingsFailed") });
-              }
-            });
-          }}
-        />
-        {t("allowDownloadLabel")}
-      </label>
+      <Checkbox
+        label={t("allowDownloadLabel")}
+        checked={localAllow}
+        disabled={pending}
+        onChange={(e) => {
+          const next = e.target.checked;
+          const previous = localAllow;
+          setLocalAllow(next);
+          startTransition(async () => {
+            try {
+              await saveMaterialSettings(locale, materialId, { allowDownload: next });
+            } catch {
+              setLocalAllow(previous);
+              toast.show({ tone: "error", title: t("settingsFailed") });
+            }
+          });
+        }}
+      />
     </div>
   );
 }
