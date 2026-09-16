@@ -153,10 +153,16 @@ describe("UploadForm", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses to submit with no title, naming what is missing", () => {
+  it("★ the submit button stays disabled with a file but no title — the lead's live-build finding: an enabled dark primary over nothing to submit reads as dead", () => {
     renderForm();
     pickFile(makeFile("deck.pdf", "application/pdf"));
-    fireEvent.click(screen.getByRole("button", { name: ar.materials.upload.submit }));
-    expect(screen.getByText(ar.materials.upload.titleRequired)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: ar.materials.upload.submit })).toBeDisabled();
+  });
+
+  it("enables the submit button once both a title and a file are ready", () => {
+    renderForm();
+    pickFile(makeFile("deck.pdf", "application/pdf"));
+    fireEvent.change(screen.getByLabelText(ar.materials.upload.titleLabel), { target: { value: "شرائح" } });
+    expect(screen.getByRole("button", { name: ar.materials.upload.submit })).toBeEnabled();
   });
 });

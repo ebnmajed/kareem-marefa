@@ -200,7 +200,13 @@ test("the Materials slot shows the substitution warning on the material, and lin
   await signIn(context, presenterEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
-  await expect(page.getByText(/استُبدل الخط/)).toBeVisible();
+  // ★ latent bug found by the lead's real-build run, not a wave-6 regression:
+  // the wording changed from "استُبدل الخط" ("the font was substituted") to
+  // "غير مضمَّن" ("not embedded") when DEC-058 reworded this for PDF-only
+  // uploads (`2f336a2`) — this assertion was never updated to match, so it
+  // has been silently unable to pass since. `materials.list.substitution
+  // Warning.body`'s own current text is the source of truth.
+  await expect(page.getByText(/غير مضمَّن/)).toBeVisible();
   await expect(page.getByText("Amiri")).toBeVisible();
   await review(page, "materials-event-page");
 

@@ -221,7 +221,19 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
         </Panel>
       ) : null}
 
-      <Button type="button" onClick={handleSubmit} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
+      {/* ★ the lead's live-build review of the sibling photos uploader: an
+          enabled dark primary under nothing to submit reads as dead — same
+          fix here, disabled until title + (a file or a link) is ready, not
+          just while busy. */}
+      <Button
+        type="button"
+        onClick={handleSubmit}
+        disabled={title.trim().length === 0 || (isFileKind && files.length === 0) || (isLinkKind && externalUrl.trim().length === 0)}
+        pending={busy}
+        pendingLabel={t("uploading")}
+        size="sm"
+        className="self-start"
+      >
         {t("submit")}
       </Button>
     </div>
