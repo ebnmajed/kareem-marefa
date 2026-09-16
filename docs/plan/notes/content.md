@@ -1265,3 +1265,34 @@ across the tree found none, tracked or untracked. Nothing to `rm`; noting it her
 silent about a request I did nothing for.
 
 Ready for sync.
+
+## §13 — the second blocker: aria-busy stuck after a slow post
+
+The lead's diag (aria-busy polled every 500ms against a served build, POST held ~1.5s then
+released): stuck `aria-busy="true"` and a disabled button for several seconds after the response
+arrived, clearing only when the member typed. Suspected mechanism, per the lead: `setTimeout(fn, 0)`
+(44485b8's own fix) is a macrotask, but a macrotask can still run before the browser paints the
+current frame, so `router.refresh()` — its own update, a real RSC refetch — could start before this
+transition's `pending=false` had actually been painted.
+
+**Fix (4582b17)**: replaced `setTimeout(fn, 0)` with `afterPaint(fn)` — two nested
+`requestAnimationFrame` calls, the standard "wait for the browser to have painted" idiom — across
+all five call sites sharing the pattern: `comment-composer.tsx`'s `submit()`, and
+`comment-item.tsx`'s `saveEdit`/`deleteMine`/`moderate`/`toggleLike`. Confirmed empirically that
+`vi.advanceTimersByTimeAsync` flushes queued `requestAnimationFrame` callbacks too, so the fix stays
+testable under fake timers.
+
+**On the jsdom test, honestly**: before writing the real test, I spent real effort trying to actually
+REPRODUCE the stuck state in jsdom, on the code as it stood before this fix — fake timers advancing
+1500ms, real wall-clock timers with no fake anything, an `act()`-wrapped settle, and a mock
+`router.refresh()` that itself calls React's `startTransition` around its own slow (2s) update, to
+simulate what Next's real router does internally. Every single configuration resolved `aria-busy`
+cleanly and promptly, even on the PRE-fix code. The mocked `postCommentAction` is a `vi.fn()`;
+whatever the real bug's mechanism is, it almost certainly lives inside Next's actual Server-Action-
+dispatch client runtime (`callServer` and friends), which never executes at all under a mock — so no
+jsdom test built on this mock can discriminate the bug from the fix. I wrote the test the lead asked
+for anyway (`comment-composer.test.tsx`, in 4582b17) as the regression guard it's meant to be — it
+documents the intent and would catch a component-level regression — but said plainly in its own
+comment that it passes on both sides of the fix and isn't proof the live symptom is gone.
+
+Ready for sync.
