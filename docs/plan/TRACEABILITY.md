@@ -120,7 +120,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-010` | — | — | `SCR-014` `SCR-016` `SCR-043` | — | `MSG-session_rescheduled` | `STORY-CHK-005` | M2 |
 | `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-012` | — | — | `SCR-014` `SCR-044` | — | — | `STORY-CHK-006` | M2 |
-| `REQ-CHK-013` | `ENT-check_ins` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-CHK-006` | M2 |
+| `REQ-CHK-013` | `ENT-check_ins` `ENT-session_days` | `POL-check_ins.removed_excluded_from_overlap` | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-CHK-006` | M2 |
 | `REQ-CHK-014` | — | — | `SCR-016` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +1 | — | — | `STORY-CHK-006` | M9 |
 | `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-006` | M9 |

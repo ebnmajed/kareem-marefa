@@ -31,11 +31,15 @@ function isPayload(p: unknown): p is EvaluateNoShowsPayload {
 export const evaluate_no_shows: Task = async (payload, helpers) => {
   if (!isPayload(payload)) throw new Error(`evaluate_no_shows: malformed payload ${JSON.stringify(payload)}`);
 
+  // A check-in an admin removed (REQ-CHK-017, 0087) is no attendance. remove_check_in()
+  // already awards this same key at removal; the filter keeps the two answers identical.
   const { rows } = await helpers.query<{ rsvp_id: string; member_id: string }>(
     `select r.id as rsvp_id, r.member_id
        from public.rsvps r
       where r.session_id = $1 and r.status = 'confirmed'
-        and not exists (select 1 from public.check_ins c where c.session_id = r.session_id and c.member_id = r.member_id)`,
+        and not exists (select 1 from public.check_ins c
+                         where c.session_id = r.session_id and c.member_id = r.member_id
+                           and c.removed_at is null)`,
     [payload.session_id],
   );
 
