@@ -445,23 +445,202 @@
       "title": "Audit log",
       "introAdmin": "Every admin and moderator action in your organisation. The log cannot be edited or deleted.",
       "introModerator": "Your own actions only. You cannot see other moderators' actions.",
+      "scoringNote": "Changes to the points settings are kept in the change history on the points screen, not here.",
+      "scoringNoteLink": "Points change history",
+      "filtersTitle": "Filter the log",
+      "openFilters": "Filter",
+      "openFiltersCount": "Filter (<bdi>{value}</bdi>)",
       "actorLabel": "Actor",
       "actionLabel": "Action",
       "subjectTypeLabel": "Subject type",
+      "periodLabel": "Period",
+      "periods": {
+        "all": "All time",
+        "7d": "Last seven days",
+        "30d": "Last thirty days",
+        "month": "This month",
+        "custom": "Custom range"
+      },
       "dateFromLabel": "From date",
       "dateToLabel": "To date",
+      "dateToHint": "The day itself is included.",
       "any": "Any",
       "apply": "Apply",
       "clearAll": "Clear filters",
-      "empty": "No entries match your search.",
-      "colDate": "Date",
-      "colActor": "Actor",
+      "rangeInverted": "The start date is after the end date, so the range was not applied.",
+      "activeFilters": "Active filters",
+      "chip": "<bdi>{name}</bdi>: <bdi>{value}</bdi>",
+      "removeFilter": "Remove filter: <bdi>{label}</bdi>",
+      "oneSubject": "One subject",
+      "listLabel": "Actions",
+      "pageCaption": "{count, plural, one {<bdi>{value}</bdi> action, newest first} other {<bdi>{value}</bdi> actions, newest first}}",
+      "pagerLabel": "Log pages",
+      "older": "Older actions",
+      "newest": "Back to the newest",
       "colAction": "Action",
+      "colDate": "When",
+      "colActor": "Actor",
       "colSubject": "Subject",
       "colReason": "Reason",
       "systemActor": "System",
+      "unknownActor": "Unknown member",
       "noSubject": "—",
-      "noReason": "—"
+      "noReason": "—",
+      "followSubject": "Everything that happened to this subject",
+      "roles": {
+        "admin": "Org admin",
+        "moderator": "Moderator",
+        "member": "Member",
+        "platform_admin": "Platform support",
+        "system": "System"
+      },
+      "emptyFilteredTitle": "No actions match these filters",
+      "emptyFilteredDescription": "Try a longer period, or remove a filter.",
+      "emptyTitle": "No actions recorded yet",
+      "emptyDescription": "Every admin action is recorded here as it happens.",
+      "emptyModeratorTitle": "No actions of yours yet",
+      "emptyModeratorDescription": "Every removal or restore you make in the moderation queues appears here.",
+      "toDashboard": "To the dashboard",
+      "toModeration": "To the moderation queues",
+      "actions": {
+        "badge": {
+          "manual_award": "Badge awarded by hand"
+        },
+        "branding": {
+          "kit_reset": "Brand kit reset to default",
+          "kit_saved": "Brand kit saved"
+        },
+        "certificate": {
+          "issued": "Certificate issued",
+          "released": "Certificate released",
+          "revoked": "Certificate revoked"
+        },
+        "check_in": {
+          "manual": "Attendance marked by hand",
+          "removed": "Attendance removed"
+        },
+        "check_in_code": {
+          "revoked": "Check-in code revoked"
+        },
+        "comment": {
+          "removed": "Comment removed",
+          "restored": "Comment restored"
+        },
+        "design": {
+          "export_requested": "Design export requested",
+          "export_retried": "Design export retried",
+          "font_requested": "Font requested",
+          "poster_detached": "Poster detached from its template"
+        },
+        "domain": {
+          "added": "Domain added",
+          "changed": "Domain changed",
+          "removed": "Domain removed"
+        },
+        "export": {
+          "created": "Data exported"
+        },
+        "impersonation": {
+          "started": "Break-glass access started",
+          "ended": "Break-glass access ended",
+          "expired": "Break-glass access expired"
+        },
+        "material": {
+          "downloaded": "Material downloaded",
+          "phase_changed": "Material availability changed",
+          "removed": "Material removed"
+        },
+        "member": {
+          "anonymised": "Member anonymised",
+          "deactivated": "Membership deactivated",
+          "deactivation_requested": "Deactivation requested",
+          "provisioned": "Member joined",
+          "reactivated": "Membership reactivated",
+          "role_changed": "Member's role changed"
+        },
+        "org": {
+          "created": "Organisation created",
+          "deleted": "Organisation deleted",
+          "deletion_requested": "Organisation deletion requested",
+          "first_admin_set": "First admin set",
+          "reinstated": "Organisation reinstated",
+          "suspended": "Organisation suspended"
+        },
+        "photo": {
+          "removed": "Photo removed",
+          "restored": "Photo restored"
+        },
+        "points": {
+          "balance_divergence": "Points balance divergence",
+          "manual_adjustment": "Points adjusted by hand"
+        },
+        "privacy": {
+          "export_ready": "Personal data export ready",
+          "export_requested": "Personal data export requested"
+        },
+        "ratings": {
+          "read_admin": "Individual ratings viewed"
+        },
+        "session": {
+          "check_in_open_changed": "Check-in opened or closed",
+          "created_direct": "Session created directly",
+          "created_from_proposal": "Session created from a proposal",
+          "published": "Session published",
+          "scheduled": "Session scheduled",
+          "walk_ins_changed": "Walk-ins changed"
+        },
+        "storage": {
+          "prefix_violation": "Storage path violation"
+        },
+        "template": {
+          "default_set": "Default template set",
+          "promoted": "Template added to the platform library",
+          "retired": "Template retired",
+          "unretired": "Template restored"
+        }
+      },
+      "domains": {
+        "badge": "Badges",
+        "branding": "Branding",
+        "certificate": "Certificates",
+        "check_in": "Attendance",
+        "comment": "Comments",
+        "design": "Designs",
+        "domain": "Domains",
+        "export": "Exports",
+        "impersonation": "Break-glass access",
+        "material": "Materials",
+        "member": "Members",
+        "org": "Organisation",
+        "photo": "Photos",
+        "points": "Points",
+        "privacy": "Privacy",
+        "ratings": "Ratings",
+        "session": "Sessions",
+        "storage": "Storage",
+        "template": "Templates",
+        "other": "Other"
+      },
+      "subjects": {
+        "brand_kit": "Brand kit",
+        "certificate": "Certificate",
+        "check_in": "Attendance record",
+        "check_in_code": "Check-in code",
+        "comment": "Comment",
+        "design_document": "Design",
+        "export_artifact": "Exported file",
+        "font": "Font",
+        "impersonation_session": "Break-glass session",
+        "material": "Material",
+        "member": "Member",
+        "member_badges": "Member's badge",
+        "org": "Organisation",
+        "org_domain": "Domain",
+        "photo": "Photo",
+        "points_ledger": "Points entry",
+        "session": "Session",
+        "template": "Template"
+      }
     },
     "settings": {
       "title": "Organisation settings",

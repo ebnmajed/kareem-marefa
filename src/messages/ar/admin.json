@@ -445,23 +445,202 @@
       "title": "سجل التدقيق",
       "introAdmin": "كل إجراء إداري وإشرافي في مؤسستك. السجل لا يُعدَّل ولا يُحذف.",
       "introModerator": "إجراءاتك أنت وحدها. لا يمكنك رؤية إجراءات غيرك من المشرفين.",
+      "scoringNote": "تعديلات إعدادات النقاط تُحفظ في سجل التعديلات على شاشة النقاط، لا هنا.",
+      "scoringNoteLink": "سجل تعديلات النقاط",
+      "filtersTitle": "تصفية السجل",
+      "openFilters": "تصفية",
+      "openFiltersCount": "تصفية (<bdi>{value}</bdi>)",
       "actorLabel": "الفاعل",
       "actionLabel": "الإجراء",
       "subjectTypeLabel": "نوع العنصر",
+      "periodLabel": "المدة",
+      "periods": {
+        "all": "كل الأوقات",
+        "7d": "آخر سبعة أيام",
+        "30d": "آخر ثلاثين يومًا",
+        "month": "هذا الشهر",
+        "custom": "مدة مخصّصة"
+      },
       "dateFromLabel": "من تاريخ",
       "dateToLabel": "إلى تاريخ",
+      "dateToHint": "اليوم نفسه داخل المدة.",
       "any": "الكل",
       "apply": "طبّق",
       "clearAll": "امسح الفلاتر",
-      "empty": "لا سجلات تطابق بحثك.",
-      "colDate": "التاريخ",
-      "colActor": "الفاعل",
+      "rangeInverted": "تاريخ البداية بعد تاريخ النهاية، فلم تُطبَّق المدة.",
+      "activeFilters": "الفلاتر المطبّقة",
+      "chip": "<bdi>{name}</bdi>: <bdi>{value}</bdi>",
+      "removeFilter": "أزل الفلتر: <bdi>{label}</bdi>",
+      "oneSubject": "عنصر واحد",
+      "listLabel": "سجل الإجراءات",
+      "pageCaption": "{count, plural, zero {لا إجراءات في هذه الصفحة} one {إجراء واحد، الأحدث أولًا} two {إجراءان، الأحدث أولًا} few {<bdi>{value}</bdi> إجراءات، الأحدث أولًا} many {<bdi>{value}</bdi> إجراءً، الأحدث أولًا} other {<bdi>{value}</bdi> إجراء، الأحدث أولًا}}",
+      "pagerLabel": "صفحات السجل",
+      "older": "إجراءات أقدم",
+      "newest": "عُد إلى الأحدث",
       "colAction": "الإجراء",
+      "colDate": "الوقت",
+      "colActor": "الفاعل",
       "colSubject": "العنصر",
       "colReason": "السبب",
       "systemActor": "النظام",
+      "unknownActor": "عضو غير معروف",
       "noSubject": "—",
-      "noReason": "—"
+      "noReason": "—",
+      "followSubject": "كل ما جرى على هذا العنصر",
+      "roles": {
+        "admin": "مشرف المؤسسة",
+        "moderator": "مُنظِّم",
+        "member": "عضو",
+        "platform_admin": "دعم المنصة",
+        "system": "النظام"
+      },
+      "emptyFilteredTitle": "لا إجراءات تطابق هذه الفلاتر",
+      "emptyFilteredDescription": "جرّب مدة أطول، أو أزل أحد الفلاتر.",
+      "emptyTitle": "لا إجراءات مسجّلة بعد",
+      "emptyDescription": "كل إجراء إداري يُسجَّل هنا لحظة حدوثه.",
+      "emptyModeratorTitle": "لم تُسجَّل لك إجراءات بعد",
+      "emptyModeratorDescription": "كل إزالة أو استعادة تُجريها في قوائم الإشراف تظهر هنا.",
+      "toDashboard": "إلى لوحة التحكم",
+      "toModeration": "إلى قوائم الإشراف",
+      "actions": {
+        "badge": {
+          "manual_award": "منح شارة يدويًا"
+        },
+        "branding": {
+          "kit_reset": "إعادة الهوية البصرية إلى الافتراضية",
+          "kit_saved": "حفظ الهوية البصرية"
+        },
+        "certificate": {
+          "issued": "إصدار شهادة",
+          "released": "إطلاق شهادة",
+          "revoked": "إلغاء شهادة"
+        },
+        "check_in": {
+          "manual": "تسجيل حضور يدوي",
+          "removed": "إزالة تسجيل حضور"
+        },
+        "check_in_code": {
+          "revoked": "إلغاء رمز الحضور"
+        },
+        "comment": {
+          "removed": "إزالة تعليق",
+          "restored": "استعادة تعليق"
+        },
+        "design": {
+          "export_requested": "طلب تصدير تصميم",
+          "export_retried": "إعادة محاولة تصدير تصميم",
+          "font_requested": "طلب خط",
+          "poster_detached": "فصل ملصق عن قالبه"
+        },
+        "domain": {
+          "added": "إضافة نطاق",
+          "changed": "تعديل نطاق",
+          "removed": "إزالة نطاق"
+        },
+        "export": {
+          "created": "تصدير بيانات"
+        },
+        "impersonation": {
+          "started": "بدء دخول استثنائي",
+          "ended": "إنهاء دخول استثنائي",
+          "expired": "انتهاء مهلة دخول استثنائي"
+        },
+        "material": {
+          "downloaded": "تنزيل مادة",
+          "phase_changed": "تغيير إتاحة مادة",
+          "removed": "إزالة مادة"
+        },
+        "member": {
+          "anonymised": "إخفاء هوية عضو",
+          "deactivated": "تعطيل عضوية",
+          "deactivation_requested": "طلب تعطيل عضوية",
+          "provisioned": "انضمام عضو",
+          "reactivated": "إعادة تفعيل عضوية",
+          "role_changed": "تغيير دور عضو"
+        },
+        "org": {
+          "created": "إنشاء المؤسسة",
+          "deleted": "حذف المؤسسة",
+          "deletion_requested": "طلب حذف المؤسسة",
+          "first_admin_set": "تعيين أول مشرف للمؤسسة",
+          "reinstated": "إعادة تفعيل المؤسسة",
+          "suspended": "تعليق المؤسسة"
+        },
+        "photo": {
+          "removed": "إزالة صورة",
+          "restored": "استعادة صورة"
+        },
+        "points": {
+          "balance_divergence": "اختلاف في رصيد النقاط",
+          "manual_adjustment": "تعديل نقاط يدوي"
+        },
+        "privacy": {
+          "export_ready": "جاهزية نسخة البيانات الشخصية",
+          "export_requested": "طلب نسخة البيانات الشخصية"
+        },
+        "ratings": {
+          "read_admin": "اطّلاع على التقييمات الفردية"
+        },
+        "session": {
+          "check_in_open_changed": "فتح تسجيل الحضور أو إغلاقه",
+          "created_direct": "إنشاء جلسة مباشرة",
+          "created_from_proposal": "إنشاء جلسة من مقترح",
+          "published": "نشر جلسة",
+          "scheduled": "جدولة جلسة",
+          "walk_ins_changed": "تغيير الحضور دون حجز"
+        },
+        "storage": {
+          "prefix_violation": "مخالفة في مسارات التخزين"
+        },
+        "template": {
+          "default_set": "تعيين قالب افتراضي",
+          "promoted": "إضافة قالب إلى مكتبة المنصة",
+          "retired": "إيقاف قالب",
+          "unretired": "إعادة تفعيل قالب"
+        }
+      },
+      "domains": {
+        "badge": "الشارات",
+        "branding": "الهوية البصرية",
+        "certificate": "الشهادات",
+        "check_in": "الحضور",
+        "comment": "التعليقات",
+        "design": "التصاميم",
+        "domain": "النطاقات",
+        "export": "التصدير",
+        "impersonation": "الدخول الاستثنائي",
+        "material": "المواد",
+        "member": "الأعضاء",
+        "org": "المؤسسة",
+        "photo": "الصور",
+        "points": "النقاط",
+        "privacy": "الخصوصية",
+        "ratings": "التقييمات",
+        "session": "الجلسات",
+        "storage": "التخزين",
+        "template": "القوالب",
+        "other": "أخرى"
+      },
+      "subjects": {
+        "brand_kit": "الهوية البصرية",
+        "certificate": "شهادة",
+        "check_in": "تسجيل حضور",
+        "check_in_code": "رمز حضور",
+        "comment": "تعليق",
+        "design_document": "تصميم",
+        "export_artifact": "ملف مُصدَّر",
+        "font": "خط",
+        "impersonation_session": "دخول استثنائي",
+        "material": "مادة",
+        "member": "عضو",
+        "member_badges": "شارة عضو",
+        "org": "المؤسسة",
+        "org_domain": "نطاق",
+        "photo": "صورة",
+        "points_ledger": "قيد نقاط",
+        "session": "جلسة",
+        "template": "قالب"
+      }
     },
     "settings": {
       "title": "إعدادات المؤسسة",
