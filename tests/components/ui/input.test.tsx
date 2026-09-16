@@ -69,6 +69,34 @@ describe("Input", () => {
     expect(input.className).toContain("rounded-field");
   });
 
+  it("★ draws a start icon INSIDE the field and owns the padding that clears it (DEC-111)", async () => {
+    const { container } = render(<Input aria-label="ابحث عن جلسة" type="search" startIcon={<svg data-testid="glyph" />} />);
+    const input = screen.getByRole("searchbox", { name: "ابحث عن جلسة" });
+    // One property, one utility: a start-padded control never also carries the
+    // axis utility that would fight it on emit order.
+    expect(input.className).toContain("ps-11");
+    expect(input.className).toContain("pe-4");
+    expect(input.className).not.toMatch(/\bpx-\d/);
+    // Decorative, and out of the pointer's way.
+    const slot = container.querySelector('[data-slot="start-icon"]')!;
+    expect(slot).toHaveAttribute("aria-hidden", "true");
+    expect(slot.className).toContain("pointer-events-none");
+    expect(slot.className).toContain("start-0");
+    expect(slot).toContainElement(screen.getByTestId("glyph"));
+    // A tap on the glyph still types into the field.
+    await userEvent.type(input, "تقارير");
+    expect(input).toHaveValue("تقارير");
+    await expectAccessible(container);
+  });
+
+  it("keeps the plain axis padding when there is no icon", () => {
+    render(<Input aria-label="العنوان" />);
+    const input = screen.getByRole("textbox");
+    expect(input.className).toContain("px-4");
+    expect(input.className).not.toMatch(/\bps-/);
+    expect(input.parentElement?.querySelector('[data-slot="start-icon"]')).toBeNull();
+  });
+
   it("does not fire when disabled", async () => {
     render(<Input aria-label="العنوان" disabled />);
     const input = screen.getByRole("textbox");
