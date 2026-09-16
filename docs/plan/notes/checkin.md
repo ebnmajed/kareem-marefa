@@ -877,3 +877,38 @@ two comments (`sessions-event-check-in.test.ts`'s header, and one now-historical
 
 Next, per the lead's ordering: the switch TOGGLE UI on the host view (calling `set_check_in_open()`),
 and C3 — `/app/admin/sessions/[id]/attendance` with the removal control (`REQ-CHK-017`).
+
+## The walk-in checkbox hazard — closed twice, cleaned up once
+
+`sessions` found it, closed at `3c140bf` with an interim `allowWalkInsKnown` marker; the lead's
+`343991d` landed `page.tsx`'s own `allowWalkIns: session.allowWalkIns` read-back before that marker
+was even needed for long, so `9acc4bf` removed it — `initial.allowWalkIns` is required now, the
+`?? false` fallback is gone, `saveSchedule()` is back to a bare `formData.has("allowWalkIns")`. A new
+`tests/components/checkin/schedule-form.test.tsx` renders the real form against `ar/admin.json` +
+`ar/checkin.json` and asserts the checkbox's checked state actually reflects `initial.allowWalkIns`
+both ways — the half of this fix a DAL-only test can't reach.
+
+## The check-in switch UI — `b03f057`, and the admin-attendance e2e fix — `b5a84fc`
+
+`set_check_in_open()` (0084) had role/ceiling/audit fully proven at the RLS layer since promotion;
+nothing on any screen called it. Built: `HostViewData.checkInOpen`, `setCheckInOpen()` (DAL),
+`setCheckInOpenAction()` (host/actions.ts, same bound-button shape as `revokeCodeAction` — no client
+state, the RPC re-derives authority itself), and a section on host/page.tsx gated on
+`view.consoleActive` (not `staffConsoleActive` — the RPC authorizes the session's own presenter too,
+same broader set REQ-CHK-014 already scopes the console to). `checkin.json` gains
+`host.checkInSwitch.*`, ar first.
+
+Along the way, running `tests/e2e/admin-attendance.spec.ts` against real local Supabase for the first
+time since console's wave-7 `DataTable` rebuild of `/app/admin/sessions` (`e0f0f2c`) surfaced two
+latent breaks, both fixed test-file-only: `DataTable`'s dual table/card DOM strict-mode-fails a bare
+`getByText` (the `admin-sessions.spec.ts` scoping idiom fixes it), and a click on a link named
+"تقرير الحضور" timed out — that string is only the empty-state's fallback action; the row's own title
+is the link's real accessible name now. Neither is `checkin`'s to fix in production code; both are
+`checkin`'s spec to keep correct once assigned it this wave.
+
+Next: C3 itself — `/app/admin/sessions/[id]/attendance` with the admin-only removal control
+(`REQ-CHK-017`), on top of the already-promoted `remove_check_in()` (0087). Reversal design is
+already recorded above (the four RLS-proven targets plus the fifth, the presenter's own
+`attendee_bonus`); what's left is the UI: the control itself, its confirmation, and the report's own
+redesign to show a removed row with its reason (flagged as C3's own scope back when the `removed_at`
+stopgap first landed, `dal/checkin.ts`'s `getAttendanceReport()` comment).
