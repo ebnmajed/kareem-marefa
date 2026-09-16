@@ -133,6 +133,11 @@
         "tabsLabel": "Email sections",
         "tabTemplates": "Templates",
         "tabLog": "Delivery log",
+        "names": {
+          "MSG-reminder_7d": "Reminder a week before",
+          "MSG-reminder_1d": "Reminder a day before",
+          "MSG-reminder_2h": "Reminder two hours before"
+        },
         "failures": "{count, plural, =0 {No message failed in the last seven days.} one {<bdi>{value}</bdi> message failed in the last seven days.} other {<bdi>{value}</bdi> messages failed in the last seven days.}}",
         "failuresLink": "Show failures",
         "catalogue": {

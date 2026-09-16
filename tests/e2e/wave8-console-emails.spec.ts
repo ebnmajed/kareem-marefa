@@ -92,7 +92,11 @@ async function signIn(context: BrowserContext, email: string) {
   const { error: rpcError } = await client.rpc("provision_member");
   if (rpcError) throw rpcError;
   jar.length = 0;
-  await client.auth.refreshSession();
+  // A refresh that fails leaves the jar empty and the page signed out — said
+  // here, not as a label that never appears 30 s later.
+  const { error: refreshError } = await client.auth.refreshSession();
+  if (refreshError) throw refreshError;
+  expect(jar.length, "the refreshed session wrote no cookies").toBeGreaterThan(0);
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
@@ -125,6 +129,11 @@ test("REQ-NTF-007 at 390 px: the trigger's refusal lands at the body, naming the
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  // The editor is open before anything is typed: a failure here names the
+  // page that rendered instead (the phone run at 5a8f5bc timed out on the
+  // label with nothing to say why).
+  await expect(page.getByRole("heading", { name: "البريد", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeVisible();
   await page.getByLabel("الموضوع", { exact: false }).fill("جلستك غدًا");
   await page.getByLabel("النص", { exact: false }).first().fill("مرحبًا، نذكّرك بجلسة الغد.");
   await page.getByLabel("الحقول المطلوبة", { exact: true }).fill("title");
@@ -143,6 +152,11 @@ test("REQ-NTF-007: a template saved, then its default restored after a confirmat
   test.skip(testInfo.project.name !== "desktop", "one project writes this org's templates");
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  // The editor is open before anything is typed: a failure here names the
+  // page that rendered instead (the phone run at 5a8f5bc timed out on the
+  // label with nothing to say why).
+  await expect(page.getByRole("heading", { name: "البريد", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeVisible();
   await page.getByLabel("الموضوع", { exact: false }).fill("جلستك غدًا");
   await page.getByLabel("النص", { exact: false }).first().fill("مرحبًا، نذكّرك بجلسة {{title}} غدًا.");
   await page.getByLabel("الحقول المطلوبة", { exact: true }).fill("title");

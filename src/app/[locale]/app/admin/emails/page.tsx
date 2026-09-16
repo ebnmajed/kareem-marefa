@@ -56,7 +56,11 @@ export default async function EmailsPage({
   if (!catalogue || failures === null) notFound();
 
   const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
-  const messageName = (key: string) => (tn.has(`message.${key}`) ? tn(`message.${key}`) : key);
+  // A member's inbox names a reminder by when the session is — «غدًا». In a
+  // catalogue of every message an admin needs what the message is, so `names`
+  // holds the three timed reminders; every other message keeps the name its
+  // member sees.
+  const messageName = (key: string) => (t.has(`names.${key}`) ? t(`names.${key}`) : tn.has(`message.${key}`) ? tn(`message.${key}`) : key);
   const selectedKey = view === "templates" && sp.key && catalogue.emailMessages.includes(sp.key) ? sp.key : null;
 
   return (
