@@ -185,14 +185,20 @@ async function signIn(context: BrowserContext, email: string) {
 
 const onPhone = () => test.info().project.name === "phone";
 const schedule = (id: string) => `/ar/app/admin/sessions/${id}/schedule`;
+/** ★ DEC-145 / DEC-149 §4: page content under `/app` is found inside `#main`
+ *  — a hidden streamed copy can sit outside it. Dialogs and toasts stay
+ *  page-wide. */
+const main = (page: Page) => page.locator("#main");
 /** The slot, inside the schedule page's own «الملصق» section. */
-const picker = (page: Page) => page.locator('section[aria-labelledby="poster"]');
+const picker = (page: Page) => main(page).locator('section[aria-labelledby="poster"]');
 /** One of the three cards, by its title. */
 const card = (page: Page, title: string) => picker(page).locator("article", { has: page.getByRole("heading", { name: title, level: 3, exact: true }) });
 
 async function capture(p: Page, name: string, { fullPage = false } = {}) {
   expect(p.viewportSize()).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
+  // DEC-149 §4: a smooth scroll under a capture shows the page's top.
+  await p.emulateMedia({ reducedMotion: "reduce" });
   await p.waitForTimeout(500);
   await p.screenshot({ path: `${SHOTS}/wave8-designer-posters-${name}.png`, fullPage });
   const sideways = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -223,7 +229,7 @@ test("★ REQ-DSG-003: «خصّص» detaches only through a confirm that names t
   await card(page, "تخصيص").getByRole("button", { name: "خصّص" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "افصل وافتح المصمّم" }).click();
   await page.waitForURL(`**/app/admin/designer/${s.documentId}`);
-  await expect(page.getByText("هذا الملصق مرتبط بالقالب")).toHaveCount(0);
+  await expect(main(page).getByText("هذا الملصق مرتبط بالقالب")).toHaveCount(0);
 
   const { rows } = await db.query<{ mode: string; binding: string; audited: string }>(
     `select p.mode, p.binding,
@@ -248,7 +254,7 @@ test("★ a live poster's studio is read-only with the confirm as the way forwar
   await signIn(context, emails.admin);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/designer/${s.documentId}`);
-  await expect(page.getByText("هذا الملصق مرتبط بالقالب")).toBeVisible();
+  await expect(main(page).getByText("هذا الملصق مرتبط بالقالب")).toBeVisible();
 
   const { rows: doc } = await db.query<{ updated_at: Date; document: unknown }>(`select updated_at, document from public.design_documents where id = $1`, [
     s.documentId,
@@ -355,12 +361,18 @@ test("390 px: the picker live, the detach confirm, the stale prompt, the upload 
   await capture(page, "upload-rejected");
 
   await page.goto(schedule(sessions.stale.id));
-  await expect(picker(page)).toBeVisible();
-  await picker(page).scrollIntoViewIfNeeded();
-  await expect(picker(page).getByText("تغيّرت تفاصيل الجلسة — راجع الملصق.")).toBeVisible();
+  const stale = picker(page).getByText("تغيّرت تفاصيل الجلسة — راجع الملصق.");
+  await expect(stale).toBeVisible();
+  // The prompt's TOP in view, below the sticky header — `scrollIntoView`
+  // alone parked its first line under the header (the lead's capture review).
+  await stale.evaluate((el) => {
+    const box = (el.closest("[class*='rounded-card']") ?? el).getBoundingClientRect();
+    const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    window.scrollTo({ top: window.scrollY + box.top - header - 16, behavior: "instant" });
+  });
   await capture(page, "picker-stale");
 
   await page.goto(`/ar/app/admin/designer/${sessions.gate.documentId}`);
-  await expect(page.getByText("هذا الملصق مرتبط بالقالب")).toBeVisible();
+  await expect(main(page).getByText("هذا الملصق مرتبط بالقالب")).toBeVisible();
   await capture(page, "studio-live-gate");
 });

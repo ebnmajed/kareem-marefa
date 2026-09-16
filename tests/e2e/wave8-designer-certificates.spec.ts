@@ -193,32 +193,62 @@ const screen = (id: string) => `/ar/app/admin/sessions/${id}/certificates`;
 async function capture(p: Page, name: string, { fullPage = true } = {}) {
   expect(p.viewportSize()).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
+  // DEC-149 §4: no smooth scroll under a capture.
+  await p.emulateMedia({ reducedMotion: "reduce" });
+  // ★ Every preview on show is scrolled into view and must report rendered —
+  // its frame loaded, its faces ready — so a blank render cannot pass for one
+  // that never mounted (DEC-149 §4).
+  const previews = main(p).locator("[data-template-preview]");
+  const count = await previews.count();
   if (fullPage) {
-    // The previews draw once near the viewport; scroll through first.
-    await p.evaluate(async () => {
-      for (let y = 0; y < document.body.scrollHeight; y += 600) {
-        window.scrollTo(0, y);
-        await new Promise((r) => setTimeout(r, 120));
-      }
-      window.scrollTo(0, 0);
-    });
+    for (let i = 0; i < count; i++) await previews.nth(i).scrollIntoViewIfNeeded();
   }
-  await p.waitForTimeout(800);
-  await p.screenshot({ path: `${SHOTS}/wave8-designer-certificates-${name}.png`, fullPage });
+  for (let i = 0; i < count; i++) {
+    // A viewport capture waits only for the previews it will show.
+    if (
+      !fullPage &&
+      !(await previews.nth(i).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight;
+      }))
+    )
+      continue;
+    await expect(previews.nth(i), `${name}: preview ${i + 1} of ${count} never rendered`).toHaveAttribute("data-rendered", "true");
+  }
+  if (fullPage) await p.evaluate(() => window.scrollTo(0, 0));
+  await p.waitForTimeout(300);
+  if (fullPage) {
+    // ★ The whole page as the VIEWPORT, then the phone viewport back: a
+    // `fullPage` screenshot paints beyond the viewport, where Chromium
+    // throttles iframe rendering, and a preview that had loaded came out as an
+    // empty box below the first screen.
+    const height = await p.evaluate(() => document.documentElement.scrollHeight);
+    await p.setViewportSize({ width: PHONE.width, height });
+    await p.waitForTimeout(500);
+    await p.screenshot({ path: `${SHOTS}/wave8-designer-certificates-${name}.png` });
+    await p.setViewportSize(PHONE);
+  } else {
+    await p.screenshot({ path: `${SHOTS}/wave8-designer-certificates-${name}.png` });
+  }
   const sideways = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(sideways, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(1);
 }
 
+/** ★ DEC-145 / DEC-149 §4: under `/app` a page can stream a second, hidden
+ *  copy of itself outside `#main`, so page content is found inside it.
+ *  Dialogs and toasts are portalled out and stay page-wide. */
+const main = (page: Page) => page.locator("#main");
+
 /** One kind's design panel — by its own labelled section, not «a section
  *  containing the heading», which the design section around both also is. */
-const designPanel = (page: Page, kind: "attendance" | "presenter") => page.locator(`section[aria-labelledby="design-${kind}"]`);
+const designPanel = (page: Page, kind: "attendance" | "presenter") => main(page).locator(`section[aria-labelledby="design-${kind}"]`);
 
 /* ── access ─────────────────────────────────────────────────────────────── */
 
 test("a member reaches nothing here — the gated not-found (DEC-134)", async ({ context, page }) => {
   await signIn(context, emails.sara);
   await page.goto(screen(sessions.review));
-  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
 });
 
@@ -229,8 +259,8 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   await signIn(context, emails.admin);
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.future));
-  await expect(page.getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
-  await expect(page.getByText("الوضع مراجعة", { exact: false })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(main(page).getByText("الوضع مراجعة", { exact: false })).toBeVisible();
 
   const panel = designPanel(page, "attendance");
   await expect(panel.getByText("لم يُحفظ", { exact: true })).toBeVisible();
@@ -247,6 +277,11 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   );
   expect(rows).toEqual([{ name: "شهادة حضور عمودية", scheme: "dark" }]);
 
+  // ★ A name belongs to a kind: the attendance preview, with nobody checked
+  // in, shows the template's own placeholder — never the one presenter's name.
+  await expect(designPanel(page, "attendance").locator("[data-template-preview]")).toHaveAttribute("data-rendered", "true");
+  await expect(designPanel(page, "attendance").frameLocator("iframe").getByText(KHALID)).toHaveCount(0);
+
   // The preflight runs, against the longest name the list has.
   await expect(designPanel(page, "presenter").getByRole("heading", { name: "فحص قبل الإصدار", level: 4 })).toBeVisible();
   await expect(designPanel(page, "presenter").getByText(KHALID)).toBeVisible();
@@ -255,8 +290,8 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   const { rows: last } = await db.query<{ serial: string }>(`select serial from public.certificates where org_id = $1 order by serial desc limit 1`, [orgId]);
   const [prefix, year, n] = last[0]!.serial.split("-");
   const expected = `${prefix}-${year}-${String(Number(n) + 1).padStart(6, "0")}`;
-  await expect(page.getByText(expected)).toBeVisible();
-  await expect(page.getByText("تقدير لا حجز", { exact: false })).toBeVisible();
+  await expect(main(page).getByText(expected)).toBeVisible();
+  await expect(main(page).getByText("تقدير لا حجز", { exact: false })).toBeVisible();
 });
 
 test("★ held certificates take the saved design, release confirms by count and session, and the design locks", async ({ context, page }) => {
@@ -265,7 +300,17 @@ test("★ held certificates take the saved design, release confirms by count and
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.review));
 
+  // ★ Completed with certificates held: the job is issuance, so «الإصدار»
+  // comes before «التصميم», and each kind's design is one line saying what
+  // its certificates were prepared with.
+  const issueTop = (await main(page).getByRole("heading", { name: "الإصدار", level: 2 }).boundingBox())!.y;
+  const designTop = (await main(page).getByRole("heading", { name: "التصميم", level: 2 }).boundingBox())!.y;
+  expect(issueTop).toBeLessThan(designTop);
   const panel = designPanel(page, "attendance");
+  await expect(panel).toContainText("جُهّزت شهادات هذا النوع بقالب");
+  await expect(panel).toContainText("شهادة حضور أفقية");
+  await expect(panel.getByRole("radio")).toHaveCount(0);
+  await panel.getByRole("button", { name: "غيّر التصميم" }).click();
   await panel.getByRole("radio", { name: "داكنة" }).check();
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
   await expect(page.getByText("حُفظ التصميم.", { exact: true })).toBeVisible();
@@ -285,9 +330,13 @@ test("★ held certificates take the saved design, release confirms by count and
   expect(after.map((r) => r.scheme)).toEqual(["dark", "dark", "dark"]);
   expect(after.map((r) => r.serial)).toEqual(before.map((r) => r.serial));
 
-  await page.getByRole("checkbox", { name: `تحديد الصف ${SARA}` }).check();
-  await page.getByRole("checkbox", { name: `تحديد الصف ${KHALID}` }).check();
-  await page.getByRole("button", { name: "أطلِق المحدَّدة" }).click();
+  await main(page)
+    .getByRole("checkbox", { name: `تحديد الصف ${SARA}` })
+    .check();
+  await main(page)
+    .getByRole("checkbox", { name: `تحديد الصف ${KHALID}` })
+    .check();
+  await main(page).getByRole("button", { name: "أطلِق المحدَّدة" }).click();
   const release = page.getByRole("dialog");
   await expect(release).toContainText("إطلاق شهادتين؟");
   await expect(release).toContainText(REVIEW_TITLE);
@@ -300,7 +349,9 @@ test("★ held certificates take the saved design, release confirms by count and
   const stateOf = (id: string) => states.find((s) => s.member_id === id)?.state;
   expect([stateOf(members.sara), stateOf(members.khalid), stateOf(members.long)]).toEqual(["issued", "issued", "held"]);
 
-  // A certificate of this kind reached a member: the design is fixed.
+  // A certificate of this kind reached a member: the design is fixed, and the
+  // line says what they were issued with.
+  await expect(panel).toContainText("صدرت شهادات هذا النوع بقالب");
   await expect(panel.getByText("ثابت", { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
 });
@@ -314,7 +365,7 @@ test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.review));
 
-  const issued = page.getByRole("table", { name: "الشهادات الصادرة" });
+  const issued = main(page).getByRole("table", { name: "الشهادات الصادرة" });
   await issued
     .getByRole("row", { name: new RegExp(KHALID) })
     .getByRole("button", { name: "ألغِ" })
@@ -332,8 +383,16 @@ test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a
   await expect(page.getByText("أُلغيت الشهادة.", { exact: true })).toBeVisible();
   await expect(dialog).toBeHidden();
 
-  await expect(page.getByRole("table", { name: "الشهادات الملغاة" }).getByRole("row", { name: new RegExp(KHALID) })).toContainText(reason);
-  await expect(page.getByRole("table", { name: "المستحقّون" }).getByRole("row", { name: new RegExp(KHALID) })).toContainText("شهادته ملغاة");
+  await expect(
+    main(page)
+      .getByRole("table", { name: "الشهادات الملغاة" })
+      .getByRole("row", { name: new RegExp(KHALID) }),
+  ).toContainText(reason);
+  await expect(
+    main(page)
+      .getByRole("table", { name: "المستحقّون" })
+      .getByRole("row", { name: new RegExp(KHALID) }),
+  ).toContainText("شهادته ملغاة");
 });
 
 /* ── the moderator ──────────────────────────────────────────────────────── */
@@ -342,11 +401,11 @@ test("a moderator sees the design and who is eligible, and no certificate and no
   await signIn(context, emails.mod);
   if (onPhone()) await page.setViewportSize(PHONE);
   await page.goto(screen(sessions.review));
-  await expect(page.getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
-  await expect(page.getByText("من صلاحيات مشرف المؤسسة", { exact: false }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "أطلِق المحدَّدة" })).toHaveCount(0);
-  await expect(page.getByRole("table", { name: "الشهادات المحجوزة" })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(main(page).getByText("من صلاحيات مشرف المؤسسة", { exact: false }).first()).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: "أطلِق المحدَّدة" })).toHaveCount(0);
+  await expect(main(page).getByRole("table", { name: "الشهادات المحجوزة" })).toHaveCount(0);
   if (onPhone()) await capture(page, "moderator");
 });
 
@@ -358,12 +417,16 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
   await page.setViewportSize(PHONE);
 
   await page.goto(screen(sessions.review));
-  await expect(page.getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toBeVisible();
   await capture(page, "held");
 
-  await page.getByRole("checkbox", { name: `تحديد الصف ${SARA}` }).check();
-  await page.getByRole("checkbox", { name: `تحديد الصف ${LONG}` }).check();
-  await page.getByRole("button", { name: "أطلِق المحدَّدة" }).click();
+  await main(page)
+    .getByRole("checkbox", { name: `تحديد الصف ${SARA}` })
+    .check();
+  await main(page)
+    .getByRole("checkbox", { name: `تحديد الصف ${LONG}` })
+    .check();
+  await main(page).getByRole("button", { name: "أطلِق المحدَّدة" }).click();
   await expect(page.getByRole("dialog")).toContainText("إطلاق شهادتين؟");
   await capture(page, "release-confirm", { fullPage: false });
   await page.getByRole("dialog").getByRole("button", { name: "تراجع" }).click();
@@ -377,16 +440,18 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
   await capture(page, "design-portrait", { fullPage: false });
 
   await page.goto(screen(sessions.automatic));
-  await expect(page.getByRole("heading", { name: "الشهادات الملغاة", level: 3 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "الشهادات الملغاة", level: 3 })).toBeVisible();
   // `automatic` has nothing to hold, so no held table at all.
-  await expect(page.getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toHaveCount(0);
   await capture(page, "revoked");
 
-  await designPanel(page, "attendance").scrollIntoViewIfNeeded();
-  await expect(designPanel(page, "attendance").getByText("ثابت", { exact: true })).toBeVisible();
+  const locked = designPanel(page, "attendance");
+  await expect(locked.getByText("ثابت", { exact: true })).toBeVisible();
+  await locked.getByRole("button", { name: "اعرض التصميم" }).click();
+  await locked.scrollIntoViewIfNeeded();
   await capture(page, "design-locked", { fullPage: false });
 
-  await page.getByRole("button", { name: "ألغِ" }).first().click();
+  await main(page).getByRole("button", { name: "ألغِ" }).first().click();
   await expect(page.getByRole("dialog")).toContainText(SARA);
   await capture(page, "revoke-dialog", { fullPage: false });
   await page.getByRole("dialog").getByRole("button", { name: "تراجع" }).click();
@@ -394,6 +459,6 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
   await page.goto(screen(sessions.off));
   // Twice, on purpose: under the title, and in place of two empty tables —
   // «none, ever» rather than «none yet».
-  await expect(page.getByText("الوضع معطّل", { exact: false })).toHaveCount(2);
+  await expect(main(page).getByText("الوضع معطّل", { exact: false })).toHaveCount(2);
   await capture(page, "mode-off");
 });

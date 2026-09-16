@@ -173,23 +173,41 @@ const onPhone = () => test.info().project.name === "phone";
 async function capture(p: Page, name: string) {
   expect(p.viewportSize()).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  // The cards draw their previews once near the viewport; scroll through so
-  // the full-page capture shows them rather than empty media.
-  await p.evaluate(async () => {
-    for (let y = 0; y < document.body.scrollHeight; y += 600) {
-      window.scrollTo(0, y);
-      await new Promise((r) => setTimeout(r, 120));
-    }
-    window.scrollTo(0, 0);
-  });
-  await p.waitForTimeout(800);
-  await p.screenshot({ path: `${SHOTS}/wave8-designer-templates-${name}.png`, fullPage: true });
+  // DEC-149 §4: no smooth scroll under the capture.
+  await p.emulateMedia({ reducedMotion: "reduce" });
+  // ★ The cards draw their previews once near the viewport. Each one is
+  // scrolled into view and must report `data-rendered="true"` — its frame
+  // loaded and its faces ready — before the page is captured, so a blank
+  // render cannot pass for one that never mounted (DEC-149 §4).
+  const previews = main(p).locator("[data-template-preview]");
+  const count = await previews.count();
+  for (let i = 0; i < count; i++) {
+    await previews.nth(i).scrollIntoViewIfNeeded();
+    await expect(previews.nth(i), `${name}: card media ${i + 1} of ${count} never rendered`).toHaveAttribute("data-rendered", "true");
+  }
+  await p.evaluate(() => window.scrollTo(0, 0));
+  // ★ The page is captured at its own full height as the VIEWPORT, then the
+  // phone viewport comes back. A `fullPage` screenshot paints beyond the
+  // viewport, where Chromium throttles an iframe's rendering: cards whose
+  // frames had loaded and reported ready came out as empty dark boxes below
+  // the first screen. In the viewport, every frame paints.
+  const height = await p.evaluate(() => document.documentElement.scrollHeight);
+  await p.setViewportSize({ width: PHONE.width, height });
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: `${SHOTS}/wave8-designer-templates-${name}.png` });
+  await p.setViewportSize(PHONE);
   const sideways = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(sideways, `${name} must not scroll sideways at 390 px`).toBeLessThanOrEqual(1);
 }
 
+/** ★ DEC-145 / DEC-149 §4: under `/app` a page's content can be streamed twice,
+ *  the second copy in a hidden `S:` segment outside `#main` — so every locator
+ *  for page content scopes to `#main`. Dialogs, menus and toasts are portalled
+ *  outside it and stay page-wide. */
+const main = (page: Page) => page.locator("#main");
+
 /** A card, by the name in its heading. */
-const card = (page: Page, name: string) => page.locator("article", { has: page.getByRole("heading", { name, exact: true, level: 3 }) });
+const card = (page: Page, name: string) => main(page).locator("article", { has: page.getByRole("heading", { name, exact: true, level: 3 }) });
 
 /* ── access ─────────────────────────────────────────────────────────────── */
 
@@ -197,9 +215,9 @@ test("a member reaches neither library nor the studio — the gated not-found (D
   await signIn(context, memberEmail);
   for (const path of ["/ar/app/admin/templates/posters", "/ar/app/admin/templates/certificates", `/ar/app/admin/designer/${documentId}`]) {
     await page.goto(path);
-    await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
     await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(main(page).getByRole("heading", { level: 1 })).toHaveCount(1);
   }
 });
 
@@ -210,7 +228,7 @@ test("★ REQ-DSG-008: a platform template is copied, never edited — and the e
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(page.getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
 
   const talk = await platformDefault("poster", "talk");
   const platform = card(page, talk.name).filter({ hasText: "قالب المنصة" });
@@ -289,9 +307,9 @@ test("★ REQ-DSG-007: the studio opens the template's draft, and publishing it 
 
   await card(page, orgPosterName).getByRole("button", { name: "افتح في المصمّم" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/designer\//);
-  await expect(page.getByRole("heading", { name: orgPosterName, level: 1 })).toBeVisible();
-  await expect(page.getByText("مسودة قالب", { exact: true })).toBeVisible();
-  await page.getByRole("navigation", { name: "مسار التنقّل" }).getByRole("link", { name: "قوالب الملصقات" }).click();
+  await expect(main(page).getByRole("heading", { name: orgPosterName, level: 1 })).toBeVisible();
+  await expect(main(page).getByText("مسودة قالب", { exact: true })).toBeVisible();
+  await main(page).getByRole("navigation", { name: "مسار التنقّل" }).getByRole("link", { name: "قوالب الملصقات" }).click();
 
   const { rows: before } = await db.query<{ document: string }>(
     `select v.document::text as document from public.design_template_versions v join public.design_templates t on t.id = v.template_id
@@ -301,7 +319,7 @@ test("★ REQ-DSG-007: the studio opens the template's draft, and publishing it 
   const mine = card(page, orgPosterName);
   await expect(mine.getByText("مسودة غير منشورة")).toBeVisible();
   await mine.getByRole("button", { name: "انشر إصدارًا جديدًا" }).click();
-  await expect(page.getByText("نُشر إصدار جديد", { exact: false })).toBeVisible();
+  await expect(page.getByText("نُشر إصدار جديد. ما صدر قبله من ملصقات وشهادات يبقى على إصداره.", { exact: true })).toBeVisible();
 
   const { rows: after } = await db.query<{ version: number; document: string }>(
     `select v.version, v.document::text as document from public.design_template_versions v join public.design_templates t on t.id = v.template_id
@@ -319,9 +337,9 @@ test("★ DEC-148: a blank certificate starts on the composition chosen for it, 
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/certificates");
-  await expect(page.getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
 
-  await page.getByRole("button", { name: "قالب فارغ" }).click();
+  await main(page).getByRole("button", { name: "قالب فارغ" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/الاسم/).fill("شهادة حضورنا العمودية");
   // Only the certificate families are offered — no poster family leaks across.
@@ -339,7 +357,7 @@ test("★ DEC-148: a blank certificate starts on the composition chosen for it, 
   expect(rows[0]).toEqual({ width: 2480, height: 3508 });
   await expect(card(page, "شهادة حضورنا العمودية").getByText("عمودية", { exact: true })).toBeVisible();
 
-  const schemes = page.getByRole("navigation", { name: "ألوان المعاينة" });
+  const schemes = main(page).getByRole("navigation", { name: "ألوان المعاينة" });
   await schemes.getByRole("link", { name: "داكن" }).click();
   await expect(page).toHaveURL(/scheme=dark/);
   await expect(schemes.getByRole("link", { name: "داكن" })).toHaveAttribute("aria-current", "true");
@@ -353,7 +371,7 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await page.setViewportSize(PHONE);
 
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(page.getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
   await expect(card(page, orgPosterName)).toBeVisible();
   await capture(page, "posters-populated");
 
@@ -364,7 +382,7 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await page.keyboard.press("Escape");
 
   await page.goto("/ar/app/admin/templates/certificates");
-  await expect(page.getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
   await capture(page, "certificates-populated");
   await page.goto("/ar/app/admin/templates/certificates?scheme=dark");
   await capture(page, "certificates-dark");
@@ -374,8 +392,8 @@ test("an org with no templates of its own is told what to do next", async ({ con
   await signIn(context, emptyAdminEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(page.getByText("لا قوالب لمؤسستك بعد")).toBeVisible();
-  await expect(page.getByRole("link", { name: "إلى قوالب المنصة" })).toBeVisible();
+  await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toBeVisible();
+  await expect(main(page).getByRole("link", { name: "إلى قوالب المنصة" })).toBeVisible();
   if (onPhone()) await capture(page, "posters-empty-org");
 });
 
@@ -383,9 +401,9 @@ test("a moderator reads the library and is offered no write", async ({ context, 
   await signIn(context, modEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(page.getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
-  await expect(page.getByText("إنشاؤها وتعديلها من صلاحيات مشرف المؤسسة", { exact: false })).toBeVisible();
-  await expect(page.getByRole("button", { name: "انسخ إلى مؤسستي" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "قالب فارغ" })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
+  await expect(main(page).getByText("إنشاؤها وتعديلها من صلاحيات مشرف المؤسسة", { exact: false })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "انسخ إلى مؤسستي" })).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: "قالب فارغ" })).toHaveCount(0);
   if (onPhone()) await capture(page, "posters-moderator");
 });

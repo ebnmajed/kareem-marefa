@@ -161,9 +161,15 @@ const onPhone = () => test.info().project.name === "phone";
 
 /** The 390 px review: the capture at the path the checklist row cites, and the
  *  one number that matters — the page does not scroll sideways. */
+/** ★ DEC-145 / DEC-149 §4: page content under `/app` is found inside `#main`
+ *  — a hidden streamed copy can sit outside it. Toasts stay page-wide. */
+const main = (page: Page) => page.locator("#main");
+
 async function capture(p: Page, state: string) {
   expect(p.viewportSize()).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
+  // DEC-149 §4: no smooth scroll under a capture.
+  await p.emulateMedia({ reducedMotion: "reduce" });
   await p.screenshot({ path: `${SHOTS}/wave8-designer-editor-${state}.png`, fullPage: true });
   const width = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(width, `wave8-designer-editor-${state} must not scroll sideways at 390 px`).toBeLessThanOrEqual(1);
@@ -191,7 +197,7 @@ function saved(page: Page) {
 
 async function openStudio(page: Page) {
   await page.goto(`/ar/app/admin/designer/${documentId}`);
-  await expect(page.getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 }
 
 /* ── desktop: the editor, operated by taps alone ────────────────────────── */
@@ -203,30 +209,36 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
   await openStudio(page);
 
   // The header says what this is and where it came from.
-  await expect(page.getByText("منفصل عن القالب", { exact: true })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "مسار التنقّل" }).getByRole("link", { name: "جدولة الجلسة" })).toHaveAttribute(
+  await expect(main(page).getByText("منفصل عن القالب", { exact: true })).toBeVisible();
+  await expect(main(page).getByRole("navigation", { name: "مسار التنقّل" }).getByRole("link", { name: "جدولة الجلسة" })).toHaveAttribute(
     "href",
     `/ar/app/admin/sessions/${sessionId}/schedule`,
   );
 
   // The canvas is the renderer's own output, with real data (REQ-DSG-006).
-  const canvas = page.getByRole("region", { name: "المعاينة" }).frameLocator('iframe[title="لوحة التصميم"]');
+  const canvas = main(page).getByRole("region", { name: "المعاينة" }).frameLocator('iframe[title="لوحة التصميم"]');
   await expect(canvas.locator('[data-layer="l_title"]')).toContainText(SESSION_TITLE);
 
   // ★ REQ-DSG-029 — the check names its layer and selects it: the panel
   // turns to the layer's properties.
-  const panel = page.getByRole("tablist", { name: "لوحات المحرّر" });
+  const panel = main(page).getByRole("tablist", { name: "لوحات المحرّر" });
   await panel.getByRole("tab", { name: /الفحوصات/ }).click();
-  const goTo = page.getByRole("button", { name: "اذهب إلى الطبقة" }).first();
+  // By the layer the check NAMES, never by position: checks group per layer,
+  // and which layer's group comes first depends on the measurements (the
+  // lead's build at 8608cb2 put «الموعد»'s floor finding ahead of this one).
+  const goTo = main(page)
+    .getByRole("listitem")
+    .filter({ hasText: /الطبقة المكان تتجاوز حدّ الأمان/ })
+    .getByRole("button", { name: "اذهب إلى الطبقة" });
   await expect(goTo).toBeVisible();
   await goTo.click();
   await expect(panel.getByRole("tab", { name: "الخصائص" })).toHaveAttribute("aria-selected", "true");
-  const inspector = page.getByRole("region", { name: "الخصائص" });
+  const inspector = main(page).getByRole("region", { name: "الخصائص" });
   await expect(inspector.getByRole("group", { name: "أفقيًا" })).toBeVisible();
 
   // …and the layer it selected is `l_where`, pressed in the list.
   await panel.getByRole("tab", { name: "الطبقات" }).click();
-  const rows = page.getByRole("tabpanel");
+  const rows = main(page).getByRole("tabpanel");
   await expect(rows.getByRole("button", { name: /المكان/, pressed: true })).toBeVisible();
   await panel.getByRole("tab", { name: "الخصائص" }).click();
 
@@ -250,7 +262,10 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
   await panel.getByRole("tab", { name: "الطبقات" }).click();
   const indexBefore = await storedIndex("l_where");
   done = saved(page);
-  await rows.locator("li", { has: page.getByText("المكان", { exact: true }) }).getByRole("button", { name: "طبقة إلى الأمام" }).click();
+  await rows
+    .locator("li", { has: page.getByText("المكان", { exact: true }) })
+    .getByRole("button", { name: "طبقة إلى الأمام" })
+    .click();
   await done;
   expect(await storedIndex("l_where")).toBeGreaterThan(indexBefore);
   await panel.getByRole("tab", { name: "الخصائص" }).click();
@@ -284,13 +299,13 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
 
   // Undo is a tap too: it saves the step before «لائم».
   done = saved(page);
-  await page.getByRole("toolbar").getByRole("button", { name: "تراجع" }).click();
+  await main(page).getByRole("toolbar").getByRole("button", { name: "تراجع" }).click();
   await done;
   expect((await storedLayer("l_where")).frame.x).toBe(900);
 
   // And the document survives a reload.
   await page.reload();
-  await expect(page.getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 });
 
 test("★ REQ-DSG-024: a locked region cannot be moved by the align buttons, and the screen says why", async ({ context, page }) => {
@@ -299,10 +314,13 @@ test("★ REQ-DSG-024: a locked region cannot be moved by the align buttons, and
   await page.setViewportSize(DESKTOP);
   await openStudio(page);
 
-  await page.getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الطبقات" }).click();
-  await page.getByRole("tabpanel").getByRole("button", { name: /رمز الجلسة/ }).click();
-  await page.getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الخصائص" }).click();
-  const inspector = page.getByRole("region", { name: "الخصائص" });
+  await main(page).getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الطبقات" }).click();
+  await main(page)
+    .getByRole("tabpanel")
+    .getByRole("button", { name: /رمز الجلسة/ })
+    .click();
+  await main(page).getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الخصائص" }).click();
+  const inspector = main(page).getByRole("region", { name: "الخصائص" });
   await expect(inspector.getByText("مقفلة في القالب", { exact: false })).toBeVisible();
   await expect(inspector.getByRole("group", { name: "أفقيًا" }).getByRole("button", { name: "البداية" })).toBeDisabled();
   await expect(inspector.getByRole("button", { name: "لائم المنطقة الآمنة" })).toBeDisabled();
@@ -313,9 +331,9 @@ test("★ «اطلب التصدير» queues every variant of the saved document
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await openStudio(page);
 
-  await page.getByRole("button", { name: "اطلب التصدير" }).click();
+  await main(page).getByRole("button", { name: "اطلب التصدير" }).click();
   await expect(page.getByText("أُضيفت المقاسات إلى قائمة التصدير.", { exact: true })).toBeVisible();
-  const exports = page.getByRole("region", { name: /قائمة التصدير/ });
+  const exports = main(page).getByRole("region", { name: /قائمة التصدير/ });
   await expect(exports.getByText("في الانتظار").first()).toBeVisible();
 
   const { rows } = await db.query<{ n: string }>(`select count(*)::text as n from public.export_artifacts where document_id = $1`, [documentId]);
@@ -327,13 +345,16 @@ test("★ «اطلب التصدير» queues every variant of the saved document
     await expect
       .poll(
         async () =>
-          Number((await db.query<{ n: string }>(`select count(*)::text as n from public.export_artifacts where document_id = $1 and status = 'ready'`, [documentId])).rows[0].n),
+          Number(
+            (await db.query<{ n: string }>(`select count(*)::text as n from public.export_artifacts where document_id = $1 and status = 'ready'`, [documentId]))
+              .rows[0].n,
+          ),
         { timeout: 10 * 60_000, intervals: [5_000] },
       )
       .toBe(12);
     await page.reload();
     await expect(exports.getByText("جاهز").first()).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "المقاسات" }).first().locator("img").first()).toBeVisible();
+    await expect(main(page).getByRole("navigation", { name: "المقاسات" }).first().locator("img").first()).toBeVisible();
     if (onPhone()) await capture(page, "review");
     else await page.screenshot({ path: `${SHOTS}/wave8-designer-editor-desktop.png`, fullPage: true });
     return;
@@ -354,6 +375,9 @@ test("★ «اطلب التصدير» queues every variant of the saved document
     [documentId],
   );
   await page.reload();
+  // Said in the admin's words first (DEC-149 §4), the worker's own text kept
+  // beneath it for whoever debugs the render.
+  await expect(exports.getByRole("alert")).toContainText("النص لم يتّسع بالحجم المصمَّم له في هذا المقاس");
   await expect(exports.getByRole("alert")).toContainText("tier_a");
   const retry = exports.getByRole("button", { name: "أعِد المحاولة" });
   await expect(retry).toBeVisible();
@@ -373,17 +397,21 @@ test("★ SCR-057 at 390 px is VIEW AND APPROVE — the canvas, every variant, t
   await page.setViewportSize(PHONE);
   await openStudio(page);
 
-  await expect(page.getByText("على الهاتف تراجِع ولا تحرّر", { exact: false })).toBeVisible();
-  await expect(page.getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "المقاسات" }).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "قبل التصدير", level: 2 })).toBeVisible();
+  await expect(main(page).getByText("على الهاتف تراجِع ولا تحرّر", { exact: false })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
+  await expect(main(page).getByRole("navigation", { name: "المقاسات" }).first()).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "قبل التصدير", level: 2 })).toBeVisible();
   // The editor is not here: no rail, no inspector, no align buttons.
-  await expect(page.getByRole("tablist", { name: "لوحات المحرّر" })).toBeHidden();
-  await expect(page.getByRole("button", { name: "لائم المنطقة الآمنة" })).toBeHidden();
+  await expect(main(page).getByRole("tablist", { name: "لوحات المحرّر" })).toBeHidden();
+  await expect(main(page).getByRole("button", { name: "لائم المنطقة الآمنة" })).toBeHidden();
 
   // A variant is a tap away, and its check a tap further.
-  await page.getByRole("navigation", { name: "المقاسات" }).first().getByRole("button", { name: /بطاقة رابط/ }).click();
-  await expect(page.getByRole("button", { name: "اذهب إلى الطبقة" }).first()).toBeVisible();
+  await main(page)
+    .getByRole("navigation", { name: "المقاسات" })
+    .first()
+    .getByRole("button", { name: /بطاقة رابط/ })
+    .click();
+  await expect(main(page).getByRole("button", { name: "اذهب إلى الطبقة" }).first()).toBeVisible();
 
   await capture(page, "review");
 });
@@ -392,7 +420,7 @@ test("a presenter who moderates sees the poster read-only — no approve action,
   await signIn(context, modEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await openStudio(page);
-  await expect(page.getByText("للعرض فقط", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "اطلب التصدير" })).toHaveCount(0);
+  await expect(main(page).getByText("للعرض فقط", { exact: true })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "اطلب التصدير" })).toHaveCount(0);
   if (onPhone()) await capture(page, "readonly");
 });
