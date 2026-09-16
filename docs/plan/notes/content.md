@@ -1441,3 +1441,30 @@ font name with `\"..\"` — switched to `«..»`, matching house convention (`10
 `textContent` match; updated both.
 
 Ready for sync.
+
+## §19 — 5-failed and 6-frozen: three items from the discussion review
+
+**1. Double error feedback, composer only.** Dropped the toast from `comment-composer.tsx`'s
+network-catch path — the inline Panel is the right feedback per REQ-UIX-010, and the toast repeating
+the identical sentence covered the thread at 390 px. Deliberately did NOT touch `comment-item.tsx`'s
+`saveEdit`/`submitReport` network catches, even though they have the exact same "inline Panel +
+identical toast" shape — the lead's ask named the composer specifically ("For the composer..."), and
+the general principle they stated afterward ("Keep toasts only where there's no inline spot") could
+be read as extending further, but I chose not to guess. Flagged this explicitly in my report rather
+than silently narrowing OR widening the fix.
+
+**2. Missing period.** `errors.network`'s ar string was the one sentence in `event.json` missing its
+final «.». Fixed. Checked my other two new network-adjacent keys (`materials.list.settingsFailed`,
+`tasks.list.toggleFailed`) for the same gap on both ar/en — both already correctly punctuated when I
+wrote them, nothing else needed fixing.
+
+**3. Reactions on a frozen thread.** `comment-item.tsx` takes a new `frozen?: boolean` prop; when
+true, the `IconButton` reaction toggle is withdrawn entirely (no interactive control offering an
+action RLS would refuse anyway) and only a read-only count shows, and only when non-zero. Threaded
+from `comment-list.tsx` to BOTH the top-level and reply `<CommentItem>` instances (the reply list was
+easy to miss — same prop needed at both call sites). Report is untouched, per the ask — moderation
+still needs to work on a frozen thread.
+
+tsc clean, lint 0 errors, 52/52 event component tests (3 new frozen-state tests), 698/698 unit tests.
+
+Ready for sync.
