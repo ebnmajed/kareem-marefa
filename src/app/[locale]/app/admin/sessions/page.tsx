@@ -1,16 +1,19 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
-import { Link } from "@/i18n/navigation";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, listCategories, listNameableMembers } from "@/lib/dal/proposals";
 import { actionsFor, listSchedulableProposals, listSessionsForAdmin, listSessionsForAttendance } from "@/lib/dal/sessions";
 import { requireSession } from "@/lib/dal/session";
 import { makeSessionDirectly, makeSessionFromProposal, runTransition } from "./actions";
-import { SessionControls } from "./session-controls";
-import { DirectSessionForm } from "./direct-session-form";
+import { DirectSessionSection } from "./direct-session-form";
+import { AdminSessionsTable, ModeratorSessionsTable } from "./sessions-table";
 
-// SCR-042 · /app/admin/sessions — session management.
+// SCR-042 · /app/admin/sessions — session management, rebuilt onto the
+// system for wave 6 (`16` §6.7, `DEC-130`; top level only — `admin/sessions/
+// [id]/**` is not this track's this wave).
 //
 // This wave it carries REQ-PRO-007: an approved proposal becomes a session,
 // or an admin creates one out of nothing. The state machine's own controls —
@@ -20,13 +23,12 @@ import { DirectSessionForm } from "./direct-session-form";
 // Owned by `sessions` for wave 1 only; handed to `console` at wave 3
 // (DEC-042). Admin only, 404 for everyone else — see listSessionsForAdmin().
 //
-// ★ console (wave 3, SCR-044): a moderator now reaches THIS route too, but
-// gets a different, much smaller render — `ModeratorSessionsView` below —
-// never the admin's management UI. `REQ-ADM-005`'s edit/cancel/publish
-// controls stay admin-only; a moderator's only reason to be here is
-// picking a session to open its attendance report (`docs/plan/notes/
-// console.md`'s moderator/`/sessions` decision). The admin path below is
-// completely unchanged.
+// ★ console (wave 6, SCR-044): a moderator reaches THIS route too, but gets
+// a different, much smaller render — `ModeratorSessionsView` below — never
+// the admin's management UI. `REQ-ADM-005`'s edit/cancel/publish controls
+// stay admin-only; a moderator's only reason to be here is picking a session
+// to open its attendance report. The admin path below is unaffected by that
+// branch.
 
 export default async function AdminSessionsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -46,115 +48,77 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
   ]);
   if (sessions === null) notFound();
 
-  const num = (n: number) => formatNumber(n);
+  // `actionsFor` is `lib/dal/sessions.ts`'s own state-machine table
+  // (`import "server-only"`) — computed here, once, and threaded down as
+  // plain data, since `sessions-table.tsx` is a client module and cannot
+  // import that function's module at all.
+  const actionsById = Object.fromEntries(sessions.map((s) => [s.id, actionsFor(s.state)]));
+
+  const directAction = makeSessionDirectly.bind(null, locale as Locale);
+  const transitionAction = (sessionId: string) => runTransition.bind(null, locale as Locale, sessionId);
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
-      <section aria-labelledby="ready" className="mt-10 max-w-3xl">
-        <h2 id="ready" className="text-h2 text-fg-heading">
-          {t("readyTitle")}
-        </h2>
-        <p className="mt-2 text-body-sm text-fg-muted">{t("readyIntro")}</p>
+      <section aria-labelledby="ready-heading" className="mt-10 max-w-3xl">
+        <SectionHeader as="h2" id="ready-heading" title={t("readyTitle")} description={t("readyIntro")} count={ready.length} />
         {ready.length === 0 ? (
-          <p className="mt-3 text-body text-fg-body">{t("readyEmpty")}</p>
-        ) : (
-          <>
-            <p className="mt-2 text-body-sm text-fg-muted">{t("readyCount", { count: ready.length, value: num(ready.length) })}</p>
-            <ul className="mt-4 space-y-3">
-              {ready.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-field border border-edge p-4">
-                  <div className="min-w-0">
-                    <p className="text-label text-fg-heading">
-                      <bdi>{p.title}</bdi>
-                    </p>
-                    <p className="mt-1 text-body-sm text-fg-muted">
-                      {p.categoryName ? <bdi>{p.categoryName}</bdi> : null}
-                      {p.presenterNames.length > 0 ? (
-                        <>
-                          {p.categoryName ? " · " : null}
-                          {p.presenterNames.map((n, i) => (
-                            <span key={n + i}>
-                              {i > 0 ? "، " : ""}
-                              <bdi>{n}</bdi>
-                            </span>
-                          ))}
-                        </>
-                      ) : null}
-                    </p>
-                  </div>
-                  <form action={makeSessionFromProposal.bind(null, locale as Locale, p.id)} className="ms-auto">
-                    {/* The visible label is short; the accessible name names
-                        the proposal, because this page also carries a
-                        «أنشئ الجلسة» submit for the direct form and two
-                        controls with one accessible name doing different
-                        things is a REQ-NFR-007 failure a screenshot hides. */}
-                    <button
-                      type="submit"
-                      aria-label={`${t("createFromProposal")} — ${p.title}`}
-                      className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
-                    >
-                      {t("createFromProposal")}
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section aria-labelledby="direct" className="mt-12 max-w-3xl border-t border-edge pt-8">
-        <h2 id="direct" className="text-h2 text-fg-heading">
-          {t("directTitle")}
-        </h2>
-        <p className="mt-2 text-body-sm text-fg-muted">{t("directIntro")}</p>
-        <DirectSessionForm action={makeSessionDirectly.bind(null, locale as Locale)} categories={categories} members={members} />
-      </section>
-
-      <section aria-labelledby="all" className="mt-12 max-w-3xl border-t border-edge pt-8">
-        <h2 id="all" className="text-h2 text-fg-heading">
-          {t("listTitle")}
-        </h2>
-        {sessions.length === 0 ? (
-          <p className="mt-3 text-body text-fg-body">{t("listEmpty")}</p>
+          <div className="mt-4">
+            <EmptyState title={t("readyEmpty")} size="sm" action={{ label: t("directToggleShow"), href: "#direct-session-toggle" }} />
+          </div>
         ) : (
           <ul className="mt-4 space-y-3">
-            {sessions.map((s) => {
-              const declined = s.presenters.some((p) => p.declinedAt !== null);
-              const pending = s.presenters.some((p) => !p.accepted && p.declinedAt === null);
-              return (
-                <li key={s.id} className="rounded-field border border-edge p-4">
-                  <Link href={`/app/sessions/${s.id}`} className="text-label text-fg-heading underline underline-offset-4">
-                    <bdi>{s.title}</bdi>
-                  </Link>
+            {ready.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-field border border-edge p-4">
+                <div className="min-w-0">
+                  <p className="text-label text-fg-heading">
+                    <bdi>{p.title}</bdi>
+                  </p>
                   <p className="mt-1 text-body-sm text-fg-muted">
-                    {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.timeZone, locale)}</bdi> : t("notScheduled")} ·{" "}
-                    {s.fromProposal ? t("fromProposal") : t("directBadge")}
-                    {declined ? ` · ${t("presenterDeclined")}` : pending ? ` · ${t("presenterPending")}` : ""}
+                    {p.categoryName ? <bdi>{p.categoryName}</bdi> : null}
+                    {p.presenterNames.length > 0 ? (
+                      <>
+                        {p.categoryName ? " · " : null}
+                        {p.presenterNames.map((n, i) => (
+                          <span key={n + i}>
+                            {i > 0 ? "، " : ""}
+                            <bdi>{n}</bdi>
+                          </span>
+                        ))}
+                      </>
+                    ) : null}
                   </p>
-                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
-                    <Link href={`/app/admin/sessions/${s.id}/schedule`} className="text-fg-heading underline underline-offset-4">
-                      {t("schedule")}
-                    </Link>
-                    <Link href={`/app/admin/sessions/${s.id}/attendance`} className="text-fg-heading underline underline-offset-4">
-                      {t("attendance")}
-                    </Link>
-                    {/* SCR-045 — the review-and-release screen had no link until Launch. */}
-                    <Link href={`/app/admin/sessions/${s.id}/certificates`} className="text-fg-heading underline underline-offset-4">
-                      {t("certificates")}
-                    </Link>
-                  </p>
-                  {/* REQ-SES-005: start, complete, cancel, archive, reopen —
-                      only the edges 02 §6.2 allows from this state. */}
-                  <SessionControls action={runTransition.bind(null, locale as Locale, s.id)} actions={actionsFor(s.state)} />
-                </li>
-              );
-            })}
+                </div>
+                <form action={makeSessionFromProposal.bind(null, locale as Locale, p.id)} className="ms-auto">
+                  {/* The visible label is short; the accessible name names
+                      the proposal, because this page also carries a
+                      «أنشئ الجلسة» submit for the direct form and two
+                      controls with one accessible name doing different
+                      things is a REQ-NFR-007 failure a screenshot hides. */}
+                  <button
+                    type="submit"
+                    aria-label={`${t("createFromProposal")} — ${p.title}`}
+                    className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
+                  >
+                    {t("createFromProposal")}
+                  </button>
+                </form>
+              </li>
+            ))}
           </ul>
         )}
+      </section>
+
+      <section aria-label={t("directTitle")} className="mt-12 max-w-3xl border-t border-edge pt-8">
+        <DirectSessionSection action={directAction} categories={categories} members={members} title={t("directTitle")} />
+      </section>
+
+      <section aria-labelledby="all-heading" className="mt-12 max-w-5xl border-t border-edge pt-8">
+        <SectionHeader as="h2" id="all-heading" title={t("listTitle")} />
+        <div className="mt-4">
+          <AdminSessionsTable sessions={sessions} actionsById={actionsById} timeZone={prefs.timeZone} locale={locale} runTransitionAction={transitionAction} />
+        </div>
       </section>
     </>
   );
@@ -163,9 +127,9 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
 /**
  * SCR-042's moderator render — event-day operations only (REQ-ADM-020): id,
  * title, state, start time, and one link to the session's attendance
- * report (SCR-044). No proposal-to-session pipeline, no direct-create
- * form, no `SessionControls` (start/complete/cancel/archive/reopen are
- * exactly `REQ-ADM-005`'s admin-only scheduling actions).
+ * report (SCR-044). No proposal-to-session pipeline, no direct-create form,
+ * no `SessionControls` (start/complete/cancel/archive/reopen are exactly
+ * `REQ-ADM-005`'s admin-only scheduling actions).
  */
 async function ModeratorSessionsView({ locale }: { locale: string }) {
   const [sessions, prefs, t] = await Promise.all([listSessionsForAttendance(locale), getOrgPrefs(locale), getTranslations("admin.sessions")]);
@@ -173,30 +137,10 @@ async function ModeratorSessionsView({ locale }: { locale: string }) {
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("moderatorIntro")}</p>
-
-      {sessions.length === 0 ? (
-        <p className="mt-8 text-body text-fg-body">{t("listEmpty")}</p>
-      ) : (
-        <ul className="mt-8 max-w-2xl space-y-3">
-          {sessions.map((s) => (
-            <li key={s.id} className="rounded-field border border-edge p-4">
-              <p className="text-label text-fg-heading">
-                <bdi>{s.title}</bdi>
-              </p>
-              <p className="mt-1 text-body-sm text-fg-muted">
-                {t(`state.${s.state}`)} · {s.startsAt ? <bdi>{formatDateTime(s.startsAt, prefs.timeZone, locale)}</bdi> : t("notScheduled")}
-              </p>
-              <p className="mt-2 text-body-sm">
-                <Link href={`/app/admin/sessions/${s.id}/attendance`} className="text-fg-heading underline underline-offset-4">
-                  {t("openAttendance")}
-                </Link>
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <PageHeader title={t("title")} description={t("moderatorIntro")} />
+      <div className="mt-8 max-w-3xl">
+        <ModeratorSessionsTable sessions={sessions} timeZone={prefs.timeZone} locale={locale} />
+      </div>
     </>
   );
 }
