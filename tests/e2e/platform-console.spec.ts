@@ -43,6 +43,10 @@ const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl
  * matches a section or a table named by the same words (sync 3's five-way match).
  */
 const main = (page: Page) => page.locator("#main");
+// ★ And a `ui/toast` renders its sentence twice outside `#main` — the visible toast
+// and Radix's visually-hidden announcer — so no assertion here reads a toast's
+// text with a text locator. The banner is found as `role="status"` filtered by its
+// badge («جلسة استثنائية»), which no toast sentence in this console contains.
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
 const PASSWORD = "correct-horse-battery-staple-9";
@@ -503,7 +507,7 @@ test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and ke
   await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill("Example.COM");
   await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
 
-  const summary = page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
+  const summary = main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("link")).toHaveCount(3); // slug, prefix, first admin
   await expect(main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ })).toHaveAttribute("aria-invalid", "true");
@@ -736,7 +740,7 @@ test.describe("390 px RTL review", () => {
     await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill("مؤسسة التصوير");
     await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
     await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
+    await expect(main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
     await review(page, "wave8-platform-orgs-new-field-error");
 
     // P4 — a mixed-case domain saved, listed as stored (contract 4).
