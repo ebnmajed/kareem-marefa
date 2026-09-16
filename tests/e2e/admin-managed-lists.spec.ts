@@ -61,6 +61,11 @@ test.beforeAll(async ({}, testInfo) => {
   // both projects regardless of which desktop-only tests ran.
   await db.query(`insert into public.categories (org_id, name) values ($1, 'تصنيف قائم')`, [orgId]);
   await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة قائمة')`, [orgId]);
+  // ★ Same reasoning as the two rows above, for the K3 wave-7 capture the
+  // lead flagged: /app/admin/venues had no seeded row of its own in this
+  // org, so a phone-only capture of it would show the empty state, not the
+  // populated list.
+  await db.query(`insert into public.venues (org_id, name) values ($1, 'قاعة قائمة')`, [orgId]);
 });
 
 test.afterAll(async () => {
@@ -230,4 +235,17 @@ test("SCR-047/048 at 390 px RTL: both lists read down the page as a stacked card
   await review(page, "wave7-console-categories-populated");
   await goto(page, "/ar/app/admin/companies");
   await review(page, "wave7-console-companies-populated");
+});
+
+// K3 — the lead's own gap: the only venues capture on disk predated
+// promotion and wasn't from this wave's spec (`scr-046-venues-390-rtl-
+// phone.png`, sessions' M2 walk). Same treatment as SCR-047/048 above, one
+// screen at a time so `review()`'s per-name file still names exactly one
+// route.
+test("SCR-046 at 390 px RTL: venues reads down the page as a stacked card list too", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+  await page.setViewportSize(PHONE);
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/venues");
+  await review(page, "wave7-console-venues-populated");
 });
