@@ -150,6 +150,18 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ The lead's real-build finding (reproduced under a CPU throttle): while a
+// Suspense boundary is still streaming, React leaves a HIDDEN copy of it in
+// `body>div#S:n[hidden]` alongside the visible copy under `#main` for a few
+// hundred ms. Playwright's strict-mode locators count the hidden node too,
+// so a `getByText`/`getByRole` right after `goto`/`reload` can resolve to
+// two elements — this spec's own `photos:186` was one of three specs that
+// hit it. Not a bug in this slot; wait for the stream to finish settling
+// before any strict locator.
+async function waitForStreamsToSettle(page: Page) {
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
@@ -187,6 +199,7 @@ test("★ REQ-EVT-010/013: the gallery shows the seeded photo, and the upload no
   await page.setViewportSize(PHONE);
   await signIn(context, attendeeEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByRole("heading", { name: "الصور", exact: true, level: 2 })).toBeVisible();
   // gallery.tsx sets alt="" (decorative), so the accessibility tree treats
   // it as presentation, not role=img — a plain CSS locator, not getByRole.
@@ -199,6 +212,7 @@ test("★ REQ-EVT-010/013: the gallery shows the seeded photo, and the upload no
 test("★ REQ-EVT-012/REQ-UIX-013: a bystander's takedown request confirms in a dialog naming the object, then hides the photo instantly, before any moderator acts", async ({ context, page }) => {
   await signIn(context, bystanderEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
+  await waitForStreamsToSettle(page);
 
   // ★ wave 6: the confirmation moved from a native `window.confirm` to
   // `ui/dialog` (REQ-UIX-013 — every destructive action confirms in a
@@ -251,12 +265,14 @@ test("★ REQ-EVT-012/REQ-UIX-013: a bystander's takedown request confirms in a 
   // appears at all. The photo's own image disappearing is what REQ-EVT-012's
   // "hides instantly" actually means for this viewer.
   await page.reload();
+  await waitForStreamsToSettle(page);
   await expect(page.locator("img")).toHaveCount(0);
 
   // The moderator sees it, marked pending review, and can restore it.
   await context.clearCookies();
   await signIn(context, modEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByText("مخفية — بانتظار المراجعة")).toBeVisible();
 
   const restoreUrl = page.url();

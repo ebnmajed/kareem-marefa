@@ -5,7 +5,7 @@
 // cookies installed in the browser context.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -84,12 +84,25 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ The lead's real-build finding (reproduced under a CPU throttle): while a
+// Suspense boundary is still streaming, React leaves a HIDDEN copy of it in
+// `body>div#S:n[hidden]` alongside the visible copy under `#main` for a few
+// hundred ms. Playwright's strict-mode locators count the hidden node too,
+// so a `getByText`/`getByRole` right after `goto` can resolve to two
+// elements — this spec's own `event-comments:87` was one of three specs that
+// hit it. Not a bug in this slot; wait for the stream to finish settling
+// before any strict locator.
+async function waitForStreamsToSettle(page: Page) {
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test("a member with no RSVP can comment on a published session (REQ-EVT-003)", async ({ context, page }) => {
   const { rows } = await db.query<{ id: string }>(`select id from public.rsvps where session_id = $1`, [publishedSessionId]);
   expect(rows).toHaveLength(0); // confirms the condition this test is actually about
 
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByPlaceholder("اكتب تعليقًا…")).toBeVisible();
 
   await page.getByPlaceholder("اكتب تعليقًا…").fill("سؤال عن الجلسة");
@@ -103,6 +116,7 @@ test("a member with no RSVP can comment on a published session (REQ-EVT-003)", a
 test("a reply to a reply attaches to the parent thread, not a third level (REQ-EVT-002)", async ({ context, page }) => {
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
 
   // Reply to the comment from the previous test.
   await page.getByRole("button", { name: "رد" }).first().click();
@@ -131,6 +145,7 @@ test("a reply to a reply attaches to the parent thread, not a third level (REQ-E
 test("deleting a comment with replies leaves a tombstone; a reply-less comment vanishes entirely (REQ-EVT-005)", async ({ context, page }) => {
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
 
   // "سؤال عن الجلسة" now has one reply ("إجابة أولى") from the previous test.
   // The reply's <li> nests INSIDE the original's <li> (comment-list.tsx), so
