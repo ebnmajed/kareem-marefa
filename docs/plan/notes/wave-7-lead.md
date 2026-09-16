@@ -46,13 +46,28 @@ Multi-day sessions (`DEC-119` … `DEC-121`) · gradient posters and the `canvas
 `legal/**` · **anything under `src/app/[locale]/(marketing)/` and the components it renders**,
 frozen until M13 — `DEC-126`'s «تسجيل الدخول» lands there, not here.
 
-## ★ One decision is the owner's — ask before building on it
+## ★★ TASK ONE, before any screen — the owner has decided (`DEC-136`)
 
-**`DEC-135`'s real fix.** Either apply `sessions`' one-line `react-dom` change to
-`pingSuspendedRoot` through `patch-package` (a new dependency; regenerate the lockfile through
-Docker; verified 16/16 at ~105 ms), or wait for a React/Next release that carries it. **If it is
-patched, delete `ui/pending-nudge` and every caller together, and report the bug upstream.** Until
-then the nudge stays and every new pending control adopts it.
+**Apply `sessions`' one-line `react-dom` change to `pingSuspendedRoot` and delete the workaround.**
+This is not a question any more; it is the first thing wave 7 does, because **21 files** reference
+`ui/pending-nudge` today and every screen this wave touches would otherwise add more.
+
+1. **`patch-package`** added; lockfile regenerated **through Docker** (`npm run lockfile`, never a
+   plain `npm install` — the npm-version trap has broken CI twice).
+2. **The patch applied and `src/components/ui/pending-nudge.ts` plus all 21 referencing files
+   deleted in ONE change**, so no state exists where a control has neither. They span
+   `admin/{sessions,members,proposals,moderation}`, `ui/{submit-button,route-progress}`,
+   `{materials,photos,event,tasks,browse,search}` — **three tracks' ownership and yours.** Do it
+   yourself, before you spawn anyone, or you will be editing their files under them.
+3. ★ **Verify at the bug's own standard.** `DEC-135` is **probabilistic** — about one press in three
+   — so one green run proves nothing. The bisect used **8 presses per build**; the fix measured
+   **16/16 at ~105 ms**. Reproduce that, on a production build, on a quiet machine.
+4. The full gate set, then **report the bug upstream** with `DEC-135`'s instrumented-`react-dom`
+   reasoning.
+
+★ **If it cannot be verified to that standard, the nudge stays and `DEC-136` is amended by a
+follow-up entry.** Going back to a silent 1-in-3 hang on «احجز مقعدك» — the product's primary
+action — is not an acceptable outcome of a tidying change.
 
 ## Carry these — cheap, and already diagnosed
 

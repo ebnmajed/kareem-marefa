@@ -2786,3 +2786,56 @@ A route counts as done only when (1) its `page.tsx` **reaches `src/components/ui
 - **Remove when** the bundled React records a synchronous render-phase ping on a `RootSuspendedWithDelay` root. The e2e reserve test and the discussion review are the proof; delete the file and its callers together.
 - **Supersedes:** `content`'s `setTimeout(…, 0)` (`44485b8`) and `afterPaint` (`4582b17`) explanations of the stuck «نشر». Both treated a symptom of this.
 - **Documents changed:** `src/components/ui/{pending-nudge.ts,submit-button.tsx,route-progress.tsx}`, `tests/components/ui/pending-nudge.test.tsx`, `STATUS.md`
+
+---
+
+## DEC-136 — The owner takes the `react-dom` patch: `DEC-135`'s nudge is a workaround with an end date, and wave 7 opens by removing it
+
+- **Date:** 2026-09-16 · **Decided by:** owner («apply sessions' one-line React patch and delete the workaround»), on the choice `DEC-135` left open
+- **Decision.** `sessions`' one-line change to `pingSuspendedRoot` is applied through **`patch-package`**, and **`src/components/ui/pending-nudge.ts` and every caller are deleted in the same change**. The bug is reported upstream to React.
+
+### Why the workaround could not simply stay
+
+`DEC-135` established the cause: a transition suspends on a Flight chunk still `pending`; the chunk
+resolves to `resolved_model`; React resumes, `isThenableResolved` counts only `fulfilled`/`rejected`,
+so it unwinds and attaches a ping listener that never fires. **About one press in three of
+«احجز مقعدك» never commits** — on a production build, on a quiet machine, with the RSVP already
+written and the Server Action's whole response delivered.
+
+`usePendingNudge` makes a lost ping harmless by forcing a later update. It does not make the ping
+arrive. Every new pending control has to remember to adopt it, and **nothing fails when one
+forgets** — the control simply hangs one press in three, on the action that matters most. A
+workaround whose failure mode is silent and whose adoption is manual is a workaround with a short
+shelf life.
+
+### The blast radius, measured — this is why it is a task, not an edit
+
+**21 files** reference the nudge today: 18 under `src/`, 3 under `tests/`. They span
+`admin/{sessions,members,proposals,moderation}`, `ui/{submit-button,route-progress}`,
+`{materials,photos,event,tasks,browse,search}` — **three tracks' ownership and the lead's**.
+`patch-package` is **not** installed.
+
+### The order, and it is not negotiable
+
+1. **`patch-package` added**, lockfile regenerated **through Docker** (`npm run lockfile` — never a
+   plain `npm install`; the npm-version trap has broken CI twice).
+2. **The patch applied and the nudge deleted in one change**, so no state exists where a control has
+   neither.
+3. ★ **Verified against the bug's own shape.** It is **probabilistic**, so a single green run proves
+   nothing: the bisect that found it used **8 presses per build** and the fix measured **16/16 at
+   ~105 ms**. Reproduce that standard before the PR, on a production build, on a quiet machine.
+4. The full gate set — `build`, `qa` 44/44, `visual` 0.000%, `db:reset` + `test:rls`, e2e.
+5. **Reported upstream**, with the instrumented-`react-dom` reasoning from `DEC-135`.
+
+★ **If the patch cannot be verified to that standard, the nudge stays and this entry is amended by a
+follow-up.** Reverting to a silent 1-in-3 hang on the product's primary action is not an acceptable
+outcome of a tidying change.
+
+### And the exit
+
+When a React or Next release carries the fix, the patch is dropped and the pin removed. `DEC-135`'s
+diagnosis is the record of why the patch existed, so a later reader does not restore a workaround
+whose cause is gone.
+
+- **Supersedes:** `DEC-135`'s open choice. The diagnosis stands unchanged.
+- **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-7-lead.md`

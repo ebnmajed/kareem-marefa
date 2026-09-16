@@ -484,7 +484,13 @@ met on paper only, and it is stated here rather than left to be found.
 - `REQ-EVT-010`'s «a photo appears at once» does not match the shipped pipeline (processing, then visible).
 - On `/app/me`, a save clicked before hydration lands without the `?saved=1` confirmation (the no-JS
   path) — `app/me` is wave 7.
-- ★ **`DEC-135`'s real fix is the owner's call.** Either apply `sessions`' one-line `react-dom` change
+- ✅ **`DEC-135`'s real fix — DECIDED by the owner 2026-09-16, `DEC-136`: take the patch.** Wave 7
+  opens with it: `patch-package` added (lockfile via Docker), the patch applied and
+  `ui/pending-nudge` plus all **21** referencing files deleted in **one** change, verified at the
+  bug's own standard (**16/16 presses on a production build**, because it is probabilistic), then the
+  full gate set, then reported upstream. If it cannot be verified to that standard the nudge stays.
+  The original framing follows.
+- ~~`DEC-135`'s real fix is the owner's call.~~ Either apply `sessions`' one-line `react-dom` change
   (`pingSuspendedRoot`: `? 0 === (executionContext & 2) ? prepareFreshStack(root, 0) :
   (workInProgressRootPingedLanes |= pingedLanes)`, verified 16/16 at ~105 ms) through `patch-package`
   (a new dependency; the lockfile through Docker), or take a React/Next release that carries it. Then
