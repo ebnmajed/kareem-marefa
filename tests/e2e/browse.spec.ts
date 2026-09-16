@@ -13,7 +13,7 @@
 // the phone project, last in their test.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -27,6 +27,11 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+// These pages stream several server reads after a navigation or a server
+// action, and the gate runs them while other suites share one local Supabase.
+// Five seconds measured the machine, not the page.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
@@ -126,11 +131,13 @@ test("★ a category toggle is a link to the filtered URL, pressed once applied,
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
   const nav = page.getByRole("navigation", { name: "تصفية الجلسات" });
-  await nav.getByRole("link", { name: "ذكاء اصطناعي" }).click();
+  // `exact`: once applied, the chip's × is also a link whose name contains the
+  // category («أزل عامل التصفية: ذكاء اصطناعي»).
+  await nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`category=${categoryAiId}`));
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "ذكاء اصطناعي" })).toHaveAttribute("aria-current", "true");
+  await expect(nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true })).toHaveAttribute("aria-current", "true");
 
   await page.getByRole("link", { name: "أزل عامل التصفية: ذكاء اصطناعي" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
@@ -184,12 +191,17 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
 test("a bookmark toggles on the card without navigating, keeps its name, and survives a reload (REQ-DSC-006)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
+  // Hydrated first: the toggle is a client control.
+  await page.waitForLoadState("networkidle");
   const card = page.locator("article", { has: page.getByText(AI) });
   const save = card.getByRole("button", { name: "احفظ الجلسة" });
   await expect(save).toHaveAttribute("aria-pressed", "false");
   await save.click();
   await expect(save).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  // The press is optimistic; the write is the server action behind it. Reload
+  // only once it has landed, or the reload races the write.
+  await page.waitForLoadState("networkidle");
 
   await page.reload();
   await expect(page.locator("article", { has: page.getByText(AI) }).getByRole("button", { name: "احفظ الجلسة" })).toHaveAttribute("aria-pressed", "true");

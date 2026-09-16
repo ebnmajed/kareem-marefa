@@ -16,7 +16,7 @@
 // the image, which moves every fixed layer.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -30,6 +30,11 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+// These pages stream several server reads after a navigation or a server
+// action, and the gate runs them while other suites share one local Supabase.
+// Five seconds measured the machine, not the page.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const PASSWORD = "correct-horse-battery-staple-9";
 
@@ -199,6 +204,9 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   await db.query(`delete from public.rsvps where session_id = $1 and member_id = $2`, [openSessionId, memberId]);
 
   await page.goto(`/ar/app/sessions/${openSessionId}`);
+  // Hydrated first: a press before React owns the form is a race the member
+  // never runs, and not what this test is about.
+  await page.waitForLoadState("networkidle");
   await page.getByRole("region", { name: "الحضور" }).getByRole("button", { name: "احجز مقعدك" }).click();
   await expect(page.getByText("تم تأكيد حجزك")).toBeVisible();
 
@@ -258,8 +266,9 @@ test("★ nothing fixed or sticky covers the focused element, tabbing the whole 
   const obscured: string[] = [];
   for (let i = 0; i < 60; i++) {
     await page.keyboard.press("Tab");
-    // Two frames: the browser's focus scroll, then the page's own clearance.
-    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+    // Let the browser's focus scroll finish (it animates under smooth
+    // scrolling) and the page's own clearance run after it.
+    await page.waitForTimeout(500);
     const hit = await page.evaluate(() => {
       const focused = document.activeElement as HTMLElement | null;
       if (!focused || focused === document.body) return null;

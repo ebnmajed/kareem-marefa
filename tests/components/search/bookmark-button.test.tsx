@@ -50,6 +50,22 @@ describe("BookmarkButton", () => {
     await waitFor(() => expect(toggleBookmarkAction).toHaveBeenCalledWith("ar", ID, false));
   });
 
+  it("★ never follows a link it sits inside — a card's bookmark stays a bookmark", async () => {
+    toggleBookmarkAction.mockResolvedValue({ error: null });
+    // Any link will do: what matters is that its default action is cancelled.
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <a href="#card">
+          <BookmarkButton locale="ar" sessionId={ID} initialBookmarked={false} />
+        </a>
+      </NextIntlClientProvider>,
+    );
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    screen.getByRole("button", { name: ar.search.bookmarkButton.icon }).dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    await waitFor(() => expect(toggleBookmarkAction).toHaveBeenCalledWith("ar", ID, true));
+  });
+
   it("carries a visible label in the action card, and its name is that label (SC 2.5.3)", async () => {
     const { container } = renderButton(false, "button");
     const button = screen.getByRole("button", { name: ar.search.bookmarkButton.short });

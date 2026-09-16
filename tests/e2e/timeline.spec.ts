@@ -12,7 +12,7 @@
 // filtered-empty.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -26,6 +26,11 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+
+// These pages stream several server reads after a navigation or a server
+// action, and the gate runs them while other suites share one local Supabase.
+// Five seconds measured the machine, not the page.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
@@ -72,16 +77,19 @@ test.beforeAll(async ({}, testInfo) => {
   memberEmail = `member@${main.domain}`;
   await makeUser(memberEmail);
 
-  const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
+  // Two categories: `category_id` is NOT NULL (0010), and «فني» must hold only
+  // the introductory session for the filtered-empty case below.
+  const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني'), ($1, 'إداري') returning id`, [orgId]);
   catId = cat[0].id;
+  const otherCatId = cat[1].id;
   const { rows: venue } = await db.query<{ id: string }>(`insert into public.venues (org_id, name) values ($1, 'القاعة الكبرى') returning id`, [orgId]);
   const { rows } = await db.query<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, state, starts_at, duration_minutes, ends_at, capacity, venue_id, published_at)
      values
        ($1, $4, 'نبذة.', $2, 'introductory', 'published', now() + interval '1 day', 60, now() + interval '1 day 1 hour', 60, $3, now() - interval '1 day'),
-       ($1, $5, 'نبذة.', null, 'advanced', 'published', now() + interval '9 days', 60, now() + interval '9 days 1 hour', 60, $3, now() - interval '1 day')
+       ($1, $5, 'نبذة.', $6, 'advanced', 'published', now() + interval '9 days', 60, now() + interval '9 days 1 hour', 60, $3, now() - interval '1 day')
      returning id`,
-    [orgId, catId, venue[0].id, SOON, COMMITTED],
+    [orgId, catId, venue[0].id, SOON, COMMITTED, otherCatId],
   );
   committedId = rows[1].id;
 

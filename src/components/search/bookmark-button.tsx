@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type MouseEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toggleBookmarkAction } from "@/components/search/actions";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,14 @@ export function BookmarkButton({ locale, sessionId, initialBookmarked, variant =
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [pending, startTransition] = useTransition();
 
-  function toggle() {
+  function toggle(event: MouseEvent<HTMLButtonElement>) {
+    // ★ On a timeline card this button sits inside the card's own link.
+    // `CardActions` stops the click from reaching the link's handler, but
+    // stopping propagation does not cancel the ANCHOR's default action — the
+    // real build followed the link on every press. Cancelling it here is what
+    // keeps a bookmark a bookmark.
+    event.preventDefault();
+    event.stopPropagation();
     const next = !bookmarked;
     setBookmarked(next);
     startTransition(async () => {

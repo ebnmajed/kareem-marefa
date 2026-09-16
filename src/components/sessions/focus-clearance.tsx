@@ -55,23 +55,42 @@ function coverOf(el: HTMLElement): { above: number; below: number } | null {
 
 export function FocusClearance() {
   useEffect(() => {
+    function clear(el: HTMLElement) {
+      if (document.activeElement !== el) return;
+      const cover = coverOf(el);
+      if (!cover) return;
+      const r = el.getBoundingClientRect();
+      // `instant`, over `globals.css`'s smooth scrolling: a focus ring that
+      // glides out from behind a bar is behind the bar while it glides.
+      if (r.top < cover.above + GAP) window.scrollBy({ top: r.top - cover.above - GAP, behavior: "instant" });
+      else if (r.bottom > cover.below - GAP) window.scrollBy({ top: r.bottom - cover.below + GAP, behavior: "instant" });
+    }
+
+    let settle: ReturnType<typeof setTimeout> | undefined;
     function onFocusIn(event: FocusEvent) {
       const el = event.target;
       if (!(el instanceof HTMLElement) || el === document.body) return;
-      // After the browser's own focus scroll has happened.
-      requestAnimationFrame(() => {
-        if (document.activeElement !== el) return;
-        const cover = coverOf(el);
-        if (!cover) return;
-        const r = el.getBoundingClientRect();
-        // `instant`, over `globals.css`'s smooth scrolling: a focus ring that
-        // glides out from behind a bar is behind the bar while it glides.
-        if (r.top < cover.above + GAP) window.scrollBy({ top: r.top - cover.above - GAP, behavior: "instant" });
-        else if (r.bottom > cover.below - GAP) window.scrollBy({ top: r.bottom - cover.below + GAP, behavior: "instant" });
-      });
+      // Once on the next frame, for a focus that did not scroll…
+      requestAnimationFrame(() => clear(el));
+      // …and once more after the browser's own focus scroll has FINISHED.
+      // Under `scroll-behavior: smooth` that scroll animates, so a check on the
+      // next frame measures a page still moving and can leave the control
+      // under the header when the glide ends. `scrollend` where there is one,
+      // a short timer where there is not.
+      clearTimeout(settle);
+      const after = () => {
+        clearTimeout(settle);
+        window.removeEventListener("scrollend", after);
+        clear(el);
+      };
+      window.addEventListener("scrollend", after, { once: true });
+      settle = setTimeout(after, 450);
     }
     document.addEventListener("focusin", onFocusIn);
-    return () => document.removeEventListener("focusin", onFocusIn);
+    return () => {
+      clearTimeout(settle);
+      document.removeEventListener("focusin", onFocusIn);
+    };
   }, []);
   return null;
 }
