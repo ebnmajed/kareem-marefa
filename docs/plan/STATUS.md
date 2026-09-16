@@ -274,7 +274,7 @@ DEC-134 and wave 7's forms (`dd03094`, `79d3932`).
 No row closes on sync 4: its captures came from builds with one or both defects. **Sync 5** is a full run at HEAD
 with both fixes and `STUBBED_SERVER_LOG`, then `reserve-probe` alone on a quiet machine.
 
-### Sync 5 — 2026-09-16 — the first clean full run: 16 rows closed
+### Sync 5 — 2026-09-16 — the first clean full run: 18 rows closed
 
 **Build `bfe8e2a`** in the verification worktree, with both sync-4 fixes (`.env.local`, `c179a0d`) and
 `STUBBED_SERVER_LOG`. Static gates: `tsc` clean · lint 0 errors · vitest **144 files, 1435/1435** · `ui-reach --wave7`
@@ -292,8 +292,8 @@ Real findings, routed with the build: `checkin` (`admin-attendance:177`, fixed `
 select after save; the no-JS save; `tasks:153` strict) · `console` (a dashboard `Stat` with a sentence in its value
 slot on an empty org; no venues capture).
 
-**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T7, K0, K1, K2, K4, K5, K6.
-**Open:** C1–C6, T1, T2, T6, T8, K3. Each is named in its row.
+**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T7, K0, K1, K2, K4, K5, K6; and C4, C5 on their SQL, RLS and specs.
+**Open:** C1, C2, C3, C6, T1, T2, T6, T8, K3. Each is named in its row.
 
 ★ **The `noValidate` sweep.** `content` found a real bug (`7f4809f`): a `required` control with no `noValidate` lets
 the browser block the submit, so the app's own error never renders. Every wave-7 form that shows an app-side error
