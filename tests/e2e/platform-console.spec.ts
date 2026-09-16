@@ -417,6 +417,81 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
   expect(Number(baseline[0].n)).toBeGreaterThanOrEqual(8);
 });
 
+/** Open a row's menu on SCR-080 and choose an act. The hidden twin (card list or table) is excluded by the role locator. */
+async function orgAct(page: Page, org: { name: string }, item: string) {
+  await page.getByRole("button", { name: `إجراءات ${org.name}` }).click();
+  await page.getByRole("menuitem", { name: item }).click();
+}
+
+test("★ REQ-TEN-006 · REQ-UIX-013: suspension confirms by name, refuses an empty reason beside the field, and reinstating answers", async ({ context, page }) => {
+  await signInPlatform(context);
+  await page.goto("/ar/app/platform/orgs");
+  await orgAct(page, b, "إيقاف المؤسسة");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading")).toContainText(b.name);
+  await expect(dialog).toContainText("لا يحذف شيئًا");
+
+  await dialog.getByRole("button", { name: /^أوقف/ }).click();
+  await expect(dialog.getByText("السبب مطلوب، ولا يقلّ عن ثلاثة أحرف.")).toBeVisible();
+  const { rows: still } = await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id]);
+  expect(still[0].status, "an empty reason suspends nothing").toBe("active");
+
+  await dialog.getByLabel(/سبب الإيقاف/).fill("مراجعة مؤقتة لحساب المؤسسة");
+  await dialog.getByRole("button", { name: /^أوقف/ }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(async () => (await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id])).rows[0].status).toBe("suspended");
+
+  await orgAct(page, b, "أعد التفعيل");
+  await expect.poll(async () => (await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id])).rows[0].status).toBe("active");
+});
+
+test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes nothing, the slug queues it and the platform's own log records it", async ({ context, page }) => {
+  await signInPlatform(context);
+  // A throwaway org: the seeded two serve every other case.
+  const slug = `doomed-${tag}`;
+  const name = `مؤسسة للحذف ${tag}`;
+  const { rows } = await db.query<{ id: string }>(
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ($1, $2, 'DMD', gen_random_uuid()) returning id`,
+    [name, slug],
+  );
+  createdOrgIds.push(rows[0].id);
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [rows[0].id]);
+
+  await page.goto("/ar/app/platform/orgs");
+  await orgAct(page, { name }, "حذف المؤسسة");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading")).toContainText(name);
+  await dialog.getByLabel(/معرّف المؤسسة/).fill(`${slug}-typo`);
+  await dialog.getByRole("button", { name: /احذف نهائيًا/ }).click();
+  await expect(dialog.getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
+  const { rows: untouched } = await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [rows[0].id]);
+  expect(untouched[0].status, "a mismatched slug deletes nothing and suspends nothing").toBe("active");
+
+  await dialog.getByLabel(/معرّف المؤسسة/).fill(slug);
+  await dialog.getByRole("button", { name: /احذف نهائيًا/ }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect
+    .poll(async () => (await db.query(`select 1 from public.platform_audit_log where action = 'org.deletion_requested' and subject_org = $1`, [rows[0].id])).rowCount)
+    .toBe(1);
+});
+
+test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {
+  await signInPlatform(context);
+  await page.goto("/ar/app/platform/orgs/new");
+  await page.getByLabel(/اسم المؤسسة/).fill(`مؤسسة لم تُنشأ ${tag}`);
+  await page.getByLabel(/المعرّف في الروابط/).fill("Bad Slug");
+  await page.getByLabel(/النطاقات المسموح بها/).fill("Example.COM");
+  await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+
+  const summary = page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
+  await expect(summary).toBeVisible();
+  await expect(summary.getByRole("link")).toHaveCount(3); // slug, prefix, first admin
+  await expect(page.getByLabel(/المعرّف في الروابط/)).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel(/اسم المؤسسة/)).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
+  await expect(page.getByLabel(/النطاقات المسموح بها/)).toHaveValue("Example.COM");
+  expect(new URL(page.url()).pathname).toBe("/ar/app/platform/orgs/new");
+});
+
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
   await startFromForm(page, a.id, "تحقيق في بلاغ من مشرف المؤسسة");
@@ -545,11 +620,28 @@ test.describe("390 px RTL review", () => {
     await review(page, "wave8-platform-shell-nav-open");
     await page.keyboard.press("Escape");
 
+    // P2 — the stacked card list, a suspension confirm open, a refused deletion.
     await page.goto("/ar/app/platform/orgs");
-    await review(page, "scr-080-platform-orgs");
+    await expect(page.getByText(a.name).first()).toBeVisible();
+    await review(page, "wave8-platform-orgs-cards");
+    await orgAct(page, a, "إيقاف المؤسسة");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await review(page, "wave8-platform-orgs-suspend-confirm");
+    await page.keyboard.press("Escape");
+    await orgAct(page, a, "حذف المؤسسة");
+    await page.getByRole("dialog").getByLabel(/معرّف المؤسسة/).fill("not-the-slug");
+    await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
+    await expect(page.getByRole("dialog").getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
+    await review(page, "wave8-platform-orgs-delete-mismatch");
+    await page.keyboard.press("Escape");
 
+    // P3 — a new org with field errors, the summary focused, the values kept.
     await page.goto("/ar/app/platform/orgs/new");
-    await review(page, "scr-081-platform-new-org");
+    await page.getByLabel(/اسم المؤسسة/).fill("مؤسسة التصوير");
+    await page.getByLabel(/المعرّف في الروابط/).fill("Bad Slug");
+    await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
+    await review(page, "wave8-platform-orgs-new-field-error");
 
     await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
     await review(page, "scr-082-platform-domains");

@@ -79,12 +79,24 @@ describe("platform, legal and privacy messages", () => {
   });
 
   it("every interpolated value in a platform message is bidi-isolated where it is Latin", () => {
-    // The two messages that interpolate a Latin identifier into an Arabic
-    // sentence carry `<bdi>` in the STRING, because wrapping at the call site
-    // cannot reorder text the formatter has already joined.
+    // The messages rendered RICH that interpolate a name, a slug, a time or a
+    // number into an Arabic sentence carry `<bdi>` in the STRING, because
+    // wrapping at the call site cannot reorder text the formatter has already
+    // joined. (A toast title is plain text, so the caller isolates the org with
+    // FSI/PDI instead — `orgs/org-actions.tsx`.) Wave 8 moved the slug out of
+    // the deletion label into its own isolated element beside it.
     const byKey = Object.fromEntries(leaves(arPlatform as Tree));
-    expect(byKey["platform.orgs.deleteConfirmLabel"]).toContain("<bdi>{slug}</bdi>");
-    expect(byKey["platform.templates.version"]).toContain("<bdi>{value}</bdi>");
+    const rich: [string, string][] = [
+      ["platform.orgs.suspendConfirmTitle", "<bdi>{org}</bdi>"],
+      ["platform.orgs.deleteConfirmTitle", "<bdi>{org}</bdi>"],
+      ["platform.templates.version", "<bdi>{value}</bdi>"],
+      ["platform.banner.viewingAs", "<bdi>{org}</bdi>"],
+      ["platform.banner.endsAt", "<bdi>{time}</bdi>"],
+      ["platform.impersonate.expiredRecently", "<bdi>{org}</bdi>"],
+      ["platform.impersonate.expiredRecently", "<bdi>{time}</bdi>"],
+    ];
+    for (const [key, isolated] of rich) expect(byKey[key], key).toContain(isolated);
+    expect(byKey["platform.orgs.deleteConfirmLabel"]).not.toContain("{slug}");
   });
 
   it("the privacy policy states the hosting region as a fact to revisit, not a conclusion", () => {

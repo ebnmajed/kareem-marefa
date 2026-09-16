@@ -171,10 +171,13 @@ function failure(error: { message?: string } | null): PlatformWriteResult {
   // The RPCs raise stable identifiers, never prose (0005's convention); the
   // screen maps them to Arabic copy and falls back to a generic line.
   const raw = error?.message ?? "";
+  // Longest first where one identifier contains another: `org_not_found`
+  // would otherwise swallow `org_not_found_or_active`.
   const known = [
     "not_platform_admin",
     "domains_required",
     "reason_required",
+    "org_not_found_or_active",
     "org_not_found",
     "invalid_email",
     "slug_mismatch",
@@ -186,7 +189,8 @@ function failure(error: { message?: string } | null): PlatformWriteResult {
     "template_retired",
   ].find((k) => raw.includes(k));
   if (known) return { status: "failed", message: known };
-  if (raw.includes("orgs_slug_key") || raw.includes("duplicate key")) return { status: "failed", message: "slug_taken" };
+  // Only the slug's own constraint is «slug taken»; any other duplicate is not.
+  if (raw.includes("orgs_slug_key")) return { status: "failed", message: "slug_taken" };
   return { status: "failed", message: "failed" };
 }
 
