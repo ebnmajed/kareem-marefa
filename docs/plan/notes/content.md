@@ -1795,3 +1795,45 @@ run against a real build — `npm run build` is lead-only and the checkout's `.n
 changes; ready whenever the lead next builds.
 
 Ready for sync.
+
+## §2 — sync-2 fixes, T8, and the takedown wrap (5abdbc6 … 63cfdc1)
+
+Six commits: `5abdbc6` (tab-strip scroll cue, the no-JS save test, profile.json cleanup), `c61ea3a`
+(every empty state names its next action — REQ-UIX-012 — and the points `Stat` stays per the lead's
+ruling, reversing what I shipped a sync earlier), `7c6f9e5` (T8, the takedown wrap fix), `63cfdc1`
+(a real bug in my own RLS test, caught by actually running it).
+
+**The `?saved=1` fix reconsidered isn't a reconsideration of the diagnosis, only of the standard it's
+held to.** The lead's point stood: I'd reasoned my way to "nothing left to race" without checking
+what a real no-JS POST actually renders. Added the case (`javaScriptEnabled: false`, a real
+submission, checking both the confirmation and the persisted value) — written, not yet run against a
+build, same as everything else waiting on one.
+
+**Caught my own Tailwind 4 mistake before it shipped**: `inset-inline-end-0` on the tab strip's fade
+— exactly DEC-133's dead utility, compiles to nothing. `logical-utilities.test.ts` failed on the
+first `npm test` after writing it; fixed to `end-0` in the same pass. Worth naming because it's the
+precise failure mode the invariant describes — no type error, no lint error, looked correct.
+
+**Reversed my own points fix from the previous sync**: I'd read the lead's sync-2 finding as "restore
+the sentence" and it meant "fix the test to match the Stat." Both readings are defensible from the
+message alone; asked nothing, guessed, guessed wrong, caught it on the NEXT sync message rather than
+before shipping. Redone correctly this time — `Stat` stays, `points.spec.ts` reads its `<strong>`.
+
+**T8** (photos realtime, DEC-139): traced `photos`' own `check (exif_stripped)` constraint — a row
+is only ever inserted already stripped, so there's no "now visible" transition to track, the INSERT
+*is* the moment. One new trigger (`supabase/proposed/content/01_photos_broadcast.sql`) reusing the
+exact `session:{id}` topic and RLS `comments_broadcast()` already established — no new topic, no new
+policy. `UploadWidget` subscribes only between its own 202 and the broadcast for that photo's id, with
+a 20 s fallback. Proven against real local Supabase (`npm run test:rls`) — found and fixed my own test
+bug in the process: the "doesn't leak to another org's topic" case assumed that topic was silent, and
+it isn't — org B's own fixture already broadcasts its own comments there.
+
+**The takedown wrap**, traced properly rather than guessed at: `Button size="sm"` sets a fixed
+`height` internally; adding `min-h-9` beside it via a caller's `className` does nothing, since
+`min-height` never overrides an explicit `height`. `h-auto!` (Tailwind 4's important syntax) is what
+actually wins.
+
+Everything: `tsc` clean, lint 0 errors, `npm test` 1366/1366, the RLS trigger proven live, not just
+in a rolled-back-transaction reading. Nothing left on my wave-7 checklist.
+
+Ready for sync.
