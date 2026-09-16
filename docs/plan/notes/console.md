@@ -2228,3 +2228,9 @@ member's text differently from the name by design (`حُذف تعليق`, `حُ�
 editor, `ui/tabs`, `ui/textarea` or the DAL reads. The spec now asserts the page and editor headings before
 typing and refuses a failed session refresh, so a repeat names what rendered (`8d3a5a0`), which also names
 the three timed reminders for the admin («تذكير قبل الجلسة بيوم», not «غدًا»).
+
+**Closed — all six rows, 2026-09-17.** K1–K4 on the `5a8f5bc` captures; K6 at `52005ba` (no `MSG-*` ids, the
+provider's text from its left edge, the reminders one row each); K5 at `79d22c0` (the penalties captured with
+motion reduced, and `ui/combobox` scrolling its open list clear of the phone tab bar — the member picker had
+opened under it). Carried by the lead to M13, not changed this wave: `controlClass`' `w-full` beats a caller's
+`w-*`, so every narrow `Input`/`Select` renders full width; `DurationInput` sizes wrappers meanwhile.
