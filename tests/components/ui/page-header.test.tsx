@@ -63,6 +63,11 @@ describe("SectionHeader", () => {
     await expectAccessible(container);
   });
 
+  it("separates the count from the title in the accessible name — a margin is not a word break", () => {
+    render(<SectionHeader title="هذا الأسبوع" count={1} />);
+    expect(screen.getByRole("heading", { level: 2, name: "هذا الأسبوع (1)" })).toBeInTheDocument();
+  });
+
   it("renders as h3 when asked", () => {
     render(<SectionHeader title="الملفات" as="h3" />);
     expect(screen.getByRole("heading", { level: 3 })).toBeInTheDocument();

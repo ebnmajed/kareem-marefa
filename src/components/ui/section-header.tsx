@@ -18,7 +18,19 @@ export function SectionHeader({ title, as: Heading = "h2", id, description, coun
       <div className="min-w-0">
         <Heading id={id} className={`${Heading === "h2" ? "text-h2" : "text-h3"} text-fg-heading`}>
           <bdi>{title}</bdi>
-          {count !== undefined ? <span className="ms-2 align-middle text-label text-fg-muted">{formatNumber(count)}</span> : null}
+          {/* ★ The count is part of the heading's accessible name, so it needs a
+              separator a screen reader can hear: a margin is not one, and
+              «هذا الأسبوع» + «1» read as the single word «هذا الأسبوع1». A real
+              space (which also carries part of the visual gap) and parentheses
+              for the ear only. */}
+          {count !== undefined ? " " : null}
+          {count !== undefined ? (
+            <span className="ms-1.5 align-middle text-label text-fg-muted">
+              <span className="sr-only">(</span>
+              {formatNumber(count)}
+              <span className="sr-only">)</span>
+            </span>
+          ) : null}
         </Heading>
         {description ? <p className="mt-1.5 max-w-prose text-body text-fg-muted">{description}</p> : null}
       </div>
