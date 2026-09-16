@@ -492,6 +492,37 @@ test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and ke
   expect(new URL(page.url()).pathname).toBe("/ar/app/platform/orgs/new");
 });
 
+test("★ REQ-TEN-007 (contract 4) · REQ-TEN-002 (F3): SCR-082 takes any case and shows what is stored; removal confirms by name", async ({ context, page }) => {
+  await signInPlatform(context);
+  await page.goto(`/ar/app/platform/orgs/${b.id}/domains`);
+
+  const mixed = `Mixed-${tag}.Example`;
+  await page.getByLabel(/^النطاق/).fill(mixed);
+  await page.getByRole("button", { name: /أضف النطاق/ }).click();
+  const storedDomain = mixed.toLowerCase();
+  await expect(page.getByText(storedDomain, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(mixed, { exact: true })).toHaveCount(0);
+  const { rows } = await db.query<{ domain: string }>(`select domain::text from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain]);
+  expect(rows.map((r) => r.domain)).toEqual([storedDomain]);
+
+  // F3 — measured refused before wave 8: a mixed-case address is saved, lowercase.
+  await page.getByLabel(/^بريد أول مشرف/).fill(`Boss@${mixed}`);
+  await page.getByRole("button", { name: /^احفظ/ }).click();
+  await expect
+    .poll(async () => (await db.query<{ e: string }>(`select first_admin_email::text as e from public.orgs where id = $1`, [b.id])).rows[0].e)
+    .toBe(`boss@${storedDomain}`);
+  // Put the seeded admin back: other cases sign in as it.
+  await db.query(`update public.orgs set first_admin_email = $2 where id = $1`, [b.id, b.adminEmail]);
+
+  await page.getByRole("button", { name: `احذف ${storedDomain}` }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading")).toContainText(storedDomain);
+  await expect(dialog).toContainText("لا يفقد أحد وصوله");
+  await dialog.getByRole("button", { name: "احذف" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(async () => (await db.query(`select 1 from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain])).rowCount).toBe(0);
+});
+
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
   await startFromForm(page, a.id, "تحقيق في بلاغ من مشرف المؤسسة");
@@ -643,8 +674,13 @@ test.describe("390 px RTL review", () => {
     await expect(page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
     await review(page, "wave8-platform-orgs-new-field-error");
 
+    // P4 — a mixed-case domain saved, listed as stored (contract 4).
     await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
-    await review(page, "scr-082-platform-domains");
+    const shotDomain = `Shot-${tag}.Example`;
+    await page.getByLabel(/^النطاق/).fill(shotDomain);
+    await page.getByRole("button", { name: /أضف النطاق/ }).click();
+    await expect(page.getByText(shotDomain.toLowerCase(), { exact: true }).first()).toBeVisible();
+    await review(page, "wave8-platform-domains-mixed-case-saved");
 
     await page.goto("/ar/app/platform/templates");
     await review(page, "scr-083-platform-templates");

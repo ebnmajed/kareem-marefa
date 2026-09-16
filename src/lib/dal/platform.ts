@@ -242,12 +242,21 @@ export async function deleteOrg(locale: string, orgId: string, typedSlug: string
 
 // ── SCR-082 · the first admin and the allowed domains ─────────────────────
 
+/**
+ * ★ Lowercased HERE, before the RPC (wave 8, notes W8.0 F3). `set_first_admin()`
+ * checks `\.[a-z]{2,}$` against the address as sent, and Postgres regexes are
+ * case-sensitive, so `Boss@Example.COM` was refused as «بريد غير صالح» — while
+ * `create_org()` lowercases first and stores the same address happily. The two
+ * doors now agree; the column is `citext` and stores lowercase either way.
+ * (A `create or replace` of the RPC is recorded as optional hardening, DEC-148.)
+ */
 export async function setFirstAdmin(locale: string, orgId: string, email: string): Promise<PlatformWriteResult> {
   if (!z.uuid().safeParse(orgId).success) return { status: "failed", message: "failed" };
-  if (!z.email().safeParse(email).success) return { status: "failed", message: "invalid_email" };
+  const normalised = email.trim().toLowerCase();
+  if (!z.email().safeParse(normalised).success) return { status: "failed", message: "invalid_email" };
   await requirePlatformAdmin(locale);
   const supabase = await createServerClient();
-  const { error } = await supabase.rpc("set_first_admin", { p_org: orgId, p_email: email });
+  const { error } = await supabase.rpc("set_first_admin", { p_org: orgId, p_email: normalised });
   return error ? failure(error) : { status: "ok" };
 }
 
@@ -264,8 +273,12 @@ export async function addDomain(locale: string, orgId: string, domain: string): 
   if (!parsed.success) return { status: "failed", message: "invalid_domain" };
   await requirePlatformAdmin(locale);
   const supabase = await createServerClient();
-  const { error } = await supabase.rpc("add_org_domain", { p_org: orgId, p_domain: parsed.data });
-  return error ? failure(error) : { status: "ok" };
+  const { data, error } = await supabase.rpc("add_org_domain", { p_org: orgId, p_domain: parsed.data });
+  if (error) return failure(error);
+  // `add_org_domain()` answers the new row's id, or null when the domain was
+  // already on the list (`on conflict do nothing`) — which the screen says,
+  // rather than «saved».
+  return { status: "ok", id: (data as string | null) ?? undefined };
 }
 
 /**

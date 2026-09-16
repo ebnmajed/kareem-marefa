@@ -70,23 +70,34 @@
     },
     "domains": {
       "title": "Domains and first admin",
-      "backToOrgs": "Back to orgs",
+      "breadcrumb": "Breadcrumb",
+      "suspendedSince": "Suspended since <bdi>{date}</bdi>. Reason: <bdi>{reason}</bdi>",
       "domainsTitle": "Allowed domains",
       "domainsIntro": "These decide who can be provisioned into the org on a first sign-in.",
       "removalNote": "Removing a domain prevents new memberships only. Existing members keep their access.",
+      "domainColumn": "Domain",
+      "actionsColumn": "Actions",
       "domainLabel": "Domain",
-      "domainHint": "For example: example.com — lowercase, no @.",
+      "domainHint": "For example example.com — in any case; it is stored in lowercase, as the list shows it.",
       "add": "Add the domain",
+      "added": "{domain} added.",
+      "alreadyPresent": "{domain} is already on the list.",
       "remove": "Remove",
+      "removeFor": "Remove {domain}",
+      "removeConfirmTitle": "Remove <bdi>{domain}</bdi>",
+      "removeConfirmBody": "Nobody can create a new membership with an address on this domain any more. Existing members stay as they are, and nobody loses access.",
+      "removed": "{domain} removed.",
       "empty": "No domains. Nobody can be provisioned into this org right now.",
+      "emptyAction": "Add a domain",
       "domainCount": "{count, plural, =0 {No domains} one {One domain} other {{value} domains}}",
       "firstAdminTitle": "First admin",
       "firstAdminIntro": "If that address is already a member they become an admin at once; if not, on their first sign-in.",
       "firstAdminLabel": "First admin's email",
+      "firstAdminHint": "In any case — stored in lowercase.",
       "firstAdminCurrent": "Currently stored",
       "firstAdminNone": "Not set",
       "setFirstAdmin": "Save",
-      "saved": "Saved."
+      "firstAdminSaved": "The first admin's email is saved."
     },
     "templates": {
       "title": "Platform template library",
@@ -204,7 +215,8 @@
       "domainsTooMany": "Ten domains at most.",
       "emailRequired": "Write the first admin's email.",
       "confirmRequired": "Type the org's slug to confirm.",
-      "org_not_found_or_active": "The org is not suspended, or no longer exists."
+      "org_not_found_or_active": "The org is not suspended, or no longer exists.",
+      "domain_required": "Write the domain."
     },
     "home": {
       "title": "Platform console",

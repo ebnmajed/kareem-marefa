@@ -101,6 +101,41 @@ describe("platform — the console's reads (0002)", () => {
     });
   });
 
+  it("★ contract 4 — a mixed-case domain with a leading «@» is STORED lowercase and bare, which is what SCR-082 lists", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      await tx.q(`select public.add_org_domain($1, '@Mixed-Case.EXAMPLE')`, [f.a.id]);
+      // The same domain in another case is the same row: `on conflict do nothing` answers null.
+      const [{ id }] = await tx.q<{ id: string | null }>(`select public.add_org_domain($1, 'mixed-case.example') as id`, [f.a.id]);
+      expect(id).toBeNull();
+
+      const [{ platform_org: org }] = await tx.q<{ platform_org: { domains: string[] } }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.domains).toContain("mixed-case.example");
+      expect(org.domains.filter((d) => d.toLowerCase() === "mixed-case.example")).toHaveLength(1);
+    });
+  });
+
+  it("★ F3 — set_first_admin() refuses a mixed-case address AS SENT, which is why the DAL lowercases before calling it", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      // Pinned so a later hardening of the RPC (DEC-148) shows up here as a change, not a surprise.
+      expect(await errorMessage(() => tx.q(`select public.set_first_admin($1, 'Boss@Example.COM')`, [f.a.id]))).toMatch(/invalid_email/);
+      await tx.q(`select public.set_first_admin($1, 'boss@example.com')`, [f.a.id]);
+      const [{ platform_org: org }] = await tx.q<{ platform_org: { firstAdminEmail: string } }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.firstAdminEmail).toBe("boss@example.com");
+    });
+  });
+
   it("RPC-platform_impersonations.own — a platform admin sees their own sessions and not another's", async () => {
     await withTx(async (tx) => {
       const f = await seedBase(tx);
