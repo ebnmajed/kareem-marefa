@@ -511,6 +511,24 @@ export async function signExportUrl(locale: string, storagePath: string): Promis
 
 /* ── the org brand override for the editor's preview (wave 4, DEC-052) ──── */
 
+/**
+ * The `brand.*` bindings a PREVIEW renders with — the org's override over the
+ * platform palette in the given scheme, and the logo as a short-lived signed
+ * URL. The template libraries (SCR-055/056) draw each card with it, so a card
+ * shows the template as this org's posters and certificates will look.
+ */
+export async function previewBrandBindings(locale: string, scheme: BrandScheme): Promise<Record<string, string>> {
+  const { session, supabase } = await sessionClient(locale);
+  const bindings = resolveBrand(await editorBrandOverrides(supabase, session.orgId), scheme);
+  const logoAssetId = bindings["brand.logoAssetId"];
+  if (logoAssetId) {
+    const url = await signDesignAssetUrl(locale, logoAssetId);
+    if (url) bindings["brand.logoAssetId"] = url;
+    else delete bindings["brand.logoAssetId"];
+  }
+  return bindings;
+}
+
 /** `public.brand_kit()` already merges the platform defaults, so its output
  *  is a complete override; `resolveBrand` over it is exact. RLS scopes the
  *  read to the caller's org whatever id is passed (`security invoker`). */

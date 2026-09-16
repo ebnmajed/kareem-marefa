@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import {
   createBlankInput,
   createBlankTemplate,
@@ -11,88 +13,101 @@ import {
   renameTemplate,
   retireTemplate,
   setDefaultTemplate,
+  templateNameSchema,
   type TemplatePurpose,
+  type TemplateWriteResult,
 } from "@/lib/dal/templates";
+import type { TemplateActionKind, TemplateActionState } from "./state";
 
-// SCR-055 · SCR-056. `"use server"` modules export async functions and types
-// alone — `npm run build` is the only gate that catches a constant export
-// here, so nothing else lives in this file.
+// SCR-055 · SCR-056. Zod first, then the DAL, which answers on the caller's
+// own RLS-bound client: `templates_write_org` and friends are the authority.
 //
 // Every action's payload is IDS AND A NAME: the document itself never crosses
 // an action boundary. Duplicating copies the source's document server-side
 // and publishing reads the draft from the database, so nothing here goes near
-// the 1 MB action cap that forced the designer's own autosave onto a Route
+// the 1 MB action cap that forced the designer's autosave onto a Route
 // Handler (`04` §4.2).
+//
+// They answer with a state the calling control toasts, and revalidate the
+// library — never a redirect with a query string. A form's action takes the
+// FormData last and no previous state: the client wrapper that hands it to
+// `useActionState` drops the state it has no use for. The one exception is
+// «عدّل في الاستوديو», which IS a navigation.
+//
+// `"use server"` modules export async functions and types alone.
 
-const screen = (purpose: TemplatePurpose) => `/ar/app/admin/templates/${purpose === "poster" ? "posters" : "certificates"}`;
+const id = z.uuid();
+const screen = (locale: string, purpose: TemplatePurpose) => `/${locale}/app/admin/templates/${purpose === "poster" ? "posters" : "certificates"}`;
 
-function purposeOf(formData: FormData): TemplatePurpose {
-  return formData.get("purpose")?.toString() === "certificate" ? "certificate" : "poster";
+function answer(locale: string, purpose: TemplatePurpose, result: TemplateWriteResult | { status: "ok" }, kind: TemplateActionKind): TemplateActionState {
+  if (result.status === "ok") {
+    revalidatePath(screen(locale, purpose));
+    return { status: "ok", kind, at: Date.now() };
+  }
+  return result.status === "not_authorized" ? { status: "not_authorized", at: Date.now() } : { status: "invalid", at: Date.now() };
 }
 
-export async function duplicateFromPlatform(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const parsed = duplicateInput.safeParse({
-    sourceTemplateId: formData.get("templateId")?.toString(),
-    name: formData.get("name")?.toString(),
-  });
-  if (!parsed.success) redirect(`${screen(purpose)}?error=invalid`);
-
-  const result = await duplicateTemplate("ar", parsed.data);
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=duplicated`);
+function nameError(raw: unknown): TemplateActionState | null {
+  const parsed = templateNameSchema.safeParse(raw);
+  if (parsed.success) return null;
+  const empty = typeof raw !== "string" || raw.trim() === "";
+  return { status: "invalid_field", field: "name", error: empty ? "nameRequired" : "nameTooLong", at: Date.now() };
 }
 
-export async function createTemplate(formData: FormData) {
-  const purpose = purposeOf(formData);
+/** REQ-DSG-008 — a copy the org owns; no later platform change reaches it. */
+export async function duplicateFromPlatform(locale: string, purpose: TemplatePurpose, sourceTemplateId: string, form: FormData): Promise<TemplateActionState> {
+  const name = form.get("name");
+  const invalidName = nameError(name);
+  if (invalidName) return invalidName;
+  const parsed = duplicateInput.safeParse({ sourceTemplateId, name });
+  if (!parsed.success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await duplicateTemplate(locale, parsed.data), "duplicated");
+}
+
+/** A blank template — and for a certificate, the composition it starts on. */
+export async function createTemplate(locale: string, purpose: TemplatePurpose, form: FormData): Promise<TemplateActionState> {
+  const name = form.get("name");
+  const invalidName = nameError(name);
+  if (invalidName) return invalidName;
+  const orientation = form.get("orientation");
   const parsed = createBlankInput.safeParse({
     purpose,
-    family: formData.get("family")?.toString(),
-    name: formData.get("name")?.toString(),
+    family: form.get("family"),
+    name,
+    ...(purpose === "certificate" && typeof orientation === "string" ? { orientation } : {}),
   });
-  if (!parsed.success) redirect(`${screen(purpose)}?error=invalid`);
-
-  const result = await createBlankTemplate("ar", parsed.data);
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=created`);
+  if (!parsed.success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await createBlankTemplate(locale, parsed.data), "created");
 }
 
 /** Opens the template's working document in SCR-057, creating it on the first
  *  open from the latest version — so an admin never faces an empty editor. */
-export async function editTemplate(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const templateId = formData.get("templateId")?.toString() ?? "";
-  const result = await openTemplateDraft("ar", templateId);
-  if ("status" in result) redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`/ar/app/admin/designer/${result.documentId}`);
+export async function editTemplate(locale: string, templateId: string): Promise<TemplateActionState> {
+  if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
+  const result = await openTemplateDraft(locale, templateId);
+  if ("status" in result) return { status: "not_authorized", at: Date.now() };
+  redirect(`/${locale}/app/admin/designer/${result.documentId}`);
 }
 
-export async function publishVersion(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const templateId = formData.get("templateId")?.toString() ?? "";
-  const result = await publishTemplateVersion("ar", templateId);
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=published&version=${result.version}`);
+export async function publishVersion(locale: string, purpose: TemplatePurpose, templateId: string): Promise<TemplateActionState> {
+  if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await publishTemplateVersion(locale, templateId), "published");
 }
 
-export async function makeDefault(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const result = await setDefaultTemplate("ar", formData.get("templateId")?.toString() ?? "");
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=defaultSet`);
+export async function makeDefault(locale: string, purpose: TemplatePurpose, templateId: string): Promise<TemplateActionState> {
+  if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await setDefaultTemplate(locale, templateId), "defaultSet");
 }
 
-export async function rename(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const result = await renameTemplate("ar", formData.get("templateId")?.toString() ?? "", formData.get("name")?.toString() ?? "");
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=renamed`);
+export async function rename(locale: string, purpose: TemplatePurpose, templateId: string, form: FormData): Promise<TemplateActionState> {
+  const name = form.get("name");
+  const invalidName = nameError(name);
+  if (invalidName) return invalidName;
+  if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await renameTemplate(locale, templateId, String(name)), "renamed");
 }
 
-export async function toggleRetired(formData: FormData) {
-  const purpose = purposeOf(formData);
-  const retired = formData.get("retired") === "1";
-  const result = await retireTemplate("ar", formData.get("templateId")?.toString() ?? "", retired);
-  if (result.status !== "ok") redirect(`${screen(purpose)}?error=${result.status}`);
-  redirect(`${screen(purpose)}?done=${retired ? "retired" : "restored"}`);
+export async function setRetired(locale: string, purpose: TemplatePurpose, templateId: string, retired: boolean): Promise<TemplateActionState> {
+  if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
+  return answer(locale, purpose, await retireTemplate(locale, templateId, retired), retired ? "retired" : "restored");
 }
