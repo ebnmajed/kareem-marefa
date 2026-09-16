@@ -12,7 +12,7 @@
         "proposals": "Proposals",
         "sessions": "Sessions",
         "venues": "Venues",
-        "categories": "Categories",
+        "categories": "Categories and tags",
         "companies": "Companies",
         "members": "Members",
         "moderationComments": "Comments",
@@ -28,6 +28,12 @@
         "audit": "Audit log",
         "settings": "Settings",
         "branding": "Branding"
+      },
+      "groups": {
+        "moderation": "Moderation",
+        "points": "Points and recognition",
+        "designs": "Designs",
+        "notifications": "Notifications"
       }
     },
     "dashboard": {
@@ -270,14 +276,36 @@
       "add": "Add the venue",
       "listTitle": "Your venues",
       "empty": "No venues yet.",
+      "nameColumn": "Name",
+      "capacityColumn": "Capacity",
+      "upcomingColumn": "Upcoming sessions",
+      "statusColumn": "Status",
+      "actionsColumn": "Actions",
       "deactivate": "Deactivate",
       "activate": "Reactivate",
       "deactivated": "Deactivated",
+      "deactivateConfirmTitle": "Deactivate “<t>{name}</t>”?",
+      "deactivateConfirmBody": "This venue will no longer appear when scheduling a new session. Existing sessions keep it on record, and you can reactivate it at any time.",
+      "deactivateConfirmAction": "Confirm deactivation",
+      "deactivateDone": "Deactivated.",
+      "reactivateDone": "Reactivated.",
+      "closeDialog": "Close",
+      "cancelDialogCancel": "Cancel",
       "upcoming": "{count, plural, =0 {no upcoming sessions} one {one upcoming session} other {{value} upcoming sessions}}",
       "noCapacity": "No capacity set",
       "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
-      "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields: a name is required, and a map link must start with https."
+      "mapLabelShort": "Map",
+      "errorSummaryTitle": "Please correct the following:",
+      "errors": {
+        "nameRequired": "A venue name is required.",
+        "nameTooLong": "The name is too long.",
+        "addressTooLong": "The address is too long.",
+        "mapUrlInvalid": "The map link must start with https.",
+        "capacityInvalid": "Capacity is a number between 1 and 10,000.",
+        "notesTooLong": "The notes are too long.",
+        "timeZoneTooLong": "The time zone is too long.",
+        "failed": "That could not be saved — try again."
+      }
     },
     "categories": {
       "title": "Categories",
@@ -288,12 +316,27 @@
       "add": "Add the category",
       "listTitle": "Your categories",
       "empty": "No categories yet.",
+      "nameColumn": "Name",
+      "sessionCountColumn": "Sessions",
+      "statusColumn": "Status",
+      "actionsColumn": "Actions",
       "deactivate": "Deactivate",
       "activate": "Reactivate",
       "deactivated": "Deactivated",
+      "deactivateConfirmTitle": "Deactivate “<t>{name}</t>”?",
+      "deactivateConfirmBody": "This category will no longer appear when proposing a new session. Existing sessions keep it on record, and you can reactivate it at any time.",
+      "deactivateConfirmAction": "Confirm deactivation",
+      "deactivateDone": "Deactivated.",
+      "reactivateDone": "Reactivated.",
+      "closeDialog": "Close",
+      "cancelDialogCancel": "Cancel",
       "sessionCount": "{count, plural, =0 {no sessions} one {one session} other {{value} sessions}}",
-      "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields: a name is required."
+      "errorSummaryTitle": "Please correct the following:",
+      "errors": {
+        "nameRequired": "A category name is required.",
+        "nameTooLong": "The name is too long.",
+        "failed": "That could not be saved — try again."
+      }
     },
     "companies": {
       "title": "Companies",
@@ -304,12 +347,27 @@
       "add": "Add the company",
       "listTitle": "Your companies",
       "empty": "No companies yet.",
+      "nameColumn": "Name",
+      "memberCountColumn": "Members",
+      "statusColumn": "Status",
+      "actionsColumn": "Actions",
       "deactivate": "Deactivate",
       "activate": "Reactivate",
       "deactivated": "Deactivated",
+      "deactivateConfirmTitle": "Deactivate “<t>{name}</t>”?",
+      "deactivateConfirmBody": "This company will no longer appear when a new member completes their profile. Existing members keep it on record, and you can reactivate it at any time.",
+      "deactivateConfirmAction": "Confirm deactivation",
+      "deactivateDone": "Deactivated.",
+      "reactivateDone": "Reactivated.",
+      "closeDialog": "Close",
+      "cancelDialogCancel": "Cancel",
       "memberCount": "{count, plural, =0 {no members} one {one member} other {{value} members}}",
-      "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields: a name is required."
+      "errorSummaryTitle": "Please correct the following:",
+      "errors": {
+        "nameRequired": "A company name is required.",
+        "nameTooLong": "The name is too long.",
+        "failed": "That could not be saved — try again."
+      }
     },
     "members": {
       "title": "Members and roles",
@@ -409,17 +467,24 @@
       }
     },
     "moderation": {
+      "tabsLabel": "Moderation queues",
+      "tabComments": "Comments",
+      "tabPhotos": "Takedown requests",
+      "tabReports": "Photo reports",
       "commentsTitle": "Reported comments",
       "commentsIntro": "Open reports on comments. The comment stays visible until you decide.",
       "commentsEmpty": "No open comment reports.",
+      "commentsEmptyAction": "Back to the dashboard",
       "photosTakedownTitle": "Photo takedown requests",
       "photosTakedownIntro": "Photos already hidden at a member's request, waiting on your review.",
       "photosTakedownEmpty": "No open takedown requests.",
+      "photosTakedownEmptyAction": "Back to the dashboard",
       "photosReportsTitle": "Reported photos",
       "photosReportsIntro": "Open reports on photos that have not been hidden yet. The photo stays visible until you decide.",
       "photosReportsEmpty": "No open photo reports.",
       "photosReportsEmptyAction": "Back to the dashboard",
       "removeConfirmTitle": "Remove a photo from “<t>{session}</t>”?",
+      "removeCommentConfirmTitle": "Remove a comment from “<t>{session}</t>”?",
       "removeConfirmBody": "The reason you wrote will be recorded in your organisation's audit log. This cannot be undone from this screen.",
       "removeConfirmAction": "Confirm removal",
       "closeDialog": "Close",
@@ -528,8 +593,24 @@
       "emailReplyToLabel": "Reply-to address",
       "save": "Save settings",
       "saved": "Settings saved.",
-      "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields before saving."
+      "errorSummaryTitle": "Please correct the following:",
+      "errors": {
+        "timeZoneRequired": "A time zone is required.",
+        "timeZoneTooLong": "The time zone is too long.",
+        "checkInRotationInvalid": "The rotation period is a number between 60 and 3600 seconds.",
+        "checkInGraceInvalid": "The grace period is a number between 0 and 600 seconds.",
+        "maxCoPresentersInvalid": "The maximum is a number between 0 and 10.",
+        "companyMetricInvalid": "Choose a valid metric.",
+        "priorityRsvpHoursInvalid": "The window is a number between 0 and 168 hours.",
+        "limitDocumentInvalid": "The limit is a number between 1 and 500 MB.",
+        "limitAudioInvalid": "The limit is a number between 1 and 2,000 MB.",
+        "limitImageInvalid": "The limit is a number between 1 and 100 MB.",
+        "limitPosterInvalid": "The limit is a number between 1 and 200 MB.",
+        "emailFromNameTooLong": "The sender name is too long.",
+        "emailReplyToInvalid": "Enter a valid email address.",
+        "ratingMinAggregateInvalid": "The number is between 1 and 20.",
+        "failed": "That could not be saved — try again."
+      }
     },
     "memberPicker": {
       "placeholder": "Type a member's name or email",
