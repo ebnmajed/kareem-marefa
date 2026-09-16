@@ -1,8 +1,8 @@
 // A tiny in-memory stand-in for the RLS-bound Supabase client, for DAL unit
 // tests that must prove WHICH ROWS a reader lets through — not just that it
-// builds a query. Tables are arrays of rows; `eq`, `neq`, `in` and `is`
-// actually filter them, so a reader that forgets a filter reads a row it must
-// not, and the test fails the way production would.
+// builds a query. Tables are arrays of rows; `eq`, `neq`, `in`, `is` and
+// `not` actually filter them, so a reader that forgets a filter reads a row
+// it must not, and the test fails the way production would.
 //
 // Only what the DAL modules under test call is here. Selects ignore their
 // column list: a fixture row carries whatever the select expects, embedded
@@ -21,6 +21,10 @@ export function memorySupabase(tables: Record<string, Row[]>, rpcs: Record<strin
       neq: (column: string, expected: unknown) => ((rows = rows.filter((r) => value(r, column) !== expected)), query),
       in: (column: string, expected: unknown[]) => ((rows = rows.filter((r) => expected.includes(value(r, column)))), query),
       is: (column: string, expected: unknown) => ((rows = rows.filter((r) => value(r, column) === expected)), query),
+      // ★ Only the `is`/`eq` negation `admin-dashboard.ts`'s own
+      // `.not("category_id", "is", null)` needs — PostgREST's `not()` takes
+      // an arbitrary operator, this stub only the two already in use.
+      not: (column: string, _operator: string, expected: unknown) => ((rows = rows.filter((r) => value(r, column) !== expected)), query),
       order: () => query,
       limit: (n: number) => ((rows = rows.slice(0, n)), query),
       textSearch: () => query,

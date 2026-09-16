@@ -131,7 +131,11 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     // oldest-age figure — the pipeline counts below are unchanged.
     supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId),
     supabase.from("rsvps").select("status, session_id, sessions!inner(starts_at)").eq("org_id", session.orgId).eq("status", "confirmed"),
-    supabase.from("check_ins").select("id").eq("org_id", session.orgId),
+    // `removed_at` (0087) is a soft delete — `remove_check_in()` reverses the
+    // points award but the row stays for the audit trail. Excluded here so a
+    // removed check-in stops counting toward the attendance rate, the same
+    // way its points reversal already stops counting toward points issued.
+    supabase.from("check_ins").select("id").eq("org_id", session.orgId).is("removed_at", null),
     supabase.from("members").select("id, status").eq("org_id", session.orgId),
     supabase.from("points_ledger").select("amount").eq("org_id", session.orgId),
     supabase
