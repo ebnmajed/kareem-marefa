@@ -1638,3 +1638,37 @@ page · `ac09c09` the timeline on `/app` and `/app/sessions`. `ui-reach --wave6`
   signed URLs. A one-line `cache()` in `lib/dal/posters.ts` would fix it (lead, as custodian).
 - **Seat counts on the timeline** are one `session_seat_counts` RPC per open card. The lead
   confirmed this is fine at ~30 sessions (R-L8 declined).
+
+### 30.3 What the real-build runs found (after 30.1)
+
+- **A card's bookmark followed the card's link** (`05f739a`). `CardActions` stops the click from
+  propagating, but that does not cancel the anchor's default action, so the page navigated on
+  every press. `BookmarkButton` now calls `preventDefault`. Only a browser shows this: jsdom
+  performs no navigation.
+- **Two primaries for rating on an ended page** (`448ff6d`). The Ratings slot has its own primary
+  call to rate. While the card offers «قيّم الجلسة», the rating section is now gated off.
+- **The calendar was missing on a live session** (`448ff6d`). The fix brought it back as a
+  secondary action. The matrix offers it there, and removing an offered affordance was not a
+  presentation choice I was entitled to make.
+- **SC 2.4.11 under tabbing** (`448ff6d`, then `05f739a`). Chromium's sequential focus scroll
+  ignores `scroll-padding`, and under `scroll-behavior: smooth` it is still animating when the
+  next frame runs. FocusClearance measures what paints over the focused control and re-checks on
+  `scrollend`. The lead moved it into the shell (`6ccb0e4`); the event page's copy is gone
+  (`06da10b`, `17404f9`).
+- **The layout decided `<main>` and the tab bar on the server, which is stale after a soft
+  navigation.** Found while writing the skeleton; the lead fixed it (`9cdcc89`).
+- **390 px review** (`2653321`, `e461239`):
+  - The chip row wraps instead of scrolling beside the filter button, which had clipped
+    «جارية الآن» to «جارية».
+  - A no-break space follows each «·», so a line never ends on the dot.
+  - The card's when and where are separate lines.
+  - The sheet's actions are a sticky footer.
+  - «حتى» is joined to its time by a no-break space (`28e1a2b`).
+- **The reservation's pending state lasts as long as the whole page takes to re-render.** The
+  action `redirect()`s to the same page, and React will not re-show a skeleton for a section
+  already on screen. The lead is timing it on a quiet machine.
+- **Placeholder initials and avatar tints** use `navy-600`/`navy-200`, which do not exist in
+  `globals.css`. Those are `content`'s files; the lead routed the fix.
+- ★ **Shared index.** A `git rm` stages at once, and `content` committed without a pathspec in the
+  gap before my commit. From `358eac4` to `06da10b`, HEAD deleted a file the page still imported.
+  From now on I delete with plain `rm`, and `git commit -- <path>` picks up the removal.
