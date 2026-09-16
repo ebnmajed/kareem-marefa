@@ -215,7 +215,9 @@ export async function getDesignerDocument(
     row.bound_certificate_id
       ? supabase
           .from("certificates")
-          .select("id, serial, verification_code, issued_at, recipient_name_snapshot, session_id")
+          // `*`, so the pinned `scheme` (designer/0003) is read where the column
+          // exists without failing the whole read where it does not yet.
+          .select("*")
           .eq("id", row.bound_certificate_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -231,7 +233,10 @@ export async function getDesignerDocument(
       : Promise.resolve({ data: null }),
   ]);
   const purpose = row.purpose as DesignerPurpose;
-  const scheme = previewScheme(purpose, options.scheme);
+  // A certificate renders the scheme PINNED on it (DEC-148); a template or an
+  // unbound certificate document previews what is asked for; a poster, dark.
+  const pinned = (certificateRow as { scheme?: string } | null)?.scheme;
+  const scheme = previewScheme(purpose, pinned ?? options.scheme);
 
   const bindingOptions: BindingOptions = { timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
 

@@ -70,6 +70,10 @@ interface Context {
   template_version_id: string;
   template_document: unknown;
   document_id: string | null;
+  /** The scheme pinned on the certificate at issue (DEC-148). Absent only
+   *  against a database without designer/0003, where every certificate is
+   *  light. */
+  scheme?: "light" | "dark" | null;
 }
 
 /** A certificate is paper first: its ONE composed page as a PDF, plus a PNG
@@ -155,7 +159,10 @@ export const issue_certificates: Task = async (payload, helpers) => {
     // The org's brand override over the platform palette, composed HERE so
     // the fingerprint below sees it: a changed colour is a new artifact
     // (06 §8.3, DEC-052, REQ-DSG-013). No row is the identity override.
-    ...(await brandBindings(helpers, ctx.org_id, "light")),
+    // ★ The scheme PINNED on the certificate (DEC-148 contract 2): chosen for
+    // its session, and what a reissue in 2031 must render again
+    // (REQ-CRT-014) — never a default at render time.
+    ...(await brandBindings(helpers, ctx.org_id, ctx.scheme ?? "light")),
     ...resolveCertificateBindings(
       {
         serial: ctx.serial,
