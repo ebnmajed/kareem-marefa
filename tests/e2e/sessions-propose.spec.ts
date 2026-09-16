@@ -88,6 +88,17 @@ test.afterAll(async () => {
   await db.end();
 });
 
+/**
+ * React's hidden streamed copy of a section (`body > div[hidden][id^="S:"]`)
+ * sits beside the visible one until its swap runs, and a strict text locator
+ * counts both (`185fbb1`). SCR-018 renders the invitation ONCE — one
+ * `<h2>` in one section, read from the page — so a second match right after a
+ * navigation is that copy, not a duplicate to scope away.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function signIn(context: BrowserContext, who: string = email) {
   const jar: { name: string; value: string }[] = [];
   const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
@@ -301,8 +312,10 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await signIn(mateContext, mateEmail);
   const matePage = await mateContext.newPage();
   await matePage.goto(url.replace(/\?created=1$/, ""));
+  await streamed(matePage);
   await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toBeVisible();
   await matePage.getByRole("button", { name: "أوافق على التقديم" }).click();
+  await streamed(matePage);
   // Scoped to her own row: «وافق» is a substring of «أوافق على التقديم» and of
   // the invitation copy, so an unscoped text match is ambiguous, not a finding.
   await expect(matePage.getByRole("listitem").filter({ hasText: "زميلة الاختبار" })).toContainText("وافق");

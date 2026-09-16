@@ -114,9 +114,14 @@ test("a checked-in member rates the session and the presenter, and it is immedia
 
   const groups = page.getByRole("radiogroup");
   await expect(groups).toHaveCount(2);
-  // Wave 7: native radios named as counts («5 نجوم»), not buttons named «5».
-  await groups.nth(0).getByRole("radio", { name: "5 نجوم" }).check();
-  await groups.nth(1).getByRole("radio", { name: "4 نجوم" }).check();
+  // Wave 7: native radios named as counts («5 نجوم»), visually hidden inside the
+  // star a member presses — so the spec presses the STAR (its <label>), which
+  // also proves pointer selection, and then reads the radio.
+  for (const [group, name] of [[groups.nth(0), "5 نجوم"], [groups.nth(1), "4 نجوم"]] as const) {
+    const radio = group.getByRole("radio", { name });
+    await radio.locator("xpath=..").click();
+    await expect(radio).toBeChecked();
+  }
   await page.getByLabel("ملاحظات (اختياري)").fill("جلسة ممتازة، شكرًا");
   await page.getByRole("button", { name: "إرسال التقييم" }).click();
 

@@ -187,5 +187,9 @@ test("the edit page is not there for a state that cannot be edited", async ({ co
   await signIn(context);
   await open(page, `/ar/app/propose/${ids.rejected}/edit`);
   await expect(page.getByLabel("عنوان الموضوع المقترح")).toHaveCount(0);
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  // Several robots metas are expected — the layout's and the one Next adds on
+  // `notFound()` (DEC-134). Every one must say noindex.
+  const robots = await page.locator('meta[name="robots"]').all();
+  expect(robots.length).toBeGreaterThan(0);
+  for (const meta of robots) await expect(meta).toHaveAttribute("content", /noindex/);
 });

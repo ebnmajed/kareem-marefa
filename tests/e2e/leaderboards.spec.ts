@@ -5,7 +5,7 @@
 // supabase/migrations/ first — the lead does that at a sync point.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -67,6 +67,17 @@ test.afterAll(async () => {
   await db.end();
 });
 
+/**
+ * React's hidden streamed copy of a section stays beside the visible one until
+ * its swap runs, and a strict locator counts both (`185fbb1`). The company
+ * board renders each company ONCE — there is no responsive duplicate in
+ * `company-board.tsx` — so the phone-only second `li` was that copy, which
+ * the slower phone emulation leaves in the DOM long enough to be counted.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function signIn(context: BrowserContext, email: string): Promise<string> {
   const jar: { name: string; value: string }[] = [];
   const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
@@ -97,6 +108,7 @@ test("a member sees the all-time board, and both metrics on the company race", a
   );
 
   await page.goto("/ar/app/leaderboards");
+  await streamed(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("لوحات الصدارة");
   const allTimeSection = page.locator("#all-time");
   await expect(allTimeSection.getByText("قائد اللوحة")).toBeVisible();
@@ -109,6 +121,7 @@ test("a member sees the all-time board, and both metrics on the company race", a
   await db.query(`select public.snapshot_leaderboard($1, 'company', null, null, null, false)`, [orgId]);
   // Wave 7 (DEC-141 ruling 6): the company race is its own linked tab.
   await page.goto("/ar/app/leaderboards?board=companies");
+  await streamed(page);
   const companySection = page.locator("#company");
   // Scoped to the row itself: both metric labels appear on every row, and the
   // ranking one carries «الترتيب حسبه» (REQ-LDR-004, REQ-LDR-005).

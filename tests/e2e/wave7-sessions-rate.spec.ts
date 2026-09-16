@@ -129,6 +129,17 @@ async function capture(page: Page, name: string) {
   }
 }
 
+/**
+ * Press the visible star — its <label> — the way a member does, then read the
+ * radio. `.check()` on the visually hidden 1 px input times out, and never
+ * proved a pointer could choose anything.
+ */
+async function pick(page: Page, legend: RegExp, name: string) {
+  const radio = page.getByRole("radiogroup", { name: legend }).getByRole("radio", { name });
+  await radio.locator("xpath=..").click();
+  await expect(radio).toBeChecked();
+}
+
 /** How many stars in a row are drawn filled — read from the painted fill, not from state. */
 async function filled(page: Page, legend: string) {
   return page.getByRole("radiogroup", { name: new RegExp(legend) }).locator("path").evaluateAll((paths) =>
@@ -164,7 +175,7 @@ test("★ the stars fill from the right: star 1 is rightmost, the leftmost is fi
   expect(await filled(page, "تقييم الجلسة")).toEqual([true, true, true, true, true]);
 
   // Three, and the fill stops at the third from the right.
-  await row.getByRole("radio", { name: "3 نجوم" }).check();
+  await pick(page, /تقييم الجلسة/, "3 نجوم");
   expect(await filled(page, "تقييم الجلسة")).toEqual([true, true, true, false, false]);
 
   // The browser's own arrow keys, measured: in RTL, ArrowLeft should move toward the left — to four.
@@ -174,7 +185,7 @@ test("★ the stars fill from the right: star 1 is rightmost, the leftmost is fi
   test.info().annotations.push({ type: "rtl-arrow-left-from-3", description: afterLeft ?? "none" });
   expect(afterLeft, "ArrowLeft in an RTL radio group moves toward the inline end").toBe("4");
 
-  await row.getByRole("radio", { name: "5 نجوم" }).check();
+  await pick(page, /تقييم الجلسة/, "5 نجوم");
   await capture(page, "chosen");
 });
 
@@ -182,7 +193,7 @@ test("error: a missing row is a field error and a summary line, and the chosen r
   await signIn(context);
   await open(page, `/ar/app/sessions/${ids.open}/rate`);
 
-  await page.getByRole("radiogroup", { name: /تقييم الجلسة/ }).getByRole("radio", { name: "5 نجوم" }).check();
+  await pick(page, /تقييم الجلسة/, "5 نجوم");
   await page.getByLabel("ملاحظات (اختياري)").fill("مثال عملي واضح.");
   await page.getByRole("button", { name: "إرسال التقييم" }).click();
 
@@ -201,7 +212,7 @@ test("submitted: the rating is stored as chosen and the page says so, with the s
   await open(page, `/ar/app/sessions/${ids.open}/rate`);
 
   await page.getByRole("radiogroup", { name: /تقييم الجلسة/ }).locator("label").last().click();
-  await page.getByRole("radiogroup", { name: /تقييم المُقدِّم/ }).getByRole("radio", { name: "4 نجوم" }).check();
+  await pick(page, /تقييم المُقدِّم/, "4 نجوم");
   await page.getByRole("button", { name: "إرسال التقييم" }).click();
 
   await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${ids.open}/rate\\?rated=1$`));
