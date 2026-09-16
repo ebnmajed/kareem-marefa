@@ -189,6 +189,54 @@ decisions are `DEC-141`. What the plans found that was not in the brief:
 - **`members.ts` moves to `sessions`** (one writer). **R1 and R5 landed** (`f9fa70e`); R2 (`ui/combobox` on a
   member form) is `console`'s after the rail.
 
+### Syncs 2 and 3 — 2026-09-16 — the first real builds of wave 7, and what they found
+
+**How it was verified.** Every build is of **committed HEAD** in the verification worktree
+(`$scratchpad/wt-verify`, own `npm ci`), every e2e run against that build with `E2E_SHOTS_DIR` set to the
+main checkout's `.qa-shots/rtl`, and the lead opened each capture named below. Sync 2 at `782aa6d`;
+sync 3 at `d8f0af9` (static gates: `tsc` clean · lint 0 errors · vitest 132 files, 1358/1359 — the one
+failure fixed in `8a83df4` · `ui-lint` passes, 88 under the allowlist · `ui-reach --wave7` **21/23** · build
+green · e2e 147 passed, 22 failed, 22 not run).
+
+**Found by looking, and fixed — none of these was visible to a green spec:**
+- ★ **A light band at rest on every primary `ui/button` in Arabic**, since M9 — `.btn-sheen`'s physical
+  `translateX` parks the glint inside an RTL button (`7da3a50`, row L8).
+- ★ **Arabic-Indic digits seeded into every org's points catalogue** — «سلسلة: ٣ حضور في الشهر» (`0083`,
+  `DEC-143`, row L7; ★ production rows need the owner's scoped data fix).
+- ★ **A time broke from its «م» on every surface** — «…في 7:18» / «م» — fixed once in the shared formatter
+  with a no-break space (`07e4fc8`), then the public card's range (`58ab535`).
+- **The propose form's summary counted two fields while three showed errors**, and its «اضغط على …» line
+  was not plural-aware (`3386178`).
+- **`/app/me`'s tab strip hid two of seven tabs with no cue** (`5abdbc6`); **dead-end empty states** on
+  certificates, points and calendar (`c61ea3a`).
+- **The public card showed Next's English 404** before `2dc71e9` — now Arabic, a real 404, no retry
+  (`f9fa70e`'s optional retry).
+
+**Open from sync 3, with their owners:** `console` — the "populated" moderation and categories captures
+are **empty** and the photo-report tab never counts a seeded report (spec or product, to establish); its
+capture helpers ignore `E2E_SHOTS_DIR`; the exports page's copy still says numerals follow an org setting
+(`DEC-124`); the moderation tab strip wraps at 390. `content` — ★ **the privacy deactivation's «أُرسل طلبك»
+never appears** (possibly real); two strict locators. `sessions` — the rate specs and three strict locators
+(`a8e25d0`, pending the next build).
+
+**`592c3d2` — a shared-index sweep, left in history by ruling.** `checkin`'s SQL commit ran without a
+pathspec and carried `console`'s K6 (`admin/settings/**`, `admin-settings.spec.ts`) and `content`'s points
+and bookmarks work (`me/points/page.tsx`, `points-catalogue.tsx`, `{bookmarks,points}.spec.ts`, the deletion
+of `wave7-content-points.spec.ts`). Both owners verified their files at HEAD match what they built. **K6
+landed in `592c3d2`.** HEAD type-checked; no history was rewritten.
+
+**`checkin`'s SQL — reviewed, not yet promoted.** Six proposed files, 37 RLS cases. Every re-created
+function was diffed against its latest migration; none is based on a stale body, and the behaviours
+spot-checked hold. **Two fixes stand before promotion:** the predecessor comments dropped from 01, 04 and 05,
+and `schedule_session()` still writing `session.walk_ins_changed`. The lead's half landed ahead of it:
+`GRANTING_AFFORDANCES.live` without `checkIn`, and `parseInstant`/`scheduledEnd` exported (`d8f0af9`).
+★ **Before merge**, the promoted migrations (they alter `check_ins`' constraints on a live table) are
+rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`).
+
+**Contract changes the lead made:** `FormSummaryProps.description?`, `RouteErrorProps.retryLabel?`/`reset?`
+(`f9fa70e`); `CardMediaProps.placeholderTone?: "dark"` (`6232a8a`); `ui.combobox` strings (`3c92185`);
+`star-rating.test.tsx` → `sessions` (`25fc741`).
+
 ### Carried — diagnosed, each with an owner
 
 | Owner | Finding | From |
