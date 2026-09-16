@@ -1,3 +1,4 @@
+-- promoted by the lead from supabase/proposed/designer/0003_certificate_designs.sql (wave 8, DEC-148)
 -- designer (wave 8) — the certificate design chosen for a session, and the scheme pinned on a certificate.
 -- Follows designer/0002 (the certificate library), 0088 (issue_certificate's
 -- current text), 0082 (certificate_render_context's), 0065.

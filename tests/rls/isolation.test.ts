@@ -96,9 +96,11 @@ describe("a member of org A selecting with no org predicate", () => {
         // lists, the audit log, the host-view code, the check-in attempts,
         // the staff/presenter-only transitions, the self-scoped ratings
         // and reports (the fixture's are another member's), and M3's two
-        // admin-only tables (templates, the delivery log — 0026). Their own
-        // per-policy tests prove the scoping; the sweep proves the wall.
-        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions"].includes(table)) {
+        // admin-only tables (templates, the delivery log — 0026), and a
+        // session's certificate design, which staff alone read (0099,
+        // tests/rls/certificates-designs.test.ts). Their own per-policy tests
+        // prove the scoping; the sweep proves the wall.
+        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions", "session_certificate_designs"].includes(table)) {
           expect(rows.some((r) => r.org_id === f.a.id)).toBe(true);
         }
       });

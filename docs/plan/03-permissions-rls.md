@@ -1583,6 +1583,17 @@ generated suite is the highest-value test in the product.
 | `RPC-platform_template_library.roster` | A platform admin reads every platform row with its `orientation` (certificates only, from the latest version's master: wider than tall is landscape), `is_baseline` (false once a `template.promoted` row names it) and `retirable` (false exactly for the last non-retired default of a purpose, true again once a second default exists). |
 | ★ **wave 8 (`DEC-148`), migration `0097`** — a reinstate cannot undo a requested deletion | |
 | `RPC-reinstate_org.pending_deletion` | After `delete_org()`, `reinstate_org()` is refused `org_deletion_pending` (`42501`), the org stays suspended and no `org.reinstated` is written; a suspended org with no deletion requested still reinstates. `platform_metrics_by_org()` reports `deletion_pending` for the first and not the second, and `platform_org()` returns `deletionPending` outside its counts. |
+| ★ **wave 8 (`DEC-148`), migration `0099`** — a session's certificate design, and the scheme pinned on a certificate (`0098`, the library seed, adds no policy) | |
+| `POL-session_certificate_designs.select_staff` | An admin and a moderator of the org read a session's certificate design; a member does not; another org's staff do not. |
+| `POL-session_certificate_designs.no_write_grant` | An authenticated insert, update or delete is refused (42501) — the only writer is `set_certificate_design()`. |
+| `RPC-set_certificate_design.admin` | An admin sets (and resets) the design, audited as `certificate.design_set`; a moderator is refused (42501). |
+| `RPC-set_certificate_design.family_matches_kind` | A template of another family, a poster template, a retired one or another org's is refused (22023). |
+| `RPC-set_certificate_design.locked_after_issue` | Once a certificate of that kind for that session is `issued` or `revoked`, the design is refused (55000); while they are `held` it may change. |
+| `RPC-issue_certificate.pins_design` | A certificate issued for a session with a design pins that template's latest PUBLISHED version and its scheme. |
+| `RPC-issue_certificate.no_design_is_default_light` | With no design, the org's default of the family, else the platform's, and `light` — every certificate before this file. |
+| `RPC-issue_certificate.no_check_in_when_removed` | Kept from 0088: a late job for a removed check-in raises `no_check_in`. |
+| `RPC-redesign_held_certificates.held_only` | Re-pins the HELD certificates of a kind to the current design and re-enqueues each render with 11 §2.5's key; issued and revoked ones are untouched; audited; a moderator is refused. |
+| `RPC-record_certificate_document.follows_the_pin` | The certificate's document follows its pinned version, so a redesigned held certificate is not refused by the locked-region guard. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

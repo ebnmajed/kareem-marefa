@@ -1,3 +1,4 @@
+-- promoted by the lead from supabase/proposed/designer/0002_certificate_library.sql (wave 8, DEC-148)
 -- designer (wave 8) — the certificate library and the completed poster roster.
 -- Follows the template guard (designer/0001) and 0061_baseline_library.
 --
