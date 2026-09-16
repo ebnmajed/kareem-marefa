@@ -28,6 +28,7 @@ const row = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   capacity: 40,
   rsvp_deadline_at: "2026-09-17T09:00:00Z",
   allow_walk_ins: false,
+  check_in_open: true,
   custom_venue_name: "قاعة المؤتمرات",
   categories: { name: "فني" },
   venues: null,
@@ -86,14 +87,19 @@ describe("finishTimelineSession", () => {
     expect(full.seat).toBe("full");
   });
 
-  it("offers check-in only to a confirmed seat on a session the database has started", () => {
+  it("offers check-in to a confirmed seat while the window is open and the room's switch is on (contract 2)", () => {
     const live = row({ state: "in_progress", starts_at: "2026-09-16T08:30:00Z", ends_at: "2026-09-16T10:00:00Z" });
     const confirmed = ctx({ mine: new Map([["s1", "confirmed"]]) });
     expect(finishTimelineSession(toTimelineCandidate(live, confirmed), extras, NOW).canCheckIn).toBe(true);
     expect(finishTimelineSession(toTimelineCandidate(live, ctx()), extras, NOW).canCheckIn).toBe(false);
-    // The clock alone never grants it (DEC-090): published, start passed.
+    // ★ The room closed check-in by hand: no button, whatever the clock says.
+    expect(finishTimelineSession(toTimelineCandidate({ ...live, check_in_open: false }, confirmed), extras, NOW).canCheckIn).toBe(false);
+    // DEC-141: the window is the clock's now, not the phase job's — a published
+    // session whose start has passed admits, as `check_in()` does (0084).
     const clockLive = row({ starts_at: "2026-09-16T08:30:00Z", ends_at: "2026-09-16T10:00:00Z" });
-    expect(finishTimelineSession(toTimelineCandidate(clockLive, confirmed), extras, NOW).canCheckIn).toBe(false);
+    expect(finishTimelineSession(toTimelineCandidate(clockLive, confirmed), extras, NOW).canCheckIn).toBe(true);
+    // Before the start, never.
+    expect(finishTimelineSession(toTimelineCandidate(row(), confirmed), extras, NOW).canCheckIn).toBe(false);
   });
 
   it("carries attendance and the poster through unchanged", () => {

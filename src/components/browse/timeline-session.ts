@@ -1,4 +1,4 @@
-import { checkInAllowed } from "@/components/checkin/session-matrix";
+import { checkInWindowAllowed } from "@/components/checkin/session-matrix";
 import type { SessionLanguage, SessionLevel, SessionState } from "@/lib/dal/sessions";
 import { closingSoon, seatState, sessionPhase, type SeatState, type SessionPhase } from "@/lib/session-status";
 
@@ -44,7 +44,7 @@ export interface TimelineSession {
   bookmarked: boolean;
   /** A signed poster URL when one has rendered; the card draws the title placeholder otherwise. */
   posterUrl: string | null;
-  /** «تسجيل الحضور» on the pinned card — `checkInAllowed()`, the same predicate the event page uses. */
+  /** «تسجيل الحضور» on the pinned card — `checkInWindowAllowed()`, the predicate behind the event page's link (contract 2). */
   canCheckIn: boolean;
 }
 
@@ -53,7 +53,7 @@ export const TIMELINE_STATES: SessionState[] = ["published", "in_progress", "com
 
 /** The `sessions` select every card reader uses, so the row shape below is one shape. */
 export const TIMELINE_SESSION_COLUMNS =
-  "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, custom_venue_name, categories(name), venues(name)";
+  "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name)";
 
 export type PresenterEntry = { memberId: string; displayName: string | null; companyId: string | null };
 export type TagEntry = { label: string; normalised: string };
@@ -64,6 +64,8 @@ export interface TimelineCandidate extends Omit<TimelineSession, "confirmedCount
   presenterCompanyIds: string[];
   rsvpDeadlineAt: string | null;
   allowWalkIns: boolean;
+  /** `sessions.check_in_open` — the room's switch (REQ-CHK-015). */
+  checkInOpen: boolean;
   durationMinutes: number | null;
 }
 
@@ -125,6 +127,7 @@ export function toTimelineCandidate(row: Record<string, unknown>, ctx: Candidate
     capacity: (row.capacity as number | null) ?? null,
     rsvpDeadlineAt: (row.rsvp_deadline_at as string | null) ?? null,
     allowWalkIns: Boolean(row.allow_walk_ins),
+    checkInOpen: row.check_in_open === true,
     presenters: presenters.map(({ memberId, displayName }) => ({ memberId, displayName })),
     presenterCompanyIds: presenters.map((p) => p.companyId).filter((v): v is string => v !== null),
     tags: [...(ctx.tagsBySession.get(id) ?? [])].sort((a, b) => a.label.localeCompare(b.label, "ar")),
@@ -142,7 +145,7 @@ export interface CardExtras {
 
 /** A candidate plus what is read only for the cards on screen → the card's DTO. */
 export function finishTimelineSession(c: TimelineCandidate, extras: CardExtras, now: Date): TimelineSession {
-  const { rsvpDeadlineAt, allowWalkIns, durationMinutes } = c;
+  const { rsvpDeadlineAt, allowWalkIns, checkInOpen, durationMinutes } = c;
   return {
     id: c.id,
     title: c.title,
@@ -167,6 +170,17 @@ export function finishTimelineSession(c: TimelineCandidate, extras: CardExtras, 
     waitlistCount: extras.waitlistCount,
     attended: extras.attended,
     posterUrl: extras.posterUrl,
-    canCheckIn: c.mine === "confirmed" && c.phase === "live" && checkInAllowed({ state: c.state, startsAt: c.startsAt, endsAt: c.endsAt, durationMinutes }, "confirmed", allowWalkIns, now),
+    // Contract 2, the same predicate the event page's link uses: the three
+    // states, the window to `ends_at + 2 h`, the room's switch. Only a confirmed
+    // seat is pinned, so the viewer's raw facts are that seat.
+    canCheckIn:
+      c.mine === "confirmed" &&
+      checkInWindowAllowed(
+        { state: c.state, startsAt: c.startsAt, endsAt: c.endsAt, durationMinutes },
+        { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: extras.attended },
+        allowWalkIns,
+        checkInOpen,
+        now,
+      ),
   };
 }
