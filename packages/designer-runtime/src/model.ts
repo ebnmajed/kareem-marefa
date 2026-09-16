@@ -148,7 +148,10 @@ export interface DesignDocument {
    * is `360 − angle` and that mirror lives in the renderer alone — nothing
    * ever stores a mirrored angle. Each stop is a `{{brand.*}}` token or a
    * literal, exactly like `color` above; a gradient stop is not allowed to
-   * be a hex literal in a TEMPLATE either (`0055`'s guard).
+   * be a hex literal in a TEMPLATE either (`0055`'s guard). A stop's `at` is
+   * a FRACTION, 0…1 — the same unit as the model's other normalised
+   * positions (`image.focal`), not a percentage; `render.ts`'s
+   * `backgroundCss()` is what turns it into CSS.
    */
   background?:
     | { type: 'solid'; color: string }

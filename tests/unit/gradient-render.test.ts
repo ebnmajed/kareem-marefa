@@ -7,7 +7,15 @@
 // These tests are written red first against that held-open state and turn
 // green with this file's paired fix in render.ts/bindings.ts.
 import { describe, expect, it } from "vitest";
-import { declaredBindingsOf, platformBrand, renderDocumentToFragment, type DesignDocument } from "@kareem/designer-runtime";
+import {
+  backgroundCss,
+  declaredBindingsOf,
+  EMPTY_BINDINGS,
+  platformBrand,
+  renderDocumentToFragment,
+  renderDocumentToHtml,
+  type DesignDocument,
+} from "@kareem/designer-runtime";
 
 const gradientDoc = (over: Partial<DesignDocument> = {}): DesignDocument => ({
   schemaVersion: 1,
@@ -38,15 +46,15 @@ describe("DEC-127 — a gradient document renders its gradient, not the solid fa
     expect(light).not.toEqual(dark);
   });
 
-  it("a stop's explicit `at` position is carried into the CSS", () => {
+  it("a stop's explicit `at` — a FRACTION, 0…1 (the model's own unit, `validate.ts`) — is carried into the CSS as a percentage", () => {
     const { html } = renderDocumentToFragment(
       gradientDoc({
         background: {
           type: "gradient",
           angle: 90,
           stops: [
-            { color: "{{brand.surface}}", at: 10 },
-            { color: "{{brand.canvasRaise}}", at: 90 },
+            { color: "{{brand.surface}}", at: 0.1 },
+            { color: "{{brand.canvasRaise}}", at: 0.9 },
           ],
         },
       }),
@@ -57,11 +65,26 @@ describe("DEC-127 — a gradient document renders its gradient, not the solid fa
     expect(html).toContain(`linear-gradient(90deg, ${surface} 10%, ${canvasRaise} 90%)`);
   });
 
-  it("mirrors the angle for an LTR document — 360 − angle — and never for RTL", () => {
-    const rtl = renderDocumentToFragment(gradientDoc({ direction: "rtl" }), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
-    const ltr = renderDocumentToFragment(gradientDoc({ direction: "ltr" }), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
-    expect(rtl).toContain("linear-gradient(140deg,");
-    expect(ltr).toContain("linear-gradient(220deg,");
+  it("★ unit case: at 0.4 → 40%", () => {
+    const doc = gradientDoc({ background: { type: "gradient", angle: 0, stops: [{ color: "#111111", at: 0.4 }] } });
+    expect(backgroundCss(doc, EMPTY_BINDINGS)).toBe("linear-gradient(0deg, #111111 40%)");
+  });
+
+  it("rounds `at` to at most two decimals, so the CSS string — and the fingerprint — is stable", () => {
+    const doc = gradientDoc({ background: { type: "gradient", angle: 0, stops: [{ color: "#111111", at: 1 / 3 }] } });
+    expect(backgroundCss(doc, EMPTY_BINDINGS)).toBe("linear-gradient(0deg, #111111 33.33%)");
+  });
+
+  it("mirrors the angle for an LTR document — 360 − angle — and never for RTL, in BOTH render paths", () => {
+    const rtlFragment = renderDocumentToFragment(gradientDoc({ direction: "rtl" }), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
+    const ltrFragment = renderDocumentToFragment(gradientDoc({ direction: "ltr" }), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
+    expect(rtlFragment).toContain("linear-gradient(140deg,");
+    expect(ltrFragment).toContain("linear-gradient(220deg,");
+
+    const rtlHtml = renderDocumentToHtml(gradientDoc({ direction: "rtl" }), { fonts: [], bindings: { values: platformBrand("dark") } });
+    const ltrHtml = renderDocumentToHtml(gradientDoc({ direction: "ltr" }), { fonts: [], bindings: { values: platformBrand("dark") } });
+    expect(rtlHtml).toContain("linear-gradient(140deg,");
+    expect(ltrHtml).toContain("linear-gradient(220deg,");
   });
 
   it("a solid background is unaffected — the existing behaviour does not move", () => {

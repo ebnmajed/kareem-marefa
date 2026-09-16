@@ -17,11 +17,7 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = [
-  "branding/0001_brand_kits.sql",
-  "branding/0002_regenerate_posters_on_save.sql",
-  "branding/0001_brand_kits_canvas_raise.sql",
-];
+const PROPOSED = ["branding/0001_brand_kits.sql", "branding/0002_regenerate_posters_on_save.sql"];
 
 const SHA = (c: string) => c.repeat(64).slice(0, 64);
 

@@ -200,12 +200,18 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
  * cannot drift the way their two near-identical `resolveColour(...)` calls
  * already almost did before this function existed.
  *
+ * ★ Exported (lead's sync-1 ruling): `designer`'s parity harness asserts the
+ * computed gradient against this same function, and its editor swatch
+ * previews with it — one source for the string, not a second copy of the
+ * angle mirror or the stop formatting living in a test or a preview
+ * component.
+ *
  * The LTR mirror lives HERE, and only here: `angle` is degrees for the RTL
  * source composition (`model.ts`), a gradient does not follow `dir`, and an
  * LTR document renders `360 − angle` — nothing upstream (the document, a
  * template, the seed) ever stores a mirrored angle.
  */
-function backgroundCss(doc: DesignDocument, ctx: BindingContext): string {
+export function backgroundCss(doc: DesignDocument, ctx: BindingContext): string {
   const bg = doc.background
   if (!bg || bg.type === 'solid') return resolveColour(ctx, bg?.color, '#ffffff')
 
@@ -213,7 +219,15 @@ function backgroundCss(doc: DesignDocument, ctx: BindingContext): string {
   const stops = bg.stops
     .map((s) => {
       const colour = resolveColour(ctx, s.color, '#ffffff')
-      return s.at === undefined ? colour : `${colour} ${s.at}%`
+      // `at` is a FRACTION, 0…1 — the same unit as the model's other
+      // normalised positions (`image.focal`, `design_assets.focal_x/y`),
+      // `validate.ts`'s own enforcement (`designer`, `50942d3`). Rounded to
+      // at most two decimals so the CSS string — and therefore the
+      // fingerprint (REQ-DSG-013) — is stable rather than carrying whatever
+      // binary floating-point noise the multiplication produced.
+      if (s.at === undefined) return colour
+      const pct = Math.round(s.at * 10000) / 100
+      return `${colour} ${pct}%`
     })
     .join(', ')
   return `linear-gradient(${angle}deg, ${stops})`
