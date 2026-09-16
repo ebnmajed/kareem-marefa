@@ -2371,3 +2371,25 @@ the RPC as themselves (the key present); the read-back carries the stored value.
   six of `console`'s specs** (`admin-managed-lists`, `admin-settings`, `admin-dashboard`,
   `admin-moderation`, `admin-members`, `sessions-admin-proposals`): each has `goto()` wait for the
   `S:` count to reach zero, then asserts the gated not-found. Reported to the lead.
+
+## 45. Signed numbers (the lead's follow-up to content's bd517f6)
+
+- **Pinned `dir="ltr"`:** `company-points-breakdown`'s ledger amount, and both of `company-board`'s
+  metrics. The board keeps any company whose total is not zero (0081's `<> 0`). Its `m_totals` add up
+  members' `points_ledger`, which holds reversals (0087) and negative manual adjustments (0032 has
+  no floor), so a company's total and its per-member figure can both be negative. The component
+  tests assert the attribute on a negative row, and they fail with it removed.
+- **Not changed, because it cannot be negative:** `member-board`'s points and every rank. The
+  member boards keep only `total > 0` (0042, 0044, 0081).
+- ★ **R8, a request.** Two negative-capable values reach `ui/stat`: `/app/members/[id]`'s points,
+  which come from `points_balances` and can go below zero after a negative manual adjustment, and the
+  breakdown's company balance (every company-ledger insert is positive today, but nothing in the
+  schema forces it). `StatProps.value` is a `string` (the lead's type) and the `<bdi>` belongs to
+  `content`, so this track cannot pin that direction. The request: an optional `valueDir?: "ltr"` on
+  `StatProps`, placed on `Stat`'s `<bdi>`. Every value is not numeric (a level name, «3 أشهر»), so
+  it cannot be on by default.
+- **Measured, for the record:** `new Intl.NumberFormat("ar-u-nu-latn").format(-20)` gives
+  `U+200E - 2 0` in Node 25 and in Playwright's Chromium alike, so `formatNumber` keeps the LRM. In
+  a static Chromium page without the app's CSS, a bare `<bdi>` put the sign before the digits with
+  and without it. What produced content's «20-» is not established, and pinning the direction is
+  right either way.

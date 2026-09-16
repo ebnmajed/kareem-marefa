@@ -66,7 +66,11 @@ export async function CompanyPointsBreakdownSection({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-body text-fg-heading">{sourceLabel(row.source)}</p>
                 <p className="text-label text-fg-heading">
-                  <bdi>{formatNumber(row.amount)}</bdi>
+                  {/* `dir="ltr"`: a ledger amount may be negative, and digits
+                      with their sign read left to right in any surrounding
+                      text — pinned, not left to the isolate's own resolution,
+                      which put the «-» after the digits on `me/points` (bd517f6). */}
+                  <bdi dir="ltr">{formatNumber(row.amount)}</bdi>
                 </p>
               </div>
               <p className="mt-1 text-body-sm text-fg-muted">

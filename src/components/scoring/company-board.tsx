@@ -53,7 +53,10 @@ export async function CompanyBoard({ rows, metric }: { rows: CompanyBoardRow[]; 
                     ) : null}
                   </dt>
                   <dd className={i === 0 ? "mt-0.5 text-label text-fg-heading" : "mt-0.5 text-body-sm text-fg-body"}>
-                    <bdi>{m.value}</bdi>
+                    {/* `dir="ltr"`: both metrics are signed — the board keeps any
+                        company whose total is not zero (0081), and members'
+                        reversals and manual adjustments can take it below. */}
+                    <bdi dir="ltr">{m.value}</bdi>
                   </dd>
                 </div>
               ))}

@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import leaderboards from "@/messages/ar/leaderboards.json";
 import ui from "@/messages/ar/ui.json";
-import type { CompanyBoardRow, MemberBoardRow } from "@/lib/dal/leaderboards";
+import type { CompanyBoardRow, CompanyPointsBreakdown, MemberBoardRow } from "@/lib/dal/leaderboards";
 
 const messages = { ...leaderboards, ...ui };
 
@@ -20,6 +20,7 @@ vi.mock("next-intl/server", () => ({
 
 const { MemberBoard } = await import("@/components/scoring/member-board");
 const { CompanyBoard } = await import("@/components/scoring/company-board");
+const { CompanyPointsBreakdownSection } = await import("@/components/scoring/company-points-breakdown");
 
 const Wrap = ({ children }: { children: ReactNode }) => (
   <NextIntlClientProvider locale="ar" messages={messages}>
@@ -90,5 +91,37 @@ describe("CompanyBoard", () => {
     const second = screen.getAllByRole("listitem")[1];
     expect(within(second).getAllByRole("term")[0]).toHaveTextContent("مجموع النقاط");
     expect(within(second).getAllByRole("definition").map((dd) => dd.textContent)).toEqual(["900", "22.5"]);
+  });
+});
+
+// ★ A signed number's direction is PINNED, not resolved. jsdom lays nothing
+// out, so it cannot see a «20-» reorder — the attribute is what is asserted.
+describe("signed numbers read left to right", () => {
+  it("a negative company total and its per-member figure", async () => {
+    const negative: CompanyBoardRow[] = [{ companyId: "c3", companyName: "الشركة الثالثة", rank: 3, totalPoints: -12, pointsPerActiveMember: -1.5 }];
+    render(<Wrap>{await CompanyBoard({ rows: negative, metric: "total_points" })}</Wrap>);
+    const values = within(screen.getByRole("listitem")).getAllByRole("definition").map((dd) => dd.querySelector("bdi")!);
+    expect(values).toHaveLength(2);
+    for (const bdi of values) {
+      expect(bdi).toHaveAttribute("dir", "ltr");
+      expect(bdi.textContent).toMatch(/-1/);
+    }
+  });
+
+  it("a negative row in the company's own ledger", async () => {
+    const breakdown: CompanyPointsBreakdown = {
+      companyId: "c1",
+      companyName: "الشركة الأولى",
+      totalPoints: 30,
+      catalogue: [],
+      rows: [
+        { id: "r1", occurredAt: "2026-09-01T09:00:00Z", amount: 50, reason: "استضافة", source: "company_hosting", sessionId: null, sessionTitle: null, meta: null },
+        { id: "r2", occurredAt: "2026-09-02T09:00:00Z", amount: -20, reason: "تصحيح", source: "company_hosting", sessionId: null, sessionTitle: null, meta: null },
+      ],
+    };
+    const { container } = render(<Wrap>{await CompanyPointsBreakdownSection({ breakdown, locale: "ar", timeZone: "Asia/Riyadh" })}</Wrap>);
+    const amounts = Array.from(container.querySelectorAll("li p.text-label bdi"));
+    expect(amounts.map((b) => b.textContent?.replace(/\u200E/g, ""))).toEqual(["50", "-20"]);
+    for (const bdi of amounts) expect(bdi).toHaveAttribute("dir", "ltr");
   });
 });
