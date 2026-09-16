@@ -114,12 +114,15 @@ test("a checked-in member rates the session and the presenter, and it is immedia
 
   const groups = page.getByRole("radiogroup");
   await expect(groups).toHaveCount(2);
-  await groups.nth(0).getByRole("radio", { name: "5" }).click();
-  await groups.nth(1).getByRole("radio", { name: "4" }).click();
+  // Wave 7: native radios named as counts («5 نجوم»), not buttons named «5».
+  await groups.nth(0).getByRole("radio", { name: "5 نجوم" }).check();
+  await groups.nth(1).getByRole("radio", { name: "4 نجوم" }).check();
   await page.getByLabel("ملاحظات (اختياري)").fill("جلسة ممتازة، شكرًا");
   await page.getByRole("button", { name: "إرسال التقييم" }).click();
 
-  await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${completedSessionId}\\?rated=1$`));
+  // Wave 7 (DEC-141 ruling 2): success is a receipt on the rate page itself.
+  await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${completedSessionId}/rate\\?rated=1$`));
+  await expect(page.getByRole("status").filter({ hasText: "تم إرسال تقييمك" })).toBeVisible();
 
   const { rows: ratingRows } = await db.query<{ session_stars: number; presenter_stars: number; comment: string; check_in_id: string }>(
     `select session_stars, presenter_stars, comment, check_in_id from public.ratings where session_id = $1`,
@@ -137,7 +140,7 @@ test("once the rating exists, revisiting the page offers an edit, pre-filled", a
   await page.goto(`/ar/app/sessions/${completedSessionId}/rate`);
   await expect(page.getByRole("button", { name: "تحديث التقييم" })).toBeVisible();
   const groups = page.getByRole("radiogroup");
-  await expect(groups.nth(0).getByRole("radio", { name: "5" })).toHaveAttribute("aria-checked", "true");
+  await expect(groups.nth(0).getByRole("radio", { name: "5 نجوم" })).toBeChecked();
   await expect(page.getByLabel("ملاحظات (اختياري)")).toHaveValue("جلسة ممتازة، شكرًا");
 });
 

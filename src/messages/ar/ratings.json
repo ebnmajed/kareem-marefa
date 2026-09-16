@@ -31,7 +31,15 @@
       "submitted": "تم إرسال تقييمك",
       "updated": "تم تحديث تقييمك",
       "sessionStarsLabel": "عدد نجوم تقييم الجلسة",
-      "presenterStarsLabel": "عدد نجوم تقييم المُقدِّم"
+      "presenterStarsLabel": "عدد نجوم تقييم المُقدِّم",
+      "breadcrumb": "التقييم",
+      "starCount": "{count, plural, zero {لا نجوم} one {نجمة واحدة} two {نجمتان} few {{value} نجوم} many {{value} نجمة} other {{value} نجمة}}",
+      "errorSummaryTitle": "لم نستطع إرسال تقييمك",
+      "errorSummaryDescription": "ما كتبته محفوظ كما هو.",
+      "submittedBody": "يمكنك تعديله حتى يُغلق باب التقييم.",
+      "backToSession": "العودة إلى الجلسة",
+      "yourRating": "تقييمك",
+      "submitting": "جارٍ الإرسال…"
     },
     "states": {
       "notCompleted": "التقييم متاح بعد انتهاء الجلسة",
@@ -51,7 +59,9 @@
       "already_rated": "قيّمت هذه الجلسة من قبل",
       "not_permitted": "لا تملك صلاحية لهذا الإجراء",
       "window_closed": "أُغلق باب التقييم لهذه الجلسة",
-      "generic": "حدث خطأ. حاول مرة أخرى"
+      "generic": "حدث خطأ. حاول مرة أخرى",
+      "starsRequired": "اختر عدد النجوم",
+      "commentTooLong": "الملاحظات أطول من اللازم — اختصرها قليلًا"
     }
   }
 }
