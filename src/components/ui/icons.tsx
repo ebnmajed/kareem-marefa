@@ -268,6 +268,19 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
+/** المؤشرات — three bars on a baseline, the tallest in the middle so the glyph
+ *  implies no reading direction and never mirrors (wave 8, `platform`'s rail). */
+export function ChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h16" />
+      <path d="M7.5 16.5v-5" />
+      <path d="M12 16.5V6.5" />
+      <path d="M16.5 16.5v-7.5" />
+    </Svg>
+  );
+}
+
 /** الوقت — a clock. The hands read 10:10 in both directions; it never mirrors. */
 export function ClockIcon(props: IconProps) {
   return (

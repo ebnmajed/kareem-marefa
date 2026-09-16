@@ -58,6 +58,7 @@ const ICON_NAMES: Record<string, string> = {
   CalendarIcon: "تقويم",
   CheckIcon: "تم",
   CheckCircleIcon: "مؤكَّد",
+  ChartIcon: "مؤشرات",
   ChevronIcon: "شيفرون",
   ClockIcon: "وقت",
   CloseIcon: "إغلاق",
