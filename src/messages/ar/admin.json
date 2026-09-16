@@ -33,6 +33,17 @@
     "dashboard": {
       "title": "لوحة المؤسسة",
       "intro": "نظرة سريعة على مؤسستك. كل رقم هنا رابط إلى القائمة التي يلخّصها.",
+      "attention": {
+        "title": "يحتاج انتباهك",
+        "empty": "لا شيء يحتاج انتباهك الآن",
+        "emptyAction": "عرض كل الجلسات",
+        "proposals": "مقترحات بانتظار قرار",
+        "sessions": "جلسات لم تُجدول بعد",
+        "photoReports": "بلاغات على الصور",
+        "commentReports": "بلاغات على التعليقات",
+        "oldestSince": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ {value} أيام} many {منذ {value} يومًا} other {منذ {value} يوم}}"
+      },
+      "overviewTitle": "نظرة عامة",
       "pipelineTitle": "مسار المقترحات",
       "pipeline": {
         "draft": "مسودة",

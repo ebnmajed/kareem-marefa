@@ -33,6 +33,17 @@
     "dashboard": {
       "title": "Organisation dashboard",
       "intro": "A quick look at your organisation. Every figure here links to the list it summarises.",
+      "attention": {
+        "title": "Needs your attention",
+        "empty": "Nothing needs your attention right now",
+        "emptyAction": "View all sessions",
+        "proposals": "Proposals awaiting a decision",
+        "sessions": "Sessions not yet scheduled",
+        "photoReports": "Open photo reports",
+        "commentReports": "Open comment reports",
+        "oldestSince": "{count, plural, =0 {today} one {since 1 day} other {since {value} days}}"
+      },
+      "overviewTitle": "Overview",
       "pipelineTitle": "Proposal pipeline",
       "pipeline": {
         "draft": "Draft",

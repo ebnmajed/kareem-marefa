@@ -188,6 +188,13 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
   await page.goto("/ar/app/admin");
   await expect(page.getByRole("heading", { name: "لوحة المؤسسة", level: 1 })).toBeVisible();
 
+  // «يحتاج انتباهك» — 2 proposals awaiting a decision (submitted + in_review
+  // among the six seeded); nothing else in the seed produces an unscheduled
+  // session or an open report, so those three rows read 0.
+  const attention = page.locator("section", { has: page.getByRole("heading", { name: "يحتاج انتباهك" }) });
+  await expect(attention.getByText("مقترحات بانتظار قرار")).toBeVisible();
+  await expect(attention.getByRole("link", { name: "مقترحات بانتظار قرار" })).toHaveText(/2/);
+
   // Proposal pipeline — one of each state.
   const pipeline = page.locator("section", { has: page.getByRole("heading", { name: "مسار المقترحات" }) });
   await expect(pipeline.getByText("مسودة")).toBeVisible();
@@ -195,33 +202,39 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
     await expect(pipeline.getByText(label)).toBeVisible();
   }
 
-  // Attendance: 2 confirmed RSVPs, 1 check-in, 50% rate.
-  const attendance = page.locator("section", { has: page.getByRole("heading", { name: "الحضور" }) });
-  await expect(attendance.getByText("2")).toBeVisible();
-  await expect(attendance.getByText("50٪")).toBeVisible();
-
-  // Active members: 4 of the 5 seeded (one deactivated).
-  const activeMembers = page.locator("section", { has: page.getByRole("heading", { name: "الأعضاء النشطون" }) });
-  await expect(activeMembers.getByText("4", { exact: true })).toBeVisible();
-
-  // Points issued: 10, not 5 — the -5 reversal does not net against it.
-  const points = page.locator("section", { has: page.getByRole("heading", { name: "النقاط الممنوحة" }) });
-  await expect(points.getByText("10", { exact: true })).toBeVisible();
+  // Overview: attendance (2 confirmed RSVPs, 1 check-in, 50% rate), active
+  // members and points issued are now each their own `Stat` tile — one
+  // section, not one per figure the way the pre-wave-6 screen had it.
+  const overview = page.locator("section", { has: page.getByRole("heading", { name: "نظرة عامة" }) });
+  await expect(overview.getByText("حجوزات مؤكَّدة")).toBeVisible();
+  await expect(overview.getByText("50٪")).toBeVisible();
+  await expect(overview.getByText("الأعضاء النشطون")).toBeVisible();
+  await expect(overview.getByRole("link", { name: "الأعضاء النشطون" })).toHaveText(/4/); // 4 of 5 seeded — one deactivated
+  await expect(overview.getByText("النقاط الممنوحة")).toBeVisible();
+  await expect(overview.getByRole("link", { name: "النقاط الممنوحة" })).toHaveText(/10/); // 10, not 5 — the -5 reversal does not net against it
 
   // Top presenters/categories/companies show the one row each seeded.
   await expect(page.getByText("المُقدِّم الأول")).toBeVisible();
   await expect(page.getByText("تصنيف اللوحة")).toBeVisible();
   await expect(page.getByText("شركة اللوحة")).toBeVisible();
 
-  // Click-through: the pipeline heading is a link to the real review queue.
-  await pipeline.getByRole("link", { name: "مسار المقترحات" }).click();
+  // Click-through: the attention row for proposals goes to the real review queue.
+  await attention.getByRole("link", { name: "مقترحات بانتظار قرار" }).click();
   await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
   await expect(page.getByText("مقترح بانتظار المراجعة")).toBeVisible();
 
   await page.goBack();
-  await attendance.getByRole("link", { name: "الحضور" }).click();
+  await overview.getByRole("link", { name: "حجوزات مؤكَّدة" }).click();
   await expect(page.getByRole("heading", { name: "الجلسات", level: 1 })).toBeVisible();
   await expect(page.getByText("جلسة انتهت للتو")).toBeVisible();
+
+  await page.goBack();
+  // The pipeline section's heading is no longer itself the link — a
+  // separate «عرض القائمة» action carries the click-through now, and it is
+  // disambiguated from the identically-worded actions on the two
+  // top-categories/top-companies sections by its own accessible name.
+  await pipeline.getByRole("link", { name: "عرض القائمة — مسار المقترحات" }).click();
+  await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
 
   await page.goBack();
   await page.getByRole("link", { name: "المُقدِّم الأول" }).click();
