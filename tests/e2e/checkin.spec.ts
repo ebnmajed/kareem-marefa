@@ -148,20 +148,32 @@ test("an ordinary member reaches the check-in field one tap away and checks in w
 
   const boxes = page.locator("input[maxlength='1']");
   await expect(boxes).toHaveCount(6);
-  for (const [i, ch] of Array.from(code!.trim()).entries()) {
-    await boxes.nth(i).fill(ch);
-  }
+  const codeValue = code!.trim();
+  // ★ The six boxes are a controlled client component, and the action reads
+  // the hidden `code` field their STATE assembles. A `fill` that lands
+  // before hydration sets the DOM and never reaches that state, so the
+  // action gets an empty code. Refill until the hidden field carries the
+  // whole code — that is the component live (sessions' own fix, 1e626cc,
+  // for the identical shape on their own walk through this same screen).
+  const assembled = page.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (const [i, ch] of Array.from(codeValue).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?success=1$/);
+  // The URL first, with a real timeout: a refusal then fails naming its
+  // reason (`?error=…`), not "no status" under full-suite load.
+  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
   await expect(page.getByRole("status")).toHaveText("تم تسجيل حضورك");
 
   // A second visit and submit is the DISTINCT "already checked in" state, not another success.
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  for (const [i, ch] of Array.from(code!.trim()).entries()) {
-    await boxes.nth(i).fill(ch);
-  }
+  await expect(async () => {
+    for (const [i, ch] of Array.from(codeValue).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?already=1$/);
+  await expect(page).toHaveURL(/\?already=1$/, { timeout: 15_000 });
   await expect(page.getByRole("status")).toHaveText("أنت مسجَّل بالفعل");
 });
 
@@ -175,11 +187,15 @@ test("an invalid code is rejected without revealing anything else, and the field
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   const boxes = page.locator("input[maxlength='1']");
-  for (let i = 0; i < 6; i++) {
-    await boxes.nth(i).fill("Z");
-  }
+  // Same hydration race as the live-code walk above: refill until the
+  // hidden `code` field actually holds "ZZZZZZ" before submitting.
+  const assembled = page.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (let i = 0; i < 6; i++) await boxes.nth(i).fill("Z");
+    await expect(assembled).toHaveValue("ZZZZZZ", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/);
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/, { timeout: 15_000 });
   // Next's own route announcer also carries role="alert" — scope to the copy, not the role alone.
   await expect(page.getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
   // React 19 resets the form on every action, redirect included (DEC-043) — the rejected
