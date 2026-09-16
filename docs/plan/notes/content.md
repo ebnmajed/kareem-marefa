@@ -1021,3 +1021,113 @@ stays `ui/button` with its Arabic label, matching my read of edit/moderate above
 a fourth control into `IconButton`. I have a mild preference for (c) — it is the smallest change and
 "reply" benefits from a visible word more than "delete"/"report" do — but the lead named reply
 explicitly, so raising it rather than quietly picking (c) myself.
+
+---
+
+## 9. Built and committed — all three surfaces, wave 6's floor and bar both attempted
+
+The lead's go landed (§7, `57f1103`), then the five real primitives (§8, `1d73e89`), then rulings on
+every open item: §4.3 → render nothing for a non-manager with nothing to show; §4.6 → option (c),
+reply stays `ui/button`; §4.4 → recorded, not fixed; §4.2 → `sessions` fixed `min-h-32` (`7593967`).
+One more ruling, not in my plan: badge/tag-chip/avatar move from pills to the canvas's 6 px rounded
+squares (`rounded-field`) — done first, its own commit, §9.1 below.
+
+### 9.1 `6182ed1` — badge/tag-chip/avatar: rounded squares, not pills
+
+`rounded-full` → `rounded-field` on `Badge`, `TagChip`'s outer chip (the remove control's own small
+circular hit area is unnamed and stays round), `Avatar`/`AvatarStack`'s ring. tsc clean, lint clean,
+all 51 existing tests unchanged (none asserted the pill shape).
+
+### 9.2 `3151630` — `CardMedia.dimmed` and `TagChip.selected`/`removeHref`, for `sessions`
+
+The lead landed the *types* for `sessions`' requests at `607ecbe`; this is the *implementation*, since
+`content` owns `card.tsx`/`tag-chip.tsx`. `dimmed`: grayscale + reduced opacity on the image/
+placeholder only, never `overlay` (DEC-123 item 1 — the canvas's own defect was nesting the status
+badge INSIDE the dimmed element). `selected`: `aria-current="true"` on the link (never
+`aria-pressed` — a link is not a toggle button) plus a filled navy/white pair, so "applied" is never
+colour-alone. `removeHref`: removal as a link, works before hydration. The remove control's hit area
+grew `size-4` → `size-6` (24px), clearing WCAG 2.5.8 (DEC-123's touch-target sweep). Both files' own
+internal `Link` moved onto `ui/link` with `quiet` (R-C4) — a card-whole-surface link and a dense
+inline chip row are exactly `ui/link`'s own documented case for suppressing the pending dot.
+
+### 9.3 The three surfaces, in build order
+
+**`40e23a6` — the discussion.** Auto-grow (a real `scrollHeight` measurement, not `field-sizing`
+alone — needed a DOM ref `ui/textarea`'s plain-function-component shape does not forward, so the
+composer's own field is a raw `<textarea>` reusing `controlClass()` directly, not `<Textarea>`); the
+remaining-length counter, all six Arabic ICU forms, silent until 200 characters from the cap; the
+failed-post text was already kept (unchanged), now visible via an adjacent `Panel` AND a persistent
+toast. Reaction/report/delete → `IconButton` (`DotIcon`/`AlertTriangleIcon`/`TrashIcon`); reply/edit/
+moderate stay `ui/button`. The reaction is optimistic (`useOptimistic`, reverts on failure, no visible
+pending state — the whisper motion IS the feedback) and fires `.reaction-ignite`/`.reaction-ring`
+only on the false→true transition, cleared by a fixed 400 ms timer rather than `onAnimationEnd` (the
+ring is `display:none` under reduced motion and animation events on a never-painted element are not
+something to depend on). `commentsSummary()` new; `Comments()` returns `null` exactly when frozen
+and empty (REQ-EVT-003: a member may still post otherwise).
+
+**`a0448bf` — materials.** List rows on `Card density="row"`, `Badge` for قبل/بعد, `Progress` for a
+pending render, `Panel` for the substitution warning. The viewer route gets `ui/page-header` (a
+one-crumb breadcrumb reusing the existing "back" copy — `ViewerData` has no session title to join
+for a single crumb). Both uploaders (materials and proposal-materials) move onto `ui/file-drop`,
+stating the org's real per-kind limit before a file is chosen — a **new** `org_settings` query in
+`getMaterialsPageData`/`getProposalMaterialsPageData` (neither read it at all after the sweep, not
+even for numerals, contrary to my own first draft's guess in §7). Two real bugs found building this,
+both fixed, neither hypothetical: an inline `onFiles` closure recreated every render put
+`ui/file-drop`'s own effect into an infinite loop (`useCallback` breaks it — cost a genuine hung test
+run before I traced it); `ui/link`'s automatic locale prefix would have doubled the old manual
+`/${locale}` prefix carried over from the `next/link` import it replaced.
+
+**`3d185d0` — photos.** The grid stays plain — `Card` has no `href` to hang its "whole thing is one
+link" contract off a photo tile that opens nothing. Hidden badge → `Badge`; the upload notice → `Panel`
+with `InfoIcon`. `TakedownButton`'s request-hide moves from `window.confirm` to `ui/dialog`
+(REQ-UIX-013); restore stays a plain click, staff-only and reversible by construction. `imageLimitMb`
+is new on `getPhotosPageData` for the same before-a-file-is-chosen reason as materials.
+
+**`05e511b` — tasks, light touch.** `tasksSummary()` (the fourth reader the contract requires) and an
+`EmptyState` in place of a bare paragraph — nothing else; `TaskItem`/`CreateTaskForm` untouched.
+
+### 9.4 Verified, and how
+
+`npx tsc --noEmit` clean across every file this track owns (the only remaining errors are `sessions`'/
+`console`'s own in-flight files — `app/sessions/page.tsx`, `lib/dal/search.ts`, `browse/session-card.tsx`,
+`admin/sessions/**` — never touched here). `npm run lint`: 0 errors (20 pre-existing warnings, the
+launch-era baseline, unchanged). `npm test` on every touched directory: 88/88 in
+`tests/components/{event,materials,photos,tasks}/` plus `tests/unit/content-i18n.test.ts`; the full
+`npm test` run: 1160/1161, the one failure (`admin.proposals.rejectConfirmTitle`) is `sessions`'/
+`console`'s own key, untouched by anything here. `npm run test:rls` on
+`{materials,photos,event-comments,realtime}-schema.test.ts`: 70/70 on a clean re-run (a combined run
+hit two 20 s timeouts on unrelated tests — `event-comments`' edit-window case and `realtime`'s
+cross-org case, neither touching anything this wave changed — that cleared on an isolated re-run,
+consistent with local DB contention from an earlier stuck process, not a regression). `axe-core`
+added to `comment-item`, `comment-composer`, `comment-list`, `materials/list`, `photos/gallery`.
+
+**A real bug found and fixed mid-build, worth recording on its own:** my own first draft of the
+`requirementAudio`/`requirementPdf`/etc. messages tripped `tests/unit/content-i18n.test.ts` twice —
+once for a literal Western digit outside ICU syntax ("MP3", "M4A" both contain one baked into the
+format name itself, not a counted quantity) and once for an un-isolated `{limitMb}` interpolation
+(the established `{count, value}` convention I'd followed elsewhere is plural-exempt; a bare
+non-plural `{limitMb}` needs `<bdi>{limitMb}</bdi>` in the message itself, matching the pre-existing
+`sizeLimitExceeded` key I should have matched from the start). Fixed: `requirementAudio` reworded to
+name WAV/OGG and "similar formats" rather than spell out MP3/M4A; all four `requirement*` keys wrap
+`{limitMb}` in `<bdi>`; the component call sites use `t.markup(...)` (a plain string, matching
+`FileDrop.requirements: string[]`) rather than plain `t(...)`.
+
+### 9.5 Not done — genuinely blocked, not skipped
+
+**No real `npm run test:e2e:local` run, and no `.qa-shots/rtl/wave6-content-*.png` captures.** Both
+need a server started from a FRESH `.next` build reflecting today's work — `scripts/e2e-local.mjs`
+refuses to run without one ("Run `npm run build` first"), and the `.next` on disk right now
+(12:28–12:29) predates essentially all of the component code in §9.3. `npm run build` is lead-only
+this milestone. The e2e specs themselves ARE updated for the new markup and pass `tsc`/lint
+(`event-comments.spec.ts`'s delete locator now walks two levels, not one — the body moved one level
+deeper into `ui/prose`'s own wrapping div; `materials.spec.ts`'s upload now targets
+`#materials-upload-form input[type="file"]`, since `ui/file-drop`'s hidden input carries no
+accessible label the old `getByLabel("الملف")` depended on; `photos.spec.ts`'s takedown test opens
+the dialog and confirms inside it, scoped with `getByRole("dialog")`, instead of accepting a native
+`window.confirm` that no longer appears) — they are ready to run the moment a fresh build exists.
+**Asking the lead**: either build and hand the gate lock back for me to drive these three specs
+through it, or fold them into the wave's own `qa`/`e2e` pass at sync — whichever fits the wave's
+rhythm better.
+
+Ready for sync. All four commits above are on `wave-6/screens`. Nothing is blocked on the owner;
+one thing (§9.5) is blocked on the lead's next build.
