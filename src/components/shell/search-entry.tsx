@@ -29,7 +29,9 @@ export async function SearchEntry({ locale }: { locale: string }) {
           {t("searchLabel")}
         </label>
         <div className="relative flex w-full max-w-lg items-center">
-          <SearchIcon aria-hidden className="pointer-events-none absolute inset-inline-start-3 text-fg-muted" />
+          {/* `start-3`: the old `inset-inline-start-3` does not exist in Tailwind 4,
+              so the glyph had no inline offset at all (DEC-133). */}
+          <SearchIcon aria-hidden className="pointer-events-none absolute start-3 text-fg-muted" />
           {/* ★ `ui/input`, not a hand-rolled control, and `ui-lint` is what
               caught the first version: the shell had copied the house class
               string, which is the sixty-five-file problem starting over in the

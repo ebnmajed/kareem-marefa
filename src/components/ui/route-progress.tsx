@@ -107,7 +107,7 @@ export function RouteProgress({ delayMs = 150 }: RouteProgressProps) {
 
   if (!visible) return null;
   return (
-    <div aria-hidden data-route-progress="" className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5">
+    <div aria-hidden data-route-progress="" className="pointer-events-none fixed start-0 end-0 top-0 z-50 h-0.5">
       <div ref={bar} className="h-full bg-navy-950" style={{ transform: "scaleX(0.45)" }} />
     </div>
   );

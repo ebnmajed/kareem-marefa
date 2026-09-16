@@ -1,5 +1,5 @@
 import { Link } from "@/i18n/navigation";
-import { CalendarIcon, HomeIcon, PlusIcon, UserIcon } from "@/components/ui/icons";
+import { CalendarIcon, PlusIcon, UserIcon } from "@/components/ui/icons";
 
 // The phone tab bar — `16` §6.1 note 2, DEC-072, DEC-098, REQ-UIX-002.
 //
@@ -54,14 +54,18 @@ export function isImmersive(pathname: string | null): boolean {
 export interface TabBarProps {
   /** The path with its locale, from `x-pathname`. */
   pathname: string | null;
-  labels: { home: string; sessions: string; propose: string; me: string };
+  labels: { nav: string; sessions: string; propose: string; me: string };
 }
 
+// ★ THREE TABS, NOT FOUR (DEC-130). `/app` IS the sessions timeline (DEC-112),
+// the same component `/app/sessions` renders, so «الرئيسية» and «الجلسات» had
+// become two names for one destination — exactly what DEC-112 forbade. One tab,
+// current on both routes. The event page under `/app/sessions/[id]` has no tab
+// bar at all (IMMERSIVE above), so the prefix test cannot misfire there.
 const TABS = [
-  { href: "/app", key: "home", Icon: HomeIcon },
-  { href: "/app/sessions", key: "sessions", Icon: CalendarIcon },
-  { href: "/app/propose", key: "propose", Icon: PlusIcon },
-  { href: "/app/me", key: "me", Icon: UserIcon },
+  { href: "/app", key: "sessions", Icon: CalendarIcon, current: (p: string) => p === "/app" || p === "/app/sessions" || p.startsWith("/app/sessions?") },
+  { href: "/app/propose", key: "propose", Icon: PlusIcon, current: (p: string) => p.startsWith("/app/propose") },
+  { href: "/app/me", key: "me", Icon: UserIcon, current: (p: string) => p.startsWith("/app/me") },
 ] as const;
 
 export function TabBar({ pathname, labels }: TabBarProps) {
@@ -70,17 +74,20 @@ export function TabBar({ pathname, labels }: TabBarProps) {
 
   return (
     <nav
-      aria-label={labels.home}
+      aria-label={labels.nav}
       // `--tabbar-h` is declared in globals.css and consumed BY THE BAR, so a
       // height change moves one number and the scroll padding follows it.
-      className="fixed inset-inline-0 bottom-0 z-30 border-t border-edge bg-canvas md:hidden"
+      // ★ `start-0 end-0`, not `inset-inline-0`: Tailwind 4 has no
+      // `inset-inline-*` utility, so that class compiled to NOTHING and this fixed
+      // bar had no inline edges — it shrink-wrapped its tabs instead of spanning
+      // the screen, which is the owner's «icons aren't correctly positioned»
+      // (DEC-111, DEC-133). `tests/unit/logical-utilities.test.ts` now refuses it.
+      className="fixed start-0 end-0 bottom-0 z-30 border-t border-edge bg-canvas md:hidden"
       style={{ paddingBlockEnd: "env(safe-area-inset-bottom, 0px)" }}
     >
       <ul className="mx-auto flex max-w-6xl items-stretch justify-around">
-        {TABS.map(({ href, key, Icon }) => {
-          // `/app` is exact; the rest match their subtree. Without the exact
-          // test every tab is current on every screen.
-          const current = href === "/app" ? withoutLocale === "/app" : withoutLocale.startsWith(href);
+        {TABS.map(({ href, key, Icon, current: isCurrent }) => {
+          const current = isCurrent(withoutLocale);
           return (
             <li key={href} className="flex-1">
               <Link

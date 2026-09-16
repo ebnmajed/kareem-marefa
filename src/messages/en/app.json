@@ -26,7 +26,8 @@
       "calendar": "Calendar",
       "staffSection": "Administration",
       "proposeShort": "Propose",
-      "toastClose": "Dismiss notification"
+      "toastClose": "Dismiss notification",
+      "primaryNav": "Primary navigation"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",

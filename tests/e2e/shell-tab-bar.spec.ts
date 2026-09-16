@@ -109,7 +109,7 @@ test("★ the bar does not cover the last line of an OLD, untouched screen at 39
   await page.goto("/ar/app/leaderboards");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
-  const bar = page.locator("nav").filter({ has: page.getByRole("link", { name: "اقترح جلسة" }) }).last();
+  const bar = page.getByRole("navigation", { name: "التنقّل الرئيسي" });
   await expect(bar).toBeVisible();
 
   // Scroll to the very bottom: the covering, if it happens, happens there.
@@ -169,12 +169,12 @@ test("★ the bar is contextual: absent on a detail screen, and never two bars (
 
   await page.goto("/ar/app/sessions");
   // Browse is a LIST, so it keeps the bar — the prefix must not swallow it.
-  await expect(page.getByRole("link", { name: "اقترح جلسة" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "التنقّل الرئيسي" })).toBeVisible();
 
   await page.goto(`/ar/app/sessions/${sessionId}`);
   // The event page is immersive: the bar is gone, and from M10 a bottom action
   // bar carrying «احجز مقعدًا» takes its place.
-  await expect(page.getByRole("link", { name: "اقترح جلسة" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "التنقّل الرئيسي" })).toHaveCount(0);
 
   // The rule the whole design rests on, asserted directly on both screens.
   for (const url of ["/ar/app/sessions", `/ar/app/sessions/${sessionId}`]) {
