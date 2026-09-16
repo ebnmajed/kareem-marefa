@@ -17,7 +17,7 @@ vi.mock("next-intl/server", () => ({
 vi.mock("@/components/tasks/actions", () => ({ toggleTaskCompletionAction: vi.fn(), submitTaskFormResponseAction: vi.fn(), createTaskAction: vi.fn() }));
 
 const { getTasksPageData } = await import("@/lib/dal/tasks");
-const { Tasks } = await import("@/components/tasks/panel");
+const { Tasks, tasksSummary } = await import("@/components/tasks/panel");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
 const base: TasksPageData = { tasks: [], canManage: false, materials: [] };
@@ -33,10 +33,18 @@ async function renderSlot(data: TasksPageData) {
 }
 
 describe("Tasks slot", () => {
-  it("shows the empty state when the session has no tasks, and hides the create-task form from a plain member", async () => {
-    await renderSlot({ ...base });
+  // ★ wave 6 (`sessions.md` §22.4's invariant): `visible === false` EXACTLY
+  // when the slot returns `null` — a plain member with nothing to see has
+  // no next action `EmptyState` could honestly offer.
+  it("renders null for a plain member with no tasks and no manage right", async () => {
+    const { container } = await renderSlot({ ...base });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows an EmptyState naming the next action for a manager with nothing yet", async () => {
+    await renderSlot({ ...base, canManage: true });
     expect(screen.getByText("لا توجد مهام تحضيرية لهذه الجلسة.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "إضافة" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "إضافة" })).toHaveAttribute("href", "#tasks-create-form");
   });
 
   it("★ REQ-TSK-004: shows the count and the completed-of-them progress line", async () => {
@@ -73,5 +81,24 @@ describe("Tasks slot", () => {
     const externalLink = screen.getByRole("link", { name: "فتح الرابط — يغادر المنصة" });
     expect(externalLink).toHaveAttribute("href", "https://example.com");
     expect(externalLink).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+});
+
+describe("tasksSummary", () => {
+  it("carries this viewer's outstanding (not yet completed) count", async () => {
+    vi.mocked(getTasksPageData).mockResolvedValue({
+      tasks: [
+        { id: "t1", kind: "checklist", title: "أ", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 0, completed: true, myFormResponse: null },
+        { id: "t2", kind: "checklist", title: "ب", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null },
+      ],
+      canManage: false,
+      materials: [],
+    });
+    await expect(tasksSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: true, count: 2, outstanding: 1 });
+  });
+
+  it("is NOT visible for a plain member with nothing — exactly when `Tasks` returns null", async () => {
+    vi.mocked(getTasksPageData).mockResolvedValue({ ...base });
+    await expect(tasksSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: false, count: 0, outstanding: 0 });
   });
 });

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listMaterials } from "@/lib/dal/materials";
@@ -56,8 +57,11 @@ function toFormSchema(raw: unknown): FormField[] | null {
   return fields;
 }
 
-/** The event page's `Tasks` slot data — REQ-TSK-004: "progress is visible on the event page." */
-export async function getTasksPageData(locale: string, sessionId: string): Promise<TasksPageData> {
+/** The event page's `Tasks` slot data — REQ-TSK-004: "progress is visible on the event page."
+ *
+ *  ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page gates the tasks
+ *  `<section>` on `tasksSummary()` (below), which needs this same read. */
+export const getTasksPageData = cache(async (locale: string, sessionId: string): Promise<TasksPageData> => {
   if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [] };
   const { session, supabase } = await sessionClient(locale);
 
@@ -98,7 +102,7 @@ export async function getTasksPageData(locale: string, sessionId: string): Promi
     canManage: session.role === "admin" || !!presenterRow,
     materials: materialList.map((m) => ({ id: m.id, title: m.title })),
   };
-}
+});
 
 const createTaskInput = z
   .object({
