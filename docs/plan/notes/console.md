@@ -1582,3 +1582,33 @@ all seven of this track's rows (K0–K6) at ✓ — part (1) of the measure, don
   `admin.combobox` with an inline note, rather than switch to a namespace that does not exist yet
   and break every caller. `member-picker.tsx` and both admin callers stay green, four new tests
   added, axe clean. Commit `654ec91`.
+
+### Sync 3 — eight findings, all fixed
+
+The lead's sync-3 build (`d8f0af9`) found eight real problems. All fixed, three commits (`b75afeb`,
+`d12499d`, `85cf171`):
+
+1. **Capture path.** Every capture helper hard-coded `process.cwd()`, so a verification-worktree run
+   never lands at the path a checklist row cites. All six now read `process.env.E2E_SHOTS_DIR` first
+   — the convention every other track's specs already use, missed here because K0-K6 were all
+   written before any capture ever actually ran through the lock.
+2. **"Populated" captures showing empty — a real test-order bug, not a product bug.** `mode:
+   "serial"` runs a file's tests in file order; `admin-moderation.spec.ts`'s and
+   `admin-reports.spec.ts`'s own resolution tests ran BEFORE their capture tests and had already
+   emptied the seeded queues by the time the screenshot fired. Moved each capture to right after the
+   read-only view test. `admin-managed-lists.spec.ts`'s was a different cause — the add tests are
+   desktop-only, so the phone project's own org never got a row through them; seeded one directly by
+   DB insert instead.
+3. **Toast ambiguity** (`admin-managed-lists.spec.ts:165`) — `getByRole('status')` matched two
+   stacked toasts. Filtered by text.
+4. **`ui/tabs` wrapping at 390 px** — `flex-wrap` → `overflow-x-auto`, the fix `content`'s own
+   `me/tab-strip.tsx` had already requested and forked around rather than wait for.
+5. **Stale DEC-124 copy** on `/app/admin/exports` — "أرقامها بنظام ترقيم مؤسستك" survived past the
+   numerals sweep. Dropped the clause; grepped for more, found none.
+6. **Two "add" controls on one screen** — venues/categories/companies' empty-state action reused
+   `addTitle`, duplicating the visible form's own submit button. New `emptyAction` copy applied to
+   all three, not just the one sync-3 named.
+7. **The missing rail-disclosure capture** — K0's own headline (the fourteen-group regroup) had no
+   capture showing a group actually open. Added one per role.
+8. **Combobox strings** — still `admin.combobox`, not yet `ui.combobox`; reconfirmed to the lead a
+   third time with the exact keys, since `ui.json` hasn't landed them yet.
