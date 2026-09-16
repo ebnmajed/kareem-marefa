@@ -1230,3 +1230,38 @@ see the commit for both. One e2e locator bug fixed alongside (`event-comments.sp
 outer/inner `<li>` nesting trap the delete locator already had to account for).
 
 Ready for sync.
+
+## §12 — the re-drive: which commit, the cross-component test, the token bug
+
+**Which commit fixed the two blockers**: 44485b8, not e533ad8. e533ad8 landed one dialog-timeout fix
+and one empty-state fix only — the `setTimeout(…, 0)` decoupling of every `router.refresh()` (both
+blockers' actual fix) is 44485b8, which came after. The lead's captures and re-drive message predate
+both e533ad8 and 44485b8, so this note exists to say plainly: the fix the re-drive re-asked for was
+already in the branch by the time the message arrived, at 44485b8, three commits before the re-drive.
+
+**The specific test the lead asked for** — "post, then react, then the composer's button is idle" —
+is now `comment-list.test.tsx`'s new describe block (da1b09c). It is the cross-component shape blocker
+1 actually was: `CommentComposer` and `CommentItem` are siblings under `CommentList`, each with its
+own `useTransition`, and the live failure was one sibling's `router.refresh()` leaving another
+sibling's transition unsignalled. Same honesty caveat as §11's blocker-1 test: jsdom's
+`useRouter().refresh` is a no-op stub that cannot fold two calls together the way the real router did
+live, so this proves the composer's `pending` never depends on a sibling's action at all — necessary,
+not sufficient. The real mechanism is only provable against a real build.
+
+**The navy-token bug (23698df)**: real, exactly as reported. `MEDIA_TINTS` (card.tsx) and `TINTS`
+(avatar.tsx) both referenced `bg-navy-600`/`bg-navy-200` — `globals.css` only ever defined
+navy-1000/950/900/850/800 and silver-100…400. Worse: `avatar.test.tsx`'s own `TINT_PAIRS` had
+independently fabricated hex values for the same two fake tokens and never caught the drift, because
+it was a hand-copied duplicate rather than a read of the real file. Fixed by swapping the two entries
+for `navy-900`/`silver-200` (both real, keeping the dark/light balance) in both arrays, and — more
+durably — exporting both arrays for the first time and adding a test in each file that reads
+`globals.css` directly and asserts every class against the real `--color-*` set, so a typo like this
+one fails a test instead of rendering invisibly. `placeholderGlyph` (card.tsx) also went from two
+letters (reading as a pause glyph, «اا», on any title starting with «ا» twice) to one, skipping a
+leading «ال» — `card.test.tsx` covers the skip and the "«ال» alone" edge case.
+
+**Housekeeping**: the three `.bak`/`.bak2`/`.bak3` files the lead flagged were already gone — `find`
+across the tree found none, tracked or untracked. Nothing to `rm`; noting it here rather than staying
+silent about a request I did nothing for.
+
+Ready for sync.
