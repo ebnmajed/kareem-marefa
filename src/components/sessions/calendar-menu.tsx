@@ -20,16 +20,16 @@ export interface CalendarMenuProps {
   label: string;
   links: { google: string; outlook: string; ics: string };
   labels: { google: string; outlook: string; apple: string };
-  /** The card on desktop, the phone's bottom action bar below `md`. */
-  placement: "card" | "bar";
+  /**
+   * `card` from `md` up and `bar` below it, when this is the page's ONE primary
+   * action; `inline` at every width, when it is a secondary one.
+   */
+  placement: "card" | "bar" | "inline";
+  /** Primary before the session (§5.4.2); secondary while it runs, beside «تسجيل الحضور». */
+  variant?: "primary" | "secondary";
 }
 
-export function CalendarMenu({
-  label,
-  links,
-  labels,
-  placement,
-}: CalendarMenuProps) {
+export function CalendarMenu({ label, links, labels, placement, variant = "primary" }: CalendarMenuProps) {
   const away = (url: string) => () => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -42,7 +42,8 @@ export function CalendarMenu({
         align="start"
         trigger={
           <Button
-            size="lg"
+            variant={variant}
+            size={variant === "primary" ? "lg" : "md"}
             className="w-full"
             iconStart={<CalendarIcon className="text-[1.125rem]" />}
           >

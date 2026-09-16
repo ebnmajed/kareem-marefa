@@ -118,6 +118,11 @@ export async function ActionCard(props: ActionCardProps) {
 
       {primary ? <PrimaryControl action={primary} placement="card" session={session} slot={slot} labels={{ checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") }} /> : null}
 
+      {/* The calendar the matrix offers, when it is not the primary: a running
+          session keeps it for a confirmed member and its presenter (`16` §5.3),
+          as a secondary action beside «تسجيل الحضور». */}
+      {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
+
       {primary === "rate" && props.ratingClosesAt ? (
         <p className="text-body-sm text-fg-muted">{t("actions.ratingWindow", { date: formatDate(props.ratingClosesAt, session.timeZone, locale) })}</p>
       ) : null}

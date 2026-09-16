@@ -22,9 +22,15 @@ import { CalendarMenu } from "@/components/sessions/calendar-menu";
 // «أضِف إلى تقويمك». What the links point at, and when this renders at all, is
 // unchanged — the event page still gates it on `can.calendar`.
 //
-// `placement`: the action card from `md` up, the phone's bottom action bar
-// below it — one visible button per width.
-export async function AddToCalendar({ sessionId, locale, placement = "card" }: SlotProps & { placement?: "card" | "bar" }) {
+// `placement`: as the page's primary action, the action card from `md` up and
+// the phone's bottom action bar below it — one visible button per width; as a
+// secondary action (a running session, beside «تسجيل الحضور»), `inline`.
+export async function AddToCalendar({
+  sessionId,
+  locale,
+  placement = "card",
+  variant = "primary",
+}: SlotProps & { placement?: "card" | "bar" | "inline"; variant?: "primary" | "secondary" }) {
   const [t, session] = await Promise.all([getTranslations("calendar"), getSessionForCalendar(locale, sessionId)]);
   if (!session || session.cancelled) return null;
 
@@ -52,6 +58,7 @@ export async function AddToCalendar({ sessionId, locale, placement = "card" }: S
       links={{ google: links.google, outlook: links.outlook, ics: icsUrl }}
       labels={{ google: t("add.google"), outlook: t("add.outlook"), apple: t("add.apple") }}
       placement={placement}
+      variant={variant}
     />
   );
 }

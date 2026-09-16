@@ -11,6 +11,7 @@ import { ActionCard } from "@/components/sessions/action-card";
 import { EventHero } from "@/components/sessions/event-hero";
 import { primaryActionFor } from "@/components/sessions/event-actions";
 import { EventSubnav } from "@/components/sessions/event-subnav";
+import { FocusClearance } from "@/components/sessions/focus-clearance";
 import { GatedSection } from "@/components/sessions/gated-section";
 import { formatDate } from "@/components/sessions/numerals";
 import { PresenterList } from "@/components/sessions/presenter-list";
@@ -98,7 +99,9 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     endedAttendee ? myCertificateHref(locale, id) : Promise.resolve(null),
     isSessionBookmarked(locale, id),
   ]);
-  const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible);
+  // The card offers «قيّم الجلسة» only to someone who has not rated yet; an
+  // edit, or the window having closed, is the rating section's to say.
+  const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible) && !eligibility?.existing;
 
   const primary = primaryActionFor({ phase, relation, can, canReserve: rsvp?.canReserve ?? false, seat: rsvp?.seat ?? null, canCheckIn, canRate });
 
@@ -116,8 +119,12 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     discussion: true,
     // The Ratings slot renders nothing for a viewer with no stake, so the
     // section is gated by the relations that have one — and by the stored
-    // state, never the clock (DEC-090 corollary 2).
-    rating: session.state === "completed" && ratingRelations.includes(relation),
+    // state, never the clock (DEC-090 corollary 2). ★ And not while the action
+    // card carries «قيّم الجلسة»: the slot's own call to rate would be a second
+    // primary for the same act on one page (`16` §3 principle 2). The section
+    // returns once there is something else to say — the edit link, or that the
+    // window has closed.
+    rating: session.state === "completed" && ratingRelations.includes(relation) && !canRate,
   };
 
   const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
@@ -127,6 +134,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 
   return (
     <article>
+      <FocusClearance />
       <Notices session={session} phase={phase} published={published} locale={locale} />
 
       <EventHero session={session} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />

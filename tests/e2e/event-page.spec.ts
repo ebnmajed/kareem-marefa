@@ -25,7 +25,9 @@ const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-const SHOTS = join(process.cwd(), ".qa-shots", "rtl");
+// `E2E_SHOTS_DIR` lets a look-only run against a dev server keep its pictures
+// out of the directory the review reads.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -133,6 +135,9 @@ async function signIn(context: BrowserContext): Promise<string> {
 }
 
 async function capture(page: Page, name: string) {
+  // Every streamed section has arrived: a capture of a Suspense fallback is a
+  // capture of nothing.
+  await page.waitForLoadState("networkidle");
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: join(SHOTS, `wave6-sessions-${name}.png`), fullPage: true });
 }
@@ -231,7 +236,11 @@ test("★ an ended session: the ribbon, «حضرت», «قيّم الجلسة» 
   const region = page.getByRole("region", { name: "الحضور" });
   await expect(region.getByText("حضرت")).toBeVisible();
   await expect(region.getByRole("link", { name: "قيّم الجلسة" })).toBeVisible();
+  // One call to rate on the page, once everything has streamed: while the card
+  // carries it, the rating section does not repeat it.
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("link", { name: "قيّم الجلسة" })).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "التقييم" })).toHaveCount(0);
   for (const name of ["احجز مقعدك", "إلغاء الحجز", "غادر قائمة الانتظار", "أضِف إلى تقويمك"]) {
     await expect(page.getByRole("button", { name })).toHaveCount(0);
   }
@@ -249,6 +258,8 @@ test("★ nothing fixed or sticky covers the focused element, tabbing the whole 
   const obscured: string[] = [];
   for (let i = 0; i < 60; i++) {
     await page.keyboard.press("Tab");
+    // Two frames: the browser's focus scroll, then the page's own clearance.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     const hit = await page.evaluate(() => {
       const focused = document.activeElement as HTMLElement | null;
       if (!focused || focused === document.body) return null;
@@ -262,9 +273,18 @@ test("★ nothing fixed or sticky covers the focused element, tabbing the whole 
         if (el.contains(focused)) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) continue;
-        // Only a layer that is actually stuck to the viewport can cover anything.
-        const overlaps = f.left < r.right && f.right > r.left && f.top < r.bottom && f.bottom > r.top;
-        if (overlaps) return `${focused.tagName} «${(focused.textContent ?? "").trim().slice(0, 30)}» under ${el.tagName}.${(el.className?.toString() ?? "").slice(0, 40)}`;
+        const left = Math.max(f.left, r.left);
+        const right = Math.min(f.right, r.right);
+        const top = Math.max(f.top, r.top);
+        const bottom = Math.min(f.bottom, r.bottom);
+        if (left >= right || top >= bottom) continue;
+        // Overlapping boxes are not enough: the layer must PAINT over the
+        // control where they meet. The skip link overlaps the header and sits
+        // above it.
+        const painted = document.elementFromPoint((left + right) / 2, (top + bottom) / 2);
+        if (painted && el.contains(painted) && !focused.contains(painted)) {
+          return `${focused.tagName} «${(focused.textContent ?? "").trim().slice(0, 30)}» under ${el.tagName}.${(el.className?.toString() ?? "").slice(0, 40)}`;
+        }
       }
       return null;
     });
