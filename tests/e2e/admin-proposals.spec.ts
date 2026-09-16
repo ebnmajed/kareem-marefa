@@ -50,6 +50,9 @@ test.beforeAll(async ({}, testInfo) => {
   orgId = rows[0].id;
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+  // `proposals.category_id` has been NOT NULL since 0010 — found on a real
+  // build (the lead's), not by reading the schema first.
+  const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'تصنيف المراجعة') returning id`, [orgId]);
 
   for (const email of [adminEmail, proposerEmail]) {
     const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: email === adminEmail ? "مشرفة المراجعة" : "مقدّمة المقترح" } });
@@ -59,8 +62,8 @@ test.beforeAll(async ({}, testInfo) => {
   await provisionMemberId(adminEmail);
   const proposerId = await provisionMemberId(proposerEmail);
   await db.query(
-    `insert into public.proposals (org_id, proposer_id, title, abstract, level, state) values ($1, $2, 'مقترح للمراجعة', 'ملخص المقترح الذي سيُراجَع', 'introductory', 'submitted')`,
-    [orgId, proposerId],
+    `insert into public.proposals (org_id, proposer_id, title, abstract, category_id, level, state) values ($1, $2, 'مقترح للمراجعة', 'ملخص المقترح الذي سيُراجَع', $3, 'introductory', 'submitted')`,
+    [orgId, proposerId, catRows[0].id],
   );
 });
 

@@ -84,7 +84,10 @@ export function ReportCard({
             <Button type="button" variant="danger" size="sm" disabled={pending} onClick={() => setConfirmOpen(true)}>
               {t("remove")}
             </Button>
-            <DialogContent title={t("removeConfirmTitle", { session: sessionTitle })} closeLabel={t("closeDialog")}>
+            <DialogContent
+              title={t.rich("removeConfirmTitle", { session: sessionTitle, t: (chunks) => <bdi>{chunks}</bdi> })}
+              closeLabel={t("closeDialog")}
+            >
               <form action={formAction}>
                 <Field
                   id={reasonId}

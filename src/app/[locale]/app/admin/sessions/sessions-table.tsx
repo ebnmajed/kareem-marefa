@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
 import { Menu } from "@/components/ui/menu";
 import { MoreIcon } from "@/components/ui/icons";
+import { Panel } from "@/components/ui/panel";
 import { storedPhase } from "@/lib/session-status";
 import type { AdminSession, AttendanceSessionRow, SessionAction } from "@/lib/dal/sessions";
 import { SessionControls } from "./session-controls";
@@ -183,12 +184,12 @@ export function AdminSessionsTable({
       {sorted
         .filter((s) => (actionsById[s.id]?.length ?? 0) > 0 && transitionActions[s.id])
         .map((s) => (
-          <div key={s.id} className="mt-3 rounded-field border border-edge p-4">
+          <Panel key={s.id} className="mt-3">
             <p className="text-label text-fg-heading">
               <bdi>{s.title}</bdi>
             </p>
             <SessionControls action={transitionActions[s.id]} actions={actionsById[s.id] ?? []} sessionTitle={s.title} />
-          </div>
+          </Panel>
         ))}
     </div>
   );

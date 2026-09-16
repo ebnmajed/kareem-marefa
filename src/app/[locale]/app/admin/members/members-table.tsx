@@ -144,7 +144,10 @@ function ActionsCell({
         }
         items={[{ label: t("deactivate"), onSelect: () => setConfirmOpen(true), tone: "error" }]}
       />
-      <DialogContent title={t("deactivateConfirmTitle", { name: member.displayName ?? member.email })} closeLabel={t("closeDialog")}>
+      <DialogContent
+        title={t.rich("deactivateConfirmTitle", { name: member.displayName ?? member.email, t: (chunks) => <bdi>{chunks}</bdi> })}
+        closeLabel={t("closeDialog")}
+      >
         <form action={formAction}>
           <Field id={`deactivate-reason-${member.id}`} label={t("reasonLabel")} hint={t("reasonHint")} required error={state.error === "reason_required" ? t("error.reason_required") : undefined}>
             <Textarea name="reason" rows={3} maxLength={300} />

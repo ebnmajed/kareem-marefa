@@ -93,7 +93,10 @@ export function SessionControls({
                   {t("cancelSend")}
                 </Button>
               </DialogTrigger>
-              <DialogContent title={t("cancelConfirmTitle", { title: sessionTitle })} closeLabel={t("closeDialog")}>
+              <DialogContent
+                title={t.rich("cancelConfirmTitle", { title: sessionTitle, t: (chunks) => <bdi>{chunks}</bdi> })}
+                closeLabel={t("closeDialog")}
+              >
                 <Prose size="sm">
                   <p>{t("cancelConfirmBody")}</p>
                 </Prose>

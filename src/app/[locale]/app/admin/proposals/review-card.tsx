@@ -157,7 +157,10 @@ function Reason({
                 {t("send")}
               </Button>
             </DialogTrigger>
-            <DialogContent title={t("rejectConfirmTitle", { title: proposalTitle })} closeLabel={t("closeDialog")}>
+            <DialogContent
+              title={t.rich("rejectConfirmTitle", { title: proposalTitle, t: (chunks) => <bdi>{chunks}</bdi> })}
+              closeLabel={t("closeDialog")}
+            >
               <Prose size="sm">
                 <p>{t("rejectConfirmBody")}</p>
               </Prose>
