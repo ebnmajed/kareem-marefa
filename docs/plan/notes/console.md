@@ -1041,3 +1041,38 @@ doesn't match what the tree can support is a question, not something to implemen
   browser's accessibility tree excludes a `display:none` subtree entirely, so `getByRole` queries
   resolve singularly regardless of viewport — the row-scoping itself is what only desktop's `<table>`
   offers.
+
+### 10. As built — the photo report queue (`98a27fb`) — the fifth and last route
+
+- **`Card`, confirmed as the right call, not `DataTable`.** Re-read `DEC-130` before starting this
+  one specifically, since my own §2.5 plan already flagged the ambiguity: the decision's own
+  DataTable justification sentence names proposals/sessions/members and treats this route
+  separately ("where a flag lands"), which settles it — no new finding, just confirming the plan's
+  own reasoning held once the other four routes' patterns were in hand for comparison.
+  Removal is a NARROWER problem than proposals'/sessions' reject/cancel confirmations: neither
+  needs the two-step details-then-dialog shape those two use, because there is no pre-existing
+  "reveal the reason first" UI to preserve here — the dialog itself is free to be the one and only
+  step, exactly like `members-table.tsx`'s `ActionsCell` (built two units earlier in this same wave,
+  and directly reused here without rediscovering the pattern).
+- **The `done`/dialog-closes-on-success shape from members carried over directly** — no new lint
+  trap, no new bug, because the pattern (derive the close from `state` during render, keep the toast
+  in the effect) was already correct from the members unit.
+- Nothing dropped this pass, unlike members' missing deactivation note — checked the ORIGINAL
+  `report-card.tsx`/`page.tsx` line by line against the rebuild before committing specifically
+  because of that earlier miss, and confirmed every field (uploader, session, reporter, reason, age)
+  made it into the new `CardBody`.
+
+### All five routes done, plus the layout — wave 6's console track complete pending sync
+
+Layout (`8de9b47`), dashboard (`b8501d7`), proposals (`ad7f5cc`), sessions top-level (`e0f0f2c`,
+`ef0586a`'s RSC-serialisation follow-up), members (`ef0586a`), reports (`98a27fb`). Every unit: `tsc`
+clean, lint 0 errors, `npm test` green including axe on every new interactive component, a
+same-track e2e spec written (`console.spec.ts`, `admin-dashboard.spec.ts`, `admin-proposals.spec.ts`,
+`admin-sessions.spec.ts`, `admin-members.spec.ts`, `admin-reports.spec.ts`) — **none run against a
+real build yet**, `.next/BUILD_ID` has predated every commit in this wave so far. Two cross-track
+test files flagged to their owners rather than edited (`sessions-admin-proposals.spec.ts` to
+`sessions`, with the exact fix; several transient DAL-shape failures in `content`'s and `sessions`'
+own files, not touched). One cross-track-relevant bug found and fixed (the React Flight
+factory-prop trap, §9) — reported to the lead in case it recurs elsewhere. Not yet done: the lead's
+rebuild + a real look at every `.qa-shots/rtl/wave6-console-*` capture, which is the actual bar
+`DEC-130` sets, not the floor `scripts/ui-reach.mjs` checks.
