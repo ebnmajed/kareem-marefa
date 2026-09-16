@@ -9,8 +9,8 @@
     "bioHint": "Up to 600 characters",
     "leaderboardOptOut": "Hide me from leaderboards",
     "save": "Save",
+    "saving": "Saving…",
     "saved": "Saved",
-    "invalid": "Check the fields and try again",
     "email": "Email",
     "role": {
       "admin": "Org admin",
@@ -22,12 +22,22 @@
     "noBio": "No bio yet",
     "nav": {
       "label": "My pages",
+      "profile": "My profile",
       "notifications": "Notifications",
       "calendar": "Calendar",
       "certificates": "My certificates",
       "points": "My points",
       "bookmarks": "Bookmarks",
       "privacy": "Privacy and data"
+    },
+    "errors": {
+      "summaryTitle": "Please fix the following:",
+      "displayNameRequired": "Enter your name",
+      "displayNameTooLong": "Name is too long — shorten it a little",
+      "companyInvalid": "Choose a company from the list",
+      "jobTitleTooLong": "Job title is too long — shorten it a little",
+      "bioTooLong": "Bio is too long — shorten it a little",
+      "failed": "Could not save your profile — try again. Your data is still in the form."
     }
   }
 }

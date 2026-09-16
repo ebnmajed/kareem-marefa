@@ -1,4 +1,5 @@
-// A route skeleton for the /app/me hub and its six tabs.
+// A route skeleton for the /app/me hub and its seven tabs (wave 7,
+// `me/layout.tsx`'s `MeTabStrip`).
 //
 // It covers this segment AND its children — "at or above" is what makes a
 // dozen files enough for forty-nine pages (REQ-UIX-005, `16` §7.1 layer 2).
@@ -11,10 +12,10 @@ export default function Loading() {
   return (
     <div aria-hidden="true">
       <SkeletonPageHeader />
-      <div className="mt-6 flex gap-2">
-        <Skeleton variant="text" width="6rem" />
-        <Skeleton variant="text" width="6rem" />
-        <Skeleton variant="text" width="6rem" />
+      <div className="mt-6 flex flex-wrap gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} variant="text" width="6rem" />
+        ))}
       </div>
       <Skeleton variant="row" count={4} className="mt-6" />
     </div>
