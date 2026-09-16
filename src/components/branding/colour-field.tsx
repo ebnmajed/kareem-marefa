@@ -58,9 +58,13 @@ export function ColourField({
           type="color"
           aria-hidden="true"
           tabIndex={-1}
-          value={valid ? value : "#000000"}
+          // The lead's build review: black (`#000000`) is a real colour, and
+          // filling it in for "invalid" made a malformed value look like a
+          // deliberate black swatch. Neutral grey instead, dimmed — reads as
+          // "no colour yet," not "black is chosen."
+          value={valid ? value : "#9ca3af"}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-11 shrink-0 cursor-pointer rounded-field border border-edge bg-transparent p-0.5"
+          className={`h-11 w-11 shrink-0 cursor-pointer rounded-field border border-edge bg-transparent p-0.5 ${valid ? "" : "opacity-50"}`}
         />
         <Input name={name} type="text" dir="ltr" inputMode="text" maxLength={7} value={value} onChange={(e) => onChange(e.target.value)} className="flex-1" />
       </div>
