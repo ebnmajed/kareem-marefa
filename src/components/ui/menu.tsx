@@ -2,6 +2,7 @@
 
 import { DropdownMenu } from "radix-ui";
 import type { MenuProps } from "@/components/ui";
+import { Link } from "@/components/ui/link";
 
 // The house dropdown menu over Radix (DEC-019), the same wrapper shape as
 // `dialog.tsx`: Radix owns focus trapping, typeahead, roving tabindex and
@@ -13,6 +14,17 @@ import type { MenuProps } from "@/components/ui";
 // `trigger` keeps its own accessible name (16 §4.2's MenuProps comment) —
 // this wrapper never renders a second one, it only makes the trigger open
 // the menu.
+//
+// ★ `href` items go through `ui/link`, not a raw `<a>` (found while planning
+// wave 6, fixed here — `menu.tsx` is console's own file). A house `href` is
+// always written locale-less (`/app/admin/sessions`); a plain `<a>` sends
+// that straight to the browser as a hard navigation, which `proxy.ts` then
+// 307s back through locale detection rather than landing on it directly, and
+// it never draws the pending dot `ui/route-progress` reads. `Link` renders
+// `next/link`'s own `<a>` as its root (with `LinkPendingReporter` nested
+// inside, not a sibling), so `DropdownMenu.Item asChild` composes with it the
+// same way it did with the bare `<a>` — `quiet`, since the dot would be noise
+// beside a menu item's own icon.
 
 const itemBase =
   "flex w-full items-center gap-2 rounded-field px-3 py-2 text-start text-body-sm text-fg-heading outline-none data-[highlighted]:bg-silver-100 data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted/50";
@@ -46,7 +58,9 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
                 {item.startsGroup ? <DropdownMenu.Separator className="my-1.5 h-px bg-edge" /> : null}
                 {item.href ? (
                   <DropdownMenu.Item asChild disabled={item.disabled} className={className}>
-                    <a href={item.href}>{content}</a>
+                    <Link href={item.href} quiet>
+                      {content}
+                    </Link>
                   </DropdownMenu.Item>
                 ) : (
                   <DropdownMenu.Item disabled={item.disabled} onSelect={item.onSelect} className={className}>

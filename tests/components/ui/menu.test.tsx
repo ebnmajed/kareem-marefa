@@ -3,24 +3,35 @@
 // trapping, typeahead and closing; this proves the wiring and the copy.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 import { Direction } from "radix-ui";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";
 import { Menu } from "@/components/ui/menu";
 
+// ★ `href` items now render through `ui/link` (next-intl's `Link`), not a
+// raw `<a>` — a real bug found while planning wave 6: a locale-less house
+// `href` through a plain `<a>` was a hard navigation, caught only by
+// `proxy.ts`'s redirect rather than landing directly, and drew no pending
+// dot. `NextIntlClientProvider` is required now for the same reason
+// `member-picker.test.tsx` needed one after adopting `ui/combobox` — a
+// client component that calls `useLocale()` throws without a provider in
+// jsdom, which has no app-level one to fall back on.
 function Example({ onSelect = () => {} }: { onSelect?: () => void }) {
   return (
-    <Direction.Provider dir="rtl">
-      <Menu
-        trigger={<button type="button">القائمة</button>}
-        items={[
-          { label: "تعديل", onSelect },
-          { label: "عرض السجل", href: "/app/admin/audit" },
-          { label: "حذف", onSelect: () => {}, tone: "error", startsGroup: true },
-          { label: "معطّل", onSelect: () => {}, disabled: true },
-        ]}
-      />
-    </Direction.Provider>
+    <NextIntlClientProvider locale="ar" messages={{}}>
+      <Direction.Provider dir="rtl">
+        <Menu
+          trigger={<button type="button">القائمة</button>}
+          items={[
+            { label: "تعديل", onSelect },
+            { label: "عرض السجل", href: "/app/admin/audit" },
+            { label: "حذف", onSelect: () => {}, tone: "error", startsGroup: true },
+            { label: "معطّل", onSelect: () => {}, disabled: true },
+          ]}
+        />
+      </Direction.Provider>
+    </NextIntlClientProvider>
   );
 }
 
