@@ -607,3 +607,145 @@ state.
 8. **`mark_checked_in_manually()` never enqueues `award_points` today** — a pre-existing gap against
    REQ-CHK-008, unrelated to any wave-7 requirement. **Fixing it inline** as part of re-creating that
    function for the window change (§1, §4 file `03`); flagging so it isn't read as scope creep.
+
+---
+
+## DEC-141 — the lead's rulings, applied
+
+All eight decisions above are **approved as recommended**, with two mandatory corrections and one
+addition, all folded into the design below before any SQL is written.
+
+**Ruling 1, applied — the window gains a state condition.** A clock-only floor/ceiling would accept a
+code on a `cancelled` session whose scheduled start has passed. `check_in()`, `ensure_check_in_code()`
+and `set_check_in_open()` all gain, ahead of the floor/ceiling check: `s.state not in ('published',
+'in_progress', 'completed')` → refuse (the member-facing status is `not_started` for `check_in()`;
+`ensure_check_in_code()` raises `not_open` as today). This is the same three-state family
+`session-status.ts`'s own `sessionPhase()` documents as the only states that can carry both
+`starts_at` and `ends_at` non-null from `published` onward (`0010`'s check constraint) — `archived`
+is deliberately excluded from the CODE family (an archived session's code-entry door is closed), but
+see the manual-mark carve-out below, which is a different door.
+
+**Correction B, applied — `schedule_session()`'s walk-in parameter.** `p_allow_walk_ins boolean
+default null`, meaning "leave unchanged": `update ... set allow_walk_ins =
+coalesce(p_allow_walk_ins, allow_walk_ins), ...`. A `default false` would silently turn walk-ins off
+on every reschedule that doesn't pass the field — this is why. The **old 13-parameter signature is
+dropped explicitly** (`drop function if exists public.schedule_session(uuid, timestamptz, int,
+timestamptz, uuid, text, text, text, int, timestamptz, timestamptz, public.certificate_mode,
+public.session_language)`) before the 14-parameter one is created, so no overload survives — `create
+or replace` alone would add a second function, not replace the first, because Postgres identifies a
+function by name **and** argument list. RLS case: `RPC-schedule_session.walk_ins_unchanged` —
+reschedule (date only) without passing the parameter, assert `allow_walk_ins` is whatever it was
+before.
+
+**`canOfferCheckInLink()` — optional parameter, approved, but see the finding below for why the fix
+needs to go further than just adding one.**
+
+**Manual marks, applied precisely.** `mark_checked_in_manually()` branches on the ACTOR's role, not
+on which screen called it (the host view and SCR-044 both call the same RPC):
+- **admin:** floor only (`now >= starts_at`, `state <> 'cancelled'`) — no ceiling. ★ My own addition,
+  flagged rather than assumed: I'm including `archived` in the admin's allowed state set (`state in
+  ('published','in_progress','completed','archived')`) since SCR-044 is explicitly a reconciliation
+  screen an admin may visit long after archiving, and `REQ-CHK-017`'s "at any time" doesn't carve
+  `archived` out the way the code family's ruling did. Not gated by `check_in_open`.
+- **moderator:** the same three-state family as the code RPCs (`published, in_progress, completed`)
+  plus floor **and** ceiling (`now < ends_at + 2h`) — REQ-CHK-008's original scope, narrower than the
+  admin's new "at any time." Not gated by `check_in_open` either (§6's reasoning: a staff override of
+  the door shouldn't be blocked by the door).
+- `remove_check_in()` itself needs **no separate state gate**: it only acts on an *existing* active
+  `check_ins` row, and such a row could only have been created while the floor/ceiling/state
+  conditions above already held at *check-in* time — there is nothing further to defend against.
+
+### Reader inventory (Correction A)
+
+Every reader of `check_ins`, at its latest definition, classified **exclude removed rows** (a
+removed check-in must stop counting) or **must see them** (history, audit, export — showing nothing
+would be less honest than showing what happened and that it was corrected), with the owner who acts
+on it. "No change" means the reference isn't a functional query (a comment, or static rule
+configuration jsonb that never touches the table itself).
+
+**SQL — 12 migrations, at their latest definition:**
+
+| Reader | File : line | Classification | Action | Owner |
+|---|---|---|---|---|
+| `check_ins` table, `check_ins_window()` trigger, the unique + exclusion constraints | `0010_m2_schema.sql:221-255` | — | constraints become partial (`where removed_at is null`); the trigger is unaffected (fires only on insert) | mine, file `04` |
+| `POL-check_ins.select.member` comment | `0016_realtime_authorization.sql:71` | no change | a comment, not a query | — |
+| `check_in()`, `mark_checked_in_manually()` | `0015_check_in_rpcs.sql` (superseded by `0079`, then by mine) | — | re-created, §1/§2 | mine, files `01`/`03` |
+| badge rule seed data naming the `check_ins_count` metric | `0027_m4_schema.sql:545,551`, `0081_company_points.sql:509,515` | no change | static jsonb config, not a query against the table | — |
+| `award_points()` | `0028_award_points.sql` (latest: itself) | exclude removed (for `source='check_in'` only) | the late-job hook, §1 | mine, file `05` |
+| `send_rating_prompt()` | `0035_reminder_sends.sql:121-145` | **exclude removed** | a member whose check-in was removed should not be prompted to rate a session they're now on record as not having attended | ★ `notify`'s file — cross-track hook, flagging for sign-off, not pre-named by `DEC-137` |
+| `evaluate_streaks()`, `evaluate_badges()`'s `check_ins_count` metric | `0041_recognition_evaluators.sql:28-61,70-121` | **exclude removed, forward-looking only** | this is *not* "reversing" an award (`DEC-141` ruling 4 says don't) — it's correctly computing a count that **hasn't crystallized into an award yet**. A removed check-in should not help a member cross a *future* threshold. An already-inserted `streak_awards`/`member_badges` row is untouched either way (no un-award path exists) | ★ `scoring`'s file — cross-track hook, flagging |
+| `fan_out_certificates()` | `0065_certificates.sql:32-66` | **exclude removed** (defensive) | fires on the edge into `completed`; a removal this same instant is a vanishingly unlikely race, but the principle ("re-derive, don't trust a stale read") says filter it anyway | mine to propose, same file as the already-approved `issue_certificate()` hook, file `05` |
+| `issue_certificate()` | `0065_certificates.sql:89-172` | exclude removed | covered in §1 already | mine, file `05` |
+| member's own data export | `0073_retention_and_privacy.sql:240-246` | **must see them, WITH the removal fields** | `REQ-PRF-006`'s own data export should be honest and complete — a member's historical record should not silently lose a check-in they remember having. Add `removed_at`/`removal_reason` to the exported `check_ins` array | ★ `platform`'s file — cross-track hook, flagging |
+| `evaluate_company_points()` | `0081_company_points.sql:374-420` | **no change** | same timing argument as `evaluate_no_shows` below — runs once, at completion, strictly before any possible removal; `DEC-141` ruling 4 says company points aren't reversed anyway | — (confirmed, not touched) |
+
+**TS — 11 files, per the lead's routing:**
+
+| Reader | File : line | Classification | Action |
+|---|---|---|---|
+| `getHostView()`'s live count | `dal/checkin.ts` (mine) | exclude removed | `.is("removed_at", null)` on the count query — REQ-CHK-001's live count is *current* attendance |
+| `getCheckInScreenData()`'s own-check-in read | `dal/checkin.ts` (mine) | exclude removed | so a removed member is correctly offered the form again (the partial index already allows the re-insert) |
+| `listUncheckedConfirmedRsvps()`, `listUncheckedForAdminManualMark()` | `dal/checkin.ts` (mine) | exclude removed | a removed member should reappear as a manual-mark candidate |
+| `getAttendanceReport()` | `dal/checkin.ts` (mine) | **must see them** | read every row (removed and active); `checkedIn` reflects *active* status (`removed_at is null`) for the boolean, but the row itself stays, gains `removedAt`/`removedReason` — this is SCR-044's own audit view, REQ-CHK-012 |
+| `getRsvpPanelData()`'s own-check-in read | `dal/rsvp.ts` (mine) | exclude removed | same reasoning as the check-in screen's own read |
+| `session-status.ts` | lead's | — | not a literal query — `viewerRelation()`'s `checkedIn: boolean` input is supplied by callers already filtering `removed_at`; see the finding below for the deeper issue this file has |
+| `ratings.ts`'s eligibility read (`not_checked_in`) | `sessions`' file, `dal/ratings.ts:75,88` | exclude removed | `DEC-141` ruling 4: the future rating right re-derives live | request to `sessions` |
+| `search.ts`'s "ended" attended-filter | `sessions`' file, `dal/search.ts:160` | exclude removed | a removed check-in should drop the session from "attended" search results | request to `sessions` |
+| `sessions.ts`'s `getSessionForEvent()` own-check-in read | `sessions`' file, `dal/sessions.ts:519` | exclude removed | same reasoning, plus feeds the phase/grace-window finding below | request to `sessions`, **see finding** |
+| `admin-dashboard.ts`'s org-wide count | `console`'s file, `dal/admin-dashboard.ts:134` | exclude removed | the dashboard stat is current attendance, not gross history | request to `console` |
+| `admin-exports.ts`'s CSV | `console`'s file, `dal/admin-exports.ts:157-165` | **must see them** | `REQ-ADM-017`'s export should carry `removed_at`/`removal_reason` columns, not silently drop the row | request to `console` |
+| `evaluate_no_shows.ts` | lead's (worker task) | no change | already reasoned through in §1: runs once, at completion, strictly before any possible removal; its `not exists(...)` query already treats a soft-removed-but-present row as "exists" | confirmed, not touched |
+| `issue_certificates.ts` (the worker task wrapper) | lead's (worker task) | no change | the SQL it calls (`issue_certificate()`) is where the filter belongs (file `05`); the TS wrapper trusts the RPC | confirmed, not touched |
+| `award_presenter_points.ts`'s attendee-bonus fan-out | lead's (worker task), `worker/src/tasks/award_presenter_points.ts:41` | **flagging, not deciding** | `select id from check_ins where session_id=$1` with no `removed_at` filter — a removed check-in would still earn its attendee a `attendee_bonus` presenter-side point if this job runs after the removal. Whether this counts as "points" (ruling 4 doesn't cover it — it's a *presenter's* award keyed off *someone else's* check-in, not the attendee's own no-show/streak/company case) is the lead's call, not mine to assume | flagging for the lead |
+
+### Found while applying `DEC-141`: the phase/grace-window mismatch — needs a decision before file `01`
+
+**The problem.** `checkInAllowed()` (`session-matrix.ts`, mine) currently derives eligibility from
+`affordancesFor(sessionPhase(session, now), relation).checkIn` — a **phase-bucketed** lookup. But the
+new ceiling (`ends_at + 2h`, `DEC-113`/`REQ-CHK-016`) extends the check-in window **two hours past**
+the point at which `sessionPhase()` already reports `"ended"` (its own clock clause ends exactly at
+`ends_at`, with no knowledge of the grace period — it has no reason to, `DEC-105`'s totality table
+was never about check-in specifically). Worse: `viewerRelation()`, called with `phase = "ended"`,
+**reclassifies** a member holding a confirmed seat as `"absent"` (or `"attended"`, or `"none"`) —
+`"confirmed"`/`"waitlisted"` are *structurally unreachable* once phase is `"ended"` (`viewerRelation`'s
+own contract, `session-status.ts:249-255`). The `ended` row of `AFFORDANCE_MATRIX` carries no
+`checkIn: true` cell for any relation. **Net effect: during the 2-hour grace window, a member who is
+genuinely eligible to check in — held a confirmed seat, hasn't checked in yet — would be computed as
+`relation = "absent"`, and every phase-bucketed lookup this codebase has for check-in would refuse
+them, even though the RPC (`REQ-CHK-016`) explicitly accepts them.** This is the mirror image of the
+bug `DEC-090`/`16 §5.4.1` row 4 fixed in wave 5 (never show an affordance the RPC refuses) — here the
+screen would **hide** an affordance the RPC **allows**.
+
+**Why `relation` can't be reused for this one affordance.** `DEC-092`'s whole point was carrying a
+*derived enum*, not raw rows, onto the event page slot contract — cheap, but only correct as long as
+every consumer's window matches the phase boundary it was derived from. Check-in's window no longer
+does.
+
+**My proposed fix, minimal, reusing reads that already happen.** `checkInAllowed()` stops consulting
+the phase-bucketed matrix cell for `checkIn` entirely and becomes self-contained: floor/ceiling/state
+computed directly from `PhaseInput` (independent of `sessionPhase()`), plus the *raw* viewer facts
+(`isPresenter`, `rsvpStatus`, `isStaff` — not the derived `relation`) for who's eligible once the
+window is open. Concretely:
+- `getCheckInScreenData()` and `getRsvpPanelData()` (mine) already read these raw facts before
+  deriving `relation` — no new query, just pass the raw shape instead of (or alongside) the enum.
+- `getSessionForEvent()` (`sessions`', per the reader inventory above) **already reads** `mineRes`
+  (`rsvps.status`) and `checkInRes` (`check_ins.id`) at `sessions.ts:518-519` to derive `relation` in
+  the first place — **zero new round trips** to also expose them raw. **This supersedes my earlier
+  draft of contract 2** (just adding `checkInOpen`): `EventSession` should additionally carry
+  `rsvpStatus: RsvpStatus | null` and `checkedIn: boolean` (mirroring `RsvpPanelData.myRsvp.status`'s
+  existing shape), and `canOfferCheckInLink()`'s signature becomes `(session, viewer: {isPresenter,
+  isStaff, rsvpStatus, checkedIn}, allowWalkIns, checkInOpen, now?)` rather than taking `relation`.
+- `session-status.ts`'s `GRANTING_AFFORDANCES.live` drops `"checkIn"` (down to `["hostConsole"]`,
+  exactly as `DEC-113`'s own text says — "loses `checkIn`") — this was already an open request, not a
+  new one, but it's now load-bearing for the fix above rather than a cleanup.
+- `AFFORDANCE_MATRIX`'s `checkIn` column (mine) becomes **display-only** going forward — still useful
+  for "is a check-in link worth mentioning in this cell at all" style rendering elsewhere, but no
+  longer the source of truth for whether the RPC would accept one. I'll say so in the column's own
+  comment rather than deleting it, since `16 §5.3`'s printed table still names the column and other
+  cells (e.g. `open`'s rows) are unaffected by the grace-window problem — it's specifically the
+  `ended`-row consequence that's wrong.
+
+**Asking before I write file `01`**, since this changes an already-approved contract: is the proposed
+fix (raw facts on `EventSession`, `GRANTING_AFFORDANCES.live` losing `checkIn`, `checkInAllowed()`
+redesigned to stop consulting the phase-bucketed cell) the right shape, or does the lead want a
+narrower patch?
