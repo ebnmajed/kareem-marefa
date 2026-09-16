@@ -47,11 +47,14 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
   );
   const attempted = hasAttempted(state);
   const since = state.values.alreadyHeldSince;
-  const err = (field: string) => {
+  // The summary's message is a string; the field's error is a node, so the date it quotes is isolated.
+  const errText = (field: string) => {
     const key = state.errors[field];
     if (!key) return undefined;
     return key === "alreadyHeld" && since ? t.markup("errors.alreadyHeld", { since: formatDateTime(since, timeZone, locale), bdi: (chunks) => chunks }) : t(`errors.${key}`);
   };
+  const err = (field: string) =>
+    state.errors[field] === "alreadyHeld" && since ? t.rich("errors.alreadyHeld", { since: formatDateTime(since, timeZone, locale), bdi }) : errText(field);
   const labels: Record<string, string> = { memberId: t("memberLabel"), badgeId: t("badgeLabel"), reason: t("reasonLabel") };
 
   function review() {
@@ -78,7 +81,7 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
             errors={summaryErrors(state, {
               fields: ["memberId", "badgeId", "reason"],
               label: (f) => labels[f],
-              message: (key) => (key === "alreadyHeld" ? (err("memberId") ?? t(`errors.${key}`)) : t(`errors.${key}`)),
+              message: (key) => (key === "alreadyHeld" ? (errText("memberId") ?? t(`errors.${key}`)) : t(`errors.${key}`)),
               fieldId: (f) => IDS[f],
             })}
           />

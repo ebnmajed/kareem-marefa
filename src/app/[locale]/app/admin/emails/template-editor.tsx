@@ -61,11 +61,17 @@ export function TemplateEditor({
   const [restoring, setRestoring] = useState(false);
   const attempted = hasAttempted(state);
   const value = (field: string, stored: string) => (attempted ? was(state, field) : stored);
-  const err = (field: string) => {
+  // The summary's message is a string; the field's error is a node, so the
+  // field name a refusal quotes — Latin inside an Arabic sentence — is isolated.
+  const errText = (field: string) => {
     const key = state.errors[field];
     if (!key) return undefined;
     return key === "missingRequiredField" ? t.markup("errors.missingRequiredField", { field: state.values.missingField ?? "", bdi: (chunks) => chunks }) : t(`errors.${key}`);
   };
+  const err = (field: string) =>
+    state.errors[field] === "missingRequiredField"
+      ? t.rich("errors.missingRequiredField", { field: state.values.missingField ?? "", bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> })
+      : errText(field);
   const labels: Record<string, string> = { subject: t("subject"), body: t("body"), requiredFields: t("requiredFields") };
 
   async function restoreDefault() {
@@ -94,7 +100,7 @@ export function TemplateEditor({
           <FormSummary
             key={state.attempt}
             title={t("summaryTitle")}
-            errors={summaryErrors(state, { fields: ["subject", "body", "requiredFields"], label: (f) => labels[f], message: (key) => (key === "missingRequiredField" ? (err("body") ?? "") : t(`errors.${key}`)), fieldId: (f) => IDS[f] })}
+            errors={summaryErrors(state, { fields: ["subject", "body", "requiredFields"], label: (f) => labels[f], message: (key) => (key === "missingRequiredField" ? (errText("body") ?? "") : t(`errors.${key}`)), fieldId: (f) => IDS[f] })}
           />
         ) : null}
         <input type="hidden" name="key" value={messageKey} />
