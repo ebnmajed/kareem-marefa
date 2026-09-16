@@ -25,18 +25,23 @@ export function ColourField({
   value,
   onChange,
   id,
+  hint,
 }: {
   name: string;
   label: string;
   value: string;
   onChange: (next: string) => void;
   id: string;
+  /** e.g. the light-scheme `canvasRaise` note: a token that reaches nothing
+   *  a generated poster paints today (DEC-125 — posters always render
+   *  dark). */
+  hint?: string;
 }) {
   const t = useTranslations("branding.colours");
   const valid = HEX_RE.test(value);
 
   return (
-    <Field id={id} label={label} error={valid ? undefined : t("invalidHex")}>
+    <Field id={id} label={label} hint={hint} error={valid ? undefined : t("invalidHex")}>
       <div className="flex items-center gap-3">
         <input
           type="color"

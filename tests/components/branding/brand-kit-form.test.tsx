@@ -38,7 +38,7 @@ const LIGHT = {
   // DEC-127, contract 1 — canvasRaise is now required by BrandColourSet.
   canvasRaise: "#f1f3f7",
 };
-const DARK = { ...LIGHT, canvas: "#0b1220", fgHeading: "#ffffff", canvasRaise: "#1d2a42" };
+const DARK = { ...LIGHT, canvas: "#0b1220", surface: "#111a2c", fgHeading: "#ffffff", canvasRaise: "#1d2a42" };
 
 const KIT: BrandKit = {
   orgId: "11111111-1111-1111-1111-111111111111",
@@ -52,6 +52,15 @@ const KIT: BrandKit = {
   updatedBy: null,
 };
 
+const ORG_NAME = "مؤسسة الاختبار";
+
+/** jsdom normalises an inline `background-image` colour to `rgb(...)`
+ *  rather than echoing the hex it was set with. */
+function hexToRgb(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+}
+
 function renderForm() {
   return render(
     <NextIntlClientProvider locale="ar" messages={{ ...ar, ...browseAr }}>
@@ -61,6 +70,7 @@ function renderForm() {
         fonts={[]}
         logoPreviewUrl={null}
         imageLimitMb={20}
+        orgName={ORG_NAME}
         saveAction={vi.fn(async (prev) => prev)}
         resetAction={vi.fn(async (prev) => prev)}
         signPreview={vi.fn(async () => null)}
@@ -115,6 +125,13 @@ describe("BrandKitForm", () => {
     expect(screen.queryByText(ar.branding.actions.resetConfirm)).not.toBeInTheDocument();
   });
 
+  it("★ REQ-UIX-013: the reset dialog names the org, not 'your organisation' generically", () => {
+    renderForm();
+    const resetButtons = screen.getAllByText(ar.branding.actions.reset);
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+    expect(screen.getByRole("dialog")).toHaveTextContent(ORG_NAME);
+  });
+
   it("the colour swatch and the hex text field stay in sync for the same token", () => {
     renderForm();
     const headingInput = screen.getByLabelText(ar.branding.colours.tokens.fgHeading) as HTMLInputElement;
@@ -124,5 +141,21 @@ describe("BrandKitForm", () => {
 
     fireEvent.change(headingInput, { target: { value: "#ff00ff" } });
     expect(swatch.value).toBe("#ff00ff");
+  });
+
+  it("★ the poster-gradient swatch always uses the DARK palette, never the active (light) tab", () => {
+    renderForm();
+    const caption = screen.getByText(ar.branding.preview.posterGradientLabel);
+    const swatch = caption.parentElement as HTMLElement;
+    const expected = `linear-gradient(140deg, ${hexToRgb(DARK.surface)}, ${hexToRgb(DARK.canvasRaise)})`;
+    expect(swatch.style.backgroundImage).toBe(expected);
+
+    // Editing the LIGHT scheme's own canvasRaise (the active tab by
+    // default) must not move the swatch — a generated poster renders
+    // `scheme: 'dark'` unconditionally (DEC-125), so the light token
+    // reaches nothing the swatch represents.
+    const lightCanvasRaise = screen.getByLabelText(ar.branding.colours.tokens.canvasRaise) as HTMLInputElement;
+    fireEvent.change(lightCanvasRaise, { target: { value: "#ff00ff" } });
+    expect(swatch.style.backgroundImage).toBe(expected);
   });
 });

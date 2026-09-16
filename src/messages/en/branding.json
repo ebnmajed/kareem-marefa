@@ -12,7 +12,7 @@
       "remove": "Remove logo",
       "minResolutionHint": "For crisp printing up to A3, upload an image at least {width} × {height} px (300 PPI).",
       "formatHint": "PNG, JPG or WebP only — SVG is not accepted.",
-      "ppiResult": "Used at full A3 size, this logo would print at {ppi} PPI.",
+      "ppiResult": "Used at full <bdi>A3</bdi> size, this logo would print at {ppi} PPI.",
       "ppiSufficient": "Sufficient for printing up to A3.",
       "ppiWarning": "Below the recommended 300 PPI — large exports may warn.",
       "ppiInsufficient": "Below 200 PPI — an A3 export with this logo will be refused.",
@@ -40,7 +40,8 @@
         "node": "Node colour",
         "canvasRaise": "Gradient background"
       },
-      "invalidHex": "Enter a valid colour in #rrggbb form."
+      "invalidHex": "Enter a valid colour in #rrggbb form.",
+      "canvasRaiseLightHint": "This colour reaches no generated poster today — posters always render in dark mode."
     },
     "preview": {
       "title": "Live preview",
@@ -49,7 +50,7 @@
       "buttonSample": "Action button",
       "cardTitle": "Card title",
       "cardBody": "Explanatory text inside a card, in the colours chosen above.",
-      "posterGradientLabel": "This is how a generated poster's background looks."
+      "posterGradientLabel": "This is how a generated poster's background looks — always in dark mode, whichever tab is shown here."
     },
     "contrast": {
       "title": "Contrast (WCAG 2.2 AA)",
@@ -73,7 +74,7 @@
       "saving": "Saving…",
       "saved": "The brand kit was saved.",
       "reset": "Reset to platform default",
-      "resetTitle": "Reset the org's brand kit?",
+      "resetTitle": "Reset <bdi>{orgName}</bdi>'s brand kit?",
       "cancel": "Cancel",
       "closeDialog": "Close",
       "resetConfirm": "This will delete the org's customisation, and every screen will return to the platform's default identity. Continue?",

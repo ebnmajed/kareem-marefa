@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
 import { requireSession } from "@/lib/dal/session";
-import { getBrandKit, getImageLimitMb } from "@/lib/brand/kit";
+import { getBrandKit, getImageLimitMb, getOrgName } from "@/lib/brand/kit";
 import { listSelectableFonts } from "@/lib/brand/fonts";
 import { signDesignAssetUrl } from "@/lib/dal/posters";
 import { BrandKitForm } from "@/components/branding/brand-kit-form";
@@ -19,10 +19,11 @@ export default async function BrandingPage({ params }: { params: Promise<{ local
   const session = await requireSession(locale);
   if (session.role !== "admin") notFound();
 
-  const [kit, fonts, imageLimitMb, t] = await Promise.all([
+  const [kit, fonts, imageLimitMb, orgName, t] = await Promise.all([
     getBrandKit(locale, session.orgId),
     listSelectableFonts(locale),
     getImageLimitMb(locale),
+    getOrgName(locale),
     getTranslations("branding"),
   ]);
 
@@ -38,6 +39,7 @@ export default async function BrandingPage({ params }: { params: Promise<{ local
         fonts={fonts}
         logoPreviewUrl={logoPreviewUrl}
         imageLimitMb={imageLimitMb}
+        orgName={orgName}
         saveAction={saveBrandKitAction.bind(null, locale as Locale)}
         resetAction={resetBrandKitAction.bind(null, locale as Locale)}
         signPreview={signLogoPreview}

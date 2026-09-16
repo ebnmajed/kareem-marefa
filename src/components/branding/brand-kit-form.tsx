@@ -27,6 +27,7 @@ export function BrandKitForm({
   fonts,
   logoPreviewUrl,
   imageLimitMb,
+  orgName,
   saveAction,
   resetAction,
   signPreview,
@@ -36,6 +37,8 @@ export function BrandKitForm({
   fonts: BrandFontRef[];
   logoPreviewUrl: string | null;
   imageLimitMb: number;
+  /** REQ-UIX-013: the reset dialog names the org, not "your organisation" generically. */
+  orgName: string;
   saveAction: (prev: SaveBrandKitState, formData: FormData) => Promise<SaveBrandKitState>;
   resetAction: (prev: ResetBrandKitState, formData: FormData) => Promise<ResetBrandKitState>;
   signPreview: (locale: Locale, assetId: string) => Promise<string | null>;
@@ -133,6 +136,11 @@ export function BrandKitForm({
                   label={t(`colours.tokens.${token}`)}
                   value={active[token]}
                   onChange={(v) => setToken(token, v)}
+                  // The lead's finding: a generated poster is always DARK
+                  // (DEC-125), so the light scheme's canvasRaise reaches no
+                  // poster today — said honestly, here, rather than left
+                  // implied.
+                  hint={scheme === "light" && token === "canvasRaise" ? t("colours.canvasRaiseLightHint") : undefined}
                 />
               ))}
             </div>
@@ -186,13 +194,17 @@ export function BrandKitForm({
       </form>
 
       <div className="space-y-4">
-        <BrandPreview colours={active} logoUrl={logo.previewUrl} />
+        <BrandPreview colours={active} dark={dark} logoUrl={logo.previewUrl} />
 
         <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
           <Button type="button" variant="secondary" onClick={() => setResetConfirmOpen(true)}>
             {t("actions.reset")}
           </Button>
-          <DialogContent title={t("actions.resetTitle")} description={t("actions.resetConfirm")} closeLabel={t("actions.closeDialog")}>
+          <DialogContent
+            title={t.rich("actions.resetTitle", { orgName, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+            description={t("actions.resetConfirm")}
+            closeLabel={t("actions.closeDialog")}
+          >
             <form action={resetFormAction} className="flex flex-wrap gap-3">
               <Button type="submit" variant="danger" pending={resetting} pendingLabel={t("actions.resetting")}>
                 {t("actions.reset")}

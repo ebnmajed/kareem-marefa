@@ -158,8 +158,13 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   const main = page.locator("#main");
 
   // `canvasRaise` — the gradient's second stop (DEC-127) — is the token the
-  // checklist names explicitly; changed on its own so the preview's
-  // gradient swatch visibly shifts without touching anything else.
+  // checklist names explicitly. ★ The DARK scheme's, not the light one:
+  // the poster-gradient swatch always uses the dark palette (the lead's
+  // sync-4 finding — a generated poster renders `scheme: 'dark'`
+  // unconditionally, DEC-125), so editing light's own canvasRaise would
+  // never move it. Changed on its own so the swatch visibly shifts without
+  // touching anything else.
+  await main.getByRole("tab", { name: "الوضع الداكن" }).click();
   await main.getByLabel("خلفية التدرّج", { exact: true }).fill("#3388ff");
   await main.getByRole("button", { name: "حفظ" }).click();
   // `ui/toast` (Radix) renders the same text TWICE: once in the visible
@@ -171,8 +176,8 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   // instead of "strict mode violation: 2 elements".
   await expect(page.getByRole("status").filter({ hasText: "تم حفظ هوية المؤسسة." })).toBeVisible();
 
-  const { rows } = await db.query<{ brand_kit: { light: { canvasRaise: string } } }>(`select public.brand_kit($1) as brand_kit`, [orgId]);
-  expect(rows[0].brand_kit.light.canvasRaise).toBe("#3388ff");
+  const { rows } = await db.query<{ brand_kit: { dark: { canvasRaise: string } } }>(`select public.brand_kit($1) as brand_kit`, [orgId]);
+  expect(rows[0].brand_kit.dark.canvasRaise).toBe("#3388ff");
 
   await assertNoSidewaysScroll(page, "wave8-branding-override-saved");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-override-saved.png`, fullPage: true });
@@ -206,6 +211,9 @@ test("REQ-UIX-013: the reset dialog names the org's kit and states the consequen
   await main.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  // ★ REQ-UIX-013: names the object — the org's OWN name, not "this org"
+  // generically (the lead's sync-4 finding).
+  await expect(dialog).toContainText("مؤسسة الهوية الثانية");
   await expect(dialog.getByText("سيُحذف تخصيص هذه المؤسسة")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "إلغاء" })).toBeVisible();

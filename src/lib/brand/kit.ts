@@ -128,3 +128,15 @@ export async function getImageLimitMb(locale: string): Promise<number> {
   const { data } = await supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle();
   return (data?.limit_image_mb as number | undefined) ?? 20;
 }
+
+/**
+ * The org's own name — REQ-UIX-013: the reset dialog confirms by naming
+ * the object, not "your organisation" generically. Kept separate from
+ * `getBrandKit()`, whose shape is a published, four-consumer contract
+ * (06 §8.3) that a screen-only display value has no reason to widen.
+ */
+export async function getOrgName(locale: string): Promise<string> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle();
+  return (data?.name as string | undefined) ?? "";
+}

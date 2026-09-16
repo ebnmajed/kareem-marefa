@@ -132,7 +132,10 @@ export function LogoUploader({
 
       {a3 ? (
         <p role="status" className={a3.rating === "sufficient" ? "text-body-sm text-fg-muted" : "text-body-sm font-semibold text-fg-heading"}>
-          {t("ppiResult", { ppi: formatNumber(a3.ppi) })}{" "}
+          {/* "A3" is an LTR token inside an RTL sentence — isolated through
+              the message's own `<bdi>` tag, not a raw string, so the "#"-style
+              bidi bug (the lead's field-error finding) cannot recur here. */}
+          {t.rich("ppiResult", { ppi: formatNumber(a3.ppi), bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> })}{" "}
           {a3.rating === "sufficient" ? t("ppiSufficient") : a3.rating === "warning" ? t("ppiWarning") : t("ppiInsufficient")}
         </p>
       ) : null}
