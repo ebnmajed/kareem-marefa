@@ -190,7 +190,13 @@ test("REQ-CHK-012: the summary counts and the per-member table are correct", asy
   await expect(ddFor("لم يحضروا رغم الحجز")).toHaveText("0");
   await expect(ddFor("معدّل الحضور")).toHaveText("100٪");
 
-  await expect(page.getByText("حاضر مسجَّل")).toBeVisible();
+  // `getByRole("cell", …)`, not a bare `getByText`: the member's name now
+  // ALSO appears as an `<option>` in the "Remove attendance" section's
+  // select below (C3, `bfe8e2a`) — a real second occurrence on the page,
+  // not a markup duplicate to fix. A `<select><option>` carries no `cell`
+  // role, so scoping to the table cell is what the next line already does
+  // for the other member; this just matches it.
+  await expect(page.getByRole("cell", { name: "حاضر مسجَّل" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "بانتظار الحجز" })).toBeVisible();
   await expect(page.getByText("رمز الحضور")).toBeVisible();
 });
