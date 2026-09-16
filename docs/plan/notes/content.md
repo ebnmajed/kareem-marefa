@@ -2013,3 +2013,54 @@ which `git status` shows as `console`'s own uncommitted in-progress file; not mi
 this change.
 
 Ready for sync.
+
+## §9 — sync 5 (build `bfe8e2a`): three more fixes (`bd517f6`)
+
+**`tests/e2e/tasks.spec.ts`** — `getByText("أحضر جهازك المحمول")` now resolves to 2 elements once the
+RSVP (§5 above) makes the Tasks section visible for the first time — this ambiguity was never
+exercised before. Confirmed only one `session_tasks` row exists and `TaskItem` renders its title
+once, so the second match is elsewhere on the page, not a genuine duplicate task. Scoped both the
+text check and the "أنجزتها" click to `page.locator("#tasks")` (the slot's own section id, `sessions.md`
+§22.2) — same idiom as the earlier `#main`/`#history`/`#catalogue` fixes.
+
+**`points-history-list.tsx`'s signed amount read backwards** ("20-" instead of "-20" in a real
+capture): `formatNumber` (sessions' `numerals.ts`) drops ICU's LRM, so a bare `<bdi>` around a signed
+number resolves RTL and the sign lands after the digits — invisible to jsdom's textContent, since
+bidi reordering is purely visual. Added `dir="ltr"` to that one `<bdi>` (kept the isolate, pinned its
+direction). Strengthened both the plain-award and reversal tests in
+`points-history-list.test.tsx` to assert the attribute, and added the same assertion to
+`points.spec.ts`'s real-browser reversal capture. Checked every other `formatNumber` call in my own
+files (`points-catalogue.tsx`, notifications, materials, photos, tasks, the viewer) — none render an
+explicit sign; `points-catalogue.tsx` filters to `entry.points > 0` structurally, so no other fix was
+needed there. `company-board.tsx`/`company-points-breakdown.tsx`/`member-board.tsx` have the same
+`formatNumber`/`bdi` shape but are `sessions'` files (DEC-141) — flagged to the lead, not touched.
+
+**A real read-back bug in `profile-form.tsx`**: after a successful save the company select showed the
+placeholder even though the company DID persist (the DB write path, grant, and org-check trigger all
+read correctly on inspection). Root cause, confirmed by writing a failing jsdom test first: (1)
+`saveProfile`'s success path never bumps `state.attempt` — `form-state.ts`'s `formStateFrom` only
+counts failures, which is correct for `hasAttempted`'s real job (gating inline validation) — so
+`hasAttempted(state)` alone read `false` right after a save and `value()` fell back to `me` instead of
+echoing `state.values`, contradicting the file's own comment ("a returned round trip — success or
+failure — echoes exactly what the member submitted"); (2) even with that fixed, React never re-syncs
+an already-mounted field's `defaultValue`/`defaultChecked` on a later render — `<select>` included —
+which is why this was invisible for `Input`/`Textarea`: the member's own live-typed text already
+matched what echoed back, by coincidence, not by construction. Fixed both: `attempted` now also
+considers `state.saved`, and every `defaultValue`/`defaultChecked` field is `key`ed on the value it
+should display, forcing a fresh mount exactly when that value changes (same idiom `FormSummary`
+already used with `key={state.attempt}`). New component test deliberately mocks a success response
+where `me` has NOT caught up (still null) to prove the echo, not a lucky fresh prop; new e2e
+assertion checks the company value after save.
+
+`tsc` clean, lint clean, full `npm test` 145 files / 1439 passed.
+
+**Still open from sync 5**, no code change yet: the two 390 px horizontal-overflow findings
+(notifications, points) — read through every candidate component in my scope and found nothing
+obviously fixed-width, so asked the lead for the actual offending-element array from their run rather
+than guess across four files; and the no-JS save timeout, where I built a concrete but unconfirmed
+hypothesis (`/app/me/loading.tsx`'s Suspense-streaming fallback may need client JS to reveal the real
+content on a hard navigation — a wave-5 loading-model property, not specific to this page or the
+`useActionState` rewrite) and asked for the trace rather than guess at a fix for something this
+cross-cutting.
+
+Ready for sync.
