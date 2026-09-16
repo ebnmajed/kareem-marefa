@@ -96,7 +96,11 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
         } ${disabled ? "opacity-50" : ""}`}
       >
         <UploadIcon aria-hidden className="text-[1.5rem] text-fg-muted" />
-        <p className="text-body-sm text-fg-muted">{t("dropHint")}</p>
+        {/* ★ the lead's live-build review: the button IS the primary
+            affordance (it is what a keyboard user reaches — drag alone has
+            no keyboard equivalent, this file's own header), so it comes
+            first; "أو اسحب…" ("or drag…") reads as the choice's alternative
+            only when it follows the choice, not precedes it. */}
         <button
           type="button"
           disabled={disabled}
@@ -105,6 +109,7 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
         >
           {t("chooseFiles")}
         </button>
+        <p className="text-body-sm text-fg-muted">{t("dropHint")}</p>
         <input
           ref={inputRef}
           type="file"
