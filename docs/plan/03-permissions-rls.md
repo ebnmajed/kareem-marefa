@@ -1579,6 +1579,10 @@ generated suite is the highest-value test in the product.
 | ★ **wave 8 (`DEC-148`), migration `0095`** — the platform console reads the alert states | |
 | `RPC-platform_alerts.platform_only` | An org admin, a moderator and a member are refused `not_platform_admin`; `anon` is refused `42501` on the grant. |
 | `RPC-platform_alerts.aggregate` | A platform admin reads all eight alerts of `11` §3.2, firing or not, and every `detail` key is a count, an age, a rate or a threshold — no org, member, session or content. |
+| ★ **wave 8 (`DEC-148`), migration `0096`** — the platform library reads the roster | |
+| `RPC-platform_template_library.roster` | A platform admin reads every platform row with its `orientation` (certificates only, from the latest version's master: wider than tall is landscape), `is_baseline` (false once a `template.promoted` row names it) and `retirable` (false exactly for the last non-retired default of a purpose, true again once a second default exists). |
+| ★ **wave 8 (`DEC-148`), migration `0097`** — a reinstate cannot undo a requested deletion | |
+| `RPC-reinstate_org.pending_deletion` | After `delete_org()`, `reinstate_org()` is refused `org_deletion_pending` (`42501`), the org stays suspended and no `org.reinstated` is written; a suspended org with no deletion requested still reinstates. `platform_metrics_by_org()` reports `deletion_pending` for the first and not the second, and `platform_org()` returns `deletionPending` outside its counts. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

@@ -1,3 +1,6 @@
+-- supabase/migrations/0097_reinstate_refuses_pending_deletion.sql — promoted by the lead from
+-- supabase/proposed/platform/0010_reinstate_refuses_pending_deletion.sql (wave 8, DEC-148).
+--
 -- platform (wave 8) — a deletion once requested cannot be undone by reinstating.
 -- Follows `0005` (`reinstate_org()`) and `0069` (`delete_org()`,
 -- `platform_org_metrics`).

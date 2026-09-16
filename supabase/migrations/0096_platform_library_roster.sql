@@ -1,3 +1,6 @@
+-- supabase/migrations/0096_platform_library_roster.sql — promoted by the lead from
+-- supabase/proposed/platform/0009_platform_library_roster.sql (wave 8, DEC-148).
+--
 -- platform (wave 8) — SCR-083 lists the baseline as contract 3 rules it. Follows
 -- `0069` (`platform_template_library()`, `retire_platform_template()`).
 --
