@@ -1,57 +1,28 @@
-import { getTranslations } from "next-intl/server";
-import { listHeldAchievements } from "@/lib/dal/certificates";
-import { releaseAchievements } from "@/components/certificates/actions";
+import { HeldAchievementsTable, type HeldAchievementRow } from "@/components/admin/held-achievements-table";
+import type { CertificateRow } from "@/lib/dal/certificates";
 
 // The `HeldAchievements` slot — REQ-CRT-012.
 //
 // «Leaderboard certificates go to the top 3 monthly and top 3 annual,
 // issued from the frozen snapshot and RELEASED BY AN ADMIN.» SCR-045 is
 // per session and an achievement certificate has no session, so `09` gives
-// this nowhere to live. Rather than open a route in another track's folder,
-// it is a slot: the recognition screen (SCR-054, `scoring`'s) renders
-// `<HeldAchievements locale />` and imports nothing else.
+// this nowhere to live; the recognition screen (SCR-054) hosts it.
 //
-// RENDERS NOTHING when there is nothing held, which is the normal state.
-// A permanently empty section on a screen about badges and levels would be
-// noise every day of the year except the first of the month.
-//
-// No heading of its own above h3: the host page owns the landmark.
-export async function HeldAchievements({ locale }: { locale: string }) {
-  const { certificates, canRelease } = await listHeldAchievements(locale);
-  if (!canRelease || certificates.length === 0) return null;
-
-  const t = await getTranslations("certificates");
-
-  return (
-    <section className="mt-8 rounded-card border border-edge p-4">
-      <h3 className="text-h3 text-fg-heading">{t("achievements.heading")}</h3>
-      <p className="mt-1 max-w-2xl text-body-sm text-fg-muted">{t("achievements.intro")}</p>
-
-      <form action={releaseAchievements} className="mt-4">
-        <ul className="flex flex-col gap-2">
-          {certificates.map((c) => (
-            <li key={c.id}>
-              <label className="flex flex-wrap items-baseline gap-3 rounded-field border border-edge p-3">
-                <input type="checkbox" name="id" value={c.id} className="size-4" />
-                <span className="text-body text-fg-heading">
-                  <bdi>{c.recipientName}</bdi>
-                </span>
-                {c.achievementName ? (
-                  <span className="text-body-sm text-fg-muted">
-                    <bdi>{c.achievementName}</bdi>
-                  </span>
-                ) : null}
-                <span className="text-body-sm text-fg-muted">
-                  {t("review.serial")} <bdi dir="ltr">{c.serial}</bdi>
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
-        <button type="submit" className="mt-4 inline-flex h-11 items-center rounded-field bg-navy-900 px-4 text-label text-canvas">
-          {t("review.release")}
-        </button>
-      </form>
-    </section>
-  );
+// ★ Wave 8 (`DEC-147`): PRESENTATION ONLY, and `console`'s for the wave. The
+// data and the write are `designer`'s — `listHeldAchievements()` and
+// `releaseAchievements` — and are unchanged. What changed is who reads: the
+// host page now reads `listHeldAchievements()` and passes the rows in, because
+// a section that can be empty is gated by the PAGE (`16` §5.4.1a(b)) — the page
+// used to render its h2 over a slot that returned nothing on most days, and
+// the slot repeated the heading as an h3 with a different verb. The heading,
+// the intro and the landmark are the page's; this renders the list.
+export function HeldAchievements({ certificates, locale }: { certificates: CertificateRow[]; locale: string }) {
+  const rows: HeldAchievementRow[] = certificates.map((c) => ({
+    id: c.id,
+    recipientName: c.recipientName,
+    serial: c.serial,
+    badgeName: c.badgeName ?? null,
+    period: c.period ?? null,
+  }));
+  return <HeldAchievementsTable rows={rows} locale={locale} />;
 }
