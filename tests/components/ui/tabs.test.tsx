@@ -6,9 +6,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Direction } from "radix-ui";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
-import { Tabs } from "@/components/ui/tabs";
+import { Tabs, overflowEdges } from "@/components/ui/tabs";
 
 // `<Link>` (`@/i18n/navigation`) reads the active locale from next-intl's
 // context — the same wrapper `tests/components/ui/badge.test.tsx` uses.
@@ -103,4 +103,33 @@ describe("Tabs", () => {
     const linked = render(<Wrap><LinkExample /></Wrap>);
     await expectAccessible(linked.container);
   }, 20000);
+});
+
+// Wave 8, the lead's sync-1 finding: at 390 px the moderation strip cut
+// «بلاغات الصور»'s count at the edge with no sign that it scrolls.
+describe("Tabs — a strip that scrolls says so", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("overflowEdges: RTL scrollLeft runs from 0 at the start to negative at the end", () => {
+    expect(overflowEdges(0, 358, 358, "rtl")).toEqual({ start: false, end: false });
+    expect(overflowEdges(0, 450, 358, "rtl")).toEqual({ start: false, end: true });
+    expect(overflowEdges(-40, 450, 358, "rtl")).toEqual({ start: true, end: true });
+    expect(overflowEdges(-92, 450, 358, "rtl")).toEqual({ start: true, end: false });
+    expect(overflowEdges(0, 450, 358, "ltr")).toEqual({ start: false, end: true });
+    expect(overflowEdges(92, 450, 358, "ltr")).toEqual({ start: true, end: false });
+  });
+
+  it("fades the side that hides more tabs, and nothing when they all fit", () => {
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(450);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(358);
+    const { unmount } = render(<Wrap><LinkExample /></Wrap>);
+    // jsdom computes no `direction` and keeps no `mask-image`, so this reads
+    // the logical state; the mask is in the 390 px capture.
+    expect(screen.getByRole("tablist")).toHaveAttribute("data-overflow", "end");
+    unmount();
+
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(358);
+    render(<Wrap><LinkExample /></Wrap>);
+    expect(screen.getByRole("tablist")).not.toHaveAttribute("data-overflow");
+  });
 });
