@@ -245,11 +245,23 @@ async function review(p: Page, name: string) {
 
 /* ── SCR-055 / SCR-056 ──────────────────────────────────────────────────── */
 
+// ★ DEC-134: `app/loading.tsx` puts every `/app` page inside a Suspense boundary,
+// so the status is committed before the gate runs, and a gated page's
+// `notFound()` streams 200 with `noindex` and the not-found page. What the gate
+// protects is the content, so that is what is asserted: the not-found page is
+// the only `h1`, and nothing the page guards rendered.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+}
+
 test("a member cannot open either template library, nor the designer", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  expect((await page.goto("/ar/app/admin/templates/posters"))!.status()).toBe(404);
-  expect((await page.goto("/ar/app/admin/templates/certificates"))!.status()).toBe(404);
-  expect((await page.goto(`/ar/app/admin/designer/${documentId}`))!.status()).toBe(404);
+  for (const path of ["/ar/app/admin/templates/posters", "/ar/app/admin/templates/certificates", `/ar/app/admin/designer/${documentId}`]) {
+    await page.goto(path);
+    await expectGatedNotFound(page);
+  }
 });
 
 test("★ REQ-DSG-008: an admin READS a platform template and is offered a duplicate, never an edit", async ({ context, page }) => {
