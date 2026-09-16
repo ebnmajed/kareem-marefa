@@ -64,6 +64,24 @@ describe("ImpersonationBanner", () => {
     expect(screen.getByRole("button", { name: "أنهِ الجلسة" })).toBeInTheDocument();
   });
 
+  it("★ says what the session does, not more: it names the org, the org's own log, and that the org's screens do not open", async () => {
+    vi.mocked(getMyActiveImpersonation).mockResolvedValue({
+      id: "4b7a0c5e-1f7d-4d0e-9d3a-2a4c3b1e0f00",
+      orgId: "0c1a3a2e-6a55-4d6f-8f1e-3f5b0b9e2a11",
+      orgName: "مؤسسة التجربة",
+      expiresAt: "2026-09-17T11:32:00.000Z",
+      minutesRemaining: 42,
+    });
+    await renderBanner();
+    const status = screen.getByRole("status");
+    // DEC-055 option C: the session browses nothing, so nothing here says it does.
+    expect(status).not.toHaveTextContent(/تتصفح|محدود بالقراءة/);
+    expect(status).toHaveTextContent("سجل تدقيق المؤسسة نفسها");
+    expect(status).toHaveTextContent("شاشات المؤسسة لا تُفتح أثناء هذه الجلسة.");
+    // On a phone the stop control is its own full-width row (sync 4's 390 px capture).
+    expect(screen.getByRole("button", { name: "أنهِ الجلسة" })).toHaveClass("w-full", "sm:w-auto");
+  });
+
   it("is axe-clean with a live session", async () => {
     vi.mocked(getMyActiveImpersonation).mockResolvedValue({
       id: "4b7a0c5e-1f7d-4d0e-9d3a-2a4c3b1e0f00",

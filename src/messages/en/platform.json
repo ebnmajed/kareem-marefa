@@ -11,7 +11,7 @@
       },
       "skipToContent": "Skip to the console's content",
       "switcher": "Platform console sections: {section}",
-      "note": "A platform admin reads no org's data. Reaching into one is a time-bounded break-glass session, and it appears in that org's own audit log."
+      "note": "A platform admin reads no org's data, and an organisation's own screens do not open to a platform account. A break-glass session is time-limited, recorded in that org's own audit log, and does not open the org's screens yet."
     },
     "orgs": {
       "title": "Orgs",
@@ -31,6 +31,7 @@
       "created": "Created",
       "actionsColumn": "Actions",
       "actionsFor": "Actions for {org}",
+      "noActionsDeleting": "No action — the deletion is under way.",
       "suspendTitle": "Suspend the org",
       "suspendConfirmTitle": "Suspend <bdi>{org}</bdi>",
       "suspendHint": "Suspension blocks sign-in and stops scheduled jobs. It deletes nothing and it is reversible.",
@@ -43,7 +44,7 @@
       "deleteTitle": "Delete the org",
       "deleteConfirmTitle": "Delete <bdi>{org}</bdi> for good",
       "deleteHint": "Deletion removes the org's rows and its files together and cannot be undone. If the intent is to stop access for now, suspension is what you want.",
-      "deleteSlugIntro": "To confirm, type the org's slug exactly as shown:",
+      "deleteSlugIntro": "To confirm, type the org's slug exactly as shown below:",
       "deleteConfirmLabel": "The org's slug",
       "delete": "Delete permanently",
       "deleteQueued": "Deletion has started. The org is suspended now; its rows and files are removed in the background.",
@@ -182,8 +183,8 @@
     },
     "impersonate": {
       "title": "Break-glass",
-      "honest": "You cannot look at an org's data without the org knowing. The session is written to that org's own audit log the moment it starts, and its admins can see it.",
-      "tokenTail": "If the session expires on its own, access to the org can last up to 15 minutes beyond it, because the grant travels on the sign-in token until it refreshes. Ending it yourself drops it from this browser at once.",
+      "honest": "Every break-glass session is recorded in the org's own audit log the moment it starts, where its admins see it. It does not open the org's screens: an organisation's own screens do not open to a platform account, not even during a break-glass session.",
+      "tokenTail": "If the session expires on its own, its grant can stay on the sign-in token for up to 15 minutes beyond it, until the token refreshes. Ending it yourself drops it from this browser at once.",
       "startTitle": "Start a session",
       "intro": "Pick the org, write the reason, set the duration. Four hours is the ceiling, and it is a database constraint rather than a rule on this page.",
       "errorSummaryTitle": "The session could not start",
@@ -216,9 +217,9 @@
     },
     "banner": {
       "badge": "Break-glass session",
-      "viewingAs": "You are browsing <bdi>{org}</bdi> with break-glass access, and this session is recorded in that org's audit log.",
+      "viewingAs": "A break-glass session is open on <bdi>{org}</bdi>, recorded in that org's own audit log.",
       "endsAt": "Ends at <bdi>{time}</bdi>",
-      "readOnly": "Read-only: no privileged action inside the org can be performed.",
+      "readOnly": "The org's screens do not open during this session.",
       "stop": "End the session",
       "stopped": "The session has ended, and the org is out of your access."
     },

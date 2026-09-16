@@ -29,9 +29,12 @@ import type { StopState } from "./actions";
 export function StopImpersonationControl({
   sessionId,
   stop,
+  className = "",
 }: {
   sessionId: string;
   stop: (sessionId: string) => Promise<StopState>;
+  /** Layout only — the banner makes it full width on a phone. */
+  className?: string;
 }) {
   const t = useTranslations("platform.banner");
   const tErr = useTranslations("platform.errors");
@@ -44,6 +47,7 @@ export function StopImpersonationControl({
       type="button"
       variant="secondary"
       size="md"
+      className={className}
       pending={pending}
       onClick={() =>
         start(async () => {

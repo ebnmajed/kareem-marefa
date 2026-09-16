@@ -131,13 +131,17 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
         <DialogContent title={orgTitle("deleteConfirmTitle")} description={t("deleteHint")} closeLabel={t("closeDialog")}>
           <form action={deleteAction} noValidate className="space-y-5">
             {deleteState.formError ? <FormError message={tErr(deleteState.formError)} /> : null}
-            <p className="text-body-sm text-fg-body">
-              {t("deleteSlugIntro")}{" "}
-              {/* A slug is Latin in an Arabic sentence, and it types left to right. */}
-              <code dir="ltr" className="rounded-field bg-silver-100 px-1.5 py-0.5 font-mono text-fg-heading">
-                <bdi>{org.slug}</bdi>
-              </code>
-            </p>
+            {/* The slug on its own line: inside the sentence it wrapped mid-slug at
+                390 px («… كما يظهر هنا: plat-a-» and the rest below, sync 4). A slug
+                is Latin and types left to right, in its own isolated box. */}
+            <div className="space-y-2">
+              <p className="text-body-sm text-fg-body">{t("deleteSlugIntro")}</p>
+              <p>
+                <code dir="ltr" className="inline-block rounded-field bg-silver-100 px-2 py-1 font-mono text-body-sm text-fg-heading">
+                  <bdi>{org.slug}</bdi>
+                </code>
+              </p>
+            </div>
             <Field
               id={`delete-slug-${org.id}`}
               label={t("deleteConfirmLabel")}

@@ -36,6 +36,16 @@ import { StopImpersonationControl } from "./stop-control";
 // `ui/badge` already treats `live` there. The status itself is the badge: seen
 // before it is read (`16` §3 principle 3).
 //
+// ★ WHAT IT SAYS IS WHAT THE SESSION DOES. Under DEC-055 option C a break-glass
+// session opens none of the org's screens, so the banner does not say «you are
+// browsing» the org: it names the org the session is open on, says it is in that
+// org's own audit log, and says plainly that the org's screens do not open —
+// the same sentence `/no-access` says (the lead's copy there, sync 4).
+//
+// ★ On a phone the stop control sits UNDER the text, full width: beside it, it
+// squeezed the sentences into a five-line column at 390 px (sync 4's capture).
+// From `sm` up it returns beside the text.
+//
 // No heading of its own: the host page owns the landmark (TEAM.md §2).
 
 /** The platform's own zone: a super admin has no org to take one from. */
@@ -57,8 +67,8 @@ export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) 
     // how a screen-reader user learns to tune a banner out.
     <div role="status" className="mb-6">
       <Panel tone="live" className="[.theme-dark_&]:border-live-on-dark/50 [.theme-dark_&]:bg-transparent">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-          <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="min-w-0 space-y-1.5 sm:flex-1">
             <Badge tone="live" icon={<LockIcon aria-hidden />}>
               {t("badge")}
             </Badge>
@@ -73,7 +83,11 @@ export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) 
             </p>
             <p className="text-body-sm text-fg-muted">{t("readOnly")}</p>
           </div>
-          <StopImpersonationControl sessionId={active.id} stop={stopImpersonationAction.bind(null, locale as Locale)} />
+          <StopImpersonationControl
+            sessionId={active.id}
+            stop={stopImpersonationAction.bind(null, locale as Locale)}
+            className="w-full sm:w-auto sm:shrink-0"
+          />
         </div>
       </Panel>
     </div>

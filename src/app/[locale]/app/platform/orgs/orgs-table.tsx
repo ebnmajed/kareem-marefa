@@ -61,7 +61,19 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
     { key: "sessions", header: t("sessions"), onCard: true, align: "end", cell: (org) => <bdi>{num(org.sessions)}</bdi> },
     { key: "certificates", header: t("certificates"), align: "end", cell: (org) => <bdi>{num(org.certificates)}</bdi> },
     { key: "created", header: t("created"), cell: (org) => <bdi>{formatDate(org.createdAt, PLATFORM_TIME_ZONE, locale)}</bdi> },
-    { key: "actions", header: t("actionsColumn"), onCard: true, cell: (org) => <OrgActions org={org} locale={locale} /> },
+    {
+      key: "actions",
+      header: t("actionsColumn"),
+      onCard: true,
+      // An org on its way out is offered nothing (`0097`), and the card says why
+      // in one line rather than showing «الإجراءات» beside an empty space (sync 4).
+      cell: (org) =>
+        org.deletionPending ? (
+          <span className="text-caption text-fg-muted">{t("noActionsDeleting")}</span>
+        ) : (
+          <OrgActions org={org} locale={locale} />
+        ),
+    },
   ];
 
   return (

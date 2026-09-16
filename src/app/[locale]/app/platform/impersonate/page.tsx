@@ -87,7 +87,11 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
               </div>
             </dl>
             <div className="mt-5">
-              <StopImpersonationControl sessionId={active.id} stop={stopImpersonationAction.bind(null, locale as Locale)} />
+              <StopImpersonationControl
+                sessionId={active.id}
+                stop={stopImpersonationAction.bind(null, locale as Locale)}
+                className="w-full sm:w-auto"
+              />
             </div>
           </Panel>
         </section>
