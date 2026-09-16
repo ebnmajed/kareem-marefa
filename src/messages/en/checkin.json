@@ -49,6 +49,12 @@
         "on": "Allowed: the code is accepted from any member in the room.",
         "off": "Not allowed: the code is accepted from confirmed reservations only."
       }
+    },
+    "schedule": {
+      "allowWalkIns": {
+        "label": "Allow walk-in attendance",
+        "hint": "By default, the check-in code is accepted only from a confirmed reservation. This is decided here only, when the session is scheduled or edited."
+      }
     }
   }
 }

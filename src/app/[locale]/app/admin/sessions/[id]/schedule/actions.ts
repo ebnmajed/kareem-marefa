@@ -56,6 +56,13 @@ export async function saveSchedule(locale: Locale, sessionId: string, timeZone: 
     cancellationCutoffAt: cutoffLocal === null ? null : atZone(cutoffLocal, timeZone),
     certificateMode: formData.get("certificateMode")?.toString() ?? "off",
     language: formData.get("language")?.toString() ?? "ar",
+    // DEC-117/DEC-118: an explicit true/false, never null ("unchanged") — an
+    // unchecked checkbox sends no `allowWalkIns` key at all, and `.has()`
+    // is exactly the presence check that turns that into a real `false`
+    // rather than letting "absent" stand in for it (sessions' own note on
+    // contract 1). This form always states the setting; `null` is for a
+    // caller that doesn't touch the field at all, which this one isn't.
+    allowWalkIns: formData.has("allowWalkIns"),
   });
   if (!parsed.success) return { error: "invalid", saved: false, published: false };
 

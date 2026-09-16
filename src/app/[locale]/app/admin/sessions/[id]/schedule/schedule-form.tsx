@@ -46,9 +46,20 @@ export function ScheduleForm({
     cancellationCutoffAt: string;
     certificateMode: string;
     language: string;
+    /** `sessions.allow_walk_ins` (DEC-117, DEC-118, contract 1) — `checkin`'s
+     *  one feature-only field on this form, ★ transferred by DEC-137.
+     *  Optional so `page.tsx` (not in `checkin`'s edit list) keeps building
+     *  before its own one-line addition lands — condition (a)'s rule,
+     *  applied to a plain prop rather than a DAL function this time. */
+    allowWalkIns?: boolean;
   };
 }) {
   const t = useTranslations("admin.schedule");
+  // ★ `checkin`'s own namespace, for its one field only — DEC-137's "a
+  // screen's strings move with the screen" moved the attendance/host-view
+  // strings to checkin.json; admin.json isn't in `checkin`'s edit list this
+  // wave, so this is the only file the walk-in field's copy can live in.
+  const tc = useTranslations("checkin.schedule");
   const [state, formAction, pending] = useActionState(action, emptyScheduleState);
   const [custom, setCustom] = useState(initial.customVenueName !== "");
 
@@ -174,6 +185,19 @@ export function ScheduleForm({
         </label>
         <p className="mt-1 text-body-sm text-fg-muted">{t("capacityHint")}</p>
         <input id="capacity" name="capacity" type="number" inputMode="numeric" min={1} max={10000} dir="ltr" defaultValue={initial.capacity} className={`${FIELD} w-32 text-center`} />
+      </div>
+
+      {/* DEC-117/DEC-118: a publishing-time setting, changed only through
+          this same form — no in-room toggle exists anymore. An unchecked
+          checkbox sends no key at all, so the action reads presence, never
+          treating "absent" as "unchanged" (this form always states an
+          explicit value, unlike a reschedule call that skips the field). */}
+      <div>
+        <label className="flex min-h-11 items-center gap-3 text-body text-fg-body">
+          <input type="checkbox" name="allowWalkIns" defaultChecked={initial.allowWalkIns ?? false} className="size-5" />
+          {tc("allowWalkIns.label")}
+        </label>
+        <p className="mt-1 text-body-sm text-fg-muted">{tc("allowWalkIns.hint")}</p>
       </div>
 
       <RtlDateTimePicker
