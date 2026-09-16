@@ -88,7 +88,20 @@ async function widerThanViewport(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const limit = window.innerWidth;
     const offenders: string[] = [];
+    // The page itself must not scroll sideways: the measure the member feels.
+    if (document.documentElement.scrollWidth > limit + 1) offenders.push(`document — ${document.documentElement.scrollWidth}px wide`);
+    // An element inside its own horizontal scroller (the /app/me tab strip,
+    // a data table) may sit outside the viewport by design; that container is
+    // what is measured, not what it scrolls.
+    const inScroller = (el: HTMLElement) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const x = getComputedStyle(p).overflowX;
+        if (x === "auto" || x === "scroll") return true;
+      }
+      return false;
+    };
     for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (inScroller(el)) continue;
       if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
       const box = el.getBoundingClientRect();
       if (box.width === 0) continue;
