@@ -3390,3 +3390,61 @@ under `DEC-023`'s rules — a data fix, never a migration — so upcoming sessio
 light and new dark posters. `designer` hands over the read and the write when its seed is ready.
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-026`, `REQ-DSG-031`, `REQ-ADM-017`, `REQ-ADM-018`), `09-sitemap-screens.md` (SCR-043, SCR-061), `02-domain-model.md` §4.12 (by this entry), `STATUS.md`
+
+---
+
+## DEC-149 — Wave 8, sync 2: what a form control shows survives React's reset; break-glass says it opens nothing; the library seed is a migration now
+
+- **Date:** 2026-09-17 · **Decided by:** lead, from the builds at `a4d2886`, `381a05f`, `fa93a98`, `5a8f5bc` and `bb3e290` and the captures opened on each
+
+### 1 · Every `<form action>` submission resets the form, and the primitives carry the repair
+
+React calls the native `form.reset()` at the end of the commit's mutation phase after **every** `<form
+action>` submission, a refusal and a success alike (verified in the vendored `react-dom`:
+`startHostTransition` → `requestFormReset` → `recursivelyResetForms`). A reset returns each control to its
+default. React keeps an input's and a textarea's default in step with its props, but **not a select's**
+(`defaultValue` marks an option at mount only; a controlled `value` marks none) **and not a controlled
+checkbox's or radio's**. So a refused form showed the value a control mounted with while its state held
+another, and the next submission posted what was on show. `console` found it on the manual award; the
+lead's schedule form had six such controls, so a second «احفظ التعديلات» after a publish would have put
+the page's first values back.
+
+- **Decision.** The repair lives in `ui/select`, `ui/switch`, `ui/radio-group` and `ui/checkbox` (the
+  lead, as custodian of `sessions`' primitives, `dcd5f05`): a controlled control is put back to its value in
+  a layout effect, which runs after the reset in the same commit; an uncontrolled select makes the
+  member's own change its default. A form that must come back empty after a success remounts with a `key`.
+  No wrapper per call site — `console`'s `KeptSelect` was deleted (`b12a7b6`).
+- `tests/components/ui/form-reset.test.tsx` pins the defect on the raw elements beside each repair.
+
+### 2 · Break-glass opens no org screen, and every sentence now says so
+
+Under `DEC-055` option C an impersonation session carries no member id, so every org route lands on
+`/no-access`. The console's home, SCR-085, the banner and the lead's `/no-access` body all said or implied
+that a session opens the org. **Decision:** the copy says what is true — time-limited, recorded in the
+org's own audit log, the org's screens do not open (`1f1ced9`, `d82c7a1`). **Option A — a browsable,
+read-only `impersonating` state in `session.ts` — is the owner's to schedule**; it is not wave 8's.
+
+### 3 · `0098` is the library seed, and a migration is forward-only
+
+`designer`'s generated seed became `0098_certificate_library.sql`. **Decision:** a later change to
+`library.ts` ships as a **new** seed migration; `0098` is never regenerated. The drift test reads the latest
+version of each composition across every seed, so a new seed passes it and an edited `0098` would too —
+the rule is a review rule, recorded here so nobody "regenerates the seed".
+
+### 4 · Smaller rulings
+
+- **`DEC-145`'s orphaned streaming segment is not fixed this wave.** `wave8-designer-*` specs found a second
+  hidden copy of a page's content under `div[hidden][id^="S:"]`; the rule stands — **locators under `/app`
+  scope to `#main`** — and the defect stays M13's.
+- **Viewport captures run with `reducedMotion: "reduce"`.** `globals.css` smooth-scrolls under
+  `prefers-reduced-motion: no-preference`, so a capture taken right after a scroll showed the top of the
+  page.
+- **Lazily mounted card media must be scrolled into view and marked rendered before a capture**, or a blank
+  render cannot be told from an unmounted one — the ink guard's whole point.
+- **`controlClass`'s `w-full` beats a caller's `w-*`** (Tailwind emits `.w-full` after the fixed widths), so
+  every `<Input className="w-32">` is full width. **Carried to M13**: dropping `w-full` when an unprefixed
+  width is passed would narrow fields on screens whose captures are closed.
+- **An org admin never reads a plan identifier.** The audit log's raw action key and the email studio's
+  `MSG-*` ids are dropped from cards; rows still link by key.
+- **Recognition edits write no audit or history row** — recorded, not built this wave.
+- **Documents changed:** `STATUS.md`, `03-permissions-rls.md` §8.2 (`0099`'s ten rows, by the promotion)
