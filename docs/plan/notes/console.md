@@ -1675,3 +1675,23 @@ in the three files that don't have that named helper yet) already asserts first 
 `sessions-admin-proposals.spec.ts` — not mine by filename, but it tests `/app/admin/proposals`,
 squarely inside this wave's "fixes only" grant on `proposals/**`; touched on that basis, one line,
 same pattern as the other five. Commit `c337436`.
+
+### `admin.attendance` deleted — checkin's DEC-137 move closed the loop
+
+`checkin.json` gained its own `attendance` namespace (confirmed: `src/messages/ar/checkin.json`
+line 76) as part of moving SCR-044's screen strings off `admin.json`, so the top-level
+`admin.attendance` block (both `ar`/`en`, 51 lines each — `title`, `manualTitle`, `reasonLabel`,
+`error.reason_required`, etc.) was dead. Grepped `src/` and `tests/` for `admin\.attendance` /
+`adminAr.attendance` / `adminEn.attendance` before deleting: the only hit is a comment in checkin's
+own `admin/sessions/[id]/attendance/page.tsx` confirming the move ("… `checkin.attendance`
+(`checkin.json`), not `admin.attendance`"). Re-ran the same grep after deleting — same single hit,
+now with nothing left for it to describe a stale reference to.
+
+Two other `"attendance"` keys in `admin.json` are unrelated and stayed: `admin.sessions.attendance`
+(the row-menu link label to the attendance route, read in `sessions-table.tsx:160`) and
+`admin.exports.attendance` (the CSV export card's title/note). Both confirmed to have live readers
+before touching anything, so the deletion is exactly the one dead block, nothing adjacent.
+
+`npx tsc --noEmit` clean, lint zero errors, `npx vitest run` 144/144 files, 1435/1435 tests green.
+Committed alone: `066e8b7`. Per the lead's sync-5 hold, no e2e and no `npm run test:rls` run this
+pass — both remain pending on the sync-5 results.
