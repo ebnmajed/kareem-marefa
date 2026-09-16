@@ -203,7 +203,13 @@ test("the discussion at 390 px RTL, in the states a member meets", async ({ cont
   await page.waitForTimeout(400);
   await capture(page, "4-pending");
   release();
-  await expect(discussion(page).getByText("تعليق قيد الإرسال")).toBeVisible();
+  // Settled means the post landed in the thread AND the composer let go: the
+  // button no longer busy, the field emptied. `getByText` alone can match the
+  // text while it is still in the field, and typing the next comment before
+  // the success handler runs has it wiped (wave 6, DEC-135's investigation).
+  await expect(discussion(page).getByRole("listitem").filter({ hasText: "تعليق قيد الإرسال" })).toBeVisible();
+  await expect(discussion(page).locator("button[aria-busy=true]")).toHaveCount(0);
+  await expect(composer(page)).toHaveValue("");
   await page.unrouteAll({ behavior: "wait" });
 
   // A post that failed: the text is kept, and the member is told next to it.
