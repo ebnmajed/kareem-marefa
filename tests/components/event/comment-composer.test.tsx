@@ -4,6 +4,7 @@
 // submit. Real ar/event.json through NextIntlClientProvider; only the
 // Server Actions module and next/navigation's router are mocked, same
 // pattern as comment-item.test.tsx.
+import { Component, type ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -34,6 +35,24 @@ function renderComposer(props: Partial<Parameters<typeof CommentComposer>[0]> = 
 
 function textarea() {
   return screen.getByRole("textbox") as HTMLTextAreaElement;
+}
+
+// ★ Stands in for the route's own `error.tsx` boundary — the lead's
+// real-build finding: an uncaught rejection from `postCommentAction` (a
+// network-level failure, never reaching the server) used to be thrown out
+// of `startTransition`'s async callback, and React replaced the WHOLE event
+// page with the route's error boundary. This renders a distinct, findable
+// fallback if that ever happens again, so the regression test below can
+// assert directly on its ABSENCE rather than trusting that nothing crashed.
+class TestErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return <p data-testid="boundary-reached">error boundary reached</p>;
+    return this.props.children;
+  }
 }
 
 describe("CommentComposer", () => {
@@ -72,6 +91,38 @@ describe("CommentComposer", () => {
     // one arbitrarily.
     expect(await screen.findAllByText("حدث خطأ. حاول مرة أخرى")).toHaveLength(2);
     expect(textarea().value).toBe("سؤال لم يُنشر");
+  });
+
+  // ★ The lead's real-build finding, the discussion's key failure state: a
+  // post that fails at the NETWORK level (offline, a dropped connection —
+  // `route.abort("failed")` in the real e2e spec) makes `postCommentAction`
+  // REJECT rather than return an `{ error }` value. Before this fix, the
+  // rejection was uncaught inside `startTransition`, React threw it to the
+  // route's error boundary, and the WHOLE event page was replaced by
+  // «تعذّر تحميل هذا القسم» — with the member's typed comment gone. The
+  // owner's ask for this surface is exactly the opposite: the text kept,
+  // the member told next to it. Rendered inside `TestErrorBoundary` so a
+  // regression is caught directly, not inferred from the test merely not
+  // throwing.
+  it("★ a network-level failure keeps the typed text, shows an error, and never reaches the route's error boundary", async () => {
+    const { postCommentAction } = await import("@/components/event/actions");
+    vi.mocked(postCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentComposer locale="ar" sessionId="s1" parentId={null} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.change(textarea(), { target: { value: "تعليق ستفشل شبكته" } });
+    fireEvent.click(screen.getByRole("button", { name: "نشر" }));
+
+    // Same two-places-by-design shape as the returned-error test above.
+    expect(await screen.findAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى")).toHaveLength(2);
+    expect(textarea().value).toBe("تعليق ستفشل شبكته");
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
 
   // ★ No success toast — the lead's live-build finding (BLOCKER 2): the

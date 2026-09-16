@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { saveMaterialSettings } from "@/components/materials/actions";
 import { usePendingNudge } from "@/components/ui/pending-nudge";
+import { useToast } from "@/components/ui/toast";
 
 interface SettingsFormProps {
   locale: string;
@@ -24,6 +25,7 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
   // silently rendered as the literal key (MISSING_MESSAGE, next-intl's
   // default fallback) instead of "التوقيت".
   const tUpload = useTranslations("materials.upload");
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [localPhase, setLocalPhase] = useState(phase);
   const [localAllow, setLocalAllow] = useState(allowDownload);
@@ -48,9 +50,24 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
           disabled={pending}
           onChange={(e) => {
             const next = e.target.value as "before" | "after";
+            const previous = localPhase;
             setLocalPhase(next);
             startTransition(async () => {
-              await saveMaterialSettings(locale, materialId, { phase: next });
+              try {
+                await saveMaterialSettings(locale, materialId, { phase: next });
+              } catch {
+                // ★ A request that fails at the NETWORK level makes the
+                // action REJECT rather than resolve — left uncaught, React
+                // would replace the whole event page with the route's error
+                // boundary (the lead's real-build finding on the
+                // discussion, same shape here). The optimistic select was
+                // never confirmed by the server, so it reverts explicitly —
+                // unlike `comment-item.tsx`'s `toggleLike`, there is no
+                // `useOptimistic` here whose own settle would do this for
+                // free.
+                setLocalPhase(previous);
+                toast.show({ tone: "error", title: t("settingsFailed") });
+              }
             });
           }}
           className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading"
@@ -67,9 +84,15 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
           disabled={pending}
           onChange={(e) => {
             const next = e.target.checked;
+            const previous = localAllow;
             setLocalAllow(next);
             startTransition(async () => {
-              await saveMaterialSettings(locale, materialId, { allowDownload: next });
+              try {
+                await saveMaterialSettings(locale, materialId, { allowDownload: next });
+              } catch {
+                setLocalAllow(previous);
+                toast.show({ tone: "error", title: t("settingsFailed") });
+              }
             });
           }}
         />

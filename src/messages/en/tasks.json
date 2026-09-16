@@ -14,7 +14,8 @@
       "openExternal": "Open the link — leaves the platform",
       "markDone": "Mark as done",
       "markUndone": "Undo completion",
-      "completedBadge": "Done"
+      "completedBadge": "Done",
+      "toggleFailed": "Could not record that. Try again."
     },
     "form": {
       "submit": "Submit",

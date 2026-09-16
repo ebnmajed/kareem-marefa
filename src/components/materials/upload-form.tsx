@@ -123,53 +123,67 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
     // lasts until the refreshed material list has actually committed, not
     // just until the upload's own requests finish. See the `usePendingNudge`
     // note above for why this reliably commits at all (`DEC-135`).
+    //
+    // ★ The lead's real-build finding on the event page's discussion (the
+    // identical shape here): a request that fails at the NETWORK level
+    // (offline, a dropped connection) makes `fetch` REJECT rather than
+    // resolve to a response — left uncaught, that throw would propagate out
+    // of this `startTransition` callback and React would replace the whole
+    // page with the route's error boundary. Caught below; the typed
+    // title/file selection are untouched on that path, and `router.refresh()`
+    // is never reached.
     startTransition(async () => {
-      const initiateRes = await fetch("/api/upload/material", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-locale": locale },
-        body: JSON.stringify({
-          ...(sessionId ? { sessionId } : { proposalId }),
-          kind,
-          title: trimmedTitle,
-          phase,
-          ...(file ? { filename: file.name, declaredByteSize: file.size } : {}),
-          ...(trimmedUrl ? { externalUrl: trimmedUrl } : {}),
-        }),
-      });
-      const initiateBody = await initiateRes.json();
-      if (!initiateRes.ok) {
-        setError(errorMessage(initiateBody, t));
-        toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
-        return;
-      }
-
-      if (file && initiateBody.upload) {
-        const putRes = await fetch(initiateBody.upload.signedUrl, { method: "PUT", headers: { "content-type": file.type || "application/octet-stream" }, body: file });
-        if (!putRes.ok) {
-          setError(t("uploadFailed"));
-          toast.show({ tone: "error", title: t("uploadFailed") });
-          return;
-        }
-
-        const completeRes = await fetch("/api/upload/material/complete", {
+      try {
+        const initiateRes = await fetch("/api/upload/material", {
           method: "POST",
           headers: { "content-type": "application/json", "x-locale": locale },
-          body: JSON.stringify({ materialId: initiateBody.materialId, path: initiateBody.upload.path, declaredKind: kind }),
+          body: JSON.stringify({
+            ...(sessionId ? { sessionId } : { proposalId }),
+            kind,
+            title: trimmedTitle,
+            phase,
+            ...(file ? { filename: file.name, declaredByteSize: file.size } : {}),
+            ...(trimmedUrl ? { externalUrl: trimmedUrl } : {}),
+          }),
         });
-        const completeBody = await completeRes.json();
-        if (!completeRes.ok) {
-          setError(errorMessage(completeBody, t));
-          toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
+        const initiateBody = await initiateRes.json();
+        if (!initiateRes.ok) {
+          setError(errorMessage(initiateBody, t));
+          toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
           return;
         }
-      }
 
-      setTitle("");
-      setExternalUrl("");
-      setFiles([]);
-      setResetKey((k) => k + 1);
-      toast.show({ tone: "success", title: t("success") });
-      router.refresh();
+        if (file && initiateBody.upload) {
+          const putRes = await fetch(initiateBody.upload.signedUrl, { method: "PUT", headers: { "content-type": file.type || "application/octet-stream" }, body: file });
+          if (!putRes.ok) {
+            setError(t("uploadFailed"));
+            toast.show({ tone: "error", title: t("uploadFailed") });
+            return;
+          }
+
+          const completeRes = await fetch("/api/upload/material/complete", {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-locale": locale },
+            body: JSON.stringify({ materialId: initiateBody.materialId, path: initiateBody.upload.path, declaredKind: kind }),
+          });
+          const completeBody = await completeRes.json();
+          if (!completeRes.ok) {
+            setError(errorMessage(completeBody, t));
+            toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
+            return;
+          }
+        }
+
+        setTitle("");
+        setExternalUrl("");
+        setFiles([]);
+        setResetKey((k) => k + 1);
+        toast.show({ tone: "success", title: t("success") });
+        router.refresh();
+      } catch {
+        setError(t("uploadFailed"));
+        toast.show({ tone: "error", title: t("uploadFailed") });
+      }
     });
   }
 

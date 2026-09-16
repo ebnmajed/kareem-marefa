@@ -1,8 +1,9 @@
 // A single comment row (REQ-EVT-002, REQ-EVT-005, REQ-EVT-008). Real
 // ar/event.json through NextIntlClientProvider; only the Server Actions
 // module is mocked.
+import { Component, type ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
@@ -51,6 +52,21 @@ function renderItem(comment: CommentDTO, extra: Partial<Parameters<typeof Commen
       <CommentItem locale="ar" comment={comment} reactions={{ totals: {}, mine: [] }} reported={false} {...extra} />
     </NextIntlClientProvider>,
   );
+}
+
+// ★ Stands in for the route's own `error.tsx` boundary — same reasoning as
+// `comment-composer.test.tsx`'s identical class: a network-level failure
+// (the action call itself rejects) used to be thrown out of
+// `startTransition`'s async callback and replace the whole event page.
+class TestErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return <p data-testid="boundary-reached">error boundary reached</p>;
+    return this.props.children;
+  }
 }
 
 describe("CommentItem", () => {
@@ -131,6 +147,67 @@ describe("CommentItem", () => {
     fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
     expect(await screen.findByText("تعذّر تسجيل تفاعلك")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "إعجاب" })).toBeInTheDocument(); // reverted
+  });
+
+  // ★ The lead's real-build finding, the same class of bug as
+  // `comment-composer.test.tsx`'s network-failure test: a network-level
+  // failure (offline, a dropped connection) makes `toggleReactionAction`
+  // REJECT rather than return an `{ error }` value. No explicit second
+  // dispatch tries to "undo" the optimistic flip on this path (see
+  // `comment-item.tsx`'s own comment on `toggleLike` for why that would
+  // actually land on the WRONG count) — catching the throw lets the
+  // transition settle normally, and `useOptimistic` reverts to the real
+  // base props on its own, the same mechanism the returned-error test above
+  // already relies on. This proves that holds for a THROW too, not just a
+  // returned error, and that the whole component survives rather than
+  // handing the error to a boundary above it.
+  it("★ a network-level failure while reacting reverts the optimistic flip and never reaches the error boundary", async () => {
+    const { toggleReactionAction } = await import("@/components/event/actions");
+    vi.mocked(toggleReactionAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    expect(await screen.findByText("تعذّر تسجيل تفاعلك")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "إعجاب" })).toBeInTheDocument(); // reverted
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
+  });
+
+  // ★ Same shape as `comment-composer.test.tsx`'s composer-level test,
+  // proving the identical try/catch pattern holds here too: a network-level
+  // failure keeps the edited text in the field (never enters `setEditing
+  // (false)`) and never crashes to the error boundary.
+  it("★ a network-level failure while saving an edit keeps the draft and never reaches the error boundary", async () => {
+    const { editCommentAction } = await import("@/components/event/actions");
+    vi.mocked(editCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={{ ...baseComment, isMine: true, canEditNow: true }} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "تعديل" }));
+    const editField = screen.getByRole("textbox", { name: "تعديل" });
+    fireEvent.change(editField, { target: { value: "نص معدَّل لن يصل" } });
+    fireEvent.click(screen.getByRole("button", { name: "حفظ التعديل" }));
+
+    // Not an exact count: the toast primitive (`ui/toast`, not this file's
+    // own) can render its own screen-reader-only announcement alongside the
+    // visible card, so the same string can legitimately appear more than
+    // once — the adjacent `Panel` (REQ-UIX-010) is what this assertion is
+    // really about, and at least one match proves the error surfaced at all.
+    await waitFor(() => expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى").length).toBeGreaterThan(0));
+    expect(screen.getByRole("textbox", { name: "تعديل" })).toHaveValue("نص معدَّل لن يصل"); // still editing, text kept
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
 
   it("pressing reply calls onReply, and only top-level comments offer it", () => {

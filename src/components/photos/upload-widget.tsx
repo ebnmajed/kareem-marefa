@@ -78,46 +78,59 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
     // `router.refresh()` at the end is the LAST statement inside this SAME
     // `startTransition` — `pending` (the uploader's busy state) honestly
     // lasts until the refreshed gallery has actually committed.
+    //
+    // ★ The lead's real-build finding on the event page's discussion (the
+    // identical shape here): a request that fails at the NETWORK level
+    // (offline, a dropped connection) makes `fetch` REJECT rather than
+    // resolve to a response — left uncaught, that throw would propagate out
+    // of this `startTransition` callback and React would replace the whole
+    // page with the route's error boundary. Caught below; the selected file
+    // is untouched on that path, and `router.refresh()` is never reached.
     startTransition(async () => {
-      const initiateRes = await fetch("/api/upload/photo", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-locale": locale },
-        body: JSON.stringify({ sessionId, kind, declaredByteSize: file.size }),
-      });
-      const initiateBody = await initiateRes.json();
-      if (!initiateRes.ok) {
-        setError(errorMessage(initiateBody, t));
-        toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
-        return;
-      }
+      try {
+        const initiateRes = await fetch("/api/upload/photo", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-locale": locale },
+          body: JSON.stringify({ sessionId, kind, declaredByteSize: file.size }),
+        });
+        const initiateBody = await initiateRes.json();
+        if (!initiateRes.ok) {
+          setError(errorMessage(initiateBody, t));
+          toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
+          return;
+        }
 
-      const putRes = await fetch(initiateBody.upload.signedUrl, {
-        method: "PUT",
-        headers: { "content-type": initiateBody.upload.contentType },
-        body: file,
-      });
-      if (!putRes.ok) {
+        const putRes = await fetch(initiateBody.upload.signedUrl, {
+          method: "PUT",
+          headers: { "content-type": initiateBody.upload.contentType },
+          body: file,
+        });
+        if (!putRes.ok) {
+          setError(t("uploadFailed"));
+          toast.show({ tone: "error", title: t("uploadFailed") });
+          return;
+        }
+
+        const completeRes = await fetch("/api/upload/photo/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-locale": locale },
+          body: JSON.stringify({ photoId: initiateBody.photoId, sessionId, path: initiateBody.upload.path, kind, byteSize: file.size }),
+        });
+        const completeBody = await completeRes.json();
+        if (!completeRes.ok) {
+          setError(errorMessage(completeBody, t));
+          toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
+          return;
+        }
+
+        setFiles([]);
+        setResetKey((k) => k + 1);
+        toast.show({ tone: "success", title: t("processing") });
+        router.refresh();
+      } catch {
         setError(t("uploadFailed"));
         toast.show({ tone: "error", title: t("uploadFailed") });
-        return;
       }
-
-      const completeRes = await fetch("/api/upload/photo/complete", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-locale": locale },
-        body: JSON.stringify({ photoId: initiateBody.photoId, sessionId, path: initiateBody.upload.path, kind, byteSize: file.size }),
-      });
-      const completeBody = await completeRes.json();
-      if (!completeRes.ok) {
-        setError(errorMessage(completeBody, t));
-        toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
-        return;
-      }
-
-      setFiles([]);
-      setResetKey((k) => k + 1);
-      toast.show({ tone: "success", title: t("processing") });
-      router.refresh();
     });
   }
 

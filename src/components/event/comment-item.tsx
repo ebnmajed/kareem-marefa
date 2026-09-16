@@ -115,12 +115,28 @@ export function CommentItem({
   // about timing. `usePendingNudge` is the real fix: it re-renders this
   // component every 300ms while pending, and each re-render un-suspends the
   // root and lets the lost retry run.
+  // ★ The lead's real-build finding: a request that fails at the NETWORK
+  // level (offline, a dropped connection — never reaches the server) makes
+  // the action REJECT rather than return an `{ error }` value. Left
+  // uncaught, that rejection is thrown out of `startTransition`'s async
+  // callback, React treats it as a render error, and the WHOLE event page
+  // is replaced by the route's error boundary. Every action below now
+  // catches that throw the same way: a generic-network toast, no refresh,
+  // no state changed beyond what the catch itself sets — matching
+  // `comment-composer.tsx`'s identical fix.
   function saveEdit() {
     const trimmed = editBody.trim();
     if (!trimmed) return;
     setError(null);
     startTransition(async () => {
-      const result = await editCommentAction(locale, comment.id, trimmed);
+      let result: { error: string | null };
+      try {
+        result = await editCommentAction(locale, comment.id, trimmed);
+      } catch {
+        setError("network");
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
       if (result.error) {
         setError(result.error);
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
@@ -133,7 +149,13 @@ export function CommentItem({
 
   function deleteMine() {
     startTransition(async () => {
-      const result = await deleteMyCommentAction(locale, comment.id);
+      let result: { error: string | null };
+      try {
+        result = await deleteMyCommentAction(locale, comment.id);
+      } catch {
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
       if (result.error) {
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       } else {
@@ -147,7 +169,13 @@ export function CommentItem({
 
   function moderate(action: "remove" | "restore") {
     startTransition(async () => {
-      const result = await moderateCommentAction(locale, comment.id, action);
+      let result: { error: string | null };
+      try {
+        result = await moderateCommentAction(locale, comment.id, action);
+      } catch {
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
       if (result.error) {
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       } else {
@@ -161,7 +189,22 @@ export function CommentItem({
     if (next) setIgnite(true);
     startTransition(async () => {
       setOptimisticReaction(next);
-      const result = await toggleReactionAction(locale, comment.id, "like");
+      let result: { error: string | null };
+      try {
+        result = await toggleReactionAction(locale, comment.id, "like");
+      } catch {
+        // No explicit re-dispatch to "undo" the optimistic flip above:
+        // `useOptimistic`'s own reducer (above) always computes `count` as
+        // `likeCount ± 1` off the REAL base total, never off the CURRENT
+        // optimistic value, so a second dispatch here has no way to land
+        // back on the exact original pair — it would either repeat the
+        // same flip or overshoot by one. The optimistic value reverts on
+        // its own once this transition settles (catching the throw here IS
+        // what lets it settle normally instead of crashing) — the same
+        // mechanism the `result.error` branch below already relied on.
+        toast.show({ tone: "error", title: t("toasts.reactionFailed") });
+        return;
+      }
       if (result.error) {
         // No inline slot for a glyph this small — a quiet, persistent toast
         // is the only honest place to say a reaction did not stick. The
@@ -179,7 +222,14 @@ export function CommentItem({
     const reason = formData.get("reason")?.toString().trim() ?? "";
     if (reason.length < 3) return;
     startTransition(async () => {
-      const result = await reportCommentAction(locale, comment.id, reason);
+      let result: { error: string | null };
+      try {
+        result = await reportCommentAction(locale, comment.id, reason);
+      } catch {
+        setError("network");
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
       if (!result.error) {
         setIsReported(true);
         onReported?.();

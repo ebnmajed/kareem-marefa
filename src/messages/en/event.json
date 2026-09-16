@@ -57,7 +57,8 @@
         "invalid_comment": "Invalid comment",
         "invalid_target": "Invalid target",
         "already_reacted": "You already reacted with this",
-        "generic": "Something went wrong. Please try again."
+        "generic": "Something went wrong. Please try again.",
+        "network": "Connection failed. Check your internet and try again."
       }
     }
   }

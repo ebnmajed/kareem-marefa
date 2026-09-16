@@ -14,7 +14,8 @@
       "openExternal": "فتح الرابط — يغادر المنصة",
       "markDone": "أنجزتها",
       "markUndone": "التراجع عن الإنجاز",
-      "completedBadge": "أُنجزت"
+      "completedBadge": "أُنجزت",
+      "toggleFailed": "تعذّر تسجيل ذلك. حاول مرة أخرى."
     },
     "form": {
       "submit": "إرسال",

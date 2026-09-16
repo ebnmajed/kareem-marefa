@@ -39,17 +39,27 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
 
   function run() {
     startTransition(async () => {
-      const action = mode === "request" ? requestPhotoTakedownAction : restorePhotoAction;
-      const result = await action(locale, sessionId, photoId);
-      if (result.error) {
-        // The DAL/action layer returns the raw thrown message here (there is
-        // no structured error-code set for takedown/restore, unlike
-        // comments' `KNOWN_ERRORS`) — never shown raw to a member; one
-        // honest, generic toast either way.
+      try {
+        const action = mode === "request" ? requestPhotoTakedownAction : restorePhotoAction;
+        const result = await action(locale, sessionId, photoId);
+        if (result.error) {
+          // The DAL/action layer returns the raw thrown message here (there
+          // is no structured error-code set for takedown/restore, unlike
+          // comments' `KNOWN_ERRORS`) — never shown raw to a member; one
+          // honest, generic toast either way.
+          toast.show({ tone: "error", title: mode === "request" ? t("requestHideFailed") : t("restoreFailed") });
+        } else {
+          setDone(true);
+          toast.show({ tone: "success", title: mode === "request" ? t("requestedHide") : t("restored") });
+        }
+      } catch {
+        // ★ A request that fails at the NETWORK level (offline, a dropped
+        // connection) makes the action REJECT rather than return an
+        // `{ error }` value — left uncaught, React would replace the whole
+        // event page with the route's error boundary (the lead's real-build
+        // finding on the discussion, same shape here). Same toast as the
+        // returned-error path above; `done` is never set.
         toast.show({ tone: "error", title: mode === "request" ? t("requestHideFailed") : t("restoreFailed") });
-      } else {
-        setDone(true);
-        toast.show({ tone: "success", title: mode === "request" ? t("requestedHide") : t("restored") });
       }
     });
   }

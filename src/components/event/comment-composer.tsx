@@ -134,7 +134,25 @@ export function CommentComposer({
     if (!trimmed) return;
     setError(null);
     startTransition(async () => {
-      const result = await postCommentAction(locale, sessionId, parentId, Array.from(mentioned.keys()), trimmed);
+      let result: { error: string | null };
+      try {
+        result = await postCommentAction(locale, sessionId, parentId, Array.from(mentioned.keys()), trimmed);
+      } catch {
+        // ★ The lead's real-build finding: a request that fails at the
+        // NETWORK level (offline, a dropped connection — never reaches the
+        // server at all) makes `postCommentAction` REJECT rather than
+        // return an `{ error }` value. Left uncaught, that rejection was
+        // thrown out of this `startTransition` callback, React treated it
+        // as a render error, and the WHOLE event page was replaced by the
+        // route's error boundary — with the member's typed comment gone.
+        // The owner's ask for this exact state is the opposite: the text
+        // kept, the member told next to it. `body`/`mentioned` are
+        // untouched below — nothing here reaches the clearing branch — and
+        // `router.refresh()` never runs.
+        setError("network");
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
       if (result.error) {
         setError(result.error);
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
