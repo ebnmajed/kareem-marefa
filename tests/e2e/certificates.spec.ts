@@ -276,18 +276,17 @@ test("★ REQ-CRT-011: a revoked certificate still resolves — as ملغاة, a
   const reason = "صدرت لشخص لم يحضر الورشة فعليًا";
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  // ★ NOT `getByRole("button", { name: "ألغِ" })`. The control is a
-  // `<summary>`, and Chromium exposes a disclosure triangle rather than a
-  // button role — so a role-based locator here waits thirty seconds and
-  // then says the element does not exist, which is true and unhelpful. The
-  // row is found by its serial and the summary by its tag.
-  const row = page.locator("li").filter({ hasText: cert.serial });
-  await row.locator("summary").click();
-  await page.getByLabel("سبب الإلغاء").fill(reason);
-  await page.getByRole("button", { name: "أكِّد الإلغاء" }).click();
-  await expect(page.getByRole("status")).toContainText("أُلغيت الشهادة");
-  // The org's own screen DOES show it.
-  await expect(page.getByText(reason)).toBeVisible();
+  // Wave 8 (D4): the revoke is a button on the issued table's row, and the
+  // reason is written inside the confirm that names the member.
+  const row = page.getByRole("table", { name: "الشهادات الصادرة" }).getByRole("row", { name: new RegExp(cert.serial) });
+  await row.getByRole("button", { name: "ألغِ" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/سبب الإلغاء/).fill(reason);
+  await dialog.getByRole("button", { name: "ألغِ الشهادة" }).click();
+  await expect(page.getByText("أُلغيت الشهادة.", { exact: true })).toBeVisible();
+  // The org's own screen DOES show it — on the revoked table (the phone's
+  // card list carries the same text, hidden at this width).
+  await expect(page.getByRole("table", { name: "الشهادات الملغاة" }).getByText(reason)).toBeVisible();
 
   // The public page does not, and is not signed in.
   const anon = await context.browser()!.newContext();
@@ -327,9 +326,11 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
   await expect(page.getByText("الوضع مراجعة", { exact: false })).toBeVisible();
-  await page.getByRole("checkbox").first().check();
+  await page.getByRole("checkbox", { name: new RegExp(`تحديد الصف ${RECIPIENT}`) }).check();
   await page.getByRole("button", { name: "أطلِق المحدَّدة" }).click();
-  await expect(page.getByRole("status")).toContainText("أُطلقت");
+  // Wave 8 (D4): release confirms with the count and the session (REQ-UIX-013).
+  await page.getByRole("dialog").getByRole("button", { name: "أطلِق", exact: true }).click();
+  await expect(page.getByText("أُطلقت شهادة واحدة", { exact: true })).toBeVisible();
 
   // ★ And now the recipient sees it. Two real requests with a real policy
   // between them: `certs_read_self_or_admin` refuses `held` and allows

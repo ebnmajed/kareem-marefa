@@ -1203,18 +1203,11 @@ Found by the real-DB spec, fixed in the DAL: `check_ins` reaches `members` three
 DAL swallowed — «لا أحد بعد» over a full room. The embed is named
 (`members!check_ins_member_id_fkey`) in both reads, and the eligible read now **throws** on error.
 
-**The lead's `tests/e2e/certificates.spec.ts` will fail on SCR-045 (lead-held; not edited):**
-
-1. `REQ-CRT-011` case, lines 284–288: the revoke is no longer a `<details>`. Replace with
-   `page.getByRole("table", { name: "الشهادات الصادرة" }).getByRole("row", { name: new RegExp(cert.serial) }).getByRole("button", { name: "ألغِ" }).click()`,
-   then `page.getByRole("dialog").getByLabel(/سبب الإلغاء/).fill(reason)`,
-   `page.getByRole("dialog").getByRole("button", { name: "ألغِ الشهادة" }).click()`, and
-   `await expect(page.getByText("أُلغيت الشهادة.", { exact: true })).toBeVisible()`. Line 290 holds.
-2. `REQ-CRT-004` case, lines 330–332: release now confirms. After «أطلِق المحدَّدة», add
-   `await page.getByRole("dialog").getByRole("button", { name: "أطلِق", exact: true }).click()` and
-   expect `page.getByText("أُطلقت شهادة واحدة", { exact: true })`. `getByRole("checkbox").first()`
-   is now the table's «تحديد الكل», which still selects the one held row.
-3. The 390 px case holds (the h1 is unchanged).
+**`tests/e2e/certificates.spec.ts` moved with the screen** (it is in this track's edit list): the
+`REQ-CRT-011` case revokes from the issued table's row through the dialog, and reads the reason on
+the revoked table (the phone's card list carries the same text hidden, which strict mode counts);
+the `REQ-CRT-004` case ticks the recipient's row and confirms the release. 8/8, both projects, on
+`next dev` against local Supabase.
 
 `tests/e2e/wave8-designer-certificates.spec.ts` covers the same guarantees plus the design, the
 lock, redesign-held, the estimate and the moderator, and writes
