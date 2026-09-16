@@ -21,7 +21,8 @@
       "language": {
         "ar": "Arabic",
         "en": "English"
-      }
+      },
+      "tagLabel": "Tag"
     },
     "bookmarkButton": {
       "add": "Add to bookmarks",

@@ -240,17 +240,20 @@ async function TasksJump({ tasks, label }: { tasks: Promise<SlotSummary>; label:
   if (!summary.visible) return null;
   const outstanding = summary.outstanding ?? 0;
   return (
-    <a href="#tasks" className={buttonClass("secondary", "md", "w-full")}>
+    // Drawn as a figure, spoken as words: the name starts with the visible label
+    // (SC 2.5.3) and adds «مهمتان متبقيتان».
+    <a
+      href="#tasks"
+      aria-label={outstanding > 0 ? `${label}، ${t("tasksOutstanding", { count: outstanding, value: formatNumber(outstanding) })}` : undefined}
+      className={buttonClass("secondary", "md", "w-full")}
+    >
       {/* The label takes the free width rather than the link taking a second
           `justify-*` utility over `buttonBase`'s own (DEC-111's class). */}
       <span className="flex-1 text-start">{label}</span>
       {outstanding > 0 ? (
-        <>
-          <span aria-hidden="true" className="min-w-6 rounded-field bg-silver-100 px-1.5 text-center text-caption text-fg-heading">
-            {formatNumber(outstanding)}
-          </span>
-          <span className="sr-only">{t("tasksOutstanding", { count: outstanding, value: formatNumber(outstanding) })}</span>
-        </>
+        <span aria-hidden="true" className="min-w-6 rounded-field bg-silver-100 px-1.5 text-center text-caption text-fg-heading">
+          {formatNumber(outstanding)}
+        </span>
       ) : null}
     </a>
   );

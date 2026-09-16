@@ -277,8 +277,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("link", { name: "شاشة التقديم" })).toHaveCount(0);
 
   // REQ-SES-011: the spoken language is above the RSVP action, not below it.
-  const language = (await attendee.getByText("لغة الجلسة").first().boundingBox())!;
-  const action = (await attendee.locator("aside").first().boundingBox())!;
+  // Since wave 6 it is a chip in the hero, and the action card is the region
+  // «الحضور» (DEC-130).
+  const language = (await attendee.getByText("العربية").first().boundingBox())!;
+  const action = (await attendee.getByRole("region", { name: "الحضور" }).boundingBox())!;
   expect(language.y, "the spoken language appears before the RSVP action").toBeLessThan(action.y);
 
   // REQ-SES-013: exactly one primary action, in the thumb zone, ≥ 44 px. The
@@ -289,7 +291,7 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   expect(rsvpBox.height, "the RSVP action must be at least 44 px tall").toBeGreaterThanOrEqual(44);
   expect(rsvpBox.y + rsvpBox.height, "the RSVP action sits within the first screenful at 390 px").toBeLessThanOrEqual(PHONE.height);
   // …and nothing above it is hidden underneath it, which is what a
-  // bottom-pinned panel of this height would do to «لغة الجلسة».
+  // bottom-pinned panel of this height would do to the language chip.
   expect(language.y + language.height, "the spoken language is not covered by the action panel").toBeLessThanOrEqual(action.y);
 
   await review(attendee, "scr-012-event-page");
