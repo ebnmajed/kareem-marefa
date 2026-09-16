@@ -131,8 +131,8 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
 
       {requirements?.length ? (
         <ul className="mt-2 flex flex-col gap-0.5 text-caption text-fg-muted">
-          {requirements.map((requirement) => (
-            <li key={requirement}>{requirement}</li>
+          {requirements.map((requirement, index) => (
+            <li key={index}>{requirement}</li>
           ))}
         </ul>
       ) : null}

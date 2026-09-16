@@ -206,8 +206,11 @@ export interface FieldProps extends Styleable {
   id?: string;
   label: string;
   hint?: string;
-  /** Adjacent, red, icon-marked — and colour is never the only channel. */
-  error?: string;
+  /**
+   * Adjacent, red, icon-marked — and colour is never the only channel. A
+   * node, so an error that quotes what was typed can isolate it in `<bdi>`.
+   */
+  error?: ReactNode;
   required?: boolean;
   children: ReactNode;
 }
@@ -322,8 +325,8 @@ export interface FileDropProps extends Styleable {
   accept: string[];
   maxBytes: number;
   multiple?: boolean;
-  /** Stated up front — «الحد الأدنى 1200×1500 بكسل» and so on. */
-  requirements?: string[];
+  /** Stated up front — «الحد الأدنى 1200×1500 بكسل» and so on; nodes, so a format name or size can sit in `<bdi>`. */
+  requirements?: ReactNode[];
   onFiles?: (files: File[]) => void;
   disabled?: boolean;
   invalid?: boolean;
