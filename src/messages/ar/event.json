@@ -18,7 +18,6 @@
       "frozenOnCancelled": "التعليقات مغلقة — هذه الجلسة ملغاة",
       "mentionHint": "اكتب @ لذكر عضو من مؤسستك",
       "remainingChars": "{count, plural, zero {لا مساحة متبقية} one {حرف واحد متبقٍ} two {حرفان متبقيان} few {{value} أحرف متبقية} many {{value} حرفًا متبقيًا} other {{value} حرف متبقٍ}}",
-      "emptyAction": "اكتب أول تعليق",
       "delete": {
         "action": "حذف",
         "confirmTitle": "حذف التعليق؟",

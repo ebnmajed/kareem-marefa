@@ -258,8 +258,19 @@ export function CommentItem({
 
 function DeleteConfirm({ onConfirm, pending }: { onConfirm: () => void; pending: boolean }) {
   const t = useTranslations("event.comments.delete");
+  // ★ The dialog is CONTROLLED, and the confirm button is a plain button,
+  // not `DialogClose asChild` — the lead's real-build e2e run found the
+  // previous DialogClose-wraps-an-onClick-that-starts-a-transition pattern
+  // timing out (both this and the same shape in photos' TakedownButton).
+  // Composing Radix's own close-on-click with a caller's onClick via
+  // `asChild` is documented Radix usage, but relying on it for a handler
+  // that also has to survive whatever `Dialog.Close`'s own click handling
+  // does first is a race this component does not need to run: closing
+  // `open` and firing `onConfirm` are now two plain, ordered statements in
+  // one handler I own end to end.
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <IconButton label={t("action")} disabled={pending} size="sm">
           <TrashIcon aria-hidden />
@@ -267,11 +278,17 @@ function DeleteConfirm({ onConfirm, pending }: { onConfirm: () => void; pending:
       </DialogTrigger>
       <DialogContent title={t("confirmTitle")} description={t("confirmBody")} closeLabel={t("cancel")}>
         <div className="flex gap-2">
-          <DialogClose asChild>
-            <Button type="button" variant="danger" onClick={onConfirm} className="h-10 px-5">
-              {t("confirm")}
-            </Button>
-          </DialogClose>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => {
+              setOpen(false);
+              onConfirm();
+            }}
+            className="h-10 px-5"
+          >
+            {t("confirm")}
+          </Button>
           <DialogClose asChild>
             <Button type="button" variant="secondary" className="h-10 px-5">
               {t("cancel")}
@@ -285,8 +302,16 @@ function DeleteConfirm({ onConfirm, pending }: { onConfirm: () => void; pending:
 
 function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) => void; pending: boolean }) {
   const t = useTranslations("event.comments.report");
+  // ★ Same fix as `DeleteConfirm` above, adapted for a form submit: `open`
+  // is controlled and closed from the form's own `onSubmit` (fires
+  // synchronously the moment the button is activated, before the `action`
+  // prop's async work even starts) rather than from `DialogClose` wrapping
+  // the `type="submit"` button — removing any question of ordering between
+  // Radix's own close handling and the native submit it would otherwise be
+  // composed with.
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <IconButton label={t("action")} size="sm">
           <AlertTriangleIcon aria-hidden />
@@ -294,6 +319,7 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
       </DialogTrigger>
       <DialogContent title={t("dialogTitle")} closeLabel={t("cancel")}>
         <form
+          onSubmit={() => setOpen(false)}
           action={(formData) => {
             onSubmit(formData);
           }}
@@ -304,11 +330,9 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
           <p className="mt-1 text-body-sm text-fg-muted">{t("reasonHint")}</p>
           <Textarea id="reason" name="reason" required minLength={3} maxLength={1000} rows={3} className="mt-2" />
           <div className="mt-3 flex gap-2">
-            <DialogClose asChild>
-              <Button type="submit" pending={pending} pendingLabel={t("sending")} className="h-10 px-5">
-                {t("submit")}
-              </Button>
-            </DialogClose>
+            <Button type="submit" pending={pending} pendingLabel={t("sending")} className="h-10 px-5">
+              {t("submit")}
+            </Button>
             <DialogClose asChild>
               <Button type="button" variant="secondary" className="h-10 px-5">
                 {t("cancel")}

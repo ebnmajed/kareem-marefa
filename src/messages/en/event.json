@@ -18,7 +18,6 @@
       "frozenOnCancelled": "Comments are closed — this session was cancelled",
       "mentionHint": "Type @ to mention a member of your organisation",
       "remainingChars": "{count, plural, =0 {no space left} one {one character left} other {{value} characters left}}",
-      "emptyAction": "Write the first comment",
       "delete": {
         "action": "Delete",
         "confirmTitle": "Delete this comment?",

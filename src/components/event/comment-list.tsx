@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { subscribeToSessionTopic } from "@/lib/realtime/channel";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
@@ -149,15 +148,20 @@ export function CommentList({
           <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
         </Panel>
       ) : (
-        <div id="comment-composer" className="mb-4 scroll-mt-4">
+        <div className="mb-4">
           <CommentComposer locale={locale} sessionId={sessionId} parentId={null} />
         </div>
       )}
 
       {topLevel.length === 0 ? (
-        frozen ? null : (
-          <EmptyState title={t("empty")} action={{ label: t("emptyAction"), href: "#comment-composer" }} size="sm" />
-        )
+        // ★ Not `EmptyState` — the lead's 390 px review of the live build
+        // caught this: the composer is ALREADY the visible, primary next
+        // action right above this (it is unconditional whenever this branch
+        // is reachable at all — frozen+empty never gets here, `Comments()`
+        // returns null first), so a SECOND card offering "write the first
+        // comment" duplicated the one action into two, and the one that
+        // looked primary was not the composer. A quiet sentence, no button.
+        frozen ? null : <p className="text-body text-fg-muted">{t("empty")}</p>
       ) : (
         <ul className="divide-y divide-[var(--edge)]">
           {topLevel.map((comment) => {

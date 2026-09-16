@@ -43,11 +43,19 @@ function renderList(props: Partial<Parameters<typeof CommentList>[0]> = {}) {
 }
 
 describe("CommentList", () => {
-  it("shows the composer and an EmptyState naming a next action when there is nothing yet (REQ-UIX-012, REQ-EVT-003)", () => {
+  // ★ Not an `EmptyState` with its own action — the lead's live-build 390 px
+  // review: the composer is already the visible, primary next action right
+  // above this text (unconditionally, whenever this is reachable at all —
+  // frozen+empty never gets here), so a second card offering the same
+  // action duplicated it. A quiet sentence, no button (REQ-EVT-003: any
+  // member may post at any time; REQ-UIX-012 does not apply to a state with
+  // an already-visible next action right next to it).
+  it("shows the composer and a quiet sentence, with no duplicate call to action, when there is nothing yet (REQ-EVT-003)", () => {
     renderList();
     expect(screen.getByRole("textbox")).toBeInTheDocument(); // the composer — any member may post at any time
     expect(screen.getByText("لا تعليقات بعد. كن أول من يعلّق.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "اكتب أول تعليق" })).toHaveAttribute("href", "#comment-composer");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /اكتب/ })).not.toBeInTheDocument();
   });
 
   it("shows a frozen notice instead of the composer, and no EmptyState, on a cancelled session (REQ-SES-010)", () => {
