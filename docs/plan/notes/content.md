@@ -1484,3 +1484,255 @@ equivalent test for submitReport's network catch (previously untested).
 53/53 event component tests, tsc clean, lint 0 errors.
 
 Ready for sync.
+
+## Wave 7 plan
+
+Planning only, per the spawn brief. Read `STATUS.md`'s START HERE block and wave-7 block, `CLAUDE.md`'s
+wave-7 ownership map, `DEC-110` … `DEC-139` (the last two, `DEC-138`/`DEC-139`, landed on disk after
+spawn — `global-error.tsx`'s path and `REQ-EVT-010`'s pipeline amendment), `16` §6.5/§6.8.3/§7,
+`01-prd.md` `REQ-PRF-*`, `REQ-PTS-*`, `REQ-CRT-*`, `REQ-NTF-*`, `REQ-CAL-*`, `REQ-CHK-017`,
+`REQ-DSC-006`, `09-sitemap-screens.md`'s sitemap tree and route table (SCR-021 … 026 have no dedicated
+write-ups beyond the tree — SCR-021's row literally says «my profile», nothing more), and the current
+code of all seven `/app/me` routes, their components and every DAL module they read. Also re-read the
+regenerated `.claude/agents/content.md` on disk (not the wave-6 copy in this session's spawn context) —
+it changes the test-file edit list (`tasks.spec.ts` is now mine) and adds carried item **T8**
+(`DEC-139`).
+
+### 1 — The hub's IA: seven routes, six canvas tabs, and why they do not simply align
+
+`16` §6.5 names six tabs — **القادمة · الحاضرة · المقترحات · المحفوظات · الشهادات · النقاط** — and
+the tree (`09` §1) has seven routes under `/me`: profile (SCR-021, `/app/me` itself), points (022),
+certificates (023), bookmarks (024), calendar (025), notifications (026), privacy (`REQ-PRF-006/007`,
+no SCR number, M13 in the route table but pulled into wave 7 by `DEC-137`'s T7). Three of the seven —
+calendar, notifications, privacy — are not in §6.5's six-tab list at all, and three of §6.5's six —
+**القادمة** (upcoming), **الحاضرة** (past/attended), **المقترحات** (proposals) — name content this
+track has neither the route nor the DAL access to build this wave:
+
+- **القادمة/الحاضرة** read as a merged "my sessions" view — upcoming commitments and past attendance
+  outcomes. That data lives in `rsvp.ts`/`checkin.ts` (`checkin`'s, not in my edit list, not even
+  add-only) and `sessions.ts` (`sessions`', explicitly in my **never** list). `/app/sessions` already
+  is exactly this for the general case (`DEC-112`'s timeline, `sessions`' wave-6 build, date-grouped,
+  the member's own next commitment first) — building a second, narrower "my sessions" view under `/me`
+  would duplicate it with data I cannot read.
+- **المقترحات** is `/app/propose` and `/app/propose/[id]`, literally itemized to `sessions` in the
+  wave-7 checklist (S1/S2), not to me, and reads `proposals.ts` (also in my never list).
+
+So building literal **القادمة/الحاضرة/المقترحات** tabs this wave would mean either reading another
+track's DAL (against the "add-only, never a changed signature/select" rule and against the never-touch
+list naming those exact files) or faking the content. Neither is right. Reading `DEC-114`'s own rule —
+*"a mockup that contradicts a requirement is a question, not an instruction… raise it; do not implement
+it and do not silently correct it either"* — I am treating this the same way: **raised as question 2
+below, not silently built and not silently dropped.**
+
+**Proposed resolution**, pending the lead's ruling: `me/layout.tsx` renders a persistent tab strip on
+`ui/tabs` (console's, import-only — `Tabs` already supports `item.href` for a real navigation link per
+tab, exactly this shape: *"the admin sub-nav and any URL-addressable tab strip use this"*) with **seven
+items matching the seven real routes**, `value` derived from the active path segment in a small client
+wrapper (`ui/tabs`' own documented pattern: *"`value` stays the caller's source of truth, typically
+derived from the current route"*). This is exactly the *"chips → tabs, not unreachable → reachable"*
+migration `16` §6.5 itself describes: `me/page.tsx:29-37` already renders a six-item chip nav today
+(notifications, calendar, certificates, points, bookmarks, privacy) — the seventh, the profile edit
+form, is `/app/me`'s own content, not a chip pointing at itself. I am proposing the tab strip simply
+promotes that existing six-chip nav plus a first "profile" tab, using labels that borrow §6.5's spirit
+where they map cleanly (**النقاط**↔points, **الشهادات**↔certificates, **المحفوظات**↔bookmarks) and the
+sitemap tree's own Arabic for the rest (الملف الشخصي, التقويم, الإشعارات, الخصوصية).
+
+**What `/app/me` itself renders**: the profile edit form, unchanged in substance (`REQ-PRF-001`), on
+`sessions`' `Field`/`Input`/`Select`/`Textarea`/`Checkbox`/`FormSummary` in place of the current raw
+inputs. **Proposed addition** (question 3): one `Stat` (mine, `ui/stat.tsx`, already built —
+`label`/`value`/`hint`/`href`) showing the points balance via `getPointsStripData()` (already exists,
+`points.ts`, already used by the home page's own strip), linking to `/app/me/points` — the one piece of
+"renders content, not links" §6.5 asks for that content's own data actually reaches this wave. Not
+upcoming sessions, not proposals — just the one number I can honestly show. If the lead would rather
+keep `/app/me` exactly the form (smaller diff, no new visual element to review), I drop it.
+
+**No auth or data gate in `me/layout.tsx`**, confirmed against the DAL convention (`requireSession()`
+close to the data, never in a layout, `CLAUDE.md`'s Data access §3) — the layout only renders the tab
+chrome and `{children}`; every page underneath still calls its own DAL functions, which still gate.
+
+### 2 — The seven routes
+
+**T1 · `/app/me` (SCR-021).** Components: the profile form rebuilt on `Field`/`Input`/`Select`/
+`Textarea`/`Checkbox`/`FormSummary` (sessions'), `Panel` (mine, saved/error banners, replacing the raw
+`role="status"`/`role="alert"` paragraphs), optional `Stat` (§1). DAL: `getMe`, `listCompanies`,
+`updateMyProfile`, `profileInput` — all in `members.ts`, already correct, no new exports needed.
+**Bug found while reading, fixed in the same commit:** `me/actions.ts`'s `saveProfile` hard-codes
+`redirect("/ar/app/me?error=1")` / `?saved=1` regardless of the real locale — breaks the redirect target
+for an `/en` member. `privacy/actions.ts` (already correct, `${locale}`) is the pattern to match.
+States: empty-ish (a member with no company set — `REQ-PRF-001`'s acceptance criterion, the field
+required before reserving/proposing), populated, field error, after a save.
+
+**T2 · `/app/me/points` (SCR-022 ★).** Components: `PointsHistoryList`/`PointsCatalogue` (mine) restyled
+onto `Card`/`Panel` rows with `Badge` for the reversal/manual-adjustment tags (currently plain text);
+the session/month filters move onto `ui/select` (sessions', matching the materials settings-row fix
+from wave 6, `9a71f48`). DAL: `getPointsHistory`, `getPointsStripData` — `points.ts`, add-only, and I
+expect **zero new exports** (§3). States: empty, populated, filtered, a reversal entry, a capped-action
+explanation row (`SCR-022`'s own note — «بلغت الحد الأقصى للتعليقات في هذه الجلسة»).
+
+**T3 · `/app/me/certificates` (SCR-023).** Components: the existing list restyled onto `Card` +
+`Badge` (issued/revoked state), keeping the `dir="ltr"` `<bdi>` + `break-all` technique on the serial
+and verification code exactly as built (this is a real fix from a real 390 px review, not decoration —
+do not regress it) and the revoked-reason `Panel`. DAL: `listMyCertificates`, `signCertificateUrl`,
+`getOrgTimeZone` — `certificates.ts`, add-only, no new exports needed (read-only page, one signed-URL
+download link, no member-initiated write). States: empty, issued only, issued + revoked (with reason),
+a certificate still `preparing` (no `pdfPath` yet).
+
+**T4 · `/app/me/bookmarks` (SCR-024).** Components: replace the inline `<li>` list with `sessions`' own
+`SessionCard` (`components/browse/session-card.tsx` — density, the poster, the status badge, the
+bookmark toggle already built, exactly what a Coursera-style "saved sessions" list should look like) in
+a plain grid, `EmptyState` (mine) for zero bookmarks. DAL: **needs a new function from `sessions`** —
+see request 1 below; `bookmarks.ts` is fully `sessions`' (not even add-only for me) and `getBookmarksPageData`
+returns a thin DTO (`id`/`title`/`abstract`/`startsAt`/`state`/`bookmarkedAt`), not the `TimelineSession`
+shape `SessionCard` needs. States: empty, populated (mixed phases — open/ended).
+
+**T5 · `/app/me/calendar` (SCR-025).** Components: connect/disconnect restyled onto `Card`/`Panel`,
+`Badge` for connection status, synced events on `Card`. DAL: `getCalendarConnection`, `listSyncedEvents`,
+`disconnectCalendar` — `calendar.ts`, add-only, no new exports needed; already true by construction that
+no token is ever selectable (`calendar_connections`' granted columns exclude it — confirmed by reading
+the DAL, not assumed). **Bug found, fixed in the same commit:** `calendar/actions.ts`'s `disconnect`
+also hard-codes `/ar/...`. States: not connected, connected with synced events, a failed sync (the
+`synced.failedHint` row), just-connected/just-disconnected banners.
+
+**T6 · `/app/me/notifications` (SCR-026).** Components: `NotificationList`/`PreferenceMatrix` (mine)
+restyled onto `Card`/`Panel` rows with `Badge` for unread; the in-page `#inbox`/`#preferences` anchor
+nav stays (works with no JS, already accessible — `aria-current` on a link, not `aria-pressed` on a
+button) rather than moving to `ui/tabs`, since Radix's tab state and a hash-anchor two-section page are
+different mechanisms and the anchor version already satisfies the same need. DAL: `getPreferenceMatrix`,
+`listNotifications`, `markRead`, `markAllRead`, `setPreference` — `notifications.ts`, add-only, no new
+exports needed. **Bug found, fixed in the same commit:** `notifications/actions.ts` hard-codes `/ar/...`
+in three places. States: inbox empty, inbox populated (read + unread), unread-only filter, preferences
+with a fixed (non-switchable) category and its reason, preferences saved/error.
+
+**T7 · `/app/me/privacy` (`REQ-PRF-006`/`007`).** Components: restyle onto `Panel` (status boxes),
+`Field`/`Textarea` (sessions', replacing the raw `<textarea>`), and — the one real gap against the
+agent brief's "the destructive act confirmed in `ui/dialog`" — wrap the deactivation submit in a
+controlled `Dialog`/`DialogTrigger`/`DialogContent` (lead's, import-only), following
+`takedown-button.tsx`'s own established shape exactly (a plain `onClick` inside the confirm button that
+closes the dialog then starts the transition — never `DialogClose asChild` wrapping the action, which
+the lead's own real-build e2e run already found broken for this exact pattern). Today's form submits
+straight through with no confirm step at all. DAL: `getMyExportRequest`, `requestMyExport`,
+`requestDeactivation`, `deactivationReason` — `privacy.ts`, add-only, no new exports needed;
+`getOrgPrefs` stays imported read-only from `proposals.ts` (a read of another track's file is fine,
+only editing it is not). States: no export yet, export queued/building/ready/failed/expired, rate-limited
+(cannot request again), the deactivation dialog open, deactivation sent.
+
+### 3 — `me/points` and `checkin`'s reversal entry (REQ-CHK-017, contract 3)
+
+Read `points_ledger`'s own migration before assuming anything: `0027_m4_schema.sql:55-59` declares
+`ledger_source` as a Postgres enum whose literal values already include **`'reversal'`**, alongside
+`'content_removed'` and the rest — used today for `REQ-PTS-013`'s comment/photo-removal reversals.
+`getPointsHistory()` (`points.ts:121`) already computes `isReversal: r.source === "reversal"`
+**generically off that column**, not specific to content removal, and `PointsHistoryList`
+(`points-history-list.tsx:35`) already renders a `row.reversal` tag beside the `reason` text whenever
+`isReversal` is true. `reason` itself is free text (`points_ledger.reason`, 1–300 chars) written by
+whatever RPC inserts the row.
+
+**Reading:** if `checkin`'s `REQ-CHK-017` reversal RPC inserts into `points_ledger` with
+`source = 'reversal'` — the existing enum literal, since I have no migration access to widen
+`ledger_source` and neither should this feature need one — **`me/points` needs zero DAL changes** and
+already renders the row correctly today, structurally. I cannot alter a Postgres enum from
+`supabase/proposed/content/**` even if I wanted to, so this reading is also the only one I *could* build
+against without a schema change that is not mine to make.
+
+**Until contract 3 is published**, the fixture: a new `tests/components/scoring/points-history-list.test.tsx`
+(none exists today) with a `PointsLedgerRow` shaped `{ isReversal: true, isManualAdjustment: false,
+reason: "<placeholder Arabic sentence>", amount: <negative>, sessionId, sessionTitle }`, asserting the
+reversal tag renders beside the reason and the signed amount reads correctly (SCR-022: the sign at the
+numeral's inline-start, colour **and** the minus sign, never colour alone — `REQ-NFR-007`). Once
+contract 3 lands I swap the placeholder `reason` for `checkin`'s real sentence and add a second,
+real-DB-seeded case in `tests/e2e/wave7-content-points.spec.ts` (a directly-inserted `points_ledger` row
+with `source = 'reversal'` in local Supabase) so the 390 px capture is honest rather than mocked.
+
+### 4 — Carried items
+
+**1 · The photo tile's takedown label wraps** (`components/photos/gallery.tsx`/`takedown-button.tsx`,
+wave 6 row 9). Diagnosed: the `<li>` already has `min-w-0` so the grid track can shrink to two columns
+at 390 px, but `TakedownButton`'s "request" branch passes a **fixed** `h-9` — the same class of bug
+`preference-matrix.tsx` already names and fixed with `min-h-11` instead of `h-11` (*"a fixed height
+would clip it"*). Fix: `h-9` → `min-h-9` with `py-2` on that button's className, letting the two-line
+Arabic label wrap without clipping instead of overflowing a fixed box. No copy change needed — the
+label is honest, just long.
+
+**2 · `?saved=1` missing on a pre-hydration save** (wave 6 sync 2, `/app/me`). A plain
+`<form action={saveProfile}>` posting to a Server Action should progressively enhance — the `redirect()`
+inside it should survive a full browser POST with no client JS at all, which is the entire point of a
+Server Action form. I cannot fully diagnose this from source alone; it needs reproducing on a real build
+with JS disabled (or `test:e2e:local` before hydration completes) during the build phase. Hypothesis to
+test first: whether anything upstream of `saveProfile` — the shell, `RouteProgress`'s pending store, or
+a client wrapper `/app/me/page.tsx` does not have — intercepts the navigation client-side before the
+server's redirect response is honoured. Will report the actual mechanism once reproduced rather than
+guess further here.
+
+**3 · `tasks.spec.ts:143`** — mine to decide (STATUS's carried table) and, per the regenerated agent
+file, mine to fix (`tests/e2e/tasks.spec.ts` is now in my edit list; it was not in the wave-6 copy this
+session's spawn context carried). Read `session-matrix.ts` (`checkin`'s `AFFORDANCE_MATRIX`): `tasks`
+defaults `false` and is `true` only for the `confirmed`/`waitlisted`/`presenter`/`staff` relations, with
+an explicit comment at the `open` phase's `none`/`declined` rows — *"★★ calendar/tasks withheld — no
+seat yet (DEC-090's asks 1–3)"*. The spec's `tasks.spec.ts:beforeAll` provisions `memberEmail` as a
+plain member and **never gives it an RSVP row, a presenter row, or staff status** before
+`tasks.spec.ts:143` asserts the «مهام ما قبل الجلسة» heading is visible after signing in as that
+member and navigating straight to the event page. **Ruling: the spec is wrong, not the product** —
+`DEC-090`'s no-seat-no-tasks rule is a deliberate, commented, cross-referenced design decision (the
+same comment cites the exact DEC), not an oversight the test caught. Fix: seed a confirmed `rsvps` row
+for `memberEmail` in `beforeAll` before that assertion (matching whatever pattern `materials.spec.ts`/
+`photos.spec.ts` already use to give their own member fixtures a stake in the session — checking those
+at build time), or switch the assertion to `presenterEmail` if the smaller diff reads better; deciding
+which at build time and stating it in the commit message.
+
+**4 · T8 — `REQ-EVT-010` per `DEC-139`: a processing photo takes its place without a reload.** Mechanism:
+extend the existing private Realtime topic (`lib/realtime/channel.ts:46`, `subscribeToSessionTopic`,
+already broadcasting comment INSERT/UPDATE and reaction totals on `session:${sessionId}`) with a new
+broadcast event — e.g. `"photo_visible"` — fired by a new trigger in `supabase/proposed/content/**` on
+the photo row's transition to visible (the same moment `photos_read`'s `hidden_at is null` clause starts
+returning it, after `JOB-process_photo` strips and inserts it). `UploadWidget` subscribes for the
+duration of its own pending/processing state only — not an always-on listener — and calls
+`router.refresh()` once on that event; a bounded fallback (a single re-check after a fixed delay, not a
+recurring nudge — `DEC-136`'s carve-out is explicit that *"a data poll for server state"* is not the
+forbidden kick) covers the case where the subscription's mount races the worker's own broadcast. Exact
+trigger SQL and event name finalized at build time, proven in `tests/rls/photos.test.ts` and a new
+`tests/e2e/wave7-content-photos.spec.ts` assertion.
+
+### 5 — Requests
+
+**To `sessions`:**
+1. A new, add-only export in `bookmarks.ts` — e.g. `getBookmarkedTimelineSessions(locale): Promise<TimelineSession[]>`
+   — returning the member's own bookmarked sessions in the same shape `SessionCard` already reads,
+   `bookmarked: true` on every row by construction, ordered most-recently-bookmarked-first. `bookmarks.ts`
+   is fully yours (not even add-only for me per my never-touch list), so this is a request, not something
+   I can write myself even as an addition.
+2. Confirmation that `SessionCard` has no hidden dependency on timeline-only context (filter state,
+   date grouping, `searchParams`) that would misrender on a plain bookmarks list — I will verify by
+   reading the component fully at build time, but flagging now in case there is a known gap.
+
+**To `checkin`:**
+1. Confirm the `REQ-CHK-017` reversal row's `source` is the existing `ledger_source` enum literal
+   `'reversal'`, not a new one — I cannot widen that enum from `supabase/proposed/content/**`.
+2. The exact Arabic `reason` sentence(s) for the reversal, so it reads naturally beside the existing
+   `row.reversal` tag rather than repeating it.
+3. Confirmation that the reversal row's `session_id` is populated, so `me/points`'s existing "open the
+   session" link works on it identically to any other row (I read `REQ-CHK-017`'s acceptance criteria
+   as implying yes — a removal is scoped to one session's check-in — but want it confirmed, not assumed).
+
+**To the lead:**
+1. **Question — the IA reconciliation (§1).** Is the seven-tab resolution (matching the seven real
+   routes, profile first) the right reading, or is there a different intent behind §6.5's six
+   canvas tabs that I'm missing? I am not building **القادمة/الحاضرة/المقترحات** as literal tabs this
+   wave under my current route/DAL access, per `DEC-114`'s rule — raising rather than silently
+   deciding either way.
+2. **Question — the profile hub's optional points `Stat`** (§1, §2 T1). Add it, or keep `/app/me`
+   exactly the form plus the new tab strip? My default absent a ruling is to add it (no new DAL access
+   needed, and it is the one piece of "renders content, not links" my own data reaches); happy to drop
+   it for the smaller diff.
+3. `src/components/shell/account-menu.tsx:54-59` is yours, not mine, and I found a live inconsistency
+   reading it for §1: `labels.rsvps` and `labels.profile` both link to `/app/me` (a dead duplicate),
+   and `notifications`/`privacy` have no entry at all despite being real, built routes. Once the hub's
+   own tab strip makes every `/me` route reachable from `/app/me` itself, the menu may not need six
+   separate `/me/*` entries at all — my suggestion is to collapse it to one «حسابي» link to `/app/me`,
+   but it's your file and your call.
+4. Confirming `tests/e2e/tasks.spec.ts` is in my edit list on the regenerated agent file (it is, and
+   differs from the wave-6 copy this session's spawn context carried) — flagging only so we agree
+   before I commit a fix to it, since STATUS's carried-findings table phrased my job as "decide",
+   which I'm reading as "and fix," given the file is mine.
+
+Ready for sync — will start on `me/layout.tsx` and `/app/me` (T1) once the lead approves this plan, per
+the spawn brief's order ("build the layout and the hub first — every other route renders inside it").
