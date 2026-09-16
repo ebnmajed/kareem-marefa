@@ -1925,3 +1925,28 @@ is gone from the tree — the lead's promotion to `0091_photos_broadcast.sql` is
 checkout as I write this.
 
 Ready for sync.
+
+## §6 — post-promotion cleanup of `photos-broadcast.test.ts` (`d43e078`)
+
+Per the lead's "promoted at `e73b239` (0091)" message: dropped the now-dead `existsSync`/
+`applyProposed`/`PROPOSED`-array guard entirely (`setup()` is gone too — both tests now call
+`seed(tx)` directly), and rewrote the header comment to cite `supabase/migrations/0091_photos_broadcast.sql`
+instead of the proposed path, dropping the "nothing here touches the shared local database" framing
+that was specifically about the applyProposed mechanism, not about `withTx`'s rollback (which still
+holds and is still noted). Checked `tests/rls/realtime.test.ts` first to confirm this is the real,
+already-established convention for a promoted-migration test — its code already calls `seed(tx)`
+directly with no guard, even though its own header comment is stale and never got updated to match;
+I did not copy that staleness into mine.
+
+Verified: `pgrep` showed no other vitest runner, `npx vitest run --project rls
+tests/rls/photos-broadcast.test.ts` → 2/2 passed against the promoted migration, `tsc` clean, lint
+clean, full `npm test` → 139 files / 1409 tests passed. Staged and committed only this one file
+(`git status --short` before commit showed five other unstaged files under `checkin`'s/`sessions'`
+own paths — left untouched).
+
+**On the "carry on with the four sync-4b findings" line in that same message**: those four were
+already fixed and reported in `6e3a780`/§5 above, sent before the promotion message — this reply and
+the promotion message almost certainly crossed. Flagging it here rather than silently assuming;
+nothing further to do on them unless the lead saw something after `6e3a780` that still needs work.
+
+Ready for sync.
