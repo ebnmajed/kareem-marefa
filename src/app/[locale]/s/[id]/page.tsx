@@ -4,8 +4,12 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime, formatTime, sameDay } from "@/components/sessions/numerals";
 import { buildPublicCardMetadata, publicCardImagePath, siteOrigin } from "@/components/sessions/public-card-metadata";
+import { SessionStatusBadge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
+import { Card, CardBody, CardMedia } from "@/components/ui/card";
 import { getPublicSessionCard } from "@/lib/dal/sessions";
 import { platformConfigured } from "@/lib/supabase/env";
+import { sessionPhase } from "@/lib/session-status";
 
 // `/{locale}/s/{id}` — THE PUBLIC SESSION CARD. The owner's decision of
 // 2026-09-15, and the only page of the platform a stranger may read about a
@@ -37,6 +41,25 @@ import { platformConfigured } from "@/lib/supabase/env";
 // stream link, no join affordance, because there is none in the product).
 // The abstract, the presenters and the attendance are not withheld by this
 // component — they never arrive.
+//
+// ★★ THE 404 IS A REAL 404, AND THIS FILE IS WHAT KEEPS IT ONE (DEC-134 item
+// 4). Under `/app`, a `loading.tsx` wraps every page in Suspense, the response
+// has started streaming before any gate runs, and `notFound()` can only answer
+// 200 with `noindex`. A crawler reads the STATUS, so this route must not stream
+// before it knows the card exists:
+//
+//   · no `loading.tsx` anywhere under `src/app/[locale]/s/`, ever;
+//   · no `<Suspense>` in this page above the `notFound()`;
+//   · `platformConfigured()` and `card(id)` are the first two awaits.
+//
+// `not-found.tsx` beside this file is not a Suspense boundary; it renders the
+// Arabic page without changing the status.
+//
+// ★ THE BADGE COMES FROM THE CLOCK ALONE (DEC-141). The function returns no
+// state and no seats — DEC-066's allowlist — so the phase is `sessionPhase()`
+// over a `published` session's times: `live` and `ended` are said; `open`
+// shows nothing, because «التسجيل مفتوح» would be a claim about seats the card
+// cannot see.
 
 const card = cache(getPublicSessionCard);
 
@@ -73,76 +96,83 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
         : formatDateTime(data.endsAt, data.timeZone, locale)
       : null;
   const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
+  // Clock only, over a published session's times — see the header.
+  const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt });
+  const ended = phase === "ended";
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-10 sm:py-16">
-      {/* The poster first — it is the thing that was shared. A plain <img>,
-          not next/image: the bytes come from a Route Handler that reads a
-          private bucket, so there is nothing for the optimiser to cache and
-          no remote pattern to declare. The box is reserved at the artifact's
-          OWN ratio so the card does not jump when it lands. */}
-      {data.hasImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={publicCardImagePath(data.id)}
-          alt={t("posterAlt")}
-          className="w-full rounded-card border border-edge bg-silver-100"
-          width={data.imageWidth ?? undefined}
-          height={data.imageHeight ?? undefined}
-          style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}
-        />
-      ) : null}
+      <Card density="grid">
+        {data.hasImage ? (
+          // The poster first — it is the thing that was shared. A plain <img>,
+          // not next/image: the bytes come from a Route Handler that reads a
+          // private bucket, so there is nothing for the optimiser to cache.
+          // Not `CardMedia` either: it crops to three fixed ratios, and the
+          // `og` render is designed at its own. The box is reserved at that
+          // ratio so the card does not jump when it lands. The ended wash is
+          // on the IMAGE only; the badge below is never dimmed (DEC-123).
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={publicCardImagePath(data.id)}
+            alt={t("posterAlt")}
+            className={`block w-full bg-silver-100 ${ended ? "grayscale opacity-45" : ""}`}
+            width={data.imageWidth ?? undefined}
+            height={data.imageHeight ?? undefined}
+            style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}
+          />
+        ) : (
+          // No render yet: the house typographic placeholder, never nothing.
+          <CardMedia placeholderFrom={data.title} aspect="16/9" dimmed={ended} />
+        )}
+        <CardBody className="gap-3 p-5 sm:p-6">
+          {phase === "live" || ended ? <SessionStatusBadge phase={phase} /> : null}
+          <p className="text-body-sm text-fg-muted">{t.rich("presentedBy", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
+          <h1 className="text-h1 text-fg-heading">
+            <bdi>{data.title}</bdi>
+          </h1>
 
-      <p className={`text-body-sm text-fg-muted ${data.hasImage ? "mt-6" : ""}`}>
-        {t.rich("presentedBy", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}
-      </p>
+          <dl className="mt-2 flex flex-col gap-4 border-t border-edge pt-4">
+            <div>
+              <dt className="text-label text-fg-heading">{t("whenLabel")}</dt>
+              <dd className="mt-1 text-body text-fg-body">
+                {when ? (
+                  <>
+                    <bdi>{when}</bdi>
+                    {/* `whitespace-nowrap`, because at 390 px the clause broke
+                        between «3:03» and «م» and left the meridiem alone on the
+                        next line — seen in the RTL capture, not reasoned about.
+                        The clause moves as a whole instead. */}
+                    {until ? (
+                      <span className="whitespace-nowrap text-fg-muted">
+                        {" · "}
+                        {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  t("notScheduled")
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-label text-fg-heading">{t("whereLabel")}</dt>
+              {/* The NAME, and no address and no map link: a stranger is told
+                  which hall, never how to find the side door (12 T3). */}
+              <dd className="mt-1 text-body text-fg-body">{data.venueName ? <bdi>{data.venueName}</bdi> : t("noVenue")}</dd>
+            </div>
+          </dl>
 
-      <h1 className="mt-2 text-h1 text-fg-heading">
-        <bdi>{data.title}</bdi>
-      </h1>
+          {/* ★ REQ-SES-008. Said once, plainly, so nobody arrives expecting a
+              link to join from home. */}
+          <p className="text-body-sm text-fg-muted">{t("inPersonNote")}</p>
+        </CardBody>
+      </Card>
 
-      <dl className="mt-6 flex flex-col gap-4 border-t border-edge pt-6">
-        <div>
-          <dt className="text-label text-fg-heading">{t("whenLabel")}</dt>
-          <dd className="mt-1 text-body text-fg-body">
-            {when ? (
-              <>
-                <bdi>{when}</bdi>
-                {/* `whitespace-nowrap`, because at 390 px the clause broke
-                    between «3:03» and «م» and left the meridiem alone on the
-                    next line — seen in the RTL capture, not reasoned about.
-                    The clause moves as a whole instead. */}
-                {until ? (
-                  <span className="whitespace-nowrap text-fg-muted">
-                    {" · "}
-                    {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              t("notScheduled")
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-label text-fg-heading">{t("whereLabel")}</dt>
-          {/* The NAME, and no address and no map link: a stranger is told
-              which hall, never how to find the side door (12 T3). */}
-          <dd className="mt-1 text-body text-fg-body">{data.venueName ? <bdi>{data.venueName}</bdi> : t("noVenue")}</dd>
-        </div>
-      </dl>
-
-      {/* ★ REQ-SES-008. Said once, plainly, so nobody arrives expecting a
-          link to join from home. */}
-      <p className="mt-4 text-body-sm text-fg-muted">{t("inPersonNote")}</p>
-
-      {/* ONE primary action, and it is honest about what is behind it. */}
-      <div className="mt-8 border-t border-edge pt-8">
+      {/* ONE primary action, and it is honest about what is behind it. An
+          anchor, not the house Link: sign-in is a document navigation. */}
+      <div className="mt-8 flex flex-col gap-4">
         <p className="text-body text-fg-body">{t.rich("membersOnly", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
-        <a
-          href={signInHref}
-          className="mt-4 inline-flex min-h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
-        >
+        <a href={signInHref} className={buttonClass("primary", "lg", "w-full sm:w-fit")}>
           {t("signIn")}
         </a>
       </div>

@@ -101,7 +101,10 @@
       "inPersonNote": "In the room only.",
       "membersOnly": "The full session page is for members of <bdi>{org}</bdi>.",
       "signIn": "Sign in to reserve your seat",
-      "posterAlt": "Session poster"
+      "posterAlt": "Session poster",
+      "unavailableTitle": "This session isn't available",
+      "unavailableBody": "The link may be wrong, or the session isn't shown publicly.",
+      "unavailableBack": "Go to the home page"
     }
   }
 }
