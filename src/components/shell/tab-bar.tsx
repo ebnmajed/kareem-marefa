@@ -1,5 +1,9 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { CalendarIcon, PlusIcon, UserIcon } from "@/components/ui/icons";
+import { isImmersive } from "@/components/shell/shell-routes";
 
 // The phone tab bar — `16` §6.1 note 2, DEC-072, DEC-098, REQ-UIX-002.
 //
@@ -21,46 +25,16 @@ import { CalendarIcon, PlusIcon, UserIcon } from "@/components/ui/icons";
 //     «احجز مقعدًا» on the one screen where the requirement demands
 //     reachability, and a bottom bar is reachable at every scroll position.
 //
-// ★ The decision is made on the SERVER, from the `x-pathname` header
-// `proxy.ts` forwards. A client component calling `usePathname()` would make
-// `<main>`'s bottom padding a hydration result, and a client-decided bar is a
-// visible layout shift on every immersive screen.
+// ★ The decision is made from `usePathname()` in this client component, and so is
+// `<main>`'s (`shell-frame.tsx`). It was made on the server from `x-pathname`, which a
+// layout never re-reads on a client-side navigation — see `shell-routes.ts`.
 //
 // It adds `env(safe-area-inset-bottom)` to its own padding — the standing rule
 // from the mobile pass — and `<main>` gains a matching `padding-block-end` IN
 // THE SAME COMMIT, because `app/layout.tsx` had none and a fixed bottom bar
 // covers the last ~64 px of all 49 screens ever written at once.
 
-/**
- * Routes where the bar is replaced by that screen's own bottom action bar.
- * Matched against the path with the locale stripped.
- *
- * `/app/sessions/[id]` matches, but `/app/sessions` must not — browse is a
- * list and keeps the tab bar. Hence the trailing-segment test rather than a
- * prefix.
- */
-const IMMERSIVE: RegExp[] = [
-  /^\/app\/sessions\/[^/]+(\/|$)/, // the event page and everything under it
-  /^\/app\/admin\/designer\//, // the studio
-  /^\/app\/admin\/emails(\/|$)/, // the email studio
-];
-
-export function isImmersive(pathname: string | null): boolean {
-  if (!pathname) return false;
-  const withoutLocale = pathname.replace(/^\/(ar|en)(?=\/|$)/, "");
-  return IMMERSIVE.some((r) => r.test(withoutLocale));
-}
-
-/** The event page itself — `/app/sessions/[id]` and nothing under it. It owns its full-bleed
- *  dark band and its own container, and carries the bottom action bar below `md`. */
-export function isEventPage(pathname: string | null): boolean {
-  if (!pathname) return false;
-  return /^\/app\/sessions\/[^/]+$/.test(pathname.replace(/^\/(ar|en)(?=\/|$)/, ""));
-}
-
 export interface TabBarProps {
-  /** The path with its locale, from `x-pathname`. */
-  pathname: string | null;
   labels: { nav: string; sessions: string; propose: string; me: string };
 }
 
@@ -75,7 +49,8 @@ const TABS = [
   { href: "/app/me", key: "me", Icon: UserIcon, current: (p: string) => p.startsWith("/app/me") },
 ] as const;
 
-export function TabBar({ pathname, labels }: TabBarProps) {
+export function TabBar({ labels }: TabBarProps) {
+  const pathname = usePathname();
   if (isImmersive(pathname)) return null;
   const withoutLocale = (pathname ?? "").replace(/^\/(ar|en)(?=\/|$)/, "");
 

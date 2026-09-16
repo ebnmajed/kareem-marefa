@@ -230,3 +230,31 @@ test("★ the skip link is the first focusable element and targets #main (SC 2.4
   // It must also be reachable: a 44 px target, per REQ-NFR-007.
   expect(box!.height).toBeGreaterThanOrEqual(36);
 });
+
+test("★ the bar and <main> follow a CLIENT-SIDE navigation too — a layout is not re-rendered when only its children change", async ({ context, page }) => {
+  // Found by `sessions` in wave 6: the decision was made in `app/layout.tsx` from the
+  // request path, so browse → a session kept the tab bar and the container. Both are
+  // now client components reading the pathname; this proves it both ways without a
+  // full load in between.
+  test.skip(!sessionId, "needs the published session the contextual test creates");
+  await signIn(context);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bar = page.getByRole("navigation", { name: "التنقّل الرئيسي" });
+  const main = page.locator("main#main");
+
+  await page.goto(`/ar/app/sessions/${sessionId}`);
+  await expect(bar).toHaveCount(0);
+  await expect(main).not.toHaveClass(/max-w-6xl/);
+
+  // OUT through an in-app link to browse — a client-side navigation.
+  await page.locator('main a[href$="/app/sessions"]').first().click();
+  await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
+  await expect(bar).toBeVisible();
+  await expect(main).toHaveClass(/max-w-6xl/);
+
+  // BACK in with the history stack — also client-side under the App Router.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}$`));
+  await expect(bar).toHaveCount(0);
+  await expect(main).not.toHaveClass(/max-w-6xl/);
+});

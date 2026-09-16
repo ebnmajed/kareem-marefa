@@ -8,7 +8,8 @@ import { getBrandKit, type BrandKit } from "@/lib/brand/kit";
 import { getMe } from "@/lib/dal/members";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { SearchEntry } from "@/components/shell/search-entry";
-import { TabBar, isEventPage, isImmersive } from "@/components/shell/tab-bar";
+import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
+import { TabBar } from "@/components/shell/tab-bar";
 import { ChevronIcon } from "@/components/ui/icons";
 import { Menu } from "@/components/ui/menu";
 import { RouteProgress } from "@/components/ui/route-progress";
@@ -84,16 +85,6 @@ export default async function AppLayout({
   const isPlatformAdmin =
     (isMember && state.session.platformAdmin) ||
     (state.kind === "no_org" && state.platformAdmin);
-  // `proxy.ts` forwards the path so the shell can decide, on the SERVER,
-  // whether this screen carries the tab bar (DEC-098) — and `<main>`'s bottom
-  // padding follows the same decision rather than a hydration result.
-  const pathname = (await headers()).get("x-pathname");
-  const hasTabBar = !isImmersive(pathname);
-  // The event page owns its full-bleed band and its own container (sessions R-L1): `<main>`
-  // gives it no max-width and no padding there, and it clears the page's bottom ACTION bar
-  // exactly as it clears the tab bar elsewhere — `--tabbar-h` carries whichever bar exists.
-  const fullBleed = isEventPage(pathname);
-  const clearsBottomBar = hasTabBar || fullBleed;
   // ★ Guarded on `isMember`, and that guard is DEC-057's lesson, not caution:
   // `getMe()` goes through `sessionClient()`, and a platform admin with no
   // member row would be redirected to /no-access from EVERY console screen —
@@ -222,32 +213,9 @@ export default async function AppLayout({
 
           It is applied only when the bar is actually present, and only below
           `md`, where the bar is. */}
-        <main
-          id="main"
-          className={fullBleed ? undefined : "mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"}
-          style={
-            clearsBottomBar
-              ? {
-                  paddingBlockEnd:
-                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
-                }
-              : undefined
-          }
-        >
-          {children}
-        </main>
+        <ShellMain>{children}</ShellMain>
 
-        <footer
-          className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-body-sm text-fg-muted md:px-8"
-          style={
-            clearsBottomBar
-              ? {
-                  paddingBlockEnd:
-                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
-                }
-              : undefined
-          }
-        >
+        <ShellFooter>
           <Link
             href="/legal/privacy"
             className="underline underline-offset-4 hover:text-fg-heading"
@@ -261,11 +229,10 @@ export default async function AppLayout({
           >
             {t("terms")}
           </Link>
-        </footer>
+        </ShellFooter>
 
         {isMember ? (
           <TabBar
-            pathname={pathname}
             labels={{
               nav: t("primaryNav"),
               sessions: t("sessions"),
