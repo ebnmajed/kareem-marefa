@@ -103,7 +103,7 @@ describe("Materials slot", () => {
     // (narrowed to the tag: the wrapping Panel <div> has the identical
     // textContent, which a bare textContent match would also catch).
     expect(
-      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === 'الخط "Amiri" غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد.'),
+      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "الخط «Amiri» غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد."),
     ).toBeInTheDocument();
   });
 
