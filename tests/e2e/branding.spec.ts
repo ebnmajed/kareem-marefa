@@ -112,8 +112,18 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   const { rows: beforeRows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(beforeRows).toEqual([]);
 
-  await page.getByLabel("رفع شعار").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG });
-  await expect(page.getByRole("status").filter({ hasText: "نقطة/بوصة" })).toBeVisible();
+  // ★ DEC-145: locators under `/app` scope to `#main`, past the shell's own
+  // forms and any orphaned streamed copy.
+  const main = page.locator("#main");
+
+  // `ui/file-drop`'s own input carries no `aria-label` (the visible
+  // affordance is the "اختر ملفات" button it wraps) — the picker only
+  // REPORTS the file (`onFiles`); the round trip starts on the separate
+  // "رفع شعار" button below, the same pick-then-submit shape
+  // `photos/upload-widget.tsx` already uses.
+  await main.locator('input[type="file"][name="logo"]').setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG });
+  await main.getByRole("button", { name: "رفع شعار" }).click();
+  await expect(main.getByRole("status").filter({ hasText: "نقطة/بوصة" })).toBeVisible();
 
   // "كريم معرفة" is ambiguous on this page (the nav Wordmark carries the
   // same text as the live preview's sample heading) — the live-preview's
@@ -122,10 +132,14 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   // browser against a real database can prove is the round trip THIS test
   // checks below: save, reload, and the org theme CSS layer (`.brand-org`,
   // DEC-053 decision 3) actually carries the new colour into the shell.
-  const headingField = page.getByLabel("لون العناوين").first();
+  const headingField = main.getByLabel("لون العناوين").first();
   await headingField.fill("#ff5500");
 
-  await page.getByRole("button", { name: "حفظ" }).click();
+  await main.getByRole("button", { name: "حفظ" }).click();
+  // The save's outcome is a toast (`ui/toast`) now, not an inline
+  // paragraph — its viewport is a shell-level sibling of `#main`, so this
+  // one assertion is deliberately unscoped (matching `wave7-content-me.
+  // spec.ts:134`'s own toast check).
   await expect(page.getByText("تم حفظ هوية المؤسسة.")).toBeVisible();
 
   const { rows } = await db.query<{ light_fg_heading: string; logo_asset_id: string | null }>(
@@ -152,7 +166,7 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   // resolved through the `@theme inline` layer, not read off a class name
   // or an inline style string.
   await page.reload();
-  await expect(page.getByLabel("لون العناوين").first()).toHaveValue("#ff5500");
+  await expect(page.locator("#main").getByLabel("لون العناوين").first()).toHaveValue("#ff5500");
   await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(255, 85, 0)");
 });
 
@@ -160,8 +174,14 @@ test("resetting deletes the row — every consumer returns to the platform defau
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/branding");
 
-  await page.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).last().click();
-  await page.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).last().click();
+  // The trigger opens `ui/dialog`; the confirm button of the SAME name
+  // lives inside it (REQ-UIX-013 — names the object, states the
+  // consequence before the click), so it is reached by scoping to the
+  // dialog rather than by DOM order.
+  await page.locator("#main").getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();
+  const resetDialog = page.getByRole("dialog");
+  await resetDialog.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();
+  // The outcome is a toast, unscoped — same reasoning as the save above.
   await expect(page.getByText("أُعيد ضبط هوية المؤسسة إلى الوضع الافتراضي.")).toBeVisible();
 
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
