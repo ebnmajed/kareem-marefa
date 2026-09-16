@@ -133,6 +133,25 @@ test("the page header and the report card render for a real open photo report", 
   await expect(page.getByText("محتوى غير لائق")).toBeVisible();
 });
 
+// ★ ORDERED HERE, BEFORE THE RESOLUTION TEST BELOW, on purpose — a real
+// sync-3 finding: `test.describe.configure({ mode: "serial" })` above runs
+// every test in this file, in file order, and the resolution test below
+// RESOLVES this file's one seeded report. Run after it (its original
+// position), the tab strip correctly showed every count at 0 — not a
+// product bug, this file's own test order emptying the queue before
+// checking it.
+test("wave 7: the shared ModerationTabs strip counts each queue separately, and moves without merging them (DEC-005)", async ({ context, page }) => {
+  await signIn(context);
+  await goto(page, "/ar/app/admin/moderation/reports");
+  const tabs = page.getByRole("tablist", { name: "قوائم الإشراف" });
+  await expect(tabs.getByRole("tab", { name: /بلاغات الصور.*1/ })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tab", { name: /التعليقات.*0/ })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: /طلبات الإخفاء.*0/ })).toBeVisible();
+
+  await tabs.getByRole("tab", { name: /التعليقات/ }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
+});
+
 test("★ removing confirms in a dialog naming the session — cancel changes nothing, confirm resolves the report and removes the photo", async ({ context, page }) => {
   await signIn(context);
   await goto(page, "/ar/app/admin/moderation/reports");
@@ -155,16 +174,4 @@ test("★ removing confirms in a dialog naming the session — cancel changes no
   const photo = await db.query<{ removed_at: string | null; hidden_at: string | null }>(`select removed_at, hidden_at from public.photos where id = $1`, [photoId]);
   expect(photo.rows[0].removed_at).not.toBeNull();
   expect(photo.rows[0].hidden_at).not.toBeNull();
-});
-
-test("wave 7: the shared ModerationTabs strip counts each queue separately, and moves without merging them (DEC-005)", async ({ context, page }) => {
-  await signIn(context);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  const tabs = page.getByRole("tablist", { name: "قوائم الإشراف" });
-  await expect(tabs.getByRole("tab", { name: /بلاغات الصور.*1/ })).toHaveAttribute("aria-selected", "true");
-  await expect(tabs.getByRole("tab", { name: /التعليقات.*0/ })).toBeVisible();
-  await expect(tabs.getByRole("tab", { name: /طلبات الإخفاء.*0/ })).toBeVisible();
-
-  await tabs.getByRole("tab", { name: /التعليقات/ }).click();
-  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
 });

@@ -174,5 +174,9 @@ test("SCR-063 at 390 px RTL: the settings form reads down the page, never sidewa
     return offenders.slice(0, 6);
   });
   expect(overflow, "the settings form must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/wave7-console-settings-populated-${test.info().project.name}.png`, fullPage: true });
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/wave7-console-settings-populated-${test.info().project.name}.png`, fullPage: true });
 });

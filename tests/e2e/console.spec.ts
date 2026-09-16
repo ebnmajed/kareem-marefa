@@ -209,6 +209,38 @@ test("a moderator's rail regroups to exactly three top-level entries, matching R
   await expect(nav.getByRole("link", { name: "البلاغات" })).toHaveAttribute("href", "/ar/app/admin/moderation/reports");
 });
 
+// ★ Captures the phone drawer OPEN with a group disclosed — a sync-3
+// finding: the fourteen-group IA is K0's own headline, and no capture from
+// the first pass showed it, only the closed drawer and the desktop rail. One
+// capture per role, since a moderator's drawer shows a different rail
+// entirely (§1's own regroup) and both are worth a look.
+async function captureDisclosedDrawer(page: Page, name: string) {
+  await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
+  const dialog = page.getByRole("dialog", { name: "لوحة إدارة المؤسسة" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "الإشراف" }).click();
+  await expect(dialog.getByRole("link", { name: "التعليقات" })).toBeVisible();
+  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+  mkdirSync(dir, { recursive: true });
+  await page.screenshot({ path: join(dir, `wave7-console-rail-drawer-${name}-disclosed.png`), fullPage: true });
+}
+
+test("phone: the drawer captured open with «الإشراف» disclosed, as an admin", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
+  await signIn(context);
+  await page.setViewportSize(PHONE);
+  await goto(page, "/ar/app/admin");
+  await captureDisclosedDrawer(page, "admin");
+});
+
+test("phone: the drawer captured open with «الإشراف» disclosed, as a moderator", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
+  await signIn(context, "moderator");
+  await page.setViewportSize(PHONE);
+  await goto(page, "/ar/app/admin/sessions");
+  await captureDisclosedDrawer(page, "moderator");
+});
+
 test("an admin screen this track did not rebuild this wave still renders correctly under the new rail, captured at both widths", async ({ context, page }, testInfo) => {
   await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
@@ -216,7 +248,11 @@ test("an admin screen this track did not rebuild this wave still renders correct
   // "untouched." Not this track's, not this wave's, per `DEC-137`.
   await goto(page, "/ar/app/admin/exports");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  const dir = join(process.cwd(), ".qa-shots", "rtl");
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `process.cwd()` was wave 7's own sync-3 finding: every capture landed
+  // in the worktree, not the main checkout `STATUS.md` cites.
+  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
   mkdirSync(dir, { recursive: true });
   const name = testInfo.project.name === "phone" ? "390" : "desktop";
   await page.screenshot({ path: join(dir, `wave7-console-layout-untouched-${name}.png`), fullPage: true });

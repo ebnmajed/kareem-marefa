@@ -50,6 +50,17 @@ test.beforeAll(async ({}, testInfo) => {
     if (error) throw error;
     userIds.push(data.user.id);
   }
+
+  // ★ Seeded here, by DB insert, not only through the UI — a real sync-3
+  // finding. REQ-ADM-007/008's own add-then-deactivate tests are
+  // `desktop`-only (row-scoped interaction, no `<table>`/`role="row"` on the
+  // phone card stack), so on the PHONE PROJECT's own run neither test ever
+  // executes, and the phone-only 390 px capture below was navigating to an
+  // org with zero categories and zero companies — hence "populated" showing
+  // the empty state, not a product bug. A row seeded directly, present for
+  // both projects regardless of which desktop-only tests ran.
+  await db.query(`insert into public.categories (org_id, name) values ($1, 'تصنيف قائم')`, [orgId]);
+  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة قائمة')`, [orgId]);
 });
 
 test.afterAll(async () => {
@@ -116,7 +127,11 @@ async function review(p: Page, name: string) {
     return offenders.slice(0, 6);
   });
   expect(overflow, `${name} must not scroll sideways at 390 px`).toEqual([]);
-  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await p.screenshot({ path: `${dir}/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
 // ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
@@ -158,11 +173,16 @@ test("REQ-ADM-007: an admin adds a category, then deactivates and reactivates it
   const dialog = page.getByRole("dialog", { name: "تعطيل «تصنيف اختباري»؟" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد التعطيل" }).click();
-  await expect(page.getByRole("status")).toContainText("تم التعطيل.");
+  // ★ Filtered by text, not a bare `getByRole("status")` — a real sync-3
+  // finding: the deactivate toast can still be up (`ui/toast`'s own
+  // auto-dismiss window) when the reactivate one arrives a moment later,
+  // two `role="status"` elements at once. Stacking toasts is fine; the
+  // assertion just needs to name which one.
+  await expect(page.getByRole("status").filter({ hasText: "تم التعطيل." })).toBeVisible();
   await expect(row.getByText("معطّل")).toBeVisible();
 
   await row.getByRole("button", { name: "أعد التفعيل" }).click();
-  await expect(page.getByRole("status")).toContainText("تمت إعادة التفعيل.");
+  await expect(page.getByRole("status").filter({ hasText: "تمت إعادة التفعيل." })).toBeVisible();
   await expect(row.getByText("معطّل")).toHaveCount(0);
 
   const { rows } = await db.query(`select deactivated_at from public.categories where org_id = $1 and name = 'تصنيف اختباري'`, [orgId]);
@@ -186,7 +206,7 @@ test("REQ-ADM-008: an admin adds a company, then deactivates it — no delete bu
   const dialog = page.getByRole("dialog", { name: "تعطيل «شركة اختبارية»؟" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد التعطيل" }).click();
-  await expect(page.getByRole("status")).toContainText("تم التعطيل.");
+  await expect(page.getByRole("status").filter({ hasText: "تم التعطيل." })).toBeVisible();
   await expect(row.getByText("معطّلة")).toBeVisible();
 
   const { rows } = await db.query(`select deactivated_at from public.companies where org_id = $1 and name = 'شركة اختبارية'`, [orgId]);

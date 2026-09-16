@@ -311,5 +311,9 @@ test("SCR-040 at 390 px RTL: the dashboard reads down the page, never sideways",
     return offenders.slice(0, 6);
   });
   expect(overflow, "the dashboard must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-040-admin-dashboard-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/scr-040-admin-dashboard-390-rtl-${test.info().project.name}.png`, fullPage: true });
 });

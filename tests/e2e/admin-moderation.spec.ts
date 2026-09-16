@@ -203,6 +203,67 @@ test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the t
   await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
 });
 
+// ★ ORDERED HERE, BEFORE THE THREE RESOLUTION TESTS BELOW, on purpose — a
+// real sync-3 finding: `mode: "serial"` runs every test IN FILE ORDER within
+// a project, and none of the three resolution tests below carry a
+// project skip, so they ran on the phone project too. Captured AFTER them
+// (its original position), this test showed all three queues freshly
+// resolved — «لا بلاغات مفتوحة» and every tab count at 0 — not because the
+// product is broken, but because this file's own OWN prior tests had
+// already cleared the seeded data by the time it ran. Moved here, right
+// after the read-only moderator-view test and before anything mutates.
+test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sideways", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+  await page.setViewportSize(PHONE);
+  await signIn(context, modEmail);
+  // `wave7-console-…` — the row-cited path `docs/plan/notes/console.md`'s
+  // "Wave 7 plan" §2/§4 commits to for K1/K2, and `reports`' own missing
+  // capture (wave 6's own carried finding) closed in the same pass now that
+  // the shared `ModerationTabs` strip touches all three pages together.
+  // `E2E_SHOTS_DIR` — same reason `console.spec.ts` carries it: a run in the
+  // verification worktree must land its captures at the path `STATUS.md`
+  // cites, not `process.cwd()`.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  for (const [path, name] of [
+    ["comments", "wave7-console-moderation-comments-populated"],
+    ["photos", "wave7-console-moderation-photos-populated"],
+    ["reports", "wave7-console-moderation-reports-populated"],
+  ] as const) {
+    await goto(page, `/ar/app/admin/moderation/${path}`);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
+    // document the vertical scrollbar sits on the left, so that difference is the
+    // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
+    // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
+    const overflow = await page.evaluate(() => {      // First question: does the page itself scroll sideways? (One number; on the
+      // phone project innerWidth already includes no classic scrollbar.)
+      if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+      // Second: which element is responsible. An element inside an
+      // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+      // tables), and a `position: fixed` overlay spans the visual viewport by
+      // design; neither makes the page scroll, so neither is named.
+      const limit = window.innerWidth;
+      const offenders: string[] = [];
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+        if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+        const box = el.getBoundingClientRect();
+        if (box.width === 0) continue;
+        if (box.right <= limit + 1 && box.left >= -1) continue;
+        let contained = false;
+        for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+        }
+        if (contained) continue;
+        offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      }
+      return offenders.slice(0, 6);
+    });
+    expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
+    await page.screenshot({ path: `${dir}/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  }
+});
+
 test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/moderation/comments");
@@ -275,53 +336,5 @@ test("REQ-PTS-013: removing a reported photo reverses its original points award 
     reportedPhotoId,
   ]);
   expect(reversal.rows).toEqual([{ amount: -3 }]);
-});
-
-test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sideways", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
-  await page.setViewportSize(PHONE);
-  await signIn(context, modEmail);
-  // `wave7-console-…` — the row-cited path `docs/plan/notes/console.md`'s
-  // "Wave 7 plan" §2/§4 commits to for K1/K2, and `reports`' own missing
-  // capture (wave 6's own carried finding) closed in the same pass now that
-  // the shared `ModerationTabs` strip touches all three pages together.
-  for (const [path, name] of [
-    ["comments", "wave7-console-moderation-comments-populated"],
-    ["photos", "wave7-console-moderation-photos-populated"],
-    ["reports", "wave7-console-moderation-reports-populated"],
-  ] as const) {
-    await goto(page, `/ar/app/admin/moderation/${path}`);
-    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
-    // document the vertical scrollbar sits on the left, so that difference is the
-    // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
-    // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
-    const overflow = await page.evaluate(() => {      // First question: does the page itself scroll sideways? (One number; on the
-      // phone project innerWidth already includes no classic scrollbar.)
-      if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
-      // Second: which element is responsible. An element inside an
-      // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
-      // tables), and a `position: fixed` overlay spans the visual viewport by
-      // design; neither makes the page scroll, so neither is named.
-      const limit = window.innerWidth;
-      const offenders: string[] = [];
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
-        if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
-        const box = el.getBoundingClientRect();
-        if (box.width === 0) continue;
-        if (box.right <= limit + 1 && box.left >= -1) continue;
-        let contained = false;
-        for (let n: HTMLElement | null = el; n; n = n.parentElement) {
-          const cs = getComputedStyle(n);
-          if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
-        }
-        if (contained) continue;
-        offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
-      }
-      return offenders.slice(0, 6);
-    });
-    expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
-    await page.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
-  }
 });
 
