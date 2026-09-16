@@ -3,7 +3,7 @@ are on the design system and about forty-three are not.
 
 **Read in this order.** `docs/plan/STATUS.md` — the **START HERE** block, then the wave-6 record and
 its **«Wave 7 — the remainder»** section, which is your scope list and was written by the lead who
-just finished. Then `DECISIONS.md` **`DEC-110` … `DEC-135`** in full. Then `CLAUDE.md`,
+just finished. Then `DECISIONS.md` **`DEC-110` … `DEC-136`** in full. Then `CLAUDE.md`,
 `TEAM.md` §1–§3, and `16-ui-redesign.md` (§15 and §16 are superseded on *sequencing* only —
 `DEC-110`). The canvas is a **reference, not a specification**: `DEC-114`, `DEC-122`, `DEC-123` and
 `DEC-124` catalogue five classes of error in it.
@@ -26,7 +26,7 @@ and has nineteen admin routes and the IA regroup ahead of it.
 
 | | |
 |---|---|
-| **lead** | the gates, migrations, promotion, the PR; the owner decision below; `ui/splash`'s LCP measurement |
+| **lead** | **task one below**, alone, before spawning anyone; then the gates, migrations, promotion, the PR; `ui/splash`'s LCP measurement |
 | **`checkin`** | `app/sessions/[id]/{check-in,host}` **and** the manual check-in switch with walk-ins as a publishing setting (`DEC-113`, `DEC-116`, `DEC-117`, `DEC-118`; `REQ-CHK-015`/`016`/`017`) |
 | **`sessions`** | `app/propose/**` (the largest form in the product), `app/sessions/[id]/rate`, `s/[id]` (how members actually arrive), `app/members/[id]`, `app/leaderboards` |
 | **`content`** | `app/me/**` — all seven routes |
