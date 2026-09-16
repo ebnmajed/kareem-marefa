@@ -982,5 +982,5 @@ after start and after stop, from the page and from the banner.
 - **`platform-schema.test.ts`'s baseline cases** now assert DEC-052's property (every
   family, one default per family) rather than eight rows, so `designer`'s seed promotion
   cannot turn them red; the exact count is `REQ-DSG-026`'s.
-- **The e2e run and all 15 captures** (`wave8-platform-*`), on the lead's build with
+- **The e2e run and all 13 captures** (`wave8-platform-*`), on the lead's build with
   `0009` and the roster seed applied.
