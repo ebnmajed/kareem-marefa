@@ -46,7 +46,18 @@ export function Tabs({
 }: TabsProps & { }) {
   return (
     <RadixTabs.Root value={value} defaultValue={defaultValue} onValueChange={onValueChange} className={className}>
-      <RadixTabs.List aria-label={label} className="flex flex-wrap gap-1 border-b border-edge">
+      {/* ★ NOT `flex-wrap` — a real sync-3/sync-2 finding, hit twice by two
+          different callers (this file's own `moderation-tabs.tsx` at 390 px,
+          and independently by `content`'s `me/tab-strip.tsx`, which forked
+          rather than wait). A wrapped tab strip breaks the one-row scanning
+          a tablist promises and, worse, can silently push a later tab's
+          trigger out of the roving-tabindex sequence's visual order. Every
+          trigger already carries `whitespace-nowrap` (below), so the fix is
+          the CONTAINER: scroll in one row instead of wrapping onto a second
+          line — `overflow-x-auto` on the list itself, matching the same
+          "the active item is reachable by keyboard regardless of how many
+          fit" contract `admin-rail.tsx`'s own desktop rail already keeps. */}
+      <RadixTabs.List aria-label={label} className="flex flex-nowrap gap-1 overflow-x-auto border-b border-edge">
         {items.map((item) => {
           const inner = (
             <>
