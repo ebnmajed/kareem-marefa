@@ -1,37 +1,48 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { seatState, sessionPhase, viewerRelation, type PhaseInput, type SeatState, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { affordancesFor } from "@/components/checkin/session-matrix";
 
 // RSVP and waitlist (REQ-RSV-001…011, STORY-RSV-001..004). Capacity, the
 // deadline and the atomic promotion are all enforced inside reserve_seat()
 // and cancel_rsvp() (supabase/proposed/checkin/01_rsvp.sql) — every read
 // here is for display, never for a decision the RPC has already made.
+//
+// ★ `phase`/`relation`/`canReserve`/`canCancel` are computed HERE, not in
+// the component — the `getPhotosPageData()` pattern (`lib/dal/photos.ts`):
+// the capability is derived in the DAL, returned in the DTO, and the
+// component renders on it rather than re-deriving (16 §5.4.1, DEC-090).
 
 export type RsvpStatus = "confirmed" | "waitlisted" | "cancelled" | "late_cancelled";
 
 export interface RsvpPanelData {
   sessionId: string;
-  state: string;
+  phase: SessionPhase;
+  relation: ViewerRelation;
+  seat: SeatState;
   capacity: number | null;
   confirmedCount: number;
   waitlistCount: number;
-  /** Computed here, not in the component — comparing against the clock is impure and belongs in the data fetch, not render. */
-  deadlinePassed: boolean;
+  /** Wording only — `cancel` itself does not stop at the cutoff (16 §5.3's starred note). */
   cutoffPassed: boolean;
   myRsvp: { status: RsvpStatus; waitlistPosition: number | null } | null;
-  isPresenter: boolean;
+  /** From `affordancesFor(phase, relation)` — the panel renders on these, never re-derives. */
+  canReserve: boolean;
+  canCancel: boolean;
 }
 
-/** Everything the RsvpPanel slot needs, in one round trip. Null when the session doesn't exist or isn't visible. */
+/** Everything the RsvpPanel and AttendanceOutcome slots need, in one round trip. Null when the session doesn't exist or isn't visible. */
 export async function getRsvpPanelData(locale: string, sessionId: string): Promise<RsvpPanelData | null> {
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
-  const [sessionRes, countsRes, mineRes, presenterRes] = await Promise.all([
-    supabase.from("sessions").select("id, state, capacity, rsvp_deadline_at, cancellation_cutoff_at").eq("id", sessionId).maybeSingle(),
+  const [sessionRes, countsRes, mineRes, presenterRes, checkInRes] = await Promise.all([
+    supabase.from("sessions").select("id, state, starts_at, ends_at, duration_minutes, capacity, rsvp_deadline_at, cancellation_cutoff_at").eq("id", sessionId).maybeSingle(),
     supabase.rpc("session_seat_counts", { p_session: sessionId }).single(),
     supabase.from("rsvps").select("status, waitlist_position").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -41,18 +52,27 @@ export async function getRsvpPanelData(locale: string, sessionId: string): Promi
   const s = sessionRes.data;
   const counts = countsRes.data as { confirmed_count: number; waitlist_count: number };
   const mine = mineRes.data;
-  const now = Date.now();
+  const now = new Date();
+
+  const phaseInput: PhaseInput = { state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes };
+  const phase = sessionPhase(phaseInput, now);
+  const isStaff = session.role === "admin" || session.role === "moderator";
+  const rsvpStatus = (mine?.status as RsvpStatus | undefined) ?? null;
+  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: Boolean(checkInRes.data) }, phase);
+  const cellAffordances = affordancesFor(phase, relation);
 
   return {
     sessionId,
-    state: s.state,
+    phase,
+    relation,
+    seat: seatState({ capacity: s.capacity, confirmedCount: counts.confirmed_count, rsvpDeadlineAt: s.rsvp_deadline_at }, now),
     capacity: s.capacity,
     confirmedCount: counts.confirmed_count,
     waitlistCount: counts.waitlist_count,
-    deadlinePassed: s.rsvp_deadline_at != null && new Date(s.rsvp_deadline_at).getTime() < now,
-    cutoffPassed: s.cancellation_cutoff_at != null && new Date(s.cancellation_cutoff_at).getTime() < now,
-    myRsvp: mine ? { status: mine.status as RsvpStatus, waitlistPosition: mine.waitlist_position } : null,
-    isPresenter: Boolean(presenterRes.data),
+    cutoffPassed: s.cancellation_cutoff_at != null && new Date(s.cancellation_cutoff_at).getTime() < now.getTime(),
+    myRsvp: mine ? { status: rsvpStatus as RsvpStatus, waitlistPosition: mine.waitlist_position } : null,
+    canReserve: cellAffordances.rsvp,
+    canCancel: cellAffordances.cancel,
   };
 }
 

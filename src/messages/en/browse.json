@@ -25,6 +25,25 @@
       },
       "cancelledBadge": "Cancelled",
       "inProgressBadge": "In progress now"
+    },
+    "status": {
+      "open": "Registration open",
+      "closingSoon": "Registration closing soon",
+      "waitlist": "Waitlist",
+      "registrationClosed": "Registration closed",
+      "live": "Live now",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "draft": "Draft",
+      "pendingSchedule": "Awaiting schedule"
+    },
+    "fileDrop": {
+      "chooseFiles": "Choose files",
+      "dropHint": "or drag and drop files here",
+      "unsupportedType": "File type not supported",
+      "tooLarge": "File is larger than allowed",
+      "queued": "{file} queued",
+      "removeFile": "Remove {file}"
     }
   }
 }

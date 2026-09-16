@@ -3,19 +3,43 @@ import { requireSession } from "@/lib/dal/session";
 import { getHostView, listUncheckedConfirmedRsvps } from "@/lib/dal/checkin";
 import { getOrgNumerals } from "@/lib/dal/designer";
 import { formatNumber } from "@/components/sessions/numerals";
+import type { SessionPhase } from "@/lib/session-status";
 import { markManuallyAction, revokeCodeAction, setWalkInsAction } from "./actions";
 
 const KNOWN_MANUAL_ERRORS = new Set(["not_authorized", "reason_required", "not_found", "not_open", "member_not_found", "presenter_cannot_check_in", "unknown"]);
 
-// SCR-016 — the host view (REQ-CHK-001, REQ-CHK-014, OQ-013). Presenters,
-// admins and moderators only — getHostView() returns null for anyone else,
-// by policy (ensure_check_in_code's authorization check), not merely by
-// hiding this page's UI.
+/** The paragraph under the missing code — bug (d), 16 §5.4.1 row 6: this used to have no phase condition at all, so a presenter saw a live-attendance console for a talk that ended in March. Now every one of the six phases says something true. */
+function noCodeMessageKey(phase: SessionPhase): "notPublished" | "cancelled" | "notStarted" | "ended" {
+  switch (phase) {
+    case "draft":
+    case "pending_schedule":
+      return "notPublished";
+    case "cancelled":
+      return "cancelled";
+    case "ended":
+      return "ended";
+    default:
+      // "open" is the pre-flight case, and a clock-derived "live" with the
+      // row still `published` (the RPC's own not_open — start_session
+      // hasn't run yet) reads the same way: accurate, not confusing.
+      return "notStarted";
+  }
+}
+
+// SCR-016 — the host view (REQ-CHK-001, REQ-CHK-014, OQ-013, REQ-UIX-015,
+// DEC-090). Presenters, admins and moderators only — getHostView() returns
+// null for anyone else, by policy (ensure_check_in_code's authorization
+// check), not merely by hiding this page's UI.
 //
-// Manual marking (REQ-CHK-008) is narrower: admins and moderators only, not
-// presenters — mark_checked_in_manually() enforces this itself, and the
-// session's own org_role (not the host view's presenter-or-staff gate)
-// decides whether this page even fetches the candidate list.
+// ★ Bug (d) fix (16 §5.4.1 row 6): the walk-in toggle and manual-marking
+// sections used to render for any staff viewer regardless of phase — a
+// presenter of a draft or a cancelled session got the same operational
+// console as one running live. Both now gate on `view.consoleActive`
+// (`affordancesFor(phase, "staff").hostConsole` — true only for `open`, the
+// pre-flight, and `live`). Manual marking is narrower still (REQ-CHK-008):
+// admins and moderators only, not presenters — mark_checked_in_manually()
+// enforces this itself, and the session's own org_role decides whether this
+// page even fetches the candidate list.
 export default async function HostPage({
   params,
   searchParams,
@@ -43,6 +67,11 @@ export default async function HostPage({
 
   const manualErrorKey = manualError && KNOWN_MANUAL_ERRORS.has(manualError) ? manualError : manualError ? "unknown" : null;
   const field = "mt-1 block h-12 w-full rounded-field border border-edge-strong bg-canvas px-4 text-body text-fg-heading";
+  // `view.consoleActive` only knows the PHASE is eligible (open/live) — a
+  // presenter reaches this far too (REQ-CHK-014's broader auth check), but
+  // manual marking and the walk-in switch stay admin/moderator-only, as
+  // before (REQ-CHK-008).
+  const staffConsoleActive = view.consoleActive && isStaff;
 
   return (
     <>
@@ -60,7 +89,7 @@ export default async function HostPage({
       ) : (
         /* REQ-CHK-004 at issuance (0078): no code exists outside the live window. */
         <p role="status" className="mt-8 rounded-field border border-edge bg-silver-100 p-4 text-center text-body text-fg-heading">
-          {view.phase === "ended" ? t("host.ended") : t("host.notStarted")}
+          {t(`host.${noCodeMessageKey(view.phase)}`)}
         </p>
       )}
 
@@ -74,7 +103,7 @@ export default async function HostPage({
         </form>
       ) : null}
 
-      {isStaff ? (
+      {staffConsoleActive ? (
         /* DEC-065: the door policy, per session, for an admin or a moderator. */
         <section className="mt-12 max-w-sm">
           <h2 className="text-h3 text-fg-heading">{t("host.walkIns.title")}</h2>
@@ -92,7 +121,7 @@ export default async function HostPage({
         </section>
       ) : null}
 
-      {isStaff ? (
+      {staffConsoleActive ? (
         <section className="mt-12 max-w-sm">
           <h2 className="text-h3 text-fg-heading">{t("host.manualTitle")}</h2>
 

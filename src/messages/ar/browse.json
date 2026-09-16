@@ -25,6 +25,25 @@
       },
       "cancelledBadge": "جلسة ملغاة",
       "inProgressBadge": "جارية الآن"
+    },
+    "status": {
+      "open": "التسجيل مفتوح",
+      "closingSoon": "يُغلق التسجيل قريبًا",
+      "waitlist": "قائمة انتظار",
+      "registrationClosed": "أُغلق التسجيل",
+      "live": "جارية الآن",
+      "ended": "انتهت",
+      "cancelled": "أُلغيت",
+      "draft": "مسودة",
+      "pendingSchedule": "بانتظار الجدولة"
+    },
+    "fileDrop": {
+      "chooseFiles": "اختر ملفات",
+      "dropHint": "أو اسحب الملفات وأفلتها هنا",
+      "unsupportedType": "نوع الملف غير مدعوم",
+      "tooLarge": "حجم الملف أكبر من المسموح",
+      "queued": "{file} في الانتظار",
+      "removeFile": "إزالة {file}"
     }
   }
 }

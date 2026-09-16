@@ -81,6 +81,20 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - The export contains no other member's personal data.
 - After anonymisation no ledger row is deleted and every org total is unchanged.
 
+
+#### STORY-PRF-005 — Avatars, stored by the platform
+**Covers:** `REQ-PRF-008`, `REQ-PRF-009`, `REQ-PRF-010`, `REQ-PRF-011` · **M10** · **M**
+- The value already travels the whole stack — column, provisioning, five DAL modules, CSP — and is
+  discarded at the last step. This story draws it **and fixes how it got there**.
+- Upload is sniffed on content, EXIF-stripped, PNG/JPEG only; derivatives at 96 and 192 px come
+  from the existing job as a size list, not a new job.
+- Google's photo is offered once and **copied**, never linked; the
+  `lh3.googleusercontent.com` CSP entry is **removed**.
+- Initials over a tint hashed from the **member id** are the default and the permanent fallback;
+  there is no silhouette anywhere.
+- An avatar takedown reverts to initials; `JOB-anonymise_members` clears the row **and deletes the
+  object**; the data export includes it.
+
 ## EPIC-PRO — Proposals
 
 #### STORY-PRO-001 — Propose a topic, and nothing schedule-shaped
@@ -100,6 +114,16 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 
 #### STORY-PRO-004 — Admin-created sessions and proposal visibility
 **Covers:** `REQ-PRO-007`, `REQ-PRO-008` · **M2** · **S**
+
+
+#### STORY-PRO-005 — The proposal is the source of session content
+**Covers:** `REQ-PRO-009`, `REQ-PRO-010` · **M11** · **L**
+- `create_session()` copies **every** proposal field, including the two that are dropped on the
+  floor today (`target_audience`, `expected_duration_minutes`) and objectives and tags.
+- `expected_duration_minutes` pre-fills the schedule's duration; the admin is not asked again.
+- SCR-043 is two tabs; an admin content edit is audited field by field and notified to the proposer,
+  and the review card shows a diff.
+- Creating a session without a proposal stays possible, as a secondary action.
 
 ## EPIC-SES — Sessions and venues
 
@@ -129,6 +153,54 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 **Covers:** `REQ-SES-008`, `REQ-SES-011`, `REQ-SES-013` · **M2** · **M**
 - No remote-attendance affordance exists anywhere.
 - At 375 px the primary action is above the fold and ≥ 44 px.
+
+
+#### STORY-SES-007 — Learning objectives
+**Covers:** `REQ-SES-014` · **M10** · **M**
+- A `text[]` on `proposals` and `sessions` with two checks — **not** a fourth entity, which would
+  buy a join, a policy set and a sweep line to model something with no identity (`DEC-089`).
+- A ninth objective, an empty one or one over 140 characters is refused by the **database**.
+- A session with none renders no «ماذا ستتعلّم؟» section and no heading.
+
+#### STORY-SES-008 — A session spans days, and a day is a meeting in its own right
+**Covers:** `REQ-SES-015` · **M9** · **XL**
+- `ENT-session_days` with `org_id`, RLS, a full policy set and a generated-sweep row.
+- `check_in_codes`, `check_ins`, `check_in_attempts`, `materials` and `calendar_events` move to the
+  day; `rsvps`, certificates, ratings, comments, photos and tags stay on the session.
+- `sessions.starts_at`/`ends_at` become derived from the first and last day and stay stored, so
+  every existing index, sort and the `session_window` trigger keep working.
+- `sessionPhase()` is `live` while ANY day runs and `ended` after the LAST; the check-in ceiling is
+  per day.
+- A one-day session is a session with one day — no second code path.
+
+#### STORY-SES-009 — The scheduling form is quick for one day and honest about many
+**Covers:** `REQ-SES-016` · **M9** · **L**
+- Multi-day sits behind an explicit affordance; the one-day path is unchanged and costs nothing.
+- The end follows the duration live, and stops following once explicitly edited (OQ-001).
+- Each added day defaults to the previous day's time and place, both editable.
+- Overlapping days, an end before a start and a deadline after day one are each said at the field
+  on blur, never only on submit.
+
+#### STORY-SES-010 — Points and certificates require every day
+**Covers:** `REQ-SES-017` · **M9** · **L**
+- ★ For a multi-day session the award moves from the check-in trigger to session completion, where
+  the full day set is known; a one-day session is unchanged.
+- The idempotency key is per member per session, so a re-run cannot double-pay an append-only ledger.
+- Partial attendance earns nothing by default, and the member's history says which day they missed.
+- The all-days rule is a per-session setting beside `certificate_mode`, which an admin may relax.
+
+#### STORY-SES-011 — Content is scoped by where you add it, and never by a question
+**Covers:** `REQ-SES-018` · **M9** · **M**
+- One nullable `session_day_id` on `materials`, `session_tasks` and `photos`; null is the session.
+- ★ A one-day session has no scope concept at all — no groups, no chips — and renders as today.
+- The member reads one grouped list per content type, session content first, empty groups omitted.
+- The add control sits in each group header: pressing it IS the choice. No picker, no modal.
+- A photo is never scoped by hand, including by an attendee: it takes the day containing its
+  upload time, and staff may re-scope it.
+- Adding a second day re-scopes nothing; deleting a day with content asks and defaults to
+  promoting it to the session.
+- ★ `materials.phase` is relative to the SCOPE — a day-scoped «بعد» material releases when that day
+  ends, so day 1's slides are not withheld until Friday.
 
 ## EPIC-RSV — RSVP
 
@@ -184,6 +256,26 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 **Covers:** `REQ-CHK-012`, `REQ-CHK-013`, `REQ-CHK-014` · **M2** · **M**
 - Overlapping attendance is rejected by the exclusion constraint, naming the conflict.
 - A checked-in member requesting the host view is denied by **policy**.
+
+#### STORY-CHK-006 — Check-in is open by default and closed by hand, with a two-hour ceiling
+**Covers:** `REQ-CHK-015`, `REQ-CHK-016` · **M9** · **M**
+- The switch starts **open** and is one tap from the host view to close and reopen.
+- Presenter, moderator and admin may close it; the ceiling is `ends_at + 2h`, in the RPC.
+- The floor is `REQ-CHK-004`'s unchanged code window, which is what stops an early check-in.
+- The ceiling is `ends_at + 2h`, enforced in the RPC — a forged request past it is refused.
+- Closing stops new check-ins and revokes none.
+- Every open and close is audited with who and when.
+- ★ `checkIn` leaves `GRANTING_AFFORDANCES`: once a stored switch is the gate, the clock can no
+  longer grant it and there is nothing for the direction guard to protect against.
+
+#### STORY-CHK-007 — An admin can edit the attendance list, and the reversal is the hard half
+**Covers:** `REQ-CHK-017` · **M9** · **M**
+- Admin-only: add and **remove**, each with a mandatory reason, each audited with actor and member.
+- A removal is never a side effect of closing check-in, and never a bulk act without naming members.
+- ★★ **Design the reversal before the UI.** `points_ledger` is append-only with `service_role`
+  revoked, so a removal cannot delete the award: it needs a compensating entry with its own
+  idempotency key. An issued certificate has a gapless serial and is revoked, not un-issued.
+- The member's points history shows the reversal as an entry, never a number that quietly changed.
 
 ## EPIC-MAT — Materials
 
@@ -422,6 +514,29 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - The QR is inline SVG from our own runtime, vector at A3.
 - Templates carry no books, caps, lightbulbs, icon libraries, emoji or photography.
 
+
+#### STORY-DSG-012 — Direct manipulation, with a non-dragging path for every dragged operation
+**Covers:** `REQ-DSG-028`, `REQ-DSG-029`, `REQ-DSG-030` · **M12** · **L**
+- Drag, eight-handle resize, rotate, marquee, align/distribute and snapping — reusing the
+  `snap`/`snapTargets` exports that are **already written and driven only by number entry today**.
+- ★ The inspector's numeric fields are the `SC 2.5.7` conformance path: **demoted, never removed.**
+- A Playwright case performs **every** studio operation with `page.click()` alone and asserts the
+  document changed.
+- Align, distribute and rulers follow the **document's** direction; arrow keys follow the visual
+  axis. One unit test asserts an `ar` console and an `en` console store **byte-identical**
+  documents for the same "align start".
+- The overlay uses physical `left`/`top` computed from document geometry, with the exemption
+  written down so nobody tidies it back to logical properties.
+- Focal point defaults to the geometric centre, so an untouched document derives identically and no
+  golden moves.
+
+#### STORY-DSG-013 — Certificate issuance is three steps and a preflight
+**Covers:** `REQ-DSG-031` · **M12** · **L**
+- التصميم → من يستحق → الإصدار, with the resulting name list shown live and hold-backs made visibly.
+- The preflight checks fonts resolved, bindings bound, Tier A green and the serial range reserved.
+- Issuance is irreversible and serials are gapless, so it is a confirmed act with per-certificate
+  status and an individual re-issue — not a button next to a dropdown.
+
 ## EPIC-NTF — Notifications
 
 #### STORY-NTF-001 — Two channels and the matrix
@@ -440,6 +555,26 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 **Covers:** `REQ-NTF-006`, `REQ-NTF-007`, `REQ-NTF-008` · **M3** · **L**
 - A template missing a required field fails validation before saving.
 - A bounce is visible to the admin with its reason.
+
+
+#### STORY-NTF-005 — The email studio: blocks, the real renderer, and a live test
+**Covers:** `REQ-NTF-009`, `REQ-NTF-010`, `REQ-NTF-011`, `REQ-NTF-012`, `REQ-NTF-013` · **M12** · **L**
+- Nine typed blocks compile to table rows beside `render.ts`'s **existing** string path, so an org
+  that has not touched its templates renders **byte-identical** output and no golden moves.
+- ★ The first task is reconciling `08` §3.2's 22 against `DEFAULT_TEMPLATES`' **25** keys — a golden
+  suite built to 22 silently misses three.
+- The preview calls the production renderer in a sandboxed iframe, in phone, desktop and
+  **plain-text** modes, with a forced-dark toggle.
+- «أرسل اختبارًا» goes to the admin's **own** address through the live transport, and to no other.
+- An unknown binding is refused by the **database**, for every writer.
+- The text alternative is generated from the blocks; one edit changes both parts.
+
+#### STORY-NTF-006 — Eight designed platform templates, seeded for every org
+**Covers:** `REQ-NTF-014` · **M12** · **L**
+- Seeded platform-owned on the A27 pattern: promotion adds, it never supplies the baseline.
+- **Every** message key resolves to a designed template; no key falls back to unstyled text.
+- An org duplicates one to own it; the original is never mutated.
+- Changing the org logo restyles every message, which is what "one edit in one place" meant.
 
 ## EPIC-CAL — Calendar
 
@@ -471,6 +606,16 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 #### STORY-DSC-003 — Bookmarks, and metadata-only material search
 **Covers:** `REQ-DSC-006`, `REQ-DSC-007` · **M5** · **S**
 - No job extracts text from PDFs.
+
+
+#### STORY-DSC-004 — Tags become a UI
+**Covers:** `REQ-DSC-008` · **M10** · **M**
+- The data has been there since `0037` and **no screen creates, attaches or displays one**; this is
+  unshipped UI over shipped data, not a new feature.
+- A proposer adds tags through the combobox with Arabic-normalised matching and free creation,
+  max 8, each a removable chip; chips link to a filtered browse.
+- An admin renames, **merges** near-duplicates and deletes, with usage counts maintained by trigger.
+- A merge moves every attachment, leaves no orphan, and is audited.
 
 ## EPIC-ADM — Admin consoles
 
@@ -509,6 +654,18 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - UTF-8 **with BOM**; Arabic headers; org numerals; **every export audited**.
 - The log is append-only; a moderator sees only their own actions.
 
+
+#### STORY-ADM-009 — Downloads reach the screens that need them, and are audited
+**Covers:** `REQ-ADM-021`, `REQ-DSG-027` · **M11** · **M**
+- **The mechanism is not invented** — `signExportUrl()` already mints a five-minute signed URL and
+  three screens already consume it. This story is **reach**.
+- The poster menu lists every ready artifact on the event page and SCR-043, for staff and the
+  session's own presenters.
+- Photos need their own signer; **«تنزيل الكل»** is `JOB-zip_session_photos`, because zipping 300
+  photographs in a request blocks a function.
+- Every download writes an audit row; the served file is the EXIF-stripped one, the only one there
+  is.
+
 ## EPIC-INT — i18n and RTL
 
 #### STORY-INT-001 — Arabic-first, RTL by default
@@ -532,6 +689,13 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 **Covers:** `REQ-INT-008`, `REQ-INT-009` · **M1** · **M**
 - ★ Subsetting preserves `rlig`, `mark`, `mkmk` — verified by the goldens, per font, per build.
 - `/en/app/*` redirects until the catalogue is complete; the marketing `/en` is untouched.
+
+
+#### STORY-INT-005 — Display follows the org; machine-readable surfaces never do
+**Covers:** `REQ-INT-010` · **M11** · **S**
+- CSV exports, certificate serials, verification codes, URLs and filenames are **always** `nu-latn`.
+- A CSV opens in Excel and Sheets with numeric columns parsed as numbers, Arabic intact.
+- A printed serial verifies against `/verify/[code]` character for character.
 
 ## EPIC-NFR — Non-functional
 
@@ -576,6 +740,175 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - Playwright, jsdom and `@testing-library` installed and wired into CI.
 - `scripts/qa.mjs` stays green; `main` stays deployable; `registrations` is never altered.
 
+## EPIC-UIX — The interface system
+
+*Added with the design milestone (`DEC-069`, `DEC-070`). `16-ui-redesign.md` §15 and §16 carry the
+file-level split; these are the stories the traceability gate counts.*
+
+#### STORY-UIX-001 — The component system exists and is the only source of primitives
+**Covers:** `REQ-UIX-001` · **M9** · **L**
+- `src/components/ui/index.ts` lands in **hour one** carrying every signature with stub
+  implementations that render plain semantic HTML; four tracks typecheck against it immediately.
+- It exports **types only** — a runtime barrel would drag three `"use client"` primitives into the
+  client graph of every server page that imports `Card`.
+- `ui-lint` fails a control class string declared outside the system, and a `<form>` holding an
+  `<input>` outside `<Field>`; **it excludes `src/components/ui/` for both rules**, or it fails the
+  primitives it exists to protect.
+- Its allowlist is committed, shrinking, and flips to hard-fail in M13 — 65 files carry the copied
+  string today.
+- Every primitive has a jsdom test, an axe assertion, an RTL check and a gallery entry.
+
+#### STORY-UIX-002 — One shell, and a tab bar that knows when to hide
+**Covers:** `REQ-UIX-002` · **M9** · **L**
+- Search, catalogue, bell and account menu on desktop; a contextual bottom tab bar below `md`.
+- The tab bar hides on detail and immersive screens, replaced by a bottom **action** bar.
+- **`main`'s `padding-block-end` ships in the same commit as the bar**, and the proof capture is a
+  390 px screenshot of an **old, untouched** screen — not a new one.
+- A test asserts no screen ever carries two fixed bottom bars.
+- The `<details>` disclosure is gone; a moderator can find their queue.
+
+#### STORY-UIX-003 — One status vocabulary, everywhere a session appears
+**Covers:** `REQ-UIX-003`, `REQ-UIX-004` · **M9** · **M**
+- `sessionPhase()`, `seatState()` and `viewerRelation()` are pure, unit-tested and use the
+  database's own spellings.
+- A totality test feeds `sessionPhase()` every state × null-schedule combination and asserts it
+  never returns undefined.
+- A direction test asserts the derived phase **only ever removes** an affordance, for every phase
+  pair.
+- One badge renders on all eight surfaces; `completed` is visible to a **member**, not only staff.
+
+#### STORY-UIX-004 — The loading model
+**Covers:** `REQ-UIX-005`, `REQ-UIX-006`, `REQ-UIX-007` · **M9** · **M**
+- ~12 `loading.tsx` at meaningful boundaries cover all 49 pages; `loading-coverage` enforces "at or
+  above", not one per route.
+- No skeleton calls `getTranslations`; each is `aria-hidden` and direction-agnostic.
+- The progress bar appears only past ~150 ms, driven by `useLinkStatus()` inside `ui/link` — not by
+  a router-events shim that does not exist in the App Router.
+- The splash is CSS-only, cross-fades over content already painted, and is dropped rather than the
+  budget if it costs LCP.
+- No pending control blanks its label; a seat is never optimistically confirmed.
+
+#### STORY-UIX-005 — The failure model
+**Covers:** `REQ-UIX-016` · **M9** · **S**
+- An `error.tsx` at every boundary that has a `loading.tsx`, each rendering the shared `RouteError`;
+  `error-coverage` fails a boundary with a skeleton and no error boundary.
+- A `not-found.tsx` per dynamic segment — `notFound()` is already called in six places with no
+  boundary to catch it.
+- `global-error.tsx` exists, hard-codes Arabic and `dir="rtl"`, and is asserted to contain it.
+- No member ever sees Next's default English left-to-right error page.
+
+#### STORY-UIX-006 — The form model answers "which fields did I miss"
+**Covers:** `REQ-UIX-009`, `REQ-UIX-010`, `REQ-UIX-011` · **M9** · **L**
+- `<Field>` is the only wrapper and wires `htmlFor`, `aria-describedby`, `aria-invalid` and
+  `aria-required` itself.
+- `<FormSummary>` is focused on failure and each item is **a link that focuses its control** — and
+  the control lands **below** the sticky header, not behind it.
+- Required is «مطلوب» on the label, never an asterisk, which collides with the RTL run.
+- Values survive a failed round trip through `formStateFrom()`; inline validation runs on blur only
+  after the first submit attempt.
+
+#### STORY-UIX-007 — Never a dead end, and never an unconfirmed destruction
+**Covers:** `REQ-UIX-012`, `REQ-UIX-013` · **M9** · **S**
+- Every list surface has an empty state naming the next action; a filtered-empty state names the
+  filter that emptied it.
+- Every destructive action confirms in a house dialog **naming the object**, never `confirm()`.
+- The one-way poster detach is a confirmation dialog, not a sentence above a link.
+
+#### STORY-UIX-008 — Focus is never obscured, and the shell can be skipped
+**Covers:** `REQ-UIX-017` · **M9** · **S**
+- A skip link is the first focusable element; console pages carry a second past the rail.
+- `scroll-padding` and `scroll-margin` derive from the fixed layers' heights.
+- A Playwright spec tabs every focusable element on the event page and the proposal form, at 390 px
+  and desktop, and **fails when a fixed or sticky element intersects the focused one**.
+
+#### STORY-UIX-009 — The searchable member picker, everywhere a member is chosen
+**Covers:** `REQ-UIX-008` · **M10** · **S**
+- `ui/combobox` is **promoted and generalised** from `src/components/admin/member-picker.tsx`, not
+  built from nothing — it is already a filtered listbox with `useId` wiring and keyboard handling.
+- What is new is Arabic normalisation, multi-select, and adoption on the proposal form.
+- No screen renders every org member as a checkbox list; it is usable at 400 members.
+
+#### STORY-UIX-010 — The affordance rule, and the five live bugs
+**Covers:** `REQ-UIX-015` · **M9** · **M**
+- The 49-cell matrix (7 phases × 7 relations) has one assertion per cell.
+- The five shipped defects are fixed: the calendar slot, the tasks slot, the check-in link at
+  `page.tsx:225`, the check-in screen that does not know which session it is, and the ungated host
+  and admin links.
+- `getSessionForEvent()` returns `viewerRelation` **once**; `SlotProps` gains it (`DEC-092`) rather
+  than four slots each re-reading the RSVP.
+- A gated slot's `<section>` and heading are gated with it, proven by one component test per slot.
+
+#### STORY-UIX-011 — The motion system
+**Covers:** `REQ-UIX-014`, `REQ-UIX-018`, `REQ-UIX-019`, `REQ-UIX-020` · **M10** · **M**
+- The twelve keyframes already in `globals.css` are **reused**, not replaced; `package.json` gains
+  no animation dependency.
+- Two Tier-1 moments, five Tier-2, and nothing at all on errors, queues, tables or exports.
+- Each Tier-1 moment names its own **static** state, and the 390 px review looks at both.
+- A reduced-motion pass asserts the end state is reached and nothing is mid-transition; a throttled
+  CPU trace shows **no frame over 16 ms**.
+
+#### STORY-UIX-012 — The landing screen is the sessions timeline
+**Covers:** `REQ-UIX-021`, `REQ-UIX-022` · **M9** · **L**
+- `/app` renders the sessions a member can attend, one column, grouped by date.
+- Their next committed session is the first item, not a hero above the list.
+- The active filter set is visible without opening anything; each is individually removable.
+- Below `md` the controls open as a sheet rather than pushing the list sideways.
+- The empty case is the same screen with an invitation to propose.
+
+#### STORY-UIX-013 — Every disclosure closes when it has been used
+**Covers:** `REQ-UIX-023` · **M9** · **S**
+- Following a link inside a menu leaves no panel over the destination — the defect the owner hit,
+  and one a test must hold, because under Partial Rendering the layout does not re-render.
+- Outside click and `Escape` both close; `Escape` returns focus to the trigger.
+- No two disclosures are open at once.
+- The sweep covers every interactive element in the shell and the primitives at 390 px and desktop.
+
+#### STORY-UIX-014 — The discussion becomes a composition surface
+**Covers:** `REQ-UIX-024` · **M10** · **L**
+- A real editing affordance, not a bare textarea; visible upload controls, not a hidden input.
+- Pending, success and failure on every action.
+- The reaction is `dot-pulse` + `ripple-ring` — a whisper, because `REQ-EVT-004` earns nothing.
+- The server still sniffs the bytes and still refuses SVG.
+
+#### STORY-UIX-015 — The public site gets a door into the platform
+**Covers:** `REQ-UIX-025` · **M13** · **M**
+- «تسجيل الدخول» is persistent and visible on every marketing page, phone and desktop, and never
+  sits only in the footer. Today the header and **both** CTAs point at `/register` alone, so a
+  member with an account has to type `/sign-in` (`DEC-126`).
+- It is visually distinct from «سجّل اهتمامك» and does not replace it — the interest list is not a
+  sign-up (`DEC-002`, invariant 2), and `registrations` is not touched.
+- The copy says the platform exists and what it is for; the landing page is no longer only a
+  pre-launch interest page.
+- **Nothing lands before M13.** The routes are a frozen public contract until then
+  (`REQ-NFR-019`); `npm run qa` stays 44/44 and the visual baseline is re-cut in the same commit
+  as the rebuild, never ahead of it.
+
+## EPIC-SUR — The survey
+
+#### STORY-SUR-001 — The survey entities and their policies
+**Covers:** `REQ-SUR-001`, `REQ-SUR-002` · **M11** · **L**
+- Four tables, each with `org_id`, RLS and a full policy set; the generated isolation sweep covers
+  them the day they exist.
+- Questions are ordered and reorderable **without dragging**, through the shared
+  `ui/reorderable-list`.
+- A template is reusable across sessions without copying questions by hand.
+
+#### STORY-SUR-002 — One screen, two decorrelated writes
+**Covers:** `REQ-SUR-003`, `REQ-SUR-004`, `REQ-SUR-009` · **M11** · **M**
+- Eligibility is check-in inside the rating window; a second response is refused, not duplicated.
+- The rating is written by the action; the survey response is enqueued with a **jittered delay**,
+  with no shared request id, correlation id or client key.
+- `ratings.submitted_at` is coarsened to the **day**.
+- The test: for any member, the set of ratings within ±N minutes of their survey response is **not
+  of size 1**.
+
+#### STORY-SUR-003 — Results are staff-only, withheld at small N, exported in Western digits
+**Covers:** `REQ-SUR-005`, `REQ-SUR-006`, `REQ-SUR-007`, `REQ-SUR-008` · **M11** · **M**
+- An explicit RLS case proves **a presenter reading their own session's survey results is refused**.
+- The withhold covers scale means and choice distributions, not only free text.
+- The CSV is UTF-8 with BOM, **Western digits**, and audited.
+- Response rate is against **eligible attendees**, and a session with none says so.
+
 ---
 
 ## 24. Coverage check
@@ -583,9 +916,9 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 Regenerated by `scripts/traceability.mjs`; the table is in `TRACEABILITY.md`. The invariants this
 backlog must satisfy:
 
-1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 251 of 251.
+1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 313 of 313.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`.**
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the four **fails CI** (`13` §10). That gate is the only thing that keeps this

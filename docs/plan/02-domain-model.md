@@ -144,7 +144,8 @@ erDiagram
 create type org_status        as enum ('active', 'suspended');
 create type org_role          as enum ('admin', 'moderator', 'member');
 create type member_status     as enum ('active', 'deactivated');
-create type numeral_system    as enum ('western', 'arabic_indic');
+-- ✗ WITHDRAWN by DEC-124 (2026-09-16): numerals are Western everywhere, always.
+-- create type numeral_system    as enum ('western', 'arabic_indic');
 
 -- Proposals and sessions
 create type proposal_state    as enum ('draft', 'submitted', 'in_review',
@@ -259,7 +260,7 @@ constraint violation rather than a runtime surprise.
 | Column | Type | Default |
 |---|---|---|
 | `time_zone` | `text not null` | `'Asia/Riyadh'` |
-| `numerals` | `numeral_system not null` | `'western'` |
+| ~~`numerals`~~ | ~~`numeral_system not null`~~ | **✗ dropped — `DEC-124`.** Numerals are Western everywhere; no row was ever `arabic_indic`, so the drop changes no output |
 | `check_in_rotation_seconds` | `int not null` | `600` |
 | `check_in_grace_seconds` | `int not null` | `120` |
 | `reminder_offsets_minutes` | `int[] not null` | `'{10080,1440,120}'` |
@@ -415,6 +416,72 @@ that can be bypassed. Indexes: `(org_id, state, starts_at)`, `(org_id, category_
 `(org_id, starts_at)`.
 
 **`full` is not a column.** `REQ-SES-003`.
+
+#### `ENT-session_days`
+**Serves:** `REQ-SES-015`, `REQ-SES-016`, `REQ-CHK-015`, `REQ-MAT-001`
+
+**Added under DEC-119.** A session has **one or more days**, and a day is the unit a member turns
+up to. ★ It earns an entity by the same test `DEC-089` used to *refuse* one for objectives: a day
+has **identity, lifecycle and its own access surface** — its own check-in, its own materials, its
+own notes — where an objective had none of the three.
+
+★ **A one-day session is a session with one day.** There is no nullable second shape and no
+"simple" path beside a "multi-day" path; the common case is the general case with `n = 1`, which is
+what keeps it from paying for the rare one.
+
+| Column | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null references orgs(id)` | invariant 5 — RLS, full policy set, generated sweep |
+| `session_id` | `uuid not null references sessions(id)` | |
+| `position` | `int not null` | 1…n, the order a member reads them in |
+| `starts_at`, `ends_at` | `timestamptz not null` | the day's own window |
+| `venue_id` | `uuid references venues(id)` | defaults to the previous day's on creation, editable |
+| `custom_venue_name`, `custom_venue_address`, `custom_venue_map_url` | `text` | `REQ-SES-007`'s inline venue, per day |
+
+Constraints:
+```sql
+check (ends_at > starts_at)
+unique (session_id, position)
+-- no two days of one session overlap
+exclude using gist (session_id with =, tstzrange(starts_at, ends_at, '[)') with &&)
+```
+
+**What hangs off the DAY, always:** `check_in_codes`, `check_ins`, `check_in_attempts`,
+`calendar_events`. Attendance and the calendar are per meeting, with no session-level alternative.
+
+★ **What may hang off EITHER (DEC-121):** `materials`, `session_tasks` and `photos` carry a
+**nullable** `session_day_id`, where **null means the whole session**. One nullable column on three
+tables — no scope enum, no second table, no join table. A workshop can have a plan for the week and
+slides for Wednesday, and the person adding either is never asked which: the scope is implied by the
+place they added it from and is shown afterwards as a chip.
+
+★ **A one-day session's content is session-scoped (null), not day-1-scoped**, which buys a property
+worth having: **adding a second day to an existing session re-scopes nothing.**
+
+★ **`materials.phase` is relative to the SCOPE**, not to the session: a day-scoped «بعد» material is
+released when **that day** ends, not when the session completes. Without this, day 1's slides on a
+three-day workshop would be withheld until Friday (`REQ-MAT-006` as amended).
+
+★ The entity is therefore **when, where and which meeting** and nothing else: no free text, no
+second policy set. A task for the whole workshop is a task on day 1, exactly as a session-level
+file is a file on day 1.
+
+★ **`REQ-TSK-002` is untouched and matters more here:** tasks stay **reminder-only and are never
+read by any check-in path**. Attaching them to a day puts them beside that day's attendance in the
+schema for the first time, and that is precisely the invariant a later reader assumes away.
+
+**What stays on the SESSION:** `rsvps` — **one registration covers every day** — plus `capacity`
+(one registration, one seat count — DEC-120), `certificates`, `ratings`, `comments`, `reactions`,
+`photos`, `bookmarks`, `session_tags`, `session_presenters`, `session_posters`.
+
+★ **`sessions.starts_at` and `ends_at` become DERIVED** — the first day's start and the last day's
+end — and stay **stored columns**, so every existing index, sort, query and the `session_window`
+trigger keep working untouched. `REQ-SES-001`'s publish constraint becomes "at least one day, and
+every day complete".
+
+★ **This is not `A14`'s recurring series.** That is N independent sessions, each with its own
+registration and certificate. This is one session with N meetings, one registration, one
+certificate.
 
 #### `ENT-session_state_transitions`
 **Serves:** `REQ-SES-003`, `REQ-PRO-006`, `REQ-SES-005`

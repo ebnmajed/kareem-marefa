@@ -418,3 +418,153 @@ Supabase), and captured at 390 px RTL. Nothing from this track is left mid-story
 - **The one lesson worth carrying to any future upload-shaped feature**: prove the real sequence —
   initiate, PUT, complete — against real local Supabase before calling it done. §4.4 is what
   happens when that step is skipped for three stories in a row.
+
+---
+
+## 6. Wave 5 (M9) — the nine display primitives
+
+Read before writing: `STATUS.md`'s wave-5 section, `CLAUDE.md`'s wave-5 ownership map, `.claude/
+agents/content.md` (rewritten for this wave), DEC-009/069/073/085/087/099/101/104/105, `16` §4.1,
+§4.2, §5, §6.4, §6.8, §7.4, §16.2, and `src/lib/session-status.ts` in full. Nothing here redesigns a
+screen — MAT/TSK/photos/DSC/PRO-004 above are M5, shipped and unchanged; this section is the new
+`ui/` primitives only.
+
+### 6.0 What I found already true, before writing anything
+
+- **The status tokens are already landed.** `globals.css` carries `--color-live`,
+  `--color-live-bg`, `--color-live-on-dark`, `--color-ended`, `--color-ended-bg`,
+  `--shadow-raise`, `--space-section` and the four motion tokens, each tagged `M9 (DEC-073)` —
+  ahead of `.claude/agents/content.md`'s note that they were not landed yet. No request needed;
+  used as Tailwind utilities directly (`bg-live-bg`, `text-live`, `shadow-raise`, …).
+- **`browse` is already a registered namespace** (`src/messages/index.ts`, both `ar/browse.json`
+  and `en/browse.json` exist, written by the pre-M9 `console`-owned SCR-011 work). It already holds
+  a `browse.card.*` subtree. I add sibling keys under `browse` for the new primitives rather than
+  touching what is there; `browse.card.*` stays exactly as SCR-011 left it since that screen is not
+  mine until M10.
+- **`axe-core` is not a direct dependency**, but it is a real transitive one — `4.12.1` at
+  `node_modules/axe-core`, required by `eslint-plugin-jsx-a11y` and `lighthouse`, both existing
+  devDependencies. `package.json` is lead-only and a fresh direct dependency means
+  `npm run lockfile` in Docker, which I cannot run. I import `axe-core` directly
+  (`import axe from "axe-core"`) in the nine primitive tests; it resolves today and will keep
+  resolving as long as either of those two packages stays a devDependency, which is a safe bet. A
+  one-line ask for the lead: promote it to an explicit `devDependency` at the next `npm run
+  lockfile` run, so it stops being a phantom resolution. Not blocking.
+- **`color-contrast` is disabled in the jsdom axe runs.** jsdom does not compute rendered styles
+  from an external stylesheet, so axe's `color-contrast` rule is unreliable there (a known
+  jsdom/axe limitation) — I disable that one rule and instead assert real contrast numerically with
+  `contrastRatio`/`checkContrast` from `@/lib/brand/contrast.ts` (imported, not edited — it is
+  `branding`'s file) against the actual hex values, for the badge's nine phase×seat rows in both
+  themes as asked, and for the six avatar tint pairs.
+- **`card.tsx`'s "nested button" is deliberate, three times over** (`16` §6.4, `.claude/agents/
+  content.md`, the lead's task message) and I am implementing it literally: the whole card is one
+  `<Link>`, `CardActions` wraps its children in a `stopPropagation` boundary so any caller-supplied
+  interactive (the bookmark button, not mine to build) never double-fires the card's own
+  navigation. This is real DOM nesting of an interactive inside an interactive, which axe-core's
+  `nested-interactive` rule (best-practice, enabled by default) flags. I disable that one rule in
+  `card.test.tsx` with a comment citing the same three sources, and add a functional test in its
+  place: Tab reaches the nested button independently, Enter/Space activates its own handler, and a
+  click on it does not navigate — which is the actual concern the rule is a proxy for, proven
+  directly rather than by the proxy. `card.tsx`, `tag-chip.tsx`, `empty-state.tsx` and
+  `file-drop.tsx` all need `"use client"` for their own interactive handlers (`onRemove`,
+  `action.onClick`, drag/drop, the propagation stop) — `badge.tsx`, `avatar.tsx`, `progress.tsx`,
+  `stat.tsx`, `panel.tsx` stay server-safe, consistent with `ui/index.ts`'s own list of which
+  primitives must be client.
+- **`SessionStatusBadge` uses `useTranslations` (the client-safe, universal hook), not
+  `getTranslations`.** `session-status.ts`'s own comment says it is "rendered inside client
+  components (the action card's two states)", and `useTranslations` already works from a
+  non-`"use client"` module in this codebase (`footer.tsx`, `(marketing)/not-found.tsx`) because
+  `NextIntlClientProvider` wraps the whole tree at the root layout — so `badge.tsx` stays
+  server-safe while still working when a client ancestor renders it.
+- **`TagChipProps.count` is a raw `number`**, unlike `Stat.value`/`Progress.valueText` which are
+  pre-formatted strings "by the caller, in the org's numerals" by design. The frozen type gives
+  `TagChip` no numerals/locale input. My first draft read `document.documentElement.lang` to format
+  it — wrong: that is `undefined` during SSR and set on the client, so the server-rendered digits
+  and the hydrated ones would differ, a real hydration mismatch, not a cosmetic gap. Fixed to a
+  plain `String(count)`, identical on both passes, wrapped in `<bdi>` — correct and safe, but it
+  cannot honour an org's Arabic-Indic-vs-Western numeral setting the way `Stat`/`Progress` do.
+  Flagging it here rather than silently living with it: if a future wave wires a real tag facet
+  count, the fix is either a pre-formatted-string variant of the prop or a call-site that folds the
+  count into `label` — a decision for whoever owns that screen, not one I can make by editing
+  `index.ts`.
+- **`Avatar`'s tint hash is on the member id**, not the name, per `16` §6.8 and DEC-099, and is a
+  small local `djb2`-style string hash mod 6 — six navy/silver pairs verified ≥4.5:1 in the test,
+  not just picked by eye. `CardMedia`'s generated placeholder hashes the *title* instead (there is
+  no id in `CardMediaProps`), which is a different, narrower rule than avatar's and is documented
+  as such in the component so nobody generalises it back onto avatars later.
+- **`file-drop.tsx` in M9 is the control only**, as briefed: drag-and-drop plus a real keyboard-
+  reachable `<button>` triggering a hidden `<input type="file">` (drag alone is never sufficient),
+  client-side type/size pre-checks shown per file as an advisory (never authoritative — the server
+  sniffs on content after the bytes land, invariant 11/DEC-009), rendered with my own `Progress`
+  primitive as an indeterminate "queued" state per pending file. There is no live upload-progress
+  wiring in M9 (`FileDropProps` has no progress channel back in) — that is M10's job when a real
+  Route Handler is threaded through.
+
+### 6.1 Build order
+
+1. `badge.tsx` — the nine-row table, the dark-band handling, the reduced-motion pulse, the
+   contrast test.
+2. `empty-state.tsx`.
+3. `card.tsx` — four densities, the placeholder, the nested-button boundary.
+4. `avatar.tsx` + `AvatarStack`.
+5. `tag-chip.tsx`, `progress.tsx`, `stat.tsx`, `panel.tsx`.
+6. `file-drop.tsx`.
+7. The three error/not-found boundaries under `bookmarks` and `materials`.
+8. Messages (`browse.json`, both locales), tests, 390 px RTL captures, `tsc`/lint/`test`/`test:rls`.
+
+Will say "ready for sync" after each unit lands, per DEC-047/DEC-101's note that a Sonnet track
+should not idle at a checkpoint.
+
+### 6.2 Status at this sync — all nine primitives, and the three route boundaries
+
+All nine files built to the frozen `ui/index.ts` contract, each with its own jsdom test carrying an
+`axe-core` assertion (`color-contrast` disabled the same way `sessions`' `Field` tests already do
+it — jsdom has no layout engine), plus the three route boundaries. Commits, one per unit:
+`badge` (+ its `browse.json` messages), `empty-state`, `card`, `avatar`, the four smaller primitives
+(`tag-chip`/`progress`/`stat`/`panel`) together, `file-drop`, and the three
+`error.tsx`/`not-found.tsx` boundaries.
+
+**Gates run:** `npx tsc --noEmit` clean · `npm run lint` zero errors on every file this track
+touched (two real findings fixed along the way — `file-drop.tsx` was mutating a ref's `.current`
+during render, which the newer `react-hooks/refs` rule now forbids outright; replaced with `onFiles`
+directly in the effect's own dependency array) · `npx vitest run` on the nine new test files: 104/104
+passed · `npm run ui-lint`: zero violations in anything this track touched (`ui/` is excluded from
+the gate anyway, per DEC-104) · `npm run error-coverage`: green, six fewer missing boundaries than
+the allowlist permits. **`npm test` on the whole tree** shows 30 failures, all of them in `field.test.tsx`,
+`input.test.tsx`, `date-time.test.tsx` and `proposal-copy.test.tsx` — `sessions`'/`console`'s own
+concurrent WIP (one is a literal `ReferenceError` mid-edit), nothing under this track's ownership.
+
+**Three real findings from writing the tests, worth recording:**
+
+1. **`userEvent.upload` (and every real browser) filters by the input's own `accept` attribute**
+   before `onChange` ever fires — so the "unsupported type" test cannot be written by uploading a
+   mismatched file through the picker at all; it has to go through drag-and-drop, which has no such
+   filtering anywhere. That is also, genuinely, the path the client-side check is *for*: the OS
+   dialog already does the filtering the picker path needs.
+2. **A `className="hidden"` alone does not hide anything inside a jsdom test** — there is no compiled
+   stylesheet loaded, so `display:none` never applies, and `file-drop.tsx`'s own hidden `<input>` was
+   a genuine axe finding (an unlabelled, "visible" file input) until it also carried the native
+   `hidden` attribute, which every browser's UA stylesheet honours with no CSS required, and which
+   does not stop a hidden input's `.click()` from opening the OS dialog either.
+3. **Testing Library's `getByText` matches an element's own direct text-node children, not
+   `textContent`** — so `getByText("مسودة")` on a `<span class="…"><bdi>مسودة</bdi></span>` returns
+   the `<bdi>`, never the outer styled `<span>`. Any assertion checking a *class* on a component whose
+   visible text sits inside its own `<bdi>` (which is every one of these nine, per invariant 10) needs
+   `container.firstElementChild` or an equivalent, not `getByText(...).toHaveClass(...)`.
+
+**Open, not blocked but not mine to finish:**
+
+- **The 390 px RTL screenshot per primitive** (Definition of Done) needs the `(dev)` gallery
+  (`src/app/[locale]/(dev)/**`, lead-only) to actually mount these nine components, and
+  `npm run visual capture` (lead-only this milestone) to take the shot. Neither exists yet for this
+  track's primitives. Flagging rather than working around either restriction.
+- **`axe-core` stays a transitive, undeclared dependency** (§6.0) — a one-line ask for the lead to
+  promote it to a real `devDependency` at the next `npm run lockfile` run, now that `sessions`' tests
+  independently landed on the exact same import as the answer, which is a second, better reason to
+  make it official.
+- **`TagChip.count`'s numerals limitation** (§6.0, §6.1) is unresolved by design — the frozen type has
+  no numerals input, and the fix is a decision for whoever wires a real facet count in M10, not an
+  `index.ts` edit from this track.
+
+Ready for sync. Next, absent other direction: help drive `npm run qa`/`visual`/the gallery wiring once
+the lead is ready for it, or start on M10's `browse.json`-owned screens once M9 closes — both are the
+lead's call, not mine to start early.

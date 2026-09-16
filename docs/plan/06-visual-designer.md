@@ -149,6 +149,27 @@ mechanism.
 **Poster families**, each light and dark, RTL-first with a mirrored LTR variant reserved for
 English:
 
+> ★ **The poster default is the DARK scheme — `DEC-125` · `DEC-127` · `DEC-128`, 2026-09-16.**
+> The variant is the *scheme* (`brand.canvas`), not a second template row, and `scheme` defaulted to
+> `'light'` in all three signatures that take it, so generated posters were white while every poster
+> in the canvas is dark.
+>
+> **The poster background is a GRADIENT, not a flat fill (`DEC-127`).** `linear-gradient(140deg, …)`
+> from `{{brand.surface}}` to a new brand token **`canvasRaise`** (`#1d2a42` dark / `#f1f3f7` light),
+> because the canvas's second stop is `--color-navy-800` and a gradient stop may not be a hex
+> literal. `model.ts` gains `{ type: 'gradient'; angle; stops[] }`; `render.ts` and `bindings.ts`
+> both read `background?.color` today and must learn the stops, or a gradient document renders
+> silently on the `#ffffff` fallback. **The mirrored LTR variant mirrors the angle — `360 − angle`** —
+> since a gradient does not follow `dir`.
+>
+> **Certificates are a library, not a single scheme (`DEC-128`).** Three families in both
+> orientations and both schemes, chosen by the admin at issue time. ⚠ And the roster below is
+> **half-seeded**: `0061` ships 8 families × 1 version, where this section promises 10 poster
+> templates and 6 certificate templates. `REQ-DSG-026` gains an acceptance criterion that counts
+> them.
+>
+> All of this **moves the parity goldens** — a reviewed diff, and the lead's.
+
 | Family | العربية | For |
 |---|---|---|
 | `talk` | جلسة | the default single-presenter session |

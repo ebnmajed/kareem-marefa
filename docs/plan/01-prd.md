@@ -254,6 +254,49 @@ balances still reconcile.
 - After anonymisation, no ledger row is deleted and every org-level total is unchanged.
 - Content the member authored remains, attributed to **«عضو سابق»**.
 
+#### REQ-PRF-008 — A member owns their profile picture, and the platform stores it
+**Serves:** owner 2026-09-15 · DEC-099
+A member may **upload, replace or remove** their own **صورة الملف الشخصي** on `/app/me`. The image
+is stored by the platform, in its own storage, under the org's prefix through the single path
+builder — **never linked from a third party**. Google's photo is offered **once**, as an explicit
+import on first sign-in («نستخدم صورتك من Google؟»); on yes it is **copied**, on no the member
+keeps initials.
+**Acceptance:**
+- No `<img>` anywhere in the product has a `src` on a domain the platform does not control.
+- Removal is immediate: the row is cleared and the stored object is deleted.
+- The nightly storage-prefix assertion (`REQ-NFR-014`) covers avatar objects the day they exist.
+
+#### REQ-PRF-009 — Initials over a deterministic tint are the default and the permanent fallback
+**Serves:** DEC-099 · `REQ-INT-007`
+The default, and the fallback whenever no picture exists or one has been taken down, is the first
+letter of the display name over one of six navy/silver tints chosen by a **stable hash of the
+member id**. There is **no silhouette placeholder** anywhere in the product.
+**Acceptance:**
+- The tint is stable when a member corrects the spelling of their name — it is keyed to the id, not
+  the name.
+- The glyph is wrapped in `<bdi>` like every other interpolated value.
+- The tint never encodes role, company or status.
+
+#### REQ-PRF-010 — A profile picture is sniffed, EXIF-stripped, raster-only and moderatable
+**Serves:** DEC-099 · DEC-009 · `REQ-EVT-012`
+The upload is sniffed **on content, not extension**, after the bytes land; **EXIF is stripped**
+exactly as session photographs are; **PNG and JPEG only — no SVG** (invariant 11), because an
+avatar renders inside the same privileged headless Chromium the posters do. Derivatives at 96 px
+and 192 px WebP are produced by the existing content-pipeline job. An avatar takedown joins the
+moderation queue.
+**Acceptance:**
+- An SVG renamed `.png` is refused after the bytes land, not before.
+- A taken-down avatar reverts to initials; it never becomes a broken frame.
+- The stored original carries no EXIF.
+
+#### REQ-PRF-011 — Anonymisation clears the picture; the data export includes it
+**Serves:** DEC-099 · `REQ-NFR-012`, `REQ-NFR-013`
+`JOB-anonymise_members` clears `avatar_url` **and deletes the stored object**. The member data
+export (`REQ-PRF-006`) includes the picture.
+**Acceptance:**
+- After anonymisation no storage object remains for that member's avatar.
+- An export archive for a member with a picture contains it.
+
 ---
 
 ## 4. Proposals — `PRO`
@@ -326,6 +369,31 @@ A member sees the state of every **مقترح** they submitted, including the re
 rejection or a change-request.
 **Acceptance:**
 - A member sees only their own proposals and those where they are a named co-presenter.
+
+#### REQ-PRO-009 — Approval carries every proposal field into the session
+**Serves:** owner 2026-09-15 (ask 3) · DEC-075
+`create_session()` copies **every** field the proposer supplied — title, abstract, category, level,
+accepted presenters, **الفئة المستهدفة**, **المدة المتوقعة**, **أهداف التعلّم** and tags — not a
+subset. An admin never re-types content. When an admin **does** edit content after approval, the
+change is **recorded with who changed what** and the proposer is notified, and the proposal review
+card shows a diff.
+**Acceptance:**
+- No field present on the proposal is absent from the session it created.
+- `expected_duration_minutes` pre-fills the schedule form's duration; the admin is not asked again.
+- An admin content edit writes an audit row naming the field, the old value and the new one, and
+  sends the proposer a notification.
+- Creating a session **without** a proposal remains possible and is a secondary action.
+
+#### REQ-PRO-010 — The proposer supplies objectives and tags on the proposal
+**Serves:** owner 2026-09-15 (asks 9 and 11) · DEC-089
+The proposal form carries **أهداف التعلّم** (`REQ-SES-014`) and **الوسوم** (`REQ-DSC-002`), both
+optional, both authored by the proposer. Tags are entered through a searchable, Arabic-normalised
+combobox over the org's existing vocabulary (`REQ-UIX-008`, `REQ-DSC-004`) with free creation, at
+most 8, each a removable chip.
+**Acceptance:**
+- A proposal may be submitted with neither objectives nor tags.
+- A tag typed with different Arabic orthography matches the existing tag rather than creating a
+  near-duplicate.
 
 ---
 
@@ -441,9 +509,95 @@ above everything else. Exactly **one** primary action is present — «احجز 
 - Live **السعة** and, for a waitlisted member, their **موقعك في قائمة الانتظار** are visible
   without interaction.
 
+#### REQ-SES-014 — A session carries optional learning objectives
+**Serves:** owner 2026-09-15 (ask 9) · DEC-089
+A **جلسة** carries **أهداف التعلّم** — «ماذا ستتعلّم؟» — an **ordered** list of short statements,
+each at most **140** characters, at most **8**. It is optional, it is supplied by the proposer
+(`REQ-PRO-010`) and carried into the session by approval (`REQ-PRO-009`), and it is **simply absent**
+from the event page when empty rather than rendered as an empty heading.
+**Acceptance:**
+- The order the proposer entered is the order rendered, and is reorderable without dragging
+  (`REQ-DSG-028`'s single-pointer rule — the shared `ui/reorderable-list`).
+- A ninth objective, an empty one, or one over 140 characters is refused by the database, not only
+  by the form.
+- A session with no objectives renders no «ماذا ستتعلّم؟» section and no heading.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`
+
+#### REQ-SES-015 — A session may span several days, and each day is a meeting in its own right
+**Serves:** owner 2026-09-16 · DEC-119
+A **جلسة** has one or more **أيام**, each with its own start, end and place, and each carrying the
+content a member needs for **that meeting**: its own **check-in**, its own **materials** and its own
+**pre-session tasks**. A one-day session is a session with one day: there is no second code path and
+no second concept.
+**Acceptance:**
+- Every day has `org_id`, RLS and a full policy set, and appears in the generated isolation sweep
+  (`REQ-NFR-001`) — invariant 5, no exception.
+- Each day has its own rotating code, its own attendance list and its own rate-limit stream; the
+  check-in window and the `ends_at + 2h` ceiling (`REQ-CHK-016`) are **per day**.
+- One **حجز** covers every day, and **السعة stays on the session**: one registration, one seat
+  count (`DEC-120`). A member registers for the workshop, not for Tuesday.
+- A task for the whole workshop is a task on day 1, exactly as a session-level file is a file on
+  day 1 — and `REQ-TSK-002` is untouched: tasks stay reminder-only and are never read by check-in.
+- One rating, one discussion, one certificate, one poster — those belong to the session.
+- A member's calendar gains one entry **per day**, and reminders fire per day.
+- ★ This is **not** the recurring series `A14` rules out: that is N independent sessions, each with
+  its own registration and certificate. This is one session with N meetings.
+
+#### REQ-SES-016 — The scheduling form is quick for the common case and honest about the rare one
+**Serves:** owner 2026-09-16 · DEC-119 · `REQ-UIX-009`, `REQ-UIX-010`
+Scheduling a session is the form an admin fills in most, and nearly every session is one day.
+**Acceptance:**
+- **One day is the default and costs nothing**: the multi-day controls sit behind an explicit
+  «جلسة متعدّدة الأيام» affordance, and an admin who never opens it fills in the fields they fill
+  in today.
+- **The end follows the duration**: entering a 60-minute duration puts the end 60 minutes after the
+  start and keeps it there as the start moves. An **explicitly edited end wins** and stops
+  following (`OQ-001` — the duration pre-fills and is never authoritative).
+- **Each added day defaults to the previous day's time and place**, both editable per day. Adding a
+  third evening to a workshop that meets 6–8 p.m. in the same room is one tap.
+- **Validation is immediate and at the field**: a day ending before it starts, two days overlapping,
+  a deadline after the first day begins — each said on blur, next to the control, never only on
+  submit.
+- The form is filled without scrolling back to check what was entered above.
+
+#### REQ-SES-017 — Points and certificates require attending every day, by default
+**Serves:** owner 2026-09-16 · DEC-119
+Attendance points and the certificate are awarded **once for the session**, and by default **only
+when the member attended every one of its days**. It is a per-session setting an admin may relax,
+sitting beside `certificate_mode` where that judgement already lives.
+**Acceptance:**
+- ★ **For a multi-day session the award is evaluated at session completion, not at check-in.**
+  `REQ-CHK-009` makes the verified check-in the sole *trigger* for attendance; the full day set is
+  not known until the session ends, so the award is computed then. A one-day session is unchanged,
+  because attending every day is attending the one.
+- The idempotency key is per member **per session**, so re-running the job cannot double-pay
+  (`REQ-PTS-011`'s ledger is append-only and must stay recomputable).
+- Partial attendance earns nothing by default, and the member can see why: their points history
+  says which day they missed rather than showing an absence.
+- A certificate is never issued for partial attendance while the default stands — a printed
+  artefact asserting attendance is a statement the org has to be able to defend.
+
+#### REQ-SES-018 — Content belongs to the session or to one of its days, and the member is never asked which
+**Serves:** owner 2026-09-16 · DEC-121
+Materials, pre-session tasks and photos each belong either to the **whole session** or to **one
+day**. Both may be used at once — a workshop may have a plan for the week and slides for Wednesday.
+**The scope is never a question put to the person adding the content**: it is implied by where they
+added it from, shown afterwards as a chip, and changeable in one tap.
+**Acceptance:**
+- ★ **A one-day session has no scope concept at all** — no groups, no headings, no chips. Its
+  content is session-scoped and renders exactly as it does today.
+- The member reads **one list per content type**, in day order, with the session's own content
+  first. A group with nothing in it is not rendered.
+- The add control lives in each group's header; pressing it *is* the scope choice. There is no
+  picker, no modal and no required field.
+- A photo is never scoped by hand, including by an attendee: it takes the day whose window contains
+  its upload time, and staff may re-scope it.
+- Adding a second day to an existing session **re-scopes nothing**.
+- Reordering days moves day-scoped content with its day; deleting a day that holds content asks,
+  and defaults to promoting that content to the session rather than deleting it.
 
 #### REQ-RSV-001 — A member reserves a seat
 **Serves:** D18
@@ -617,18 +771,24 @@ by an admin toggle that bypasses the event.
 - Each of the four rights is derived from the check-in record in policy, and a test proves each is
   denied to a member with a confirmed RSVP and no check-in.
 
-#### REQ-CHK-010 — Walk-in check-in is a per-session switch (amended by DEC-065)
+#### REQ-CHK-010 — Walk-ins are a publishing setting on the session (amended by DEC-065, DEC-117)
 **Serves:** OQ-005 · D24 (as narrowed by the owner at Launch)
-By default a code is accepted only from a member whose reservation is **confirmed**. An admin or a
-moderator may open a session to walk-ins (`sessions.allow_walk_ins`, from the host view); on an
-opened session a walk-in who enters a valid code is checked in and receives every attendance right.
-**السعة** remains a planning limit on reservations.
+By default a code is accepted only from a member whose reservation is **confirmed**.
+`sessions.allow_walk_ins` decides otherwise, and it is **a setting in the session's publishing
+settings** — SCR-043's «الإعدادات» tab — set by the **مشرف المؤسسة** who schedules and publishes
+the session. On an opened session a walk-in who enters a valid code is checked in and receives
+every attendance right. **السعة** remains a planning limit on reservations.
 **Acceptance:**
 - With the switch off, a member with no confirmed حجز is refused with «reservation required», before
   the code is checked, and the attempt is recorded.
 - With the switch on, a member with no حجز who checks in earns attendance points and receives a
   certificate; walk-ins are distinguishable in admin reporting.
-- Only an admin or a moderator can flip the switch; the change is audited.
+- ★ **It is decided when the session is scheduled and published**, alongside the date, the venue,
+  the capacity and the deadlines — written by the same audited RPC — and is changeable afterwards
+  **only** through that same act, by an admin (`DEC-118`). There is no toggle anywhere else.
+- ★ **It is a policy about who may attend, not an in-room control.** What the room controls is
+  *when check-in stops accepting* (`REQ-CHK-015`), which is a different question, at a different
+  time, with a different role set.
 
 #### REQ-CHK-011 — Presenters do not check in to their own session
 **Serves:** OQ-025 · D9
@@ -652,6 +812,36 @@ exclusion constraint rather than by a validation check.
 **Acceptance:**
 - An attempt to check in to a session overlapping one already attended is rejected with a message
   naming the conflicting session.
+
+#### REQ-CHK-015 — Check-in is opened and closed by hand
+**Serves:** owner 2026-09-15 · DEC-113
+A session carries a **switch** that decides whether check-in is accepting anyone. It is **open by
+default** — nobody has to open it — and the session's accepted **مُقدِّمون**, any **مُنظِّم** and
+any **مشرف المؤسسة** may close it, and reopen it, at any time.
+**Acceptance:**
+- The switch starts **open** (`DEC-116`). The previous design put a manual act in front of the
+  common case and relied on someone performing it in a room, under time pressure, on a screen
+  projected in front of an audience.
+- Closing and reopening are one tap from the host view (SCR-016), the screen already in the room.
+- Closing stops admitting new check-ins and **never revokes one already recorded** (`DEC-115`) —
+  an attendance record is evidence that someone was in the room, and the switch governs the door,
+  not the people already inside. Withdrawing one moves that member's points, certificate
+  eligibility and «حضرت» without them acting.
+- Every open and close writes an audit row naming who and when — it decides whether attendance can
+  be recorded, and attendance is what `REQ-PTS-012` pays points on.
+- A member may not open it, and a presenter of a *different* session may not open this one.
+
+#### REQ-CHK-016 — Check-in closes two hours after the session's scheduled end, absolutely
+**Serves:** owner 2026-09-15 · DEC-113
+From **`ends_at` + 2 hours** the switch can no longer be opened, and an open switch stops admitting.
+**Acceptance:**
+- The ceiling is enforced by the RPC, not by the screen — a forged request past it is refused.
+- The ceiling is computed from the session's **scheduled** end, not from when it actually finished.
+- A session with no scheduled end cannot accept a check-in at all, which is already true: nothing
+  reaches `published` without both ends (`REQ-SES-001`).
+- ★ **The floor is `REQ-CHK-004`'s and is unchanged**: a code is valid only while the session is
+  running. "Open by default" therefore cannot mean checking into a talk three weeks early — there
+  is no code to enter. The switch closes the window early; it never opens it wider.
 
 #### REQ-CHK-014 — Host-view access
 **Serves:** OQ-013 · A1
@@ -712,7 +902,11 @@ file is not downloadable.
 Each material is flagged **قبل الجلسة** (pre-reads, downloadables) or **بعد الجلسة** (slides,
 recordings).
 **Acceptance:**
-- A **بعد الجلسة** material is not visible to members until the session reaches `completed`.
+- A **بعد الجلسة** material is not visible to members until **its own scope** has finished
+  (`DEC-121`): a session-scoped one when the session reaches `completed`, a **day-scoped one when
+  that day ends**.
+- ★ That distinction is a fix, not a nicety. Without it, day 1's slides on a three-day workshop
+  would be withheld until Friday — long after the evening they are useful.
 - Changing the flag takes effect immediately and is audited.
 
 #### REQ-MAT-007 — Audio, video, images, links
@@ -1551,11 +1745,73 @@ Poster families — **جلسة** (talk), **ورشة** (workshop, with a tasks st
 multi-presenter), **لقاء** (meetup), **إعلان** (announcement) — each light and dark, RTL-first
 with a mirrored LTR variant reserved for English. Certificate families — **حضور**, **تقديم**,
 **إنجاز** — landscape and portrait, formal Naskh, with locked regions.
+★ **Posters render on a GRADIENT background and default to the DARK scheme** (`DEC-125`, `DEC-127`);
+certificates are **a library the admin chooses from**, in both orientations and both schemes
+(`DEC-128`). Numerals on every template are **Western** (`REQ-INT-006`, `DEC-124`).
 **Acceptance:**
+- ★ **The seeded roster is counted, not assumed** — 5 poster families × 2 schemes and 3 certificate
+  families × 2 orientations. A short roster **fails CI**. `0061` seeds 8 × 1 today, which is half of
+  what this requirement promises and went unnoticed for three milestones (`DEC-128`).
 - Every template declares its dynamic fields and its safe area per preset.
 - Templates honour the brand's forbidden imagery: **no books, caps, lightbulbs, education
   iconography, cartoon illustration, icon libraries, emoji or photography**. The visual language
   is the **Knowledge Network** — dots, thin lines, light.
+
+#### REQ-DSG-027 — Staff and presenters may download every rendered poster variant
+**Serves:** owner 2026-09-15 (ask 7) · DEC-076
+A **تنزيل** menu on the event page and on the schedule screen lists every ready artifact — master
+4:5, square, story, OG, and the print PDF where one exists — to an **مشرف المؤسسة**, a **مُنظِّم**
+and the session's own **مُقدِّمون**. It mints a short-lived server-signed URL through the existing
+export read path; it never builds a client-side blob.
+**Acceptance:**
+- The same signing function serves the designer's export panel and this menu; there is one.
+- A member who is neither staff nor a presenter of that session sees no menu and, if they forge the
+  request, is refused by policy.
+- A variant that has not finished rendering is listed as pending, not as a broken link.
+
+#### REQ-DSG-028 — Layers are positioned by direct manipulation, with a non-dragging path for every dragged operation
+**Serves:** `REQ-DSG-022` · DEC-077 · DEC-093 · `SC 2.5.7`, `SC 2.1.1`
+A layer is positioned by **drag, eight-handle resize and rotate**, with **snapping and alignment
+guides**, arrow-key nudge (1 px, 10 px with shift), reorder, multi-select and group
+align/distribute — **with a single-pointer, non-dragging alternative for every dragged operation**,
+and full keyboard parity.
+**Acceptance:**
+- Every studio operation is performable with taps alone — no press-move-release — and a Playwright
+  case proves it using `page.click()` only.
+- The inspector's numeric position, size and rotation fields **exist**; they are the conformance
+  path and may be demoted into a collapsed accordion but never removed.
+- Align, distribute and rulers operate on the **document's** logical axis; arrow keys follow the
+  **visual** axis. Applying "align start" to the same document from an `ar` console and an `en`
+  console stores **byte-identical** results.
+- A marquee is never the only way to select more than one object.
+
+#### REQ-DSG-029 — The editor previews every variant live, and a failing check names its layer
+**Serves:** `REQ-DSG-022` · DEC-077
+A variant strip shows a live thumbnail of every preset, with a warning dot where a check fails. The
+checks panel is a persistent badge with a count; selecting a check **selects the offending layer**.
+**Acceptance:**
+- A variant is inspectable before export, not discovered at export.
+- Clicking a failed check moves the selection to the layer that failed it.
+
+#### REQ-DSG-030 — Image layers carry a focal point that drives every derived crop
+**Serves:** `REQ-DSG-022` · DEC-077 · DEC-093
+An image layer carries a **نقطة التركيز** used by derivation when producing every other variant, so
+a crop centres on the subject. It is set by a draggable dot **and** by a nine-point preset grid.
+**Acceptance:**
+- The default is the geometric centre, so an untouched document derives **identically** to today
+  and no parity golden moves.
+- The nine-point grid alone is sufficient to set it.
+
+#### REQ-DSG-031 — Certificate issuance is a three-step flow with a preflight
+**Serves:** `REQ-CRT-001` … `REQ-CRT-004` · DEC-077
+Issuance is **التصميم** (pick a template, preview with a real attendee's data) → **من يستحق** (the
+mode, with the resulting list of names shown live and a count, and hold-backs made visibly) →
+**الإصدار** (a preflight — fonts resolved, bindings bound, Tier A green, serial range reserved —
+then one confirmed button, then a per-certificate progress list with a re-issue for failures).
+**Acceptance:**
+- The three meanings of «شهادة» — the design, the mode and the act — are separated on screen.
+- Issuance cannot be triggered from a dropdown without the preflight and the confirmation.
+- A failed certificate is re-issuable individually without re-issuing the batch.
 
 ---
 
@@ -1615,6 +1871,62 @@ Every send records its outcome.
 **Acceptance:**
 - A bounce or failure is visible to the org admin, with the reason.
 - Logs are retained per OQ-019 (180 days).
+
+#### REQ-NTF-009 — A notification template is an ordered list of typed blocks
+**Serves:** owner 2026-09-15 (ask 13) · DEC-081
+A template is an ordered list of typed blocks — `heading`, `paragraph`, `button`, `session_card`,
+`detail_list`, `divider`, `spacer`, `image`, `footer` — each compiling to one table row of the
+existing mail shell. The `footer` is **composed, not typed**, so `REQ-NTF-005`'s preference link can
+never be forgotten. Images are **PNG/JPEG only, never SVG** (invariant 11), width-capped, always
+with `alt`.
+**Acceptance:**
+- An org that has not touched its templates renders **byte-identical** output to before; the
+  existing golden tests do not move.
+- Blocks are reorderable without dragging (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
+
+#### REQ-NTF-010 — The template editor previews with the production renderer
+**Serves:** DEC-081
+The preview calls **the same renderer the worker calls**, over sample data for that message key, in
+a sandboxed iframe, in three modes: **phone at 375 px, desktop, and plain text**.
+**Acceptance:**
+- There is exactly one mail renderer; the preview is not a second implementation.
+- The plain-text mode shows what a client that strips HTML actually displays.
+- A forced-dark toggle shows the message as an inverting client renders it.
+
+#### REQ-NTF-011 — An admin can send a live test of any template to their own address
+**Serves:** DEC-081 · D56
+**«أرسل اختبارًا»** sends the rendered message to the signed-in admin's own address **through the
+live transport**.
+**Acceptance:**
+- The test goes to the admin's own address and to no other; no arbitrary recipient is accepted.
+- It uses the production transport, so Outlook on Windows is testable by opening Outlook on Windows.
+
+#### REQ-NTF-012 — Bindings are declared per message key and enforced by the database
+**Serves:** DEC-081
+Each `MSG-*` key declares the bindings it offers; the editor lists them rather than letting an admin
+type one that will render empty. The existing template-validation trigger gains the binding check.
+**Acceptance:**
+- A template referencing a binding the key does not offer is refused by the **database**, for every
+  writer, not by the form.
+- A template missing a required field stays refused, as today.
+
+#### REQ-NTF-013 — The plain-text alternative is generated from the blocks
+**Serves:** DEC-081 · D56
+The text part is derived from the blocks — a heading becomes a line, a button becomes `label: url`,
+a session card becomes four lines — never authored twice.
+**Acceptance:**
+- One edit changes both parts; they cannot drift.
+- Every message still ships with a text alternative.
+
+#### REQ-NTF-014 — Eight designed platform templates are present for every org from creation
+**Serves:** DEC-082 · A27 pattern
+**إعلان جلسة · تذكير · تأكيد حجز · تغيّر موعد · إلغاء · طلب تقييم · شهادة · تكريم** ship
+platform-owned and seeded for every org, in light and dark, Arabic and English, driven by the brand
+kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is never mutated.
+**Acceptance:**
+- **Every** message key resolves to a designed template; no key falls back to unstyled text.
+- Changing the org logo restyles every message.
+- Promotion adds to the library; it never supplies the baseline.
 
 ---
 
@@ -1730,6 +2042,15 @@ Search covers material **metadata**, not text extracted from inside documents.
 - No indexing job extracts text from PDFs. Arabic PDF extraction commonly returns visual rather
   than logical order, which would produce reversed, unsearchable words.
 
+#### REQ-DSC-008 — An admin manages the tag vocabulary
+**Serves:** owner 2026-09-15 (ask 11) · `REQ-DSC-002`
+An **مشرف المؤسسة** renames a **وسم**, **merges** near-duplicates into one, deletes an unused one,
+and sees a **usage count** for each.
+**Acceptance:**
+- Merging moves every attachment and leaves no orphan; the surviving tag's count is the sum.
+- A merge and a delete are audited.
+- Usage counts are maintained by trigger, not computed per page load.
+
 ---
 
 ## 20. Admin consoles — `ADM`
@@ -1840,6 +2161,16 @@ else.
   rejected by policy.
 - A moderator cannot see per-rater ratings (`REQ-RAT-005`).
 
+#### REQ-ADM-021 — Staff may download session photographs, individually and as an album, audited
+**Serves:** owner 2026-09-15 (ask 7) · DEC-076
+Any viewer who may see a photograph may download **that** photograph. Staff may additionally
+download **the album** — **«تنزيل الكل»** — produced by a background job that writes a zip to
+storage and notifies when it is ready. **Every download is audited.**
+**Acceptance:**
+- An album download never runs inside a request; a 300-photo album does not block a function.
+- The served file is the EXIF-stripped one, which is the only one that exists (`REQ-EVT-012`).
+- Each download writes an audit row naming the actor, the session and what was taken.
+
 ---
 
 ## 21. Internationalization, RTL and typography — `INT`
@@ -1889,13 +2220,17 @@ text anywhere**; kashida off by default; a **1.2× length allowance** for Arabic
 - A component setting letter-spacing on Arabic text fails review.
 - A text line clipping a diacritic is a defect, not a rendering quirk.
 
-#### REQ-INT-006 — The numeral system is an org setting
-**Serves:** A30
-Western or Arabic-Indic, **default Western**, applied consistently across the UI, notifications,
-templates and exports.
+#### REQ-INT-006 — Numerals are Western everywhere, and there is no setting
+**Serves:** owner 2026-09-16 · `DEC-124` (supersedes A30's numeral clause, `DEC-095`, `REQ-INT-010`)
+Every digit the product renders, anywhere, is **Western — `0123456789`**. This holds in Arabic
+strings, in the UI, in email and notifications, in posters and certificates, in CSV, ICS, filenames,
+serials, verification codes and URLs. **There is no org setting, no member preference and no
+platform override**; the `numeral_system` enum and `orgs.numerals` are dropped (`DEC-124`).
 **Acceptance:**
-- Changing the setting changes **every** surface, including PDFs and CSV exports.
-- A single screen never mixes the two systems.
+- No surface renders `U+0660`–`U+0669` or `U+06F0`–`U+06F9`. A test greps `src/messages/**` and
+  fails on either range — a digit typed into a translation string is the way this comes back.
+- The canvas is **not** authoritative here: it uses Arabic-Indic digits on all 18 artboards and
+  every one is an error to be read as Western (`DEC-124`).
 
 #### REQ-INT-007 — Mixed strings are bidi-isolated
 **Serves:** A30
@@ -1921,6 +2256,16 @@ while the **marketing shell keeps `/en`**, which is a frozen public contract (A3
   Fonts picker, which are materialised first (`REQ-DSG-017`).
 - Subsetting never drops `rlig`, `mark` or `mkmk`; a subsetter that does breaks lam-alef and
   stacked tashkeel while passing every Latin smoke test.
+
+#### REQ-INT-010 — Numerals follow the org setting for display only
+**Serves:** DEC-095 · `REQ-INT-006`
+Numerals follow the org's **نظام الأرقام** wherever a number is **read by a person**. **Inputs,
+CSV exports, certificate serials, verification codes, URLs, filenames and every other
+machine-readable surface are always Western (`nu-latn`)** — always, regardless of the setting.
+**Acceptance:**
+- A CSV export opens in Excel and Google Sheets with numeric columns parsed as numbers.
+- A certificate serial printed on paper verifies against `/verify/[code]` character for character.
+- No URL or filename ever contains an Arabic-Indic digit.
 
 ---
 
@@ -2087,7 +2432,391 @@ suite** in the product.
 
 ---
 
-## 23. Out of scope
+## 23. Interface system — `UIX`
+
+*Added by `DEC-070`. This area owns the design system, the shell, the loading and failure models,
+the form model, the affordance rule, focus management and motion. `16-ui-redesign.md` specifies
+how each is built; this file defines what must be true.*
+
+#### REQ-UIX-001 — A shared component system is the only source of UI primitives
+**Serves:** owner 2026-09-15 (ask 1) · DEC-069
+Every control, surface, status and loading element in the product comes from
+`src/components/ui/`. **No screen declares its own control styles.**
+**Acceptance:**
+- A lint gate fails CI when a file outside the system declares a control class string the system
+  already owns, and when a `<form>` holds an `<input>` not wrapped in `<Field>`.
+- A change to the focus ring is a one-file change.
+- Every primitive has a jsdom test, an RTL check and an entry in the gallery route.
+
+#### REQ-UIX-002 — One shell: search, catalogue, notifications, account — and a tab bar below `md`
+**Serves:** owner 2026-09-15 (ask 1) · DEC-072 · DEC-098
+The application has one shell: a persistent **search** entry, a **catalogue** entry, the
+notification bell and an **account menu** — with staff destinations in a labelled section of it,
+not distinguished only by font colour. Below `md` a **bottom tab bar** replaces the disclosure
+list; it is **contextual** — hidden on detail and immersive screens, where a bottom **action** bar
+carrying that screen's one primary action replaces it.
+**Acceptance:**
+- Search is reachable from every app screen without typing a URL.
+- **No screen ever carries two fixed bottom bars**, and a test asserts it.
+- `main` carries a `padding-block-end` that clears the bar, shipped in the same commit as the bar;
+  no screen's last 64 px is covered.
+- A moderator can find their queue from the shell.
+
+#### REQ-UIX-003 — A session's lifecycle status looks the same on every surface that shows a session
+**Serves:** owner 2026-09-15 (ask 6) · DEC-071 · DEC-073
+One badge — colour, icon and word — renders a session's derived phase and seat state identically on
+the browse card, the event page hero, `/app/me`, the calendar, the admin list, the host view, the
+notification rows and the public card.
+**Acceptance:**
+- A `completed` session is visibly ended to a **member**, not only to staff.
+- `cancelled` and `in_progress` carry chrome, colour and an icon — never bare text.
+- The status colours are platform constants: an org's brand kit cannot restyle what «أُلغيت» means.
+- Colour is never the only channel.
+
+#### REQ-UIX-004 — Derived status governs which actions a session offers
+**Serves:** owner 2026-09-15 (ask 4) · DEC-071 · DEC-090
+What a session offers is computed from its stored state **and the clock**, not from stored state
+alone. **A session past its end time offers no registration, no cancellation and no calendar
+action** — it shows the outcome as a read-only fact.
+**Acceptance:**
+- A `published` session whose start has passed offers no «احجز مقعدًا», even while the clock job
+  lags.
+- A member holding a confirmed reservation on a `completed`, `archived`, `in_progress` or
+  `cancelled` session is not offered a live cancel form.
+- The derived phase is **total**: every combination of state and null schedule maps to exactly one
+  phase, proven by a test.
+
+#### REQ-UIX-005 — Every route has a loading state shaped like its content
+**Serves:** owner 2026-09-15 (ask 1)
+Every meaningful route boundary has a `loading.tsx` whose skeleton has the **shape** of the page it
+replaces. A skeleton renders no text, is `aria-hidden` and is direction-agnostic.
+**Acceptance:**
+- A coverage gate fails CI when a segment declaring a `page.tsx` has no loading state **at or
+  above** it.
+- No skeleton calls `getTranslations` — it renders before `setRequestLocale`.
+- Navigation to a dynamic route is prefetched and immediate, not blocked on the server round trip.
+
+#### REQ-UIX-006 — Navigation shows progress; no interaction leaves the interface apparently idle
+**Serves:** owner 2026-09-15 (ask 1)
+A navigation shows an inline pending affordance on the link that started it and, when it has been
+pending for more than ~150 ms, a progress bar in the shell. The branded splash appears **once**, on
+the first paint of a cold load, and never on an in-app navigation.
+**Acceptance:**
+- The bar does not flash on a navigation that resolves faster than the threshold.
+- The splash is a cross-fade over content that is already there, never a gate in front of content
+  that is not; if it costs LCP against `REQ-NFR-008`, the splash is dropped, not the budget.
+
+#### REQ-UIX-007 — Every action control has a pending state that preserves its label
+**Serves:** owner 2026-09-15 (ask 1)
+A control that is working keeps its label, gains a spinner beside it, is `aria-busy` and cannot be
+submitted twice. Optimistic updates are used **only where the outcome is not contended** — bookmark
+and reaction, **never** a reservation.
+**Acceptance:**
+- No control blanks its label while pending.
+- A seat is never optimistically confirmed and then revoked on a capacity race.
+
+#### REQ-UIX-008 — Selecting a member is a searchable, keyboard-navigable combobox wherever it occurs
+**Serves:** owner 2026-09-15 (ask 2)
+Every place a member is chosen — co-presenters on a proposal, the scoring adjustment picker, any
+future one — uses one combobox: type-ahead, **Arabic-normalised matching** (`REQ-DSC-004`),
+single or multiple selection, full ARIA 1.2 keyboard support.
+**Acceptance:**
+- No screen renders every org member as a checkbox list.
+- It is usable at 400 members.
+- A name typed with different Arabic orthography matches.
+
+#### REQ-UIX-009 — A failed submission is summarised above the form, focused, with one link per failed field
+**Serves:** owner 2026-09-15 (ask 5)
+On a failed submit, a summary appears above the form, receives focus, is announced, and lists
+**every** failed field as **a link to that field's control**.
+**Acceptance:**
+- Activating a summary item moves focus to the named control — and the control is **not** left
+  behind a sticky header (`REQ-UIX-017`).
+- Every form in the product has one; the pattern is not unique to one screen.
+
+#### REQ-UIX-010 — Field errors are adjacent, coloured, icon-marked and never colour-alone
+**Serves:** owner 2026-09-15 (ask 5) · `REQ-NFR-007`
+An error sits next to its control, in the error colour, with an icon and a 1 px error border.
+**Acceptance:**
+- No error renders in the heading colour with no icon and no marker.
+- Removing colour leaves the error still identifiable.
+- `aria-invalid` and `aria-describedby` are wired by the field wrapper, not by the screen.
+
+#### REQ-UIX-011 — Required fields are positively marked; a failed submission never loses typed values
+**Serves:** owner 2026-09-15 (ask 5)
+Required is marked with the word **«مطلوب»** on the label — not by an asterisk, which collides with
+the RTL run, and not by the absence of «اختياري». Every value the member typed survives a failed
+round trip. Inline validation runs on blur **after the first submit attempt only**.
+**Acceptance:**
+- A failed submit re-renders with every field still holding what was typed.
+- A field is never marked invalid before the member has tried to submit.
+
+#### REQ-UIX-012 — Every list has an empty state that names the next action
+**Serves:** owner 2026-09-15 (ask 1) · D60
+No list, table, rail or result set ever renders as blank space. An empty state says what is missing
+and links to what to do about it; a filtered-empty state names the filter that emptied it and
+offers to drop just that one.
+**Acceptance:**
+- Every list surface has an empty state, and it is in the gallery.
+- No empty state is a dead end.
+
+#### REQ-UIX-013 — Every destructive action confirms in a dialog naming the object
+**Serves:** `REQ-NFR-007` · D60
+A destructive or irreversible action confirms in a house dialog that **names the object** and
+states the consequence — never a browser `confirm()`, never a hint above a link.
+**Acceptance:**
+- Detaching a poster, deleting a tag, issuing certificates and removing a member each confirm by
+  name.
+- The consequence is stated **before** the click, not after.
+
+#### REQ-UIX-014 — Motion respects `prefers-reduced-motion` globally, by token
+**Serves:** `REQ-NFR-007` · DEC-100
+Duration and easing are tokens, and every duration collapses to `0ms` under
+`prefers-reduced-motion: reduce`, declared **once**, globally. **Collapsing a duration is not a
+reduced-motion design:** each orchestrated moment additionally names its own static end state.
+**Acceptance:**
+- No component declares its own duration.
+- Under reduced motion every animated surface reaches its end state and nothing is mid-transition.
+
+#### REQ-UIX-015 — An affordance is rendered only when the viewer's relation permits the action
+**Serves:** owner 2026-09-15 (ask 4) · DEC-090 · DEC-092
+An affordance is rendered only when the **viewer's relation to the object** permits the action it
+offers, and **a derived display state may only ever be more conservative than the stored state,
+never less**. A slot that can render nothing has **its `<section>` and heading gated with it** —
+the page owns the landmark, so the page owns the condition. RLS and the RPCs remain authoritative;
+a hidden control is a courtesy.
+**Acceptance:**
+- No viewer is offered an action the database will refuse.
+- Calendar, tasks, check-in, the host view and the staff links each carry a relation **and** a phase
+  condition.
+- An empty slot renders no heading, proven by one component test per slot.
+- The derived phase never adds an affordance the stored state would not permit, proven for every
+  phase pair.
+
+#### REQ-CHK-017 — An admin can edit the attendance list at any time, including removing a record
+**Serves:** owner 2026-09-16 · DEC-116
+An **مشرف المؤسسة** — not a moderator, not a presenter — may add to and **remove from** a session's
+checked-in list at any time, with a mandatory reason. `REQ-CHK-008` already covers adding; removal
+is what makes an open-by-default switch safe, because anything the door lets through can be
+corrected by the one role accountable for the org's records.
+**Acceptance:**
+- Every add and every removal is audited with the actor, the member, the reason and the time.
+- A removal is a deliberate act on one member — never a side effect of closing check-in
+  (`DEC-115`), and never a bulk operation without naming each member.
+- ★★ **Removal reverses what attendance granted, and it cannot do so by deleting rows.**
+  `points_ledger` is append-only with `service_role` revoked (`REQ-PTS-011`, invariant 9), so a
+  removal that leaves the award standing is a silent inconsistency and a delete is impossible by
+  design. The reversal is a **compensating ledger entry** with its own idempotency key and reason.
+  A certificate already issued carries a gapless serial (`REQ-CRT-004`) and is **revoked**, not
+  un-issued.
+- The member sees the outcome honestly: their «حضرت» becomes «لم تُسجّل حضورك», and their points
+  history shows the reversal as an entry rather than a number that quietly changed.
+
+#### REQ-UIX-021 — The member's landing screen is the sessions timeline
+**Serves:** owner 2026-09-15 · DEC-112
+`/app` renders **the sessions a member can attend**, as a single scrollable timeline grouped by
+date — not a dashboard of links and not a grid of rails. The member's next committed session is the
+first item of that timeline, not a separate hero above it.
+**Acceptance:**
+- A member lands on something they can act on, without a second navigation.
+- There is one column: nothing competes with the list for horizontal space.
+- A session's state is legible while scrolling, without stopping to read (`REQ-UIX-003`).
+- The empty case is the same screen with an invitation to propose, never a different page.
+
+#### REQ-UIX-022 — Filters belong to the timeline, and their state is always visible
+**Serves:** owner 2026-09-15 · DEC-112 · `REQ-DSC-005`
+Filtering is part of the list, not a rail beside it. The active set is visible at all times,
+each filter is individually removable, and the whole set is clearable in one action. Below `md`
+the control set opens as a sheet rather than pushing the list sideways.
+**Acceptance:**
+- A member can tell what they are filtered to without opening anything.
+- Removing one filter never clears the others.
+- The filtered-empty state names the filter that emptied it and offers to drop just that one
+  (`REQ-UIX-012`).
+
+#### REQ-UIX-023 — A disclosure closes when it has been used
+**Serves:** owner 2026-09-15 · DEC-111
+Any menu, dropdown or disclosure in the shell closes when the member follows a link inside it,
+clicks outside it, or presses `Escape`; and no two are open at once.
+**Acceptance:**
+- Following a link inside a menu leaves no panel over the destination — asserted by a test, because
+  under Partial Rendering the layout does not re-render and the panel survives the navigation.
+- `Escape` returns focus to the control that opened the panel.
+
+#### REQ-UIX-024 — The discussion is a composition surface, not a comment log
+**Serves:** owner 2026-09-15 · DEC-110 · `REQ-EVT-001` … `REQ-EVT-008`
+The discussion on a session supports real composition and real feedback: an editing affordance
+rather than a bare textarea, visible upload controls rather than a hidden input, a reaction whose
+acknowledgement is felt, and a pending, success and failure state on every action.
+**Acceptance:**
+- Every action shows it is working, and says so if it fails (`REQ-UIX-007`, `REQ-UIX-010`).
+- The upload control states what it accepts and how large before a file is chosen
+  (`REQ-MAT-008`); the server still sniffs the bytes and still refuses SVG.
+- The reaction is a whisper, not a celebration: `REQ-EVT-004` earns no points, so nothing about it
+  should read as an achievement (`REQ-UIX-018`).
+
+#### REQ-UIX-016 — Every route boundary with a loading state has an error boundary
+**Serves:** DEC-091
+Every boundary with a `loading.tsx` has an `error.tsx` rendering a shared body: what happened in one
+sentence, a **retry**, and a way back. Every **dynamic** segment has a `not-found.tsx`. The root
+error page — the one file with no translation provider and no `<html lang>` above it — is
+**Arabic and `dir="rtl"` by construction**.
+**Acceptance:**
+- A coverage gate fails CI on a boundary with a skeleton and no error boundary.
+- `global-error.tsx` exists and contains `dir="rtl"`.
+- No error surface shows a stack trace, and none shows an error code as its headline.
+- No member ever sees Next's default English left-to-right error page.
+
+#### REQ-UIX-017 — A skip link precedes the shell, and nothing fixed may obscure the focused element
+**Serves:** `SC 2.4.1`, `SC 2.4.11` · DEC-091 · `REQ-NFR-007`
+The **first focusable element** in the shell is a skip link to `<main>`, visually hidden until
+focused; console pages carry a second skip past the rail. Scroll padding and scroll margin are
+derived from the height of the fixed layers, so **no sticky or fixed element ever covers the
+focused element**.
+**Acceptance:**
+- Tabbing every focusable element on the event page and the proposal form, at 390 px and at desktop,
+  never leaves the focused element intersected by a fixed or sticky element.
+- An anchor jump lands its target below the sticky header, not behind it.
+- At most one fixed bottom bar per screen.
+
+#### REQ-UIX-018 — Celebratory motion uses the platform's own dot-and-line vocabulary
+**Serves:** owner 2026-09-15 (ask 14, motion) · DEC-100
+Motion in the app speaks the vocabulary the marketing site already speaks — **dots, lines and
+light**, camera and edit grammar, exponential ease-outs. **No motion library is added.** No bounce,
+no elastic, no confetti, and **nothing scales on hover**. Attendance lists, moderation, exports, the
+audit log, survey results, admin tables and **every error state** do not animate.
+**Acceptance:**
+- No animation dependency appears in `package.json`.
+- Reuse is visible: the existing keyframes are used rather than replaced.
+- A failure never animates.
+
+#### REQ-UIX-019 — Two moments are orchestrated, and each names its static state
+**Serves:** owner 2026-09-15 (ask 14) · DEC-100
+Exactly **two** moments are orchestrated rather than acknowledged — **الحجز** (a reservation
+confirmed) and **تسجيل الحضور** (a check-in accepted). Each plays once per occurrence, never on a
+re-render, and each has a **named static state** under reduced motion that is a complete experience.
+**Acceptance:**
+- Neither replays on a re-render.
+- Both static states are reviewed at 390 px alongside the animated ones.
+- Five acknowledgements exist beneath them and are deliberately quieter.
+
+#### REQ-UIX-020 — Animation touches only transform, opacity and filter, and holds 60 fps
+**Serves:** `REQ-NFR-008` · DEC-100
+No animation touches `width`, `height`, `top` or `margin`; a height change animates
+`grid-template-rows`. No `will-change` is left on after an animation ends.
+**Acceptance:**
+- A lint rule fails a `@keyframes` block touching anything but `transform`, `opacity` or `filter`,
+  with a documented escape hatch.
+- The two orchestrated moments traced on a throttled CPU profile show **no frame over 16 ms**.
+
+
+#### REQ-UIX-025 — The public site has a visible way into the platform, and says the platform exists
+**Serves:** owner 2026-09-16 · `DEC-126` · A38
+The marketing site carries a **persistent, visible «تسجيل الدخول»** into `SCR-002`, and its content
+tells a visitor that the platform exists and what it is for. Today neither is true: the header and
+both CTAs point only at `/register`, so a member with an account must type `/sign-in` by hand.
+**Lands in M13**, the only milestone permitted to touch the frozen routes (`REQ-NFR-019`).
+**Acceptance:**
+- «تسجيل الدخول» is reachable from every marketing page, on phone and desktop, without scrolling
+  to the footer.
+- It is **visually distinct from «سجّل اهتمامك»** and never replaces it — the interest list and the
+  sign-in door are different things (`DEC-002`, invariant 2).
+- Nothing is added to the marketing header before M13; `npm run qa` stays 44/44 and the visual
+  baseline is re-cut in the same commit as the rebuild, never before it.
+
+---
+
+## 24. Survey — `SUR`
+
+*Added by `DEC-070`. The survey is a **staff instrument**, distinct from the rating
+(`REQ-RAT-001` … `REQ-RAT-007`) in audience, policy and purpose — see `DEC-074`.*
+
+#### REQ-SUR-001 — An optional per-session survey, built from a reusable org template
+**Serves:** owner 2026-09-15 (ask 10) · DEC-074
+A **جلسة** may carry one **استبانة**, created by staff from a reusable org-level template. It is
+optional; most sessions have none.
+**Acceptance:**
+- A session with no survey shows nothing about one, anywhere.
+- A template is reusable across sessions without copying its questions by hand.
+- Every survey table carries `org_id`, RLS and a full policy set (`REQ-NFR-001`).
+
+#### REQ-SUR-002 — Four question types, each required or optional
+**Serves:** owner 2026-09-15 (ask 10)
+Questions are **ordered** and typed: **مقياس ١–٥**, **اختيار واحد**, **اختيار متعدد**, **نص حر**.
+Each is required or optional.
+**Acceptance:**
+- Question order is authored and preserved, and is reorderable **without dragging**
+  (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
+- A required question blocks submission with an inline error and a summary entry
+  (`REQ-UIX-009`, `REQ-UIX-010`).
+
+#### REQ-SUR-003 — Eligibility to answer is check-in, in the rating window, once
+**Serves:** `REQ-RAT-003` · DEC-074
+Exactly the members who may rate may answer: a **checked-in attendee**, within the same 14-day
+window. **One member, one response.**
+**Acceptance:**
+- A member who did not check in cannot answer, enforced by policy.
+- A second submission by the same member is refused, not silently duplicated.
+- The window is the rating window; there is not a second one to keep in step.
+
+#### REQ-SUR-004 — The rating and the survey are one screen and two decorrelated writes
+**Serves:** DEC-074 · DEC-094
+A member answers one thing once, on one screen: `/app/sessions/[id]/rate` carries the rating first
+and the survey below it. ★ **One screen — but not one submit and not one transaction.** The rating
+is written by the action; the survey response is enqueued with a **jittered delay**, with **no
+shared request id, correlation id or client-generated key**.
+**Acceptance:**
+- The member experiences one screen and one action.
+- The two rows carry no shared identifier and no correlated timestamp.
+- `ratings.submitted_at` is stored coarsened to the **day**.
+
+#### REQ-SUR-005 — Results are visible to `admin` and `moderator` only; a presenter cannot read them
+**Serves:** owner 2026-09-15 (ask 10) · DEC-074
+Survey results are readable by the **مشرف المؤسسة** and the **مُنظِّم** of the owning org. **A
+مُقدِّم cannot read them** — by policy, not by a UI condition. This is the point of the ask.
+**Acceptance:**
+- A presenter querying their own session's survey results directly is refused by RLS, and there is
+  an explicit test case for it.
+- No aggregate, count or distribution reaches a presenter by any route.
+
+#### REQ-SUR-006 — The minimum-count withhold covers every question type, not only free text
+**Serves:** `REQ-RAT-006` · DEC-094
+Below the minimum response count, results are withheld — and the withhold applies to **scale means,
+choice distributions and free text alike**.
+**Acceptance:**
+- A distribution over fewer than the minimum number of responses is withheld, not drawn.
+- The screen says results are withheld and why, rather than rendering an empty chart.
+
+#### REQ-SUR-007 — Results export as audited UTF-8-BOM CSV, in Western digits
+**Serves:** `REQ-ADM-017` · DEC-095
+Results export through the existing audited export path, **UTF-8 with BOM**, and — per
+`REQ-INT-010` — in **Western digits**, regardless of the org's numeral setting.
+**Acceptance:**
+- The file opens in Excel and Google Sheets with Arabic intact and numeric columns parsed as numbers.
+- The export writes an audit row.
+- The withhold of `REQ-SUR-006` applies to the export exactly as it does to the screen.
+
+#### REQ-SUR-008 — Response rate is shown against eligible attendees
+**Serves:** owner 2026-09-15 (ask 10)
+The results screen shows **نسبة الاستجابة** — responses over **eligible** attendees, not over
+invitees — in the org's numerals (`REQ-INT-006`, display).
+**Acceptance:**
+- The denominator is the checked-in attendee count for that session.
+- A session with no eligible attendees shows that, rather than dividing by zero.
+
+#### REQ-SUR-009 — A survey response and a rating by the same member are never written correlated in time
+**Serves:** DEC-094 · `REQ-RAT-004`
+The timing of the two writes must not identify a rater. This is a storage guarantee, not a
+presentation one, and it holds in every artefact — backups, exports, worker logs, error breadcrumbs
+and data dumps.
+**Acceptance:**
+- For any member, the set of ratings whose `submitted_at` falls within ±N minutes of their survey
+  response is **not of size 1** — asserted by a test in the RLS suite.
+- No log line, breadcrumb or job payload carries both rows' identifiers.
+
+---
+
+## 25. Out of scope
 
 Not planned, not designed, not built. From `_source-brief.md` §4.22:
 

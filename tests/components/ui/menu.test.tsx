@@ -1,0 +1,69 @@
+// The house dropdown menu over Radix (DEC-019) — `dialog.test.tsx` is the
+// house precedent for a Radix wrapper's test shape. Radix owns focus
+// trapping, typeahead and closing; this proves the wiring and the copy.
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Direction } from "radix-ui";
+import { describe, expect, it } from "vitest";
+import axe from "axe-core";
+import { Menu } from "@/components/ui/menu";
+
+function Example({ onSelect = () => {} }: { onSelect?: () => void }) {
+  return (
+    <Direction.Provider dir="rtl">
+      <Menu
+        trigger={<button type="button">القائمة</button>}
+        items={[
+          { label: "تعديل", onSelect },
+          { label: "عرض السجل", href: "/app/admin/audit" },
+          { label: "حذف", onSelect: () => {}, tone: "error", startsGroup: true },
+          { label: "معطّل", onSelect: () => {}, disabled: true },
+        ]}
+      />
+    </Direction.Provider>
+  );
+}
+
+describe("Menu", () => {
+  it("is closed until its trigger is used, then exposes its items as a menu", async () => {
+    render(<Example />);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "القائمة" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "تعديل" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "عرض السجل" })).toBeInTheDocument();
+  });
+
+  it("calls onSelect and closes", async () => {
+    let called = false;
+    render(<Example onSelect={() => (called = true)} />);
+    await userEvent.click(screen.getByRole("button", { name: "القائمة" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "تعديل" }));
+    expect(called).toBe(true);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("a disabled item cannot be activated", async () => {
+    render(<Example />);
+    await userEvent.click(screen.getByRole("button", { name: "القائمة" }));
+    const disabled = screen.getByRole("menuitem", { name: "معطّل" });
+    expect(disabled).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("closes on Escape", async () => {
+    render(<Example />);
+    await userEvent.click(screen.getByRole("button", { name: "القائمة" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("has no axe violations open or closed", async () => {
+    // `color-contrast` disabled — jsdom has no layout/paint engine to
+    // evaluate it against, the same reason `tests/components/ui/badge.test.tsx`
+    // (already in the tree) disables it.
+    const { container } = render(<Example />);
+    expect((await axe.run(container, { rules: { "color-contrast": { enabled: false } } })).violations).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "القائمة" }));
+    expect((await axe.run(container, { rules: { "color-contrast": { enabled: false } } })).violations).toEqual([]);
+  }, 20000);
+});

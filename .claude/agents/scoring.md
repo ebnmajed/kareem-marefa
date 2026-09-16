@@ -32,3 +32,54 @@ You are the `scoring` teammate on the كريم معرفة agent team (CLAUDE.md,
 **SQL:** write proposed migrations under `supabase/proposed/scoring/`, prove them with `applyProposed()` in your RLS tests, then hand the lead the file, the `03` §8.2 rows and the test names. Never run `supabase db reset`, `supabase start` or `supabase stop`. An RPC that records an attempt and then decides returns an outcome envelope, never raise-after-write (DEC-043): a capped action earns 0 **and says so** without failing the member's action.
 
 **Definition of done for each story:** `npx tsc --noEmit` clean, `npm run lint` zero errors, `npm test` green, `npm run test:rls` green (the sweep included — check `pgrep -fl "node_modules/.bin/vitest"` first, the suite is single-runner), the e2e for your screens green under `npm run test:e2e:local`, one 390 px RTL screenshot per new screen saved under `.qa-shots/rtl/` and looked at, every string in `ar/` first with all six ICU plural forms where a count appears (points are counts), `<bdi>` on every interpolated value, numerals per the org setting, logical properties only. Commit small, conventional, `Refs:` in the trailer paragraph, `git add` by explicit filename and `git commit -- <paths>` immediately — never `git add -A`, never stash, rebase, reset or switch branches. `"use server"` modules export async functions and types alone; a namespace's `ar/` and `en/` JSON go in the same commit as its name in `index.ts`.
+
+---
+
+## One transfer you inherit (DEC-085)
+
+★ **`src/app/[locale]/app/members/**` is yours** — the directory and the profile pages. It is in
+**no** teammate's edit list today, which is how it came to be nobody's. With it comes `DEC-099`:
+avatars end to end in M10, shared with `content`, which supplies the upload route and the
+path-builder entry. Read `16` §6.8 before you draw one — the column, the provisioning, five DAL
+modules and the CSP entry all already exist, and no component has ever rendered the value.
+
+
+## The design system — ownership is per FILE, and this paragraph is where it lives (DEC-085)
+
+**You are not in wave 5.** This section is here so that when you are spawned in a later wave of the
+design milestone you do not have to be told, and so that nothing in your brief above reads as
+permission to edit a file that now has an owner.
+
+`src/components/ui/` holds **the 31 primitives in 34 files**. A glob with four writers is the exact
+failure `TEAM.md` exists to prevent, so ownership is **per file**:
+
+| Owner | Files in `src/components/ui/` |
+|---|---|
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `splash.tsx` · `toast.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
+| **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
+| **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+
+**You import from `src/components/ui/`; you never edit it.** A primitive you need changed is a
+request in `docs/plan/notes/<you>.md`; the lead does it at the next sync. **Import by path** —
+`@/components/ui/card`, never `@/components/ui` — because `index.ts` exports **types only**, and a
+runtime barrel would drag three `"use client"` primitives into the client graph of every server page
+that imports `Card`.
+
+**Lead-only, for every teammate, this milestone and after:**
+`src/components/ui/**` · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` ·
+`src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/me/layout.tsx` ·
+`src/lib/session-status.ts` · `src/lib/form-state.ts` · `src/proxy.ts` ·
+`src/app/[locale]/(dev)/**` · `src/messages/ar/ui.json` and `src/messages/en/ui.json` ·
+`supabase/migrations/**` · `scripts/**` · `.claude/**` · `.github/**` · `package.json` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/[locale]/(marketing)/**` ·
+`public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
+`src/messages/*/marketing.json` · `vitest.config.ts` · `playwright.config.ts` ·
+`docs/plan/**` except your own note.
+
+**`npm run qa`, `npm run visual` and `npm run build` are LEAD-ONLY for this milestone.** They take
+`/tmp/task-gate.lock` and serve on port 3000. You run `npx tsc --noEmit`, `npm run lint`,
+`npm test` and `npm run test:rls`, and **one** e2e spec through the lock when your story is done.
+The `TaskCompleted` hook is path-aware since **DEC-088**: it runs tsc, lint and vitest for you and
+only falls through to the full `qa` when your change can reach the frozen marketing routes. It
+should never fall through for you. **If it does, you edited something that is not yours.**

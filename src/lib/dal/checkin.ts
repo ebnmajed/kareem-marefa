@@ -1,19 +1,24 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { affordancesFor, checkInAllowed } from "@/components/checkin/session-matrix";
+import type { RsvpStatus } from "@/lib/dal/rsvp";
 
-// Check-in and the host view (REQ-CHK-001…014, STORY-CHK-001..006). RPCs live
-// in supabase/proposed/checkin/02_check_in.sql. check_in() returns a JSON
-// envelope rather than raising for expected outcomes (rate limit, wrong
-// code, wrong window, overlap) — see that file's header for why: raising
-// would roll back the check_in_attempts row DEC-015 requires to survive.
+// Check-in and the host view (REQ-CHK-001…014, STORY-CHK-001..006, REQ-UIX-015,
+// DEC-090). RPCs live in supabase/proposed/checkin/02_check_in.sql. check_in()
+// returns a JSON envelope rather than raising for expected outcomes (rate
+// limit, wrong code, wrong window, overlap) — see that file's header for why:
+// raising would roll back the check_in_attempts row DEC-015 requires to
+// survive. No SQL changed this wave — every fix below is presentation-layer,
+// re-reading the same authoritative RPCs (docs/plan/notes/checkin.md "Wave 5").
 
 export interface HostViewData {
   sessionId: string;
   /** Null outside the session window — a code exists only while the session is live (REQ-CHK-004, migration 0078). */
   code: string | null;
-  /** Why there is no code: the session has not started, or it has ended. */
-  phase: "live" | "not_started" | "ended";
+  /** The full six-phase vocabulary, computed by `sessionPhase()` from the row — not guessed from the RPC's error string (bug (d), 16 §5.4.1 row 6). */
+  phase: SessionPhase;
   startsAt: string | null;
   /** DEC-065: off means a code is accepted only from a member with a confirmed reservation. */
   allowWalkIns: boolean;
@@ -21,6 +26,8 @@ export interface HostViewData {
   validUntil: string | null;
   checkInCount: number;
   rotationSeconds: number;
+  /** `affordancesFor(phase, "staff").hostConsole` — true only for `open` (pre-flight) and `live`. The page gates the walk-in and manual-marking sections on this, not on "is staff" alone. */
+  consoleActive: boolean;
 }
 
 /** The live code and count for the host view. Null when the caller isn't the presenter or staff (REQ-CHK-014). */
@@ -32,7 +39,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
     supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
-    supabase.from("sessions").select("state, starts_at, allow_walk_ins").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
   ]);
   // Authorisation is the RPC's (REQ-CHK-014): a member gets `not_authorized`
   // whatever the state, so the window is never revealed to someone who may
@@ -40,19 +47,25 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   if (codeRes.error && (codeRes.error.message.includes("not_authorized") || codeRes.error.message.includes("not_found"))) return null;
   if (codeRes.error && !codeRes.error.message.includes("not_open")) throw new Error(`ensure_check_in_code: ${codeRes.error.message}`);
   if (countRes.error) throw new Error(`check_ins count: ${countRes.error.message}`);
+  if (!sessionRes.data) return null;
 
+  const s = sessionRes.data;
   const rotationSeconds = settingsRes.data?.check_in_rotation_seconds ?? 600;
   const checkInCount = countRes.count ?? 0;
-  const startsAt = (sessionRes.data?.starts_at as string | null) ?? null;
-  const allowWalkIns = sessionRes.data?.allow_walk_ins === true;
+  const allowWalkIns = s.allow_walk_ins === true;
+  const phase = sessionPhase({ state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes });
+  // "staff" and "presenter" carry an identical cell (both are the console's
+  // two eligible viewers) — `getHostView()` already only reaches this point
+  // for one of the two (the RPC's own not_authorized check above), so either
+  // key reads the same answer.
+  const consoleActive = affordancesFor(phase, "staff").hostConsole;
+
   if (codeRes.error) {
-    const state = sessionRes.data?.state as string | undefined;
-    const ended = state === "completed" || state === "archived" || state === "cancelled";
-    return { sessionId, code: null, phase: ended ? "ended" : "not_started", startsAt, allowWalkIns, validFrom: null, validUntil: null, checkInCount, rotationSeconds };
+    return { sessionId, code: null, phase, startsAt: s.starts_at, allowWalkIns, validFrom: null, validUntil: null, checkInCount, rotationSeconds, consoleActive };
   }
 
   const c = codeRes.data as { code: string; valid_from: string; valid_until: string };
-  return { sessionId, code: c.code, phase: "live", startsAt, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds };
+  return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
 }
 
 /** DEC-065: staff open or close a session to walk-ins. The RPC re-derives the role; a member is refused. */
@@ -69,6 +82,93 @@ export async function revokeCode(locale: string, sessionId: string): Promise<voi
   const { supabase } = await sessionClient(locale);
   const { error } = await supabase.rpc("revoke_check_in_code", { p_session: sessionId });
   if (error) throw new Error(`revoke_check_in_code: ${error.message}`);
+}
+
+// ── the check-in SCREEN's own read — bug (c), 16 §5.4.1 row 4b ─────────────
+//
+// Reuses the same `error.*` translation keys the post-submit banner already
+// carries (`not_started`, `session_ended`, `presenter_cannot_check_in`,
+// `reservation_required`) as proactive reasons, not just refusals — they
+// already say the right thing before a keystroke, not only after one. Only
+// two keys are genuinely new: `not_published`, `cancelled`.
+export type CheckInIneligibleReason = "not_published" | "cancelled" | "not_started" | "session_ended" | "presenter_cannot_check_in" | "reservation_required";
+
+export interface CheckInScreenData {
+  sessionId: string;
+  title: string;
+  phase: SessionPhase;
+  relation: ViewerRelation;
+  allowWalkIns: boolean;
+  /** From `checkInAllowed()` — the screen renders the form on this, never re-derives it. */
+  canAttemptCheckIn: boolean;
+  /** Null exactly when `canAttemptCheckIn` is true — nothing to explain. */
+  ineligibleReason: CheckInIneligibleReason | null;
+}
+
+/**
+ * Reads the session BEFORE rendering the code form (bug (c): the screen used
+ * to render the form for any session id — no title, no phase, no RSVP read —
+ * and let the member find out after typing six characters). Null when the
+ * session doesn't exist or `sessions_read` doesn't show it to this viewer —
+ * the page turns that into a 404, the same boundary the event page uses.
+ */
+export async function getCheckInScreenData(locale: string, sessionId: string): Promise<CheckInScreenData | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+
+  const [sessionRes, presenterRes, rsvpRes, checkInRes] = await Promise.all([
+    supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
+    supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
+    supabase.from("rsvps").select("status").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+  ]);
+  if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
+  if (!sessionRes.data) return null;
+  if (presenterRes.error) throw new Error(`session_presenters: ${presenterRes.error.message}`);
+  if (rsvpRes.error) throw new Error(`rsvps: ${rsvpRes.error.message}`);
+  if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);
+
+  const s = sessionRes.data;
+  const phaseInput: PhaseInput = { state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes };
+  const phase = sessionPhase(phaseInput);
+  const isStaff = session.role === "admin" || session.role === "moderator";
+  const rsvpStatus = (rsvpRes.data?.status as RsvpStatus | undefined) ?? null;
+  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: Boolean(checkInRes.data) }, phase);
+  const allowWalkIns = s.allow_walk_ins === true;
+  const canAttemptCheckIn = checkInAllowed(phaseInput, relation, allowWalkIns);
+
+  return {
+    sessionId,
+    title: s.title,
+    phase,
+    relation,
+    allowWalkIns,
+    canAttemptCheckIn,
+    ineligibleReason: canAttemptCheckIn ? null : ineligibleReasonFor(phase, relation),
+  };
+}
+
+function ineligibleReasonFor(phase: SessionPhase, relation: ViewerRelation): CheckInIneligibleReason {
+  if (phase === "draft" || phase === "pending_schedule") return "not_published";
+  if (phase === "cancelled") return "cancelled";
+  if (phase === "open") return "not_started";
+  if (phase === "ended") return "session_ended";
+  // phase is "live" here, but the relation itself isn't eligible.
+  if (relation === "presenter") return "presenter_cannot_check_in";
+  return "reservation_required"; // none without walk-ins, waitlisted, staff with no seat
+}
+
+/**
+ * The predicate for the event page's check-in LINK — bug (e), the worst of
+ * the five (16 §5.4.1 row 4, DEC-090): a primary navy button offered to any
+ * member on any live session, leading to a screen the RPC refuses. Exported
+ * as a function, not handed to the lead as prose (DEC-103) — `page.tsx`
+ * wires it once `getSessionForEvent()` carries `viewerRelation` (DEC-092,
+ * already promised) and `allowWalkIns` (NOT in that DTO yet — flagged in
+ * docs/plan/notes/checkin.md "Wave 5").
+ */
+export function canOfferCheckInLink(session: PhaseInput, relation: ViewerRelation, allowWalkIns: boolean, now: Date = new Date()): boolean {
+  return checkInAllowed(session, relation, allowWalkIns, now);
 }
 
 export const checkInInput = z.object({ code: z.string().trim().toUpperCase().length(6) });

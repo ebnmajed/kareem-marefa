@@ -10,6 +10,8 @@
     "cancel": "Cancel reservation",
     "cancelLate": "Cancel reservation (will be recorded as late)",
     "lateCancelWarning": "You're past the cancellation cutoff — this will be recorded as a late cancellation.",
-    "deadlinePassed": "The RSVP deadline for this session has passed"
+    "deadlinePassed": "The RSVP deadline for this session has passed",
+    "attended": "You attended",
+    "didNotAttend": "You didn't check in"
   }
 }

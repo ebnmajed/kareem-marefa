@@ -187,13 +187,24 @@ test("the RsvpPanel slot renders inside the real event page and reserves a seat,
   // The first event-page render under the full suite's parallel load can
   // outlast the default 5 s (seen once per project on Launch day); alone,
   // the same case takes 1–3 s. The wait is for the server, not the UI.
-  await expect(page.getByRole("heading", { name: "الحضور" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
+  //
+  // ★ Scoped to the RSVP region, not the whole page: Next 16's dynamic-route
+  // streaming (this page touches cookies() in the DAL, so it's dynamic)
+  // transiently duplicates a matching text node elsewhere in the document
+  // during hydration on roughly a third of runs — a static DOM snapshot
+  // always shows exactly one `<p>`, and this exact region is what Playwright
+  // itself names as the unique match in the strict-mode violation this used
+  // to throw (`aka getByRole('region', { name: 'الحضور' }).getByRole(
+  // 'paragraph')`). Scoping here, not chasing the transient duplicate,
+  // matches Playwright's own guidance on strict-mode violations.
+  const panel = page.getByRole("region", { name: "الحضور" });
+  await expect(panel).toBeVisible({ timeout: 20_000 });
+  await expect(panel.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
 
-  await page.getByRole("button", { name: "احجز مقعدك" }).click();
+  await panel.getByRole("button", { name: "احجز مقعدك" }).click();
   await page.waitForLoadState("networkidle");
-  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible();
-  await expect(page.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
+  await expect(panel.getByText("تم تأكيد حجزك")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
 
   const { rows } = await db.query<{ status: string }>(`select status from public.rsvps where session_id = $1 and member_id = (select id from public.members where auth_user_id = $2)`, [
     publishedSessionId,
