@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import type { SwitchProps } from "@/components/ui";
 
 // The house switch — `16` §4.2, REQ-UIX-009, REQ-NFR-007.
@@ -24,9 +24,25 @@ import type { SwitchProps } from "@/components/ui";
 // (DEC-100); `justify-content` is not an animatable property anyway, so an
 // animated thumb is a `translate` — which is the bug above.
 
+// ★★ A CONTROLLED SWITCH SURVIVES A FORM RESET (REQ-UIX-011). React calls the
+// native `form.reset()` after every `<form action>` submission, refusal or
+// success, and it never moves a controlled checkbox's `defaultChecked` off its
+// mount value — so the input fell back to it while the state held the other,
+// and the next submission posted the fallen-back value. A layout effect runs
+// after the reset in the same commit and puts both back to `checked`. An
+// uncontrolled switch's `defaultChecked` is React's to keep (it follows the
+// prop, which a refused form echoes from its state).
 export function Switch({ label, description, checked, defaultChecked, onCheckedChange, disabled, name, className = "" }: SwitchProps) {
   const descriptionId = useId();
   const controlled = checked !== undefined;
+  const input = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    const node = input.current;
+    if (!node || checked === undefined) return;
+    if (node.defaultChecked !== checked) node.defaultChecked = checked;
+    if (node.checked !== checked) node.checked = checked;
+  });
 
   return (
     <div className={className}>
@@ -35,6 +51,7 @@ export function Switch({ label, description, checked, defaultChecked, onCheckedC
       >
         {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
         <input
+          ref={input}
           type="checkbox"
           role="switch"
           name={name}

@@ -175,8 +175,14 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
   await capture(page, "ready");
 
   // ── One press ─────────────────────────────────────────────────────────────
+  const hall = await venue.inputValue();
   await page.getByRole("button", { name: "انشر الجلسة" }).click();
   await expect(page.getByRole("status").filter({ hasText: "نُشرت الجلسة" })).toBeVisible({ timeout: 15_000 });
+  // ★ React resets a `<form action>` after every submission; the controlled
+  // selects must still show what was chosen, or the next «احفظ» would post
+  // the page's first values back (REQ-UIX-011, the sync-2 primitives fix).
+  await expect(venue).toHaveValue(hall);
+  await expect(page.getByLabel("آخر موعد للإلغاء", { exact: true })).toHaveValue("dayBefore");
   const { rows } = await db.query<{ state: string; minutes: number; capacity: number; walk_ins: boolean }>(
     `select state, extract(epoch from (ends_at - starts_at))::int / 60 as minutes, capacity, allow_walk_ins as walk_ins
        from public.sessions where id = $1`,

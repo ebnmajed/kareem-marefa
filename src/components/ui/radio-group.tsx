@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import type { RadioGroupProps } from "@/components/ui";
 
 // The house radio group — `16` §4.2, REQ-UIX-009, REQ-NFR-007.
@@ -31,13 +31,30 @@ import type { RadioGroupProps } from "@/components/ui";
 // rather than relying on implicit legend naming is the difference between
 // "works in the browsers we tested" and "works".
 
+// ★★ A CONTROLLED GROUP SURVIVES A FORM RESET (REQ-UIX-011) — the same defect
+// and the same repair as `ui/switch`: React resets a `<form action>` after
+// every submission and never moves a controlled radio's `defaultChecked`, so
+// the group fell back to the option it mounted with while its state held
+// another. After every commit the radio matching `value` is re-checked and made
+// the default.
 export function RadioGroup({ name, options, legend, defaultValue, value, onChange, invalid, className = "" }: RadioGroupProps) {
   const legendId = useId();
   const hintId = useId();
   const controlled = value !== undefined;
+  const group = useRef<HTMLFieldSetElement>(null);
+
+  useLayoutEffect(() => {
+    if (!group.current || value === undefined) return;
+    for (const radio of Array.from(group.current.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) {
+      const chosen = radio.value === value;
+      if (radio.defaultChecked !== chosen) radio.defaultChecked = chosen;
+      if (radio.checked !== chosen) radio.checked = chosen;
+    }
+  });
 
   return (
     <fieldset
+      ref={group}
       id={name}
       role="radiogroup"
       aria-labelledby={legendId}

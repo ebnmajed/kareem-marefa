@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import type { CheckboxProps } from "@/components/ui";
 
 // The house checkbox — `16` §4.2, REQ-UIX-009, REQ-NFR-007.
@@ -20,7 +21,22 @@ import type { CheckboxProps } from "@/components/ui";
 // product; the platform control is already correct in both directions, in both
 // themes, and with the platform's own high-contrast settings.
 
-export function Checkbox({ label, className = "", disabled, ...props }: CheckboxProps) {
+// ★★ A CONTROLLED CHECKBOX SURVIVES A FORM RESET (REQ-UIX-011) — as
+// `ui/switch`: React's reset after every `<form action>` submission puts a
+// controlled checkbox back to its mount value while the state holds the other;
+// a layout effect after the reset puts `checked` back.
+
+export function Checkbox({ label, className = "", disabled, ref, ...props }: CheckboxProps) {
+  const own = useRef<HTMLInputElement | null>(null);
+  const { checked } = props;
+
+  useLayoutEffect(() => {
+    const node = own.current;
+    if (!node || checked === undefined) return;
+    if (node.defaultChecked !== Boolean(checked)) node.defaultChecked = Boolean(checked);
+    if (node.checked !== Boolean(checked)) node.checked = Boolean(checked);
+  });
+
   return (
     <label
       className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-silver-100"} ${className}`}
@@ -31,6 +47,11 @@ export function Checkbox({ label, className = "", disabled, ...props }: Checkbox
         disabled={disabled}
         className="size-5 shrink-0 accent-[var(--btn-bg)]"
         {...props}
+        ref={(node) => {
+          own.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
+        }}
       />
       <span>{label}</span>
     </label>

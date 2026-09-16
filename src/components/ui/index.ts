@@ -429,6 +429,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** A ruled group above this item — the staff section of the account menu. */
   startsGroup?: boolean;
+  /** The page this item leads to is the one on show — `aria-current="page"` and the marker (`console`, wave 8). */
+  current?: boolean;
 }
 
 export interface MenuProps {
