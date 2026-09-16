@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,46 @@ import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
 import { AlertCircleIcon } from "@/components/ui/icons";
+import { subscribeToSessionTopic } from "@/lib/realtime/channel";
 import type { PhotoKind } from "@/lib/dal/photos";
 
 // REQ-EVT-009/010/011/013 — the same shape as src/components/materials/
 // upload-form.tsx (plain fetch PUT to a signed URL, bytes never traverse
 // this app's server, no browser Supabase client — see that file's header
-// for the DEC-020 reasoning, identical here). The one real difference: the
-// `complete` call never reports back a finished photo — `process_photo`
-// (the worker) still has to download, sniff, strip and insert the row, so
-// this only confirms the request was accepted (202) and then refreshes;
-// the photo appears once the job finishes, same as any other async job in
-// this product surfacing through a page revisit rather than a promise this
-// component can await to completion. ★ That gap against `REQ-EVT-010`'s
-// literal "appears at once" is real and recorded, not fixed this wave
-// (docs/plan/notes/content.md §3, §4.4) — the success state below is
-// honest about it ("processing", not "posted").
+// for the DEC-020 reasoning, identical here).
+//
+// ★ REQ-EVT-010, as amended by `DEC-139`: a photo publishes with no human
+// step, the moment its strip completes — `process_photo` (the worker)
+// still has to download, sniff, strip and insert the row, so the 202
+// accepted here is not the photo appearing yet — but the uploader's OWN
+// gallery must take its place without a reload once that finishes,
+// which the plain `router.refresh()` immediately after the 202 could
+// never do (nothing has been inserted yet). `photos_broadcast()`
+// (`supabase/proposed/content/`) reuses the exact `session:<id>` topic
+// and RLS `comments_broadcast()` already established (03 §7.3/§7.4) — no
+// new topic, no new policy — and fires an AFTER INSERT trigger on
+// `photos`, because a photo row is only ever inserted already stripped
+// (`photos`' own `check (exif_stripped)` constraint, 0037): there is no
+// separate "now visible" transition to track, the INSERT *is* the moment.
+//
+// The widget subscribes only while ITS OWN upload is between "accepted"
+// and "visible" — not an always-on listener for the whole time the photos
+// section is on screen, which every other viewer's browser would also be
+// running for no benefit most of the time. A bounded fallback timer
+// covers a missed or delayed broadcast: a single re-check of server state
+// after a ceiling, which is the "data poll for server state" `DEC-136`
+// explicitly distinguishes from the pending-control "nudge" it forbids —
+// this never retries on a timer while idle, only once, and only because
+// this member is still waiting on their own upload.
 //
 // ★ REQ-UIX-024, wave 6: `ui/file-drop` states JPEG/PNG/WebP and the org's
 // own size limit BEFORE a file is chosen.
+
+/** How long to wait for the broadcast before refreshing anyway. Generous:
+ *  the worker downloads, sniffs, strips EXIF and re-uploads a real file —
+ *  seconds, not milliseconds, and a member who waited this long already
+ *  has "تتم معالجة الصورة الآن…" on screen telling them why. */
+const PROCESSING_TIMEOUT_MS = 20_000;
 
 function sniffKindFromFile(file: File): PhotoKind | null {
   const type = file.type.toLowerCase();
@@ -53,6 +75,39 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
   const [resetKey, setResetKey] = useState(0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<ReactNode>(null);
+  // The photo id this widget is waiting to see published, or null when it
+  // is not waiting on anything, and the fallback timer for it — both
+  // refs, not state: read from inside an event callback and a timeout,
+  // never rendered themselves.
+  const awaitingPhotoId = useRef<string | null>(null);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // `useCallback` gives this a stable identity across renders — otherwise
+  // it would count as a new dependency every render and the subscription
+  // effect below would tear down and reopen the socket on every one.
+  const resolveAwaited = useCallback(() => {
+    awaitingPhotoId.current = null;
+    if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    fallbackTimer.current = undefined;
+    router.refresh();
+  }, [router]);
+
+  // The subscription is mounted for the widget's own lifetime — cheap
+  // while idle, since every message is ignored until `awaitingPhotoId` is
+  // actually set — rather than opened and closed once per upload, which
+  // would race a broadcast that arrives in the gap between two sockets.
+  useEffect(() => {
+    if (!sessionId) return;
+    const unsubscribe = subscribeToSessionTopic(sessionId, (message) => {
+      if (message.event !== "INSERT") return;
+      if (!awaitingPhotoId.current || message.payload.id !== awaitingPhotoId.current) return;
+      resolveAwaited();
+    });
+    return () => {
+      unsubscribe();
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    };
+  }, [sessionId, resolveAwaited]);
 
   function handleSubmit() {
     setError(null);
@@ -67,9 +122,11 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
       return;
     }
 
-    // `router.refresh()` at the end is the LAST statement inside this SAME
-    // `startTransition` — `pending` (the uploader's busy state) honestly
-    // lasts until the refreshed gallery has actually committed.
+    // ★ `pending` (the uploader's busy state) covers only the upload
+    // round trip, not the wait for the broadcast — `router.refresh()` now
+    // happens later, outside this transition entirely (see
+    // `resolveAwaited`), once the photo is actually visible rather than
+    // once the 202 lands.
     //
     // ★ The lead's real-build finding on the event page's discussion (the
     // identical shape here): a request that fails at the NETWORK level
@@ -118,7 +175,12 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
         setFiles([]);
         setResetKey((k) => k + 1);
         toast.show({ tone: "success", title: t("processing") });
-        router.refresh();
+        // Not `router.refresh()` here — nothing has been inserted yet, so
+        // an immediate refresh would show nothing new. Wait for the
+        // broadcast (or the fallback ceiling) instead.
+        if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+        awaitingPhotoId.current = initiateBody.photoId;
+        fallbackTimer.current = setTimeout(resolveAwaited, PROCESSING_TIMEOUT_MS);
       } catch {
         setError(t("uploadFailed"));
         toast.show({ tone: "error", title: t("uploadFailed") });

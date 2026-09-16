@@ -23,6 +23,11 @@ vi.mock("@/components/photos/actions", () => ({
   requestPhotoTakedownAction: vi.fn().mockResolvedValue({ error: null }),
   restorePhotoAction: vi.fn().mockResolvedValue({ error: null }),
 }));
+// T8: UploadWidget now subscribes to the session's realtime topic —
+// createBrowserClient() throws outside a real browser env (no
+// NEXT_PUBLIC_SUPABASE_* here), so this needs the same mock
+// upload-widget.test.tsx's own header explains.
+vi.mock("@/lib/realtime/channel", () => ({ subscribeToSessionTopic: vi.fn(() => () => {}) }));
 
 const { getPhotosPageData } = await import("@/lib/dal/photos");
 const { Photos, photosSummary } = await import("@/components/photos/gallery");

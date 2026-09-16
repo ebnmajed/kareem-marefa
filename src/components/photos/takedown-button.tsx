@@ -76,7 +76,18 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="h-9 self-start px-3 text-error hover:bg-error-bg">
+        {/* ★ Carried from wave 6, row 9: under a half-width photo tile at
+            390 px this label wraps to two lines. `size="sm"` sets a FIXED
+            `h-9` inside `Button` (a `height`, not a `min-height`), and
+            merely adding `min-h-9` beside it changes nothing — a fixed
+            `height` wins over an unrelated `min-height` regardless of
+            which is written first, the same emit-order class of bug
+            DEC-111/DEC-133 document repeatedly. `h-auto!` (Tailwind 4's
+            important syntax, which DOES reliably win) plus `min-h-9`
+            restores the 36 px floor while letting a wrapped label grow
+            instead of clipping — the rule against `overflow: hidden` on a
+            text line, applied to a component's own fixed height. */}
+        <Button type="button" variant="ghost" size="sm" className="h-auto! min-h-9 self-start px-3 py-2 text-error hover:bg-error-bg">
           {t("requestHide")}
         </Button>
       </DialogTrigger>
