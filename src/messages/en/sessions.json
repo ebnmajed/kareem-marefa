@@ -5,7 +5,7 @@
       "cancelledReason": "The reason the admin gave",
       "cancelledNote": "The page stays, the materials stay available to anyone who reserved a seat, and comments are frozen.",
       "whenLabel": "When",
-      "toTime": "until {value}",
+      "toTime": "until {value}",
       "whereLabel": "Where",
       "mapLink": "Open the location on a map",
       "oneOffVenue": "A one-off venue",

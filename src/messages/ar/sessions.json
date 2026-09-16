@@ -5,7 +5,7 @@
       "cancelledReason": "السبب الذي ذكره المشرف",
       "cancelledNote": "الصفحة باقية والمواد متاحة لمن حجز، والتعليقات مغلقة للكتابة.",
       "whenLabel": "الموعد",
-      "toTime": "حتى {value}",
+      "toTime": "حتى {value}",
       "whereLabel": "المكان",
       "mapLink": "افتح الموقع على الخريطة",
       "oneOffVenue": "مكان لمرة واحدة",

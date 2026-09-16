@@ -144,7 +144,13 @@ async function capture(page: Page, name: string) {
   // capture of nothing.
   await page.waitForLoadState("networkidle");
   mkdirSync(SHOTS, { recursive: true });
+  // The whole page, for the review of every section — where `fullPage`
+  // stitching paints the fixed action bar mid-page, over whatever was on screen
+  // when it was taken…
   await page.screenshot({ path: join(SHOTS, `wave6-sessions-${name}.png`), fullPage: true });
+  // …and the first screen exactly as a phone shows it, bar at the bottom.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: join(SHOTS, `wave6-sessions-${name}-viewport.png`) });
 }
 
 /** Fixed or sticky elements, visible, anchored to the bottom edge of the viewport. */
