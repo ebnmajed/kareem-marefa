@@ -12,7 +12,7 @@ import {
   type BrandOverrides,
   type BrandScheme,
   PRESETS,
-  presetsFor,
+  presetsForDocument,
   resolveCertificateBindings,
   resolveSessionBindings,
   validateDocument,
@@ -393,12 +393,19 @@ export function exportFingerprint(source: FingerprintSource): string {
   return createHash("sha256").update(fingerprintSource(source)).digest("hex");
 }
 
-/** Every screen and print target for a document's purpose, in A29's order.
- *  WebP accompanies every screen PNG for in-app display; JPEG is offered
- *  only where the org enabled it, and that check is the worker's. */
-export function exportTargets(purpose: DesignerPurpose): Array<{ preset: string; format: ExportArtifact["format"] }> {
+/** Every screen and print target for a document, in A29's order. WebP
+ *  accompanies every screen PNG for in-app display; JPEG is offered only
+ *  where the org enabled it, and that check is the worker's. A certificate
+ *  is its one composed page as a PDF, plus the PNG preview (A29) — the same
+ *  targets `issue_certificates` requests, so an export from the studio and
+ *  an issued certificate are the same files. */
+export function exportTargets(document: DesignDocument): Array<{ preset: string; format: ExportArtifact["format"] }> {
   const targets: Array<{ preset: string; format: ExportArtifact["format"] }> = [];
-  for (const preset of presetsFor(purpose)) {
+  if (document.purpose === "certificate") {
+    for (const preset of presetsForDocument(document)) targets.push({ preset, format: "pdf" }, { preset, format: "png" });
+    return targets;
+  }
+  for (const preset of presetsForDocument(document)) {
     // A29: print is PDF at 300 dpi with the bleed the geometry already
     // carries; screen is PNG at the exact preset size plus a WebP copy for
     // in-app display. JPEG is offered only where the org enabled it, and
@@ -475,7 +482,7 @@ export async function requestExports(
     p_document: documentId,
     p_fingerprint: fingerprint,
     p_context: { bindings: data.bindings, faces },
-    p_targets: exportTargets(data.purpose),
+    p_targets: exportTargets(data.document),
   });
   if (error) {
     if (error.code === "42501") return { status: "not_authorized" };

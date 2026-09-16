@@ -19,34 +19,87 @@ import {
   brandViolations,
   colourFieldsOf,
   declaredBindingsOf,
+  dynamicFieldsOf,
+  orientationOf,
   presetsFor,
+  presetsForDocument,
   validateDocument,
   type DesignDocument,
 } from "@kareem/designer-runtime";
 
-describe("06 §3.3 — the library is the families the document names", () => {
-  it("five poster families and three certificate families", () => {
-    expect(BASELINE_LIBRARY.filter((t) => t.purpose === "poster").map((t) => t.family)).toEqual([
-      "talk",
-      "workshop",
-      "panel",
-      "meetup",
-      "announcement",
+describe("06 §3.3 as DEC-148 rules it — a row is a COMPOSITION", () => {
+  it("five poster families, and three certificate families each landscape and portrait", () => {
+    expect(BASELINE_LIBRARY.filter((t) => t.purpose === "poster").map((t) => t.family)).toEqual(["talk", "workshop", "panel", "meetup", "announcement"]);
+    expect(BASELINE_LIBRARY.filter((t) => t.purpose === "certificate").map((t) => `${t.family}@${t.orientation}`)).toEqual([
+      "attendance@landscape",
+      "attendance@portrait",
+      "presenter@landscape",
+      "presenter@portrait",
+      "achievement@landscape",
+      "achievement@portrait",
     ]);
-    expect(BASELINE_LIBRARY.filter((t) => t.purpose === "certificate").map((t) => t.family)).toEqual(["attendance", "presenter", "achievement"]);
   });
 
-  it("every family is named in Arabic", () => {
+  it("★ eleven rows, never more: the scheme is a palette, not a row", () => {
+    // Every colour is a token, so a light row and a dark row of one family
+    // would be byte-identical documents — the second thing to keep in step,
+    // and the dark one nobody looks at would drift. Literal, so a short
+    // library cannot shrink its own expectation.
+    expect(BASELINE_LIBRARY).toHaveLength(11);
+    const documents = BASELINE_LIBRARY.map((t) => JSON.stringify(t.document));
+    expect(new Set(documents).size).toBe(11);
+  });
+
+  it("a certificate's orientation IS its master — landscape 3508 × 2480, portrait 2480 × 3508", () => {
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "certificate")) {
+      expect(orientationOf(t.document), `${t.family}@${t.orientation}`).toBe(t.orientation);
+      expect(presetsForDocument(t.document), `${t.family}@${t.orientation}`).toEqual([t.orientation === "landscape" ? "cert_landscape" : "cert_portrait"]);
+    }
+  });
+
+  it("one platform default per family: every poster, and the landscape certificates", () => {
+    for (const t of BASELINE_LIBRARY) expect(t.isDefault, `${t.family}@${t.orientation ?? "poster"}`).toBe(t.purpose === "poster" || t.orientation === "landscape");
+  });
+
+  it("every composition is named in Arabic", () => {
     for (const t of BASELINE_LIBRARY) expect(t.name, t.family).toMatch(/^[؀-ۿ\s]+$/);
   });
+});
 
-  it("★ ONE template per family, not one per light/dark — the variant is the scheme", () => {
-    // Every colour is a token, so the same document renders light or dark by
-    // which palette resolves. A second document per family would be a second
-    // thing to keep in step, and the one that drifted would be the dark one
-    // nobody looks at.
-    expect(BASELINE_LIBRARY).toHaveLength(8);
-    expect(new Set(BASELINE_LIBRARY.map((t) => t.family)).size).toBe(8);
+describe("DEC-127 · DEC-148 q4 — the poster's version 2", () => {
+  it("★ every poster family's background is DEC-127's gradient, exactly, in tokens", () => {
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "poster")) {
+      expect(t.document.background, t.family).toEqual({ type: "gradient", angle: 140, stops: [{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }] });
+    }
+  });
+
+  it("the Knowledge Network rule binds edgeStrong on posters (q4) and stays on spine on certificates", () => {
+    for (const t of BASELINE_LIBRARY) {
+      const rule = t.document.layers.find((l) => l.id === "l_rule");
+      expect(rule?.kind === "shape" ? rule.shape.fill : null, t.family).toBe(t.purpose === "poster" ? "{{brand.edgeStrong}}" : "{{brand.spine}}");
+    }
+  });
+
+  it("certificates stay solid — the gradient is the poster's", () => {
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "certificate")) expect(t.document.background).toEqual({ type: "solid", color: "{{brand.canvas}}" });
+  });
+
+  it("★ every text line is at least one line tall at its own size — the frame that made every export warn", () => {
+    // 40 px at a 1.7 line height is a 68 px line, and a 60 px frame reported
+    // «reached its minimum size» on every preset of every session (the 390 px
+    // review found it). An auto-fitting layer must hold one line at its floor.
+    for (const t of BASELINE_LIBRARY) {
+      for (const layer of t.document.layers) {
+        if (layer.kind !== "text" && layer.kind !== "dynamic_field") continue;
+        const size = layer.autoFit ? (layer.font.minSize ?? layer.font.size) : layer.font.size;
+        const line = Math.ceil(size * (layer.font.lineHeight ?? 1.7));
+        expect(layer.frame.h, `${t.family}@${t.orientation ?? "poster"}/${layer.id}`).toBeGreaterThanOrEqual(line);
+      }
+    }
+  });
+
+  it("every layer has a name, so the layer list never shows an id", () => {
+    for (const t of BASELINE_LIBRARY) for (const layer of t.document.layers) expect(layer.name, `${t.family}/${layer.id}`).toBeTruthy();
   });
 });
 
@@ -232,34 +285,51 @@ describe("A27 — the family differences are real", () => {
   });
 });
 
-describe("the seed migration is a copy of this library, and has not drifted", () => {
-  const sql = join(process.cwd(), "supabase", "proposed", "designer", "0004_baseline_library.sql");
-  const promoted = join(process.cwd(), "supabase", "migrations");
+describe("the seed migrations are a copy of this library, and have not drifted", () => {
+  // 0061 seeded version 1 of eight compositions; the wave-8 seed adds version
+  // 2 of those and version 1 of the three portraits. The LATEST version of
+  // each composition across both files must be exactly the library's.
+  function seedFile(name: string): string | null {
+    const proposed = join(process.cwd(), "supabase", "proposed", "designer", name);
+    if (existsSync(proposed)) return readFileSync(proposed, "utf8");
+    const suffix = name.replace(/^\d+_/, "_");
+    const promoted = readdirSync(join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith(suffix));
+    return promoted ? readFileSync(join(process.cwd(), "supabase", "migrations", promoted), "utf8") : null;
+  }
 
-  it("★ every document in the SQL deep-equals the one here", () => {
-    // Guarded so a promotion mid-session does not turn this red: once the
-    // lead moves the file, the same check runs against the migration.
-    let body: string | null = null;
-    if (existsSync(sql)) body = readFileSync(sql, "utf8");
-    else {
-      const promotedFile = readdirSync(promoted).find((f) => f.endsWith("_baseline_library.sql"));
-      if (promotedFile) body = readFileSync(join(promoted, promotedFile), "utf8");
-    }
-    if (!body) {
-      expect.fail("neither the proposed nor the promoted baseline-library migration was found");
+  it("★ the latest seeded version of every composition deep-equals the library, dynamic fields included", () => {
+    const bodies = [seedFile("0004_baseline_library.sql"), seedFile("0002_certificate_library.sql")];
+    if (bodies.some((b) => b === null)) {
+      expect.fail("a baseline-library seed migration (0061's, or the wave-8 certificate library) was not found");
       return;
     }
 
-    // Each template is seeded as `$json$…$json$::jsonb`, one per family.
-    const found = new Map<string, unknown>();
-    // The marker and the literal are separated by the insert statement, so
-    // the gap is "anything but another marker" rather than whitespace.
-    for (const match of body.matchAll(/--\s*@family\s+(\S+)(?:(?!--\s*@family)[\s\S])*?\$json\$([\s\S]*?)\$json\$/g)) {
-      found.set(match[1] as string, JSON.parse(match[2] as string));
+    const latest = new Map<string, { version: number; document: unknown; fields: unknown }>();
+    for (const body of bodies as string[]) {
+      // `-- @family <family>[@<orientation>][@v<n>]`, then the version's
+      // `$json$…$json$` and `$fields$…$fields$` before the next marker.
+      for (const match of body.matchAll(/--\s*@family\s+(\S+)((?:(?!--\s*@family)[\s\S])*?)\$json\$([\s\S]*?)\$json\$::jsonb,\s*\$fields\$([\s\S]*?)\$fields\$/g)) {
+        const parts = (match[1] as string).split("@");
+        const family = parts[0] as string;
+        const versionTag = parts.find((p) => /^v\d+$/.test(p));
+        const orientation = parts.find((p) => p === "landscape" || p === "portrait");
+        const isCertificate = ["attendance", "presenter", "achievement"].includes(family);
+        const key = isCertificate ? `${family}@${orientation ?? "landscape"}` : family;
+        const version = versionTag ? Number(versionTag.slice(1)) : 1;
+        const existing = latest.get(key);
+        if (!existing || existing.version < version) {
+          latest.set(key, { version, document: JSON.parse(match[3] as string), fields: JSON.parse(match[4] as string) });
+        }
+      }
     }
-    expect([...found.keys()].sort()).toEqual(BASELINE_LIBRARY.map((t) => t.family).sort());
+
+    const keyOf = (t: (typeof BASELINE_LIBRARY)[number]) => (t.purpose === "certificate" ? `${t.family}@${t.orientation}` : t.family);
+    expect([...latest.keys()].sort()).toEqual(BASELINE_LIBRARY.map(keyOf).sort());
     for (const t of BASELINE_LIBRARY) {
-      expect(found.get(t.family), `${t.family} has drifted from the library`).toEqual(JSON.parse(JSON.stringify(t.document)));
+      const seeded = latest.get(keyOf(t));
+      expect(seeded?.version, `${keyOf(t)} version`).toBe(t.version);
+      expect(seeded?.document, `${keyOf(t)} has drifted from the library`).toEqual(JSON.parse(JSON.stringify(t.document)));
+      expect(seeded?.fields, `${keyOf(t)} dynamic fields`).toEqual(dynamicFieldsOf(t.document));
     }
   });
 });

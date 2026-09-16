@@ -8,7 +8,7 @@ import {
   derive,
   domTextMeasurer,
   ppiFindings,
-  presetsFor,
+  presetsForDocument,
   resolveText,
   type AutoFitWarning,
   type DesignDocument,
@@ -104,7 +104,7 @@ export function useCheckFindings({ document: doc, bindings, fontsReady, assetSiz
     // changes is an editor people stop trusting. Cancelled on the next edit,
     // so only the last document's findings ever reach the state.
     const run = async () => {
-      for (const preset of presetsFor(doc.purpose)) {
+      for (const preset of presetsForDocument(doc)) {
         await new Promise((resolve) => setTimeout(resolve, 0));
         if (cancelled) return;
         measurePreset(preset);

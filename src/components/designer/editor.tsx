@@ -9,7 +9,7 @@ import {
   fitLayerToSafeArea,
   fontFaceCss,
   PRESETS,
-  presetsFor,
+  presetsForDocument,
   reorderLayer,
   snap,
   snapTargets,
@@ -120,11 +120,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const past = useRef<DesignDocument[]>([]);
   const future = useRef<DesignDocument[]>([]);
   const [depth, setDepth] = useState({ past: 0, future: 0 });
-  const presets = useMemo(() => presetsFor(props.purpose), [props.purpose]);
-  const [preset, setPreset] = useState<PresetName>(() => presetsFor(props.purpose)[0] ?? "master");
+  // A certificate is exported at the one page its master is composed for
+  // (DEC-148); a poster at all seven. The master does not change while the
+  // document is open, so neither does the list.
+  const presets = useMemo(() => presetsForDocument(props.initialDocument), [props.initialDocument]);
+  const [preset, setPreset] = useState<PresetName>(() => presetsForDocument(props.initialDocument)[0] ?? "master");
   // On by default for print, where crossing a safe area is expensive and the
   // blade is not negotiable (06 §10).
-  const [overlays, setOverlays] = useState(() => PRESETS[presetsFor(props.purpose)[0] ?? "master"].bleed > 0);
+  const [overlays, setOverlays] = useState(() => PRESETS[presetsForDocument(props.initialDocument)[0] ?? "master"].bleed > 0);
   const [fontsReady, setFontsReady] = useState(false);
   const baseUpdatedAt = useRef(props.initialUpdatedAt);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

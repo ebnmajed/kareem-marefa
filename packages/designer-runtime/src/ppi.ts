@@ -11,7 +11,7 @@
  * no inch to be per.
  */
 
-import { derive, PRESETS, presetsFor, type PresetName } from './presets.js'
+import { derive, PRESETS, presetsForDocument, type PresetName } from './presets.js'
 import type { DesignDocument } from './model.js'
 
 export const PPI_WARN_BELOW = 300
@@ -59,7 +59,7 @@ export function layerPpi(asset: AssetPixels, frame: { w: number; h: number }, dp
  */
 export function ppiFindings(doc: DesignDocument, assets: Readonly<Record<string, AssetPixels>>): PpiFinding[] {
   const out: PpiFinding[] = []
-  for (const name of presetsFor(doc.purpose)) {
+  for (const name of presetsForDocument(doc)) {
     const preset = PRESETS[name]
     if (preset.bleed === 0) continue // screen: exact pixels, no inches involved
     for (const layer of derive(doc, name).layers) {

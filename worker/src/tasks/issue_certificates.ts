@@ -4,7 +4,7 @@ import { renderFaces } from "../render/fonts.js";
 import { brandBindings } from "../render/brand.js";
 import {
   fingerprintSource,
-  presetsFor,
+  presetsForDocument,
   resolveCertificateBindings,
   validateDocument,
   type DesignDocument,
@@ -72,14 +72,20 @@ interface Context {
   document_id: string | null;
 }
 
-/** A certificate is paper first. Both orientations get a PDF; the landscape
- *  also gets a PNG, which is what the member's own list shows as a preview
- *  and what a share sheet can carry (A29, REQ-CRT-006). */
-function certificateTargets(): Array<{ preset: string; format: string }> {
-  const targets: Array<{ preset: string; format: string }> = [];
-  for (const preset of presetsFor("certificate")) targets.push({ preset, format: "pdf" });
-  targets.push({ preset: "cert_landscape", format: "png" });
-  return targets;
+/** A certificate is paper first: its ONE composed page as a PDF, plus a PNG
+ *  of the same page, which is what the member's own list shows as a preview
+ *  and what a share sheet can carry (A29, REQ-CRT-006).
+ *
+ *  ★ One page, not both orientations (DEC-148). The portrait PDF used to be
+ *  `derive()`d from the landscape master and put every line into the top
+ *  29% of the page; a portrait certificate is now its own template, chosen
+ *  at issue time. A certificate issued before this re-renders its landscape
+ *  files only — its old portrait objects stay in storage, untouched. */
+function certificateTargets(document: DesignDocument): Array<{ preset: string; format: string }> {
+  return presetsForDocument(document).flatMap((preset) => [
+    { preset, format: "pdf" },
+    { preset, format: "png" },
+  ]);
 }
 
 export const issue_certificates: Task = async (payload, helpers) => {
@@ -174,7 +180,7 @@ export const issue_certificates: Task = async (payload, helpers) => {
     documentId,
     fingerprint,
     JSON.stringify({ bindings, faces }),
-    JSON.stringify(certificateTargets()),
+    JSON.stringify(certificateTargets(document)),
   ]);
 
   // D50: `automatic` issued it outright, so announce it now. `review` left
@@ -185,5 +191,5 @@ export const issue_certificates: Task = async (payload, helpers) => {
     await helpers.query(`select public.announce_certificate($1)`, [certificateId]);
   }
 
-  helpers.logger.info(`issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}) → ${certificateTargets().length} export(s) requested`);
+  helpers.logger.info(`issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}) → ${certificateTargets(document).length} export(s) requested`);
 };

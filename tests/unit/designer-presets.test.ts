@@ -13,6 +13,7 @@ import {
   derive,
   PRESETS,
   presetsFor,
+  presetsForDocument,
   safeAreaViolations,
   safeBox,
   snap,
@@ -65,6 +66,16 @@ describe("06 §5 — the preset table", () => {
   it("offers seven poster presets and two certificate presets", () => {
     expect(presetsFor("poster")).toHaveLength(7);
     expect(presetsFor("certificate")).toEqual(["cert_landscape", "cert_portrait"]);
+  });
+
+  it("★ a certificate is exported at the ONE page its master is composed for (DEC-148)", () => {
+    // Derived into portrait, a landscape certificate put every line into the
+    // top 29% of the page over a 157 mm empty band. A portrait certificate is
+    // its own composition now, never a derivation.
+    const certificate = (width: number, height: number) => ({ purpose: "certificate" as const, master: { width, height, unit: "px" as const } });
+    expect(presetsForDocument(certificate(3508, 2480))).toEqual(["cert_landscape"]);
+    expect(presetsForDocument(certificate(2480, 3508))).toEqual(["cert_portrait"]);
+    expect(presetsForDocument({ purpose: "poster", master: { width: 1080, height: 1350, unit: "px" } })).toHaveLength(7);
   });
 });
 
