@@ -147,11 +147,11 @@ with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 to
 | S5 | `sessions` | ★ `/app/members/[id]` — the two-tier profile | SCR-020 · `REQ-PRF-*`, A33 | ✓ | `wave7-sessions-profile-member.png` · `wave7-sessions-profile.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 | S6 | `sessions` | ★ `/app/leaderboards` — members and سباق الشركات | SCR-027, SCR-028 · `REQ-LDR-*` | ✓ | `wave7-sessions-leaderboards-members.png` · `wave7-sessions-leaderboards-companies.png` · `wave7-sessions-leaderboards.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 | T1 | `content` | ★ `/app/me` — the profile and the hub, with `me/layout.tsx` | SCR-021 · `REQ-PRF-001`…, `16` §6.5 | ✓ | — | open — sync 5: after «تم الحفظ» the company select shows the placeholder (persistence or read-back, `content` establishing); no-JS save case times out |
-| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | ✓ | — | open — sync 5: `/app/me/points` scrolls horizontally at 390 (`scoring-screens:103`); signed amounts read «20-» (the `<bdi>` needs `dir="ltr"`) |
+| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | ✓ | — | open — signed amounts read «20-» (the `<bdi>` needs `dir="ltr"`); the sync-5 «overflow» was the helper (`e3633bc`), not the page |
 | T3 | `content` | ★ `/app/me/certificates` — issued and revoked | SCR-023 · `REQ-CRT-*` | ✓ | `wave7-content-certificates-issued-and-revoked.png` · `wave7-content-certificates.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; serial and code LTR |
 | T4 | `content` | ★ `/app/me/bookmarks` | SCR-024 · `REQ-DSC-006` | ✓ | `wave7-content-bookmarks-populated.png` · `bookmarks.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 | T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | ✓ | `wave7-content-calendar-connected.png` · `wave7-content-calendar.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; no token in sight |
-| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | ✓ | — | open — sync 5: `/app/me/notifications` scrolls horizontally at 390 (`notify-screens:284`, 8 elements) |
+| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | ✓ | `wave7-content-notifications-preferences.png` · `wave7-content-notifications.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; the 390 px «overflow» was the old helper counting tabs inside the strip's own scroller (`e3633bc`) |
 | T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | ✓ | `wave7-content-privacy-deactivate-confirm.png` · `privacy.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; confirm in `ui/dialog` |
 | T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | ✓ | — | code landed — `0091` (`e73b239`) + the widget, proven by RLS and component tests; no e2e drives the no-reload path yet |
 | K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ | `wave7-console-rail-drawer-admin-disclosed.png` · `wave7-console-rail-drawer-moderator-disclosed.png` · `console.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
@@ -274,7 +274,7 @@ DEC-134 and wave 7's forms (`dd03094`, `79d3932`).
 No row closes on sync 4: its captures came from builds with one or both defects. **Sync 5** is a full run at HEAD
 with both fixes and `STUBBED_SERVER_LOG`, then `reserve-probe` alone on a quiet machine.
 
-### Sync 5 — 2026-09-16 — the first clean full run: 18 rows closed
+### Sync 5 — 2026-09-16 — the first clean full run: 19 rows closed
 
 **Build `bfe8e2a`** in the verification worktree, with both sync-4 fixes (`.env.local`, `c179a0d`) and
 `STUBBED_SERVER_LOG`. Static gates: `tsc` clean · lint 0 errors · vitest **144 files, 1435/1435** · `ui-reach --wave7`
@@ -288,12 +288,14 @@ landing's performance is intact). The remaining two were custodian specs, fixed 
 `second-org` (hidden `DataTable` copy, `58ae011`, 6/6) and the platform axe scan (streamed redirect, `2b95bc9`, 6/6 ×3).
 Real findings, routed with the build: `checkin` (`admin-attendance:177`, fixed `4fd7b6e`; captures ignored
 `E2E_SHOTS_DIR`, fixed `043c03f`) · `sessions` (`sessions-screens:183` check-in status; `sessions-propose:207` strict) ·
-`content` (two 390 px overflows, on `/app/me/points` and `/app/me/notifications`; signed amounts «20-»; the company
-select after save; the no-JS save; `tasks:153` strict) · `console` (a dashboard `Stat` with a sentence in its value
+`content` (signed amounts «20-»; the company select after save; `tasks:153` strict). ~~Two 390 px overflows~~ were the
+old `widerThanViewport` counting the hub's tabs inside their own scroller, fixed in the helper (`e3633bc`, 7/7). ~~The
+no-JS save~~ cannot work under `/app`: `loading.tsx` streams the page into a hidden segment only React's inline script
+reveals, and no requirement asks for no-JS under `/app` (the only no-JS contract is the frozen register form) · `console` (a dashboard `Stat` with a sentence in its value
 slot on an empty org; no venues capture).
 
-**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T7, K0, K1, K2, K4, K5, K6; and C4, C5 on their SQL, RLS and specs.
-**Open:** C1, C2, C3, C6, T1, T2, T6, T8, K3. Each is named in its row.
+**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T6, T7, K0, K1, K2, K4, K5, K6; and C4, C5 on their SQL, RLS and specs.
+**Open:** C1, C2, C3, C6, T1, T2, T8, K3. Each is named in its row.
 
 ★ **The `noValidate` sweep.** `content` found a real bug (`7f4809f`): a `required` control with no `noValidate` lets
 the browser block the submit, so the app's own error never renders. Every wave-7 form that shows an app-side error
