@@ -108,7 +108,7 @@ export default async function AuditLogPage({
 
   // The chips: each active filter, removable on its own. Removing the period
   // removes its dates; every removal starts again from the newest rows.
-  const chip = (name: string, value: string) => t.markup("chip", { name, value, bdi: (chunks) => chunks });
+  const chip = (name: string, value: string) => t.markup("chip", { name, value, t: (chunks) => chunks, bdi: (chunks) => chunks });
   const without = (...keys: (keyof AuditFilters)[]) => {
     const next: AuditFilters = { ...filters, before: undefined };
     for (const key of keys) next[key] = undefined;

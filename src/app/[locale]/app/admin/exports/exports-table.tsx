@@ -42,6 +42,7 @@ export function ExportsTable({ rows, timeZone, locale }: { rows: ExportRow[]; ti
             {t.rich("lastExport", {
               name: r.last.actorName ?? t("unknownActor"),
               when: formatDateTime(r.last.occurredAt, timeZone, locale),
+              t: (chunks) => <bdi>{chunks}</bdi>,
               bdi: (chunks) => <bdi>{chunks}</bdi>,
             })}
           </span>
@@ -60,10 +61,10 @@ export function ExportsTable({ rows, timeZone, locale }: { rows: ExportRow[]; ti
             href={`/api/admin/exports/${r.type}`}
             fallbackName={`${r.type}.csv`}
             label={t("download")}
-            accessibleName={t.markup("downloadLabel", { name, bdi: plain })}
+            accessibleName={t.markup("downloadLabel", { name, t: plain })}
             pendingLabel={t("downloading")}
-            doneLabel={t.markup("downloaded", { name, bdi: plain })}
-            failedLabel={t.markup("downloadFailed", { name, bdi: plain })}
+            doneLabel={t.markup("downloaded", { name, t: plain })}
+            failedLabel={t.markup("downloadFailed", { name, t: plain })}
           />
         );
       },
