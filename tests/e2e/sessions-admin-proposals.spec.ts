@@ -177,7 +177,10 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
   expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId])).rows[0].state).toBe("submitted");
 
-  await card.getByLabel("السبب الذي سيصل صاحب المقترح").last().fill(reason);
+  // f44d339 split the shared label into one per decision — this is the
+  // reject flow, so `reasonLabelReject` (no `.last()` needed anymore, the
+  // two boxes no longer share a name).
+  await card.getByLabel("سبب الرفض الذي سيصل صاحب المقترح").fill(reason);
   await card.getByRole("button", { name: "أرسل" }).last().click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();

@@ -136,7 +136,12 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/members");
   await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
-  await expect(page.getByText(memberEmail)).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport) — f44d339 put the
+  // email back on both, which is exactly why a bare `getByText` now matches
+  // both copies. Scoped to whichever of the two roles is actually present,
+  // the same pattern used elsewhere for this DataTable dual render.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText(memberEmail)).toBeVisible();
 
   const row = page.getByRole("row", { name: new RegExp(`عضو تحت الاختبار.*${memberEmail}`) });
   await row.getByLabel("الدور").selectOption("moderator");
