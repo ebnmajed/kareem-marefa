@@ -1,10 +1,12 @@
 import "server-only";
 import { sessionClient } from "@/lib/dal/session";
 import { brandKit, type BrandKit, type SaveBrandKitInput } from "./schema";
+import { fillBrandDefaults } from "./defaults";
 
 export type { BrandKit, BrandColourSet, BrandFontRef, BrandLogo, SaveBrandKitInput } from "./schema";
 export { brandColourSet, brandKit, brandFontRef, brandLogo, hexColour, saveBrandKitInput } from "./schema";
 export { checkContrast, contrastRatio, AA_THRESHOLD, type ContrastCheck, type ContrastUse } from "./contrast";
+export { fillBrandDefaults } from "./defaults";
 
 // The org brand kit, read side — DEC-008, REQ-DSG-021, 06 §8.3, 02 §4.13.
 //
@@ -48,11 +50,18 @@ export async function getBrandKit(locale: string, orgId: string): Promise<BrandK
   // (it is not needed by the CSS/render/mail consumers), so it is left
   // null here rather than adding a fourth query for a value SCR-059 shows
   // once, if at all.
+  //
+  // `fillBrandDefaults` fills any BRAND_COLOUR_TOKENS key `brand_kit()` did
+  // not return (the per-token identity override, applied here as defence
+  // in depth — wave-8 sync, the lead): `canvasRaise` reaching
+  // `BrandColourSet` before its SQL migration is promoted, or any future
+  // token added the same way, must not turn a routine page view into a
+  // ZodError.
   return brandKit.parse({
     orgId: raw.orgId,
     isOverridden: raw.isOverridden,
-    light: raw.light,
-    dark: raw.dark,
+    light: fillBrandDefaults(raw.light, "light"),
+    dark: fillBrandDefaults(raw.dark, "dark"),
     logo,
     headingFont,
     bodyFont,
