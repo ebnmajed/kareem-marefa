@@ -124,14 +124,22 @@ begin
   end if;
 
   if public.is_presenter_of(p_session) then
-    return jsonb_build_object('status', 'presenter_cannot_check_in');
+    return jsonb_build_object('status', 'presenter_cannot_check_in');      -- REQ-CHK-011 / OQ-025
   end if;
 
+  -- REQ-CHK-005: a second attempt by an already-checked-in member is a
+  -- no-op reporting the existing check-in — not an error, not a duplicate.
+  -- `already_checked_in` is its own status (09 SCR-014's states table: "أنت
+  -- مسجَّل بالفعل" reads differently from a fresh "تم تسجيل حضورك").
   select * into existing from public.check_ins where session_id = p_session and member_id = m.id and removed_at is null;
   if found then
     return jsonb_build_object('status', 'already_checked_in', 'check_in', to_jsonb(existing));
   end if;
 
+  -- REQ-CHK-006 / DEC-015: the attempt row is written BEFORE the limit is
+  -- checked, so a request that trips the limit still counts toward it —
+  -- and, per checkin/01's header, every path from here on returns rather
+  -- than raises, so this insert is never rolled back by what follows.
   select count(*) into v_recent from public.check_in_attempts
    where session_id = p_session and member_id = m.id
      and attempted_at > now() - interval '10 minutes';
@@ -143,6 +151,9 @@ begin
     return jsonb_build_object('status', 'rate_limited');
   end if;
 
+  -- DEC-141: the floor/ceiling/state family, clock-derived — supersedes
+  -- `s.state <> 'in_progress'`. REQ-CHK-004's "which of not-started/ended,
+  -- without revealing whether the code was right" is unchanged.
   if s.state not in ('published', 'in_progress', 'completed') or s.starts_at is null or s.ends_at is null then
     return jsonb_build_object('status', 'not_started');
   elsif now() < s.starts_at then
@@ -151,10 +162,14 @@ begin
     return jsonb_build_object('status', 'session_ended');
   end if;
 
+  -- REQ-CHK-015: the switch. Checked after the window (a more specific
+  -- refusal already applies outside it) and before the walk-in door.
   if not s.check_in_open then
     return jsonb_build_object('status', 'check_in_closed');
   end if;
 
+  -- DEC-065/REQ-CHK-010: the door policy. Checked before the code so a
+  -- refused member learns nothing about it.
   if not s.allow_walk_ins and not exists (
     select 1 from public.rsvps r where r.session_id = p_session and r.member_id = m.id and r.status = 'confirmed'
   ) then
@@ -172,6 +187,9 @@ begin
     values (s.org_id, p_session, m.id, 'code', c.id, tstzrange(s.starts_at, s.ends_at, '[)'))
     returning * into ci;
   exception when exclusion_violation then
+    -- A savepoint scoped to just this INSERT (PL/pgSQL's own BEGIN/EXCEPTION
+    -- block) — everything before it, including the attempt row, stands.
+    -- REQ-CHK-013: name the conflicting session rather than a bare constraint error.
     select session_id into v_conflict from public.check_ins
      where member_id = m.id and session_window && tstzrange(s.starts_at, s.ends_at, '[)') and removed_at is null
      limit 1;
@@ -186,6 +204,8 @@ begin
       limit 1
    );
 
+  -- STORY-PTS-001 (was TODO(scoring, M4)): enqueue, never award inline —
+  -- the check-in returns as soon as its own row commits (11 §2.3).
   perform public.enqueue_job(
     'award_points',
     jsonb_build_object('rule', 'check_in', 'member_id', m.id, 'source', 'check_in',
@@ -240,12 +260,12 @@ begin
     select 1 from public.session_presenters
      where session_id = p_session and member_id = p_member and accepted
   ) then
-    raise exception 'presenter_cannot_check_in' using errcode = '23514';
+    raise exception 'presenter_cannot_check_in' using errcode = '23514';   -- REQ-CHK-011 applies to manual too
   end if;
 
   select * into existing from public.check_ins where session_id = p_session and member_id = p_member and removed_at is null;
   if found then
-    return existing;
+    return existing;                                                       -- REQ-CHK-005
   end if;
 
   begin

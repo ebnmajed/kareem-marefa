@@ -125,14 +125,18 @@ begin
   end if;
 
   -- REQ-CHK-005: a second attempt by an already-checked-in member is a
-  -- no-op reporting the existing check-in.
+  -- no-op reporting the existing check-in — not an error, not a duplicate.
+  -- `already_checked_in` is its own status (09 SCR-014's states table: "أنت
+  -- مسجَّل بالفعل" reads differently from a fresh "تم تسجيل حضورك").
   select * into existing from public.check_ins where session_id = p_session and member_id = m.id;
   if found then
     return jsonb_build_object('status', 'already_checked_in', 'check_in', to_jsonb(existing));
   end if;
 
   -- REQ-CHK-006 / DEC-015: the attempt row is written BEFORE the limit is
-  -- checked, so a request that trips the limit still counts toward it.
+  -- checked, so a request that trips the limit still counts toward it —
+  -- and, per the header above, every path from here on returns rather
+  -- than raises, so this insert is never rolled back by what follows.
   select count(*) into v_recent from public.check_in_attempts
    where session_id = p_session and member_id = m.id
      and attempted_at > now() - interval '10 minutes';
@@ -180,6 +184,9 @@ begin
     values (s.org_id, p_session, m.id, 'code', c.id, tstzrange(s.starts_at, s.ends_at, '[)'))
     returning * into ci;
   exception when exclusion_violation then
+    -- A savepoint scoped to just this INSERT (PL/pgSQL's own BEGIN/EXCEPTION
+    -- block) — everything before it, including the attempt row, stands.
+    -- REQ-CHK-013: name the conflicting session rather than a bare constraint error.
     select session_id into v_conflict from public.check_ins
      where member_id = m.id and session_window && tstzrange(s.starts_at, s.ends_at, '[)')
      limit 1;
@@ -194,6 +201,8 @@ begin
       limit 1
    );
 
+  -- STORY-PTS-001 (was TODO(scoring, M4)): enqueue, never award inline —
+  -- the check-in returns as soon as its own row commits (11 §2.3).
   perform public.enqueue_job(
     'award_points',
     jsonb_build_object('rule', 'check_in', 'member_id', m.id, 'source', 'check_in',

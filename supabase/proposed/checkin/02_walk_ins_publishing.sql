@@ -26,6 +26,7 @@
 -- 03 §8.2 rows this adds:
 --   | `RPC-schedule_session.walk_ins` | `p_allow_walk_ins = true`/`false` sets `allow_walk_ins`; admin-only, same as every other field this RPC writes. |
 --   | `RPC-schedule_session.walk_ins_unchanged` | Rescheduling WITHOUT passing the parameter (the default, `null`) leaves `allow_walk_ins` exactly as it was. |
+--   | `RPC-schedule_session.walk_ins_changed_audited` | A reschedule that actually changes `allow_walk_ins` writes a `session.walk_ins_changed` row with the old and new values, KEPT SEPARATE from `session.scheduled`'s own row (the lead's promotion-review fix) — a reschedule that leaves it unchanged writes none. |
 --   | `RPC-set_session_walk_ins.retired` | The function no longer exists — DEC-118: no door but `schedule_session()`. |
 
 drop function if exists public.set_session_walk_ins(uuid, boolean);
@@ -63,11 +64,15 @@ declare
   v_tz     text;
   v_name   text := nullif(btrim(coalesce(p_custom_venue_name, '')), '');
   v_addr   text := nullif(btrim(coalesce(p_custom_venue_address, '')), '');
+  v_old_walk_ins boolean;
+  v_new_walk_ins boolean;
 begin
   select * into target from public.sessions where id = p_session and org_id = actor.org_id;
   if target.id is null then
     raise exception 'session_not_found' using errcode = '42501';
   end if;
+  v_old_walk_ins := target.allow_walk_ins;
+  v_new_walk_ins := coalesce(p_allow_walk_ins, target.allow_walk_ins);
   -- REQ-SES-009 makes editing a PUBLISHED session legitimate (it notifies and
   -- re-syncs calendars). A finished, archived or cancelled one is history.
   if target.state in ('completed', 'archived', 'cancelled') then
@@ -112,7 +117,7 @@ begin
          cancellation_cutoff_at = coalesce(p_cancellation_cutoff_at, p_starts_at),
          certificate_mode       = p_certificate_mode,
          language               = p_language,
-         allow_walk_ins         = coalesce(p_allow_walk_ins, target.allow_walk_ins)   -- DEC-118: unchanged unless named
+         allow_walk_ins         = v_new_walk_ins   -- DEC-118: unchanged unless named
    where id = target.id
    returning * into target;
 
@@ -121,6 +126,17 @@ begin
                                                 'venue_id', target.venue_id, 'capacity', target.capacity,
                                                 'allow_walk_ins', target.allow_walk_ins),
                              null, 'admin', actor.id);
+
+  -- DEC-117/DEC-118: walk-ins keep their OWN audit action, unchanged from
+  -- 0079's set_session_walk_ins() — folding the value into session.scheduled's
+  -- payload alone would break anything that reads the log by action. Written
+  -- only when the value actually moves, same as 0079's own guard.
+  if v_old_walk_ins is distinct from v_new_walk_ins then
+    perform public.write_audit(actor.org_id, 'session.walk_ins_changed', 'session', target.id,
+                               jsonb_build_object('allow_walk_ins', v_old_walk_ins),
+                               jsonb_build_object('allow_walk_ins', v_new_walk_ins),
+                               null, 'admin', actor.id);
+  end if;
   return target;
 end $$;
 

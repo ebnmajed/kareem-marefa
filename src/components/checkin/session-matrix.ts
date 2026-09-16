@@ -23,7 +23,7 @@
 // courtesy; the database refuses the write regardless.
 
 import type { PhaseInput, SessionPhase, SessionState, ViewerInput, ViewerRelation } from "@/lib/session-status";
-import { canGrantOn, sessionPhase, sessionPhaseSource } from "@/lib/session-status";
+import { canGrantOn, parseInstant, scheduledEnd, sessionPhase, sessionPhaseSource } from "@/lib/session-status";
 
 /** «قبل» · «أثناء» · «بعد» · مواد الجلسة الخاصة بمقدِّم أو مشرف قبل النشر. */
 export type MaterialsWindow = "none" | "pre" | "during" | "after" | "own";
@@ -235,23 +235,6 @@ export function rateAllowed(session: PhaseInput, relation: ViewerRelation, now: 
  *  whose scheduled start has passed. */
 export const CHECK_IN_ATTENDANCE_STATES: readonly SessionState[] = ["published", "in_progress", "completed"] as const;
 
-// Deliberately small, deliberately duplicated. `session-status.ts`'s own
-// `parse()`/`endOf()` compute this exact arithmetic and are private —
-// requested for export (docs/plan/notes/checkin.md, "request for
-// session-status.ts") so this copy can be deleted. Until then it's kept
-// trivial on purpose, so drift from the original is cheap to notice.
-function parseDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-function windowEnd(session: PhaseInput, start: Date | null): Date | null {
-  const explicit = parseDate(session.endsAt);
-  if (explicit) return explicit;
-  if (start && session.durationMinutes) return new Date(start.getTime() + session.durationMinutes * 60_000);
-  return null;
-}
-
 const TWO_HOURS_MS = 2 * 60 * 60_000;
 
 /**
@@ -270,8 +253,8 @@ export function checkInWindowAllowed(session: PhaseInput, viewer: ViewerInput, a
   if (viewer.isPresenter) return false; // REQ-CHK-011, absolute — no walk-in exception either.
   if (!CHECK_IN_ATTENDANCE_STATES.includes(session.state)) return false; // DEC-141 ruling 1.
 
-  const start = parseDate(session.startsAt);
-  const end = windowEnd(session, start);
+  const start = parseInstant(session.startsAt);
+  const end = scheduledEnd(session, start);
   if (!start || !end) return false; // defensive; unreachable for these three states (0010's check constraint).
   if (now.getTime() < start.getTime()) return false; // the floor.
   if (now.getTime() >= end.getTime() + TWO_HOURS_MS) return false; // the ceiling, REQ-CHK-016.

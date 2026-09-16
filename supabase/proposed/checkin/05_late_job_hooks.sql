@@ -42,7 +42,9 @@
 --   | `RPC-build_data_export_payload.shows_removal` | A member's own data export includes a removed check-in, with `removed_at`/`removal_reason` populated — never dropped from the list. |
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- award_points() — re-created. `scoring`'s (0028).
+-- award_points — 05 §2.2, verbatim modulo the p_source typing (ledger_source,
+-- not text, so a typo'd source is a database error at the call site rather
+-- than a silently-orphaned ledger row). `scoring`'s (0028), re-created here.
 -- ═══════════════════════════════════════════════════════════════════════════
 create or replace function public.award_points(
   p_rule       text,
@@ -61,7 +63,7 @@ begin
    where org_id = (select org_id from public.members where id = p_member)
      and action_key = p_rule;
   if r is null or not r.enabled then
-    return;
+    return;                                            -- unknown/disabled rule: award nothing
   end if;
 
   -- ★ DEC-141's late-job race: the check-in this award is keyed to was
@@ -75,6 +77,11 @@ begin
     return;
   end if;
 
+  -- Per-session cap (REQ-PTS-006). Expressed in occurrences in the schema
+  -- (05 §3.2's footgun: cap_per_session * points is the point ceiling, not
+  -- the occurrence count itself) — comparing against points-so-far keeps
+  -- this correct even if a session mixes ledger rows written under two
+  -- rule_versions with different point values.
   if r.cap_per_session is not null and p_session is not null then
     select coalesce(sum(amount), 0) into used from public.points_ledger
      where member_id = p_member and session_id = p_session and rule_key = p_rule;
@@ -83,6 +90,7 @@ begin
     end if;
   end if;
 
+  -- Cooldown (REQ-PTS-007): inside the window, award nothing and fail nothing.
   if r.cooldown is not null and exists (
        select 1 from public.points_ledger
         where member_id = p_member and rule_key = p_rule
@@ -90,6 +98,9 @@ begin
     return;
   end if;
 
+  -- 05 §2.1's key: <rule_key>:<source>:<source_id>:<member_id>:v1. The
+  -- trailing epoch is bumped only by a DECISIONS.md-logged re-award; nothing
+  -- here ever writes anything but v1.
   key := format('%s:%s:%s:%s:v1', p_rule, p_source, p_source_id, p_member);
 
   insert into public.points_ledger (org_id, member_id, amount, source, source_id, session_id,
@@ -97,11 +108,15 @@ begin
   values ((select org_id from public.members where id = p_member),
           p_member, r.points, p_source, p_source_id, p_session,
           r.reason_ar, p_rule, r.version, key)
-  on conflict (idempotency_key) do nothing;
+  on conflict (idempotency_key) do nothing;            -- REQ-PTS-012: a replay writes zero rows
 end $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- issue_certificate() — re-created. `designer`'s (0065).
+-- issue_certificate — one certificate. `designer`'s (0065), re-created here.
+-- ★ THE SERIAL IS ALLOCATED INSIDE THE ISSUING TRANSACTION (DEC-010). That
+-- is the whole reason it is a locked counter row rather than a SEQUENCE: a
+-- rolled-back issuance returns the number, and in a certificate register a
+-- gap reads as a lost or hidden certificate.
 -- ═══════════════════════════════════════════════════════════════════════════
 create or replace function public.issue_certificate(
   p_session uuid,
@@ -127,6 +142,8 @@ begin
     raise exception 'certificates_off' using errcode = '42501';
   end if;
 
+  -- REQ-CRT-003: idempotent. Re-running the job returns what exists rather
+  -- than allocating a second serial for the same person.
   select * into v_row from public.certificates c
    where c.org_id = v_org and c.session_id = p_session and c.member_id = p_member and c.kind = p_kind;
   if v_row.id is not null then
@@ -134,9 +151,9 @@ begin
   end if;
 
   if p_kind = 'attendance' then
-    -- ★ DEC-141: excludes a removed check-in. A late job for one now raises
-    -- the SAME `no_check_in` it already raises for a member who never
-    -- checked in at all.
+    -- ★ RE-DERIVED, never taken from the payload — and now, DEC-141,
+    -- excludes a removed check-in. A late job for one raises the SAME
+    -- `no_check_in` it already raises for a member who never checked in.
     select c.id into v_check_in from public.check_ins c
      where c.session_id = p_session and c.member_id = p_member and c.removed_at is null limit 1;
     if v_check_in is null then
@@ -144,12 +161,17 @@ begin
     end if;
   end if;
 
+  -- The name AS PRINTED, frozen here. A member changing their display name
+  -- later must not retroactively change a document someone is holding
+  -- (REQ-CRT-014).
   select m.display_name into v_name from public.members m where m.id = p_member;
   if v_name is null then
     raise exception 'unknown_member' using errcode = '42704';
   end if;
 
   if v_version is null then
+    -- The org's default certificate template for this kind, else the
+    -- platform's. Pinned on the row, so reissuing in 2031 renders as today.
     select v.id into v_version
       from public.design_templates t
       join public.design_template_versions v on v.template_id = t.id
@@ -168,8 +190,11 @@ begin
     template_version_id, font_hashes, recipient_name_snapshot, issued_at
   ) values (
     v_org, p_member, p_kind, p_session, v_check_in,
+    -- ★ Inside this transaction. A rollback returns the number (DEC-010).
     public.allocate_serial(v_org),
     public.new_verification_code(),
+    -- D50: automatic issues; review HOLDS, invisible and unemailed
+    -- (REQ-CRT-004).
     case when v_mode = 'review' then 'held' else 'issued' end::public.certificate_state,
     v_version, coalesce(p_font_hashes, '{}'), v_name,
     case when v_mode = 'review' then null else now() end
@@ -181,10 +206,10 @@ begin
 end $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- fan_out_certificates() — re-created, defensively. `designer`'s (0065).
--- Fires on the edge into `completed`; a removal at that exact instant is a
+-- fan_out_certificates — the fan-out. `designer`'s (0065), re-created here:
+-- fires on the edge into `completed`; a removal at that exact instant is a
 -- vanishingly unlikely race, but "re-derive, don't trust a stale read" is
--- the standing rule and costs one clause here.
+-- the standing rule and costs one clause below.
 -- ═══════════════════════════════════════════════════════════════════════════
 create or replace function public.fan_out_certificates(p_session uuid) returns int
 language plpgsql security definer set search_path = '' as $$
@@ -194,17 +219,24 @@ declare
   v_n    int := 0;
 begin
   select certificate_mode into v_mode from public.sessions where id = p_session;
+  -- D50: «معطّل» means nothing is generated at all, not generated and hidden.
   if v_mode is null or v_mode = 'off' then
     return 0;
   end if;
 
   for v_rec in
+    -- Attendees: the CHECK-IN EVENT and nothing else (D24, REQ-CHK-009). A
+    -- manual check-in (A8) is a check-in, so this needs no branch for it —
+    -- and now, DEC-141, excludes a removed one.
     select c.member_id, 'attendance'::public.certificate_kind as kind
       from public.check_ins c where c.session_id = p_session and c.removed_at is null
     union
+    -- Presenters: every ACCEPTED co-presenter (A5).
     select sp.member_id, 'presenter'::public.certificate_kind
       from public.session_presenters sp where sp.session_id = p_session and sp.accepted
   loop
+    -- 11 §2.5's key, verbatim: one job per recipient per kind, so a re-run
+    -- moves each rather than duplicating it.
     perform public.enqueue_job(
       'issue_certificates',
       jsonb_build_object('session_id', p_session, 'member_id', v_rec.member_id, 'kind', v_rec.kind),

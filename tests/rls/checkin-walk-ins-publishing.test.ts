@@ -3,7 +3,8 @@
 // applyProposed() inside this test's rolled-back transaction (DEC-040).
 //
 // `03` §8.2 rows: RPC-schedule_session.walk_ins,
-// RPC-schedule_session.walk_ins_unchanged, RPC-set_session_walk_ins.retired.
+// RPC-schedule_session.walk_ins_unchanged,
+// RPC-schedule_session.walk_ins_changed_audited, RPC-set_session_walk_ins.retired.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -64,6 +65,45 @@ describe("RPC-schedule_session.walk_ins / .walk_ins_unchanged", () => {
         [sessionId, laterStart, f.a.venueId],
       );
       expect(turnedOff.allow_walk_ins).toBe(false);
+    });
+  });
+
+  it("writes session.walk_ins_changed, kept separate from session.scheduled, only when the value actually moves", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const sessionId = await makeApprovedSession(tx, f.a); // allow_walk_ins defaults false
+      const startsAt = new Date(Date.now() + 3_600_000).toISOString();
+      const laterStart = new Date(Date.now() + 7_200_000).toISOString();
+      const evenLaterStart = new Date(Date.now() + 10_800_000).toISOString();
+
+      await tx.as(f.a.admin.claims);
+      // false → true: one audit row.
+      await tx.q(`select * from public.schedule_session($1, $2, 60, null, $3, null, null, null, 40, null, null, 'off', 'ar', true)`, [sessionId, startsAt, f.a.venueId]);
+      // Reschedule with the SAME value named explicitly: no new row.
+      await tx.q(`select * from public.schedule_session($1, $2, 60, null, $3, null, null, null, 40, null, null, 'off', 'ar', true)`, [sessionId, laterStart, f.a.venueId]);
+      // Reschedule the date only, walk-ins omitted (unchanged): no new row.
+      await tx.q(`select * from public.schedule_session($1, $2, 60, null, $3, null, null, null, 40, null, null, 'off', 'ar')`, [sessionId, evenLaterStart, f.a.venueId]);
+
+      await tx.asOwner();
+      const afterFirst = await tx.q<{ before: { allow_walk_ins: boolean }; after: { allow_walk_ins: boolean } }>(
+        `select before, after from public.audit_log where subject_id = $1 and action = 'session.walk_ins_changed'`,
+        [sessionId],
+      );
+      expect(afterFirst).toHaveLength(1);
+      expect(afterFirst[0].before.allow_walk_ins).toBe(false);
+      expect(afterFirst[0].after.allow_walk_ins).toBe(true);
+
+      // true → false: a second, separate row.
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select * from public.schedule_session($1, $2, 60, null, $3, null, null, null, 40, null, null, 'off', 'ar', false)`, [sessionId, evenLaterStart, f.a.venueId]);
+      await tx.asOwner();
+      const afterSecond = await tx.q(`select id from public.audit_log where subject_id = $1 and action = 'session.walk_ins_changed'`, [sessionId]);
+      expect(afterSecond).toHaveLength(2);
+
+      // session.scheduled fired on every call above (4 total) — its own,
+      // separate action, never a substitute for the dedicated one.
+      const scheduledRows = await tx.q(`select id from public.audit_log where subject_id = $1 and action = 'session.scheduled'`, [sessionId]);
+      expect(scheduledRows).toHaveLength(4);
     });
   });
 
