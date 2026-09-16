@@ -192,6 +192,9 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
   const sheet = page.getByRole("dialog", { name: "عوامل التصفية" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("radiogroup", { name: "لغة الجلسة" })).toBeVisible();
+  // ★ Wave 7 (DEC-141 ruling 15): periods, not the browser's date mask.
+  await expect(sheet.getByRole("radiogroup", { name: "الموعد" })).toBeVisible();
+  await expect(sheet.locator('input[type="date"]')).toHaveCount(0);
   await sheet.getByLabel("الوسم").selectOption({ value: "تقارير" });
 
   if (testInfo.project.name === "phone") {
@@ -206,6 +209,30 @@ test("the filter sheet applies a tag, and the phone gets a bottom sheet", async 
   await expect(page.getByRole("list", { name: "عوامل التصفية المطبّقة" }).getByText("الوسم: تقارير")).toBeVisible();
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toHaveCount(0);
+});
+
+test("a period from the sheet replaces an old link's date range, and shows as one removable chip (DEC-141 ruling 15)", async ({ context, page }, testInfo) => {
+  await signIn(context, memberEmail);
+  if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
+  // A link saved before wave 7 still works, and still shows what it filters.
+  await page.goto("/ar/app/sessions?from=2026-01-01");
+  await streamed(page);
+  const applied = page.getByRole("list", { name: "عوامل التصفية المطبّقة" });
+  await expect(applied.getByText(/^من /)).toBeVisible();
+
+  await page.getByRole("button", { name: /المزيد من عوامل التصفية/ }).click();
+  const sheet = page.getByRole("dialog", { name: "عوامل التصفية" });
+  await sheet.getByRole("radiogroup", { name: "الموعد" }).getByRole("radio", { name: "هذا الشهر" }).check();
+  if (testInfo.project.name === "phone") {
+    await page.screenshot({ path: join(SHOTS, "wave7-sessions-browse-sheet-periods.png"), fullPage: true });
+  }
+  await sheet.getByRole("button", { name: "اعرض النتائج" }).click();
+
+  await expect(page).toHaveURL(/when=thisMonth/);
+  await expect(page).not.toHaveURL(/from=/);
+  await streamed(page);
+  await expect(applied.getByText("الموعد: هذا الشهر")).toBeVisible();
+  await expect(applied.getByText(/^من /)).toHaveCount(0);
 });
 
 test("a bookmark toggles on the card without navigating, keeps its name, and survives a reload (REQ-DSC-006)", async ({ context, page }) => {

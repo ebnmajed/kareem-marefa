@@ -86,14 +86,16 @@
         "presenter": "المُقدِّم: {value}",
         "from": "من {value}",
         "to": "حتى {value}",
-        "q": "بحث: {value}"
+        "q": "بحث: {value}",
+        "when": "الموعد: {value}"
       },
       "sheet": {
         "title": "عوامل التصفية",
         "apply": "اعرض النتائج",
         "reset": "امسح",
         "close": "أغلق"
-      }
+      },
+      "when": "الموعد"
     },
     "emptyState": {
       "upcoming": {

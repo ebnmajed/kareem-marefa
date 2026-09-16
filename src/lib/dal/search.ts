@@ -2,6 +2,7 @@ import "server-only";
 import { sessionClient } from "@/lib/dal/session";
 import { getSessionPoster } from "@/lib/dal/posters";
 import { getFilter, type FilterKey, type TimelineQuery, type TimelineStatus } from "@/components/browse/timeline-query";
+import { firstDayOfWeek } from "@/components/browse/timeline-groups";
 import { matchesTimeline } from "@/components/browse/timeline-match";
 import { arNormalize } from "@/components/browse/ar-normalize";
 import {
@@ -150,7 +151,8 @@ export async function getTimeline(locale: string, query: TimelineQuery, now: Dat
 
   const candidates: TimelineCandidate[] = ((sessionsRes.data ?? []) as unknown as Record<string, unknown>[]).map((row) => toTimelineCandidate(row, ctx));
 
-  const matches = (c: TimelineCandidate, skip?: FilterKey) => matchesTimeline(c, query, { textIds, now, orgTimeZone, skip });
+  const weekStartsOn = firstDayOfWeek(locale === "ar" ? "ar-SA" : locale);
+  const matches = (c: TimelineCandidate, skip?: FilterKey) => matchesTimeline(c, query, { textIds, now, orgTimeZone, skip, weekStartsOn });
   const matched = candidates.filter((c) => matches(c));
 
   const sorted =

@@ -70,6 +70,33 @@ export function upcomingGroupOf(item: Groupable, now: Date, timeZone: string, we
   return "later";
 }
 
+/** The periods a member can filter the timeline by — the date groups, minus «جارية الآن» and «لاحقًا». */
+export type TimelinePeriod = "thisWeek" | "nextWeek" | "thisMonth";
+
+export const TIMELINE_PERIODS: readonly TimelinePeriod[] = ["thisWeek", "nextWeek", "thisMonth"];
+
+/**
+ * Whether a session starts inside a period, on the org's wall calendar — the
+ * filter version of the groups above (DEC-098's «هذا الأسبوع · الأسبوع القادم ·
+ * هذا الشهر», DEC-141 ruling 15). Unlike the groups it is not exclusive:
+ * «هذا الشهر» is the whole calendar month, this week and next week included
+ * where they fall inside it. A session with no start is in no period.
+ */
+export function inPeriod(startsAt: string | null, period: TimelinePeriod, now: Date, timeZone: string, weekStartsOn = 7): boolean {
+  if (!startsAt) return false;
+  const today = localDay(now, timeZone);
+  const day = localDay(new Date(startsAt), timeZone);
+  const weekStart = today.ordinal - ((today.weekday - weekStartsOn + 7) % 7);
+  switch (period) {
+    case "thisWeek":
+      return day.ordinal >= weekStart && day.ordinal < weekStart + 7;
+    case "nextWeek":
+      return day.ordinal >= weekStart + 7 && day.ordinal < weekStart + 14;
+    case "thisMonth":
+      return day.year === today.year && day.month === today.month;
+  }
+}
+
 const UPCOMING_ORDER: UpcomingGroupKey[] = ["live", "thisWeek", "nextWeek", "thisMonth", "later"];
 
 /** Upcoming sessions, already sorted by the caller, into the non-empty groups in order. */

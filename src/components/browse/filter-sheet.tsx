@@ -3,7 +3,9 @@
 import { useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { TIMELINE_PERIODS } from "@/components/browse/timeline-groups";
 import {
+  LEGACY_DATE_KEYS,
   SHEET_KEYS,
   getFilter,
   parseTimelineQuery,
@@ -18,14 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { CloseIcon, FilterIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 
 // «المزيد من عوامل التصفية» — REQ-UIX-022, REQ-DSC-005, `16` §6.2.
 //
-// Everything that is not a row-A toggle lives here: the dates, the tag, the
+// Everything that is not a row-A toggle lives here: the period, the tag, the
 // venue, the company, the presenter, the level, the spoken language. Below `md`
 // it is a bottom sheet — the list is never pushed sideways — and from `md` a
 // sheet at the inline end, so on no width does a rail compete with the one
@@ -64,6 +65,7 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
   const t = useTranslations("browse.filters");
   const tf = useTranslations("search.filters");
   const tc = useTranslations("browse.card");
+  const tg = useTranslations("browse.timeline.groups");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const wide = useSyncExternalStore(subscribe, isWide, () => false);
@@ -73,7 +75,8 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
   const [pending, startTransition] = useTransition();
 
   const query = parseTimelineQuery(new URLSearchParams(search));
-  const applied = SHEET_KEYS.filter((key) => getFilter(query, key) !== undefined).length;
+  // A saved link's `from`/`to` still counts, and «امسح» still clears it.
+  const applied = [...SHEET_KEYS, ...LEGACY_DATE_KEYS].filter((key) => getFilter(query, key) !== undefined).length;
   const value = (key: FilterKey) => getFilter(query, key) ?? "";
 
   function apply(event: FormEvent<HTMLFormElement>) {
@@ -85,12 +88,15 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
       if (submitted === (getFilter(query, key) ?? "")) continue;
       next = submitted ? withFilter(next, key, submitted) : withoutFilter(next, key);
     }
+    // A period chosen here replaces a date range from an old link — the two
+    // would contradict each other, and only one of them has a control.
+    if (getFilter(next, "when") !== undefined) next = LEGACY_DATE_KEYS.reduce<TimelineQuery>((q, key) => withoutFilter(q, key), next);
     setOpen(false);
     startTransition(() => router.push(timelineHref(next)));
   }
 
   function reset() {
-    const next = SHEET_KEYS.reduce<TimelineQuery>((q, key) => withoutFilter(q, key), query);
+    const next = [...SHEET_KEYS, ...LEGACY_DATE_KEYS].reduce<TimelineQuery>((q, key) => withoutFilter(q, key), query);
     setOpen(false);
     startTransition(() => router.push(timelineHref(next)));
   }
@@ -119,14 +125,18 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
 
       <Sheet open={open} onOpenChange={setOpen} title={t("sheet.title")} side={wide ? "inline-end" : "bottom"}>
         <form onSubmit={apply} className="flex flex-col gap-5">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={tf("dateFromLabel")}>
-              <Input type="date" name="from" defaultValue={value("from")} dir="ltr" />
-            </Field>
-            <Field label={tf("dateToLabel")}>
-              <Input type="date" name="to" defaultValue={value("to")} dir="ltr" />
-            </Field>
-          </div>
+          {/* ★ Periods, not a date range (DEC-098, DEC-141 ruling 15). A native
+              <input type="date"> draws the BROWSER's mask — `dd/mm/yyyy` in
+              English under this Arabic page, measured — and a browser set to
+              Arabic may draw Arabic-Indic digits (DEC-124). The three periods
+              are the timeline's own date groups, so a filter and a heading say
+              the same thing. */}
+          <RadioGroup
+            name="when"
+            legend={t("when")}
+            defaultValue={value("when")}
+            options={[{ value: "", label: tf("any") }, ...TIMELINE_PERIODS.map((period) => ({ value: period, label: tg(period) }))]}
+          />
 
           {options.tags.length > 0 ? (
             <Field label={tf("tagLabel")}>
