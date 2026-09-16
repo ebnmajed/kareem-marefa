@@ -519,6 +519,7 @@
     },
     "dateTime": {
       "triggerLabel": "Date and time",
+      "triggerLabelDate": "Date",
       "clear": "Clear",
       "today": "Today",
       "done": "Done",

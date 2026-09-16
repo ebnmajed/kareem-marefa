@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { controlClass } from "@/components/ui/field";
 import { ChevronIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 
@@ -9,13 +10,34 @@ import { formatNumber } from "@/components/sessions/numerals";
 // own locale, which a page's own `dir="rtl"` cannot reach — the widget is
 // OS-drawn, outside CSS. This is a fully custom picker instead: every pixel
 // of it is ordinary DOM content, so it inherits the page's direction the
-// same way any other component does, and its digits follow the org's own
-// numeral system rather than the browser's.
+// same way any other component does, and its digits are Western, always
+// (DEC-124), rather than the browser's.
 //
 // The value contract is unchanged from the native input it replaces: a
 // hidden field named `name` carries "YYYY-MM-DDTHH:mm" — the exact string
 // `datetime-local` produced and `schedule/actions.ts`'s `atZone()` already
-// parses. Nothing downstream of this component changes.
+// parses. With `dateOnly` it carries "YYYY-MM-DD", the string `type="date"`
+// produced.
+//
+// ★ Wave 8 (the lead's sync-1 requests, `DEC-148`) — three additions, and the
+// standalone path a caller already uses renders exactly as before:
+//
+//  · `onValueChange` fires on EVERY commit — a day, an hour, a minute,
+//    «اليوم», «امسح» — from the event handler that made it, so a form can
+//    follow the value without watching the DOM. `value` makes the picker
+//    controlled for a caller that owns the state.
+//  · `hideLabel` is for a picker inside `<Field>`: the Field draws the label,
+//    the «مطلوب» marker, the hint and the error, so the picker draws none of
+//    them, and the TRIGGER takes `id` — the Field's `<label for>` then reaches
+//    the control that actually has focus. The value field goes unnamed by id.
+//    `describedBy` and `invalid` carry the Field's description and state onto
+//    the trigger. Its accessible name is still `aria-label` — the label AND
+//    the current value, which a `<label for>` alone would freeze at the label.
+//  · `dateOnly` — the audit log's date range, which would otherwise fall back
+//    to a native `type="date"` showing the browser's English `dd/mm/yyyy`.
+//
+// `min`/`max` compare the DATE part and disable the days outside them; the
+// server is still the boundary.
 //
 // Week starts Sunday (the Gulf convention `Asia/Riyadh`'s org default
 // implies) — not derived from `Intl.Locale().weekInfo`, which is not yet
@@ -27,8 +49,22 @@ export interface RtlDateTimePickerProps {
   label: string;
   hint?: string;
   required?: boolean;
-  /** "YYYY-MM-DDTHH:mm", or "" for unset. */
+  /** "YYYY-MM-DDTHH:mm" ("YYYY-MM-DD" with `dateOnly`), or "" for unset. */
   defaultValue: string;
+  /** Controlled: the picker renders this and reports every change through `onValueChange`. */
+  value?: string;
+  /** Called on every commit and every clear, with the serialised value ("" when cleared). */
+  onValueChange?: (value: string) => void;
+  /** Date only — no hour or minute, and the value is "YYYY-MM-DD". */
+  dateOnly?: boolean;
+  /** The host (a `<Field>`) draws the label and hint; the trigger takes `id`. */
+  hideLabel?: boolean;
+  /** The host's hint and error ids, read after the name. */
+  describedBy?: string;
+  invalid?: boolean;
+  /** "YYYY-MM-DD…" bounds on the selectable days. */
+  min?: string;
+  max?: string;
   locale: string;
   clearLabel: string;
   todayLabel: string;
@@ -46,14 +82,21 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-function parse(value: string): { y: number; m: number; d: number; h: number; min: number } | null {
+type Parts = { y: number; m: number; d: number; h: number; min: number };
+
+function parse(value: string, dateOnly: boolean): Parts | null {
+  if (dateOnly) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    return match ? { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]), h: 0, min: 0 } : null;
+  }
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) return null;
   return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]), h: Number(match[4]), min: Number(match[5]) };
 }
 
-function serialize(y: number, m: number, d: number, h: number, min: number): string {
-  return `${y}-${pad(m + 1)}-${pad(d)}T${pad(h)}:${pad(min)}`;
+function serialize(dateOnly: boolean, y: number, m: number, d: number, h: number, min: number): string {
+  const date = `${y}-${pad(m + 1)}-${pad(d)}`;
+  return dateOnly ? date : `${date}T${pad(h)}:${pad(min)}`;
 }
 
 export function RtlDateTimePicker({
@@ -63,6 +106,14 @@ export function RtlDateTimePicker({
   hint,
   required,
   defaultValue,
+  value: controlledValue,
+  onValueChange,
+  dateOnly = false,
+  hideLabel = false,
+  describedBy,
+  invalid = false,
+  min,
+  max,
   locale,
   clearLabel,
   todayLabel,
@@ -73,12 +124,14 @@ export function RtlDateTimePicker({
   prevMonthLabel,
   nextMonthLabel,
 }: RtlDateTimePickerProps) {
-  const parsed = parse(defaultValue);
+  const controlled = controlledValue !== undefined;
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const value = controlled ? controlledValue : internalValue;
+  const initial = parse(value, dateOnly);
   const now = new Date();
-  const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
-  const [viewYear, setViewYear] = useState(parsed?.y ?? now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(parsed?.m ?? now.getMonth());
+  const [viewYear, setViewYear] = useState(initial?.y ?? now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initial?.m ?? now.getMonth());
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
 
@@ -101,15 +154,14 @@ export function RtlDateTimePicker({
   const num = (n: number) => formatNumber(n);
 
   const displayText = useMemo(() => {
-    const p = parse(value);
+    const p = parse(value, dateOnly);
     if (!p) return emptyLabel;
-    const nu = "latn";
-    return new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { dateStyle: "long", timeStyle: "short" }).format(new Date(p.y, p.m, p.d, p.h, p.min));
-  }, [value, locale, emptyLabel]);
+    const options: Intl.DateTimeFormatOptions = dateOnly ? { dateStyle: "long" } : { dateStyle: "long", timeStyle: "short" };
+    return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, options).format(new Date(p.y, p.m, p.d, p.h, p.min));
+  }, [value, locale, emptyLabel, dateOnly]);
 
   const monthLabel = useMemo(() => {
-    const nu = "latn";
-    return new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { month: "long", year: "numeric" }).format(new Date(viewYear, viewMonth, 1));
+    return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { month: "long", year: "numeric" }).format(new Date(viewYear, viewMonth, 1));
   }, [viewYear, viewMonth, locale]);
 
   const weekdayNames = useMemo(() => {
@@ -131,27 +183,38 @@ export function RtlDateTimePicker({
     return cells;
   }, [viewYear, viewMonth]);
 
-  function commit(y: number, m: number, d: number, h: number, min: number) {
-    setValue(serialize(y, m, d, h, min));
+  // Every change goes through here, so `onValueChange` cannot miss one.
+  function update(next: string) {
+    if (!controlled) setInternalValue(next);
+    onValueChange?.(next);
+  }
+
+  function commit(y: number, m: number, d: number, h: number, minute: number) {
+    update(serialize(dateOnly, y, m, d, h, minute));
+  }
+
+  function outOfBounds(y: number, m: number, d: number): boolean {
+    const date = `${y}-${pad(m + 1)}-${pad(d)}`;
+    return (min !== undefined && date < min.slice(0, 10)) || (max !== undefined && date > max.slice(0, 10));
   }
 
   function pickDay(cell: { date: number; y: number; m: number }) {
-    const p = parse(value);
+    const p = parse(value, dateOnly);
     commit(cell.y, cell.m, cell.date, p?.h ?? 0, p?.min ?? 0);
     setViewYear(cell.y);
     setViewMonth(cell.m);
   }
 
   function setHour(h: number) {
-    const p = parse(value) ?? { y: viewYear, m: viewMonth, d: now.getDate(), h: 0, min: 0 };
+    const p = parse(value, dateOnly) ?? { y: viewYear, m: viewMonth, d: now.getDate(), h: 0, min: 0 };
     commit(p.y, p.m, p.d, h, p.min);
   }
-  function setMinute(min: number) {
-    const p = parse(value) ?? { y: viewYear, m: viewMonth, d: now.getDate(), h: 0, min: 0 };
-    commit(p.y, p.m, p.d, p.h, min);
+  function setMinute(minute: number) {
+    const p = parse(value, dateOnly) ?? { y: viewYear, m: viewMonth, d: now.getDate(), h: 0, min: 0 };
+    commit(p.y, p.m, p.d, p.h, minute);
   }
 
-  const p = parse(value);
+  const p = parse(value, dateOnly);
 
   function goPrevMonth() {
     if (viewMonth === 0) {
@@ -177,20 +240,32 @@ export function RtlDateTimePicker({
           discarding the current value a screen reader needs — the same
           class of bug as the check-in code boxes (09 SCR-014's own
           warning). `aria-label` combines both, updating with the value. */}
-      <p id={`${id}-label`} className="text-label text-fg-heading">
-        {label}
-      </p>
-      {hint ? <p className="mt-1 text-body-sm text-fg-muted">{hint}</p> : null}
-      <input type="hidden" id={id} name={name} value={value} />
+      {hideLabel ? null : (
+        <>
+          <p id={`${id}-label`} className="text-label text-fg-heading">
+            {label}
+          </p>
+          {hint ? <p className="mt-1 text-body-sm text-fg-muted">{hint}</p> : null}
+        </>
+      )}
+      <input type="hidden" id={hideLabel ? undefined : id} name={name} value={value} />
+      {/* `aria-invalid` on a button: this button IS the field's control — the
+          element `<Field>`'s label names and its summary link focuses — so its
+          invalid state belongs on it, as on any input. axe accepts it, and the
+          error text still arrives through `aria-describedby` for a reader that
+          ignores the attribute. */}
+      {/* eslint-disable-next-line jsx-a11y/role-supports-aria-props */}
       <button
-        id={`${id}-trigger`}
+        id={hideLabel ? id : `${id}-trigger`}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={popoverId}
         aria-label={`${label}: ${displayText}`}
+        aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         onClick={() => setOpen((o) => !o)}
-        className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-start text-body text-fg-heading"
+        className={controlClass(invalid, "lg", `${hideLabel ? "" : "mt-2"} text-start`)}
       >
         <bdi aria-hidden="true">{displayText}</bdi>
       </button>
@@ -222,16 +297,16 @@ export function RtlDateTimePicker({
               // grid (e.g. a 30-day month with a 2-day lead reaches ten
               // days into next month) — the full date disambiguates both
               // for a screen reader and for anything that queries by name.
-              const nu = "latn";
-              const fullDate = new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { day: "numeric", month: "long", year: "numeric" }).format(new Date(cell.y, cell.m, cell.date));
+              const fullDate = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", year: "numeric" }).format(new Date(cell.y, cell.m, cell.date));
+              const disabled = !cell.inMonth || outOfBounds(cell.y, cell.m, cell.date);
               return (
                 <button
                   key={i}
                   type="button"
-                  disabled={!cell.inMonth}
+                  disabled={disabled}
                   aria-label={fullDate}
                   onClick={() => pickDay(cell)}
-                  className={`h-9 rounded-field text-body-sm ${selected ? "bg-navy-950 text-white" : cell.inMonth ? "text-fg-heading hover:bg-silver-100" : "text-fg-muted/40"}`}
+                  className={`h-9 rounded-field text-body-sm ${selected ? "bg-navy-950 text-white" : !disabled ? "text-fg-heading hover:bg-silver-100" : "text-fg-muted/40"}`}
                 >
                   <span aria-hidden="true">{num(cell.date)}</span>
                 </button>
@@ -239,34 +314,36 @@ export function RtlDateTimePicker({
             })}
           </div>
 
-          <div className="mt-4 flex items-center gap-3 border-t border-edge pt-4">
-            <label className="flex items-center gap-2 text-body-sm text-fg-heading">
-              {hourLabel}
-              <select value={p?.h ?? 0} onChange={(e) => setHour(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {num(h)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-body-sm text-fg-heading">
-              {minuteLabel}
-              <select value={p?.min ?? 0} onChange={(e) => setMinute(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
-                {Array.from({ length: 60 }, (_, m) => m).filter((m) => m % 5 === 0 || m === (p?.min ?? 0)).map((m) => (
-                  <option key={m} value={m}>
-                    {num(m)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          {dateOnly ? null : (
+            <div className="mt-4 flex items-center gap-3 border-t border-edge pt-4">
+              <label className="flex items-center gap-2 text-body-sm text-fg-heading">
+                {hourLabel}
+                <select value={p?.h ?? 0} onChange={(e) => setHour(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={h}>
+                      {num(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-body-sm text-fg-heading">
+                {minuteLabel}
+                <select value={p?.min ?? 0} onChange={(e) => setMinute(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+                  {Array.from({ length: 60 }, (_, m) => m).filter((m) => m % 5 === 0 || m === (p?.min ?? 0)).map((m) => (
+                    <option key={m} value={m}>
+                      {num(m)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => {
-                const p2 = parse(value);
+                const p2 = parse(value, dateOnly);
                 commit(now.getFullYear(), now.getMonth(), now.getDate(), p2?.h ?? 12, p2?.min ?? 0);
                 setViewYear(now.getFullYear());
                 setViewMonth(now.getMonth());
@@ -276,11 +353,7 @@ export function RtlDateTimePicker({
               {todayLabel}
             </button>
             {!required ? (
-              <button
-                type="button"
-                onClick={() => setValue("")}
-                className="text-body-sm text-fg-body underline hover:text-fg-heading"
-              >
+              <button type="button" onClick={() => update("")} className="text-body-sm text-fg-body underline hover:text-fg-heading">
                 {clearLabel}
               </button>
             ) : null}

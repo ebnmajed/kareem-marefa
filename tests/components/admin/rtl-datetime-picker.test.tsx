@@ -3,7 +3,7 @@
 // `useTranslations`, so the host page supplies real `ar.json` strings and
 // this test can too, directly.
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 
 const LABELS = {
@@ -105,5 +105,69 @@ describe("RtlDateTimePicker", () => {
     render(<RtlDateTimePicker id="endsAt" name="endsAt" defaultValue="2026-09-16T18:00" locale="ar" {...LABELS} />);
     fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
     expect(screen.getByRole("button", { name: LABELS.clearLabel })).toBeInTheDocument();
+  });
+});
+
+// Wave 8 — the lead's sync-1 requests (`DEC-148`): `onValueChange` on every
+// commit, a controlled `value`, `hideLabel` for a picker inside `<Field>`, and
+// `dateOnly`. The standalone cases above are unchanged, which is the proof
+// the schedule form's existing path does not move.
+describe("RtlDateTimePicker — wave 8 additions", () => {
+  it("onValueChange fires on a day, an hour, a minute, «اليوم» and «امسح», from the handler that made the change", () => {
+    const onValueChange = vi.fn();
+    render(<RtlDateTimePicker id="startsAt" name="startsAt" defaultValue="2026-09-16T18:00" locale="ar" onValueChange={onValueChange} {...LABELS} />);
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
+    fireEvent.click(screen.getByRole("button", { name: "10 سبتمبر 2026" }));
+    fireEvent.change(screen.getByLabelText(LABELS.hourLabel), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText(LABELS.minuteLabel), { target: { value: "30" } });
+    expect(onValueChange.mock.calls.map((c) => c[0])).toEqual(["2026-09-10T18:00", "2026-09-10T09:00", "2026-09-10T09:30"]);
+    fireEvent.click(screen.getByRole("button", { name: LABELS.todayLabel }));
+    expect(onValueChange.mock.calls.at(-1)?.[0]).toMatch(/^\d{4}-\d{2}-\d{2}T09:30$/);
+    fireEvent.click(screen.getByRole("button", { name: LABELS.clearLabel }));
+    expect(onValueChange).toHaveBeenLastCalledWith("");
+  });
+
+  it("controlled: renders `value`, and a commit changes nothing until the owner passes the new value", () => {
+    const onValueChange = vi.fn();
+    const { container, rerender } = render(
+      <RtlDateTimePicker id="startsAt" name="startsAt" defaultValue="" value="2026-09-16T18:00" locale="ar" onValueChange={onValueChange} {...LABELS} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
+    fireEvent.click(screen.getByRole("button", { name: "10 سبتمبر 2026" }));
+    expect(onValueChange).toHaveBeenLastCalledWith("2026-09-10T18:00");
+    expect(container.querySelector('input[name="startsAt"]')).toHaveValue("2026-09-16T18:00");
+    rerender(<RtlDateTimePicker id="startsAt" name="startsAt" defaultValue="" value="2026-09-10T18:00" locale="ar" onValueChange={onValueChange} {...LABELS} />);
+    expect(container.querySelector('input[name="startsAt"]')).toHaveValue("2026-09-10T18:00");
+    // The popover survived the owner's update: no remount.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("hideLabel: no label or hint of its own, the trigger takes the id, and it carries describedBy and invalid", () => {
+    const { container } = render(
+      <>
+        <p id="host-error">الانتهاء قبل البداية</p>
+        <RtlDateTimePicker id="endsAt" name="endsAt" hint="تلميح" defaultValue="" locale="ar" hideLabel describedBy="host-error" invalid {...LABELS} />
+      </>,
+    );
+    expect(container.querySelector("#endsAt-label")).toBeNull();
+    expect(screen.queryByText("تلميح")).toBeNull();
+    const trigger = screen.getByRole("button", { name: TRIGGER });
+    expect(trigger).toHaveAttribute("id", "endsAt");
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription("الانتهاء قبل البداية");
+    expect(container.querySelector('input[name="endsAt"]')).not.toHaveAttribute("id");
+  });
+
+  it("dateOnly: YYYY-MM-DD in and out, and no hour or minute", () => {
+    const onValueChange = vi.fn();
+    const container = render(
+      <RtlDateTimePicker id="from" name="from" defaultValue="2026-09-16" locale="ar" dateOnly onValueChange={onValueChange} {...LABELS} />,
+    ).container;
+    expect(screen.getByRole("button", { name: `${LABELS.label}: 16 سبتمبر 2026` })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
+    expect(screen.queryByLabelText(LABELS.hourLabel)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "10 سبتمبر 2026" }));
+    expect(onValueChange).toHaveBeenLastCalledWith("2026-09-10");
+    expect(container.querySelector('input[name="from"]')).toHaveValue("2026-09-10");
   });
 });

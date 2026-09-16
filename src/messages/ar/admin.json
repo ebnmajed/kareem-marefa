@@ -519,6 +519,7 @@
     },
     "dateTime": {
       "triggerLabel": "التاريخ والوقت",
+      "triggerLabelDate": "التاريخ",
       "clear": "مسح",
       "today": "اليوم",
       "done": "تم",
