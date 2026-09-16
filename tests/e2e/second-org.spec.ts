@@ -143,7 +143,7 @@ test("a member of org A cannot open org B's session by id, and the URL is not a 
   // The event page streams through its slots, so `notFound()` fires after the
   // headers went out and the status is 200; the not-found boundary is what
   // renders, and nothing of org B's session with it. Assert on the page.
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("404");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("لم نعثر على ما تبحث عنه"); // app/not-found.tsx (DEC-134)
   const text = await page.locator("body").innerText();
   expect(text).not.toContain(b.sessionTitle);
   expect(text).not.toContain(b.name);
