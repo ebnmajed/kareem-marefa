@@ -28,6 +28,14 @@ export const BRAND_COLOUR_TOKENS = [
   'edgeStrong',
   'spine',
   'node',
+  /** DEC-127 — the second stop of the poster's gradient background. Not
+   *  `brand.surface` again: the canvas paints `linear-gradient(140deg,
+   *  #111a2c, #1d2a42)`, and `#1d2a42` (`--color-navy-800`) is not any
+   *  existing token — writing it as a literal would put a navy past
+   *  `0055`'s guard and hand an org that rebrands a gradient whose far end
+   *  is somebody else's colour. Added here, at the end, so no existing
+   *  binding's position in the array shifts (add-only). */
+  'canvasRaise',
 ] as const
 
 export type BrandColourToken = (typeof BRAND_COLOUR_TOKENS)[number]
@@ -49,6 +57,10 @@ const LIGHT: Record<BrandColourToken, string> = {
   edgeStrong: '#767f8c',
   spine: '#d7dce3',
   node: '#0b1220',
+  // DEC-127. Not painted anywhere today — the poster gradient is the first
+  // consumer — chosen to sit visibly above `surface` (`#ffffff`) the same
+  // way the dark value sits visibly above dark `surface` (`#111a2c`).
+  canvasRaise: '#f1f3f7',
 }
 
 const DARK: Record<BrandColourToken, string> = {
@@ -64,6 +76,9 @@ const DARK: Record<BrandColourToken, string> = {
   edgeStrong: '#4b5464',
   spine: '#252e3d',
   node: '#ffffff',
+  // DEC-127 — `--color-navy-800` (globals.css), the second stop of the
+  // canvas's `linear-gradient(140deg, #111a2c, #1d2a42)`.
+  canvasRaise: '#1d2a42',
 }
 
 /** The platform brand as `brand.*` binding values. Every template family ships

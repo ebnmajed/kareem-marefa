@@ -198,7 +198,13 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
 export function renderDocumentToFragment(doc: DesignDocument, opts: RenderOptions): { css: string; html: string } {
   const ctx = opts.bindings ?? EMPTY_BINDINGS
   const { width, height } = doc.master
-  const bg = resolveColour(ctx, doc.background?.color, '#ffffff')
+  // ★ DEC-127's first silent trap, held open on purpose (contract 1 is
+  // types only): a gradient document has no `.color` at all, so it falls
+  // through to the '#ffffff' fallback exactly as it did before this union
+  // existed — nothing reads or emits a gradient yet. `branding`'s next task
+  // teaches this call the CSS `linear-gradient(...)` string, with a failing
+  // test proving the fallback first.
+  const bg = resolveColour(ctx, doc.background?.type === 'solid' ? doc.background.color : undefined, '#ffffff')
 
   const html =
     `<div class="dr-root" dir="${doc.direction}" style="width:${width}px;height:${height}px;background:${bg}">\n` +
@@ -218,7 +224,12 @@ export function renderDocumentToFragment(doc: DesignDocument, opts: RenderOption
 /** Renders a document to a standalone HTML string. */
 export function renderDocumentToHtml(doc: DesignDocument, opts: RenderOptions): string {
   const { css, html } = renderDocumentToFragment(doc, opts)
-  const bg = resolveColour(opts.bindings ?? EMPTY_BINDINGS, doc.background?.color, '#ffffff')
+  // Same held-open trap as above — see the comment there.
+  const bg = resolveColour(
+    opts.bindings ?? EMPTY_BINDINGS,
+    doc.background?.type === 'solid' ? doc.background.color : undefined,
+    '#ffffff',
+  )
 
   return `<!doctype html><html dir="${doc.direction}" lang="${doc.direction === 'rtl' ? 'ar' : 'en'}">
 <head><meta charset="utf-8"><style>

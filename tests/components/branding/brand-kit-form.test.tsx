@@ -20,8 +20,10 @@ const LIGHT = {
   edgeStrong: "#767f8c",
   spine: "#d7dce3",
   node: "#0b1220",
+  // DEC-127, contract 1 — canvasRaise is now required by BrandColourSet.
+  canvasRaise: "#f1f3f7",
 };
-const DARK = { ...LIGHT, canvas: "#0b1220", fgHeading: "#ffffff" };
+const DARK = { ...LIGHT, canvas: "#0b1220", fgHeading: "#ffffff", canvasRaise: "#1d2a42" };
 
 const KIT: BrandKit = {
   orgId: "11111111-1111-1111-1111-111111111111",
