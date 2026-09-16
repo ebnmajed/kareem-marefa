@@ -9,12 +9,27 @@ import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";
 import { Combobox } from "@/components/ui/combobox";
+import { Field } from "@/components/ui/field";
 import type { ComboboxOption } from "@/components/ui";
 import ar from "@/messages/ar/admin.json";
+import arUi from "@/messages/ar/ui.json";
 
 function Wrap({ children }: { children: React.ReactNode }) {
   return (
     <NextIntlClientProvider locale="ar" messages={ar}>
+      {children}
+    </NextIntlClientProvider>
+  );
+}
+
+// `<Field>` reads its own `ui.field.required` label, so a test that wraps
+// `Combobox` in a real `<Field>` needs both namespaces loaded — the same
+// merge every cross-namespace test in this codebase does, since `admin.json`
+// and `ui.json` have different top-level keys (`admin`/`ui`), never the
+// same one.
+function WrapWithField({ children }: { children: React.ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="ar" messages={{ ...ar, ...arUi }}>
       {children}
     </NextIntlClientProvider>
   );
@@ -233,4 +248,58 @@ describe("Combobox — multi-select", () => {
     await userEvent.click(withChips.getByRole("combobox"));
     await expectAccessible(withChips.container);
   }, 20000);
+});
+
+describe("Combobox — R2, wired for a member-facing caller (sessions' request)", () => {
+  it("no longer forces dir=\"ltr\" — direction inherits from the document", () => {
+    render(
+      <Wrap>
+        <Combobox name="presenterId" options={PRESENTERS} placeholder="ابحث" />
+      </Wrap>,
+    );
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("dir");
+  });
+
+  it("reads useFieldWiring(): a <Field>'s hint, error and required all reach the input", async () => {
+    const { container } = render(
+      <WrapWithField>
+        <Field id="copresenters" label="المُقدِّمون المشاركون" hint="اختياري" error="اختر مُقدِّمًا واحدًا على الأقل" required>
+          <Combobox name="coPresenterIds" options={PRESENTERS} multiple placeholder="أضِف" />
+        </Field>
+      </WrapWithField>,
+    );
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveAttribute("id", "copresenters");
+    expect(input).toHaveAttribute("aria-required", "true");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    const describedBy = input.getAttribute("aria-describedby")!.split(" ");
+    expect(describedBy).toEqual(["copresenters-error", "copresenters-hint"]);
+    expect(document.getElementById("copresenters-hint")).toHaveTextContent("اختياري");
+    expect(document.getElementById("copresenters-error")).toHaveTextContent("اختر مُقدِّمًا واحدًا على الأقل");
+
+    await expectAccessible(container);
+  });
+
+  it("an explicit invalid prop still wins over <Field>'s own (no error passed)", () => {
+    render(
+      <WrapWithField>
+        <Field id="copresenters" label="المُقدِّمون المشاركون">
+          <Combobox name="coPresenterIds" options={PRESENTERS} multiple invalid placeholder="أضِف" />
+        </Field>
+      </WrapWithField>,
+    );
+    expect(screen.getByRole("combobox")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("outside a <Field>, behaves exactly as before — no id/aria wiring beyond its own props", () => {
+    render(
+      <Wrap>
+        <Combobox name="presenterId" options={PRESENTERS} placeholder="ابحث" />
+      </Wrap>,
+    );
+    const input = screen.getByRole("combobox");
+    expect(input).not.toHaveAttribute("aria-required");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).not.toHaveAttribute("aria-describedby");
+  });
 });
