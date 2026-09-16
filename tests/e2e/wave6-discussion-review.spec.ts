@@ -114,8 +114,19 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-const discussion = (page: Page) => page.locator("section#discussion");
-const composer = (page: Page) => page.getByPlaceholder("اكتب تعليقًا…");
+const discussion = (page: Page) => page.locator("#main section#discussion");
+const composer = (page: Page) => discussion(page).getByPlaceholder("اكتب تعليقًا…");
+
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a second
+ * copy of its content sits in `body > div#S:n[hidden]` for a few hundred ms
+ * beside the copy already in `<main>` — seen under a CPU throttle in wave 6 —
+ * and a strict locator counts it.
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
 
 async function capture(page: Page, name: string) {
   expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
@@ -148,14 +159,14 @@ test("the discussion at 390 px RTL, in the states a member meets", async ({ cont
 
   // Another member asks first, so the thread has someone else's voice in it.
   await signIn(context, otherEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  await goto(page, `/ar/app/sessions/${sessionId}`);
   await composer(page).fill("هل ستُتاح الشرائح بعد الجلسة؟ وهل يلزم تثبيت شيء مسبقًا؟");
   await page.getByRole("button", { name: "نشر" }).click();
   await expect(discussion(page).getByText("هل ستُتاح الشرائح بعد الجلسة؟", { exact: false })).toBeVisible();
 
   // ── the empty-to-first state is past; now the member's view ────────────────
   await signIn(context, memberEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  await goto(page, `/ar/app/sessions/${sessionId}`);
   await discussion(page).scrollIntoViewIfNeeded();
   await capture(page, "1-first-visit");
 
@@ -207,7 +218,7 @@ test("the discussion at 390 px RTL, in the states a member meets", async ({ cont
   // Frozen: a cancelled session keeps its discussion readable and closes it.
   const { rows: other } = await db.query<{ id: string }>(`select id from public.members where auth_user_id = $1`, [userIds[1]]);
   await db.query(`insert into public.comments (org_id, session_id, author_id, body) values ($1, $2, $3, 'هل سيُعاد جدولة هذه الجلسة؟')`, [orgId, cancelledSessionId, other[0].id]);
-  await page.goto(`/ar/app/sessions/${cancelledSessionId}`);
+  await goto(page, `/ar/app/sessions/${cancelledSessionId}`);
   await page.waitForLoadState("networkidle");
   if ((await discussion(page).count()) > 0) {
     await discussion(page).scrollIntoViewIfNeeded();
