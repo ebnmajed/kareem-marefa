@@ -94,6 +94,9 @@ export interface CardMediaProps extends Styleable {
   /** Rendered over the media, top-start in the reading direction. */
   overlay?: ReactNode;
   priority?: boolean;
+  /** An ended or cancelled session: grayscale and reduced opacity on the IMAGE or placeholder
+   *  only — never on `overlay`, whose status badge must keep its contrast (DEC-123 item 1). */
+  dimmed?: boolean;
 }
 
 export interface CardBodyProps extends Styleable {
@@ -150,6 +153,9 @@ export interface PageHeaderProps extends Styleable {
   actions?: ReactNode;
   /** Rendered under the title — chips, status, meta. */
   meta?: ReactNode;
+  /** Rendered ABOVE the title — a status badge, so state is seen before it is read (`16` §3
+   *  principle 3, the canvas's hero). Not a string, unlike `eyebrow`. */
+  status?: ReactNode;
 }
 
 /** lead · `prose.tsx` — long-form text with the typography tokens applied. */
@@ -193,6 +199,9 @@ export interface FieldProps extends Styleable {
 export type InputProps = Omit<ComponentProps<"input">, "size"> & {
   invalid?: boolean;
   size?: Size;
+  /** A glyph at the inline start INSIDE the field — the shell's search. The control owns the
+   *  padding that clears it, so no caller pairs `ps-*` with the size's `px-*` (DEC-111, DEC-133). */
+  startIcon?: ReactNode;
 };
 
 export type TextareaProps = ComponentProps<"textarea"> & { invalid?: boolean };
@@ -463,6 +472,10 @@ export interface TagChipProps extends Styleable {
   onRemove?: () => void;
   /** The accessible name of the remove control — «أزل الوسم: تقارير». */
   removeLabel?: string;
+  /** A pressed filter toggle (`aria-pressed` or `aria-current`, the timeline's row A). */
+  selected?: boolean;
+  /** Removal as a LINK, so it works before hydration — the timeline's removable filter chips. */
+  removeHref?: string;
 }
 
 /**

@@ -17,7 +17,7 @@ import { Link } from "@/components/ui/link";
 // bidi-isolated (`10` §3): a session title that begins with a Latin word must
 // not reorder the chevron beside it.
 
-export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, className = "" }: PageHeaderProps) {
+export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, className = "" }: PageHeaderProps) {
   return (
     <header className={`flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-8 ${className}`}>
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -40,6 +40,7 @@ export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumb
             <bdi>{eyebrow}</bdi>
           </p>
         ) : null}
+        {status ? <div className="flex flex-wrap items-center gap-2">{status}</div> : null}
         <h1 className="text-h1 text-fg-heading">
           <bdi>{title}</bdi>
         </h1>

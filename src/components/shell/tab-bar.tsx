@@ -51,6 +51,13 @@ export function isImmersive(pathname: string | null): boolean {
   return IMMERSIVE.some((r) => r.test(withoutLocale));
 }
 
+/** The event page itself — `/app/sessions/[id]` and nothing under it. It owns its full-bleed
+ *  dark band and its own container, and carries the bottom action bar below `md`. */
+export function isEventPage(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return /^\/app\/sessions\/[^/]+$/.test(pathname.replace(/^\/(ar|en)(?=\/|$)/, ""));
+}
+
 export interface TabBarProps {
   /** The path with its locale, from `x-pathname`. */
   pathname: string | null;

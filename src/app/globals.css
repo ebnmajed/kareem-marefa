@@ -262,6 +262,23 @@ html[lang="en"] body {
   }
 }
 
+/* The event page's bottom ACTION bar replaces the tab bar below `md` (`16` §6.1 note 2,
+   DEC-098) and is taller, so while it is on the page the same token carries its height —
+   `<main>`'s padding and the scroll padding follow it with no second number. */
+@media (max-width: 767.98px) {
+  :root:has([data-action-bar]) {
+    --tabbar-h: 76px;
+  }
+}
+
+/* The event page's sub-nav is sticky on desktop only; the scroll padding counts it only
+   where it exists. */
+@media (min-width: 768px) {
+  :root:has([data-event-subnav]) {
+    --subnav-h: 52px;
+  }
+}
+
 html {
   scroll-padding-block-start: calc(var(--header-h) + var(--subnav-h) + 0.5rem);
   scroll-padding-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
@@ -503,6 +520,31 @@ summary,
   to {
     opacity: 0.6;
   }
+}
+
+/* ★ The reaction whisper — DEC-100's Tier 2, REQ-EVT-004 earns nothing, so it is ONE small
+   ignite and ONE ring, once, on the transition to reacted and never on a re-render. Transform
+   and opacity only (REQ-UIX-020). `dot-pulse` is ambient (0.3 → 0.6) and would leave a reacted
+   dot looking faded, so the ignite has its own keyframes; the ring reuses `ripple-ring`. */
+@keyframes reaction-ignite {
+  from {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.reaction-ignite {
+  animation: reaction-ignite var(--dur-base) var(--ease-out) 1 both;
+}
+.reaction-ring {
+  animation: ripple-ring var(--dur-slow) var(--ease-out) 1 both;
 }
 
 @keyframes ripple-ring {
@@ -1009,7 +1051,8 @@ html[data-sting="done"] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .ripple-ring {
+  .ripple-ring,
+  .reaction-ring {
     display: none;
   }
   .sting {
