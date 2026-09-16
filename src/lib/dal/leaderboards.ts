@@ -235,3 +235,38 @@ export async function getCompanyPointsBreakdown(locale: string): Promise<Company
     })),
   };
 }
+
+// ── One member's standing, for their profile (SCR-020, wave 7, add-only) ────
+
+export interface MemberStanding {
+  totalPoints: number;
+  /** The all-time rank — `null` when the board does not show them to this viewer (REQ-LDR-008). */
+  rank: number | null;
+  levelName: string | null;
+}
+
+/**
+ * A member's points, level and all-time rank — A33's «النقاط والترتيب» and
+ * «المستوى», which every tier sees.
+ *
+ * The rank comes from `all_time_leaderboard()` and nowhere else, so an
+ * opted-out member has no rank for anyone but themselves — the database's rule
+ * (0044), not this function's. Whether their POINTS are shown on a profile is
+ * the profile reader's decision (`getMemberProfileForViewer`, DEC-141 ruling 5).
+ */
+export async function getMemberStanding(locale: string, memberId: string): Promise<MemberStanding> {
+  const { supabase } = await sessionClient(locale);
+  const [balanceRes, boardRes] = await Promise.all([
+    supabase.from("points_balances").select("total_points, levels(name)").eq("member_id", memberId).maybeSingle(),
+    supabase.rpc("all_time_leaderboard"),
+  ]);
+  if (balanceRes.error) throw new Error(`points_balances: ${balanceRes.error.message}`);
+  if (boardRes.error) throw new Error(`all_time_leaderboard: ${boardRes.error.message}`);
+  const level = balanceRes.data?.levels as { name: string } | { name: string }[] | null | undefined;
+  const row = ((boardRes.data ?? []) as { member_id: string; rank: number }[]).find((r) => r.member_id === memberId);
+  return {
+    totalPoints: balanceRes.data?.total_points ?? 0,
+    rank: row ? Number(row.rank) : null,
+    levelName: (Array.isArray(level) ? level[0]?.name : level?.name) ?? null,
+  };
+}

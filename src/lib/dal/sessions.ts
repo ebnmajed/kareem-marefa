@@ -392,6 +392,91 @@ export async function publishSession(locale: string, sessionId: string): Promise
   if (error) throw new Error(`publish_session: ${error.message}`);
 }
 
+// ── A session's heading, for the screens under it ──────────────────────────
+
+export interface SessionHeading {
+  id: string;
+  title: string;
+  state: SessionState;
+  startsAt: string | null;
+  /** The session's zone, else the org's — the room's clock (OQ-018). */
+  timeZone: string;
+}
+
+/**
+ * What a screen UNDER a session needs to say which session it is — the rate
+ * screen's breadcrumb and date (SCR-015, wave 7). `null` for an id the viewer
+ * cannot see, through `sessions_read`, so the screen can `notFound()` rather
+ * than explain a rule about a session that is not there for them.
+ */
+export async function getSessionHeading(locale: string, id: string): Promise<SessionHeading | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  const [{ data, error }, { data: settings }] = await Promise.all([
+    supabase.from("sessions").select("id, title, state, starts_at, time_zone").eq("id", id).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    title: data.title as string,
+    state: data.state as SessionState,
+    startsAt: (data.starts_at as string | null) ?? null,
+    timeZone: (data.time_zone as string | null) ?? (settings?.time_zone as string | undefined) ?? "Asia/Riyadh",
+  };
+}
+
+// ── The sessions a member presented, for their profile ─────────────────────
+
+export interface PresentedSession {
+  id: string;
+  title: string;
+  state: SessionState;
+  startsAt: string | null;
+  endsAt: string | null;
+  durationMinutes: number | null;
+  timeZone: string;
+}
+
+/**
+ * A33's «الجلسات التي قدّمها» — visible at every tier (SCR-020, wave 7).
+ *
+ * Accepted presenter rows only, and only sessions a member can see through
+ * `sessions_read` and would recognise as having happened or being on the
+ * schedule: a draft, an approved session and a cancelled one are not a
+ * member's record of presenting. Newest first.
+ */
+export async function listSessionsPresentedBy(locale: string, memberId: string, limit = 12): Promise<PresentedSession[]> {
+  if (!z.uuid().safeParse(memberId).success) return [];
+  const { session, supabase } = await sessionClient(locale);
+  const { data: rows, error } = await supabase.from("session_presenters").select("session_id").eq("member_id", memberId).eq("accepted", true);
+  if (error) throw new Error(`session_presenters: ${error.message}`);
+  const ids = (rows ?? []).map((r) => r.session_id as string);
+  if (ids.length === 0) return [];
+  const [{ data, error: sessionsError }, { data: settings }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone")
+      .in("id", ids)
+      .in("state", ["published", "in_progress", "completed", "archived"])
+      .order("starts_at", { ascending: false })
+      .limit(limit),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (sessionsError) throw new Error(`sessions.select: ${sessionsError.message}`);
+  const orgZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
+  return (data ?? []).map((s) => ({
+    id: s.id as string,
+    title: s.title as string,
+    state: s.state as SessionState,
+    startsAt: (s.starts_at as string | null) ?? null,
+    endsAt: (s.ends_at as string | null) ?? null,
+    durationMinutes: (s.duration_minutes as number | null) ?? null,
+    timeZone: (s.time_zone as string | null) ?? orgZone,
+  }));
+}
+
 // ── The event page (SCR-012, REQ-SES-013, REQ-SES-008, REQ-SES-010) ─────────
 
 export interface EventVenue {

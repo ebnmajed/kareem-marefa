@@ -1,0 +1,39 @@
+{
+  "members": {
+    "profile": {
+      "role": {
+        "admin": "مشرف المؤسسة",
+        "moderator": "مُنظِّم",
+        "member": "عضو"
+      },
+      "memberSince": "عضو منذ {date}",
+      "noBio": "لا توجد نبذة بعد",
+      "selfNote": "هكذا يرى زملاؤك ملفك.",
+      "editProfile": "عدّل ملفك",
+      "myPoints": "سجل نقاطي",
+      "bio": "نبذة",
+      "interests": "الاهتمامات",
+      "standing": "النقاط والمستوى",
+      "points": "النقاط",
+      "rank": "الترتيب",
+      "level": "المستوى",
+      "none": "—",
+      "streak": "السلسلة الحالية",
+      "streakValue": "{count, plural, zero {لا سلسلة الآن} one {شهر واحد} two {شهران} few {{value} أشهر} many {{value} شهرًا} other {{value} شهر}}",
+      "badges": "الشارات",
+      "noBadges": "لا شارات بعد.",
+      "presented": "الجلسات التي قدّمها",
+      "noPresented": "لا جلسات مقدَّمة بعد.",
+      "admin": {
+        "heading": "للمشرفين",
+        "note": "لا يظهر هذا القسم إلا لمشرفي المؤسسة.",
+        "email": "البريد",
+        "attended": "الجلسات التي حضرها",
+        "attendedCount": "الحضور",
+        "noShows": "التغيّب",
+        "lateCancels": "الإلغاء المتأخر",
+        "noAttended": "لا حضور مسجّل بعد."
+      }
+    }
+  }
+}
