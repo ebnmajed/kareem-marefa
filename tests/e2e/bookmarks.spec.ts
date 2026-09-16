@@ -264,8 +264,20 @@ test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () =
     // Un-bookmark the first card through the REAL button — proving the
     // transition's own `revalidatePath` actually drops it from this list,
     // not reading the source and trusting it.
-    await toggles.first().click();
-    await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toHaveCount(0);
+    //
+    // ★ Intermittent-under-load finding: waits on the Server Action's own
+    // POST response first (Next posts a mutation to the current route
+    // itself), then asserts the card is gone with a bounded wait separate
+    // from the response — so a slow response and a response that returns
+    // but never updates the list read as two different failures, not one
+    // flaky timeout (DEC-135's own lesson: don't just raise a timeout on a
+    // transition without knowing which of the two it hides).
+    const [actionResponse] = await Promise.all([
+      page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/app/me/bookmarks")),
+      toggles.first().click(),
+    ]);
+    expect(actionResponse.ok(), "the un-bookmark POST itself must succeed").toBe(true);
+    await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toHaveCount(0, { timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "جلسة ثانية محفوظة", level: 3 })).toBeVisible();
     await capture(page, "after-unbookmark");
   });
