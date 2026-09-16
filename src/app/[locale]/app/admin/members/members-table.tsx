@@ -68,8 +68,16 @@ function RoleCell({ member, action, isSelf }: { member: AdminMemberRow; action: 
   }
 
   return (
-    <form action={formAction} className="flex items-center gap-2">
-      <Select name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-auto text-body-sm">
+    // ★ A real capture at 390 px found «غيّر الدور» wrapping onto two lines
+    // inside a button sized for one, clipped top and bottom: the desktop
+    // table cell can scroll the row horizontally if it must
+    // (`data-table.tsx`'s own `overflow-x-auto`), but the phone card's
+    // label:value row cannot, and a side-by-side `<Select>` + `<Button>`
+    // simply didn't fit. Stacked below `md` (the same breakpoint
+    // `DataTable` itself switches the card stack on), side by side at and
+    // above it — unchanged on desktop, where the table already had room.
+    <form action={formAction} className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+      <Select name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-full text-body-sm md:w-auto">
         <option value="admin">{t("role.admin")}</option>
         <option value="moderator">{t("role.moderator")}</option>
         <option value="member">{t("role.member")}</option>
