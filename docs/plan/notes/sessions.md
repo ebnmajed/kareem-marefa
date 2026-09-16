@@ -2202,3 +2202,69 @@ text field with an explicit `YYYY-MM-DD` hint. After the six routes (Q15).
 13. **Contract 1's `null` semantics** (§39) — put to `checkin`?
 14. **`proposal-materials.spec.ts`**: fixed as a spec change in S2's commit (§38.1)?
 15. **The date mask**: period chips instead of the native date range (§38.2)?
+
+---
+
+## 42. As built — wave 7, before the lead's build (DEC-141's rulings applied)
+
+Commits, in order: `a424957` saved sessions as timeline cards (content's T4) · `2dc71e9` S4 `/s/[id]` ·
+`0916b9d` S1 `/app/propose` · `37e7bab` S2 `/app/propose/[id]` + `/edit` + the `proposal-materials` spec ·
+`7fd9e00` S6 `/app/leaderboards` · `3ed8f54` S5 `/app/members/[id]` · `ede479d` the period filter.
+**S3 `/rate` is built and held** — its star control breaks `tests/components/event/star-rating.test.tsx`,
+which is not mine (asked the lead, a transfer or a delete). `ui-reach --wave7`: all six ✓.
+**No e2e has run and no capture exists yet** — `test:e2e:local` serves the `.next` on disk, which
+predates every one of these commits; the build is the lead's.
+
+### 42.1 Where the build departed from §31–§41, and why
+
+1. **The row → card derivation moved out of `getTimeline`** into `components/browse/timeline-session.ts`
+   (pure, unit-tested), because `/app/me/bookmarks` needs the SAME card and two copies of the phase,
+   seat and check-in derivation would drift. `getTimeline`'s queries, filters and order are unchanged;
+   `getTimelineSessionsByIds` is the second reader, and the second `check_ins` reader the soft-delete
+   inventory has to cover.
+2. **S1's blur check is a MIRROR of `proposalInput`, not the schema moved client-side** (§32.2 said
+   move it). No client component ships zod today and `lib/form-state` avoids it on purpose, so
+   `components/sessions/proposal-rules.ts` restates the rules and `tests/unit/sessions-proposal-rules.test.ts`
+   runs 35 values through both and requires the same message key. The uuid check is zod's own regex.
+3. **S2's edit form never edits co-presenters.** `ProposalForm` takes a discriminated `mode`; the edit
+   variant shows «تُدار قائمة المُقدِّمين من صفحة المقترح نفسها» in place of the list. `getProposal`
+   gained `categoryId`, `targetAudience` and a proposer-only `adminNotes` — a co-presenter can read the
+   row, so the DTO is what withholds the note.
+4. **S3's fill is CSS, not state.** `:has(:checked)` and `:has(~label :checked)` fill a star when it or
+   a later sibling is chosen, so the row is right before hydration and after React resets the form. The
+   radiogroup takes `ui/radio-group`'s shape (fieldset `role="radiogroup"`, `aria-labelledby` the
+   legend). ui-lint's `field` rule is escaped on the radio with that reason. The e2e MEASURES which way
+   ArrowLeft moves in the RTL group rather than asserting a guess.
+5. **S5's `members.ts` became mine** (ruling 4a), so the tiered reader is there and the admin record is
+   `admin_member_profile()` under `supabase/proposed/sessions/01_…`. It reads `check_ins.removed_at`
+   and so **depends on `checkin/04`** — the RLS test applies checkin's 01–04 first. The streak is
+   `currentStreak()`: consecutive monthly awards ending this month or last.
+6. **The date mask is a `when` filter** (`thisWeek | nextWeek | thisMonth`, `inPeriod()` beside the
+   groups), and `from`/`to` are still parsed: a saved link keeps its chip, choosing a period or
+   «امسح» removes it.
+7. **`/s/[id]/not-found.tsx` exists** — a missing card had no boundary to reach. It uses `RouteError`
+   without a retry, which R5 (`f9fa70e`) made possible.
+
+### 42.2 Found on the way
+
+- ★ **`String.prototype.replace` treats `$\`` in the replacement as "the text before the match".** A
+  scripted edit whose replacement contained ``new RegExp(`…rated=1$`)`` pasted the whole head of
+  `event-rate.spec.ts` into the middle of itself. Caught by the diff stat (+129 lines for a 4-line
+  change), restored from `HEAD` and redone with index splicing. Every scripted edit since splices; the
+  earlier ones were checked by import counts and line counts.
+- **ui-lint's class-string rule matches a decorative box.** The step number chip on the propose form
+  used `rounded-field border border-edge-strong` — the control class string — and failed. It is not a
+  control; it now uses `rounded-md`, which is the same 6 px.
+- **`ratings.edited_at` is written at millisecond precision** — recorded against `0085` (ruling 12).
+- **checkin/06 on my `transition_session()`** — signed off with three notes to the lead: keep 0023's
+  code truncation so the projected code dies at an early completion; a late completion leaves the
+  switch open until the ceiling; keep 0023's edge-set comment.
+
+### 42.3 Open, and whose
+
+- **lead** — the star-rating test file (hold on S3); promote `sessions/01_admin_member_profile.sql`
+  after `checkin/04`; build HEAD and run the wave-7 specs; open the captures.
+- **content** — delete `profile.memberSince`, `profile.notFound`, `profile.noBio` (R4).
+- **console** — R2 on `ui/combobox`; S1 ships the checkbox list until then.
+- **checkin** — contracts 1 and 2 not yet published; `canOfferCheckInLink()`'s signature is still moving
+  in their note (raw viewer facts instead of `relation`).
