@@ -293,3 +293,317 @@ strict-mode guidance. Fixed in `checkin.spec.ts` by hoisting `const panel =
 page.getByRole("region", { name: "الحضور" })` once and scoping every assertion and the reserve-button
 click to it — 4/4 clean reruns afterward, 2/3 failing before. **Not fixed**: the streaming mechanics
 themselves, which are Next's, not this app's, and not something a test change should try to fix.
+
+---
+
+## Wave 7 plan
+
+Read before writing this: `STATUS.md`'s wave-7 block, `CLAUDE.md`'s wave-7 ownership map (DEC-137),
+DEC-045, DEC-065, DEC-090, DEC-092, DEC-103, DEC-107, DEC-113, DEC-115 … DEC-118, DEC-130, DEC-137
+in full, REQ-CHK-001 … REQ-CHK-017, REQ-SES-004/005, REQ-PTS-011 … 013, REQ-CRT-004/011/013,
+migrations `0010`, `0015`, `0021`, `0027`, `0028`, `0032`, `0041`, `0055`, `0065`, `0078`, `0079`,
+`0081`, and the current `src/lib/dal/{rsvp,checkin}.ts`, `src/lib/session-status.ts`,
+`src/components/checkin/session-matrix.ts`, `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`,
+`src/app/[locale]/app/admin/sessions/[id]/{attendance,schedule}/**`, `src/app/[locale]/app/sessions/[id]/page.tsx`.
+
+### 1 · The reversal (REQ-CHK-017)
+
+**Soft-delete, not hard-delete — forced by the schema, not a style preference.** `0055` gives
+`certificates.check_in_id uuid references check_ins(id) on delete restrict` **and** a check
+constraint `kind <> 'attendance' or check_in_id is not null` — a `certificates` row can never be
+repointed to null and a `check_ins` row it references can never be deleted while it exists. Hard
+delete is therefore not an option regardless of ordering (revoke-then-delete still hits the FK).
+`check_ins` gains three nullable columns — `removed_at timestamptz`, `removed_by uuid references
+members(id)`, `removal_reason text` — the exact shape `comments.deleted_at` already established, and
+"checked in" everywhere in the DAL becomes "a `check_ins` row exists **and** `removed_at is null`".
+
+**The unique constraint and the exclusion constraint both become partial**, `where removed_at is
+null`: `create unique index check_ins_session_member_active_uq on check_ins(session_id, member_id)
+where removed_at is null` (replacing the inline `unique (session_id, member_id)`), and `exclude using
+gist (member_id with =, session_window with &&) where (removed_at is null)` (replacing `0010`'s
+unqualified one). Two things fall out for free: (a) **re-adding after a removal needs no new RPC at
+all** — `check_in()` and `mark_checked_in_manually()` already `insert`; once the old row's slot is
+freed by the partial index, a fresh code entry or a fresh manual mark just works, with its own new
+`check_ins.id`, its own fresh points award, financially independent of the reversed original; (b) a
+removed check-in stops counting against `REQ-CHK-013`'s overlap exclusion, so the member can be
+checked into a session that overlaps the one they were retracted from. One nuance to flag, not fix:
+re-adding **does not** re-trigger `fan_out_certificates()` (an edge trigger on the transition into
+`completed`, which a long-since-completed session won't cross again) — a re-added member who already
+had a certificate revoked stays without one until the (designer-owned) certificate library's manual
+issuance path covers it. Noting it as a finding, not building around it.
+
+**`remove_check_in(p_session uuid, p_member uuid, p_reason text)`** — admin-only
+(`assert_fresh_admin()`, matching `adjust_points_manually()`'s pattern in `0032`, not `is_staff()`:
+REQ-CHK-017 is explicit — "not a moderator, not a presenter"), mandatory reason (empty → `23514`,
+same convention as `revoke_certificate`/`adjust_points_manually`). Body, in order:
+1. Lock the active row: `select * from check_ins where session_id=... and member_id=... and
+   removed_at is null for update`; not found → `P0002` (covers "never checked in" and "already
+   removed" with one message — a second removal attempt is a caller error, not a silent no-op, per
+   REQ-CHK-017's "a deliberate act on one member").
+2. `update ... set removed_at=now(), removed_by=admin.id, removal_reason=btrim(p_reason)`.
+3. **Points reversal** — the exact pattern `_reverse_comment_points()` (`0032`) already established:
+   for every `points_ledger` row with `source='check_in' and source_id = check_ins.id` that has no
+   existing `reversal` row pointing at it, insert `amount=-original.amount, source='reversal',
+   source_id=original.id, session_id=original.session_id, reason='أُلغي تسجيل الحضور',
+   rule_key=original.rule_key, idempotency_key='reversal:'||original.id||':v1'`, `on conflict
+   (idempotency_key) do nothing`.
+4. **Certificate revocation** — for every `certificates` row with `check_in_id = check_ins.id and
+   state <> 'revoked'`, call the existing `public.revoke_certificate(cert.id, 'أُلغي تسجيل الحضور: '
+   || p_reason)` verbatim (same actor context, already admin — no duplicated logic, REQ-CRT-011's
+   whole audited path reused as-is).
+5. **No-show symmetry** — when a `confirmed` `rsvps` row exists for `(session, member)`, call
+   `public.award_points('no_show', member, 'no_show', rsvp.id, session)` — the exact `(rule, source,
+   source_id, member)` shape `worker/src/tasks/evaluate_no_shows.ts` itself computes, so this can
+   never double-award even if that job is later replayed for the same session (its own idempotency
+   key coincides with this one). A walk-in with no `rsvps` row has no no-show rule to apply — REQ-CHK-017
+   doesn't ask for one either.
+6. `write_audit('check_in.removed', 'check_in', check_ins.id, old=to_jsonb(the locked row), new=null,
+   p_reason, null, admin.id)`.
+
+**The late-job race (item c).** Two functions re-derive from `check_ins` at the moment they run, and
+both need the same one-line addition — `and removed_at is null` — at the exact point they already
+re-derive, never trusting the job payload (the same principle `0065`'s own header states: "AN
+ATTENDANCE CERTIFICATE RE-DERIVES ITS CHECK-IN... the job's payload is not trusted for it"):
+- **`award_points()` (`0028`, scoring's)** — add, right after the disabled/unknown-rule check: `if
+  p_source = 'check_in' and exists (select 1 from check_ins where id = p_source_id and removed_at is
+  not null) then return; end if;`. A delayed `check_in` award job for an already-removed check-in
+  silently skips, exactly like a capped or cooled-down rule already does — no new failure mode.
+- **`issue_certificate()` (`0065`, designer's)** — add `and c.removed_at is null` to the `p_kind =
+  'attendance'` re-derivation query. A delayed `issue_certificates` job for a removed check-in raises
+  `no_check_in`, the same refusal it already raises for a member who never checked in at all.
+
+`worker/src/tasks/evaluate_no_shows.ts` needs **no** change — considered and rejected: it runs exactly
+once, at the trigger on the session's edge into `completed`, which necessarily precedes any possible
+removal (you cannot remove a check-in for a session that has not yet completed), so there is no
+ordering hazard; and its own `not exists (select 1 from check_ins where ...)` query already treats a
+soft-removed-but-present row as "exists," so a hypothetical replay would not re-flag or double-award
+a member my RPC already handled in step 5.
+
+**What else attendance granted — three questions for the lead, my recommendation for each:**
+1. **Rating right (now `sessions`') and photo upload right (`content`'s).** Recommend both gates
+   re-derive live — "checked in **and** `removed_at is null`" — so a removed member loses the *future*
+   right, exactly like the certificate/points hooks above; an **already-submitted** rating or photo is
+   never touched (`REQ-RAT-004` makes ratings anonymous and aggregated — there is no member-scoped row
+   to walk back; a photo is a separate moderation object with its own takedown path, `REQ-EVT-012`).
+   This is a request in the contracts below, not something I build.
+2. **Streaks, badges, levels (`0041`, `evaluate_streaks`/`evaluate_badges`/`evaluate_levels_perks`).**
+   Recommend **not reversed**. These are evaluate-once, append-only by the codebase's own existing
+   design — `member_badges`' unique constraint stops a re-award, and there is no un-award path
+   anywhere in the product for *any* reversal, including the comment-removal reversal `0032` already
+   ships. Retroactively stripping a badge needs re-running the evaluator against a hypothetically
+   altered history, which nothing else here does either; treating check-in removal specially would be
+   the one inconsistent case.
+3. **Company points (`DEC-067`, `evaluate_company_points()`).** Recommend **not reversed**, same
+   principle: evaluated once at completion, off the same job as `evaluate_no_shows`, and the
+   leaderboard's own frozen-snapshot model (`05` §6) already treats a completed period's numbers as
+   settled rather than continuously recomputed.
+
+**Finding, not a question — fixed inline.** `mark_checked_in_manually()` (`0015`) never enqueues
+`award_points` at all — unlike `check_in()` (enqueues inline) and unlike ratings/comments/proposals
+(award via an `AFTER INSERT`/`UPDATE` trigger), a manual mark today produces a `check_ins` row and
+certificate eligibility but **zero points**, which is a live gap against REQ-CHK-008's "grants exactly
+the same rights as a code check-in." Since I'm already re-creating this function for the window change
+below, I'm adding the identical `enqueue_job('award_points', ..., 'pts:check_in:'||ci.id)` call
+`check_in()` already makes. This is a fix inside a file I own, not scope creep against DEC-137.
+
+### 2 · The check-in window
+
+**REQ-CHK-004, verbatim (unedited since Launch):** "A code is accepted only while the session is
+`in_progress`. It expires when the session ends — including when an admin completes it early
+(`REQ-SES-005`)."
+
+**REQ-SES-005's note, verbatim:** "Completing early closes the check-in window immediately
+(`REQ-CHK-004`)."
+
+**`0078`'s actual gate** (`ensure_check_in_code`, at issuance): `if s.state <> 'in_progress' then
+raise exception 'not_open' ...`. **`0079`'s actual gate** (`check_in`, at acceptance): `if s.state <>
+'in_progress' then` branch into `not_started`/`session_ended`/`not_open`. Both are **state-based**,
+both ends.
+
+**DEC-116's tail (point 3), verbatim:** "★ The window has a floor as well as a ceiling, and the floor
+is `REQ-CHK-004`'s, unchanged. A code is only valid while the session is running, so 'open by default'
+cannot mean a member checks into a talk three weeks early — there is no code to enter. `DEC-113`'s
+ceiling extends the tail to **`ends_at` + 2 hours** so the room can finish taking attendance after the
+session ends. The switch closes the window early; it never opens it wider."
+
+**The conflict.** Four texts don't agree on what gates the floor: (a) the shipped SQL is
+state-based — `in_progress` or nothing; (b) `DEC-113`(3) is unconditional — "the phase no longer
+gates check-in... the ceiling, not the phase, is what closes it," and `DEC-113`'s own "Supersedes"
+line names `REQ-CHK-004`'s window rule as the gate on check-in **and** `canOfferCheckInLink()`'s
+`live`-phase condition, both explicitly retired; (c) `DEC-116`(3) and `REQ-CHK-016`'s own ★
+acceptance bullet restate `REQ-CHK-004` as "unchanged," which read literally reinstates the
+state-based floor `DEC-113` just retired; (d) `REQ-SES-005`'s note is phrased as a *state-transition*
+trigger ("completing... closes"), sitting awkwardly against a purely clock-derived window.
+
+**My reading, precise, one of each part:**
+- **Floor:** `now >= starts_at` (the session's **scheduled** start) — clock-derived, not
+  `state`-derived. "The phase no longer gates check-in" (b) is unconditional in `DEC-113`'s own text,
+  and `REQ-CHK-016`'s second acceptance bullet — "computed from the session's **scheduled** end, not
+  from when it actually finished" — only makes sense if the whole window is schedule-derived, not
+  state-derived; a state-based ceiling would automatically track *actual* completion, which that
+  bullet explicitly rules out. I read `DEC-116`(3)'s "the floor is `REQ-CHK-004`'s, unchanged" as
+  restating the *existence* of a floor (there is still a lower bound; "open by default" does not mean
+  three weeks early), not the *mechanism* `0078`/`0079` happen to implement it with today — which is
+  exactly the mechanism `DEC-113` names as superseded. This also unifies check-in with the screen's
+  own long-standing principle (`session-status.ts`'s `sessionPhase()`: "the clock beats a stale row" —
+  a `published` session whose start has passed reads `live` even while `JOB-start_session` lags),
+  extending it from the *screen* to the *RPC* for check-in specifically — which is the whole
+  substance of `DEC-113`'s own "this removes `checkIn` from the direction-guard problem" paragraph.
+- **Switch:** `sessions.check_in_open boolean not null default true` (`DEC-116`.1). Opened and closed
+  by the session's accepted presenters, any moderator, any admin (`DEC-116`.2), audited each time.
+- **Ceiling:** `now < ends_at + interval '2 hours'` (`DEC-113`, `REQ-CHK-016`) — absolute, computed
+  from the **scheduled** end, enforced in the RPC (both for accepting a check-in and for *opening* the
+  switch — the ceiling refuses a re-open past it, not only new check-ins past it).
+- **Early completion (`REQ-SES-005`'s note):** not a floor/ceiling mechanism at all under a clock-only
+  model (a session completed early is still inside `[starts_at, ends_at+2h)` by the clock). Instead,
+  `complete_session()` gets a one-line side effect: when it completes a session **before** its
+  scheduled `ends_at` (the manual-override case `REQ-SES-005` describes), it also sets
+  `check_in_open := false` — satisfying "closes the check-in window immediately" as a *default*,
+  reversible by the room via the ordinary reopen action (`REQ-CHK-015`: "close and reopen it, at any
+  time") for as long as `now < ends_at + 2h`. This needs a small cross-track SQL hook — see §4.
+
+**Concretely, `check_in()`'s gate becomes**, in order: `starts_at is null or ends_at is null` →
+`not_started` (defensive; unreachable for `published`+ per `0010`'s check constraint, same reasoning
+`session-status.ts` already documents for its own unreachable rows) · `now < starts_at` →
+`not_started` · `now >= ends_at + 2h` → `session_ended` · `not check_in_open` → **new status**
+`check_in_closed` · else proceed to the walk-in check and the code lookup exactly as today.
+`ensure_check_in_code()` mirrors the same floor+ceiling (its `state <> 'in_progress'` check is
+dropped entirely) and additionally returns `check_in_open` so the host view can show a valid, rotating
+code *and* "closed" at once. New i18n: `error.check_in_closed` (member-facing), `host.checkInOpen.*`
+(staff-facing).
+
+### 3 · Walk-ins as a publishing setting
+
+- **`schedule_session()` (`0021`)** gains `p_allow_walk_ins boolean default false`, written into the
+  same `update sessions set ...` as the date and venue — admin-only already (`assert_fresh_admin()`),
+  satisfying `DEC-118`'s "the same audited RPC that writes the time and the place."
+- **`set_session_walk_ins()` (`0079`) is dropped** — `drop function if exists
+  public.set_session_walk_ins(uuid, boolean)`. `DEC-117`: the host view loses the toggle entirely.
+  `DEC-118`: "not changeable from anywhere else." A revoked-but-present function would be dead code
+  against a requirement that explicitly says no other door exists.
+- **Host view (`host/page.tsx`, mine):** the whole `host.walkIns.*` `<section>` (the toggle form) is
+  deleted, along with `setWalkInsAction` (`actions.ts`) and `setWalkIns()` (`dal/checkin.ts`).
+  **Recommend keeping one read-only line** ("walk-ins: مسموح بها/غير مسموح بها") — the room still
+  benefits from knowing the policy while running it, it's just no longer editable there.
+- **Schedule form (feature-only, per `DEC-137`):** one checkbox in `schedule-form.tsx`, styled exactly
+  like the existing `venueKind`/`custom` checkbox already in that file (no new primitive, no
+  redesign — the instruction is explicit). Wired through `state.ts`'s form state and `actions.ts`'s
+  server action. **Ordering dependency:** `actions.ts` calls whatever `dal/sessions.ts` export
+  `sessions` extends with the new parameter (contract 1 below) — my half of this wiring can't
+  typecheck until that lands, so I sequence it after `sessions` threads the signature, not before.
+
+### 4 · SQL files — `supabase/proposed/checkin/`
+
+| File | Adds / changes | `03` §8.2 rows | RLS test names |
+|---|---|---|---|
+| `01_check_in_window.sql` | `sessions.check_in_open` column; `set_check_in_open(p_session, p_open)` (presenter/moderator/admin, ceiling-enforced); re-creates `ensure_check_in_code()` and `check_in()` on the floor/ceiling/switch model | `RPC-check_in.floor`, `RPC-check_in.ceiling`, `RPC-check_in.switch_closed`, `RPC-set_check_in_open.role_set`, `RPC-set_check_in_open.ceiling`, `RPC-ensure_check_in_code.floor_ceiling` (replaces `0078`'s `.only_live` row) | `tests/rls/checkin.test.ts` |
+| `02_walk_ins_publishing.sql` | `schedule_session()` re-created with `p_allow_walk_ins`; drops `set_session_walk_ins()` | `RPC-schedule_session.walk_ins` | `tests/rls/checkin.test.ts` (the RPC is `sessions`'-owned; I write the case here since it's my requirement, flagged to the lead in case it belongs in `sessions`' file instead) |
+| `03_manual_mark.sql` | re-creates `mark_checked_in_manually()` on the same floor/ceiling (no `check_in_open` gate — see §6's recommendation) plus the missing `award_points` enqueue | `RPC-mark_checked_in_manually.window`, `RPC-mark_checked_in_manually.award_points` | `tests/rls/checkin.test.ts` |
+| `04_attendance_removal.sql` | `check_ins.removed_at/removed_by/removal_reason`; unique + exclusion constraints become partial (`where removed_at is null`); `remove_check_in()` | `RPC-remove_check_in.admin_only`, `RPC-remove_check_in.reversal`, `RPC-remove_check_in.certificate_revoked`, `RPC-remove_check_in.no_show_symmetry`, `RPC-remove_check_in.idempotent`, `RPC-remove_check_in.readd`, `POL-check_ins.removed_excluded_from_overlap` | `tests/rls/checkin.test.ts` |
+| `05_late_job_hooks.sql` | ★ cross-track: `award_points()` (scoring's) and `issue_certificate()` (designer's), one line each — see §1 | `RPC-award_points.skips_removed_check_in`, `RPC-issue_certificate.no_check_in_when_removed` | `tests/rls/checkin.test.ts` |
+| `06_early_completion_hook.sql` | ★ cross-track: `complete_session()` (`sessions`'-owned) force-closes `check_in_open` on early completion — see §2 | `RPC-complete_session.closes_check_in_early` | `tests/rls/checkin.test.ts` |
+
+Files `05` and `06` are the ones `DEC-137` doesn't pre-name by function — it says "hooks into
+`scoring` and `designer` are SQL only," which covers `05`, but `complete_session()` is `sessions`'
+RPC and isn't mentioned. Flagging `06` explicitly for sign-off before I write it, not assuming the
+same permission extends silently.
+
+### 5 · Three day-one contracts, drafted for consumption
+
+1. **`checkin` → `sessions` — `schedule_session()`'s new parameter.** `p_allow_walk_ins boolean
+   default false`, written by the same call `sessions`' `dal/sessions.ts` already makes at
+   `src/lib/dal/sessions.ts:370`. `sessions` adds `allowWalkIns` to whichever options object that
+   function accepts and to the row it reads back for the schedule form's `initial` prop.
+2. **`checkin` → `sessions` — the switch as a DTO field and a predicate.** `EventSession`
+   (`getSessionForEvent()`, `src/lib/dal/sessions.ts:464-573`) gains `checkInOpen: boolean`, read the
+   same way `allowWalkIns` already sits there today. `canOfferCheckInLink()`
+   (`src/lib/dal/checkin.ts:170`) gains a parameter: `canOfferCheckInLink(session, relation,
+   allowWalkIns, checkInOpen, now?)` — a breaking signature change. `sessions`' call site
+   (`src/app/[locale]/app/sessions/[id]/page.tsx:87`, currently `canOfferCheckInLink(session,
+   relation, session.allowWalkIns)`) becomes `canOfferCheckInLink(session, relation,
+   session.allowWalkIns, session.checkInOpen)`.
+3. **`checkin` → `content` — the reversal entry's shape for `me/points`.** `source: 'reversal'`,
+   `reason` is a **fixed, already-Arabic system string** («أُلغي تسجيل الحضور»), not a translation
+   key — render it literally in `<bdi>`, exactly the pattern the comment-removal reversal
+   (`0032`'s «حُذف المحتوى») already establishes. The admin's own free-text reason for the removal is
+   **not** on this row — it lives on `check_ins.removal_reason` and the audit log. Recommend
+   `content` treats this exactly like any other `points_ledger` entry (amount, reason, date); no
+   special-casing needed beyond the reason string being fixed rather than parameterised. Flagging one
+   open call for the lead: should the member's own reason (why *they* were removed) be surfaced
+   anywhere on `me/points`, the way `REQ-CRT-013` surfaces a certificate's revocation reason to its
+   own holder? My default is no — REQ-CHK-017 only asks that the reversal read "as an entry," not that
+   it explain itself — but it's a short, cheap addition if the lead wants parity with certificates.
+
+### 6 · The three routes
+
+**C1 · `/app/sessions/[id]/check-in`.** Already past the `--wave7` floor (`Panel` is content's M9
+primitive, already imported). Changes: `getCheckInScreenData()`'s session select gains
+`check_in_open`; `ineligibleReasonFor()` gains a branch — window open, relation eligible, but
+`!checkInOpen` → `"check_in_closed"`; `CheckInIneligibleReason`/`CheckInError` unions gain the new
+value; `checkin.json` gains `error.check_in_closed`. No new primitive. Captures: the ready form, and
+the new `check_in_closed` panel — the one state this wave actually adds — both at 390 px.
+
+**C2 · `/app/sessions/[id]/host`.** Not yet past the floor — today's buttons/`<select>` are raw HTML.
+Bringing it onto M9 (importing, not owning): `ui/button` (lead's) for revoke / the new open-close
+switch / manual-mark submit; `ui/select` (`sessions`' primitive) for the manual-mark member picker;
+`ui/panel` (`content`'s) for the status messages currently hand-styled `<p>` boxes. Removes the whole
+walk-ins section (§3). Adds the `check_in_open` switch: current state in words, one button to
+close/reopen, an audited action, a "closed" state can still show the live code (§2 — issuance and
+acceptance aren't the same gate). `getHostView()` gains `checkInOpen: boolean`; new `dal/checkin.ts`
+export `setCheckInOpen(locale, sessionId, open)`. `checkin.json` gains `host.checkInOpen.{title,
+on, off, open, close, saved}`; drops `host.walkIns.*`. Captures: code + open, code + closed
+(new), no-code states unchanged from wave 5's five.
+
+**C3 · `/app/admin/sessions/[id]/attendance`.** Transfers wholesale — same path, ownership changes,
+no file move. Bringing onto M9: `ui/data-table` (`console`'s primitive — the row-list pattern console
+already used for the other admin lists) replacing the raw `<table>`; `ui/button` for actions;
+`ui/panel` for the summary card; `ui/select` for the manual-mark picker; `ui/dialog` (lead's) for the
+removal confirm — a mandatory reason field inside a confirm, the same shape `console`'s wave-6
+reject-confirm already used. New feature: a per-row "إزالة" (admin-only) opening the dialog, calling
+`removeCheckIn()` → `remove_check_in()`. Also relaxes the manual-mark gate — see the recommendation in
+the closing list below. **All of `admin.attendance.*`'s current strings move into `checkin.json`**
+under a new `attendance` namespace (admin.json isn't in my edit list this wave — `console` owns it —
+so this is the only file I *can* write these into; I'll ask `console` to delete the old
+`admin.attendance.*` keys once I've moved them, per the "old keys deleted by the file's owner on
+request" rule). New: `attendance.remove.*` (dialog copy). `getAttendanceReport()`'s `AttendanceRow`
+gains `removedAt: string | null` and `removedReason: string | null`; `removeCheckIn()` added to
+`dal/checkin.ts`. Captures: an active row with "إزالة" available, a removed row (struck through /
+badge with its reason), the removal confirm dialog, and the manual-mark form in its relaxed-window
+state.
+
+### Open decisions for the lead, with my recommendation for each
+
+1. **The window reading itself** (§2): floor = `now >= starts_at` (clock, not `state`); switch =
+   `check_in_open`, default true; ceiling = `now < ends_at + 2h`; early completion force-closes the
+   switch via a `complete_session()` hook. **Recommend: adopt as written** — it's the only reading
+   that makes `DEC-113`'s "phase no longer gates" and `REQ-CHK-016`'s "computed from the scheduled
+   end" both literally true at once.
+2. **The `complete_session()` SQL hook** (§2, §4 file `06`) touches a `sessions`-owned RPC; `DEC-137`
+   only pre-names `scoring`/`designer` hooks as SQL-only. **Recommend: yes**, one line, same pattern
+   as the pre-approved hooks, flagged for review before promotion rather than assumed.
+3. **Soft-delete over hard-delete for the removal** (§1). **Recommend: yes** — not really a choice;
+   `certificates.check_in_id`'s `on delete restrict` **and** its `not null` check constraint together
+   make hard delete impossible without also rewriting `revoke_certificate()`'s contract, and
+   soft-delete reuses `comments.deleted_at`'s exact existing precedent.
+4. **What else a removal reverses** (§1, three sub-questions): rating/photo rights — re-derive live,
+   don't touch anything already submitted; streaks/badges/levels — don't reverse, matches how no other
+   reversal in the product touches them; company points — don't reverse, same "evaluated once, frozen"
+   principle as the no-show job it shares. **Recommend: as stated**, all three "don't reverse except
+   the future right."
+5. **No-show symmetry** (§1 step 5): `remove_check_in()` proactively awards `no_show` with the exact
+   key `evaluate_no_shows.ts` would compute, so the ledger backs the "لم تُسجّل حضورك" the member sees
+   rather than leaving it as a UI-only fact. **Recommend: yes.**
+6. **Manual-mark's own time gate**: SCR-044's admin add/remove — recommend **no ceiling, any time
+   after the session starts** (`DEC-116`'s "at any time" reading, since this is a post-hoc
+   reconciliation screen, not a live door), replacing today's hard `state='in_progress'` gate. The
+   **host view's** own manual-mark section stays scoped to the floor→ceiling window (an in-room
+   operational tool) but is **not** additionally gated by `check_in_open` — a staff override of the
+   door shouldn't be blocked by the door itself.
+7. **The reversal ledger row's `reason` text**: a fixed system phrase («أُلغي تسجيل الحضور»), not the
+   admin's free-text reason (which stays on `check_ins.removal_reason` + the audit log only).
+   **Recommend: yes**, and a small open call on whether the member should ever see the admin's actual
+   reason (parity with `REQ-CRT-013`'s certificate-revocation reason) — my default is no unless the
+   lead wants that parity.
+8. **`mark_checked_in_manually()` never enqueues `award_points` today** — a pre-existing gap against
+   REQ-CHK-008, unrelated to any wave-7 requirement. **Fixing it inline** as part of re-creating that
+   function for the window change (§1, §4 file `03`); flagging so it isn't read as scope creep.
