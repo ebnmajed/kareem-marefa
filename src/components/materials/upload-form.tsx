@@ -1,9 +1,16 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { MaterialKind } from "@/lib/dal/materials";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { FileDrop } from "@/components/ui/file-drop";
+import { Panel } from "@/components/ui/panel";
+import { useToast } from "@/components/ui/toast";
+import { AlertCircleIcon } from "@/components/ui/icons";
+import type { MaterialKind, MaterialUploadLimits } from "@/lib/dal/materials";
 
 // STORY-MAT-001, 07 §1 — the browser uploads directly to Storage; bytes
 // never traverse this app's own server. A plain `fetch(signedUrl, { method:
@@ -16,6 +23,13 @@ import type { MaterialKind } from "@/lib/dal/materials";
 // touching that boundary at all.
 //
 // No third-party dependency: FormData + fetch, Node/Web built-ins only.
+//
+// ★ REQ-UIX-024, wave 6: the picker is `ui/file-drop` — visible controls
+// (drag-and-drop AND a genuinely keyboard-reachable button), stating what it
+// accepts and how large BEFORE a file is chosen. `uploadLimits` (from
+// `getMaterialsPageData`/`getProposalMaterialsPageData`, `content.md` §2.3)
+// is what makes the size half honest: previously the limit was only ever
+// learned from a 413 response, after the fact.
 
 // DEC-058: uploads are PDF-only — no PowerPoint, no Keynote.
 const FILE_KINDS = ["pdf", "image", "audio"] as const;
@@ -31,13 +45,16 @@ function guessKindFromFilename(name: string): Exclude<UploadKind, "video_link" |
   return null;
 }
 
-type UploadFormProps = { locale: string } & ({ sessionId: string; proposalId?: undefined } | { proposalId: string; sessionId?: undefined });
+type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits } & (
+  | { sessionId: string; proposalId?: undefined }
+  | { proposalId: string; sessionId?: undefined }
+);
 
 /** REQ-PRO-004: the same form, for either a session's materials or a proposal's draft materials —
  *  exactly one of `sessionId`/`proposalId` is passed, matching `initiateMaterialUploadInput`'s own
  *  either/or (src/lib/dal/materials.ts). A proposal upload hides the phase selector: "before/after
  *  the session" has no meaning yet for a draft that carries no session at all. */
-export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
+export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: UploadFormProps) {
   const t = useTranslations("materials.upload");
   // Kind/phase option labels reuse the `materials.list` namespace's own
   // `kind.*`/`phase.*` keys (message keys are stable — CLAUDE.md, Naming —
@@ -45,52 +62,72 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   // never re-authored a second time here).
   const tList = useTranslations("materials.list");
   const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
+  const toast = useToast();
   const [kind, setKind] = useState<UploadKind>("pdf");
+  const [title, setTitle] = useState("");
+  const [phase, setPhase] = useState<"before" | "after">("after");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [resetKey, setResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReactNode>(null);
 
   const isFileKind = (FILE_KINDS as readonly string[]).includes(kind);
   const isLinkKind = (LINK_KINDS as readonly string[]).includes(kind);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
+  const limitMb = kind === "audio" ? uploadLimits.audioMb : kind === "image" ? uploadLimits.imageMb : uploadLimits.documentMb;
+  const accept = kind === "pdf" ? ["application/pdf", ".pdf"] : kind === "image" ? ["image/png", "image/jpeg", "image/webp"] : ["audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg"];
+  const requirementKey = kind === "pdf" ? "requirementPdf" : kind === "image" ? "requirementImage" : "requirementAudio";
+
+  // ★ `useCallback`, not an inline arrow in the JSX below — `FileDrop`'s own
+  // effect (`file-drop.tsx`) depends on `onFiles` by reference, so a fresh
+  // closure every render re-fires it every render: it calls `onFiles` with a
+  // new (structurally empty, referentially distinct) array, which calls
+  // `setFiles`, which re-renders this component, which creates ANOTHER fresh
+  // closure — an infinite loop that starved a real test run for minutes
+  // before this fix, not a hypothetical. `[kind]` because the handler reads
+  // `kind` to decide whether to auto-switch it.
+  const handleFiles = useCallback(
+    (picked: File[]) => {
+      const guessed = picked[0] ? guessKindFromFilename(picked[0].name) : null;
+      if (guessed && guessed !== kind) setKind(guessed);
+      setFiles(picked);
+    },
+    [kind],
+  );
+
+  async function handleSubmit() {
     setError(null);
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError(t("titleRequired"));
+      return;
+    }
+    const file = isFileKind ? (files[0] ?? null) : null;
+    if (isFileKind && !file) {
+      setError(t("fileRequired"));
+      return;
+    }
+    const trimmedUrl = isLinkKind ? externalUrl.trim() : undefined;
+
     setBusy(true);
     try {
-      const title = String(formData.get("title") ?? "").trim();
-      const phase = String(formData.get("phase") ?? "after") as "before" | "after";
-      // Read the file straight off the input element, not through `FormData`
-      // — jsdom's `new FormData(form)` does not carry a file input's actual
-      // `File` through (size/name come back empty even though the input's
-      // own `.files` is correct), a jsdom-only gap that would otherwise make
-      // this untestable without touching the real-browser behaviour at all.
-      const fileInput = form.elements.namedItem("file") as HTMLInputElement | null;
-      const file = isFileKind ? (fileInput?.files?.[0] ?? null) : null;
-      const externalUrl = isLinkKind ? String(formData.get("externalUrl") ?? "").trim() : undefined;
-
-      if (isFileKind && (!file || file.size === 0)) {
-        setError(t("fileRequired"));
-        return;
-      }
-
       const initiateRes = await fetch("/api/upload/material", {
         method: "POST",
         headers: { "content-type": "application/json", "x-locale": locale },
         body: JSON.stringify({
           ...(sessionId ? { sessionId } : { proposalId }),
           kind,
-          title,
+          title: trimmedTitle,
           phase,
           ...(file ? { filename: file.name, declaredByteSize: file.size } : {}),
-          ...(externalUrl ? { externalUrl } : {}),
+          ...(trimmedUrl ? { externalUrl: trimmedUrl } : {}),
         }),
       });
       const initiateBody = await initiateRes.json();
       if (!initiateRes.ok) {
         setError(errorMessage(initiateBody, t));
+        toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
         return;
       }
 
@@ -98,6 +135,7 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
         const putRes = await fetch(initiateBody.upload.signedUrl, { method: "PUT", headers: { "content-type": file.type || "application/octet-stream" }, body: file });
         if (!putRes.ok) {
           setError(t("uploadFailed"));
+          toast.show({ tone: "error", title: t("uploadFailed") });
           return;
         }
 
@@ -109,11 +147,16 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
         const completeBody = await completeRes.json();
         if (!completeRes.ok) {
           setError(errorMessage(completeBody, t));
+          toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
           return;
         }
       }
 
-      formRef.current?.reset();
+      setTitle("");
+      setExternalUrl("");
+      setFiles([]);
+      setResetKey((k) => k + 1);
+      toast.show({ tone: "success", title: t("success") });
       router.refresh();
     } finally {
       setBusy(false);
@@ -121,67 +164,67 @@ export function UploadForm({ locale, sessionId, proposalId }: UploadFormProps) {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-field border border-edge p-4">
+    <div className="mt-4 flex flex-col gap-3 rounded-card border border-edge p-4">
       <label className="flex flex-col gap-1 text-body-sm text-fg-body">
         {t("kindLabel")}
-        <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as UploadKind)} className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+        <Select value={kind} onChange={(e) => setKind(e.target.value as UploadKind)}>
           <option value="pdf">{tList("kind.pdf")}</option>
           <option value="image">{tList("kind.image")}</option>
           <option value="audio">{tList("kind.audio")}</option>
           <option value="video_link">{tList("kind.video_link")}</option>
           <option value="external_link">{tList("kind.external_link")}</option>
-        </select>
+        </Select>
       </label>
 
       <label className="flex flex-col gap-1 text-body-sm text-fg-body">
         {t("titleLabel")}
-        <input name="title" required maxLength={200} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} size="sm" />
       </label>
 
       {sessionId ? (
         <label className="flex flex-col gap-1 text-body-sm text-fg-body">
           {t("phaseLabel")}
-          <select name="phase" defaultValue="after" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+          <Select value={phase} onChange={(e) => setPhase(e.target.value as "before" | "after")}>
             <option value="before">{tList("phase.before")}</option>
             <option value="after">{tList("phase.after")}</option>
-          </select>
+          </Select>
         </label>
       ) : null}
 
       {isFileKind ? (
-        <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-          {t("fileLabel")}
-          <input
-            key={kind}
-            type="file"
-            name="file"
-            // Not `required`: jsdom's file input never clears
-            // `validity.valueMissing` after `files` is set programmatically
-            // (a jsdom limitation, not a real-browser one), which silently
-            // blocks native form submission in tests. The presence check
-            // below (`fileRequired`) is the real validation either way.
-            onChange={(e) => {
-              const guessed = e.target.files?.[0] ? guessKindFromFilename(e.target.files[0].name) : null;
-              if (guessed) setKind(guessed);
-            }}
-          />
-        </label>
+        <FileDrop
+          key={resetKey}
+          name="file"
+          accept={accept}
+          maxBytes={limitMb * 1024 * 1024}
+          // `t.markup`, not plain `t` — the message wraps {limitMb} in its
+          // own <bdi> (the content-i18n catalogue gate requires it on any
+          // non-plural interpolation); `FileDrop.requirements` takes plain
+          // strings, so the tag is processed away rather than rendered as JSX.
+          requirements={[t.markup(requirementKey, { limitMb, bdi: (chunks) => chunks })]}
+          onFiles={handleFiles}
+        />
       ) : null}
 
       {isLinkKind ? (
         <label className="flex flex-col gap-1 text-body-sm text-fg-body">
           {t("urlLabel")}
-          <input name="externalUrl" type="url" required placeholder="https://" dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
+          <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} type="url" required placeholder="https://" dir="ltr" size="sm" />
         </label>
       ) : null}
 
       <p className="text-body-sm text-fg-muted">{t("notice")}</p>
-      {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
+      {error ? (
+        <Panel tone="error" className="flex items-start gap-2 p-3">
+          <AlertCircleIcon aria-hidden className="mt-0.5 shrink-0" />
+          <p className="text-body-sm text-fg-heading">{error}</p>
+        </Panel>
+      ) : null}
 
-      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
+      <Button type="button" onClick={handleSubmit} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
         {t("submit")}
-      </button>
-    </form>
+      </Button>
+    </div>
   );
 }
 
@@ -191,6 +234,24 @@ function errorMessage(body: { error?: string; limitMb?: number; sniffedKind?: st
       return t("notAuthorized");
     case "file_too_large":
       return t.rich("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => <bdi>{chunks}</bdi> });
+    case "sniff_mismatch":
+      return t("sniffMismatch");
+    default:
+      return t("uploadFailed");
+  }
+}
+
+/** The same failure, as a plain string — `ToastOptions.title` takes no JSX.
+ *  `t.markup` (not `.rich`) processes the message's own `<bdi>` tag into a
+ *  string by discarding the wrapper and keeping its content, exactly the
+ *  pattern `viewer/page-viewer.tsx`'s `aria-label` already uses for the same
+ *  reason. */
+function errorMessageText(body: { error?: string; limitMb?: number; sniffedKind?: string }, t: ReturnType<typeof useTranslations>): string {
+  switch (body.error) {
+    case "not_authorized":
+      return t("notAuthorized");
+    case "file_too_large":
+      return t.markup("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => chunks });
     case "sniff_mismatch":
       return t("sniffMismatch");
     default:

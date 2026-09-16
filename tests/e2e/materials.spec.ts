@@ -243,9 +243,13 @@ test("★ REQ-MAT-001/012: the presenter drives a real upload through the form e
 
   await page.getByLabel("نوع المادة").selectOption("image");
   await page.getByLabel("عنوان المادة").fill("صورة من الجلسة");
-  // Scoped to the المواد region: photos.spec.ts's own UploadWidget shares
-  // the same "الملف" file-input label on the SAME event page.
-  await page.getByRole("region", { name: "المواد" }).getByLabel("الملف").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
+  // ★ wave 6: the file input moved onto `ui/file-drop` (REQ-UIX-024), whose
+  // hidden native input carries no accessible label of its own (the button
+  // and the drop zone are the two labelled affordances — file-drop.tsx's
+  // own header). Scoped to `#materials-upload-form` (the uploader's own
+  // wrapper id, also the EmptyState's anchor target): photos.spec.ts's own
+  // UploadWidget shares the same `name="file"` input on the SAME event page.
+  await page.locator("#materials-upload-form input[type=\"file\"]").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
   await page.getByRole("button", { name: "رفع" }).click();
 
   // completeMaterialUpload() downloads the object it just wrote through the

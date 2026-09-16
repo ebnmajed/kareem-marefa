@@ -7,7 +7,13 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/materials.json";
+import arBrowse from "@/messages/ar/browse.json";
 import type { ProposalMaterialsPageData } from "@/lib/dal/materials";
+
+// `UploadForm`'s `ui/file-drop` reads `browse.fileDrop` — merged in here so
+// the (canManage) tests below, which render it, do not hit a missing-message
+// error the moment the drop zone paints.
+const messages = { ...ar, browse: { fileDrop: arBrowse.browse.fileDrop } };
 
 vi.mock("@/lib/dal/materials", () => ({ getProposalMaterialsPageData: vi.fn() }));
 vi.mock("next-intl/server", () => ({
@@ -22,13 +28,14 @@ const { getProposalMaterialsPageData } = await import("@/lib/dal/materials");
 const { ProposalMaterials } = await import("@/components/materials/proposal-list");
 
 const proposalId = "11111111-1111-1111-1111-111111111111";
-const base: ProposalMaterialsPageData = { materials: [], canManage: false };
+const uploadLimits = { documentMb: 50, audioMb: 200, imageMb: 20 };
+const base: ProposalMaterialsPageData = { materials: [], canManage: false, uploadLimits };
 
 async function renderSlot(data: ProposalMaterialsPageData) {
   vi.mocked(getProposalMaterialsPageData).mockResolvedValue(data);
   const element = await ProposalMaterials({ proposalId, memberId: "m1", locale: "ar" });
   return render(
-    <NextIntlClientProvider locale="ar" messages={ar}>
+    <NextIntlClientProvider locale="ar" messages={messages}>
       {element}
     </NextIntlClientProvider>,
   );
@@ -64,6 +71,7 @@ describe("ProposalMaterials slot", () => {
         },
       ],
       canManage: true,
+      uploadLimits,
     });
     const title = screen.getByText("شرائح المقترح");
     expect(title.closest("bdi")).not.toBeNull();
