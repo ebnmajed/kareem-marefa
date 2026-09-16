@@ -1337,3 +1337,21 @@ refreshes") rather than adding the hook mechanically everywhere named:
 tsc clean, lint 0 errors, 89/89 component tests green (event, materials, photos, tasks).
 
 Ready for sync.
+
+## §15 — the photos empty state's duplicate button
+
+Found from a 390 px capture at 5376c32: the empty gallery's `EmptyState` carried its own enabled
+«إضافة صورة» action, wired to the SAME `upload.action` label the uploader's own submit button already
+uses right below it — duplicate accessible name, one of the two disabled.
+
+Checked the lead's second bullet (keep the button only where the uploader is NOT rendered) against
+the actual code: `if (photos.length === 0 && !canUpload) return null;` already returns null upstream
+whenever the uploader would be absent, so every path that reaches the empty-state branch has
+`canUpload === true` — the uploader is NEVER absent there. That hypothetical case is structurally
+unreachable in this component, so there was nothing to preserve; text-only unconditionally.
+
+Fixed (9752358): `EmptyState` replaced with a plain quiet sentence, same shape as the discussion's own
+empty state. Test now asserts exactly one "إضافة صورة" button remains, guarding the regression
+directly rather than just checking presence.
+
+Ready for sync.
