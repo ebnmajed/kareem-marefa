@@ -284,6 +284,8 @@ export interface SchedulableSession {
   rsvpDeadlineAt: string | null;
   cancellationCutoffAt: string | null;
   certificateMode: "off" | "automatic" | "review";
+  /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
+  allowWalkIns: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
   missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
@@ -305,7 +307,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, time_zone",
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, time_zone",
     )
     .eq("id", id)
     .maybeSingle();
@@ -334,6 +336,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     rsvpDeadlineAt: data.rsvp_deadline_at,
     cancellationCutoffAt: data.cancellation_cutoff_at,
     certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
+    allowWalkIns: data.allow_walk_ins === true,
     timeZone: data.time_zone,
     missing,
   };
@@ -361,6 +364,15 @@ export const scheduleInput = z
     cancellationCutoffAt: z.iso.datetime({ offset: true }).nullable(),
     certificateMode: z.enum(["off", "automatic", "review"]),
     language: z.enum(["ar", "en"]),
+    /**
+     * Walk-ins as a publishing setting (DEC-117, DEC-118, contract 1, 0085).
+     * ★ `null` means UNCHANGED — `schedule_session()` keeps the stored value
+     * (`coalesce(p_allow_walk_ins, target.allow_walk_ins)`, DEC-141 correction B).
+     * It is never coerced to `false`: a save that does not carry the field must
+     * not switch walk-ins off. An absent key parses to `null` too, so a schedule
+     * form without the control saves exactly as before.
+     */
+    allowWalkIns: z.boolean().nullable().default(null),
   })
   .strict();
 export type ScheduleInput = z.infer<typeof scheduleInput>;
@@ -381,6 +393,8 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_cancellation_cutoff_at: input.cancellationCutoffAt,
     p_certificate_mode: input.certificateMode,
     p_language: input.language,
+    // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».
+    p_allow_walk_ins: input.allowWalkIns,
   });
   if (error) throw new Error(`schedule_session: ${error.message}`);
 }
