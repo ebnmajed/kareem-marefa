@@ -1719,3 +1719,16 @@ pre-fix page by hand — `git show HEAD:path` over the file, ran (the placeholde
 expected, `getByText("—")` found nothing), restored from a scratchpad copy, ran green again — before
 committing. `npx tsc --noEmit` clean, lint zero errors on both files, `npx vitest run` 145/145 files,
 1438/1438 tests green. Committed alone: `c2bc2b9`. Still holding the sync-5 e2e/RLS constraint.
+
+### K3 — the venues capture gap
+
+Sync 5's own review found no wave-7 venues capture: the only file on disk
+(`scr-046-venues-390-rtl-phone.png`) predates promotion, from sessions' M2 walk, not this wave's spec;
+`wave7-console-layout-untouched-390.png` is `/app/admin/exports`, not venues. Added a venue seed row to
+`admin-managed-lists.spec.ts`'s `beforeAll` (same reasoning as its existing categories/companies rows —
+the add-flow tests are desktop-only, so the phone project's org would otherwise reach the capture with
+zero rows) and a new phone-only test producing `wave7-console-venues-populated-390-rtl-phone.png`
+through the same `review()` helper (honours `E2E_SHOTS_DIR`, the same overflow/dir/viewport assertions
+categories and companies already get). `npx tsc --noEmit` clean, lint zero errors; not run locally —
+matching how captures land this wave, the next sync build produces it and the lead opens it. Committed
+alone: `4ee8005`.
