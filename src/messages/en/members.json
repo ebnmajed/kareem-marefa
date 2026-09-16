@@ -6,7 +6,7 @@
         "moderator": "Moderator",
         "member": "Member"
       },
-      "memberSince": "Member since {date}",
+      "memberSince": "Member since <bdi>{date}</bdi>",
       "noBio": "No bio yet",
       "selfNote": "This is how your colleagues see your profile.",
       "editProfile": "Edit your profile",

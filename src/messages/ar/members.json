@@ -6,7 +6,7 @@
         "moderator": "مُنظِّم",
         "member": "عضو"
       },
-      "memberSince": "عضو منذ {date}",
+      "memberSince": "عضو منذ <bdi>{date}</bdi>",
       "noBio": "لا توجد نبذة بعد",
       "selfNote": "هكذا يرى زملاؤك ملفك.",
       "editProfile": "عدّل ملفك",

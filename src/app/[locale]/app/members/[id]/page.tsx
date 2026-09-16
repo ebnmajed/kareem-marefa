@@ -98,7 +98,7 @@ export default async function MemberPage({ params }: { params: Promise<{ locale:
             </div>
           </div>
         ) : null}
-        <p className="text-caption text-fg-muted">{t("memberSince", { date: formatDate(profile.createdAt, view.timeZone, locale) })}</p>
+        <p className="text-caption text-fg-muted">{t.rich("memberSince", { date: formatDate(profile.createdAt, view.timeZone, locale), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
       </section>
 
       {standing ? (

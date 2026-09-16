@@ -22,7 +22,7 @@
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
       "final": "نهائية",
       "rankedMetric": "الترتيب حسبه",
-      "takenAt": "احتُسبت في {date}"
+      "takenAt": "احتُسبت في <bdi>{date}</bdi>"
     },
     "companyBreakdown": {
       "heading": "كيف حصلت شركتك على نقاطها",
@@ -50,7 +50,7 @@
     "description": "من يتصدّر مؤسستك هذا الشهر ومنذ البداية، وكيف تتسابق الشركات.",
     "emptyAction": "تصفّح الجلسات",
     "selfHeading": "ترتيبك",
-    "rankValue": "المرتبة {value}",
+    "rankValue": "المرتبة <bdi>{value}</bdi>",
     "allTime": {
       "live": "تُحدَّث مباشرة مع كل نقطة"
     }

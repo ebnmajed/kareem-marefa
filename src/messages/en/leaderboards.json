@@ -22,7 +22,7 @@
       "provisional": "Provisional — refreshed nightly until the month closes",
       "final": "Final",
       "rankedMetric": "Ranked by this",
-      "takenAt": "Calculated on {date}"
+      "takenAt": "Calculated on <bdi>{date}</bdi>"
     },
     "companyBreakdown": {
       "heading": "How your company earned its points",
@@ -50,7 +50,7 @@
     "description": "Who leads your organisation this month and since the start, and how the companies compare.",
     "emptyAction": "Browse sessions",
     "selfHeading": "Your rank",
-    "rankValue": "Rank {value}",
+    "rankValue": "Rank <bdi>{value}</bdi>",
     "allTime": {
       "live": "Updates live with every point"
     }

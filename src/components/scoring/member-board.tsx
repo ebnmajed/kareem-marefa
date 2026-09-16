@@ -58,7 +58,7 @@ export async function MemberBoard({ rows, limit = DEFAULT_LIMIT }: { rows: Membe
       key={r.memberId}
       row={r}
       you={t("you")}
-      rankLabel={t("rankValue", { value: formatNumber(r.rank) })}
+      rankLabel={t.markup("rankValue", { value: formatNumber(r.rank), bdi: (chunks) => chunks })}
       points={t("pointsValue", { count: r.points, value: formatNumber(r.points) })}
     />
   );

@@ -34,7 +34,7 @@ export async function CompanyBoard({ rows, metric }: { rows: CompanyBoardRow[]; 
           <li key={row.companyId} className="rounded-card border border-edge bg-surface px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="w-9 shrink-0 text-center text-label text-fg-muted">
-                <span className="sr-only">{t("rankValue", { value: formatNumber(row.rank) })}</span>
+                <span className="sr-only">{t.rich("rankValue", { value: formatNumber(row.rank), bdi: (chunks) => <bdi>{chunks}</bdi> })}</span>
                 <span aria-hidden>{formatNumber(row.rank)}</span>
               </span>
               <span className="min-w-0 flex-1 text-body text-fg-heading">

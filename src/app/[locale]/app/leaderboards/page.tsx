@@ -78,7 +78,7 @@ export default async function LeaderboardsPage({ params, searchParams }: { param
               <SectionHeader
                 id="company-heading"
                 title={t("tabs.company")}
-                description={boards.company ? t("company.takenAt", { date: formatDateTime(boards.company.takenAt, boards.timeZone, locale) }) : undefined}
+                description={boards.company ? t.markup("company.takenAt", { date: formatDateTime(boards.company.takenAt, boards.timeZone, locale), bdi: (chunks) => chunks }) : undefined}
                 actions={boards.company ? finality(boards.company.isFinal, t("company.provisional"), t("company.final")) : undefined}
               />
               <CompanyBoard rows={boards.company?.rows ?? []} metric={boards.companyMetric} />
