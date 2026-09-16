@@ -168,7 +168,8 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
   await venue.selectOption((await venue.locator("option", { hasText: "القاعة الكبرى" }).getAttribute("value"))!);
   await expect(page.getByLabel("السعة")).toHaveValue("40");
   // A deadline preset says the time it means.
-  await page.getByRole("radio", { name: "قبل البدء بيوم" }).first().check();
+  await page.getByLabel("آخر موعد للإلغاء", { exact: true }).selectOption("dayBefore");
+  await expect(page.getByText(/^يُغلق الإلغاء /)).toBeVisible();
   await expect(page.getByText("لا يمكن النشر بعد — ينقص:")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "انشر الجلسة" })).toBeEnabled();
   await capture(page, "ready");

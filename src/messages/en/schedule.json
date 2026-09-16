@@ -50,10 +50,12 @@
       "hint": "Off by default: the check-in code is accepted only from a confirmed reservation. Decided here only, when the session is scheduled or edited."
     },
     "rsvpDeadline": {
-      "legend": "Booking closes"
+      "legend": "Booking closes",
+      "closes": "Booking closes {when}"
     },
     "cutoff": {
-      "legend": "Cancellation closes"
+      "legend": "Cancellation closes",
+      "closes": "Cancellation closes {when}"
     },
     "preset": {
       "atStart": "When the session starts",

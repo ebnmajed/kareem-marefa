@@ -215,18 +215,73 @@ export function ScheduleForm({
 
   // The errors SHOWN, in page order — DEC-144's rule for a form with blur
   // checks: the summary lists what is on the page, not the last submit.
+  // A deadline's error points at its picker when there is one, else at its preset.
+  const targetOf = (field: ScheduleField): string =>
+    field === "rsvpDeadlineAt" && rsvpPreset !== "custom" ? "rsvpPreset"
+    : field === "cancellationCutoffAt" && cutoffPreset !== "custom" ? "cutoffPreset"
+    : field;
   const summary = SCHEDULE_FIELDS.flatMap((field) => {
     const key = shown(field);
-    return key ? [{ fieldId: field, label: t(LABEL_KEY[field]), message: t(`errors.${key}`) }] : [];
+    return key ? [{ fieldId: targetOf(field), label: t(LABEL_KEY[field]), message: t(`errors.${key}`) }] : [];
   });
 
-  /** Each preset says the time it means, once there is a start to mean it from. */
-  const presetOptions = () =>
-    DEADLINE_PRESETS.map((preset) => ({
-      value: preset,
-      label: t(`preset.${preset}`),
-      hint: preset !== "custom" && startsAt ? spoken(deadlineFor(preset, startsAt, ""), true) : undefined,
-    }));
+  /**
+   * A deadline is ONE select — «عند بدء الجلسة» and the rest — with the time it
+   * resolves to said beneath it, and a picker only for «موعد آخر». Two four-row
+   * radio lists made the phone form a third longer for a choice most admins
+   * never change (the lead's review of its own 390 px capture).
+   */
+  const deadline = (kind: "rsvp" | "cutoff") => {
+    const isRsvp = kind === "rsvp";
+    const presetField = isRsvp ? "rsvpPreset" : "cutoffPreset";
+    const valueField = isRsvp ? "rsvpDeadlineAt" : "cancellationCutoffAt";
+    const preset = isRsvp ? rsvpPreset : cutoffPreset;
+    const custom = isRsvp ? rsvpCustom : cutoffCustom;
+    const resolved = isRsvp ? rsvpDeadlineAt : cancellationCutoffAt;
+    const legend = t(isRsvp ? "rsvpDeadline.legend" : "cutoff.legend");
+    const setPreset = isRsvp ? setRsvpPreset : setCutoffPreset;
+    const setCustom = isRsvp ? setRsvpCustom : setCutoffCustom;
+    return (
+      <div className="space-y-3">
+        <Field
+          id={presetField}
+          label={legend}
+          hint={preset !== "custom" && resolved ? t(isRsvp ? "rsvpDeadline.closes" : "cutoff.closes", { when: spoken(resolved, true) }) : undefined}
+          error={preset === "custom" ? undefined : err(valueField)}
+        >
+          <Select
+            name={presetField}
+            value={preset}
+            onChange={(e) => {
+              const next = e.currentTarget.value as DeadlinePreset;
+              if (next === "custom" && !custom) setCustom(resolved);
+              setPreset(next);
+              recheck({ [valueField]: deadlineFor(next, startsAt, custom || resolved) });
+            }}
+          >
+            {DEADLINE_PRESETS.map((p) => (
+              <option key={p} value={p}>
+                {t(`preset.${p}`)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        {preset === "custom" ? (
+          <Field id={valueField} label={t("preset.customLabel")} error={err(valueField)} className="ps-4">
+            <DateTime
+              name={valueField}
+              label={legend}
+              value={custom}
+              onChange={(value) => {
+                setCustom(value ?? "");
+                recheck({ [valueField]: value ?? "" });
+              }}
+            />
+          </Field>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <form action={formAction} noValidate className="space-y-10">
@@ -394,65 +449,8 @@ export function ScheduleForm({
       <section aria-labelledby="schedule-attendance" className="space-y-6">
         <SectionHeader id="schedule-attendance" title={t("sections.attendance")} />
         <div className="space-y-6">
-          <div>
-            <RadioGroup
-              name="rsvpPreset"
-              legend={t("rsvpDeadline.legend")}
-              options={presetOptions()}
-              value={rsvpPreset}
-              onChange={(value) => {
-                const preset = value as DeadlinePreset;
-                if (preset === "custom" && !rsvpCustom) setRsvpCustom(rsvpDeadlineAt);
-                setRsvpPreset(preset);
-                recheck({ rsvpDeadlineAt: deadlineFor(preset, startsAt, rsvpCustom || rsvpDeadlineAt) });
-              }}
-            />
-            {rsvpPreset === "custom" ? (
-              <Field id="rsvpDeadlineAt" label={t("preset.customLabel")} error={err("rsvpDeadlineAt")} className="mt-3 ps-10">
-                <DateTime
-                  name="rsvpDeadlineAt"
-                  label={t("rsvpDeadline.legend")}
-                  value={rsvpCustom}
-                  onChange={(value) => {
-                    setRsvpCustom(value ?? "");
-                    recheck({ rsvpDeadlineAt: value ?? "" });
-                  }}
-                />
-              </Field>
-            ) : err("rsvpDeadlineAt") ? (
-              <p className="mt-2 text-caption text-error">{err("rsvpDeadlineAt")}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <RadioGroup
-              name="cutoffPreset"
-              legend={t("cutoff.legend")}
-              options={presetOptions()}
-              value={cutoffPreset}
-              onChange={(value) => {
-                const preset = value as DeadlinePreset;
-                if (preset === "custom" && !cutoffCustom) setCutoffCustom(cancellationCutoffAt);
-                setCutoffPreset(preset);
-                recheck({ cancellationCutoffAt: deadlineFor(preset, startsAt, cutoffCustom || cancellationCutoffAt) });
-              }}
-            />
-            {cutoffPreset === "custom" ? (
-              <Field id="cancellationCutoffAt" label={t("preset.customLabel")} error={err("cancellationCutoffAt")} className="mt-3 ps-10">
-                <DateTime
-                  name="cancellationCutoffAt"
-                  label={t("cutoff.legend")}
-                  value={cutoffCustom}
-                  onChange={(value) => {
-                    setCutoffCustom(value ?? "");
-                    recheck({ cancellationCutoffAt: value ?? "" });
-                  }}
-                />
-              </Field>
-            ) : err("cancellationCutoffAt") ? (
-              <p className="mt-2 text-caption text-error">{err("cancellationCutoffAt")}</p>
-            ) : null}
-          </div>
+          {deadline("rsvp")}
+          {deadline("cutoff")}
 
           <Switch name="allowWalkIns" checked={walkIns} onCheckedChange={setWalkIns} label={t("walkIns.label")} description={t("walkIns.hint")} />
         </div>
@@ -490,10 +488,11 @@ export function ScheduleForm({
       {/* ── The actions, in reach ───────────────────────────────────────── */}
       <div className="sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom,0px))] z-20 -mx-4 border-t border-edge bg-canvas px-4 py-4 md:static md:mx-0 md:border-0 md:px-0">
         {!published && missing.length > 0 ? (
-          <div className="mb-3">
-            <p className="text-label text-fg-heading">{t("missing.title")}</p>
-            <p className="mt-1 text-body-sm text-fg-body">{missing.map((m) => t(`missing.${m}`)).join(" · ")}</p>
-          </div>
+          // One line, not a heading and a list: the bar sits above the tab bar in a
+          // 844 px viewport, and every line it takes is a line of form it hides.
+          <p className="mb-3 text-body-sm text-fg-body">
+            <span className="text-label text-fg-heading">{t("missing.title")}</span> {missing.map((m) => t(`missing.${m}`)).join(" · ")}
+          </p>
         ) : (
           <p className="mb-3 text-body-sm text-fg-muted">{t(published ? "actions.editedNote" : "actions.publishNote")}</p>
         )}
