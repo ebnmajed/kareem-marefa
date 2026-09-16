@@ -110,25 +110,29 @@ test("an admin edits the company rules on /app/admin/scoring, and the change app
   await signIn(context);
 
   await page.goto("/ar/app/admin/scoring");
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "نقاط الشركات" })).toBeVisible();
 
-  // The hosting rule's points field — a plain admin edit, same as the
-  // member catalogue above it.
-  const hostingForm = page.locator("li", { hasText: "استضافة جلسة" }).locator("form");
-  await hostingForm.getByLabel("النقاط لكل جلسة مُستضافة").fill("42");
-  await hostingForm.getByRole("button", { name: "حفظ" }).click();
-  await expect(page).toHaveURL(/saved=1/);
+  // Wave 8 (K5): each rule is edited in its own dialog — the list shows the
+  // values, «عدّل: استضافة جلسة» opens the form.
+  await page.getByRole("button", { name: "عدّل: استضافة جلسة" }).filter({ visible: true }).click();
+  const dialog = page.getByRole("dialog", { name: "تعديل «استضافة جلسة»" });
+  await dialog.getByLabel("النقاط لكل جلسة مُستضافة", { exact: false }).fill("42");
+  await dialog.getByRole("button", { name: "احفظ القاعدة" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظت القاعدة" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   const [row] = (await db.query(`select points, version from public.company_scoring_rules where org_id = $1 and action_key = 'company_hosting'`, [orgId]))
     .rows as Array<{ points: number; version: number }>;
   expect(row).toMatchObject({ points: 42, version: 2 });
 
-  // The stopgap host-company assignment form.
-  await page.goto("/ar/app/admin/scoring");
-  await page.getByLabel("معرّف الجلسة").fill(sessionId);
-  await page.getByLabel("الشركة المستضيفة").selectOption({ label: companyName });
-  await page.getByRole("button", { name: "حفظ", exact: true }).last().click();
-  await expect(page).toHaveURL(/saved=1/);
+  // The host company: a session chosen by name, not a UUID typed into a box.
+  const host = page.locator('section[aria-labelledby="host-company-heading"]');
+  await host.getByRole("combobox", { name: /الجلسة/ }).fill("جلسة نقاط");
+  await page.getByRole("option", { name: /جلسة نقاط الشركات/ }).click();
+  await host.getByLabel("الشركة المستضيفة", { exact: true }).selectOption({ label: companyName });
+  await host.getByRole("button", { name: "احفظ الشركة المستضيفة" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظت الشركة المستضيفة" })).toBeVisible();
 
   const [sessionRow] = (await db.query(`select host_company_id from public.sessions where id = $1`, [sessionId])).rows as Array<{
     host_company_id: string;

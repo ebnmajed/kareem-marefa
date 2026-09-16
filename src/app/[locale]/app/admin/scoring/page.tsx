@@ -1,275 +1,135 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatDateTime } from "@/components/sessions/numerals";
-import { MemberPicker } from "@/components/admin/member-picker";
+import { splitDuration } from "@/components/admin/duration";
+import { formatNumber } from "@/components/sessions/numerals";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import type { Locale } from "@/i18n/routing";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
-import { getScoringAdminData } from "@/lib/dal/scoring-admin";
+import {
+  PENALTY_ACTIONS,
+  REWARD_ATTENDEE_ACTIONS,
+  REWARD_PRESENTER_ACTIONS,
+  getScoringAdminData,
+  intervalToSeconds,
+  listHostableSessions,
+  type ConfigHistoryRow,
+} from "@/lib/dal/scoring-admin";
 import { saveCompanyHostingRule, saveCompanyPercentRule, saveManualAdjustment, saveScoringRule, saveSessionHostCompany } from "./actions";
+import { CompanyRulesTable } from "./company-rules-table";
+import { HistoryTable, type HistoryDisplayRow } from "./history-table";
+import { HostCompanyForm } from "./host-company-form";
+import { ManualAdjustmentForm } from "./manual-adjustment-form";
+import { RulesTable } from "./rules-table";
 
-// SCR-053 · /app/admin/scoring — DEC-046's wave-2 carve-out for `scoring`;
-// `console` inherits this path at wave 3 (DEC-042's pattern for `sessions`).
+// SCR-053 · /app/admin/scoring — REQ-PTS-004 … 010, REQ-ADM-011, on the M9
+// system for wave 8 (K5). Admin only: `getScoringAdminData()` answers null for
+// anyone else and the page answers with the streamed not-found (`DEC-134`).
 //
 // Every value here is read live by /app/me/points' catalogue section
-// (REQ-PTS-014) — a save here is visible to every member immediately, and
-// only affects awards from that point forward (REQ-PTS-004): a ledger row
-// already written keeps the rule_version and amount it was written with.
+// (REQ-PTS-014) — a save is visible to every member at once, and affects awards
+// from that point forward only (REQ-PTS-004): a ledger row already written
+// keeps the rule_version and amount it was written with.
 //
-// The manual-adjustment form's member field is `<MemberPicker>`
-// (`scoring.md`'s carried-over item, console.md's story order item 2) —
-// still the same `formData.get("memberId")` `saveManualAdjustment` already
-// reads, so `actions.ts`/`submitManualAdjustment()`/`adjust_points_
-// manually()` are all unchanged.
+// ★ THE CATALOGUE IS FIXED. An admin edits values and never adds an action:
+// `action_key` and `actor` are outside the update grant (`0027`), and «الحجز»
+// and «التفاعل» cannot appear because the check constraint does not admit them
+// (`REQ-PTS-010`). The deductions are grouped apart, at 0, «مغلقة افتراضيًا»
+// (SCR-053's own note, `REQ-PTS-008`).
+//
+// Each rule is edited in its own dialog rather than fourteen always-open forms,
+// each with its own primary «حفظ» (`16` §3, principle 2). The history section
+// keeps the id `history-heading`: the audit log links to it (K1).
 
-const field = "mt-1 block h-11 w-full rounded-field border border-edge-strong bg-canvas px-3 text-body text-fg-heading";
-
-export default async function ScoringAdminPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string }>;
-}) {
+export default async function ScoringAdminPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { saved, error } = await searchParams;
 
-  const [t, tp, data, members] = await Promise.all([
-    getTranslations("scoring.admin"),
-    getTranslations("admin.memberPicker"),
-    getScoringAdminData(locale),
-    listMembersForAdmin(locale),
-  ]);
-  if (!data) notFound();
+  const [t, data, members, sessions] = await Promise.all([getTranslations("scoring.admin"), getScoringAdminData(locale), listMembersForAdmin(locale), listHostableSessions(locale)]);
+  if (!data || !sessions) notFound();
+
+  const byGroup = (keys: readonly string[]) => keys.map((key) => data.rules.find((r) => r.actionKey === key)).filter((r): r is NonNullable<typeof r> => r !== undefined);
+  const bound = locale as Locale;
+
+  // The history's values, in words: a boolean is on or off, a cooldown is a
+  // duration, a number is a number, text is itself.
+  const valueText = (field: string, value: unknown): string => {
+    if (value === null || value === undefined) return t("history.none");
+    if (typeof value === "boolean") return value ? t("history.on") : t("history.off");
+    if (field === "cooldown" && typeof value === "string") {
+      const seconds = intervalToSeconds(value);
+      if (!seconds) return t("history.none");
+      const { amount, unit } = splitDuration(seconds, "seconds", ["seconds", "minutes", "hours", "days"]);
+      return t.markup(`catalogue.cooldown.${unit}`, { count: amount, value: formatNumber(amount), bdi: (chunks) => chunks });
+    }
+    if (typeof value === "number") return formatNumber(value);
+    if (typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value)) return formatNumber(Number(value));
+    return String(value);
+  };
+  const history: HistoryDisplayRow[] = data.history.map((h: ConfigHistoryRow) => ({
+    id: h.id,
+    rule: h.actionKey && t.has(`actions.${h.actionKey}`) ? t(`actions.${h.actionKey}`) : t("history.unknownRule"),
+    field: t.has(`history.fields.${h.field}`) ? t(`history.fields.${h.field}`) : h.field,
+    from: valueText(h.field, h.oldValue),
+    to: valueText(h.field, h.newValue),
+    who: h.actorId ? (h.actorName ?? t("history.unknownActor")) : t("history.system"),
+    changedAt: h.changedAt,
+  }));
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-2 text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
-      {saved ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("saved")}
-        </p>
-      ) : null}
-      {error ? (
-        <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-          {t("error")}
-        </p>
-      ) : null}
+      <section aria-labelledby="catalogue-heading" className="mt-10">
+        <SectionHeader as="h2" id="catalogue-heading" title={t("catalogue.heading")} description={t("catalogue.fixedNote")} />
 
-      <section aria-labelledby="rules-heading" className="mt-10">
-        <h2 id="rules-heading" className="text-h2 text-fg-heading">
-          {t("rules.heading")}
-        </h2>
-        <ul className="mt-4 space-y-4">
-          {data.rules.map((rule) => (
-            <li key={rule.id} className="rounded-field border border-edge p-4">
-              <p className="text-label text-fg-heading">
-                <bdi>{rule.reasonAr}</bdi> <span className="text-body-sm text-fg-muted">({rule.actionKey})</span>
-              </p>
-              <form action={saveScoringRule} className="mt-3 flex flex-wrap items-end gap-4">
-                <input type="hidden" name="ruleId" value={rule.id} />
-                <label className="flex flex-col gap-1">
-                  <span className="text-body-sm text-fg-muted">{t("rules.points")}</span>
-                  <input name="points" type="number" defaultValue={rule.points} className={field} style={{ maxWidth: "8rem" }} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-body-sm text-fg-muted">{t("rules.cap")}</span>
-                  <input
-                    name="capPerSession"
-                    type="number"
-                    min={1}
-                    defaultValue={rule.capPerSession ?? ""}
-                    placeholder={t("rules.noCap")}
-                    className={field}
-                    style={{ maxWidth: "8rem" }}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-body-sm text-fg-muted">{t("rules.cooldown")}</span>
-                  <input
-                    name="cooldownSeconds"
-                    type="number"
-                    min={0}
-                    defaultValue={rule.cooldownSeconds ?? ""}
-                    placeholder={t("rules.noCooldown")}
-                    className={field}
-                    style={{ maxWidth: "8rem" }}
-                  />
-                </label>
-                <label className="flex items-center gap-2 pb-2">
-                  <input name="enabled" type="checkbox" defaultChecked={rule.enabled} className="size-5" />
-                  <span className="text-body-sm text-fg-heading">{t("rules.enabled")}</span>
-                </label>
-                <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-                  {t("rules.save")}
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-6 space-y-8">
+          <section aria-labelledby="attendee-heading">
+            <SectionHeader as="h3" id="attendee-heading" title={t("catalogue.attendeeHeading")} />
+            <div className="mt-3">
+              <RulesTable rules={byGroup(REWARD_ATTENDEE_ACTIONS)} kind="reward" label={t("catalogue.listLabel.attendee")} action={saveScoringRule.bind(null, bound)} />
+            </div>
+          </section>
+          <section aria-labelledby="presenter-heading">
+            <SectionHeader as="h3" id="presenter-heading" title={t("catalogue.presenterHeading")} />
+            <div className="mt-3">
+              <RulesTable rules={byGroup(REWARD_PRESENTER_ACTIONS)} kind="reward" label={t("catalogue.listLabel.presenter")} action={saveScoringRule.bind(null, bound)} />
+            </div>
+          </section>
+          <section aria-labelledby="penalty-heading">
+            <SectionHeader as="h3" id="penalty-heading" title={t("catalogue.penaltyHeading")} description={t("catalogue.penaltyNote")} />
+            <div className="mt-3">
+              <RulesTable rules={byGroup(PENALTY_ACTIONS)} kind="penalty" label={t("catalogue.listLabel.penalty")} action={saveScoringRule.bind(null, bound)} />
+            </div>
+          </section>
+        </div>
       </section>
 
       <section aria-labelledby="company-rules-heading" className="mt-12">
-        <h2 id="company-rules-heading" className="text-h2 text-fg-heading">
-          {t("companyRules.heading")}
-        </h2>
-        <p className="mt-2 text-body text-fg-muted">{t("companyRules.intro")}</p>
-        <ul className="mt-4 space-y-4">
-          {data.companyRules.map((rule) =>
-            rule.actionKey === "company_hosting" ? (
-              <li key={rule.id} className="rounded-field border border-edge p-4">
-                <p className="text-label text-fg-heading">
-                  <bdi>{rule.reasonAr}</bdi> <span className="text-body-sm text-fg-muted">({rule.actionKey})</span>
-                </p>
-                <form action={saveCompanyHostingRule} className="mt-3 flex flex-wrap items-end gap-4">
-                  <input type="hidden" name="ruleId" value={rule.id} />
-                  <label className="flex flex-col gap-1">
-                    <span className="text-body-sm text-fg-muted">{t("companyRules.points")}</span>
-                    <input name="points" type="number" min={0} defaultValue={rule.points ?? 0} className={field} style={{ maxWidth: "8rem" }} />
-                  </label>
-                  <label className="flex items-center gap-2 pb-2">
-                    <input name="enabled" type="checkbox" defaultChecked={rule.enabled} className="size-5" />
-                    <span className="text-body-sm text-fg-heading">{t("rules.enabled")}</span>
-                  </label>
-                  <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-                    {t("rules.save")}
-                  </button>
-                </form>
-              </li>
-            ) : (
-              <li key={rule.id} className="rounded-field border border-edge p-4">
-                <p className="text-label text-fg-heading">
-                  <bdi>{rule.reasonAr}</bdi> <span className="text-body-sm text-fg-muted">({rule.actionKey})</span>
-                </p>
-                <form action={saveCompanyPercentRule} className="mt-3 flex flex-wrap items-end gap-4">
-                  <input type="hidden" name="ruleId" value={rule.id} />
-                  <label className="flex flex-col gap-1">
-                    <span className="text-body-sm text-fg-muted">{t("companyRules.pointsPerPercent")}</span>
-                    <input
-                      name="pointsPerPercent"
-                      type="number"
-                      min={0}
-                      step="0.1"
-                      defaultValue={rule.pointsPerPercent ?? 0}
-                      className={field}
-                      style={{ maxWidth: "8rem" }}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-body-sm text-fg-muted">{t("companyRules.capPoints")}</span>
-                    <input name="capPoints" type="number" min={1} defaultValue={rule.capPoints ?? 1} className={field} style={{ maxWidth: "8rem" }} />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-body-sm text-fg-muted">{t("companyRules.minActiveMembers")}</span>
-                    <input
-                      name="minActiveMembers"
-                      type="number"
-                      min={1}
-                      defaultValue={rule.minActiveMembers ?? 1}
-                      className={field}
-                      style={{ maxWidth: "8rem" }}
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 pb-2">
-                    <input name="enabled" type="checkbox" defaultChecked={rule.enabled} className="size-5" />
-                    <span className="text-body-sm text-fg-heading">{t("rules.enabled")}</span>
-                  </label>
-                  <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-                    {t("rules.save")}
-                  </button>
-                </form>
-              </li>
-            ),
-          )}
-        </ul>
-
-        <div className="mt-8 max-w-xl">
-          <h3 className="text-label text-fg-heading">{t("companyRules.hostForm.heading")}</h3>
-          <p className="mt-2 text-body-sm text-fg-muted">{t("companyRules.hostForm.intro")}</p>
-          <form action={saveSessionHostCompany} className="mt-4 space-y-4">
-            <label className="block">
-              <span className="text-label text-fg-heading">{t("companyRules.hostForm.sessionId")}</span>
-              <input name="sessionId" type="text" required className={field} />
-            </label>
-            <label className="block">
-              <span className="text-label text-fg-heading">{t("companyRules.hostForm.company")}</span>
-              <select name="companyId" className={field}>
-                <option value="">{t("companyRules.hostForm.none")}</option>
-                {data.companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-              {t("companyRules.hostForm.submit")}
-            </button>
-          </form>
+        <SectionHeader as="h2" id="company-rules-heading" title={t("companyRules.heading")} description={t("companyRules.intro")} />
+        <div className="mt-4">
+          <CompanyRulesTable rules={data.companyRules} hostingAction={saveCompanyHostingRule.bind(null, bound)} percentAction={saveCompanyPercentRule.bind(null, bound)} />
         </div>
-
-        {data.companyHistory.length > 0 ? (
-          <div className="mt-8">
-            <h3 className="text-label text-fg-heading">{t("history.heading")}</h3>
-            <ul className="mt-4 space-y-2">
-              {data.companyHistory.map((row, i) => (
-                <li key={i} className="rounded-field border border-edge p-3 text-body-sm text-fg-muted">
-                  <bdi>{row.field}</bdi>: <bdi>{JSON.stringify(row.oldValue)}</bdi> → <bdi>{JSON.stringify(row.newValue)}</bdi>
-                  {" — "}
-                  {formatDateTime(row.changedAt, "Asia/Riyadh", locale)}
-                </li>
-              ))}
-            </ul>
+        <section aria-labelledby="host-company-heading" className="mt-8">
+          <SectionHeader as="h3" id="host-company-heading" title={t("hostCompany.heading")} description={t("hostCompany.intro")} />
+          <div className="mt-4">
+            <HostCompanyForm action={saveSessionHostCompany.bind(null, bound)} sessions={sessions} companies={data.companies} timeZone={data.timeZone} locale={locale} />
           </div>
-        ) : null}
+        </section>
       </section>
 
-      <section aria-labelledby="manual-heading" className="mt-12 max-w-xl">
-        <h2 id="manual-heading" className="text-h2 text-fg-heading">
-          {t("manual.heading")}
-        </h2>
-        <p className="mt-2 text-body text-fg-muted">{t("manual.intro")}</p>
-        <form action={saveManualAdjustment} className="mt-4 space-y-4">
-          <MemberPicker
-            members={members ?? []}
-            name="memberId"
-            label={t("manual.member")}
-            required
-            placeholder={tp("placeholder")}
-            noMatches={tp("noMatches")}
-          />
-          <label className="block">
-            <span className="text-label text-fg-heading">{t("manual.amount")}</span>
-            <input name="amount" type="number" required className={field} />
-          </label>
-          <label className="block">
-            <span className="text-label text-fg-heading">{t("manual.reason")}</span>
-            <textarea name="reason" required rows={2} className={field} style={{ height: "auto" }} />
-          </label>
-          <button type="submit" className="h-11 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-            {t("manual.submit")}
-          </button>
-        </form>
+      <section aria-labelledby="manual-heading" className="mt-12">
+        <SectionHeader as="h2" id="manual-heading" title={t("manual.heading")} description={t("manual.intro")} />
+        <div className="mt-4">
+          <ManualAdjustmentForm action={saveManualAdjustment.bind(null, bound)} members={members ?? []} />
+        </div>
       </section>
 
       <section aria-labelledby="history-heading" className="mt-12">
-        <h2 id="history-heading" className="text-h2 text-fg-heading">
-          {t("history.heading")}
-        </h2>
-        {data.history.length === 0 ? (
-          <p className="mt-4 text-body text-fg-muted">{t("history.empty")}</p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {data.history.map((row, i) => (
-              <li key={i} className="rounded-field border border-edge p-3 text-body-sm text-fg-muted">
-                <bdi>{row.field}</bdi>: <bdi>{JSON.stringify(row.oldValue)}</bdi> → <bdi>{JSON.stringify(row.newValue)}</bdi>
-                {" — "}
-                {formatDateTime(row.changedAt, "Asia/Riyadh", locale)}
-              </li>
-            ))}
-          </ul>
-        )}
+        <SectionHeader as="h2" id="history-heading" title={t("history.heading")} description={t("history.intro")} />
+        <div className="mt-4">
+          <HistoryTable rows={history} timeZone={data.timeZone} locale={locale} />
+        </div>
       </section>
     </>
   );
