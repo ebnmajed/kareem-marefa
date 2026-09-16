@@ -50,6 +50,25 @@ export function SessionControls({
   const formId = useId();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // ★ Closing the dialog is DERIVED from `state`, adjusted DURING RENDER —
+  // not a `setConfirmOpen(false)` in the confirm button's own `onClick`
+  // (this dialog's original shape). A real build's own run found the
+  // toast never arriving after confirming cancel: the confirm button is
+  // portalled outside the `<form>` it submits via `form={formId}`, and
+  // closing the dialog synchronously on click — before the round trip that
+  // `<form>` submission starts even resolves — is exactly the class of
+  // timing this codebase has already had to work around twice this wave
+  // (the toast-from-a-same-commit-unmount bug, DEC-135's lost React ping).
+  // Deriving the close from the actual result removes the race outright,
+  // closing on ANY new result — this dialog's own error lives OUTSIDE it,
+  // in the `role="alert"` paragraph above the plain buttons, so there is
+  // nothing to keep the dialog open to show.
+  const [lastHandledState, setLastHandledState] = useState(state);
+  if (state !== lastHandledState) {
+    setLastHandledState(state);
+    setConfirmOpen(false);
+  }
+
   useEffect(() => {
     if (state.done) toast.show({ title: t("transitionDone"), tone: "success" });
     else if (state.error) toast.show({ title: t(state.error), tone: "error" });
@@ -106,7 +125,7 @@ export function SessionControls({
                   <p>{t("cancelConfirmBody")}</p>
                 </Prose>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <Button type="submit" form={formId} name="action" value="cancel" variant="danger" disabled={pending} onClick={() => setConfirmOpen(false)}>
+                  <Button type="submit" form={formId} name="action" value="cancel" variant="danger" disabled={pending}>
                     {t("cancelConfirmAction")}
                   </Button>
                   <DialogClose asChild>

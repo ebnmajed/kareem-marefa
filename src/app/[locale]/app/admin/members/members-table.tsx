@@ -229,6 +229,15 @@ export function MembersTable({
             <p className="text-label text-fg-heading">
               <bdi>{m.displayName ?? m.email}</bdi>
             </p>
+            {/* ★ REQ-ADM-009: the admin sees every member's email — a real
+                build's own run found it missing entirely once `displayName`
+                is set, since it only ever appeared as THAT field's fallback.
+                A second, always-visible line, matching the deleted
+                `member-row.tsx`'s own shape — `dir="ltr"` because an email
+                stays Latin-script regardless of locale. */}
+            <p className="mt-0.5 text-caption text-fg-muted">
+              <bdi dir="ltr">{m.email}</bdi>
+            </p>
             <Link href={`/app/members/${m.id}`} quiet className="text-caption text-fg-muted underline underline-offset-4 hover:text-fg-heading">
               {t("viewProfile")}
             </Link>

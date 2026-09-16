@@ -20,10 +20,11 @@ function renderCard(action: (prev: { error: string | null; done: boolean; reason
     </NextIntlClientProvider>,
   );
   // ★ jsdom does not hide a closed <details>'s content from queries the way a
-  // real browser/Playwright does (both `reject-reason` and
-  // `request_changes-reason` textareas share one label text) — scoping to
-  // the reject `<details>` specifically is what the e2e spec gets from the
-  // browser's own accessibility tree for free.
+  // real browser/Playwright does — scoping to the reject `<details>`
+  // specifically is what the e2e spec gets from the browser's own
+  // accessibility tree for free. (Each decision's reason box has its own
+  // label now — `reasonLabelReject`/`reasonLabelRequestChanges` — a real
+  // build's own run found them sharing one before.)
   const rejectDetails = screen.getByText("ارفض المقترح").closest("details")!;
   return within(rejectDetails);
 }
@@ -34,7 +35,7 @@ describe("ReviewCard — reject confirmation", () => {
     const reject = renderCard(action);
 
     await userEvent.click(reject.getByText("ارفض المقترح"));
-    await userEvent.type(reject.getByLabelText("السبب الذي سيصل صاحب المقترح"), "سبب الرفض");
+    await userEvent.type(reject.getByLabelText("سبب الرفض الذي سيصل صاحب المقترح"), "سبب الرفض");
     await userEvent.click(reject.getByRole("button", { name: "أرسل" }));
 
     const dialog = await screen.findByRole("dialog", { name: "رفض «مقترح تجريبي»؟" });
@@ -50,7 +51,7 @@ describe("ReviewCard — reject confirmation", () => {
     const reject = renderCard(action);
 
     await userEvent.click(reject.getByText("ارفض المقترح"));
-    await userEvent.type(reject.getByLabelText("السبب الذي سيصل صاحب المقترح"), "سبب الرفض");
+    await userEvent.type(reject.getByLabelText("سبب الرفض الذي سيصل صاحب المقترح"), "سبب الرفض");
     await userEvent.click(reject.getByRole("button", { name: "أرسل" }));
     await userEvent.click(await screen.findByRole("button", { name: "تأكيد الرفض" }));
 

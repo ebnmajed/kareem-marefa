@@ -88,8 +88,8 @@ export function ReviewCard({
             <Button type="submit" name="action" value="approve" disabled={pending}>
               {t("approve")}
             </Button>
-            <Reason label={t("requestChanges")} decision="request_changes" pending={pending} typed={state.reason} formId={formId} proposalTitle={proposalTitle} />
-            <Reason label={t("reject")} decision="reject" pending={pending} typed={state.reason} formId={formId} proposalTitle={proposalTitle} />
+            <Reason label={t("requestChanges")} decision="request_changes" pending={pending} typed={state.reason} formId={formId} proposalTitle={proposalTitle} state={state} />
+            <Reason label={t("reject")} decision="reject" pending={pending} typed={state.reason} formId={formId} proposalTitle={proposalTitle} state={state} />
           </div>
         </form>
       </Panel>
@@ -126,6 +126,7 @@ function Reason({
   typed,
   formId,
   proposalTitle,
+  state,
 }: {
   label: string;
   decision: Decision;
@@ -133,18 +134,42 @@ function Reason({
   typed: string;
   formId: string;
   proposalTitle: string;
+  state: ReviewState;
 }) {
   const t = useTranslations("admin.proposals");
   const id = `${decision}-reason`;
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // ★ Closing the dialog is DERIVED from `state`, adjusted DURING RENDER —
+  // not a `setConfirmOpen(false)` in the confirm button's own `onClick`
+  // (this dialog's original shape). A real build's own run found the
+  // "reason required" alert never arriving after confirming reject with an
+  // empty box: the confirm button is portalled outside the `<form>` it
+  // submits via `form={formId}`, and closing the dialog synchronously on
+  // click — before the round trip that `<form>` submission starts even
+  // resolves — is exactly the class of timing this codebase has already had
+  // to work around twice this wave (the toast-from-a-same-commit-unmount
+  // bug, DEC-135's lost React ping). Deriving the close from the actual
+  // result removes the race outright, closing on ANY new result (not only
+  // `state.done`, unlike `report-card.tsx`'s version of this pattern) —
+  // this dialog's own error lives OUTSIDE it, in `ReviewCard`'s own alert,
+  // so there is nothing to keep the dialog open to show.
+  const [lastHandledState, setLastHandledState] = useState(state);
+  if (decision === "reject" && state !== lastHandledState) {
+    setLastHandledState(state);
+    setConfirmOpen(false);
+  }
   return (
     <details className="w-full" open={typed !== ""}>
       <summary className="inline-flex h-12 cursor-pointer list-none items-center rounded-field border border-edge-strong px-6 text-label text-fg-heading hover:bg-silver-100">
         {label}
       </summary>
       <div className="mt-3">
+        {/* ★ A real build's own run found both boxes sharing one label —
+            «السبب الذي سيصل صاحب المقترح» twice on one card, a screen
+            reader hearing two identical fields. Each names its own
+            decision now (`reasonLabelReject`/`reasonLabelRequestChanges`). */}
         <label htmlFor={id} className="text-label text-fg-heading">
-          {t("reasonLabel")}
+          {t(decision === "reject" ? "reasonLabelReject" : "reasonLabelRequestChanges")}
         </label>
         <p className="mt-1 text-body-sm text-fg-muted">{t("reasonHint")}</p>
         <textarea
@@ -170,7 +195,7 @@ function Reason({
                 <p>{t("rejectConfirmBody")}</p>
               </Prose>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Button type="submit" form={formId} name="action" value="reject" variant="danger" disabled={pending} onClick={() => setConfirmOpen(false)}>
+                <Button type="submit" form={formId} name="action" value="reject" variant="danger" disabled={pending}>
                   {t("rejectConfirmAction")}
                 </Button>
                 <DialogClose asChild>
