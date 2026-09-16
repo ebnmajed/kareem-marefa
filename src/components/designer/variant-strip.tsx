@@ -47,7 +47,11 @@ export function VariantStrip({ presets, current, onSelect, flagged, previews }: 
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onSelect(name)}
-                className={`flex min-h-11 flex-col items-center gap-1.5 rounded-field border p-2 ${
+                // `relative`, so the sr-only note below is positioned INSIDE the
+                // scroller: an absolutely positioned child whose containing
+                // block is outside it escapes the clip and, in RTL, widened a
+                // 390 px page to 822 (measured on this strip).
+                className={`relative flex min-h-11 flex-col items-center gap-1.5 rounded-field border p-2 ${
                   selected ? "border-edge-strong bg-silver-100" : "border-edge hover:border-edge-strong"
                 }`}
               >

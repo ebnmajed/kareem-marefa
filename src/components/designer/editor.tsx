@@ -42,9 +42,16 @@ import { AlertTriangleIcon, CheckIcon } from "@/components/ui/icons";
 // `renderDocumentToHtml()`'s real output, bindings come from real rows, the
 // faces load by SHA-256, autosave is a Route Handler (layer trees exceed the
 // 1 MB action cap), undo is fifty document-level steps. What changed is the
-// chrome above it: a toolbar, a tabbed rail, an inspector that shows only the
-// sections the selected layer has, the checks as a count that selects its
-// layer, and a strip of every variant.
+// chrome above it: a toolbar, a tabbed side panel — the inspector showing only
+// the sections the selected layer has, the layers, the data, the checks as a
+// count that selects its layer — and a strip of every variant.
+//
+// ★ TWO COLUMNS, NOT `16` §10.2's THREE. The studio lives inside the admin
+// console's content column, which is about 830 px wide at every desktop size;
+// a rail, a canvas and an inspector side by side there left the canvas 160 px
+// wide (measured). So the canvas takes the start column and one tabbed panel
+// the end — properties, layers, checks — one tap apart. The dynamic fields
+// are the document's own properties, so they sit under «المستند».
 //
 // ★ NO DRAGGING THIS WAVE (DEC-148). Every operation here is a tap: select in
 // the list or on the canvas, align, fit, reorder, type a number. That is
@@ -91,7 +98,7 @@ const AUTOSAVE_DELAY_MS = 1200;
 /** 06 §10: fifty steps. */
 const UNDO_STEPS = 50;
 
-type RailTab = "layers" | "data" | "checks";
+type PanelTab = "inspector" | "layers" | "checks";
 
 export function DesignerEditor(props: DesignerEditorProps) {
   const t = useTranslations("designer.editor");
@@ -106,7 +113,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>({ kind: "clean" });
-  const [rail, setRail] = useState<RailTab>("layers");
+  const [panel, setPanel] = useState<PanelTab>("layers");
   // 06 §10: undo/redo is document-level, fifty steps. A layer-level history
   // would let an undo half-apply an edit that touched two layers, and the
   // whole document is a few kilobytes.
@@ -341,6 +348,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   const { findings, measuring } = useCheckFindings({ document, bindings: props.bindings, fontsReady, assetSizes: props.assetSizes });
   const flagged = useMemo(() => new Set(findings.map((f) => f.preset)), [findings]);
+  const layerNames = useMemo(() => Object.fromEntries(document.layers.filter((l) => l.name).map((l) => [l.id, l.name as string])), [document.layers]);
 
   // ★ REQ-DSG-029: a check selects the layer that failed it, on the preset it
   // failed in — the canvas shows that variant with that layer outlined.
@@ -348,7 +356,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
     setPreset(finding.preset);
     setOverlays(true);
     setSelectedLayerId(finding.layerId);
-    setRail("layers");
+    setPanel("inspector");
+  }, []);
+
+  // Selecting on the CANVAS opens the layer's properties; selecting in the
+  // layer list stays in the list, so several rows can be reordered in a row.
+  const selectOnCanvas = useCallback((layerId: string | null) => {
+    setSelectedLayerId(layerId);
+    if (layerId) setPanel("inspector");
   }, []);
 
   const choosePreset = useCallback((name: PresetName) => {
@@ -400,7 +415,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       faces={props.faces}
       origin={props.origin}
       selectedLayerId={selectedLayerId}
-      onSelect={setSelectedLayerId}
+      onSelect={selectOnCanvas}
       lockedLayerIds={props.lockedLayerIds}
       placeholderLabel={placeholderLabel}
     />
@@ -409,7 +424,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const strip = <VariantStrip presets={presets} current={preset} onSelect={choosePreset} flagged={flagged} previews={props.variantPreviews} />;
 
   const overlaysSwitch = (
-    <Switch label={tpr(overlays ? "overlaysHide" : "overlaysShow")} checked={overlays} onCheckedChange={setOverlays} />
+    <Switch label={tpr("safeAreaLabel")} checked={overlays} onCheckedChange={setOverlays} />
   );
 
   return (
@@ -440,7 +455,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             </h2>
             {checksBadge}
           </div>
-          <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} />
+          <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />
         </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
           <h2 id="dr-bindings-m" className="text-h3 text-fg-heading">
@@ -451,9 +466,9 @@ export function DesignerEditor(props: DesignerEditorProps) {
       </div>
 
       {/* ── Desktop: the editor ─────────────────────────────────────────────
-          Composed for RTL: the rail sits at the start edge, the inspector at
-          the end, and both mirror with the document rather than being flipped
-          by a toggle (06 §10). */}
+          Composed for RTL: the canvas at the start edge, the panel at the end,
+          and both mirror with the document rather than being flipped by a
+          toggle (06 §10). */}
       <div className="hidden flex-col gap-4 xl:flex">
         <div role="toolbar" aria-label={t("title")} className="flex flex-wrap items-center gap-3 rounded-card border border-edge bg-surface px-4 py-2">
           <p className="text-label text-fg-muted">{t(`purpose.${props.purpose}`)}</p>
@@ -469,47 +484,13 @@ export function DesignerEditor(props: DesignerEditorProps) {
             </div>
           ) : null}
           <span className="grow" />
-          <button type="button" onClick={() => setRail("checks")} className="rounded-field">
+          <button type="button" onClick={() => setPanel("checks")} className="rounded-field">
             {checksBadge}
           </button>
           {overlaysSwitch}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[19rem_minmax(0,1fr)_20rem]">
-          <section aria-labelledby="dr-rail" className="flex min-w-0 flex-col gap-3">
-            <h2 id="dr-rail" className="sr-only">
-              {t("rail.label")}
-            </h2>
-            <Tabs
-              label={t("rail.label")}
-              value={rail}
-              onValueChange={(v) => setRail(v as RailTab)}
-              items={[
-                { value: "layers", label: t("rail.layers") },
-                { value: "data", label: t("rail.data") },
-                { value: "checks", label: t("rail.checks"), count: checksCount },
-              ]}
-            >
-              <div className="pt-4">
-                {rail === "layers" ? (
-                  <LayerList
-                    document={document}
-                    selectedLayerId={selectedLayerId}
-                    onSelect={setSelectedLayerId}
-                    onToggleHidden={toggleHidden}
-                    onReorder={reorder}
-                    lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
-                    canEdit={props.canEdit}
-                  />
-                ) : rail === "data" ? (
-                  <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
-                ) : (
-                  <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} />
-                )}
-              </div>
-            </Tabs>
-          </section>
-
+        <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
           <section aria-labelledby="dr-canvas" className="flex min-w-0 flex-col gap-3">
             <h2 id="dr-canvas" className="text-h3 text-fg-heading">
               {t("previewHeading")}
@@ -519,20 +500,61 @@ export function DesignerEditor(props: DesignerEditorProps) {
             {strip}
           </section>
 
-          <section aria-labelledby="dr-props" className="flex min-w-0 flex-col gap-2">
-            <h2 id="dr-props" className="text-h3 text-fg-heading">
-              {selected ? tprops("heading") : tp("documentHeading")}
+          <section aria-labelledby="dr-panel" className="flex min-w-0 flex-col gap-3">
+            <h2 id="dr-panel" className="sr-only">
+              {t("rail.label")}
             </h2>
-            <Inspector
-              document={document}
-              layer={selected}
-              locked={selected ? isLocked(selected.id) : false}
-              canEdit={props.canEdit}
-              fontFamilies={fontFamilies}
-              onPatchLayer={patchLayer}
-              onArrange={arrange}
-              onDocument={mutate}
-            />
+            <Tabs
+              label={t("rail.label")}
+              value={panel}
+              onValueChange={(v) => setPanel(v as PanelTab)}
+              items={[
+                { value: "inspector", label: tprops("heading") },
+                { value: "layers", label: t("rail.layers") },
+                { value: "checks", label: t("rail.checks"), count: checksCount },
+              ]}
+            >
+              <div className="pt-4">
+                {panel === "inspector" ? (
+                  <section aria-label={tprops("heading")} className="flex flex-col gap-2">
+                    {/* What the properties are OF: the layer's own name, or the
+                        document when nothing is selected. The tab already
+                        says «الخصائص». */}
+                    <h3 className="text-label text-fg-heading">
+                      <bdi>{selected ? (selected.name ?? selected.id) : tp("documentHeading")}</bdi>
+                    </h3>
+                    <Inspector
+                      document={document}
+                      layer={selected}
+                      locked={selected ? isLocked(selected.id) : false}
+                      canEdit={props.canEdit}
+                      fontFamilies={fontFamilies}
+                      onPatchLayer={patchLayer}
+                      onArrange={arrange}
+                      onDocument={mutate}
+                    />
+                    {selected ? null : (
+                      <div className="flex flex-col gap-3 pt-4">
+                        <h3 className="text-label text-fg-heading">{tb("heading")}</h3>
+                        <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
+                      </div>
+                    )}
+                  </section>
+                ) : panel === "layers" ? (
+                  <LayerList
+                    document={document}
+                    selectedLayerId={selectedLayerId}
+                    onSelect={setSelectedLayerId}
+                    onToggleHidden={toggleHidden}
+                    onReorder={reorder}
+                    lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
+                    canEdit={props.canEdit}
+                  />
+                ) : (
+                  <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />
+                )}
+              </div>
+            </Tabs>
           </section>
         </div>
       </div>

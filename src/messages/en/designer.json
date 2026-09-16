@@ -42,7 +42,6 @@
       "rail": {
         "label": "Editor panels",
         "layers": "Layers",
-        "data": "Data",
         "checks": "Checks"
       },
       "scheme": {
@@ -134,8 +133,6 @@
         "cert_portrait": "Certificate, portrait"
       },
       "size": "<bdi>{width}</bdi> × <bdi>{height}</bdi>",
-      "overlaysShow": "Show the safe area",
-      "overlaysHide": "Hide the safe area",
       "safeAreaLabel": "Safe area",
       "bleedLabel": "Bleed",
       "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands.",

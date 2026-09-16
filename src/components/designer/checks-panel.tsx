@@ -52,6 +52,8 @@ export interface ChecksPanelProps {
   /** ★ REQ-DSG-029: «clicking a failed check moves the selection to the layer
    *  that failed it». A check that does not point at its layer is a riddle. */
   onGoTo?: (finding: CheckFinding) => void;
+  /** Layer id → its name in the layer list. */
+  layerNames?: Record<string, string>;
 }
 
 export type CheckFinding =
@@ -141,10 +143,35 @@ export function useCheckFindings({ document: doc, bindings, fontsReady, assetSiz
   return { findings, measuring: !fontsReady };
 }
 
-export function ChecksPanel({ findings, measuring, onGoTo }: ChecksPanelProps) {
+/** One line per (check, layer): the same overflow on seven presets is one
+ *  problem with seven places, not seven problems — a list of thirteen near-
+ *  identical rows buried the one that mattered at 390 px (seen on the capture). */
+interface FindingGroup {
+  key: string;
+  first: CheckFinding;
+  presets: PresetName[];
+  overflowPx: number;
+  ppi: number;
+}
+
+function group(findings: CheckFinding[]): FindingGroup[] {
+  const groups = new Map<string, FindingGroup>();
+  for (const f of findings) {
+    const key = `${f.kind}|${f.layerId}|${f.kind === "ppi" ? f.severity : ""}`;
+    const g = groups.get(key) ?? { key, first: f, presets: [], overflowPx: 0, ppi: Number.POSITIVE_INFINITY };
+    if (!g.presets.includes(f.preset)) g.presets.push(f.preset);
+    if (f.kind === "safeArea") g.overflowPx = Math.max(g.overflowPx, f.overflowPx);
+    if (f.kind === "ppi") g.ppi = Math.min(g.ppi, f.ppi);
+    groups.set(key, g);
+  }
+  return [...groups.values()];
+}
+
+export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {} }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");
   const blocked = findings.some((f) => f.kind === "ppi" && f.severity === "block");
+  const groups = useMemo(() => group(findings), [findings]);
 
   if (measuring && findings.length === 0) return <p className="text-body-sm text-fg-muted">{t("measuring")}</p>;
 
@@ -155,36 +182,28 @@ export function ChecksPanel({ findings, measuring, onGoTo }: ChecksPanelProps) {
         <p className="text-body-sm text-fg-heading">{t("clean")}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {findings.map((f, i) => (
-            <li key={`${f.kind}-${f.preset}-${f.layerId}-${i}`} className="flex flex-col gap-2 rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
-              <p>
-              {f.kind === "ppi"
-                ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", {
-                    layer: f.layerId,
-                    preset: tp(`name.${f.preset}`),
-                    ppi: formatNumber(f.ppi),
-                    bdi: (c) => <bdi>{c}</bdi>,
-                  })
-                : f.kind === "safeArea"
-                ? t.rich("safeArea", {
-                    layer: f.layerId,
-                    preset: tp(`name.${f.preset}`),
-                    px: formatNumber(f.overflowPx),
-                    bdi: (c) => <bdi>{c}</bdi>,
-                  })
-                : t.rich(f.kind === "min_size_reached" ? "minSize" : "maxLines", {
-                    layer: f.layerId,
-                    preset: tp(`name.${f.preset}`),
-                    bdi: (c) => <bdi>{c}</bdi>,
-                  })}
-              </p>
-              {onGoTo ? (
-                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => onGoTo(f)}>
-                  {t("goToLayer")}
-                </Button>
-              ) : null}
-            </li>
-          ))}
+          {groups.map((g) => {
+            const f = g.first;
+            // The layer's own name where it has one — «المكان», not «l_where».
+            const layer = layerNames[f.layerId] ?? f.layerId;
+            const preset = g.presets.map((p) => tp(`name.${p}`)).join("، ");
+            return (
+              <li key={g.key} className="flex flex-col gap-2 rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+                <p>
+                  {f.kind === "ppi"
+                    ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", { layer, preset, ppi: formatNumber(g.ppi), bdi: (c) => <bdi>{c}</bdi> })
+                    : f.kind === "safeArea"
+                      ? t.rich("safeArea", { layer, preset, px: formatNumber(g.overflowPx), bdi: (c) => <bdi>{c}</bdi> })
+                      : t.rich(f.kind === "min_size_reached" ? "minSize" : "maxLines", { layer, preset, bdi: (c) => <bdi>{c}</bdi> })}
+                </p>
+                {onGoTo ? (
+                  <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => onGoTo(f)}>
+                    {t("goToLayer")}
+                  </Button>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
       {blocked ? <p className="text-body-sm text-fg-muted">{t("ppiHint")}</p> : null}
