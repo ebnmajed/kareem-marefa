@@ -48,10 +48,11 @@ export function ScheduleForm({
     language: string;
     /** `sessions.allow_walk_ins` (DEC-117, DEC-118, contract 1) — `checkin`'s
      *  one feature-only field on this form, ★ transferred by DEC-137.
-     *  Optional so `page.tsx` (not in `checkin`'s edit list) keeps building
-     *  before its own one-line addition lands — condition (a)'s rule,
-     *  applied to a plain prop rather than a DAL function this time. */
-    allowWalkIns?: boolean;
+     *  Required: `page.tsx` reads it back as of `343991d`, so a page that
+     *  forgot to pass it is a build failure here, not a silent unchecked
+     *  box that writes `false` over a session's real setting on save (the
+     *  hazard `sessions` found and this type now makes impossible). */
+    allowWalkIns: boolean;
   };
 }) {
   const t = useTranslations("admin.schedule");
@@ -191,27 +192,17 @@ export function ScheduleForm({
           this same form — no in-room toggle exists anymore. An unchecked
           checkbox sends no key at all, so the action reads presence, never
           treating "absent" as "unchanged" (this form always states an
-          explicit value, unlike a reschedule call that skips the field).
-
-          ★ `allowWalkInsKnown` is an interim safety net, not the permanent
-          design: `initial.allowWalkIns` is optional because `page.tsx` (not
-          in checkin's edit list) doesn't read `allowWalkIns` back yet —
-          flagged to the lead, not yet landed. Until it does, the checkbox
-          below renders unchecked for EVERY session regardless of its real
-          value, and without this marker `saveSchedule()` would read that as
-          an explicit `false` and silently turn walk-ins off on save (found
-          by `sessions`). The marker lets the action distinguish "the box is
-          unchecked because it's really off" from "the box is unchecked
-          because we don't know yet" — sending `null` (unchanged) in the
-          second case. Delete this marker, and the `?? false` above, in the
-          same commit that makes `initial.allowWalkIns` required. */}
+          explicit value, unlike a reschedule call that skips the field) —
+          safe now that `initial.allowWalkIns` is required and always the
+          session's real value (the interim `allowWalkInsKnown` marker this
+          comment used to describe is gone as of `page.tsx`'s own read-back
+          at `343991d`). */}
       <div>
         <label className="flex min-h-11 items-center gap-3 text-body text-fg-body">
-          <input type="checkbox" name="allowWalkIns" defaultChecked={initial.allowWalkIns ?? false} className="size-5" />
+          <input type="checkbox" name="allowWalkIns" defaultChecked={initial.allowWalkIns} className="size-5" />
           {tc("allowWalkIns.label")}
         </label>
         <p className="mt-1 text-body-sm text-fg-muted">{tc("allowWalkIns.hint")}</p>
-        {initial.allowWalkIns !== undefined ? <input type="hidden" name="allowWalkInsKnown" value="1" /> : null}
       </div>
 
       <RtlDateTimePicker
