@@ -1,112 +1,61 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { splitDuration } from "@/components/admin/duration";
 import { formatNumber } from "@/components/sessions/numerals";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import type { Locale } from "@/i18n/routing";
 import { getReminderSchedule } from "@/lib/dal/notifications";
 import { saveReminderSchedule } from "./actions";
+import { RemindersForm } from "./reminders-form";
 
-// /app/admin/reminders — REQ-ADM-016, REQ-NTF-004, A19.
-//
-// Owned by `notify` for wave 2, handed to `console` at wave 3 — the same
-// carve-out DEC-042 made for `sessions` and the M2 admin screens.
+// SCR-060 · /app/admin/reminders — REQ-ADM-016, REQ-NTF-004, A19. Admin only:
+// `getReminderSchedule()` answers null for anyone else and the page answers
+// with the streamed not-found (`DEC-134`); a moderator never reaches it
+// (`REQ-ADM-020`), and `p2_admin_update` refuses the write regardless.
 //
 // The screen says the thing that is easy to disbelieve: changing this MOVES
 // pending reminders rather than duplicating them. It is true because the key
-// is the mechanism (08 §4.1) and because `org_settings_reschedule` cancels
-// the offsets the org abandoned, which no key-based replace could reach.
+// is the mechanism (08 §4.1) and because `org_settings_reschedule` cancels the
+// offsets the org abandoned, which no key-based replace could reach.
 //
-// The generic-message note (`admin.reminders.genericNote`, this track's own
-// namespace, not `notifications.json`) explains DEC-047's carried-over item
-// (console.md's story order item 3): a custom offset near none of the three
-// built-in messages now arrives with an honest, offset-agnostic one instead
-// of borrowing the nearest specific-sounding message
-// (`reminder_message_key()`, `supabase/proposed/console/
-// 0004_reminder_generic_message.sql`).
+// ★ Wave 8 (`DEC-147`): on the M9 system and the form model. The offsets are
+// rows of a number and a unit, each refused at its own row; «الجدول الحالي»
+// says the stored schedule in words, which is what a list of minutes never did.
 
-const field = "mt-1 block h-12 w-full rounded-field border border-edge-strong bg-canvas px-4 text-body text-fg-heading";
+const UNITS = ["minutes", "hours", "days"] as const;
+const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
 
-export default async function RemindersPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string }>;
-}) {
+export default async function RemindersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { saved, error } = await searchParams;
 
-  const [t, tg, schedule] = await Promise.all([
-    getTranslations("notifications.admin.reminders"),
-    getTranslations("admin.reminders"),
-    getReminderSchedule(locale),
-  ]);
+  const [t, schedule] = await Promise.all([getTranslations("notifications.admin.reminders"), getReminderSchedule(locale)]);
   if (!schedule) notFound();
+
+  const offsets = [...schedule.offsetsMinutes].sort((a, b) => b - a);
+  const prompt = splitDuration(schedule.ratingPromptDelayMinutes, "minutes", UNITS);
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-2 text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
-      {saved ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("saved")}
-        </p>
-      ) : null}
-      {error ? (
-        <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-          {t("error")}
-        </p>
-      ) : null}
+      <Panel className="mt-6 max-w-2xl">
+        <h2 className="text-label text-fg-heading">{t("currentTitle")}</h2>
+        <ul className="mt-2 space-y-1 text-body text-fg-body">
+          {offsets.map((minutes) => {
+            const { amount, unit } = splitDuration(minutes, "minutes", UNITS);
+            return <li key={minutes}>{t.rich(`before.${unit}`, { count: amount, value: formatNumber(amount), bdi })}</li>;
+          })}
+          <li>
+            {schedule.ratingPromptDelayMinutes === 0
+              ? t("promptImmediate")
+              : t.rich(`promptAfter.${prompt.unit}`, { count: prompt.amount, value: formatNumber(prompt.amount), bdi })}
+          </li>
+        </ul>
+      </Panel>
 
-      <form action={saveReminderSchedule} className="mt-8 max-w-xl space-y-5">
-        <div>
-          <label htmlFor="offsets" className="text-label text-fg-heading">
-            {t("offsets")}
-          </label>
-          {/* `dir="ltr"` on the input alone: a comma-separated list of digits
-              reads left to right inside a right-to-left page, and letting it
-              inherit puts the commas in the wrong places visually. */}
-          <input
-            id="offsets"
-            name="offsets"
-            required
-            dir="ltr"
-            inputMode="numeric"
-            defaultValue={schedule.offsetsMinutes.join(", ")}
-            className={`${field} text-start`}
-            aria-describedby="offsets-hint"
-          />
-          <p id="offsets-hint" className="mt-1 text-body-sm text-fg-muted">
-            {t.rich("offsetsHint", {
-              week: formatNumber(10080),
-              day: formatNumber(1440),
-              hours: formatNumber(120),
-              bdi: (chunks) => <bdi>{chunks}</bdi>,
-            })}
-          </p>
-          <p className="mt-2 text-body-sm text-fg-muted">{tg("genericNote")}</p>
-        </div>
-        <div>
-          <label htmlFor="promptDelay" className="text-label text-fg-heading">
-            {t("promptDelay")}
-          </label>
-          <input
-            id="promptDelay"
-            name="promptDelay"
-            required
-            dir="ltr"
-            inputMode="numeric"
-            defaultValue={String(schedule.ratingPromptDelayMinutes)}
-            className={`${field} text-start`}
-          />
-        </div>
-        <button
-          type="submit"
-          className="inline-flex h-12 items-center rounded-field bg-[var(--btn-bg)] px-7 text-label text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]"
-        >
-          {t("save")}
-        </button>
-      </form>
+      <RemindersForm action={saveReminderSchedule.bind(null, locale as Locale)} offsetsMinutes={offsets} promptMinutes={schedule.ratingPromptDelayMinutes} />
     </>
   );
 }

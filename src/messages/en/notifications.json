@@ -165,14 +165,45 @@
       },
       "reminders": {
         "title": "Reminder schedule",
-        "intro": "Reminders arrive these many minutes before a session. Changing the schedule moves pending reminders rather than duplicating them.",
-        "offsets": "Minutes before the session (comma separated)",
-        "offsetsHint": "The default is <bdi>{week}</bdi>, <bdi>{day}</bdi> and <bdi>{hours}</bdi> — a week, a day and two hours.",
-        "promptDelay": "Minutes after a session ends before the rating prompt",
+        "intro": "Reminders arrive this long before a session. Changing the schedule moves pending reminders rather than duplicating them.",
+        "currentTitle": "Current schedule",
+        "before": {
+          "minutes": "{count, plural, one {<bdi>{value}</bdi> minute} other {<bdi>{value}</bdi> minutes}} before",
+          "hours": "{count, plural, one {<bdi>{value}</bdi> hour} other {<bdi>{value}</bdi> hours}} before",
+          "days": "{count, plural, one {<bdi>{value}</bdi> day} other {<bdi>{value}</bdi> days}} before"
+        },
+        "promptImmediate": "Rating prompt: as soon as the session ends",
+        "promptAfter": {
+          "minutes": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> minute} other {<bdi>{value}</bdi> minutes}} after the session ends",
+          "hours": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> hour} other {<bdi>{value}</bdi> hours}} after the session ends",
+          "days": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> day} other {<bdi>{value}</bdi> days}} after the session ends"
+        },
+        "offsetsLegend": "Reminders before the session",
+        "offsetsHint": "From five minutes to thirty days, and six reminders at most.",
+        "offsetLabel": "Reminder <bdi>{n}</bdi>",
+        "removeOffset": "Remove reminder <bdi>{n}</bdi>",
+        "addOffset": "Add a reminder",
+        "offsetsMax": "Six reminders is the limit.",
+        "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day.",
+        "promptLabel": "Rating prompt after the session ends",
+        "promptHint": "Zero means as soon as the session ends; a week at most.",
         "save": "Save schedule",
+        "saving": "Saving…",
         "saved": "Schedule saved and pending reminders moved",
-        "error": "That could not be saved. Each value must be between five minutes and thirty days.",
-        "current": "Current schedule"
+        "errorSummaryTitle": "The schedule was not saved",
+        "errors": {
+          "offsetRequired": "Enter this reminder's time.",
+          "offsetInvalid": "Enter a whole number above zero.",
+          "offsetTooShort": "A reminder is at least five minutes before.",
+          "offsetTooLong": "A reminder is at most thirty days before.",
+          "offsetDuplicate": "Another reminder already has this time.",
+          "offsetsNone": "Add at least one reminder.",
+          "offsetsTooMany": "Six reminders at most.",
+          "promptRequired": "Enter the rating prompt's delay.",
+          "promptInvalid": "Enter a whole number, or zero to send it as the session ends.",
+          "promptTooLong": "The rating prompt is at most a week after.",
+          "failed": "The schedule could not be saved. Try again."
+        }
       }
     }
   }

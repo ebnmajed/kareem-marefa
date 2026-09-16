@@ -166,13 +166,44 @@
       "reminders": {
         "title": "جدول التذكيرات",
         "intro": "التذكيرات تصل قبل الجلسة بالمُدد التالية. تغيير الجدول يُحرّك التذكيرات المعلّقة ولا يُكرّرها.",
-        "offsets": "المُدد قبل الجلسة (بالدقائق، مفصولة بفاصلة)",
-        "offsetsHint": "الافتراضي <bdi>{week}</bdi> و<bdi>{day}</bdi> و<bdi>{hours}</bdi> — أي أسبوع، ويوم، وساعتان.",
-        "promptDelay": "مهلة دعوة التقييم بعد انتهاء الجلسة (بالدقائق)",
+        "currentTitle": "الجدول الحالي",
+        "before": {
+          "minutes": "قبل {count, plural, zero {<bdi>{value}</bdi> دقيقة} one {دقيقة} two {دقيقتين} few {<bdi>{value}</bdi> دقائق} many {<bdi>{value}</bdi> دقيقة} other {<bdi>{value}</bdi> دقيقة}}",
+          "hours": "قبل {count, plural, zero {<bdi>{value}</bdi> ساعة} one {ساعة} two {ساعتين} few {<bdi>{value}</bdi> ساعات} many {<bdi>{value}</bdi> ساعة} other {<bdi>{value}</bdi> ساعة}}",
+          "days": "قبل {count, plural, zero {<bdi>{value}</bdi> يوم} one {يوم} two {يومين} few {<bdi>{value}</bdi> أيام} many {<bdi>{value}</bdi> يومًا} other {<bdi>{value}</bdi> يوم}}"
+        },
+        "promptImmediate": "دعوة التقييم: فور انتهاء الجلسة",
+        "promptAfter": {
+          "minutes": "دعوة التقييم: بعد {count, plural, zero {<bdi>{value}</bdi> دقيقة} one {دقيقة} two {دقيقتين} few {<bdi>{value}</bdi> دقائق} many {<bdi>{value}</bdi> دقيقة} other {<bdi>{value}</bdi> دقيقة}} من انتهاء الجلسة",
+          "hours": "دعوة التقييم: بعد {count, plural, zero {<bdi>{value}</bdi> ساعة} one {ساعة} two {ساعتين} few {<bdi>{value}</bdi> ساعات} many {<bdi>{value}</bdi> ساعة} other {<bdi>{value}</bdi> ساعة}} من انتهاء الجلسة",
+          "days": "دعوة التقييم: بعد {count, plural, zero {<bdi>{value}</bdi> يوم} one {يوم} two {يومين} few {<bdi>{value}</bdi> أيام} many {<bdi>{value}</bdi> يومًا} other {<bdi>{value}</bdi> يوم}} من انتهاء الجلسة"
+        },
+        "offsetsLegend": "التذكيرات قبل الجلسة",
+        "offsetsHint": "من خمس دقائق إلى ثلاثين يومًا، وستة تذكيرات على الأكثر.",
+        "offsetLabel": "التذكير <bdi>{n}</bdi>",
+        "removeOffset": "أزل التذكير <bdi>{n}</bdi>",
+        "addOffset": "أضف تذكيرًا",
+        "offsetsMax": "ستة تذكيرات هي الحد.",
+        "genericNote": "المواعيد القريبة من أسبوع أو يوم أو ساعتين تصل برسالة مخصّصة. أي موعد آخر تختاره يصل برسالة عامة تذكر التاريخ والوقت بدقة، دون افتراض أنه أسبوع أو يوم كامل.",
+        "promptLabel": "دعوة التقييم بعد انتهاء الجلسة",
+        "promptHint": "صفر يعني فور انتهاء الجلسة، وأسبوع على الأكثر.",
         "save": "احفظ الجدول",
+        "saving": "جارٍ الحفظ…",
         "saved": "حُفظ الجدول وحُرّكت التذكيرات المعلّقة",
-        "error": "تعذّر الحفظ. تأكد من أن كل مدة بين خمس دقائق وثلاثين يومًا.",
-        "current": "الجدول الحالي"
+        "errorSummaryTitle": "لم يُحفظ الجدول",
+        "errors": {
+          "offsetRequired": "اكتب مدة هذا التذكير.",
+          "offsetInvalid": "اكتب عددًا صحيحًا أكبر من صفر.",
+          "offsetTooShort": "أقصر مدة للتذكير خمس دقائق.",
+          "offsetTooLong": "أطول مدة للتذكير ثلاثون يومًا.",
+          "offsetDuplicate": "هذه المدة في تذكير آخر.",
+          "offsetsNone": "أضف تذكيرًا واحدًا على الأقل.",
+          "offsetsTooMany": "ستة تذكيرات على الأكثر.",
+          "promptRequired": "اكتب مهلة دعوة التقييم.",
+          "promptInvalid": "اكتب عددًا صحيحًا، أو صفرًا لتصل فور انتهاء الجلسة.",
+          "promptTooLong": "أطول مهلة لدعوة التقييم أسبوع.",
+          "failed": "تعذّر حفظ الجدول. حاول مرة أخرى."
+        }
       }
     }
   }

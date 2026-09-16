@@ -536,14 +536,20 @@
       "sortDescending": "sorted descending",
       "sortNone": "not sorted"
     },
-    "reminders": {
-      "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day."
-    },
     "error": {
       "title": "This page could not be shown",
       "description": "Something went wrong in the admin console. Try again, or go back to the dashboard.",
       "retry": "Try again",
       "back": "Back to the dashboard"
+    },
+    "duration": {
+      "unitLabel": "<bdi>{field}</bdi> — unit",
+      "units": {
+        "seconds": "seconds",
+        "minutes": "minutes",
+        "hours": "hours",
+        "days": "days"
+      }
     }
   }
 }
