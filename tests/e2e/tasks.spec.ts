@@ -155,10 +155,15 @@ test("★ REQ-TSK-004: a member marks a checklist task done, and it persists acr
   await signIn(context, memberEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة", exact: true, level: 2 })).toBeVisible();
-  await expect(page.getByText("أحضر جهازك المحمول")).toBeVisible();
+  // Scoped to #tasks (the slot's own section, `sessions.md` §22.2): unscoped,
+  // this now resolves to a second element elsewhere on the page — the RSVP
+  // this fixture seeds (wave-7 plan §4 item 3) is what makes the section
+  // visible at all, so this ambiguity was never exercised before.
+  const tasksSection = page.locator("#tasks");
+  await expect(tasksSection.getByText("أحضر جهازك المحمول")).toBeVisible();
 
-  await page.getByRole("button", { name: "أنجزتها" }).click();
-  await expect(page.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
+  await tasksSection.getByRole("button", { name: "أنجزتها" }).click();
+  await expect(tasksSection.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
   await review(page, "tasks-event-page");
 
   await page.reload();

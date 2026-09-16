@@ -104,6 +104,35 @@ describe("ProfileForm", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("تم الحفظ"));
   });
 
+  // ★ The lead's real-capture finding (wave7-content-me-populated-saved.png):
+  // after a successful save, the company select showed the placeholder even
+  // though the submitted company DID persist. Root cause: `saveProfile`'s
+  // success path never bumps `state.attempt` (`lib/form-state.ts`'s
+  // `formStateFrom` only counts failures — correct for `hasAttempted`'s real
+  // job, gating inline validation), so `hasAttempted(state)` alone reads
+  // FALSE right after a save and `value()` fell back to `me` instead of
+  // echoing `state.values`. That was invisible for `Input`/`Textarea`
+  // (React never re-syncs an uncontrolled `defaultValue` after mount) but
+  // not for `Select`, which React DOES re-apply on every render — this is
+  // deliberately a case `me` has NOT caught up with the save (companyId
+  // still null), so a passing assertion here proves the echo, not a lucky
+  // fresh prop.
+  it("echoes the saved company back into the select even when `me` has not caught up yet", async () => {
+    saveProfile.mockResolvedValueOnce({
+      errors: {},
+      formError: null,
+      values: { displayName: "ريم العتيبي", companyId: "c1", jobTitle: "مهندسة", bio: "" },
+      lists: {},
+      attempt: 0,
+      saved: true,
+    });
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "حفظ" }));
+
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("تم الحفظ"));
+    expect(screen.getByLabelText("الشركة")).toHaveValue("c1");
+  });
+
   it("is axe-clean", async () => {
     const { container } = renderForm();
     const results = await axe.run(container);

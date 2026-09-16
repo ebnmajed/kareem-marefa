@@ -54,7 +54,8 @@ describe("PointsHistoryList", () => {
   it("renders a plain award with no reversal or manual tag", async () => {
     await renderList([row()]);
     expect(screen.getByText("تسجيل حضور")).toBeInTheDocument();
-    expect(screen.getByText("+5")).toBeInTheDocument();
+    const amountNode = screen.getByText("+5");
+    expect(amountNode).toHaveAttribute("dir", "ltr"); // same fix, the "+" side
     expect(screen.queryByText("إلغاء نقاط سابقة")).not.toBeInTheDocument();
     expect(screen.queryByText("تعديل يدوي من الإدارة")).not.toBeInTheDocument();
   });
@@ -87,6 +88,12 @@ describe("PointsHistoryList", () => {
 
     const amountNode = screen.getByText(/-5/);
     expect(amountNode.tagName).toBe("BDI");
+    // ★ The lead's real-capture finding: `formatNumber` drops ICU's LRM, so
+    // a bare `<bdi>` resolves RTL and the sign lands AFTER the digits ("5-"
+    // in a real browser) — invisible to jsdom's own layout-free text
+    // content, which is exactly why this asserts the ATTRIBUTE, not just
+    // the string. `dir="ltr"` pins the isolate's direction explicitly.
+    expect(amountNode).toHaveAttribute("dir", "ltr");
     // Strip only bidi CONTROL characters (LRM/RLM) — a sign or digit lost
     // would change this comparison, a bidi mark alone must not.
     expect(amountNode.textContent?.replace(/[‎‏]/g, "")).toBe("-5");

@@ -36,7 +36,14 @@ export async function PointsHistoryList({ rows, timeZone }: { rows: PointsLedger
                   <bdi>{row.reason}</bdi>
                 </p>
                 <p className="shrink-0 text-label text-fg-heading">
-                  <bdi>
+                  {/* `dir="ltr"`, not just `<bdi>`: `formatNumber` (sessions'
+                      numerals.ts) drops ICU's LRM, so a negative amount's own
+                      "-" — or this "+" — resolves RTL inside a bare bdi and
+                      lands AFTER the digits ("20-" instead of "-20"). The
+                      isolate stays; only its direction is pinned, because
+                      Western digits and their sign always read left to right
+                      regardless of the surrounding Arabic. */}
+                  <bdi dir="ltr">
                     {sign}
                     {formatNumber(row.amount)}
                   </bdi>

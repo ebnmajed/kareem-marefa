@@ -34,6 +34,7 @@ let db: pg.Client;
 let orgId = "";
 let domain = "";
 let memberEmail = "";
+let companyId = "";
 const userIds: string[] = [];
 
 test.beforeAll(async ({}, testInfo) => {
@@ -50,7 +51,11 @@ test.beforeAll(async ({}, testInfo) => {
   orgId = rows[0].id;
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
-  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة الاختبار')`, [orgId]);
+  const { rows: companyRows } = await db.query<{ id: string }>(
+    `insert into public.companies (org_id, name) values ($1, 'شركة الاختبار') returning id`,
+    [orgId],
+  );
+  companyId = companyRows[0].id;
 
   memberEmail = `member@${domain}`;
   const { data, error } = await admin.auth.admin.createUser({
@@ -128,6 +133,14 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await page.getByRole("button", { name: "حفظ" }).click();
   await expect(page.getByRole("status")).toContainText("تم الحفظ");
   await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو الملف المُحدَّث");
+  // ★ The lead's real-capture finding (wave7-content-me-populated-saved.png):
+  // this went unchecked before — only displayName's value was asserted —
+  // and the company select showed the placeholder after a save that DID
+  // persist it. Root cause was a read-back bug in profile-form.tsx: an
+  // uncontrolled `<select defaultValue>` never re-syncs on a re-render, so
+  // the just-saved company never reached the DOM even once `value()` itself
+  // computed correctly (fixed by keying the field on its own value).
+  await expect(page.getByLabel("الشركة")).toHaveValue(companyId);
   await capture(page, "populated-saved");
 
   // The tab strip is real navigation — every route stays reachable, and a
