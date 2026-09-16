@@ -912,3 +912,49 @@ already recorded above (the four RLS-proven targets plus the fifth, the presente
 `attendee_bonus`); what's left is the UI: the control itself, its confirmation, and the report's own
 redesign to show a removed row with its reason (flagged as C3's own scope back when the `removed_at`
 stopgap first landed, `dal/checkin.ts`'s `getAttendanceReport()` comment).
+
+## C3 committed — `bfe8e2a`
+
+Built onto the lead's restated constraints (admin-only, mandatory reason, `ui/dialog` naming member
+AND session, copy saying nothing is deleted and points reverse through a separate ledger entry,
+removed rows stay visible with reason/remover, re-adding falls through to the ordinary manual mark —
+confirmed, needs nothing new). `getAttendanceReport()` drops the `removed_at is null` stopgap filter
+entirely and picks a member's active row when one exists, else their most-recently-removed one.
+`removeCheckIn()` wraps `remove_check_in()` with `not_a_member`/`stale_claims`/`not_an_admin` kept as
+three separate names (`admin-members.ts`'s own convention, not collapsed). `RemoveCheckInForm`
+mirrors `ManualMarkForm`'s shape but keeps both fields CONTROLLED (not `defaultValue` + remount) so
+the dialog's own text can read the current selection — the confirm button inside the dialog calls
+`formRef.current?.requestSubmit()` as a plain button, never `DialogClose` wrapping the submit
+(`takedown-button.tsx`'s own documented real-build timeout for that exact shape).
+
+★ A real bug this round, caught only because the lead corrected my verification plan: my first
+`getAttendanceReport()` rewrite dropped `member_id` from the `check_ins` select entirely — every row
+collapsed into one bogus map entry keyed `undefined`. The `memorySupabase()` unit test stub never
+caught it (it ignores a select's column list on purpose, so the fixture row always had every field
+regardless); only a real e2e run against real PostgREST surfaced it, and even that was nearly wasted —
+the local build Playwright was serving was frozen at 18:36, before this session's C3 work existed at
+all, so the pass/fail from that first run said nothing real. **Local e2e cannot validate same-session
+UI work here** — the `.next` `webServer` never rebuilds; verification for anything built and committed
+in one sitting has to be tsc + lint + a component test (jsdom), and e2e specs are written to be
+exercised at the LEAD's next sync build, not by me, locally, the same day. `tests/components/checkin/
+remove-check-in-form.test.tsx` is what actually proved the dialog/action wiring this round.
+
+★ DEC-137 applied to a whole route for the first time (`schedule-form.tsx`'s walk-in field was one
+field in someone else's screen; this route is entirely mine): `checkin.attendance` replaces
+`admin.attendance` as this page's and `manual-mark-form.tsx`'s namespace, both languages. The old block
+in `admin.json` is dead, not deleted — that's `console`'s call on request, one writer per file.
+
+★ `noValidate` swept onto every one of `checkin`'s forms that renders an app-side error beside a
+native `required` field, per `content`'s real-build finding (`7f4809f`): `remove-check-in-form.tsx`,
+`manual-mark-form.tsx`, `schedule-form.tsx` (the lead's own one-off request — touched only this one
+attribute, nothing else, respecting the feature-only boundary on that file), `check-in/page.tsx`,
+`host/page.tsx`'s manual-mark form. The other two forms on `host/page.tsx` (revoke, the switch) have
+no `required` field and no app-side field error, so the rule doesn't reach them — left alone,
+per the rule's own carve-out ("relies only on native required with no app-side error" is M13's).
+
+The 5 named captures (`wave7-checkin-attendance-{populated,remove-dialog,removed}.png`,
+`wave7-checkin-host-{open,closed}.png`, phone project, 390×844) are wired into the two specs,
+guarded to fire only on the phone project — they'll come out of the lead's next sync build, not this
+session's stale one.
+
+Gate: `tsc` clean, `lint` 0 errors, `npm test` 1435/1435.
