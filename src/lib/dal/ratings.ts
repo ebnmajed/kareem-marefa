@@ -72,7 +72,9 @@ export async function getRatingEligibility(locale: string, sessionId: string): P
   const { session, supabase } = await sessionClient(locale);
   const [{ data: sessionRow }, { data: checkIn }, { data: settings }, { data: existingRow }] = await Promise.all([
     supabase.from("sessions").select("id, state, completed_at").eq("id", sessionId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+    // ★ A removed check-in grants nothing (REQ-CHK-017): the database refuses the
+    // rating (0087, POL-ratings.write_self_excludes_removed), so the gate agrees.
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
     supabase.from("org_settings").select("rating_window_days").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("ratings")

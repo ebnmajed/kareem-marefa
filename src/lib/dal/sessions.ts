@@ -601,7 +601,11 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const [presentersRes, mineRes, checkInRes, tagsRes] = await Promise.all([
     supabase.from("session_presenters").select("member_id, accepted").eq("session_id", id).eq("accepted", true),
     supabase.from("rsvps").select("status").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
+    // ★ `removed_at is null` (REQ-CHK-017, 0087): an admin's removal soft-deletes
+    // the row and RLS does not hide it, so the reader says «active» itself —
+    // and with a removed row beside a re-added one, `.maybeSingle()` would
+    // otherwise refuse two rows.
+    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
     supabase.from("session_tags").select("tags(label, normalised)").eq("session_id", id),
   ]);
   const { data: presenters, error: pErr } = presentersRes;

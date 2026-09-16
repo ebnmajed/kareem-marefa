@@ -3,28 +3,16 @@
 // their no-show and late-cancellation record; a moderator and a member see
 // none of it about anyone. And a REMOVED check-in (REQ-CHK-017) is not
 // attendance — it is not counted, not listed, and leaves a no-show behind.
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-// Promoted as a migration, each file stops existing and the suite proves what
-// `supabase db reset` applied. `checkin`'s removal comes first: this function
-// reads `check_ins.removed_at`, which that file adds.
-const PROPOSED = [
-  "checkin/01_check_in_window.sql",
-  "checkin/02_walk_ins_publishing.sql",
-  "checkin/03_manual_mark.sql",
-  "checkin/04_attendance_removal.sql",
-  "sessions/01_admin_member_profile.sql",
-].filter((f) => existsSync(join(process.cwd(), "supabase", "proposed", f)));
-
+// Promoted as `0090`, after checkin's removal (`0087`) adds the `removed_at` it
+// reads — so the suite proves what `supabase db reset` applied.
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  for (const file of PROPOSED) await applyProposed(tx, file);
   await tx.asOwner();
   return f;
 }

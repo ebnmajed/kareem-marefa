@@ -126,7 +126,8 @@ export async function getTimeline(locale: string, query: TimelineQuery, now: Dat
     supabase.from("venues").select("id, name").eq("org_id", session.orgId).order("name"),
     supabase.from("companies").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
-    statusFilter === "ended" ? supabase.from("check_ins").select("session_id").eq("member_id", session.memberId) : Promise.resolve({ data: [], error: null }),
+    // «حضرت» only for an ACTIVE check-in — a removed one stays in the table (REQ-CHK-017, 0087).
+    statusFilter === "ended" ? supabase.from("check_ins").select("session_id").eq("member_id", session.memberId).is("removed_at", null) : Promise.resolve({ data: [], error: null }),
   ]);
   if (sessionsRes.error) throw new Error(`sessions: ${sessionsRes.error.message}`);
   if (presentersRes.error) throw new Error(`session_presenters: ${presentersRes.error.message}`);
@@ -258,7 +259,7 @@ export async function getTimelineSessionsByIds(locale: string, ids: string[], no
     supabase.from("rsvps").select("session_id, status").eq("member_id", session.memberId).in("status", ["confirmed", "waitlisted"]).in("session_id", wanted),
     supabase.from("bookmarks").select("session_id").eq("member_id", session.memberId).in("session_id", wanted),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
-    supabase.from("check_ins").select("session_id").eq("member_id", session.memberId).in("session_id", wanted),
+    supabase.from("check_ins").select("session_id").eq("member_id", session.memberId).in("session_id", wanted).is("removed_at", null),
   ]);
   if (sessionsRes.error) throw new Error(`sessions: ${sessionsRes.error.message}`);
   if (presentersRes.error) throw new Error(`session_presenters: ${presentersRes.error.message}`);
