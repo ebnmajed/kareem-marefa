@@ -103,8 +103,10 @@ test("REQ-ADM-017: the admin sees all seven exports, and two representative down
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/exports");
   await expect(page.getByRole("heading", { name: "التصدير", level: 1 })).toBeVisible();
+  // Wave 8 (K2): a list, not seven headed boxes — each file is named by its own
+  // download control, on whichever of the table or the card list is on screen.
   for (const title of ["الجلسات", "الحجوزات", "الحضور", "التقييمات", "النقاط", "الشهادات", "الأعضاء"]) {
-    await expect(page.getByRole("heading", { name: title, level: 2 })).toBeVisible();
+    await expect(page.getByRole("button", { name: `نزِّل ملف ${title} بصيغة CSV` }).filter({ visible: true })).toBeVisible();
   }
 
   const membersCsv = await page.request.get("/api/admin/exports/members");
@@ -120,6 +122,13 @@ test("REQ-ADM-017: the admin sees all seven exports, and two representative down
   const sessionsText = (await sessionsCsv.body()).toString("utf8");
   expect(sessionsText).toContain("العنوان");
   expect(sessionsText).toContain("جلسة قابلة للتصدير");
+  // Wave 8 (DEC-148): Arabic values under Arabic headers, and dates a
+  // spreadsheet sorts, on the org's clock, with the clock named in the header.
+  expect(sessionsText).toContain("منشورة");
+  expect(sessionsText).toContain("تمهيدي");
+  expect(sessionsText).toContain("التاريخ والوقت (Asia/Riyadh)");
+  expect(sessionsText).toMatch(/,\d{4}-\d{2}-\d{2} \d{2}:\d{2},/);
+  expect(sessionsText).not.toMatch(/[\u0660-\u0669]/);
 
   const audit = await db.query<{ after: { export_type: string } }>(`select after from public.audit_log where org_id = $1 and action = 'export.created' order by occurred_at`, [orgId]);
   expect(audit.rows.map((r) => r.after.export_type)).toEqual(["members", "sessions"]);
@@ -163,4 +172,28 @@ test("SCR-061 at 390 px RTL: the exports list reads down the page, never sideway
   });
   expect(overflow, "the exports list must not scroll sideways at 390 px").toEqual([]);
   await page.screenshot({ path: `.qa-shots/rtl/scr-061-exports-390-rtl-${test.info().project.name}.png`, fullPage: true });
+});
+
+// Wave 8 (K2): the download is a control with a pending state and a failure
+// that says so; the file keeps the handler's Arabic name; the audit note is
+// true on the screen — the file shows who took it last.
+test("REQ-ADM-017: downloading from the screen saves the file under its Arabic name, audits it, and shows who took it", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "one project writes this org's audit rows; the capture is the phone's");
+  await page.setViewportSize(PHONE);
+  await signIn(context, adminEmail);
+  await page.goto("/ar/app/admin/exports");
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "نزِّل ملف الأعضاء بصيغة CSV" }) });
+  const [download] = await Promise.all([page.waitForEvent("download"), card.getByRole("button", { name: "نزِّل ملف الأعضاء بصيغة CSV" }).click()]);
+  expect(download.suggestedFilename()).toBe("الأعضاء.csv");
+  await expect(page.getByRole("status").filter({ hasText: "نُزِّل ملف الأعضاء" })).toBeVisible();
+  await expect(card).toContainText("مشرفة التصدير");
+
+  const { rows } = await db.query<{ n: string }>(`select count(*) n from public.audit_log where org_id = $1 and action = 'export.created' and after->>'export_type' = 'members'`, [orgId]);
+  expect(Number(rows[0].n)).toBeGreaterThanOrEqual(1);
+
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.getByRole("heading", { name: "التصدير", level: 1 }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${dir}/wave8-console-exports-audit-note.png` });
 });

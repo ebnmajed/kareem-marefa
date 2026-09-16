@@ -410,7 +410,7 @@
     },
     "exports": {
       "title": "Exports",
-      "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM and Arabic headers.",
+      "intro": "Every file is UTF-8 with a BOM, so Excel opens the Arabic directly; its headers are Arabic, and its dates are in a format Excel sorts, on your organisation's clock.",
       "download": "Download CSV",
       "sessions": {
         "title": "Sessions",
@@ -439,7 +439,21 @@
       "members": {
         "title": "Members",
         "note": "Name, email, role and status for every member."
-      }
+      },
+      "auditNote": "Every download is a bulk read of personal data, and is recorded in the audit log under your name.",
+      "auditLink": "Exports in the audit log",
+      "listLabel": "Export files",
+      "colExport": "File",
+      "colLast": "Last export",
+      "colDownload": "Download",
+      "lastExport": "<bdi>{name}</bdi> · <bdi>{when}</bdi>",
+      "unknownActor": "Unknown member",
+      "neverExported": "Not exported yet",
+      "downloadLabel": "Download <bdi>{name}</bdi> as CSV",
+      "downloading": "Downloading…",
+      "downloaded": "<bdi>{name}</bdi> downloaded",
+      "downloadFailed": "<bdi>{name}</bdi> could not be downloaded. Try again.",
+      "empty": "No export files."
     },
     "audit": {
       "title": "Audit log",

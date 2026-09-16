@@ -6,8 +6,9 @@
 // and that the layout renders correctly around a screen this track did NOT
 // rebuild this wave — the "one untouched admin screen after the layout
 // change" capture `docs/plan/notes/console.md`'s "Wave 7 plan" §1 commits
-// to, retargeted from `venues` (rebuilt this wave, K3) to `exports` (not
-// this wave, never this track's).
+// to. Retargeted twice: from `venues` (rebuilt in wave 7) to `exports`, and in
+// wave 8 from `exports` (rebuilt, K2) to `proposals`, which no track touches
+// this wave.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -244,9 +245,9 @@ test("phone: the drawer captured open with «الإشراف» disclosed, as a mo
 test("an admin screen this track did not rebuild this wave still renders correctly under the new rail, captured at both widths", async ({ context, page }, testInfo) => {
   await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
-  // `exports` — not `venues`, which K3 rebuilds this wave and stops proving
-  // "untouched." Not this track's, not this wave's, per `DEC-137`.
-  await goto(page, "/ar/app/admin/exports");
+  // `proposals` — not `exports`, which wave 8 rebuilds (K2) and so stops
+  // proving "untouched" (`docs/plan/notes/console.md`, "Wave 8 plan" §3).
+  await goto(page, "/ar/app/admin/proposals");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
   // captures where the cited path actually points — a hard-coded
@@ -255,5 +256,5 @@ test("an admin screen this track did not rebuild this wave still renders correct
   const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
   mkdirSync(dir, { recursive: true });
   const name = testInfo.project.name === "phone" ? "390" : "desktop";
-  await page.screenshot({ path: join(dir, `wave7-console-layout-untouched-${name}.png`), fullPage: true });
+  await page.screenshot({ path: join(dir, `wave8-console-layout-untouched-${name}.png`), fullPage: true });
 });
