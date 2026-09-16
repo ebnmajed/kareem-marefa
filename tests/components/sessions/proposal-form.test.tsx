@@ -14,8 +14,10 @@ import { PROPOSAL_VALUE_FIELDS, type ProposalField, type ProposeState } from "@/
 import { formStateFrom, withErrors } from "@/lib/form-state";
 import proposals from "@/messages/ar/proposals.json";
 import ui from "@/messages/ar/ui.json";
+import admin from "@/messages/ar/admin.json";
 
-const messages = { ...proposals, ...ui };
+// `ui/combobox` still reads its own three strings from `admin.combobox`.
+const messages = { ...proposals, ...ui, admin: { combobox: admin.admin.combobox } };
 const form = proposals.proposals.propose.form;
 const errors = proposals.proposals.propose.errors;
 const CATEGORY = "4f2c9b1e-7d3a-4c8e-9b2f-1a6d5e8c3b70";
@@ -26,10 +28,12 @@ async function refuseEmpty(prev: ProposeState, formData: FormData): Promise<Prop
   return withErrors(captured, { title: "titleRequired", abstract: "abstractRequired", categoryId: "categoryRequired" });
 }
 
-function renderForm() {
+const MATE = "7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
+
+function renderForm(members: { id: string; displayName: string | null; jobTitle: string | null }[] = []) {
   return render(
     <NextIntlClientProvider locale="ar" messages={messages}>
-      <ProposalForm mode="create" action={refuseEmpty} categories={[{ id: CATEGORY, name: "فني" }]} members={[]} maxCoPresenters={4} maxCoPresentersLabel="يمكنك تسمية 4 زملاء" />
+      <ProposalForm mode="create" action={refuseEmpty} categories={[{ id: CATEGORY, name: "فني" }]} members={members} maxCoPresenters={4} maxCoPresentersLabel="يمكنك تسمية 4 زملاء" />
     </NextIntlClientProvider>,
   );
 }
@@ -116,6 +120,27 @@ describe("ProposalForm — after a failed submit", () => {
   });
 });
 
+describe("ProposalForm — co-presenters through ui/combobox (REQ-PRO-003, REQ-UIX-008, R2)", () => {
+  it("finds a colleague by an Arabic-normalised search, names them as a chip, writes the id for the action — and keeps them after a failed submit", async () => {
+    const { container } = renderForm([{ id: MATE, displayName: "نورة القحطاني", jobTitle: "محلّلة بيانات" }]);
+    const search = screen.getByRole("combobox", { name: new RegExp(form.coPresentersLabel) });
+    // The Field's hint reaches the input (654ec91).
+    expect(search.getAttribute("aria-describedby")).toContain("coPresenters-hint");
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: "نوره" } }); // taa marbuta folded
+    fireEvent.click(screen.getByRole("option", { name: /نورة القحطاني/ }));
+
+    const hidden = () => [...container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="coPresenters"]')].map((i) => i.value);
+    expect(hidden()).toEqual([MATE]);
+    expect(screen.getByRole("button", { name: "إزالة نورة القحطاني" })).toBeInTheDocument();
+
+    await submit();
+    expect(hidden()).toEqual([MATE]);
+    expect(screen.getByRole("button", { name: "إزالة نورة القحطاني" })).toBeInTheDocument();
+  });
+});
+
 describe("ProposalForm — edit (SCR-018's edit path, DEC-141)", () => {
   const initial = { title: "أتمتة الفواتير بلا برمجة", abstract: "تجربة عملية.", categoryId: CATEGORY, level: "advanced", targetAudience: "", expectedDurationMinutes: "45", adminNotes: "" };
 
@@ -139,7 +164,8 @@ describe("ProposalForm — edit (SCR-018's edit path, DEC-141)", () => {
     renderEdit(false);
     expect(screen.getByRole("button", { name: form.resubmit })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: form.saveDraft })).toBeNull();
-    expect(screen.queryByRole("group", { name: form.coPresentersLabel })).toBeNull();
+    // A native <select> is a combobox too — name the one that would be the co-presenter search.
+    expect(screen.queryByRole("combobox", { name: new RegExp(form.coPresentersLabel) })).toBeNull();
     expect(screen.getByText(form.presentersElsewhere)).toBeInTheDocument();
   });
 

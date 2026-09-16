@@ -266,19 +266,18 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   const box = await submit.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
 
-  // ★ The two mixed-direction rows, measured rather than eyeballed. In RTL the
+  // ★ The mixed-direction controls, measured rather than eyeballed. In RTL the
   // first flex child is the RIGHTMOST one, so a numeral must sit to the right
-  // of its unit («45 دقيقة» reads number-first) and a checkbox to the right of
-  // its label. Getting either backwards looks subtly wrong in a way a
-  // screenshot review misses and a coordinate comparison does not.
+  // of its unit («45 دقيقة» reads number-first); and the co-presenter search
+  // types Arabic right to left — `ui/combobox` forced `dir="ltr"` until R2
+  // (`654ec91`). Getting either backwards looks subtly wrong in a way a
+  // screenshot review misses and a measurement does not.
   const duration = (await page.getByLabel("المدة المتوقعة").boundingBox())!;
   const unit = (await page.getByText("دقيقة", { exact: true }).boundingBox())!;
   expect(duration.x, "the number box sits to the right of «دقيقة» in RTL").toBeGreaterThan(unit.x);
 
-  const tick = page.getByRole("checkbox", { name: /زميلة الاختبار/ });
-  const tickBox = (await tick.boundingBox())!;
-  const tickRow = (await tick.locator("xpath=..").boundingBox())!;
-  expect(tickBox.x + tickBox.width, "the checkbox sits at the inline-start, which is the right in RTL").toBeGreaterThan(tickRow.x + tickRow.width / 2);
+  const search = page.getByRole("combobox", { name: /مقدّمون مشاركون/ });
+  expect(await search.evaluate((el) => getComputedStyle(el).direction), "the co-presenter search is right to left").toBe("rtl");
 
   // The reviewed screenshot of the definition of done.
   await page.screenshot({ path: ".qa-shots/rtl/scr-017-propose-390-rtl.png", fullPage: true });
@@ -289,7 +288,10 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await page.goto("/ar/app/propose");
   const title = "جلسة بمقدّمَين";
   await fillProposal(page, title);
-  await page.getByRole("checkbox", { name: /زميلة الاختبار/ }).check();
+  // Wave 7: a search, not a checkbox list (REQ-UIX-008).
+  await page.getByRole("combobox", { name: /مقدّمون مشاركون/ }).fill("زميلة");
+  await page.getByRole("option", { name: /زميلة الاختبار/ }).click();
+  await expect(page.getByRole("button", { name: /إزالة زميلة الاختبار/ })).toBeVisible();
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
 

@@ -42,7 +42,8 @@
         "materialsNote": "You can attach draft materials once the proposal is saved.",
         "resubmit": "Send the proposal again",
         "sectionNotes": "Notes",
-        "presentersElsewhere": "Presenters are managed on the proposal's own page."
+        "presentersElsewhere": "Presenters are managed on the proposal's own page.",
+        "coPresentersPlaceholder": "Search by name or job title"
       },
       "errors": {
         "titleRequired": "Please enter a title for your proposed topic",

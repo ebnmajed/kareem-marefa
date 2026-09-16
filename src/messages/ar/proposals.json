@@ -42,7 +42,8 @@
         "materialsNote": "يمكنك إرفاق مواد مبدئية بعد حفظ المقترح.",
         "resubmit": "أعد إرسال المقترح",
         "sectionNotes": "الملاحظات",
-        "presentersElsewhere": "تُدار قائمة المُقدِّمين من صفحة المقترح نفسها."
+        "presentersElsewhere": "تُدار قائمة المُقدِّمين من صفحة المقترح نفسها.",
+        "coPresentersPlaceholder": "ابحث بالاسم أو المسمّى الوظيفي"
       },
       "errors": {
         "titleRequired": "فضلًا أدخل عنوان موضوعك المقترح",

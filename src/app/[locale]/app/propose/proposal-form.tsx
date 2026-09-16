@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { formatNumber } from "@/components/sessions/numerals";
 import { checkProposalField, PROPOSAL_LIMITS, PROPOSAL_REQUIRED, type ProposalScalarField } from "@/components/sessions/proposal-rules";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
@@ -293,55 +293,39 @@ export function ProposalForm({
       <section aria-labelledby={SECTION_PEOPLE} className="flex flex-col gap-7">
         <SectionHeader id={SECTION_PEOPLE} title={variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes")} />
 
-        {/* REQ-PRO-003. Checkboxes until `ui/combobox` reads the field wiring
-            and stops forcing left-to-right input (DEC-141, R2): a multi-select
-            at 390 px is a scroll trap, and the count has to stay visible
-            against the org's limit. The list comes from members_member_view,
-            so it cannot show anyone outside the org — and the database refuses
-            one anyway.
-            ★ `id="coPresenters"` is how the summary's link reaches this group:
-            a fieldset is not focusable, so the link focuses the first checkbox
-            inside it. An edit names nobody new here — co-presenters are managed
+        {/* REQ-PRO-003, REQ-UIX-008 — a search box, not a list of everyone. At 40
+            members a checkbox list was a scroll trap and at 400 unusable; the
+            canvas and `16` §9 row 2 ask for `ui/combobox`, which `console`
+            wired for a member form in `654ec91` (R2): Arabic input keeps its
+            direction, the Field's hint and error reach the input, and the
+            invalid border shows. It matches names and job titles through
+            Arabic normalisation (REQ-DSC-004), draws the chosen as removable
+            chips, and stops at the org's limit.
+            ★ The selection is written as hidden inputs named `coPresenters`,
+            so `getAll()`, the action and `state.ts` are unchanged, and it
+            survives a failed round trip: React's form reset does not touch a
+            value-controlled hidden input, and the combobox is not remounted.
+            ★ `id="coPresenters"` is the summary link's target — it lands on
+            the search input. The members come from members_member_view, so
+            nobody outside the org can be offered, and the database refuses one
+            anyway. An edit names nobody new here — co-presenters are managed
             on the proposal's own page. */}
         {variant.mode === "create" ? (
-          <fieldset id="coPresenters">
-            <legend className="text-label text-fg-heading">{t("form.coPresentersLabel")}</legend>
-            <p className="mt-1 text-caption text-fg-muted">{t("form.coPresentersHint")}</p>
-            <p className="mt-1 text-caption text-fg-muted">{variant.maxCoPresentersLabel}</p>
+          <Field id="coPresenters" label={t("form.coPresentersLabel")} hint={t("form.coPresentersHint")} error={err("coPresenters")}>
             {variant.members.length === 0 ? (
-              <p className="mt-3 text-caption text-fg-muted">{t("form.coPresentersNone")}</p>
+              <p className="text-caption text-fg-muted">{t("form.coPresentersNone")}</p>
             ) : (
-              <ul className="mt-3 flex flex-col gap-1">
-                {variant.members.map((m) => (
-                  <li key={m.id}>
-                    <Checkbox
-                      name="coPresenters"
-                      value={m.id}
-                      defaultChecked={wasList(state, "coPresenters").includes(m.id)}
-                      disabled={variant.maxCoPresenters === 0}
-                      label={
-                        <span>
-                          <bdi>{m.displayName}</bdi>
-                          {m.jobTitle ? (
-                            <span className="text-fg-muted">
-                              {" · "}
-                              <bdi>{m.jobTitle}</bdi>
-                            </span>
-                          ) : null}
-                        </span>
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
+              <Combobox
+                name="coPresenters"
+                multiple
+                max={variant.maxCoPresenters}
+                options={variant.members.map((m) => ({ value: m.id, label: m.displayName ?? "", hint: m.jobTitle ?? undefined }))}
+                defaultValue={wasList(state, "coPresenters")}
+                placeholder={t("form.coPresentersPlaceholder")}
+              />
             )}
-            {err("coPresenters") ? (
-              <p className="mt-2 flex items-start gap-2 text-caption text-error">
-                <AlertCircleIcon className="mt-[0.2em]" />
-                <span>{err("coPresenters")}</span>
-              </p>
-            ) : null}
-          </fieldset>
+            <p className="mt-1.5 text-caption text-fg-muted">{variant.maxCoPresentersLabel}</p>
+          </Field>
         ) : (
           <p className="text-body-sm text-fg-muted">{t("form.presentersElsewhere")}</p>
         )}
