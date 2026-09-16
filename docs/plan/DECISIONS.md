@@ -3290,3 +3290,103 @@ moment their metadata is stripped»), and `0091` delivers its no-reload clause a
 layers. Nothing is open.
 
 - **Documents changed:** `CLAUDE.md` (the wave-8 map; the stack line; the lockfile note), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (`--wave8`), `04-architecture.md` (the Next version, `DEC-146`)
+
+---
+
+## DEC-148 — Wave 8, sync 1: the four plans approved; a baseline row is a composition, certificates carry a pinned design, and the ink guard is measured against the page
+
+- **Date:** 2026-09-17 · **Decided by:** lead, on the four planning-first tasks (`docs/plan/notes/{branding,designer,console,platform}.md` at `574f556`, `85deba7`, `61cecd4`, `943f0d2`) and its own SCR-043 plan (`caf414c`)
+- **Supersedes:** `REQ-DSG-026`'s roster count as `DEC-128` wrote it; `REQ-DSG-031`'s «serial range reserved»; `REQ-ADM-017`'s numeral clause (already withdrawn by `DEC-124`); `REQ-ADM-018`'s placement of scoring configuration changes; `09` SCR-043's mobile stepper; `16` §15 M12's and §16.5's migration numbers `0087`/`0088` (both now `checkin`'s — the studio's focal point needs no migration: `design_assets.focal_x/y` exist since `0055`).
+
+### Contract 3 — what a baseline row is: a composition (`designer`'s option B)
+
+`DEC-125` («the variant is the scheme, not a second template row»), `DEC-128`'s table (light and dark as
+rows) and `REQ-DSG-026`'s acceptance («5 × 2 schemes and 3 × 2 orientations») disagreed. What actually
+differs settles it. **A scheme is a palette**: every colour in a template is a `{{brand.*}}` token, so a
+light row and a dark row would be byte-identical documents, and nothing in either could say which it is.
+**An orientation is a composition**: measured on `attendance`, the portrait certificate `derive()`s from
+the landscape master put every text layer in the top third of a 3508 px page, left a 1860 px empty band
+and set the issue date at about 8 pt — and `safeAreaViolations()` reported nothing, because a safe-area
+check cannot see a bad composition. Every portrait certificate issued so far ships that way.
+
+**So:** 11 platform rows — the five poster families, and the three certificate families each landscape
+and portrait (read from the master, no column) — each renderable in both schemes: 22 variants, counted
+by literals in CI. One platform default per (purpose, family), the landscape row. `REQ-DSG-026`'s
+acceptance is amended to this. `DEC-128`'s «both schemes, chosen at issue time» is honoured by the next
+section, not by rows.
+
+### Certificates carry a pinned design — `ENT-session_certificate_designs` and `certificates.scheme`
+
+Automatic issuance has no human at issue time — it is the edge into `completed` — so a choice made «at
+issue time» must be stored before it. **`ENT-session_certificate_designs`** is added, an amendment to the
+frozen `02` §4.12 made under this entry: `org_id`, `session_id`, `kind` (`attendance` | `presenter`),
+`template_id` (a certificate template of the kind's family, org or platform), `scheme` (a new
+`brand_scheme` enum), `updated_by`, `updated_at`; `unique (session_id, kind)`; RLS enabled, staff read,
+no write grant — written only through `set_certificate_design()` (`assert_fresh_admin()`, audited), which
+refuses once a certificate of that kind for that session is issued or revoked. No row is today's
+behaviour: the family default, `light`. **`certificates.scheme brand_scheme not null default 'light'`**
+pins the scheme beside `template_version_id`, because a reissue years later must know it and nothing
+else records it (`REQ-CRT-014`); the default is true of every existing row. `issue_certificate()` is
+re-created **from `0088`'s text**, so `DEC-141`'s removed-check-in filter survives. Invariant 5 in full.
+
+### Four findings that change the work, each accepted
+
+1. ★ **A dark poster voids the blank-capture guard.** `inkedRatio()` and the harness's `inkOf()` count a
+   pixel as ink when any channel is below 240; on a `#111a2c → #1d2a42` background every pixel is ink,
+   so a poster whose text never painted (`DEC-024`'s blank goldens) would read 100 % inked and ship.
+   **Ink is now measured against the page's own background** (a second capture with the layers hidden),
+   landed before any call site passes `'dark'`.
+2. ★ **`validate.ts` refused a gradient**, and both worker tasks call it: a gradient template promoted
+   before the fix would make every automatic poster throw. **The promotion order is a hard dependency:**
+   `branding`'s types (`391150e`) → the guard and `validate.ts` → `branding`'s renderer paints the
+   gradient → `designer`'s seed. Promoted before the renderer, every regenerated poster renders silently
+   on the `#ffffff` fallback.
+3. ★ **`0055`'s no-hex guard does not walk gradient stops** (nor `rgb()`, `hsl()` or named colours on
+   any field). `designer`'s first proposed file re-creates it as an **allowlist of the
+   `{{brand.<identifier>}}` shape** over every colour-bearing value; token membership stays in TypeScript.
+4. ★ **`getBrandKit()` would have taken down every `/app` page.** `canvasRaise` became a required key
+   when the runtime's `dist` was rebuilt, while `brand_kit()` returned nine keys; the app layout reads the
+   kit for every member. `6b3ac7f` fills a missing token from the platform default before parsing —
+   which is also what keeps a merge-before-push deploy safe.
+
+### The rest of the rulings
+
+- **`designer`:** the M12 subset in — the editor's top bar, tabbed rail and inspector (`DEC-093`'s
+  demotion), checks that select their layer, the variant strip from ready artifacts, align on the
+  **document's** axis (`DEC-096`), layer order; **out** — drag, resize, rotate, snapping, marquee,
+  distribute, nudge, focal point. The `PosterPicker` three-card chooser with a detach confirm naming the
+  session is in (props unchanged). The certificate **mode stays on SCR-043**; SCR-045 carries the design,
+  eligibility and the release. «من حضر وقيّم» (eligibility by having rated) is refused — a certificate's
+  existence would disclose who rated (`REQ-RAT-004`). Phone «approve» is «اطلب التصدير». **No existing
+  parity golden moves**; a separate background block adds `gradient-rtl`/`gradient-ltr` goldens and
+  asserts the LTR capture equals the flipped RTL one. **The v2 posters bind the Knowledge Network rule to
+  `{{brand.edgeStrong}}`**: `spine` is 1.05:1 on `canvasRaise`, so the motif vanished at the gradient's lit
+  end (decorative, no WCAG failure; the owner may reverse it). A poster's scheme is not choosable this
+  wave. A re-added member's missing certificate is not this wave (`unique (org_id, session_id,
+  member_id, kind)` would need a product ruling on a new serial); SCR-045 shows the state instead.
+- **`branding`:** the `'light'` default leaves all three signatures (every caller already passes one);
+  `backgroundCss()` is exported so the harness and the swatch use the renderer's own string; the mirror
+  lives in `render.ts` alone; contrast is displayed, not enforced, this wave (enforcement is M13's).
+- **`console`:** badge **creation** is in (`REQ-REC-001` asks for it); the app never imports
+  `worker/src/**`; the email templates' required fields stay admin-editable this wave — **a live
+  `REQ-NTF-007` weakness carried for `notify`/M12**; the scoring screen's typed session UUID becomes a
+  session combobox; CSV dates become sortable. The four managed lists lost their row actions on a phone
+  (their action column was never `onCard`) — fixed first.
+- **`platform`:** break-glass **refreshes the token in the submit path** on start and on stop, proven on
+  the decoded token — a stop from SCR-085's own page left org access on the token for up to 900 s;
+  `setFirstAdmin()` lowercases before the RPC (`set_first_admin()` refused `Boss@Example.COM` while
+  `create_org()` accepted it); `/app/platform` renders a home instead of redirecting; `platform_alerts()`
+  exposes `evaluate_alerts()` aggregates to SCR-084 (`REQ-ADM-003`'s error rates); SCR-085 says in one
+  line that access can outlast a session by up to 15 minutes (`DEC-054`); «set first admin» stays on
+  SCR-082. The lead's `no-access` gives a platform admin with no org «لوحة المنصة» as its primary action.
+- **The lead's SCR-043:** one scroll in four groups on a phone rather than `09`'s stepper; relational
+  errors said at once (`REQ-SES-016`), an empty field only after a submit (`REQ-UIX-011`); «انشر الجلسة»
+  saves and publishes in one action. `DEC-075`'s audited content edit is not this wave.
+
+### For the owner, after this wave deploys
+
+A scoped one-off `regenerate_poster` enqueue for **live** posters of sessions with `starts_at > now()`,
+under `DEC-023`'s rules — a data fix, never a migration — so upcoming sessions do not show a mix of old
+light and new dark posters. `designer` hands over the read and the write when its seed is ready.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-026`, `REQ-DSG-031`, `REQ-ADM-017`, `REQ-ADM-018`), `09-sitemap-screens.md` (SCR-043, SCR-061), `02-domain-model.md` §4.12 (by this entry), `STATUS.md`

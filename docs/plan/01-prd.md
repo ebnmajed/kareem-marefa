@@ -1755,9 +1755,12 @@ with a mirrored LTR variant reserved for English. Certificate families — **ح�
 certificates are **a library the admin chooses from**, in both orientations and both schemes
 (`DEC-128`). Numerals on every template are **Western** (`REQ-INT-006`, `DEC-124`).
 **Acceptance:**
-- ★ **The seeded roster is counted, not assumed** — 5 poster families × 2 schemes and 3 certificate
-  families × 2 orientations. A short roster **fails CI**. `0061` seeds 8 × 1 today, which is half of
-  what this requirement promises and went unnoticed for three milestones (`DEC-128`).
+- ★ **The seeded roster is counted, not assumed** (as amended by `DEC-148`) — **11 platform
+  templates**: the 5 poster families, and the 3 certificate families each as a **landscape** and a
+  **portrait** composition; **each renderable in both schemes, 22 variants**. A scheme is a palette
+  chosen at render, never a second row (`DEC-125`); an orientation is a composition, so it is a row.
+  A short roster **fails CI**. `0061` seeded 8 × 1, and its portrait certificates were derived from
+  the landscape master, which is not a composition (`DEC-128`, `DEC-148`).
 - Every template declares its dynamic fields and its safe area per preset.
 - Templates honour the brand's forbidden imagery: **no books, caps, lightbulbs, education
   iconography, cartoon illustration, icon libraries, emoji or photography**. The visual language
@@ -1812,8 +1815,10 @@ a crop centres on the subject. It is set by a draggable dot **and** by a nine-po
 **Serves:** `REQ-CRT-001` … `REQ-CRT-004` · DEC-077
 Issuance is **التصميم** (pick a template, preview with a real attendee's data) → **من يستحق** (the
 mode, with the resulting list of names shown live and a count, and hold-backs made visibly) →
-**الإصدار** (a preflight — fonts resolved, bindings bound, Tier A green, serial range reserved —
-then one confirmed button, then a per-certificate progress list with a re-issue for failures).
+**الإصدار** (a preflight — fonts resolved, bindings bound, Tier A green, **the expected next serial
+and count, stated as an estimate and never reserved** (`DEC-148`: a range reserved outside the
+issuing transaction is the gap `DEC-010`'s locked counter exists to prevent) — then one confirmed
+button, then a per-certificate progress list with a re-issue for failures).
 **Acceptance:**
 - The three meanings of «شهادة» — the design, the mode and the act — are separated on screen.
 - Issuance cannot be triggered from a dropdown without the preflight and the confirmation.
@@ -2143,12 +2148,16 @@ serials), members.
 **Acceptance:**
 - Exports are UTF-8 with a BOM so Excel opens Arabic correctly without a manual import step.
 - Every export is audited — an export is a bulk read of personal data.
-- Column headers are Arabic; the numeral system follows the org setting (A30).
+- Column headers are Arabic, and so are enum values; **numerals are Western** (`DEC-124`, which
+  withdrew the org setting); **dates are `YYYY-MM-DD HH:mm` in the org's time zone, the zone named in
+  the column header**, so a spreadsheet sorts them (`DEC-148`).
 
 #### REQ-ADM-018 — Audit log
 **Serves:** D60 · §6 security
-An **immutable** log of admin and moderator actions, scoring configuration changes, manual
-attendance marks, point adjustments, role changes, impersonation, and content removals.
+An **immutable** log of admin and moderator actions, manual attendance marks, point adjustments,
+role changes, impersonation, and content removals. **Scoring configuration changes** are recorded
+with their old and new value in `scoring_config_history`, not `audit_log`, and are read on the
+scoring screen (`DEC-148`, correcting this text to the schema).
 **Acceptance:**
 - The log is append-only; no role can update or delete a row (`REQ-NFR-006`).
 - Entries are searchable by actor, subject, action and date range.
