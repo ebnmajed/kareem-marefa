@@ -318,7 +318,10 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
     supabase.from("certificates").select("kind, state, recipient_name_snapshot").eq("session_id", sessionId),
     supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
-    supabase.from("check_ins").select("members(display_name)").eq("session_id", sessionId).is("removed_at", null).limit(1).maybeSingle(),
+    // `!check_ins_member_id_fkey`: `check_ins` reaches `members` three ways
+    // (the member, `marked_by`, `removed_by`), and an unnamed embed is an
+    // ambiguity error that reads as «no row».
+    supabase.from("check_ins").select("members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null).limit(1).maybeSingle(),
   ]);
   if (!sessionRow) return null;
 
@@ -384,11 +387,20 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return [];
 
-  const [{ data: checkIns }, { data: presenters }, { data: certs }] = await Promise.all([
-    supabase.from("check_ins").select("member_id, members(display_name)").eq("session_id", sessionId).is("removed_at", null),
+  const [checkInRead, presenterRead, { data: certs }] = await Promise.all([
+    // The member's own embed, named: `check_ins` reaches `members` through
+    // `marked_by` and `removed_by` too, and the unnamed embed is an ambiguity
+    // error — which, swallowed, rendered as «لا أحد بعد» over a full room.
+    supabase.from("check_ins").select("member_id, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null),
     supabase.from("session_presenters").select("member_id, members(display_name)").eq("session_id", sessionId).eq("accepted", true),
     supabase.from("certificates").select("id, member_id, kind, state").eq("session_id", sessionId),
   ]);
+  // A failed read is thrown, never shown as an empty list: «nobody is
+  // eligible» is a claim, and the route's error boundary is the honest answer.
+  if (checkInRead.error) throw checkInRead.error;
+  if (presenterRead.error) throw presenterRead.error;
+  const checkIns = checkInRead.data;
+  const presenters = presenterRead.data;
   type Joined = { member_id: string; members: { display_name: string } | { display_name: string }[] | null };
   const certsBy = (memberId: string, kind: string) => ((certs ?? []) as Array<{ member_id: string; kind: string; state: string }>).filter((c) => c.member_id === memberId && c.kind === kind);
 
@@ -571,6 +583,51 @@ export async function getOrgTimeZone(locale: string): Promise<string> {
   const { session, supabase } = await sessionClient(locale);
   const { data } = await supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle();
   return (data?.time_zone as string | undefined) ?? "Asia/Riyadh";
+}
+
+/* ── SCR-045's serial line: an ESTIMATE, never a reservation ───────────── */
+
+/**
+ * The next serial this org would allocate, read from the org's own
+ * certificates — never from `certificate_serial_counters`, which has no
+ * policy at all (03 §5.8) and is touched only inside `allocate_serial()`.
+ *
+ * ★ An estimate, and the screen says so (DEC-148). The counter is gapless —
+ * a rollback returns its number (DEC-010) — so this year's highest issued
+ * serial plus one IS the counter's state at the moment of reading. But
+ * another session completing first takes those numbers, and nothing here
+ * holds them: a reservation would be a second allocator, and a second
+ * allocator is how a register grows a gap.
+ *
+ * Admin only: `certs_read_held_admin` is what makes every serial in the org
+ * readable, and a moderator reads none (null).
+ */
+export async function estimateNextSerial(locale: string): Promise<{ prefix: string; year: number; next: number } | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const [{ data: org }, { data: settings }] = await Promise.all([
+    supabase.from("orgs").select("certificate_prefix").eq("id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  const prefix = org?.certificate_prefix as string | undefined;
+  if (!prefix) return null;
+
+  // The ORG's year, as `allocate_serial()` reads it — a certificate issued
+  // at 02:00 Riyadh on 1 January prints the new year.
+  const timeZone = (settings?.time_zone as string | undefined) ?? "UTC";
+  const year = Number(new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric" }).format(new Date()));
+
+  // `lpad(…, 6, '0')` makes the text order the numeric order.
+  const { data } = await supabase
+    .from("certificates")
+    .select("serial")
+    .like("serial", `${prefix}-${year}-%`)
+    .order("serial", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const last = data?.serial ? Number((data.serial as string).slice(`${prefix}-${year}-`.length)) : 0;
+  return { prefix, year, next: (Number.isFinite(last) ? last : 0) + 1 };
 }
 
 /* ── the held achievement certificates (REQ-CRT-012) ───────────────────── */

@@ -1,214 +1,174 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { getSessionCertificates, getOrgTimeZone, type CertificateRow } from "@/lib/dal/certificates";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
-import { release, revoke } from "./actions";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import {
+  estimateNextSerial,
+  getCertificateDesign,
+  getOrgTimeZone,
+  getSessionCertificatesWithRender,
+  listEligibleRecipients,
+  type SessionCertificateKind,
+} from "@/lib/dal/certificates";
+import { listEditorFaces } from "@/lib/dal/fonts";
+import { CertificateDesign } from "@/components/certificates/design-panel";
+import { EligibleList } from "@/components/certificates/eligible-list";
+import { CertificateIssuance } from "@/components/certificates/issuance";
+import { formatNumber } from "@/components/sessions/numerals";
+import { Badge, SessionStatusBadge } from "@/components/ui/badge";
+import { Link } from "@/components/ui/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { SectionHeader } from "@/components/ui/section-header";
+import { storedPhase, type SessionState } from "@/lib/session-status";
 
-// SCR-045 · `/app/admin/sessions/[id]/certificates` — REQ-CRT-004,
-// REQ-CRT-011, D50.
+// SCR-045 · `/app/admin/sessions/[id]/certificates` — REQ-CRT-001,
+// REQ-CRT-004, REQ-CRT-011, REQ-DSG-031, D50, DEC-128, DEC-148.
 //
-// Review and release, individually or in bulk; revoke with a mandatory
-// reason. Admin-only: `release_certificates()` and `revoke_certificate()`
-// both check `is_org_admin()` themselves, so a moderator reaching this URL
-// sees the lists (their read policy allows it) and no controls.
+// ★ THREE SECTIONS FOR THE THREE MEANINGS OF «شهادة» (REQ-DSG-031): the
+// DESIGN (which composition, which colours — chosen before completion), WHO
+// receives one (exactly the fan-out's two groups, and the mode that decides
+// whether it happens at all), and the ISSUANCE (held, issued, revoked, with
+// each file's render). The mode is SHOWN here and CHANGED on the schedule
+// (SCR-043, the lead's): one control for one setting, and this page links to
+// it rather than growing a second.
 //
-// ★ THE MODE NOTICE IS THE FIRST THING ON THE SCREEN, and it is not
-// decoration. In `automatic` there is nothing to do here and the held list
-// is permanently empty — an admin who does not know that will wait for
-// certificates to appear for review. In `off` there will never be a
-// certificate at all. Saying which of the three is in force is the
-// difference between an empty screen that is correct and an empty screen
-// that looks broken.
+// ★ THE MODE IS THE FIRST THING UNDER THE TITLE, and not decoration. In
+// `automatic` there is nothing to release and the held table never appears;
+// in `off` nothing will ever be issued. An empty screen that is correct and
+// one that looks broken differ only by that sentence.
 //
-// ★ RELEASE IS A PLAIN FORM WITH CHECKBOXES, not a client-side selection
-// model. The whole interaction is «tick some rows, press one button», which
-// a form does natively, keeps working without JavaScript, and cannot
-// desynchronise from the list it was rendered against.
+// Staff reach it; the certificates themselves are an admin's. A moderator
+// reads the design and the list (`design_templates`, `check_ins`) and no
+// certificate at all — `certs_read_*` are admin-only (03 §5.8) — so the
+// issuance section says so rather than showing three empty tables that
+// would read as «none were issued».
+//
+// ★ THE SERIAL LINE IS AN ESTIMATE, never a reservation (DEC-148, DEC-010):
+// «الرقم التالي المتوقع … والعدد», shown only before completion, when it
+// helps an admin who prints a register; the number is allocated at issue.
 
-export default async function SessionCertificatesPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function SessionCertificatesPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
-  const query = await searchParams;
-  const t = await getTranslations("certificates");
+  setRequestLocale(locale);
 
-  const [data, timeZone] = await Promise.all([getSessionCertificates(locale, id), getOrgTimeZone(locale)]);
-  if (!data) notFound();
+  const [t, ui, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
+    getTranslations("certificates.session"),
+    getTranslations("ui"),
+    getSessionCertificatesWithRender(locale, id),
+    getCertificateDesign(locale, id),
+    listEligibleRecipients(locale, id),
+    getOrgTimeZone(locale),
+    listEditorFaces(locale),
+    estimateNextSerial(locale),
+    headers(),
+  ]);
+  // `getCertificateDesign` is null for a plain member and for a session this
+  // org cannot see: a 404, not a message (every admin screen's pattern).
+  if (!data || !design) notFound();
 
-  const released = typeof query.released === "string" ? Number(query.released) : null;
-  const error = typeof query.error === "string" ? query.error : null;
-  const done = typeof query.done === "string" ? query.done : null;
+  // Absolute, so a `srcdoc` frame resolves the font URLs the same way in
+  // every browser rather than depending on how it inherits a base URL.
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "localhost:3000";
+  const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
 
-  const modeNotice = data.mode === "off" ? t("review.modeOff") : data.mode === "automatic" ? t("review.modeAutomatic") : t("review.modeReview");
+  const isAdmin = design.canEdit;
+  const completed = data.state === "completed" || data.state === "archived";
+
+  // The preflight's name: the longest on the list, per kind — the one that
+  // breaks is never the sample's.
+  const longestName: Partial<Record<SessionCertificateKind, string>> = {};
+  for (const r of eligible) {
+    const current = longestName[r.kind];
+    if (r.name && (!current || r.name.length > current.length)) longestName[r.kind] = r.name;
+  }
+
+  const showEstimate = isAdmin && estimate !== null && !completed && data.mode !== "off" && eligible.length > 0;
+  const serial = estimate ? `${estimate.prefix}-${estimate.year}-${String(estimate.next).padStart(6, "0")}` : "";
 
   return (
-    <div>
-      <h1 className="text-h1 text-fg-heading">{t("review.title")}</h1>
-      <p className="mt-2 max-w-2xl text-body text-fg-body">{t.rich("review.session", { title: data.sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}</p>
+    <div className="space-y-12">
+      <PageHeader
+        title={t("title")}
+        breadcrumb={[{ href: "/app/admin/sessions", label: t("breadcrumb") }]}
+        breadcrumbLabel={ui("pageHeader.breadcrumb")}
+        status={<SessionStatusBadge phase={storedPhase(data.state as SessionState)} />}
+        meta={
+          <div className="flex flex-col gap-3">
+            <p className="text-body text-fg-body">{t.rich("sessionLine", { title: data.sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="text-label text-fg-muted">{t("modeLabel")}</span>
+              <Badge size="sm" tone={data.mode === "off" ? "ended" : data.mode === "review" ? "info" : "success"} outline={data.mode === "off"}>
+                {t(`modeBadge.${data.mode}`)}
+              </Badge>
+              {isAdmin ? (
+                <Link href={`/app/admin/sessions/${id}/schedule`} className="text-body-sm text-fg-heading underline underline-offset-4">
+                  {t("modeLink")}
+                </Link>
+              ) : null}
+            </div>
+            <p className="max-w-prose text-body-sm text-fg-muted">{t(`modeExplain.${data.mode}`)}</p>
+          </div>
+        }
+      />
 
-      <p className="mt-4 max-w-2xl rounded-field border border-edge bg-silver-100 p-3 text-body-sm text-fg-body">{modeNotice}</p>
-      {data.state !== "completed" && data.mode !== "off" ? <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("review.notCompleted")}</p> : null}
-      {!data.canRelease ? <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("review.notAuthorized")}</p> : null}
-
-      {released !== null && Number.isFinite(released) ? (
-        <p role="status" className="mt-4 text-body-sm text-fg-heading">
-          {t("review.released", { count: released, value: formatNumber(released) })}
-        </p>
-      ) : null}
-      {done === "revoked" ? (
-        <p role="status" className="mt-4 text-body-sm text-fg-heading">
-          {t("review.revokeDone")}
-        </p>
-      ) : null}
-      {error ? (
-        <p role="alert" className="mt-4 text-body-sm text-error">
-          {error === "reason_required" ? t("review.reasonRequired") : error === "not_authorized" ? t("review.notAuthorized") : t("review.failed")}
-        </p>
+      {!isAdmin ? (
+        <Panel tone="info">
+          <p role="status" className="text-body-sm text-fg-body">
+            {t("moderatorNote")}
+          </p>
+        </Panel>
       ) : null}
 
-      {/* ── held ─────────────────────────────────────────────────────── */}
-      <section className="mt-10">
-        <h2 className="text-h2 text-fg-heading">{t("review.heldHeading")}</h2>
-        {data.held.length === 0 ? (
-          <p className="mt-3 text-body-sm text-fg-muted">{t("review.heldEmpty")}</p>
-        ) : (
-          <form action={release} className="mt-4">
-            <input type="hidden" name="sessionId" value={data.sessionId} />
-            <ul className="flex flex-col gap-2">
-              {data.held.map((c) => (
-                <li key={c.id} className="rounded-field border border-edge p-3">
-                  <label className="flex flex-wrap items-baseline gap-3">
-                    {data.canRelease ? <input type="checkbox" name="id" value={c.id} className="size-4" /> : null}
-                    <span className="text-body text-fg-heading">
-                      <bdi>{c.recipientName}</bdi>
-                    </span>
-                    <span className="text-body-sm text-fg-muted">{t(`kind.${c.kind}`)}</span>
-                    <span className="min-w-0 break-all text-body-sm text-fg-muted">
-                      {t("review.serial")} <bdi dir="ltr">{c.serial}</bdi>
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-            {data.canRelease ? (
-              <button type="submit" className="mt-4 inline-flex h-11 items-center rounded-field bg-navy-900 px-4 text-label text-canvas">
-                {t("review.release")}
-              </button>
-            ) : null}
-          </form>
-        )}
+      <section aria-labelledby="cert-design" className="flex flex-col gap-6">
+        <SectionHeader id="cert-design" title={t("sections.design")} description={t("designIntro")} />
+        <CertificateDesign locale={locale} sessionId={id} data={design} longestName={longestName} faces={faces} origin={origin} />
       </section>
 
-      {/* ── issued ───────────────────────────────────────────────────── */}
-      <section className="mt-10">
-        <h2 className="text-h2 text-fg-heading">{t("review.issuedHeading")}</h2>
-        {data.issued.length === 0 ? (
-          <p className="mt-3 text-body-sm text-fg-muted">{t("review.issuedEmpty")}</p>
-        ) : (
-          <ul className="mt-4 flex flex-col gap-2">
-            {data.issued.map((c) => (
-              <li key={c.id} className="rounded-field border border-edge p-3">
-                <Row certificate={c} timeZone={timeZone} locale={locale} />
-                {data.canRelease ? <RevokeForm certificate={c} sessionId={data.sessionId} /> : null}
-              </li>
-            ))}
-          </ul>
-        )}
+      <section aria-labelledby="cert-who" className="flex flex-col gap-4 border-t border-edge pt-10">
+        <SectionHeader id="cert-who" title={t("sections.who")} description={t("whoIntro")} count={eligible.length} />
+        {showEstimate ? (
+          <Panel>
+            <p className="text-body-sm text-fg-heading">
+              {t.rich("serialEstimate", {
+                serial,
+                count: eligible.length,
+                value: formatNumber(eligible.length),
+                bdi: (c) => (
+                  <bdi dir="ltr" className="break-all">
+                    {c}
+                  </bdi>
+                ),
+              })}
+            </p>
+            <p className="mt-1 text-caption text-fg-muted">{t("serialEstimateHint")}</p>
+          </Panel>
+        ) : null}
+        <EligibleList rows={eligible} sessionId={id} />
       </section>
 
-      {/* ── revoked ──────────────────────────────────────────────────── */}
-      <section className="mt-10">
-        <h2 className="text-h2 text-fg-heading">{t("review.revokedHeading")}</h2>
-        {data.revoked.length === 0 ? (
-          <p className="mt-3 text-body-sm text-fg-muted">{t("review.revokedEmpty")}</p>
+      <section aria-labelledby="cert-issue" className="flex flex-col gap-6 border-t border-edge pt-10">
+        <SectionHeader id="cert-issue" title={t("sections.issue")} />
+        {!completed && data.mode !== "off" ? <p className="text-body-sm text-fg-muted">{t("notCompleted")}</p> : null}
+        {!isAdmin ? (
+          <p className="text-body-sm text-fg-muted">{t("notAuthorized")}</p>
+        ) : data.mode === "off" && data.held.length + data.issued.length + data.revoked.length === 0 ? (
+          // Off, and never on: two empty tables would say «none yet», and the
+          // truth is «none, ever» — the sentence under the title already says so.
+          <p className="text-body-sm text-fg-muted">{t("modeExplain.off")}</p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-2">
-            {data.revoked.map((c) => (
-              <li key={c.id} className="rounded-field border border-edge p-3">
-                <Row certificate={c} timeZone={timeZone} locale={locale} />
-                {/* The reason IS shown here — this screen is the org's own.
-                    /verify never shows it (OQ-015, REQ-CRT-011). */}
-                {c.revocationReason ? (
-                  <p className="mt-2 text-body-sm text-fg-body">
-                    <bdi>{c.revocationReason}</bdi>
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <CertificateIssuance
+            locale={locale}
+            sessionId={id}
+            sessionTitle={data.sessionTitle}
+            timeZone={timeZone}
+            mode={data.mode}
+            held={data.held}
+            issued={data.issued}
+            revoked={data.revoked}
+          />
         )}
       </section>
     </div>
-  );
-}
-
-async function Row({
-  certificate: c,
-  timeZone,
-  locale,
-}: {
-  certificate: CertificateRow;
-  timeZone: string;
-  locale: string;
-}) {
-  const t = await getTranslations("certificates");
-  return (
-    <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <span className="text-body text-fg-heading">
-        <bdi>{c.recipientName}</bdi>
-      </span>
-      <span className="text-body-sm text-fg-muted">{t(`kind.${c.kind}`)}</span>
-      {/* `dir="ltr"` inside `<bdi>`: a serial is a Latin-and-digit string
-          and reorders against its Arabic neighbours without both. */}
-      <span className="min-w-0 break-all text-body-sm text-fg-muted">
-        {t("review.serial")} <bdi dir="ltr">{c.serial}</bdi>
-      </span>
-      {c.revokedAt ? (
-        <span className="text-body-sm text-fg-muted">
-          {t.rich("review.revokedAt", { date: formatDateTime(c.revokedAt, timeZone, locale), bdi: (x) => <bdi>{x}</bdi> })}
-        </span>
-      ) : c.issuedAt ? (
-        <span className="text-body-sm text-fg-muted">
-          <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi>
-        </span>
-      ) : null}
-    </p>
-  );
-}
-
-async function RevokeForm({ certificate: c, sessionId }: { certificate: CertificateRow; sessionId: string }) {
-  const t = await getTranslations("certificates.review");
-  const reasonId = `reason-${c.id}`;
-  return (
-    <details className="mt-2">
-      <summary className="cursor-pointer text-body-sm text-fg-heading underline">{t("revoke")}</summary>
-      <form action={revoke} className="mt-3 flex flex-col gap-2">
-        <input type="hidden" name="sessionId" value={sessionId} />
-        <input type="hidden" name="id" value={c.id} />
-        <label htmlFor={reasonId} className="text-body-sm text-fg-body">
-          {t("reason")}
-        </label>
-        <p className="text-body-sm text-fg-muted">{t("reasonHint")}</p>
-        {/* `required` and `minLength` are the browser's half. The RPC raises
-            22023 on a blank reason and the table's own check constraint is
-            the last word (REQ-CRT-011). */}
-        <input
-          id={reasonId}
-          name="reason"
-          type="text"
-          required
-          minLength={3}
-          maxLength={500}
-          className="h-11 w-full max-w-lg rounded-field border border-edge px-3 text-body"
-        />
-        <button type="submit" className="inline-flex h-11 w-fit items-center rounded-field border border-edge-strong px-4 text-label text-fg-heading">
-          {t("confirmRevoke")}
-        </button>
-      </form>
-    </details>
   );
 }

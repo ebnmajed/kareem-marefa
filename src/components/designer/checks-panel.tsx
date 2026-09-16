@@ -54,6 +54,9 @@ export interface ChecksPanelProps {
   onGoTo?: (finding: CheckFinding) => void;
   /** Layer id → its name in the layer list. */
   layerNames?: Record<string, string>;
+  /** The «before export, not after» sentence. Off where the caller already
+   *  says what the checks are for — SCR-045's preflight. */
+  showIntro?: boolean;
 }
 
 export type CheckFinding =
@@ -167,7 +170,7 @@ function group(findings: CheckFinding[]): FindingGroup[] {
   return [...groups.values()];
 }
 
-export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {} }: ChecksPanelProps) {
+export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, showIntro = true }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");
   const blocked = findings.some((f) => f.kind === "ppi" && f.severity === "block");
@@ -177,7 +180,7 @@ export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {} }: Ch
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-body-sm text-fg-muted">{t("intro")}</p>
+      {showIntro ? <p className="text-body-sm text-fg-muted">{t("intro")}</p> : null}
       {findings.length === 0 ? (
         <p className="text-body-sm text-fg-heading">{t("clean")}</p>
       ) : (

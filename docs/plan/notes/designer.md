@@ -1168,3 +1168,54 @@ and its captures opened at full resolution — then «ready for sync».
    frozen-`02` amendment in a wave with no spare sync. Mitigation: start from `0088`'s text, keep
    `RPC-issue_certificate.no_check_in_when_removed` in my proposed-layer run, and hand the
    `03` §8.2 rows with the file.
+
+### W8.l D4 as built — SCR-045 on the system (2026-09-17)
+
+Three sections for the three meanings of «شهادة» (REQ-DSG-031): **التصميم** (per kind: template
+radio group with the composition named, scheme radio group, the renderer's preview, a preflight,
+save, «طبّق على المحجوزة» behind a confirm), **من يستحق** (exactly the fan-out's two groups, the
+serial estimate before completion), **الإصدار** (held with bulk release behind a confirm naming
+the count and the session; issued with revoke-with-reason inside the confirm; revoked with its
+reason; each row's render status with a per-certificate retry). The mode is shown under the title
+with a link to the schedule, never changed here.
+
+Decisions taken inside the ruling, stated so they can be reversed:
+
+- **The preflight is the studio's checks, not Tier A.** Tier A compares the worker's Chromium
+  capture against the worker's own auto-fit decision; the same probe in the admin's browser would
+  be a Safari-or-Chrome number with no bearing on the artifact (DEC-017). So the panel runs
+  safe-area and auto-fit's floor/line limit through `domTextMeasurer` with the faces by SHA-256,
+  **against the longest eligible name**, and says in one line that each file is checked again in
+  the export engine, with any failure on its row and a retry. The preview uses the same longest
+  name, so the admin approves the worst case rather than the sample.
+- **The serial line** reads this year's highest serial in the org (`certs_read_held_admin`) plus
+  one — `certificate_serial_counters` has no policy and stays that way. Admin only, before
+  completion, mode not off, someone eligible. `estimateNextSerial()` in the DAL.
+- **A moderator** reads the design and the list, and no certificate — `certs_read_*` are admin-only,
+  so three empty tables would claim «none issued». The issuance section says whose it is instead.
+- **`automatic`** has no held table at all; **`off` with nothing ever issued** replaces the tables
+  with the one sentence.
+- `certificates.review.*` deleted from both catalogues (SCR-045 was its only reader); screen strings
+  live in `certificates.session.*`.
+
+Found by the real-DB spec, fixed in the DAL: `check_ins` reaches `members` three ways (member,
+`marked_by`, `removed_by`), so the unnamed `members(display_name)` embed was an ambiguity error the
+DAL swallowed — «لا أحد بعد» over a full room. The embed is named
+(`members!check_ins_member_id_fkey`) in both reads, and the eligible read now **throws** on error.
+
+**The lead's `tests/e2e/certificates.spec.ts` will fail on SCR-045 (lead-held; not edited):**
+
+1. `REQ-CRT-011` case, lines 284–288: the revoke is no longer a `<details>`. Replace with
+   `page.getByRole("table", { name: "الشهادات الصادرة" }).getByRole("row", { name: new RegExp(cert.serial) }).getByRole("button", { name: "ألغِ" }).click()`,
+   then `page.getByRole("dialog").getByLabel(/سبب الإلغاء/).fill(reason)`,
+   `page.getByRole("dialog").getByRole("button", { name: "ألغِ الشهادة" }).click()`, and
+   `await expect(page.getByText("أُلغيت الشهادة.", { exact: true })).toBeVisible()`. Line 290 holds.
+2. `REQ-CRT-004` case, lines 330–332: release now confirms. After «أطلِق المحدَّدة», add
+   `await page.getByRole("dialog").getByRole("button", { name: "أطلِق", exact: true }).click()` and
+   expect `page.getByText("أُطلقت شهادة واحدة", { exact: true })`. `getByRole("checkbox").first()`
+   is now the table's «تحديد الكل», which still selects the one held row.
+3. The 390 px case holds (the h1 is unchanged).
+
+`tests/e2e/wave8-designer-certificates.spec.ts` covers the same guarantees plus the design, the
+lock, redesign-held, the estimate and the moderator, and writes
+`wave8-designer-certificates-{held,release-confirm,design-landscape,design-portrait,revoked,revoke-dialog,design-locked,mode-off,moderator}.png`.
