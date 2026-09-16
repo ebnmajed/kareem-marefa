@@ -255,7 +255,13 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
   await page.goBack();
   await overview.getByRole("link", { name: "حجوزات مؤكَّدة" }).click();
   await expect(page.getByRole("heading", { name: "الجلسات", level: 1 })).toBeVisible();
-  await expect(page.getByText("جلسة انتهت للتو")).toBeVisible();
+  // ★ Three matches, not two: `DataTable`'s own desktop/phone dual render
+  // (one hidden per viewport) PLUS a third, always-visible one — a
+  // completed session still offers "archive", so its title repeats in
+  // `sessions-table.tsx`'s controls panel below the table, which is neither
+  // a `<table>` nor the card `<ul>`. Scoping to whichever of those two roles
+  // is actually present excludes that third copy too.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText("جلسة انتهت للتو")).toBeVisible();
 
   await page.goBack();
   // The pipeline section's heading is no longer itself the link — a

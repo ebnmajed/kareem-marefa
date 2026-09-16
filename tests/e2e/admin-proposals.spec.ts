@@ -108,7 +108,11 @@ test("★ rejecting confirms in a dialog naming the proposal — cancel changes 
   await page.goto("/ar/app/admin/proposals");
   const card = page.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
   await card.getByText("ارفض المقترح").click();
-  await card.getByLabel("السبب الذي سيصل صاحب المقترح").fill("سبب الرفض لهذا الاختبار");
+  // ★ A real build's own run found this a strict-mode violation: both the
+  // reject AND request-changes boxes shared one label. Each now names its
+  // own decision (review-card.tsx's `reasonLabelReject`/
+  // `reasonLabelRequestChanges`), so this resolves to exactly one.
+  await card.getByLabel("سبب الرفض الذي سيصل صاحب المقترح").fill("سبب الرفض لهذا الاختبار");
   await card.getByRole("button", { name: "أرسل" }).last().click();
 
   const dialog = page.getByRole("dialog", { name: "رفض «مقترح للمراجعة»؟" });

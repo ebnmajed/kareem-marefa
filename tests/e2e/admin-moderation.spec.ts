@@ -248,9 +248,17 @@ test("REQ-PTS-013: removing a reported photo reverses its original points award 
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/moderation/reports");
   const card = page.locator("li", { has: page.getByText("محتوى غير مناسب") });
+  // ★ `ui/dialog`'s own confirmation (`report-card.tsx`, REQ-UIX-013) is
+  // portalled by Radix onto `document.body`, OUTSIDE this `<li>` card's own
+  // DOM subtree — a card-scoped locator for the reason field or the submit
+  // button never resolves, and this test stalled to its own timeout on
+  // exactly that. Scoped to the dialog instead, the same shape
+  // `admin-reports.spec.ts`'s own equivalent test already uses.
   await card.getByText("أزل", { exact: true }).click();
-  await card.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("مخالفة صريحة");
-  await card.getByRole("button", { name: "أرسل" }).click();
+  const dialog = page.getByRole("dialog", { name: "حذف صورة من «جلسة الإشراف»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("مخالفة صريحة");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
   await expect(page.getByText("محتوى غير مناسب")).toHaveCount(0);
 
   const photoRows = await db.query<{ removed_at: string | null }>(`select removed_at from public.photos where id = $1`, [reportedPhotoId]);
