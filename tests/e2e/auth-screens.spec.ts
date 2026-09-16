@@ -17,7 +17,8 @@ test.skip(process.env.E2E_PLATFORM_UNCONFIGURED === "1", "platform unconfigured:
 const PHONE = { width: 390, height: 844 };
 
 async function capture(page: Page, name: string) {
-  const dir = join(process.cwd(), ".qa-shots", "rtl");
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its captures where STATUS cites them.
+  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
   mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: join(dir, `wave6-auth-${name}-390.png`), fullPage: true });
 }
