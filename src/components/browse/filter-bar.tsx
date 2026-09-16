@@ -23,7 +23,10 @@ import type { TimelineData } from "@/lib/dal/search";
 //   · ROW A — always there: «القادمة · جارية الآن · انتهت», the categories, and
 //     «المزيد من عوامل التصفية». These are LINKS to the next state of the URL,
 //     so they work before JavaScript, and a pressed one carries its own × that
-//     removes it and nothing else. It scrolls sideways on a phone.
+//     removes it and nothing else. ★ It WRAPS, and on a phone the filter button
+//     takes a line of its own: the first build scrolled the chips beside the
+//     button, and at 390 px the button's width clipped «جارية الآن» to «جارية»
+//     — a different word.
 //   · ROW B — whenever anything else is applied: one chip per filter, NAMED
 //     («الوسم: تقارير», not a uuid), each removable on its own, and one
 //     «امسح الكل». It wraps and never scrolls, so an applied filter cannot sit
@@ -79,8 +82,8 @@ export async function FilterBar({ query, data, locale }: { query: TimelineQuery;
 
   return (
     <div className="flex flex-col gap-3">
-      <nav aria-label={t("filters.label")} className="flex items-center gap-2">
-        <ul className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-1">
+      <nav aria-label={t("filters.label")} className="flex flex-col items-start gap-2 md:flex-row md:items-center">
+        <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {statusToggle("upcoming")}
           {statusToggle("live")}
           {statusToggle("ended")}
@@ -100,7 +103,7 @@ export async function FilterBar({ query, data, locale }: { query: TimelineQuery;
             );
           })}
         </ul>
-        <div className="shrink-0">
+        <div className="shrink-0 md:ms-auto">
           <FilterSheet
             search={new URLSearchParams(query.entries.map(([k, v]) => [k, v])).toString()}
             options={{ venues: data.options.venues, companies: data.options.companies, tags: data.options.tags, presenters: data.options.presenters }}
