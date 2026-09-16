@@ -1,8 +1,13 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { FileDrop } from "@/components/ui/file-drop";
+import { Panel } from "@/components/ui/panel";
+import { useToast } from "@/components/ui/toast";
+import { AlertCircleIcon } from "@/components/ui/icons";
 import type { PhotoKind } from "@/lib/dal/photos";
 
 // REQ-EVT-009/010/011/013 — the same shape as src/components/materials/
@@ -14,7 +19,13 @@ import type { PhotoKind } from "@/lib/dal/photos";
 // this only confirms the request was accepted (202) and then refreshes;
 // the photo appears once the job finishes, same as any other async job in
 // this product surfacing through a page revisit rather than a promise this
-// component can await to completion.
+// component can await to completion. ★ That gap against `REQ-EVT-010`'s
+// literal "appears at once" is real and recorded, not fixed this wave
+// (docs/plan/notes/content.md §3, §4.4) — the success state below is
+// honest about it ("processing", not "posted").
+//
+// ★ REQ-UIX-024, wave 6: `ui/file-drop` states JPEG/PNG/WebP and the org's
+// own size limit BEFORE a file is chosen.
 
 function sniffKindFromFile(file: File): PhotoKind | null {
   const type = file.type.toLowerCase();
@@ -31,27 +42,21 @@ function sniffKindFromFile(file: File): PhotoKind | null {
 interface UploadWidgetProps {
   locale: string;
   sessionId: string;
+  imageLimitMb: number;
 }
 
-export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
+export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetProps) {
   const t = useTranslations("photos.upload");
   const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
+  const toast = useToast();
+  const [files, setFiles] = useState<File[]>([]);
+  const [resetKey, setResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReactNode>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit() {
     setError(null);
-    setNotice(null);
-    const form = event.currentTarget;
-    const fileInput = form.elements.namedItem("file") as HTMLInputElement | null;
-    // Read the file straight off the input element, not through `FormData`
-    // — jsdom's `new FormData(form)` does not carry a file input's actual
-    // `File` through, a jsdom-only gap (src/components/materials/
-    // upload-form.tsx's own note); this is also the more direct approach.
-    const file = fileInput?.files?.[0] ?? null;
+    const file = files[0] ?? null;
     if (!file) {
       setError(t("fileRequired"));
       return;
@@ -71,7 +76,8 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
       });
       const initiateBody = await initiateRes.json();
       if (!initiateRes.ok) {
-        setError(errorMessage(initiateBody));
+        setError(errorMessage(initiateBody, t));
+        toast.show({ tone: "error", title: errorMessageText(initiateBody, t) });
         return;
       }
 
@@ -82,6 +88,7 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
       });
       if (!putRes.ok) {
         setError(t("uploadFailed"));
+        toast.show({ tone: "error", title: t("uploadFailed") });
         return;
       }
 
@@ -92,40 +99,65 @@ export function UploadWidget({ locale, sessionId }: UploadWidgetProps) {
       });
       const completeBody = await completeRes.json();
       if (!completeRes.ok) {
-        setError(errorMessage(completeBody));
+        setError(errorMessage(completeBody, t));
+        toast.show({ tone: "error", title: errorMessageText(completeBody, t) });
         return;
       }
 
-      formRef.current?.reset();
-      setNotice(t("processing"));
+      setFiles([]);
+      setResetKey((k) => k + 1);
+      toast.show({ tone: "success", title: t("processing") });
       router.refresh();
     } finally {
       setBusy(false);
     }
   }
 
-  function errorMessage(body: { error?: string; limitMb?: number }): ReactNode {
-    switch (body.error) {
-      case "not_authorized":
-        return t("notAuthorized");
-      case "file_too_large":
-        return t.rich("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => <bdi>{chunks}</bdi> });
-      default:
-        return t("uploadFailed");
-    }
-  }
-
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-field border border-edge p-4">
-      <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-        {t("fileLabel")}
-        <input type="file" name="file" accept="image/jpeg,image/png,image/webp" />
-      </label>
-      {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
-      {notice ? <p className="text-body-sm text-fg-muted">{notice}</p> : null}
-      <button type="submit" disabled={busy} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
+    <div className="flex flex-col gap-3">
+      <FileDrop
+        key={resetKey}
+        name="file"
+        accept={["image/jpeg", "image/png", "image/webp"]}
+        maxBytes={imageLimitMb * 1024 * 1024}
+        // `t.markup`, not plain `t` — see materials/upload-form.tsx's
+        // identical comment for why.
+        requirements={[t.markup("requirement", { limitMb: imageLimitMb, bdi: (chunks) => chunks })]}
+        onFiles={setFiles}
+      />
+      {error ? (
+        <Panel tone="error" className="flex items-start gap-2 p-3">
+          <AlertCircleIcon aria-hidden className="mt-0.5 shrink-0" />
+          <p className="text-body-sm text-fg-heading">{error}</p>
+        </Panel>
+      ) : null}
+      <Button type="button" onClick={handleSubmit} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
         {t("action")}
-      </button>
-    </form>
+      </Button>
+    </div>
   );
+}
+
+function errorMessage(body: { error?: string; limitMb?: number }, t: ReturnType<typeof useTranslations>): ReactNode {
+  switch (body.error) {
+    case "not_authorized":
+      return t("notAuthorized");
+    case "file_too_large":
+      return t.rich("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => <bdi>{chunks}</bdi> });
+    default:
+      return t("uploadFailed");
+  }
+}
+
+/** The same failure, as a plain string — see `materials/upload-form.tsx`'s
+ *  identical helper for why `t.markup`, not `.rich`, is what a toast needs. */
+function errorMessageText(body: { error?: string; limitMb?: number }, t: ReturnType<typeof useTranslations>): string {
+  switch (body.error) {
+    case "not_authorized":
+      return t("notAuthorized");
+    case "file_too_large":
+      return t.markup("sizeLimitExceeded", { limitMb: body.limitMb ?? 0, bdi: (chunks) => chunks });
+    default:
+      return t("uploadFailed");
+  }
 }

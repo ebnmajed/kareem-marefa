@@ -5,21 +5,28 @@
       "empty": "No photos for this session yet.",
       "notice": "These photos will be shown to every member of the organization. We automatically remove location data from every photo. Any colleague who appears in a photo can ask to have it hidden.",
       "requestHide": "Remove photos I appear in",
+      "requestHideConfirmTitle": "Hide this photo?",
       "requestHideConfirm": "This photo will be hidden immediately pending review by an admin. Continue?",
       "requestedHide": "The hide request was sent.",
+      "requestHideFailed": "Could not send the hide request. Try again.",
       "hiddenBadge": "Hidden — pending review",
       "restore": "Restore",
-      "restored": "The photo was restored."
+      "restoring": "Restoring…",
+      "restored": "The photo was restored.",
+      "restoreFailed": "Could not restore the photo. Try again.",
+      "cancel": "Cancel"
     },
     "upload": {
       "action": "Add a photo",
+      "uploading": "Uploading…",
       "fileLabel": "File",
       "fileRequired": "Choose a photo first.",
       "notAuthorized": "You do not have permission to upload photos to this session.",
       "sizeLimitExceeded": "The photo is larger than the allowed limit (<bdi>{limitMb}</bdi> MB).",
       "unsupportedType": "Unsupported image type — use JPEG, PNG or WebP.",
       "uploadFailed": "The upload failed. Try again.",
-      "processing": "Processing the photo…"
+      "processing": "Processing the photo…",
+      "requirement": "JPEG, PNG or WebP · up to <bdi>{limitMb}</bdi> MB"
     }
   }
 }

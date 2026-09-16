@@ -4,9 +4,11 @@
 // comment-item.test.tsx and tests/components/materials/list.test.tsx do,
 // since UploadWidget/TakedownButton both need it.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import axe from "axe-core";
 import ar from "@/messages/ar/photos.json";
+import { ToastProvider } from "@/components/ui/toast";
 import type { PhotosPageData } from "@/lib/dal/photos";
 
 vi.mock("@/lib/dal/photos", () => ({ getPhotosPageData: vi.fn() }));
@@ -17,57 +19,106 @@ vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ refresh: vi.fn() }),
 }));
+vi.mock("@/components/photos/actions", () => ({
+  requestPhotoTakedownAction: vi.fn().mockResolvedValue({ error: null }),
+  restorePhotoAction: vi.fn().mockResolvedValue({ error: null }),
+}));
 
 const { getPhotosPageData } = await import("@/lib/dal/photos");
-const { Photos } = await import("@/components/photos/gallery");
+const { Photos, photosSummary } = await import("@/components/photos/gallery");
 
 const sessionId = "11111111-1111-1111-1111-111111111111";
-const base: PhotosPageData = { photos: [], canUpload: false, isStaff: false, myMemberId: "m1" };
+const base: PhotosPageData = { photos: [], canUpload: false, isStaff: false, myMemberId: "m1", imageLimitMb: 20 };
 
-function renderWithIntl(element: React.ReactElement) {
-  return render(<NextIntlClientProvider locale="ar" messages={ar}>{element}</NextIntlClientProvider>);
+// ★ `ui/link` (`EmptyState`'s action via `ButtonLink`) needs next-intl's
+// routing context now — every render below goes through this.
+async function renderSlot(data: PhotosPageData) {
+  vi.mocked(getPhotosPageData).mockResolvedValue(data);
+  const element = await Photos({ sessionId, memberId: "m1", locale: "ar" });
+  return render(
+    <NextIntlClientProvider locale="ar" messages={ar}>
+      {/* `ToastProvider` always renders its (empty) viewport region, so the
+          slot's own null-vs-something is asserted on THIS marked div, not
+          on the render's outer `container`. */}
+      <ToastProvider closeLabel="إغلاق">
+        <div data-testid="slot">{element}</div>
+      </ToastProvider>
+    </NextIntlClientProvider>,
+  );
 }
 
 describe("Photos slot", () => {
-  it("shows the empty state and hides the upload widget when the viewer cannot upload", async () => {
-    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base });
-    renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
-    expect(screen.getByText("لا توجد صور لهذه الجلسة بعد.")).toBeInTheDocument();
-    expect(screen.queryByText("إضافة صورة")).not.toBeInTheDocument();
+  // ★ wave 6 (`sessions.md` §22.4's invariant): `visible === false` EXACTLY
+  // when the slot returns `null` — no upload right and nothing to show
+  // leaves no next action `EmptyState` could honestly offer.
+  it("renders null for a viewer who cannot upload and has nothing to see", async () => {
+    await renderSlot({ ...base });
+    expect(screen.getByTestId("slot")).toBeEmptyDOMElement();
   });
 
-  it("★ REQ-EVT-013: shows the upload notice and widget once the viewer can upload (checked in / presenter / staff)", async () => {
-    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base, canUpload: true });
-    renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
+  it("★ REQ-EVT-013: shows the EmptyState, the upload notice and the widget once the viewer can upload (checked in / presenter / staff)", async () => {
+    await renderSlot({ ...base, canUpload: true });
+    expect(screen.getByText("لا توجد صور لهذه الجلسة بعد.")).toBeInTheDocument();
     expect(screen.getByText(/ستظهر هذه الصور لجميع أعضاء المؤسسة/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "إضافة صورة" })).toBeInTheDocument();
   });
 
   it("shows the count and a photo grid, with a request-hide action per photo (REQ-EVT-012)", async () => {
-    vi.mocked(getPhotosPageData).mockResolvedValue({
+    await renderSlot({
+      ...base,
       photos: [
         { id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null },
         { id: "p2", uploaderId: "u2", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p2.jpg", hiddenAt: null },
       ],
-      canUpload: false,
-      isStaff: false,
-      myMemberId: "m1",
     });
-    renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("صورتان")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "احذف الصور التي أظهر فيها" })).toHaveLength(2);
   });
 
   it("★ a hidden photo shows the pending-review badge, and a restore action to staff instead of a request-hide action", async () => {
-    vi.mocked(getPhotosPageData).mockResolvedValue({
+    await renderSlot({
+      ...base,
       photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: "2026-09-14T01:00:00Z" }],
-      canUpload: false,
       isStaff: true,
-      myMemberId: "m1",
     });
-    renderWithIntl(await Photos({ sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("مخفية — بانتظار المراجعة")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "استعادة" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "احذف الصور التي أظهر فيها" })).not.toBeInTheDocument();
+  });
+
+  it("is accessible with a populated grid, the notice and the uploader all showing", async () => {
+    const { container } = await renderSlot({
+      ...base,
+      canUpload: true,
+      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null }],
+    });
+    const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("★ REQ-UIX-013: the request-hide action confirms in a dialog naming the object, then toasts success", async () => {
+    await renderSlot({
+      ...base,
+      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "احذف الصور التي أظهر فيها" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "إخفاء هذه الصورة؟" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "احذف الصور التي أظهر فيها" }));
+    // The same confirmation appears twice by design — the photo's own
+    // "done" state AND the toast — so this asserts on both.
+    await waitFor(() => expect(screen.getAllByText("تم إرسال طلب الإخفاء.")).toHaveLength(2));
+  });
+});
+
+describe("photosSummary", () => {
+  it("is visible with a count when photos exist", async () => {
+    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base, photos: [{ id: "p1", uploaderId: "u1", createdAt: "now", url: "u", hiddenAt: null }] });
+    await expect(photosSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: true, count: 1, outstanding: null });
+  });
+
+  it("is NOT visible for a viewer who cannot upload with nothing to see — exactly when `Photos` returns null", async () => {
+    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base });
+    await expect(photosSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: false, count: 0, outstanding: null });
   });
 });

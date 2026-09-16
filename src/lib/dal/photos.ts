@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { photoPath } from "@/lib/storage/paths";
@@ -115,19 +116,32 @@ export interface PhotosPageData {
   canUpload: boolean;
   isStaff: boolean;
   myMemberId: string;
+  /** `org_settings.limit_image_mb` (shared with materials' `image` kind) — read so the uploader can
+   *  state the size ceiling BEFORE a file is chosen (`REQ-UIX-024`), same reasoning as
+   *  `materials.ts`'s `MaterialUploadLimits`. Advisory only; `record_photo_upload`'s own check
+   *  (`0050_photo_pipeline.sql`) against the real byte size is the control. */
+  imageLimitMb: number;
 }
+
+const DEFAULT_IMAGE_LIMIT_MB = 20;
 
 /** The event page's `Photos` slot — REQ-EVT-010: `photos_read`'s own `hidden_at is null or
  *  is_staff()` clause (03 §6) is the entire visibility rule; this never adds a second filter
- *  on top of it, so a plain member's query already excludes hidden photos server-side. */
-export async function getPhotosPageData(locale: string, sessionId: string): Promise<PhotosPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { photos: [], canUpload: false, isStaff: false, myMemberId: "" };
+ *  on top of it, so a plain member's query already excludes hidden photos server-side.
+ *
+ *  ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page gates the photos
+ *  `<section>` on `photosSummary()` (below), which needs this same read. */
+export const getPhotosPageData = cache(async (locale: string, sessionId: string): Promise<PhotosPageData> => {
+  if (!z.uuid().safeParse(sessionId).success) {
+    return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB };
+  }
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: checkedIn }, { data: presents }] = await Promise.all([
+  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }] = await Promise.all([
     supabase.from("photos").select("id, uploader_id, storage_path, created_at, hidden_at").eq("session_id", sessionId).is("removed_at", null).order("created_at", { ascending: false }),
     supabase.rpc("has_checked_in", { p_session: sessionId }),
     supabase.rpc("is_presenter_of", { p_session: sessionId }),
+    supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
@@ -144,8 +158,9 @@ export async function getPhotosPageData(locale: string, sessionId: string): Prom
     canUpload: !!checkedIn || !!presents || isStaff,
     isStaff,
     myMemberId: session.memberId,
+    imageLimitMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_IMAGE_LIMIT_MB,
   };
-}
+});
 
 const requestTakedownInput = z.object({ photoId: z.uuid() });
 

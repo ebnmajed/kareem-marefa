@@ -196,11 +196,19 @@ test("★ REQ-EVT-010/013: the gallery shows the seeded photo, and the upload no
   await review(page, "photos-event-page");
 });
 
-test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly, before any moderator acts", async ({ context, page }) => {
+test("★ REQ-EVT-012/REQ-UIX-013: a bystander's takedown request confirms in a dialog naming the object, then hides the photo instantly, before any moderator acts", async ({ context, page }) => {
   await signIn(context, bystanderEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
 
-  page.once("dialog", (dialog) => dialog.accept());
+  // ★ wave 6: the confirmation moved from a native `window.confirm` to
+  // `ui/dialog` (REQ-UIX-013 — every destructive action confirms in a
+  // dialog naming the object). Open it, then confirm inside it — the
+  // trigger and the dialog's own confirm button share the exact same label
+  // by design, so the second click is scoped to the dialog.
+  await page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "إخفاء هذه الصورة؟" })).toBeVisible();
+
   // Wait for the Server Action's own POST to actually complete (a real
   // response, not just the click resolving) before ever touching the
   // database — under the full multi-file run this request itself is what
@@ -212,7 +220,7 @@ test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly,
   const currentUrl = page.url();
   await Promise.all([
     page.waitForResponse((res) => res.url() === currentUrl && res.request().method() === "POST"),
-    page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click(),
+    dialog.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click(),
   ]);
 
   // The database-level proof of REQ-EVT-012 ("hides instantly, before any
@@ -236,8 +244,14 @@ test("★ REQ-EVT-012: a bystander's takedown request hides the photo instantly,
   // are what REQ-EVT-012 actually asks for.
 
   // A plain member (not staff) reloading the event page no longer sees it.
+  // ★ wave 6: a bystander (not staff, not checked in/presenting) with an
+  // all-hidden gallery has nothing to see and no upload right — `Photos()`
+  // renders null (REQ-UIX-012's own limit: no fabricated action for a
+  // viewer with no next step), so the old empty-state text no longer
+  // appears at all. The photo's own image disappearing is what REQ-EVT-012's
+  // "hides instantly" actually means for this viewer.
   await page.reload();
-  await expect(page.getByText("لا توجد صور لهذه الجلسة بعد.")).toBeVisible();
+  await expect(page.locator("img")).toHaveCount(0);
 
   // The moderator sees it, marked pending review, and can restore it.
   await context.clearCookies();
