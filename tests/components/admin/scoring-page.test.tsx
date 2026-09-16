@@ -58,7 +58,7 @@ const DATA: ScoringAdminData = {
   rules: [
     rule("r-check", "check_in", 20, { reasonAr: "تسجيل حضور مؤكَّد" }),
     rule("r-comment", "comment", 2, { capPerSession: 5, cooldownSeconds: 60, reasonAr: "تعليق" }),
-    rule("r-delivered", "session_delivered", 50),
+    rule("r-delivered", "session_delivered", 50, { reasonAr: "قدّمت جلسة للمجتمع" }),
     rule("r-noshow", "no_show", 0, { reasonAr: "تغيّب بعد الحجز" }),
     rule("r-late", "late_cancellation", -5, { reasonAr: "إلغاء متأخر" }),
   ],
@@ -100,6 +100,11 @@ describe("ScoringAdminPage", () => {
     expect(attendee[1]).toHaveTextContent("نقطتان");
     expect(attendee[1]).toHaveTextContent("5 مرات لكل جلسة");
     expect(attendee[1]).toHaveTextContent("دقيقة واحدة");
+    // The member-facing reason is shown only where it differs from the name —
+    // the seed's equals it on twelve of fourteen rules, and a card that reads
+    // its own name twice is noise.
+    expect(attendee[0]).not.toHaveTextContent("يظهر للعضو");
+    expect(cards(section("للمُقدِّمين"))[0]).toHaveTextContent("يظهر للعضو: قدّمت جلسة للمجتمع");
 
     const penalties = cards(section("الخصومات"));
     expect(penalties[0]).toHaveTextContent("لا خصم");

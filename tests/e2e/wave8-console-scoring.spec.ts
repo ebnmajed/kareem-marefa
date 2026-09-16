@@ -119,6 +119,9 @@ test("SCR-053: the fixed catalogue in three groups, the deductions closed at 0, 
   await expect(page.getByRole("heading", { name: "الخصومات" })).toBeVisible();
   const penalties = group(page, "penalty-heading");
   await expect(shown(page, penalties.getByText("تغيّب بعد الحجز", { exact: true }))).toBeVisible();
+  // The seeded member-facing reason equals the name, so no card repeats it
+  // under a «يظهر للعضو» caption (the a4d2886 run found the name twice).
+  await expect(shown(page, penalties.getByText(/يظهر للعضو/))).toHaveCount(0);
   await expect(shown(page, penalties.getByText("لا خصم", { exact: true })).first()).toBeVisible();
   await expect(shown(page, penalties.getByText("مغلق", { exact: true })).first()).toBeVisible();
   await expect(page.getByText("الحجز", { exact: true })).toHaveCount(0);

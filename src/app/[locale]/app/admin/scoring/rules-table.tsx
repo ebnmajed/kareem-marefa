@@ -53,12 +53,18 @@ export function RulesTable({
       key: "action",
       header: t("catalogue.colAction"),
       onCard: true,
-      cell: (r) => (
-        <div className="min-w-0">
-          <p className="text-label text-fg-heading">{t(`actions.${r.actionKey}`)}</p>
-          <p className="mt-0.5 text-caption text-fg-muted">{t.rich("catalogue.memberSees", { reason: r.reasonAr, bdi })}</p>
-        </div>
-      ),
+      cell: (r) => {
+        // The seed's member-facing reason IS the Arabic label for twelve of the
+        // fourteen rules, so the caption appears only once an admin has made the
+        // two differ — otherwise every card would read its own name twice.
+        const name = t(`actions.${r.actionKey}`);
+        return (
+          <div className="min-w-0">
+            <p className="text-label text-fg-heading">{name}</p>
+            {r.reasonAr.trim() !== name ? <p className="mt-0.5 text-caption text-fg-muted">{t.rich("catalogue.memberSees", { reason: r.reasonAr, bdi })}</p> : null}
+          </div>
+        );
+      },
     },
     {
       key: "points",
