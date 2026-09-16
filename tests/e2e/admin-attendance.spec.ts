@@ -207,14 +207,27 @@ test("REQ-CHK-012: the summary counts and the per-member table are correct", asy
   // for the other member; this just matches it.
   await expect(page.getByRole("cell", { name: "حاضر مسجَّل" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "بانتظار الحجز" })).toBeVisible();
-  await expect(page.getByText("رمز الحضور")).toBeVisible();
+  // Scoped to the cell role, not a bare `getByText` — sync 6 (phone): Next's
+  // dynamic-route streaming (this page touches `cookies()`, so it is
+  // dynamic) can transiently duplicate a matching text node elsewhere in
+  // the document during hydration, the same class of flake
+  // `checkin.spec.ts`'s own RsvpPanel test already documents for this
+  // reason. A `<td>` carries `cell`; a transient streamed copy does not.
+  await expect(page.getByRole("cell", { name: "رمز الحضور" })).toBeVisible();
 });
 
 test("REQ-CHK-008: a manual mark records a check-in with the manual method, and a written reason is required", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
 
-  await page.getByLabel("العضو").selectOption({ label: "بانتظار الحجز" });
+  // ★ Sync 6 (desktop): a bare "العضو" ambiguously matched BOTH this
+  // select and C3's own removal select, because Playwright's default
+  // string matching is a substring search — the removal select's longer
+  // label ("العضو المراد إلغاء تسجيل حضوره") still CONTAINS "العضو".
+  // Targeting the full, distinguishing label avoids that regardless of
+  // substring semantics, and `checkin.json`'s own two labels no longer
+  // read as the same control to a screen reader either.
+  await page.getByLabel("العضو المراد تسجيل حضوره").selectOption({ label: "بانتظار الحجز" });
   await page.getByRole("button", { name: "سجّل حضوره" }).click();
   await expect(page.getByText("اكتب السبب أولًا")).toBeVisible();
 
@@ -320,7 +333,7 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
   }
 
   const removeSection = page.locator("section", { has: page.getByRole("heading", { name: "إلغاء تسجيل حضور" }) });
-  await removeSection.getByLabel("العضو المطلوب إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
+  await removeSection.getByLabel("العضو المراد إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
   await removeSection.getByLabel("سبب الإلغاء").fill("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
 
   // The submit button OPENS the confirmation dialog (REQ-UIX-013) — it must
@@ -360,6 +373,6 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
 
   // Removed, not deleted: they are offered again as a manual-mark
   // candidate, the same "not checked in" state a fresh member would be in.
-  await expect(page.getByLabel("العضو", { exact: true }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
+  await expect(page.getByLabel("العضو المراد تسجيل حضوره", { exact: true }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
 });
 

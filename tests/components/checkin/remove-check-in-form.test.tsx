@@ -49,7 +49,7 @@ async function fillAndOpen() {
   // `{ exact: false }`: `<Field required>` appends «مطلوب» to the label's
   // own accessible name (REQ-UIX-011) — a real, permanent suffix, not
   // something to match verbatim here.
-  await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره", { exact: false }), "m1");
+  await userEvent.selectOptions(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }), "m1");
   await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
   await userEvent.click(screen.getByRole("button", { name: "ألغِ تسجيل الحضور" }));
   return screen.findByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
@@ -67,7 +67,7 @@ describe("RemoveCheckInForm", () => {
     const trigger = screen.getByRole("button", { name: "ألغِ تسجيل الحضور" });
     expect(trigger).toBeDisabled();
 
-    await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره", { exact: false }), "m1");
+    await userEvent.selectOptions(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }), "m1");
     expect(trigger).toBeDisabled(); // a member alone is not enough
 
     await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");

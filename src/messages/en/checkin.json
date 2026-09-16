@@ -89,7 +89,7 @@
       "manualTitle": "Manual attendance mark",
       "manualIntro": "For a member who reserved but has not checked in, or who attended without a reservation. A reason is required and is recorded in the audit log.",
       "manualNotOpen": "Manual marking is available only while the session is running.",
-      "memberLabel": "Member",
+      "memberLabel": "Member to check in",
       "memberPlaceholder": "Choose a member",
       "reasonLabel": "Reason",
       "mark": "Mark present",

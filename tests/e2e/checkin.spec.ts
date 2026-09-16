@@ -276,3 +276,32 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   const { rows: reopenedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
   expect(reopenedRows[0].check_in_open).toBe(true);
 });
+
+// ★ C1's own captures, last in the file: `getCheckInScreenData()`'s
+// `ineligibleReason` doesn't consult `viewer.checkedIn` (session-matrix.ts's
+// own comment on `checkInIneligibleReason()`) — an already-checked-in
+// member still sees the same "ready" form the next member would, so
+// `attendeeEmail` (checked in by the first test above) works for the
+// "ready" capture unmodified. `check_in_open` is toggled directly through
+// the database rather than the host UI — that round trip is already
+// covered above; this is only ever the check-in SCREEN's own two states.
+test("C1 captures: the ready code form, and the proactive check_in_closed banner, at 390px", async ({ context, page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const isPhone = test.info().project.name === "phone";
+  await signIn(context, attendeeEmail, false);
+
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(page.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-check-in-ready.png"), fullPage: true });
+  }
+
+  await db.query(`update public.sessions set check_in_open = false where id = $1`, [sessionId]);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(page.getByText("أُغلق تسجيل الحضور لهذه الجلسة")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-check-in-closed.png"), fullPage: true });
+
+  // Leave the session as every earlier test in the file found it.
+  await db.query(`update public.sessions set check_in_open = true where id = $1`, [sessionId]);
+});
