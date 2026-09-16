@@ -13,11 +13,11 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-122`** | The resequencing, the check-in switch, walk-ins, multi-day sessions, and the canvas's four known errors. **Do not re-litigate these.** |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-123`** | The resequencing, the check-in switch, walk-ins, multi-day sessions, and every known canvas error. **Do not re-litigate these.** |
 | 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
-| 6 | The canvas | The visual reference. Read `DEC-114` **and `DEC-122`** first — it has four known errors, and one of them looks like a deliberate full-bleed |
+| 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
 
 **The state of the tree.** M9's system work is **built, green and on this branch** — 34 `ui/`
 primitives, the shell, the status vocabulary, the loading and failure models, the form model, and
@@ -29,10 +29,15 @@ the screens come first, the admin console is in scope from the start, `/app` bec
 timeline, and `16` §6.6's separate home page is withdrawn. That work is specified and unstarted.
 
 **Nothing is blocked on the owner.** The last open item — which errors are in the canvas — was
-answered on 2026-09-16 and is recorded as **`DEC-122`**: the ended-session artboard's poster
-overlaps the action card by 28 × 190 px because the mockup lacks a `box-sizing` reset, so it is an
-artefact of the mockup's rendering, **not a design to reproduce**. `Main.dc.html` has the same
-defect once more; a sweep of all 18 artboards found no third instance.
+answered on 2026-09-16 and closed by two entries. **`DEC-122`**: the ended-session artboard's poster
+overlaps the action card by 28 × 190 px because the mockup lacks a `box-sizing` reset — an artefact
+of the mockup's rendering, **not a design to reproduce** (`Main.dc.html` has it once more; no third
+instance in 18 artboards). **`DEC-123`**: a measured sweep of all 18 for contrast, touch targets and
+the five Arabic rules. **Nothing found reaches the app.** Four more artefact classes not to
+reproduce — chief among them **the "ended" wash swallowing the status badge** (1.75–1.87:1 in the
+canvas; the app's own tokens are 5.11:1) — two real questions for design (browse tag counts at
+1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
+no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
 **Before spawning anyone:** write the new ownership map into `CLAUDE.md` and the ten
 `.claude/agents/*.md` files. `DEC-085`'s rule is why the old one is marked rather than deleted —

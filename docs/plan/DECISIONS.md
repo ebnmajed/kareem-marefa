@@ -2312,3 +2312,85 @@ Not by reading the HTML — the artboard contains no `position: absolute`, no ne
 
 - **Supersedes:** nothing. Extends `DEC-114`'s catalogue from three classes to four.
 - **Documents changed:** `STATUS.md` (the owner-blocked item is now closed)
+
+---
+
+## DEC-123 — The rest of the canvas, swept by measurement: nothing reaches the app, four classes are mockup artefacts, and two of `DEC-114`'s guesses are now verified
+
+- **Date:** 2026-09-16 · **Decided by:** lead, at the owner's instruction («yes, since it is cheap»)
+- **Extends `DEC-114`/`DEC-122`.** All 18 artboards were rendered headless at their own declared widths, after webfont settle, and checked for text contrast (compositing ancestor `opacity` and `filter: grayscale` before scoring, and scoring gradient backgrounds at their worst stop), touch-target size, and the five Arabic rules `CLAUDE.md` states: no clipped line, no letter-spacing, no justification, body line-height, minimum size.
+
+### ★ The finding that looked like an app bug and is not — checked before it was written down
+
+The canvas shows the header search field's placeholder at **2.12:1** (`Home`, `Main`). The obvious
+worry was that the app matches it, because **M9 shipped `SearchEntry` into the shell** and the field
+is now on every screen. It does not: `src/components/ui/field.tsx:77`'s `controlBase` already carries
+`placeholder:text-fg-muted`, so the placeholder is `--fg-muted` `#5b6780` on `--canvas` `#ffffff` —
+**5.68:1**, comfortably AA.
+
+★ **This was nearly logged as a live AA failure.** `input.tsx` was grepped for `placeholder` and has
+none — the class string lives in `field.tsx`'s shared `controlBase`, which `input.tsx` reaches
+through `controlClass()`. Reading one file and not the helper it imports produced a confident,
+wrong number (≈3.53:1, Tailwind preflight's default mix) that was corrected only by opening
+`field.tsx`. **A contrast claim about the app is only worth making from the declaration that
+actually applies.**
+
+So this joins the list below: **a mockup-only problem. Do not reproduce it.**
+
+### Mockup artefacts — the `DEC-122` family, and the same instruction applies
+
+1. ★ **The "ended" wash swallows the status badge.** `EventEnded` and `Browse` put the status badge
+   *inside* the poster that carries `filter: grayscale(1); opacity: .35–.5`, so «انتهت» measures
+   **1.87:1** and «أُلغيت» **1.75:1**. The app's own tokens are fine — `--color-ended` `#5b6780` on
+   `--color-ended-bg` `#f1f3f7` is **5.11:1**, and `--color-live` is **5.43:1**. **The wash belongs to
+   the poster image only; the status badge composites *over* it and is never dimmed.** Copying the
+   artboard's nesting takes a compliant badge to a quarter of the required contrast.
+2. **`line-height: normal` on wrapped Arabic body text** — 1.20 where `CLAUDE.md` asks 1.7, in four
+   places (`CertBuilder`, `Email`, `Main`, `Schedule`). The app's ramp is 17/30 = **1.765** on mobile
+   and 16/26 on desktop, so building with `text-body` is automatically correct. Do not copy the
+   inline `line-height` values.
+3. **`Motion`'s storyboard frames crush Arabic to two and three lines** in cards too narrow for the
+   string («سُجِّل حضورك», «أنت في القاعة الآن»). A storyboard frame is a thumbnail of a moment, not a
+   spec for the card's width.
+
+### Real, on product surfaces, and worth a design answer
+
+- **Tag counts in the browse filter chips are 1.96:1** (`Browse`, five of them) — «أتمتة ٥», «إكسل ٤».
+  The count is the part a member scans and it is the least readable thing in the chip.
+- **`Main`'s poster caption «الملصق · ٤:٥ · مُولَّد من قالب المؤسسة» is 3.30:1 at 13 px.**
+
+### Not defects — surfaces that are not product
+
+`Shell`'s «محتوى الصفحة» (1.99:1) is a wireframe placeholder inside a phone diagram;
+`EmailLibrary`'s 9 px text with `overflow: hidden` is an email **preview thumbnail**, where both are
+correct; `Motion`'s 11 px «660ms — الخط الثاني» labels are spec annotations on a storyboard. These
+were flagged by the sweep and cleared by looking at them, which is the reason the sweep does not
+get to be the verdict.
+
+### ✓ Two of `DEC-114`'s entries move from *assumed* to *verified*
+
+- **Class 2 — no rating appears on a browse card or any public surface.** Checked every card in
+  `Browse` and `Home`: title, presenter, date, tags, seat line. **No stars anywhere.** `REQ-RAT-004`
+  and `REQ-RAT-006` are not contradicted by the canvas.
+- **Class 3 — no Arabic-Indic digits in a machine-readable string.** Zero hits across 18 artboards
+  against URLs, filenames, CSV, serials and verification codes. (The first pass flagged «الموضوع ٤»
+  and «١٠٨٠ بكسل»; both are counted nouns — display, not machine-readable — and the detector was
+  narrowed rather than the finding accepted.)
+
+### Touch targets — no AA failure, one house-standard note
+
+36 controls fall under the house 44 px (`h-11`), **all of them ≥ 32 px**, so all pass WCAG 2.5.8's
+24 px floor. Every one is desktop editor chrome (`CertBuilder`, `Studio`, `Email`, and `Browse`'s
+filter button). **None on the phone artboard.** Build to 44 px anyway — that is the house standard
+and the reason `h-11` exists.
+
+### Method note, since this is now the second time it has paid
+
+The first pass produced **643 line-height findings and 116 size findings**, nearly all false: it
+measured border boxes, so a padded one-line pill read as two lines, and it judged 12 px badge
+labels as body text. Counting real line boxes with a `Range` and requiring three or more words cut
+those to **8 and 8**. **A sweep that cries wolf is worse than no sweep**, and the numbers above are
+after looking at every surviving finding.
+
+- **Supersedes:** nothing. Verifies two of `DEC-114`'s three classes and adds the app fix.
+- **Documents changed:** `STATUS.md`
