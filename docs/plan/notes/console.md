@@ -1695,3 +1695,27 @@ before touching anything, so the deletion is exactly the one dead block, nothing
 `npx tsc --noEmit` clean, lint zero errors, `npx vitest run` 144/144 files, 1435/1435 tests green.
 Committed alone: `066e8b7`. Per the lead's sync-5 hold, no e2e and no `npm run test:rls` run this
 pass — both remain pending on the sync-5 results.
+
+### Sync 5 finding — the dashboard's attendance-rate Stat, value slot vs. hint slot
+
+Sync 5 (build `bfe8e2a`): six specs green on re-run (the three "failed" phone admin cases and the
+dashboard case were the harness hang/a gateway flake, not real, per the lead). One real finding from
+the drawer capture's empty-org background: `admin/page.tsx`'s attendance-rate `Stat` put the whole
+`attendanceRateEmpty` sentence («لا جلسات بدأت بعد لحساب المعدّل.») in the VALUE slot when there was
+nothing to divide by yet — stat-number size (`text-h2`), wrapping three lines. `ui/stat.tsx` (content's
+file, not touched) already has a `hint` prop built for exactly this — short value, explanation
+underneath in caption type. Fixed at the call site: value becomes `"—"` (the bare-dash convention
+already used in `moderation/{comments,photos,reports}/page.tsx` for a missing name, not a new message
+key), the sentence moves to `hint`. Populated case (`attendanceRatePct !== null`) unchanged — no hint,
+real percentage in the value slot as before.
+
+New test, `tests/components/admin/admin-dashboard-page.test.tsx` — first component test of this page,
+same mocked-DAL + real-`ar/admin.json` + `createTranslator` pattern `content`'s
+`me/certificates-page.test.tsx`/`me/calendar-page.test.tsx` established for an async Server Component
+awaited directly (`setRequestLocale: () => {}` + `getTranslations` mocked, `next/navigation` needs no
+mock since `notFound()` is never reached with non-null fixture data). Three cases: no-data value/hint
+split, populated case has no hint, axe-clean in the no-data state. Confirmed failing against the
+pre-fix page by hand — `git show HEAD:path` over the file, ran (the placeholder test failed exactly as
+expected, `getByText("—")` found nothing), restored from a scratchpad copy, ran green again — before
+committing. `npx tsc --noEmit` clean, lint zero errors on both files, `npx vitest run` 145/145 files,
+1438/1438 tests green. Committed alone: `c2bc2b9`. Still holding the sync-5 e2e/RLS constraint.
