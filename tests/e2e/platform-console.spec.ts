@@ -523,6 +523,20 @@ test("★ REQ-TEN-007 (contract 4) · REQ-TEN-002 (F3): SCR-082 takes any case a
   await expect.poll(async () => (await db.query(`select 1 from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain])).rowCount).toBe(0);
 });
 
+test("★ REQ-ADM-003: SCR-084 reads all eight alerts through platform_alerts(), and job health is a card list on a phone", async ({ context, page }) => {
+  // Needs `0008_platform_alerts_read` applied (promoted, or proposed and applied):
+  // without it the page says the alerts could not be read, and this case says so too.
+  await signInPlatform(context);
+  await page.goto("/ar/app/platform/metrics");
+  const alerts = page.getByRole("region", { name: /التنبيهات/ });
+  await expect(alerts).not.toContainText("تعذّر قراءة حالة التنبيهات");
+  const phone = test.info().project.name === "phone";
+  // The visible twin: a table from `md`, cards below it.
+  const rows = phone ? alerts.getByRole("listitem") : alerts.getByRole("table").getByRole("row");
+  await expect(rows).toHaveCount(phone ? 8 : 9);
+  for (const s of [...secrets(a), ...secrets(b)]) await expect(page.locator("body")).not.toContainText(s);
+});
+
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
   await startFromForm(page, a.id, "تحقيق في بلاغ من مشرف المؤسسة");
@@ -685,8 +699,10 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform/templates");
     await review(page, "scr-083-platform-templates");
 
+    // P6 — metrics: the alerts, the totals, job health as cards.
     await page.goto("/ar/app/platform/metrics");
-    await review(page, "scr-084-platform-metrics");
+    await expect(page.getByRole("heading", { level: 1, name: "مؤشرات المنصة" })).toBeVisible();
+    await review(page, "wave8-platform-metrics-default");
 
     // P7 — SCR-085's states, and the banner where an org route lands (C1).
     await page.goto("/ar/app/platform/impersonate");

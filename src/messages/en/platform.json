@@ -128,6 +128,14 @@
     "metrics": {
       "title": "Platform metrics",
       "intro": "Aggregates only. No member name, session title or content appears here, and that is a constraint in the query rather than in the rendering.",
+      "alertsTitle": "Alerts",
+      "alertsIntro": "The same thresholds the worker measures every minute, as it reads them — no copy of them lives on this page.",
+      "alertColumn": "Alert",
+      "stateColumn": "State",
+      "readingColumn": "Reading",
+      "fired": "Firing",
+      "clear": "Clear",
+      "totalsTitle": "Totals",
       "orgs": "Orgs",
       "activeOrgs": "Active orgs",
       "suspendedOrgs": "Suspended orgs",
@@ -139,13 +147,13 @@
       "jobsTitle": "Job health",
       "jobsIntro": "Oldest pending job is the number that catches a stalled queue; the others look healthy even when it is not.",
       "jobTask": "Task",
+      "jobOldest": "Oldest pending",
       "jobPending": "Pending",
       "jobFailed": "Failed",
-      "jobOldest": "Oldest pending",
       "jobsEmpty": "Nothing in the queue.",
-      "seconds": "{count, plural, =0 {Just now} one {One second} other {{value} seconds}}",
-      "minutes": "{count, plural, =0 {Just now} one {One minute} other {{value} minutes}}",
-      "perOrgTitle": "By org"
+      "jobsEmptyAction": "Reload",
+      "perOrgTitle": "By org",
+      "orgColumn": "Org"
     },
     "impersonate": {
       "title": "Break-glass",

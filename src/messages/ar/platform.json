@@ -128,6 +128,14 @@
     "metrics": {
       "title": "مؤشرات المنصة",
       "intro": "أرقام إجمالية فقط. لا يظهر هنا اسم عضو ولا عنوان جلسة ولا أي محتوى، وهذا قيد في الاستعلام نفسه لا في العرض.",
+      "alertsTitle": "التنبيهات",
+      "alertsIntro": "العتبات نفسها التي يقيسها العامل كل دقيقة، كما يقرؤها — لا نسخة منها في هذه الصفحة.",
+      "alertColumn": "التنبيه",
+      "stateColumn": "الحالة",
+      "readingColumn": "القراءة",
+      "fired": "مُطلق",
+      "clear": "سليم",
+      "totalsTitle": "الأرقام الإجمالية",
       "orgs": "المؤسسات",
       "activeOrgs": "المؤسسات النشطة",
       "suspendedOrgs": "المؤسسات الموقوفة",
@@ -139,13 +147,13 @@
       "jobsTitle": "صحة المهام",
       "jobsIntro": "أقدم مهمة منتظرة هي الرقم الذي يكشف طابورًا متوقفًا؛ بقية الأرقام تبدو سليمة حتى حين لا يكون.",
       "jobTask": "المهمة",
+      "jobOldest": "أقدم منتظرة",
       "jobPending": "منتظرة",
       "jobFailed": "متعثرة",
-      "jobOldest": "أقدم منتظرة",
       "jobsEmpty": "لا توجد مهام في الطابور.",
-      "seconds": "{count, plural, zero {الآن} one {ثانية واحدة} two {ثانيتان} few {{value} ثوانٍ} many {{value} ثانية} other {{value} ثانية}}",
-      "minutes": "{count, plural, zero {الآن} one {دقيقة واحدة} two {دقيقتان} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
-      "perOrgTitle": "حسب المؤسسة"
+      "jobsEmptyAction": "أعد التحميل",
+      "perOrgTitle": "حسب المؤسسة",
+      "orgColumn": "المؤسسة"
     },
     "impersonate": {
       "title": "الدخول الاستثنائي",
