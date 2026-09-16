@@ -7,7 +7,7 @@ import type { SeatState, SessionPhase, ViewerRelation } from "@/lib/session-stat
 // ★ THIS DECIDES NOTHING ABOUT PERMISSION. Every input is a predicate that
 // already exists and is already tested elsewhere — the matrix cell
 // (`affordancesFor`), the RSVP panel's own `canReserve` and seat, the
-// check-in link's `canOfferCheckInLink`, the rating's `rateAllowed` plus its
+// check-in link's `canOfferCheckInFor` (contract 2), the rating's `rateAllowed` plus its
 // window — and this function only picks which of the already-permitted
 // actions is the one drawn as primary. The action card draws it on desktop and
 // the bottom action bar draws it on the phone; they read the same answer, so
@@ -29,7 +29,7 @@ export interface PrimaryActionInput {
   canReserve: boolean;
   /** `getRsvpPanelData().seat`. A closed seat state means the deadline has passed. */
   seat: SeatState | null;
-  /** `canOfferCheckInLink()` — the matrix cell, the walk-in switch and the direction guard. */
+  /** `eventCheckInLink()` → `canOfferCheckInFor()` — the states, the window to `ends_at + 2 h`, the room's switch, the walk-in door. */
   canCheckIn: boolean;
   /** `rateAllowed()` AND the org's rating window is still open. */
   canRate: boolean;

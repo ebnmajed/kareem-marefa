@@ -59,6 +59,7 @@ const ended = {
   cancellation_cutoff_at: null,
   cancellation_reason: null,
   allow_walk_ins: false,
+  check_in_open: true,
   custom_venue_name: "قاعة الابتكار",
   categories: null,
   venues: null,
@@ -87,12 +88,19 @@ beforeEach(() => world([removed]));
 
 describe("a removed check-in is not attendance — the event page", () => {
   it("reads the viewer of an ended session whose only check-in was removed as absent, not attended", async () => {
-    expect((await getSessionForEvent("ar", SESSION))?.viewerRelation).toBe("absent");
+    const event = await getSessionForEvent("ar", SESSION);
+    expect(event?.viewerRelation).toBe("absent");
+    // Contract 2's raw facts carry the same filter: not checked in, seat still confirmed, the room's switch as stored.
+    expect(event?.checkedIn).toBe(false);
+    expect(event?.rsvpStatus).toBe("confirmed");
+    expect(event?.checkInOpen).toBe(true);
   });
 
   it("reads a re-added check-in as attended, beside the removed one", async () => {
     world([removed, active]);
-    expect((await getSessionForEvent("ar", SESSION))?.viewerRelation).toBe("attended");
+    const event = await getSessionForEvent("ar", SESSION);
+    expect(event?.viewerRelation).toBe("attended");
+    expect(event?.checkedIn).toBe(true);
   });
 });
 

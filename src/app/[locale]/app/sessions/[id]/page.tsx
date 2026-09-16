@@ -8,6 +8,7 @@ import { Materials, materialsSummary } from "@/components/materials/list";
 import { Photos, photosSummary } from "@/components/photos/gallery";
 import { SessionPoster } from "@/components/posters/session-poster";
 import { ActionCard } from "@/components/sessions/action-card";
+import { eventCheckInLink } from "@/components/sessions/event-check-in";
 import { EventHero } from "@/components/sessions/event-hero";
 import { primaryActionFor } from "@/components/sessions/event-actions";
 import { EventSubnav } from "@/components/sessions/event-subnav";
@@ -26,7 +27,6 @@ import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { isSessionBookmarked } from "@/lib/dal/bookmarks";
 import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
-import { canOfferCheckInLink } from "@/lib/dal/checkin";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { requireSession } from "@/lib/dal/session";
@@ -84,7 +84,9 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const phase = sessionPhase(session);
   const relation = session.viewerRelation;
   const can = affordancesFor(phase, relation);
-  const canCheckIn = canOfferCheckInLink(session, relation, session.allowWalkIns);
+  // Contract 2: the room's switch and the `ends_at + 2 h` ceiling, from the raw
+  // facts rather than the relation — see `event-check-in.ts`.
+  const canCheckIn = eventCheckInLink(session);
 
   // Read only for the viewer they concern: an attendee of an ended session.
   const endedAttendee = phase === "ended" && relation === "attended";

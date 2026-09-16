@@ -563,11 +563,26 @@ export interface EventSession {
   viewerRelation: ViewerRelation;
   /**
    * ★ `sessions.allow_walk_ins` (DEC-065). Not in DEC-092's amendment and
-   * needed by it: `canOfferCheckInLink()` takes a THIRD input the
+   * needed by it: `canOfferCheckInFor()` takes an input the
    * (phase, relation) pair cannot encode, because a walk-in switch turns
    * `none` from ineligible into eligible for that session alone.
    */
   allowWalkIns: boolean;
+  /**
+   * ★ Contract 2 (checkin, `5248e6b`; DEC-113, DEC-116, REQ-CHK-015) —
+   * `sessions.check_in_open`, the switch the room opens and closes by hand.
+   */
+  checkInOpen: boolean;
+  /**
+   * ★ Contract 2 — the RAW facts `viewerRelation` is derived from, for
+   * `canOfferCheckInFor()`. The check-in window runs to `ends_at + 2 h`,
+   * past the moment the phase reads `ended` and a relation stops being
+   * «confirmed», so a relation cannot say whether the link is still owed.
+   * Neither is a new read: both were already fetched to derive the relation.
+   */
+  rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
+  /** The viewer's ACTIVE check-in — `removed_at is null` (REQ-CHK-017). */
+  checkedIn: boolean;
 }
 
 /**
@@ -588,7 +603,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -638,15 +653,9 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
   });
-  const relation = deriveRelation(
-    {
-      isStaff: viewerIsStaff,
-      isPresenter: viewerIsPresenter,
-      rsvpStatus: (mineRes.data?.status as "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | undefined) ?? null,
-      checkedIn: Boolean(checkInRes.data),
-    },
-    phase,
-  );
+  const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
+  const checkedIn = Boolean(checkInRes.data);
+  const relation = deriveRelation({ isStaff: viewerIsStaff, isPresenter: viewerIsPresenter, rsvpStatus, checkedIn }, phase);
 
   return {
     id: row.id as string,
@@ -674,6 +683,9 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     viewerIsStaff,
     viewerRelation: relation,
     allowWalkIns: Boolean(row.allow_walk_ins),
+    checkInOpen: row.check_in_open === true,
+    rsvpStatus,
+    checkedIn,
   };
 }
 
