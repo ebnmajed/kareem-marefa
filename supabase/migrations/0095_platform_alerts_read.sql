@@ -1,3 +1,6 @@
+-- supabase/migrations/0095_platform_alerts_read.sql — promoted by the lead from
+-- supabase/proposed/platform/0008_platform_alerts_read.sql (wave 8, DEC-148).
+--
 -- platform (wave 8) — the console reads the alert states. Follows `0075`.
 --
 -- Serves:  REQ-ADM-003 («… job health, error rates — aggregate only»),

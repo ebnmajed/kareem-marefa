@@ -1572,6 +1572,13 @@ generated suite is the highest-value test in the product.
 | `POL-brand_kit.canvas_raise_override` | With a row whose `canvasRaise` was explicitly saved, `brand_kit()` returns that value, not the platform default. |
 | `POL-save_brand_kit.canvas_raise_required` | A save whose `p_light`/`p_dark` omits `canvasRaise` fails `23502`, as any other missing token does. |
 | `POL-export_render_context.canvas_raise_override` | With a row, the `brand` column's `light`/`dark` objects carry the saved `canvasRaise`; with none, the key is absent (the raw override, `{}` semantics unchanged). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0094`** — the template guard walks every colour | |
+| `POL-design_template_versions.guard_gradient_stop_hex` | A template version whose gradient background carries a hex literal in ANY stop is refused (`22023`); the same gradient on `{{brand.*}}` tokens is accepted. |
+| `POL-design_template_versions.guard_non_hex_literal` | A colour that is not a `{{brand.<token>}}` binding — `rgb(…)`, `navy` — is refused on the background, a stop, a layer `color`, `shape.fill` and `shape.stroke` alike (`22023`). |
+| `POL-design_template_versions.guard_structure_kept` | `0055`'s checks still hold: a missing `schemaVersion`, a non-array `layers`, a missing or duplicated layer id and an unknown layer kind are refused (`22023`). |
+| ★ **wave 8 (`DEC-148`), migration `0095`** — the platform console reads the alert states | |
+| `RPC-platform_alerts.platform_only` | An org admin, a moderator and a member are refused `not_platform_admin`; `anon` is refused `42501` on the grant. |
+| `RPC-platform_alerts.aggregate` | A platform admin reads all eight alerts of `11` §3.2, firing or not, and every `detail` key is a count, an age, a rate or a threshold — no org, member, session or content. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

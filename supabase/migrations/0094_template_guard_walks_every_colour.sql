@@ -1,3 +1,6 @@
+-- supabase/migrations/0094_template_guard_walks_every_colour.sql — promoted by the lead from
+-- supabase/proposed/designer/0001_template_guard_walks_every_colour.sql (wave 8, DEC-127, DEC-148).
+--
 -- designer (wave 8) — the template guard walks EVERY colour, gradient stops included.
 -- Follows 0055 (design_template_versions_guard) and precedes the wave-8 seed.
 --
