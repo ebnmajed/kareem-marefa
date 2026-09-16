@@ -1640,3 +1640,22 @@ admin-removed-check-in.test.ts`'s four cases were confirmed by hand to fail agai
 queries (reverted the two files to `HEAD`, ran the suite, saw all four fail with the exact wrong
 numbers, restored the fix, saw them pass) before being committed — the "one that fails before the
 fix" the lead asked for, proven rather than assumed. Commit `9fd0570`.
+
+### noValidate sweep — a real finding, not just a mechanical fix
+
+Checked each of the six named forms before touching any of them, since `content`'s bug
+(`profile-form.tsx`, 7f4809f) was specifically `required` passed DIRECTLY to `<Input required>` —
+which genuinely becomes a native HTML attribute via `{...props}`. `ui/field.tsx`'s own contract is
+different: `required` passed to `<Field required>` only conveys `aria-required` through context —
+`ui/textarea.tsx`/`ui/input.tsx` never forward it as a native attribute unless a caller *also* passes
+it directly to the control (which `profile-form.tsx` did; none of these six ever did).
+
+So none of the six had an ACTIVE bug — `proposals/review-card.tsx` and `sessions/session-controls.tsx`
+have no `required` control at all, by design (both already explain why in their own header comments:
+one inside a collapsed `<details>` would be unfocusable and silently block the whole form). Added
+`noValidate` to every form in all six anyway, per `16` §8.2's actual rule ("every form that renders
+the app's own error") and as a guard against a future edit making the exact `profile-form.tsx`
+mistake. One test per changed form proving the app's own error actually renders on an empty/refused
+reason — three brand-new test files (`takedown-card`, comments' `report-card`, `session-controls` had
+zero coverage before this) plus two extended (`members-table`, `proposals-review-card`). Commit
+`1402e33`.
