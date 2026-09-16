@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SESSION_PHASES, VIEWER_RELATIONS, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
-import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInAllowed, checkInWindowAllowed, rateAllowed } from "@/components/checkin/session-matrix";
+import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInIneligibleReason, checkInWindowAllowed, rateAllowed } from "@/components/checkin/session-matrix";
 
 // `16` §5.3, REQ-UIX-015, DEC-090, DEC-101. `docs/plan/notes/checkin.md`
 // "Wave 5" records the two departures from the plan's printed table: six
@@ -97,39 +97,59 @@ describe("★ cancel does not stop at the cutoff (`16` §5.3's starred note) —
   });
 });
 
-describe("checkInAllowed — the walk-in tri-state plus the direction guard", () => {
+describe("checkInIneligibleReason — the specific reason, not just the boolean", () => {
+  const confirmed: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: false };
+  const noSeat: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const presenter: ViewerInput = { isStaff: false, isPresenter: true, rsvpStatus: "confirmed", checkedIn: false };
   const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
 
-  it("a confirmed seat may check in during a genuinely in_progress session", () => {
-    expect(checkInAllowed(running, "confirmed", false, NOW)).toBe(true);
+  it("null exactly when checkInWindowAllowed is true", () => {
+    expect(checkInIneligibleReason(running, confirmed, false, true, NOW)).toBeNull();
+    expect(checkInWindowAllowed(running, confirmed, false, true, NOW)).toBe(true);
   });
 
-  it("a bystander with no seat is refused with walk-ins off, allowed with them on", () => {
-    expect(checkInAllowed(running, "none", false, NOW)).toBe(false);
-    expect(checkInAllowed(running, "none", true, NOW)).toBe(true);
+  it("presenter_cannot_check_in — REQ-CHK-011, checked before anything else", () => {
+    expect(checkInIneligibleReason(running, presenter, true, true, NOW)).toBe("presenter_cannot_check_in");
   });
 
-  it("a presenter is refused regardless of walk-ins (REQ-CHK-011) — the cell itself has no true branch", () => {
-    expect(checkInAllowed(running, "presenter", true, NOW)).toBe(false);
+  it("cancelled — DEC-141 ruling 1, even with a scheduled start in the past", () => {
+    const cancelled: PhaseInput = { state: "cancelled", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInIneligibleReason(cancelled, confirmed, false, true, NOW)).toBe("cancelled");
   });
 
-  it("★ refuses check-in on a clock-derived live even with walk-ins on — the RPC would refuse too", () => {
-    const early: PhaseInput = { state: "published", startsAt: at(-1), endsAt: at(1) };
-    expect(checkInAllowed(early, "none", true, NOW)).toBe(false);
-    expect(checkInAllowed(early, "confirmed", false, NOW)).toBe(false);
+  it("not_published — no code has ever existed for this state", () => {
+    const draft: PhaseInput = { state: "draft", startsAt: null, endsAt: null };
+    expect(checkInIneligibleReason(draft, confirmed, false, true, NOW)).toBe("not_published");
   });
 
-  // "agrees with canGrantOn's own direction sweep" removed under DEC-141:
-  // `GRANTING_AFFORDANCES.live` drops `"checkIn"` (session-status.ts,
-  // requested in docs/plan/notes/checkin.md), which makes
-  // `canGrantOn(session, "checkIn", now)` a TYPE ERROR, not just a
-  // behaviour change — the mechanism this test checked no longer exists.
-  // `checkInAllowed()` itself is unchanged (see its own comment for why:
-  // its last line now inlines what `canGrantOn` used to compute, so this
-  // function's behaviour — and every OTHER test in this block — still
-  // holds). The replacement coverage, for the mechanism that actually
-  // decides check-in eligibility now, is the `checkInWindowAllowed`
-  // block below.
+  it("session_ended — archived reads the same as a code long past its ceiling", () => {
+    const archived: PhaseInput = { state: "archived", startsAt: at(-10), endsAt: at(-8) };
+    expect(checkInIneligibleReason(archived, confirmed, false, true, NOW)).toBe("session_ended");
+  });
+
+  it("not_started — before the floor", () => {
+    const early: PhaseInput = { state: "published", startsAt: at(1), endsAt: at(3) };
+    expect(checkInIneligibleReason(early, confirmed, false, true, NOW)).toBe("not_started");
+  });
+
+  it("session_ended — once the 2h ceiling itself has passed (REQ-CHK-016)", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) };
+    expect(checkInIneligibleReason(pastCeiling, confirmed, false, true, NOW)).toBe("session_ended");
+  });
+
+  it("★ null during the 2h grace window — the reason string matches the boolean's own pinning test", () => {
+    const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
+    expect(checkInIneligibleReason(graceWindow, confirmed, false, true, NOW)).toBeNull();
+  });
+
+  it("check_in_closed — REQ-CHK-015, the switch, checked after the window but before the walk-in door", () => {
+    expect(checkInIneligibleReason(running, confirmed, false, false, NOW)).toBe("check_in_closed");
+  });
+
+  it("reservation_required — no seat, walk-ins off; null once they're on", () => {
+    expect(checkInIneligibleReason(running, noSeat, false, true, NOW)).toBe("reservation_required");
+    expect(checkInIneligibleReason(running, noSeat, true, true, NOW)).toBeNull();
+  });
 });
 
 describe("checkInWindowAllowed — DEC-141, self-contained: never through sessionPhase()/viewerRelation()", () => {

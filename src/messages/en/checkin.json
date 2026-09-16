@@ -13,6 +13,7 @@
       "not_started": "This session hasn't started yet",
       "session_ended": "This session has ended",
       "not_open": "Check-in is only open during the session",
+      "check_in_closed": "Check-in has been closed for this session",
       "invalid_code": "That code isn't correct — check the code shown right now",
       "overlap": "You're checked in to another session at this same time",
       "unknown": "Something went wrong — try again",

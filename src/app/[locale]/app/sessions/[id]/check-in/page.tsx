@@ -18,7 +18,7 @@ import { submitCheckInForm } from "./actions";
 // PLACE OF the form. The RPC stays authoritative (submitCheckInForm still
 // calls it and still handles every one of its refusals) — this screen just
 // stops lying before the member starts typing.
-const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "reservation_required", "invalid_code", "overlap", "unknown"]);
+const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "check_in_closed", "reservation_required", "invalid_code", "overlap", "unknown"]);
 
 export default async function CheckInPage({
   params,

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { checkInInput, submitCheckIn } from "@/lib/dal/checkin";
 
-const KNOWN_ERRORS = ["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "invalid_code", "overlap", "unknown"] as const;
+const KNOWN_ERRORS = ["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "check_in_closed", "invalid_code", "overlap", "unknown"] as const;
 
 // React 19 calls reset() on this form once the action resolves — even on a
 // redirecting action, the DOM node is reset before navigation completes
