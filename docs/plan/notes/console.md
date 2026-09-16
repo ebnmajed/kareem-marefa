@@ -887,3 +887,34 @@ doesn't match what the tree can support is a question, not something to implemen
   `Sheet`, `Dialog`(lead's, consumed), all already cover what the five routes need. `date-time.tsx`
   and `tabs.tsx` are not consumed by any of my five routes this wave (scheduling and a tabbed screen
   are both out of scope), so nothing to report there either.
+
+### 5. As built — the admin layout (`8de9b47`), what changed from the plan
+
+- **Icons resolved for real** (the lead's `607ecbe` landed `TagIcon`/`BuildingIcon`/`PaletteIcon`/
+  `GearIcon` before I wrote any code, so the §1/§4 interim reuses never shipped). Two NEW adjacency
+  conflicts found while wiring the real map, neither in the original plan: `scoring`/`recognition`
+  are neighbours and both wanted `StarIcon` — `recognition` took `BookmarkFilledIcon` instead ("marked
+  as notable"); the two template-library items are neighbours too and both wanted `ImageIcon` —
+  `templatesCertificates` took `CheckCircleIcon` (unused elsewhere nearby; "a completed, verified
+  document"). Both calls, and why, are comments at their `NAV_ITEMS` rows.
+- **`menu.tsx`'s `href` bug fixed first**, as its own unit (`e73803e`), before the layout — the lead
+  asked for it explicitly since it's live for their shell-disclosure sweep too.
+- **Collapse state uses `useSyncExternalStore`, not the `useEffect`+`setState` the plan assumed** —
+  `react-hooks/set-state-in-effect` refuses the latter outright. Same idiom `ui/route-progress.tsx`
+  already established for an identical class of problem (client-only state that must not become a
+  hydration mismatch); documented in `admin-rail.tsx` itself.
+- **The second skip link's copy changed, not just its markup.** Found while writing the e2e spec:
+  the old `admin.shell.skipToContent` was byte-identical to the shell's own `app.shell.skipToContent`
+  («تخطَّ إلى المحتوى» twice) — a real, pre-existing ambiguity for a screen-reader user tabbing
+  through two links announced the same way for two different destinations, not something I
+  introduced but something I was already touching. Reworded to «تخطَّ قائمة الإدارة إلى المحتوى».
+- **`.qa-shots/rtl/` captures are written by `tests/e2e/console.spec.ts` but NOT YET LOOKED AT** —
+  `.next/BUILD_ID` predates every commit in this unit (it predates even the `menu.tsx` fix), and only
+  the lead runs `npm run build`. `npm test`/`tsc`/`lint` are all green for every file in this unit;
+  the e2e spec is written and reviewed but unverified against real code until a rebuild. Flagged to
+  the lead at sync.
+- **One unrelated, pre-existing test failure found while running the full suite**, not mine:
+  `tests/components/sessions/proposal-copy.test.tsx`'s clipping-scan trips on its own new
+  `event-subnav.tsx`'s comment (the comment literally contains the string "overflow: hidden" while
+  explaining why the component doesn't use it) — `sessions`' file, flagged to them directly, not
+  touched here.
