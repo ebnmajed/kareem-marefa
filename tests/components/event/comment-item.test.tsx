@@ -3,7 +3,7 @@
 // module is mocked.
 import { Component, type ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
@@ -224,13 +224,38 @@ describe("CommentItem", () => {
     fireEvent.change(editField, { target: { value: "نص معدَّل لن يصل" } });
     fireEvent.click(screen.getByRole("button", { name: "حفظ التعديل" }));
 
-    // Not an exact count: the toast primitive (`ui/toast`, not this file's
-    // own) can render its own screen-reader-only announcement alongside the
-    // visible card, so the same string can legitimately appear more than
-    // once — the adjacent `Panel` (REQ-UIX-010) is what this assertion is
-    // really about, and at least one match proves the error surfaced at all.
-    await waitFor(() => expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.").length).toBeGreaterThan(0));
+    // ★ Exactly ONE — the lead's real-build capture 5-failed found the
+    // adjacent Panel (REQ-UIX-010) and a toast repeating the identical
+    // sentence together, covering the thread at 390 px. Fixed in
+    // comment-composer.tsx first, then here (the same defect, same fix).
+    await screen.findByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.");
+    expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.")).toHaveLength(1);
     expect(screen.getByRole("textbox", { name: "تعديل" })).toHaveValue("نص معدَّل لن يصل"); // still editing, text kept
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
+  });
+
+  // ★ Same fix, same reasoning: the report dialog closes synchronously on
+  // submit (its own `onSubmit`), so by the time the catch runs the member
+  // is back at the adjacent Panel — no toast needed, and none shown now.
+  it("★ a network-level failure while reporting keeps the sentence to ONE place and never reaches the error boundary", async () => {
+    const { reportCommentAction } = await import("@/components/event/actions");
+    vi.mocked(reportCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إبلاغ" }));
+    fireEvent.change(screen.getByLabelText("سبب الإبلاغ"), { target: { value: "سبب واضح للإبلاغ" } });
+    fireEvent.click(screen.getByRole("button", { name: "إرسال البلاغ" }));
+
+    await screen.findByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.");
+    expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.")).toHaveLength(1);
+    expect(screen.queryByText("تم إرسال بلاغك عن هذا التعليق")).not.toBeInTheDocument(); // not reported — the throw never reached success
     expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
 

@@ -141,13 +141,16 @@ export function CommentItem({
       try {
         result = await editCommentAction(locale, comment.id, trimmed);
       } catch {
+        // ★ No toast (REQ-UIX-010, the lead's real-build capture 5-failed —
+        // the identical defect in `comment-composer.tsx`'s own network
+        // catch): the adjacent Panel below IS the feedback for a field the
+        // member is looking at right now, and a second, full-width toast
+        // repeating the same sentence covers the thread at 390 px.
         setError("network");
-        toast.show({ tone: "error", title: t("errors.network") });
         return;
       }
       if (result.error) {
         setError(result.error);
-        toast.show({ tone: "error", title: t(`errors.${result.error}`) });
         return;
       }
       setEditing(false);
@@ -234,22 +237,27 @@ export function CommentItem({
       try {
         result = await reportCommentAction(locale, comment.id, reason);
       } catch {
+        // ★ No toast on the error path (REQ-UIX-010, same fix as `saveEdit`
+        // above) — the dialog has already closed by the time this resolves
+        // (its own `onSubmit` closes it synchronously), so the adjacent
+        // Panel below is back in view and IS the feedback. The SUCCESS
+        // toast just below is kept — see its own comment for why that one
+        // is a different case.
         setError("network");
-        toast.show({ tone: "error", title: t("errors.network") });
         return;
       }
       if (!result.error) {
         setIsReported(true);
         onReported?.();
-        // Kept, unlike the others above: the report dialog has already
+        // Kept, unlike the error path above: the report dialog has already
         // closed by the time this resolves, so "تم إرسال بلاغك" replacing
         // the action row is the only in-place confirmation a member sees —
-        // there is no full-width toast stacking risk here (report is a
-        // one-off, not a repeated action like posting).
+        // there is no adjacent Panel for a SUCCESS (the `error` state has
+        // nothing to show), and no full-width toast stacking risk here
+        // either (report is a one-off, not a repeated action like posting).
         toast.show({ tone: "success", title: t("report.success") });
       } else {
         setError(result.error);
-        toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       }
     });
   }
