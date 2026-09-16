@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 IN PROGRESS** — task one landed and verified (`7d50e64`: the `react-dom` patch in, `ui/pending-nudge` out, the reserve probe 16/16 twice against a control that hung 9/16), Step 0 landed (the wave-7 map, all ten agent files, the checklist below, `DEC-137`). **The wave-7 block is directly under START HERE.**
+**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. **Before merge the owner: rehearses `0083`–`0091` on a production schema dump, runs `DEC-143`'s scoped data fix, and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -75,7 +75,7 @@ or it does not exist.*
 
 ---
 
-## ★★ WAVE 7 — IN PROGRESS on `wave-7/screens` — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
+## ★★ WAVE 7 — COMPLETE on `wave-7/screens` (PR #24, the owner merges) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
 
 **The owner's goal, in substance:** put the remaining member and staff routes onto the M9 design system —
 about eighteen routes in the brief, **twenty-two pages and the admin IA** once every route is named — with
@@ -341,10 +341,16 @@ Every gate ran on one SHA, with teammates holding every database, port-3000 and 
 | ★ `qa` | **44 passed, 0 failed** |
 | ★ `visual` `wave-6-final → wave-7-final` | **0.000 % on all eight pairs** |
 | ★ `reserve-probe` alone (phone) | **16/16**, 103–130 ms, so `DEC-136`'s patch holds at the wave's HEAD |
-| e2e (full, both projects) | **425 passed, 6 failed**: `budgets`, `forms-propose:124` and `notify-screens:108` pass alone (load); `tasks:176` desktop strict locator and ★ `bookmarks:237` (un-bookmarking leaves the card under load, three full runs running) are with `content`, **open** |
+| e2e (full, both projects) | **425 passed, 6 failed**: `budgets`, `forms-propose:124` and `notify-screens:108` pass alone (load); `tasks:176` (a hidden orphaned streaming copy of the form, `DEC-145`) fixed in `05f023b` |
+| ★ e2e confirmation at `fb13d0a` (no product code changed since `70bfb21`; the same build) | **439 passed, 1 failed**: `budgets` (phone), which fails only under suite contention and passes alone twice (TBT 269 ms vs a 243 ms baseline). `tasks:176`, `bookmarks:237` and `notify-screens:108` green under full load |
 
-**Rows:** 27 of 27 are closed on their measure (T8 at the component and RLS layers, recorded as such). **Open
-before the PR is ready:** the two `content` e2e items above.
+**Rows:** 27 of 27 are closed on their measure (T8 at the component and RLS layers, recorded as such).
+
+**Watch, not open:** `bookmarks:237` failed under full-suite load in three of five runs (the card still present 5 s
+after un-bookmarking) and never alone. `notify-screens:108` (mark-as-read) failed the same way once. Both end in Next's
+post-action refetch of the current route. The spec now waits on the action's POST and then bounds the card's removal
+(`05f023b`), so if it recurs it separates «slow» from «never updates». **If it recurs as «never updates», treat it as
+`DEC-135`'s class first.** The `budgets` spec is noisy under suite contention; its real reading is the alone run.
 
 ### Carried — diagnosed, each with an owner
 

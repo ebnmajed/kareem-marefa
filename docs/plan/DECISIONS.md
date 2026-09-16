@@ -3124,3 +3124,13 @@ both are given (`f9fa70e`).
 - **Scope.** The propose form only. The primitive does not change; every other form that adopts `FormSummary` chooses per form, and a form with blur validation should follow this one.
 - **Supersedes:** nothing in a settled document. It replaces an implementation choice recorded in `sessions`' M9 note.
 - **Documents changed:** `DECISIONS.md`
+
+## DEC-145 — There is no no-JavaScript path under `/app`; the frozen register form keeps the only no-JS contract
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from wave 7's sync-5 build and `content`'s trace
+- **What the build showed.** `wave7-content-me.spec.ts`'s «no-JS save» case timed out on `getByLabel('الاسم')` on both projects. With JavaScript disabled the browser stayed on `/app/me`'s aria-hidden skeleton.
+- **Why it cannot work.** `/app/me` has a `loading.tsx`, like every `/app` route since M9 (`DEC-087`, `REQ-UIX-005`). The response streams: the fallback flushes first, and the page arrives in a `<div hidden id="S:…">` that React's inline `$RC` script swaps in. Without JavaScript that script never runs, so no `/app` page can render its content, and no form on it can be reached. This is the streaming model `DEC-134` accepted, not a defect of one form.
+- **Decision.** A no-JavaScript path is **not a requirement anywhere under `/app`**. No `REQ-*` asks for one, and the only no-JS contract in the plan is the frozen register form's (`16` §8.2, `qa:contract`, `DEC-126`'s M13 rebuild). The case is kept as `test.describe.skip` with its reason attached (`967d1a7`), so the reasoning travels with the code. Nobody re-adds a no-JS spec under `/app` without first removing the loading boundary above that route, which `DEC-134` already rejected.
+- **Related, recorded for M13.** The same streaming can leave an **orphaned hidden segment** in a fully working page: an event page at desktop width carried a second hidden copy of the tasks and materials forms under `body > div#S:…`, duplicating `id="tasks"` and `id="tasks-create-form"` (`05f023b`). It is invisible and outside the accessibility tree, but duplicate ids are invalid HTML. Locators under `/app` scope to `#main`.
+- **Supersedes:** nothing.
+- **Documents changed:** `DECISIONS.md`, `STATUS.md`, `tests/e2e/wave7-content-me.spec.ts`
