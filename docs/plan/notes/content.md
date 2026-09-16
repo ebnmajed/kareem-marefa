@@ -1296,3 +1296,44 @@ documents the intent and would catch a component-level regression — but said p
 comment that it passes on both sides of the fix and isn't proof the live symptom is gone.
 
 Ready for sync.
+
+## §14 — DEC-135: adopting usePendingNudge
+
+Root cause landed by the lead (`DEC-135`, `docs/plan/DECISIONS.md`, `5376c32`): the stuck «نشر» was
+never a timing race in my own code. React 19.2.4 can lose the ping that would resume a transition
+once a Flight chunk resolves synchronously mid-render, and nothing is then scheduled to retry —
+measured at one press in three on a real build. My two earlier attempts (`setTimeout(…, 0)` at
+44485b8, `afterPaint` via double `requestAnimationFrame` at 4582b17) each only moved the odds, since
+both treated a symptom (the refresh racing this transition's own completion) of a cause that was
+never about timing at all.
+
+**Applied (1fd7980)**: deleted `afterPaint` from both event files, put `router.refresh()` back as the
+last statement inside its original `startTransition` (pre-44485b8 shape), and called
+`usePendingNudge(pending)` once per component in `comment-composer.tsx`/`comment-item.tsx`. Rewrote
+both files' module comments to cite DEC-135, not "overlapping refreshes" or "a macrotask before
+paint" — those explanations are retired now, not just superseded.
+
+**Untracked refreshes found and fixed**: `materials/upload-form.tsx` and `photos/upload-widget.tsx`
+both called `router.refresh()` from a manually-managed `busy` boolean, entirely outside any
+transition — meaning DEC-135's race applied to them too and nothing was even ATTEMPTING to track it.
+Converted both to `useTransition`, feeding `pending` to both the button's busy state and
+`usePendingNudge`.
+
+**Audited each candidate against the lead's own stated rule** ("a Server Action which revalidates or
+refreshes") rather than adding the hook mechanically everywhere named:
+- `tasks/task-item.tsx` (`TaskItem` and `TaskForm`) and `photos/takedown-button.tsx` — all four
+  actions they await (`toggleTaskCompletionAction`, `submitTaskFormResponseAction`,
+  `requestPhotoTakedownAction`, `restorePhotoAction`) call `revalidatePath` server-side. Added.
+- `materials/settings-form.tsx` — checked `saveMaterialSettings`/`updateMaterialSettings`: neither
+  calls `revalidatePath`/`revalidateTag`, and the component never calls `router.refresh()` either
+  (both fields are purely local optimistic state). Added `usePendingNudge` anyway, since the lead
+  named this exact file — it's a no-op today, kept as a defensive guard against a future change to
+  this action reopening the race silently. Flagged the discrepancy to the lead rather than silently
+  complying or silently skipping.
+- `materials/[materialId]/download-button.tsx` — NOT touched. `requestMaterialDownload` only reads a
+  signed URL, no revalidation, and the button navigates via `window.location.href` (a hard browser
+  navigation, not a Next transition) — nothing here can hit DEC-135's race at all.
+
+tsc clean, lint 0 errors, 89/89 component tests green (event, materials, photos, tasks).
+
+Ready for sync.
