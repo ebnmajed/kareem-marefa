@@ -749,3 +749,51 @@ window is open. Concretely:
 fix (raw facts on `EventSession`, `GRANTING_AFFORDANCES.live` losing `checkIn`, `checkInAllowed()`
 redesigned to stop consulting the phase-bucketed cell) the right shape, or does the lead want a
 narrower patch?
+
+---
+
+## `DEC-141` applied — request for `session-status.ts` (condition b), and one correction
+
+**The exact diff requested, to land in the same sync as `session-matrix.ts`'s change:**
+
+1. `GRANTING_AFFORDANCES.live` drops `"checkIn"`:
+   ```diff
+   export const GRANTING_AFFORDANCES = {
+   -  live: ["checkIn", "hostConsole"],
+   +  live: ["hostConsole"],
+     ended: ["rate", "survey", "certificate", "attendanceOutcome"],
+   } as const satisfies Partial<Record<SessionPhase, readonly string[]>>;
+   ```
+2. `tests/unit/session-status.test.ts` — delete the two tests that now type-error (`"checkIn"` stops
+   being assignable to `GrantingAffordance` once it's out of `GRANTING_AFFORDANCES`): "refuses
+   check-in on a clock-derived live — the RPC would refuse too" (lines 165-171) and "allows check-in
+   once the row says in_progress" (lines 173-176). The equivalent coverage now lives in
+   `tests/unit/session-matrix.test.ts`, against `checkInWindowAllowed()` directly (added this sync —
+   see below). "every granting affordance is refused whenever the source is the clock" (line 178)
+   needs no edit — it derives its list from `GRANTING_AFFORDANCES` itself, so it automatically stops
+   covering `checkIn`.
+3. **New ask, found while writing the predicate**: `session-status.ts`'s own `parse()`/`endOf()`
+   (private, lines 167-178) compute exactly the floor/ceiling arithmetic `checkInWindowAllowed()`
+   needs and I don't want to fork. Requesting both **exported** (any name — I'll match whatever the
+   lead picks) so `session-matrix.ts` imports them instead of carrying its own copy. **Until this
+   lands**, `session-matrix.ts` carries a small, clearly-commented duplicate (`parseDate`/`windowEnd`)
+   so I'm not blocked on it — delete-on-arrival once exported.
+
+**`session-matrix.ts`'s own half, landed this commit:** `checkInWindowAllowed(session, viewer,
+allowWalkIns, checkInOpen, now?)` — self-contained, added beside the untouched `checkInAllowed()`
+(condition a: never break `dal/checkin.ts`'s current build). `AffordanceCell.checkIn`'s doc comment
+now says it's display-only. Pinning test for condition (c)'s "second face," at the pure-predicate
+level: `ended` phase (the screen's own signal, already stale by design), a confirmed seat, not yet
+checked in, `now` still inside `ends_at + 2h` → `checkInWindowAllowed(...)` is `true`. The companion
+half — `attendance-outcome.tsx` actually withholding «لم تُسجّل حضورك» in this window — needs
+`checkInOpen` threaded through `getRsvpPanelData()`'s DTO, which needs the column to exist; deferred
+to the routes phase per the lead's condition 5, noted here so it isn't lost.
+
+**Correction to my own report, found writing file `04`: `has_checked_in()` is not the only SQL object
+carrying the rating right.** Photos route through `has_checked_in()` (`0037`'s `photos_storage_write`
+policy and storage policy, `0050`'s upload RPC) — one function, one fix. **Ratings do not** —
+`ratings_write_self` (`0010:580-589`) checks `check_in_id in (select id from check_ins c where
+c.session_id = ratings.session_id and c.member_id = auth_member_id())` **directly**, its own
+independent reference to the table, never through `has_checked_in()`. Both need the `removed_at is
+null` filter; both are in file `04` below, since `04` is the file that makes the column exist and
+every direct reader of it correct on arrival, not a later hook.

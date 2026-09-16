@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import { PageHeader } from "@/components/ui/page-header";
-import { Stat } from "@/components/ui/stat";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,7 @@ export default async function PointsPage({
   const { session: sessionId, month } = await searchParams;
 
   const [t, history] = await Promise.all([getTranslations("scoring.points"), getPointsHistory(locale, { sessionId, month })]);
+  const value = formatNumber(history.totalPoints);
   const filtered = Boolean(sessionId || month);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -48,9 +48,10 @@ export default async function PointsPage({
     <>
       <PageHeader title={t("title")} description={t("intro")} />
 
-      <div className="mt-6 max-w-xs">
-        <Stat label={t("title")} value={formatNumber(history.totalPoints)} />
-      </div>
+      {/* The full sentence, not a bare `Stat` tile: `tests/e2e/points.spec.ts`
+          (pre-existing, real) asserts REQ-PTS-003's own promise against it —
+          "رصيدك 25 نقطة" reads as an explanation, a number alone does not. */}
+      <p className="mt-4 text-h3 text-fg-heading">{t("balance", { count: history.totalPoints, value })}</p>
 
       <form method="get" aria-labelledby="filters-heading" className="mt-8 flex flex-wrap items-end gap-4">
         <h2 id="filters-heading" className="sr-only">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SESSION_PHASES, VIEWER_RELATIONS, canGrantOn, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
-import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInAllowed, rateAllowed } from "@/components/checkin/session-matrix";
+import { SESSION_PHASES, VIEWER_RELATIONS, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
+import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInAllowed, checkInWindowAllowed, rateAllowed } from "@/components/checkin/session-matrix";
 
 // `16` §5.3, REQ-UIX-015, DEC-090, DEC-101. `docs/plan/notes/checkin.md`
 // "Wave 5" records the two departures from the plan's printed table: six
@@ -119,24 +119,86 @@ describe("checkInAllowed — the walk-in tri-state plus the direction guard", ()
     expect(checkInAllowed(early, "confirmed", false, NOW)).toBe(false);
   });
 
-  it("agrees with canGrantOn's own direction sweep for every state x schedule combination", () => {
-    const relations: ViewerRelation[] = ["none", "confirmed", "waitlisted", "presenter", "staff"];
-    const states: PhaseInput["state"][] = ["published", "in_progress", "completed", "cancelled"];
-    const schedules = [
-      { startsAt: at(-1), endsAt: at(1) },
-      { startsAt: at(-5), endsAt: at(-3) },
-      { startsAt: at(3), endsAt: at(5) },
-    ];
-    for (const state of states) {
-      for (const schedule of schedules) {
-        const session: PhaseInput = { state, ...schedule };
-        for (const relation of relations) {
-          const viaMatrix = checkInAllowed(session, relation, true);
-          const gateAllows = canGrantOn(session, "checkIn", NOW);
-          if (!gateAllows) expect(viaMatrix, `${state}/${relation}`).toBe(false);
-        }
-      }
-    }
+  // "agrees with canGrantOn's own direction sweep" removed under DEC-141:
+  // `GRANTING_AFFORDANCES.live` drops `"checkIn"` (session-status.ts,
+  // requested in docs/plan/notes/checkin.md), which makes
+  // `canGrantOn(session, "checkIn", now)` a TYPE ERROR, not just a
+  // behaviour change — the mechanism this test checked no longer exists.
+  // `checkInAllowed()` itself is unchanged (see its own comment for why:
+  // its last line now inlines what `canGrantOn` used to compute, so this
+  // function's behaviour — and every OTHER test in this block — still
+  // holds). The replacement coverage, for the mechanism that actually
+  // decides check-in eligibility now, is the `checkInWindowAllowed`
+  // block below.
+});
+
+describe("checkInWindowAllowed — DEC-141, self-contained: never through sessionPhase()/viewerRelation()", () => {
+  const confirmed: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: false };
+  const noSeat: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const staff: ViewerInput = { isStaff: true, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const presenter: ViewerInput = { isStaff: false, isPresenter: true, rsvpStatus: "confirmed", checkedIn: false };
+
+  it("a confirmed seat may check in while genuinely in_progress, switch open", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, confirmed, false, true, NOW)).toBe(true);
+  });
+
+  it("refuses before the floor — a code that would not yet exist", () => {
+    const early: PhaseInput = { state: "published", startsAt: at(1), endsAt: at(3) };
+    expect(checkInWindowAllowed(early, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("REQ-CHK-011: a presenter is refused regardless of window, switch or walk-ins", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, presenter, true, true, NOW)).toBe(false);
+  });
+
+  it("a bystander with no seat needs the walk-in door open", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, noSeat, false, true, NOW)).toBe(false);
+    expect(checkInWindowAllowed(running, noSeat, true, true, NOW)).toBe(true);
+    expect(checkInWindowAllowed(running, staff, true, true, NOW)).toBe(true);
+  });
+
+  it("REQ-CHK-015: refuses while the switch is closed, even mid-window", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, confirmed, false, false, NOW)).toBe(false);
+  });
+
+  it("DEC-141 ruling 1: refuses on a cancelled session whose scheduled start has passed", () => {
+    const cancelled: PhaseInput = { state: "cancelled", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(cancelled, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("draft/approved sessions have no window to be in at all", () => {
+    const draft: PhaseInput = { state: "draft", startsAt: null, endsAt: null };
+    const approved: PhaseInput = { state: "approved", startsAt: null, endsAt: null };
+    expect(checkInWindowAllowed(draft, confirmed, false, true, NOW)).toBe(false);
+    expect(checkInWindowAllowed(approved, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  // ★ The grace-window fix itself, DEC-141's condition (c) — the thing the
+  // lead asked to see pinned. `ends_at` was 30 minutes ago: `sessionPhase()`
+  // ALREADY calls this session "ended" (its own clock clause has no
+  // knowledge of the 2h ceiling), and `viewerRelation()` would reclassify a
+  // confirmed, not-yet-checked-in member as "absent" — the bug this function
+  // exists to route around entirely.
+  it("★ still offers check-in during the 2h grace window, even though the screen already calls the session ended", () => {
+    const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
+    expect(checkInWindowAllowed(graceWindow, confirmed, false, true, NOW)).toBe(true);
+  });
+
+  it("refuses once the 2h ceiling itself has passed", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) }; // ends 2h10m ago
+    expect(checkInWindowAllowed(pastCeiling, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("the ceiling is computed from the SCHEDULED end, not extended by a late actual finish (REQ-CHK-016)", () => {
+    // The row is still in_progress (the clock job hasn't caught up), but the
+    // scheduled end was well over 2h ago — the ceiling doesn't care that the
+    // room is apparently still running.
+    const overrun: PhaseInput = { state: "in_progress", startsAt: at(-4), endsAt: at(-2.5) };
+    expect(checkInWindowAllowed(overrun, confirmed, false, true, NOW)).toBe(false);
   });
 });
 

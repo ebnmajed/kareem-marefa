@@ -19,7 +19,11 @@ export async function PointsCatalogue({ entries }: { entries: CatalogueEntry[] }
   if (visible.length === 0) return null;
 
   return (
-    <section aria-labelledby="catalogue-heading" className="mt-12">
+    // ★ `id="catalogue"` on the SECTION, not just `catalogue-heading` on the
+    // title: `tests/e2e/points.spec.ts` (pre-existing, real) scopes a
+    // locator to it so the catalogue's own repeat of a rule's `reasonAr`
+    // never matches the history row above it by the same text.
+    <section id="catalogue" aria-labelledby="catalogue-heading" className="mt-12">
       <SectionHeader id="catalogue-heading" title={t("catalogue.heading")} description={t("catalogue.intro")} />
       <ul className="mt-4 space-y-2">
         {visible.map((entry) => (

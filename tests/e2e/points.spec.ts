@@ -9,8 +9,10 @@
 // first — the lead does that at a sync point.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -164,4 +166,100 @@ test("filtering by session narrows the history to that session's rows", async ({
   await page.goto(`/ar/app/me/points?session=${sessionId}`);
   await expect(page.locator("li")).not.toHaveCount(0);
   await expect(page.getByRole("link", { name: "مسح التصفية" })).toBeVisible();
+});
+
+// wave-7, task T2 (`docs/plan/notes/content.md`): the M9 restyle, an empty
+// state, and `checkin`'s REQ-CHK-017 reversal entry — its own org/session/
+// member, isolated from the fixture above by `describe`'s own scope, so
+// this reads only what it seeds. `capture()`'s naming (`wave7-content-*`)
+// is the wave-7 measure's own convention, distinct from the file's older
+// `review()` helper above.
+test.describe("M9 restyle: empty state and the reversal entry", () => {
+  const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+  const PHONE_R = { width: 390, height: 844 };
+
+  let rOrgId = "";
+  let rMemberEmail = "";
+  let rMemberId = "";
+  let rSessionId = "";
+  const rUserIds: string[] = [];
+
+  test.beforeAll(async ({}, testInfo) => {
+    const tag = `${testInfo.workerIndex}-${Date.now()}-r`;
+    const rDomain = `points-reversal-e2e-${tag}.example`;
+
+    const { rows: orgRows } = await db.query<{ id: string }>(
+      `insert into public.orgs (name, slug, certificate_prefix, created_by) values ($1, $2, 'PTR', gen_random_uuid()) returning id`,
+      [`مؤسسة النقاط ٢ ${tag}`, `points-reversal-e2e-${tag}`],
+    );
+    rOrgId = orgRows[0].id;
+    await db.query(`insert into public.org_settings (org_id) values ($1)`, [rOrgId]);
+    await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [rOrgId, rDomain]);
+    const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [rOrgId]);
+    const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [rOrgId]);
+    const { rows: sessRows } = await db.query<{ id: string }>(
+      `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
+       values ($1, 'جلسة اختبار الإلغاء', 'ملخص الجلسة', $2, 'introductory', now() - interval '2 days', 60, now() - interval '2 days' + interval '1 hour',
+               $3, 30, now() - interval '3 days', now() - interval '3 days', 'completed', now() - interval '5 days')
+       returning id`,
+      [rOrgId, catRows[0].id, venueRows[0].id],
+    );
+    rSessionId = sessRows[0].id;
+
+    rMemberEmail = `member@${rDomain}`;
+    const { data, error } = await admin.auth.admin.createUser({
+      email: rMemberEmail,
+      password: PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: "عضو الإلغاء" },
+    });
+    if (error) throw error;
+    rUserIds.push(data.user.id);
+  });
+
+  test.afterAll(async () => {
+    for (const id of rUserIds) await admin.auth.admin.deleteUser(id);
+    if (rOrgId) await db.query(`delete from public.orgs where id = $1`, [rOrgId]);
+  });
+
+  async function capture(page: Page, name: string) {
+    mkdirSync(SHOTS, { recursive: true });
+    expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE_R);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await page.screenshot({ path: join(SHOTS, `wave7-content-points-${name}.png`), fullPage: true });
+  }
+
+  test("empty, then an award and checkin's REQ-CHK-017 reversal entry, contract 3 exactly", async ({ context, page }) => {
+    await page.setViewportSize(PHONE_R);
+    const signedIn = await signIn(context, rMemberEmail, false);
+    rMemberId = signedIn.memberId;
+
+    await page.goto("/ar/app/me/points");
+    await expect(page.getByRole("heading", { name: "نقاطي", level: 1 })).toBeVisible();
+    await expect(page.getByText("لا نقاط بعد")).toBeVisible();
+    await capture(page, "empty");
+
+    // The award, then checkin's REQ-CHK-017 reversal of it — exactly the
+    // shape contract 3 describes: `source = 'reversal'`, the fixed reason,
+    // `session_id` populated so the "open session" link still works on it.
+    await db.query(
+      `insert into public.points_ledger (org_id, member_id, amount, source, session_id, reason, rule_key, idempotency_key)
+       values ($1, $2, 5, 'check_in', $3, 'تسجيل حضور', 'check_in', $4)`,
+      [rOrgId, rMemberId, rSessionId, `check_in:${rSessionId}:${rMemberId}`],
+    );
+    await db.query(
+      `insert into public.points_ledger (org_id, member_id, amount, source, session_id, reason, rule_key, idempotency_key)
+       values ($1, $2, -5, 'reversal', $3, 'أُلغي تسجيل الحضور', 'check_in', $4)`,
+      [rOrgId, rMemberId, rSessionId, `reversal:check_in:${rSessionId}:${rMemberId}`],
+    );
+
+    await page.reload();
+    await expect(page.getByText("تسجيل حضور", { exact: true })).toBeVisible();
+    await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
+    await expect(page.getByText("إلغاء نقاط سابقة")).toBeVisible();
+    // The reversal readable next to what it reverses — never a number that
+    // quietly changed (`REQ-CHK-017`).
+    await expect(page.getByRole("link", { name: "فتح الجلسة" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);
+    await capture(page, "reversal");
+  });
 });

@@ -11,6 +11,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -145,7 +147,12 @@ test("★ REQ-DSC-006: SCR-024 lists the member's own bookmarked session, and li
   await expect(page.getByText("جلسة تستحق الحفظ")).toBeVisible();
   await review(page, "bookmarks-page");
 
-  await page.getByRole("link", { name: "جلسة تستحق الحفظ" }).click();
+  // ★ M9: the row is `sessions`' own `SessionCard` now, not a plain list
+  // item of this route's own — "the whole card is one link" (`16` §6.4), so
+  // the link's accessible name is the card's full text, not the title
+  // alone. `getByRole("link", { name: "…" })` with an exact title stopped
+  // matching the moment this became a real card; filtered by title instead.
+  await page.getByRole("link").filter({ hasText: "جلسة تستحق الحفظ" }).click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}$`));
 });
 
@@ -154,4 +161,108 @@ test("★ REQ-DSC-006: private to the member — another member's own bookmarks 
   await page.goto(`/ar/app/me/bookmarks`);
   await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
   await expect(page.getByText("جلسة تستحق الحفظ")).not.toBeVisible();
+});
+
+// wave-7, task T4 (`docs/plan/notes/content.md`): the page now renders
+// `sessions`' own `SessionCard` (`getBookmarkedTimelineSessions()`, landed
+// a424957) instead of a plain list of its own — `sessions` asked this be
+// proven, not trusted: the un-bookmark toggle runs inside a transition, not
+// a form action, and its `revalidatePath` is what is supposed to drop the
+// card. Own org/session/member, isolated from the fixture above.
+test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () => {
+  const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+  const PHONE_C = { width: 390, height: 844 };
+
+  let cOrgId = "";
+  let cMemberEmail = "";
+  let cMemberId = "";
+  let cSessionAId = "";
+  let cSessionBId = "";
+  const cUserIds: string[] = [];
+
+  test.beforeAll(async ({}, testInfo) => {
+    const tag = `${testInfo.workerIndex}-${Date.now()}-c`;
+    const cDomain = `bookmarks-card-e2e-${tag}.example`;
+
+    const { rows: orgRows } = await db.query<{ id: string }>(
+      `insert into public.orgs (name, slug, certificate_prefix, created_by) values ($1, $2, 'BMC', gen_random_uuid()) returning id`,
+      [`مؤسسة المحفوظات ٢ ${tag}`, `bookmarks-card-e2e-${tag}`],
+    );
+    cOrgId = orgRows[0].id;
+    await db.query(`insert into public.org_settings (org_id) values ($1)`, [cOrgId]);
+    await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [cOrgId, cDomain]);
+    const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [cOrgId]);
+    const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [cOrgId]);
+
+    async function makeSession(title: string): Promise<string> {
+      const { rows } = await db.query<{ id: string }>(
+        `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
+         values ($1, $2, 'ملخص الجلسة', $3, 'introductory', now() + interval '2 days', 60, now() + interval '2 days' + interval '1 hour',
+                 $4, 30, now() + interval '1 day', now() + interval '1 day', 'published', now() - interval '1 day')
+         returning id`,
+        [cOrgId, title, catRows[0].id, venueRows[0].id],
+      );
+      return rows[0].id;
+    }
+    cSessionAId = await makeSession("جلسة أولى محفوظة");
+    cSessionBId = await makeSession("جلسة ثانية محفوظة");
+
+    cMemberEmail = `member@${cDomain}`;
+    const { data, error } = await admin.auth.admin.createUser({
+      email: cMemberEmail,
+      password: PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: "عضو بطاقات المحفوظات" },
+    });
+    if (error) throw error;
+    cUserIds.push(data.user.id);
+  });
+
+  test.afterAll(async () => {
+    for (const id of cUserIds) await admin.auth.admin.deleteUser(id);
+    if (cOrgId) await db.query(`delete from public.orgs where id = $1`, [cOrgId]);
+  });
+
+  async function capture(page: Page, name: string) {
+    mkdirSync(SHOTS, { recursive: true });
+    expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE_C);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await page.screenshot({ path: join(SHOTS, `wave7-content-bookmarks-${name}.png`), fullPage: true });
+  }
+
+  test("empty, populated with sessions' own SessionCard, and un-bookmarking drops the card", async ({ context, page }) => {
+    await page.setViewportSize(PHONE_C);
+    cMemberId = await provisionMemberId(cMemberEmail);
+    await signIn(context, cMemberEmail);
+
+    await page.goto("/ar/app/me/bookmarks");
+    await expect(page.getByRole("heading", { name: "المحفوظات", level: 1 })).toBeVisible();
+    await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
+    await capture(page, "empty");
+
+    await db.query(`insert into public.bookmarks (org_id, member_id, session_id) values ($1, $2, $3), ($1, $2, $4)`, [
+      cOrgId,
+      cMemberId,
+      cSessionAId,
+      cSessionBId,
+    ]);
+
+    await page.reload();
+    // The real card — sessions' own SessionCard, not a second list of this
+    // route's own: a title as a link, and the bookmark toggle inside it.
+    await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "جلسة ثانية محفوظة", level: 3 })).toBeVisible();
+    const toggles = page.getByRole("button", { name: "احفظ الجلسة" });
+    await expect(toggles).toHaveCount(2);
+    await expect(toggles.first()).toHaveAttribute("aria-pressed", "true");
+    await capture(page, "populated");
+
+    // Un-bookmark the first card through the REAL button — proving the
+    // transition's own `revalidatePath` actually drops it from this list,
+    // not reading the source and trusting it.
+    await toggles.first().click();
+    await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "جلسة ثانية محفوظة", level: 3 })).toBeVisible();
+    await capture(page, "after-unbookmark");
+  });
 });
