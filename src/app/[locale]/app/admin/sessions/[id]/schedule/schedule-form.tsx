@@ -1,12 +1,11 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
-import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import { Button } from "@/components/ui/button";
+import { DateTime } from "@/components/ui/date-time";
 import { Field } from "@/components/ui/field";
-import { AlertCircleIcon } from "@/components/ui/icons";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
@@ -29,7 +28,6 @@ import {
   type RelationField,
 } from "./rules";
 import { SCHEDULE_FIELDS, emptyScheduleState, type ScheduleField, type ScheduleState } from "./state";
-import { usePickerValue } from "./use-picker-value";
 
 // SCR-043's form — REQ-SES-001, REQ-SES-002, REQ-SES-016, REQ-PRO-009,
 // DEC-117/118 (walk-ins), wave 8's lead row L2 (`DEC-147`).
@@ -54,6 +52,10 @@ import { usePickerValue } from "./use-picker-value";
 //   · ONE SCROLL ON A PHONE, not SCR-043's four-step stepper: four more presses
 //     on the form an admin fills most. The actions stay in reach in a sticky
 //     bar above the tab bar (`--tabbar-h`) — sticky, never a second fixed bar.
+//   · EVERY DATE IS `ui/date-time` INSIDE `<Field>` — one visible label, the
+//     field's error and hint wired to the trigger, and each trigger named by its
+//     own field («آخر موعد للحجز: …»), never a generic «التاريخ والوقت» four
+//     times (`console`'s `18672c8`, requested at sync 1).
 //
 // Values survive a failed round trip twice over: everything tracked here is
 // controlled state, which React's form reset does not touch, and the rest reads
@@ -98,8 +100,6 @@ const LABEL_KEY: Record<ScheduleField, string> = {
   language: "language.legend",
 };
 
-const PICKER_KEYS = ["clear", "today", "done", "hour", "minute", "empty", "prevMonth", "nextMonth"] as const;
-
 type Stamped<T> = { attempt: number; value: T };
 
 export function ScheduleForm({
@@ -122,7 +122,6 @@ export function ScheduleForm({
   published: boolean;
 }) {
   const t = useTranslations("schedule");
-  const tp = useTranslations("admin.dateTime");
   const [state, formAction, pending] = useActionState(action, emptyScheduleState());
   const [pressed, setPressed] = useState<"publish" | "save">("save");
 
@@ -177,61 +176,16 @@ export function ScheduleForm({
     return key ? t(`errors.${key}`) : undefined;
   };
 
-  // ── Pickers ──────────────────────────────────────────────────────────────
-  const whenRef = useRef<HTMLDivElement>(null);
-  const attendanceRef = useRef<HTMLDivElement>(null);
-  usePickerValue(whenRef, "startsAt", (value) => {
-    setStartsAt(value);
+  // ── Picker commits ───────────────────────────────────────────────────────
+  const onStart = (value: string | null) => {
+    const next = value ?? "";
+    setStartsAt(next);
     recheck({
-      startsAt: value,
-      endsAt: endMode === "explicit" ? explicitEnd : followingEnd(value, duration),
-      rsvpDeadlineAt: deadlineFor(rsvpPreset, value, rsvpCustom),
-      cancellationCutoffAt: deadlineFor(cutoffPreset, value, cutoffCustom),
+      startsAt: next,
+      endsAt: endMode === "explicit" ? explicitEnd : followingEnd(next, duration),
+      rsvpDeadlineAt: deadlineFor(rsvpPreset, next, rsvpCustom),
+      cancellationCutoffAt: deadlineFor(cutoffPreset, next, cutoffCustom),
     });
-  });
-  usePickerValue(whenRef, "endsAt", (value) => {
-    setExplicitEnd(value);
-    recheck({ endsAt: value });
-  }, endMode === "explicit");
-  usePickerValue(attendanceRef, "rsvpDeadlineAt", (value) => {
-    setRsvpCustom(value);
-    recheck({ rsvpDeadlineAt: value });
-  }, rsvpPreset === "custom");
-  usePickerValue(attendanceRef, "cancellationCutoffAt", (value) => {
-    setCutoffCustom(value);
-    recheck({ cancellationCutoffAt: value });
-  }, cutoffPreset === "custom");
-
-  const pickerLabels = Object.fromEntries(PICKER_KEYS.map((k) => [`${k}Label`, tp(k)])) as Record<`${(typeof PICKER_KEYS)[number]}Label`, string>;
-  const picker = (id: "startsAt" | "endsAt" | "rsvpDeadlineAt" | "cancellationCutoffAt", label: string, hint: string | undefined, defaultValue: string) => (
-    <RtlDateTimePicker
-      id={id}
-      name={id}
-      label={label}
-      hint={hint}
-      defaultValue={defaultValue}
-      locale={locale}
-      clearLabel={pickerLabels.clearLabel}
-      todayLabel={pickerLabels.todayLabel}
-      doneLabel={pickerLabels.doneLabel}
-      hourLabel={pickerLabels.hourLabel}
-      minuteLabel={pickerLabels.minuteLabel}
-      emptyLabel={pickerLabels.emptyLabel}
-      prevMonthLabel={pickerLabels.prevMonthLabel}
-      nextMonthLabel={pickerLabels.nextMonthLabel}
-    />
-  );
-  // The picker draws its own label, so it cannot sit inside <Field>; its error
-  // is Field's markup, beside it, and — like Field's — not a live region: the
-  // summary is the announcement (`ui/field.tsx`).
-  const fieldError = (field: ScheduleField) => {
-    const message = err(field);
-    return message ? (
-      <p id={`${field}-error`} className="mt-2 flex items-start gap-2 text-caption text-error">
-        <AlertCircleIcon className="mt-[0.2em]" />
-        <span>{message}</span>
-      </p>
-    ) : null;
   };
 
   /** A wall clock as the house sentence — the date only when it is not the start's day. */
@@ -297,11 +251,10 @@ export function ScheduleForm({
       {/* ── متى ─────────────────────────────────────────────────────────── */}
       <section aria-labelledby="schedule-when" className="space-y-6">
         <SectionHeader id="schedule-when" title={t("sections.when")} />
-        <div ref={whenRef} className="space-y-6">
-          <div>
-            {picker("startsAt", t("startsAt.label"), t("startsAt.hint"), was(state, "startsAt") || initial.startsAt)}
-            {fieldError("startsAt")}
-          </div>
+        <div className="space-y-6">
+          <Field id="startsAt" label={t("startsAt.label")} hint={t("startsAt.hint")} error={err("startsAt")} required>
+            <DateTime name="startsAt" label={t("startsAt.label")} value={startsAt} onChange={onStart} />
+          </Field>
 
           <Field
             id="durationMinutes"
@@ -341,8 +294,17 @@ export function ScheduleForm({
             </div>
           ) : (
             <div>
-              {picker("endsAt", t("ends.label"), t("ends.hint"), explicitEnd)}
-              {fieldError("endsAt")}
+              <Field id="endsAt" label={t("ends.label")} hint={t("ends.hint")} error={err("endsAt")}>
+                <DateTime
+                  name="endsAt"
+                  label={t("ends.label")}
+                  value={explicitEnd}
+                  onChange={(value) => {
+                    setExplicitEnd(value ?? "");
+                    recheck({ endsAt: value ?? "" });
+                  }}
+                />
+              </Field>
               <Button
                 type="button"
                 variant="ghost"
@@ -431,7 +393,7 @@ export function ScheduleForm({
       {/* ── الحضور ──────────────────────────────────────────────────────── */}
       <section aria-labelledby="schedule-attendance" className="space-y-6">
         <SectionHeader id="schedule-attendance" title={t("sections.attendance")} />
-        <div ref={attendanceRef} className="space-y-6">
+        <div className="space-y-6">
           <div>
             <RadioGroup
               name="rsvpPreset"
@@ -445,8 +407,21 @@ export function ScheduleForm({
                 recheck({ rsvpDeadlineAt: deadlineFor(preset, startsAt, rsvpCustom || rsvpDeadlineAt) });
               }}
             />
-            {rsvpPreset === "custom" ? <div className="mt-3 ps-10">{picker("rsvpDeadlineAt", t("preset.customLabel"), undefined, rsvpCustom)}</div> : null}
-            {fieldError("rsvpDeadlineAt")}
+            {rsvpPreset === "custom" ? (
+              <Field id="rsvpDeadlineAt" label={t("preset.customLabel")} error={err("rsvpDeadlineAt")} className="mt-3 ps-10">
+                <DateTime
+                  name="rsvpDeadlineAt"
+                  label={t("rsvpDeadline.legend")}
+                  value={rsvpCustom}
+                  onChange={(value) => {
+                    setRsvpCustom(value ?? "");
+                    recheck({ rsvpDeadlineAt: value ?? "" });
+                  }}
+                />
+              </Field>
+            ) : err("rsvpDeadlineAt") ? (
+              <p className="mt-2 text-caption text-error">{err("rsvpDeadlineAt")}</p>
+            ) : null}
           </div>
 
           <div>
@@ -462,8 +437,21 @@ export function ScheduleForm({
                 recheck({ cancellationCutoffAt: deadlineFor(preset, startsAt, cutoffCustom || cancellationCutoffAt) });
               }}
             />
-            {cutoffPreset === "custom" ? <div className="mt-3 ps-10">{picker("cancellationCutoffAt", t("preset.customLabel"), undefined, cutoffCustom)}</div> : null}
-            {fieldError("cancellationCutoffAt")}
+            {cutoffPreset === "custom" ? (
+              <Field id="cancellationCutoffAt" label={t("preset.customLabel")} error={err("cancellationCutoffAt")} className="mt-3 ps-10">
+                <DateTime
+                  name="cancellationCutoffAt"
+                  label={t("cutoff.legend")}
+                  value={cutoffCustom}
+                  onChange={(value) => {
+                    setCutoffCustom(value ?? "");
+                    recheck({ cancellationCutoffAt: value ?? "" });
+                  }}
+                />
+              </Field>
+            ) : err("cancellationCutoffAt") ? (
+              <p className="mt-2 text-caption text-error">{err("cancellationCutoffAt")}</p>
+            ) : null}
           </div>
 
           <Switch name="allowWalkIns" checked={walkIns} onCheckedChange={setWalkIns} label={t("walkIns.label")} description={t("walkIns.hint")} />
