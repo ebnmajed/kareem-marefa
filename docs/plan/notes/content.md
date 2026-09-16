@@ -960,3 +960,64 @@ nothing here is blocked on the owner. Two small requests are still open (§4.1 t
 `sessions`, both non-blocking) and one genuine question for the lead (§4.3). Holding for the lead's
 explicit go before the first source edit, per this reply's own "wait for my reply before starting
 code."
+
+## 8. Five more lead primitives went live (`1d73e89`) — folded in
+
+Read the real implementations, not the stubs: `ui/link.tsx`, `ui/icon-button.tsx`, `ui/prose.tsx`,
+`ui/page-header.tsx`, `ui/section-header.tsx`. All consumed by path, none edited.
+
+- **`ui/link`** replaces the raw `next/link`/`Link` uses in my three surfaces where the destination
+  is internal: `materials/list.tsx`'s "افتح العارض" (open-viewer) link, and the viewer page's
+  "back to the session" link. **Not `quiet`** on either — both are inline text links, not a
+  card-whole-surface link, so the pending dot is real, useful feedback (`ui/link.tsx`'s own
+  distinction). External material links (`m.externalUrl`, a Google Slides/video URL) stay a bare
+  `<a target="_blank" rel="noopener noreferrer">` — they leave the app, `ui/link`'s locale-prefixing
+  has nothing to do there, and `REQ-MAT-007`'s "explicit indication of leaving the platform" wants an
+  icon/notice `ui/link` does not carry, not its pending dot.
+- **`ui/icon-button`** replaces the discussion's text-only action row for the four affordances the
+  lead named — reaction, reply, report, delete — each becoming a 44 px square control with a
+  mandatory `label` (so the accessible name survives losing its visible text). Icon mapping against
+  the house set (`icons.tsx`, 34 exports, none added): reaction → `DotIcon` (already planned, §1.3 —
+  doubles as both the glyph and the `IconButton`'s child); delete → `TrashIcon` (unambiguous); report
+  → `AlertTriangleIcon` (the set's existing "flag a problem" glyph, same one `Panel`'s error framing
+  reads from). **Reply has no obvious icon in the 34-export set** — flagged as request §4.6 below
+  rather than guessed. **Edit and moderator remove/restore stay `ui/button`, not `IconButton`**: edit
+  toggles a whole editing UI (not a single unambiguous glyph-shaped action) and moderation is a
+  staff-only, infrequent action where a visible Arabic label reads as more deliberate than an icon a
+  moderator has to hover to confirm — the lead named four controls, not six, and I'm reading that as
+  a decision already made rather than an omission to extend on my own.
+- **`ui/prose`** wraps the comment body (`comment-item.tsx`'s `<p className="mt-1 whitespace-pre-wrap
+  …">{comment.body}</p>`) at `size="sm"` — the body text is plain (newlines only, no markup), so
+  `Prose`'s `[&_p+p]`/`[&_h2]` rules do nothing extra, but its base rhythm (line-height 1.7, the
+  `text-body-sm` ramp, no justification) is exactly right for a paragraph of member-authored Arabic
+  and replaces a hand-rolled class string with the house one. **No material gets `Prose`** —
+  `MaterialSummary`/`ViewerData` carry no description field today (title, kind, phase, render status,
+  the substitution warning, the external URL — checked both DTOs on disk, §2 above), so there is no
+  long-form text on a material to wrap; the substitution warning stays `Panel tone="info"` (§2.2),
+  which is the right primitive for a short advisory line, not a paragraph.
+- **`ui/page-header`** replaces the viewer route's hand-built `← back` link + `<h1>` (§2.2). Shape:
+  `title={data.title}`, `breadcrumb={[{ href: `/app/sessions/${id}`, label: t("back") }]}` — reusing
+  today's existing "back to session" copy key as the crumb label rather than fetching the session's
+  real title for a one-level breadcrumb (`ViewerData` carries no session title today and I am not
+  adding a join for a single generic crumb; `PageHeader`'s own worked examples — `Browse`, `Schedule`
+  — show real category names because those breadcrumbs are two or three levels deep, which this one
+  is not). `eyebrow` = the material's kind label (`t("materials.list.kind.pdf")` etc.), `meta` and
+  `actions` left empty this wave — nothing in `ViewerData` yet justifies a meta chip row, and adding
+  one is a scope decision, not a wiring one.
+- **`ui/section-header`** — confirmed, no use in any of my three slots: the lead's own note ("your
+  slots render none") matches what §1/§2/§3 above already say — the event page owns every `<section>`
+  and `<h2>`, my three slots render content only. Recorded so this reply shows the note was read, not
+  assumed unnecessary.
+
+### 4.6 Request to the lead — no reply-shaped icon in `icons.tsx`
+
+For `IconButton`'s reply control (above): the 34-export set has nothing that reads as "reply" at a
+glance — `ArrowIcon` (`direction="back"`/`"forward"`, RTL-aware) is the closest shape, but an arrow
+also means "next"/"previous" elsewhere in this exact codebase (`PageViewer`'s own next/previous
+controls, §2.2) and reusing it for reply risks the same glyph meaning two different things on the
+same page. Options as I see them: (a) `ArrowIcon` anyway, accepting the reuse since context
+disambiguates; (b) a new icon (`icons.tsx` is lead-only, so this is a request either way); (c) reply
+stays `ui/button` with its Arabic label, matching my read of edit/moderate above rather than forcing
+a fourth control into `IconButton`. I have a mild preference for (c) — it is the smallest change and
+"reply" benefits from a visible word more than "delete"/"report" do — but the lead named reply
+explicitly, so raising it rather than quietly picking (c) myself.
