@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **RESEQUENCED BY THE OWNER — the screens come first.** M9's system work is built and green, and the owner has reordered the milestone (`DEC-110` … `DEC-114`): the whole app is rebuilt to the canvas **including the admin console**, `/app` becomes the sessions timeline, the shell's disclosures are swept, and check-in becomes a manual switch. **Nothing further is implemented in this session — the next session executes it.**
+**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **WAVE 6 IN PROGRESS — fourteen routes onto the M9 system (`DEC-130`).** The owner resequenced the milestone (`DEC-110` … `DEC-114`): the screens come first, the admin console is in scope, `/app` becomes the sessions timeline. **The checklist is directly under START HERE.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -72,6 +72,108 @@ no ratings on any browse card, no Arabic-Indic digits in any machine-readable st
 **Before spawning anyone:** write the new ownership map into `CLAUDE.md` and the ten
 `.claude/agents/*.md` files. `DEC-085`'s rule is why the old one is marked rather than deleted —
 *ownership lives in the agent files or it does not exist.*
+
+---
+
+## ★★ WAVE 6 — IN PROGRESS on `wave-6/screens` — fourteen routes onto the M9 system (`DEC-130`)
+
+**The owner's goal, verbatim in substance:** put **14 named routes** onto the M9 design system in
+one wave, without touching the frozen marketing contract. **Do not start wave 7.**
+
+**The measure** (`DEC-130`). A route is done only when **(1)** its `page.tsx` reaches
+`src/components/ui/` through its import graph — **strict reading: an M9 primitive, not merely the
+pre-M9 `button.tsx`/`dialog.tsx`/`icons.tsx`** — computed by `node scripts/ui-reach.mjs`, **and
+(2)** a 390 px RTL capture of it under `.qa-shots/rtl/` was **looked at**. Passing (1) is the floor;
+the capture is the bar.
+
+**Baseline on `main` `413245f`**, both readings (the owner's quoted baseline sits between them;
+the strict one is the gate):
+
+| | strict | loose | owner's quote |
+|---|---|---|---|
+| `(auth)` | 0/3 | 0/3 | 0/3 |
+| `app/admin` | 1/24 | 14/24 | 2/24 |
+| `app/sessions` | 2/6 | 3/6 | 2/6 |
+| `app/me` | 0/7 | 1/7 | 0/7 |
+| `app/platform` | 0/7 | 5/7 | 2/7 |
+| `/app` | 0/1 | 0/1 | 0/1 |
+
+### The 14-route checklist
+
+| # | Owner | Route / surface | (1) reaches M9 `ui/` | (2) 390 px RTL looked at |
+|---|---|---|---|---|
+| 1 | lead | `(auth)/sign-in` | ☐ | ☐ |
+| 2 | lead | `(auth)/choose-org` | ☐ | ☐ |
+| 3 | lead | `(auth)/no-access` | ☐ | ☐ |
+| 4 | `sessions` | `/app` — the timeline (`DEC-112`, `REQ-UIX-021`/`022`) | ☐ | ☐ |
+| 5 | `sessions` | `/app/sessions` — browse | ☐ | ☐ |
+| 6 | `sessions` | `/app/sessions/[id]` — the event page | ☐ (✓ already, strict — the bar is the rebuild) | ☐ |
+| 7 | `content` | the discussion on the event page — `components/event/comments.tsx` (`REQ-UIX-024`) | ☐ | ☐ |
+| 8 | `content` | materials — `components/materials/list.tsx` and `/app/sessions/[id]/materials/[materialId]` | ☐ | ☐ |
+| 9 | `content` | photos — `components/photos/gallery.tsx` | ☐ | ☐ |
+| 10 | `console` | `/app/admin` — the dashboard, with «يحتاج انتباهك» (`DEC-112`) | ☐ | ☐ |
+| 11 | `console` | `/app/admin/proposals` | ☐ | ☐ |
+| 12 | `console` | `/app/admin/sessions` | ☐ | ☐ |
+| 13 | `console` | `/app/admin/members` | ☐ | ☐ |
+| 14 | `console` | `/app/admin/moderation/reports` | ☐ | ☐ |
+| — | `console` | the admin layout (`admin/layout.tsx`) — not counted, required | ☐ | ☐ |
+| — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) — both menus onto `ui/menu`, the `ps-10`/`px-4` pairing, the Playwright gate | ☐ | ☐ |
+| — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) — ~150 call sites, 27 message glyphs, the catalogue test; lands before any teammate edits code | ☐ | — |
+| — | lead | **`0082_western_numerals.sql`** — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
+
+**Console's five, and why** (`DEC-130`): the dashboard is where «يحتاج انتباهك» moved; proposals,
+sessions and members are the three weekly lists that most need `DataTable`'s phone card stack; the
+reports queue is where a flag from `content`'s rebuilt discussion lands. Not chosen: `schedule`
+(its artboard is the two-tab re-cut — needs `0084` and `DEC-117`/`118`), `attendance` (adjacent to
+`DEC-116`), `settings` (the lead edits it in the numerals sweep).
+
+### Order inside the wave
+
+1. **Step 0 — this commit.** The map in `CLAUDE.md`, all ten `.claude/agents/*.md` regenerated,
+   this checklist, `DEC-130` … `DEC-132`, `scripts/ui-reach.mjs`. **No teammate before it lands.**
+2. **Spawn** `sessions`, `console`, `content` with a **planning-only** first task: study the canvas
+   (extracted to `.qa-shots/canvas/*.dc.html`, gitignored) and their screens, write the plan into
+   `docs/plan/notes/<name>.md`. **No source edit until the lead posts «numerals landed at <sha>».**
+3. **The numerals sweep's code half lands atomically** (`DEC-132` item 3): it touches every file all
+   three teammates are about to rebuild — all five admin routes, the browse card, the event page and
+   the comment DAL among them. **The migration waits for its rehearsal** against the owner's
+   production schema dump; the code is correct on either side of it.
+4. The three tracks build; the lead does the shell sweep and the `(auth)` screens, syncs, promotes,
+   runs `build`/`qa`/`visual`, and ticks this table only against `scripts/ui-reach.mjs` output and
+   a capture actually opened.
+
+### ★ Findings recorded before any code
+
+- **`sign-in` has no input at all** — one Google OAuth button. `DEC-129`'s «paste into the code
+  field, `autocomplete="one-time-code"`» has no field to bind; `SC 3.3.8` holds by construction and
+  is tested as such; the clauses bind any future OTP or magic-link field in full (`DEC-131`).
+- **The frozen contract holds 11 Arabic-Indic glyphs, not 3** — `components/chapter.tsx` carries 8
+  and renders on the marketing page. All wait for M13 (`DEC-132`).
+- **The column is `org_settings.numerals`**, not `orgs.numerals`; `0063` and `0065` return the enum
+  in their result types, so they are dropped and re-created (`DEC-132`).
+- **The canvas has no artboard for** the `(auth)` screens, the admin lists and dashboard, or the
+  discussion composer. Those are built from `System.dc.html`, `Shell.dc.html` and `16`'s specs —
+  and the capture is reviewed against the system, not against a picture that does not exist.
+- **Comments carry no attachment column** (`0010:284-296`), so `REQ-UIX-024`'s «visible upload
+  controls» are the photo and materials uploaders onto `ui/file-drop` — not attachments on a
+  comment, which would be a schema decision for the owner (`DEC-130`).
+
+### NOT THIS WAVE — deferred, and never-touch in every agent file
+
+- **The other 19 `app/admin` routes** → wave 7: `audit` · `branding` · `categories` · `companies` ·
+  `designer/[documentId]` · `emails` · `exports` · `moderation/comments` · `moderation/photos` ·
+  `recognition` · `reminders` · `scoring` · `sessions/[id]/attendance` · `sessions/[id]/certificates`
+  · `sessions/[id]/schedule` · `settings` (except the numerals field the lead removes) ·
+  `templates/certificates` · `templates/posters` · `venues`
+- **`app/me` — all 7 routes**; **`app/platform` — all 7 routes**
+- `app/sessions/[id]/{check-in,host,rate}`, `app/members/[id]`, `app/leaderboards`, `app/propose/**`,
+  `s/[id]`, `verify/[code]`, `legal/**`
+- **Multi-day sessions** (`DEC-119` … `DEC-121`)
+- **The manual check-in switch** (`DEC-113`, `DEC-116`, `DEC-117`, `DEC-118`) — **decided, NOT built**
+- **Gradient posters and the certificate library** (`DEC-127`, `DEC-128`); the parity goldens do not move
+- **The survey**
+- **Anything under `src/app/[locale]/(marketing)/`** and `components/{chapter,header,footer,…}.tsx`
+  it renders — frozen until M13. `DEC-126`'s «تسجيل الدخول» lands there, not here.
 
 ---
 

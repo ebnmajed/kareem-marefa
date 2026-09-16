@@ -2656,3 +2656,77 @@ milestone does not close while a screen it lists imports zero primitives. That c
 
 - **Supersedes:** nothing. `DEC-097`'s placement stands; only the milestone moves.
 - **Documents changed:** `16` §15, `09-sitemap-screens.md` §8 coverage table, `STATUS.md`
+
+---
+
+## DEC-130 — Wave 6 is fourteen named routes on the M9 system, owned by the lead and three teammates, measured by what a route imports and a capture someone looked at
+
+- **Date:** 2026-09-16 · **Decided by:** owner (the wave-6 brief and its `/goal`: «Put 14 named routes … onto the M9 design system, in one wave, without touching the frozen marketing contract»), the file-level map by the lead
+- **Supersedes:** the wave-5 ownership map in `CLAUDE.md` as the map in force (it stays, marked as the record); `16` §16.3's wave-6 table (already superseded on sequencing by `DEC-110`); `DEC-085`'s placement of `app/page.tsx` in the lead-only list and of `app/sessions/page.tsx`, `components/browse/**`, `messages/*/browse.json` with `content`; `DEC-103`'s placement of `app/sessions/[id]/page.tsx` with the lead, which was for M9 only.
+
+### The measure — the owner's, made mechanical
+
+A route counts as done only when (1) its `page.tsx` **reaches `src/components/ui/` through its import graph** — directly or through a component it imports, type-only imports excluded — **and** (2) a 390 px RTL capture of it was **looked at**. `scripts/ui-reach.mjs` computes (1).
+
+★ **The strict reading is the gate.** A route that reaches `ui/` only through `button.tsx`, `dialog.tsx` or `icons.tsx` **does not count**: those three predate M9 (`16` §1.1 — "`src/components/ui/` contains three files") and importing a legacy `ButtonLink` does not put a screen on the system. Measured on `main` at `413245f`, both readings, because the owner's quoted baseline sits between them:
+
+| | strict (M9 primitives) | loose (any `ui/` file) | owner's quoted baseline |
+|---|---|---|---|
+| `(auth)` | 0/3 | 0/3 | 0/3 |
+| `app/admin` | 1/24 | 14/24 | 2/24 |
+| `app/sessions` | 2/6 | 3/6 | 2/6 |
+| `app/me` | 0/7 | 1/7 | 0/7 |
+| `app/platform` | 0/7 | 5/7 | 2/7 |
+| `/app` | 0/1 | 0/1 | 0/1 |
+
+★ **Passing the measure is the floor, not the bar.** One `Badge` import satisfies (1); the capture is what proves the screen was rebuilt to the canvas, and the canvas is a reference, not a specification (`DEC-114`).
+
+### The fourteen
+
+| Owner | Routes / surfaces |
+|---|---|
+| **lead** (3) | `(auth)/sign-in` · `(auth)/choose-org` · `(auth)/no-access` — plus two sweeps that are not routes: the shell disclosure sweep (`DEC-111`, `REQ-UIX-023`) and the numerals sweep (`DEC-124`, `DEC-132`) |
+| **`sessions`** (3) | `/app` (the timeline, `DEC-112`) · `/app/sessions` (browse) · `/app/sessions/[id]` (the event page) |
+| **`content`** (3) | the discussion on the event page (`REQ-UIX-024`) · materials (the slot and `sessions/[id]/materials/[materialId]`) · photos (the gallery slot) |
+| **`console`** (5 + the layout) | the admin layout, and exactly: `/app/admin` (the dashboard) · `/app/admin/proposals` · `/app/admin/sessions` · `/app/admin/members` · `/app/admin/moderation/reports` |
+
+**Why those five admin routes.** The dashboard is where `DEC-112` moved «يحتاج انتباهك» and `16` §6.7 wants "a real dashboard"; proposals, sessions and members are the three lists an admin opens every week and the three that most need `DataTable`'s phone card stack; the reports queue is where a flag raised from `content`'s rebuilt discussion lands (`REQ-EVT-008`), so the two ends of one loop move together. **Not chosen, deliberately:** `schedule` (its artboard is the two-tab re-cut, which needs `0084` and carries `DEC-117`/`DEC-118`'s walk-in setting — neither is this wave), `attendance` (adjacent to `DEC-116`'s attendance editing, decided and not built), `settings` (the lead edits it in the numerals sweep), and the studio routes (`designer`'s, M12).
+
+### Three consequences the map resolves rather than leaves to the day
+
+1. ★ **`/app` and `/app/sessions` are ONE component on two routes, not a redirect.** `DEC-112` said the first "redirects or renders" the second. It **renders**: sign-in lands on `/app` and a redirect would cost every member a round trip on every landing. `/app/sessions` stays the canonical, linkable, filterable URL — tag chips, the shell's search form and every existing link already target it — and a filter applied on `/app` navigates there. **The phone tab bar loses «الرئيسية»**: one tab, «الجلسات», current on both routes, because two tabs for one destination is exactly what `DEC-112` forbade.
+2. ★ **Files of tracks NOT spawned this wave are held by the lead as custodian** — `checkin`, `event` (ratings), `notify`, `scoring`, `designer`, `platform`, `branding`. No redesign; the lead edits them for the numerals sweep and on a teammate's written request, nothing else. **Three presentation files transfer outright**, because the event page cannot be rebuilt to `Main.dc.html` without them: `components/checkin/{rsvp-panel,attendance-outcome}.tsx` and `components/calendar/add-to-calendar.tsx` go to **`sessions`** — markup and classes only; the gating predicates, `session-matrix.ts`, `lib/dal/{rsvp,checkin}.ts` and every matrix assertion stay untouched and green.
+3. ★ **The discussion transfers from `event` to `content`**: `components/event/{comments,comment-composer,comment-item,comment-list,actions}`, `lib/dal/{comments,reactions,reports}.ts`, `lib/realtime/**`, `messages/*/event.json`. `ratings.tsx`, `star-rating.tsx`, `rate/**` and `ratings.json` stay `event`'s — the rate screen is not this wave. **"Visible upload controls" means the photo and materials uploaders onto `ui/file-drop`**: `comments` has no attachment column (`0010:284-296`), so attachments on a comment would be a new schema, which is a decision for the owner, not a composer detail.
+
+### The rest of the transfers, for the record
+
+`/app/page.tsx` lead → `sessions`; `app/sessions/page.tsx`, `components/{browse,search}/**`, `lib/dal/{search,bookmarks}.ts`, `messages/*/{browse,search}.json` → `sessions`; `app/sessions/[id]/page.tsx` lead → `sessions`. `src/lib/form-state.ts` is `sessions'` — it built it in M9 — and `CLAUDE.md`'s lead-only list, which named it too, is corrected. `console` keeps every admin route it held, but edits only the five above plus the layout this wave; the other nineteen are never-touch until wave 7.
+
+- **Documents changed:** `CLAUDE.md` (the wave-6 map), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (new)
+
+---
+
+## DEC-131 — `sign-in` has no credential field, so `SC 3.3.8` holds by construction; `DEC-129`'s three clauses are applied to what the screen actually is
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from the tree, on starting `DEC-129`'s carried work
+- **What the tree says.** `(auth)/sign-in/page.tsx` renders **one control**: a `<form method="post" action="/api/auth/sign-in">` with a hidden `next` and a «الدخول عبر Google» button. There is **no code field, no password field and no input a member types into** — authentication is Google's OAuth (`REQ-AUT-001`), and no magic-link or one-time-code path exists anywhere (`grep one-time-code src/` → nothing).
+- **So `DEC-129` clause 1 has no field to apply to.** «Paste is allowed into the code field, `autocomplete="one-time-code"` is present» describes a screen this product does not have. `SC 3.3.8` Accessible Authentication asks that **our** step not require a cognitive function test; a single button requires none, and the credential step happens at Google, whose conformance is Google's.
+- **Decision.** (1) The rebuilt `sign-in` is tested for what makes `SC 3.3.8` true **here**: the page contains **no text-entry control**, its one action is a named `<button>`, and nothing on it intercepts `paste`, `copy` or autofill. (2) ★ **If an email one-time code or magic link is ever added, `DEC-129`'s three clauses bind that field in full** — this entry defers them, it does not waive them. (3) `DEC-129` clause 2 (numerals) and clause 3 (`no-access` names the next action, `REQ-UIX-012`) apply unchanged.
+- **Not done, deliberately:** inventing a code field so the clause has something to test. That would be a new authentication method, decided by nobody.
+- **Also reads** `STORY-UIX-016`'s second bullet (`4d0e67f`), which repeats the same «paste into the code field» wording — the story is right about the obligation and wrong about the field, and this entry is how it is applied.
+- **Supersedes:** nothing. Reads `DEC-129` clause 1 against the screen that exists.
+- **Documents changed:** `STATUS.md`
+
+---
+
+## DEC-132 — The numerals sweep, measured: the column is `org_settings.numerals`, the frozen contract holds eleven glyphs not three, and the parity fixture stays
+
+- **Date:** 2026-09-16 · **Decided by:** lead, measuring `DEC-124`'s debt before touching it
+- **Three corrections of fact to `DEC-124` and the wave-6 brief.**
+  1. **The column is `org_settings.numerals`**, not `orgs.numerals` (`0004_tenancy.sql:113`). The enum is `public.numeral_system` (`0003:13`). Readers in SQL: `0030` (`send_notification` context), `0063` and `0065` (render-context functions **returning `numeral_system` in their result type**, so they are dropped and re-created, not replaced), `0080` (the public card). The migration is **`0082`** — `16` §16.4's reservation of `0082` for objectives is sequencing `DEC-110` superseded, and migration numbers are promotion order.
+  2. ★ **The frozen marketing contract holds eleven Arabic-Indic glyphs, not three.** `(marketing)/page.tsx:16` has three; **`src/components/chapter.tsx:5` has eight** (`["٠١", "٠٢", "٠٣", "٠٤"]`) and is imported by that page. It is a marketing component on the frozen route, so **all eleven wait for M13**, and the brief's "three" undercounted the frozen half by the part that lives outside the route file.
+  3. **The setting reaches ~150 files across every track** — twenty DAL modules select it, and `formatNumber`/`formatDateTime`/`formatTime` take it as a parameter at every call site, including every file this wave's three teammates will rebuild. **So the sweep lands atomically, before any teammate edits code**; a teammate re-skinning `admin/members/page.tsx` while the lead removes a parameter from it is a guaranteed conflict in a shared tree.
+- **What stays, and why it is not an exception to the rule.** `scripts/parity/cases.mjs`'s `numeral-systems` case renders «٣ جلسات · 3 sessions · ١٢٣ / 123» into a golden. It proves **the font set can shape** Arabic-Indic digits — which a member can still type into a title or a comment — not that the product renders them. `DEC-124` governs what the product emits; a font-shaping fixture is neither a surface nor a setting, and removing it would move goldens for no product change.
+- **What the sweep does.** `numerals.ts` loses `NumeralSystem`: `formatNumber(value)`, `formatDateTime(iso, timeZone, locale)`, `formatTime(iso, timeZone, locale)`, always `nu-latn`; the designer runtime's binding formatters and the worker's mail renderer the same; every DAL `select("numerals")` and every DTO `numerals` field removed; the settings form's numeral field and its action removed; `admin.json`'s `numeralsArabicIndic` keys removed; the 27 message glyphs rewritten Western. ★ **The migration is NOT part of the sweep** (the owner, 2026-09-16): `0082_western_numerals.sql` — re-creating the four SQL readers without the column, then dropping `org_settings.numerals` and `public.numeral_system` — is a forward-only change to a live database with real members (invariant 3), so it is **rehearsed exactly as Launch step 2 was** before it enters the PR: the owner runs `supabase db dump --linked` (schema only — the CLI's default), the dump is applied to a fresh local Postgres, **every** migration including `0082` is applied on top, `npm run test:rls` runs green against it, and the dump is deleted. The numbers make the drop safe — `not null default 'western'`, and no row was ever `arabic_indic` — which is a reason to verify, not to skip. **The code half lands first and is correct on either side of the migration:** once nothing reads the column, dropping it changes no rendered output. **The catalogue test:** `tests/unit/messages-numerals.test.ts` fails on `U+0660–U+0669` and `U+06F0–U+06F9` anywhere under `src/messages/**` (`REQ-INT-006`'s acceptance). Comments that quote an Arabic-Indic example are rewritten Western, because a comment is where the next author copies from.
+- **Supersedes:** `DEC-124`'s "three glyphs in `(marketing)/page.tsx`" and its `orgs.numerals` naming.
+- **Documents changed:** `STATUS.md`, a migration (rehearsed before promotion)
