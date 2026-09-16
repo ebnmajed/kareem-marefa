@@ -237,6 +237,43 @@ rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`).
 (`f9fa70e`); `CardMediaProps.placeholderTone?: "dark"` (`6232a8a`); `ui.combobox` strings (`3c92185`);
 `star-rating.test.tsx` → `sessions` (`25fc741`).
 
+### Sync 4 — 2026-09-16 — two harness defects found and fixed, `0091` promoted, and the valid findings routed
+
+**What made syncs 2–4 unreliable, both now fixed and measured:**
+
+1. ★ **The verification worktree had no `.env.local`**, so its build inlined no `NEXT_PUBLIC_SUPABASE_*`. Every page
+   with a browser Supabase client threw client-side into «تعذّر تحميل هذا القسم» (the event page's Realtime above
+   all), with a clean server log. A Playwright trace's console showed it. The worktree now has a two-line
+   `.env.local` (local URL, local publishable key), never a copy of the main one. **Event-page failures cited
+   from earlier worktree syncs may be this artefact.**
+2. ★ **`scripts/lib/stubbed-server.mjs` never read `next start`'s piped output.** Once a long run's `csp-report:` lines
+   filled the pipe, the server stayed listening and answered nothing, and every later test timed out at 30–35 s.
+   The phone half of both sync-4 runs collapsed this way, and `sample` on the hung process showed its main thread
+   in a blocked write. **Fixed at `c179a0d`**, measured on the same build: 1500 csp-reports, then `GET /ar`, answers
+   nothing before the fix and 200 after. `STUBBED_SERVER_LOG=<file>` now keeps the server's output.
+
+**Landed since sync 3:** `7b2ac81` (`0084`–`0090`, L6) · `e73b239` **`0091`** (T8's photo broadcast; RLS 72 files, 791
+passed) · every `check_ins` reader skips removed rows (`6178109` sessions, `5248e6b` checkin, `9fd0570` console,
+worker in `7b2ac81`) · contracts 1–3 wired (`55d40e1`, `388b46e`, `a55cf37`, `b3e5837`, `8ed4bf8`) ·
+`checkInAllowed()`/`canOfferCheckInLink()` retired (`34d4c08`) · the host-view switch (`b03f057`) · ★ **a
+walk-in hazard closed before any build shipped it** (`343991d`, then `9acc4bf`: the schedule form would have
+switched walk-ins off on any save) · the account menu (`b4539ab`) · DEC-144 · six custodian specs onto
+DEC-134 and wave 7's forms (`dd03094`, `79d3932`).
+
+**Sync 4b at `34d4c08`, the valid half** (static gates: `tsc` clean · lint 0 errors · vitest 138 files, 1407/1407 ·
+`ui-reach --wave7` **22/23**, C3 outstanding · build green). Real findings, routed:
+
+| Owner | Finding |
+|---|---|
+| `sessions` | ★ axe serious on the event page: `definition-list`/`dlitem` in the action card |
+| `sessions` | `sessions-screens:183` asserts a code dies at `ends_at`; under `DEC-141` it lives to the ceiling |
+| `sessions` | `wave7-sessions-proposal:186` — a hidden `S:` copy stays on the not-editable state |
+| `content` | `points.spec:235` and `wave7-content-certificates:111` strict locators; `wave7-content-me:93` no form alert after a cleared name (spec or product, to be established); `tasks.spec:143` carried |
+| `console` | three phone admin cases failed as the hang began — unconfirmed until the next full run |
+
+No row closes on sync 4: its captures came from builds with one or both defects. **Sync 5** is a full run at HEAD
+with both fixes and `STUBBED_SERVER_LOG`, then `reserve-probe` alone on a quiet machine.
+
 ### Carried — diagnosed, each with an owner
 
 | Owner | Finding | From |
@@ -250,7 +287,7 @@ rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`).
 | `sessions` | ★ `proposal-materials.spec.ts:140` — `getByLabel("نوع المادة")` resolves to two elements, on `main` too | task one's gates |
 | `sessions` | the filter sheet's native date inputs show the browser's English `dd/mm/yyyy` mask | wave 6 row 5 |
 | lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
-| lead | the account menu links «حجوزاتي» and the profile both to `/app/me`; `notifications` and `privacy` have no entry — after `content`'s tab strip | sync 1 |
+| lead | ~~the account menu links «حجوزاتي» and the profile both to `/app/me`; `notifications` and `privacy` have no entry~~ **closed `b4539ab`** — the seven hub routes in the hub's order, asserted in `shell-disclosures` | sync 1 |
 | `0085`'s author | `ratings.edited_at` is written at millisecond precision — coarsen it with `submitted_at` (`16` §9.2a) | sync 1 (`sessions`) |
 | certificate library (`DEC-128`) | a member re-added after a removal does not get a new attendance certificate — the fan-out fires only on the edge into `completed` | sync 1 (`checkin`) |
 
