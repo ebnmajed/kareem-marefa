@@ -2,8 +2,11 @@
   "admin": {
     "shell": {
       "brand": "Organisation console",
-      "skipToContent": "Skip to content",
+      "skipToContent": "Skip the admin menu to the content",
       "moderatorEmpty": "The moderation console is still being built. Comment, photo and report queues and the audit log are coming.",
+      "collapseRail": "Collapse the admin menu",
+      "expandRail": "Expand the admin menu",
+      "openRail": "Open the admin menu",
       "nav": {
         "dashboard": "Dashboard",
         "proposals": "Proposals",
