@@ -1131,3 +1131,47 @@ rhythm better.
 
 Ready for sync. All four commits above are on `wave-6/screens`. Nothing is blocked on the owner;
 one thing (§9.5) is blocked on the lead's next build.
+
+---
+
+## 10. The lead's real-build findings, fixed — `e533ad8` … `9a8340a`
+
+Two runs against a real build (`448ff6d`, `68e645d`) found five things, three real failures and two
+390 px findings on the owner-named discussion surface. All fixed:
+
+1. **`materials.spec.ts:198` (both projects)** — a latent, pre-wave-6 bug, not a regression: the
+   substitution-warning wording changed from «استُبدل الخط» to «غير مضمَّن» when DEC-058 reworded it
+   for PDF-only uploads (`2f336a2`); the e2e assertion was never updated and had been silently unable
+   to pass since. Fixed to the current wording (`133b26c`).
+2. **`photos.spec.ts:199` (desktop, 30 s timeout)** and **3. `event-comments.spec.ts:123` (phone)** —
+   the SAME root cause: `DeleteConfirm`/`TakedownButton`'s confirm button was `DialogClose asChild`
+   wrapping an `onClick` that starts a transition (`ReportDialog`'s `type="submit"` had the analogous
+   shape). Composing Radix's own close-on-click with a caller's handler via `asChild` is documented
+   Radix usage, but it is not a pattern worth continuing to lean on for a handler that also has to run
+   reliably — both dialogs are now controlled (`open`/`onOpenChange`), with a plain button that closes
+   and fires the action as two ordered statements I own end to end (`e533ad8`, `358eac4`).
+4. **★ FileDrop's copy order** — «أو اسحب…» sat above «اختر ملفات», so "or" preceded the choice.
+   Swapped: the button (the one affordance with no drag equivalent) first, the drag hint after
+   (`09d02a4`).
+5. **★ The discussion's doubled empty-state CTA** — the owner's own named surface. An `EmptyState`
+   card offering "write the first comment" sat directly under the already-visible composer — the one
+   action doubled, and the one that looked primary was not the composer. Reverted to a quiet sentence,
+   no button; the composer is unconditionally the next action whenever that branch is reachable at all
+   (`e533ad8`).
+
+**Also fixed along the way, not one of the five but the same class of finding** — both uploaders'
+submit buttons were enabled with nothing ready to submit (no file for photos; no title/file for
+materials), reading as dead primaries. Both now disabled until ready (`133b26c`, `358eac4`).
+
+### ★★ A git mistake, caught and fixed the same turn
+
+`358eac4` accidentally deleted `src/components/sessions/focus-clearance.tsx` — `sessions`' own file,
+nothing I intended to touch. Root cause: `git add <my files> && git commit -m "..."` without a
+trailing `-- <paths>` commits the WHOLE index, not just what was just staged — a deletion `sessions`
+had already staged in this shared index (presumably mid-way through their own next commit) rode
+along with mine. Restored byte-for-byte in `9a8340a`, verified against `sessions`' own last commit of
+it (`05f739a`) — exact match. No build ran against the broken state. Told `sessions` directly. Every
+commit from here is `git commit -m "..." -- <explicit paths>`, which is what a shared index actually
+requires and what I should have been doing from my very first commit this wave.
+
+Ready for sync.
