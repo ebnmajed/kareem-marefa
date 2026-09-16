@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useFieldWiring } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import type { DurationUnit } from "./duration";
-import { KeptSelect } from "./kept-select";
 
 // A duration as an admin types it: a whole number and a unit (`duration.ts`
 // converts). The reminder schedule's offsets and the scoring catalogue's
@@ -62,7 +62,7 @@ export function DurationInput({
         defaultValue={amount === undefined ? defaultAmount : undefined}
         onChange={onAmountChange ? (e) => onAmountChange(e.target.value) : undefined}
       />
-      <KeptSelect
+      <Select
         id={field ? `${field.id}-unit` : undefined}
         name={unitName}
         aria-label={t.markup("unitLabel", { field: label, bdi: (chunks) => chunks })}
@@ -76,7 +76,7 @@ export function DurationInput({
             {t(`units.${u}`)}
           </option>
         ))}
-      </KeptSelect>
+      </Select>
     </div>
   );
 }

@@ -2,11 +2,11 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { KeptSelect } from "@/components/admin/kept-select";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import type { OrgSettingsAdmin } from "@/lib/dal/admin-settings";
@@ -155,10 +155,10 @@ export function SettingsForm({ action, settings }: { action: (prev: SettingsStat
       <fieldset className="border-t border-edge pt-6">
         <legend className="text-h3 text-fg-heading">{t("recognitionTitle")}</legend>
         <Field id="s-company-metric" label={t("companyMetricLabel")} required error={err("companyMetric")} className="mt-4">
-          <KeptSelect name="companyMetric" defaultValue={value("companyMetric", settings.companyMetric)}>
+          <Select name="companyMetric" defaultValue={value("companyMetric", settings.companyMetric)}>
             <option value="total_points">{t("companyMetricTotal")}</option>
             <option value="points_per_active_member">{t("companyMetricPerActive")}</option>
-          </KeptSelect>
+          </Select>
         </Field>
       </fieldset>
 

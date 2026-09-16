@@ -2,12 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
-import { KeptSelect } from "@/components/admin/kept-select";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { emptyCreateState, SESSION_FIELDS, SESSION_REQUIRED_FIELDS, type CreateSessionState, type SessionField } from "./state";
@@ -99,7 +99,7 @@ export function DirectSessionForm({
       </Field>
 
       <Field id="direct-category" label={t("categoryLabel")} required={required("categoryId")} error={err("categoryId")}>
-        <KeptSelect name="categoryId" defaultValue={was(state, "categoryId")}>
+        <Select name="categoryId" defaultValue={was(state, "categoryId")}>
           <option value="" disabled>
             {t("categoryPlaceholder")}
           </option>
@@ -108,22 +108,22 @@ export function DirectSessionForm({
               {c.name}
             </option>
           ))}
-        </KeptSelect>
+        </Select>
       </Field>
 
       <Field id="direct-level" label={t("levelLabel")} required={required("level")} error={err("level")}>
-        <KeptSelect name="level" defaultValue={was(state, "level") || "introductory"}>
+        <Select name="level" defaultValue={was(state, "level") || "introductory"}>
           <option value="introductory">{tp("form.levelIntroductory")}</option>
           <option value="intermediate">{tp("form.levelIntermediate")}</option>
           <option value="advanced">{tp("form.levelAdvanced")}</option>
-        </KeptSelect>
+        </Select>
       </Field>
 
       <Field id="direct-language" label={t("languageLabel")} required={required("language")} error={err("language")}>
-        <KeptSelect name="language" defaultValue={was(state, "language") || "ar"}>
+        <Select name="language" defaultValue={was(state, "language") || "ar"}>
           <option value="ar">{t("languageAr")}</option>
           <option value="en">{t("languageEn")}</option>
-        </KeptSelect>
+        </Select>
       </Field>
 
       <Field id="direct-presenters" label={t("presentersLabel")} hint={t("presentersHint")} error={err("presenterIds")}>

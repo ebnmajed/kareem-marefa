@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { KeptSelect } from "@/components/admin/kept-select";
 import { RowEditDialog } from "@/components/admin/row-edit-dialog";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { DataTableColumn } from "@/components/ui";
@@ -10,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { RadioGroup } from "@/components/ui/radio-group";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { hasAttempted, was } from "@/lib/form-state";
@@ -121,18 +121,18 @@ function PerkFields({ state, perk, levels, badges }: { state: SavedFormState; pe
       />
       {qualifier === "level" ? (
         <Field id={`${prefix}-level`} label={t("levelLabel")} required>
-          <KeptSelect name="levelId" defaultValue={attempted ? was(state, "levelId") : (perk.requiredLevelId ?? "")}>
+          <Select name="levelId" defaultValue={attempted ? was(state, "levelId") : (perk.requiredLevelId ?? "")}>
             <option value="">{t("choose")}</option>
             {levels.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
-          </KeptSelect>
+          </Select>
         </Field>
       ) : (
         <Field id={`${prefix}-badge`} label={t("badgeLabel")} required>
-          <KeptSelect name="badgeId" defaultValue={attempted ? was(state, "badgeId") : (perk.requiredBadgeId ?? "")}>
+          <Select name="badgeId" defaultValue={attempted ? was(state, "badgeId") : (perk.requiredBadgeId ?? "")}>
             <option value="">{t("choose")}</option>
             {badges
               .filter((b) => b.retiredAt === null || b.id === perk.requiredBadgeId)
@@ -141,7 +141,7 @@ function PerkFields({ state, perk, levels, badges }: { state: SavedFormState; pe
                   {b.name}
                 </option>
               ))}
-          </KeptSelect>
+          </Select>
         </Field>
       )}
       {state.errors.qualifier ? (

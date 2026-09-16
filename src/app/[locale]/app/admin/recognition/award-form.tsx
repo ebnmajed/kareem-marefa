@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
-import { KeptSelect } from "@/components/admin/kept-select";
 import { MemberPicker, type PickableMember } from "@/components/admin/member-picker";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import { useActionToast } from "@/components/admin/use-action-toast";
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 
@@ -24,9 +24,9 @@ import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 // but still writes an audit row. The member is now picked by name, the award is
 // confirmed by badge and member — a badge cannot be withdrawn once given — and
 // a badge already held is said at the member field, naming the badge and since
-// when, before anything is written — with the badge still chosen
-// (`KeptSelect`: React's reset after the refusal used to put the select back to
-// «اختر شارة»).
+// when, before anything is written — with the badge still chosen (React's
+// reset after the refusal used to put the select back to «اختر شارة»; `ui/select`
+// keeps it since `dcd5f05`).
 
 type Action = (previous: SavedFormState, formData: FormData) => Promise<SavedFormState>;
 const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
@@ -96,14 +96,14 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
           <MemberPicker members={members} name="memberId" placeholder={t("memberPlaceholder")} noMatches={t("noMatches")} defaultValue={attempted ? was(state, "memberId") || undefined : undefined} />
         </Field>
         <Field id="award-badge" label={t("badgeLabel")} required error={err("badgeId")}>
-          <KeptSelect name="badgeId" defaultValue={attempted ? was(state, "badgeId") : ""}>
+          <Select name="badgeId" defaultValue={attempted ? was(state, "badgeId") : ""}>
             <option value="">{t("badgeChoose")}</option>
             {badges.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
             ))}
-          </KeptSelect>
+          </Select>
         </Field>
         <Field id="award-reason" label={t("reasonLabel")} required error={err("reason")}>
           <Textarea name="reason" rows={2} maxLength={300} defaultValue={attempted ? was(state, "reason") : ""} />

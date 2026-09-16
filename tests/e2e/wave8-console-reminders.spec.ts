@@ -130,7 +130,7 @@ test("SCR-060 at 390 px: a refusal lands at its row, and nothing is written", as
   // What was typed survives the refusal (REQ-UIX-011).
   await expect(page.getByLabel("التذكير 2", { exact: true })).toHaveValue("2");
   // …the units too: React resets the form after the action, and a select's
-  // default is never kept in step by React (`KeptSelect`).
+  // default is never kept in step by React (`ui/select` keeps it, `dcd5f05`).
   await expect(page.getByRole("combobox", { name: "التذكير 2 — الوحدة" })).toHaveValue("minutes");
   await expect(page.getByRole("combobox", { name: "التذكير 3 — الوحدة" })).toHaveValue("days");
 
