@@ -71,7 +71,10 @@ function RoleCell({ member, action, isSelf }: { member: AdminMemberRow; action: 
     // simply didn't fit. Stacked below `md` (the same breakpoint
     // `DataTable` itself switches the card stack on), side by side at and
     // above it — unchanged on desktop, where the table already had room.
-    <form action={formAction} className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+    // `noValidate` — this form has no `required` control today (a `<select>`
+    // always carries a value), but it fires a toast from `state.error` below,
+    // which `16` §8.2's rule covers too; matches the dialog form's own note.
+    <form action={formAction} noValidate className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
       <Select name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-full text-body-sm md:w-auto">
         <option value="admin">{t("role.admin")}</option>
         <option value="moderator">{t("role.moderator")}</option>
@@ -156,7 +159,13 @@ function ActionsCell({
         title={t.rich("deactivateConfirmTitle", { name: member.displayName ?? member.email, t: (chunks) => <bdi>{chunks}</bdi> })}
         closeLabel={t("closeDialog")}
       >
-        <form action={formAction}>
+        {/* `noValidate` — `16` §8.2's own rule for every form that renders the
+            app's own error: even though this reason field's `required` is
+            `<Field>`-context-only (never a native attribute here), a future
+            edit that passes `required` straight to `<Textarea>` too — exactly
+            `content`'s 7f4809f — must not silently block this dialog's
+            submission ahead of it. */}
+        <form action={formAction} noValidate>
           <Field id={`deactivate-reason-${member.id}`} label={t("reasonLabel")} hint={t("reasonHint")} required error={state.error === "reason_required" ? t("error.reason_required") : undefined}>
             <Textarea name="reason" rows={3} maxLength={300} />
           </Field>

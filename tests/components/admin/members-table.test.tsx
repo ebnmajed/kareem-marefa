@@ -125,6 +125,32 @@ describe("MembersTable", () => {
     expect(submitted.get("reason")).toBe("مغادرة الشركة");
   });
 
+  // ★ The dialog's `<form>` has no `noValidate` set to work AROUND — its
+  // reason field is `required` only via `<Field>`'s own `aria-required`
+  // context, never a native HTML `required` attribute (`ui/textarea.tsx`
+  // never forwards one unless a caller passes it directly, and this one
+  // doesn't), so the browser was never going to block this submission in
+  // the first place. What this proves is the other half of 16 §8.2's rule:
+  // once the round trip returns `reason_required`, the app's OWN inline
+  // `<Field>` error actually renders — the sync-3-adjacent sweep's real
+  // concern (content's 7f4809f), checked here rather than assumed.
+  it("an empty reason shows the app's own inline error, not a silently blocked submission", async () => {
+    const deactivateAction = vi.fn<RowAction>().mockResolvedValue({ error: "reason_required", done: false });
+    renderTable({ deactivate: deactivateAction });
+
+    const trigger = screen.getAllByRole("button", { name: /مزيد من الإجراءات على سارة العتيبي/ })[0];
+    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole("menuitem", { name: "عطّل العضوية" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "تعطيل عضوية «سارة العتيبي»؟" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "أرسل" }));
+
+    await waitFor(() => expect(deactivateAction).toHaveBeenCalledTimes(1));
+    expect(await within(dialog).findByText("اكتب سبب التعطيل أولًا.")).toBeVisible();
+    // Still open — the error is only useful where the field it names is.
+    expect(dialog).toBeVisible();
+  });
+
   it("changing a role submits the select's value", async () => {
     const changeRoleAction = vi.fn<RowAction>().mockResolvedValue({ error: null, done: true });
     renderTable({ changeRole: changeRoleAction });

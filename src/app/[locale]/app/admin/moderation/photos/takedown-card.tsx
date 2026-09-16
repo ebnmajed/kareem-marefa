@@ -65,7 +65,12 @@ export function TakedownCard({
         ) : null}
 
         <CardActions className="mt-2 flex-wrap">
-          <form action={formAction}>
+          {/* `noValidate` on both forms — `16` §8.2's rule for any form that
+              renders the app's own error (the toast fired from inside the
+              action, below). This one has no `required` control at all, but
+              a form without `noValidate` is the exception in this codebase,
+              not the rule. */}
+          <form action={formAction} noValidate>
             <Button type="submit" name="action" value="restore" variant="secondary" size="sm" disabled={pending}>
               {t("restore")}
             </Button>
@@ -79,7 +84,14 @@ export function TakedownCard({
               title={t.rich("removeConfirmTitle", { session: sessionTitle, t: (chunks) => <bdi>{chunks}</bdi> })}
               closeLabel={t("closeDialog")}
             >
-              <form action={formAction}>
+              {/* `noValidate` — the reason field's `required` is `<Field>`-
+                  context-only (never a native attribute; `ui/textarea.tsx`
+                  never forwards one unless passed directly), so nothing
+                  blocks this submission today either. Set anyway so a future
+                  edit that adds `required` straight to `<Textarea>` — the
+                  exact mistake `content`'s 7f4809f made — cannot silently
+                  swallow this dialog's own submission ahead of it. */}
+              <form action={formAction} noValidate>
                 <Field
                   id={reasonId}
                   label={t("reasonLabel")}

@@ -82,7 +82,12 @@ export function ReviewCard({
           </p>
         ) : null}
 
-        <form id={formId} action={formAction} className="mt-5 border-t border-edge pt-5">
+        {/* `noValidate` — `16` §8.2's rule for any form that renders the app's
+            own error (`state.error` above). This form has no `required`
+            control at all today (the header comment on `Reason` below
+            explains why on purpose), so nothing native was ever going to
+            block it — set anyway so it stays true if that ever changes. */}
+        <form id={formId} action={formAction} noValidate className="mt-5 border-t border-edge pt-5">
           <input type="hidden" name="proposalId" value={proposalId} />
           <p className="text-body-sm text-fg-muted">{t("approveNote")}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
