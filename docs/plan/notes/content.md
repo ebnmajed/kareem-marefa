@@ -568,3 +568,354 @@ concurrent WIP (one is a literal `ReferenceError` mid-edit), nothing under this 
 Ready for sync. Next, absent other direction: help drive `npm run qa`/`visual`/the gallery wiring once
 the lead is ready for it, or start on M10's `browse.json`-owned screens once M9 closes — both are the
 lead's call, not mine to start early.
+
+---
+
+# Wave 6 — the discussion, materials, photos (REQ-UIX-024, DEC-130)
+
+**PLANNING ONLY.** No source file touched writing this. Read (this session): `STATUS.md`'s START
+HERE + WAVE 6 blocks, `CLAUDE.md`'s wave-6 ownership map, `.claude/agents/content.md` (regenerated,
+authoritative over the spawn prompt), `DECISIONS.md` `DEC-100`, `DEC-110`, `DEC-112`, `DEC-114`,
+`DEC-124`, `DEC-130`, `DEC-132`, `16-ui-redesign.md` §5.4.1a(b), §6.3, §6.4, §6.8.3, §7.1, §7.3,
+§7.5, `01-prd.md` `REQ-UIX-007/010/012/013/018/020/024`, `REQ-EVT-001…015`, `REQ-MAT-001…012`, the
+nine `ui/` primitives as shipped (all built and green from M9 — `card`, `badge`, `tag-chip`,
+`avatar`, `progress`, `empty-state`, `stat`, `panel`, `file-drop`), the current
+`components/event/{comments,comment-composer,comment-item,comment-list,actions}.tsx`,
+`components/{materials,photos,viewer,tasks}/**`, `lib/dal/{comments,reactions,reports,materials,
+photos,tasks}.ts`, `lib/realtime/channel.ts`, and `components/sessions/slots.ts`. `docs/plan/
+notes/sessions.md` has **no wave-6 section yet** — noted in §3 below, not blocking this plan.
+
+## 0. What changes and what doesn't, in one paragraph
+
+Wave 6 is "put these three surfaces on the M9 system," not "redesign the data model." Every DAL
+function, RPC, RLS policy and Realtime trigger from waves 1/5 (M5) stays as-is. What changes is
+presentation: raw `<textarea>`/`<input type=file>`/hand-rolled `<span>` badges become the nine
+`ui/` primitives; every write action gets a real pending/success/failure story instead of an inline
+`<p>` that may be off-screen; the reaction gets the Tier-2 whisper (`DEC-100`, pulled into this wave
+by `DEC-110`'s "the comments surface becomes a Notion-style comment experience"); uploads move onto
+`ui/file-drop`, stating type and size **before** a file is picked, which is new DAL surface (the
+byte limits exist today only as a post-hoc 413 message, §2.3 below).
+
+## 1. The discussion (`REQ-UIX-024`, `REQ-EVT-001…015`)
+
+### 1.1 The composer — a real editing affordance, not a bare textarea
+
+`comment-composer.tsx` keeps its shape (one component for a top-level post and a reply, mentions
+via `@`-search, the same `postCommentAction`/`searchMentionsAction`) and gains:
+
+- **Auto-grow.** The `<textarea>` starts at its current row count and grows with content up to a
+  cap (~10 rows), via `field-sizing: content` where supported with a `useLayoutEffect` height
+  measurement as the fallback — no new dependency. It renders through **`ui/textarea`** (`sessions`'
+  file, consumed not edited) for the border/focus/invalid styling every other text control in the
+  product now shares, wrapped in a container this component owns for the grow behaviour `ui/textarea`
+  itself does not provide.
+- **A remaining-length counter with all six ICU forms**, replacing the silent `maxLength={4000}`
+  that gives no feedback until the 4001st character is simply refused. `event.comments.remaining`
+  keys `{zero,one,two,few,many,other}`, shown once the member is within ~200 characters of the cap
+  (quiet otherwise — a counter visible from character zero is noise, `16` §3's own "not everything
+  needs to shout" applies to microcopy as much as colour).
+- **The failed-post text is already kept** — `postCommentAction`'s error path never clears `body`
+  (`comment-composer.tsx:78-81`, today). I keep that and make the failure visible: the inline error
+  paragraph (`REQ-UIX-010` — adjacent, coloured, icon-marked) moves into a small `Panel tone="error"`
+  with `AlertCircleIcon` under the textarea, **and** the same failure raises `useToast().show({tone:
+  "error", ...})` so a reply composer scrolled out of view still tells its author it failed. The
+  toast stays until dismissed (lead's `ui/toast`, `role="alert"`, no auto-dismiss on error — already
+  built that way); the inline panel satisfies "adjacent" for the member still looking at the field.
+- **Submit and reply buttons become `ui/button` with `pending`/`pendingLabel`** (`Button`'s own
+  override prop for a non-`<form>` pending source — these are `useTransition` calls, not native form
+  submissions, so `useFormStatus` never fires and the explicit prop is the documented escape hatch,
+  `ui/index.ts:342-344`). Label stays, spinner appears beside it, `aria-busy` — `REQ-UIX-007` met by
+  construction rather than by a manually-set `disabled` with no visual state, which is all today's
+  code does.
+- **Success**: the composer clears and a brief success toast confirms the post — mostly redundant
+  with "your comment now appears in the thread," but real for a reply, where the new item can land
+  below the fold of what the member is looking at. `router.refresh()` for the actor's own copy stays
+  exactly as documented in `actions.ts`'s header (the realtime-race fix from wave 1) — nothing about
+  this wave touches that mechanism.
+- **Mentions stay a plain `<ul>` dropdown** — not a `ui/combobox` (that is `console`'s file and this
+  is a free-text `@`-search inside a textarea, not a form field with a bound value; forcing it into
+  `combobox`'s contract would be the wrong tool). Each candidate row gets `Avatar` at 24 px (§1.4)
+  so a member picks a mention by face, not name alone — a real, cheap win now that avatars exist as
+  a primitive, even though the upload/import half of `16` §6.8 is `scoring`'s in M10.
+
+### 1.2 Every action's pending/success/failure, action by action
+
+| Action | Pending | Success | Failure |
+|---|---|---|---|
+| Post / reply | `ui/button pending` | clears composer, toast (brief) | inline `Panel` + toast (persists) |
+| Edit save | `ui/button pending` | closes edit mode, comment updates in place | inline `Panel` under the edit field + toast |
+| Delete (own) | spinner replaces the trigger's icon while `useTransition` is pending | comment becomes the tombstone / thread updates immediately | toast (persists) — the comment is still there, so no inline slot survives a failed delete to show text next to |
+| Moderator remove/restore | same as delete | toast (brief) naming the action taken | toast (persists) |
+| Report | `ui/button pending` inside the dialog | dialog closes, `t("report.already")` replaces the action, toast (brief, "تم إرسال بلاغك") | inline `Panel` inside the still-open dialog + toast |
+| Reaction toggle | **optimistic, no pending UI** (§1.3) | the whisper motion IS the success feedback | optimistic state reverts, toast (persists, quiet copy — "تعذّر تسجيل إعجابك") |
+
+Delete and moderator actions get a toast rather than an inline slot because both can relocate or
+remove the very row the inline error would have sat next to — a `<p>` next to a comment that is
+about to vanish (moderator "remove") is a message nobody reads. This is the one place the model
+departs from "adjacent, `REQ-UIX-010`" on purpose, and it is what `REQ-UIX-010`'s own text allows:
+that requirement governs **field** errors: a delete/moderate control is an action, not a field.
+
+### 1.3 The reaction — the whisper (`DEC-100`, `REQ-EVT-004`, `REQ-UIX-018`)
+
+Redesigning `toggleLike()`/its button in `comment-item.tsx`:
+
+- **The glyph is `DotIcon`** (`ui/icons.tsx`, lead's, consumable), not a heart — `DEC-100`/§7.5.1's
+  "no heart, no burst, no particles" plus "one metaphor everywhere: knowledge starts as a dot of
+  light" point at the same glyph the constellation itself uses, not an invented one. Unreacted: an
+  outline dot at the caption size. Reacted: filled.
+- **Optimistic, per `16` §7.1 layer 4** — reactions are explicitly named alongside bookmarks as the
+  one place optimism is correct ("never for RSVP"). `useOptimistic` (React 19, already in the stack)
+  flips the glyph and the count the instant the button is pressed; `toggleReactionAction` runs behind
+  it; on failure the optimistic value is discarded (React reverts it automatically) and a quiet
+  persistent toast explains it did not stick — the realtime broadcast and `router.refresh()` already
+  in `actions.ts`/`comment-item.tsx` are what reconciles the optimistic guess with the server's real
+  totals either way, exactly as they do today for the non-optimistic path.
+- **The motion**: on the transition from "not reacted" to "reacted" only (never on unreact, never on
+  a re-render that merely receives a new prop) — the dot ignites (`dot-pulse`) and one ring expands
+  from it (`ripple-ring`), both **already-written keyframes** (`globals.css:499-521`), 200–260 ms,
+  one iteration, transform/opacity only. **I cannot add the one-shot utility classes this needs** —
+  the two existing consumers of these keyframes are both tuned for continuous ambient motion
+  (`.network-svg .pulse-dot`: 6 s infinite; `.ripple-ring`: 8 s infinite) — so this is request §4.1 to
+  the lead.
+- **Static under reduced motion**: the glyph simply becomes filled, no animation — already correct
+  by the global `prefers-reduced-motion` block's universal `animation-duration: 0.01ms !important`
+  (`globals.css:1005-1010`), which overrides any duration regardless of where it is declared. The
+  ring additionally needs `display: none` under reduced motion the way `.ripple-ring` already gets
+  it (`:1012-1014`) — folded into request §4.1 so the new class(es) inherit the same treatment rather
+  than needing a second rule.
+- **Count formatting**: after the numerals sweep lands, `formatNumber` takes no numerals argument —
+  this file's `formatNumber(likeCount, numerals)` call becomes `formatNumber(likeCount)`, a mechanical
+  change already covered by the sweep landing before I edit anything (per the spawn instruction).
+
+### 1.4 Avatars, `<bdi>`, and what else moves onto the nine primitives
+
+- **`Avatar` at 32 px** next to every comment's author name (`16` §6.8.3's own row for "Comments and
+  ratings," already fetched by `comments.ts`, drawn nowhere today) — `memberId`/`displayName`/`src`
+  exactly as `CommentAuthor` already carries them (`comments.ts:17-21`), no DAL change needed here.
+  Mention candidates get `Avatar` at 24 px (§1.1).
+- **The empty thread** (`t("empty")`, today a bare `<p>`) becomes `EmptyState`: title "لا توجد
+  تعليقات بعد", action = focus the composer (an `onClick` that calls a ref'd `.focus()`, not a link —
+  there is nowhere else to go, the composer is right above it). `REQ-UIX-012` is explicit that the
+  action is required; "start the conversation" is a real next step here, not a filler action.
+- **The cancelled-session frozen notice** (`t("frozenOnCancelled")`, today a bare `<p>`) becomes a
+  `Panel tone="neutral"` — a static aside, exactly panel.tsx's own stated purpose ("a warning aside").
+- **The deleted tombstone** stays a plain `<p className="italic">` — `Panel`/`Badge` would overstate
+  a single muted sentence that exists specifically to be quiet.
+- **`Badge`** for "تم التعديل" (today plain text appended to the timestamp) — `tone="neutral"
+  outline size="sm"`, so an edited comment is scannable in a long thread without reading every
+  timestamp. Not used for the report state (`t("report.already")`) — that is a sentence about what
+  the viewer did, not a status label on the comment itself, and forcing it into `Badge` would read as
+  the comment being flagged, which is exactly the information `REQ-EVT-008` keeps from a non-staff
+  viewer.
+- **No `Card`.** A comment is not a navigable object with a media box; wrapping each one in `Card`
+  would add hover-raise and link semantics that mean nothing here. `EmptyState`/`Panel`/`Badge`/
+  `Avatar` already put the discussion route on the system (`scripts/ui-reach.mjs`, strict reading) —
+  `Card` earns its place on materials/photos below, not here.
+
+## 2. Materials (`components/materials/list.tsx`, `/app/sessions/[id]/materials/[materialId]`)
+
+### 2.1 The list — rows, the phase badge, a download with a pending state
+
+- **`materials/list.tsx`** renders each material as a **`Card density="row"`** (`16` §6.4's own
+  second density, "lists" — a materials list is exactly that list), body-only (no `CardMedia` — a
+  material has no poster-shaped image; an icon by kind, `ImageIcon`/`DownloadIcon`/`LinkIcon` from
+  the house set, sits in the row instead). Each row: title (`<bdi>`), kind label, and the **قبل/بعد
+  phase badge** — `Badge tone="info" outline` for `before`, `Badge tone="neutral" outline` for
+  `after` — replacing today's plain `{t(kind)} · {t(phase)}` text line, which is invisible at a
+  glance in a list of eight rows.
+- **`renderStatus`** — `pending`/`rendering` today reads as a static sentence; it becomes
+  `Progress` in indeterminate mode (`value` omitted — exactly `progress.tsx`'s documented mode for
+  "queued work with no known extent") next to the row, and `failed` becomes `Badge tone="error"`. A
+  `ready` PDF's row keeps its `"open the viewer"` link — that link is the row's own primary action,
+  so it stays a plain `Link`, not a nested button inside `Card`'s own link (materials rows use
+  `Card` **without** an `href` — the row is a static container, not itself the link, so `CardActions`'
+  stopped-propagation nesting rule from `card.tsx`'s own header does not apply here the way it will
+  for the session card in M10).
+- **The count line** (`t("count", {...})`) stays — a bare sentence above the list is right; wrapping
+  a count in `Stat` would overstate one number sitting above eight rows it is not summarising a
+  dashboard for.
+- **Empty state**: `EmptyState` — title "لا توجد مواد بعد", action = scroll to / open the upload form
+  for a presenter/admin (`canManage`), or, for a member with no upload right, no action is possible
+  — and `EmptyState.action` is **required by the type**. Resolved: for a non-manager the empty state
+  is simply not rendered at all (today's code already gates `UploadForm` on `canManage`; the same
+  gate decides whether the *empty state itself* renders, and a non-manager instead sees nothing where
+  the list would be, matching the session-card pattern of "a section that renders nothing" rather
+  than forcing a fake action into a primitive that refuses to allow one). ★ Flagged as request §4.3
+  in case the lead reads `REQ-UIX-012` as requiring a visible line either way.
+
+### 2.2 The viewer route (`materials/[materialId]/page.tsx`)
+
+- The pending/failed/no-pages states (`t("states.pending")` etc., today three plain `<p>`s) become
+  `Panel` (neutral for pending — matches Photos' processing notice below — `error` tone for failed).
+- **`DownloadButton`** becomes `ui/button pending pendingLabel`, replacing the manual
+  `disabled={pending}` with no visual pending state; on `unavailable` (no signed URL — REQ-MAT-005's
+  audited-download path returning nothing) the message becomes a persistent toast rather than the
+  inline `<p>` it is today, since a download failure has nowhere obvious "adjacent" to sit once the
+  member has already clicked away toward their downloads folder.
+- **The font-substitution warning** (`REQ-MAT-011`) becomes `Panel tone="info"` with `InfoIcon` — it
+  is advisory, not an error, and today's plain paragraph does not distinguish it from a real failure.
+- **`PageViewer` itself is out of scope this wave** — its RTL next/previous keyboard model
+  (`page-viewer.tsx`) is already correct and already tested (`tests/components/viewer/
+  page-viewer.test.tsx`); the wave-6 measure is the route reaching an M9 primitive, which the page
+  shell above already does. I will touch `PageViewer` only to thread the numerals-sweep's parameter
+  removal through `formatNumber`/`t.rich("pageOf", …)` — mechanical, not a redesign.
+
+### 2.3 The uploader — `ui/file-drop`, stating type and size before a file is chosen
+
+This is the one place materials needs new DAL surface, not just new markup:
+
+- **`getMaterialsPageData`/`getProposalMaterialsPageData`** gain `limit_document_mb, limit_audio_mb,
+  limit_image_mb` on the existing `org_settings` select (today only `numerals`/`comment_edit_window
+  _minutes` are read there) and return them in the page DTO. `UploadForm` receives them as props and
+  picks the right one for the selected `kind`, computing `maxBytes = limitMb * 1024 * 1024` and a
+  `requirements` line — «PDF فقط، حتى ٥٠ ميغابايت» / equivalent for image/audio — **before** any file
+  is chosen, which is what `REQ-UIX-024`'s acceptance actually asks for and what today's code cannot
+  do (the limit is only ever learned from a 413 response, after the fact).
+- **`accept`** varies with the selected `kind` radio/select — `["application/pdf", ".pdf"]` for
+  `pdf`, `["image/png","image/jpeg","image/webp"]` for `image`, the four audio MIME types for
+  `audio`. This is client-side, advisory — `FileDrop`'s own header is explicit that it is "the
+  control, not the enforcement," and `sniffedKindMatchesDeclared()` server-side (`0077`, DEC-058)
+  is unchanged and still the real gate. **No SVG anywhere** — `accept` never includes `image/svg+xml`
+  and never will (invariant 11, DEC-009).
+- **Per-file progress and per-file error** — `FileDrop`'s own `Picked[]` state already renders a
+  `Progress` per selected file and an `error` per file (`file-drop.tsx`'s header: "each pending file
+  shows `Progress` in its indeterminate mode"); `UploadForm`'s own `handleSubmit` stays the two-step
+  signed-PUT-then-complete flow, now driving `FileDrop`'s `onFiles` instead of a bare `<input>`.
+- **The link-kind fields** (`video_link`/`external_link` — a URL, not a file) stay `ui/input`
+  (`sessions`' file) exactly as today; `FileDrop` only replaces the branch where `isFileKind` is true.
+
+## 3. Photos (`components/photos/gallery.tsx`)
+
+- **The grid stays a plain `<ul>` grid** (`Card` does not fit — a photo tile opens nothing, it is
+  itself the content, and `Card`'s "whole thing is one link" contract has no destination to give it).
+  What changes: the **hidden badge** (`t("hiddenBadge")`, a bare `<span>`) becomes `Badge tone="error"
+  outline size="sm"`; the **empty gallery** becomes `EmptyState` (title "لا توجد صور بعد", action =
+  open the uploader for `canUpload`, and — same resolution as §2.1 — no empty state at all for a
+  viewer who cannot upload, since there is truly no next action to offer them and the type forbids
+  a fake one); the **upload notice** (`REQ-EVT-013` — "shared with everyone in the org," today a bare
+  `<p>`) becomes `Panel tone="info"` with `InfoIcon`, sitting directly above `UploadWidget` so it is
+  read at the point of upload, not buried.
+- **`UploadWidget` moves onto `ui/file-drop`** the same way materials does: `accept=["image/jpeg",
+  "image/png","image/webp"]`, `maxBytes` from `getPhotosPageData`'s new `limit_image_mb` select
+  (mirrors §2.3 — one new column on an existing query, not a new table read), `requirements` stating
+  the size before pick. `sniffKindFromFile` stays as today's client-side declared-kind guess; the
+  server sniff (`process_photo`, the worker) is unaffected.
+- **Takedown/restore**: `TakedownButton` becomes `ui/button pending pendingLabel`; the confirmation
+  moves from `window.confirm` (today, `takedown-button.tsx:25` — a native browser dialog, unstyled,
+  unlocalized-feeling even though its string comes from `t()`, and invisible to any test that does
+  not stub `window.confirm`) into **`ui/dialog`** exactly as the discussion's own `DeleteConfirm`
+  pattern already does (`comment-item.tsx:183-208`) — `REQ-UIX-013`'s "every destructive action
+  confirms in a dialog naming the object" is a requirement, not a preference, and a photo takedown is
+  exactly the destructive action it describes. Restore (staff-only, reversible, not destructive) keeps
+  no confirmation, matching today.
+- **A real gap this surfaces, not fixed this wave, flagged as a finding**: `REQ-EVT-010` ("an
+  uploaded photo appears at once… without a refresh") does not match what `upload-widget.tsx`
+  actually does today — `complete` only confirms the request was accepted (202), the photo appears
+  once the worker's `process_photo` job finishes (EXIF strip, WebP derivative), and the widget's own
+  comment says so plainly. The `notice`/`processing` text is honest about this gap, and I am keeping
+  it exactly as-is (a `Panel tone="info"` version of the same sentence) rather than quietly
+  implementing something REQ-EVT-010 promises and M5 did not build — realtime-pushing the finished
+  photo into the gallery would need a new broadcast on `photos`' own table, which is schema/pipeline
+  work outside "put the screen on the system." Raised as a question, §4.4.
+
+## 4. Requests and questions
+
+### 4.1 Request to the lead — two one-shot motion utilities in `globals.css`
+
+For §1.3's reaction whisper, reusing the existing keyframes but not their existing (continuous,
+long-duration) class applications:
+
+```css
+.reaction-dot {
+  animation: dot-pulse 220ms var(--ease-out, ease-out) 1 both;
+}
+.reaction-ring {
+  animation: ripple-ring 260ms var(--ease-out, ease-out) 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction-ring { display: none; }
+}
+```
+(names negotiable — I will consume whatever the lead lands on). The universal reduced-motion rule
+already zeroes both durations; the `display: none` line only needs adding for the ring, matching
+`.ripple-ring`'s own treatment two lines above it (`globals.css:1012-1014`), so the dot and ring
+never show even a one-frame flash.
+
+### 4.2 Request to `sessions` — confirm `ui/textarea` fits the composer's auto-grow wrapper
+
+`ui/textarea` (`TextareaProps = ComponentProps<"textarea"> & { invalid?: boolean }`, per
+`ui/index.ts:195`) is a thin styled wrapper with no grow/measure behaviour of its own, which I read
+as intentional — the grow behaviour is mine to build around it, not something to ask `textarea.tsx`
+to grow itself into. Flagging only so `sessions` can correct me if `field-sizing`/measurement was
+meant to live in `textarea.tsx` itself for every consumer, not just mine.
+
+### 4.3 Question for the lead — an ungated empty state with no action
+
+§2.1/§3: for a materials/photos viewer with no upload right, I am rendering **nothing** where the
+list/gallery would otherwise be empty, rather than an `EmptyState` with a fabricated action, because
+`EmptyState.action` is required and there is genuinely no next step to offer that viewer. Is "render
+nothing" the right read of `REQ-UIX-012`, or should a manager-only empty state exist and a
+non-manager instead get a quieter, action-less sentence outside `EmptyState` entirely (closer to
+`Materials`'s pre-wave-6 `t("empty")` paragraph, just for the no-action case only)? Either is a small
+change; I want the rule fixed once rather than guessed per-surface.
+
+### 4.4 Finding, not a request — `REQ-EVT-010`'s "without a refresh" does not match the shipped pipeline
+
+§3's last bullet: today's photo upload is honestly "processing, revisit to see it," not "appears at
+once." Not fixing it this wave (it is pipeline/Realtime work, not a system-primitive swap); recording
+it here so it is not mistaken for something wave 6 silently addressed.
+
+### 4.5 Canvas check (`DEC-114`)
+
+Materials/Photos/Comments have no dedicated canvas artboard (`STATUS.md`'s own finding, restated in
+`.claude/agents/content.md`) — built from `System.dc.html`, `Main.dc.html`'s materials/discussion
+sections, and the PRD, not transcribed from a picture that does not exist. Nothing in `Main`/
+`EventPhone`/`EventEnded` contradicts a requirement as far as I can tell once its numerals are read
+as Western (`DEC-124`) and its `box-sizing` overlap is read as the mockup artefact it is (`DEC-122`)
+— no new canvas question beyond those two, already recorded.
+
+## 5. Slot props I need from `sessions`
+
+`docs/plan/notes/sessions.md` has no wave-6 section as of this writing, so this is what I am building
+against and will reconcile once it lands:
+
+- **`Comments`, `Materials`, `Photos` keep `SlotProps` exactly as `components/sessions/slots.ts`
+  already defines it today** (`sessionId`, `memberId`, `locale` — all three already used; `Materials`/
+  `Photos` currently only destructure `sessionId`/`locale`, `Comments` uses all three). No widening
+  needed for anything in §1–§3 above — `viewerRelation` (the `RelationSlotProps` extension, `slots.ts:
+  51`) is not something any of my three slots need to know for themselves, consistent with `16`
+  §5.4.1a(b)/`DEC-103`'s rule that **the page**, not the slot, gates a section that can render
+  nothing (comments/materials/photos already render "no heading of their own," per each file's own
+  header comment, and that stays true).
+- **`SLOT_NAMES`** (`slots.ts:55`) lists `RsvpPanel`, `AttendanceOutcome`, `Comments`, `Ratings` only
+  — `Materials`/`Photos`/`Tasks` are not in it. Since `slots.ts` is `sessions`' file this wave, I am
+  not adding to it myself; noting that the constant is stale against what the page actually renders
+  (it has rendered Materials/Photos/Tasks since wave 2) so `sessions` can decide whether it is worth
+  fixing or is simply unused for anything but documentation.
+- **What I will check once `sessions.md`'s wave-6 section exists**: the exact `<section
+  aria-labelledby>`/`id` the page wraps each slot in (for the sub-nav scroll-spy, `16` §6.3), and
+  whether the page still calls `Materials`/`Photos`/`Comments` with a bare `{sessionId, locale}` or
+  starts passing `memberId` to all three for consistency. Neither changes anything in this plan; both
+  are drop-in either way.
+
+## 6. Test/capture plan
+
+`tests/components/event/{comments,comment-item}.test.tsx` extend for: the auto-grow composer, the
+counter's six ICU forms at the boundary, the optimistic reaction (flips instantly, reverts on a
+mocked failure), `axe-core` over a thread with a reply, an edit in progress, and a reported comment.
+`tests/components/materials/{list,upload-form}.test.tsx` and `tests/components/photos/{gallery,
+upload-widget}.test.tsx` extend for the `FileDrop` wiring (accept/maxBytes asserted **before** a file
+is picked, per-file error) and `axe-core`. New: a reduced-motion assertion on the reaction (asserts
+the end state, nothing mid-transition, matching `16` §7.5.5's gate) once request §4.1 lands.
+`.qa-shots/rtl/wave6-content-*.png`: discussion empty / thread+reply / mid-composition / failed-post;
+materials list / viewer; gallery + uploader — the eight states the definition of done lists, each
+looked at at 390 px RTL before I call the surface done.
+
+---
+
+Ready for sync. This plan is complete for all three surfaces; nothing here is blocked on the owner.
+Two small requests are open (§4.1 to the lead, §4.2 to `sessions`, both non-blocking — I can start
+building the surfaces around either answer and adjust the reaction's CSS classes / the composer's
+textarea wrapper in a follow-up commit if either lands differently than assumed) and one genuine
+question for the lead (§4.3). Waiting on **«numerals landed at `<sha>`»** before any source edit, per
+the spawn instruction.
