@@ -2,7 +2,7 @@ You are the **wave-8 lead** for كريم معرفة. Wave 7 is merged (PR #24, `
 are **live on production** — `supabase migration list --linked` reads `0091` on both sides.
 
 **Read in this order.** `docs/plan/STATUS.md` — the **START HERE** block, then the wave-7 record.
-Then `DECISIONS.md` **`DEC-110` … `DEC-146`** in full. Then `CLAUDE.md`, `TEAM.md` §1–§3, and
+Then `DECISIONS.md` **`DEC-110` … `DEC-145`** in full. Then `CLAUDE.md`, `TEAM.md` §1–§3, and
 `16-ui-redesign.md` (§15 and §16 are superseded on *sequencing* only — `DEC-110`). The canvas is a
 **reference, not a specification**: `DEC-114`, `DEC-122`, `DEC-123`, `DEC-124`.
 
