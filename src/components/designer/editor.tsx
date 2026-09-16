@@ -2,32 +2,59 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { DesignDocument, Layer, PresetName } from "@kareem/designer-runtime";
-import { derive, fontFaceCss, PRESETS, presetsFor, snap, snapTargets, snapTargetsBlock, validateDocument } from "@kareem/designer-runtime";
+import type { DesignDocument, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
+import {
+  alignLayer,
+  derive,
+  fitLayerToSafeArea,
+  fontFaceCss,
+  PRESETS,
+  presetsFor,
+  reorderLayer,
+  snap,
+  snapTargets,
+  snapTargetsBlock,
+  validateDocument,
+} from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { LayerList } from "@/components/designer/layer-list";
-import { PropertiesPanel } from "@/components/designer/properties-panel";
+import { Inspector, type ArrangeOp } from "@/components/designer/inspector";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
-import { ChecksPanel } from "@/components/designer/checks-panel";
+import { ChecksPanel, useCheckFindings, type CheckFinding } from "@/components/designer/checks-panel";
+import { VariantStrip } from "@/components/designer/variant-strip";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
+import { Switch } from "@/components/ui/switch";
+import { Tabs } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
+import { AlertTriangleIcon, CheckIcon } from "@/components/ui/icons";
 
-// SCR-057 — the shared designer. REQ-DSG-004, REQ-DSG-005, REQ-DSG-006.
+// SCR-057 — the shared designer, on the M9 system. REQ-DSG-004 … REQ-DSG-006,
+// REQ-DSG-022, REQ-DSG-028, REQ-DSG-029, DEC-077, DEC-093, DEC-096, DEC-148.
 //
 // ONE ENGINE (D54). There is no poster branch and no certificate branch in
 // this component: a certificate document is a document whose `purpose` is
-// `certificate` and whose bindings resolve from a certificate row. That is
-// what «a change to the layer model applies to both without a branch» means
-// in code, and it is why this file has no `if (purpose === …)` in it.
+// `certificate` and whose bindings resolve from a certificate row.
 //
-// AUTOSAVE IS A ROUTE HANDLER, NOT A SERVER ACTION (06 §10, `04` §4.2): layer
-// trees exceed the 1 MB action body cap, and Server Actions dispatch one at a
-// time per client — a queued save behind a slow one is an editor that feels
-// broken. A PUT is also cancellable, which a debounced editor wants.
+// THE ENGINE IS UNCHANGED (DEC-048, `16` §10.1). The canvas is an iframe of
+// `renderDocumentToHtml()`'s real output, bindings come from real rows, the
+// faces load by SHA-256, autosave is a Route Handler (layer trees exceed the
+// 1 MB action cap), undo is fifty document-level steps. What changed is the
+// chrome above it: a toolbar, a tabbed rail, an inspector that shows only the
+// sections the selected layer has, the checks as a count that selects its
+// layer, and a strip of every variant.
 //
-// MOBILE IS VIEW AND APPROVE, NOT EDIT (09, SCR-057). The layer chrome is
-// hidden below the editor breakpoint rather than reflowed: a layer editor at
-// 390 px is a bad tool pretending to be a feature, and shipping one invites
-// an admin to do precise work with no precision available.
+// ★ NO DRAGGING THIS WAVE (DEC-148). Every operation here is a tap: select in
+// the list or on the canvas, align, fit, reorder, type a number. That is
+// SC 2.5.7's non-dragging path, and `tests/e2e/wave8-designer-editor.spec.ts`
+// performs each one with `click()` alone.
+//
+// MOBILE IS VIEW AND APPROVE (09, SCR-057). Below the editor breakpoint the
+// layer chrome is not reflowed but replaced: the canvas, every variant, the
+// checks, and «اطلب التصدير» in the page header — a layer editor at 390 px is
+// a bad tool pretending to be a feature.
 
 export interface DesignerEditorProps {
   documentId: string;
@@ -42,6 +69,9 @@ export interface DesignerEditorProps {
   origin: string;
   /** Each image layer's intrinsic pixel size, for the PPI guard. */
   assetSizes: Record<string, { width: number; height: number }>;
+  /** Signed URLs of READY PNG exports of the saved source, by preset — the
+   *  variant strip shows the worker's own renders (DEC-017). */
+  variantPreviews: Partial<Record<PresetName, string>>;
 }
 
 type SaveState =
@@ -61,18 +91,22 @@ const AUTOSAVE_DELAY_MS = 1200;
 /** 06 §10: fifty steps. */
 const UNDO_STEPS = 50;
 
+type RailTab = "layers" | "data" | "checks";
+
 export function DesignerEditor(props: DesignerEditorProps) {
   const t = useTranslations("designer.editor");
   const ts = useTranslations("designer.save");
   const tb = useTranslations("designer.bindings");
-  const tl = useTranslations("designer.layers");
-  const tp = useTranslations("designer.properties");
+  const tp = useTranslations("designer.inspector");
+  const tprops = useTranslations("designer.properties");
   const tpr = useTranslations("designer.presets");
   const tc = useTranslations("designer.checks");
+  const toast = useToast();
 
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>({ kind: "clean" });
+  const [rail, setRail] = useState<RailTab>("layers");
   // 06 §10: undo/redo is document-level, fifty steps. A layer-level history
   // would let an undo half-apply an edit that touched two layers, and the
   // whole document is a few kilobytes.
@@ -89,31 +123,25 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
-  // The canvas draws a STRING, so this must be one. `t.rich` returns a
-  // ReactNode the renderer cannot use, and a message carrying a tag called
-  // through plain `t()` renders the raw key — which is exactly what shipped
-  // here until the e2e read «designer.bindings.value» off the canvas
-  // (DEC-047's lesson, in a place no catalogue guard could see). So the
-  // label is composed from an untagged key, and the renderer bidi-isolates
-  // the result itself.
   /** Locked by the TEMPLATE, or by the layer's own flag. The database
    *  enforces the first (design_documents_guard compares against the pinned
    *  version); the second is the document's own statement, and ignoring it
    *  would make `locked: true` decoration — an uploaded poster's single
-   *  locked layer could then be dragged. */
+   *  locked layer could then be moved. */
   const isLocked = useCallback(
     (layerId: string) => props.lockedLayerIds.includes(layerId) || document.layers.some((l) => l.id === layerId && l.locked === true),
     [document.layers, props.lockedLayerIds],
   );
 
+  // The canvas draws a STRING, so this must be one: `t.rich` returns a
+  // ReactNode the renderer cannot use, and a message carrying a tag called
+  // through plain `t()` renders the raw key (DEC-047's lesson, found on the
+  // canvas by the wave-3 e2e). The renderer bidi-isolates the result itself.
   const placeholderLabel = useCallback((binding: string) => `${tb("unbound")} · ${binding}`, [tb]);
 
   // The SAME faces the canvas loads, declared in this document too, because
-  // the pre-export checks measure here (checks-panel.tsx). Measuring against
-  // a fallback face would produce a warning list that disagrees with the
-  // export — worse than no list. The family names are the manifest's plain
-  // ones; next/font emits hashed names for the app's own type, so nothing
-  // collides.
+  // the pre-export checks measure here. Measuring against a fallback face
+  // would produce a warning list that disagrees with the export.
   const faceCss = useMemo(
     () => fontFaceCss(props.faces.map((f) => ({ ...f, url: `${props.origin}/api/fonts/${f.sha256}` }))),
     [props.faces, props.origin],
@@ -172,6 +200,19 @@ export function DesignerEditor(props: DesignerEditorProps) {
     },
     [props.documentId],
   );
+
+  // A failed save is said where the admin is looking — a toast that stays
+  // until dismissed (`16` §7.3) — as well as in the toolbar's status. The
+  // conflict and the permission cases name what to do; the chip alone would
+  // be scrolled past.
+  const toasted = useRef<SaveState["kind"]>("clean");
+  useEffect(() => {
+    // Only a change of KIND is news: a second failed save in a row is the
+    // same toast, which is still on screen because errors stay.
+    if (toasted.current === save.kind) return;
+    toasted.current = save.kind;
+    if (save.kind === "conflict" || save.kind === "forbidden" || save.kind === "error") toast.show({ tone: "error", title: ts(save.kind) });
+  }, [save.kind, toast, ts]);
 
   const mutate = useCallback(
     (next: DesignDocument) => {
@@ -237,26 +278,44 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const patchLayer = useCallback(
     (layerId: string, patch: Partial<Layer>) => {
       if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      // Alignment guides, applied to a TYPED frame. 06 §10 wants guides and
-      // snapping; dragging is REQ-DSG-022's and is deliberately absent, so
-      // the guides act where frames are actually edited. They are LOGICAL
-      // (start/end), so they mirror with direction rather than jumping to
-      // the far side when a template is mirrored for English.
-      const snapped =
-        patch.frame
-          ? {
-              ...patch,
-              frame: {
-                ...patch.frame,
-                x: snap(patch.frame.x, snapTargets(document, layerId)),
-                y: snap(patch.frame.y, snapTargetsBlock(document, layerId)),
-              },
-            }
-          : patch;
+      // Guides applied to a TYPED frame, in the document's own logical
+      // coordinates, so they mirror with direction rather than jumping to the
+      // far side when a template is mirrored for English.
+      const snapped = patch.frame
+        ? {
+            ...patch,
+            frame: {
+              ...patch.frame,
+              x: snap(patch.frame.x, snapTargets(document, layerId)),
+              y: snap(patch.frame.y, snapTargetsBlock(document, layerId)),
+            },
+          }
+        : patch;
       mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? ({ ...l, ...snapped } as Layer) : l)) });
     },
     [document, mutate, isLocked],
   );
+
+  // ★ Align and fit move a layer, so a locked one is refused (REQ-DSG-024);
+  // reordering changes only depth, which the template lock does not cover.
+  // The runtime computes the result on the DOCUMENT's axis — nothing here
+  // reads the console's direction (DEC-096).
+  const arrange = useCallback(
+    (layerId: string, op: ArrangeOp) => {
+      if (op.kind !== "order" && isLocked(layerId)) return setSave({ kind: "locked", layerId });
+      const next =
+        op.kind === "align"
+          ? alignLayer(document, layerId, op.axis, op.edge, op.target)
+          : op.kind === "fit"
+            ? fitLayerToSafeArea(document, layerId)
+            : reorderLayer(document, layerId, op.move);
+      // A no-op is not an edit: no undo step, no autosave.
+      if (next !== document && JSON.stringify(next) !== JSON.stringify(document)) mutate(next);
+    },
+    [document, mutate, isLocked],
+  );
+
+  const reorder = useCallback((layerId: string, move: ReorderMove) => arrange(layerId, { kind: "order", move }), [arrange]);
 
   const toggleHidden = useCallback(
     (layerId: string) => {
@@ -280,67 +339,57 @@ export function DesignerEditor(props: DesignerEditorProps) {
   }, [document.layers]);
   const fontFamilies = useMemo(() => [...new Set(props.faces.map((f) => f.family))], [props.faces]);
 
-  const status = (() => {
+  const { findings, measuring } = useCheckFindings({ document, bindings: props.bindings, fontsReady, assetSizes: props.assetSizes });
+  const flagged = useMemo(() => new Set(findings.map((f) => f.preset)), [findings]);
+
+  // ★ REQ-DSG-029: a check selects the layer that failed it, on the preset it
+  // failed in — the canvas shows that variant with that layer outlined.
+  const goTo = useCallback((finding: CheckFinding) => {
+    setPreset(finding.preset);
+    setOverlays(true);
+    setSelectedLayerId(finding.layerId);
+    setRail("layers");
+  }, []);
+
+  const choosePreset = useCallback((name: PresetName) => {
+    setPreset(name);
+    setOverlays(PRESETS[name].bleed > 0);
+  }, []);
+
+  const alert = (() => {
     switch (save.kind) {
-      case "saving":
-        return { tone: "muted" as const, node: ts("saving") };
-      case "saved":
-        return { tone: "muted" as const, node: ts("saved") };
-      case "conflict":
-        return { tone: "alert" as const, node: ts("conflict") };
-      case "forbidden":
-        return { tone: "alert" as const, node: ts("forbidden") };
       case "locked":
-        return { tone: "alert" as const, node: ts.rich("lockedRegion", { layer: save.layerId, bdi: (c) => <bdi>{c}</bdi> }) };
+        return ts.rich("lockedRegion", { layer: save.layerId, bdi: (c) => <bdi>{c}</bdi> });
       case "invalid":
-        return { tone: "alert" as const, node: ts.rich("invalid", { issue: save.issue, bdi: (c) => <bdi dir="ltr">{c}</bdi> }) };
-      case "error":
-        return { tone: "alert" as const, node: ts("error") };
+        return ts.rich("invalid", { issue: save.issue, bdi: (c) => <bdi dir="ltr">{c}</bdi> });
       default:
         return null;
     }
   })();
 
-  // What the canvas shows IS the derived variant, not the master with a
-  // label — REQ-DSG-009's «no manual step» is only true if the editor
-  // exercises the same derivation the export will.
-  const shown = useMemo(() => derive(document, preset), [document, preset]);
+  const saveBadge =
+    save.kind === "saving" ? (
+      <Badge tone="neutral" outline>
+        {ts("saving")}
+      </Badge>
+    ) : save.kind === "saved" ? (
+      <Badge tone="success" icon={<CheckIcon />}>
+        {ts("saved")}
+      </Badge>
+    ) : save.kind === "conflict" || save.kind === "forbidden" || save.kind === "error" ? (
+      <Badge tone="error" icon={<AlertTriangleIcon />}>
+        {ts("failedBadge")}
+      </Badge>
+    ) : null;
 
-  const presetTabs = (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
-        {presets.map((name) => (
-          <button
-            key={name}
-            type="button"
-            aria-pressed={name === preset}
-            onClick={() => {
-              setPreset(name);
-              setOverlays(PRESETS[name].bleed > 0);
-            }}
-            className={`h-11 rounded-field border px-3 text-body-sm ${
-              name === preset ? "border-edge-strong bg-silver-100 text-fg-heading" : "border-edge text-fg-body"
-            }`}
-          >
-            <bdi>{tpr(`name.${name}`)}</bdi>
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => setOverlays((v) => !v)} className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body">
-          {overlays ? tpr("overlaysHide") : tpr("overlaysShow")}
-        </button>
-        <p className="text-body-sm text-fg-muted">
-          {tpr.rich("size", {
-            width: formatNumber(PRESETS[preset].width),
-            height: formatNumber(PRESETS[preset].height),
-            bdi: (c) => <bdi>{c}</bdi>,
-          })}
-        </p>
-        {PRESETS[preset].bleed > 0 ? <p className="text-body-sm text-fg-muted">{tpr("bleedHint")}</p> : null}
-      </div>
-    </div>
+  const checksCount = findings.length;
+  const checksBadge = (
+    <Badge tone={checksCount ? "error" : "success"} outline={!checksCount} icon={checksCount ? <AlertTriangleIcon /> : <CheckIcon />}>
+      {tc("badge", { count: checksCount, value: formatNumber(checksCount) })}
+    </Badge>
   );
+
+  const shown = useMemo(() => derive(document, preset), [document, preset]);
 
   const canvas = (
     <DesignerCanvas
@@ -357,123 +406,133 @@ export function DesignerEditor(props: DesignerEditorProps) {
     />
   );
 
+  const strip = <VariantStrip presets={presets} current={preset} onSelect={choosePreset} flagged={flagged} previews={props.variantPreviews} />;
+
+  const overlaysSwitch = (
+    <Switch label={tpr(overlays ? "overlaysHide" : "overlaysShow")} checked={overlays} onCheckedChange={setOverlays} />
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      {/* eslint-disable-next-line react/no-danger -- generated by the runtime's
-          own fontFaceCss() from the manifest; no user input reaches it, and
-          the family names are escaped there. */}
+      {/* Generated by the runtime's own fontFaceCss() from the manifest; no
+          user input reaches it, and the family names are escaped there. */}
       <style dangerouslySetInnerHTML={{ __html: faceCss }} />
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-body-sm text-fg-muted">{t(`purpose.${props.purpose}`)}</p>
-        {status ? (
-          <p
-            role={status.tone === "alert" ? "alert" : "status"}
-            className={`text-body-sm ${status.tone === "alert" ? "rounded-field border border-edge-strong px-3 py-2 text-fg-heading" : "text-fg-muted"}`}
-          >
-            {status.node}
-          </p>
-        ) : null}
-        {props.canEdit ? (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => step("undo")}
-              disabled={depth.past === 0}
-              className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body disabled:opacity-40"
-            >
-              {t("undo")}
-            </button>
-            <button
-              type="button"
-              onClick={() => step("redo")}
-              disabled={depth.future === 0}
-              className="h-11 rounded-field border border-edge px-3 text-body-sm text-fg-body disabled:opacity-40"
-            >
-              {t("redo")}
-            </button>
-          </div>
-        ) : null}
-        {!props.canEdit ? (
-          <p role="status" className="text-body-sm text-fg-muted">
-            {t("readOnly")}
-          </p>
-        ) : null}
-      </div>
 
-      {/* Mobile: view and approve. One canvas, the dynamic fields, and the
-          note that says why the editor is not here. */}
+      {alert ? (
+        <Panel tone="error">
+          <p role="alert" className="text-body-sm text-fg-heading">
+            {alert}
+          </p>
+        </Panel>
+      ) : null}
+
+      {/* ── Phone: view and approve ─────────────────────────────────────── */}
       <div className="flex flex-col gap-6 xl:hidden">
-        <p className="rounded-field border border-edge bg-silver-100 p-3 text-body-sm text-fg-body">{t("mobileNotice")}</p>
-        {presetTabs}
+        <Panel tone="info">
+          <p className="text-body-sm text-fg-body">{t.rich("phoneNotice", { width: formatNumber(1280), bdi: (c) => <bdi>{c}</bdi> })}</p>
+        </Panel>
+        {strip}
         {canvas}
         <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
-          <h2 id="dr-checks-m" className="text-body font-medium text-fg-heading">
-            {tc("heading")}
-          </h2>
-          <ChecksPanel document={document} bindings={props.bindings} fontsReady={fontsReady} assetSizes={props.assetSizes} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="dr-checks-m" className="text-h3 text-fg-heading">
+              {tc("heading")}
+            </h2>
+            {checksBadge}
+          </div>
+          <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} />
         </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
-          <h2 id="dr-bindings-m" className="text-body font-medium text-fg-heading">
+          <h2 id="dr-bindings-m" className="text-h3 text-fg-heading">
             {tb("heading")}
           </h2>
           <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
         </section>
       </div>
 
-      {/* Desktop: the full editor. Composed for RTL — the layer list sits at
-          the start edge, the properties at the end, and both mirror with the
-          document rather than being flipped by a toggle (06 §10). */}
-      <div className="hidden gap-6 xl:grid xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
-        <section aria-labelledby="dr-layers" className="flex flex-col gap-3">
-          <h2 id="dr-layers" className="text-body font-medium text-fg-heading">
-            {tl("heading")}
-          </h2>
-          <LayerList
-            document={document}
-            selectedLayerId={selectedLayerId}
-            onSelect={setSelectedLayerId}
-            onToggleHidden={toggleHidden}
-            lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
-            canEdit={props.canEdit}
-          />
-        </section>
+      {/* ── Desktop: the editor ─────────────────────────────────────────────
+          Composed for RTL: the rail sits at the start edge, the inspector at
+          the end, and both mirror with the document rather than being flipped
+          by a toggle (06 §10). */}
+      <div className="hidden flex-col gap-4 xl:flex">
+        <div role="toolbar" aria-label={t("title")} className="flex flex-wrap items-center gap-3 rounded-card border border-edge bg-surface px-4 py-2">
+          <p className="text-label text-fg-muted">{t(`purpose.${props.purpose}`)}</p>
+          {saveBadge}
+          {props.canEdit ? (
+            <div className="flex gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={() => step("undo")} disabled={depth.past === 0}>
+                {t("undo")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => step("redo")} disabled={depth.future === 0}>
+                {t("redo")}
+              </Button>
+            </div>
+          ) : null}
+          <span className="grow" />
+          <button type="button" onClick={() => setRail("checks")} className="rounded-field">
+            {checksBadge}
+          </button>
+          {overlaysSwitch}
+        </div>
 
-        <section aria-labelledby="dr-canvas" className="flex min-w-0 flex-col gap-3">
-          <h2 id="dr-canvas" className="text-body font-medium text-fg-heading">
-            {t("previewHeading")}
-          </h2>
-          <p className="text-body-sm text-fg-muted">{t("realDataNote")}</p>
-          {presetTabs}
-          {canvas}
-        </section>
-
-        <div className="flex flex-col gap-8">
-          <section aria-labelledby="dr-props" className="flex flex-col gap-3">
-            <h2 id="dr-props" className="text-body font-medium text-fg-heading">
-              {tp("heading")}
+        <div className="grid gap-6 xl:grid-cols-[19rem_minmax(0,1fr)_20rem]">
+          <section aria-labelledby="dr-rail" className="flex min-w-0 flex-col gap-3">
+            <h2 id="dr-rail" className="sr-only">
+              {t("rail.label")}
             </h2>
-            <PropertiesPanel
+            <Tabs
+              label={t("rail.label")}
+              value={rail}
+              onValueChange={(v) => setRail(v as RailTab)}
+              items={[
+                { value: "layers", label: t("rail.layers") },
+                { value: "data", label: t("rail.data") },
+                { value: "checks", label: t("rail.checks"), count: checksCount },
+              ]}
+            >
+              <div className="pt-4">
+                {rail === "layers" ? (
+                  <LayerList
+                    document={document}
+                    selectedLayerId={selectedLayerId}
+                    onSelect={setSelectedLayerId}
+                    onToggleHidden={toggleHidden}
+                    onReorder={reorder}
+                    lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
+                    canEdit={props.canEdit}
+                  />
+                ) : rail === "data" ? (
+                  <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
+                ) : (
+                  <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} />
+                )}
+              </div>
+            </Tabs>
+          </section>
+
+          <section aria-labelledby="dr-canvas" className="flex min-w-0 flex-col gap-3">
+            <h2 id="dr-canvas" className="text-h3 text-fg-heading">
+              {t("previewHeading")}
+            </h2>
+            <p className="text-body-sm text-fg-muted">{t("realDataNote")}</p>
+            {canvas}
+            {strip}
+          </section>
+
+          <section aria-labelledby="dr-props" className="flex min-w-0 flex-col gap-2">
+            <h2 id="dr-props" className="text-h3 text-fg-heading">
+              {selected ? tprops("heading") : tp("documentHeading")}
+            </h2>
+            <Inspector
               document={document}
               layer={selected}
               locked={selected ? isLocked(selected.id) : false}
               canEdit={props.canEdit}
-              onChange={patchLayer}
               fontFamilies={fontFamilies}
+              onPatchLayer={patchLayer}
+              onArrange={arrange}
+              onDocument={mutate}
             />
-          </section>
-
-          <section aria-labelledby="dr-bindings" className="flex flex-col gap-3">
-            <h2 id="dr-bindings" className="text-body font-medium text-fg-heading">
-              {tb("heading")}
-            </h2>
-            <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
-          </section>
-
-          <section aria-labelledby="dr-checks" className="flex flex-col gap-3">
-            <h2 id="dr-checks" className="text-body font-medium text-fg-heading">
-              {tc("heading")}
-            </h2>
-            <ChecksPanel document={document} bindings={props.bindings} fontsReady={fontsReady} assetSizes={props.assetSizes} />
           </section>
         </div>
       </div>

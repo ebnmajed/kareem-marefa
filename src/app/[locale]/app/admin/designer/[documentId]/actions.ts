@@ -1,8 +1,10 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requestExports, retryExport } from "@/lib/dal/designer";
+import type { ExportActionState } from "./state";
 
 // SCR-057's export queue — REQ-DSG-011, REQ-DSG-012.
 //
@@ -11,6 +13,14 @@ import { requestExports, retryExport } from "@/lib/dal/designer";
 // that is what forced autosave onto a Route Handler (the 1 MB cap, `04`
 // §4.2) — because `request_render()` reads the saved document itself. You
 // export what is saved, which is also the only thing that could be correct.
+//
+// They answer with a state the button toasts rather than redirecting with a
+// query string: the result is said where the admin pressed, and the queue
+// below re-renders from `revalidatePath` (`16` §7.3).
+//
+// Bound in the page to their ids, they are what `useActionState` calls; the
+// previous state and the (empty) form it appends are not needed, so they are
+// not declared.
 //
 // `"use server"` modules export async functions and types alone.
 
@@ -21,17 +31,31 @@ async function originOf(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-export async function queueExports(formData: FormData) {
-  const documentId = formData.get("documentId")?.toString() ?? "";
-  const screen = `/ar/app/admin/designer/${documentId}`;
-  const result = await requestExports("ar", documentId, await originOf());
-  if ("status" in result) redirect(`${screen}?export=not_authorized`);
-  redirect(`${screen}?export=queued`);
+const id = z.uuid();
+const scheme = z.enum(["light", "dark"]).nullable();
+
+/** «اطلب التصدير» — every variant of the saved document, in the scheme the
+ *  preview resolved, so the export is what the admin approved (DEC-017). */
+export async function queueExports(
+  locale: string,
+  documentId: string,
+  requestedScheme: string | null,
+): Promise<ExportActionState> {
+  const parsed = z.object({ documentId: id, scheme }).safeParse({ documentId, scheme: requestedScheme });
+  if (!parsed.success) return { status: "invalid", at: Date.now() };
+
+  const result = await requestExports(locale, parsed.data.documentId, await originOf(), { scheme: parsed.data.scheme });
+  if ("status" in result) return { status: "not_authorized", at: Date.now() };
+  revalidatePath(`/${locale}/app/admin/designer/${parsed.data.documentId}`);
+  return { status: "queued", at: Date.now() };
 }
 
-export async function retryArtifact(formData: FormData) {
-  const documentId = formData.get("documentId")?.toString() ?? "";
-  const screen = `/ar/app/admin/designer/${documentId}`;
-  const result = await retryExport("ar", formData.get("artifactId")?.toString() ?? "");
-  redirect(`${screen}?export=${result.status === "ok" ? "retried" : "not_authorized"}`);
+export async function retryArtifact(locale: string, documentId: string, artifactId: string): Promise<ExportActionState> {
+  const parsed = z.object({ documentId: id, artifactId: id }).safeParse({ documentId, artifactId });
+  if (!parsed.success) return { status: "invalid", at: Date.now() };
+
+  const result = await retryExport(locale, parsed.data.artifactId);
+  if (result.status !== "ok") return { status: "not_authorized", at: Date.now() };
+  revalidatePath(`/${locale}/app/admin/designer/${parsed.data.documentId}`);
+  return { status: "retried", at: Date.now() };
 }

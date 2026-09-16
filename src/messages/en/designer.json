@@ -14,7 +14,43 @@
       "previewHeading": "Preview",
       "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text.",
       "undo": "Undo",
-      "redo": "Redo"
+      "redo": "Redo",
+      "eyebrow": {
+        "poster": "Studio · Poster",
+        "certificate": "Studio · Certificate"
+      },
+      "untitled": {
+        "poster": "Unbound poster",
+        "certificate": "Unbound certificate"
+      },
+      "breadcrumbLabel": "Breadcrumb",
+      "back": {
+        "sessionPoster": "Session schedule",
+        "templatesPoster": "Poster templates",
+        "templatesCertificate": "Certificate templates",
+        "certificates": "Session certificates",
+        "recognition": "Recognition"
+      },
+      "badge": {
+        "live": "Following the template",
+        "detached": "Detached from the template",
+        "templateDraft": "Template draft",
+        "certificate": "Certificate",
+        "readOnly": "View only"
+      },
+      "phoneNotice": "On a phone you review rather than edit: the preview, every size and the checks, then «Request export». Editing needs a screen wider than <bdi>{width}</bdi> points.",
+      "rail": {
+        "label": "Editor panels",
+        "layers": "Layers",
+        "data": "Data",
+        "checks": "Checks"
+      },
+      "scheme": {
+        "legend": "Preview colours",
+        "light": "Light",
+        "dark": "Dark",
+        "hint": "A template carries no colour scheme: a certificate is issued light or dark by what is chosen for its session."
+      }
     },
     "save": {
       "saving": "Saving…",
@@ -23,7 +59,8 @@
       "conflict": "Another admin saved a newer version of this document. Reload before you continue, so neither of you loses work.",
       "lockedRegion": "This region is locked in the template: <bdi>{layer}</bdi>",
       "invalid": "Something in the document prevents saving: <bdi>{issue}</bdi>",
-      "forbidden": "Designing is an org admin's act."
+      "forbidden": "Designing is an org admin's act.",
+      "failedBadge": "Not saved"
     },
     "canvas": {
       "label": "Design canvas",
@@ -45,7 +82,8 @@
         "shape": "Shape",
         "qr": "Verification QR",
         "dynamic_field": "Dynamic field"
-      }
+      },
+      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer."
     },
     "properties": {
       "heading": "Properties",
@@ -100,7 +138,9 @@
       "overlaysHide": "Hide the safe area",
       "safeAreaLabel": "Safe area",
       "bleedLabel": "Bleed",
-      "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands."
+      "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands.",
+      "stripLabel": "Sizes",
+      "hasFinding": "needs a look"
     },
     "checks": {
       "heading": "Before export",
@@ -112,7 +152,9 @@
       "measuring": "Measuring the text…",
       "ppiWarn": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below what print wants. It will look soft.",
       "ppiBlock": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below the print minimum. Export for that size is blocked until a higher-resolution image is uploaded.",
-      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes."
+      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes.",
+      "badge": "{count, plural, zero {No open checks} one {One check} two {Two checks} few {{value} checks} many {{value} checks} other {{value} checks}}",
+      "goToLayer": "Go to layer"
     },
     "exports": {
       "heading": "Export queue",
@@ -133,7 +175,13 @@
       "cacheNote": "Nothing re-renders while the source is unchanged: the same key means the same file. Any edit to the design, to the session's data, or to the template version produces a new key, and only that is rendered again.",
       "queuedNotice": "The sizes were added to the export queue.",
       "retriedNotice": "Retried.",
-      "notAuthorized": "Exporting is an org admin's act."
+      "notAuthorized": "Exporting is an org admin's act.",
+      "approve": "Request export",
+      "approvePending": "Requesting export…",
+      "retryPending": "Retrying…",
+      "variantsHeading": "Exported sizes",
+      "emptyTitle": "Nothing exported yet",
+      "emptyDescription": "The preview you approve is the very file that goes to print. Request the export to see it."
     },
     "poster": {
       "alt": "Poster for <bdi>{title}</bdi>",
@@ -158,6 +206,63 @@
         },
         "live": "Linked to its template",
         "detached": "Detached"
+      }
+    },
+    "inspector": {
+      "documentHeading": "Document",
+      "documentHint": "Select a layer to see its properties. With nothing selected, the document's own properties show.",
+      "sections": {
+        "position": "Position and size",
+        "arrange": "Align",
+        "order": "Order",
+        "type": "Text and type",
+        "binding": "Data binding",
+        "background": "Background"
+      },
+      "positionNote": "Collapsed by default and never removed: the numbers are the path that needs no dragging, and the most exact one.",
+      "align": {
+        "target": "Align to",
+        "safe": "Safe area",
+        "page": "Page",
+        "inline": "Horizontally",
+        "block": "Vertically",
+        "start": "Start",
+        "center": "Centre",
+        "end": "End",
+        "top": "Top",
+        "middle": "Middle",
+        "bottom": "Bottom",
+        "fit": "Fit to safe area",
+        "note": "Alignment follows the document's own axis: «start» on an Arabic poster is its right edge, whatever the interface language."
+      },
+      "order": {
+        "front": "To front",
+        "back": "To back",
+        "forward": "One layer forward",
+        "backward": "One layer back"
+      },
+      "background": {
+        "type": "Background type",
+        "solid": "Solid",
+        "gradient": "Gradient",
+        "colour": "Colour",
+        "from": "Start colour",
+        "to": "End colour",
+        "angle": "Angle in degrees",
+        "angleHint": "The angle is the Arabic source's; the English variant mirrors by itself.",
+        "tokenNote": "Brand colours only — no colour typed by hand, so a brand change reaches every template.",
+        "tokens": {
+          "canvas": "Canvas",
+          "surface": "Surface",
+          "canvasRaise": "Raised surface",
+          "fgHeading": "Heading colour",
+          "fgBody": "Body colour",
+          "fgMuted": "Muted colour",
+          "edge": "Edge colour",
+          "edgeStrong": "Strong edge colour",
+          "spine": "Spine colour",
+          "node": "Node colour"
+        }
       }
     }
   }

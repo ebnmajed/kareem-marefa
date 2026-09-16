@@ -15,6 +15,7 @@ import {
   type PresetName,
 } from "@kareem/designer-runtime";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Button } from "@/components/ui/button";
 
 // «Content crossing a safe area is flagged BEFORE export, not after»
 // (REQ-DSG-010), and a title that hit its floor and still overflows is
@@ -31,7 +32,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 // would produce a warning list that disagrees with the export, which is worse
 // than no list.
 
-export interface ChecksPanelProps {
+export interface CheckInputs {
   document: DesignDocument;
   bindings: Record<string, string>;
   /** Set once the canvas's faces are usable; measuring before that measures a
@@ -43,14 +44,31 @@ export interface ChecksPanelProps {
   assetSizes: Record<string, { width: number; height: number }>;
 }
 
-type Finding =
+export interface ChecksPanelProps {
+  findings: CheckFinding[];
+  /** True until the faces are usable; measuring before that measures a
+   *  fallback face. */
+  measuring: boolean;
+  /** ★ REQ-DSG-029: «clicking a failed check moves the selection to the layer
+   *  that failed it». A check that does not point at its layer is a riddle. */
+  onGoTo?: (finding: CheckFinding) => void;
+}
+
+export type CheckFinding =
   | { kind: "safeArea"; preset: PresetName; layerId: string; overflowPx: number }
   | { kind: "ppi"; preset: PresetName; layerId: string; ppi: number; severity: "warn" | "block" }
   | { kind: AutoFitWarning; preset: PresetName; layerId: string };
 
-export function ChecksPanel({ document: doc, bindings, fontsReady, assetSizes }: ChecksPanelProps) {
-  const t = useTranslations("designer.checks");
-  const tp = useTranslations("designer.presets");
+type Finding = CheckFinding;
+
+/**
+ * The findings, computed once for the whole editor. A HOOK, not the panel's
+ * own state: the checks badge and the variant strip's dots need the list
+ * whether or not the checks panel is the tab on screen, and a tab that is not
+ * shown is unmounted — so a panel that measured for itself would leave the
+ * badge reading zero exactly when nobody is looking at the list.
+ */
+export function useCheckFindings({ document: doc, bindings, fontsReady, assetSizes }: CheckInputs): { findings: CheckFinding[]; measuring: boolean } {
   const [fitFindings, setFitFindings] = useState<Finding[]>([]);
 
   // Geometry needs no measurement, so it is available immediately.
@@ -119,10 +137,16 @@ export function ChecksPanel({ document: doc, bindings, fontsReady, assetSizes }:
     };
   }, [doc, bindings, fontsReady]);
 
-  const findings = [...safeFindings, ...ppi, ...fitFindings];
-  const blocked = ppi.some((f) => f.kind === "ppi" && f.severity === "block");
+  const findings = useMemo(() => [...safeFindings, ...ppi, ...fitFindings], [safeFindings, ppi, fitFindings]);
+  return { findings, measuring: !fontsReady };
+}
 
-  if (!fontsReady && findings.length === 0) return <p className="text-body-sm text-fg-muted">{t("measuring")}</p>;
+export function ChecksPanel({ findings, measuring, onGoTo }: ChecksPanelProps) {
+  const t = useTranslations("designer.checks");
+  const tp = useTranslations("designer.presets");
+  const blocked = findings.some((f) => f.kind === "ppi" && f.severity === "block");
+
+  if (measuring && findings.length === 0) return <p className="text-body-sm text-fg-muted">{t("measuring")}</p>;
 
   return (
     <div className="flex flex-col gap-3">
@@ -132,7 +156,8 @@ export function ChecksPanel({ document: doc, bindings, fontsReady, assetSizes }:
       ) : (
         <ul className="flex flex-col gap-2">
           {findings.map((f, i) => (
-            <li key={`${f.kind}-${f.preset}-${f.layerId}-${i}`} className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+            <li key={`${f.kind}-${f.preset}-${f.layerId}-${i}`} className="flex flex-col gap-2 rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+              <p>
               {f.kind === "ppi"
                 ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", {
                     layer: f.layerId,
@@ -152,6 +177,12 @@ export function ChecksPanel({ document: doc, bindings, fontsReady, assetSizes }:
                     preset: tp(`name.${f.preset}`),
                     bdi: (c) => <bdi>{c}</bdi>,
                   })}
+              </p>
+              {onGoTo ? (
+                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => onGoTo(f)}>
+                  {t("goToLayer")}
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>
