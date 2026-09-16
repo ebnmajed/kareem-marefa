@@ -89,6 +89,7 @@ test.beforeAll(async ({}, testInfo) => {
 });
 
 test.afterAll(async () => {
+  if (!db) return;
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
   await db.end();
@@ -115,11 +116,15 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `wave8-lead-schedule-${name}.png`), fullPage: true });
 }
 
-/** Pick the 10th of next month at a given hour — a day number no padding cell can share. */
-async function pick(page: Page, label: string, hour: string) {
+/**
+ * Pick the 10th at a given hour — a day number no padding cell can share. An
+ * empty picker opens on this month, so the start steps to next month; a picker
+ * that already holds a value opens on that value's month.
+ */
+async function pick(page: Page, label: string, hour: string, { nextMonth }: { nextMonth: boolean }) {
   await page.getByRole("button", { name: new RegExp(`^${label}: `) }).click();
   const picker = page.getByRole("dialog", { name: label });
-  await picker.getByRole("button", { name: "الشهر التالي" }).click();
+  if (nextMonth) await picker.getByRole("button", { name: "الشهر التالي" }).click();
   await picker.getByRole("button", { name: /^10 / }).and(page.locator(":enabled")).first().click();
   await picker.getByLabel("الساعة").selectOption(hour);
   await picker.getByLabel("الدقيقة").selectOption("0");
@@ -145,14 +150,14 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
   await capture(page, "from-proposal");
 
   // ── The start, and the end follows as a sentence ──────────────────────────
-  await pick(page, "التاريخ والوقت", "18");
+  await pick(page, "التاريخ والوقت", "18", { nextMonth: true });
   await page.getByLabel("المدة بالدقائق").fill("60");
   await page.getByLabel("المدة بالدقائق").blur();
   await expect(page.getByText(/^تنتهي الجلسة 7:00/)).toBeVisible();
 
   // ── An end set by hand, before the start: said at the field, at once ──────
   await page.getByRole("button", { name: "عدّل وقت الانتهاء" }).click();
-  await pick(page, "نهاية الجلسة", "17");
+  await pick(page, "نهاية الجلسة", "17", { nextMonth: false });
   await expect(page.getByText("نهاية الجلسة بعد بدايتها.")).toBeVisible();
   await capture(page, "field-error");
   await page.getByRole("button", { name: "احسبها من المدة" }).click();
