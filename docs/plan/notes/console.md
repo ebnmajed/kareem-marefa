@@ -2148,3 +2148,53 @@ would paint the tab bar over it — then **«ready for sync»**.
    needs an `email_deliveries` row with a provider reason. Both seed by `pg` in the spec, borrowing
    `designer-achievements.test.ts`'s shape; if `designer`'s seed moves under them, the fixture reads the
    template version by query, never by a pinned id.
+
+## Wave 8 — as built (sync 1 rulings, `DEC-148`) — 2026-09-17
+
+All six routes are ✓ under `node scripts/ui-reach.mjs --wave8`. The e2e specs below are written and
+lint-clean and have NOT run: the local `.next` predates every commit here and the build is the
+lead's. Captures land at the named paths when the lead's build runs them.
+
+| Row | Commits | Review spec(s) | Captures (`wave8-console-*.png`) |
+|---|---|---|---|
+| F1 | `6df9dfb` | `admin-members`, `admin-managed-lists` (new phone cases) | — |
+| F2 | `20c06da` | `admin-dashboard` | `dashboard-top-lists` |
+| F3 | `b886186` | — | — |
+| tabs | `48cd13d` | `admin-moderation` | `moderation-tabs-390` |
+| F4 | `9a2dd0f` | component test only | — |
+| picker | `18672c8` (the lead's three requests) | component tests only | — |
+| `admin.schedule` | `1554d75` (deleted on request) | — | — |
+| K3 reminders | `49798f0` | `wave8-console-reminders` | `reminders-field-error`, `reminders-saved` |
+| K1 audit | `266b0d1`, `1d42251` | `admin-audit` (rewritten) | `audit-filters-sheet`, `audit-filtered-admin`, `audit-filtered-moderator` |
+| K2 exports | `a6d8e12`, `1d42251` | `admin-exports`, `console` (untouched capture → proposals) | `exports-audit-note`, `layout-untouched-{390,desktop}` |
+| K5 scoring | `544ac58` | `wave8-console-scoring`, `scoring-company-points` (admin half) | `scoring-catalogue`, `scoring-penalties`, `scoring-rule-dialog-error`, `scoring-member-picker-open` |
+| K4 recognition | `a4d2886`, `4133578` | `wave8-console-recognition` | `recognition-held`, `recognition-release-confirm`, `recognition-award-already-held` |
+| K6 emails | `ac22709`, `4133578` | `wave8-console-emails` | `emails-catalogue`, `emails-refused-save`, `emails-delivery-failure` |
+
+**Shared, under `components/admin/`:** `duration.ts` + `duration-input.tsx` (a number and a unit, one base
+unit stored), `use-action-toast.ts` (the toast from the action's result, never an effect),
+`saved-form-state.ts`, `row-edit-dialog.tsx` (a list row edited in a dialog, closing from the action),
+`confirm-dialog.tsx` (`DeactivateToggle` composes it, props unchanged), `keyset-pager.tsx`,
+`export-download-button.tsx`, `delivery-reason.ts`, `held-achievements-table.tsx`; `member-picker.tsx` is a
+Field control. `ui/date-time` sits inside `<Field>` and has a date-only mode on the RTL picker; `ui/tabs`
+fades the side that hides tabs and keeps the active one in view.
+
+**Found while building, fixed here:** F4 — the error summary's links focused nothing on five wave-6/7 forms
+(prefixed Field ids, unmapped). CSV certificate state printed «issued» raw (the map named a state the enum
+never had). `intervalToSeconds` read a `1 day …` interval as «no cooldown» (latent). A manual badge award of a
+badge already held reported «saved» and wrote an audit row.
+
+**Tests added:** unit `admin-{duration,reminders-action,audit-filters,audit-labels,exports-csv,scoring-actions,recognition-actions,emails}`;
+component `phone-card-actions`, `form-summary-links`, `reminders-form`, `audit-page`, `exports-page`,
+`scoring-page`, `confirm-dialog`, `recognition-page`, `emails-page`, and rewritten `member-picker`, `date-time`,
+extended `rtl-datetime-picker`, `tabs`, `admin-dashboard-page`; RLS `admin-recognition-writes` (3/3).
+`npm run test:rls` 74 files / 805 green after K1; unit + components 181 files / 1682 green before K6's last fix.
+
+**Open, and whose:**
+- **R-D1 (`designer`):** `releaseAchievements` still returns nothing, so a refusal inside it cannot be shown;
+  the held-achievements table reports a thrown error only.
+- **`REQ-NTF-007` (`notify`, M12):** the default template text is not shown and the required fields are the
+  admin's to declare — said on the screen, per the lead's Q2 ruling.
+- **`REQ-NTF-008` (`notify`):** nothing writes `bounced`/`delivered` (no webhook) — said on the log.
+- **Recognition edits are unaudited** (badges, levels, perks, streaks write no history or audit row) —
+  flagged, not built.
