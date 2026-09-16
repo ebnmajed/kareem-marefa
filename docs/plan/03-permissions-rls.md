@@ -1565,6 +1565,13 @@ generated suite is the highest-value test in the product.
 | `RPC-admin_member_profile.removed_excluded` | A removed check-in is neither counted nor listed as attended, and turns a confirmed reservation on an ended session into a no-show. |
 | ★ **wave 7 (`DEC-139`), migration `0091`** — a processing photo takes its place without a reload | |
 | `TRG-photos_broadcast.session_topic` | An insert on `photos` sends `{id, sessionId, uploaderId}` on `session:{session_id}` (event `INSERT`), the topic and `realtime.messages` policy `0016` already authorise. It carries no photo bytes and no path, and another org's subscriber receives nothing (`POL-realtime.messages.select`). |
+| ★ **wave 8 (`DEC-147`), migration `0092`** — one domain check in every environment | |
+| `CHK-org_domains.domain_lowercase_everywhere` | The check is text's case-sensitive `~`, stated with an explicit cast, so it reads the same on production and locally; a mixed-case domain written through the table is stored lowercase by `org_domains_normalise` and accepted; one that bypasses the trigger is refused (`23514`). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0093`** — `canvasRaise` joins the brand kit | |
+| `POL-brand_kit.canvas_raise_identity_default` | For an org with no row, or a row saved before `0093`, `brand_kit()`'s `canvasRaise` matches `platformBrand()`'s — the per-token identity override. |
+| `POL-brand_kit.canvas_raise_override` | With a row whose `canvasRaise` was explicitly saved, `brand_kit()` returns that value, not the platform default. |
+| `POL-save_brand_kit.canvas_raise_required` | A save whose `p_light`/`p_dark` omits `canvasRaise` fails `23502`, as any other missing token does. |
+| `POL-export_render_context.canvas_raise_override` | With a row, the `brand` column's `light`/`dark` objects carry the saved `canvasRaise`; with none, the key is absent (the raw override, `{}` semantics unchanged). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

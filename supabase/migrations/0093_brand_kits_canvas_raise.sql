@@ -1,3 +1,6 @@
+-- supabase/migrations/0093_brand_kits_canvas_raise.sql — promoted by the lead from
+-- supabase/proposed/branding/0001_brand_kits_canvas_raise.sql (wave 8, sync 1, DEC-127, DEC-148).
+--
 -- proposed by `branding` (wave 8, DEC-127) — canvasRaise, the second stop of
 -- the poster's gradient background, joins the nine light/dark token pairs
 -- `0068_brand_kits.sql` already carries.
