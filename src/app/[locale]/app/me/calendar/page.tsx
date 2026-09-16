@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Panel } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Locale } from "@/i18n/routing";
 import { disconnect } from "./actions";
 
@@ -98,9 +99,8 @@ export default async function CalendarPage({
       <section aria-labelledby="synced-heading" className="mt-12">
         <SectionHeader id="synced-heading" title={t("synced.heading")} count={events.length} />
         {events.length === 0 ? (
-          <div role="status">
-            <Panel className="mt-4 text-body text-fg-muted">{t("synced.empty")}</Panel>
-          </div>
+          // ★ REQ-UIX-012 — an empty state names the next action, here too.
+          <EmptyState title={t("synced.empty")} action={{ label: t("synced.browseAction"), href: "/app/sessions" }} className="mt-4" />
         ) : (
           <ul className="mt-4 space-y-3">
             {events.map((event) => (

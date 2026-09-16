@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Panel } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { PointsLedgerRow } from "@/lib/dal/points";
 
 // SCR-022's list half. Every row shows its own reason — never a hard-coded
@@ -16,14 +17,11 @@ export async function PointsHistoryList({ rows, timeZone }: { rows: PointsLedger
   const t = await getTranslations("scoring.points");
 
   if (rows.length === 0) {
-    // `Panel` has no `role` slot (`ui/panel.tsx`'s own prop surface), so the
-    // announcement role sits on a plain wrapper around it — same technique
-    // as `components/me/profile-form.tsx`'s saved confirmation.
-    return (
-      <div role="status">
-        <Panel className="mt-6 text-body text-fg-muted">{t("empty")}</Panel>
-      </div>
-    );
+    // ★ REQ-UIX-012 — every empty state names the next action. A member
+    // with no points yet earns their first one by attending, so the
+    // action is the same "browse sessions" the certificates and calendar
+    // empty states use.
+    return <EmptyState title={t("empty")} action={{ label: t("browseAction"), href: "/app/sessions" }} className="mt-6" />;
   }
 
   return (

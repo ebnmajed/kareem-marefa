@@ -53,10 +53,19 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
   const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [orgId]);
+  // ★ Two sessions, not one: `certificates_org_id_session_id_member_id_kind_key`
+  // is unique on (org, session, member, kind), and both certificates below
+  // are `kind = 'presenter'` — the same session under both would violate it.
   await db.query(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
      values ($1, 'جلسة الشهادات', 'ملخص الجلسة', $2, 'introductory', now() - interval '2 days', 60, now() - interval '2 days' + interval '1 hour',
              $3, 30, now() - interval '3 days', now() - interval '3 days', 'completed', now() - interval '5 days')`,
+    [orgId, catRows[0].id, venueRows[0].id],
+  );
+  await db.query(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
+     values ($1, 'جلسة الشهادة الملغاة', 'ملخص الجلسة', $2, 'introductory', now() - interval '4 days', 60, now() - interval '4 days' + interval '1 hour',
+             $3, 30, now() - interval '5 days', now() - interval '5 days', 'completed', now() - interval '7 days')`,
     [orgId, catRows[0].id, venueRows[0].id],
   );
 
@@ -108,8 +117,12 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
   await expect(page.getByText("لا شهادات بعد")).toBeVisible();
   await capture(page, "empty");
 
-  const { rows: sessRows } = await db.query<{ id: string }>(`select id from public.sessions where org_id = $1 limit 1`, [orgId]);
-  const sessionId = sessRows[0].id;
+  const { rows: sessRows } = await db.query<{ id: string; title: string }>(
+    `select id, title from public.sessions where org_id = $1 order by starts_at desc`,
+    [orgId],
+  );
+  const sessionId = sessRows.find((r) => r.title === "جلسة الشهادات")!.id;
+  const revokedSessionId = sessRows.find((r) => r.title === "جلسة الشهادة الملغاة")!.id;
 
   const { rows: tplRows } = await db.query<{ id: string }>(
     `insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
@@ -131,7 +144,7 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
   await db.query(
     `insert into public.certificates (org_id, member_id, kind, session_id, serial, verification_code, state, template_version_id, recipient_name_snapshot, issued_at, revoked_at, revocation_reason)
      values ($1, $2, 'presenter', $3, 'CRT-2026-000002', 'yzabcdefghijklmnopqrstuv', 'revoked', $4, 'عضو الشهادات', now() - interval '1 day', now(), 'إصدار مكرر بالخطأ')`,
-    [orgId, memberId, sessionId, templateVersionId],
+    [orgId, memberId, revokedSessionId, templateVersionId],
   );
 
   await page.reload();

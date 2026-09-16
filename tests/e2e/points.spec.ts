@@ -152,8 +152,11 @@ test("a member reads their whole points history and can explain every point with
   await expect(manualRow).toContainText("+5");
   await expect(manualRow).toContainText("تعديل يدوي من الإدارة");
 
-  // The running balance reconciles to points_balances (25 = 20 + 5).
-  await expect(page.getByText(/رصيدك/)).toContainText("25");
+  // The running balance reconciles to points_balances (25 = 20 + 5) — the
+  // `Stat` tile now, not the old "رصيدك N نقطة" sentence (the lead's
+  // sync-2 ruling: the balance stays legible as a labelled `strong`
+  // value, which is the one `<strong>` this page renders).
+  await expect(page.locator("strong", { hasText: "25" })).toBeVisible();
 
   // "What earns what" is read live from scoring_rules — check_in's default appears.
   await expect(page.getByRole("heading", { name: "ماذا يمنحك نقاطًا؟" })).toBeVisible();

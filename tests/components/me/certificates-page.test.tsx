@@ -48,10 +48,10 @@ async function renderPage(certificates: CertificateRow[]) {
 }
 
 describe("MyCertificatesPage", () => {
-  it("shows the empty state with no invented action — a certificate is earned, not requested", async () => {
+  it("shows the empty state with its own next action — REQ-UIX-012, the lead's sync-2 ruling", async () => {
     await renderPage([]);
-    expect(screen.getByRole("status")).toHaveTextContent("لا شهادات بعد");
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("لا شهادات بعد", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "تصفّح الجلسات" })).toHaveAttribute("href", "/ar/app/sessions");
   });
 
   it("shows an issued certificate's serial and code isolated LTR inside their own <bdi>", async () => {

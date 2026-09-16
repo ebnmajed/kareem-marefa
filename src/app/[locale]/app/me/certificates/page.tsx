@@ -6,6 +6,7 @@ import { getOrgTimeZone } from "@/lib/dal/certificates";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // SCR-023 · `/app/me/certificates` — REQ-CRT-013, REQ-CRT-014, OQ-015.
 //
@@ -33,13 +34,14 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
       <PageHeader title={t("mine.title")} />
 
       {certificates.length === 0 ? (
-        // No `EmptyState`: unlike bookmarks, there is no action a member can
-        // take right now to get a certificate — it is earned, not requested
-        // (matching `components/photos/gallery.tsx`'s own empty state, the
-        // same reasoning: a quiet sentence, no invented button).
-        <div role="status">
-          <Panel className="mt-4 max-w-2xl text-body text-fg-muted">{t("mine.empty")}</Panel>
-        </div>
+        // ★ REQ-UIX-012, the lead's sync-2 finding: an empty state always
+        // names the next action, and "earned, not requested" is not an
+        // exception to it — attending is the action, and browsing sessions
+        // is how a member gets there. Reconsidered from the wave-6 photos
+        // precedent this originally copied: that empty state sits beside an
+        // uploader that is ALREADY the next action in view, which is not
+        // true here.
+        <EmptyState title={t("mine.empty")} action={{ label: t("mine.browseAction"), href: "/app/sessions" }} className="mt-4" />
       ) : (
         <>
           <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("mine.intro")}</p>

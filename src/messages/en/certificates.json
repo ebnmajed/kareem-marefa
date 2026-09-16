@@ -19,6 +19,7 @@
       "title": "My certificates",
       "intro": "Every certificate issued in your name, with its serial and verification code.",
       "empty": "No certificates yet. An attendance certificate is issued after a session you checked into completes.",
+      "browseAction": "Browse sessions",
       "serial": "Serial",
       "code": "Verification code",
       "issuedAt": "Issued",

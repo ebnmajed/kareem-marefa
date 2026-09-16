@@ -45,9 +45,10 @@ async function renderList(rows: PointsLedgerRow[]) {
 }
 
 describe("PointsHistoryList", () => {
-  it("shows the empty state as an announced status", async () => {
+  it("shows the empty state with its own next action, not a dead end — REQ-UIX-012", async () => {
     await renderList([]);
-    expect(screen.getByRole("status")).toHaveTextContent("لا نقاط بعد");
+    expect(screen.getByText("لا نقاط بعد", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "تصفّح الجلسات" })).toHaveAttribute("href", "/ar/app/sessions");
   });
 
   it("renders a plain award with no reversal or manual tag", async () => {
