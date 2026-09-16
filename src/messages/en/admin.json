@@ -620,8 +620,6 @@
       "noMatches": "No matching member"
     },
     "combobox": {
-      "removeChip": "Remove <t>{name}</t>",
-      "createOption": "Add “<t>{name}</t>”",
       "resultsCount": "{count, plural, one {{value} result} other {{value} results}}"
     },
     "dateTime": {

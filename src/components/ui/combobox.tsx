@@ -34,12 +34,12 @@ import type { ComboboxOption, ComboboxProps } from "@/components/ui";
 // 3. The input's classes come from `controlClass()` (`ui/field.tsx`'s own
 //    export), not a hard-coded string that never varied with `invalid` —
 //    the whole point of `controlClass` existing at all.
-// 4. Its own strings move from `admin.combobox` to `ui.combobox` — a member
+// 4. Its own strings moved from `admin.combobox` to `ui.combobox` — a member
 //    form must not pull in the admin message catalogue to render a text
 //    field. `member-picker.tsx`'s OWN `resultsLabel` override is a
 //    different, admin-scoped string and stays exactly where it was
-//    (`admin.combobox.resultsCount`); only what THIS file reads for itself
-//    moved.
+//    (`admin.combobox.resultsCount`, the one key kept there — see that
+//    file); only what THIS file reads for itself moved.
 
 /** REQ-DSC-004 — the SAME transform `src/lib/dal/search.ts`'s `arNormalize()`
  *  applies (strip tashkeel/tatweel, fold alef/yaa/taa-marbuta, collapse
@@ -85,13 +85,8 @@ export function Combobox({
   const comboId = id ?? field?.id ?? generatedId;
   const listboxId = `${comboId}-listbox`;
   const isInvalid = invalid ?? field?.invalid ?? false;
-  // ★ STILL `admin.combobox`, NOT YET `ui.combobox` — the lead's `ui.json`
-  // does not carry these keys yet (this file cannot write that namespace).
-  // The header comment's item 4 is requested, sent, not yet landed; this is
-  // a one-line follow-up (`useTranslations("ui")` + the `combobox.` prefix
-  // at each call site below) once it does, tracked in `docs/plan/notes/
-  // console.md`.
-  const t = useTranslations("admin.combobox");
+  // `ui.combobox` — landed in `ui.json`; see the header comment's item 4.
+  const t = useTranslations("ui");
 
   const isControlled = value !== undefined;
   const [uncontrolledSelected, setUncontrolledSelected] = useState<string[]>(defaultValue ?? []);
@@ -228,7 +223,7 @@ export function Combobox({
   const resultsText = useMemo(() => {
     if (!open) return "";
     if (resultsLabel) return resultsLabel(filtered.length);
-    return t("resultsCount", { count: filtered.length, value: formatNumber(filtered.length) });
+    return t("combobox.resultsCount", { count: filtered.length, value: formatNumber(filtered.length) });
   }, [open, filtered.length, resultsLabel, t]);
 
   const activeDescendant =
@@ -260,7 +255,7 @@ export function Combobox({
                     // (`proposal-copy.test.tsx`) still requires the `<t>`
                     // tag in the SOURCE string; an attribute has no visual
                     // direction to isolate, so the tag here is a no-op.
-                    aria-label={t.markup("removeChip", { name: label, t: (chunks) => chunks })}
+                    aria-label={t.markup("combobox.removeChip", { name: label, t: (chunks) => chunks })}
                     className="inline-flex size-6 items-center justify-center rounded-field text-fg-muted hover:bg-silver-200 hover:text-fg-heading"
                   >
                     <CloseIcon className="text-sm" />
@@ -355,7 +350,7 @@ export function Combobox({
                 onClick={createFromQuery}
                 className={`block w-full px-3 py-2 text-start text-body-sm text-fg-heading ${highlight === filtered.length ? "bg-silver-100" : ""}`}
               >
-                {t.rich("createOption", { name: query.trim(), t: (chunks) => <bdi>{chunks}</bdi> })}
+                {t.rich("combobox.createOption", { name: query.trim(), t: (chunks) => <bdi>{chunks}</bdi> })}
               </button>
             </li>
           ) : null}

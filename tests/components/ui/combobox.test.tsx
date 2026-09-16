@@ -14,20 +14,15 @@ import type { ComboboxOption } from "@/components/ui";
 import ar from "@/messages/ar/admin.json";
 import arUi from "@/messages/ar/ui.json";
 
+// `Combobox` now reads its own strings from `ui.combobox` (moved off
+// `admin.combobox` once `ui.json` carried them — R2's item 4). Every render
+// needs both namespaces loaded: `admin.json` for `member-picker.tsx`'s own
+// separate `resultsCount` override text used in a couple of cases below, and
+// `ui.json` for `Combobox` itself (and for `<Field>`'s own `ui.field.required`
+// label, in the tests that wrap one). `admin.json` and `ui.json` have
+// different top-level keys (`admin`/`ui`), so a plain object spread merges
+// them with no collision.
 function Wrap({ children }: { children: React.ReactNode }) {
-  return (
-    <NextIntlClientProvider locale="ar" messages={ar}>
-      {children}
-    </NextIntlClientProvider>
-  );
-}
-
-// `<Field>` reads its own `ui.field.required` label, so a test that wraps
-// `Combobox` in a real `<Field>` needs both namespaces loaded — the same
-// merge every cross-namespace test in this codebase does, since `admin.json`
-// and `ui.json` have different top-level keys (`admin`/`ui`), never the
-// same one.
-function WrapWithField({ children }: { children: React.ReactNode }) {
   return (
     <NextIntlClientProvider locale="ar" messages={{ ...ar, ...arUi }}>
       {children}
@@ -262,11 +257,11 @@ describe("Combobox — R2, wired for a member-facing caller (sessions' request)"
 
   it("reads useFieldWiring(): a <Field>'s hint, error and required all reach the input", async () => {
     const { container } = render(
-      <WrapWithField>
+      <Wrap>
         <Field id="copresenters" label="المُقدِّمون المشاركون" hint="اختياري" error="اختر مُقدِّمًا واحدًا على الأقل" required>
           <Combobox name="coPresenterIds" options={PRESENTERS} multiple placeholder="أضِف" />
         </Field>
-      </WrapWithField>,
+      </Wrap>,
     );
     const input = screen.getByRole("combobox");
     expect(input).toHaveAttribute("id", "copresenters");
@@ -282,11 +277,11 @@ describe("Combobox — R2, wired for a member-facing caller (sessions' request)"
 
   it("an explicit invalid prop still wins over <Field>'s own (no error passed)", () => {
     render(
-      <WrapWithField>
+      <Wrap>
         <Field id="copresenters" label="المُقدِّمون المشاركون">
           <Combobox name="coPresenterIds" options={PRESENTERS} multiple invalid placeholder="أضِف" />
         </Field>
-      </WrapWithField>,
+      </Wrap>,
     );
     expect(screen.getByRole("combobox")).toHaveAttribute("aria-invalid", "true");
   });
