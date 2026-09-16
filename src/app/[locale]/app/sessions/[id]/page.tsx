@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
-import { Comments } from "@/components/event/comments";
+import { Comments, commentsSummary } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
-import { Materials } from "@/components/materials/list";
-import { Photos } from "@/components/photos/gallery";
+import { Materials, materialsSummary } from "@/components/materials/list";
+import { Photos, photosSummary } from "@/components/photos/gallery";
 import { SessionPoster } from "@/components/posters/session-poster";
 import { ActionCard } from "@/components/sessions/action-card";
 import { EventHero } from "@/components/sessions/event-hero";
@@ -16,8 +16,8 @@ import { GatedSection } from "@/components/sessions/gated-section";
 import { formatDate } from "@/components/sessions/numerals";
 import { PresenterList } from "@/components/sessions/presenter-list";
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
-import { isSectionShown, type EventSectionId, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
-import { Tasks } from "@/components/tasks/panel";
+import { isSectionShown, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
+import { Tasks, tasksSummary } from "@/components/tasks/panel";
 import { Panel } from "@/components/ui/panel";
 import { Prose } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,11 +65,6 @@ import { canGrantOn, closingSoon, sessionPhase, type ViewerRelation } from "@/li
  *  and the public card agree on this list or one of them lies. */
 const CARD_STATES: string[] = ["published", "in_progress", "completed"];
 
-// TODO(content, wave 6): the four slot summaries (`notes/sessions.md` §22.3).
-// Until `content` exports them, the slots keep rendering their own empty
-// states, so every section is shown — the same behaviour as before the rebuild.
-const pendingSummary: Promise<SlotSummary> | undefined = undefined;
-
 export default async function EventPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
@@ -106,11 +101,10 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const primary = primaryActionFor({ phase, relation, can, canReserve: rsvp?.canReserve ?? false, seat: rsvp?.seat ?? null, canCheckIn, canRate });
 
   const slot: SlotProps = { sessionId: session.id, memberId: me.memberId, locale };
-  const summaries = { tasks: pendingSummary, materials: pendingSummary, photos: pendingSummary, comments: pendingSummary };
 
   // The page's own conditions, one per gated section. The sub-nav and the
   // sections read the SAME gates through `isSectionShown()`.
-  const gates: Record<Exclude<EventSectionId, "objectives" | "attend">, boolean> = {
+  const gates: Record<GatedId, boolean> = {
     about: true,
     presenters: session.presenters.length > 0,
     tasks: can.tasks,
@@ -125,6 +119,17 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     // returns once there is something else to say — the edit link, or that the
     // window has closed.
     rating: session.state === "completed" && ratingRelations.includes(relation) && !canRate,
+  };
+
+  // The slots' own answers (`slots.ts`, `notes/sessions.md` §22.3), each from
+  // the same request-cached read its slot renders from. ★ Asked only where the
+  // page's own gate is open: a promise nobody awaits would be a read nobody
+  // needs, and a rejection nobody handles.
+  const summaries: Partial<Record<GatedId, Promise<SlotSummary>>> = {
+    tasks: gates.tasks ? tasksSummary(slot) : undefined,
+    materials: gates.materials ? materialsSummary(slot) : undefined,
+    photos: gates.photos ? photosSummary(slot) : undefined,
+    discussion: gates.discussion ? commentsSummary(slot) : undefined,
   };
 
   const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
@@ -153,7 +158,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               primary={primary}
               slot={slot}
               tasks={summaries.tasks}
-              materialsShown={isSectionShown(gates.materials)}
+              materials={summaries.materials}
               ratingClosesAt={eligibility?.windowClosesAt ?? null}
               certificateHref={certificateHref}
               bookmarked={bookmarked}
@@ -164,22 +169,11 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           </div>
 
           <div className="mt-8 flex min-w-0 flex-col gap-10 md:col-start-1 md:row-start-1 md:mt-8">
-            <EventSubnav
-              label={t("sectionsNav")}
-              items={(
-                [
-                  ["about", gates.about],
-                  ["presenters", gates.presenters],
-                  ["tasks", gates.tasks],
-                  ["materials", gates.materials],
-                  ["photos", gates.photos],
-                  ["discussion", gates.discussion],
-                  ["rating", gates.rating],
-                ] as const
-              )
-                .filter(([, gate]) => isSectionShown(gate))
-                .map(([sectionId]) => ({ id: sectionId, label: t(`nav.${sectionId}`) }))}
-            />
+            {/* The sub-nav lists exactly the sections that render, so it waits on
+                the same summaries; a row-high placeholder holds its place. */}
+            <Suspense fallback={<div aria-hidden="true" className="h-11 border-b border-edge md:h-[52px]" />}>
+              <SubnavFor gates={gates} summaries={summaries} label={t("sectionsNav")} labels={Object.fromEntries(GATED_IDS.map((sectionId) => [sectionId, t(`nav.${sectionId}`)])) as Record<GatedId, string>} />
+            </Suspense>
 
             <GatedSection id="about" title={t("aboutLabel")}>
               {/* On the phone the poster opens «نبذة»; from `md` it is in the hero. */}
@@ -228,7 +222,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
             </Suspense>
 
             <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="discussion" title={t("commentsLabel")} gate={gates.discussion} summary={summaries.comments}>
+              <GatedSection id="discussion" title={t("commentsLabel")} gate={gates.discussion} summary={summaries.discussion}>
                 <Comments {...slot} />
               </GatedSection>
             </Suspense>
@@ -246,6 +240,26 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 }
 
 const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
+
+/** The page's gated sections, in render order — `EVENT_SECTION_IDS` less the action card. */
+const GATED_IDS = ["about", "presenters", "tasks", "materials", "photos", "discussion", "rating"] as const;
+type GatedId = (typeof GATED_IDS)[number];
+
+async function SubnavFor({
+  gates,
+  summaries,
+  label,
+  labels,
+}: {
+  gates: Record<GatedId, boolean>;
+  summaries: Partial<Record<GatedId, Promise<SlotSummary>>>;
+  label: string;
+  labels: Record<GatedId, string>;
+}) {
+  const resolved = await Promise.all(GATED_IDS.map((sectionId) => summaries[sectionId] ?? Promise.resolve(undefined)));
+  const items = GATED_IDS.filter((sectionId, i) => isSectionShown(gates[sectionId], resolved[i])).map((sectionId) => ({ id: sectionId, label: labels[sectionId] }));
+  return <EventSubnav label={label} items={items} />;
+}
 
 /** The cancelled alert (REQ-SES-010: shown prominently), the unpublished note, or the ended ribbon — above the band, on light. */
 async function Notices({ session, phase, published, locale }: { session: EventSession; phase: string; published: boolean; locale: string }) {

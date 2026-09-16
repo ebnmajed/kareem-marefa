@@ -47,8 +47,8 @@ export interface ActionCardProps {
   slot: SlotProps;
   /** Tasks' summary, for «المهام التحضيرية (N)» once a seat is held. */
   tasks?: Promise<SlotSummary>;
-  /** Materials are on the page: the ended card's «المواد» jumps to them. */
-  materialsShown: boolean;
+  /** Materials' summary: the ended card's «المواد» jumps to them when the section renders. */
+  materials?: Promise<SlotSummary>;
   /** When `primary` is `rate`: the day the org's rating window closes. */
   ratingClosesAt: string | null;
   /** A signed link to this member's issued certificate for this session. */
@@ -140,10 +140,10 @@ export async function ActionCard(props: ActionCardProps) {
         </a>
       ) : null}
 
-      {phase === "ended" && props.materialsShown ? (
-        <a href="#materials" className={buttonClass("secondary", "md", "w-full")}>
-          {t("actions.materials")}
-        </a>
+      {phase === "ended" && props.materials ? (
+        <Suspense fallback={null}>
+          <MaterialsJump materials={props.materials} label={t("actions.materials")} />
+        </Suspense>
       ) : null}
 
       <RsvpSecondary {...slot} />
@@ -237,6 +237,16 @@ function PrimaryControl({
         {label}
       </Link>
     </div>
+  );
+}
+
+async function MaterialsJump({ materials, label }: { materials: Promise<SlotSummary>; label: string }) {
+  const summary = await materials;
+  if (!summary.visible) return null;
+  return (
+    <a href="#materials" className={buttonClass("secondary", "md", "w-full")}>
+      {label}
+    </a>
   );
 }
 
