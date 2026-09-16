@@ -104,9 +104,16 @@ async function goto(page: Page, url: string) {
 // test used to assert `.status() === 404`, which DEC-134 makes false. Same
 // rewrite `admin-moderation.spec.ts`/`admin-managed-lists.spec.ts` already
 // carry for their own routes, applied here now that settings is rebuilt.
+//
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically — a gated
+// route can flush one Suspense boundary before its page's own `notFound()`
+// throws, so an empty hidden div stays in the body for good, not just
+// transiently. `page.goto()` bare, then the visible not-found heading is the
+// wait — it already auto-retries.
 test("a moderator gets the streamed not-found page on the settings screen (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  await goto(page, "/ar/app/admin/settings");
+  await page.goto("/ar/app/admin/settings");
   await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();

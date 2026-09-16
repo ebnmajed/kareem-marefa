@@ -167,10 +167,17 @@ async function goto(page: Page, url: string) {
 // rebuilt, so their guarded heading text isn't known here — checking that
 // the not-found page's own `<h1>` is the ONLY one on the page proves no
 // guarded queue rendered alongside it, without needing each route's copy.
+//
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically — a gated
+// route can flush one Suspense boundary before its page's own `notFound()`
+// throws, so an empty hidden div stays in the body for good, not just
+// transiently. `page.goto()` bare, then the visible not-found heading is the
+// wait — it already auto-retries.
 test("a member gets the streamed not-found page on all three moderation queues (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["comments", "photos", "reports"]) {
-    await goto(page, `/ar/app/admin/moderation/${path}`);
+    await page.goto(`/ar/app/admin/moderation/${path}`);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
     // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout

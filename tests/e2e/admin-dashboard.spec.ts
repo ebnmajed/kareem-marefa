@@ -200,15 +200,23 @@ async function expectGatedNotFound(page: Page) {
   await expect(page.getByRole("heading", { name: "لوحة المؤسسة" })).toHaveCount(0);
 }
 
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out on a GATED route
+// specifically — one Suspense boundary can flush before the page's own
+// `notFound()` throws, so an empty hidden div stays in the body for good,
+// not just transiently. `page.goto()` bare below, then
+// `expectGatedNotFound()`'s own first assertion (the visible not-found
+// heading) is the wait — it already auto-retries, and it is the real signal
+// here, unlike the hidden-div count.
 test("a member gets the streamed not-found page on the admin console, not the dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, mem2Email);
-  await goto(page, "/ar/app/admin");
+  await page.goto("/ar/app/admin");
   await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-020: a moderator gets the streamed not-found page on the (admin-only) dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  await goto(page, "/ar/app/admin");
+  await page.goto("/ar/app/admin");
   await expectGatedNotFound(page);
 });
 

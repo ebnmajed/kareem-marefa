@@ -142,10 +142,19 @@ async function review(p: Page, name: string) {
 // 6's own bug-fix pass rewrote the equivalent assertion on every OTHER
 // admin route it touched, but not this file, since venues/categories/
 // companies weren't rebuilt yet. Same rewrite, applied here now.
+//
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically, because
+// a gated route can flush one Suspense boundary before its page's own
+// `notFound()` throws — Fizz sends `$RX` for that boundary and never `$RC`,
+// so an empty `<div hidden id="S:0">` stays in the body for good, not just
+// transiently. `page.goto()` bare, then the visible not-found heading itself
+// is the wait — it already auto-retries, and it is a real, meaningful signal
+// here in a way the hidden-div count no longer is.
 test("a member gets the streamed not-found page on both managed lists (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["categories", "companies"]) {
-    await goto(page, `/ar/app/admin/${path}`);
+    await page.goto(`/ar/app/admin/${path}`);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
     await expect(page.locator('meta[name="robots"][content*="noindex"]').first(), path).toBeAttached();
