@@ -99,6 +99,11 @@ test("a member updates their profile through the action and the column grant", a
   await signIn(context);
   await page.goto("/ar/app/me");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ملفي");
+  // Interact after hydration: a click that lands first takes the no-JS path,
+  // which does not carry the `?saved=1` confirmation (found in wave 6, recorded
+  // in STATUS for app/me's own rebuild) — this test is about the action and
+  // the column grant, not about that race.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("الشركة").selectOption({ label: "شركة الاختبار" });
   await page.getByLabel("المسمى الوظيفي").fill("مهندسة برمجيات");
   await page.getByLabel("نبذة").fill("أحب مشاركة المعرفة.");
