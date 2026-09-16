@@ -3,61 +3,73 @@
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import type { VenueState } from "./actions";
-import { emptyVenueState } from "./state";
+import { Field } from "@/components/ui/field";
+import { FormSummary } from "@/components/ui/form-summary";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
+import { emptyVenueState, VENUE_FIELDS, VENUE_REQUIRED_FIELDS, type VenueField, type VenueState } from "./state";
 
-const FIELD = "mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading";
+// SCR-046's add form, onto `lib/form-state`'s shared model for wave 7
+// (`16` §8.2, `DEC-137`) — `admin/sessions/direct-session-form.tsx`'s
+// pattern, the model every rebuilt admin form since wave 6 follows.
+
+const LABEL_KEY: Record<VenueField, string> = {
+  name: "nameLabel",
+  address: "addressLabel",
+  mapUrl: "mapLabelShort",
+  capacity: "capacityLabel",
+  notes: "notesLabel",
+  timeZone: "timeZoneLabel",
+};
 
 export function VenueForm({ action }: { action: (prev: VenueState, formData: FormData) => Promise<VenueState> }) {
   const t = useTranslations("admin.venues");
   const [state, formAction, pending] = useActionState(action, emptyVenueState);
+  const err = (field: VenueField) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : undefined);
+  const required = (field: VenueField) => VENUE_REQUIRED_FIELDS.includes(field);
+
+  const summary = summaryErrors(state, {
+    fields: VENUE_FIELDS,
+    label: (field) => t(LABEL_KEY[field]),
+    message: (key) => t(`errors.${key}`),
+  });
 
   return (
-    <form action={formAction} className="mt-4 max-w-2xl space-y-5">
-      {state.error ? (
+    <form action={formAction} noValidate className="mt-4 max-w-2xl space-y-5">
+      {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
+      {state.formError ? (
         <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
-          {t(state.error)}
+          {t(`errors.${state.formError}`)}
         </p>
       ) : null}
-      <div>
-        <label htmlFor="v-name" className="text-label text-fg-heading">
-          {t("nameLabel")}
-        </label>
-        <input id="v-name" name="name" required maxLength={120} className={FIELD} />
-      </div>
-      <div>
-        <label htmlFor="v-address" className="text-label text-fg-heading">
-          {t("addressLabel")}
-        </label>
-        <input id="v-address" name="address" maxLength={300} className={FIELD} />
-      </div>
-      <div>
-        <label htmlFor="v-map" className="text-label text-fg-heading">
-          {t("mapLabel")}
-        </label>
+
+      <Field id="v-name" label={t("nameLabel")} required={required("name")} error={err("name")}>
+        <Input name="name" defaultValue={was(state, "name")} maxLength={120} />
+      </Field>
+
+      <Field id="v-address" label={t("addressLabel")} error={err("address")}>
+        <Input name="address" defaultValue={was(state, "address")} maxLength={300} />
+      </Field>
+
+      <Field id="v-map" label={t("mapLabel")} error={err("mapUrl")}>
         {/* A URL types left to right whatever the page direction. */}
-        <input id="v-map" name="mapUrl" type="url" dir="ltr" className={FIELD} />
-      </div>
-      <div>
-        <label htmlFor="v-capacity" className="text-label text-fg-heading">
-          {t("capacityLabel")}
-        </label>
-        <input id="v-capacity" name="capacity" type="number" inputMode="numeric" min={1} max={10000} dir="ltr" className={`${FIELD} w-32 text-center`} />
-      </div>
-      <div>
-        <label htmlFor="v-tz" className="text-label text-fg-heading">
-          {t("timeZoneLabel")}
-        </label>
-        <p className="mt-1 text-body-sm text-fg-muted">{t("timeZoneHint")}</p>
-        <input id="v-tz" name="timeZone" dir="ltr" placeholder="Asia/Riyadh" maxLength={64} className={FIELD} />
-      </div>
-      <div>
-        <label htmlFor="v-notes" className="text-label text-fg-heading">
-          {t("notesLabel")}
-        </label>
-        <textarea id="v-notes" name="notes" rows={3} maxLength={2000} className={`${FIELD} min-h-24`} />
-      </div>
-      <Button type="submit" disabled={pending}>
+        <Input name="mapUrl" type="url" dir="ltr" defaultValue={was(state, "mapUrl")} />
+      </Field>
+
+      <Field id="v-capacity" label={t("capacityLabel")} error={err("capacity")}>
+        <Input name="capacity" type="number" inputMode="numeric" min={1} max={10000} dir="ltr" defaultValue={was(state, "capacity")} className="w-32 text-center" />
+      </Field>
+
+      <Field id="v-tz" label={t("timeZoneLabel")} hint={t("timeZoneHint")} error={err("timeZone")}>
+        <Input name="timeZone" dir="ltr" placeholder="Asia/Riyadh" maxLength={64} defaultValue={was(state, "timeZone")} />
+      </Field>
+
+      <Field id="v-notes" label={t("notesLabel")} error={err("notes")}>
+        <Textarea name="notes" rows={3} maxLength={2000} defaultValue={was(state, "notes")} className="min-h-24" />
+      </Field>
+
+      <Button type="submit" pending={pending}>
         {t("add")}
       </Button>
     </form>

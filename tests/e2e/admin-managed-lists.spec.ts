@@ -72,6 +72,17 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>`, and a strict locator
+ * counts it. Same helper as `console.spec.ts`'s/`admin-moderation.spec.ts`'s.
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
@@ -108,56 +119,86 @@ async function review(p: Page, name: string) {
   await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
 }
 
-test("a member cannot open either managed list", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// the DAL's own gate runs. A gated page's `notFound()` therefore answers 200
+// with `noindex` and the not-found page, never a real 404 status — this
+// test used to assert `.status() === 404`, which DEC-134 makes false; wave
+// 6's own bug-fix pass rewrote the equivalent assertion on every OTHER
+// admin route it touched, but not this file, since venues/categories/
+// companies weren't rebuilt yet. Same rewrite, applied here now.
+test("a member gets the streamed not-found page on both managed lists (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  expect((await page.goto("/ar/app/admin/categories"))!.status()).toBe(404);
-  expect((await page.goto("/ar/app/admin/companies"))!.status()).toBe(404);
+  for (const path of ["categories", "companies"]) {
+    await goto(page, `/ar/app/admin/${path}`);
+    await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
+    await expect(page.locator('meta[name="robots"][content*="noindex"]').first(), path).toBeAttached();
+  }
 });
 
-test("REQ-ADM-007: an admin adds a category, then deactivates and reactivates it — no delete button exists", async ({ context, page }) => {
+test("REQ-ADM-007: an admin adds a category, then deactivates and reactivates it — no delete button exists", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/categories");
+  await goto(page, "/ar/app/admin/categories");
   await expect(page.getByRole("heading", { name: "التصنيفات", level: 1 })).toBeVisible();
 
   await page.getByLabel("الاسم").fill("تصنيف اختباري");
   await page.getByRole("button", { name: "أضف التصنيف" }).click();
-  const row = page.locator("li", { has: page.getByText("تصنيف اختباري", { exact: true }) });
-  await expect(row).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport) — scoped to
+  // whichever role is present, the pattern `admin-members.spec.ts` already
+  // established for the same dual render.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText("تصنيف اختباري", { exact: true })).toBeVisible();
+
+  const row = page.getByRole("row", { name: /تصنيف اختباري/ });
   await expect(row.getByRole("button", { name: /حذف/ })).toHaveCount(0);
 
   await row.getByRole("button", { name: "عطّل" }).click();
+  const dialog = page.getByRole("dialog", { name: "تعطيل «تصنيف اختباري»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد التعطيل" }).click();
+  await expect(page.getByRole("status")).toContainText("تم التعطيل.");
   await expect(row.getByText("معطّل")).toBeVisible();
+
   await row.getByRole("button", { name: "أعد التفعيل" }).click();
+  await expect(page.getByRole("status")).toContainText("تمت إعادة التفعيل.");
   await expect(row.getByText("معطّل")).toHaveCount(0);
 
   const { rows } = await db.query(`select deactivated_at from public.categories where org_id = $1 and name = 'تصنيف اختباري'`, [orgId]);
   expect(rows[0].deactivated_at).toBeNull();
 });
 
-test("REQ-ADM-008: an admin adds a company, then deactivates it — no delete button exists", async ({ context, page }) => {
+test("REQ-ADM-008: an admin adds a company, then deactivates it — no delete button exists", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/companies");
+  await goto(page, "/ar/app/admin/companies");
   await expect(page.getByRole("heading", { name: "الشركات", level: 1 })).toBeVisible();
 
   await page.getByLabel("الاسم").fill("شركة اختبارية");
   await page.getByRole("button", { name: "أضف الشركة" }).click();
-  const row = page.locator("li", { has: page.getByText("شركة اختبارية", { exact: true }) });
-  await expect(row).toBeVisible();
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText("شركة اختبارية", { exact: true })).toBeVisible();
+
+  const row = page.getByRole("row", { name: /شركة اختبارية/ });
   await expect(row.getByRole("button", { name: /حذف/ })).toHaveCount(0);
 
   await row.getByRole("button", { name: "عطّل" }).click();
+  const dialog = page.getByRole("dialog", { name: "تعطيل «شركة اختبارية»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد التعطيل" }).click();
+  await expect(page.getByRole("status")).toContainText("تم التعطيل.");
   await expect(row.getByText("معطّلة")).toBeVisible();
 
   const { rows } = await db.query(`select deactivated_at from public.companies where org_id = $1 and name = 'شركة اختبارية'`, [orgId]);
   expect(rows[0].deactivated_at).not.toBeNull();
 });
 
-test("SCR-047/048 at 390 px RTL: both lists read down the page, never sideways", async ({ context, page }) => {
+test("SCR-047/048 at 390 px RTL: both lists read down the page as a stacked card list, never sideways", async ({ context, page }) => {
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/categories");
-  await review(page, "scr-047-categories");
-  await page.goto("/ar/app/admin/companies");
-  await review(page, "scr-048-companies");
+  await goto(page, "/ar/app/admin/categories");
+  await review(page, "wave7-console-categories-populated");
+  await goto(page, "/ar/app/admin/companies");
+  await review(page, "wave7-console-companies-populated");
 });
