@@ -436,7 +436,6 @@ what keeps it from paying for the rare one.
 | `starts_at`, `ends_at` | `timestamptz not null` | the day's own window |
 | `venue_id` | `uuid references venues(id)` | defaults to the previous day's on creation, editable |
 | `custom_venue_name`, `custom_venue_address`, `custom_venue_map_url` | `text` | `REQ-SES-007`'s inline venue, per day |
-| `notes` | `text` | ★ the reader is an **open question** in DEC-119 — staff, presenters or attendees |
 
 Constraints:
 ```sql
@@ -447,11 +446,20 @@ exclude using gist (session_id with =, tstzrange(starts_at, ends_at, '[)') with 
 ```
 
 **What hangs off the DAY, not the session:** `check_in_codes`, `check_ins`, `check_in_attempts`,
-`materials`, `calendar_events`. Attendance, content and the calendar are per meeting.
+`materials`, `session_tasks`, `calendar_events`. Attendance, content and the calendar are per
+meeting — and «notes» in the owner's ask meant exactly this content, not a text field (DEC-120).
 
-**What stays on the SESSION:** `rsvps` — **one registration covers every day** — plus
-`certificates`, `ratings`, `comments`, `reactions`, `photos`, `bookmarks`, `session_tags`,
-`session_presenters`, `session_posters`, `session_tasks`.
+★ The entity is therefore **when, where and which meeting** and nothing else: no free text, no
+second policy set. A task for the whole workshop is a task on day 1, exactly as a session-level
+file is a file on day 1.
+
+★ **`REQ-TSK-002` is untouched and matters more here:** tasks stay **reminder-only and are never
+read by any check-in path**. Attaching them to a day puts them beside that day's attendance in the
+schema for the first time, and that is precisely the invariant a later reader assumes away.
+
+**What stays on the SESSION:** `rsvps` — **one registration covers every day** — plus `capacity`
+(one registration, one seat count — DEC-120), `certificates`, `ratings`, `comments`, `reactions`,
+`photos`, `bookmarks`, `session_tags`, `session_presenters`, `session_posters`.
 
 ★ **`sessions.starts_at` and `ends_at` become DERIVED** — the first day's start and the last day's
 end — and stay **stored columns**, so every existing index, sort, query and the `session_window`

@@ -1275,9 +1275,19 @@ and `attendanceOutcome` stay. Corollary 2 itself is unaffected.
 surface** — the same test `DEC-089` used to *refuse* an entity for objectives, which a session day
 passes on all three. `02` is frozen, so **`ENT-session_days` is defined under `DEC-119`**.
 
-**Per day:** `check_in_codes`, `check_ins`, `check_in_attempts`, `materials`, `calendar_events`, and
-the `ends_at + 2h` check-in ceiling. **Per session:** `rsvps` — one registration covers every day —
-certificates, ratings, comments, reactions, photos, bookmarks, tags, presenters, posters, tasks.
+**Per day:** `check_in_codes`, `check_ins`, `check_in_attempts`, `materials`, **`session_tasks`**,
+`calendar_events`, and the `ends_at + 2h` ceiling. **Per session:** `rsvps` — one registration covers
+every day — **`capacity`**, certificates, ratings, comments, reactions, photos, bookmarks, tags,
+presenters, posters.
+
+★ **«Notes» meant the day's CONTENT, not a text field** (`DEC-120`): materials and pre-session
+tasks. The entity is therefore **when, where and which meeting** and nothing else — no free text, no
+second policy set, no readership question. A task for the whole workshop is a task on day 1, exactly
+as a session-level file is a file on day 1.
+
+★ **`REQ-TSK-002` is untouched and matters more now:** tasks stay reminder-only and are **never read
+by any check-in path**. Attaching them to a day puts them beside that day's attendance in the schema
+for the first time, which is exactly the invariant a later reader assumes away.
 
 ★ **A one-day session is a session with one day.** No second code path; the common case is the
 general case at `n = 1`.
@@ -1300,9 +1310,8 @@ sole trigger today and `JOB-award_points` fires off it. A one-day session is unc
 idempotency key becomes per member **per session** so a re-run cannot double-pay a ledger that is
 append-only by invariant.
 
-**Two questions still open for the owner:** who reads a day's **notes** (staff, presenters or
-attendees — three different features), and whether **capacity** is per session or per day
-(recommend per session: one registration, one seat count).
+★ **Nothing about multi-day is waiting on the owner.** Both questions `DEC-119` raised are closed by
+`DEC-120`: «notes» was the day's content, and capacity stays on the session.
 
 ### ★ The two check-in switches, so nobody confuses them
 

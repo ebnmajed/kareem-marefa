@@ -449,7 +449,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-TSK-001` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-012` | — | — | `STORY-TSK-001` | M5 |
-| `REQ-TSK-002` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-TSK-001` | M5 |
+| `REQ-TSK-002` | `ENT-session_days` `ENT-session_tasks` `ENT-task_completions` +1 | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-TSK-001` | M5 |
 | `REQ-TSK-003` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-012` | — | — | `STORY-TSK-002` | M5 |
 | `REQ-TSK-004` | `ENT-session_tasks` `ENT-task_completions` `ENT-task_form_responses` | — | `SCR-010` `SCR-012` | — | — | `STORY-TSK-002` | M5 |
 | `REQ-TSK-005` | — | — | `SCR-012` | — | `MSG-rsvp_nudge` | `STORY-TSK-002` | M5 |

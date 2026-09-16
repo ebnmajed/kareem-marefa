@@ -2164,6 +2164,19 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-120 — "Notes" meant the day's content, not a text field: `session_tasks` joins materials on the day, and the column goes away
+
+- **Date:** 2026-09-16 · **Decided by:** owner («what I meant by notes is the material, and pre-session tasks and so on»), closing both questions `DEC-119` left open
+- **What I got wrong.** `DEC-119` read «each has its check-in and files and **notes**» as a free-text `notes` column on the day, and then asked who may read it. The owner meant the **content that hangs off a day** — its materials, its pre-session tasks, and whatever else a member needs *for that meeting*. The question about readership dissolves with the column.
+- **Decision.** (1) **`session_days.notes` is removed** from the entity. (2) **`session_tasks` moves to the day**, joining `materials`, `check_in_codes`, `check_ins`, `check_in_attempts` and `calendar_events`. A task belongs to the meeting it prepares you for — «اقرأ الملف قبل اليوم الثاني» is a day-2 task, and a task for the whole workshop is a task on day 1, exactly as a session-level file is a file on day 1. (3) **Capacity stays on the session** — the owner agreed: one registration, one seat count, and per-day capacity would imply per-day RSVP, which contradicts a single حجز covering every day.
+- **`REQ-TSK-002` is untouched and matters more now:** tasks remain **reminder-only and are never read by any check-in path**. Attaching them to a day puts them next to that day's attendance in the schema for the first time, and the invariant that they are unrelated is exactly the kind of thing a later reader assumes away.
+- ★ **This makes the entity smaller, not larger**, which is the right direction for a change that was only ever meant to be a form improvement: `ENT-session_days` is now **when, where, and which meeting** — `starts_at`, `ends_at`, a venue and a position — with everything else hanging off it by foreign key. No free text, no second policy set, no new readership question.
+- **Both of `DEC-119`'s open questions are now closed.** Nothing about multi-day is waiting on the owner.
+- **Supersedes:** `DEC-119`'s `notes` column and its placement of `session_tasks` on the session.
+- **Documents changed:** `02-domain-model.md` `ENT-session_days`, `01-prd.md` `REQ-SES-015`, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown
