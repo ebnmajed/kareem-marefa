@@ -200,6 +200,67 @@ Tailwind 4 has no `inset-inline-*`, so the phone tab bar never spanned the scree
 empty toast viewport over its middle tabs; `REQ-EVT-010`'s "a photo appears at once" does not match the
 shipped pipeline (processing, then visible) — a finding for a later wave, not built here.
 
+### Sync 2 — 2026-09-16 — the first real builds, and what the captures showed
+
+**How it was verified.** The shared tree is always mid-edit, so every build this sync is of **committed
+HEAD** in a separate worktree (own `npm ci`), and every e2e run is against that build — a JSON reporter
+per run, because serial specs stop at their first failure and a line reporter hides the tests that never
+ran. The machine was loaded by three tracks' vitest runs; a failure is called real only when it repeats.
+**The lead opened every capture listed below** (390 px, phone project) — what was seen is written here,
+not that the file exists.
+
+**Static gates at `028fa23`:** `tsc` clean · lint **0 errors** (19 warnings) · vitest **1176/1177** — the
+one failure is `console`'s `admin.proposals.rejectConfirmTitle` interpolating a bare `{title}` ·
+`policy-diff` agrees · `trace` no gaps · `loading-coverage`/`error-coverage` clean · `ui-lint` allowlist
+416 → 410 (one new violation in `console`'s WIP, sent back).
+
+**`sessions` — e2e at `e988ac6`: browse 10/10, checkin-gating 4/4, timeline 7/8, event-page partial.**
+Seen in `wave6-sessions-{timeline-items,timeline-empty,browse-chips,browse-sheet-open,event-before,event-after,event-ended}`
+(+ `-viewport`): one primary per state; after reserving, the «تم تأكيد حجزك» strip, «إلغاء الحجز» and the
+calendar as the bar's primary; ended — ribbon, «انتهت», «قدّمها», «حضرت», the rating window, «قيّم الجلسة»
+exactly once; applied-filter chips with ×, «امسح الكل», the filter count; the empty timeline inviting a
+proposal; Western digits throughout. **Sent back:** the status chip «جارية الآن» is clipped to «جارية» by
+the filter button at 390 px (a different word); poster-placeholder initials «اا» read as a pause glyph
+and «جا» is dark-on-navy; a dangling «·» at line ends; a venue name split across lines; the filter
+sheet's apply action is below its first screen; the filtered-empty sentence renders twice (phone).
+
+**`content` — the discussion (`REQ-UIX-024`), photos, materials.** A lead spec drives the discussion into
+the states a member meets (`tests/e2e/wave6-discussion-review.spec.ts`). Seen in
+`wave6-discussion-{1-first-visit,2-thread,2b-mention,3-near-cap,4-pending}`: counts and plural forms are
+right («تعليق واحد», «3 تعليقات», «110 أحرف متبقية»), names, dates and long text lay out correctly
+RTL, the focus ring is plain, the composer keeps its text in flight. ★ **Two blockers:** after one post
+«نشر» stays `disabled` + `aria-busy` indefinitely — a member cannot post twice without reloading; and
+every post raises a full-width success toast, two of which stack over the thread and hide the comment
+just posted. Also: no mention list appeared for «@سا»; the reaction at rest is a bare grey dot that does
+not read as an action. Seen in `photos-event-page-390-rtl-phone`: the info panel and the file limits
+read correctly; «أو اسحب…» stood before «اختر ملفات»; the upload primary looked enabled with no file;
+the empty discussion offered its call to action twice. `content` fixed the last three, both dialog
+confirms that did not submit, and a stale materials assertion (`e533ad8`, `133b26c`, `358eac4`,
+`09d02a4`); the two blockers are open.
+
+**`console` — ★ the admin console does not render on a real build.** Served with server logging, every
+`/app/admin/**` page shows only «تعذّر تحميل هذا القسم» to every staff member:
+`admin/layout.tsx` passes `Icon` component functions inside the rail's items to the `"use client"`
+`AdminRail`, which React cannot serialise (`8de9b47`). `console`'s own admin specs never reached it —
+they are serial and stopped at their first failure. Also: `notFound()` moved into the layout, where it
+streams a **200** to a plain member (a page-level `notFound()` still returns 404 — the moderator case
+passed). All five routes are committed; none is verified until the layout is fixed.
+
+**Lead fixes this sync:** `SectionHeader`'s count read as one word with its title («هذا الأسبوع1») →
+`e988ac6`; `FocusClearance` (built by `sessions`) moved into the shell for every route → `6ccb0e4`;
+the poster read cached per request → `57ac20f`; `/app`'s skeleton and three stale specs → `d092d81`,
+`abff454`, `fb50577`.
+
+**Found, not this wave's to fix:** on `/app/me` a save clicked before hydration lands without the
+`?saved=1` confirmation (the no-JS path) — `app/me` is wave 7. CSP is report-only; the one nonce-less
+inline script on every page is the frozen marketing intro in the locale layout.
+
+★ **Shared-index incident** (the third in this repo): `content`'s `358eac4` committed without a pathspec
+and swept in `sessions`' staged deletion of `components/sessions/focus-clearance.tsx`, so HEAD did not
+build until `06da10b`; `content` then restored the deliberately deleted file (`9a8340a`) and `sessions`
+removed it again (`17404f9`). Restated to every track: `git commit -- <paths>` always; `git rm` stages at
+once, so delete with `rm`; never create, restore or delete a file outside your own list.
+
 ### ★ Findings recorded before any code
 
 - **`sign-in` has no input at all** — one Google OAuth button. `DEC-129`'s «paste into the code
