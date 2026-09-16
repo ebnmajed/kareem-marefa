@@ -343,6 +343,66 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
 }
 
 /**
+ * What the proposer wrote, for SCR-043's read-only panel beside the form —
+ * DEC-075 («the proposer writes the session; the admin schedules it»),
+ * REQ-PRO-009 (the proposal's duration pre-fills the form).
+ *
+ * ★ Read from `proposals`, not from `sessions`: `create_session()` does not yet
+ * copy `target_audience` or `expected_duration_minutes` onto the session
+ * (REQ-PRO-009's migration is not this wave), and the proposal is where they
+ * are. Admin only, like the form; a session created without a proposal
+ * returns `proposal: null` and the panel says so. Added by the lead as
+ * custodian in wave 8 (`DEC-147`) — add-only.
+ */
+export interface ScheduleContent {
+  abstract: string;
+  categoryName: string | null;
+  level: SessionLevel;
+  proposal: {
+    proposerName: string | null;
+    targetAudience: string | null;
+    expectedDurationMinutes: number | null;
+  } | null;
+}
+
+export async function getScheduleContent(locale: string, sessionId: string): Promise<ScheduleContent | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("abstract, level, proposal_id, categories(name)")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+
+  const category = data.categories as { name: string } | { name: string }[] | null;
+  const categoryName = Array.isArray(category) ? (category[0]?.name ?? null) : (category?.name ?? null);
+
+  let proposal: ScheduleContent["proposal"] = null;
+  if (data.proposal_id) {
+    const { data: p, error: pError } = await supabase
+      .from("proposals")
+      .select("target_audience, expected_duration_minutes, members!proposals_proposer_id_fkey(display_name)")
+      .eq("id", data.proposal_id)
+      .maybeSingle();
+    if (pError) throw new Error(`proposals.select: ${pError.message}`);
+    if (p) {
+      const proposer = p.members as { display_name: string | null } | { display_name: string | null }[] | null;
+      proposal = {
+        proposerName: (Array.isArray(proposer) ? proposer[0]?.display_name : proposer?.display_name) ?? null,
+        targetAudience: p.target_audience,
+        expectedDurationMinutes: p.expected_duration_minutes,
+      };
+    }
+  }
+
+  return { abstract: data.abstract, categoryName, level: data.level as SessionLevel, proposal };
+}
+
+/**
  * ★ Everything schedule-shaped, and nothing else.
  *
  * `.strict()`, so a `title` or a `state` arriving here is a parse failure:

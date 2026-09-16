@@ -32,6 +32,7 @@ vi.mock("@/lib/dal/sessions", async (importOriginal) => {
 });
 
 const { saveSchedule } = await import("../../src/app/[locale]/app/admin/sessions/[id]/schedule/actions");
+const { emptyScheduleState } = await import("../../src/app/[locale]/app/admin/sessions/[id]/schedule/state");
 
 const ZONE = "Asia/Riyadh";
 const SESSION = "00000000-0000-4000-8000-0000000000cc";
@@ -41,7 +42,8 @@ function baseFields(): [string, string][] {
   return [
     ["startsAt", "2026-10-01T18:00"],
     ["durationMinutes", "60"],
-    ["venueId", "00000000-0000-4000-8000-0000000000ff"],
+    // Wave 8 (`DEC-147`): the venue select carries a venue id or «custom».
+    ["venueChoice", "00000000-0000-4000-8000-0000000000ff"],
     ["capacity", "30"],
     ["certificateMode", "off"],
     ["language", "ar"],
@@ -58,7 +60,7 @@ describe("saveSchedule — the walk-in checkbox reaches scheduleInput as an expl
     for (const [k, v] of baseFields()) fd.set(k, v);
     fd.set("allowWalkIns", "on");
 
-    await saveSchedule("ar", SESSION, ZONE, { error: null, saved: false, published: false }, fd);
+    await saveSchedule("ar", SESSION, ZONE, emptyScheduleState(), fd);
 
     expect(scheduleSession).toHaveBeenCalledTimes(1);
     expect(scheduleSession.mock.calls[0][2].allowWalkIns).toBe(true);
@@ -70,7 +72,7 @@ describe("saveSchedule — the walk-in checkbox reaches scheduleInput as an expl
     // No fd.set("allowWalkIns", ...) at all — this is what an unchecked
     // checkbox actually does, not a test artefact.
 
-    await saveSchedule("ar", SESSION, ZONE, { error: null, saved: false, published: false }, fd);
+    await saveSchedule("ar", SESSION, ZONE, emptyScheduleState(), fd);
 
     expect(scheduleSession).toHaveBeenCalledTimes(1);
     expect(scheduleSession.mock.calls[0][2].allowWalkIns).toBe(false);

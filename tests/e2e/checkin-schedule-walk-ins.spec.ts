@@ -108,8 +108,9 @@ test("DEC-117/DEC-118: a session with allow_walk_ins already on renders the chec
   // renders unchecked here — with the RIGHT session, the RIGHT stored
   // value — is exactly what 343991d closed and this guards against
   // regressing.
-  const checkbox = page.getByRole("checkbox", { name: "السماح بالحضور دون حجز مسبق" });
-  await expect(checkbox).toBeChecked();
+  // Wave 8 (`DEC-147`): the field is a `ui/switch` on the lead's rebuilt form.
+  const control = page.getByRole("switch", { name: "السماح بالحضور دون حجز مسبق" });
+  await expect(control).toBeChecked();
 
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: join(SHOTS, "wave7-checkin-schedule-walk-ins.png"), fullPage: true });

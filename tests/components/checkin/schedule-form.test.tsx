@@ -12,15 +12,20 @@
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
-import ar from "@/messages/ar/admin.json";
-import checkinAr from "@/messages/ar/checkin.json";
-import { ScheduleForm, type ScheduleVenue } from "@/app/[locale]/app/admin/sessions/[id]/schedule/schedule-form";
+import adminAr from "@/messages/ar/admin.json";
+import scheduleAr from "@/messages/ar/schedule.json";
+import uiAr from "@/messages/ar/ui.json";
+import { ScheduleForm, type ScheduleInitial, type ScheduleVenue } from "@/app/[locale]/app/admin/sessions/[id]/schedule/schedule-form";
+import type { ScheduleState } from "@/app/[locale]/app/admin/sessions/[id]/schedule/state";
 
-const MESSAGES = { ...ar, ...checkinAr };
+// Wave 8 (`DEC-147`): the lead rebuilt SCR-043 and the field is now a
+// `ui/switch` whose strings moved with the screen into `schedule.json`. The
+// hazard it pins is unchanged.
+const MESSAGES = { ...adminAr, ...scheduleAr, ...uiAr };
 
 const VENUES: ScheduleVenue[] = [];
 
-const BASE_INITIAL = {
+const BASE_INITIAL: Omit<ScheduleInitial, "allowWalkIns"> = {
   startsAt: "",
   durationMinutes: "60",
   endsAt: "",
@@ -35,14 +40,22 @@ const BASE_INITIAL = {
   language: "ar",
 };
 
-async function noopAction(prev: { error: string | null; saved: boolean; published: boolean }) {
+async function noopAction(prev: ScheduleState) {
   return prev;
 }
 
 function renderForm(allowWalkIns: boolean) {
   return render(
     <NextIntlClientProvider locale="ar" messages={MESSAGES}>
-      <ScheduleForm action={noopAction} venues={VENUES} locale="ar" initial={{ ...BASE_INITIAL, allowWalkIns }} />
+      <ScheduleForm
+        action={noopAction}
+        venues={VENUES}
+        locale="ar"
+        timeZone="Asia/Riyadh"
+        published={false}
+        proposalDurationMinutes={null}
+        initial={{ ...BASE_INITIAL, allowWalkIns }}
+      />
     </NextIntlClientProvider>,
   );
 }
@@ -50,11 +63,11 @@ function renderForm(allowWalkIns: boolean) {
 describe("ScheduleForm — the walk-in checkbox reflects the session's real stored value", () => {
   it("renders checked when initial.allowWalkIns is true — the stored value reaches the control", () => {
     renderForm(true);
-    expect(screen.getByRole("checkbox", { name: checkinAr.checkin.schedule.allowWalkIns.label })).toBeChecked();
+    expect(screen.getByRole("switch", { name: scheduleAr.schedule.walkIns.label })).toBeChecked();
   });
 
   it("renders unchecked when initial.allowWalkIns is false", () => {
     renderForm(false);
-    expect(screen.getByRole("checkbox", { name: checkinAr.checkin.schedule.allowWalkIns.label })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: scheduleAr.schedule.walkIns.label })).not.toBeChecked();
   });
 });

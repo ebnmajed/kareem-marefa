@@ -36,11 +36,17 @@ const CSS_VAR: Record<keyof BrandKit["light"], string> = {
   edgeStrong: "--edge-strong",
   spine: "--spine",
   node: "--node",
+  // DEC-127's second gradient stop. No utility reads it yet — the poster
+  // renderer is its consumer — but the org layer carries every token the kit
+  // has, so a later card-media gradient needs no change here. A kit saved
+  // before the column existed has no value, and emits nothing for it.
+  canvasRaise: "--canvas-raise",
 };
 
 function themeCss(kit: BrandKit): string {
   const block = (set: BrandKit["light"]) =>
     (Object.keys(CSS_VAR) as (keyof BrandKit["light"])[])
+      .filter((token) => typeof set[token] === "string" && set[token] !== "")
       .map((token) => `${CSS_VAR[token]}:${set[token]}`)
       .join(";");
   return `.brand-org{${block(kit.light)}}.brand-org .theme-dark{${block(kit.dark)}}`;
