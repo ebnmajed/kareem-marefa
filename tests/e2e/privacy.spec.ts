@@ -14,6 +14,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -180,7 +182,15 @@ test("★ REQ-PRF-007: a deactivation request reaches the org's log and deactiva
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
   await page.getByLabel(/سبب الطلب/).fill("أغادر المؤسسة نهاية الشهر");
+  // ★ M9: REQ-UIX-013 — every destructive action confirms in a dialog now
+  // (`takedown-button.tsx`'s shape). The first click only opens the
+  // confirm; the dialog's OWN "أرسل الطلب" is what actually submits — two
+  // buttons share that visible name, so the second click is scoped to the
+  // dialog rather than picked by name alone.
   await page.getByRole("button", { name: /أرسل الطلب/ }).click();
+  const confirmDialog = page.getByRole("dialog", { name: /تأكيد إرسال الطلب/ });
+  await expect(confirmDialog).toBeVisible();
+  await confirmDialog.getByRole("button", { name: /أرسل الطلب/ }).click();
   await expect(page.getByText(/أُرسل طلبك/)).toBeVisible();
 
   const { rows } = await db.query<{ reason: string; status: string }>(
@@ -228,5 +238,90 @@ test.describe("390 px RTL review", () => {
       return `${document.documentElement.scrollWidth}px wide, viewport ${window.innerWidth}px; widest: ${worst || "(none outside a scroller)"}`;
     });
     expect(sideways, "the privacy screen must not scroll sideways at 390 px").toBeNull();
+  });
+});
+
+// wave-7, task T7 (`docs/plan/notes/content.md`): the M9 restyle's own
+// named states — no export yet, a ready one, the confirm dialog open, and
+// sent — at `wave7-content-privacy-*.png`, the wave-7 measure's own
+// naming, distinct from the pre-existing "390 px RTL review" block above
+// (which captures one general state under an older convention). Own
+// org/member, isolated from the fixture above.
+test.describe("M9 restyle: named states", () => {
+  const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+  const PHONE_S = { width: 390, height: 844 };
+
+  let sOrgId = "";
+  let sMemberEmail = "";
+  let sMemberId = "";
+  const sUserIds: string[] = [];
+
+  test.beforeAll(async ({}, testInfo) => {
+    const sTag = `${testInfo.workerIndex}-${Date.now()}-s`;
+    const sDomain = `privacy-states-e2e-${sTag}.example`;
+
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.orgs (name, slug, certificate_prefix, created_by) values ($1, $2, 'PRS', gen_random_uuid()) returning id`,
+      [`مؤسسة الخصوصية ٢ ${sTag}`, `privacy-states-e2e-${sTag}`],
+    );
+    sOrgId = rows[0].id;
+    await db.query(`insert into public.org_settings (org_id) values ($1)`, [sOrgId]);
+    await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [sOrgId, sDomain]);
+
+    sMemberEmail = `member@${sDomain}`;
+    const { data, error } = await admin.auth.admin.createUser({
+      email: sMemberEmail,
+      password: PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: "عضو الخصوصية ٢" },
+    });
+    if (error) throw error;
+    sUserIds.push(data.user.id);
+    sMemberId = await provision(sMemberEmail);
+  });
+
+  test.afterAll(async () => {
+    for (const id of sUserIds) await admin.auth.admin.deleteUser(id);
+    if (sOrgId) await db.query(`delete from public.orgs where id = $1`, [sOrgId]);
+  });
+
+  async function capture(page: Page, name: string) {
+    mkdirSync(SHOTS, { recursive: true });
+    expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE_S);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await page.screenshot({ path: join(SHOTS, `wave7-content-privacy-${name}.png`), fullPage: true });
+  }
+
+  test("no export, a ready one, and the deactivation confirm dialog open then sent", async ({ context, page }) => {
+    await page.setViewportSize(PHONE_S);
+    await signIn(context, sMemberEmail);
+
+    await page.goto("/ar/app/me/privacy");
+    await expect(page.getByRole("heading", { name: "بياناتي وخصوصيتي", level: 1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
+    await capture(page, "no-export");
+
+    await db.query(
+      `insert into public.data_export_requests (org_id, member_id, status, completed_at, storage_path, byte_size)
+       values ($1, $2, 'ready', now(), $3, 4096)`,
+      [sOrgId, sMemberId, `orgs/${sOrgId}/exports/${sMemberId}.zip`],
+    );
+    await page.reload();
+    await expect(page.getByRole("link", { name: "نزّل الملف" })).toHaveAttribute("href", "/api/me/export");
+    await capture(page, "export-ready");
+
+    // Opening the confirm requires a filled, valid reason first — REQ-UIX-013.
+    await page.getByRole("button", { name: "أرسل الطلب" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.getByLabel("سبب الطلب", { exact: false }).fill("لم أعد أستخدم المنصة");
+    await page.getByRole("button", { name: "أرسل الطلب" }).click();
+    const dialog = page.getByRole("dialog", { name: "تأكيد إرسال الطلب" });
+    await expect(dialog).toBeVisible();
+    await capture(page, "deactivate-confirm");
+
+    await dialog.getByRole("button", { name: "أرسل الطلب" }).click();
+    await expect(page.getByRole("status")).toContainText("أُرسل طلبك");
+    await capture(page, "deactivate-sent");
   });
 });
