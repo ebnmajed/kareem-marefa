@@ -26,6 +26,16 @@ describe("RadioGroup", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(3);
   });
 
+  it("★ hovers with a theme token, so an option stays readable inside a dark section", () => {
+    // `silver-100` is a light wash; under `.theme-dark`'s light text it left the
+    // hovered option unreadable (the auth card, the event hero).
+    // `--btn2-bg-hover` is defined in both themes.
+    render(<RadioGroup name="level" legend="مستوى الجلسة" options={LEVELS} />);
+    const row = screen.getByRole("radio", { name: "تمهيدي" }).closest("label")!;
+    expect(row.className).toContain("hover:bg-[var(--btn2-bg-hover)]");
+    expect(row.className).not.toContain("bg-silver-100");
+  });
+
   it("starts on the default and moves with the arrow keys", async () => {
     render(<RadioGroup name="level" legend="مستوى الجلسة" options={LEVELS} defaultValue="introductory" />);
     expect(screen.getByRole("radio", { name: "تمهيدي" })).toBeChecked();
