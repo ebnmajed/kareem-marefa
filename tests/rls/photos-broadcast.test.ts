@@ -1,35 +1,25 @@
-// TRG-photos_broadcast — supabase/proposed/content/01_photos_broadcast.sql.
-// Applied with applyProposed() inside this test's rolled-back transaction
-// (DEC-040): nothing here touches the shared local database.
+// TRG-photos_broadcast — supabase/migrations/0091_photos_broadcast.sql
+// (promoted e73b239 from supabase/proposed/content/01_photos_broadcast.sql;
+// db:reset applies it to every fresh database now, so this reads it back
+// directly rather than through applyProposed() — the same convention
+// `tests/rls/realtime.test.ts` follows for 0016, its own already-promoted
+// broadcast trigger).
 //
 // REQ-EVT-010, DEC-139: an INSERT on `photos` broadcasts on the session's
 // own `session:{id}` topic — the same one `comments_broadcast()`/
 // `reactions_broadcast()` (0016) already use, so this proves only the NEW
 // trigger's own payload; `tests/rls/realtime.test.ts` already covers that
 // topic's RLS.
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Tx } from "./db";
+import { pool, withTx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["content/01_photos_broadcast.sql"];
-
-async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await tx.asOwner();
-  for (const file of PROPOSED) {
-    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
-  }
-  return f;
-}
-
 describe("TRG-photos_broadcast.session_topic", () => {
   it("an INSERT on photos broadcasts {id, sessionId, uploaderId} on session:{session_id}, event INSERT", async () => {
     await withTx(async (tx) => {
-      const f = await setup(tx);
+      const f = await seed(tx);
       const sessionId = f.m2.a.published;
       const uploaderId = f.a.members[0].memberId;
 
@@ -56,7 +46,7 @@ describe("TRG-photos_broadcast.session_topic", () => {
 
   it("broadcasts on the photo's OWN session topic only — org B's own topic, which already carries its own fixture's comment traffic, gets nothing FROM THIS insert", async () => {
     await withTx(async (tx) => {
-      const f = await setup(tx);
+      const f = await seed(tx);
       const sessionId = f.m2.a.published;
       const otherSessionId = f.m2.b.published;
 
