@@ -17,7 +17,11 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["branding/0001_brand_kits.sql", "branding/0002_regenerate_posters_on_save.sql"];
+const PROPOSED = [
+  "branding/0001_brand_kits.sql",
+  "branding/0002_regenerate_posters_on_save.sql",
+  "branding/0001_brand_kits_canvas_raise.sql",
+];
 
 const SHA = (c: string) => c.repeat(64).slice(0, 64);
 
@@ -31,6 +35,8 @@ const LIGHT = {
   edgeStrong: "#777777",
   spine: "#888888",
   node: "#999999",
+  // DEC-127 — the tenth token, joining the wave-4 nine.
+  canvasRaise: "#aaaaaa",
 };
 const DARK = {
   canvas: "#0a0a0a",
@@ -42,6 +48,7 @@ const DARK = {
   edgeStrong: "#6a6a6a",
   spine: "#7a7a7a",
   node: "#8a8a8a",
+  canvasRaise: "#9a9a9a",
 };
 
 async function setup(tx: Tx) {
@@ -161,8 +168,9 @@ describe("POL-save_brand_kit.history", () => {
         `select field from public.scoring_config_history where org_id = $1 and scope = 'branding'`,
         [f.a.id],
       );
-      // 18 colour columns + logo_asset_id + heading_font_id + body_font_id = 21.
-      expect(history.length).toBe(21);
+      // 20 colour columns (18 from 0068 + light/dark_canvas_raise) +
+      // logo_asset_id + heading_font_id + body_font_id = 23.
+      expect(history.length).toBe(23);
 
       const audit = await tx.q<{ actor_id: string; action: string }>(
         `select actor_id, action from public.audit_log where org_id = $1 and action = 'branding.kit_saved'`,
@@ -310,6 +318,74 @@ describe("POL-brand_kit.override", () => {
       const kitB = await readKit(tx, f.b.id);
       expect(kitB.isOverridden).toBe(false);
       expect(kitB.light.canvas).toBe(platformBrand("light")["brand.canvas"]);
+    });
+  });
+});
+
+// DEC-127 — the tenth token, added to the brand kit this wave
+// (`supabase/proposed/branding/0001_brand_kits_canvas_raise.sql`). The
+// existing `POL-brand_kit.identity_default`/`.override` and
+// `POL-export_render_context.brand_*` cases above already exercise
+// `canvasRaise` incidentally (they loop `Object.keys(...)` or compare the
+// whole `LIGHT`/`DARK` fixture with `toEqual`), so these four are the
+// `03` §8.2 rows named explicitly rather than new behaviour.
+describe("POL-brand_kit.canvas_raise_identity_default", () => {
+  it("for an org with no row, canvasRaise matches platformBrand() in both schemes", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.members[0].claims);
+      const kit = await readKit(tx, f.a.id);
+      expect(kit.isOverridden).toBe(false);
+      expect(kit.light.canvasRaise).toBe(platformBrand("light")["brand.canvasRaise"]);
+      expect(kit.dark.canvasRaise).toBe(platformBrand("dark")["brand.canvasRaise"]);
+    });
+  });
+});
+
+describe("POL-brand_kit.canvas_raise_override", () => {
+  it("with a saved canvasRaise, brand_kit() returns it, not the platform default", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, null, null, null);
+
+      const kit = await readKit(tx, f.a.id);
+      expect(kit.light.canvasRaise).toBe(LIGHT.canvasRaise);
+      expect(kit.dark.canvasRaise).toBe(DARK.canvasRaise);
+      expect(kit.light.canvasRaise).not.toBe(platformBrand("light")["brand.canvasRaise"]);
+    });
+  });
+});
+
+describe("POL-save_brand_kit.canvas_raise_required", () => {
+  it("a save whose light/dark omit canvasRaise fails NOT NULL (23502), same as any other missing token", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const { canvasRaise: _lightCanvasRaise, ...lightMissing } = LIGHT;
+      expect(
+        await errorCode(() =>
+          tx.q(`select * from public.save_brand_kit($1::jsonb, $2::jsonb, null, null, null)`, [
+            JSON.stringify(lightMissing),
+            JSON.stringify(DARK),
+          ]),
+        ),
+      ).toBe("23502");
+    });
+  });
+});
+
+describe("POL-export_render_context.canvas_raise_override", () => {
+  it("with a row, the brand column's light/dark objects carry the saved canvasRaise", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      await saveKit(tx, f.m6.a.assetId, null, null);
+
+      await tx.asServiceRole();
+      const brand = await readRenderContext(tx, f.m6.a.artifactId);
+      expect(brand.light?.canvasRaise).toBe(LIGHT.canvasRaise);
+      expect(brand.dark?.canvasRaise).toBe(DARK.canvasRaise);
     });
   });
 });

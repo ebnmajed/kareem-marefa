@@ -17,14 +17,14 @@ type Query = Pick<JobHelpers, "query">;
 type Row = {
   logo_asset_id: string | null;
   light_canvas: string; light_surface: string; light_fg_heading: string; light_fg_body: string; light_fg_muted: string;
-  light_edge: string; light_edge_strong: string; light_spine: string; light_node: string;
+  light_edge: string; light_edge_strong: string; light_spine: string; light_node: string; light_canvas_raise: string;
   dark_canvas: string; dark_surface: string; dark_fg_heading: string; dark_fg_body: string; dark_fg_muted: string;
-  dark_edge: string; dark_edge_strong: string; dark_spine: string; dark_node: string;
+  dark_edge: string; dark_edge_strong: string; dark_spine: string; dark_node: string; dark_canvas_raise: string;
 };
 
 const COLUMNS =
-  "logo_asset_id, light_canvas, light_surface, light_fg_heading, light_fg_body, light_fg_muted, light_edge, light_edge_strong, light_spine, light_node, " +
-  "dark_canvas, dark_surface, dark_fg_heading, dark_fg_body, dark_fg_muted, dark_edge, dark_edge_strong, dark_spine, dark_node";
+  "logo_asset_id, light_canvas, light_surface, light_fg_heading, light_fg_body, light_fg_muted, light_edge, light_edge_strong, light_spine, light_node, light_canvas_raise, " +
+  "dark_canvas, dark_surface, dark_fg_heading, dark_fg_body, dark_fg_muted, dark_edge, dark_edge_strong, dark_spine, dark_node, dark_canvas_raise";
 
 function set(row: Row, prefix: "light" | "dark"): BrandOverrides["light"] {
   return {
@@ -37,6 +37,7 @@ function set(row: Row, prefix: "light" | "dark"): BrandOverrides["light"] {
     edgeStrong: row[`${prefix}_edge_strong`],
     spine: row[`${prefix}_spine`],
     node: row[`${prefix}_node`],
+    canvasRaise: row[`${prefix}_canvas_raise`],
   };
 }
 
