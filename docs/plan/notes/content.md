@@ -764,13 +764,17 @@ Redesigning `toggleLike()`/its button in `comment-item.tsx`:
 
 This is the one place materials needs new DAL surface, not just new markup:
 
-- **`getMaterialsPageData`/`getProposalMaterialsPageData`** gain `limit_document_mb, limit_audio_mb,
-  limit_image_mb` on the existing `org_settings` select (today only `numerals`/`comment_edit_window
-  _minutes` are read there) and return them in the page DTO. `UploadForm` receives them as props and
-  picks the right one for the selected `kind`, computing `maxBytes = limitMb * 1024 * 1024` and a
-  `requirements` line — «PDF فقط، حتى ٥٠ ميغابايت» / equivalent for image/audio — **before** any file
-  is chosen, which is what `REQ-UIX-024`'s acceptance actually asks for and what today's code cannot
-  do (the limit is only ever learned from a 413 response, after the fact).
+- **`getMaterialsPageData`/`getProposalMaterialsPageData`** gain a **new** `org_settings` select for
+  `limit_document_mb, limit_audio_mb, limit_image_mb` — ★ re-checked against disk after the numerals
+  sweep (`c20b901`): both functions read no `org_settings` at all today, since the sweep deleted the
+  `numerals`-only select they used to carry and neither had anything else to read there. So this is
+  a genuinely new query, not an extension of an existing one — my first draft undersold it as the
+  latter. Returned in the page DTO, `UploadForm` receives the three limits as props and picks the
+  right one for the selected `kind`, computing `maxBytes = limitMb * 1024 * 1024` and a
+  `requirements` line — «PDF فقط، حتى 50 ميغابايت» / equivalent for image/audio, Western numerals
+  throughout (DEC-124; my own first draft of this line used «٥٠» and is corrected here) — **before**
+  any file is chosen, which is what `REQ-UIX-024`'s acceptance actually asks for and what today's
+  code cannot do (the limit is only ever learned from a 413 response, after the fact).
 - **`accept`** varies with the selected `kind` radio/select — `["application/pdf", ".pdf"]` for
   `pdf`, `["image/png","image/jpeg","image/webp"]` for `image`, the four audio MIME types for
   `audio`. This is client-side, advisory — `FileDrop`'s own header is explicit that it is "the
@@ -911,11 +915,48 @@ the end state, nothing mid-transition, matching `16` §7.5.5's gate) once reques
 materials list / viewer; gallery + uploader — the eight states the definition of done lists, each
 looked at at 390 px RTL before I call the surface done.
 
+## 7. ★ Re-checked against disk after «numerals landed at `57f1103`»
+
+Per the lead's rule ("re-read from disk before editing anything you did not write this session") —
+checked every file this plan cites against `git log -1 -- <file>` and the sweep (`c20b901`) plus its
+follow-up (`73b0f3e`) and the ownership-map update (`57f1103`). **The plan above stands unchanged**;
+two things worth recording rather than silently folding in:
+
+- **§2.3's DAL change is bigger than I first described.** I wrote it as "gain three columns on the
+  existing `org_settings` select." On disk, `getMaterialsPageData`/`getProposalMaterialsPageData`
+  read **no** `org_settings` at all now — the sweep deleted the numerals-only select they used to
+  carry and neither function had another reason to query it. Same for `getPhotosPageData`: it had no
+  size-limit read before the sweep either (the org's `limit_image_mb` check lives only inside
+  `record_photo_upload`'s `SECURITY DEFINER` body, `0050_photo_pipeline.sql:88`, never surfaced to a
+  DTO). So this is a **new** query in both places, not an extension — corrected in §2.3 itself, not
+  just here.
+- **My own draft had violated `DEC-124` once.** The example upload-notice string in §2.3 used
+  Arabic-Indic «٥٠» for "50 MB." Fixed to Western «50» in place — worth naming because it is exactly
+  the failure mode `tests/unit/messages-numerals.test.ts` exists to catch in `src/messages/**`, and a
+  planning note is not exempt from the house rule any more than a comment is (`DEC-132`: "a comment
+  is where the next author copies from" — the same is true of a plan).
+- **Confirmed no other structural surprise**: `formatNumber`/`formatDateTime`/`formatTime` are
+  single-argument now exactly as §1.3 anticipated; no DTO in `comments.ts`/`materials.ts`/
+  `photos.ts`/`tasks.ts` carries `numerals` any more; `comment-item.tsx`'s reaction code
+  (`likeCount`/`iReacted`, `comment-item.tsx:50-51`) is untouched by the sweep beyond its
+  `formatNumber` call site, so §1.3's plan against it is still accurate line-for-line.
+- **The three "decided, NOT this wave" items the lead named** (multi-day sessions `DEC-119…121`, the
+  manual check-in switch + walk-ins `DEC-113/116/117/118`, gradient posters + `canvasRaise` `DEC-127`)
+  touch none of §1–§3: no day-scoped material/task/photo, no check-in-switch affordance and no poster
+  background appears anywhere in this plan already.
+- **`ui/tag-chip`'s count** (DEC-123's «أتمتة 5» finding — the canvas's own chip renders its count at
+  1.96:1, "worth a design answer," not yet a verdict) — checked `tag-chip.tsx` on disk: the count
+  already renders with `className="text-fg-muted"` (`tag-chip.tsx`, unchanged by the sweep), the same
+  token DEC-123 measured at 5.68:1 elsewhere in the app (the placeholder case). So the shipped
+  component is not reproducing the canvas's low-contrast count today, as far as I can tell without
+  running the actual contrast scorer — I am not touching `tag-chip.tsx` this wave (none of my three
+  surfaces render `TagChip`), and I'm recording this as "verified, not regressed" rather than closing
+  it outright, since I have not run the headless measurement DEC-123 itself used.
+
 ---
 
-Ready for sync. This plan is complete for all three surfaces; nothing here is blocked on the owner.
-Two small requests are open (§4.1 to the lead, §4.2 to `sessions`, both non-blocking — I can start
-building the surfaces around either answer and adjust the reaction's CSS classes / the composer's
-textarea wrapper in a follow-up commit if either lands differently than assumed) and one genuine
-question for the lead (§4.3). Waiting on **«numerals landed at `<sha>`»** before any source edit, per
-the spawn instruction.
+Ready for sync. This plan is complete for all three surfaces and re-verified against the swept tree;
+nothing here is blocked on the owner. Two small requests are still open (§4.1 to the lead, §4.2 to
+`sessions`, both non-blocking) and one genuine question for the lead (§4.3). Holding for the lead's
+explicit go before the first source edit, per this reply's own "wait for my reply before starting
+code."
