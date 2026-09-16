@@ -76,6 +76,12 @@ export interface OrgSummary {
   publishedSessions: number;
   completedSessions: number;
   certificates: number;
+  /**
+   * A deletion has been requested and the org still exists (`0010`): SCR-080
+   * offers it nothing more — `reinstate_org()` refuses it, and a second deletion
+   * or a suspension would change nothing (principle 7).
+   */
+  deletionPending: boolean;
 }
 
 type OrgMetricRow = {
@@ -90,6 +96,8 @@ type OrgMetricRow = {
   published_sessions: number | string;
   completed_sessions: number | string;
   certificates: number | string;
+  /** Absent before `0010`. */
+  deletion_pending?: boolean;
 };
 
 // Postgres `count(*)` is bigint, which supabase-js hands back as a string once
@@ -113,6 +121,7 @@ export async function listOrgs(locale: string): Promise<OrgSummary[]> {
     publishedSessions: count(r.published_sessions),
     completedSessions: count(r.completed_sessions),
     certificates: count(r.certificates),
+    deletionPending: r.deletion_pending === true,
   }));
 }
 
@@ -128,6 +137,8 @@ export interface OrgDetail {
   suspendedAt: string | null;
   suspendedReason: string | null;
   createdAt: string;
+  /** See `OrgSummary.deletionPending`. Absent (false) before `0010`. */
+  deletionPending: boolean;
   domains: string[];
   counts: Record<string, number>;
 }
@@ -138,8 +149,12 @@ export async function getOrgDetail(locale: string, orgId: string): Promise<OrgDe
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("platform_org", { p_org: orgId });
   if (error || !data) return null;
-  const row = data as Omit<OrgDetail, "counts"> & { counts: Record<string, number | string> };
-  return { ...row, counts: Object.fromEntries(Object.entries(row.counts ?? {}).map(([k, v]) => [k, count(v)])) };
+  const row = data as Omit<OrgDetail, "counts" | "deletionPending"> & { counts: Record<string, number | string>; deletionPending?: boolean };
+  return {
+    ...row,
+    deletionPending: row.deletionPending === true,
+    counts: Object.fromEntries(Object.entries(row.counts ?? {}).map(([k, v]) => [k, count(v)])),
+  };
 }
 
 // ── SCR-081 · create an org ───────────────────────────────────────────────
@@ -177,6 +192,7 @@ function failure(error: { message?: string } | null): PlatformWriteResult {
     "not_platform_admin",
     "domains_required",
     "reason_required",
+    "org_deletion_pending",
     "org_not_found_or_active",
     "org_not_found",
     "invalid_email",

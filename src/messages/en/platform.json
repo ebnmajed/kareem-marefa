@@ -23,6 +23,7 @@
       "statusColumn": "Status",
       "statusActive": "Active",
       "statusSuspended": "Suspended",
+      "statusDeleting": "Being deleted",
       "members": "Members",
       "activeMembers": "Active members",
       "sessions": "Sessions",
@@ -72,6 +73,7 @@
       "title": "Domains and first admin",
       "breadcrumb": "Breadcrumb",
       "suspendedSince": "Suspended since <bdi>{date}</bdi>. Reason: <bdi>{reason}</bdi>",
+      "deletionPending": "This org has a deletion requested, running in the background. It is irreversible, so its domains and first admin are no longer edited.",
       "domainsTitle": "Allowed domains",
       "domainsIntro": "These decide who can be provisioned into the org on a first sign-in.",
       "removalNote": "Removing a domain prevents new memberships only. Existing members keep their access.",
@@ -253,7 +255,8 @@
       "already_platform": "That template is already in the platform library.",
       "template_not_found": "The template was not found.",
       "template_retired": "The template is retired. Return it to service first.",
-      "last_platform_default": "This is the last default of its purpose, and the library never falls below one."
+      "last_platform_default": "This is the last default of its purpose, and the library never falls below one.",
+      "org_deletion_pending": "This org has a deletion requested, so it cannot be reinstated. Deletion is irreversible."
     },
     "home": {
       "title": "Platform console",

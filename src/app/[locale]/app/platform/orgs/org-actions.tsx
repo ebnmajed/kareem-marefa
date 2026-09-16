@@ -38,6 +38,11 @@ import { emptyDeleteState, emptySuspendState, type DeleteState, type SuspendStat
 // Reinstating is one press and no confirm: it is restorative, the asymmetry
 // `DeactivateToggle` already records. It answers either way (F4).
 //
+// ★ An org with a deletion requested gets NO acts at all (sync 3's ruling,
+// `0010`): `reinstate_org()` refuses it, and suspending or deleting it again
+// changes nothing. Principle 7 — what cannot be done is not offered; the row's
+// status badge says why.
+//
 // A toast title is plain text, so an org's name inside it is isolated with
 // FSI/PDI — the character form of `<bdi>`.
 
@@ -75,6 +80,8 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
     });
 
   const orgTitle = (key: "suspendConfirmTitle" | "deleteConfirmTitle") => t.rich(key, { org: org.name, bdi: (c) => <bdi>{c}</bdi> });
+
+  if (org.deletionPending) return null;
 
   return (
     <Dialog open={dialog !== null} onOpenChange={(open) => setDialog(open ? dialog : null)}>

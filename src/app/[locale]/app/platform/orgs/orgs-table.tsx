@@ -44,7 +44,11 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
       header: t("statusColumn"),
       onCard: true,
       cell: (org) =>
-        org.status === "active" ? (
+        org.deletionPending ? (
+          <Badge tone="error" outline>
+            {t("statusDeleting")}
+          </Badge>
+        ) : org.status === "active" ? (
           <Badge tone="success">{t("statusActive")}</Badge>
         ) : (
           <Badge tone="neutral" outline>

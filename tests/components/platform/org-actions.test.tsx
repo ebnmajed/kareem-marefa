@@ -40,6 +40,7 @@ const ORG: OrgSummary = {
   publishedSessions: 2,
   completedSessions: 1,
   certificates: 3,
+  deletionPending: false,
 };
 
 function renderActions(org: OrgSummary = ORG) {
@@ -121,6 +122,11 @@ describe("OrgActions", () => {
     expect(await screen.findByText(/لا يطابق معرّف المؤسسة/)).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toHaveValue("acme-typo");
     expect(show).not.toHaveBeenCalled();
+  });
+
+  it("★ an org with a deletion requested is offered nothing — not reinstatement, not a second deletion (0010, principle 7)", () => {
+    renderActions({ ...ORG, status: "suspended", deletionPending: true });
+    expect(screen.queryByRole("button", { name: /إجراءات/ })).not.toBeInTheDocument();
   });
 
   it("a suspended org offers reinstatement, and a refused one says why rather than nothing (F4)", async () => {

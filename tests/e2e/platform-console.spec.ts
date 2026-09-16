@@ -488,6 +488,11 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   await expect
     .poll(async () => (await db.query(`select 1 from public.platform_audit_log where action = 'org.deletion_requested' and subject_org = $1`, [rows[0].id])).rowCount)
     .toBe(1);
+  // `0010` (sync 3's ruling): an org on its way out is offered nothing — no
+  // «أعد التفعيل» for the window before the job runs. Whether the row is still
+  // there («قيد الحذف») or the worker already removed it, the acts are gone.
+  await page.reload();
+  await expect(page.getByRole("button", { name: `إجراءات ${name}` })).toHaveCount(0);
 });
 
 test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {

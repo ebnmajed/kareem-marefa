@@ -62,7 +62,8 @@ function RemoveDomain({ domain, remove }: { domain: string; remove: (domain: str
   );
 }
 
-export function DomainsTable({ domains, remove }: { domains: string[]; remove: (domain: string) => Promise<RemoveDomainResult> }) {
+/** `remove` absent: a read-only list — the org has a deletion requested (`0010`). */
+export function DomainsTable({ domains, remove }: { domains: string[]; remove?: (domain: string) => Promise<RemoveDomainResult> }) {
   const t = useTranslations("platform.domains");
 
   const columns: DataTableColumn<DomainRow>[] = [
@@ -75,7 +76,16 @@ export function DomainsTable({ domains, remove }: { domains: string[]; remove: (
         </span>
       ),
     },
-    { key: "actions", header: t("actionsColumn"), onCard: true, cell: (row) => <RemoveDomain domain={row.domain} remove={remove} /> },
+    ...(remove
+      ? [
+          {
+            key: "actions",
+            header: t("actionsColumn"),
+            onCard: true,
+            cell: (row: DomainRow) => <RemoveDomain domain={row.domain} remove={remove} />,
+          } satisfies DataTableColumn<DomainRow>,
+        ]
+      : []),
   ];
 
   return (

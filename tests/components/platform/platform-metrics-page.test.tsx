@@ -39,6 +39,7 @@ vi.mock("@/lib/dal/platform", () => ({
       publishedSessions: 4,
       completedSessions: 2,
       certificates: 9,
+      deletionPending: false,
     },
   ]),
 }));

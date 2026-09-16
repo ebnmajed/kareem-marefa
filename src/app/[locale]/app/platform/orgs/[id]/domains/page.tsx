@@ -59,7 +59,12 @@ export default async function OrgDomainsPage({ params }: { params: Promise<{ loc
           </>
         }
       />
-      {org.status === "suspended" && org.suspendedAt ? (
+      {org.deletionPending ? (
+        // `0010`: on its way out. Nothing here is edited any more (principle 7).
+        <Panel tone="error" className="mt-6 max-w-3xl">
+          <p className="text-body-sm text-fg-heading">{t("deletionPending")}</p>
+        </Panel>
+      ) : org.status === "suspended" && org.suspendedAt ? (
         <Panel tone="ended" className="mt-6 max-w-3xl">
           <p className="text-body-sm text-fg-body">
             {t.rich("suspendedSince", {
@@ -82,19 +87,23 @@ export default async function OrgDomainsPage({ params }: { params: Promise<{ loc
           </p>
         </Panel>
         <div className="mt-4 max-w-3xl">
-          <DomainsTable domains={org.domains} remove={removeDomainAction.bind(null, loc, org.id)} />
+          <DomainsTable domains={org.domains} remove={org.deletionPending ? undefined : removeDomainAction.bind(null, loc, org.id)} />
         </div>
-        <div className="mt-6">
-          <AddDomainForm action={addDomainAction.bind(null, loc, org.id)} />
-        </div>
+        {org.deletionPending ? null : (
+          <div className="mt-6">
+            <AddDomainForm action={addDomainAction.bind(null, loc, org.id)} />
+          </div>
+        )}
       </section>
 
-      <section aria-labelledby="first-admin" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="first-admin" title={t("firstAdminTitle")} description={t("firstAdminIntro")} />
-        <div className="mt-4">
-          <FirstAdminForm current={org.firstAdminEmail} action={setFirstAdminAction.bind(null, loc, org.id)} />
-        </div>
-      </section>
+      {org.deletionPending ? null : (
+        <section aria-labelledby="first-admin" className="mt-12 border-t border-edge pt-8">
+          <SectionHeader as="h2" id="first-admin" title={t("firstAdminTitle")} description={t("firstAdminIntro")} />
+          <div className="mt-4">
+            <FirstAdminForm current={org.firstAdminEmail} action={setFirstAdminAction.bind(null, loc, org.id)} />
+          </div>
+        </section>
+      )}
     </>
   );
 }

@@ -18,6 +18,7 @@ const FILES = [
   "platform/0002_platform_console_reads.sql",
   "platform/0003_platform_library.sql",
   "platform/0007_job_health_due.sql",
+  "platform/0010_reinstate_refuses_pending_deletion.sql",
 ];
 
 async function apply(tx: Tx) {
@@ -66,6 +67,8 @@ describe("platform — the console's reads (0002)", () => {
           "certificatePrefix",
           "counts",
           "createdAt",
+          // `0010` (wave 8): whether a deletion is on its way — platform metadata, not a count.
+          "deletionPending",
           "domains",
           "firstAdminEmail",
           "id",

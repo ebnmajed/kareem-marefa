@@ -18,10 +18,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
 import { seed, seedBase } from "./fixture";
 
-const FILE = "platform/0001_m8_schema.sql";
+const FILES = ["platform/0001_m8_schema.sql", "platform/0010_reinstate_refuses_pending_deletion.sql"];
 
 async function apply(tx: Tx) {
-  if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
+  for (const file of FILES) {
+    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
+  }
 }
 
 /** A super admin's token: platform_admin and nothing else. No org_id, ever. */
@@ -620,6 +622,8 @@ describe("platform — metrics (REQ-ADM-003, SCR-084)", () => {
     "completed_sessions",
     "certificates",
     "org_templates",
+    // `0010` (wave 8): a requested deletion, so SCR-080 offers no reinstatement. Org metadata, not content.
+    "deletion_pending",
   ];
 
   it("RPC-platform_metrics.aggregate_only — the view exposes counts and org metadata, nothing else", async () => {
