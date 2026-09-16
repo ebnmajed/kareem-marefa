@@ -50,6 +50,22 @@ export function formatTime(iso: string, timeZone: string, locale = "ar"): string
   }).format(new Date(iso));
 }
 
+/**
+ * A day alone — «الاثنين، 15 سبتمبر» — in Western digits and the given zone.
+ *
+ * For a sentence that names a day and not a moment: the ended ribbon, the day
+ * the rating window closes. The year is left out; every date these sentences
+ * carry is within weeks of today.
+ */
+export function formatDate(iso: string, timeZone: string, locale = "ar"): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone,
+  }).format(new Date(iso));
+}
+
 export function sameDay(a: string, b: string, timeZone: string): boolean {
   const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(iso));
   return day(a) === day(b);

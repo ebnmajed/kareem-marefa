@@ -18,13 +18,13 @@
       "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
       "rsvpDeadlineLabel": "Booking closes",
       "cutoffLabel": "Cancellation closes",
-      "aboutLabel": "About this session",
+      "aboutLabel": "About",
       "languageLabel": "Spoken language",
       "languageAr": "Arabic",
       "languageEn": "English",
       "levelLabel": "Level",
       "categoryLabel": "Category",
-      "commentsLabel": "Comments",
+      "commentsLabel": "Discussion",
       "ratingLabel": "Rating",
       "hostView": "Presenter's screen",
       "stateLabel": "Session status",
@@ -50,7 +50,47 @@
       "manageCertificates": "Certificates",
       "shareLabel": "Share link",
       "shareCopied": "Link copied",
-      "shareHint": "A public link showing only the title, time, venue, organisation name and poster."
+      "shareHint": "A public link showing only the title, time, venue, organisation name and poster.",
+      "breadcrumbRoot": "Sessions",
+      "presentedBy": "Presented by",
+      "presentedByPast": "Presented by",
+      "presenterFallback": "Presenter",
+      "duration": "{count, plural, =0 {under a minute} one {one minute} other {{value} minutes}}",
+      "level": {
+        "introductory": "Introductory",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "seatsTaken": "{count, plural, =0 {{taken} of no seats} one {{taken} of one seat} other {{taken} of {value} seats}}",
+      "seatsProgress": "Seats taken",
+      "ribbonEnded": "This session ended on {date}. Booking is closed.",
+      "tagsLabel": "Tags",
+      "sectionsNav": "Session sections",
+      "nav": {
+        "about": "About",
+        "presenters": "Presenters",
+        "tasks": "Tasks",
+        "materials": "Materials",
+        "photos": "Photos",
+        "discussion": "Discussion",
+        "rating": "Rating"
+      },
+      "actions": {
+        "tasks": "Preparation tasks",
+        "tasksOutstanding": "{count, plural, =0 {no tasks left} one {one task left} other {{value} tasks left}}",
+        "confirmedHint": "Your confirmation email has the calendar file attached.",
+        "rate": "Rate this session",
+        "ratingWindow": "Rating is open until {date}. Your rating is not attributed to you.",
+        "certificate": "Download your certificate",
+        "materials": "Materials",
+        "share": "Share",
+        "staffHeading": "Manage this session"
+      },
+      "stats": {
+        "materials": "Materials published",
+        "photos": "Photos"
+      },
+      "shareFailed": "The link could not be copied. Copy it from here:"
     },
     "card": {
       "presentedBy": "Hosted by <bdi>{org}</bdi>",

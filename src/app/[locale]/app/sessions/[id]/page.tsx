@@ -1,43 +1,61 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { RsvpPanel } from "@/components/checkin/rsvp-panel";
-import { AttendanceOutcome } from "@/components/checkin/attendance-outcome";
-import { affordancesFor } from "@/components/checkin/session-matrix";
-import { canOfferCheckInLink } from "@/lib/dal/checkin";
-import { sessionPhase } from "@/lib/session-status";
-import { AddToCalendar } from "@/components/calendar/add-to-calendar";
-import { Materials } from "@/components/materials/list";
-import { Photos } from "@/components/photos/gallery";
-import { Tasks } from "@/components/tasks/panel";
+import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
 import { Comments } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
+import { Materials } from "@/components/materials/list";
+import { Photos } from "@/components/photos/gallery";
 import { SessionPoster } from "@/components/posters/session-poster";
-import { CertificateModeBadge } from "@/components/certificates/mode-badge";
-import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
+import { ActionCard } from "@/components/sessions/action-card";
+import { EventHero } from "@/components/sessions/event-hero";
+import { primaryActionFor } from "@/components/sessions/event-actions";
+import { EventSubnav } from "@/components/sessions/event-subnav";
+import { GatedSection } from "@/components/sessions/gated-section";
+import { formatDate } from "@/components/sessions/numerals";
+import { PresenterList } from "@/components/sessions/presenter-list";
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
-import { ShareLink } from "@/components/sessions/share-link";
-import { Link } from "@/i18n/navigation";
-import { getSessionForEvent } from "@/lib/dal/sessions";
+import { isSectionShown, type EventSectionId, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
+import { Tasks } from "@/components/tasks/panel";
+import { Panel } from "@/components/ui/panel";
+import { Prose } from "@/components/ui/prose";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Stat } from "@/components/ui/stat";
+import { TagChip } from "@/components/ui/tag-chip";
+import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
+import { formatNumber } from "@/components/sessions/numerals";
+import { isSessionBookmarked } from "@/lib/dal/bookmarks";
+import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
+import { canOfferCheckInLink } from "@/lib/dal/checkin";
+import { getRatingEligibility } from "@/lib/dal/ratings";
+import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { requireSession } from "@/lib/dal/session";
+import { getSessionForEvent, type EventSession } from "@/lib/dal/sessions";
+import { canGrantOn, closingSoon, sessionPhase, type ViewerRelation } from "@/lib/session-status";
 
-// SCR-012 · /app/sessions/[id] ★ — the event page.
+// SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 6 to
+// `Main.dc.html`, `EventPhone.dc.html` and `EventEnded.dc.html` (DEC-130).
 //
-// The one surface three teammates share, and the reason `slots.ts` exists
-// (TEAM.md §2, DEC-040). The three slots below are server components owned by
-// `checkin` and `event`; this page passes **ids, never rows**, so each of them
-// fetches its own data through its own DAL and none of us has to agree on a
-// shape beyond `SlotProps`. The placeholders in components/sessions/slots/ are
-// gone now that all three are real.
+// The one surface several tracks share. The contract — section order, ids,
+// headings, who renders what and who gates what — is `slots.ts` and
+// `docs/plan/notes/sessions.md` §22. In one breath: this page owns the frame,
+// the hero, the action card, the sub-nav and every `<section>` and `<h2>`; the
+// slots render their bodies and no heading; a slot that can render nothing
+// takes its section with it, decided by the slot's summary (`16` §5.4.1a(b)).
 //
-// Order is REQ-SES-013 and 09 SCR-012, in this exact sequence:
-//   1 الملصق (M6 — no poster exists yet)   2 التاريخ · الوقت · المكان · المُقدِّم
-//   3 the ONE primary action + السعة       4 آخر موعد للحجز / للإلغاء
-//   5 النبذة · اللغة · التصنيف             6 المهام التحضيرية (M5)
-//   7 المواد (M5)                          8 التعليقات
-//   9 الصور (M5)                          10 التقييم
+// Order, at every width (the grid moves the card beside the sections from
+// `md`; nothing is rendered twice for layout):
+//   ribbon / notices · hero (status, title, presenters, chips — language before
+//   the action, REQ-SES-011) · the action card (REQ-SES-013; its primary moves
+//   to the bottom action bar on the phone) · sub-nav · نبذة · المُقدِّمون ·
+//   المهام · المواد · الصور · النقاش · التقييم
 //
 // ★ REQ-SES-008: no stream URL, no join link, no remote-attendance affordance.
 // There is none in the DTO either, because there is none in the product.
+//
+// ★ One-day sessions only: this is the schema in the database. Multi-day
+// sessions (DEC-119 … DEC-121) and the manual check-in switch (DEC-113 …
+// DEC-118) are decided and not built; nothing here anticipates them.
 //
 // Who may see this is `sessions_read`, not a check here: a draft is visible to
 // staff and its own presenters and to nobody else, and no row is a 404.
@@ -46,350 +64,273 @@ import { requireSession } from "@/lib/dal/session";
  *  and the public card agree on this list or one of them lies. */
 const CARD_STATES: string[] = ["published", "in_progress", "completed"];
 
+// TODO(content, wave 6): the four slot summaries (`notes/sessions.md` §22.3).
+// Until `content` exports them, the slots keep rendering their own empty
+// states, so every section is shown — the same behaviour as before the rebuild.
+const pendingSummary: Promise<SlotSummary> | undefined = undefined;
+
 export default async function EventPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [me, session, t] = await Promise.all([
+  const [me, session, rsvp, t] = await Promise.all([
     requireSession(locale, `/${locale}/app/sessions/${id}`),
     getSessionForEvent(locale, id),
+    getRsvpPanelData(locale, id),
     getTranslations("sessions.event"),
   ]);
   if (!session) notFound();
 
-  const when = (iso: string | null) => (iso ? formatDateTime(iso, session.timeZone, locale) : null);
-  // A session that starts and ends on the same day says the day once. Reading
-  // «الأربعاء 16 سبتمبر 2026 في 6:00 م · حتى الأربعاء 16 سبتمبر 2026 في 7:00 م»
-  // out loud is enough to see why.
-  const until =
-    session.startsAt && session.endsAt
-      ? sameDay(session.startsAt, session.endsAt, session.timeZone)
-        ? formatTime(session.endsAt, session.timeZone, locale)
-        : when(session.endsAt)
-      : null;
-  const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
-
   // ★ The affordance gates for THIS viewer on THIS session, derived once from
-  // `checkin`'s 42-cell matrix rather than re-written as a condition at each
-  // call site (`16` §5.3, REQ-UIX-015, DEC-090, DEC-103).
-  //
-  // RLS and the RPCs remain authoritative (REQ-NFR-001): a hidden control is a
-  // courtesy, and the database refuses the write regardless. What these fix is
-  // the opposite failure — offering an action the database will refuse.
+  // `checkin`'s 42-cell matrix rather than re-written at each call site (`16`
+  // §5.3, REQ-UIX-015, DEC-090). RLS and the RPCs remain authoritative
+  // (REQ-NFR-001): a hidden control is a courtesy, and the database refuses the
+  // write regardless. What these fix is offering an action it would refuse.
   const phase = sessionPhase(session);
-  const can = affordancesFor(phase, session.viewerRelation);
-  const canCheckIn = canOfferCheckInLink(session, session.viewerRelation, session.allowWalkIns);
-  const canHostConsole = can.hostConsole;
+  const relation = session.viewerRelation;
+  const can = affordancesFor(phase, relation);
+  const canCheckIn = canOfferCheckInLink(session, relation, session.allowWalkIns);
+
+  // Read only for the viewer they concern: an attendee of an ended session.
+  const endedAttendee = phase === "ended" && relation === "attended";
+  const [eligibility, certificateHref, bookmarked] = await Promise.all([
+    endedAttendee ? getRatingEligibility(locale, id) : Promise.resolve(null),
+    endedAttendee ? myCertificateHref(locale, id) : Promise.resolve(null),
+    isSessionBookmarked(locale, id),
+  ]);
+  const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible);
+
+  const primary = primaryActionFor({ phase, relation, can, canReserve: rsvp?.canReserve ?? false, seat: rsvp?.seat ?? null, canCheckIn, canRate });
+
+  const slot: SlotProps = { sessionId: session.id, memberId: me.memberId, locale };
+  const summaries = { tasks: pendingSummary, materials: pendingSummary, photos: pendingSummary, comments: pendingSummary };
+
+  // The page's own conditions, one per gated section. The sub-nav and the
+  // sections read the SAME gates through `isSectionShown()`.
+  const gates: Record<Exclude<EventSectionId, "objectives" | "attend">, boolean> = {
+    about: true,
+    presenters: session.presenters.length > 0,
+    tasks: can.tasks,
+    materials: can.materials !== "none",
+    photos: true,
+    discussion: true,
+    // The Ratings slot renders nothing for a viewer with no stake, so the
+    // section is gated by the relations that have one — and by the stored
+    // state, never the clock (DEC-090 corollary 2).
+    rating: session.state === "completed" && ratingRelations.includes(relation),
+  };
+
+  const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
+  const shareUrl = CARD_STATES.includes(session.state) ? `${siteOrigin()}${publicCardPath(locale, session.id)}` : null;
+  const seat = phase === "open" ? rsvp?.seat : undefined;
+  const poster = <SessionPoster sessionId={session.id} locale={locale} />;
 
   return (
-    <article className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:items-start md:gap-10">
-      <div className="min-w-0">
-        {/* 1. الملصق — the designer slot (TEAM.md §2, wave 3; REQ-DSG-001/002,
-            DEC-012): the session's poster in every variant, live or detached,
-            fetched through designer's own DAL; the certificate mode beside it
-            (REQ-CRT-001). Both render nothing until there is something to show —
-            never a grey box pretending a poster is coming. */}
-        <SessionPoster sessionId={session.id} locale={locale} />
-        <CertificateModeBadge sessionId={session.id} locale={locale} />
+    <article>
+      <Notices session={session} phase={phase} published={published} locale={locale} />
 
-        {session.state === "cancelled" ? (
-          <div role="alert" className="rounded-field border-2 border-edge-strong p-5">
-            <p className="text-h2 text-fg-heading">{t("cancelledTitle")}</p>
-            {session.cancellationReason ? (
-              <>
-                <p className="mt-3 text-label text-fg-heading">{t("cancelledReason")}</p>
-                <p className="mt-1 text-body text-fg-body">
-                  <bdi>{session.cancellationReason}</bdi>
+      <EventHero session={session} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
+
+      <div className="mx-auto max-w-6xl px-4 pb-12 md:px-8 md:pb-16">
+        <div className="md:grid md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12">
+          {/* The card first in the DOM — in flow straight after the hero on the
+              phone (REQ-SES-013) — and in the second column from `md`, lifted
+              onto the band's bottom edge only, never over the poster. */}
+          <div className="-mt-4 md:sticky md:top-[calc(var(--header-h)+1.5rem)] md:col-start-2 md:row-start-1 md:-mt-10">
+            <ActionCard
+              session={session}
+              phase={phase}
+              can={can}
+              rsvp={rsvp}
+              primary={primary}
+              slot={slot}
+              tasks={summaries.tasks}
+              materialsShown={isSectionShown(gates.materials)}
+              ratingClosesAt={eligibility?.windowClosesAt ?? null}
+              certificateHref={certificateHref}
+              bookmarked={bookmarked}
+              shareUrl={shareUrl}
+              isAdmin={me.role === "admin"}
+              locale={locale}
+            />
+          </div>
+
+          <div className="mt-8 flex min-w-0 flex-col gap-10 md:col-start-1 md:row-start-1 md:mt-8">
+            <EventSubnav
+              label={t("sectionsNav")}
+              items={(
+                [
+                  ["about", gates.about],
+                  ["presenters", gates.presenters],
+                  ["tasks", gates.tasks],
+                  ["materials", gates.materials],
+                  ["photos", gates.photos],
+                  ["discussion", gates.discussion],
+                  ["rating", gates.rating],
+                ] as const
+              )
+                .filter(([, gate]) => isSectionShown(gate))
+                .map(([sectionId]) => ({ id: sectionId, label: t(`nav.${sectionId}`) }))}
+            />
+
+            <GatedSection id="about" title={t("aboutLabel")}>
+              {/* On the phone the poster opens «نبذة»; from `md` it is in the hero. */}
+              <div className={`mb-5 md:hidden ${phase === "ended" || phase === "cancelled" ? "[&_img]:opacity-50 [&_img]:grayscale" : ""}`}>{poster}</div>
+              <Prose>
+                <p className="whitespace-pre-line">
+                  <bdi>{session.abstract}</bdi>
                 </p>
-              </>
+              </Prose>
+              {session.tags.length > 0 ? (
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="text-body-sm text-fg-muted">{t("tagsLabel")}</span>
+                  {session.tags.map((tag) => (
+                    <TagChip key={tag.normalised} label={tag.label} href={`/app/sessions?tag=${encodeURIComponent(tag.normalised)}`} />
+                  ))}
+                </div>
+              ) : null}
+            </GatedSection>
+
+            <GatedSection id="presenters" title={session.presenters.length > 1 ? t("presentersLabel") : t("presenterLabel")} gate={gates.presenters}>
+              <PresenterList presenters={session.presenters} />
+            </GatedSection>
+
+            <Suspense fallback={<SectionSkeleton />}>
+              <GatedSection id="tasks" title={t("tasksLabel")} gate={gates.tasks} summary={summaries.tasks}>
+                <Tasks {...slot} />
+              </GatedSection>
+            </Suspense>
+
+            <Suspense fallback={<SectionSkeleton />}>
+              <GatedSection id="materials" title={t("materialsLabel")} gate={gates.materials} summary={summaries.materials}>
+                <Materials {...slot} />
+              </GatedSection>
+            </Suspense>
+
+            {phase === "ended" ? (
+              <Suspense fallback={null}>
+                <EndedStats materials={summaries.materials} photos={summaries.photos} labels={{ materials: t("stats.materials"), photos: t("stats.photos") }} />
+              </Suspense>
             ) : null}
-            <p className="mt-3 text-body-sm text-fg-muted">{t("cancelledNote")}</p>
+
+            <Suspense fallback={<SectionSkeleton />}>
+              <GatedSection id="photos" title={t("photosLabel")} gate={gates.photos} summary={summaries.photos}>
+                <Photos {...slot} />
+              </GatedSection>
+            </Suspense>
+
+            <Suspense fallback={<SectionSkeleton />}>
+              <GatedSection id="discussion" title={t("commentsLabel")} gate={gates.discussion} summary={summaries.comments}>
+                <Comments {...slot} />
+              </GatedSection>
+            </Suspense>
+
+            <Suspense fallback={<SectionSkeleton />}>
+              <GatedSection id="rating" title={t("ratingLabel")} gate={gates.rating}>
+                <Ratings {...slot} />
+              </GatedSection>
+            </Suspense>
           </div>
-        ) : null}
-        {!published ? (
-          <p role="status" className="rounded-field border border-edge bg-silver-100 p-4 text-body-sm text-fg-body">
-            {t("unpublishedNote")} · {t("stateLabel")}: {t(`state.${session.state}`)}
-          </p>
-        ) : null}
-
-        <h1 className={`text-h1 text-fg-heading ${session.state === "cancelled" || !published ? "mt-6" : ""}`}>
-          <bdi>{session.title}</bdi>
-        </h1>
-
-        {/* 2. Date, time, place with its map, presenter — before anything else. */}
-        <dl className="mt-5 space-y-4">
-          <div>
-            <dt className="text-label text-fg-heading">{t("whenLabel")}</dt>
-            <dd className="mt-1 text-body text-fg-body">
-              {session.startsAt ? (
-                <>
-                  <bdi>{when(session.startsAt)}</bdi>
-                  {until ? <span className="text-fg-muted"> · {t("toTime", { value: until })}</span> : null}
-                </>
-              ) : (
-                t("notScheduled")
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-label text-fg-heading">{t("whereLabel")}</dt>
-            <dd className="mt-1 text-body text-fg-body">
-              {session.venue ? (
-                <>
-                  <bdi>{session.venue.name}</bdi>
-                  {session.venue.address ? (
-                    <span className="text-fg-muted">
-                      {" · "}
-                      <bdi>{session.venue.address}</bdi>
-                    </span>
-                  ) : null}
-                  {session.venue.mapUrl ? (
-                    <a
-                      href={session.venue.mapUrl}
-                      rel="noreferrer noopener"
-                      target="_blank"
-                      className="mt-1 block text-body-sm text-fg-heading underline underline-offset-4"
-                    >
-                      {t("mapLink")}
-                    </a>
-                  ) : null}
-                </>
-              ) : (
-                t("noVenue")
-              )}
-              {/* REQ-SES-008, said plainly and once. */}
-              <span className="mt-1 block text-body-sm text-fg-muted">{t("inPersonNote")}</span>
-            </dd>
-          </div>
-          {session.presenters.length > 0 ? (
-            <div>
-              <dt className="text-label text-fg-heading">{session.presenters.length > 1 ? t("presentersLabel") : t("presenterLabel")}</dt>
-              <dd className="mt-1 text-body text-fg-body">
-                {session.presenters.map((p, i) => (
-                  <span key={p.memberId}>
-                    {i > 0 ? "، " : ""}
-                    <Link href={`/app/members/${p.memberId}`} className="underline underline-offset-4">
-                      <bdi>{p.displayName}</bdi>
-                    </Link>
-                  </span>
-                ))}
-              </dd>
-            </div>
-          ) : null}
-          <div>
-            {/* REQ-SES-011 is explicit that «لغة الجلسة» appears BEFORE the
-                RSVP action, not below it. 09's numbering puts it at 5 with the
-                abstract; 01-prd.md is the only document that may define a
-                requirement, so its acceptance wins and the language sits here,
-                above the action in reading order on every width. */}
-            <dt className="text-label text-fg-heading">{t("languageLabel")}</dt>
-            <dd className="mt-1 text-body text-fg-body">{session.language === "ar" ? t("languageAr") : t("languageEn")}</dd>
-          </div>
-          {session.categoryName ? (
-            <div>
-              {/* Its own pair. Folded into the language's `dd` it read as
-                  though «درس من تجربة» were a language. */}
-              <dt className="text-label text-fg-heading">{t("categoryLabel")}</dt>
-              <dd className="mt-1 text-body text-fg-body">
-                <bdi>{session.categoryName}</bdi>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      </div>
-
-      {/* 3 and 4 — the ONE primary action, then the two deadlines stated
-          plainly.
-          
-          It is NOT `sticky bottom-0` on mobile, and that is a considered
-          departure from 09's prose. This panel is ~380 px tall at 390 px, so
-          pinning it to the viewport bottom pulls it up over the tail of the
-          details block and hides «لغة الجلسة» — the one row REQ-SES-011
-          requires to be visible ABOVE the action. 01-prd.md is normative and
-          09 is descriptive, and REQ-SES-013's own acceptance asks that the
-          action be "reachable without scrolling past the fold", not that it
-          be pinned for the whole scroll. In flow at position 3 it sits inside
-          the first screenful, nothing is covered, and both requirements hold.
-          On desktop it is the sticky rail 09 asks for. */}
-      <aside className="mt-8 border-t border-edge pt-4 md:sticky md:top-6 md:mt-0 md:border-t-0 md:pt-0">
-        <RsvpPanel sessionId={session.id} memberId={me.memberId} locale={locale} />
-        {/* ★ The ended read-only fact — «حضرت» / «لم تُسجّل حضورك» — replacing
-            the live «إلغاء الحجز» form `rsvp-panel.tsx` used to render on a
-            completed session (`16` §5.4.1a, DEC-090). */}
-        {can.attendanceOutcome ? <AttendanceOutcome sessionId={session.id} memberId={me.memberId} locale={locale} /> : null}
-        {/* The notify slot (TEAM.md §2, wave 2): ICS + add-to-calendar links, REQ-CAL-001/002.
-
-            ★★ GATED, and this is the owner's own instance of DEC-090:
-            «how can a user add a session to their calendar without registering
-            for it? It should be an option after the registration flow.»
-            `add-to-calendar.tsx` gates on `!session || session.cancelled` AND
-            NOTHING ELSE, so any viewer sees it on any scheduled session — and
-            a waitlist place is not a seat either. Commitment before
-            convenience: it appears when the seat does, which is also how a
-            member learns the calendar exists at all.
-
-            The gate is HERE, not in the slot, because the page owns the
-            landmark — so `notify`'s file does not change (DEC-103). */}
-        {can.calendar ? <AddToCalendar sessionId={session.id} memberId={me.memberId} locale={locale} /> : null}
-
-        {session.capacity !== null ? (
-          <p className="mt-3 text-body-sm text-fg-muted">
-            {t("capacityLabel")}: <bdi>{t("seats", { count: session.capacity, value: formatNumber(session.capacity) })}</bdi>
-          </p>
-        ) : null}
-        {session.rsvpDeadlineAt ? (
-          <p className="mt-1 text-body-sm text-fg-muted">
-            {t("rsvpDeadlineLabel")}: <bdi>{when(session.rsvpDeadlineAt)}</bdi>
-          </p>
-        ) : null}
-        {session.cancellationCutoffAt ? (
-          <p className="mt-1 text-body-sm text-fg-muted">
-            {t("cutoffLabel")}: <bdi>{when(session.cancellationCutoffAt)}</bdi>
-          </p>
-        ) : null}
-
-        {/* ★★ REQ-CHK-001, AND THE WORST OF THE FIVE LIVE BUGS `16` §5.4.1
-            found (DEC-090 row 4). This gated on `state === "in_progress" &&
-            !viewerIsPresenter` AND NOTHING ELSE, and rendered as the PRIMARY
-            NAVY BUTTON — so every member saw it on every live session, while
-            `check-in/page.tsx` listed `reservation_required` among its known
-            errors, meaning the RPC refused. The full loop was: a primary
-            button → a screen where you type six characters standing up, under
-            time pressure → «لم تحجز مقعدًا».
-
-            `canOfferCheckInLink()` is `checkin`'s predicate (DEC-103): it
-            folds the relation, the phase, DEC-065's per-session walk-in switch
-            and `canGrantOn()`'s direction guard into one answer. The direction
-            guard matters here as much as the seat does — a `published` session
-            past its start reads `live` on the clock while `start_session` has
-            not run, and the check-in RPC would refuse that too. */}
-        {canCheckIn ? (
-          <p className="mt-4">
-            <Link href={`/app/sessions/${session.id}/check-in`} className="inline-flex h-11 items-center rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-              {t("checkIn")}
-            </Link>
-          </p>
-        ) : null}
-        {/* OQ-013, REQ-CHK-014: presenters, admins and moderators only —
-            ★ AND NOW A PHASE. This had no phase condition at all (DEC-090
-            row 6), so a presenter was offered a live-attendance console for a
-            talk that ended in March. The host view is `live`, and `open` for
-            the pre-flight; `affordancesFor()` is the single table that says so
-            rather than a condition written out again here. */}
-        {(session.viewerIsPresenter || session.viewerIsStaff) && canHostConsole ? (
-          <p className="mt-4">
-            <Link href={`/app/sessions/${session.id}/host`} className="text-label text-fg-heading underline underline-offset-4">
-              {t("hostView")}
-            </Link>
-          </p>
-        ) : null}
-        {/* Staff reach the session's admin screens from the event itself. */}
-        {session.viewerIsStaff ? (
-          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
-            {me.role === "admin" ? (
-              <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
-                {t("manageSchedule")}
-              </Link>
-            ) : null}
-            <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
-              {t("manageAttendance")}
-            </Link>
-            {me.role === "admin" ? (
-              <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
-                {t("manageCertificates")}
-              </Link>
-            ) : null}
-          </p>
-        ) : null}
-
-        {/* «شارك الرابط» — the owner's decision of 2026-09-15. Shown for
-            exactly the states `session_public_card()` answers for, so the
-            button never copies a link that 404s. What it copies is the PUBLIC
-            card's URL and not this page's: see the header of
-            `app/[locale]/s/[id]/page.tsx` for why they are two URLs. */}
-        {CARD_STATES.includes(session.state) ? (
-          <ShareLink
-            url={`${siteOrigin()}${publicCardPath(locale, session.id)}`}
-            label={t("shareLabel")}
-            copiedLabel={t("shareCopied")}
-            hint={t("shareHint")}
-          />
-        ) : null}
-      </aside>
-
-      <div className="min-w-0 md:col-start-1">
-        {/* 5. النبذة. The language and the category moved up to section 2 —
-            see the note there. */}
-        <section aria-labelledby="about" className="mt-10">
-          <h2 id="about" className="text-h2 text-fg-heading">
-            {t("aboutLabel")}
-          </h2>
-          <p className="mt-3 whitespace-pre-line text-body text-fg-body">
-            <bdi>{session.abstract}</bdi>
-          </p>
-        </section>
-        {/* 6. مهام ما قبل الجلسة — the content slot for tasks (REQ-TSK-001…005): reminder-only,
-            never consulted by check-in; presenters and admins add them inline.
-
-            ★★ GATED WITH ITS SECTION AND ITS HEADING, which is the rule `16`
-            §5.4.1a(b) states once so the remaining slots inherit it:
-            *a slot that can render nothing must have its `<section>` and
-            heading gated with it.* `tasks/panel.tsx` called
-            `getTasksPageData()` with no RSVP condition (DEC-090 row 3), so
-            «المهام التحضيرية» — preparation for attending — was offered to
-            someone who is not attending. Gating the panel alone would have
-            left every non-attendee an empty heading on every session.
-
-            The page owns the landmark, so the page owns the condition — and
-            `content`'s file does not change (DEC-103). */}
-        {can.tasks ? (
-          <section aria-labelledby="tasks" className="mt-10">
-            <h2 id="tasks" className="text-h2 text-fg-heading">
-              {t("tasksLabel")}
-            </h2>
-            <Tasks sessionId={session.id} memberId={me.memberId} locale={locale} />
-          </section>
-        ) : null}
-        {/* 7. المواد — the content slot (TEAM.md §2, wave 2): the page owns the
-            landmark and the heading; the list is phase-gated by its own read policy. */}
-        <section aria-labelledby="materials" className="mt-10">
-          <h2 id="materials" className="text-h2 text-fg-heading">
-            {t("materialsLabel")}
-          </h2>
-          <Materials sessionId={session.id} memberId={me.memberId} locale={locale} />
-        </section>
-        {/* 9. الصور — the content slot for photos (REQ-EVT-009…015): checked-in members
-            upload, the takedown hides instantly; the gallery is gated by its own read policy. */}
-        <section aria-labelledby="photos" className="mt-10">
-          <h2 id="photos" className="text-h2 text-fg-heading">
-            {t("photosLabel")}
-          </h2>
-          <Photos sessionId={session.id} memberId={me.memberId} locale={locale} />
-        </section>
-
-        {/* 6, 7 and 9 — المهام التحضيرية, المواد and الصور are M5 (`content`). */}
-
-        <section aria-labelledby="comments" className="mt-12 border-t border-edge pt-8">
-          <h2 id="comments" className="text-h2 text-fg-heading">
-            {t("commentsLabel")}
-          </h2>
-          <Comments sessionId={session.id} memberId={me.memberId} locale={locale} />
-        </section>
-
-        {/* 10. التقييم — «after completion, for checked-in attendees only»
-            (09 SCR-012). The slot decides the per-viewer half and correctly
-            renders nothing for anyone with no stake; the SECTION is this
-            page's, so the heading has to go with it or a member sees an empty
-            «التقييم» on every published session. Found by `event` at 390 px. */}
-        {session.state === "completed" || session.state === "archived" ? (
-          <section aria-labelledby="rating" className="mt-12 border-t border-edge pt-8">
-            <h2 id="rating" className="text-h2 text-fg-heading">
-              {t("ratingLabel")}
-            </h2>
-            <Ratings sessionId={session.id} memberId={me.memberId} locale={locale} />
-          </section>
-        ) : null}
+        </div>
       </div>
     </article>
   );
+}
+
+const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
+
+/** The cancelled alert (REQ-SES-010: shown prominently), the unpublished note, or the ended ribbon — above the band, on light. */
+async function Notices({ session, phase, published, locale }: { session: EventSession; phase: string; published: boolean; locale: string }) {
+  const t = await getTranslations("sessions.event");
+  if (session.state === "cancelled") {
+    return (
+      <div className="mx-auto max-w-6xl px-4 pt-5 md:px-8">
+        <div role="alert">
+          <Panel tone="error" className="flex gap-3">
+            <AlertCircleIcon className="mt-1 text-[1.25rem] text-error" />
+            <div className="min-w-0">
+              <p className="text-h3 text-fg-heading">{t("cancelledTitle")}</p>
+              {session.cancellationReason ? (
+                <>
+                  <p className="mt-2 text-label text-fg-heading">{t("cancelledReason")}</p>
+                  <p className="mt-1 text-body text-fg-body">
+                    <bdi>{session.cancellationReason}</bdi>
+                  </p>
+                </>
+              ) : null}
+              <p className="mt-2 text-body-sm text-fg-muted">{t("cancelledNote")}</p>
+            </div>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
+  if (!published) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 pt-5 md:px-8">
+        <div role="status">
+          <Panel tone="info" className="flex gap-3 text-body-sm text-fg-body">
+            <InfoIcon className="mt-0.5 text-[1.125rem] text-fg-muted" />
+            <p>
+              {t("unpublishedNote")} · {t("stateLabel")}: {t(`state.${session.state}`)}
+            </p>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
+  if (phase === "ended" && session.endsAt) {
+    // «انتهت هذه الجلسة يوم …» — legible from across the room, scrolling fast
+    // (`16` §5.3, ask 6). Full-width, quiet, and never over the status badge.
+    return (
+      <Panel tone="ended" className="rounded-none border-x-0 border-t-0 text-center text-body font-medium text-fg-body">
+        {t("ribbonEnded", { date: formatDate(session.endsAt, session.timeZone, locale) })}
+      </Panel>
+    );
+  }
+  return null;
+}
+
+/** The ended page's strip — materials and photos only (the lead's ruling on §25 Q8). */
+async function EndedStats({
+  materials,
+  photos,
+  labels,
+}: {
+  materials?: Promise<SlotSummary>;
+  photos?: Promise<SlotSummary>;
+  labels: { materials: string; photos: string };
+}) {
+  if (!materials && !photos) return null;
+  const [m, p] = await Promise.all([materials, photos]);
+  const stats = [
+    m && m.visible && m.count > 0 ? { href: "#materials", label: labels.materials, value: m.count } : null,
+    p && p.visible && p.count > 0 ? { href: "#photos", label: labels.photos, value: p.count } : null,
+  ].filter((s): s is { href: string; label: string; value: number } => s !== null);
+  if (stats.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {stats.map((s) => (
+        <a key={s.href} href={s.href} className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]">
+          <Stat label={s.label} value={formatNumber(s.value)} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function SectionSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <Skeleton variant="title" width="10rem" />
+      <Skeleton variant="text" count={3} className="mt-4" />
+    </div>
+  );
+}
+
+/** A signed link to the member's own issued certificate for this session, once its PDF has rendered. */
+async function myCertificateHref(locale: string, sessionId: string): Promise<string | null> {
+  const { certificates } = await listMyCertificates(locale);
+  const mine = certificates.find((c) => c.sessionId === sessionId && c.state === "issued" && c.pdfPath);
+  return mine?.pdfPath ? signCertificateUrl(locale, mine.pdfPath) : null;
 }

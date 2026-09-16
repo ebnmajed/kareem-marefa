@@ -70,6 +70,44 @@ async function namesFor(
 }
 
 /**
+ * The member-tier profile of each presenter, for the event page (`16` §6.3).
+ *
+ * `members_member_view` is the member tier (REQ-PRF-004) — every field here is
+ * one any member may already see. The company name is a second read by id
+ * rather than an embed: PostgREST cannot follow a foreign key through a view.
+ */
+async function presenterProfiles(
+  supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
+  memberIds: string[],
+): Promise<Map<string, EventPresenter>> {
+  if (memberIds.length === 0) return new Map();
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, bio, company_id").in("id", memberIds);
+  if (error) throw new Error(`members_member_view: ${error.message}`);
+  const rows = (data ?? []) as { id: string; display_name: string | null; job_title: string | null; bio: string | null; company_id: string | null }[];
+
+  const companyIds = [...new Set(rows.map((r) => r.company_id).filter((v): v is string => v !== null))];
+  const companies = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: found, error: cErr } = await supabase.from("companies").select("id, name").in("id", companyIds);
+    if (cErr) throw new Error(`companies: ${cErr.message}`);
+    for (const c of found ?? []) companies.set(c.id as string, c.name as string);
+  }
+
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      {
+        memberId: r.id,
+        displayName: r.display_name,
+        jobTitle: r.job_title,
+        companyName: r.company_id ? (companies.get(r.company_id) ?? null) : null,
+        bio: r.bio,
+      },
+    ]),
+  );
+}
+
+/**
  * Every session an admin manages (SCR-042).
  *
  * Admin only, decided here: a moderator is `is_staff()` and `sessions_read`
@@ -364,6 +402,28 @@ export interface EventVenue {
   oneOff: boolean;
 }
 
+/**
+ * A presenter as the event page's «المُقدِّمون» section draws them (`16` §6.3).
+ *
+ * ★ No avatar URL. `members.avatar_url` is the Google hotlink DEC-099 retires,
+ * so it is not selected at all and the card draws initials — the permanent
+ * fallback — until the platform-stored avatar exists.
+ */
+export interface EventPresenter {
+  memberId: string;
+  displayName: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  /** As the member wrote it (REQ-PRF-001). Never a computed history or a rating (§25 Q5). */
+  bio: string | null;
+}
+
+export interface EventSessionTag {
+  label: string;
+  /** The tag's identity in a filter URL — `/app/sessions?tag=…` (REQ-DSC-002). */
+  normalised: string;
+}
+
 export interface EventSession {
   id: string;
   title: string;
@@ -371,7 +431,11 @@ export interface EventSession {
   state: SessionState;
   level: SessionLevel;
   language: SessionLanguage;
+  categoryId: string | null;
   categoryName: string | null;
+  /** The hero's «60 دقيقة» chip. The end time stays authoritative (OQ-001). */
+  durationMinutes: number | null;
+  tags: EventSessionTag[];
   startsAt: string | null;
   endsAt: string | null;
   timeZone: string;
@@ -380,7 +444,7 @@ export interface EventSession {
   rsvpDeadlineAt: string | null;
   cancellationCutoffAt: string | null;
   cancellationReason: string | null;
-  presenters: { memberId: string; displayName: string | null }[];
+  presenters: EventPresenter[];
   /** The viewer presents this session, so SCR-016 is offered (REQ-CHK-014). */
   viewerIsPresenter: boolean;
   viewerIsStaff: boolean;
@@ -425,7 +489,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, abstract, state, level, language, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -449,14 +513,20 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   // check-in. In parallel with the presenters, and once — the alternative was
   // four slots each re-reading the RSVP on the product's most important page.
   // RLS scopes both to the viewer, so neither can return anyone else's row.
-  const [presentersRes, mineRes, checkInRes] = await Promise.all([
+  const [presentersRes, mineRes, checkInRes, tagsRes] = await Promise.all([
     supabase.from("session_presenters").select("member_id, accepted").eq("session_id", id).eq("accepted", true),
     supabase.from("rsvps").select("status").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
     supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("session_tags").select("tags(label, normalised)").eq("session_id", id),
   ]);
   const { data: presenters, error: pErr } = presentersRes;
   if (pErr) throw new Error(`session_presenters: ${pErr.message}`);
-  const names = await namesFor(supabase, (presenters ?? []).map((p) => p.member_id));
+  if (tagsRes.error) throw new Error(`session_tags: ${tagsRes.error.message}`);
+  const profiles = await presenterProfiles(supabase, (presenters ?? []).map((p) => p.member_id));
+  const tags = (tagsRes.data ?? [])
+    .map((r) => (r as unknown as { tags: EventSessionTag | null }).tags)
+    .filter((t): t is EventSessionTag => t !== null)
+    .sort((a, b) => a.label.localeCompare(b.label, "ar"));
 
   const viewerIsPresenter = (presenters ?? []).some((p) => p.member_id === session.memberId);
   const viewerIsStaff = session.role === "admin" || session.role === "moderator";
@@ -482,7 +552,10 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     state: row.state as SessionState,
     level: row.level as SessionLevel,
     language: row.language as SessionLanguage,
+    categoryId: (row.category_id as string) ?? null,
     categoryName: (row.categories as { name: string } | null)?.name ?? null,
+    durationMinutes: (row.duration_minutes as number) ?? null,
+    tags,
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
     timeZone: (row.time_zone as string) ?? "Asia/Riyadh",
@@ -491,7 +564,9 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     rsvpDeadlineAt: (row.rsvp_deadline_at as string) ?? null,
     cancellationCutoffAt: (row.cancellation_cutoff_at as string) ?? null,
     cancellationReason: (row.cancellation_reason as string) ?? null,
-    presenters: (presenters ?? []).map((p) => ({ memberId: p.member_id, displayName: names.get(p.member_id) ?? null })),
+    presenters: (presenters ?? []).map(
+      (p) => profiles.get(p.member_id) ?? { memberId: p.member_id, displayName: null, jobTitle: null, companyName: null, bio: null },
+    ),
     viewerIsPresenter,
     viewerIsStaff,
     viewerRelation: relation,
