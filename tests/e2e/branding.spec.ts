@@ -136,11 +136,12 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   await headingField.fill("#ff5500");
 
   await main.getByRole("button", { name: "حفظ" }).click();
-  // The save's outcome is a toast (`ui/toast`) now, not an inline
-  // paragraph — its viewport is a shell-level sibling of `#main`, so this
-  // one assertion is deliberately unscoped (matching `wave7-content-me.
-  // spec.ts:134`'s own toast check).
-  await expect(page.getByText("تم حفظ هوية المؤسسة.")).toBeVisible();
+  // `ui/toast` (Radix) renders the outcome TWICE: the visible toast
+  // (portaled into the Viewport, no explicit role) and a visually-hidden
+  // `role="status"` announcer Radix adds for screen readers. Filtering on
+  // `role="status"` resolves to the announcer alone, rather than a strict-
+  // mode violation over two matches of the same text.
+  await expect(page.getByRole("status").filter({ hasText: "تم حفظ هوية المؤسسة." })).toBeVisible();
 
   const { rows } = await db.query<{ light_fg_heading: string; logo_asset_id: string | null }>(
     `select light_fg_heading, logo_asset_id from public.brand_kits where org_id = $1`,
@@ -181,8 +182,8 @@ test("resetting deletes the row — every consumer returns to the platform defau
   await page.locator("#main").getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();
   const resetDialog = page.getByRole("dialog");
   await resetDialog.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" }).click();
-  // The outcome is a toast, unscoped — same reasoning as the save above.
-  await expect(page.getByText("أُعيد ضبط هوية المؤسسة إلى الوضع الافتراضي.")).toBeVisible();
+  // Same disambiguation as the save above.
+  await expect(page.getByRole("status").filter({ hasText: "أُعيد ضبط هوية المؤسسة إلى الوضع الافتراضي." })).toBeVisible();
 
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows).toEqual([]);

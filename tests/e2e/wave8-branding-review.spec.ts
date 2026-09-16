@@ -33,7 +33,13 @@ let orgId = "";
 let adminEmail = "";
 const userIds: string[] = [];
 
-test.beforeAll(async () => {
+test.beforeAll(async ({}, testInfo) => {
+  // Every case below skips itself on desktop (the 390 px review runs on
+  // the phone project only) — so desktop's own `beforeAll` would create an
+  // org and a user that not one test ever uses. Skipping setup here too
+  // means `afterAll` has nothing to tear down on that project.
+  if (testInfo.project.name !== "phone") return;
+
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
@@ -41,8 +47,10 @@ test.beforeAll(async () => {
   const domain = `w8-branding-${tag}.example`;
   adminEmail = `boss@${domain}`;
   const { rows } = await db.query<{ id: string }>(
+    // `certificate_prefix` is `orgs_certificate_prefix_check` — letters
+    // only, `^[A-Z]{2,5}$` (`0004`) — `'B8'` fails it outright.
     `insert into public.orgs (name, slug, certificate_prefix, created_by, first_admin_email)
-     values ('مؤسسة الهوية الثانية', $1, 'B8', gen_random_uuid(), $2) returning id`,
+     values ('مؤسسة الهوية الثانية', $1, 'WB', gen_random_uuid(), $2) returning id`,
     [`w8-branding-${tag}`, adminEmail],
   );
   orgId = rows[0].id;
@@ -59,6 +67,9 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // Guards the desktop project, whose `beforeAll` returned before `db` was
+  // ever assigned.
+  if (!db) return;
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
   await db.end();
@@ -151,9 +162,14 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   // gradient swatch visibly shifts without touching anything else.
   await main.getByLabel("خلفية التدرّج", { exact: true }).fill("#3388ff");
   await main.getByRole("button", { name: "حفظ" }).click();
-  // The outcome is a toast — its viewport is a shell-level sibling of
-  // `#main`, so this one assertion is deliberately unscoped.
-  await expect(page.getByText("تم حفظ هوية المؤسسة.")).toBeVisible();
+  // `ui/toast` (Radix) renders the same text TWICE: once in the visible
+  // toast (portaled into the Viewport) and once in a visually-hidden
+  // `role="status"` announcer Radix adds for screen readers, prefixed
+  // "Notification" by Radix itself — neither lives in `#main`. Filtering
+  // on `role="status"` picks the announcer alone (the visible toast has no
+  // explicit role), so the assertion resolves to exactly one element
+  // instead of "strict mode violation: 2 elements".
+  await expect(page.getByRole("status").filter({ hasText: "تم حفظ هوية المؤسسة." })).toBeVisible();
 
   const { rows } = await db.query<{ brand_kit: { light: { canvasRaise: string } } }>(`select public.brand_kit($1) as brand_kit`, [orgId]);
   expect(rows[0].brand_kit.light.canvasRaise).toBe("#3388ff");
