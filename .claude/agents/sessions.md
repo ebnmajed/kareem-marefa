@@ -92,7 +92,8 @@ contracts 1 and 2 as soon as `checkin` publishes them — they are small and unb
 - `supabase/proposed/sessions/**`
 - `tests/e2e/{sessions-propose,sessions-public-card,sessions-screens,forms-propose,proposal-materials,browse,timeline,event-page,event-rate,leaderboards,scoring-screens,scoring-company-points}.spec.ts`,
   new `tests/e2e/wave7-sessions-*.spec.ts`, `tests/components/{sessions,browse,search}/**`, new
-  `tests/components/{rate,members,leaderboards}/**`,
+  `tests/components/{rate,members,leaderboards}/**`, ★ `tests/components/event/star-rating.test.tsx` (sync 2 — it tests only
+  your transferred `star-rating.tsx`),
   `tests/components/ui/{field,input,textarea,select,checkbox,radio-group,switch,form-summary}.test.tsx`,
   `tests/unit/{form-state,sessions,search}*`, `tests/rls/{sessions,search,bookmarks}*.test.ts`
 - `docs/plan/notes/sessions.md`
