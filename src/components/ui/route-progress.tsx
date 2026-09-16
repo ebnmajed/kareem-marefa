@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLinkStatus } from "next/link";
 import type { RouteProgressProps } from "@/components/ui";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 
 // Layer 1 of the loading model — `16` §7.1.1, REQ-UIX-006.
 //
@@ -50,6 +51,8 @@ export function pendingLinkCount(): number {
 /** Inside `ui/link` only. It must be a descendant of the link it reports on. */
 export function LinkPendingReporter({ quiet = false }: { quiet?: boolean }) {
   const { pending } = useLinkStatus();
+  // A navigation is a transition too, and loses its retry the same way (`DEC-135`).
+  usePendingNudge(pending);
 
   useEffect(() => {
     if (!pending) return;

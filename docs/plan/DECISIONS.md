@@ -2759,3 +2759,30 @@ A route counts as done only when (1) its `page.tsx` **reaches `src/components/ui
   4. A route that must return a real 404 status — a public one a crawler reads — keeps it the way `/s/[id]` and `/verify` do: before any Suspense boundary, or at the edge under `DEC-038`'s unconfigured gate. None under `/app` needs it.
 - **Supersedes:** the "real 404" wording in the admin, moderation and proposal-queue specs written in waves 1–3.
 - **Documents changed:** `src/app/[locale]/app/not-found.tsx`, `scripts/route-coverage-allowlist.json`, `STATUS.md`
+
+---
+
+## DEC-135 — A transition that re-renders the event page could hang forever: React 19.2 loses a ping, `ae7624e` exposed it, and every pending control now nudges
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from wave 6's real-build e2e run and a bisect
+- **What the run showed.** On a production build, on a quiet machine: after «احجز مقعدك» the RSVP is in the database and the Server Action's whole response has arrived (303, `text/x-component`, ~192 KB). Yet in about **one press in three** the page never commits. The button stays busy past 80 s, the main thread is idle, no DOM mutation happens, and there is no further request and no console error. **Any later React update commits it at once** — one character typed in the composer. The same shape showed up as content's slow post keeping «نشر» busy, and as a deleted comment's tombstone that never appeared after `router.refresh()`.
+- **Bisect** (8 presses per build, `tests/e2e`-style probe in the verification worktree): `73b0f3e`, `7593967`, `dd10fd7` and `496c937` are clean, 8/8 at ~105 ms. **`ae7624e`** (the event page on the system) sticks 3/8; `c4e7642` 5/8; HEAD 1/3, 5/8 and 3/6. None of these patches removed it: every `Suspense` → a Fragment; `redirect()` → `refresh()`; a plain button (no `useFormStatus`); unbound actions with hidden inputs; `ui/link` without its pending reporter; the calendar menu → plain text.
+- **Cause, read from an instrumented `react-dom`** (`next/dist/compiled`, React 19.2.4, logging `handleThrow`, `attachPingListener` and `pingSuspendedRoot`):
+  1. The transition render suspends `<article>` on a Flight chunk still `pending`.
+  2. The render yields, the row is parsed, and the chunk becomes `resolved_model`.
+  3. React resumes. `isThenableResolved` counts only `fulfilled`/`rejected`, so it unwinds and calls `attachPingListener`.
+  4. Flight's `then()` initialises the chunk and **pings synchronously, inside the render**.
+  5. The root is already `RootSuspendedWithDelay`, so `pingSuspendedRoot` neither restarts the render nor records the ping on it.
+  6. `markRootSuspended` then clears `root.pingedLanes`, and nothing is scheduled.
+
+  Both stuck presses end on exactly that attach→ping; the clean one has none. `markRootUpdated` clears `suspendedLanes` on any update — hence the typed character.
+  - `ae7624e` did not add a bug. It turned the page's children into async server components, ~95 lazy rows in every action or refresh payload, and each is a chance for the race.
+- **Decision.**
+  1. ★ **`src/components/ui/pending-nudge.ts` — `usePendingNudge(pending)`.** While pending, it re-renders its own component every 300 ms, which un-suspends the root and lets the lost retry run. Measured with a 750 ms tick: **16 of 16 presses committed**, the would-be hangs at the first tick. A transition that commits normally never sees a tick.
+  2. **`ui/submit-button` and `ui/link`'s pending reporter call it** — every form action and every link navigation on the system.
+  3. **Every other transition that waits on server content calls it**: `content`'s comment composer and items (their `router.refresh()` moves into a tracked transition) and the materials and photo uploaders; `sessions`' filter sheet. Each track does its own files.
+  4. **Not a restructure of the event page.** Making ~95 async server components synchronous would reverse the slot contract (`DEC-092`, `DEC-103`) across three tracks, and it only lowers the odds.
+  5. **Not a Next/React upgrade inside a wave.** Whether a newer React keeps the ping is unverified. It is the owner's call, with the lockfile rule.
+- **Remove when** the bundled React records a synchronous render-phase ping on a `RootSuspendedWithDelay` root. The e2e reserve test and the discussion review are the proof; delete the file and its callers together.
+- **Supersedes:** `content`'s `setTimeout(…, 0)` (`44485b8`) and `afterPaint` (`4582b17`) explanations of the stuck «نشر». Both treated a symptom of this.
+- **Documents changed:** `src/components/ui/{pending-nudge.ts,submit-button.tsx,route-progress.tsx}`, `tests/components/ui/pending-nudge.test.tsx`, `STATUS.md`
