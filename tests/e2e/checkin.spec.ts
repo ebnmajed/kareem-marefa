@@ -212,3 +212,39 @@ test("the RsvpPanel slot renders inside the real event page and reserves a seat,
   ]);
   expect(rows[0].status).toBe("confirmed");
 });
+
+// ★ DEC-141/REQ-CHK-015 — the manual switch, last in the file: closes and
+// reopens `sessionId`'s check-in (the same session tests 1–2 already used),
+// which every earlier test in this file has already finished asserting
+// against by the time this runs (serial mode). Captures named for the
+// lead's sync build: wave7-checkin-host-{open,closed}.png — phone PROJECT
+// only, same reasoning as `admin-attendance.spec.ts`'s own capture guard.
+test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px", async ({ context, page }) => {
+  const isPhone = test.info().project.name === "phone";
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(context, staffEmail, true);
+  await page.goto(`/ar/app/sessions/${sessionId}/host`);
+
+  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-host-open.png", fullPage: true });
+
+  await page.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
+  await expect(page).toHaveURL(/\?switch=closed$/);
+  await expect(page.getByText("تم إغلاق تسجيل الحضور")).toBeVisible();
+  await expect(page.getByText("تسجيل الحضور مغلق الآن")).toBeVisible();
+  // DEC-115: closing revokes nothing already recorded — the hint says so,
+  // and the code above (still valid the whole time — 0084's own comment:
+  // the switch never gates issuance) still shows, unrevoked.
+  await expect(page.getByText("لن يُقبل أي رمز جديد")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-host-closed.png", fullPage: true });
+
+  const { rows: closedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
+  expect(closedRows[0].check_in_open).toBe(false);
+
+  // Reopen it, leaving the session as every earlier test in this file found it.
+  await page.getByRole("button", { name: "افتح تسجيل الحضور" }).click();
+  await expect(page).toHaveURL(/\?switch=opened$/);
+  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  const { rows: reopenedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
+  expect(reopenedRows[0].check_in_open).toBe(true);
+});

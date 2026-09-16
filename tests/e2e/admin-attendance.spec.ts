@@ -278,3 +278,69 @@ test("SCR-044 at 390 px RTL: the report reads down the page, never sideways, wit
   await page.screenshot({ path: `.qa-shots/rtl/scr-044-attendance-390-rtl-${test.info().project.name}.png`, fullPage: true });
 });
 
+// ★ REQ-CHK-017, C3 — last in the file (not fetch order — Playwright's
+// serial mode runs it after everything above): removes `attendeeMemberId`'s
+// still-active code check-in from `beforeAll`, so no earlier test's
+// assertions (all already run by this point) depend on it staying checked
+// in. Proves the whole reversal end to end, through the RPC, not a mock —
+// the SQL (0087) already has its own RLS coverage for the exceptions;
+// this is the one thing only a real build can show: the confirmation
+// dialog actually gates the submit (REQ-UIX-013), and the report reflects
+// the removal afterward.
+test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and the report shows it removed", async ({ context, page }) => {
+  // 390 × 844, unconditionally — this test's own assertions don't depend on
+  // viewport size, so there's no cost to shaping it for the capture. The
+  // captures themselves are taken only on the phone PROJECT (matching
+  // SCR-044's own reasoning above: a desktop context at 390 px still
+  // carries a classic scrollbar a real phone doesn't), named for the
+  // lead's sync build: wave7-checkin-attendance-{populated,remove-dialog,removed}.png.
+  await page.setViewportSize(PHONE);
+  const isPhone = test.info().project.name === "phone";
+  await signIn(context, adminEmail);
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
+  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-populated.png", fullPage: true });
+
+  const removeSection = page.locator("section", { has: page.getByRole("heading", { name: "إلغاء تسجيل حضور" }) });
+  await removeSection.getByLabel("العضو المطلوب إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
+  await removeSection.getByLabel("سبب الإلغاء").fill("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
+
+  // The submit button OPENS the confirmation dialog (REQ-UIX-013) — it must
+  // not submit on its own.
+  await removeSection.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
+  const dialog = page.getByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
+  await expect(dialog).toBeVisible();
+  // Names both the member AND the session (the lead's own restated
+  // constraint) — not just "this check-in", which a staff member managing
+  // several sessions could too easily confuse.
+  await expect(dialog.getByText("حاضر مسجَّل")).toBeVisible();
+  await expect(dialog.getByText("جلسة قيد الحضور")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-remove-dialog.png", fullPage: true });
+
+  await dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
+  await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
+
+  // The report's own list now shows the removal, with the reason — not a
+  // bare "no-show" indistinguishable from never having checked in.
+  const row = page.getByRole("row", { name: /حاضر مسجَّل/ });
+  await expect(row.getByText("أُلغي تسجيل حضوره")).toBeVisible();
+  await expect(row.getByText("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: ".qa-shots/rtl/wave7-checkin-attendance-removed.png", fullPage: true });
+
+  // The reversal itself, in the database — the RPC's own work, not this
+  // page's: the check-in is soft-deleted, its points award (if any) is
+  // compensated, and the removal is audited.
+  const { rows: ciRows } = await db.query<{ removed_at: string | null; removal_reason: string | null }>(
+    `select removed_at, removal_reason from public.check_ins where session_id = $1 and member_id = $2 and removed_at is not null`,
+    [sessionId, attendeeMemberId],
+  );
+  expect(ciRows).toHaveLength(1);
+  expect(ciRows[0].removal_reason).toBe("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
+
+  const audit = await db.query(`select action from public.audit_log where action = 'check_in.removed' and org_id = $1`, [orgId]);
+  expect(audit.rowCount).toBe(1);
+
+  // Removed, not deleted: they are offered again as a manual-mark
+  // candidate, the same "not checked in" state a fresh member would be in.
+  await expect(page.getByLabel("العضو", { exact: true }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
+});
+

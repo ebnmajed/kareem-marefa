@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { markCheckedInManually, manualCheckInInput } from "@/lib/dal/checkin";
+import { markCheckedInManually, manualCheckInInput, removeCheckIn, removeCheckInInput } from "@/lib/dal/checkin";
 import type { Locale } from "@/i18n/routing";
 
 // SCR-044's manual-mark form (REQ-CHK-008). `mark_checked_in_manually`
@@ -25,6 +25,27 @@ export async function markManually(locale: Locale, sessionId: string, _prev: Man
 
   const result = await markCheckedInManually(locale, sessionId, parsed.data.memberId, parsed.data.reason);
   if (!result.ok) return { error: result.error, done: false, ...typed };
+
+  revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
+  return { error: null, done: true };
+}
+
+// REQ-CHK-017, C3. `remove_check_in()` (0087) is the whole gate — admin-only,
+// reason mandatory, idempotent against a second attempt on the same
+// check-in. The confirmation dialog on the client (REQ-UIX-013) is what
+// makes this safe to submit without a second server-side confirm step; the
+// RPC itself has no notion of a "confirmed" flag to check.
+export type RemoveState = { error: string | null; done: boolean };
+
+export async function removeCheckInAction(locale: Locale, sessionId: string, _prev: RemoveState, formData: FormData): Promise<RemoveState> {
+  const parsed = removeCheckInInput.safeParse({ memberId: formData.get("memberId")?.toString(), reason: formData.get("reason")?.toString() ?? "" });
+  if (!parsed.success) {
+    const reason = formData.get("reason")?.toString() ?? "";
+    return { error: reason.trim().length === 0 ? "reason_required" : "unknown", done: false };
+  }
+
+  const result = await removeCheckIn(locale, sessionId, parsed.data.memberId, parsed.data.reason);
+  if (!result.ok) return { error: result.error, done: false };
 
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
   return { error: null, done: true };

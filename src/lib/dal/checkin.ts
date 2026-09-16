@@ -288,15 +288,29 @@ export interface AttendanceRow {
   memberId: string;
   displayName: string | null;
   rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
+  /** True only for an ACTIVE check-in (`removed_at is null`) — a removed
+   *  one reads as `false` here, same as never having checked in (REQ-CHK-017:
+   *  a removal reverses `no_show` symmetrically, so this row's own
+   *  `isNoShow` follows the same rule the RPC itself applies). */
   checkedIn: boolean;
   arrivedAt: string | null;
   method: "code" | "manual" | null;
-  /** Checked in with no confirmed RSVP at all (REQ-CHK-010's walk-in). */
+  /** Checked in with no confirmed RSVP at all (REQ-CHK-010's walk-in). Set
+   *  from the shape of the row (no matching RSVP), independent of removal —
+   *  a removed walk-in is still shown as one, just no longer `checkedIn`. */
   isWalkIn: boolean;
-  /** Confirmed RSVP, no check-in (`evaluate_no_shows`' own definition,
+  /** Confirmed RSVP, no ACTIVE check-in (`evaluate_no_shows`' own definition,
    *  `worker/src/tasks/evaluate_no_shows.ts` — computed the same way here so
    *  the report and the points job never disagree on what a no-show is). */
   isNoShow: boolean;
+  /** REQ-CHK-017's own report redesign, C3: the row's most recent check-in
+   *  was removed and never re-added. `checkedIn` is `false` in this case —
+   *  these three fields are what explain why, rather than reading like the
+   *  member simply never showed up. */
+  removed: boolean;
+  removedAt: string | null;
+  removalReason: string | null;
+  removedByName: string | null;
 }
 
 export interface AttendanceReport {
@@ -364,16 +378,25 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   const [sessionRes, rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state").eq("id", sessionId).maybeSingle(),
     supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
-    // `!check_ins_member_id_fkey`: `check_ins` has TWO foreign keys into
-    // `members` (`member_id` and `marked_by`, for a manual mark's actor) —
-    // an unqualified `members(...)` embed is ambiguous and PostgREST
-    // refuses it outright, a real bug this had until an e2e run against a
-    // real build actually exercised the query for the first time.
-    // ★ Filtered to active rows for now — REQ-CHK-017's report redesign
-    // (showing a removed row too, with its reason) is C3's, not this fix's;
-    // this stopgap stops a removed member from still reading as "checked
-    // in" here, which is the actual bug this task is about.
-    supabase.from("check_ins").select("member_id, arrived_at, method, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null),
+    // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
+    // `check_ins` has THREE foreign keys into `members` now (`member_id`,
+    // `marked_by`, `removed_by`) — an unqualified `members(...)` embed is
+    // ambiguous and PostgREST refuses it outright, a real bug this had
+    // until an e2e run against a real build actually exercised the query
+    // for the first time (`checkin.md`).
+    //
+    // ★ REQ-CHK-017/C3: no longer filtered to active rows — a removed
+    // check-in is still fetched, so the report can show it with its own
+    // reason instead of reading exactly like the member never showed up.
+    // `checkInByMember` below picks the ACTIVE row for a member when one
+    // exists, and only falls back to their most-recently-removed row when
+    // it doesn't (the rare re-added-after-removal case keeps the active row
+    // as the one truth; the removal is still on `check_ins`/`audit_log` for
+    // anyone who needs the history).
+    supabase
+      .from("check_ins")
+      .select("member_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name), remover:members!check_ins_removed_by_fkey(display_name)")
+      .eq("session_id", sessionId),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -383,37 +406,62 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
   const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
 
-  const checkIns = checkInsRes.data ?? [];
-  const checkInByMember = new Map(checkIns.map((c) => [c.member_id, c]));
+  type CheckInJoinRow = NonNullable<typeof checkInsRes.data>[number] & { member_id: string };
+  const allCheckIns = (checkInsRes.data ?? []) as unknown as CheckInJoinRow[];
+  const checkInByMember = new Map<string, CheckInJoinRow>();
+  for (const c of allCheckIns) {
+    const existing = checkInByMember.get(c.member_id);
+    if (!existing) {
+      checkInByMember.set(c.member_id, c);
+      continue;
+    }
+    const existingActive = !existing.removed_at;
+    const currentActive = !c.removed_at;
+    // An active row always wins; between two removed rows, the more
+    // recently removed one is the one worth showing.
+    if (currentActive && !existingActive) checkInByMember.set(c.member_id, c);
+    else if (!currentActive && !existingActive && (c.removed_at as string) > (existing.removed_at as string)) checkInByMember.set(c.member_id, c);
+  }
+
   const rows: AttendanceRow[] = [];
   const seen = new Set<string>();
 
   for (const r of rsvpsRes.data ?? []) {
     seen.add(r.member_id);
     const ci = checkInByMember.get(r.member_id);
+    const removed = !!ci?.removed_at;
     const status = r.status as AttendanceRow["rsvpStatus"];
     rows.push({
       memberId: r.member_id,
       displayName: nameOf(r.members as MemberEmbed),
       rsvpStatus: status,
-      checkedIn: !!ci,
+      checkedIn: !!ci && !removed,
       arrivedAt: ci?.arrived_at ?? null,
       method: (ci?.method as AttendanceRow["method"]) ?? null,
       isWalkIn: false,
-      isNoShow: status === "confirmed" && !ci,
+      isNoShow: status === "confirmed" && (!ci || removed),
+      removed,
+      removedAt: ci?.removed_at ?? null,
+      removalReason: ci?.removal_reason ?? null,
+      removedByName: removed ? nameOf(ci?.remover as MemberEmbed) : null,
     });
   }
-  for (const c of checkIns) {
-    if (seen.has(c.member_id)) continue;
+  for (const [memberId, c] of checkInByMember) {
+    if (seen.has(memberId)) continue;
+    const removed = !!c.removed_at;
     rows.push({
-      memberId: c.member_id,
+      memberId,
       displayName: nameOf(c.members as MemberEmbed),
       rsvpStatus: null,
-      checkedIn: true,
+      checkedIn: !removed,
       arrivedAt: c.arrived_at,
       method: c.method as AttendanceRow["method"],
       isWalkIn: true,
       isNoShow: false,
+      removed,
+      removedAt: c.removed_at,
+      removalReason: c.removal_reason,
+      removedByName: removed ? nameOf(c.remover as MemberEmbed) : null,
     });
   }
   rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
@@ -430,10 +478,37 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     counts: {
       reserved: rsvpsRes.data?.length ?? 0,
       confirmed,
-      checkedIn: checkIns.length,
-      walkedIn: rows.filter((r) => r.isWalkIn).length,
+      checkedIn: rows.filter((r) => r.checkedIn).length,
+      walkedIn: rows.filter((r) => r.isWalkIn && r.checkedIn).length,
       noShowed: rows.filter((r) => r.isNoShow).length,
     },
     attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
   };
+}
+
+export const removeCheckInInput = z.object({ memberId: z.uuid(), reason: z.string().trim().min(1).max(300) });
+
+// `not_a_member`/`stale_claims`/`not_an_admin` kept as three separate names,
+// verbatim from `assert_active_member()`/`assert_fresh_admin()` (0005) — the
+// same convention `admin-members.ts`'s own known-error unions already use,
+// rather than collapsing them into one bucket the RPC itself doesn't have.
+export type RemoveCheckInError = "not_a_member" | "stale_claims" | "not_an_admin" | "reason_required" | "not_found" | "unknown";
+
+/**
+ * REQ-CHK-017, C3. `remove_check_in()` (0087) is admin-only, does the whole
+ * reversal (points, certificate, no-show symmetry) inline in one
+ * transaction, and is idempotent against a second attempt on the same
+ * check-in (`not_found` — already removed). This wrapper adds nothing;
+ * every consequence is the RPC's, none re-derived here (invariant 9:
+ * `points_ledger` is append-only with `service_role` revoked, so a client
+ * could never do this write itself even if it wanted to).
+ */
+export async function removeCheckIn(locale: string, sessionId: string, memberId: string, reason: string): Promise<{ ok: true } | { ok: false; error: RemoveCheckInError }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("remove_check_in", { p_session: sessionId, p_member: memberId, p_reason: reason });
+  if (error) {
+    const known: RemoveCheckInError[] = ["not_a_member", "stale_claims", "not_an_admin", "reason_required", "not_found"];
+    return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
+  }
+  return { ok: true };
 }

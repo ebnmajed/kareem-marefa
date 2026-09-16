@@ -75,7 +75,14 @@ export default async function CheckInPage({
             </div>
           ) : null}
 
-          <form action={submitCheckInForm.bind(null, locale, id)} className="mt-8 max-w-sm space-y-4">
+          {/* `noValidate`: renders `errorKey`'s own Panel below (the app's
+              Arabic error, post-submit) — content's bug class (7f4809f):
+              without it, a native-blocking field would silently stop the
+              submit and neither this banner nor the RPC's own refusal
+              would ever run. No `required` field exists on this form
+              today (`CodeInput` has none), but the rule is "renders an
+              app-side error", not "has a blocking field right now". */}
+          <form action={submitCheckInForm.bind(null, locale, id)} noValidate className="mt-8 max-w-sm space-y-4">
             <div>
               <label id="code-label" htmlFor="code-0" className="text-label text-fg-heading">
                 {t("codeLabel")}

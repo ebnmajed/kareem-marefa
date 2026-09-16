@@ -21,6 +21,12 @@
 // `count`/`head` support, and `getCheckInScreenData()`'s `relation` only
 // branches on `checkedIn` once phase is `ended`, where check-in is refused
 // either way) — the fix is the same one-clause change, mechanically.
+//
+// ★ REQ-CHK-017/C3 (this wave): `getAttendanceReport()`'s own read went
+// further than the stopgap above — it no longer filters removed rows out of
+// its query at all, and shows one with its reason and remover instead of
+// reading exactly like "never checked in". Those cases are below, in the
+// same describe block the stopgap's own cases live in.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { memorySupabase } from "./sessions-memory-supabase";
 
@@ -45,7 +51,19 @@ vi.mock("@/lib/dal/session", () => ({
 const { getAttendanceReport, listUncheckedConfirmedRsvps, listUncheckedForAdminManualMark } = await import("@/lib/dal/checkin");
 const { getRsvpPanelData } = await import("@/lib/dal/rsvp");
 
-const removed = { id: "ci-removed", org_id: ORG, session_id: SESSION, member_id: ME, removed_at: "2026-09-16T10:00:00Z", removed_by: ADMIN, arrived_at: "2026-09-15T10:00:00Z", method: "code", members: { display_name: "يمان رضا" } };
+const removed = {
+  id: "ci-removed",
+  org_id: ORG,
+  session_id: SESSION,
+  member_id: ME,
+  removed_at: "2026-09-16T10:00:00Z",
+  removed_by: ADMIN,
+  removal_reason: "خطأ في تسجيل الحضور",
+  arrived_at: "2026-09-15T10:00:00Z",
+  method: "code",
+  members: { display_name: "يمان رضا" },
+  remover: { display_name: "مشرف الاختبار" },
+};
 const active = { id: "ci-active", org_id: ORG, session_id: SESSION, member_id: ME, removed_at: null, arrived_at: "2026-09-16T11:00:00Z", method: "manual", members: { display_name: "يمان رضا" } };
 
 function worldFor(checkIns: Record<string, unknown>[]) {
@@ -73,6 +91,31 @@ describe("a removed check-in is not attendance — SCR-044's report", () => {
     const row = report?.rows.find((r) => r.memberId === ME);
     expect(row?.checkedIn).toBe(true);
     expect(row?.method).toBe("manual");
+    // ★ REQ-CHK-017/C3: the ACTIVE row wins for display, but that does not
+    // erase the removal that happened first — this member's row shows
+    // "currently checked in", not "was once removed".
+    expect(row?.removed).toBe(false);
+  });
+
+  // ★ REQ-CHK-017/C3 — the report's own redesign: a removed-and-never-
+  // re-added row is shown WITH its reason and who removed it, not silently
+  // folded into "never checked in" (the earlier stopgap's own behaviour).
+  it("★ shows the removal itself — reason and remover, when it was never re-added", async () => {
+    const report = await getAttendanceReport("ar", SESSION);
+    const row = report?.rows.find((r) => r.memberId === ME);
+    expect(row?.removed).toBe(true);
+    expect(row?.removedAt).toBe(removed.removed_at);
+    expect(row?.removalReason).toBe(removed.removal_reason);
+    expect(row?.removedByName).toBe("مشرف الاختبار");
+  });
+
+  it("a re-added member's row carries no removal fields — the active row is the whole truth shown", async () => {
+    worldFor([removed, active]);
+    const report = await getAttendanceReport("ar", SESSION);
+    const row = report?.rows.find((r) => r.memberId === ME);
+    expect(row?.removedAt).toBeNull();
+    expect(row?.removalReason).toBeNull();
+    expect(row?.removedByName).toBeNull();
   });
 });
 

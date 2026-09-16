@@ -163,10 +163,15 @@ export default async function HostPage({
             </div>
           ) : null}
 
+          {/* `noValidate` below: renders `manualErrorKey`'s own Panel above
+              (the app's Arabic error) — content's bug class (7f4809f):
+              without it, the Select/Input's own `required` blocks the
+              submit silently and neither the RPC's refusal nor this banner
+              is ever reached. */}
           {candidates.length === 0 ? (
             <p className="mt-3 text-body text-fg-muted">{t("host.manualNoCandidates")}</p>
           ) : (
-            <form action={markManuallyAction.bind(null, locale, id)} className="mt-4 space-y-4">
+            <form action={markManuallyAction.bind(null, locale, id)} noValidate className="mt-4 space-y-4">
               <Field id="memberId" label={t("host.manualMember")}>
                 <Select name="memberId" required defaultValue={submittedMemberId ?? ""}>
                   {candidates.map((c) => (

@@ -14,7 +14,7 @@ export function ManualMarkForm({
   action: (prev: ManualMarkState, formData: FormData) => Promise<ManualMarkState>;
   unchecked: UncheckedAttendee[];
 }) {
-  const t = useTranslations("admin.attendance");
+  const t = useTranslations("checkin.attendance");
   const [state, formAction, pending] = useActionState(action, emptyManualMarkState);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -28,7 +28,12 @@ export function ManualMarkForm({
   if (unchecked.length === 0) return <p className="mt-3 text-body-sm text-fg-muted">{t("empty")}</p>;
 
   return (
-    <form ref={formRef} action={formAction} className="mt-4 max-w-md space-y-4">
+    // `noValidate`: this form renders the app's own `error.*` banner below,
+    // so the browser's native validation must stay out of the way —
+    // content's own real-build finding (7f4809f): without it, the select's
+    // `required` blocks the submit silently and the RPC's own refusal, or
+    // this form's Arabic error, never has a chance to render.
+    <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
       <div>
         <label htmlFor="manual-member" className="text-label text-fg-heading">
           {t("memberLabel")}

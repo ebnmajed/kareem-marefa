@@ -65,7 +65,13 @@ export function ScheduleForm({
   const [custom, setCustom] = useState(initial.customVenueName !== "");
 
   return (
-    <form action={formAction} className="mt-8 max-w-2xl space-y-7">
+    // `noValidate`: renders `state.error` below (the app's own Arabic
+    // error), so the browser's native validation on the several `required`
+    // fields here must stay out of the way — content's own real-build
+    // finding (7f4809f): without it, a `required` field blocks the submit
+    // silently and neither the server action's error nor `scheduleInput`'s
+    // own refusal is ever reached.
+    <form action={formAction} noValidate className="mt-8 max-w-2xl space-y-7">
       {state.error ? (
         <p role="alert" className="rounded-field border border-edge-strong p-4 text-body-sm text-fg-heading">
           {t(state.error)}
