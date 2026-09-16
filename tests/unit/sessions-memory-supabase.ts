@@ -23,8 +23,14 @@ export function memorySupabase(tables: Record<string, Row[]>, rpcs: Record<strin
       is: (column: string, expected: unknown) => ((rows = rows.filter((r) => value(r, column) === expected)), query),
       // ★ Only the `is`/`eq` negation `admin-dashboard.ts`'s own
       // `.not("category_id", "is", null)` needs — PostgREST's `not()` takes
-      // an arbitrary operator, this stub only the two already in use.
-      not: (column: string, _operator: string, expected: unknown) => ((rows = rows.filter((r) => value(r, column) !== expected)), query),
+      // an arbitrary operator, this stub only the two already in use. Any other
+      // operator THROWS: a stub that quietly treated `not(col, "in", …)` as
+      // «not equal» would let a missing filter pass the very test meant to catch it.
+      not: (column: string, operator: string, expected: unknown) => {
+        if (operator !== "is" && operator !== "eq") throw new Error(`memorySupabase: not(${column}, "${operator}") is not supported`);
+        rows = rows.filter((r) => value(r, column) !== expected);
+        return query;
+      },
       order: () => query,
       limit: (n: number) => ((rows = rows.slice(0, n)), query),
       textSearch: () => query,
