@@ -144,6 +144,9 @@ export interface PageHeaderProps extends Styleable {
   eyebrow?: string;
   description?: string;
   breadcrumb?: { href: string; label: string }[];
+  /** The breadcrumb `<nav>`'s accessible name — `ui.pageHeader.breadcrumb`. A page carries
+   *  several nav landmarks (the header, the tab bar), so an unnamed one is ambiguous. */
+  breadcrumbLabel?: string;
   actions?: ReactNode;
   /** Rendered under the title — chips, status, meta. */
   meta?: ReactNode;
