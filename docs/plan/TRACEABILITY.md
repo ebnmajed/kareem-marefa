@@ -111,11 +111,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-001` | — | — | `SCR-007` `SCR-016` `SCR-064` | — | — | `STORY-CHK-001` | M2 |
 | `REQ-CHK-002` | `ENT-check_in_codes` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-rotate_check_in_code` | `MSG-reminder_` | `STORY-CHK-001` | M2 |
 | `REQ-CHK-003` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
-| `REQ-CHK-004` | `ENT-check_ins` | — | `SCR-014` `SCR-016` `SCR-044` | — | — | `STORY-CHK-002` | M2 |
+| `REQ-CHK-004` | `ENT-check_ins` | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-005` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-002` | M2 |
 | `REQ-CHK-006` | `ENT-check_in_attempts` `ENT-check_ins` | `POL-check_ins.rate_limit` `POL-check_ins.single_use` | `SCR-014` | — | — | `STORY-CHK-003` | M2 |
 | `REQ-CHK-007` | `ENT-check_in_codes` | — | `SCR-016` | `JOB-rotate_check_in_code` | — | `STORY-CHK-004` | M2 |
-| `REQ-CHK-008` | `ENT-check_ins` | — | `SCR-016` `SCR-044` | — | — | `STORY-CHK-004` | M2 |
+| `REQ-CHK-008` | `ENT-check_ins` | — | `SCR-016` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-009` | `ENT-certificates` `ENT-check_ins` `ENT-session_days` | `POL-issue_certificate.check_in` | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-issue_certificates` | `MSG-reminder_` | `STORY-CHK-005` | M2 |
 | `REQ-CHK-010` | — | — | `SCR-014` `SCR-016` `SCR-043` | — | `MSG-session_rescheduled` | `STORY-CHK-005` | M2 |
 | `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-005` | M2 |
@@ -123,8 +123,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-013` | `ENT-check_ins` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-CHK-006` | M2 |
 | `REQ-CHK-014` | — | — | `SCR-016` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +1 | — | — | `STORY-CHK-006` | M9 |
-| `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-006` | M9 |
-| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` | — | — | `STORY-CHK-007` | M9 |
+| `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-006` | M9 |
+| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` | `JOB-start_session` | — | `STORY-CHK-007` | M9 |
 
 ### CRT
 

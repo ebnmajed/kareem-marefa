@@ -33,8 +33,8 @@ always — authored in `messages/ar/` first, never translated from English (inva
    Unauthenticated; the Open Graph metadata; and **a real 404 status** for a missing session — `DEC-134`
    item 4 — so its `notFound()` stays before any Suspense boundary. Captured signed out.
 5. ★ **`/app/members/[id]`** (SCR-020), from `scoring` — the two-tier profile. **Tiering is a DAL
-   guarantee** (`A33`), not a rendering one: `getMemberProfile()` lives in `lib/dal/members.ts`, which is
-   `content`'s this wave — a change is a request. `ui/avatar` renders initials (avatar storage is not this
+   guarantee** (`A33`), not a rendering one: `lib/dal/members.ts` is **yours** from sync 1 (`DEC-141`) — add
+   `getMemberProfileForViewer()` there and never change what `/app/me` reads (`getMe`, `listCompanies`, `updateMyProfile`). `ui/avatar` renders initials (avatar storage is not this
    wave). Its strings move from `profile.json` into a new `members.json`, appended to
    `src/messages/index.ts` in the same commit.
 6. ★ **`/app/leaderboards`** (SCR-027, SCR-028), from `scoring` — members and سباق الشركات with both
@@ -84,7 +84,7 @@ contracts 1 and 2 as soon as `checkin` publishes them — they are small and unb
 - `src/components/{sessions,browse,search}/**`
 - ★ `src/components/event/{ratings,star-rating}.tsx` · ★ `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`
 - `src/lib/dal/{sessions,proposals,search,bookmarks}.ts` · `src/lib/form-state.ts` ·
-  ★ **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`
+  ★ `src/lib/dal/members.ts` (sync 1, `DEC-141`) · ★ **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`
 - your eight `ui/` files: `field` · `input` · `textarea` · `select` · `checkbox` · `radio-group` ·
   `switch` · `form-summary`
 - `src/messages/ar/{sessions,proposals,browse,search}.json`, ★ `{ratings,leaderboards}.json`, ★ a new
@@ -98,7 +98,7 @@ contracts 1 and 2 as soon as `checkin` publishes them — they are small and unb
 - `docs/plan/notes/sessions.md`
 
 ★ **Never, and each is a request:** `src/components/checkin/**`, `src/components/calendar/**`,
-`src/lib/dal/{rsvp,checkin,members,points}.ts`, `messages/*/{profile,scoring,rsvp,checkin}.json`, and
+`src/lib/dal/{rsvp,checkin,points}.ts`, `messages/*/{profile,scoring,rsvp,checkin}.json`, and
 `content`'s materials components.
 
 ## Definition of done, per route
@@ -151,7 +151,7 @@ fails if the patch is not installed.
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `splash.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
 | **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
 | **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
 | **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
@@ -172,13 +172,14 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 - **→ `sessions`:** `src/app/[locale]/app/sessions/[id]/rate/**`, `src/components/event/{ratings,star-rating}.tsx`,
   `messages/*/ratings.json` (from `event`); `src/app/[locale]/app/members/**`,
   `src/app/[locale]/app/leaderboards/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
-  `messages/*/leaderboards.json` (from `scoring`); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
+  `messages/*/leaderboards.json` (from `scoring`); ★ `src/lib/dal/members.ts` (from the lead — sync 1, `DEC-141`: the
+  tiered profile read is `sessions`', and `content`'s `/app/me` needs no change to it); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
   a new `messages/*/members.json`.
 - **→ `content`:** `src/app/[locale]/app/me/**`, including a new `me/layout.tsx` (from the lead,
   `notify`, `scoring`, `designer`, `platform`); `src/components/notifications/{notification-list,preference-matrix}.tsx`,
   `messages/*/{notifications,calendar}.json` (from `notify`); `src/components/scoring/{points-history-list,points-catalogue}.tsx`,
   `messages/*/scoring.json` (from `scoring`); `messages/*/certificates.json` (from `designer`);
-  `messages/*/privacy.json` (from `platform`); `src/lib/dal/members.ts`, `messages/*/profile.json`
+  `messages/*/privacy.json` (from `platform`); `messages/*/profile.json`
   (from the lead); **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts`.
 - `src/components/calendar/add-to-calendar.tsx` **returns** to `notify` — held by the lead.
 - ★ **"Add-only" means** a new exported function, or a new optional field on a DTO, behind
@@ -233,7 +234,7 @@ spec of an unspawned track.
 
 ### Lead-only, always
 
-`src/components/ui/index.ts` and the lead's fifteen `ui/` files · `src/app/globals.css` ·
+`src/components/ui/index.ts` and the lead's fourteen `ui/` files · `src/app/globals.css` ·
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
 `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·

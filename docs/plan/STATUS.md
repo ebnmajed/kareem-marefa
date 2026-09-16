@@ -128,7 +128,7 @@ with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 to
 |---|---|---|---|---|---|---|
 | L1 | lead | **task one** — the patch, the nudge deleted | `DEC-135`, `DEC-136` | — | the probe above | **closed** `7d50e64` |
 | L2 | lead | **`global-error` resolved by a test** — throw in `[locale]/layout.tsx` on a production build; if ours does not render, move it to `src/app/global-error.tsx` | `REQ-UIX-016`, `16` §7.4, `DEC-138` | — | ✅ worktree probe at `c9e67ee` (`$scratchpad/global-error-probe*/`, not a cited capture): **beside the locale layout Next rendered its English «This page couldn't load», no `lang`/`dir`; at `src/app/` ours renders on `/ar`, `/ar/sign-in`, `/en`** — opened by the lead | **closed** — moved to `src/app/global-error.tsx`; `route-coverage --kind=error` asserts the new path; `build`, `qa` 44/44, `visual` 0.000 % on the tree with the move |
-| L3 | lead | **`ui/splash`** — built to `16` §7.2 and measured; kept only if `/app`'s LCP holds | `REQ-UIX-006`, `REQ-NFR-008` | — | — | open |
+| L3 | lead | **`ui/splash`** — built to `16` §7.2 and measured; kept only if `/app`'s LCP holds | `REQ-UIX-006`, `REQ-NFR-008`, `DEC-142` | — | Lighthouse A → B → A in the worktree (35 runs): `/app` LCP 2862/2936 without, **3010** with; event page 3009/3010 without, **3167** with, FCP +450 ms | **closed — dropped** (`DEC-142`); the stub and `SplashProps` deleted |
 | L4 | lead | **`REQ-EVT-010` reconciled** with the shipped photo pipeline (processing, then visible) | `REQ-EVT-010`, `REQ-EVT-011`, `DEC-139` | — | — | **decided** (`DEC-139`): the requirement bends to the strip; the no-reload clause stays and is row T8 |
 | L5 | lead | **`DEC-135` reported upstream** with the instrumented-`react-dom` reasoning | `DEC-136`, `DEC-140` | — | — | **closed, no report filed** (`DEC-140`): React already fixed it — facebook/react#36134, in `react-dom@19.3.0` and vendored by `next@16.3.5`. The patch stays this wave; **the owner schedules the upgrade that retires it** |
 | L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017` | — | — | open |
@@ -165,6 +165,28 @@ admin routes, `app/platform/**`, `verify/**`, `legal/**`, the survey, multi-day 
 gradient posters and `canvasRaise` (`DEC-127`), the certificate library (`DEC-128`), `DEC-075`'s two-tab
 schedule and `0084`, objectives, tags, avatar storage, downloads, and `(marketing)/**`.
 
+### Sync 1 — 2026-09-16 — four plans approved, and what they found (`DEC-141`)
+
+All four teammates planned before editing: `checkin` `17e5772`, `sessions` `f146ff6` (+ `ce227a4`), `content`
+`ff3c6fc`, `console` `addf939` (+ `ee64527`, `893da43`). Each was read in full and answered with rulings; the
+decisions are `DEC-141`. What the plans found that was not in the brief:
+
+- ★ **`certificates.check_in_id` is `on delete restrict`** — a removal must soft-delete, and 12 migrations and
+  11 TypeScript files read `check_ins`. `checkin` writes the reader inventory before any SQL.
+- ★ **`schedule_session()`'s walk-in parameter at `default false` would have silently reset walk-ins** on every
+  reschedule — both `checkin` and `sessions` raised it; it is `default null` = unchanged.
+- **`mark_checked_in_manually()` never awarded points** (a live `REQ-CHK-008` gap) — fixed as it is re-created.
+- **A re-added member's revoked certificate is not re-issued** — `fan_out_certificates()` fires only on the edge
+  into `completed`; recorded for the certificate library (`DEC-128`), not built.
+- **`/s/[id]`'s missing card probably renders Next's English not-found** — no `not-found.tsx` covers `[locale]/s`;
+  `sessions` verifies and adds one without breaking the real 404.
+- **Hard-coded `/ar/` redirects** in three `/app/me` action files (`content`); **`proposal-materials:140` fails three
+  ways**, all spec-side (`sessions`); **`tasks.spec:143` is a wrong spec** (`content`).
+- **The account menu** links «حجوزاتي» and the profile both to `/app/me` — the lead's, after `content`'s tab strip.
+- `console`'s proposed `admin/designer` rail entry would have linked to a page that does not exist; withdrawn.
+- **`members.ts` moves to `sessions`** (one writer). **R1 and R5 landed** (`f9fa70e`); R2 (`ui/combobox` on a
+  member form) is `console`'s after the rail.
+
 ### Carried — diagnosed, each with an owner
 
 | Owner | Finding | From |
@@ -178,6 +200,9 @@ schedule and `0084`, objectives, tags, avatar storage, downloads, and `(marketin
 | `sessions` | ★ `proposal-materials.spec.ts:140` — `getByLabel("نوع المادة")` resolves to two elements, on `main` too | task one's gates |
 | `sessions` | the filter sheet's native date inputs show the browser's English `dd/mm/yyyy` mask | wave 6 row 5 |
 | lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
+| lead | the account menu links «حجوزاتي» and the profile both to `/app/me`; `notifications` and `privacy` have no entry — after `content`'s tab strip | sync 1 |
+| `0085`'s author | `ratings.edited_at` is written at millisecond precision — coarsen it with `submitted_at` (`16` §9.2a) | sync 1 (`sessions`) |
+| certificate library (`DEC-128`) | a member re-added after a removal does not get a new attendance certificate — the fan-out fires only on the edge into `completed` | sync 1 (`checkin`) |
 
 ### Order inside the wave
 

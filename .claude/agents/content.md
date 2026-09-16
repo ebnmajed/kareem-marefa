@@ -75,7 +75,9 @@ or the lead. Then build the layout and the hub first — every other route rende
 - ★ `src/app/[locale]/app/me/**`, including the new `me/layout.tsx`
 - ★ `src/components/notifications/{notification-list,preference-matrix}.tsx` ·
   ★ `src/components/scoring/{points-history-list,points-catalogue}.tsx` · new `src/components/me/**`
-- ★ `src/lib/dal/members.ts` · ★ **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts`
+- ★ **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts` — and ★ `src/lib/dal/members.ts`
+  is `sessions`' from sync 1 (`DEC-141`): `/app/me` reads `getMe()`, `listCompanies()` and `updateMyProfile()` as they
+  are; a change is a request
 - ★ `src/messages/ar/{profile,scoring,certificates,notifications,calendar,privacy}.json` and their `en/` twins
 - what you held in wave 6: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx`,
   `src/components/event/actions.ts`, `src/lib/dal/{comments,reactions,reports,materials,photos,tasks}.ts`,
@@ -93,7 +95,7 @@ or the lead. Then build the layout and the hub first — every other route rende
 
 ★ **Never, and each is a request:** `src/components/notifications/bell.tsx` (the shell's slot),
 `src/components/scoring/points-strip.tsx`, `src/components/{browse,search,sessions}/**`,
-`src/lib/dal/{bookmarks,proposals,sessions}.ts`, `messages/*/{members,search,leaderboards,sessions}.json`,
+`src/lib/dal/{bookmarks,proposals,sessions,members}.ts`, `messages/*/{members,search,leaderboards,sessions}.json`,
 `worker/**`, and the two specs that span routes not in this wave — `notify-screens.spec.ts` and
 `certificates.spec.ts` (your coverage of `me/calendar`, `me/notifications` and `me/certificates` goes in
 `wave7-content-*.spec.ts`).
@@ -148,7 +150,7 @@ fails if the patch is not installed.
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `splash.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
 | **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
 | **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
 | **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
@@ -169,13 +171,14 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 - **→ `sessions`:** `src/app/[locale]/app/sessions/[id]/rate/**`, `src/components/event/{ratings,star-rating}.tsx`,
   `messages/*/ratings.json` (from `event`); `src/app/[locale]/app/members/**`,
   `src/app/[locale]/app/leaderboards/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
-  `messages/*/leaderboards.json` (from `scoring`); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
+  `messages/*/leaderboards.json` (from `scoring`); ★ `src/lib/dal/members.ts` (from the lead — sync 1, `DEC-141`: the
+  tiered profile read is `sessions`', and `content`'s `/app/me` needs no change to it); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
   a new `messages/*/members.json`.
 - **→ `content`:** `src/app/[locale]/app/me/**`, including a new `me/layout.tsx` (from the lead,
   `notify`, `scoring`, `designer`, `platform`); `src/components/notifications/{notification-list,preference-matrix}.tsx`,
   `messages/*/{notifications,calendar}.json` (from `notify`); `src/components/scoring/{points-history-list,points-catalogue}.tsx`,
   `messages/*/scoring.json` (from `scoring`); `messages/*/certificates.json` (from `designer`);
-  `messages/*/privacy.json` (from `platform`); `src/lib/dal/members.ts`, `messages/*/profile.json`
+  `messages/*/privacy.json` (from `platform`); `messages/*/profile.json`
   (from the lead); **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts`.
 - `src/components/calendar/add-to-calendar.tsx` **returns** to `notify` — held by the lead.
 - ★ **"Add-only" means** a new exported function, or a new optional field on a DTO, behind
@@ -230,7 +233,7 @@ spec of an unspawned track.
 
 ### Lead-only, always
 
-`src/components/ui/index.ts` and the lead's fifteen `ui/` files · `src/app/globals.css` ·
+`src/components/ui/index.ts` and the lead's fourteen `ui/` files · `src/app/globals.css` ·
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
 `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·

@@ -27,7 +27,7 @@
 // request in their note — they do not edit it.
 //
 //   lead      index · button · icon-button · link · skeleton · route-progress
-//             splash · toast · page-header · section-header · prose
+//             toast · page-header · section-header · prose
 //             route-error · icons · dialog
 //   sessions  field · input · textarea · select · checkbox · radio-group
 //             switch · form-summary
@@ -578,21 +578,6 @@ export interface SkeletonProps extends Styleable {
 export interface RouteProgressProps {
   /** Milliseconds before the bar appears. 150 by default. */
   delayMs?: number;
-}
-
-/**
- * lead · `splash.tsx` — the Preply touch, used ONCE: the first paint of the
- * app shell on a cold load.
- *
- * ★ A splash that covers content delays LCP by exactly as long as it is shown.
- * So it is CSS-only, painted in the same document as the shell, and it fades on
- * the shell's FIRST PAINT, not on hydration — a cross-fade over content that is
- * already there, never a gate in front of content that is not. If it costs LCP
- * against REQ-NFR-008, the splash is dropped, not the budget (`16` §7.2).
- */
-export interface SplashProps {
-  /** The wordmark's accessible name; the bar itself is decorative. */
-  label: string;
 }
 
 // ── Beyond §4.2's thirty-one ──────────────────────────────────────────────

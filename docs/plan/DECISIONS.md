@@ -2979,3 +2979,109 @@ wave), the second to `content`, each to decide whether the spec or the product i
 - **Decision.** (1) **No upstream report** — filing one would duplicate a merged, released fix. `DEC-136` step 5 is closed by this entry. (2) **The patch stays for this wave.** It is verified (16/16 twice against a control that hung 9/16) and a Next minor upgrade inside a wave is exactly what `DEC-135` item 5 kept out: `16.2 → 16.3` moves the vendored React to a 19.3 canary across every screen four teammates are rebuilding. (3) **`DEC-136`'s exit condition is met**: when the owner schedules `next@16.3.x` (lockfile through Docker, the full gate set, `reserve-probe.spec.ts` run at its own standard), `patches/next+16.2.10.patch` stops applying and is deleted with `tests/unit/react-dom-ping-patch.test.ts`, and the probe stays. **The owner decides when.**
 - **Supersedes:** `DEC-136` step 5.
 - **Documents changed:** `STATUS.md` (row L5)
+
+---
+
+## DEC-141 — Wave 7, sync 1: the four plans approved, the check-in window read as a clock, check-ins soft-deleted, and `members.ts` moves to `sessions`
+
+- **Date:** 2026-09-16 · **Decided by:** lead, on the four planning-only first tasks (`docs/plan/notes/{checkin,sessions,content,console}.md` at `17e5772`, `f146ff6`, `ff3c6fc`, `addf939`)
+- **Supersedes:** `DEC-137`'s placement of `src/lib/dal/members.ts` with `content`; `REQ-CHK-004`'s state-based gate on check-in, as `DEC-113` already said and `DEC-116` restated ambiguously.
+
+### `checkin` — the window, the removal, and what it reverses
+
+1. ★ **The check-in window is read from the schedule, not from the state.** Floor: `now >= starts_at`.
+   Switch: `sessions.check_in_open`, default `true` (`DEC-116`). Ceiling: `now < ends_at + 2 h`,
+   scheduled (`REQ-CHK-016`). **Plus the condition the plan omitted:** `state in ('published',
+   'in_progress', 'completed')`, so a cancelled session whose start has passed never accepts a code.
+   `DEC-113` says «the phase no longer gates check-in», and `REQ-CHK-016` computes the ceiling «from the
+   scheduled end, not from when it actually finished» — which only holds if the whole window is
+   scheduled. `DEC-116`'s «the floor is `REQ-CHK-004`'s, unchanged» is read as keeping a floor, not the
+   `in_progress` mechanism `DEC-113` retired; it also stops check-in waiting on `JOB-start_session`.
+   **Early completion** (`REQ-SES-005`'s note) sets `check_in_open = false` in `complete_session()` —
+   `sessions`' RPC, a SQL hook `checkin` proposes — and the room can reopen it until the ceiling.
+2. ★ **A removal soft-deletes.** `certificates.check_in_id` is `on delete restrict` with a not-null check
+   for attendance certificates (`0055`), so a check-in with a certificate cannot be deleted at all.
+   `check_ins` gains `removed_at`, `removed_by`, `removal_reason`; its unique and exclusion constraints
+   become partial on `removed_at is null`, so a member can be re-added. **The cost is the blast radius** —
+   12 migrations and 11 TypeScript files read `check_ins` — so `checkin` writes a reader inventory before
+   any SQL, and every "checked in" excludes removed rows unless it is a report that must show them.
+3. **What a removal reverses:** the attendance award (a compensating `reversal` row, key
+   `reversal:<ledger id>:v1`, the fixed reason «أُلغي تسجيل الحضور») and an issued certificate
+   (`revoke_certificate()`); the **future** right to rate and to upload photos (through `has_checked_in()`);
+   and it records `no_show` — **0 points** (`0027:537`), the outcome the member now sees — with the
+   evaluator's own key. **Not reversed:** anything already submitted (ratings, photos), streaks, badges,
+   levels, company points — no reversal anywhere in the product walks those back, and this one is not
+   special. The admin's free-text reason stays on the row and in the audit log; **the member does not see
+   it.**
+4. **Manual marks:** an admin on SCR-044 at any time after the scheduled start (`REQ-CHK-017`); a
+   moderator only inside floor → ceiling (`REQ-CHK-008`); the host view inside floor → ceiling and not
+   gated by the switch. `mark_checked_in_manually()`'s missing `award_points` enqueue — a live gap
+   against `REQ-CHK-008` — is fixed as it is re-created.
+5. ★ **`schedule_session()`'s walk-in parameter is `default null`, meaning unchanged.** A `default false`
+   would switch walk-ins off every time an admin rescheduled through a path that does not send the
+   field. The old signature is dropped; `set_session_walk_ins()` is dropped (`DEC-118`: no other door).
+6. **`canOfferCheckInLink()`** gains `checkInOpen` as an optional parameter defaulting to `true`, so the
+   shared tree builds before `sessions` wires it.
+
+### `sessions`
+
+`src/lib/dal/members.ts` is `sessions`' for the wave: `content`'s `/app/me` needs no change to it, and
+`sessions` needs a tiered `getMemberProfileForViewer()` with an `assert_fresh_admin()`-gated
+`admin_member_profile()` — one writer. The edit route `/app/propose/[id]/edit`; the rating receipt at
+`rate?rated=1`; the public card's badge from the clock only, none while `open` (`DEC-066`'s allowlist
+unchanged); an opted-out member's points and rank hidden on the member tier; leaderboards as three tabs
+on one route; the propose form as two sections with a remaining count; objectives and tags not built.
+**Canvas contradictions resolved for the requirement** (`DEC-114`): the title limit stays 150, the
+abstract minimum 1, `REQ-PRO-002`'s labels and its three fields the artboard drops, `REQ-RAT-006`'s
+threshold of 3. The filter sheet's native date range becomes `DEC-098`'s period chips, after the six
+routes. `ratings.edited_at`'s millisecond precision is recorded against `0085`.
+
+### `content` and `console`
+
+**The `/app/me` hub has seven tabs, one per route that exists**, profile first; `16` §6.5's القادمة and
+الحاضرة are the timeline `DEC-112` made `/app`, and المقترحات is `sessions`' propose screens. The strip
+never widens a 390 px page. A points `Stat` on `/app/me`. `tasks.spec.ts:143` is a wrong spec, not a
+wrong product (`DEC-090`: no seat, no tasks). T8 is a private Realtime broadcast from a trigger plus one
+bounded re-check.
+
+**The admin rail is لوحة plus fourteen groups** — `16` §6.7 lists fifteen labels and the first is the
+root. `console` proposed a rail entry for an `admin/designer` landing page; **there is no such page**
+(`admin/designer/` holds only `[documentId]`), so none is added. The three moderation queues share an
+`href` tab strip with open counts and stay three lists (`DEC-005`).
+
+### Contract changes the lead made at this sync
+
+`FormSummaryProps.description?` and `RouteErrorProps.retryLabel?`/`reset?`, the retry rendered only when
+both are given (`f9fa70e`).
+
+- **Documents changed:** `CLAUDE.md` and `.claude/agents/*.md` (`members.ts`), `STATUS.md`
+
+---
+
+## DEC-142 — `ui/splash` is dropped: measured against the same build without it, it cost LCP on both screens it would cover
+
+- **Date:** 2026-09-16 · **Decided by:** lead, by `16` §7.2's own rule — «if it costs LCP, the splash is dropped, not the budget» (STATUS row L3, `DEC-110`'s carried stub)
+- **What was built and measured.** The splash as `16` §7.2 specifies it: CSS only, in `app/layout.tsx`, a
+  fixed layer with the wordmark and a 2 px indeterminate bar, fading from its first paint over
+  `--dur-slow` and ending `visibility: hidden`, collapsed under reduced motion. Built in the verification
+  worktree on `979cf5c`; never in the shared tree.
+- **The measurement.** Lighthouse's throttled mobile profile, 390 × 844, a signed-in member, the
+  production build on the QA stack. Arms interleaved **A → B → A** so the teammates' load starting
+  mid-run hits both. Lantern's LCP moves in ~150 ms steps.
+
+  | | `/app` LCP median · mean | event page LCP median · mean | event page FCP median |
+  |---|---|---|---|
+  | A1 — no splash, 5 runs | 2862 · 2954 | 3009 · 2980 | 1209 |
+  | **B — splash, 10 runs** | **3010 · 3035** | **3167 · 3172** | **1662** |
+  | A2 — no splash, 10 runs | 2936 · 2926 | 3010 · 3071 | 1214 |
+
+  The LCP element was the same page paragraph in every run, never the splash. Both controls agree with
+  each other, and the splash arm is worse on both screens' LCP (a step, ~100 ms on the means) and on the
+  event page's first contentful paint (+450 ms).
+- **Decision.** Dropped. `src/components/ui/splash.tsx` (an unused stub since M9) and `SplashProps` are
+  deleted; the lead owns fourteen `ui/` files. **What would reopen it:** a design that shows nothing
+  until content is already painted — which is to say, not a splash — or a real-device measurement on
+  production that contradicts the lab. The code and the measuring spec are kept in the lead's scratchpad,
+  not the tree.
+- **Supersedes:** `16` §7.2.
+- **Documents changed:** `src/components/ui/{splash.tsx,index.ts}`, `CLAUDE.md` and `.claude/agents/*.md` (the lead's file list), `STATUS.md`
