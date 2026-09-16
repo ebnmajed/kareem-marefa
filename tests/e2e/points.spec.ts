@@ -234,7 +234,12 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
 
   test("empty, then an award and checkin's REQ-CHK-017 reversal entry, contract 3 exactly", async ({ context, page }) => {
     await page.setViewportSize(PHONE_R);
-    const signedIn = await signIn(context, rMemberEmail, false);
+    // `asAdmin: true` — harmless for what this member sees on their own
+    // page (any member reads their own history the same way), and lets
+    // this same signed-in client call the admin-gated `remove_check_in()`
+    // RPC on itself below, matching this file's own first test's pattern
+    // with `adjust_points_manually()`.
+    const signedIn = await signIn(context, rMemberEmail, true);
     rMemberId = signedIn.memberId;
 
     await page.goto("/ar/app/me/points");
@@ -242,24 +247,39 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     await expect(page.getByText("لا نقاط بعد")).toBeVisible();
     await capture(page, "empty");
 
-    // The award, then checkin's REQ-CHK-017 reversal of it — exactly the
-    // shape contract 3 describes: `source = 'reversal'`, the fixed reason,
-    // `session_id` populated so the "open session" link still works on it.
-    await db.query(
-      `insert into public.points_ledger (org_id, member_id, amount, source, session_id, reason, rule_key, idempotency_key)
-       values ($1, $2, 5, 'check_in', $3, 'تسجيل حضور', 'check_in', $4)`,
-      [rOrgId, rMemberId, rSessionId, `check_in:${rSessionId}:${rMemberId}`],
+    // ★ The lead's own ask: seed through the REAL pipeline, not a
+    // hand-inserted ledger row — `points_ledger` is append-only, so a
+    // fixture that writes a reversal row directly proves this screen can
+    // RENDER one, never that `remove_check_in()` (0087) actually produces
+    // the shape it renders. A real check-in, a real award linked to it via
+    // `source_id`, then the real removal RPC — its own reversal follows.
+    const { rows: checkInRows } = await db.query<{ id: string }>(
+      `insert into public.check_ins (org_id, session_id, member_id, method, manual_reason, marked_by, session_window)
+       values ($1, $2, $3, 'manual', 'اختبار', $3, 'empty'::tstzrange) returning id`,
+      [rOrgId, rSessionId, rMemberId],
     );
-    await db.query(
-      `insert into public.points_ledger (org_id, member_id, amount, source, session_id, reason, rule_key, idempotency_key)
-       values ($1, $2, -5, 'reversal', $3, 'أُلغي تسجيل الحضور', 'check_in', $4)`,
-      [rOrgId, rMemberId, rSessionId, `reversal:check_in:${rSessionId}:${rMemberId}`],
-    );
+    await db.query(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [rMemberId, checkInRows[0].id, rSessionId]);
+
+    const removalReason = "لم يحضر فعليًا رغم تسجيله";
+    const { error: removeError } = await signedIn.client.rpc("remove_check_in", {
+      p_session: rSessionId,
+      p_member: rMemberId,
+      p_reason: removalReason,
+    });
+    if (removeError) throw removeError;
 
     await page.reload();
-    await expect(page.getByText("تسجيل حضور", { exact: true })).toBeVisible();
+    // The real award_points('check_in', …) reason (`award_points.ts`'s
+    // own scoring_rules seed) — "تسجيل حضور مؤكَّد", not the plain
+    // "تسجيل حضور" a hand-written fixture might guess at; verified
+    // directly against a real local run before writing this assertion.
+    await expect(page.getByText("تسجيل حضور مؤكَّد", { exact: true })).toBeVisible();
+    // Contract 3 exactly: the fixed system reason, never the admin's own
+    // free-text one — the lead's ruling, that removal reason lives on
+    // `check_ins.removal_reason` and `audit_log` only.
     await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
     await expect(page.getByText("إلغاء نقاط سابقة")).toBeVisible();
+    await expect(page.getByText(removalReason)).toHaveCount(0);
     // The reversal readable next to what it reverses — never a number that
     // quietly changed (`REQ-CHK-017`).
     await expect(page.getByRole("link", { name: "فتح الجلسة" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);

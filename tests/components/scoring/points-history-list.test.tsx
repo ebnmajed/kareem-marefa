@@ -59,9 +59,18 @@ describe("PointsHistoryList", () => {
     expect(screen.queryByText("تعديل يدوي من الإدارة")).not.toBeInTheDocument();
   });
 
-  // ★ Contract 3 — REQ-CHK-017. checkin's reversal entry, exactly as
-  // published: source = 'reversal', reason «أُلغي تسجيل الحضور».
-  it("renders checkin's REQ-CHK-017 reversal entry with its own tag and reason", async () => {
+  // ★ Contract 3 — REQ-CHK-017, the landed migration (0087): a
+  // compensating row, `source = 'reversal'`, `amount` = minus the
+  // original award, `reason` the FIXED system string «أُلغي تسجيل الحضور»
+  // (never a key — the same pattern 0032's «حُذف المحتوى» already uses),
+  // rendered literally inside its own `<bdi>`. Deliberately strict, per
+  // the lead's own ask: checks the actual DOM node is a `<bdi>` (not just
+  // that the text appears somewhere) and the EXACT text content, so this
+  // fails outright if the sign is dropped (amount rendering as "5") or if
+  // the `<bdi>` wrapper is lost (a plain text node reordering against the
+  // Arabic label in a real RTL document, invisible to a loose substring
+  // match) — not a regex a silent regression could still pass.
+  it("renders checkin's REQ-CHK-017 reversal entry: a Western minus, no Arabic-Indic digits, both fields in their own <bdi>", async () => {
     await renderList([
       row({
         id: "r2",
@@ -72,13 +81,43 @@ describe("PointsHistoryList", () => {
         ruleKey: "check_in",
       }),
     ]);
-    expect(screen.getByText("أُلغي تسجيل الحضور")).toBeInTheDocument();
-    // `formatNumber(-5)` carries a leading bidi mark ahead of the minus sign
-    // in an RTL document — real, correct output, not a fixture bug — so a
-    // regex substring match, not an exact one.
-    expect(screen.getByText(/-5/)).toBeInTheDocument();
+
+    const reasonNode = screen.getByText("أُلغي تسجيل الحضور");
+    expect(reasonNode.tagName).toBe("BDI");
+
+    const amountNode = screen.getByText(/-5/);
+    expect(amountNode.tagName).toBe("BDI");
+    // Strip only bidi CONTROL characters (LRM/RLM) — a sign or digit lost
+    // would change this comparison, a bidi mark alone must not.
+    expect(amountNode.textContent?.replace(/[‎‏]/g, "")).toBe("-5");
+    expect(amountNode.textContent).not.toMatch(/[٠-٩]/); // DEC-124 — never Arabic-Indic, anywhere.
+
     expect(screen.getByText("إلغاء نقاط سابقة")).toBeInTheDocument();
     expect(screen.queryByText("تعديل يدوي من الإدارة")).not.toBeInTheDocument();
+  });
+
+  // ★ The admin's own removal reason is NOT this screen's to show — the
+  // lead's ruling: it lives on `check_ins.removal_reason` and
+  // `audit_log` only, the same withholding the certificate path already
+  // does for a revocation reason (REQ-CRT-011, the public verification
+  // page). The fixed system string is the only reason a member ever sees
+  // for a reversal, regardless of what an admin actually wrote.
+  it("never renders anything beyond the fixed system reason for a reversal — the admin's own words stay off this screen", async () => {
+    await renderList([
+      row({ id: "r2", amount: -5, reason: "أُلغي تسجيل الحضور", source: "reversal", isReversal: true }),
+    ]);
+    expect(screen.queryByText(/سبب/)).not.toBeInTheDocument(); // no "reason:" label — there is nothing beyond the fixed sentence to attach one to.
+  });
+
+  // Balance reconciliation is `getPointsHistory()`'s own arithmetic
+  // (`points_balances`, summed server-side), not this component's — it
+  // only ever renders what it is handed. Asserted here anyway, as the
+  // negative statement the lead asked to confirm: this component adds no
+  // second, competing total of its own that could drift from it.
+  it("renders no total of its own — the balance is the page's Stat, read once, never recomputed per row", async () => {
+    await renderList([row({ id: "r1", amount: 20 }), row({ id: "r2", amount: -5, isReversal: true, reason: "أُلغي تسجيل الحضور" })]);
+    expect(screen.queryByText(/^15$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/رصيدك/)).not.toBeInTheDocument();
   });
 
   it("renders a manual adjustment's own tag, and links back to its session", async () => {
