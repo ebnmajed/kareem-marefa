@@ -1973,3 +1973,43 @@ through the real e2e spec (browser-native constraint validation isn't exercised 
 planned.
 
 Ready for sync.
+
+## §8 — the noValidate rule applied to the other three grep hits (`1c9c911`)
+
+The lead's rule, applied to the three files their grep found beyond `profile-form.tsx`:
+
+**`app/me/privacy/forms.tsx`'s `DeactivationForm`** — read closely, this one's already correct and
+not touched. Its `reason` textarea's `required` is checked by an explicit `formRef.current
+?.reportValidity()` call inside `openConfirm()`, BEFORE the confirm dialog ever opens (the file's
+own comment explains why: surfacing the native message once the dialog is already open would be too
+late). The confirm/submit buttons are `type="button"`, never inside a native submit path, so there is
+no browser-blocks-the-handler failure mode here to begin with, and `state.error` (the `Alert` this
+form does render) is reserved for POST-submission server failures, never for the required-field
+case. Native-only, no app-side error for that field, by design — the lead's second bucket, recorded
+for M13, not fixed. (This also settles the "may be what privacy.spec's «أُرسل طلبك» failures were
+about" question from an earlier message: it isn't — that bug was the cross-portal `requestSubmit()`
+timing issue already fixed and documented in this same file.)
+
+**`components/event/comment-item.tsx`'s report dialog** — real hit. `reason` is `required
+minLength={3}` with no `noValidate`; `submitReport` ALSO had `if (reason.length < 3) return;`, a
+second silent guard that (being unreachable in practice, since native validation already blocked
+anything native validation would have blocked) meant a too-short reason produced no feedback at all,
+twice over, by two different mechanisms. Added `noValidate`, removed the redundant guard — a
+too-short/empty reason now reaches `reportCommentAction`, whose existing Zod `min(3)` rejects it, and
+`errors.invalid_comment` shows in the same `Panel` a network or server failure already uses. No new
+message key needed.
+
+**`components/tasks/create-form.tsx`** — real hit. `title` is `required` with no client-side check of
+its own (unlike `materialId`/`formQuestions`, which already have one, now finally reachable too);
+native validation blocked `handleSubmit` itself from ever running. Added `noValidate`; an empty title
+now round-trips through the existing Zod `min(1)` + the form's own generic `createFailed` fallback,
+same shape as `profile-form.tsx`'s fix.
+
+New tests: `comment-item.test.tsx` (empty reason reaches the action, shows `errors.invalid_comment`,
+not silence) and a new `tests/components/tasks/create-form.test.tsx` (empty title reaches the action
+and shows `createFailed`; a successful submit clears the form). `tsc` clean, lint clean. Full
+`npm test`: 1417/1418 — the one failure is in `tests/components/admin/proposals-review-card.test.tsx`,
+which `git status` shows as `console`'s own uncommitted in-progress file; not mine, not touched by
+this change.
+
+Ready for sync.
