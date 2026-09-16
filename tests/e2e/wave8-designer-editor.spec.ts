@@ -104,16 +104,19 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, modMemberId]);
 
   // The platform's own `talk` template, as seeded — a real composition, bound
-  // to a real session. `l_where` is moved to the page edge so a check fails
-  // and names it (REQ-DSG-029).
-  const { rows: version } = await db.query<{ id: string; document: { layers: Array<{ id: string; frame: { x: number } }> } }>(
+  // to a real session. `l_where` is stretched edge to edge so a check fails
+  // and names it (REQ-DSG-029). Moving it to x = 0 alone no longer does:
+  // `derive()` clamps a layer's position into the safe area, and only a frame
+  // WIDER than the safe area is still over it — the v1 template failed a
+  // check only because its 60 px box was shorter than its own line.
+  const { rows: version } = await db.query<{ id: string; document: { layers: Array<{ id: string; frame: { x: number; w: number } }> } }>(
     `select v.id, v.document from public.design_template_versions v
        join public.design_templates t on t.id = v.template_id
       where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk'
       order by v.version desc limit 1`,
   );
   const document = version[0].document;
-  for (const layer of document.layers) if (layer.id === "l_where") layer.frame.x = 0;
+  for (const layer of document.layers) if (layer.id === "l_where") layer.frame = { ...layer.frame, x: 0, w: 1080 };
 
   const { rows: doc } = await db.query<{ id: string }>(
     `insert into public.design_documents (org_id, purpose, document, template_version_id, bound_session_id)
@@ -311,7 +314,7 @@ test("★ «اطلب التصدير» queues every variant of the saved document
   await openStudio(page);
 
   await page.getByRole("button", { name: "اطلب التصدير" }).click();
-  await expect(page.getByText("أُضيفت المقاسات إلى قائمة التصدير.")).toBeVisible();
+  await expect(page.getByText("أُضيفت المقاسات إلى قائمة التصدير.", { exact: true })).toBeVisible();
   const exports = page.getByRole("region", { name: /قائمة التصدير/ });
   await expect(exports.getByText("في الانتظار").first()).toBeVisible();
 
@@ -358,7 +361,7 @@ test("★ «اطلب التصدير» queues every variant of the saved document
   else await page.screenshot({ path: `${SHOTS}/wave8-designer-editor-desktop.png`, fullPage: true });
 
   await retry.click();
-  await expect(page.getByText("أُعيدت المحاولة.")).toBeVisible();
+  await expect(page.getByText("أُعيدت المحاولة.", { exact: true })).toBeVisible();
   await expect(exports.getByRole("alert")).toHaveCount(0);
 });
 

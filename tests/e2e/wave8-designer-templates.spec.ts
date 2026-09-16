@@ -229,7 +229,7 @@ test("★ REQ-DSG-008: a platform template is copied, never edited — and the e
 
   await dialog.getByLabel(/اسم النسخة/).fill("نسخة ثانية من الجلسة");
   await dialog.getByRole("button", { name: "انسخ إلى مؤسستي" }).click();
-  await expect(page.getByText("نُسخ القالب إلى مؤسستك.")).toBeVisible();
+  await expect(page.getByText("نُسخ القالب إلى مؤسستك.", { exact: true })).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(card(page, "نسخة ثانية من الجلسة")).toBeVisible();
 
@@ -254,7 +254,7 @@ test("★ an org template: set as default, renamed, retired behind a confirm tha
 
   await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
   await page.getByRole("menuitem", { name: "اجعله الافتراضي" }).click();
-  await expect(page.getByText("صار هذا القالب الافتراضي لعائلته.")).toBeVisible();
+  await expect(page.getByText("صار هذا القالب الافتراضي لعائلته.", { exact: true })).toBeVisible();
   await expect(mine.getByText("الافتراضي", { exact: true })).toBeVisible();
 
   await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
@@ -262,7 +262,7 @@ test("★ an org template: set as default, renamed, retired behind a confirm tha
   const renameDialog = page.getByRole("dialog");
   await renameDialog.getByLabel(/الاسم/).fill("جلساتنا الداكنة");
   await renameDialog.getByRole("button", { name: "احفظ" }).click();
-  await expect(page.getByText("حُدّث الاسم.")).toBeVisible();
+  await expect(page.getByText("حُدّث الاسم.", { exact: true })).toBeVisible();
   orgPosterName = "جلساتنا الداكنة";
 
   const renamed = card(page, orgPosterName);
@@ -273,12 +273,12 @@ test("★ an org template: set as default, renamed, retired behind a confirm tha
   await expect(confirm).toContainText(orgPosterName);
   await expect(confirm).toContainText("تبقى كما هي");
   await confirm.getByRole("button", { name: "أحِله للتقاعد" }).click();
-  await expect(page.getByText("أُحيل القالب للتقاعد.")).toBeVisible();
+  await expect(page.getByText("أُحيل القالب للتقاعد.", { exact: true })).toBeVisible();
   await expect(renamed.getByText("متقاعد", { exact: true })).toBeVisible();
 
   await renamed.getByRole("button", { name: "إجراءات أخرى" }).click();
   await page.getByRole("menuitem", { name: "أعِده للخدمة" }).click();
-  await expect(page.getByText("أُعيد القالب للخدمة.")).toBeVisible();
+  await expect(page.getByText("أُعيد القالب للخدمة.", { exact: true })).toBeVisible();
 });
 
 test("★ REQ-DSG-007: the studio opens the template's draft, and publishing it adds a version and edits none", async ({ context, page }) => {
@@ -328,7 +328,7 @@ test("★ DEC-148: a blank certificate starts on the composition chosen for it, 
   await expect(dialog.getByRole("option", { name: "ورشة" })).toHaveCount(0);
   await dialog.getByRole("radio", { name: "عمودية" }).click();
   await dialog.getByRole("button", { name: "أنشئ" }).click();
-  await expect(page.getByText("أُنشئ القالب.")).toBeVisible();
+  await expect(page.getByText("أُنشئ القالب.", { exact: true })).toBeVisible();
 
   const { rows } = await db.query<{ width: number; height: number }>(
     `select (v.document->'master'->>'width')::int as width, (v.document->'master'->>'height')::int as height
