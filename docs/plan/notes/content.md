@@ -1419,3 +1419,25 @@ that window can miss it; and `comment-item.tsx`'s save button's real label is "�
 tsc clean, lint 0 errors, 93/93 component tests (event/materials/photos/tasks), 698/698 unit tests.
 
 Ready for sync.
+
+## §18 — the materials capture: system controls, Arabic quoting
+
+Two items from the materials capture at 296aec4 (row 8).
+
+**settings-form.tsx onto ui/select/ui/checkbox (9a71f48)**: swapped the raw native `<select>`/
+checkbox for `sessions`' `ui/select`/`ui/checkbox` — import only, no edits to those files. `ui/select`
+has no size prop at all (always renders "md", a pre-existing limit I already knew about from the
+earlier `<Select size="sm">` type-error fix); used it as-is rather than asking for a variant I don't
+actually need yet — the row isn't dense enough to obviously require one. Noting here per the lead's
+"say so in your note" in case the real-build capture at the next density shows otherwise. Added the
+FIRST dedicated test file this component has ever had (six tests: renders, both optimistic updates,
+both network-failure reverts, axe) — the network-failure try/catch from the previous fix had zero
+test coverage until now.
+
+**Arabic guillemets, not ASCII quotes (de8db45)**: `substitutionWarning.body`'s ar string quoted the
+font name with `\"..\"` — switched to `«..»`, matching house convention (`10` §3). `en` keeps plain
+`"quotes"`, its own convention, untouched — checked before assuming otherwise. Two component tests
+(`list.test.tsx`, `proposal-list.test.tsx`) had the old ASCII-quoted sentence hardcoded for an exact
+`textContent` match; updated both.
+
+Ready for sync.
