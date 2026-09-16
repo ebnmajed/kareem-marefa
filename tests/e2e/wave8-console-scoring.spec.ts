@@ -26,6 +26,11 @@ const SHOTS = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 test.describe.configure({ mode: "serial" });
+// `globals.css` scrolls smoothly unless motion is reduced, so a viewport
+// capture taken after a scroll — ours or Playwright's own before a fill —
+// fired mid-animation and showed the top of the page (the lead's sync-2
+// finding on the scoring captures). Reduced motion makes every scroll instant.
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -135,7 +140,11 @@ test("SCR-053: the fixed catalogue in three groups, the deductions closed at 0, 
   if (testInfo.project.name === "phone") {
     await page.getByRole("heading", { name: "كتالوج النقاط" }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-catalogue.png` });
-    await page.getByRole("heading", { name: "الخصومات" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
+    const penaltiesHeading = page.getByRole("heading", { name: "الخصومات" });
+    await penaltiesHeading.evaluate((el) => el.scrollIntoView({ block: "start" }));
+    // What the capture is for: the deductions on screen, not the page's top.
+    await expect(penaltiesHeading).toBeInViewport();
+    await expect(page.getByRole("heading", { name: "كتالوج النقاط" })).not.toBeInViewport();
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-penalties.png` });
   }
 });
@@ -185,6 +194,9 @@ test("REQ-PTS-009: a manual adjustment — member chosen by name, confirmed by n
   const manual = group(page, "manual-heading");
   await manual.getByRole("combobox", { name: /العضو/ }).fill("سارة");
   await expect(page.getByRole("option", { name: /سارة العتيبي/ })).toBeVisible();
+  // What the capture is for: the open list on screen, beside its field.
+  await expect(manual.getByRole("listbox")).toBeInViewport();
+  await expect(manual.getByRole("combobox", { name: /العضو/ })).toBeInViewport();
   await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-member-picker-open.png` });
   await page.getByRole("option", { name: /سارة العتيبي/ }).click();
   await manual.getByRole("radio", { name: "خصم نقاط" }).check();

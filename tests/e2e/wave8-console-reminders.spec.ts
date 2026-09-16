@@ -22,6 +22,11 @@ const SHOTS = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 test.describe.configure({ mode: "serial" });
+// `globals.css` scrolls smoothly unless motion is reduced, so a viewport
+// capture taken after a scroll — ours or Playwright's own before a fill —
+// fired mid-animation and showed the top of the page (the lead's sync-2
+// finding on the scoring captures). Reduced motion makes every scroll instant.
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;

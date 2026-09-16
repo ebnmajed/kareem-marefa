@@ -49,7 +49,9 @@ export function DeliveriesTable({ rows, timeZone, locale, empty }: { rows: Deliv
         return (
           <span className="inline-flex min-w-0 flex-col gap-0.5">
             <span className="text-fg-heading">{t(`reasons.${reason}`)}</span>
-            <bdi dir="ltr" className="break-words text-caption text-fg-muted">
+            {/* The provider's own text reads from its own start — the left — not
+                hanging off the card's end edge when it wraps. */}
+            <bdi dir="ltr" className="block break-words text-start text-caption text-fg-muted">
               {r.error}
             </bdi>
           </span>
