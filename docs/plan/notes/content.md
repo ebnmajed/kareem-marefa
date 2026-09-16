@@ -1468,3 +1468,19 @@ still needs to work on a frozen thread.
 tsc clean, lint 0 errors, 52/52 event component tests (3 new frozen-state tests), 698/698 unit tests.
 
 Ready for sync.
+
+## §20 — the same toast drop, extended to saveEdit/submitReport
+
+The lead confirmed: apply the same rule I flagged as a discovered-but-not-yet-widened parallel in
+§19 — `saveEdit` and `submitReport` both carry the identical "inline Panel + toast repeating the
+same sentence" shape as the composer's own fix. Dropped the toast from both functions' catch AND
+`result.error` branches. `deleteMine`/`moderate`/`toggleLike` are unchanged — no inline spot, matching
+the lead's own examples. `submitReport`'s SUCCESS toast stays: the dialog has already closed by then
+(no inline Panel for a success state to duplicate).
+
+Tightened the existing saveEdit network test from "at least one match" to exactly one, and added the
+equivalent test for submitReport's network catch (previously untested).
+
+53/53 event component tests, tsc clean, lint 0 errors.
+
+Ready for sync.
