@@ -1563,6 +1563,8 @@ generated suite is the highest-value test in the product.
 | `RPC-admin_member_profile.admin_only` | An admin of the member's org gets one row; a moderator, a member (including the member themselves) and an admin of another org get zero rows. |
 | `RPC-admin_member_profile.fields` | The row carries exactly email, attended_count, attended, no_show_count, late_cancel_count. |
 | `RPC-admin_member_profile.removed_excluded` | A removed check-in is neither counted nor listed as attended, and turns a confirmed reservation on an ended session into a no-show. |
+| ★ **wave 7 (`DEC-139`), migration `0091`** — a processing photo takes its place without a reload | |
+| `TRG-photos_broadcast.session_topic` | An insert on `photos` sends `{id, sessionId, uploaderId}` on `session:{session_id}` (event `INSERT`), the topic and `realtime.messages` policy `0016` already authorise. It carries no photo bytes and no path, and another org's subscriber receives nothing (`POL-realtime.messages.select`). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

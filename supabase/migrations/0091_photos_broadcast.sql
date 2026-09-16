@@ -1,4 +1,4 @@
--- supabase/proposed/content/01_photos_broadcast.sql
+-- supabase/migrations/0091_photos_broadcast.sql (proposed by content as 01_photos_broadcast.sql)
 --
 -- REQ-EVT-010, as amended by DEC-139 — a photo takes its place in the
 -- uploader's own gallery without a reload once processing completes.
