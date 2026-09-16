@@ -17,6 +17,12 @@ import { Input } from "@/components/ui/input";
 // screen reader or a keyboard user is sent to. A malformed hex shows as an
 // adjacent, red, icon-marked error through `Field`'s own error slot
 // (REQ-UIX-010) rather than a colour with no visible feedback at all.
+//
+// ★ `t.rich`, not `t`: "#rrggbb" is an LTR token inside an RTL sentence —
+// the lead's own build caught the bidi bug this produces unisolated (the
+// "#" landing on the wrong side). `FieldProps.error` is `ReactNode` for
+// exactly this (`886260a`), so the message's own `<bdi>` tag renders as a
+// real, `dir="ltr"` isolate rather than a raw string.
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export function ColourField({
@@ -41,7 +47,12 @@ export function ColourField({
   const valid = HEX_RE.test(value);
 
   return (
-    <Field id={id} label={label} hint={hint} error={valid ? undefined : t("invalidHex")}>
+    <Field
+      id={id}
+      label={label}
+      hint={hint}
+      error={valid ? undefined : t.rich("invalidHex", { bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> })}
+    >
       <div className="flex items-center gap-3">
         <input
           type="color"

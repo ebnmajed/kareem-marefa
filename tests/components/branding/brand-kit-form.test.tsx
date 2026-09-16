@@ -113,6 +113,16 @@ describe("BrandKitForm", () => {
     expect(alerts.some((el) => el.textContent?.includes("4.5"))).toBe(true);
   });
 
+  it("★ the malformed-hex error isolates #rrggbb inside a <bdi dir=ltr>, not a bare LTR token in the RTL sentence", () => {
+    renderForm();
+    const headingInput = screen.getByLabelText(ar.branding.colours.tokens.fgHeading) as HTMLInputElement;
+    fireEvent.change(headingInput, { target: { value: "#zzzzzz" } });
+
+    const isolated = screen.getByText("#rrggbb", { selector: "bdi" });
+    expect(isolated).toBeInTheDocument();
+    expect(isolated).toHaveAttribute("dir", "ltr");
+  });
+
   it("reset requires an explicit confirmation step before the button that actually submits appears", () => {
     renderForm();
     const resetButtons = screen.getAllByText(ar.branding.actions.reset);

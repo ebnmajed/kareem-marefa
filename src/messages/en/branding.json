@@ -10,8 +10,8 @@
       "upload": "Upload a logo",
       "uploading": "Uploading…",
       "remove": "Remove logo",
-      "minResolutionHint": "For crisp printing up to A3, upload an image at least {width} × {height} px (300 PPI).",
-      "formatHint": "PNG, JPG or WebP only — SVG is not accepted.",
+      "minResolutionHint": "For crisp printing up to <bdi>A3</bdi>, upload an image at least {width} × {height} px (300 PPI).",
+      "formatHint": "<bdi>PNG</bdi>, <bdi>JPG</bdi> or <bdi>WebP</bdi> only — <bdi>SVG</bdi> is not accepted.",
       "ppiResult": "Used at full <bdi>A3</bdi> size, this logo would print at {ppi} PPI.",
       "ppiSufficient": "Sufficient for printing up to A3.",
       "ppiWarning": "Below the recommended 300 PPI — large exports may warn.",
@@ -40,7 +40,7 @@
         "node": "Node colour",
         "canvasRaise": "Gradient background"
       },
-      "invalidHex": "Enter a valid colour in #rrggbb form.",
+      "invalidHex": "Enter a valid colour in <bdi>#rrggbb</bdi> form.",
       "canvasRaiseLightHint": "This colour reaches no generated poster today — posters always render in dark mode."
     },
     "preview": {

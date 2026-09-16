@@ -122,9 +122,17 @@ export function LogoUploader({
         name="logo"
         accept={["image/png", "image/jpeg", "image/webp"]}
         maxBytes={imageLimitMb * 1024 * 1024}
+        // `t.rich`, not `t`: both hints carry LTR tokens ("A3"; "PNG"/"JPG"/
+        // "WebP"/"SVG") inside an RTL sentence, isolated through the
+        // messages' own `<bdi>` tags now that `FileDropProps.requirements`
+        // is `ReactNode[]` (`886260a`).
         requirements={[
-          t("minResolutionHint", { width: formatNumber(MIN_LOGO_PX_FOR_A3.width), height: formatNumber(MIN_LOGO_PX_FOR_A3.height) }),
-          t("formatHint"),
+          t.rich("minResolutionHint", {
+            width: formatNumber(MIN_LOGO_PX_FOR_A3.width),
+            height: formatNumber(MIN_LOGO_PX_FOR_A3.height),
+            bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi>,
+          }),
+          t.rich("formatHint", { bdi: (chunks) => <bdi dir="ltr">{chunks}</bdi> }),
         ]}
         onFiles={setFiles}
         invalid={Boolean(error)}
