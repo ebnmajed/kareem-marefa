@@ -41,6 +41,7 @@ export function CommentItem({
   onReply,
   isReplyOpen,
   onReported,
+  frozen,
 }: {
   locale: string;
   comment: CommentDTO;
@@ -53,6 +54,13 @@ export function CommentItem({
   isReplyOpen?: boolean;
   /** Lets the list keep its own "already reported" set in sync (REQ-EVT-008). */
   onReported?: () => void;
+  /** The session is cancelled — comments are read-only (REQ-SES-010). The
+   *  reaction toggle is withdrawn (a closed discussion doesn't take new
+   *  reactions; the DAL/RLS would refuse the write regardless — offering an
+   *  action that can only fail is the thing to avoid), and its count shows
+   *  read-only when it's non-zero. Report stays: moderation must still work
+   *  on a frozen thread. */
+  frozen?: boolean;
 }) {
   const t = useTranslations("event.comments");
   const format = useFormatter();
@@ -295,27 +303,42 @@ export function CommentItem({
 
         <div className="mt-2 flex flex-wrap items-center gap-1 text-body-sm text-fg-muted">
           <div className="inline-flex items-center gap-1">
-            {/* ★ the lead's live-build finding: a bare grey dot at rest
-                read as decoration, not a button, and reacted-vs-not was
-                barely distinguishable — the whisper motion cannot carry
-                that meaning alone, it only fires once, on the transition.
-                A literal filled circle (reacted) vs. an outline circle of
-                the SAME size (not reacted) reads as "react"/"reacted" at
-                rest, with no dependency on the animation having just
-                played — `DotIcon` itself has no outline form, so the
-                not-reacted state is a plain bordered span the same visual
-                size as the filled glyph, not a second icon. */}
-            <IconButton label={t(optimisticReaction.reacted ? "reactions.unlike" : "reactions.like")} onClick={toggleLike} disabled={pending} size="sm" variant="ghost">
-              <span className="relative inline-flex size-4 items-center justify-center">
-                {optimisticReaction.reacted ? (
-                  <DotIcon aria-hidden className={`text-fg-heading ${ignite ? "reaction-ignite" : ""}`} />
-                ) : (
-                  <span aria-hidden className="size-2 rounded-full border border-current text-fg-muted" />
-                )}
-                {ignite ? <span aria-hidden className="reaction-ring absolute inset-0 rounded-full border border-current text-fg-heading" /> : null}
-              </span>
-            </IconButton>
-            {optimisticReaction.count > 0 ? <span className="text-caption text-fg-muted">{formatNumber(optimisticReaction.count)}</span> : null}
+            {frozen ? (
+              // ★ The lead's real-build finding, discussion-review capture
+              // state 6-frozen: a cancelled session's comments are
+              // read-only (REQ-SES-010), but the reaction toggle was still
+              // offered on every comment — an action the DAL/RLS would
+              // refuse regardless, and offering one that can only fail is
+              // the thing to avoid. No interactive control here; the count
+              // shows read-only, and only when there is one to show.
+              optimisticReaction.count > 0 ? (
+                <span className="text-caption text-fg-muted">{formatNumber(optimisticReaction.count)}</span>
+              ) : null
+            ) : (
+              <>
+                {/* ★ the lead's live-build finding: a bare grey dot at rest
+                    read as decoration, not a button, and reacted-vs-not was
+                    barely distinguishable — the whisper motion cannot carry
+                    that meaning alone, it only fires once, on the transition.
+                    A literal filled circle (reacted) vs. an outline circle of
+                    the SAME size (not reacted) reads as "react"/"reacted" at
+                    rest, with no dependency on the animation having just
+                    played — `DotIcon` itself has no outline form, so the
+                    not-reacted state is a plain bordered span the same visual
+                    size as the filled glyph, not a second icon. */}
+                <IconButton label={t(optimisticReaction.reacted ? "reactions.unlike" : "reactions.like")} onClick={toggleLike} disabled={pending} size="sm" variant="ghost">
+                  <span className="relative inline-flex size-4 items-center justify-center">
+                    {optimisticReaction.reacted ? (
+                      <DotIcon aria-hidden className={`text-fg-heading ${ignite ? "reaction-ignite" : ""}`} />
+                    ) : (
+                      <span aria-hidden className="size-2 rounded-full border border-current text-fg-muted" />
+                    )}
+                    {ignite ? <span aria-hidden className="reaction-ring absolute inset-0 rounded-full border border-current text-fg-heading" /> : null}
+                  </span>
+                </IconButton>
+                {optimisticReaction.count > 0 ? <span className="text-caption text-fg-muted">{formatNumber(optimisticReaction.count)}</span> : null}
+              </>
+            )}
           </div>
           {onReply && !comment.parentId ? (
             <Button type="button" variant="ghost" size="sm" onClick={onReply} className="h-9 px-3">

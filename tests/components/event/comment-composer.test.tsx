@@ -104,7 +104,15 @@ describe("CommentComposer", () => {
   // the member told next to it. Rendered inside `TestErrorBoundary` so a
   // regression is caught directly, not inferred from the test merely not
   // throwing.
-  it("★ a network-level failure keeps the typed text, shows an error, and never reaches the route's error boundary", async () => {
+  //
+  // ★ ONE place, not two: the lead's next real-build capture (state
+  // 5-failed) found the adjacent Panel AND a toast repeating the identical
+  // sentence, covering the thread at 390 px — unlike the returned-error
+  // test above (which keeps its toast; a `result.error` is a different,
+  // not-yet-revisited case), this network-catch path drops the toast
+  // entirely, since the field the member is looking at right now already
+  // carries the message.
+  it("★ a network-level failure keeps the typed text, shows an error ONCE (no toast), and never reaches the route's error boundary", async () => {
     const { postCommentAction } = await import("@/components/event/actions");
     vi.mocked(postCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
     render(
@@ -119,8 +127,7 @@ describe("CommentComposer", () => {
     fireEvent.change(textarea(), { target: { value: "تعليق ستفشل شبكته" } });
     fireEvent.click(screen.getByRole("button", { name: "نشر" }));
 
-    // Same two-places-by-design shape as the returned-error test above.
-    expect(await screen.findAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى")).toHaveLength(2);
+    expect(await screen.findAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.")).toHaveLength(1);
     expect(textarea().value).toBe("تعليق ستفشل شبكته");
     expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });

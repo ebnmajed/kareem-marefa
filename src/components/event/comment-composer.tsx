@@ -149,8 +149,13 @@ export function CommentComposer({
         // kept, the member told next to it. `body`/`mentioned` are
         // untouched below — nothing here reaches the clearing branch — and
         // `router.refresh()` never runs.
+        //
+        // ★ No toast here (REQ-UIX-010): the adjacent Panel below IS the
+        // feedback for a field the member is looking at right now — a
+        // second, full-width toast repeating the identical sentence covered
+        // the thread at 390 px (the lead's discussion-review capture,
+        // state 5-failed).
         setError("network");
-        toast.show({ tone: "error", title: t("errors.network") });
         return;
       }
       if (result.error) {

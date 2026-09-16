@@ -177,6 +177,7 @@ export function CommentList({
                   onReply={frozen ? undefined : () => setOpenReplyFor((v) => (v === comment.id ? null : comment.id))}
                   isReplyOpen={openReplyFor === comment.id}
                   onReported={() => setReported((prev) => new Set(prev).add(comment.id))}
+                  frozen={frozen}
                 />
                 {openReplyFor === comment.id ? (
                   <div className="ms-8 mb-3">
@@ -200,6 +201,7 @@ export function CommentList({
                           reactions={reactions[reply.id] ?? emptySummary}
                           reported={reported.has(reply.id)}
                           onReported={() => setReported((prev) => new Set(prev).add(reply.id))}
+                          frozen={frozen}
                         />
                       </li>
                     ))}

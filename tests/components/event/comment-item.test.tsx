@@ -124,6 +124,30 @@ describe("CommentItem", () => {
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
+  // ★ The lead's real-build finding, discussion-review capture state
+  // 6-frozen: a cancelled session's discussion is read-only (REQ-SES-010,
+  // the notice already covers replies/the composer) but the reaction
+  // toggle was still offered on every comment — an action the DAL/RLS
+  // would refuse regardless, and offering one that can only fail is the
+  // thing to avoid.
+  it("★ frozen: the reaction toggle is withdrawn, and a non-zero count shows read-only", () => {
+    renderItem(baseComment, { reactions: { totals: { like: 3 }, mine: [] }, frozen: true });
+    expect(screen.queryByRole("button", { name: "إعجاب" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "إلغاء الإعجاب" })).not.toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("★ frozen with a zero count: no toggle and no count text at all", () => {
+    renderItem(baseComment, { frozen: true });
+    expect(screen.queryByRole("button", { name: "إعجاب" })).not.toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("★ frozen still offers the report control — moderation must work on a frozen thread", () => {
+    renderItem(baseComment, { frozen: true });
+    expect(screen.getByRole("button", { name: "إبلاغ" })).toBeInTheDocument();
+  });
+
   it("reacting flips the accessible name and the count OPTIMISTICALLY — before the action resolves (`16` §7.1 layer 4)", () => {
     renderItem(baseComment, { reactions: { totals: {}, mine: [] } });
     fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
@@ -205,7 +229,7 @@ describe("CommentItem", () => {
     // visible card, so the same string can legitimately appear more than
     // once — the adjacent `Panel` (REQ-UIX-010) is what this assertion is
     // really about, and at least one match proves the error surfaced at all.
-    await waitFor(() => expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.").length).toBeGreaterThan(0));
     expect(screen.getByRole("textbox", { name: "تعديل" })).toHaveValue("نص معدَّل لن يصل"); // still editing, text kept
     expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
