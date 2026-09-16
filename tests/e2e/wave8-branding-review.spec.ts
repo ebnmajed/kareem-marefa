@@ -84,6 +84,41 @@ async function goto(page: Page, url: string) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
+/**
+ * The scroller-aware sideways check (`tests/e2e/certificates.spec.ts`'s own
+ * `review()`), copied rather than re-derived: does the PAGE scroll
+ * sideways at all, and if so, name the widest element that is not already
+ * contained by its own `overflow-x: auto|scroll` ancestor (`ui/tabs`'
+ * strip, deliberately excluded — a strip that scrolls in its own row is
+ * the fix, not the defect, per `16` §4.2).
+ */
+async function assertNoSidewaysScroll(page: Page, name: string) {
+  expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
+  const sideways = await page.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return null;
+    let worst = "";
+    let worstWidth = 0;
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      const box = el.getBoundingClientRect();
+      if (box.width <= window.innerWidth) continue;
+      let contained = false;
+      for (let n = el.parentElement; n; n = n.parentElement) {
+        const ox = getComputedStyle(n).overflowX;
+        if (ox === "auto" || ox === "scroll") {
+          contained = true;
+          break;
+        }
+      }
+      if (!contained && box.width > worstWidth) {
+        worstWidth = box.width;
+        worst = `${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px`;
+      }
+    }
+    return `${document.documentElement.scrollWidth}px wide, viewport ${window.innerWidth}px; widest: ${worst || "(none outside a scroller)"}`;
+  });
+  expect(sideways, `${name} must not scroll sideways at 390 px`).toBeNull();
+}
+
 test("SCR-059: the platform defaults, before any org has ever saved a kit", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
@@ -100,7 +135,7 @@ test("SCR-059: the platform defaults, before any org has ever saved a kit", asyn
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows).toEqual([]);
 
-  await main.scrollIntoViewIfNeeded();
+  await assertNoSidewaysScroll(page, "wave8-branding-defaults");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-defaults.png`, fullPage: true });
 });
 
@@ -123,7 +158,7 @@ test("★ DEC-127: an override saves, the poster-gradient preview shows it, and 
   const { rows } = await db.query<{ brand_kit: { light: { canvasRaise: string } } }>(`select public.brand_kit($1) as brand_kit`, [orgId]);
   expect(rows[0].brand_kit.light.canvasRaise).toBe("#3388ff");
 
-  await main.scrollIntoViewIfNeeded();
+  await assertNoSidewaysScroll(page, "wave8-branding-override-saved");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-override-saved.png`, fullPage: true });
 });
 
@@ -141,7 +176,7 @@ test("REQ-UIX-010: a malformed hex shows an adjacent, icon-marked error at its o
   // error names the same field it sits under.
   await expect(heading).toHaveValue("#zzzzzz");
 
-  await main.scrollIntoViewIfNeeded();
+  await assertNoSidewaysScroll(page, "wave8-branding-field-error");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-field-error.png`, fullPage: true });
 });
 
@@ -159,5 +194,6 @@ test("REQ-UIX-013: the reset dialog names the org's kit and states the consequen
   await expect(dialog.getByRole("button", { name: "إعادة الضبط إلى هوية المنصة" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "إلغاء" })).toBeVisible();
 
+  await assertNoSidewaysScroll(page, "wave8-branding-reset-confirm");
   await page.screenshot({ path: `${SHOTS}/wave8-branding-reset-confirm.png`, fullPage: true });
 });
