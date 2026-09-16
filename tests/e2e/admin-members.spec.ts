@@ -160,7 +160,18 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   expect(audit.rowCount).toBe(1);
 });
 
-test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as a real sentence", async ({ context, page }, testInfo) => {
+// ★ A real build's own run found this test trying to demote the last admin
+// through the SIGNED-IN VIEWER's own row — the only admin this seed creates
+// — but `RoleCell`/`ActionsCell` withhold the role select AND the deactivate
+// menu entirely on the viewer's own row (`isSelf`, no self-demotion in the
+// UI at all), so there never was a control to drive the RPC's guard
+// through. That guard's own error sentence is proved instead in
+// `members-table.test.tsx`, against a NON-self row, where the control (and
+// the toast that carries `error.last_admin`) actually exist. This test
+// proves the withholding itself: REQ-ADM-009 requires the admin to always
+// reach every member's information, and a role/status the viewer cannot
+// act on their own account is still information, correctly read-only here.
+test("REQ-ADM-009: the viewer's own admin row offers no role control and no deactivate", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/members");
@@ -174,9 +185,10 @@ test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as
   await expect(page.getByRole("table").or(page.getByRole("list")).getByText("مشرفة الأعضاء")).toBeVisible();
 
   const row = page.getByRole("row", { name: new RegExp("مشرفة الأعضاء") });
-  await row.getByLabel("الدور").selectOption("member");
-  await row.getByRole("button", { name: "غيّر الدور" }).click();
-  await expect(page.getByRole("alert")).toContainText("لا يمكن ترك المؤسسة بلا مشرف");
+  await expect(row.getByText("مشرف المؤسسة", { exact: true })).toBeVisible(); // plain text, not a <select>
+  await expect(row.getByLabel("الدور")).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "غيّر الدور" })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /مزيد من الإجراءات/ })).toHaveCount(0);
 
   const { rows } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [adminMemberRows[0].id]);
   expect(rows[0].org_role).toBe("admin");

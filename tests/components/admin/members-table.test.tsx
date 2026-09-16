@@ -22,6 +22,7 @@ import axe from "axe-core";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import { MembersTable } from "@/app/[locale]/app/admin/members/members-table";
+import { ToastProvider } from "@/components/ui/toast";
 import type { AdminMemberRow } from "@/lib/dal/admin-members";
 import adminAr from "@/messages/ar/admin.json";
 import uiAr from "@/messages/ar/ui.json";
@@ -136,6 +137,69 @@ describe("MembersTable", () => {
     await waitFor(() => expect(changeRoleAction).toHaveBeenCalledTimes(1));
     const submitted = changeRoleAction.mock.calls[0][1] as FormData;
     expect(submitted.get("role")).toBe("moderator");
+  });
+
+  // ★ REQ-ADM-009: the RPC's last-admin guard, proved HERE rather than in
+  // the e2e spec — the spec seeds only one admin, which is the signed-in
+  // viewer's own row, and `RoleCell` withholds the role control entirely on
+  // the viewer's own row (no self-demotion in the UI at all, `isSelf`
+  // below), so the guard is unreachable through that row's own control. A
+  // real build's own run found the e2e test trying anyway, timing out on a
+  // `<select>` that was never going to exist. `error.last_admin` only ever
+  // surfaces as a toast (`RoleCell` has no inline alert of its own), which
+  // is a no-op outside `ToastProvider` — wrapped here, unlike `renderTable`.
+  it("★ REQ-ADM-009: the last-admin guard's error reads as a real sentence", async () => {
+    const changeRoleAction = vi.fn<RowAction>().mockResolvedValue({ error: "last_admin", done: false });
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <MembersTable
+            members={MEMBERS}
+            companyNames={new Map()}
+            selfId="self"
+            timeZone="Asia/Riyadh"
+            locale="ar"
+            changeRoleActions={{ m1: changeRoleAction, m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }) }}
+            deactivateActions={{ m1: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }), m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }) }}
+            reactivateActions={{ m1: vi.fn().mockResolvedValue(undefined), m2: vi.fn().mockResolvedValue(undefined) }}
+          />
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+
+    const selects = screen.getAllByLabelText("الدور") as HTMLSelectElement[];
+    await userEvent.selectOptions(selects[0], "member");
+    await userEvent.click(screen.getAllByRole("button", { name: "غيّر الدور" })[0]);
+
+    await waitFor(() => expect(changeRoleAction).toHaveBeenCalledTimes(1));
+    await screen.findByText("لا يمكن ترك المؤسسة بلا مشرف", { exact: false });
+  });
+
+  // ★ A real build's own run found `admin-members.spec.ts` trying to
+  // demote the last admin through the viewer's OWN row — but the viewer's
+  // own row renders no role select and no deactivate menu at all
+  // (`RoleCell`/`ActionsCell`'s `isSelf` branch), so the guard above is the
+  // only place this decision is actually provable. This proves the
+  // withholding itself.
+  it("the viewer's own row offers no role control and no deactivate — self-demotion has no UI path at all", () => {
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <MembersTable
+          members={[{ ...MEMBERS[0], id: "self", role: "admin" }, MEMBERS[1]]}
+          companyNames={new Map()}
+          selfId="self"
+          timeZone="Asia/Riyadh"
+          locale="ar"
+          changeRoleActions={{ self: vi.fn(), m2: vi.fn() }}
+          deactivateActions={{ self: vi.fn(), m2: vi.fn() }}
+          reactivateActions={{ self: vi.fn(), m2: vi.fn() }}
+        />
+      </NextIntlClientProvider>,
+    );
+    // The plain-text role reading (no select, no submit) is what `isSelf`
+    // renders instead.
+    expect(screen.getAllByText("مشرف المؤسسة").length).toBeGreaterThan(0);
+    expect(screen.queryAllByLabelText("الدور")).toHaveLength(2); // both from m2, the OTHER member — none from "self"
   });
 
   it("has no axe violations", async () => {
