@@ -136,6 +136,19 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const seat = phase === "open" ? rsvp?.seat : undefined;
   const poster = <SessionPoster sessionId={session.id} locale={locale} />;
 
+  // The sub-nav names a section as its heading does: one presenter is «المُقدِّم»
+  // in both places, never «المُقدِّمون» above «المُقدِّم».
+  const presentersTitle = session.presenters.length > 1 ? t("presentersLabel") : t("presenterLabel");
+  const navLabels: Record<GatedId, string> = {
+    about: t("nav.about"),
+    presenters: presentersTitle,
+    tasks: t("nav.tasks"),
+    materials: t("nav.materials"),
+    photos: t("nav.photos"),
+    discussion: t("nav.discussion"),
+    rating: t("nav.rating"),
+  };
+
   return (
     <article>
       <Notices session={session} phase={phase} published={published} locale={locale} />
@@ -170,7 +183,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
             {/* The sub-nav lists exactly the sections that render, so it waits on
                 the same summaries; a row-high placeholder holds its place. */}
             <Suspense fallback={<div aria-hidden="true" className="h-11 border-b border-edge md:h-[52px]" />}>
-              <SubnavFor gates={gates} summaries={summaries} label={t("sectionsNav")} labels={Object.fromEntries(GATED_IDS.map((sectionId) => [sectionId, t(`nav.${sectionId}`)])) as Record<GatedId, string>} />
+              <SubnavFor gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
             </Suspense>
 
             <GatedSection id="about" title={t("aboutLabel")}>
@@ -191,7 +204,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               ) : null}
             </GatedSection>
 
-            <GatedSection id="presenters" title={session.presenters.length > 1 ? t("presentersLabel") : t("presenterLabel")} gate={gates.presenters}>
+            <GatedSection id="presenters" title={presentersTitle} gate={gates.presenters}>
               <PresenterList presenters={session.presenters} />
             </GatedSection>
 

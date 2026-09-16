@@ -345,7 +345,8 @@ test("a sub-nav jump lands its section below the sticky layers, not behind them"
   await streamed(page);
 
   const nav = page.getByRole("navigation", { name: "أقسام الجلسة" });
-  await nav.getByRole("link", { name: "المُقدِّمون" }).click();
+  // One presenter: the nav entry and the heading both say «المُقدِّم».
+  await nav.getByRole("link", { name: "المُقدِّم", exact: true }).click();
   await expect(page).toHaveURL(/#presenters$/);
   await streamed(page);
   const heading = page.getByRole("heading", { level: 2, name: "المُقدِّم" });
