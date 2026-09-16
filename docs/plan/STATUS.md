@@ -134,9 +134,9 @@ with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 to
 | L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017`, `DEC-141` | — | — | **closed** `7b2ac81` — `0084`–`0089` (`checkin`) and `0090` (`sessions`' admin member profile); `db:reset` clean, `policy-diff` agrees, trace no gaps, RLS 790/791. The one red is `content`'s own `photos-broadcast` case from `7c6f9e5`, routed. Six older assertions of the replaced mechanisms were retired or re-aimed, each with a successor in `checkin`'s suites. Both worker readers skip removed check-ins. **Still open:** the app readers that ignore `removed_at`, routed to `checkin` (`checkin.ts`, `rsvp.ts`), `sessions` (`sessions.ts`, `search.ts`, `ratings.ts` by written grant) and `console` (`admin-dashboard.ts`, `admin-exports.ts` by written grant). ★ **Before merge, the owner rehearses `0083`–`0090` against a production schema dump, as with `0082`.** |
 | L7 | lead | ★ **Arabic-Indic digits seeded into every org's points catalogue** — found in `wave7-content-points-*.png`; `0083` fixes the seed, `numerals-seeds.test.ts` red before and green after | `REQ-INT-006`, `DEC-124`, `DEC-143` | — | — | code **closed**; ★ **production rows need the owner's scoped data fix** (`DEC-143`) |
 | L8 | lead | ★ **the primary button's glint visible at rest in RTL** — on every primary `ui/button` since M9, found in `wave7-sessions-public-card-*.png` | `REQ-UIX-001` | — | worktree sign-in capture at `07a2f3b` + the fix: a clean button; `visual` 0.000 % on all eight frozen pairs | **closed** `7da3a50` |
-| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ | — | open — `checkin.spec` green at sync 6, but no capture of the check-in page exists; `checkin` adding ready and `check_in_closed` |
+| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ | `wave7-checkin-check-in-ready.png` · `wave7-checkin-check-in-closed.png` · `checkin.spec.ts` · `70bfb21` (final gates) | **closed** — opened by the lead: the six-box form, and «أُغلق تسجيل الحضور لهذه الجلسة» |
 | C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | ✓ | `wave7-checkin-host-open.png` · `wave7-checkin-host-closed.png` · `checkin.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead: the switch closes and reopens, the live code stays visible, «تم إغلاق تسجيل الحضور» |
-| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | ✓ | — | open — at sync 6 `admin-attendance:213` (two selects both named «العضو») and `:186` (strict) stopped the serial block again, so ★ **the removal case and its three captures have still not run**; distinct labels routed |
+| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | ✓ | `wave7-checkin-attendance-remove-dialog.png` · `wave7-checkin-attendance-removed.png` · `admin-attendance.spec.ts` · `70bfb21` (final gates) | **closed** — ★ `admin-attendance:319` (REQ-CHK-017, the removal through the confirm dialog) green on both projects; opened by the lead: the dialog names member and session and states the reversal and revocation, the removed row keeps its reason; the table scrolls in its own keyboard region at 390 |
 | C4 | `checkin` | the switch and its `ends_at + 2 h` ceiling — SQL, RLS, the matrix column | `REQ-CHK-015`, `016`, `DEC-113`, `DEC-116` | ✓ | — | **closed** — `0084`/`0089` promoted `7b2ac81`, RLS 791/791 at `e73b239`; the matrix reads `checkInIneligibleReason()` (`34d4c08`); the event page and timeline follow the switch (`a55cf37`, `b3e5837`); `checkin.spec:222` green at `bfe8e2a` |
 | C5 | `checkin` | **the reversal** — a compensating `reversal` ledger entry with its own key; `revoke_certificate()`; the late-job race | `REQ-CHK-017`, `REQ-PTS-013`, `REQ-CRT-004` | ✓ | — | **closed** (SQL) — `0087`/`0088` promoted `7b2ac81` with the reversal, revocation, no-show symmetry and late-job rows green; every reader skips removed rows (`6178109`, `5248e6b`, `9fd0570`, workers in `7b2ac81`); the entry renders on `me/points` (`8ed4bf8`). The admin's removal UI is C3 |
 | C6 | `checkin` | walk-ins as a publishing setting — `schedule_session()`'s parameter, the field on SCR-043, `set_session_walk_ins()` retired | `REQ-CHK-010`, `DEC-117`, `DEC-118` | ✓ | `wave7-checkin-schedule-walk-ins.png` · `checkin-schedule-walk-ins.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead: a stored-on value renders checked, the guard for `343991d` |
@@ -153,7 +153,7 @@ with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 to
 | T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | ✓ | `wave7-content-calendar-connected.png` · `wave7-content-calendar.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; no token in sight |
 | T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | ✓ | `wave7-content-notifications-preferences.png` · `wave7-content-notifications.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; the 390 px «overflow» was the old helper counting tabs inside the strip's own scroller (`e3633bc`) |
 | T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | ✓ | `wave7-content-privacy-deactivate-confirm.png` · `privacy.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; confirm in `ui/dialog` |
-| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | ✓ | — | code landed — `0091` (`e73b239`) + the widget, proven by RLS and component tests; no e2e drives the no-reload path yet |
+| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | ✓ | — | **closed at the component and RLS layers** — `0091` (`e73b239`) proven by `photos-broadcast.test.ts`, the widget by its component test; not driven end-to-end, because the worker's processing step is outside the e2e stub. Recorded as such, not claimed as an e2e |
 | K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ | `wave7-console-rail-drawer-admin-disclosed.png` · `wave7-console-rail-drawer-moderator-disclosed.png` · `console.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 | K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | ✓ | `wave7-console-moderation-comments-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 | K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | ✓ | `wave7-console-moderation-photos-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
@@ -323,6 +323,28 @@ Chromium: a bare `<bdi>` puts the sign first with or without the LRM. The `dir="
 harmless and correct, but the cause in their comments did not happen. `sessions`' R8 (`StatProps.valueDir`) was
 declined for the same reason. **Lesson:** a finding about glyph order is read from a full-resolution crop, never from the
 thumbnail.
+
+### The final gates — 2026-09-16 — `70bfb21`
+
+Every gate ran on one SHA, with teammates holding every database, port-3000 and commit action for the run.
+
+| Gate | Result |
+|---|---|
+| `db:reset` · `policy-diff` · `trace` | clean · migrations and `03` agree · **313 requirements · 72 entities · 147 stories · no gaps** |
+| RLS (single runner) | **72 files, 791 passed**, 4 todo, 0 deadlocks |
+| `tsc` app · worker | clean · clean |
+| lint | **0 errors** (23 warnings) |
+| vitest | **146 files, 1444/1444** |
+| `ui-reach --wave7` | **23/23** |
+| `ui-lint` | passes; the allowlist pruned to what is on disk (`e1f33e0`: 229 across 58 files) |
+| build | green, with the local `NEXT_PUBLIC_*` inlined |
+| ★ `qa` | **44 passed, 0 failed** |
+| ★ `visual` `wave-6-final → wave-7-final` | **0.000 % on all eight pairs** |
+| ★ `reserve-probe` alone (phone) | **16/16**, 103–130 ms, so `DEC-136`'s patch holds at the wave's HEAD |
+| e2e (full, both projects) | **425 passed, 6 failed**: `budgets`, `forms-propose:124` and `notify-screens:108` pass alone (load); `tasks:176` desktop strict locator and ★ `bookmarks:237` (un-bookmarking leaves the card under load, three full runs running) are with `content`, **open** |
+
+**Rows:** 27 of 27 are closed on their measure (T8 at the component and RLS layers, recorded as such). **Open
+before the PR is ready:** the two `content` e2e items above.
 
 ### Carried — diagnosed, each with an owner
 
