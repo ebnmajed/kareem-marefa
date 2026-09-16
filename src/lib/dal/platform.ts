@@ -339,6 +339,51 @@ export async function getJobHealth(locale: string): Promise<JobHealthRow[]> {
   );
 }
 
+// ── SCR-084 and the console's home · the eight alerts of `11` §3.2 ─────────
+
+/** `11` §3.2's alerts, in the document's order — the order both screens list them in. */
+export const PLATFORM_ALERTS = [
+  "queue_stalled",
+  "ledger_divergence",
+  "parity_failure",
+  "calendar_backlog",
+  "email_bounce_spike",
+  "render_failures",
+  "storage_prefix_violation",
+  "impersonation_active",
+] as const;
+export type PlatformAlertKey = (typeof PLATFORM_ALERTS)[number];
+
+export interface PlatformAlert {
+  alert: PlatformAlertKey;
+  fired: boolean;
+  /**
+   * Counts, ages, rates and thresholds only — `0075` writes nothing else, and
+   * `tests/rls/platform-alerts.test.ts` pins the key set (REQ-ADM-003).
+   */
+  detail: Record<string, number | string>;
+}
+
+/**
+ * The worker's own readings, through `platform_alerts()` — the thresholds live
+ * once, in `evaluate_alerts()`, and are never re-derived here.
+ *
+ * ★ `null` when the read FAILED, never `[]`: a console that answered «nothing
+ * needs attention» because the function was missing would be the one lie this
+ * screen must not tell.
+ */
+export async function listPlatformAlerts(locale: string): Promise<PlatformAlert[] | null> {
+  await requirePlatformAdmin(locale);
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("platform_alerts");
+  if (error || !data) return null;
+  const rows = data as { alert: string; fired: boolean; detail: Record<string, number | string> | null }[];
+  return PLATFORM_ALERTS.flatMap((key) => {
+    const row = rows.find((r) => r.alert === key);
+    return row ? [{ alert: key, fired: row.fired, detail: row.detail ?? {} }] : [];
+  });
+}
+
 // ── SCR-085 · break-glass ─────────────────────────────────────────────────
 
 export interface ImpersonationSession {

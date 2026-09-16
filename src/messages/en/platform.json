@@ -3,11 +3,14 @@
     "shell": {
       "brand": "Platform console",
       "nav": {
+        "home": "Overview",
         "orgs": "Orgs",
         "templates": "Template library",
         "metrics": "Metrics",
         "impersonate": "Break-glass"
       },
+      "skipToContent": "Skip to the console's content",
+      "switcher": "Platform console sections: {section}",
       "note": "A platform admin reads no org's data. Reaching into one is a time-bounded break-glass session, and it appears in that org's own audit log."
     },
     "orgs": {
@@ -144,11 +147,12 @@
       "sessionCount": "{count, plural, =0 {No sessions} one {One session} other {{value} sessions}}"
     },
     "banner": {
+      "badge": "Break-glass session",
       "viewingAs": "You are browsing <bdi>{org}</bdi> with break-glass access, and this session is recorded in that org's audit log.",
-      "remaining": "Ends in {minutes}",
-      "minutes": "{count, plural, =0 {under a minute} one {one minute} other {{value} minutes}}",
-      "stop": "End",
-      "readOnly": "Read-only: no privileged action inside the org can be performed."
+      "endsAt": "Ends at <bdi>{time}</bdi>",
+      "readOnly": "Read-only: no privileged action inside the org can be performed.",
+      "stop": "End the session",
+      "stopped": "The session has ended, and the org is out of your access."
     },
     "errors": {
       "failed": "That did not go through. Try again.",
@@ -162,6 +166,55 @@
       "slug_taken": "That slug belongs to another org.",
       "slug_mismatch": "The slug you typed does not match. Nothing was deleted.",
       "impersonation_already_active": "You have an open break-glass session. End it before starting another."
+    },
+    "home": {
+      "title": "Platform console",
+      "attentionTitle": "Needs your attention",
+      "attentionNone": "Nothing needs your attention right now. Every alert is clear.",
+      "alertsUnavailable": "The alert states could not be read. Reload the page in a moment.",
+      "viewMetrics": "View metrics",
+      "numbersTitle": "The platform in numbers"
+    },
+    "alerts": {
+      "notInstalled": "The job queue is not installed in this environment.",
+      "queue_stalled": {
+        "title": "The job queue is stalled",
+        "detail": "Oldest pending job: {age} — threshold: {threshold}"
+      },
+      "ledger_divergence": {
+        "title": "Points balances diverge",
+        "detail": "Divergences in the last 24 hours: {value}"
+      },
+      "parity_failure": {
+        "title": "Font parity failed",
+        "detail": "Fonts that failed in the last 24 hours: {value}"
+      },
+      "calendar_backlog": {
+        "title": "Calendar sync backlog",
+        "detail": "Waiting to sync: {value} — oldest for: {age}"
+      },
+      "email_bounce_spike": {
+        "title": "Email bounce spike",
+        "detail": "Bounce rate in the last hour: {rate} — sent: {value}"
+      },
+      "render_failures": {
+        "title": "Consecutive export failures",
+        "detail": "Consecutive failures: {value} — threshold: {threshold}"
+      },
+      "storage_prefix_violation": {
+        "title": "A file outside its org's path",
+        "detail": "Violations in the last 24 hours: {value}"
+      },
+      "impersonation_active": {
+        "title": "A break-glass session left open",
+        "detail": "Open for more than {hours}: {value}"
+      }
+    },
+    "units": {
+      "seconds": "{count, plural, =0 {under a second} one {one second} other {{value} seconds}}",
+      "minutes": "{count, plural, =0 {under a minute} one {one minute} other {{value} minutes}}",
+      "hours": "{count, plural, =0 {under an hour} one {one hour} other {{value} hours}}",
+      "percent": "{value}%"
     }
   }
 }

@@ -16,11 +16,16 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+// `E2E_SHOTS_DIR` lets a run in the lead's verification worktree land its
+// captures in the main checkout, where STATUS cites them (DEC-137, DEC-147).
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
 const PASSWORD = "correct-horse-battery-staple-9";
@@ -177,12 +182,21 @@ async function signInMember(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-/** One 390 px RTL capture per screen, plus the sideways check (TEAM.md §5). */
+/**
+ * One 390 px RTL capture per screen state, plus the sideways check (TEAM.md §5).
+ *
+ * Wave 8 (DEC-147): a capture a STATUS row cites is `wave8-platform-<route>-<state>.png`,
+ * phone project only, under `SHOTS`. The routes not yet rebuilt keep wave 4's names
+ * until their own commit renames them.
+ */
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  await p.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${project}.png`, fullPage: true });
+  await p.evaluate(() => document.fonts.ready);
+  mkdirSync(SHOTS, { recursive: true });
+  const file = name.startsWith("wave8-") ? `${name}.png` : `${name}-390-rtl-${project}.png`;
+  await p.screenshot({ path: join(SHOTS, file), fullPage: true });
   // The sideways check runs on the phone project only: a desktop context
   // resized to 390 px carries a 12 px scrollbar a mobile one does not, so
   // every page would measure 402 px (TEAM.md §5).
@@ -380,10 +394,34 @@ test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, w
   expect(auditText).toContain("تحقيق في بلاغ من مشرف المؤسسة");
   await orgContext.close();
 
-  // And it ends when the super admin says so.
+  // And it ends when the super admin says so. Scoped to the page's own panel:
+  // the banner carries the same control (wave 8 — there is one stop control).
   await page.goto("/ar/app/platform/impersonate");
-  await page.getByRole("button", { name: /أنهِ الجلسة/ }).click();
+  await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
   await expect(page.getByText(/ابدأ الجلسة/)).toBeVisible();
+});
+
+test("REQ-ADM-001 · REQ-UIX-017: the console's home renders, and the rail follows a client-side navigation", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "desktop", "the rail is the desktop shape; the phone switcher is the review's");
+  await signInPlatform(context);
+  await page.goto("/ar/app/platform");
+  // ★ A page, not a redirect (wave 8): the URL stays and the home has its own h1.
+  expect(new URL(page.url()).pathname).toBe("/ar/app/platform");
+  await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
+  const rail = page.getByRole("navigation", { name: "لوحة المنصة" }).filter({ has: page.getByRole("link", { name: "المؤسسات" }) });
+  await expect(rail.getByRole("link", { name: "نظرة عامة" })).toHaveAttribute("aria-current", "page");
+
+  // ★ The layout does not re-render on this navigation; the rail must still move.
+  await rail.getByRole("link", { name: "المؤسسات" }).click();
+  await page.waitForURL(/\/ar\/app\/platform\/orgs$/);
+  await expect(rail.getByRole("link", { name: "المؤسسات" })).toHaveAttribute("aria-current", "page");
+  await expect(rail.getByRole("link", { name: "نظرة عامة" })).not.toHaveAttribute("aria-current");
+
+  // The second skip link lands past the rail.
+  await page.goto("/ar/app/platform");
+  await page.locator('a[href="#platform-content"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#platform-content")).toBeFocused();
 });
 
 test("REQ-ADM-002: a session cannot be silently extended — four hours is the ceiling", async ({ context, page }) => {
@@ -397,9 +435,9 @@ test("REQ-ADM-002: a session cannot be silently extended — four hours is the c
 
 test("REQ-NFR-007: the console passes axe at WCAG 2.2 AA", async ({ context, page }) => {
   await signInPlatform(context);
-  // `/ar/app/platform` redirects to the org list, so scanning it proves the
-  // entry point AND the list. The metrics screen carries the one horizontal
-  // scroller in this track, which is `scrollable-region-focusable`'s case.
+  // `/ar/app/platform` is the console's home since wave 8 (it no longer
+  // redirects). The metrics screen carries the one horizontal scroller in this
+  // track, which is `scrollable-region-focusable`'s case.
   for (const path of [
     "/ar/app/platform",
     "/ar/app/platform/orgs",
@@ -416,7 +454,17 @@ test.describe("390 px RTL review", () => {
   test.use({ viewport: PHONE });
 
   test("every platform screen is captured and none scrolls sideways", async ({ context, page }) => {
+    test.skip(test.info().project.name !== "phone", "wave 8 captures are the phone project's (DEC-147)");
     await signInPlatform(context);
+
+    // P0 + P1 — the console's home, and its section switcher open.
+    await page.goto("/ar/app/platform");
+    await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
+    await review(page, "wave8-platform-home-default");
+    await page.getByRole("button", { name: "أقسام لوحة المنصة: نظرة عامة" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await review(page, "wave8-platform-shell-nav-open");
+    await page.keyboard.press("Escape");
 
     await page.goto("/ar/app/platform/orgs");
     await review(page, "scr-080-platform-orgs");

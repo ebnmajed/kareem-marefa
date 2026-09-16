@@ -3,11 +3,14 @@
     "shell": {
       "brand": "لوحة المنصة",
       "nav": {
+        "home": "نظرة عامة",
         "orgs": "المؤسسات",
         "templates": "مكتبة القوالب",
         "metrics": "المؤشرات",
         "impersonate": "الدخول الاستثنائي"
       },
+      "skipToContent": "تخطَّ إلى محتوى اللوحة",
+      "switcher": "أقسام لوحة المنصة: {section}",
       "note": "مدير المنصة لا يقرأ بيانات أي مؤسسة. الوصول إليها يكون بجلسة دخول استثنائي محدودة بوقت، وتظهر في سجل تدقيق المؤسسة نفسها."
     },
     "orgs": {
@@ -144,11 +147,12 @@
       "sessionCount": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}"
     },
     "banner": {
+      "badge": "جلسة استثنائية",
       "viewingAs": "أنت تتصفح <bdi>{org}</bdi> بصلاحية استثنائية، وهذه الجلسة مسجَّلة في سجل تدقيق المؤسسة.",
-      "remaining": "تنتهي خلال {minutes}",
-      "minutes": "{count, plural, zero {أقل من دقيقة} one {دقيقة واحدة} two {دقيقتين} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
-      "stop": "إنهاء",
-      "readOnly": "الوصول محدود بالقراءة: لا يمكن تنفيذ أي إجراء إداري داخل المؤسسة."
+      "endsAt": "تنتهي عند <bdi>{time}</bdi>",
+      "readOnly": "الوصول محدود بالقراءة: لا يمكن تنفيذ أي إجراء إداري داخل المؤسسة.",
+      "stop": "أنهِ الجلسة",
+      "stopped": "أُنهيت الجلسة، وخرجت المؤسسة من صلاحياتك."
     },
     "errors": {
       "failed": "تعذّر إتمام العملية. حاول مرة أخرى.",
@@ -162,6 +166,55 @@
       "slug_taken": "هذا المعرّف مستخدم لمؤسسة أخرى.",
       "slug_mismatch": "المعرّف الذي كتبته لا يطابق معرّف المؤسسة. لم يُحذف شيء.",
       "impersonation_already_active": "لديك جلسة دخول استثنائي مفتوحة. أنهِها قبل بدء غيرها."
+    },
+    "home": {
+      "title": "لوحة المنصة",
+      "attentionTitle": "يحتاج انتباهك",
+      "attentionNone": "لا شيء يحتاج انتباهك الآن. التنبيهات كلها سليمة.",
+      "alertsUnavailable": "تعذّر قراءة حالة التنبيهات. أعد تحميل الصفحة بعد قليل.",
+      "viewMetrics": "عرض المؤشرات",
+      "numbersTitle": "المنصة بالأرقام"
+    },
+    "alerts": {
+      "notInstalled": "طابور المهام غير مثبّت في هذه البيئة.",
+      "queue_stalled": {
+        "title": "طابور المهام متوقف",
+        "detail": "أقدم مهمة منتظرة: {age} — الحد: {threshold}"
+      },
+      "ledger_divergence": {
+        "title": "اختلاف في أرصدة النقاط",
+        "detail": "الاختلافات خلال آخر 24 ساعة: {value}"
+      },
+      "parity_failure": {
+        "title": "إخفاق في تطابق الخطوط",
+        "detail": "الخطوط التي أخفقت خلال آخر 24 ساعة: {value}"
+      },
+      "calendar_backlog": {
+        "title": "تراكم في مزامنة التقويم",
+        "detail": "بانتظار المزامنة: {value} — أقدمها منذ: {age}"
+      },
+      "email_bounce_spike": {
+        "title": "ارتفاع في ارتداد البريد",
+        "detail": "نسبة الارتداد في الساعة الأخيرة: {rate} — المُرسَل: {value}"
+      },
+      "render_failures": {
+        "title": "إخفاقات متتالية في التصدير",
+        "detail": "إخفاقات متتالية: {value} — الحد: {threshold}"
+      },
+      "storage_prefix_violation": {
+        "title": "ملف خارج مسار مؤسسته",
+        "detail": "المخالفات خلال آخر 24 ساعة: {value}"
+      },
+      "impersonation_active": {
+        "title": "جلسة دخول استثنائي مفتوحة طويلًا",
+        "detail": "مفتوحة منذ أكثر من {hours}: {value}"
+      }
+    },
+    "units": {
+      "seconds": "{count, plural, zero {أقل من ثانية} one {ثانية واحدة} two {ثانيتان} few {{value} ثوانٍ} many {{value} ثانية} other {{value} ثانية}}",
+      "minutes": "{count, plural, zero {أقل من دقيقة} one {دقيقة واحدة} two {دقيقتان} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
+      "hours": "{count, plural, zero {أقل من ساعة} one {ساعة واحدة} two {ساعتين} few {{value} ساعات} many {{value} ساعة} other {{value} ساعة}}",
+      "percent": "{value}٪"
     }
   }
 }
