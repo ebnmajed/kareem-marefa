@@ -3113,3 +3113,14 @@ both are given (`f9fa70e`).
      The `scoring_rules` update bumps the rule's `version` and writes one `scoring_config_history` row with no actor (`actor_id` is nullable, `0004:362`) — exactly what an admin editing the label would record, which is honest. **If the ledger count is not zero**, those rows cannot be rewritten; the owner decides whether `me/points` should render a streak entry's reason from the rule rather than the ledger row.
 - **Supersedes:** nothing. Extends `DEC-132`'s sweep to the one surface it could not see.
 - **Documents changed:** `supabase/migrations/0083_western_numerals_in_seeds.sql`, `tests/rls/numerals-seeds.test.ts`, `STATUS.md`
+
+## DEC-144 — The propose form's error summary lists the errors on the page, not the errors of the last submit
+
+- **Date:** 2026-09-16 · **Decided by:** lead, recording `sessions`' sync-2 change (`3386178`)
+- **What the capture showed.** Sync 2's `/app/propose` capture had the summary counting two fields while three fields showed an error. The third was a duration of 5, typed after the submit and caught on blur. The server refuses 5 too, so the rules agree; the summary disagreed because M9 built it as **a record of one attempt** (`proposal-form.tsx`'s own comment, `sessions`' M9 note). It did not shrink as fields were fixed and did not grow as fields were broken.
+- **Decision.** The summary is built from the errors **shown**: the server's refusals as blur validation has since revised them. A field joins it on blur and leaves it when its value first passes, so it changes once per field state, never per keystroke. Focus still moves to it only when a submit mounts it (`key={state.attempt}`), and its description is a plural with all six forms.
+- **Why this is not a departure from `16`.** `16` §8.2 item 4 says the summary lists **every failed field**; item 5 says fields validate on blur after the first submit. The M9 design satisfied item 4 only at the instant of submitting. This one satisfies it for as long as the summary is on screen.
+- **The cost, stated.** `FormSummary` is `role="alert"`, so each change re-announces the list. That is bounded to one announcement per field that changes state on blur, which is the reason M9 froze it and the reason the per-keystroke version was never built.
+- **Scope.** The propose form only. The primitive does not change; every other form that adopts `FormSummary` chooses per form, and a form with blur validation should follow this one.
+- **Supersedes:** nothing in a settled document. It replaces an implementation choice recorded in `sessions`' M9 note.
+- **Documents changed:** `DECISIONS.md`
