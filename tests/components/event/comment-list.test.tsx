@@ -3,16 +3,22 @@
 // Realtime socket, and that wiring is proven separately (docs/plan/notes/
 // event.md §3, `tests/rls/realtime.test.ts`).
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/event.json";
 import { ToastProvider } from "@/components/ui/toast";
+import type { CommentDTO } from "@/lib/dal/comments";
 
 vi.mock("@/lib/realtime/channel", () => ({ subscribeToSessionTopic: vi.fn(() => () => {}) }));
 vi.mock("@/components/event/actions", () => ({
   postCommentAction: vi.fn(),
   searchMentionsAction: vi.fn().mockResolvedValue([]),
+  toggleReactionAction: vi.fn().mockResolvedValue({ error: null }),
+  deleteMyCommentAction: vi.fn().mockResolvedValue({ error: null }),
+  editCommentAction: vi.fn().mockResolvedValue({ error: null }),
+  moderateCommentAction: vi.fn().mockResolvedValue({ error: null }),
+  reportCommentAction: vi.fn().mockResolvedValue({ error: null }),
 }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
@@ -100,6 +106,72 @@ describe("CommentList", () => {
     expect(screen.getByText("سؤال")).toBeInTheDocument();
     expect(screen.getByText("جواب")).toBeInTheDocument();
     expect(screen.queryByText("لا تعليقات بعد. كن أول من يعلّق.")).not.toBeInTheDocument();
+  });
+
+  // ★ The lead's re-drive, verbatim: "add a jsdom test: post, then react,
+  // then the composer's button is idle." This is the cross-component shape
+  // blocker 1 actually was — the composer (`CommentComposer`) and the
+  // reaction toggle (`CommentItem`) are SIBLINGS under this list, each with
+  // its own `useTransition`, and the live-build failure was one sibling's
+  // `router.refresh()` leaving ANOTHER sibling's transition with no signal
+  // that it had finished. Fixed at 44485b8 (not e533ad8, which predates
+  // it) by moving every `router.refresh()` in both files into its own
+  // `setTimeout(…, 0)`, outside the transition each button's own `pending`
+  // is read from.
+  //
+  // Full honesty, as in comment-composer.test.tsx's blocker-1 test: jsdom
+  // has no real Next.js router, so `useRouter().refresh` here is a `vi.fn()`
+  // that does nothing and cannot fold two calls into one the way the real
+  // router did in the live build. This test cannot reproduce the actual
+  // failure mechanism — it can only prove the composer's `pending` never
+  // depends on a sibling's action at all, which is exactly what the
+  // `setTimeout` decoupling is FOR, and would already have passed before
+  // 44485b8 for the same reason (nothing here ever hung in jsdom). The real
+  // mechanism is only provable against a real build —
+  // `tests/e2e/wave6-discussion-review.spec.ts` and
+  // `tests/e2e/event-comments.spec.ts` are what the lead reruns for that.
+  it("★ BLOCKER 1 cross-component repro: post, then react on a sibling comment, then the composer's own button is idle", async () => {
+    const { postCommentAction, toggleReactionAction } = await import("@/components/event/actions");
+    vi.mocked(postCommentAction).mockResolvedValueOnce({ error: null });
+    vi.mocked(toggleReactionAction).mockResolvedValueOnce({ error: null });
+
+    const existing: CommentDTO = {
+      id: "c1",
+      sessionId: "s1",
+      parentId: null,
+      author: { id: "a1", displayName: "سالم الحربي", avatarUrl: null },
+      body: "سؤال قائم",
+      mentions: [],
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      isMine: false,
+      canEditNow: false,
+      isStaffViewer: false,
+    };
+    renderList({ initialComments: [existing] });
+
+    const composerBox = screen.getByPlaceholderText("اكتب تعليقًا…") as HTMLTextAreaElement;
+    const postButton = () => screen.getByRole("button", { name: "نشر" });
+
+    // Post — the top-level composer's own transition settles.
+    fireEvent.change(composerBox, { target: { value: "تعليق جديد" } });
+    fireEvent.click(postButton());
+    await waitFor(() => expect(composerBox.value).toBe(""));
+
+    // React on the EXISTING comment — a sibling `CommentItem`'s own
+    // transition, entirely independent of the composer's.
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "إلغاء الإعجاب" })).toBeInTheDocument());
+
+    // The composer's own button — not the reaction's — is idle. Fresh text
+    // first, the same guard comment-composer.test.tsx's blocker-1 test
+    // uses: right after posting, `disabled` is already true because there
+    // is nothing to submit, which is a different, unrelated gate from
+    // `pending`/`aria-busy` and would hide a still-stuck transition.
+    fireEvent.change(composerBox, { target: { value: "نص جديد بعد التفاعل" } });
+    await waitFor(() => expect(postButton()).not.toHaveAttribute("aria-busy", "true"), { timeout: 3000 });
+    expect(postButton()).toBeEnabled();
   });
 
   it("is accessible in its empty state", async () => {
