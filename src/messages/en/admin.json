@@ -276,6 +276,7 @@
       "add": "Add the venue",
       "listTitle": "Your venues",
       "empty": "No venues yet.",
+      "emptyAction": "Go to the form above",
       "nameColumn": "Name",
       "capacityColumn": "Capacity",
       "upcomingColumn": "Upcoming sessions",
@@ -316,6 +317,7 @@
       "add": "Add the category",
       "listTitle": "Your categories",
       "empty": "No categories yet.",
+      "emptyAction": "Go to the form above",
       "nameColumn": "Name",
       "sessionCountColumn": "Sessions",
       "statusColumn": "Status",
@@ -347,6 +349,7 @@
       "add": "Add the company",
       "listTitle": "Your companies",
       "empty": "No companies yet.",
+      "emptyAction": "Go to the form above",
       "nameColumn": "Name",
       "memberCountColumn": "Members",
       "statusColumn": "Status",
@@ -512,7 +515,7 @@
     },
     "exports": {
       "title": "Exports",
-      "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM, headers are Arabic, and numbers follow your organisation's numeral system.",
+      "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM and Arabic headers.",
       "download": "Download CSV",
       "sessions": {
         "title": "Sessions",

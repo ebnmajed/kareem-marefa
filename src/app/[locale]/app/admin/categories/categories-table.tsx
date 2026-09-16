@@ -73,7 +73,10 @@ export function CategoriesTable({ categories, locale }: { categories: AdminCateg
       columns={columns}
       rows={categories}
       rowKey={(c) => c.id}
-      empty={{ title: t("empty"), action: { label: t("addTitle"), onClick: () => document.getElementById("c-name")?.focus() } }}
+      // ★ Not `t("addTitle")` — sync-3's own finding: the add form sits
+      // directly above this table, so an empty-state action reading "أضف
+      // تصنيفًا" duplicated the form's own submit button on one screen.
+      empty={{ title: t("empty"), action: { label: t("emptyAction"), onClick: () => document.getElementById("c-name")?.focus() } }}
     />
   );
 }

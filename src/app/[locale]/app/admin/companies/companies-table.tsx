@@ -73,7 +73,10 @@ export function CompaniesTable({ companies, locale }: { companies: AdminCompany[
       columns={columns}
       rows={companies}
       rowKey={(c) => c.id}
-      empty={{ title: t("empty"), action: { label: t("addTitle"), onClick: () => document.getElementById("co-name")?.focus() } }}
+      // ★ Not `t("addTitle")` — sync-3's own finding: the add form sits
+      // directly above this table, so an empty-state action reading "أضف
+      // شركة" duplicated the form's own submit button on one screen.
+      empty={{ title: t("empty"), action: { label: t("emptyAction"), onClick: () => document.getElementById("co-name")?.focus() } }}
     />
   );
 }

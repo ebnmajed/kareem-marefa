@@ -92,7 +92,12 @@ export function VenuesTable({ venues, locale }: { venues: AdminVenue[]; locale: 
       columns={columns}
       rows={venues}
       rowKey={(v) => v.id}
-      empty={{ title: t("empty"), action: { label: t("addTitle"), onClick: () => document.getElementById("v-name")?.focus() } }}
+      // ★ Not `t("addTitle")` — a real sync-3 finding: the add form sits
+      // directly above this table, so an empty-state action reading "أضف
+      // مكانًا" duplicated the form's own submit button on one screen. The
+      // action still moves focus to the form's first field; it just no
+      // longer claims to be a second, independent way to add one.
+      empty={{ title: t("empty"), action: { label: t("emptyAction"), onClick: () => document.getElementById("v-name")?.focus() } }}
     />
   );
 }
