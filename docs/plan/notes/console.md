@@ -1565,3 +1565,20 @@ all seven of this track's rows (K0–K6) at ✓ — part (1) of the measure, don
   is ticked from. All six new/updated specs (`console.spec.ts`, `admin-moderation.spec.ts`,
   `admin-reports.spec.ts`, `admin-managed-lists.spec.ts`, `admin-settings.spec.ts`) name the capture
   path each row cites, ready for that pass.
+
+### Closing the RLS gap, and R2 — the combobox fix for `sessions`
+
+- **`npm run test:rls` — run once the shared runner freed up: 71 files, 790 passed, 4 todo, 0
+  failed.** Confirms the §"Verification run" note above — nothing in this wave's DAL changes
+  touches SQL, a grant or a policy, so this was always inherited coverage, now proven rather than
+  asserted.
+- **R2** (`sessions`' request, routed by the lead) — four fixes to `ui/combobox.tsx` for `/app/
+  propose`'s co-presenter field, the primitive's first non-admin caller: dropped the hard-coded
+  `dir="ltr"` (Arabic names were typing and reading left-to-right), wired `useFieldWiring()`
+  (`aria-describedby`/`aria-required`/`aria-invalid`, `id` falling back to `field?.id`, same
+  precedence `ui/input.tsx` already uses), and moved the input's classes onto `controlClass()`.
+  The fourth ask — moving its strings off `admin.combobox` — needs `ui.json` (the lead's); sent
+  the exact `ui.combobox` keys (unchanged text, just relocated) and left the component reading
+  `admin.combobox` with an inline note, rather than switch to a namespace that does not exist yet
+  and break every caller. `member-picker.tsx` and both admin callers stay green, four new tests
+  added, axe clean. Commit `654ec91`.
