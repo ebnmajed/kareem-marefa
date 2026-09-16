@@ -286,51 +286,56 @@ async function Meta({ session, phase, locale }: { session: EventSession; phase: 
       : null;
 
   return (
+    // ★ A `<dl>`'s `<div>` holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
+    // `definition-list`/`dlitem` (sync 4b) refused the old icon-beside-a-wrapper
+    // row. The glyph rides inside the `<dt>`, pinned into the row's start inset,
+    // so the picture is unchanged: 1.125rem glyph + 0.75rem gap = the 1.875rem
+    // every row below already indents by.
     <dl className="flex flex-col divide-y divide-edge border-t border-edge">
-      <div className="flex gap-3 py-3">
-        <ClockIcon className="mt-1 text-[1.125rem] text-fg-muted" />
-        <div className="min-w-0">
-          <dt className="text-caption text-fg-muted">{t("whenLabel")}</dt>
-          <dd className="text-body text-fg-heading">
-            {session.startsAt ? (
-              <>
-                <bdi>{when(session.startsAt)}</bdi>
-                {/* No-break space after the dot: a line may break before «·», never after it. */}
-                {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
-              </>
-            ) : (
-              t("notScheduled")
-            )}
-          </dd>
-        </div>
+      <div className="relative py-3 ps-[1.875rem]">
+        <dt className="text-caption text-fg-muted">
+          <ClockIcon className="absolute start-0 top-4 text-[1.125rem] text-fg-muted" />
+          {t("whenLabel")}
+        </dt>
+        <dd className="text-body text-fg-heading">
+          {session.startsAt ? (
+            <>
+              <bdi>{when(session.startsAt)}</bdi>
+              {/* No-break space after the dot: a line may break before «·», never after it. */}
+              {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
+            </>
+          ) : (
+            t("notScheduled")
+          )}
+        </dd>
       </div>
-      <div className="flex gap-3 py-3">
-        <PinIcon className="mt-1 text-[1.125rem] text-fg-muted" />
-        <div className="min-w-0">
-          <dt className="text-caption text-fg-muted">{t("whereLabel")}</dt>
-          <dd className="text-body text-fg-heading">
-            {session.venue ? (
-              <>
-                <bdi>{session.venue.name}</bdi>
-                {session.venue.address ? (
-                  <span className="text-fg-muted">
-                    {"، "}
-                    <bdi>{session.venue.address}</bdi>
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              t("noVenue")
-            )}
-            {session.venue?.mapUrl ? (
-              <a href={session.venue.mapUrl} rel="noreferrer noopener" target="_blank" className="mt-1 block w-fit text-body-sm text-fg-heading underline underline-offset-4">
-                {t("mapLink")}
-              </a>
-            ) : null}
-            {/* REQ-SES-008, said plainly and once. */}
-            <span className="mt-1 block text-body-sm text-fg-muted">{t("inPersonNote")}</span>
-          </dd>
-        </div>
+      <div className="relative py-3 ps-[1.875rem]">
+        <dt className="text-caption text-fg-muted">
+          <PinIcon className="absolute start-0 top-4 text-[1.125rem] text-fg-muted" />
+          {t("whereLabel")}
+        </dt>
+        <dd className="text-body text-fg-heading">
+          {session.venue ? (
+            <>
+              <bdi>{session.venue.name}</bdi>
+              {session.venue.address ? (
+                <span className="text-fg-muted">
+                  {"، "}
+                  <bdi>{session.venue.address}</bdi>
+                </span>
+              ) : null}
+            </>
+          ) : (
+            t("noVenue")
+          )}
+          {session.venue?.mapUrl ? (
+            <a href={session.venue.mapUrl} rel="noreferrer noopener" target="_blank" className="mt-1 block w-fit text-body-sm text-fg-heading underline underline-offset-4">
+              {t("mapLink")}
+            </a>
+          ) : null}
+          {/* REQ-SES-008, said plainly and once. */}
+          <span className="mt-1 block text-body-sm text-fg-muted">{t("inPersonNote")}</span>
+        </dd>
       </div>
       {phase === "open" && session.rsvpDeadlineAt ? (
         <div className="py-3 ps-[1.875rem]">
