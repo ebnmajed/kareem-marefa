@@ -3,7 +3,41 @@
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
-## Where we are
+---
+
+## ★★ START HERE — the next session's brief
+
+**This file is long and mostly history.** It is append-only by habit, so everything below the next
+two sections is the record of finished waves. To pick up the work, read exactly this:
+
+| # | Read | Why |
+|---|---|---|
+| 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-121`** | The resequencing, the check-in switch, walk-ins, multi-day sessions. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
+| 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
+| 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
+
+**The state of the tree.** M9's system work is **built, green and on this branch** — 34 `ui/`
+primitives, the shell, the status vocabulary, the loading and failure models, the form model, and
+the five live affordance fixes. `trace` is at **312 requirements · 145 stories · no gaps**; `qa`
+44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
+
+**What has NOT been done: any screen.** The owner reviewed M9 running and reordered the milestone —
+the screens come first, the admin console is in scope from the start, `/app` becomes the sessions
+timeline, and `16` §6.6's separate home page is withdrawn. That work is specified and unstarted.
+
+**The one thing blocked on the owner:** `DEC-114` catalogues three classes of error found in the
+canvas mockups by inspection, and the owner has said there are others. **Ask which** before
+building a screen whose mockup might be one of them.
+
+**Before spawning anyone:** write the new ownership map into `CLAUDE.md` and the ten
+`.claude/agents/*.md` files. `DEC-085`'s rule is why the old one is marked rather than deleted —
+*ownership lives in the agent files or it does not exist.*
+
+---
+
+## Where we are (historical — written during M0; kept for the record)
 
 **The planning document set is complete.** All 19 documents specified by `_source-brief.md` §7 are
 written, plus `STATUS.md`, `DECISIONS.md` and the root `CLAUDE.md`. `node scripts/traceability.mjs`

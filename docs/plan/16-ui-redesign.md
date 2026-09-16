@@ -1803,6 +1803,14 @@ The sequence, in M13:
 
 ## 15. Milestones
 
+> ★★ **THE SEQUENCE BELOW IS SUPERSEDED — `DEC-110`, 2026-09-15.** The owner reviewed M9 running
+> and reordered the milestone: **the screens come first**, the **admin console is in scope from the
+> start**, and M9's remaining system work is carried alongside the screens that need it. The
+> milestone *contents* below are still right; their order is not. **Read `DECISIONS.md`
+> `DEC-110` … `DEC-121` before planning any wave**, and `14-roadmap.md`'s "RESEQUENCED" section for
+> the new order. §6.6's home page is withdrawn entirely (`DEC-112`), and multi-day sessions
+> (`DEC-119` … `DEC-121`) are not described anywhere in this document.
+
 Five milestones, each a mergeable, deployable increment. Sizes are the backlog's `S/M/L` scale.
 
 ### M9 — النظام · the system and the shell
@@ -2020,6 +2028,13 @@ never-touch paragraphs or it is not enforced at all. No wave-5 teammate is spawn
 | **`0055`'s hex-literal guard and the parity goldens do not move** | Any golden diff is a lead-reviewed change (DEC-048) |
 
 ### 16.2 Wave 5 — M9, the system
+
+> ★★ **DONE, and the wave structure after it is SUPERSEDED (`DEC-110`).** M9 shipped: 34 primitives,
+> the shell, the status vocabulary, the loading and failure models, the form model and the five live
+> affordance fixes. **The wave-6 onward split below no longer matches the work** — the screens come
+> first and the admin console is in from the start, so `console` is in the next wave rather than two
+> later. The next lead writes the new ownership map before spawning anyone (`DEC-085`'s rule still
+> holds: ownership lives in the agent files or it does not exist).
 
 The previous draft gave the whole of M9 to the lead and left `console` and `checkin` waiting. That
 is a one-agent critical path with three idle agents attached, and it is corrected here: the

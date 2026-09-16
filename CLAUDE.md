@@ -316,10 +316,18 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 5 — M9 the system, DEC-101 · DEC-103)
+### Ownership map (wave 5 — M9 the system, DEC-101 · DEC-103) — ★ THE RECORD OF A FINISHED WAVE
 
-The design milestone (`docs/plan/16-ui-redesign.md`, `settled`) runs **five waves**. Wave 5 is M9 —
-**the system, and no screen is redesigned in it.** Four teammates, because the lead otherwise holds
+> ★★ **M9 IS DONE AND THIS MAP IS NOT THE NEXT WAVE'S.** The owner resequenced the milestone
+> (`DEC-110`): **the screens come first** and the **admin console is in scope from the start**, so
+> `console` belongs in the next wave rather than two later. Multi-day sessions (`DEC-119` … `DEC-121`)
+> add an entity that touches four tracks at once. **The next lead writes a new ownership map before
+> spawning anyone** — `DEC-085`'s rule is unchanged and is why this one exists: *ownership lives in
+> the agent files or it does not exist.* Kept below because the per-file `ui/` split it established
+> still governs `src/components/ui/`.
+
+The design milestone (`docs/plan/16-ui-redesign.md`, `settled`) ran wave 5 as M9 —
+**the system, and no screen was redesigned in it.** Four teammates, because the lead otherwise held
 ~40 files on the lane the ownership audit called the tightest in the milestone.
 
 | Teammate | Model | Builds | Edits only |
