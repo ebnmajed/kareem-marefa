@@ -24,18 +24,21 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { NextIntlClientProvider } from "next-intl";
 import { Direction } from "radix-ui";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AdminRail, type AdminRailItem } from "@/components/admin/admin-rail";
 
+// The rail reads the path itself; «التسجيل» is the page every case is on.
+vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), usePathname: () => "/ar/app/admin/scoring" }));
+
 const GROUPED_ITEMS: AdminRailItem[] = [
-  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", icon: "home", current: false },
+  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", icon: "home", exact: true },
   {
     key: "moderation",
     label: "الإشراف",
     icon: "alertTriangle",
     children: [
-      { key: "moderationComments", href: "/app/admin/moderation/comments", label: "التعليقات", current: false },
-      { key: "moderationPhotos", href: "/app/admin/moderation/photos", label: "الصور", current: false },
+      { key: "moderationComments", href: "/app/admin/moderation/comments", label: "التعليقات" },
+      { key: "moderationPhotos", href: "/app/admin/moderation/photos", label: "الصور" },
     ],
   },
   {
@@ -43,8 +46,8 @@ const GROUPED_ITEMS: AdminRailItem[] = [
     label: "النقاط والتقدير",
     icon: "star",
     children: [
-      { key: "scoring", href: "/app/admin/scoring", label: "التسجيل", current: true },
-      { key: "recognition", href: "/app/admin/recognition", label: "التكريم", current: false },
+      { key: "scoring", href: "/app/admin/scoring", label: "التسجيل" },
+      { key: "recognition", href: "/app/admin/recognition", label: "التكريم" },
     ],
   },
 ];
