@@ -318,20 +318,22 @@ const LAYOUTS: Record<CertificateOrientation, CertificateLayout> = {
     signature: { x: 2608, y: 2000 },
   },
   // Version 1 of the portrait compositions: a column down the page, the name
-  // given two lines of room, and the locked block across the foot.
+  // given two lines of room, and the locked block across the foot — balanced
+  // so the text block and the locked block hold the page between them rather
+  // than leaving a band under either (looked at, light and dark).
   portrait: {
     preset: 'cert_portrait',
     column: { x: 240, w: 2000 },
-    logo: { x: 1130, y: 300, w: 220, h: 220 },
-    org: 580,
-    kind: 700,
-    rule: 930,
-    recipient: { y: 1040, h: 440 },
-    reason: { y: 1540, h: 230 },
-    issued: 1820,
-    qr: { x: 240, y: 2600 },
-    identifiers: { x: 600, w: 1000, serialY: 2620, codeY: 2705 },
-    signature: { x: 1640, y: 2860 },
+    logo: { x: 1130, y: 420, w: 220, h: 220 },
+    org: 700,
+    kind: 820,
+    rule: 1060,
+    recipient: { y: 1150, h: 440 },
+    reason: { y: 1640, h: 230 },
+    issued: 1920,
+    qr: { x: 240, y: 2800 },
+    identifiers: { x: 600, w: 1000, serialY: 2820, codeY: 2905 },
+    signature: { x: 1640, y: 3080 },
   },
 }
 

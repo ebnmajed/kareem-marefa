@@ -1934,7 +1934,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       },
       "frame": {
         "x": 1130,
-        "y": 300,
+        "y": 420,
         "w": 220,
         "h": 220
       },
@@ -1952,7 +1952,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المؤسسة",
       "frame": {
         "x": 240,
-        "y": 580,
+        "y": 700,
         "w": 2000,
         "h": 80
       },
@@ -1976,7 +1976,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 700,
+        "y": 820,
         "w": 2000,
         "h": 180
       },
@@ -2001,7 +2001,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "خط الشبكة",
       "frame": {
         "x": 240,
-        "y": 930,
+        "y": 1060,
         "w": 2000,
         "h": 2
       },
@@ -2017,7 +2017,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 275,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2033,7 +2033,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 1235,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2049,7 +2049,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 2195,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2065,7 +2065,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المستفيد",
       "frame": {
         "x": 240,
-        "y": 1040,
+        "y": 1150,
         "w": 2000,
         "h": 440
       },
@@ -2095,7 +2095,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عن الجلسة",
       "frame": {
         "x": 240,
-        "y": 1540,
+        "y": 1640,
         "w": 2000,
         "h": 230
       },
@@ -2123,7 +2123,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "تاريخ الإصدار",
       "frame": {
         "x": 240,
-        "y": 1820,
+        "y": 1920,
         "w": 2000,
         "h": 82
       },
@@ -2147,7 +2147,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 240,
-        "y": 2600,
+        "y": 2800,
         "w": 320,
         "h": 320
       },
@@ -2171,7 +2171,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2620,
+        "y": 2820,
         "w": 1000,
         "h": 75
       },
@@ -2201,7 +2201,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2705,
+        "y": 2905,
         "w": 1000,
         "h": 75
       },
@@ -2231,7 +2231,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 1640,
-        "y": 2860,
+        "y": 3080,
         "w": 600,
         "h": 2
       },
@@ -2670,7 +2670,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       },
       "frame": {
         "x": 1130,
-        "y": 300,
+        "y": 420,
         "w": 220,
         "h": 220
       },
@@ -2688,7 +2688,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المؤسسة",
       "frame": {
         "x": 240,
-        "y": 580,
+        "y": 700,
         "w": 2000,
         "h": 80
       },
@@ -2712,7 +2712,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 700,
+        "y": 820,
         "w": 2000,
         "h": 180
       },
@@ -2737,7 +2737,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "خط الشبكة",
       "frame": {
         "x": 240,
-        "y": 930,
+        "y": 1060,
         "w": 2000,
         "h": 2
       },
@@ -2753,7 +2753,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 275,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2769,7 +2769,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 1235,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2785,7 +2785,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 2195,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -2801,7 +2801,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المستفيد",
       "frame": {
         "x": 240,
-        "y": 1040,
+        "y": 1150,
         "w": 2000,
         "h": 440
       },
@@ -2831,7 +2831,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عن الجلسة",
       "frame": {
         "x": 240,
-        "y": 1540,
+        "y": 1640,
         "w": 2000,
         "h": 230
       },
@@ -2859,7 +2859,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "تاريخ الإصدار",
       "frame": {
         "x": 240,
-        "y": 1820,
+        "y": 1920,
         "w": 2000,
         "h": 82
       },
@@ -2883,7 +2883,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 240,
-        "y": 2600,
+        "y": 2800,
         "w": 320,
         "h": 320
       },
@@ -2907,7 +2907,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2620,
+        "y": 2820,
         "w": 1000,
         "h": 75
       },
@@ -2937,7 +2937,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2705,
+        "y": 2905,
         "w": 1000,
         "h": 75
       },
@@ -2967,7 +2967,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 1640,
-        "y": 2860,
+        "y": 3080,
         "w": 600,
         "h": 2
       },
@@ -3406,7 +3406,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       },
       "frame": {
         "x": 1130,
-        "y": 300,
+        "y": 420,
         "w": 220,
         "h": 220
       },
@@ -3424,7 +3424,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المؤسسة",
       "frame": {
         "x": 240,
-        "y": 580,
+        "y": 700,
         "w": 2000,
         "h": 80
       },
@@ -3448,7 +3448,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 700,
+        "y": 820,
         "w": 2000,
         "h": 180
       },
@@ -3473,7 +3473,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "خط الشبكة",
       "frame": {
         "x": 240,
-        "y": 930,
+        "y": 1060,
         "w": 2000,
         "h": 2
       },
@@ -3489,7 +3489,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 275,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -3505,7 +3505,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 1235,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -3521,7 +3521,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عقدة الشبكة",
       "frame": {
         "x": 2195,
-        "y": 926,
+        "y": 1056,
         "w": 10,
         "h": 10
       },
@@ -3537,7 +3537,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "اسم المستفيد",
       "frame": {
         "x": 240,
-        "y": 1040,
+        "y": 1150,
         "w": 2000,
         "h": 440
       },
@@ -3567,7 +3567,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "عن الجلسة",
       "frame": {
         "x": 240,
-        "y": 1540,
+        "y": 1640,
         "w": 2000,
         "h": 230
       },
@@ -3595,7 +3595,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "name": "تاريخ الإصدار",
       "frame": {
         "x": 240,
-        "y": 1820,
+        "y": 1920,
         "w": 2000,
         "h": 82
       },
@@ -3619,7 +3619,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 240,
-        "y": 2600,
+        "y": 2800,
         "w": 320,
         "h": 320
       },
@@ -3643,7 +3643,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2620,
+        "y": 2820,
         "w": 1000,
         "h": 75
       },
@@ -3673,7 +3673,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 600,
-        "y": 2705,
+        "y": 2905,
         "w": 1000,
         "h": 75
       },
@@ -3703,7 +3703,7 @@ if not exists (select 1 from public.design_template_versions v where v.template_
       "locked": true,
       "frame": {
         "x": 1640,
-        "y": 2860,
+        "y": 3080,
         "w": 600,
         "h": 2
       },
