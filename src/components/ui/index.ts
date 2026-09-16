@@ -97,6 +97,13 @@ export interface CardMediaProps extends Styleable {
   /** An ended or cancelled session: grayscale and reduced opacity on the IMAGE or placeholder
    *  only — never on `overlay`, whose status badge must keep its contrast (DEC-123 item 1). */
   dimmed?: boolean;
+  /**
+   * `"dark"` limits the generated placeholder to the navy tints, so a card that
+   * is a first impression — the public session card behind a shared link — reads
+   * like the dark posters `DEC-125` makes the default. Absent, the tint follows
+   * the title's hash across all six, as before (wave 7, `sessions`' R7).
+   */
+  placeholderTone?: "dark";
 }
 
 export interface CardBodyProps extends Styleable {
