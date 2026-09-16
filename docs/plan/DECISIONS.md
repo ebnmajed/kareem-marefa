@@ -3134,3 +3134,36 @@ both are given (`f9fa70e`).
 - **Related, recorded for M13.** The same streaming can leave an **orphaned hidden segment** in a fully working page: an event page at desktop width carried a second hidden copy of the tasks and materials forms under `body > div#S:…`, duplicating `id="tasks"` and `id="tasks-create-form"` (`05f023b`). It is invisible and outside the accessibility tree, but duplicate ids are invalid HTML. Locators under `/app` scope to `#main`.
 - **Supersedes:** nothing.
 - **Documents changed:** `DECISIONS.md`, `STATUS.md`, `tests/e2e/wave7-content-me.spec.ts`
+
+---
+
+## DEC-146 — The owner takes the Next 16.3.5 upgrade: wave 8 opens by retiring the patch, `patch-package` and the guard test together
+
+- **Date:** 2026-09-16 · **Decided by:** owner («yes take the Next 16.3.5 upgrade»), on the choice `DEC-140` left open
+- **Decision.** `next` moves from **`16.2.10` to `16.3.5`**, which vendors a `react-dom` carrying React's own fix for the lost ping (`facebook/react#36134`, `DEC-140`). It is **wave 8's task one**, done by the lead alone before any teammate spawns.
+
+### What comes out, and it is more than the patch
+
+Measured on `main` at `4f19cd6`: `patches/` holds **one** file, and `patch-package` exists for it alone.
+
+| Artefact | Why it goes |
+|---|---|
+| `patches/next+16.2.10.patch` | the fix is upstream; the filename is version-pinned and would not apply to `16.3.5` anyway |
+| `tests/unit/react-dom-ping-patch.test.ts` | it asserts the patch is present in the bundled `react-dom`. Leave it and it fails on a patch that no longer exists |
+| **`patch-package`** (devDependency) and the **`postinstall` script** | `package.json:41` and `:72` — nothing else in the repo is patched |
+
+★ **All four come out in one change**, so no state exists where the guard test outlives the thing it guards, or `postinstall` runs a tool that is gone.
+
+### The order, and step 3 is the one that matters
+
+1. **Read `node_modules/next/dist/docs/` for `16.3`'s changes before writing anything** — `AGENTS.md`'s standing rule, and a minor is exactly where it earns its keep. This repo leans on `proxy.ts`, Server Actions, Partial Rendering and streaming SSR; `DEC-134` and `DEC-145` both turn on streaming behaviour that a minor can move.
+2. The four removals above, then **`npm run lockfile`** — through Docker, never a plain `npm install` (the npm-version trap has broken CI twice).
+3. ★ **Verify with `tests/e2e/reserve-probe.spec.ts` at its own standard: 16/16 presses on a production build.** The bug is **probabilistic** — one press in three — so a single green run proves nothing. Wave 7 also ran the **negative control** (unpatched, unnudged: 9 of 16 hung) and that is the shape to reproduce: the upgrade must be shown to fix it, not merely to pass.
+4. The full gate set: `build`, `qa` 44/44, `visual` 0.000 %, `db:reset` + `test:rls`, `parity`, e2e.
+
+★ **If the probe does not reach 16/16 on `16.3.5`, stop and report.** Reverting to `16.2.10` with the patch restored is the known-good state; shipping a Next minor that reintroduces a silent hang on «احجز مقعدك» is not an acceptable outcome of a tidying change.
+
+★ **Server Action IDs rotate on deploy** (`04` §9.2). This upgrade reaches production with wave 8's merge, so the owner deploys it outside a scheduled session, as with wave 7's push.
+
+- **Supersedes:** `DEC-140`'s open choice, and `DEC-136`'s step 5 — nothing is reported upstream, because React fixed it in March.
+- **Documents changed:** `docs/plan/notes/wave-8-lead.md`, `STATUS.md`

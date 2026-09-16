@@ -2,7 +2,7 @@ You are the **wave-8 lead** for كريم معرفة. Wave 7 is merged (PR #24, `
 are **live on production** — `supabase migration list --linked` reads `0091` on both sides.
 
 **Read in this order.** `docs/plan/STATUS.md` — the **START HERE** block, then the wave-7 record.
-Then `DECISIONS.md` **`DEC-110` … `DEC-145`** in full. Then `CLAUDE.md`, `TEAM.md` §1–§3, and
+Then `DECISIONS.md` **`DEC-110` … `DEC-146`** in full. Then `CLAUDE.md`, `TEAM.md` §1–§3, and
 `16-ui-redesign.md` (§15 and §16 are superseded on *sequencing* only — `DEC-110`). The canvas is a
 **reference, not a specification**: `DEC-114`, `DEC-122`, `DEC-123`, `DEC-124`.
 
@@ -68,14 +68,31 @@ under `src/app/[locale]/(marketing)/`** and the components it renders, frozen un
 - The populated photo-report queue has e2e coverage but no 390 px capture — take one when
   `moderation/{comments,photos}` are next touched.
 
-## ⬜ `DEC-140` — the owner's call, and if it happens it happens FIRST
+## ★★ TASK ONE — the Next 16.3.5 upgrade, decided by the owner (`DEC-146`)
 
-Next **16.3.5** vendors a React that carries the upstream fix (`facebook/react#36134`), so upgrading
-retires `patches/next+16.2.10.patch` **and** `tests/unit/react-dom-ping-patch.test.ts` — delete them
-together or the test fails on a patch that no longer applies. **Ask the owner before doing it**, and
-if the answer is yes, do it as task one, alone, with `tests/e2e/reserve-probe.spec.ts` as the gate at
-its own standard: **16/16 presses on a production build**, because the bug it guards is
-probabilistic. A Next minor during a redesign is not a free change.
+**Before any screen, and before you spawn anyone.** `next` goes `16.2.10` → **`16.3.5`**, which
+vendors a `react-dom` carrying React's own fix for the lost ping (`facebook/react#36134`).
+
+**Four things come out in one change** — `patches/next+16.2.10.patch`,
+`tests/unit/react-dom-ping-patch.test.ts`, the **`patch-package`** devDependency, and the
+**`postinstall`** script (`package.json:41`, `:72`). That patch is the only one in `patches/`, so
+nothing else needs the tool. Remove them together or the guard test fails on a patch that is gone.
+
+1. **Read `node_modules/next/dist/docs/` for `16.3`'s changes first** — `AGENTS.md`'s rule, and a
+   minor is where it earns its keep. `DEC-134` and `DEC-145` both turn on streaming-SSR behaviour.
+2. The removals, then **`npm run lockfile`** — through Docker, never a plain `npm install`.
+3. ★ **Verify at the bug's own standard: `tests/e2e/reserve-probe.spec.ts`, 16/16 presses on a
+   production build.** It is probabilistic — one press in three — so one green run proves nothing.
+   Wave 7 also ran the **negative control** (unpatched: 9 of 16 hung); reproduce that shape, so the
+   upgrade is shown to fix it rather than merely to pass.
+4. Then the full gate set, including **`npm run parity`**.
+
+★ **If the probe does not reach 16/16, stop and report.** `16.2.10` with the patch is the
+known-good state. Shipping a minor that reintroduces a silent hang on «احجز مقعدك» is not an
+acceptable outcome of a tidying change.
+
+★ **Server Action IDs rotate on deploy.** This reaches production with the merge, so the owner
+deploys outside a scheduled session — say so in `STATUS`.
 
 ## ★ The two lessons wave 7 paid for
 
