@@ -166,7 +166,12 @@ test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as
   await goto(page, "/ar/app/admin/members");
   const { rows: adminMemberRows } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and org_role = 'admin'`, [orgId]);
   expect(adminMemberRows).toHaveLength(1);
-  await expect(page.getByText("مشرفة الأعضاء")).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport) — a bare
+  // `getByText` matches both copies. Scoped to whichever of the two roles
+  // is actually present, the same pattern used elsewhere for this DataTable
+  // dual render.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText("مشرفة الأعضاء")).toBeVisible();
 
   const row = page.getByRole("row", { name: new RegExp("مشرفة الأعضاء") });
   await row.getByLabel("الدور").selectOption("member");
