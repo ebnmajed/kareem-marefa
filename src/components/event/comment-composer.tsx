@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,19 @@ export function CommentComposer({
   // the module comment on `submit()` below for the full mechanism.
   usePendingNudge(pending);
 
+  // ★ The lead's real-build finding: a post can be slow enough that a
+  // member keeps typing the NEXT comment into this same field while «نشر»
+  // is still busy — only the button is disabled, not the textarea. `submit`
+  // below needs to know, at the moment ITS OWN post succeeds, whether the
+  // field still holds exactly what it sent — and the `body` a closure
+  // captures at submit time is frozen to that render, never the field's
+  // true value by the time the async work resolves. Mirrored in a ref
+  // instead, kept current on every render.
+  const bodyRef = useRef(body);
+  useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
+
   function grow() {
     const el = textareaRef.current;
     if (!el) return;
@@ -127,10 +140,22 @@ export function CommentComposer({
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
         return;
       }
-      setBody("");
-      setMentioned(new Map());
-      setCandidates([]);
-      if (textareaRef.current) textareaRef.current.style.height = "";
+      // ★ The lead's real-build finding: their discussion review posted,
+      // then typed into the SAME composer while that post was still
+      // pending — when it resolved, this unconditionally wiped whatever
+      // they had typed since, silently. Only clear the field/mentions when
+      // NOTHING has changed since THIS post was submitted: `bodyRef.current`
+      // is the field's actual current value (not the `trimmed` this
+      // closure captured, which is frozen to submit time by definition and
+      // would always match itself). If the member typed something new in
+      // the meantime, their draft survives — the post that just succeeded
+      // still shows up in the thread below either way.
+      if (bodyRef.current === trimmed) {
+        setBody("");
+        setMentioned(new Map());
+        setCandidates([]);
+        if (textareaRef.current) textareaRef.current.style.height = "";
+      }
       onPosted?.();
       // `router.refresh()` is the LAST statement inside this SAME
       // `startTransition` — deliberately, so this Button's own `pending`/

@@ -88,6 +88,39 @@ describe("CommentComposer", () => {
     expect(screen.queryByText("تم نشر تعليقك")).not.toBeInTheDocument();
   });
 
+  // ★ The lead's real-build finding, from their discussion review: a post
+  // can be slow enough that a member starts typing the NEXT comment into
+  // this same field while «نشر» is still busy — only the button is
+  // disabled, not the textarea. `submit()` used to clear `body`
+  // unconditionally on success, silently wiping whatever the member had
+  // typed since. Fixed by comparing the field's ACTUAL current value
+  // (`bodyRef`, kept live by an effect — the `trimmed` this closure
+  // captured is frozen to submit time and would always match itself) against
+  // what was submitted, clearing only when nothing changed since.
+  it("★ typing the next comment while a slow post is still pending is never wiped by that post succeeding", async () => {
+    const { postCommentAction } = await import("@/components/event/actions");
+    let resolveAction: (value: { error: null }) => void = () => {};
+    vi.mocked(postCommentAction).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveAction = resolve; }),
+    );
+    renderComposer();
+    fireEvent.change(textarea(), { target: { value: "التعليق الأول" } });
+    fireEvent.click(screen.getByRole("button", { name: "نشر" }));
+    expect(screen.getByRole("button", { name: /نشر|جارٍ/ })).toHaveAttribute("aria-busy", "true");
+
+    // The member starts a second, different comment before the first one's
+    // response arrives — the field stays editable throughout.
+    fireEvent.change(textarea(), { target: { value: "تعليق ثانٍ قيد الكتابة" } });
+
+    await act(async () => {
+      resolveAction({ error: null });
+    });
+
+    // The in-progress draft survives — it was never submitted, and clearing
+    // the field on the FIRST post's success would have discarded it silently.
+    expect(textarea().value).toBe("تعليق ثانٍ قيد الكتابة");
+  });
+
   // ★ BLOCKER 1, the lead's live-build finding: the composer stayed
   // `aria-busy="true"` for 80+ seconds after ONE successful post, through
   // typing new text and past 3890 characters. Reproduced here — NOT by
