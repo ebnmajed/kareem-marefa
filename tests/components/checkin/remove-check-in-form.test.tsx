@@ -20,6 +20,15 @@ import { RemoveCheckInForm } from "@/app/[locale]/app/admin/sessions/[id]/attend
 import type { RemoveState } from "@/app/[locale]/app/admin/sessions/[id]/attendance/actions";
 import type { UncheckedAttendee } from "@/lib/dal/checkin";
 import checkinAr from "@/messages/ar/checkin.json";
+import uiAr from "@/messages/ar/ui.json";
+
+// `ui/field.tsx` (sessions' primitive, consumed by `Field`/`Select`/
+// `Textarea` here) reads `ui.field.required` for the «مطلوب» marker it
+// appends to every required label's own accessible name — a second
+// namespace this form does not otherwise touch, merged in so
+// `getByLabelText` sees the real Arabic word (`members-table.test.tsx`'s
+// own established pattern for the identical reason).
+const ar = { ...checkinAr, ...uiAr };
 
 const CANDIDATES: UncheckedAttendee[] = [
   { memberId: "m1", displayName: "سارة العتيبي" },
@@ -30,15 +39,18 @@ type RemoveAction = (prev: RemoveState, formData: FormData) => Promise<RemoveSta
 
 function renderForm(action: RemoveAction, candidates: UncheckedAttendee[] = CANDIDATES) {
   return render(
-    <NextIntlClientProvider locale="ar" messages={checkinAr}>
+    <NextIntlClientProvider locale="ar" messages={ar}>
       <RemoveCheckInForm action={action} candidates={candidates} sessionTitle="جلسة اختبار" />
     </NextIntlClientProvider>,
   );
 }
 
 async function fillAndOpen() {
-  await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره"), "m1");
-  await userEvent.type(screen.getByLabelText("سبب الإلغاء"), "خطأ في التسجيل");
+  // `{ exact: false }`: `<Field required>` appends «مطلوب» to the label's
+  // own accessible name (REQ-UIX-011) — a real, permanent suffix, not
+  // something to match verbatim here.
+  await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره", { exact: false }), "m1");
+  await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
   await userEvent.click(screen.getByRole("button", { name: "ألغِ تسجيل الحضور" }));
   return screen.findByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
 }
@@ -55,10 +67,10 @@ describe("RemoveCheckInForm", () => {
     const trigger = screen.getByRole("button", { name: "ألغِ تسجيل الحضور" });
     expect(trigger).toBeDisabled();
 
-    await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره"), "m1");
+    await userEvent.selectOptions(screen.getByLabelText("العضو المطلوب إلغاء تسجيل حضوره", { exact: false }), "m1");
     expect(trigger).toBeDisabled(); // a member alone is not enough
 
-    await userEvent.type(screen.getByLabelText("سبب الإلغاء"), "خطأ في التسجيل");
+    await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
     expect(trigger).toBeEnabled();
   });
 

@@ -4,6 +4,9 @@ import { useActionState, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { UncheckedAttendee } from "@/lib/dal/checkin";
 import type { RemoveState } from "./actions";
 import { emptyRemoveState } from "./state";
@@ -67,18 +70,8 @@ export function RemoveCheckInForm({
     // reason_required` nor `remove_check_in()`'s own refusal is ever
     // reached, because the click never becomes a request.
     <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
-      <div>
-        <label htmlFor="remove-member" className="text-label text-fg-heading">
-          {t("removeMemberLabel")}
-        </label>
-        <select
-          id="remove-member"
-          name="memberId"
-          required
-          value={memberId}
-          onChange={(e) => setMemberId(e.target.value)}
-          className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"
-        >
+      <Field id="remove-member" label={t("removeMemberLabel")} required>
+        <Select name="memberId" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
           <option value="" disabled>
             {t("removeMemberPlaceholder")}
           </option>
@@ -87,23 +80,11 @@ export function RemoveCheckInForm({
               {c.displayName ?? c.memberId}
             </option>
           ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="remove-reason" className="text-label text-fg-heading">
-          {t("removeReasonLabel")}
-        </label>
-        <textarea
-          id="remove-reason"
-          name="reason"
-          aria-required="true"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
-          maxLength={300}
-          className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"
-        />
-      </div>
+        </Select>
+      </Field>
+      <Field id="remove-reason" label={t("removeReasonLabel")} required>
+        <Textarea name="reason" required value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} />
+      </Field>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>

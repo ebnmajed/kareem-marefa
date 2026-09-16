@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ScheduleState } from "./actions";
 import { emptyScheduleState } from "./state";
 
@@ -202,12 +203,17 @@ export function ScheduleForm({
           safe now that `initial.allowWalkIns` is required and always the
           session's real value (the interim `allowWalkInsKnown` marker this
           comment used to describe is gone as of `page.tsx`'s own read-back
-          at `343991d`). */}
+          at `343991d`).
+
+          ★ `ui/checkbox.tsx`: SELF-LABELLING, not wrapped in `<Field>` — its
+          own header is explicit that wrapping it would give the control a
+          second label (an axe `form-field-multiple-labels` violation), not
+          merely be redundant. `ui-lint`'s `field` rule excludes
+          `src/components/ui/` entirely, so importing `Checkbox` (whose own
+          raw `<input>` lives there) is what clears this file of a raw
+          control, not nesting it inside `<Field>`. */}
       <div>
-        <label className="flex min-h-11 items-center gap-3 text-body text-fg-body">
-          <input type="checkbox" name="allowWalkIns" defaultChecked={initial.allowWalkIns} className="size-5" />
-          {tc("allowWalkIns.label")}
-        </label>
+        <Checkbox name="allowWalkIns" defaultChecked={initial.allowWalkIns} label={tc("allowWalkIns.label")} />
         <p className="mt-1 text-body-sm text-fg-muted">{tc("allowWalkIns.hint")}</p>
       </div>
 
