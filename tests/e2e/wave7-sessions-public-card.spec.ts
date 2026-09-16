@@ -99,6 +99,13 @@ test("an open session's card shows no status badge, one primary action, and the 
   await expect(page.locator("body")).not.toContainText("نبذة لا تظهر على البطاقة العامة");
   await expect(page.locator("body")).not.toContainText("شارع لا يظهر");
 
+  // R7: no poster render yet, so the house placeholder — and on this page only
+  // one of CardMedia's three navy tints, never a silver block (posters are dark, DEC-125).
+  // The tinted box is the one whose own child is the glyph's <bdi> — not an ancestor that merely contains one.
+  const placeholder = page.locator('div[class*="bg-"]:has(> bdi)');
+  await expect(placeholder).toHaveCount(1);
+  await expect(placeholder).toHaveClass(/\bbg-navy-(950|900|800)\b/);
+
   // ★ A time never breaks from its «م» (numerals.ts, U+00A0), and the range's
   // only break opportunity is before its «·» — wave 7's capture had «6:57» / «م».
   const when = page.locator("dd").first();

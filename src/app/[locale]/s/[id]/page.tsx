@@ -121,8 +121,10 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
             style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}
           />
         ) : (
-          // No render yet: the house typographic placeholder, never nothing.
-          <CardMedia placeholderFrom={data.title} aspect="16/9" dimmed={ended} />
+          // No render yet: the house typographic placeholder, never nothing —
+          // navy-only (R7): posters are dark (DEC-125), and the first thing a
+          // stranger sees of a shared link should not be a silver block.
+          <CardMedia placeholderFrom={data.title} placeholderTone="dark" aspect="16/9" dimmed={ended} />
         )}
         <CardBody className="gap-3 p-5 sm:p-6">
           {phase === "live" || ended ? <SessionStatusBadge phase={phase} /> : null}
