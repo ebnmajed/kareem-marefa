@@ -2268,3 +2268,30 @@ predates every one of these commits; the build is the lead's.
 - **console** — R2 on `ui/combobox`; S1 ships the checkbox list until then.
 - **checkin** — contracts 1 and 2 not yet published; `canOfferCheckInLink()`'s signature is still moving
   in their note (raw viewer facts instead of `relation`).
+
+### 42.4 After syncs 1 and 2 (the lead's real builds of S4, S1, S2)
+
+- **`07e4fc8` — the «م» wrap is fixed at the source.** `formatTime`/`formatDateTime` join the time and its
+  day period with U+00A0 via `formatToParts`, changing nothing else; `tests/unit/sessions-numerals.test.ts`
+  pins the code point. `content` told — no per-page patches.
+- **`58ab535` — S4:** the range clause «· حتى 8:27 م» is one `nowrap` span with its only break
+  opportunity, an ordinary space, OUTSIDE it (the space used to be inside, so the line broke inside the
+  start time). On `notFound()` Next adds a second `robots` meta; specs now assert `noindex` on each.
+- **`3386178` — the summary lists exactly the errors on the page.** The capture's «حقلان» over three
+  visible errors was the SPEC typing a duration of 5 after the submit (the server refuses 5 too — the
+  rule sets agree). M9's «a record of one attempt» is withdrawn for this form: the summary is built from
+  the errors shown, so a field enters it on blur and leaves it when its value first passes — one change
+  per field state, never per keystroke. Its second line is a six-form plural («أيٍّ منهما» for two).
+- **`74d176e` — S3 committed**, with `tests/components/event/star-rating.test.tsx` rewritten in place
+  (granted in `25fc741`) — no second copy.
+- **`2a05ea9`** — `search.bookmarksPage.browseAction` for `content`'s empty state.
+- **`43ab667`** — `sessions-screens.spec.ts` reads the venues list through its visible role
+  (`console`'s DataTable rebuild keeps a hidden desktop table in the DOM).
+- **`8a83df4`** — `scoring-i18n.test.ts` caught `rankValue` and `company.takenAt` interpolating outside
+  `<bdi>`; fixed, and «عضو منذ» with them.
+- **Question, not built — the public card's placeholder tint.** `CardMedia` hashes the title to one of
+  six tints, three of them silver, so a shared link without a poster can open on a silver block while
+  `DEC-125` makes posters dark. My recommendation: a navy-only placeholder for the public card, which is
+  the first impression of a shared link. It is `content`'s primitive — **R7**: an optional
+  `placeholderTone?: "dark"` on `CardMediaProps` (lead's type) restricting the hash to the three navy
+  tints. Until then the card keeps the hash.
