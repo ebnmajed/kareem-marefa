@@ -21,7 +21,7 @@ export type ScheduleState = { error: string | null; saved: boolean; published: b
 /**
  * A `datetime-local` value carries no offset, so it is read in the session's
  * own time zone rather than the server's. `Intl` gives the offset for that
- * zone at that instant, which is what makes «٦:٠٠ م» mean the clock on the
+ * zone at that instant, which is what makes «6:00 م» mean the clock on the
  * room's wall (OQ-018) instead of the clock wherever Vercel happens to run.
  */
 function atZone(local: string, timeZone: string): string | null {

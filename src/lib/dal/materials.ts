@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID, createHash } from "node:crypto";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { materialSourcePath, proposalMaterialSourcePath } from "@/lib/storage/paths";
@@ -253,43 +254,67 @@ export async function listMaterials(locale: string, sessionId: string): Promise<
   return (data ?? []).map(toMaterialSummary);
 }
 
+/** The org's per-kind upload ceilings (REQ-MAT-009, `org_settings.limit_{document,audio,image}_mb`)
+ *  — read here so the uploader can state a size limit BEFORE a file is chosen (`REQ-UIX-024`'s
+ *  acceptance), not only learn it from a 413 after the fact. The real control stays
+ *  `initiateMaterialUpload`'s own courtesy check and `finalize_material_upload()`'s RPC check
+ *  against the REAL byte size — this is advisory, same as `ui/file-drop`'s own header says of
+ *  `accept`/`maxBytes`. */
+export interface MaterialUploadLimits {
+  documentMb: number;
+  audioMb: number;
+  imageMb: number;
+}
+
 export interface MaterialsPageData {
   materials: MaterialSummary[];
-  numerals: "western" | "arabic_indic";
   /** REQ-MAT-005/006: can this viewer change `phase`/`allow_download` on THEIR OWN materials?
    *  An admin can manage every material; a presenter only the ones on a session they present —
    *  `canManageAll` covers the admin case, `presenterOfSession` narrows it for everyone else. */
   canManageAll: boolean;
   presenterOfSession: boolean;
+  uploadLimits: MaterialUploadLimits;
 }
 
-/** The event page's `Materials` slot needs the list plus the org's numeral
- *  setting (REQ-INT-006) for its count line, and whether this viewer may
+const DEFAULT_UPLOAD_LIMITS: MaterialUploadLimits = { documentMb: 50, audioMb: 200, imageMb: 20 };
+
+/** The event page's `Materials` slot needs the list, whether this viewer may
  *  manage phase/allow_download at all (materials_update_presenter/admin,
  *  0037 — this mirrors that policy for the UI, never replaces it: the
- *  update itself is still checked by RLS regardless of what this returns). */
-export async function getMaterialsPageData(locale: string, sessionId: string): Promise<MaterialsPageData> {
-  if (!z.uuid().safeParse(sessionId).success) return { materials: [], numerals: "western", canManageAll: false, presenterOfSession: false };
+ *  update itself is still checked by RLS regardless of what this returns),
+ *  and the org's upload size ceilings for the uploader (`content` §2.3).
+ *
+ *  ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page
+ *  gates the materials `<section>` on `materialsSummary()` (below), which
+ *  needs this same read. */
+export const getMaterialsPageData = cache(async (locale: string, sessionId: string): Promise<MaterialsPageData> => {
+  if (!z.uuid().safeParse(sessionId).success) {
+    return { materials: [], canManageAll: false, presenterOfSession: false, uploadLimits: DEFAULT_UPLOAD_LIMITS };
+  }
   const { session, supabase } = await sessionClient(locale);
-  const [materials, { data: settings }, { data: presenterRow }] = await Promise.all([
+  const [materials, { data: presenterRow }, { data: settings }] = await Promise.all([
     listMaterials(locale, sessionId),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
+    supabase.from("org_settings").select("limit_document_mb, limit_audio_mb, limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
   ]);
   return {
     materials,
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     canManageAll: session.role === "admin",
     presenterOfSession: !!presenterRow,
+    uploadLimits: {
+      documentMb: (settings?.limit_document_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.documentMb,
+      audioMb: (settings?.limit_audio_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.audioMb,
+      imageMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.imageMb,
+    },
   };
-}
+});
 
 export interface ProposalMaterialsPageData {
   materials: MaterialSummary[];
-  numerals: "western" | "arabic_indic";
   /** REQ-PRO-004: the proposer or an accepted co-presenter (`is_proposal_owner_of`,
    *  proposed/content/0009) — this mirrors that policy for the UI, never replaces it. */
   canManage: boolean;
+  uploadLimits: MaterialUploadLimits;
 }
 
 /** `<ProposalMaterials proposalId memberId locale />`'s data — REQ-PRO-004: draft materials,
@@ -297,26 +322,30 @@ export interface ProposalMaterialsPageData {
  *  read`'s proposal branch (proposed/content/0009) is what actually filters this — a plain
  *  member's query against a proposal they do not own returns nothing, not an error. */
 export async function getProposalMaterialsPageData(locale: string, proposalId: string): Promise<ProposalMaterialsPageData> {
-  if (!z.uuid().safeParse(proposalId).success) return { materials: [], numerals: "western", canManage: false };
+  if (!z.uuid().safeParse(proposalId).success) return { materials: [], canManage: false, uploadLimits: DEFAULT_UPLOAD_LIMITS };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: settings }, { data: proposal }, { data: presenterRow }] = await Promise.all([
+  const [{ data: rows, error }, { data: proposal }, { data: presenterRow }, { data: settings }] = await Promise.all([
     supabase
       .from("materials")
       .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at")
       .eq("proposal_id", proposalId)
       .order("created_at", { ascending: true }),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     supabase.from("proposals").select("proposer_id").eq("id", proposalId).maybeSingle(),
     supabase.from("proposal_presenters").select("member_id").eq("proposal_id", proposalId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
+    supabase.from("org_settings").select("limit_document_mb, limit_audio_mb, limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`materials: ${error.message}`);
 
   const isOwner = proposal?.proposer_id === session.memberId || !!presenterRow;
   return {
     materials: (rows ?? []).map(toMaterialSummary),
-    numerals: (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western",
     canManage: session.role === "admin" || isOwner,
+    uploadLimits: {
+      documentMb: (settings?.limit_document_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.documentMb,
+      audioMb: (settings?.limit_audio_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.audioMb,
+      imageMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.imageMb,
+    },
   };
 }
 
@@ -359,7 +388,6 @@ export interface ViewerData {
   fontSubstitutionWarning: string | null;
   externalUrl: string | null;
   pages: ViewerPage[];
-  numerals: "western" | "arabic_indic";
   /** null for a link kind, or a material with no version yet. */
   currentVersionId: string | null;
 }
@@ -379,20 +407,17 @@ export interface ViewerData {
  *  is a follow-up, not a correctness requirement. */
 export async function getViewerData(locale: string, materialId: string): Promise<ViewerData | null> {
   if (!z.uuid().safeParse(materialId).success) return null;
-  const { session, supabase } = await sessionClient(locale);
+  const { supabase } = await sessionClient(locale);
 
-  const [{ data: material, error }, { data: settings }] = await Promise.all([
+  const [{ data: material, error }] = await Promise.all([
     supabase
       .from("materials")
       .select("id, title, kind, allow_download, render_status, font_substitution_warning, external_url, current_version_id")
       .eq("id", materialId)
       .maybeSingle(),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`materials: ${error.message}`);
   if (!material) return null;
-
-  const numerals = (settings?.numerals as "western" | "arabic_indic" | undefined) ?? "western";
   const base = {
     id: material.id as string,
     title: material.title as string,
@@ -401,7 +426,6 @@ export async function getViewerData(locale: string, materialId: string): Promise
     renderStatus: material.render_status as string,
     fontSubstitutionWarning: (material.font_substitution_warning as string | null) ?? null,
     externalUrl: (material.external_url as string | null) ?? null,
-    numerals,
     currentVersionId: (material.current_version_id as string | null) ?? null,
   };
 

@@ -81,7 +81,6 @@ export default async function DesignerPage({
           faces={faces}
           lockedLayerIds={data.lockedLayerIds}
           canEdit={data.canEdit}
-          numerals={data.numerals}
           origin={origin}
           assetSizes={assetSizes}
         />

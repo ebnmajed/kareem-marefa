@@ -26,7 +26,8 @@
       "calendar": "التقويم",
       "staffSection": "الإدارة",
       "proposeShort": "اقترح",
-      "toastClose": "إغلاق الإشعار"
+      "toastClose": "إغلاق الإشعار",
+      "primaryNav": "التنقّل الرئيسي"
     },
     "home": {
       "welcome": "أهلًا <name>{value}</name>",

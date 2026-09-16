@@ -92,27 +92,30 @@ test("a moderator cannot open the settings screen", async ({ context, page }) =>
   expect(response!.status()).toBe(404);
 });
 
-test("REQ-TEN-008: an admin changes the numeral system, it persists, and the history records the old and new value", async ({ context, page }) => {
+test("REQ-TEN-008: an admin changes the time zone, it persists, and the history records the old and new value", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/settings");
   await expect(page.getByRole("heading", { name: "إعدادات المؤسسة", level: 1 })).toBeVisible();
 
-  await page.getByLabel("نظام الترقيم").selectOption("arabic_indic");
+  // REQ-INT-006, DEC-124: numerals are Western everywhere and there is no
+  // setting — the control that used to be tested here must not exist.
+  await expect(page.getByLabel("نظام الترقيم")).toHaveCount(0);
+  await page.getByLabel("المنطقة الزمنية").fill("Asia/Dubai");
   await page.getByRole("button", { name: "احفظ الإعدادات" }).click();
   await expect(page.getByText("حُفظت الإعدادات.")).toBeVisible();
 
-  const { rows } = await db.query<{ numerals: string }>(`select numerals from public.org_settings where org_id = $1`, [orgId]);
-  expect(rows[0].numerals).toBe("arabic_indic");
+  const { rows } = await db.query<{ time_zone: string }>(`select time_zone from public.org_settings where org_id = $1`, [orgId]);
+  expect(rows[0].time_zone).toBe("Asia/Dubai");
 
   const history = await db.query<{ old_value: string; new_value: string }>(
-    `select old_value, new_value from public.scoring_config_history where org_id = $1 and scope = 'org_settings' and field = 'numerals'`,
+    `select old_value, new_value from public.scoring_config_history where org_id = $1 and scope = 'org_settings' and field = 'time_zone'`,
     [orgId],
   );
-  expect(history.rows).toEqual([{ old_value: "western", new_value: "arabic_indic" }]);
+  expect(history.rows).toEqual([{ old_value: "Asia/Riyadh", new_value: "Asia/Dubai" }]);
 
   // Reload: the select shows the persisted value, not the old default.
   await page.reload();
-  await expect(page.getByLabel("نظام الترقيم")).toHaveValue("arabic_indic");
+  await expect(page.getByLabel("المنطقة الزمنية")).toHaveValue("Asia/Dubai");
 });
 
 test("SCR-063 at 390 px RTL: the settings form reads down the page, never sideways", async ({ context, page }) => {

@@ -317,9 +317,53 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
+### Ownership map (wave 6 — the screens, DEC-130) — ★ THE MAP IN FORCE
+
+**Fourteen named routes onto the M9 system, and nothing else.** The checklist is `STATUS.md`'s
+wave-6 block; the measure is `node scripts/ui-reach.mjs --wave6` (strict: an M9 primitive, not the
+pre-M9 `button`/`dialog`/`icons`) **plus** a 390 px RTL capture someone looked at.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | `(auth)/{sign-in,choose-org,no-access}`; **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`); **the numerals sweep** (`DEC-124`, `DEC-132`) — pre-spawn-code, atomic, cross-tree, with `0082`; tokens, promotion, gates, the PR | `src/app/[locale]/(auth)/**`, `messages/*/auth.json`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `messages/*/app.json`, the lead's fifteen `ui/` files, `messages/*/ui.json`, `src/app/globals.css`, `src/lib/session-status.ts`, the named `loading.tsx`/`error.tsx` boundaries it already owns, `src/app/[locale]/(dev)/**`, and the lead-only paths below. **Custodian** of every file of a track not spawned this wave — `checkin`, `event`'s ratings, `notify`, `scoring`, `designer`, `platform`, `branding`: no redesign, edited only by the numerals sweep or on a teammate's written request |
+| `sessions` | opus | `/app` (the timeline, `DEC-112`) · `/app/sessions` (browse) · `/app/sessions/[id]` (the event page) | `src/app/[locale]/app/page.tsx` ★, `src/app/[locale]/app/sessions/{page,loading,error}.tsx` ★, `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx` ★, `src/components/{sessions,browse,search}/**` ★, **presentation only** `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` ★ and `src/components/calendar/add-to-calendar.tsx` ★, `src/lib/dal/{sessions,proposals,search,bookmarks}.ts`, `src/lib/form-state.ts`, its eight `ui/` form primitives, `messages/*/{sessions,proposals,browse,search}.json`, `supabase/proposed/sessions/**`, its tests, its note |
+| `content` | sonnet | the discussion on the event page (`REQ-UIX-024`) · materials · photos | `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` ★ and `src/components/event/actions.ts` ★, `src/lib/dal/{comments,reactions,reports}.ts` ★, `src/lib/realtime/**` ★, `messages/*/event.json` ★, `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/lib/dal/{materials,photos,tasks}.ts`, `src/app/api/upload/**`, `src/lib/storage/**`, its nine `ui/` primitives, `messages/*/{materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, its note |
+| `console` | sonnet | the admin layout + **exactly five routes**: `/app/admin` · `/app/admin/proposals` · `/app/admin/sessions` · `/app/admin/members` · `/app/admin/moderation/reports` | `src/app/[locale]/app/admin/{layout,page,loading,error}.tsx`, `src/app/[locale]/app/admin/proposals/**`, the **top level only** of `src/app/[locale]/app/admin/sessions/` (never `[id]/**`), `src/app/[locale]/app/admin/members/**`, `src/app/[locale]/app/admin/moderation/reports/**`, `src/lib/dal/{admin-dashboard,admin-lists,admin-members,admin-moderation}.ts`, `src/components/admin/**`, its six `ui/` primitives, `messages/*/admin.json`, `supabase/proposed/console/**`, its tests, its note |
+
+★ = transferred for this wave by `DEC-130`.
+
+**Wave-6 rules.**
+
+- ★ **The numerals sweep lands before any teammate edits code.** It removes a parameter from ~150
+  files, including every file the three tracks are about to rebuild. Teammates spawn with a
+  **planning-only** first task and start editing when the lead posts «numerals landed at `<sha>`».
+- **`/app` and `/app/sessions` are one component on two routes**, not a redirect; `/app/sessions` is
+  the canonical filterable URL; the phone tab bar keeps **one** «الجلسات» tab for both (`DEC-130`).
+- **The event page is a shared surface run on wave 1's slot contract.** `sessions` owns the frame,
+  the hero, the action card's layout, the sub-nav, and every `<section>` and `<h2>`; `content` owns
+  the discussion, materials, photos and tasks slots, which render **no heading of their own**; a slot
+  that can render nothing has its section gated **by the page** (`16` §5.4.1a(b)).
+- **Presentation-only transfers stay presentation-only.** `sessions` restyles `rsvp-panel`,
+  `attendance-outcome` and `add-to-calendar`; it never changes a gating predicate,
+  `session-matrix.ts`, `lib/dal/{rsvp,checkin}.ts`, or a matrix assertion — and those stay green.
+- **«Visible upload controls» are the photo and materials uploaders onto `ui/file-drop`.**
+  `comments` has no attachment column; attachments on a comment are a schema decision for the owner.
+- **Not this wave, and never-touch for every teammate:** the other 19 `app/admin` routes, all of
+  `app/me/**`, all of `app/platform/**`, `app/sessions/[id]/{check-in,host,rate}/**`,
+  `app/propose/**` (`sessions`' own, frozen this wave), `app/members/**`, `app/leaderboards/**`,
+  `s/[id]`, `verify/**`, `legal/**`, the survey, and everything under `(marketing)/**` with the components
+  it renders — and three things `DECISIONS.md` describes as if they existed: **multi-day sessions**
+  (`DEC-119` … `121`), **the manual check-in switch and walk-ins as a publishing setting**
+  (`DEC-113`/`116`/`117`/`118`), **gradient posters and the `canvasRaise` token** (`DEC-127`) — each
+  **decided, NOT this wave** — plus the certificate library (`DEC-128`).
+- **A teammate never edits a primitive it does not own.** All three primitive owners are in this
+  wave, so a request goes in the requester's note and the lead routes it to the owning teammate.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
 ### Ownership map (wave 5 — M9 the system, DEC-101 · DEC-103) — ★ THE RECORD OF A FINISHED WAVE
 
-> ★★ **M9 IS DONE AND THIS MAP IS NOT THE NEXT WAVE'S.** The owner resequenced the milestone
+> ★★ **M9 IS DONE AND THIS MAP IS NOT THE NEXT WAVE'S — wave 6's map is directly above (`DEC-130`).** The owner resequenced the milestone
 > (`DEC-110`): **the screens come first** and the **admin console is in scope from the start**, so
 > `console` belongs in the next wave rather than two later. Multi-day sessions (`DEC-119` … `DEC-121`)
 > add an entity that touches four tracks at once. **The next lead writes a new ownership map before
@@ -362,13 +406,17 @@ to hard-fail in M13.
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:
 
 `src/components/ui/index.ts` · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` ·
-`src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/me/layout.tsx` ·
-`src/lib/session-status.ts` · `src/lib/form-state.ts` · `src/app/[locale]/(dev)/**` ·
+`src/app/[locale]/app/me/layout.tsx` · `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` ·
 `src/messages/*/ui.json`.
 
+★ **Corrected by DEC-130:** `src/app/[locale]/app/page.tsx` is `sessions'` from wave 6 — `/app` became
+the sessions timeline (`DEC-112`), which is no longer a page composed of other tracks' rails — and
+`src/lib/form-state.ts` is `sessions'`, which built it in M9 and which the wave-5 table already said.
+
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
-is the exact failure `TEAM.md` exists to prevent. The three literal file lists are in the wave-5
-table below and in each `.claude/agents/*.md`. **Ownership lives in those never-touch paragraphs or
+is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
+`sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A
@@ -420,7 +468,7 @@ repository is public until Launch by the owner's decision (DEC-051); nothing her
   `src/app/[locale]/(marketing)/**`, `public/**` or the locale layout — lead runs these at sync points.
 - **Arabic/RTL verified:** strings authored in `messages/ar/` first; all six ICU plural forms where a
   count appears; `<bdi>` on every interpolated value; logical properties only, no `rtl:` paired with
-  a physical utility; no `overflow: hidden` on a text line; numerals per the org setting; one
+  a physical utility; no `overflow: hidden` on a text line; **Western numerals only** (`DEC-124`); one
   390 px RTL screenshot per new screen, looked at.
 
 ## The plan

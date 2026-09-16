@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatDateTime } from "@/components/sessions/numerals";
 
 // The Open Graph and Twitter tags of the public session card (SCR-012's
 // public half, the owner's decision of 2026-09-15).
@@ -47,7 +47,6 @@ export interface PublicCardMeta {
   title: string;
   startsAt: string | null;
   timeZone: string;
-  numerals: NumeralSystem;
   venueName: string | null;
   orgName: string;
   hasImage: boolean;
@@ -67,14 +66,14 @@ export function ogLocale(locale: string): string {
   return locale === "en" ? "en_US" : "ar_SA";
 }
 
-/** «الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٦:٠٠ م · قاعة الابتكار · نادي المعرفة».
+/** «الأربعاء 16 سبتمبر 2026 في 6:00 م · قاعة الابتكار · نادي المعرفة».
  *
  *  The parts that exist, in that order, separated by « · ». A session with no
  *  venue yet is not published, so in practice the venue is always there — but
  *  a description that reads «· · نادي المعرفة» because a part was null is the
  *  kind of thing that only ever shows up in somebody's WhatsApp. */
 export function cardDescription(card: PublicCardMeta, locale: string): string {
-  const when = card.startsAt ? formatDateTime(card.startsAt, card.numerals, card.timeZone, locale) : null;
+  const when = card.startsAt ? formatDateTime(card.startsAt, card.timeZone, locale) : null;
   return [when, card.venueName, card.orgName].filter((part): part is string => Boolean(part && part.trim())).join(" · ");
 }
 

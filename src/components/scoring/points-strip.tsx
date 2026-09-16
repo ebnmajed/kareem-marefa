@@ -12,7 +12,7 @@ export type PointsStripProps = { memberId: string; locale: string };
 
 export async function PointsStrip({ locale }: PointsStripProps) {
   const [t, data] = await Promise.all([getTranslations("scoring.points"), getPointsStripData(locale)]);
-  const value = formatNumber(data.totalPoints, data.numerals);
+  const value = formatNumber(data.totalPoints);
 
   return (
     <div className="rounded-field border border-edge bg-canvas p-4">

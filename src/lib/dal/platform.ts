@@ -21,12 +21,7 @@ import { getSessionState } from "@/lib/dal/session";
 // is actually gated on (DEC-035). A forged or stale claim buys nothing: the
 // table has no policy and no grant, so the claim cannot even be verified
 // client-side, let alone trusted.
-//
-// Numerals: a super admin has no org, so there is no `org_settings.numerals` to
-// follow (REQ-TEN-008 is per org). The console uses Western digits throughout
-// and says so once here rather than pretending to read a setting.
 
-export const PLATFORM_NUMERALS = "western" as const;
 
 export interface PlatformSession {
   userId: string;

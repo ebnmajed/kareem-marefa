@@ -383,7 +383,7 @@ about what the audit trail should look like, and may deserve a `DECISIONS.md` en
 ### 6.4 Time zones are the venue's, then the org's
 
 OQ-018. A `datetime-local` input carries no offset, so the action converts it **in the session's own
-zone**, not the server's — otherwise «٦:٠٠ م» would mean the clock wherever Vercel happens to run
+zone**, not the server's — otherwise «6:00 م» would mean the clock wherever Vercel happens to run
 rather than the clock on the room's wall. The page converts back the same way for the form's
 default values.
 
@@ -549,7 +549,7 @@ render of a 390 px page.
 
 So the review is now two assertions rather than an opinion, and they live in the 390 px test:
 
-- the number box's `x` is greater than «دقيقة»'s — «٤٥ دقيقة» reads number-first, so the numeral is
+- the number box's `x` is greater than «دقيقة»'s — «45 دقيقة» reads number-first, so the numeral is
   the rightmost of the pair in RTL;
 - the checkbox's right edge is past the midpoint of its row — a checkbox belongs at the
   inline-start, which is the right.
@@ -589,7 +589,7 @@ smaller — the weaker check passed while the row was hidden.
 
 ### 12.2 The end time repeated the whole date
 
-«الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٦:٠٠ م · حتى الأربعاء ١٦ سبتمبر ٢٠٢٦ في ٧:٠٠ م». `sameDay()` compares
+«الأربعاء 16 سبتمبر 2026 في 6:00 م · حتى الأربعاء 16 سبتمبر 2026 في 7:00 م». `sameDay()` compares
 the two instants **in the session's zone**, not the server's, or a late-evening Riyadh session looks
 like two days to a process running in UTC.
 
@@ -792,9 +792,9 @@ cannot be seen by looking harder.
 
 ### 14.5a What the 390 px capture actually settled
 
-The first capture looked as though «حتى ٣:١٦ م» had broken across lines with the meridiem left
+The first capture looked as though «حتى 3:16 م» had broken across lines with the meridiem left
 alone. **It had not.** Measuring the element said one line box, 358 px wide inside a 358 px column:
-in RTL the date starts at the right and the «… حتى ٣:١٦ م» clause runs to the LEFT END of the same
+in RTL the date starts at the right and the «… حتى 3:16 م» clause runs to the LEFT END of the same
 line, which reads like a second row in a rasterised screenshot and is not one. The same shape
 appears on the event page's own «آخر موعد للحجز …» line, which has been correct since M2.
 
@@ -1029,3 +1029,646 @@ the phone capture being in the definition of done, in one bug.
    unavailable — has to invent a retry. Both of mine wire it to `router.refresh()`, following
    `content`'s precedent. If those two props became optional, a not-found could simply omit the
    button. Not blocking.
+
+---
+
+# Wave 6 — the timeline, browse and the event page (DEC-112, DEC-130)
+
+**PLANNING ONLY — no source file touched.** Waiting on «numerals landed at `<sha>`». Read this
+session: `.claude/agents/sessions.md` from disk (regenerated at `9120237`, re-read after it moved
+again), `STATUS.md` START HERE + WAVE 6, `CLAUDE.md` § Ownership map (wave 6), `DEC-110` … `DEC-132`,
+`16` §2.2a, §3, §3.1, §4.2, §4.2.2, §5.1 – §5.4.2, §6.1 – §6.4, §6.6, §6.8, §7.1 – §7.5.2,
+`REQ-UIX-003/004/012/015/017/021/022/024`, `REQ-SES-010/011/013`, `REQ-DSC-001` … `007`,
+`REQ-PRF-001`, the current event page, browse page, home page, `slots.ts`, the three transferred
+presentation files, every `ui/` primitive I will consume, the DAL modules I read from, `content`'s
+wave-6 plan (`notes/content.md` §5 asks me for this contract), and the e2e specs that select on
+these screens. **Canvas:** `Main`, `EventPhone`, `EventEnded`, `Browse` rendered headless at their
+own widths and looked at (scratchpad only, not committed); `Home`, `Loading`, `Shell`, `System`
+read as markup.
+
+## 22. ★ The event-page section contract — `content` builds against this
+
+### 22.1 Who renders what
+
+| Surface | Renders | Owns the condition |
+|---|---|---|
+| Frame, dark hero band, ribbon, action card layout, bottom action bar, sub-nav, **every `<section>` and `<h2>`** | `sessions` | `sessions` |
+| `RsvpPanel`, `AttendanceOutcome`, `AddToCalendar` — markup and classes | `sessions` (DEC-130, presentation only) | `checkin` / `notify` predicates, unchanged: `getRsvpPanelData().canReserve/canCancel`, `affordancesFor()`, `canOfferCheckInLink()` |
+| **Tasks · Materials · Photos · the discussion** — the slot bodies | **`content`** | **the page** gates the section on `content`'s summary (§22.3) |
+| `Ratings` | `event` (lead custodian) | the page, as today |
+| `SessionPoster`, `CertificateModeBadge` | `designer` (lead custodian) | the slot itself (renders nothing when absent) |
+
+### 22.2 DOM order, ids, headings, gates
+
+One DOM order at every width — the grid places the action card beside the sections on desktop; it
+is never duplicated.
+
+| # | Element | `id` | Heading (ar, `sessions.json`) | Sub-nav label | Rendered by | Page gate |
+|---|---|---|---|---|---|---|
+| 1 | Status notice — cancelled `Panel tone="error" role="alert"` (title + reason, REQ-SES-010) / unpublished `Panel role="status"` | — | — | — | sessions | `state` |
+| 2 | Hero band `<header>` (`.theme-dark`, full-bleed): breadcrumb «الجلسات › {category}», `SessionStatusBadge`, **`<h1>`** title, presenters (`AvatarStack` + «يقدّمها X و Y»), chips: category · level · **language** · duration; poster (desktop, §23.1) | `hero` | `<h1>` = title | — | sessions (+ `SessionPoster`) | always |
+| 3 | Ended ribbon `Panel tone="ended"` «انتهت هذه الجلسة يوم {date} — التسجيل مغلق.» | — | — | — | sessions | phase `ended` |
+| 4 | **Action card** `<section>` — contents per §23.2; the phone bottom bar is rendered **inside** this section (fixed, `md:hidden`) | `attend` | «الحضور» (`rsvp.title`), visually hidden — it is the region name `checkin.spec.ts:200` selects on | — | sessions | always (meta rows); primary per §23.2 |
+| 5 | Sub-nav `<nav aria-label="أقسام الجلسة">` | `event-sections` | — | — | sessions | ≥ 2 sections listed |
+| 6 | «ماذا ستتعلّم؟» | `objectives` | «ماذا ستتعلّم؟» | «الأهداف» | sessions | **absent this wave** — no `objectives` column exists (Q7) |
+| 7 | «نبذة» — abstract, then «الوسوم» as `TagChip` links to `/app/sessions?tag=…` | `about` | «نبذة» | «نبذة» | sessions | always |
+| 8 | «المُقدِّمون» — `Avatar` 56 (initials, DEC-099: never the Google hotlink), name → profile, job title · company, `bio` as written | `presenters` | «المُقدِّمون» / «المُقدِّم» | «المُقدِّمون» | sessions | `presenters.length > 0` |
+| 9 | Tasks | `tasks` | «مهام ما قبل الجلسة» (kept — `checkin-gating.spec.ts:123,141`) | «المهام» | **content** `Tasks` | `can.tasks && tasksSummary.visible` |
+| 10 | Materials | `materials` | «المواد» | «المواد» | **content** `Materials` | `can.materials !== "none" && materialsSummary.visible` |
+| 11 | Ended stat strip — `Stat` × materials count, photos count, each linking to its section | — | — | — | sessions | phase `ended` and a count > 0 (attendance: Q8) |
+| 12 | Photos | `photos` | «الصور» | «الصور» | **content** `Photos` | `photosSummary.visible` |
+| 13 | Discussion | `discussion` (was `comments`) | «النقاش» (was «التعليقات», REQ-UIX-024's name) | «النقاش» | **content** `Comments` | `commentsSummary.visible` |
+| 14 | Rating | `rating` | «التقييم» | «التقييم» | event `Ratings` | stored `completed`/`archived` **and** relation ∈ `attended`/`presenter`/`staff` (tightened — see R-L7) |
+
+Every gated section is `<section id="{id}" aria-labelledby="{id}-heading"><h2 id="{id}-heading">`, so
+the region names `materials.spec.ts:202,248` and `photos.spec.ts:190` select on survive unchanged.
+Items 9, 10, 12, 13 each sit in their own `<Suspense>` with a skeleton that has **no heading** — the
+hero and the action card paint first, the slots stream in (§7.1 layer 3). The sub-nav is its own
+Suspense boundary awaiting the same (cached) summaries.
+
+### 22.3 The props, exactly
+
+`src/components/sessions/slots.ts` after this wave — `SlotProps` is **unchanged**, which is what
+`content` §5 asked for:
+
+```ts
+export type SlotProps = { sessionId: string; memberId: string; locale: string };   // unchanged
+export type RelationSlotProps = SlotProps & { viewerRelation: ViewerRelation };    // unchanged, no slot is required to take it
+
+/** NEW — what the page must know about a slot BEFORE it renders the slot's section. */
+export interface SlotSummary {
+  /** false ⇔ the slot would render nothing for THIS viewer. The page then renders no <section>, no <h2>, no sub-nav entry. */
+  visible: boolean;
+  /** Items this viewer can see. */
+  count: number;
+  /** Tasks only: not yet completed by this viewer — the action card's «المهام التحضيرية (2)». Null elsewhere. */
+  outstanding: number | null;
+}
+export type SlotSummaryReader = (props: SlotProps) => Promise<SlotSummary>;
+
+export const SLOT_NAMES = ["RsvpPanel", "AttendanceOutcome", "AddToCalendar", "Tasks", "Materials", "Photos", "Comments", "Ratings"] as const; // was stale (content §5)
+```
+
+**What `content` exports**, beside each existing component:
+
+| File | Component | Summary | `visible` is true when |
+|---|---|---|---|
+| `components/tasks/panel.tsx` | `Tasks(props: SlotProps)` | `tasksSummary: SlotSummaryReader` | `tasks.length > 0 \|\| canManage` |
+| `components/materials/list.tsx` | `Materials(props: SlotProps)` | `materialsSummary` | `materials.length > 0 \|\| canManage` |
+| `components/photos/gallery.tsx` | `Photos(props: SlotProps)` | `photosSummary` | `photos.length > 0 \|\| canUpload` |
+| `components/event/comments.tsx` | `Comments(props: SlotProps)` | `commentsSummary` | `activeCount > 0 \|\| viewer may post` |
+
+The right-hand column is my expectation, not my rule — `content` owns what its slot shows. The one
+invariant: **`visible === false` exactly when the slot returns `null`**, asserted in `content`'s own
+slot tests. The page renders `<Tasks {...props} />` etc. with `SlotProps` only (TS excess-prop checks
+would reject `viewerRelation` on a `SlotProps` component).
+
+### 22.4 Rules both sides rely on
+
+1. **One read per slot per request.** The summary and the slot body must share one request-scoped
+   read — wrap `getTasksPageData`, `getMaterialsPageData`, `getPhotosPageData`, `getCommentsPageData`
+   in React `cache()` inside the DAL module. Without it the section gate costs a second round trip
+   per slot.
+2. **A slot renders no `<section>`, no `<h2>`, no `role="region"`** and no top-level count heading. A
+   count sentence, an `EmptyState` for a manager, and anything inside is the slot's.
+3. **A slot must not depend on its own `<Suspense>` placement** — the page supplies the boundary.
+4. **The page never passes rows** (DEC-045) and never re-derives what a slot shows; it ANDs the
+   summary with the matrix cell it already owns (tasks, materials), nothing else.
+5. **Ids are stable from this note on** — the sub-nav scroll-spy and `content`'s deep links use them.
+6. `REQ-UIX-015` "an empty slot renders no heading, one component test per slot": the page half is
+   `tests/components/sessions/gated-section.test.tsx` (a stub summary with `visible:false` renders
+   nothing, with `true` renders exactly one `<h2>`); the slot half is `content`'s
+   `visible === false ⇔ null` test per slot.
+
+**Replies to `content`'s note.** §4.3 — rendering nothing for a viewer with no action is consistent
+with this contract: `visible:false` removes the whole section, so no empty heading is left. §4.2 —
+yes, the grow behaviour belongs in the composer's wrapper; `ui/textarea` passes `ref`, `style` and
+`rows` through. One catch: `min-h-32` is baked in ahead of `className`, so a 3-row starting height
+cannot be set by class. If the composer needs it, I change `textarea.tsx` (mine) to apply `min-h-32`
+only when `rows` is not given — say so and it is one commit.
+
+## 23. `/app/sessions/[id]` — the event page
+
+### 23.1 Layout
+
+**Desktop (`md`+), after `Main.dc.html`:**
+
+```
+┌ shell header (lead) ────────────────────────────────────────────────────────┐
+█ .theme-dark band, full-bleed (R-L1) ███████████████████████████████████████
+█  الجلسات › إداري                                                           █
+█  [✓ التسجيل مفتوح]                                ┌ poster 4:5, 372px ┐   █
+█  <h1> كيف اختصرنا وقت التقارير الشهرية            │  SessionPoster    │   █
+█  [س][ن] يقدّمها سعد الحربي ونورة القحطاني            └───────────────────┘   █
+█  [إداري] [تمهيدي] [العربية] [60 دقيقة]                                     █
+██████████████████████████████████████████████████████████████████████████████
+   main column minmax(0,1fr)                       aside 372px, sticky under the header
+   ┌ sub-nav, sticky under the header (R-L2) ┐    ┌ action card ──────────────────┐
+   │ نبذة · المُقدِّمون · المهام · المواد · النقاش │    │ §23.2                          │
+   └─────────────────────────────────────────┘    │ meta: الموعد · المكان ·        │
+   <h2> نبذة …                                     │ آخر موعد للحجز · الشهادة        │
+   <h2> المُقدِّمون …                                └───────────────────────────────┘
+```
+
+The card starts where the band ends; it overlaps **only the band's bottom padding**, never the
+poster or its caption (the canvas's `margin-top: -132px` lands on the caption once `DEC-122`'s
+`box-sizing` error is corrected — same class, not reproduced). No `position: relative` on the poster.
+The poster is exactly its column's width.
+
+**Phone (390 px), after `EventPhone.dc.html`:**
+
+```
+┌ shell header (lead, sticky 68px) ┐
+█ band 172px, theme-dark  [badge] █  ← poster placement: Q3
+<h1> title
+[س] سعد الحربي ونورة القحطاني
+[إداري][تمهيدي][العربية][60 دقيقة]      ← language before the action (REQ-SES-011)
+┌ action card, in flow ──────────┐
+│ 42 من 60 مقعدًا   يتبقى 18 مقعدًا │
+│ ▓▓▓▓▓▓▓░░░ Progress             │
+│ 🕐 الأربعاء 16 سبتمبر · 6:00–7:00 م │
+│ 📍 القاعة الكبرى · الحضور في القاعة فقط │
+│ آخر موعد للحجز …                │
+└────────────────────────────────┘
+[نبذة][المُقدِّمون][المواد][النقاش] →   ← overflow-x: auto, NOT sticky, never overflow: hidden
+sections …
+┌ bottom action bar, fixed, safe-area padded, inside #attend ┐
+│ [      احجز مقعدك      ]  [🔖]  [↗]                        │
+└────────────────────────────────────────────────────────────┘
+```
+
+★ **On the phone the primary lives in the bar only** — the card's inline primary is `hidden md:block`
+and the bar is `md:hidden`, so exactly one primary exists at every width, and it sits inside the
+region «الحضور» at both. The canvas shows two «احجز» on one phone screen (Q9). Bookmark and share are
+in the bar on the phone and in the card on desktop, never both.
+
+### 23.2 The action card, state by state
+
+The primary is chosen by one pure function, `primaryActionFor()` in
+`components/sessions/event-actions.ts`, composed **only** from predicates that already exist —
+`affordancesFor(phase, relation)`, `getRsvpPanelData().canReserve/seat`, `canOfferCheckInLink()`,
+`canGrantOn(session, "rate")`, `getRatingEligibility().eligible`. It changes no predicate; it picks
+which already-permitted action is the primary.
+
+| Phase · relation | Card body | Primary (card on desktop = bar on phone) | Secondary |
+|---|---|---|---|
+| `open` · `none`, seats | «42 من 60 مقعدًا» + `Progress` + «يتبقى N مقعد» (RsvpPanel's own line) | «احجز مقعدك» — `RsvpPanel` form, `SubmitButton` pending | احفظ · شارك |
+| `open` · `none`, full | same + «N في قائمة الانتظار» | «احجز مقعدك» (the RPC waitlists) | احفظ · شارك |
+| `open` · `none`, deadline passed | «انتهى وقت الحجز لهذه الجلسة» | — | احفظ · شارك |
+| `open` · `confirmed` | `Panel tone="success"` «تم تأكيد حجزك» | «أضِف إلى تقويمك» — `ui/menu`: Google · Outlook · Apple (ICS) | «المهام التحضيرية (N)» → `#tasks` when `tasksSummary.visible`; «إلغاء الحجز» (late wording after the cutoff, unchanged); احفظ · شارك; hint «وصلتك رسالة التأكيد ومعها ملف التقويم.» |
+| `open` · `waitlisted` | «أنت على قائمة الانتظار — ترتيبك رقم N» (REQ-SES-013: visible without interaction) | — | «غادر قائمة الانتظار» · احفظ · شارك |
+| `open`/`live` · `presenter`/`staff` | seat line, read-only | «شاشة التقديم» when `can.hostConsole` | staff links (الجدولة · الحضور · الشهادات), ruled |
+| `live` · `confirmed` or walk-in eligible | badge carries «جارية الآن» | «تسجيل الحضور» when `canOfferCheckInLink` | شارك |
+| `live` · otherwise | — | — | شارك |
+| `ended` · `attended` | `AttendanceOutcome` «حضرت» | «قيّم الجلسة» → `/rate` when `can.rate && canGrantOn && eligible`; line «باب التقييم مفتوح حتى {date}. تقييمك لا يُنسب إليك.» | «نزّل شهادتك» **only when an issued certificate row exists** (§5.4.1 row 6); «المواد» → `#materials`; احفظ · شارك |
+| `ended` · `absent` | «لم تُسجّل حضورك» | — | المواد · شارك |
+| `ended` · `none`/`presenter`/`staff` | — | — | المواد · شارك · staff links |
+| `cancelled` · any | the alert (#1) carries it | — | nothing (`share: false`) |
+| `draft`/`pending_schedule` · staff/presenter | the unpublished note (#1) | — | staff links |
+
+Meta rows, every published state: «الموعد» (one date, `formatTime` for the end when same day —
+existing `sameDay` logic), «المكان» + «افتح الموقع على الخريطة» + «الحضور في القاعة فقط.»
+(REQ-SES-008), «آخر موعد للحجز» (`open`), «آخر موعد لإلغاء الحجز» (`open` · `confirmed`), and
+`CertificateModeBadge` as the certificate row. The bar is not rendered when it would hold nothing.
+
+### 23.3 Primitives, by file
+
+`ui/badge` (`SessionStatusBadge` — hero) · `ui/avatar` (`AvatarStack` 32 in the hero, `Avatar` 56 on
+presenter cards, initials only) · `ui/tag-chip` (hero chips static; tag links in «نبذة») ·
+`ui/progress` (seats) · `ui/panel` (alert, unpublished note, ribbon, success strip) · `ui/stat` (ended
+strip) · `ui/menu` (calendar) · `ui/submit-button` (reserve / cancel / leave — pending keeps the label,
+REQ-UIX-007) · `ui/button` + `ui/icon-button` (bar and card secondaries, named) · `ui/toast` (share
+copied; bookmark failure) · `ui/icons` (clock, pin, calendar, bookmark, share, check-circle, chevron) ·
+`ui/skeleton` (`[id]/loading.tsx`, section fallbacks).
+
+New files, all mine: `components/sessions/{event-hero,action-card,action-bar,event-subnav,gated-section,presenter-list}.tsx`,
+`components/sessions/event-actions.ts`. Restyled: `components/sessions/share-link.tsx` (Web Share
+where available, else clipboard + toast; the public-card hint stays — it is a privacy statement).
+
+### 23.4 DAL
+
+- **`getSessionForEvent`** (mine) widens: `categoryId`, `durationMinutes`, `tags: {label, normalised}[]`,
+  presenters `{memberId, displayName, jobTitle, companyName, bio}` from `members_member_view` +
+  `companies` — one extra query, in the existing `Promise.all`. `avatar_url` is **not** selected
+  (DEC-099 retires the hotlink).
+- Read, not edited: `getRsvpPanelData` (hero badge's seat, seat line, bar — shared via R-L3's
+  `cache()`), `canOfferCheckInLink`, `getRatingEligibility` (only when `ended` · `attended`),
+  `listMyCertificates` filtered to this session and `issued` (same condition), the four summaries.
+- Nothing new in SQL for this route.
+
+### 23.5 The three presentation-only files — what moves and what does not
+
+- `rsvp-panel.tsx`: loses its own `<section>`/`<h2>` (the page owns the landmark; the region name is
+  kept on #4); raw buttons → `SubmitButton`; gains a second export, `RsvpBarAction`, rendering **only**
+  the primary control off the same `data.canReserve` — so the bar never re-states the gate. Strings,
+  `canReserve`/`canCancel`, the late-cancel branch: untouched.
+- `attendance-outcome.tsx`: `Panel tone="success"`/`"ended"` + icon. Gate untouched.
+- `add-to-calendar.tsx`: the three links become `ui/menu` items under one button labelled with the
+  **existing** `calendar.add.heading` «أضِف إلى تقويمك»; exports a bar variant. The page's
+  `can.calendar` gate stays where it is. The ICS/Google/Outlook URL building: untouched.
+- `session-matrix.ts`, `lib/dal/{rsvp,checkin}.ts`, `tests/unit/session-matrix.test.ts`: not opened
+  for writing.
+
+### 23.6 States captured (390 px RTL, `.qa-shots/rtl/`)
+
+`wave6-sessions-event-before.png` (`open` · `none`) · `wave6-sessions-event-after.png` (`open` ·
+`confirmed`) · `wave6-sessions-event-ended.png` (`ended` · `attended`, rating window open). Also
+taken and looked at, not required: `-event-waitlisted`, `-event-live`, `-event-cancelled`, and a
+1440 px `-event-before-desktop` against `Main.dc.html`.
+
+### 23.7 Tests
+
+`tests/unit/sessions-event-actions.test.ts` — `primaryActionFor()` over all 42 phase × relation
+cells, and a direction check: it never returns an action whose predicate is false ·
+`tests/components/sessions/{gated-section,event-subnav,action-card}.test.tsx` with axe (subnav:
+`aria-current` follows the section, unlisted sections absent) ·
+`tests/components/checkin/{rsvp-panel,attendance-outcome}.test.tsx` — markup assertions only ·
+`tests/e2e/event-page.spec.ts` — before → reserve → after state survives a reload; ended shows no
+register control anywhere; at 390 exactly one fixed bottom bar and one «احجز مقعدك»; tab every
+focusable element at 390 and 1280 and assert nothing fixed or sticky intersects it (REQ-UIX-017);
+sub-nav anchor lands below the sticky layers. `tests/e2e/sessions-screens.spec.ts` updated where its
+selectors assumed the old card.
+
+## 24. `/app` and `/app/sessions` — one timeline, two routes (DEC-112, DEC-130)
+
+### 24.1 Layout
+
+Both `page.tsx` files render `<SessionsTimeline locale searchParams />`
+(`components/browse/sessions-timeline.tsx`, server). `/app` ignores its query string and renders the
+default view; every filter control, on either route, navigates to `/app/sessions?…`. One column,
+`max-w-3xl`, centred — at 1440 px nothing sits beside it. `<h1>` «الجلسات» on both.
+
+```
+390 px                                          desktop: the same column, centred
+<h1> الجلسات
+[Panel role=status: اختر شركتك …]   ← only when company unset (REQ-PRF-001, kept)
+[القادمة✓][جارية الآن][انتهت] | [فني][إداري][إبداعي] … [المزيد من عوامل التصفية (2)]  → scrolls
+[التصنيف: فني ×] [الوسم: تقارير ×] [امسح الكل]                                   ← wraps, never scrolls
+┌ التالية لك ─────────────────────────────┐   ← pinned: Card density="wide"
+│ [poster] [مقعدك محجوز] title …          │
+└─────────────────────────────────────────┘
+<h2> هذا الأسبوع   3 جلسات
+┌ Card density="row" ──────────────────────┐
+│ [4:5 poster  │ title                     │
+│  + badge]    │ [س] سعد الحربي و1 آخر     │
+│              │ الأربعاء 16 سبتمبر · 6:00 م · القاعة الكبرى │
+│              │ [تمهيدي] [تقارير][أتمتة]   │
+│              │ يتبقى 18 مقعدًا       [🔖] │
+└──────────────────────────────────────────┘
+<h2> الأسبوع القادم …
+```
+
+Row density at every width: a 4:5 poster keeps a designed poster whole (a 16:9 crop cuts its
+typography), and a 390 px card stays ~180 px tall — generous, not a wall.
+
+### 24.2 What is on the timeline
+
+- **The visible set** is RLS `sessions_read` ∩ state ∈ {`published`, `in_progress`, `completed`,
+  `archived`, `cancelled`}. Drafts and `pending_schedule` never appear, even to staff — the console
+  lists those.
+- **Phase and seat** come from `sessionPhase()`, `seatState()`, `closingSoon()` — never re-derived.
+- **Default view** (no `status`): phase `live` then `open`, ascending by start; plus a `cancelled`
+  session still in the future **when the viewer holds an RSVP on it**, so a member learns it was
+  cancelled.
+- **`status=open|live|ended`**: that phase only; `ended` descending, latest 60 (older pagination
+  deferred and said so).
+- **The next committed session is the first item** (REQ-UIX-021): the earliest `open`/`live` session
+  the viewer holds a **confirmed** seat on and that passes the current filters, rendered as
+  `density="wide"` under «التالية لك», and removed from its date group rather than shown twice. Not
+  pinned under `status=ended`. On `live` it carries «تسجيل الحضور» when `canOfferCheckInLink`.
+- **Groups**, in the session's org time zone, week starting per `Intl.Locale("ar-SA").weekInfo`
+  (Sunday fallback), empty groups not rendered: «جارية الآن» · «هذا الأسبوع» · «الأسبوع القادم» ·
+  «هذا الشهر» · «لاحقًا»; for `ended`, one group per month («سبتمبر 2026»). Each group is a
+  `<section aria-labelledby>` with an `<h2>` and a count (all six forms). Pure, in
+  `components/browse/timeline-groups.ts`.
+- **The card** (`components/browse/session-card.tsx` on `Card`/`CardMedia`/`CardBody`/`CardActions`):
+  poster (`src` from `getSessionPoster`, else the title placeholder), `SessionStatusBadge` as the media
+  overlay, title, `AvatarStack` 24 + first name «و{n} آخرون», date · time in the **session's** time
+  zone (the event page's), venue, level chip, ≤ 3 static tag chips (a link inside the card link would
+  nest anchors), a footer line (`open`: «يتبقى N مقعد» — Q10; `full`: «N في قائمة الانتظار»), the
+  viewer's own marker `Badge` «مقعدك محجوز» / «في قائمة الانتظار» / «حضرت», and the bookmark as an
+  `IconButton` in `CardActions` (`aria-pressed`, the existing «أضف إلى المحفوظات» /
+  «إزالة من المحفوظات» names, optimistic — §7.1 allows it for bookmarks). No rating anywhere
+  (REQ-RAT-004, DEC-114 class 2). Ended/cancelled posters dimmed **on the image only** (R-C1).
+
+### 24.3 Filters (REQ-UIX-022, REQ-DSC-005)
+
+**The URL is the contract.** On `/app/sessions`: `status` (`open|live|ended`) · `category` (uuid) ·
+`tag` (normalised label — readable in a shared link) · `venue` · `company` (uuid) · `level` ·
+`language` · `presenter` · `from` · `to` (`YYYY-MM-DD`, org time zone) · `q` (the shell's search).
+Each key is `safeParse`d on its own: an invalid value is dropped, never echoed into a chip. A newly
+applied filter is appended, so parameter order is application order.
+`components/browse/timeline-query.ts` (pure, server + client): `parse`, `toHref`, `without(key)`,
+`active()`.
+
+- **Row A — always visible** (`overflow-x: auto` on the phone): status toggles «القادمة» (the
+  default) · «جارية الآن» · «انتهت»; one toggle per active category; «المزيد من عوامل التصفية» with
+  the count of sheet-only filters in use. Toggles are **links** carrying `aria-current`, so they work
+  before hydration; a pressed toggle carries its own × (the canvas's pressed «إداري»).
+- **Row B — whenever anything beyond the default is active, wrapping, never scrolled out of view**:
+  one removable chip per active filter, **named, not the raw value** — «التصنيف: فني», «الوسم:
+  تقارير», «من 1 سبتمبر», «بحث: تقارير» (today's chip prints the category **uuid**:
+  `browse.spec.ts:184` selects on it) — and «امسح الكل». Removing one navigates to `without(key)`;
+  the others stay.
+- **The sheet** (`ui/sheet`; `side="bottom"` below `md`, `"inline-end"` from `md`): التاريخ (from/to,
+  `ui/date-time` date) · الوسم (`ui/combobox` over the org's tags with counts, `text-fg-muted`, per the
+  agent file's DEC-123 note) · المكان, الشركة (`ui/select`) · المُقدِّم (`ui/combobox` over the
+  visible sessions' presenters, Arabic-normalised) · المستوى, لغة الجلسة (`ui/radio-group`) — every
+  one inside `<Field>`. «اعرض النتائج» applies, «امسح» clears the sheet's own keys. No `q` field —
+  search is the shell's.
+- **Filtered-empty** (`ui/empty-state`): for each active filter, the DAL counts the results with that
+  one filter dropped. The named filter is the one whose removal restores the most (tie → the most
+  recently applied). Title «لا جلسات تطابق «{value}» مع بقية عوامل التصفية», `clearFilter`
+  «أزل «{value}»» → `without(key)`, `action` «امسح كل عوامل التصفية» → `/app/sessions`.
+- **Unfiltered-empty** — the same screen (REQ-UIX-021): title «لا جلسات قادمة بعد», description «عندك
+  موضوع يستحق أن يُقال؟ اكتب الفكرة فقط — الجدولة والمكان والملصق علينا.», action «اقترح موضوعًا»
+  → `/app/propose`. Row A stays, so «انتهت» is still one tap away.
+- Not built: sort (a date-grouped list is sorted by construction; `16` §6.2's staff-only
+  «الأعلى تقييمًا» would un-group it) and the tag cloud as a second row (the tags live in the sheet).
+
+### 24.4 DAL
+
+- **`search.ts`**: `getTimeline(locale, query)` replaces `searchSessions` (its only caller is the
+  browse page). One `Promise.all`: sessions (+ `categories(name)`, `venues(name)`, custom venue),
+  accepted presenters + display names, `session_tags` + `tags`, the viewer's own `rsvps`
+  (confirmed/waitlisted), the viewer's bookmark ids, the viewer's own `check_ins` (only under
+  `status=ended`), the existing text-match id set when `q`/`presenter`/`company` is set, and filter
+  options. Filters apply **in memory** over the RLS-bound visible set, which is what makes
+  drop-one counts free. Deliberate at `16` §2.2a's ~30 sessions; revisit with the rail at ~200.
+- **Seats**: `session_seat_counts` per session in phase `open` only, in parallel (≤ ~15 calls
+  today). A batched `session_seat_counts_for(uuid[])` can go under `supabase/proposed/sessions/` with
+  an RLS test if the lead wants it (R-L8); not assumed.
+- **Posters**: `getSessionPoster` per visible card, in parallel — the same N reads today's card makes
+  (R-L4).
+- **`bookmarks.ts`**: `listMyBookmarkedSessionIds(locale): Promise<Set<string>>` replaces the
+  per-card `isSessionBookmarked`.
+- `getMe` read for the company nudge; `PointsStrip` leaves `/app` (the dashboard is withdrawn) — its
+  only mount (R-L6).
+
+### 24.5 States captured (390 px RTL) and tests
+
+`wave6-sessions-timeline-items.png` (pinned + ≥ 2 groups) · `-timeline-empty.png` ·
+`-timeline-filtered-empty.png` · `-browse-chips.png` (both rows) · `-browse-sheet-open.png`.
+
+`tests/unit/sessions-timeline-groups.test.ts` (bucket edges at midnight and week start in
+`Asia/Riyadh`, month groups) · `tests/unit/search-timeline-query.test.ts` (parse/serialise
+round-trip, invalid values dropped, `without` keeps the rest, drop-one choice and its tie-break) ·
+`tests/components/browse/{sessions-timeline,session-card,filter-bar,filter-sheet}.test.tsx` with axe
+(the card's nested bookmark stays reachable and never navigates; row B wraps; pressed toggles carry
+`aria-current`) · `tests/components/search/{filters-form,bookmark-button}.test.tsx` updated ·
+`tests/e2e/timeline.spec.ts` (new: `/app` pins the committed session first; empty; a filter applied
+on `/app` lands on `/app/sessions?…`; removing one chip keeps the others; filtered-empty names the
+filter and «أزل» restores results) · `tests/e2e/browse.spec.ts` rewritten against the new controls.
+
+## 25. Where the canvas contradicts a requirement or a decision — questions (DEC-114)
+
+Each has the default I will build unless told otherwise.
+
+1. **Resolved by `DEC-112`, recorded only:** `Browse.dc.html` is a three-column grid; REQ-UIX-021 is
+   one column. One column.
+2. **Desktop action card.** `Main.dc.html` pins a 372 px card beside the content, pulled up over the
+   band; `16` §6.3 specifies "a full-width action row under the hero that becomes sticky only once it
+   scrolls out of view — rather than a 30%-wide column pinned beside a left column". *Default: the
+   canvas's sticky column* (layout is what the canvas is the reference for), without the collision
+   in §23.1.
+3. **The phone hero has no poster.** `EventPhone.dc.html` is a 172 px gradient strip with the badge,
+   the title on white; `16` §4.2.2 puts poster, title, presenters and status on one dark band.
+   *Default: the phone band is the dark gradient with the badge and title; the full 4:5 poster opens
+   «نبذة».* A 390 px poster above the card would push the card out of the first screenful.
+4. **Copy.** Canvas «احجز مقعدًا» vs REQ-SES-013 «احجز مقعدك»; canvas «مقعدك محجوز» / «سُجِّل حضورك»
+   vs shipped `rsvp.json` «تم تأكيد حجزك» / «حضرت»; canvas «أضف إلى التقويم» vs `calendar.json`
+   «أضِف إلى تقويمك». *Default: REQ-SES-013's words and the shipped strings* — `rsvp.json` and
+   `calendar.json` are not mine, and `checkin.spec.ts` selects on them.
+5. **A presenter's average rating on the event page.** `Main`'s presenter card reads «قدّم أربع جلسات
+   سابقة … بمتوسط تقييم 4.6» to every member. REQ-RAT-005 limits ratings to org-admin visibility,
+   REQ-RAT-006 withholds them below a minimum, `16` §2.2 keeps stars to the presenter's own view and
+   the console. *Default: no rating and no computed history; `members.bio` as the member wrote it.*
+6. **The hero's subtitle** («ثلاثة أيام عمل صارت نصف يوم …») has no column, and clamping the abstract
+   would need `overflow: hidden`. *Default: omitted.*
+7. **«ماذا ستتعلّم؟» and «الأهداف».** REQ-SES-014's `objectives` column does not exist
+   (`grep objectives supabase/migrations` → nothing). *Default: section and sub-nav entry absent; the
+   id `objectives` is reserved.* Confirm it is not this wave.
+8. **«الحضور 54» on the ended page.** No member-readable attendance count exists (`check_ins` is
+   self-read for a member), and no requirement says a member sees it. *Default: the strip shows
+   materials and photos only.*
+9. **Two primaries on one phone screen.** `EventPhone` shows «احجز» in the card and in the bar, and
+   bookmark/share three times (top bar, card, bottom bar). `16` §3 principle 2 is exactly one.
+   *Default: §23.1 — the bar carries the primary on the phone, the card on desktop; bookmark/share in
+   one place per width. The contextual phone top bar (back · «الجلسة» · 🔖 · ↗) is the shell's — not
+   built by me.*
+10. **Seats left on a member's card.** `Browse` shows «18 مقعدًا متبقّيًا» on every card; `16` §6.4
+    says "staff additionally see the seat count". REQ-SES-013 already shows live capacity to every
+    member on the event page. *Default: the canvas — remaining seats to everyone on `open` cards.*
+11. **Design annotations rendered as product copy** — «"أضف إلى التقويم" يظهر بعد الحجز، لا قبله.»,
+    «التقويم والمهام يظهران الآن فقط — قبل الحجز لم يكن لهما معنى.», «شريط إجراء، لا شريط تبويب …»,
+    `EventEnded`'s red dashed box, `Browse`'s closing paragraph. *Default: none rendered*; only the
+    true half «وصلتك التذكرة بالبريد ومعها ملف التقويم» survives, as the confirmed-state hint.
+12. **Status chip label.** `Browse`'s chip «التسجيل مفتوح» is the *badge* for a seat state, so as a
+    phase filter it would list full and deadline-closed sessions under «التسجيل مفتوح». *Default:
+    «القادمة» · «جارية الآن» · «انتهت».*
+13. **Radius.** Every avatar, badge and chip in the canvas is a 6 px rounded square; M9's
+    `ui/avatar`, `ui/badge`, `ui/tag-chip` are pills. Not mine to change — for `content` and the lead.
+
+## 26. Requests — by owner
+
+**To the lead** (lead-only files, and files the lead holds as custodian):
+
+- **R-L1 · `app/layout.tsx` + `globals.css`.** On immersive routes, `<main>` without
+  `max-w-6xl px-* py-*`, so the event page owns its full-bleed band and inner container (a `100vw`
+  break-out adds a horizontal scrollbar on desktop Windows). Below `md`, the fixed action bar needs
+  what the tab bar has: `:root:has([data-action-bar]) { --tabbar-h: 76px }` so `html`'s
+  `scroll-padding-block-end` follows, and `<main>`/footer `padding-block-end` applied when
+  `hasTabBar || immersive`.
+- **R-L2 · `globals.css`.** `@media (min-width: 768px) { :root:has([data-event-subnav]) { --subnav-h: 52px } }`
+  — sticky sub-nav on desktop only, scroll padding only where it exists.
+- **R-L3 · `lib/dal/rsvp.ts` (checkin custodian).** Wrap `getRsvpPanelData` in React `cache()`. No
+  logic change; the hero badge, `RsvpPanel`, `RsvpBarAction` and `AttendanceOutcome` then share one
+  read (today two slots each make it).
+- **R-L4 · `lib/dal/posters.ts` (designer custodian), not blocking.** A batched
+  `getSessionPosters(locale, ids)` — one query plus `createSignedUrls` — for the timeline. Until then,
+  N reads, as today.
+- **R-L5 · `app/loading.tsx`.** Render `<TimelineSkeleton />` from
+  `components/browse/timeline-skeleton.tsx` (mine; no text, no translations) so `/app` and
+  `/app/sessions` share one skeleton.
+- **R-L6 · shell and scoring.** The tab bar loses «الرئيسية» and «الجلسات» is current on `/app` too
+  (DEC-130, already yours); `PointsStrip` loses its only mount; `app.json`'s `home.*` keys go unused
+  except `companyMissing`/`completeProfile`, which the timeline keeps reading.
+- **R-L7 · specs I cannot edit that my rebuild moves.**
+  - `session.spec.ts:90-95` — `/app`'s `<h1>` becomes «الجلسات» and the org name leaves the page. The
+    company nudge keeps `role="status"` and «اختر شركتك», and nothing else on `/app` is
+    `role="status"`, so `:109` holds.
+  - `checkin-gating.spec.ts:119-120, 139-140` — the calendar becomes a menu: assert the button
+    «أضِف إلى تقويمك» (count 0 / visible) and open it before looking for «تقويم Google».
+  - Expected to hold unchanged, please run: `checkin.spec.ts:200-207`, `checkin-gating.spec.ts:123,126,141,142`,
+    `materials.spec.ts:202,248`, `photos.spec.ts:190`, `shell-tab-bar.spec.ts:170-194`.
+  - Rating gate: `Ratings` returns `null` for a viewer with no stake, which leaves an empty «التقييم»
+    under today's state-only gate. I tighten it by relation (§22.2 #14); a `ratingsSummary` like
+    content's would be exact.
+- **R-L8 · optional migration.** `session_seat_counts_for(uuid[])`, written and RLS-tested under
+  `supabase/proposed/sessions/` only if you want it this wave.
+- **R-L9 · `ui/page-header`, `ui/section-header`, `ui/prose` are unstyled stubs.** I use them only
+  if they are finished first; otherwise headings take the type tokens directly.
+
+**To `content`:**
+
+- **R-C1 · `card.tsx` + `CardMediaProps` (the type is the lead's).** `dimmed?: boolean` —
+  `grayscale` + reduced opacity on the image or placeholder **only**, never on `overlay`
+  (DEC-123 item 1). Passing `className` would dim the badge.
+- **R-C2 · `tag-chip.tsx` + `TagChipProps`.** (a) `selected?: boolean` for the pressed toggle; (b) the
+  remove control's hit area to ≥ 24 px (it is 16 px — `h-4 w-4`); (c) `removeHref?: string`, so
+  removal is a link that works before hydration. Until then row B uses `onRemove` + `router.push`.
+- **R-C3 · the four summaries and `cache()`** in §22.3–§22.4.
+
+**To `console`:** nothing required. `ui/sheet`, `ui/menu`, `ui/combobox`, `ui/date-time` are
+consumed as shipped.
+
+## 27. Order of work once «numerals landed»
+
+1. **`slots.ts` + `gated-section.tsx` + its test** — the contract in code, first, so `content`
+   compiles against it the same hour.
+2. **The event page** — `getSessionForEvent`, hero, action card, bar, sub-nav, sections, the three
+   restyles, `[id]/loading.tsx`; `event-page.spec.ts` through the lock; three captures. Ready for sync.
+3. **The timeline** — `timeline-query.ts`, `timeline-groups.ts`, `getTimeline`, the card, row A/B,
+   the sheet, both empty states, both `page.tsx`, `sessions/loading.tsx`; `timeline.spec.ts` and
+   `browse.spec.ts`; five captures. Ready for sync.
+4. `node scripts/ui-reach.mjs --wave6` ✓ for routes 4, 5, 6 before either sync is claimed.
+
+## 28. Re-verified against `57f1103` (numerals landed)
+
+Every file this plan reads was re-read from disk. Only the sweep moved them (`c20b901`), and only
+mechanically: `formatNumber(value)`, `formatDateTime(iso, timeZone, locale)`, `formatTime(iso,
+timeZone, locale)`; `OrgPrefs` without `numerals`; `SessionCard` without its `numerals` prop;
+`getSessionForEvent`'s DTO otherwise unchanged. **No section above depended on the removed
+parameter**, so §22–§27 stand. Four clarifications, from the lead's deltas:
+
+1. **One-day sessions only.** The event page is built for the schema in the database: one
+   `starts_at`/`ends_at`, session-level materials and tasks, no `session_days`. **No
+   `check_in_open`** — the live-phase primary in §23.2 is `canOfferCheckInLink()` exactly as shipped,
+   whose walk-in input is `sessions.allow_walk_ins` from `0079`, which does exist. Nothing here reads
+   or anticipates DEC-113/116/117/118 or DEC-119–121.
+2. **The phone band's gradient (§23.1, Q3) is page CSS over the existing navy tokens**
+   (`--color-navy-900` → `--color-navy-800`), a background on a `<header>`. It is **not** DEC-127's
+   poster gradient: no `model.ts` fill, no `canvasRaise` token, no parity golden touched.
+3. **The two real contrast failures (DEC-123) are not reproduced.** Tag counts in the sheet's tag
+   combobox and on any chip take `--color-fg-muted` (5.68:1). The poster caption is rendered only if
+   the poster DTO says where the poster came from; if it is, it is `text-caption` in `fg-muted`, never
+   13 px.
+4. **Links.** In-app navigation — card, breadcrumb, toggle chips, «أزل» — goes through the house
+   `ui/link` with a locale-prefixed `href` (it wraps `next/link` directly, not the i18n `Link`), so the
+   lead's pending affordance arrives with no change here. The sub-nav's same-page anchors stay plain
+   `<a href="#id">`, since there is no navigation to show. No link pending state of my own.
+
+## 29. The lead's primitives are real at `1d73e89` — what the plan now uses
+
+Read from disk: `ui/page-header`, `ui/section-header`, `ui/icon-button`, `ui/prose`, `ui/link`.
+**R-L9 is closed**, and §28 item 4 is corrected: `ui/link` is **locale-aware** (it wraps the i18n
+`Link`), so hrefs are written `"/app/sessions"`, never prefixed. Every in-app link on my screens
+imports `@/components/ui/link`, not `@/i18n/navigation`; whole-card and breadcrumb links pass `quiet`.
+
+| Primitive | Where |
+|---|---|
+| `PageHeader` | `/app` and `/app/sessions`: the one `<h1>` «الجلسات», no breadcrumb. The event hero's text column: `breadcrumb` «الجلسات › {category}» with `breadcrumbLabel={t("ui.pageHeader.breadcrumb")}`, the title as the `<h1>`, `meta` = the status badge + chips; the presenters row sits directly below it inside the band. `.theme-dark` reassigns `fg-heading`/`fg-muted`, so it reads on the band unchanged. The band itself becomes a `<div>` so `PageHeader`'s `<header>` is not nested in another one. |
+| `SectionHeader` | Every event-page section (`id="{id}-heading"`, the `aria-labelledby` target). **No `count` on the four slot sections or on «التقييم»**: the count renders inside the heading, so it would change the accessible name `materials.spec.ts:202` and `photos.spec.ts:190` select on exactly. With `count` on the timeline's date groups («هذا الأسبوع 3»), where the name is mine. |
+| `Prose` | The abstract in «نبذة» and each presenter's `bio`. |
+| `IconButton` | Bookmark and share in the phone bar and on the timeline card: named, 44 px, `aria-pressed` on the bookmark. The canvas's 52 px bar buttons are not needed. |
+| `Link` | Toggle chips, «أزل», «امسح الكل», breadcrumb, profile links, «قيّم الجلسة» → `/rate`, «تسجيل الحضور», «شاشة التقديم», the staff links. Same-page jumps — the sub-nav, «المواد», «المهام التحضيرية» — stay `<a href="#id">`. |
+
+Two requests this creates:
+
+- **R-L10 · `PageHeaderProps.eyebrow` (lead), not blocking.** The canvas puts the status badge
+  **above** the title («state is visible before it is read», `16` §3 principle 3). `eyebrow` is a
+  `string`, so the badge can only go in `meta`, under the title. If `eyebrow` accepted a `ReactNode`
+  (or a `status` slot existed), the badge would sit where the canvas has it. Until then: `meta`.
+- **R-C4 · `card.tsx` (content).** `Card`'s `href` renders the i18n `Link` directly. Through
+  `ui/link` with `quiet`, a whole-card link feeds the shell's progress bar without drawing a dot
+  over the card, which is the lead's stated use of `quiet`.
+
+## 30. As built — wave 6, before the e2e run
+
+Commits, in order: `32c71bf` `ui/input` start icon · `83f97b5` radio hover token · `7593967`
+textarea `rows` floor · `dd10fd7` the slot summary contract + `GatedSection` · `ae7624e` the event
+page · `ac09c09` the timeline on `/app` and `/app/sessions`. `ui-reach --wave6`: all three routes ✓.
+**Not yet looked at: the 390 px captures** — the e2e specs that take them need the lead's build.
+
+### 30.1 Where the build departed from §22–§29, and why
+
+1. **`RsvpPanel` became four exports** (`RsvpPanel`, `RsvpStatus`, `RsvpReserve`, `RsvpSecondary`).
+   §23.5 planned one extra export for the bar. The card needs the primary action *between* the
+   status and the cancel form in tab order, and CSS `order` would move them on screen but not for
+   a keyboard. Every part reads the same cached `getRsvpPanelData()`, and `RsvpPanel` still stacks
+   all three, so its tests did not change.
+2. **`primaryActionFor()` requires `can.rsvp` as well as `canReserve`.** The test that sweeps every
+   input found the function trusted `canReserve` alone. That flag is derived from the matrix
+   today, so nothing was wrong in practice, but an ended session must not be able to draw a
+   register button if the derivation ever changes.
+3. **The calendar menu navigates by `onSelect`, not `href`.** `ui/menu`'s `href` items render the
+   house `Link`. For Google or Outlook that would be a same-tab client transition to another
+   site, and for the ICS Route Handler a client transition to a file.
+4. **The bookmark keeps one name and reports its state with `aria-pressed`.** The old text link
+   swapped «أضف إلى المحفوظات» for «إزالة من المحفوظات». The icon is named «احفظ الجلسة», the
+   button «احفظ».
+5. **The share button replaced the printed URL.** A refused clipboard raises a toast that carries
+   the URL wrapped in LRI…PDI. The privacy caption («رابط عام يعرض…») is the button's description
+   and is still shown before the press on desktop.
+6. **On the card, the status badge sits in the body, not over the poster.** The row card's media
+   column is ~112 px on a phone and `CardMedia` clips its overlay, so a long badge would have been
+   a clipped Arabic line.
+7. **Filters apply in memory, and the matcher is pure** (`components/browse/timeline-match.ts`).
+   Because `search.ts` is server-only, a unit test could not import the matcher from it.
+   `arNormalize` moved beside the matcher (`components/browse/ar-normalize.ts`) and is re-exported
+   from `search.ts` for its existing callers.
+8. **The count badges are named with `aria-label`, starting with the visible text.** A visually
+   hidden span produced «…التصفيةعاملان» in the computed name. The name is now «المزيد من عوامل
+   التصفية، عاملان مطبّقان» (SC 2.5.3), and the same on «المهام التحضيرية».
+9. **The filtered-empty title isolates the name with FSI…PDI.** `EmptyState` takes strings, so a
+   `<bdi>` was not available.
+10. **The old filter rail is removed** — `search/filters.tsx`, `search/filters-form.tsx` and its
+    test. The sheet is `browse/filter-sheet.tsx`, built on `Field`, `Input`, `Select` and
+    `RadioGroup`. The date filters use my `Input type="date"`, not console's `DateTime`, whose date
+    branch is a bare input with no `<Field>` wiring.
+
+### 30.2 Open, and whose
+
+- **`content`'s four summaries.** The event page passes `summary: undefined` behind a
+  `TODO(content, wave 6)`. Until `tasksSummary`, `materialsSummary`, `photosSummary` and
+  `commentsSummary` land, every slot section renders (the pre-rebuild behaviour), the ended stat
+  strip stays hidden, and «المهام التحضيرية (N)» is absent. Wiring them is one import each.
+- **The duplicate poster read on the event page.** `SessionPoster` renders twice (hero from `md`,
+  «نبذة» on the phone), and `getSessionPoster` is not `cache()`d. That is two queries and two
+  signed URLs. A one-line `cache()` in `lib/dal/posters.ts` would fix it (lead, as custodian).
+- **Seat counts on the timeline** are one `session_seat_counts` RPC per open card. The lead
+  confirmed this is fine at ~30 sessions (R-L8 declined).
+
+### 30.3 What the real-build runs found (after 30.1)
+
+- **A card's bookmark followed the card's link** (`05f739a`). `CardActions` stops the click from
+  propagating, but that does not cancel the anchor's default action, so the page navigated on
+  every press. `BookmarkButton` now calls `preventDefault`. Only a browser shows this: jsdom
+  performs no navigation.
+- **Two primaries for rating on an ended page** (`448ff6d`). The Ratings slot has its own primary
+  call to rate. While the card offers «قيّم الجلسة», the rating section is now gated off.
+- **The calendar was missing on a live session** (`448ff6d`). The fix brought it back as a
+  secondary action. The matrix offers it there, and removing an offered affordance was not a
+  presentation choice I was entitled to make.
+- **SC 2.4.11 under tabbing** (`448ff6d`, then `05f739a`). Chromium's sequential focus scroll
+  ignores `scroll-padding`, and under `scroll-behavior: smooth` it is still animating when the
+  next frame runs. FocusClearance measures what paints over the focused control and re-checks on
+  `scrollend`. The lead moved it into the shell (`6ccb0e4`); the event page's copy is gone
+  (`06da10b`, `17404f9`).
+- **The layout decided `<main>` and the tab bar on the server, which is stale after a soft
+  navigation.** Found while writing the skeleton; the lead fixed it (`9cdcc89`).
+- **390 px review** (`2653321`, `e461239`):
+  - The chip row wraps instead of scrolling beside the filter button, which had clipped
+    «جارية الآن» to «جارية».
+  - A no-break space follows each «·», so a line never ends on the dot.
+  - The card's when and where are separate lines.
+  - The sheet's actions are a sticky footer.
+  - «حتى» is joined to its time by a no-break space (`28e1a2b`).
+- **The reservation's pending state lasts as long as the whole page takes to re-render.** The
+  action `redirect()`s to the same page, and React will not re-show a skeleton for a section
+  already on screen. The lead is timing it on a quiet machine.
+- **Placeholder initials and avatar tints** use `navy-600`/`navy-200`, which do not exist in
+  `globals.css`. Those are `content`'s files; the lead routed the fix.
+- ★ **Shared index.** A `git rm` stages at once, and `content` committed without a pathspec in the
+  gap before my commit. From `358eac4` to `06da10b`, HEAD deleted a file the page still imported.
+  From now on I delete with plain `rm`, and `git commit -- <path>` picks up the removal.

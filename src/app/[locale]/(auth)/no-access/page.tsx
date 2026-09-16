@@ -1,10 +1,19 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 
-// SCR-004 · /no-access — a dead end with an explanation. Names no org, lists
-// no domain (REQ-AUT-006). Also the suspended-org (REQ-TEN-006) and the
-// deactivated-member (REQ-AUT-008) messages, chosen by `reason`.
+// SCR-004 · /no-access — names no org, lists no domain (REQ-AUT-006). Also
+// the suspended-org (REQ-TEN-006) and the deactivated-member (REQ-AUT-008)
+// messages, chosen by `reason`.
+//
+// ★ NEVER A DEAD END (REQ-UIX-012, DEC-129). This is the product's only answer
+// to «فتحت الرابط ولا شيء يعمل», so every reason names what to do next and
+// offers it: a member whose domain matched no org is most often signed in with
+// the wrong Google account, so the primary action signs them out and lands
+// them on sign-in with another; a suspended org or a deactivated account is an
+// administrator's decision, which the message says, and signing out is the
+// one act left to offer.
 export default async function NoAccessPage({
   params,
   searchParams,
@@ -23,6 +32,7 @@ export default async function NoAccessPage({
       : reason === "deactivated"
         ? [t("deactivated"), t("deactivatedBody")]
         : [t("title"), t("noMatch")];
+  const wrongAccountLikely = reason !== "suspended" && reason !== "deactivated";
 
   return (
     <>
@@ -32,17 +42,17 @@ export default async function NoAccessPage({
           the org, the time left and the stop control; it renders nothing
           for everyone else. */}
       <ImpersonationBanner locale={locale} />
-      <h1 className="text-h2 text-fg-heading">{title}</h1>
-      <p className="mt-3 text-body text-fg-muted">{body}</p>
-      <div className="mt-8 flex flex-wrap gap-3">
+      <PageHeader title={title} description={body} />
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        {/* Sign-out answers 303 to /ar/sign-in, so «another account» is one act. */}
         <form method="post" action="/api/auth/sign-out">
-          <button type="submit" className="inline-flex h-11 items-center rounded-field border border-edge-strong px-5 text-label text-fg-body hover:bg-silver-300/10">
-            {t("signOut")}
-          </button>
+          <Button type="submit" variant={wrongAccountLikely ? "primary" : "secondary"} size="md" className="w-full sm:w-auto">
+            {wrongAccountLikely ? t("switchAccount") : t("signOut")}
+          </Button>
         </form>
-        <Link href="/" className="inline-flex h-11 items-center rounded-field px-5 text-label text-fg-muted hover:text-fg-heading">
+        <ButtonLink href="/" variant="ghost" size="md">
           {t("backHome")}
-        </Link>
+        </ButtonLink>
       </div>
     </>
   );

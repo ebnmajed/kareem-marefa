@@ -78,9 +78,9 @@ export default async function RemindersPage({
           />
           <p id="offsets-hint" className="mt-1 text-body-sm text-fg-muted">
             {t.rich("offsetsHint", {
-              week: formatNumber(10080, schedule.numerals),
-              day: formatNumber(1440, schedule.numerals),
-              hours: formatNumber(120, schedule.numerals),
+              week: formatNumber(10080),
+              day: formatNumber(1440),
+              hours: formatNumber(120),
               bdi: (chunks) => <bdi>{chunks}</bdi>,
             })}
           </p>

@@ -93,8 +93,8 @@ describe("POL-rsvps.reserve.capacity", () => {
       const capacity = 3;
       const sessionId = await makeSession(tx, f.a, { capacity });
 
-      const extra1 = await addMember(tx, f.a, "extra1", "متسابق ١");
-      const extra2 = await addMember(tx, f.a, "extra2", "متسابق ٢");
+      const extra1 = await addMember(tx, f.a, "extra1", "متسابق 1");
+      const extra2 = await addMember(tx, f.a, "extra2", "متسابق 2");
       const contenders = [f.a.admin, ...f.a.members, extra1, extra2];
       expect(contenders.length).toBe(5);
 
@@ -213,7 +213,7 @@ describe("STORY-RSV-002 — waitlist and atomic promotion", () => {
       const f = await seed(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { capacity: 1 });
-      const extra = await addMember(tx, f.a, "extra3", "متسابق ٣");
+      const extra = await addMember(tx, f.a, "extra3", "متسابق 3");
       const order = [f.a.admin, f.a.mod, f.a.members[0], extra];
 
       for (const person of order) {

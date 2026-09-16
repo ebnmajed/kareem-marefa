@@ -18,11 +18,19 @@ import type { AvatarProps, AvatarStackProps } from "@/components/ui";
 // are M10 (`content` + `scoring`, `16` §6.8.2) — this file only draws
 // whatever `src`/`displayName` it is handed.
 
-const TINTS = [
+// ★ The lead's real-build finding: `bg-navy-600` and `bg-navy-200` are not
+// tokens `globals.css` defines — only navy-1000/950/900/850/800 and
+// silver-100…400 exist (`@theme`, `src/app/globals.css:12-22`). Both classes
+// resolved to nothing, so a member with no `src` landed on either an
+// invisible (transparent-background) or unreadable (dark-on-transparent)
+// avatar. Same register as `card.tsx`'s `MEDIA_TINTS`, and exported for the
+// same reason: `avatar.test.tsx` asserts every entry against the real
+// `--color-*` custom properties instead of a hand-copied hex pair.
+export const TINTS = [
   "bg-navy-950 text-white",
+  "bg-navy-900 text-white",
   "bg-navy-800 text-white",
-  "bg-navy-600 text-white",
-  "bg-navy-200 text-navy-950",
+  "bg-silver-200 text-navy-950",
   "bg-silver-300 text-navy-950",
   "bg-silver-400 text-navy-950",
 ] as const;
@@ -54,8 +62,12 @@ function initial(displayName: string | null): string {
   return displayName?.trim().charAt(0) || "؟"; // Arabic question mark: no name on record.
 }
 
+// ★ `rounded-field` (6 px), not a circle — the canvas's own avatar shape
+// (`Main`'s presenter cards, `Shell`'s account menu), the lead's ruling
+// (DEC-110's "match the mockups"). Was `rounded-full` through M9; carried
+// into `AvatarStack`'s own ring below so the ring traces the same shape.
 export function Avatar({ memberId, displayName, src, size = 40, decorative, className = "" }: AvatarProps) {
-  const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium ${DIMENSION[size]} ${className}`;
+  const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} ${className}`;
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": displayName ?? undefined };
 
   if (src) {
@@ -89,7 +101,7 @@ export function AvatarStack({ members, size = 24, max = 2, overflowLabel, classN
           `rtl:` for exactly this kind of stack. */}
       <span className="flex [&>*:not(:first-child)]:-ms-2">
         {shown.map((m) => (
-          <span key={m.memberId} className="rounded-full ring-2 ring-surface">
+          <span key={m.memberId} className="rounded-field ring-2 ring-surface">
             <Avatar memberId={m.memberId} displayName={m.displayName} src={m.src} size={size} decorative />
           </span>
         ))}

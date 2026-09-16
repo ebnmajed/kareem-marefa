@@ -2,7 +2,6 @@
 
 import { Tabs as RadixTabs } from "radix-ui";
 import { Link } from "@/i18n/navigation";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { TabsProps } from "@/components/ui";
 
@@ -44,8 +43,7 @@ export function Tabs({
   onValueChange,
   children,
   className = "",
-  numerals = "western",
-}: TabsProps & { numerals?: NumeralSystem }) {
+}: TabsProps & { }) {
   return (
     <RadixTabs.Root value={value} defaultValue={defaultValue} onValueChange={onValueChange} className={className}>
       <RadixTabs.List aria-label={label} className="flex flex-wrap gap-1 border-b border-edge">
@@ -55,7 +53,7 @@ export function Tabs({
               <span>{item.label}</span>
               {item.count !== undefined ? (
                 <span className="ms-1.5 rounded-full bg-silver-100 px-1.5 py-0.5 text-body-sm text-fg-muted">
-                  {formatNumber(item.count, numerals)}
+                  {formatNumber(item.count)}
                 </span>
               ) : null}
             </>

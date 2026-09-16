@@ -8,7 +8,7 @@ import type { RadioGroupProps } from "@/components/ui";
 // ★ THE GROUP'S NAME IS A `<legend>`, NOT A FLOATING LABEL, and that is in the
 // type (`RadioGroupProps.legend` is required). A set of radios whose question
 // is only a `<p>` above them reads, to a screen reader, as three unrelated
-// options — the member hears «تمهيدي، زر اختيار، ١ من ٣» and never hears what
+// options — the member hears «تمهيدي، زر اختيار، 1 من 3» and never hears what
 // is being asked.
 //
 // ★ SELF-LABELLING, so it does not go inside a `<Field>` — see `ui/checkbox`
@@ -19,6 +19,12 @@ import type { RadioGroupProps } from "@/components/ui";
 // because a `<fieldset>` is not focusable and `focus()` on one does nothing at
 // all. Two groups sharing a `name` are the same group, so the id is unique
 // wherever the markup is valid.
+//
+// ★ THE ROW'S HOVER IS A THEME TOKEN, `--btn2-bg-hover`, not `silver-100`. The
+// group renders inside `.theme-dark` sections too — the auth card, the event
+// hero — where a light silver wash under light text left the hovered option
+// unreadable. The token is defined in both themes, so the hover follows the
+// section it sits in.
 //
 // `role="radiogroup"` with an explicit `aria-labelledby`: the role is what
 // carries `aria-invalid` for the group, and naming it from the legend by id
@@ -45,7 +51,7 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
         {options.map((option, index) => (
           <div key={option.value}>
             <label
-              className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-silver-100"}`}
+              className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"}`}
             >
               {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
               <input

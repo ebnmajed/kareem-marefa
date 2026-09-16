@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { getViewerData } from "@/lib/dal/materials";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { InfoIcon } from "@/components/ui/icons";
 import { PageViewer } from "@/components/viewer/page-viewer";
 import { DownloadButton } from "./download-button";
 
@@ -18,25 +20,35 @@ export default async function MaterialViewerPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <Link href={`/${locale}/app/sessions/${id}`} className="text-body-sm text-fg-body hover:text-fg-heading">
-        ← {t("back")}
-      </Link>
-      <h1 className="mt-3 text-h1 text-fg-heading">
-        <bdi>{data.title}</bdi>
-      </h1>
+      {/* `ui/page-header` — `16` §6.1 note 5, REQ-UIX-001: every screen uses
+          it. A one-level breadcrumb reusing today's existing "back to
+          session" copy as its label rather than fetching the session's own
+          title for a single crumb (`ViewerData` carries no session title,
+          and PageHeader's own worked examples show real names only where
+          the trail is two or three levels deep, which this is not). The
+          href is unprefixed — `ui/link` (which the breadcrumb renders
+          through) adds the locale itself. */}
+      <PageHeader title={data.title} breadcrumb={[{ href: `/app/sessions/${id}`, label: t("back") }]} breadcrumbLabel={t("breadcrumbLabel")} eyebrow={tList(`kind.${data.kind}`)} />
 
       {data.renderStatus === "pending" || data.renderStatus === "rendering" ? (
-        <p className="mt-6 text-body text-fg-muted">{t("states.pending")}</p>
+        <Panel tone="neutral" className="mt-6">
+          <p className="text-body text-fg-muted">{t("states.pending")}</p>
+        </Panel>
       ) : data.renderStatus === "failed" ? (
-        <p className="mt-6 text-body text-fg-heading">{t("states.failed")}</p>
+        <Panel tone="error" className="mt-6">
+          <p className="text-body text-fg-heading">{t("states.failed")}</p>
+        </Panel>
       ) : data.pages.length > 0 ? (
         <div className="mt-6">
           {data.fontSubstitutionWarning ? (
-            <p className="mb-4 rounded-field border border-edge p-3 text-body-sm text-fg-heading">
-              {tList.rich("substitutionWarning.body", { family: data.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
-            </p>
+            <Panel tone="info" className="mb-4 flex items-start gap-2 p-3">
+              <InfoIcon aria-hidden className="mt-0.5 shrink-0" />
+              <p className="text-body-sm text-fg-heading">
+                {tList.rich("substitutionWarning.body", { family: data.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+              </p>
+            </Panel>
           ) : null}
-          <PageViewer pages={data.pages} numerals={data.numerals} rtl={locale !== "en"} title={data.title} />
+          <PageViewer pages={data.pages} rtl={locale !== "en"} title={data.title} />
           <div className="mt-6">
             <DownloadButton locale={locale} materialId={materialId} allowDownload={data.allowDownload} />
           </div>

@@ -2,7 +2,6 @@ import "server-only";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@kareem/designer-runtime";
 
 // Certificates — REQ-CRT-004 … REQ-CRT-014, 03 §5.8/§5.8a, A13.
 //
@@ -123,7 +122,6 @@ type SupabaseLike = Awaited<ReturnType<typeof sessionClient>>["supabase"];
 
 export interface MyCertificates {
   certificates: CertificateRow[];
-  numerals: NumeralSystem;
 }
 
 /** REQ-CRT-013. A `held` certificate is not here and must not be: it is
@@ -131,18 +129,16 @@ export interface MyCertificates {
  *  this filter is the second lock, not the first. */
 export async function listMyCertificates(locale: string): Promise<MyCertificates> {
   const { session, supabase } = await sessionClient(locale);
-  const [{ data }, { data: settings }] = await Promise.all([
+  const [{ data }] = await Promise.all([
     supabase
       .from("certificates")
       .select(SELECT)
       .eq("member_id", session.memberId)
       .neq("state", "held")
       .order("issued_at", { ascending: false, nullsFirst: false }),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   return {
     certificates: await attachPdfs(supabase, ((data ?? []) as unknown as RawRow[]).map(toRow)),
-    numerals: (settings?.numerals as NumeralSystem | undefined) ?? "western",
   };
 }
 
@@ -164,17 +160,15 @@ export interface SessionCertificates {
   held: CertificateRow[];
   issued: CertificateRow[];
   revoked: CertificateRow[];
-  numerals: NumeralSystem;
   canRelease: boolean;
 }
 
 export async function getSessionCertificates(locale: string, sessionId: string): Promise<SessionCertificates | null> {
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: sessionRow }, { data: rows }, { data: settings }] = await Promise.all([
+  const [{ data: sessionRow }, { data: rows }] = await Promise.all([
     supabase.from("sessions").select("id, title, certificate_mode, state").eq("id", sessionId).maybeSingle(),
     supabase.from("certificates").select(SELECT).eq("session_id", sessionId).order("serial"),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (!sessionRow) return null;
 
@@ -187,7 +181,6 @@ export async function getSessionCertificates(locale: string, sessionId: string):
     held: all.filter((c) => c.state === "held"),
     issued: all.filter((c) => c.state === "issued"),
     revoked: all.filter((c) => c.state === "revoked"),
-    numerals: (settings?.numerals as NumeralSystem | undefined) ?? "western",
     canRelease: session.role === "admin",
   };
 }

@@ -1,6 +1,5 @@
 import "server-only";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // The four boards (SCR-027, SCR-028, `05` §6). All-time reads live from
 // public.all_time_leaderboard() (opt-out enforced in the database, since
@@ -31,7 +30,6 @@ export interface Leaderboards {
   monthly: { rows: MemberBoardRow[]; periodStart: string; periodEnd: string; isFinal: boolean } | null;
   company: { rows: CompanyBoardRow[]; isFinal: boolean; takenAt: string } | null;
   companyMetric: "total_points" | "points_per_active_member";
-  numerals: NumeralSystem;
   timeZone: string;
 }
 
@@ -40,7 +38,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
 
   const [allTimeRes, settingsRes, monthlySnapRes, companySnapRes] = await Promise.all([
     supabase.rpc("all_time_leaderboard"),
-    supabase.from("org_settings").select("numerals, company_metric, time_zone").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("company_metric, time_zone").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("leaderboard_snapshots")
       .select("id, period_start, period_end, is_final")
@@ -59,8 +57,6 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
       .maybeSingle(),
   ]);
   if (allTimeRes.error) throw new Error(`all_time_leaderboard: ${allTimeRes.error.message}`);
-
-  const numerals = (settingsRes.data?.numerals as NumeralSystem) ?? "western";
   const companyMetric = (settingsRes.data?.company_metric as "total_points" | "points_per_active_member") ?? "points_per_active_member";
 
   type AllTimeRow = { member_id: string; rank: number; total_points: number };
@@ -130,7 +126,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
     };
   }
 
-  return { allTime, monthly, company, companyMetric, numerals, timeZone: settingsRes.data?.time_zone ?? "Asia/Riyadh" };
+  return { allTime, monthly, company, companyMetric, timeZone: settingsRes.data?.time_zone ?? "Asia/Riyadh" };
 }
 
 // ── Company points breakdown (post-launch — docs/plan/notes/scoring.md
@@ -172,7 +168,6 @@ export interface CompanyPointsBreakdown {
   totalPoints: number;
   rows: CompanyLedgerRow[];
   catalogue: CompanyRuleCatalogueEntry[];
-  numerals: NumeralSystem;
 }
 
 export async function getCompanyPointsBreakdown(locale: string): Promise<CompanyPointsBreakdown | null> {
@@ -182,7 +177,7 @@ export async function getCompanyPointsBreakdown(locale: string): Promise<Company
   if (memberError) throw new Error(`members: ${memberError.message}`);
   if (!member?.company_id) return null;
 
-  const [{ data: company, error: companyError }, { data: balance }, { data: rows, error: rowsError }, { data: rules, error: rulesError }, { data: settings }] =
+  const [{ data: company, error: companyError }, { data: balance }, { data: rows, error: rowsError }, { data: rules, error: rulesError }] =
     await Promise.all([
       supabase.from("companies").select("id, name").eq("id", member.company_id).maybeSingle(),
       supabase.from("company_points_balances").select("total_points").eq("company_id", member.company_id).maybeSingle(),
@@ -197,7 +192,6 @@ export async function getCompanyPointsBreakdown(locale: string): Promise<Company
         .select("action_key, enabled, reason_ar, points, points_per_percent, cap_points, min_active_members")
         .eq("org_id", session.orgId)
         .order("action_key"),
-      supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
     ]);
   if (companyError) throw new Error(`companies: ${companyError.message}`);
   if (rowsError) throw new Error(`company_points_ledger: ${rowsError.message}`);
@@ -239,6 +233,5 @@ export async function getCompanyPointsBreakdown(locale: string): Promise<Company
       capPoints: r.cap_points,
       minActiveMembers: r.min_active_members,
     })),
-    numerals: (settings?.numerals as NumeralSystem) ?? "western",
   };
 }

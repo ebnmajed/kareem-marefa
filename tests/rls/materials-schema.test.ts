@@ -403,7 +403,7 @@ describe("POL-materials.insert.presenter", () => {
       expect(ok.length).toBe(1);
 
       await tx.as(f.a.admin.claims);
-      const ok2 = await tx.q(`insert into public.materials (org_id, session_id, kind, title, added_by) values ($1, $2, 'pdf', 'مادة ٢', $3) returning id`, [
+      const ok2 = await tx.q(`insert into public.materials (org_id, session_id, kind, title, added_by) values ($1, $2, 'pdf', 'مادة 2', $3) returning id`, [
         f.a.id,
         f.m2.a.published,
         f.a.admin.memberId,

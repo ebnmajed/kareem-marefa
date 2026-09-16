@@ -10,7 +10,7 @@
 |---|---|
 | Requirements (`REQ-*`) | **313** |
 | Entities (`ENT-*`) | **72** |
-| Stories (`STORY-*`) | **146** |
+| Stories (`STORY-*`) | **147** |
 | Screens cited (`SCR-*`) | 55 |
 | Jobs cited (`JOB-*`) | 37 |
 | Messages cited (`MSG-*`) | 22 |
@@ -82,7 +82,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-AUT-001` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
+| `REQ-AUT-001` | — | — | `SCR-002` | — | — | `STORY-AUT-001` `STORY-UIX-016` | M1, M10, M9 |
 | `REQ-AUT-002` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
 | `REQ-AUT-003` | `ENT-members` `ENT-org_domains` | — | `SCR-082` | — | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-004` | `ENT-org_domains` | `POL-provision_member.ambiguous` | `SCR-003` `SCR-007` `SCR-064` | — | — | `STORY-AUT-002` | M1 |
@@ -269,7 +269,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-004` | — | — | — | — | — | `STORY-NFR-003` | M1 |
 | `REQ-NFR-005` | `ENT-check_in_attempts` | — | — | — | — | `STORY-NFR-003` | M1 |
 | `REQ-NFR-006` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-062` | — | — | `STORY-NFR-001` | M1 |
-| `REQ-NFR-007` | — | — | `SCR-022` | — | — | `STORY-NFR-004` | M8 |
+| `REQ-NFR-007` | — | — | `SCR-022` | — | — | `STORY-NFR-004` `STORY-UIX-016` | M10, M8, M9 |
 | `REQ-NFR-008` | — | — | `SCR-000` `SCR-011` `SCR-012` +5 | — | — | `STORY-NFR-004` | M8 |
 | `REQ-NFR-009` | — | — | — | — | — | `STORY-NFR-004` | M8 |
 | `REQ-NFR-010` | — | — | — | — | — | `STORY-NFR-005` | M8 |
@@ -459,7 +459,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-UIX-001` | — | — | — | — | — | `STORY-UIX-001` | M9 |
+| `REQ-UIX-001` | — | — | — | — | — | `STORY-UIX-001` `STORY-UIX-016` | M10, M9 |
 | `REQ-UIX-002` | — | — | `SCR-010` `SCR-011` `SCR-012` | — | — | `STORY-UIX-002` | M9 |
 | `REQ-UIX-003` | — | — | `SCR-007` `SCR-011` `SCR-012` | — | — | `STORY-UIX-003` | M9 |
 | `REQ-UIX-004` | — | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-UIX-003` | M9 |

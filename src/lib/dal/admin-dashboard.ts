@@ -1,7 +1,6 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { sessionClient, type Session } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // SCR-040 · /app/admin — the org dashboard (REQ-ADM-004, D60).
 //
@@ -53,8 +52,15 @@ export interface TopRow {
   count: number;
 }
 
+/** One row of «يحتاج انتباهك» (`16` §6.7, `DEC-112`'s relocation from the
+ *  withdrawn home page). `oldestAgeDays` is `null` only when `count` is 0 —
+ *  there is nothing to be the oldest of. */
+export interface AttentionRow {
+  count: number;
+  oldestAgeDays: number | null;
+}
+
 export interface DashboardData {
-  numerals: NumeralSystem;
   proposalPipeline: PipelineCounts;
   rsvpsConfirmed: number;
   checkInsTotal: number;
@@ -64,6 +70,32 @@ export interface DashboardData {
   topPresenters: TopRow[];
   topCategories: TopRow[];
   topCompanies: TopRow[];
+  /** `REQ-ADM-010`'s own enumeration — proposals, sessions, and the two
+   *  `reports` targets kept SEPARATE rather than merged into one "open
+   *  reports" figure, the same reasoning `DEC-005` gives for never merging a
+   *  photo takedown queue with a photo report queue: two different screens,
+   *  two different urgencies. A fifth item, "job-queue depth," was named in
+   *  the spawn note and is deliberately NOT here — no org-scoped data source
+   *  exists for it (`docs/plan/notes/console.md`'s Wave 6 §3), and the lead
+   *  ruled it dropped rather than guessed at. */
+  attention: {
+    proposalsAwaitingDecision: AttentionRow;
+    sessionsNotScheduled: AttentionRow;
+    openPhotoReports: AttentionRow;
+    openCommentReports: AttentionRow;
+  };
+}
+
+function ageInDays(iso: string, now: number): number {
+  return Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+}
+
+/** The oldest (smallest `created_at`) row's age, or `null` for an empty set —
+ *  shared by every `AttentionRow` below so "oldest" always means the same
+ *  thing: how long the FIRST one has been waiting, not the most recent. */
+function oldestAge(createdAts: string[], now: number): number | null {
+  if (createdAts.length === 0) return null;
+  return Math.max(...createdAts.map((c) => ageInDays(c, now)));
 }
 
 const emptyPipeline: PipelineCounts = { draft: 0, submitted: 0, inReview: 0, changesRequested: 0, approved: 0, rejected: 0 };
@@ -91,9 +123,13 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     { data: ledgerRows, error: ledErr },
     { data: presenterRows, error: presErr },
     { data: categoryRows, error: catErr },
-    { data: settings },
+    { data: unscheduledRows, error: unschedErr },
+    { data: photoReportRows, error: photoRepErr },
+    { data: commentReportRows, error: commentRepErr },
   ] = await Promise.all([
-    supabase.from("proposals").select("state").eq("org_id", session.orgId),
+    // `created_at` added for the attention panel's "awaiting decision"
+    // oldest-age figure — the pipeline counts below are unchanged.
+    supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId),
     supabase.from("rsvps").select("status, session_id, sessions!inner(starts_at)").eq("org_id", session.orgId).eq("status", "confirmed"),
     supabase.from("check_ins").select("id").eq("org_id", session.orgId),
     supabase.from("members").select("id, status").eq("org_id", session.orgId),
@@ -104,7 +140,14 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
       .eq("org_id", session.orgId)
       .eq("accepted", true),
     supabase.from("sessions").select("category_id, categories(id, name)").eq("org_id", session.orgId).not("category_id", "is", null),
-    supabase.from("org_settings").select("numerals").eq("org_id", session.orgId).maybeSingle(),
+    // «جلسات لم تُجدول بعد» — no start time yet. Filtered in JS below, not
+    // with a PostgREST `not/in`, the same "small row counts, fold in JS"
+    // call this module's own header comment already made for the pipeline.
+    supabase.from("sessions").select("state, starts_at, created_at").eq("org_id", session.orgId).is("starts_at", null),
+    // The two `reports` targets, kept as separate queries/rows rather than
+    // one combined count — see `AttentionRow`'s own comment on `attention`.
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
   ]);
   if (propErr) throw new Error(`proposals: ${propErr.message}`);
   if (rsvpErr) throw new Error(`rsvps: ${rsvpErr.message}`);
@@ -113,6 +156,9 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
   if (ledErr) throw new Error(`points_ledger: ${ledErr.message}`);
   if (presErr) throw new Error(`session_presenters: ${presErr.message}`);
   if (catErr) throw new Error(`sessions: ${catErr.message}`);
+  if (unschedErr) throw new Error(`sessions (unscheduled): ${unschedErr.message}`);
+  if (photoRepErr) throw new Error(`reports (photo): ${photoRepErr.message}`);
+  if (commentRepErr) throw new Error(`reports (comment): ${commentRepErr.message}`);
 
   const pipeline: PipelineCounts = { ...emptyPipeline };
   for (const r of proposalRows ?? []) {
@@ -153,6 +199,20 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
   const activeMembers = (memberRows ?? []).filter((m) => m.status === "active").length;
   const pointsIssued = (ledgerRows ?? []).reduce((sum, r) => sum + Math.max(0, r.amount as number), 0);
 
+  // «يحتاج انتباهك» — `REQ-ADM-010`'s own four queues.
+  const awaitingDecisionAts = (proposalRows ?? []).filter((r) => r.state === "submitted" || r.state === "in_review").map((r) => r.created_at as string);
+  const unscheduledAts = (unscheduledRows ?? [])
+    .filter((r) => r.state !== "cancelled" && r.state !== "archived")
+    .map((r) => r.created_at as string);
+  const photoReportAts = (photoReportRows ?? []).map((r) => r.created_at as string);
+  const commentReportAts = (commentReportRows ?? []).map((r) => r.created_at as string);
+  const attention: DashboardData["attention"] = {
+    proposalsAwaitingDecision: { count: awaitingDecisionAts.length, oldestAgeDays: oldestAge(awaitingDecisionAts, now) },
+    sessionsNotScheduled: { count: unscheduledAts.length, oldestAgeDays: oldestAge(unscheduledAts, now) },
+    openPhotoReports: { count: photoReportAts.length, oldestAgeDays: oldestAge(photoReportAts, now) },
+    openCommentReports: { count: commentReportAts.length, oldestAgeDays: oldestAge(commentReportAts, now) },
+  };
+
   const presenterCounts = new Map<string, { label: string; count: number }>();
   for (const row of presenterRows ?? []) {
     const m = (row as unknown as { members: { id: string; display_name: string | null } | null }).members;
@@ -190,7 +250,6 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
   }
 
   return {
-    numerals: (settings?.numerals as NumeralSystem | undefined) ?? "western",
     proposalPipeline: pipeline,
     rsvpsConfirmed,
     checkInsTotal,
@@ -200,5 +259,6 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     topPresenters: topN(presenterCounts, 5),
     topCategories: topN(categoryCounts, 5),
     topCompanies: topN(companyCounts, 5),
+    attention,
   };
 }

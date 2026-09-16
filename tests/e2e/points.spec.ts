@@ -49,9 +49,9 @@ test.beforeAll(async ({}, testInfo) => {
     [`points-e2e-${tag}`],
   );
   orgId = orgRows[0].id;
-  // arabic_indic on purpose: proves the screen's numerals follow the org
-  // setting rather than defaulting to whatever the locale would otherwise pick.
-  await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
+  // No numeral setting exists (DEC-124): the amounts below are Western digits
+  // although the locale is `ar`, whose CLDR default would be Arabic-Indic.
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: catRows } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
   const { rows: venueRows } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الاختبار', 40) returning id`, [orgId]);
@@ -141,17 +141,17 @@ test("a member reads their whole points history and can explain every point with
 
   // The check-in award: reason, amount, and a link to the session it came from.
   const checkInRow = history.locator("li", { hasText: "تسجيل حضور مؤكَّد" });
-  await expect(checkInRow).toContainText("+٢٠");
+  await expect(checkInRow).toContainText("+20");
   await expect(checkInRow.getByText(sessionTitle)).toBeVisible();
   await expect(checkInRow.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
 
   // The manual adjustment: its own admin-written reason, tagged as manual.
   const manualRow = history.locator("li", { hasText: "مكافأة تشجيعية للاختبار" });
-  await expect(manualRow).toContainText("+٥");
+  await expect(manualRow).toContainText("+5");
   await expect(manualRow).toContainText("تعديل يدوي من الإدارة");
 
   // The running balance reconciles to points_balances (25 = 20 + 5).
-  await expect(page.getByText(/رصيدك/)).toContainText("٢٥");
+  await expect(page.getByText(/رصيدك/)).toContainText("25");
 
   // "What earns what" is read live from scoring_rules — check_in's default appears.
   await expect(page.getByRole("heading", { name: "ماذا يمنحك نقاطًا؟" })).toBeVisible();

@@ -2,13 +2,6 @@
   "$comment": "route-coverage allowlist (DEC-087, DEC-091). MAY ONLY SHRINK. Each list holds the page segments still permitted to have no boundary at or above them. Regenerate DOWNWARD with `node scripts/route-coverage.mjs --prune`, never upward to admit a new one. Empty by M13, when the gate flips to --strict.",
   "loading": [],
   "error": [],
-  "not-found": [
-    "src/app/[locale]/app/admin/designer/[documentId]",
-    "src/app/[locale]/app/admin/sessions/[id]/attendance",
-    "src/app/[locale]/app/admin/sessions/[id]/certificates",
-    "src/app/[locale]/app/admin/sessions/[id]/schedule",
-    "src/app/[locale]/app/members/[id]",
-    "src/app/[locale]/app/platform/orgs/[id]/domains"
-  ],
+  "not-found": [],
   "globalError": false
 }

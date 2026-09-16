@@ -159,11 +159,11 @@ test("a signed-out visitor sees the six public fields and nothing else", async (
   expect((await cta.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 
   // ★ The end-time clause sits on ONE line. At 390 px it used to break
-  // between «٣:١٦» and «م» and leave the meridiem alone on the next line —
+  // between «3:16» and «م» and leave the meridiem alone on the next line —
   // found in the RTL capture. A screenshot cannot assert this; client rects
   // can, and a second rect means it wrapped again.
   // Count distinct line boxes, not rects: bidi alone splits an inline element
-  // into one rect per directional run, so «حتى ٣:١٦ م» is several rects on a
+  // into one rect per directional run, so «حتى 3:16 م» is several rects on a
   // single line. What must not happen is several `top` values.
   const until = page.locator("dd span").filter({ hasText: "حتى" }).first();
   const lines = await until.evaluate((el) => new Set([...el.getClientRects()].map((r) => Math.round(r.top))).size);

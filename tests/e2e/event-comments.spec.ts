@@ -5,7 +5,7 @@
 // cookies installed in the browser context.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -84,12 +84,25 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ The lead's real-build finding (reproduced under a CPU throttle): while a
+// Suspense boundary is still streaming, React leaves a HIDDEN copy of it in
+// `body>div#S:n[hidden]` alongside the visible copy under `#main` for a few
+// hundred ms. Playwright's strict-mode locators count the hidden node too,
+// so a `getByText`/`getByRole` right after `goto` can resolve to two
+// elements — this spec's own `event-comments:87` was one of three specs that
+// hit it. Not a bug in this slot; wait for the stream to finish settling
+// before any strict locator.
+async function waitForStreamsToSettle(page: Page) {
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test("a member with no RSVP can comment on a published session (REQ-EVT-003)", async ({ context, page }) => {
   const { rows } = await db.query<{ id: string }>(`select id from public.rsvps where session_id = $1`, [publishedSessionId]);
   expect(rows).toHaveLength(0); // confirms the condition this test is actually about
 
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByPlaceholder("اكتب تعليقًا…")).toBeVisible();
 
   await page.getByPlaceholder("اكتب تعليقًا…").fill("سؤال عن الجلسة");
@@ -103,6 +116,7 @@ test("a member with no RSVP can comment on a published session (REQ-EVT-003)", a
 test("a reply to a reply attaches to the parent thread, not a third level (REQ-EVT-002)", async ({ context, page }) => {
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
 
   // Reply to the comment from the previous test.
   await page.getByRole("button", { name: "رد" }).first().click();
@@ -116,22 +130,40 @@ test("a reply to a reply attaches to the parent thread, not a third level (REQ-E
   // the attempt outright regardless — tests/rls/m2-schema.test.ts already
   // proves that at the RLS layer; this is the UI-side half of the same
   // requirement.)
-  const replyRow = page.locator("li", { hasText: "إجابة أولى" }).first();
+  //
+  // ★ The lead's live-build run found `.first()` here resolves to the
+  // OUTER (parent) <li> — the reply's own <li> nests INSIDE it
+  // (comment-list.tsx), so a plain `hasText` match returns BOTH, and the
+  // outer one (which DOES have its own "رد" button, for the top-level
+  // comment) comes first in document order. `.last()` is the reply's own,
+  // innermost row — the same nesting trap the delete locator above already
+  // had to account for.
+  const replyRow = page.locator("li", { hasText: "إجابة أولى" }).last();
   await expect(replyRow.getByRole("button", { name: "رد" })).toHaveCount(0);
 });
 
 test("deleting a comment with replies leaves a tombstone; a reply-less comment vanishes entirely (REQ-EVT-005)", async ({ context, page }) => {
   await signIn(context);
   await page.goto(`/ar/app/sessions/${publishedSessionId}`);
+  await waitForStreamsToSettle(page);
 
   // "سؤال عن الجلسة" now has one reply ("إجابة أولى") from the previous test.
   // The reply's <li> nests INSIDE the original's <li> (comment-list.tsx), so
   // an `li` locator matching on text would also match the reply's own
-  // "حذف" button as a descendant. Scoping to the comment's own body
-  // paragraph and its immediate container (the CommentItem's own <div>,
-  // a sibling of the nested reply <ul>, not an ancestor of it) is precise.
+  // "حذف" button as a descendant. Scoping to the comment's own body text and
+  // walking up TWO levels — ★ wave 6: the body is now `<Prose><p>…</p>
+  // </Prose>`, one level deeper than before (a bare `<p>`), so the shared
+  // ancestor that also holds the actions row (delete, reaction, reply) is
+  // now the body's grandparent, not its immediate parent. `.locator("..")`
+  // chained twice, not `"../.."` as a single XPath-ish string, for the same
+  // reason `sessions`' own e2e specs chain it: Playwright resolves each
+  // segment against its own locator, not a raw XPath expression.
   const originalBody = page.getByText("سؤال عن الجلسة", { exact: true });
-  await originalBody.locator("..").getByRole("button", { name: "حذف" }).click();
+  const originalRow = originalBody.locator("..").locator("..");
+  // The delete trigger is icon-only now (`ui/icon-button`, REQ-NFR-007's
+  // name is the `aria-label`, not visible text) — `getByRole` matches the
+  // ACCESSIBLE name regardless, so "حذف" still resolves it.
+  await originalRow.getByRole("button", { name: "حذف" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -144,7 +176,8 @@ test("deleting a comment with replies leaves a tombstone; a reply-less comment v
   await page.getByRole("button", { name: "نشر" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toBeVisible();
   const freshBody = page.getByText("تعليق بلا ردود", { exact: true });
-  await freshBody.locator("..").getByRole("button", { name: "حذف" }).click();
+  const freshRow = freshBody.locator("..").locator("..");
+  await freshRow.getByRole("button", { name: "حذف" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toHaveCount(0);
 });

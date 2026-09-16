@@ -65,12 +65,12 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
   if (!data) notFound();
 
   const t = await getTranslations("sessions.card");
-  const when = data.startsAt ? formatDateTime(data.startsAt, data.numerals, data.timeZone, locale) : null;
+  const when = data.startsAt ? formatDateTime(data.startsAt, data.timeZone, locale) : null;
   const until =
     data.startsAt && data.endsAt
       ? sameDay(data.startsAt, data.endsAt, data.timeZone)
-        ? formatTime(data.endsAt, data.numerals, data.timeZone, locale)
-        : formatDateTime(data.endsAt, data.numerals, data.timeZone, locale)
+        ? formatTime(data.endsAt, data.timeZone, locale)
+        : formatDateTime(data.endsAt, data.timeZone, locale)
       : null;
   const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
 

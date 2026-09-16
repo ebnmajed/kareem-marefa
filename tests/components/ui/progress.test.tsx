@@ -12,12 +12,12 @@ async function expectAccessible(container: HTMLElement) {
 
 describe("Progress — determinate", () => {
   it("carries the accessible name, value and extent", () => {
-    render(<Progress value={7} max={10} label="المقاعد المحجوزة" valueText="٧ من ١٠" />);
+    render(<Progress value={7} max={10} label="المقاعد المحجوزة" valueText="7 من 10" />);
     const bar = screen.getByRole("progressbar", { name: "المقاعد المحجوزة" });
     expect(bar).toHaveAttribute("aria-valuenow", "7");
     expect(bar).toHaveAttribute("aria-valuemin", "0");
     expect(bar).toHaveAttribute("aria-valuemax", "10");
-    expect(bar).toHaveAttribute("aria-valuetext", "٧ من ١٠");
+    expect(bar).toHaveAttribute("aria-valuetext", "7 من 10");
   });
 
   it("sizes the fill to the value/max ratio", () => {

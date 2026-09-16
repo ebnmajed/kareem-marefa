@@ -6,7 +6,7 @@
 // their reason, and the reason the admin typed is the text the proposer reads.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -77,10 +77,22 @@ async function signIn(context: BrowserContext, who: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 /** A submitted proposal from the member, through the same route a member uses. */
-async function memberProposes(context: BrowserContext, page: import("@playwright/test").Page, title: string) {
+async function memberProposes(context: BrowserContext, page: Page, title: string) {
   await signIn(context, memberEmail);
-  await page.goto("/ar/app/propose");
+  await goto(page, "/ar/app/propose");
   await page.getByLabel("عنوان الموضوع المقترح").fill(title);
   await page.getByLabel("نبذة عن موضوعك").fill("تجربة عملية استغرقت ثلاثة أشهر، وما تعلمناه منها.");
   await page.getByLabel("تصنيف الموضوع").selectOption({ label: "درس من تجربة" });
@@ -89,10 +101,27 @@ async function memberProposes(context: BrowserContext, page: import("@playwright
   return page.url().replace(/\?created=1$/, "");
 }
 
-test("a member cannot open the review queue at all", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireStaff()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status; the requirement is that no guarded queue renders, which this
+// checks directly instead of a status code.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout meta
+  // ("noindex, nofollow") plus the not-found boundary's own injected tag
+  // both match `meta[name="robots"]`, three elements in a real build — the
+  // content-based attribute selector plus `.first()` finds ANY of them
+  // carrying `noindex`, which is all DEC-134 actually asks for.
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1); // no proposal heading rendered alongside it
+}
+
+test("a member cannot open the review queue at all — the streamed not-found page (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  const response = await page.goto("/ar/app/admin/proposals");
-  expect(response!.status()).toBe(404);
+  await goto(page, "/ar/app/admin/proposals");
+  await expectGatedNotFound(page);
 });
 
 test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({ context, page }) => {
@@ -102,7 +131,7 @@ test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({
   const bossContext = await page.context().browser()!.newContext();
   await signIn(bossContext, adminEmail);
   const boss = await bossContext.newPage();
-  await boss.goto("/ar/app/admin/proposals");
+  await goto(boss, "/ar/app/admin/proposals");
   await expect(boss.getByRole("heading", { name: title })).toBeVisible();
   await expect(boss.getByText("الاعتماد لا ينشر الجلسة").first()).toBeVisible();
   await boss.getByRole("button", { name: "اعتمد المقترح" }).first().click();
@@ -126,23 +155,40 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   const bossContext = await page.context().browser()!.newContext();
   await signIn(bossContext, adminEmail);
   const boss = await bossContext.newPage();
-  await boss.goto("/ar/app/admin/proposals");
+  await goto(boss, "/ar/app/admin/proposals");
   const card = boss.locator("li", { has: boss.getByRole("heading", { name: title }) });
+  // ★ Reject's final submit is behind `ui/dialog` now (REQ-UIX-013): «أرسل»
+  // inside the reason box opens a confirmation NAMING the proposal rather
+  // than submitting directly — `rejectConfirmTitle` interpolates the title,
+  // so the dialog's own accessible name is proposal-specific.
+  const dialog = boss.getByRole("dialog", { name: `رفض «${title}»؟` });
 
-  // Sending with the box empty is refused, and the proposal does not move.
+  // Sending with the box empty is refused, and the proposal does not move —
+  // the reason still travels empty into the dialog's own submit, which the
+  // server still refuses.
   await card.getByRole("group").filter({ hasText: "ارفض المقترح" }).getByText("ارفض المقترح").click();
   await card.getByRole("button", { name: "أرسل" }).last().click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
+  // The confirm button closes the dialog on click, before the round trip
+  // resolves — the alert then lands back in the card itself, not the dialog.
+  await expect(boss.getByRole("dialog")).toHaveCount(0);
   // Scoped: Next's route announcer is also role="alert".
   await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
   expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId])).rows[0].state).toBe("submitted");
 
-  await card.getByLabel("السبب الذي سيصل صاحب المقترح").last().fill(reason);
+  // f44d339 split the shared label into one per decision — this is the
+  // reject flow, so `reasonLabelReject` (no `.last()` needed anymore, the
+  // two boxes no longer share a name).
+  await card.getByLabel("سبب الرفض الذي سيصل صاحب المقترح").fill(reason);
   await card.getByRole("button", { name: "أرسل" }).last().click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
   await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
   await bossContext.close();
 
   // The proposer reads the admin's own words, on their own proposal.
-  await page.goto(detailUrl);
+  await goto(page, detailUrl);
   await expect(page.getByText("ما كتبه المشرف")).toBeVisible();
   await expect(page.getByText(reason)).toBeVisible();
   await expect(page.getByText("غير مقبول")).toBeVisible();
@@ -153,7 +199,7 @@ test("SCR-041 at 390 px RTL: the queue reads down the page and never sideways", 
   const bossContext = await page.context().browser()!.newContext({ viewport: { width: 390, height: 844 } });
   await signIn(bossContext, adminEmail);
   const boss = await bossContext.newPage();
-  await boss.goto("/ar/app/admin/proposals");
+  await goto(boss, "/ar/app/admin/proposals");
   await expect(boss.locator("html")).toHaveAttribute("dir", "rtl");
 
   // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all

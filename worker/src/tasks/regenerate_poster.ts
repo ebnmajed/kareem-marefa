@@ -9,7 +9,6 @@ import {
   resolveSessionBindings,
   validateDocument,
   type DesignDocument,
-  type NumeralSystem,
 } from "@kareem/designer-runtime";
 
 // JOB-regenerate_poster — 11 §2.5, REQ-DSG-001, REQ-DSG-002, REQ-DSG-003,
@@ -50,7 +49,6 @@ interface Context {
   venue_address: string | null;
   presenters: string[];
   org_name: string;
-  numerals: NumeralSystem;
   org_time_zone: string;
   poster_id: string | null;
   document_id: string | null;
@@ -119,7 +117,7 @@ export const regenerate_poster: Task = async (payload, helpers) => {
         venueAddress: ctx.venue_address,
         presenters: ctx.presenters,
       },
-      { numerals: ctx.numerals, timeZone: ctx.org_time_zone, origin, orgName: ctx.org_name, locale: "ar" },
+      { timeZone: ctx.org_time_zone, origin, orgName: ctx.org_name, locale: "ar" },
     ),
   };
 

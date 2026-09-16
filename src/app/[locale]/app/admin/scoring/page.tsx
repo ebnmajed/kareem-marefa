@@ -217,7 +217,7 @@ export default async function ScoringAdminPage({
                 <li key={i} className="rounded-field border border-edge p-3 text-body-sm text-fg-muted">
                   <bdi>{row.field}</bdi>: <bdi>{JSON.stringify(row.oldValue)}</bdi> → <bdi>{JSON.stringify(row.newValue)}</bdi>
                   {" — "}
-                  {formatDateTime(row.changedAt, data.numerals, "Asia/Riyadh", locale)}
+                  {formatDateTime(row.changedAt, "Asia/Riyadh", locale)}
                 </li>
               ))}
             </ul>
@@ -265,7 +265,7 @@ export default async function ScoringAdminPage({
               <li key={i} className="rounded-field border border-edge p-3 text-body-sm text-fg-muted">
                 <bdi>{row.field}</bdi>: <bdi>{JSON.stringify(row.oldValue)}</bdi> → <bdi>{JSON.stringify(row.newValue)}</bdi>
                 {" — "}
-                {formatDateTime(row.changedAt, data.numerals, "Asia/Riyadh", locale)}
+                {formatDateTime(row.changedAt, "Asia/Riyadh", locale)}
               </li>
             ))}
           </ul>

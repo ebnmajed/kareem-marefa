@@ -256,7 +256,7 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
 
   // ★ The two mixed-direction rows, measured rather than eyeballed. In RTL the
   // first flex child is the RIGHTMOST one, so a numeral must sit to the right
-  // of its unit («٤٥ دقيقة» reads number-first) and a checkbox to the right of
+  // of its unit («45 دقيقة» reads number-first) and a checkbox to the right of
   // its label. Getting either backwards looks subtly wrong in a way a
   // screenshot review misses and a coordinate comparison does not.
   const duration = (await page.getByLabel("المدة المتوقعة").boundingBox())!;

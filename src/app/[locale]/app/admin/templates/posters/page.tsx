@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getTemplateLibrary } from "@/lib/dal/templates";
-import { getOrgNumerals } from "@/lib/dal/designer";
 import { TemplateLibrary } from "@/components/designer/template-library";
 import { TemplateResult } from "@/components/designer/template-result";
 
@@ -19,15 +18,15 @@ export default async function PosterTemplatesPage({
   setRequestLocale(locale);
   const query = await searchParams;
 
-  const [t, data, numerals] = await Promise.all([getTranslations("templates.library"), getTemplateLibrary(locale, "poster"), getOrgNumerals(locale)]);
+  const [t, data] = await Promise.all([getTranslations("templates.library"), getTemplateLibrary(locale, "poster")]);
   if (!data) notFound();
 
   return (
     <>
       <h1 className="text-h1 text-fg-heading">{t("titlePoster")}</h1>
-      <TemplateResult done={query.done} error={query.error} version={query.version} numerals={numerals} />
+      <TemplateResult done={query.done} error={query.error} version={query.version} />
       <div className="mt-8">
-        <TemplateLibrary data={data} numerals={numerals} />
+        <TemplateLibrary data={data} />
       </div>
     </>
   );

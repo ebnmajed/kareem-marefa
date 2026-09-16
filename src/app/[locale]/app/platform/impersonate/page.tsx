@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { listMyImpersonations, listOrgs, PLATFORM_NUMERALS } from "@/lib/dal/platform";
+import { listMyImpersonations, listOrgs } from "@/lib/dal/platform";
 import { endImpersonationAction, startImpersonationAction } from "./actions";
 import { ImpersonateForm } from "./impersonate-form";
 
@@ -29,7 +29,7 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
     listMyImpersonations(locale),
     getTranslations("platform.impersonate"),
   ]);
-  const when = (iso: string) => formatDateTime(iso, PLATFORM_NUMERALS, PLATFORM_TIME_ZONE, locale);
+  const when = (iso: string) => formatDateTime(iso, PLATFORM_TIME_ZONE, locale);
   // `isActive` is decided in the DAL: reading the clock during render is an
   // impure call, and the answer belongs beside the row it describes.
   const active = sessions.find((s) => s.isActive) ?? null;
@@ -70,7 +70,7 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
         <h2 id="history" className="text-h2 text-fg-heading">
           {t("historyTitle")}
         </h2>
-        <p className="mt-3 text-body-sm text-fg-muted">{t("sessionCount", { count: sessions.length, value: formatNumber(sessions.length, PLATFORM_NUMERALS) })}</p>
+        <p className="mt-3 text-body-sm text-fg-muted">{t("sessionCount", { count: sessions.length, value: formatNumber(sessions.length) })}</p>
 
         {sessions.length === 0 ? (
           <p className="mt-3 text-body text-fg-body">{t("historyEmpty")}</p>

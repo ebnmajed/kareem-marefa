@@ -21,6 +21,9 @@
     },
     "toast": {
       "close": "إغلاق الإشعار"
+    },
+    "pageHeader": {
+      "breadcrumb": "مسار الصفحة"
     }
   }
 }

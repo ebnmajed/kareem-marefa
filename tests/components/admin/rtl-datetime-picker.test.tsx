@@ -2,7 +2,7 @@
 // NextIntlClientProvider needed: every string is a prop, not read through
 // `useTranslations`, so the host page supplies real `ar.json` strings and
 // this test can too, directly.
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 
@@ -14,6 +14,8 @@ const LABELS = {
   hourLabel: "الساعة",
   minuteLabel: "الدقيقة",
   emptyLabel: "اختر تاريخًا ووقتًا",
+  prevMonthLabel: "الشهر السابق",
+  nextMonthLabel: "الشهر التالي",
 };
 
 // The trigger's accessible name is `aria-label="${label}: ${displayText}"`,
@@ -23,9 +25,9 @@ const LABELS = {
 // why). So every query for the trigger matches on the label as a prefix.
 const TRIGGER = new RegExp(`^${LABELS.label}:`);
 
-function renderPicker(defaultValue: string, numerals: "western" | "arabic_indic" = "western") {
+function renderPicker(defaultValue: string) {
   const { container } = render(
-    <RtlDateTimePicker id="startsAt" name="startsAt" defaultValue={defaultValue} numerals={numerals} locale="ar" {...LABELS} />,
+    <RtlDateTimePicker id="startsAt" name="startsAt" defaultValue={defaultValue} locale="ar" {...LABELS} />,
   );
   return container;
 }
@@ -68,27 +70,39 @@ describe("RtlDateTimePicker", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("★ REQ-INT-006: day numbers follow the org's own numeral system, not the browser's", () => {
-    const container = renderPicker("2026-09-16T18:00", "arabic_indic");
+  it("★ WCAG 4.1.2: the month-navigation buttons have accessible names, like every other button in the picker", () => {
+    renderPicker("2026-09-16T18:00");
     fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
-    // The visible glyph is Arabic-Indic; the accessible name (which
-    // disambiguates same-numbered cells across months) carries the same
-    // numeral system through its own `-u-nu-` formatting.
-    const day = screen.getByRole("button", { name: "١٠ سبتمبر ٢٠٢٦" });
+    const dialog = screen.getByRole("dialog");
+    // Chevron-only buttons: without the label a screen reader announces
+    // «زر» and nothing else — M9's axe assertion found both unnamed.
+    expect(within(dialog).getByRole("button", { name: LABELS.prevMonthLabel })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: LABELS.nextMonthLabel })).toBeInTheDocument();
+    for (const button of within(dialog).getAllByRole("button")) expect(button).toHaveAccessibleName();
+  });
+
+  it("★ REQ-INT-006, DEC-124: day numbers are Western digits in an Arabic picker, never the locale's Arabic-Indic default", () => {
+    const container = renderPicker("2026-09-16T18:00");
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
+    // The visible glyph is Western; the accessible name (which disambiguates
+    // same-numbered cells across months) carries the same digits through its
+    // own `-u-nu-latn` formatting — `ar`'s CLDR default would be Arabic-Indic.
+    expect(container.textContent ?? "").not.toMatch(/[\u0660-\u0669\u06F0-\u06F9]/);
+    const day = screen.getByRole("button", { name: "10 سبتمبر 2026" });
     expect(day).toBeInTheDocument();
-    expect(day).toHaveTextContent("١٠");
+    expect(day).toHaveTextContent("10");
     fireEvent.click(day);
     expect(container.querySelector('input[name="startsAt"]')).toHaveValue("2026-09-10T18:00");
   });
 
   it("a required field has no clear button", () => {
-    render(<RtlDateTimePicker id="startsAt" name="startsAt" defaultValue="2026-09-16T18:00" numerals="western" locale="ar" required {...LABELS} />);
+    render(<RtlDateTimePicker id="startsAt" name="startsAt" defaultValue="2026-09-16T18:00" locale="ar" required {...LABELS} />);
     fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
     expect(screen.queryByRole("button", { name: LABELS.clearLabel })).not.toBeInTheDocument();
   });
 
   it("an optional field has a clear button", () => {
-    render(<RtlDateTimePicker id="endsAt" name="endsAt" defaultValue="2026-09-16T18:00" numerals="western" locale="ar" {...LABELS} />);
+    render(<RtlDateTimePicker id="endsAt" name="endsAt" defaultValue="2026-09-16T18:00" locale="ar" {...LABELS} />);
     fireEvent.click(screen.getByRole("button", { name: TRIGGER }));
     expect(screen.getByRole("button", { name: LABELS.clearLabel })).toBeInTheDocument();
   });

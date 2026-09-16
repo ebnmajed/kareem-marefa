@@ -301,15 +301,14 @@ describe("POL-request_render.system", () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.asServiceRole();
-      const [ctx] = await tx.q<{ title: string; presenters: string[]; org_name: string; template_document: unknown; numerals: string }>(
-        `select title, presenters, org_name, template_document, numerals from public.poster_render_context($1)`,
+      const [ctx] = await tx.q<{ title: string; presenters: string[]; org_name: string; template_document: unknown; }>(
+        `select title, presenters, org_name, template_document from public.poster_render_context($1)`,
         [f.m2.a.published],
       );
       expect(ctx.title).toBeTruthy();
       // members[0] is the fixture's accepted presenter of every session (A5).
       expect(ctx.presenters.length).toBeGreaterThan(0);
       expect(ctx.org_name).toBe("كريم معرفة");
-      expect(ctx.numerals).toBe("western");
       // 0061's baseline library is the platform fallback every org can bind.
       expect(ctx.template_document).toBeTruthy();
     });

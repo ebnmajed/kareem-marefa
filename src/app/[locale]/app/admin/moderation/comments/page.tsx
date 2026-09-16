@@ -3,7 +3,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listCommentReports } from "@/lib/dal/admin-moderation";
-import { getOrgPrefs } from "@/lib/dal/proposals";
 import { resolveComment } from "./actions";
 import { ReportCard } from "./report-card";
 
@@ -21,10 +20,10 @@ export default async function CommentModerationPage({ params }: { params: Promis
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [reports, prefs, t] = await Promise.all([listCommentReports(locale), getOrgPrefs(locale), getTranslations("admin.moderation")]);
+  const [reports, t] = await Promise.all([listCommentReports(locale), getTranslations("admin.moderation")]);
   if (reports === null) notFound();
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
   const action = (reportId: string) => resolveComment.bind(null, locale as Locale, reportId);
 
   return (

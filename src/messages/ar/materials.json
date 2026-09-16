@@ -3,6 +3,7 @@
     "list": {
       "count": "{count, plural, zero {لا توجد مواد} one {مادة واحدة} two {مادتان} few {{value} مواد} many {{value} مادة} other {{value} مادة}}",
       "empty": "لا توجد مواد لهذه الجلسة بعد.",
+      "addAction": "أضف مادة",
       "phase": {
         "before": "قبل الجلسة",
         "after": "بعد الجلسة"
@@ -21,14 +22,15 @@
       },
       "substitutionWarning": {
         "title": "قد تختلف الخطوط عن ملفك الأصلي.",
-        "body": "الخط \"<bdi>{family}</bdi>\" غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد."
+        "body": "الخط «<bdi>{family}</bdi>» غير مضمَّن في ملف PDF، فقد تختلف الحروف العربية عن الأصل. صدّر الملف مع تضمين الخطوط وارفعه من جديد."
       },
       "openViewer": "فتح العارض",
       "download": "تحميل",
       "downloadAudited": "سيُسجَّل هذا التحميل في سجل التدقيق.",
       "openExternal": "فتح الرابط — يغادر المنصة",
       "removedByAdmin": "أُزيلت هذه المادة.",
-      "allowDownloadLabel": "السماح بالتحميل"
+      "allowDownloadLabel": "السماح بالتحميل",
+      "settingsFailed": "تعذّر حفظ هذا الإعداد. حاول مرة أخرى."
     },
     "upload": {
       "notice": "سيُتاح هذا الملف لجميع أعضاء المؤسسة وفق الجدول الزمني الذي تختاره.",
@@ -36,13 +38,19 @@
       "sniffMismatch": "لا يطابق محتوى الملف الفعلي النوع المُعلَن — تحقق من الملف وحاول مرة أخرى.",
       "notAuthorized": "لا تملك صلاحية إضافة مواد لهذه الجلسة.",
       "submit": "رفع",
+      "uploading": "جارٍ الرفع…",
+      "success": "أُضيفت المادة بنجاح",
       "titleLabel": "عنوان المادة",
+      "titleRequired": "أدخل عنوانًا للمادة أولًا.",
       "phaseLabel": "التوقيت",
       "kindLabel": "نوع المادة",
       "fileLabel": "الملف",
       "fileRequired": "اختر ملفًا أولًا.",
       "urlLabel": "الرابط",
-      "uploadFailed": "تعذّر رفع الملف. حاول مرة أخرى."
+      "uploadFailed": "تعذّر رفع الملف. حاول مرة أخرى.",
+      "requirementPdf": "PDF فقط · حتى <bdi>{limitMb}</bdi> ميغابايت",
+      "requirementImage": "JPEG أو PNG أو WebP · حتى <bdi>{limitMb}</bdi> ميغابايت",
+      "requirementAudio": "تسجيل صوتي (WAV أو OGG وصيغ مشابهة) · حتى <bdi>{limitMb}</bdi> ميغابايت"
     },
     "remove": {
       "action": "إزالة",
@@ -53,6 +61,7 @@
     },
     "viewer": {
       "back": "الرجوع إلى مواد الجلسة",
+      "breadcrumbLabel": "مسار التنقل",
       "pageOf": "صفحة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
       "thumbnailsLabel": "الصفحات",
       "thumbnailLabel": "الانتقال إلى الصفحة <bdi>{number}</bdi>",
@@ -63,6 +72,7 @@
       "zoomIn": "تكبير",
       "zoomOut": "تصغير",
       "download": "تحميل الملف الأصلي",
+      "downloading": "جارٍ التحضير…",
       "downloadAudited": "سيُسجَّل هذا التحميل في سجل التدقيق.",
       "downloadUnavailable": "التحميل غير متاح لهذه المادة.",
       "states": {

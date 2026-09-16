@@ -7,9 +7,13 @@ import { getSessionState } from "@/lib/dal/session";
 import { getBrandKit, type BrandKit } from "@/lib/brand/kit";
 import { getMe } from "@/lib/dal/members";
 import { AccountMenu } from "@/components/shell/account-menu";
+import { FocusClearance } from "@/components/shell/focus-clearance";
 import { SearchEntry } from "@/components/shell/search-entry";
-import { TabBar, isImmersive } from "@/components/shell/tab-bar";
+import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
+import { TabBar } from "@/components/shell/tab-bar";
 import { ChevronIcon } from "@/components/ui/icons";
+import { Menu } from "@/components/ui/menu";
+import { RouteProgress } from "@/components/ui/route-progress";
 import { ToastProvider } from "@/components/ui/toast";
 
 // The org theme layer — 06 §8.3's first consumer, DEC-003's layering, wave 4
@@ -82,11 +86,6 @@ export default async function AppLayout({
   const isPlatformAdmin =
     (isMember && state.session.platformAdmin) ||
     (state.kind === "no_org" && state.platformAdmin);
-  // `proxy.ts` forwards the path so the shell can decide, on the SERVER,
-  // whether this screen carries the tab bar (DEC-098) — and `<main>`'s bottom
-  // padding follows the same decision rather than a hydration result.
-  const pathname = (await headers()).get("x-pathname");
-  const hasTabBar = !isImmersive(pathname);
   // ★ Guarded on `isMember`, and that guard is DEC-057's lesson, not caution:
   // `getMe()` goes through `sessionClient()`, and a platform admin with no
   // member row would be redirected to /no-access from EVERY console screen —
@@ -128,6 +127,14 @@ export default async function AppLayout({
       >
         {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
 
+        {/* Layer 1 of the loading model (`16` §7.1.1): a bar only past 150 ms,
+            fed by every `ui/link`. */}
+        <RouteProgress />
+        {/* SC 2.4.11 — keeps a focused control out from under the sticky header
+            and the fixed bars, on every route (Chromium's sequential focus
+            scroll ignores scroll-padding). */}
+        <FocusClearance />
+
         {/* ★ SC 2.4.1 — the first focusable element in the shell. Visually
           hidden until focused (.skip-link in globals.css). Today it saves a
           keyboard user three tabs; after the account menu and M11's
@@ -147,38 +154,32 @@ export default async function AppLayout({
             <Wordmark />
 
             {/* تصفّح ▾ — desktop only; the phone reaches all of it from the tab
-              bar and the account menu, which is the point of having them. */}
+              bar and the account menu, which is the point of having them.
+              ★ `ui/menu`, not `<details>` (DEC-111): it closes when a link in
+              it is followed, on an outside click and on Escape, and never
+              stays open over the page it navigated to. The wrapper, not the
+              trigger, carries `hidden md:block`, so no element pairs two
+              `display` utilities. */}
             {browse.length ? (
-              <details className="group relative hidden md:block">
-                <summary
-                  className={`${navLink} cursor-pointer list-none gap-1 [&::-webkit-details-marker]:hidden`}
-                >
-                  {t("browse")}
-                  <ChevronIcon
-                    direction="down"
-                    aria-hidden
-                    className="text-fg-muted"
-                  />
-                </summary>
-                <div className="absolute inset-inline-start-0 top-12 z-40 hidden w-56 rounded-card border border-edge bg-canvas p-2 shadow-[var(--shadow-card)] group-open:block">
-                  <ul className="flex flex-col">
-                    {browse.map((link) => (
-                      <li key={link.href}>
-                        <Link href={link.href} className={`${navLink} w-full`}>
-                          {link.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </details>
+              <div className="hidden md:block">
+                <Menu
+                  trigger={
+                    <button type="button" className={`${navLink} gap-1`}>
+                      {t("browse")}
+                      <ChevronIcon direction="down" className="text-fg-muted" />
+                    </button>
+                  }
+                  items={browse.map((link) => ({ label: link.label, href: link.href }))}
+                />
+              </div>
             ) : null}
 
-            {isMember ? (
-              <SearchEntry locale={locale} />
-            ) : (
-              <span className="flex-1" />
-            )}
+            {/* The spacer that pushes the actions to the inline END on a phone,
+              where the search FIELD (which is `flex-1` from `md`) is only an icon.
+              Without it the search glyph, the bell and the avatar bunched beside
+              the wordmark and left the far side of the bar empty (DEC-111). */}
+            <span aria-hidden className={isMember ? "flex-1 md:hidden" : "flex-1"} />
+            {isMember ? <SearchEntry locale={locale} /> : null}
 
             {/* The bell keeps its wave-2 server-component contract and DEC-057's
               classification: a platform admin with no member row gets no bell
@@ -200,7 +201,6 @@ export default async function AppLayout({
                 certificates: t("certificates"),
                 bookmarks: t("bookmarks"),
                 calendar: t("calendar"),
-                staffSection: t("staffSection"),
                 admin: t("admin"),
                 platform: t("platform"),
                 signOut: t("signOut"),
@@ -218,32 +218,9 @@ export default async function AppLayout({
 
           It is applied only when the bar is actually present, and only below
           `md`, where the bar is. */}
-        <main
-          id="main"
-          className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12"
-          style={
-            hasTabBar
-              ? {
-                  paddingBlockEnd:
-                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
-                }
-              : undefined
-          }
-        >
-          {children}
-        </main>
+        <ShellMain>{children}</ShellMain>
 
-        <footer
-          className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-body-sm text-fg-muted md:px-8"
-          style={
-            hasTabBar
-              ? {
-                  paddingBlockEnd:
-                    "calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem)",
-                }
-              : undefined
-          }
-        >
+        <ShellFooter>
           <Link
             href="/legal/privacy"
             className="underline underline-offset-4 hover:text-fg-heading"
@@ -257,13 +234,12 @@ export default async function AppLayout({
           >
             {t("terms")}
           </Link>
-        </footer>
+        </ShellFooter>
 
         {isMember ? (
           <TabBar
-            pathname={pathname}
             labels={{
-              home: t("home"),
+              nav: t("primaryNav"),
               sessions: t("sessions"),
               propose: t("proposeShort"),
               me: t("account"),

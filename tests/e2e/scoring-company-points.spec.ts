@@ -45,7 +45,7 @@ test.beforeAll(async ({}, testInfo) => {
     [`company-pts-e2e-${tag}`],
   );
   orgId = orgRows[0].id;
-  await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: companyRows } = await db.query<{ id: string }>(`insert into public.companies (org_id, name) values ($1, $2) returning id`, [
     orgId,
@@ -149,6 +149,6 @@ test("the company board's breakdown shows the company ledger's points, explained
 
   const breakdown = page.locator("#company-breakdown");
   await expect(breakdown.getByRole("heading", { name: "كيف حصلت شركتك على نقاطها" })).toBeVisible();
-  await expect(breakdown).toContainText("٤٢");
+  await expect(breakdown).toContainText("42");
   await expect(breakdown).toContainText("استضافة جلسة");
 });

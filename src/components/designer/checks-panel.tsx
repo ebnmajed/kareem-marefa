@@ -14,7 +14,7 @@ import {
   type DesignDocument,
   type PresetName,
 } from "@kareem/designer-runtime";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // «Content crossing a safe area is flagged BEFORE export, not after»
 // (REQ-DSG-010), and a title that hit its floor and still overflows is
@@ -34,7 +34,6 @@ import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals
 export interface ChecksPanelProps {
   document: DesignDocument;
   bindings: Record<string, string>;
-  numerals: NumeralSystem;
   /** Set once the canvas's faces are usable; measuring before that measures a
    *  fallback face, and every number would be wrong. */
   fontsReady: boolean;
@@ -49,7 +48,7 @@ type Finding =
   | { kind: "ppi"; preset: PresetName; layerId: string; ppi: number; severity: "warn" | "block" }
   | { kind: AutoFitWarning; preset: PresetName; layerId: string };
 
-export function ChecksPanel({ document: doc, bindings, numerals, fontsReady, assetSizes }: ChecksPanelProps) {
+export function ChecksPanel({ document: doc, bindings, fontsReady, assetSizes }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");
   const [fitFindings, setFitFindings] = useState<Finding[]>([]);
@@ -138,14 +137,14 @@ export function ChecksPanel({ document: doc, bindings, numerals, fontsReady, ass
                 ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", {
                     layer: f.layerId,
                     preset: tp(`name.${f.preset}`),
-                    ppi: formatNumber(f.ppi, numerals),
+                    ppi: formatNumber(f.ppi),
                     bdi: (c) => <bdi>{c}</bdi>,
                   })
                 : f.kind === "safeArea"
                 ? t.rich("safeArea", {
                     layer: f.layerId,
                     preset: tp(`name.${f.preset}`),
-                    px: formatNumber(f.overflowPx, numerals),
+                    px: formatNumber(f.overflowPx),
                     bdi: (c) => <bdi>{c}</bdi>,
                   })
                 : t.rich(f.kind === "min_size_reached" ? "minSize" : "maxLines", {

@@ -1,11 +1,16 @@
-// UploadWidget — REQ-EVT-009/010/011. Real ar/photos.json; only `fetch` and
-// the router are mocked, same pattern as tests/components/materials/
-// upload-form.test.tsx (this widget talks to the two Route Handlers
-// directly, never the DAL, so there is nothing else to mock).
+// UploadWidget — REQ-EVT-009/010/011, REQ-UIX-024. Real ar/photos.json
+// (plus browse.json's fileDrop namespace, which ui/file-drop reads); only
+// `fetch` and the router are mocked, same pattern as tests/components/
+// materials/upload-form.test.tsx (this widget talks to the two Route
+// Handlers directly, never the DAL). `ui/file-drop` replaces the old raw
+// `<input type="file">` — see that test's own header for why a file
+// selection is driven through `document.querySelector('input[type="file"]')`.
 import { NextIntlClientProvider } from "next-intl";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import ar from "@/messages/ar/photos.json";
+import arBrowse from "@/messages/ar/browse.json";
+import { ToastProvider } from "@/components/ui/toast";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", async (importOriginal) => ({
@@ -15,10 +20,14 @@ vi.mock("next/navigation", async (importOriginal) => ({
 
 const { UploadWidget } = await import("@/components/photos/upload-widget");
 
+const messages = { ...ar, browse: { fileDrop: arBrowse.browse.fileDrop } };
+
 function renderWidget() {
   return render(
-    <NextIntlClientProvider locale="ar" messages={ar}>
-      <UploadWidget locale="ar" sessionId="11111111-1111-1111-1111-111111111111" />
+    <NextIntlClientProvider locale="ar" messages={messages}>
+      <ToastProvider closeLabel="إغلاق">
+        <UploadWidget locale="ar" sessionId="11111111-1111-1111-1111-111111111111" imageLimitMb={20} />
+      </ToastProvider>
     </NextIntlClientProvider>,
   );
 }
@@ -27,12 +36,22 @@ function makeFile(name: string, type: string, bytes = 10) {
   return new File([new Uint8Array(bytes)], name, { type });
 }
 
+function pickFile(file: File) {
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [file] } });
+}
+
 describe("UploadWidget", () => {
   beforeEach(() => {
     refresh.mockClear();
   });
 
-  it("★ drives initiate → PUT-to-signed-URL → complete, then refreshes (07 §1)", async () => {
+  it("states JPEG/PNG/WebP and the org's own 20 MB limit BEFORE any file is chosen (REQ-UIX-024)", () => {
+    renderWidget();
+    expect(screen.getByText("JPEG أو PNG أو WebP · حتى 20 ميغابايت")).toBeInTheDocument();
+  });
+
+  it("★ drives initiate → PUT-to-signed-URL → complete, then refreshes and confirms it is processing (07 §1)", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/upload/photo") {
         return new Response(
@@ -52,12 +71,15 @@ describe("UploadWidget", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderWidget();
-    fireEvent.change(screen.getByLabelText(ar.photos.upload.fileLabel), { target: { files: [makeFile("photo.jpg", "image/jpeg")] } });
+    pickFile(makeFile("photo.jpg", "image/jpeg"));
     fireEvent.click(screen.getByRole("button", { name: ar.photos.upload.action }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(fetchMock).toHaveBeenCalledWith("/api/upload/photo", expect.objectContaining({ method: "POST" }));
     expect(fetchMock).toHaveBeenCalledWith("/api/upload/photo/complete", expect.objectContaining({ method: "POST" }));
+    // The toast IS honest about the gap (REQ-EVT-010 vs. the shipped
+    // pipeline, docs/plan/notes/content.md §4.4) — "processing," not
+    // "posted."
     expect(screen.getByText(ar.photos.upload.processing)).toBeInTheDocument();
   });
 
@@ -66,18 +88,22 @@ describe("UploadWidget", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderWidget();
-    fireEvent.change(screen.getByLabelText(ar.photos.upload.fileLabel), { target: { files: [makeFile("photo.jpg", "image/jpeg")] } });
+    pickFile(makeFile("photo.jpg", "image/jpeg"));
     fireEvent.click(screen.getByRole("button", { name: ar.photos.upload.action }));
 
-    await waitFor(() => expect(screen.getByText(ar.photos.upload.notAuthorized)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(ar.photos.upload.notAuthorized)).not.toHaveLength(0));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("requires a file before submitting", async () => {
-    vi.stubGlobal("fetch", vi.fn());
+  it("★ the submit button is disabled with nothing to submit — the lead's live-build finding: an enabled dark primary over an empty drop zone reads as dead", () => {
     renderWidget();
-    fireEvent.click(screen.getByRole("button", { name: ar.photos.upload.action }));
-    await waitFor(() => expect(screen.getByText(ar.photos.upload.fileRequired)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: ar.photos.upload.action })).toBeDisabled();
+  });
+
+  it("enables the submit button once a file is picked", () => {
+    renderWidget();
+    pickFile(makeFile("photo.jpg", "image/jpeg"));
+    expect(screen.getByRole("button", { name: ar.photos.upload.action })).toBeEnabled();
   });
 });

@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { formatDateTime, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatDateTime } from "@/components/sessions/numerals";
 import { markNotificationRead } from "@/app/[locale]/app/me/notifications/actions";
 import type { NotificationDTO } from "@/lib/dal/notifications";
 
@@ -20,11 +20,9 @@ function payloadTitle(payload: Record<string, unknown>): string | null {
 
 export async function NotificationList({
   items,
-  numerals,
   timeZone,
 }: {
   items: NotificationDTO[];
-  numerals: NumeralSystem;
   timeZone: string;
 }) {
   const t = await getTranslations("notifications");
@@ -49,7 +47,7 @@ export async function NotificationList({
                 <bdi>{title}</bdi>
               </p>
             ) : null}
-            <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(item.createdAt, numerals, timeZone)}</p>
+            <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(item.createdAt, timeZone)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {item.sessionId ? (
                 <Link href={`/app/sessions/${item.sessionId}`} className="text-label text-fg-heading underline underline-offset-4">

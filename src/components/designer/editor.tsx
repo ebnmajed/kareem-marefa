@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DesignDocument, Layer, PresetName } from "@kareem/designer-runtime";
 import { derive, fontFaceCss, PRESETS, presetsFor, snap, snapTargets, snapTargetsBlock, validateDocument } from "@kareem/designer-runtime";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { LayerList } from "@/components/designer/layer-list";
 import { PropertiesPanel } from "@/components/designer/properties-panel";
@@ -40,7 +39,6 @@ export interface DesignerEditorProps {
   faces: Array<{ family: string; weight: number; style: string; sha256: string; unicodeRange?: string }>;
   lockedLayerIds: string[];
   canEdit: boolean;
-  numerals: NumeralSystem;
   origin: string;
   /** Each image layer's intrinsic pixel size, for the PPI guard. */
   assetSizes: Record<string, { width: number; height: number }>;
@@ -334,8 +332,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
         </button>
         <p className="text-body-sm text-fg-muted">
           {tpr.rich("size", {
-            width: formatNumber(PRESETS[preset].width, props.numerals),
-            height: formatNumber(PRESETS[preset].height, props.numerals),
+            width: formatNumber(PRESETS[preset].width),
+            height: formatNumber(PRESETS[preset].height),
             bdi: (c) => <bdi>{c}</bdi>,
           })}
         </p>
@@ -355,7 +353,6 @@ export function DesignerEditor(props: DesignerEditorProps) {
       selectedLayerId={selectedLayerId}
       onSelect={setSelectedLayerId}
       lockedLayerIds={props.lockedLayerIds}
-      numerals={props.numerals}
       placeholderLabel={placeholderLabel}
     />
   );
@@ -413,7 +410,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           <h2 id="dr-checks-m" className="text-body font-medium text-fg-heading">
             {tc("heading")}
           </h2>
-          <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} assetSizes={props.assetSizes} />
+          <ChecksPanel document={document} bindings={props.bindings} fontsReady={fontsReady} assetSizes={props.assetSizes} />
         </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
           <h2 id="dr-bindings-m" className="text-body font-medium text-fg-heading">
@@ -438,7 +435,6 @@ export function DesignerEditor(props: DesignerEditorProps) {
             onToggleHidden={toggleHidden}
             lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
             canEdit={props.canEdit}
-            numerals={props.numerals}
           />
         </section>
 
@@ -477,7 +473,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
             <h2 id="dr-checks" className="text-body font-medium text-fg-heading">
               {tc("heading")}
             </h2>
-            <ChecksPanel document={document} bindings={props.bindings} numerals={props.numerals} fontsReady={fontsReady} assetSizes={props.assetSizes} />
+            <ChecksPanel document={document} bindings={props.bindings} fontsReady={fontsReady} assetSizes={props.assetSizes} />
           </section>
         </div>
       </div>

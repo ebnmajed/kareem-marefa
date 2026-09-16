@@ -1,21 +1,30 @@
-import { Link } from "@/i18n/navigation";
+"use client";
+
+import { useId } from "react";
+import type { MenuItem } from "@/components/ui";
 import { Avatar } from "@/components/ui/avatar";
 import { ChevronIcon } from "@/components/ui/icons";
+import { Menu } from "@/components/ui/menu";
 
-// The account menu — `16` §6.1 note 3, DEC-072, REQ-UIX-002.
+// The account menu — `16` §6.1 note 3, DEC-072, DEC-111, REQ-UIX-002, REQ-UIX-023.
 //
-// ★ STAFF LINKS STOP BEING A FONT COLOUR. Today the shell distinguishes «لوحة
-// الإدارة» from «الأعضاء» with `text-fg-heading` instead of `text-fg-body`,
-// which is not a distinction a moderator can find. They move into a RULED
-// SECTION of this menu, labelled, so a moderator looking for their queue has
-// somewhere to look.
+// ★★ IT WAS A `<details>`, AND THAT WAS THE OWNER'S STUCK DROPDOWN. A native
+// disclosure has no reason to close when a link inside it is followed, and
+// under Partial Rendering the layout that holds it never re-renders on
+// navigation — so the panel stayed open, hanging over the page it had just
+// navigated to. It also ignored an outside click and `Escape`, and two could be
+// open at once. The earlier comment here defended `<details>` as "no
+// JavaScript, keyboard-native"; it was right about what that buys and silent
+// about what it cost. `ui/menu` is Radix, and Radix owns exactly the four
+// behaviours the native element lacked: close on select, on outside click, on
+// `Escape` (returning focus to the trigger), and one menu open at a time.
 //
-// ★ It is a `<details>`, not a Radix dropdown, and that is deliberate: the
-// shell must render without JavaScript, `<details>`/`<summary>` is keyboard-
-// and screen-reader-native, and `ui/menu` (Radix, `console`'s) is a CLIENT
-// component — putting it in the shell would pull the whole layout into the
-// client graph for a disclosure the platform already implements. The current
-// shell makes the same choice for the same reason and records it.
+// ★ Sign-out is a POST, and a menu item is not a form. The form lives OUTSIDE
+// the menu's portal and the item submits it — so the menu closes as it would
+// for any item, and signing out stays a real form submission.
+//
+// Staff links stop being a font colour: a rule, then the console links, so a
+// moderator looking for their queue has somewhere to look.
 
 export interface AccountMenuProps {
   memberId: string | null;
@@ -31,85 +40,49 @@ export interface AccountMenuProps {
     certificates: string;
     bookmarks: string;
     calendar: string;
-    staffSection: string;
     admin: string;
     platform: string;
     signOut: string;
   };
 }
 
-const item =
-  "flex h-11 w-full items-center rounded-field px-3 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading";
-
 export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatformAdmin, labels }: AccountMenuProps) {
-  const member: { href: string; label: string }[] = memberId
+  const signOutFormId = useId();
+
+  const items: MenuItem[] = memberId
     ? [
-        { href: "/app/me", label: labels.profile },
-        { href: "/app/me", label: labels.rsvps },
-        { href: "/app/me/points", label: labels.points },
-        { href: "/app/me/certificates", label: labels.certificates },
-        { href: "/app/me/bookmarks", label: labels.bookmarks },
-        { href: "/app/me/calendar", label: labels.calendar },
+        { label: labels.profile, href: "/app/me" },
+        { label: labels.rsvps, href: "/app/me" },
+        { label: labels.points, href: "/app/me/points" },
+        { label: labels.certificates, href: "/app/me/certificates" },
+        { label: labels.bookmarks, href: "/app/me/bookmarks" },
+        { label: labels.calendar, href: "/app/me/calendar" },
       ]
     : [];
+  const staff: MenuItem[] = [
+    ...(isStaff ? [{ label: labels.admin, href: "/app/admin" }] : []),
+    ...(isPlatformAdmin ? [{ label: labels.platform, href: "/app/platform" }] : []),
+  ];
+  if (staff.length) items.push({ ...staff[0], startsGroup: items.length > 0 }, ...staff.slice(1));
+  items.push({ label: labels.signOut, onSelect: () => (document.getElementById(signOutFormId) as HTMLFormElement | null)?.requestSubmit(), startsGroup: items.length > 0 });
 
   return (
-    <details className="group relative">
-      <summary
-        className="inline-flex h-11 cursor-pointer list-none items-center gap-1.5 rounded-field px-2 text-label text-fg-heading hover:bg-silver-100 [&::-webkit-details-marker]:hidden"
-        aria-label={labels.account}
-      >
-        {memberId ? (
-          <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative />
-        ) : null}
-        <ChevronIcon direction="down" className="text-fg-muted" />
-      </summary>
-      {/* `hidden` until open, then `group-open:block`: a closed <details> keeps
-          its content's layout box under content-visibility in Chromium, and an
-          absolute panel with a box registers as sideways overflow in the 390 px
-          review even though nothing is painted. The current shell learned this
-          the hard way and the note is kept. */}
-      <div className="absolute inset-inline-end-0 top-12 z-40 hidden w-60 rounded-card border border-edge bg-canvas p-2 shadow-[var(--shadow-card)] group-open:block">
-        <ul className="flex flex-col">
-          {member.map((link, i) => (
-            <li key={`${link.href}-${i}`}>
-              <Link href={link.href} className={item}>
-                {link.label}
-              </Link>
-            </li>
-          ))}
-          {isStaff || isPlatformAdmin ? (
-            <>
-              {/* The rule and the label together are the whole of note 3: a
-                  moderator can see that a staff area exists and where it is. */}
-              <li aria-hidden className="my-1 border-t border-edge" />
-              <li className="px-3 py-1 text-caption text-fg-muted">{labels.staffSection}</li>
-              {isStaff ? (
-                <li>
-                  <Link href="/app/admin" className={item}>
-                    {labels.admin}
-                  </Link>
-                </li>
-              ) : null}
-              {isPlatformAdmin ? (
-                <li>
-                  <Link href="/app/platform" className={item}>
-                    {labels.platform}
-                  </Link>
-                </li>
-              ) : null}
-            </>
-          ) : null}
-          <li aria-hidden className="my-1 border-t border-edge" />
-          <li>
-            <form method="post" action="/api/auth/sign-out">
-              <button type="submit" className={`${item} text-fg-muted`}>
-                {labels.signOut}
-              </button>
-            </form>
-          </li>
-        </ul>
-      </div>
-    </details>
+    <>
+      <Menu
+        align="end"
+        trigger={
+          <button
+            type="button"
+            aria-label={labels.account}
+            className="inline-flex h-11 items-center gap-1.5 rounded-field px-2 text-fg-heading hover:bg-silver-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+          >
+            {memberId ? <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative /> : null}
+            <ChevronIcon direction="down" className="text-fg-muted" />
+          </button>
+        }
+        items={items}
+      />
+      <form id={signOutFormId} method="post" action="/api/auth/sign-out" hidden />
+    </>
   );
 }

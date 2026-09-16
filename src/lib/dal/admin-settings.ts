@@ -1,6 +1,5 @@
 import "server-only";
 import { z } from "zod";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-063 · /app/admin/settings (REQ-TEN-008, REQ-INT-006, REQ-MAT-009).
@@ -21,7 +20,6 @@ import { sessionClient } from "@/lib/dal/session";
 
 export interface OrgSettingsAdmin {
   timeZone: string;
-  numerals: NumeralSystem;
   checkInRotationSeconds: number;
   checkInGraceSeconds: number;
   maxCoPresenters: number;
@@ -50,7 +48,7 @@ export async function getOrgSettingsForAdmin(locale: string): Promise<OrgSetting
   const { data, error } = await supabase
     .from("org_settings")
     .select(
-      "time_zone, numerals, check_in_rotation_seconds, check_in_grace_seconds, max_co_presenters, company_metric, priority_rsvp_hours, limit_document_mb, limit_audio_mb, limit_image_mb, limit_poster_mb, allow_jpeg_export, email_from_name, email_reply_to, rating_min_aggregate",
+      "time_zone, check_in_rotation_seconds, check_in_grace_seconds, max_co_presenters, company_metric, priority_rsvp_hours, limit_document_mb, limit_audio_mb, limit_image_mb, limit_poster_mb, allow_jpeg_export, email_from_name, email_reply_to, rating_min_aggregate",
     )
     .eq("org_id", session.orgId)
     .maybeSingle();
@@ -59,7 +57,6 @@ export async function getOrgSettingsForAdmin(locale: string): Promise<OrgSetting
 
   return {
     timeZone: data.time_zone,
-    numerals: data.numerals as NumeralSystem,
     checkInRotationSeconds: data.check_in_rotation_seconds,
     checkInGraceSeconds: data.check_in_grace_seconds,
     maxCoPresenters: data.max_co_presenters,
@@ -79,7 +76,6 @@ export async function getOrgSettingsForAdmin(locale: string): Promise<OrgSetting
 export const orgSettingsInput = z
   .object({
     timeZone: z.string().trim().min(1).max(64),
-    numerals: z.enum(["western", "arabic_indic"]),
     checkInRotationSeconds: z.int().min(60).max(3600),
     checkInGraceSeconds: z.int().min(0).max(600),
     maxCoPresenters: z.int().min(0).max(10),
@@ -106,7 +102,6 @@ export async function updateOrgSettings(locale: string, input: OrgSettingsInput)
     .from("org_settings")
     .update({
       time_zone: input.timeZone,
-      numerals: input.numerals,
       check_in_rotation_seconds: input.checkInRotationSeconds,
       check_in_grace_seconds: input.checkInGraceSeconds,
       max_co_presenters: input.maxCoPresenters,

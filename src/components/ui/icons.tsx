@@ -395,6 +395,53 @@ export function ImageIcon(props: IconProps) {
   );
 }
 
+/** الوسم — a tag or a category. A label with a dot where it would hang. */
+export function TagIcon({ className = "", ...props }: IconProps) {
+  return (
+    <Svg className={`rtl:-scale-x-100 ${className}`} {...props}>
+      <path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1.4 1.4 0 0 1 0 2l-6.2 6.2a1.4 1.4 0 0 1-2 0z" />
+      <circle cx="8.2" cy="8.2" r="1.4" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** الشركة — an organisation within the group. A building, three storeys of windows as dots. */
+export function BuildingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="3.5" width="14" height="17" rx="1.5" />
+      <path d="M10 20.5v-3.5h4v3.5" />
+      <circle cx="9.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="9.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** الهوية — the brand kit. A swatch fan: three colour chips from one pivot dot. */
+export function PaletteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="4" width="6" height="15.5" rx="1.5" />
+      <path d="M10 8.5l4.2-2.4a1.5 1.5 0 0 1 2 .6l1 1.7a1.5 1.5 0 0 1-.5 2L10 14.2" />
+      <path d="M10 17.5h8.5a1.5 1.5 0 0 0 1.5-1.5v-2a1.5 1.5 0 0 0-1.5-1.5H14" />
+      <circle cx="7" cy="16.5" r="1" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** الإعدادات — settings. Eight short teeth around a ring, the dot at its centre. */
+export function GearIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
+    </Svg>
+  );
+}
+
 /** مقفل — a locked layer, a restricted screen, a closed registration. */
 export function LockIcon(props: IconProps) {
   return (

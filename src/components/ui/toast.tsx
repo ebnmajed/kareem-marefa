@@ -75,7 +75,7 @@ export function ToastProvider({ children, closeLabel }: { children: ReactNode; c
                 if (!open) setLive((current) => current.filter((t) => t.id !== toast.id));
               }}
               type={isError ? "foreground" : "background"}
-              className={`flex w-full items-start gap-3 rounded-card border bg-canvas p-4 shadow-[var(--shadow-card)] ${tone.cls}`}
+              className={`pointer-events-auto flex w-full items-start gap-3 rounded-card border bg-canvas p-4 shadow-[var(--shadow-card)] ${tone.cls}`}
             >
               <tone.Icon aria-hidden className="mt-0.5 shrink-0 text-[1.25rem]" />
               <div className="min-w-0 flex-1">
@@ -109,7 +109,11 @@ export function ToastProvider({ children, closeLabel }: { children: ReactNode; c
           );
         })}
         <RadixToast.Viewport
-          className="fixed inset-inline-0 bottom-0 z-40 mx-auto flex w-full max-w-sm flex-col gap-2 p-4 md:inset-inline-end-auto md:mx-0"
+          // ★ `empty:hidden` and `pointer-events-none` (DEC-111, DEC-133): an EMPTY
+          // viewport was still a fixed, padded box ~112 px tall at z-40 — over the
+          // z-30 tab bar, catching taps meant for its middle tabs. Hidden while
+          // there is nothing to say; transparent to the pointer around a toast.
+          className="pointer-events-none fixed start-0 end-0 bottom-0 z-40 mx-auto flex w-full max-w-sm flex-col gap-2 p-4 empty:hidden md:end-auto md:mx-0"
           // ★ Clears the tab bar, from the same token the bar pads itself with.
           style={{ paddingBlockEnd: "calc(1rem + var(--tabbar-h) + env(safe-area-inset-bottom, 0px))" }}
         />

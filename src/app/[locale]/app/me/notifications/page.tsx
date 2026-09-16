@@ -77,7 +77,7 @@ export default async function NotificationsPage({
             </form>
           </div>
         </div>
-        <NotificationList items={items} numerals={preferences.numerals} timeZone={preferences.timeZone} />
+        <NotificationList items={items} timeZone={preferences.timeZone} />
       </section>
 
       <section id="preferences" aria-labelledby="preferences-heading" className="mt-12">

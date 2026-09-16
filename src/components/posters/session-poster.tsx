@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import type { DesignerSlotProps } from "@/components/posters/slots";
 import { getSessionPoster, type PosterVariant } from "@/lib/dal/posters";
 import { formatNumber } from "@/components/sessions/numerals";
-import { getOrgNumerals } from "@/lib/dal/designer";
 
 // The `SessionPoster` slot — REQ-DSG-001, REQ-DSG-002, DEC-012.
 //
@@ -30,12 +29,11 @@ export async function SessionPoster({ sessionId, locale, variant = "master" }: D
     // Rendering. Said once, quietly, with the count — an admin watching a
     // publish wants to know it is moving.
     if (poster.total === 0) return null;
-    const numerals = await getOrgNumerals(locale);
     return (
       <p className="text-body-sm text-fg-muted">
         {t.rich("pending", {
-          ready: formatNumber(poster.ready, numerals),
-          total: formatNumber(poster.total, numerals),
+          ready: formatNumber(poster.ready),
+          total: formatNumber(poster.total),
           bdi: (c) => <bdi>{c}</bdi>,
         })}
       </p>

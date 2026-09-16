@@ -498,3 +498,675 @@ red as a direct, foreseeable consequence of an explicitly requested change would
 Neither would have been caught by reading the code — both came directly from the axe assertion and
 the `fireEvent.click` selection test the spawn note asked for by name ("axe cannot tell you whether
 `aria-activedescendant` follows the highlighted option").
+
+---
+
+## Wave 6 — the admin console on the system (DEC-110, DEC-130)
+
+Read `.claude/agents/console.md` (regenerated for wave 6, then again at `57f1103`),
+`STATUS.md`'s START HERE + WAVE 6 block, `CLAUDE.md`'s wave-6 map,
+`DEC-110/112/114/122/123/124/130/131/132`, `16` §3.1/§4.2/§5.2/§6.7/§7.3/§7.4/§8.2,
+`REQ-UIX-001/003/007/009…013/017`, `REQ-ADM-004/005/009/010/020`.
+
+**Numerals landed at `57f1103`** (code half `c20b901`, a date-time a11y fix `73b0f3e`). §0–§4 below
+were drafted against the pre-sweep tree (`9120237`) and have been **re-read and checked against disk
+since** — corrections are marked ★ inline rather than silently rewritten over. The two real
+deltas found: (1) `admin/proposals/page.tsx` and `admin/moderation/reports/page.tsx` dropped
+`getOrgPrefs()` entirely (it existed only for `numerals`); `admin/sessions/page.tsx` and
+`admin/members/page.tsx` keep it — it still returns `timeZone` for `formatDateTime`. (2) the lead
+fixed `rtl-datetime-picker.tsx`'s month-button a11y bug directly (`73b0f3e`) — not mine to redo, and
+not consumed by any of my five routes this wave regardless. **Still no source file touched** —
+holding for the lead's reply to the report before starting code, per this turn's instruction.
+
+Owned this wave: `admin/{layout,page,loading,error}.tsx`, `admin/proposals/**`, `admin/members/**`,
+`admin/moderation/reports/**`, `admin/sessions/{page,actions,state,session-controls,direct-session-
+form}.tsx` only (never `[id]/**`), `lib/dal/{admin-dashboard,admin-lists,admin-members,admin-
+moderation}.ts`, `components/admin/**`, my six `ui/` files, `messages/*/admin.json`.
+
+**Never-touch, restated per `57f1103`'s naming pass (decided, NOT this wave):** multi-day sessions
+(`DEC-119`–`121`), the manual check-in switch + walk-ins as a publishing setting
+(`DEC-113`/`116`/`117`/`118`), gradient posters + `canvasRaise` (`DEC-127`). None of the three touches
+the admin sessions list as planned in §2.3 below — that section shows `SessionState`/`startsAt` only,
+no check-in switch, no walk-in flag, no poster styling.
+
+### 0. What the current tree actually does (read before planning, not assumed)
+
+- `admin/layout.tsx` — a flat wrapping `<ul>` of 19 links (`NAV_ITEMS`), gated on `built`/
+  `adminOnly`, plus a working second skip link (`#admin-content`, `tabIndex={-1}`). `admin/error.tsx`
+  already renders the shared `<RouteError>` (M9) — nothing to change there beyond a re-check after
+  the layout edit. `admin/loading.tsx` is already a generic `SkeletonPageHeader` + eight row
+  skeletons, direction-agnostic, no `getTranslations` — also already correct as the shared boundary.
+- `admin/page.tsx` (SCR-040) — six ad hoc `<section>` blocks (`getAdminDashboardData()`), no «يحتاج
+  انتباهك» section exists at all today — it is new work, not a re-skin.
+- `admin/proposals/page.tsx` (SCR-041) — `ReviewCard` (client), approve is one click, reject/request-
+  changes are typed behind a `<details>` reveal (deliberately not `required`, comment explains why),
+  no dialog anywhere, no toast — an inline `role="alert"` paragraph is the only feedback.
+- `admin/sessions/page.tsx` (SCR-042) — three sections (ready-to-schedule, direct-create with an
+  **all-org-members checkbox list** for presenters — the exact scroll-trap `ui/combobox` was built to
+  fix, just in a second place), plus the full admin list with inline text links and `SessionControls`,
+  plus a **separate branch**, `ModeratorSessionsView`, for a moderator (id/title/state/start + one
+  link). Raw `t(\`state.${s.state}\`)` strings, not the shared `SessionStatusBadge`.
+- `admin/members/page.tsx` (SCR-049) — `<ul>` of `MemberRow` (client): two independent
+  `useActionState` forms per row (role-change, deactivate-with-reason-behind-`<details>`) plus a
+  plain-transition reactivate button. No avatar, no table semantics.
+- `admin/moderation/reports/page.tsx` (SCR-052) — **photo reports only** (`reports.target = 'photo'`,
+  `status = 'open'`), a responsive `<ul>` grid of `ReportCard` with a signed-URL `<img>`. Comment
+  reports (SCR-050, `REQ-EVT-008`'s other half) are a **separate, unrebuilt** screen,
+  `/app/admin/moderation/comments`, one of the 19 never-touch routes this wave.
+- ★ **A discrepancy worth recording, not silently resolving (DEC-114's rule):** my agent file's
+  route-5 line says this screen is "the queue where a flag raised from `content`'s rebuilt discussion
+  lands." The tree says only **photo** reports land here; a flag on a **comment** lands on the
+  untouched `/moderation/comments`. `content`'s wave-6 scope names both the discussion **and**
+  `components/photos/gallery.tsx`, so a report raised from the rebuilt **photo gallery** does land on
+  my screen — the sentence is accurate for photos and imprecise about "discussion." Treated as
+  resolved by that reading; flagged here in case the lead meant something narrower.
+
+### 1. The admin layout
+
+**Decision: build the actual rail this wave**, not a placeholder for M11. The M9-era note above
+("the rail itself is M11") is superseded — `DEC-110` folded the console into this wave in full, and
+my current agent file says so explicitly ("A left rail, collapsible… Decide and capture the phone
+treatment").
+
+- **Items: keep the 19 existing flat entries**, not `16` §6.7's 14 grouped Arabic labels
+  (لوحة/المقترحات/الجلسات/الأعضاء/الشركات/التصنيفات/الأماكن/الإشراف/النقاط والتقدير/التصاميم/الهوية/
+  الإشعارات/التصدير/السجل/الإعدادات). §6.7's grouping folds moderation's three screens, scoring +
+  recognition, both template libraries, and emails + reminders into single entries — that is a real
+  information-architecture decision (sub-nav or a `/moderation` landing page) affecting **thirteen
+  routes I do not rebuild this wave**, and the canvas has no artboard for it to check against
+  (`DEC-114`: no artboard → build from `16`'s prose and the system, but a *grouping* is a structural
+  change to routes I never touch, which is exactly what "never-touch" is supposed to prevent). Kept
+  flat, same 19 `hreve`s, same `key`s (so `admin.shell.nav.*` message keys do not move) — just
+  re-skinned onto the rail — same 19 `href`s, same `key`s. **Flagging the 14-group IA as a wave-7
+  question**, not deciding it here.
+- **Icons**, one per item, mapped from the existing `icons.tsx` (lead's, already built, 30+ glyphs):
+  dashboard→`HomeIcon`, proposals→`CheckCircleIcon`, sessions→`CalendarIcon`, venues→`PinIcon`,
+  members→`UserIcon`, moderation ×3→`AlertTriangleIcon`, scoring→`StarIcon`, recognition→`StarIcon`,
+  emails→`BellIcon`, reminders→`ClockIcon`, exports→`DownloadIcon`, audit→`LockIcon`. **Four items
+  have no good match and fall back to a reused or weak-fit icon**: categories/companies both have no
+  tag or building glyph (interim: `UsersIcon` on companies, reused from members — a real scanning
+  problem, two adjacent rail items sharing one icon), branding has no palette/swatch glyph (interim:
+  reused `ImageIcon`, shared with the two template-library items), settings has no gear glyph
+  (interim: `MoreIcon`, a weak fit by meaning). **Request to the lead, `icons.tsx`:** four new
+  glyphs — tag, building, palette/swatch, gear — same 24 px/1.7 px-stroke spec as the existing 32.
+  Until they land the rail ships with the reuses above, documented as interim, not silent.
+- **Collapse:** a client wrapper (inside `layout.tsx`, which I own — no new `ui/` file needed for
+  this) holding a boolean, persisted to `localStorage` as a per-viewer convenience only (never read
+  back by the server, wrapped in try/catch, the page renders correctly if it throws or comes back
+  empty — `artifact-capabilities`-style discipline even though this isn't an artifact). Collapsed =
+  icon-only rail with `title`/`aria-label` per item; expanded = icon + label. A single
+  `IconButton` (lead's `icon-button.tsx`) at the rail's top toggles it, `aria-expanded` on the `<nav>`.
+- **Phone treatment, and why:** **not** the rail, not the current `flex-wrap` strip either. Below
+  `md`, the rail collapses entirely behind a small top bar (page title + a menu `IconButton`) that
+  opens the full nav in `ui/sheet` (my file), `side="inline-start"` — a drawer from the reading-start
+  edge, matching how a phone nav drawer is universally read regardless of RTL/LTR. Reasoning: (1) a
+  persistent rail at 390 px eats a third of the viewport before any content renders; (2) the
+  `flex-wrap` fix from the wave-3 bug pass was a patch over the wrong shape (a 19-item nav wrapping to
+  three rows on a phone is still a wall of nav before content, just not off-screen); (3) `ui/sheet` is
+  explicitly named for "the search sheet, the filter sheet, and anything that would otherwise be a
+  modal at 390 px" — a full-height nav drawer is exactly that. The sheet's `title` prop carries
+  `admin.shell.brand` so it announces correctly; closing it returns focus to the trigger (Radix's
+  default, not something to reimplement).
+- **Second skip link (`REQ-UIX-017`):** unchanged in substance — first focusable element inside this
+  layout, visually hidden until focused, `href="#admin-content"` `tabIndex={-1}`, jumping past
+  whichever rail form is active (collapsed rail, expanded rail, or the phone trigger — the sheet is
+  closed by default so the skip link never has to jump past open sheet content).
+- **Proving an untouched screen at 390 px still works:** capture
+  `.qa-shots/rtl/wave6-console-layout-untouched.png` of `/app/admin/venues` (unmodified this wave,
+  still on `flex-wrap`'s old classes for its own page content, wrapped by my new rail) at 390 px RTL,
+  after the layout lands — check no overlap between the rail/sheet-trigger bar and the page's own
+  `<h1>`, and that `venues/page.tsx`'s content padding still clears the tab bar
+  (`scroll-padding`/`padding-block-end` tokens, `16` §3.1 — lead's, unaffected by my change but worth
+  confirming visually since the wrapping element changed). Also re-run any existing e2e spec that
+  loads an admin screen not in my five (none currently assert on `admin/layout.tsx`'s markup — grepped
+  `tests/` for `admin-content`/`nav.dashboard`/`admin\.shell` and found only the layout/DAL files
+  themselves and `platform/layout.tsx`, so no test locks in the flat-`<ul>` shape).
+
+### 1.5 Six lead primitives left stub status at `1d73e89` — read the real files, not the frozen types
+
+`page-header.tsx`, `section-header.tsx`, `icon-button.tsx`, `prose.tsx`, `link.tsx` and
+`route-progress.tsx` are now real. Read directly (not re-derived from `index.ts`'s types alone,
+which under-describe two of them):
+
+- **`ui/page-header`** — every `<h1 className="text-h1...">` + `<p className="...text-fg-muted">`
+  pair on my five pages becomes one `<PageHeader title description meta actions />` call.
+  ★ **`PageHeaderProps` grew a field since I last read it: `breadcrumbLabel`** — required whenever
+  `breadcrumb` is passed (it names the breadcrumb `<nav>`'s accessible name; a page already carries
+  several nav landmarks, so an unnamed one is ambiguous). None of my five routes is deep enough to
+  need a breadcrumb (they're all one level under the rail) — `breadcrumb`/`breadcrumbLabel` stay
+  unset everywhere in this plan. `title` is bidi-isolated **inside** the component — I stop wrapping
+  it in `<bdi>` myself at the call site. `meta` is where a status count or a filter chip belongs,
+  under the title — used on `/app/admin/sessions` (nothing today, but noted in case a future filter
+  summary needs it) and left empty elsewhere.
+- **`ui/section-header`** — replaces the ad hoc `<h2 id="..." className="text-h3...">` pattern used
+  for every sub-section today (dashboard's six panels, proposals/sessions/members' sub-lists).
+  `count` renders a bare Western-formatted number beside the title (`formatNumber(count)`, called
+  **inside** the component) — a heading decoration, not a full ICU-plural sentence, so it does not
+  replace the richer plural sentences already in the copy (proposals' «مقترح واحد بانتظار المراجعة»
+  style intro line stays as body text; `count` is additionally used on `/app/admin/sessions`'
+  "جاهزة للجدولة" and "كل الجلسات" section headings and on `/app/admin/members`' single section, since
+  those don't currently have a plural-sentence intro to preserve).
+- **`ui/icon-button`** — confirmed 44 px (`md`, the default) square, named (`label` mandatory),
+  shares `ui/button`'s variants, default `ghost`. Used for: the rail's collapse toggle, the phone
+  nav-sheet trigger, and every `DataTable` row's "المزيد" menu trigger (`variant="ghost"`, `size="md"`
+  or `"sm"` inside a dense row — `sm` is 36 px and still clears the 24 px touch-target minimum, so
+  it's the better fit inside a table row without inflating row height).
+- **`ui/prose`** — added to my plan where I hadn't named a primitive for long-form text: proposals'
+  abstract/target-audience/admin-notes blocks (today plain `<p className="whitespace-pre-line...">`),
+  `size="sm"`. Nothing else on my five routes is long-form enough to need it.
+- **`ui/route-progress`** — nothing to plan directly: it sits once in the shell (`app/layout.tsx`,
+  lead's) and reads a store that `ui/link`'s own `LinkPendingReporter` writes into. Using `ui/link`
+  everywhere below is what wires my five routes into it; there is no separate call site of my own.
+- **`ui/link`** — wraps `@/i18n/navigation`'s `Link` (still locale-aware, same `href="/app/admin/…"`
+  convention, no change to how I write a path) but also draws a pending dot and feeds the shell's
+  `<RouteProgress>`. **Replacing every `Link` import from `@/i18n/navigation` with
+  `@/components/ui/link` across all five routes and the rail** — dashboard's `TopList`/section links,
+  proposals' (none currently), sessions' title/schedule/attendance/certificates links (now inside the
+  row `Menu`, not bare text, but the `Menu`'s `href`-based items still resolve through this `Link`
+  internally per `MenuProps`), members' "عرض الملف", reports' (none currently), and the rail's 19 nav
+  items. `quiet` on links embedded in an already-dense row (rail items, `Menu` items, `DataTable`
+  cells) so the pending dot doesn't add visual noise next to a menu icon or inside a small nav strip;
+  left loud (default) on the dashboard's standalone section-title links, where a pending dot is the
+  only loading affordance on an otherwise static heading. Not `"use client"`, so no server/client
+  boundary problem on any of my server pages.
+
+★ **A real, pre-existing bug found while checking this, in my own `menu.tsx` (M9-built, not a lead
+stub — I own this file already):** `MenuItem.href`'s branch renders a raw `<a href={item.href}>`, not
+`@/i18n/navigation`'s locale-aware `Link` and not the new `ui/link`. Every `href` written the house
+convention way (`/app/admin/sessions`, no locale segment) currently navigates to a **locale-less URL**
+through this path — `proxy.ts` would 307 it back through locale detection rather than landing
+directly, and it never draws a pending dot or feeds `RouteProgress`. This is exactly the row-action
+menu (فتح الجلسة / الجدولة / الحضور / الشهادات) I'm planning for `/app/admin/sessions`, so it is not
+a theoretical gap — **it also affects `DEC-111`'s shell-disclosure sweep** if the lead's account/nav
+menus route through `href` items (worth a heads-up now, not only in my own report). **Fix, in my own
+file, when I touch `menu.tsx` this wave:** swap the raw `<a>` for `ui/link`'s `Link`
+(`<Link href={item.href} quiet>{content}</Link>` inside the same `DropdownMenu.Item asChild`) — `Link`
+renders `next/link`'s `<a>` as its root with `LinkPendingReporter` nested inside, which `asChild`
+already tolerates elsewhere (`page-header.tsx`'s breadcrumb does the same composition). Not done yet
+(still holding on code) — flagged to the lead separately since it may be live for them sooner than
+for me.
+
+### 2. Per-route plan
+
+Shared across all five: `Button`/`IconButton`/`RouteProgress` (lead's, already wired globally),
+`PageHeader` for the `<h1>` (replacing the ad hoc `<h1 className="text-h1...">` + `<p>` pattern on
+every page today), `EmptyState` (content's) wherever a list can be empty, `Badge`/`SessionStatusBadge`
+(content's) for any status, `Toast` (lead's `useToast()`-shaped handle) for action feedback replacing
+every inline `role="alert"`/`role="status"` paragraph, `Dialog`/`DialogContent` (lead's) for the
+REQ-UIX-013 confirmations. Numerals: every `formatNumber(n, prefs.numerals)` / `formatDateTime(iso,
+numerals, tz, locale)` call becomes `formatNumber(n)` / `formatDateTime(iso, tz, locale)` once the
+sweep lands (`DEC-132`) — noted per route below only where it matters beyond the mechanical rename.
+
+**Destructive-vs-not, decided once, applied five times:** a `ui/dialog` naming the object is used for
+**proposal reject**, **member deactivate**, **session cancel**, and **report removal** — acts that
+withdraw something from someone or end a state that took work to reach. **Approve, request-changes,
+reactivate, session start/complete/reopen, and report dismiss stay a single click** — forward-moving
+or reversible, matching what the code already treats as low-friction today. Member **role change**
+stays undialogued too (no existing precedent treats it as destructive, and `isSelf` already blocks
+the one genuinely dangerous case). Stated here once rather than re-argued per route.
+
+#### 2.1 `/app/admin` — the dashboard (SCR-040, `REQ-ADM-004`)
+
+- `PageHeader` (title/description), then a NEW «يحتاج انتباهك» `Panel` (content's) above the existing
+  figures — a queue list, not a stat grid, each row: icon + Arabic label + count + oldest-item age +
+  a link, per §6.7's "counts that are links, a queue list with ages." See §3 below for the exact four
+  rows and where each count comes from.
+- The six existing `<section>` blocks become `Stat` tiles (content's `stat.tsx`) in a responsive grid
+  for the single-number figures (`rsvpsConfirmed`, `checkInsTotal`, `attendanceRate`, `activeMembers`,
+  `pointsIssued`), each with `href` to the screen it summarises (`REQ-ADM-004`'s own acceptance —
+  already true today via plain `<Link>`, now expressed through `Stat`'s own `href`). The six-row
+  proposal-pipeline breakdown and the three `TopList`s stay `<dl>`/`<ol>` inside a `Panel` +
+  `SectionHeader` — not everything is a `Stat` or a `DataTable`; a six-row breakdown read as one
+  glance doesn't need either.
+- Empty: when all four attention rows are zero, the panel renders `EmptyState` — «لا شيء يحتاج
+  انتباهك الآن» — action pointed at `/app/admin/sessions` (EmptyState's `action` is required by the
+  type; there is no "fix a problem" CTA for a good-news state, so the action is framed as a neutral
+  next step, not a repair).
+- States to capture: attention items present, attention panel empty, phone (`Stat` grid → one
+  column, attention rows stack).
+- DAL: `getAdminDashboardData()` (my file) gains the four attention fields — see §3, all additive to
+  the existing `Promise.all`, one query widened (`proposals` select gains `created_at`) and two new
+  lightweight `head: true, count: "exact"` queries (`sessions` unscheduled, `reports` × 2 targets). No
+  new file, no `supabase/proposed/console/` entry — same reasoning the original bundle-1 note gave:
+  every figure is an aggregate over a table the admin's own RLS already lets them read.
+
+#### 2.2 `/app/admin/proposals` — the review queue (SCR-041, `REQ-PRO-005/006`)
+
+- `PageHeader`, then each proposal as a `Panel` (dense text, not media — `Card` reserved for
+  browse-like/media items elsewhere) inside the existing `<ul>`/`ReviewCard` structure — the
+  `useActionState` per card is unaffected; this is a re-skin plus new feedback and one new
+  confirmation, not a rewrite of the action model.
+- **Approve:** unchanged, one click, `Button pending` from `useActionState`'s pending flag.
+- **Request changes:** unchanged shape — reveal behind `<details>` (deliberately not native
+  `required`, per the existing comment's reasoning, which still holds), submit on click. No dialog
+  (not destructive — the proposer can revise and resubmit; nothing is lost).
+- **Reject — gets the `ui/dialog` (`REQ-UIX-013`):** the visible «رفض» control becomes `type="button"`
+  opening a `Dialog` titled with the proposal's own title (`<bdi>`-wrapped, per invariant), body
+  reads back the typed reason if any, and the dialog's own `type="submit"` button (bound to the same
+  `formAction`, `name="action" value="reject"`) is what actually submits. The `<details>` reveal still
+  holds the reason textarea — nothing about the "not `required`" reasoning changes, only the final
+  commit step gains a named confirmation.
+- **Feedback:** a `done`-style flag added to `ReviewState` (`admin/proposals/state.ts`, my file,
+  additive) so a client `useEffect` on the returned state can fire `toast.show()` — success
+  («تمت الموافقة على المقترح» / «تم رفض المقترح» / «تم إرسال طلب التعديلات») or failure, replacing
+  the inline `role="alert"` paragraph. The paragraph stays as a fallback for users who dismiss the
+  toast before reading it — belt and suspenders, not a redundant announcement (the toast is
+  `role="alert"` on failure too, so this is a visible written record, not a second SR announcement).
+- Empty: `EmptyState`, action → `/app/admin` (no other "next" screen makes sense on an empty queue).
+- States: queue with items, empty, reject-dialog open, request-changes reveal open, pending, toast
+  success/failure, phone (cards already stack — no table involved here).
+- DAL: `listProposalsForReview()` (`lib/dal/proposals.ts`, **sessions'** file, read-only import).
+  ★ **Re-verified against disk after the numerals sweep (`c20b901`): `getOrgPrefs()` is gone from
+  this page entirely** — it existed here only to read `numerals` for `formatNumber()`, and
+  `formatNumber(n)` takes none now. Nothing else on this screen formats a date, so there is no
+  remaining reason to call it. My original draft still listed it; corrected here rather than left
+  stale.
+
+#### 2.3 `/app/admin/sessions` — top level only (SCR-042, `REQ-ADM-005`, `REQ-ADM-020`)
+
+- **"جاهزة للجدولة"** stays a plain list (few rows typically, one action each) inside a `Panel`, not
+  a `DataTable` — sort/search/pagination buys nothing at this size. `EmptyState` when empty.
+- **"إنشاء بدون مقترح" stays secondary**, per the spawn note: collapsed behind a
+  `Button variant="secondary"` that reveals `DirectSessionForm` (a plain client show/hide, not a new
+  primitive) rather than a permanently-visible section.
+- **`DirectSessionForm` rebuild:** every native `<input>`/`<select>`/`<textarea>` moves onto
+  `Field` + the matching control (`sessions`' primitives, consumed not edited) with `FormSummary`
+  above the form on a failed submit. **The presenter checkbox list becomes `ui/combobox`
+  (multiple, my file)** — the exact scroll-trap pattern combobox was built to fix, just found a
+  second time in a file I own; `member.id` as `value`, `displayName` as `label`, Arabic-normalised
+  typeahead reused from the existing implementation.
+- **"كل الجلسات" becomes a `DataTable`** (my file): columns — title (`<bdi>`, `onCard: true`),
+  status (`SessionStatusBadge`, driven by `sessionPhase()` from `@/lib/session-status` — **lead's**,
+  read-only import, already exported — mapping the raw `SessionState` onto the shared six-phase
+  vocabulary so `completed`/`archived`/`cancelled` all read through the same «انتهت»/«أُلغيت» badges
+  the rest of the product uses, closing the "ended is badged separately here today" gap named in my
+  own M9 note), start time (`formatDateTime`, `onCard: true`), presenter status (declined/pending
+  inline note, kept as today), row actions (a `Menu`, my file, trigger = `IconButton` "المزيد":
+  فتح الجلسة → `/app/sessions/{id}`, الجدولة → `.../schedule`, الحضور → `.../attendance`, الشهادات →
+  `.../certificates` — replacing the flat row of underlined text links). `SessionControls`'
+  start/complete/reopen stay plain buttons; **cancel gets the confirm dialog**, naming the session
+  title. No `rowHref` (multiple per-row destinations already exist via the menu; a whole-row link
+  would conflict with them) and **no `selection`/bulk bar** — no bulk-capable RPC backs it
+  (`runTransition` is per-session), so the prop is left unset rather than faked.
+- **A client-side search box** (plain substring over title/presenter names, composed by this screen
+  per my M9 finding that `DataTableProps` has no built-in search) filters `rows` before they reach
+  `DataTable`. Default sort: `createdAt` desc (today's behaviour), toggle to title/status/`startsAt`.
+- **`ModeratorSessionsView` gets the same `DataTable` treatment**, minimal columns (title, status,
+  start), one row action (فتح تقرير الحضور) — DEC-130 chose this route for the phone card stack, and
+  that applies to the moderator's smaller render too, not only the admin one.
+- States: full table, empty, cancel-dialog open, row-action pending, toast, phone stacked cards for
+  both the admin and moderator variants, direct-create form revealed with `FormSummary` on error.
+- DAL: `listSessionsForAdmin`, `listSchedulableProposals`, `listCategories`, `listNameableMembers`
+  (`lib/dal/{sessions,proposals}.ts`, **sessions'** files, read-only), `listSessionsForAttendance`
+  (also sessions'), `getOrgPrefs` (sessions'). ★ Re-verified post-sweep: `getOrgPrefs()` now returns
+  `{maxCoPresenters, timeZone}` only (`numerals` dropped) — still needed here for `formatDateTime`'s
+  `timeZone` argument, so this page keeps the call, unlike proposals. My own `actions.ts`/`state.ts`
+  gain the same `done`-flag addition as proposals, for toast triggering.
+
+#### 2.4 `/app/admin/members` — SCR-049 (`REQ-ADM-009`, `REQ-TEN-005`)
+
+- `DataTable` (my file). Columns: name — `Avatar` (content's, `src: null` always this wave per the
+  spawn note, `memberId`/`displayName` drive the initials + stable-hash tint per `16` §6.8.2) +
+  `<bdi>` display name/email + a `عرض الملف` link to `/app/members/{id}`, `onCard: true`; company
+  (`onCard: true`); role (plain text + an inline `Select`, sessions' primitive, replacing the ad hoc
+  `<select>` — kept undialogued, see the shared destructive-action note above); status
+  (`Badge`, active/deactivated, `onCard: true`); actions (a row `Menu` — تعطيل / إعادة تفعيل).
+  **No `rowHref`** — the row hosts a nested `<select>` and menu, so the whole-row-click pattern is
+  skipped on purpose (nested interactive elements inside a clickable row is its own a11y trap); the
+  name cell's own link is the "open the profile" path.
+- **Deactivate gets the `ui/dialog`**, and the dialog itself hosts the mandatory-reason `Field` +
+  `Textarea` (not a two-step details-then-dialog like proposals — a Radix dialog is a real modal, so
+  native `required` is safe here, unlike inside a collapsed `<details>`), titled with the member's
+  own name. **Reactivate stays one click** (already a plain `useTransition`, no reason, reversible).
+- **A client-side search box** (name/email substring) feeds `DataTable`'s `rows`. **No `selection`** —
+  same reasoning as sessions: nothing backs a bulk role-change or bulk-deactivate-with-one-shared-
+  reason.
+- States: table, filtered-empty (search with no matches — the realistic empty case; a genuinely
+  memberless org can't exist once the admin themself is a member), deactivate-dialog open, role-change
+  pending, reactivate pending, toast, phone stacked cards.
+- DAL: `listMembersForAdmin()`, `listCompaniesForAdmin()` (both **my own** `admin-{members,lists}.ts`),
+  `getOrgPrefs()` (sessions', read-only). No new SQL.
+
+#### 2.5 `/app/admin/moderation/reports` — SCR-052, photo reports (`REQ-ADM-010`, `REQ-EVT-008`)
+
+- **`Card` grid, not `DataTable`** — DEC-130's own DataTable justification names proposals/sessions/
+  members specifically and separates this route out as "where a flag lands," not as a third table
+  candidate; a photo-review queue is card-first at every width because the photo itself is the
+  primary content. `CardMedia` = the signed-URL image (kept, eslint-disabled `<img>`, unchanged
+  reasoning), `CardBody` = uploader/session/reporter/reason (`<dl>`, unchanged shape), `CardActions` =
+  remove/dismiss.
+- **Remove gets the `ui/dialog`** (destructive — the photo leaves the session permanently), titled
+  using the session title and uploader name (the photo itself has no name), hosting the mandatory-
+  reason `Field`+`Textarea` inside the dialog body, same shape as member-deactivate. **Dismiss stays
+  one click** — `resolvePhotoReport`'s `dismiss` branch takes no reason today and nothing here changes
+  that.
+- Empty: `EmptyState`, action → `/app/admin` (no other queue is this screen's job to point at).
+- States: grid with items, empty, remove-dialog open, dismiss pending, toast, phone (cards already
+  stack in a single column below `sm`).
+- DAL: `listPhotoReports()`, `resolvePhotoReport()` (`admin-moderation.ts`, my file) — unchanged
+  shape; `ResolvePhotoReportInput`'s return gains the same `done`-style addition for toast triggering.
+
+### 3. The dashboard's «يحتاج انتباهك» — exactly four rows attempted, one flagged as unbuildable
+
+| Row (Arabic) | Count | Source | Link |
+|---|---|---|---|
+| مقترحات بانتظار قرار | `pipeline.submitted + pipeline.inReview` | the **existing** `proposals` query in `getAdminDashboardData()`, widened to also select `created_at` so the oldest row's age can be shown — no new query | `/app/admin/proposals` |
+| جلسات لم تُجدول بعد | count of `sessions` where `starts_at is null` and `state not in ('cancelled','archived')` | **new** query, same `Promise.all`, `admin-dashboard.ts` (my file) | `/app/admin/sessions` |
+| بلاغات على الصور | count of `reports` where `target = 'photo' and status = 'open'` | **new**, lightweight `count: "exact", head: true` query, `admin-dashboard.ts` | `/app/admin/moderation/reports` (mine) |
+| بلاغات على التعليقات | count of `reports` where `target = 'comment' and status = 'open'` | **new**, same shape | `/app/admin/moderation/comments` (untouched this wave, still a correct destination) |
+
+Kept as **two separate rows** rather than one merged "open reports" count: `DEC-005`'s own rule for
+photos — never merge two moderation paths that call for different senses of urgency and land on
+different screens — extends cleanly to comment vs. photo reports, which already live on two different
+screens today. `REQ-ADM-010`'s own wording ("queues for proposals, comments, photos and reports")
+names exactly this four-way split, which is a second, independent reason it reads right.
+
+**★ The fifth item named in my agent file — "job-queue depth" — is NOT built, and flagged here rather
+than guessed at.** No org-scoped data source exists: `graphile_worker`'s job tables are platform-wide,
+not `org_id`-scoped, no admin RLS policy grants a read on them, and the DAL rule (`CLAUDE.md`, "the
+worker uses `service_role` only through `SECURITY DEFINER` functions, never raw table writes" — and
+by the same logic, never a raw read from an app-tier client either) rules out reading them directly
+even if a policy existed. Two ways to close this, for the lead/owner to pick: (a) **drop the item** —
+the other three cover `REQ-ADM-010`'s own enumeration in full; or (b) **define a real org-scoped
+proxy** — e.g. `notifications` rows not yet delivered for this org, if that shape exists — which I
+have not tried to invent unprompted, per `DEC-114`'s standing rule that a mockup/brief item that
+doesn't match what the tree can support is a question, not something to implement guessing.
+
+### 4. Requests
+
+- **To the lead, `icons.tsx`:** four new glyphs for the rail — tag/category, building/company,
+  palette/swatch (branding), gear (settings) — same 24 px/1.7 px-stroke house spec as the existing 32.
+  Interim: `UsersIcon` reused for both members and companies, `ImageIcon` reused for templates and
+  branding, `MoreIcon` for settings — documented above, not silent.
+- **To `sessions`:** none. `Field`/`Select`/`Textarea`/`Checkbox`/`FormSummary` are consumed as-is;
+  nothing about `DirectSessionForm`'s rebuild needs a prop that doesn't already exist.
+- **To `content`:** none anticipated. `Stat`/`Panel`/`EmptyState`/`Card`/`Badge`/`Avatar` are consumed
+  as-is; `AvatarProps`' `src?: string | null` already does exactly what the spawn note asks (`null` →
+  initials fallback) with no change needed.
+- **No change requested to my own six `ui/` files this wave** — `DataTable`, `Combobox`, `Menu`,
+  `Sheet`, `Dialog`(lead's, consumed), all already cover what the five routes need. `date-time.tsx`
+  and `tabs.tsx` are not consumed by any of my five routes this wave (scheduling and a tabbed screen
+  are both out of scope), so nothing to report there either.
+
+### 5. As built — the admin layout (`8de9b47`), what changed from the plan
+
+- **Icons resolved for real** (the lead's `607ecbe` landed `TagIcon`/`BuildingIcon`/`PaletteIcon`/
+  `GearIcon` before I wrote any code, so the §1/§4 interim reuses never shipped). Two NEW adjacency
+  conflicts found while wiring the real map, neither in the original plan: `scoring`/`recognition`
+  are neighbours and both wanted `StarIcon` — `recognition` took `BookmarkFilledIcon` instead ("marked
+  as notable"); the two template-library items are neighbours too and both wanted `ImageIcon` —
+  `templatesCertificates` took `CheckCircleIcon` (unused elsewhere nearby; "a completed, verified
+  document"). Both calls, and why, are comments at their `NAV_ITEMS` rows.
+- **`menu.tsx`'s `href` bug fixed first**, as its own unit (`e73803e`), before the layout — the lead
+  asked for it explicitly since it's live for their shell-disclosure sweep too.
+- **Collapse state uses `useSyncExternalStore`, not the `useEffect`+`setState` the plan assumed** —
+  `react-hooks/set-state-in-effect` refuses the latter outright. Same idiom `ui/route-progress.tsx`
+  already established for an identical class of problem (client-only state that must not become a
+  hydration mismatch); documented in `admin-rail.tsx` itself.
+- **The second skip link's copy changed, not just its markup.** Found while writing the e2e spec:
+  the old `admin.shell.skipToContent` was byte-identical to the shell's own `app.shell.skipToContent`
+  («تخطَّ إلى المحتوى» twice) — a real, pre-existing ambiguity for a screen-reader user tabbing
+  through two links announced the same way for two different destinations, not something I
+  introduced but something I was already touching. Reworded to «تخطَّ قائمة الإدارة إلى المحتوى».
+- **`.qa-shots/rtl/` captures are written by `tests/e2e/console.spec.ts` but NOT YET LOOKED AT** —
+  `.next/BUILD_ID` predates every commit in this unit (it predates even the `menu.tsx` fix), and only
+  the lead runs `npm run build`. `npm test`/`tsc`/`lint` are all green for every file in this unit;
+  the e2e spec is written and reviewed but unverified against real code until a rebuild. Flagged to
+  the lead at sync.
+- **One unrelated, pre-existing test failure found while running the full suite**, not mine:
+  `tests/components/sessions/proposal-copy.test.tsx`'s clipping-scan trips on its own new
+  `event-subnav.tsx`'s comment (the comment literally contains the string "overflow: hidden" while
+  explaining why the component doesn't use it) — `sessions`' file, flagged to them directly, not
+  touched here.
+
+### 6. As built — the dashboard (`b8501d7`), what changed from the plan
+
+- **The click-through redesign wasn't in the original §2.1 plan.** Rebuilding onto `SectionHeader`
+  lost the old shape's "the heading itself is the link" pattern (`SectionHeader`'s `title` is plain
+  text by design — `PageHeader`'s own comment on `breadcrumb` links is the only place `Link` lives
+  inside either lead primitive). Fixed by giving `pipeline`/`top-categories`/`top-companies` a
+  `SectionHeader.actions` slot carrying a distinct «عرض القائمة» link per section (the existing,
+  previously-unused `admin.dashboard.viewList` key), each disambiguated from the other two identical-
+  looking links by its own `aria-label` — same pattern `admin/sessions/page.tsx`'s
+  `createFromProposal` button already uses for an identical problem. `attendance`/`activeMembers`/
+  `pointsIssued` needed no such fix: they became individual `Stat` tiles, each carrying its own
+  `href` natively, which is MORE click-through surface than the old one-link-per-section-heading
+  shape had, not less.
+- `admin-dashboard.spec.ts` (mine) updated to match — the old test located sections by an
+  "الحضور"/"الأعضاء النشطون"/"النقاط الممنوحة" heading each; those headings don't exist anymore
+  (three `Stat` tiles inside one "نظرة عامة" section instead). Rewritten, not deleted — same figures
+  asserted, same click-throughs proven, against the shape that actually ships.
+- Second unrelated, pre-existing failure found on this pass (not `sessions`' this time):
+  `tests/unit/search-normalize.test.ts` fails against `src/lib/dal/search.ts`, which carries a
+  `__TIMELINE__` placeholder token mid-edit — also `sessions`' file (the `search.ts` transfer), not
+  touched here, not re-reported (already sent one heads-up to `sessions` this session).
+- **Still unverified against a real build** — same `.next/BUILD_ID` staleness as the layout unit;
+  `tests/e2e/admin-dashboard.spec.ts`'s source is correct by review but not yet run green.
+
+### 7. As built — proposals (`ad7f5cc`), what changed from the plan
+
+- **`ReviewState` already carried `done: boolean`** — my plan's §2.2 said I'd add it; re-reading
+  `actions.ts` before touching it found it was already there (built with the form for the "values
+  survive a failed round trip" rule, `16` §8.2 item 6, before this wave). Nothing to add.
+- **One generic success toast, not three per-decision messages.** `admin.proposals.done` — "سُجّل
+  قرارك ووصل صاحب المقترح" — already existed, unused, clearly written for exactly this. Using it
+  is simpler than my plan's three-message design and needed no new copy.
+- **`form={formId}` is the real substance of the reject dialog**, not a detail: Radix portals
+  `DialogContent` onto `document.body`, outside the `<details>` the trigger lives in, so the
+  confirm button's DOM ancestry no longer includes the `<form>` at all — an implicit,
+  ancestry-based association (what a plain submit button inside the form gets for free) does
+  nothing once the button is portalled out. Found this while writing the component test, not while
+  writing the component — the jsdom test's first attempt submitted nothing on "confirm" until the
+  `form` attribute was added.
+- **A cross-track test consequence, not touched:** `tests/e2e/sessions-admin-proposals.spec.ts`
+  (wave 1's file, outside this track's `admin-proposals*.spec.ts` glob) drives the old immediate-
+  submit reject flow and will fail against the new dialog. Flagged to the lead with the exact fix
+  rather than edited — it is `sessions`' named file and may be mid-edit.
+- Two more unrelated, pre-existing failures found on this pass, both `content`'s (materials/photos
+  upload-widget tests, mid-transition on `uploadLimits`/`imageLimitMb`) — not touched, not
+  re-reported individually (the pattern is now familiar: several tracks landing DAL shape changes
+  ahead of their own tests in the same window).
+
+### 8. As built — sessions, top level (`e0f0f2c`), what changed from the plan
+
+- **The biggest deviation from the plan, found by my own jsdom test, not by review:** §2.3 said
+  "`SessionControls`' start/complete/reopen stay plain buttons" — my first pass instead gated the
+  whole block behind an "إجراءات المشرف" item in the row `Menu`, reasoning (wrongly) that a row of
+  several buttons plus a cancel disclosure had nowhere to fit. That directly contradicts what I
+  planned, AND — checked before committing, not after — breaks
+  `tests/e2e/sessions-screens.spec.ts:320`'s `expect(boss.getByRole("button", {name: "ابدأ الجلسة
+  الآن"})).toBeVisible()` immediately on page load, with no click first. Fixed to always-visible,
+  rendered below the table (not inside a `DataTable` cell — still nowhere for a multi-button block
+  to fit in one cell), which is both what the plan said and what the existing M2 demonstrable
+  assumes. `sessions-screens.spec.ts` itself needed no edit — verified by reading it, not assumed.
+- **`actionsFor()` cannot be imported into `sessions-table.tsx`** — it lives in `lib/dal/sessions.ts`
+  (sessions' file, `import "server-only"`), and that module cannot be pulled into a `"use client"`
+  bundle at all, not even for one function. Computed server-side in `page.tsx` per row into an
+  `actionsById: Record<string, SessionAction[]>` and threaded down as plain data instead.
+  `DataTableColumn`/`AdminSession`/`SessionAction` TYPES are still imported directly — type-only
+  imports are erased before `"server-only"`'s runtime check would ever see them.
+- **`t()` vs `t.markup()`, found by the same jsdom test:** the row menu's `moreActions` label uses a
+  `<t>{title}</t>` tag (`admin.combobox.removeChip`'s own precedent) so two rows' triggers are never
+  announced identically — calling it with plain `t()` instead of `t.markup()` rendered the literal
+  string `"admin.sessions.moreActions"` as the accessible name. The test's own `getByRole` query
+  caught it immediately; nothing about reading the component would have.
+- **The direct-create form's adoption of `lib/form-state` is real, not partial**, but it skips one
+  piece of `app/propose/proposal-form.tsx`'s own model on purpose: the live reward/punish on-blur
+  error-clearing. `FormSummary` + adjacent error + «مطلوب» + value survival is REQ-UIX-009/010/011's
+  full acceptance criteria on its own, and this is DEC-130's own "secondary action," not the
+  flagship form the extra polish was built for. No jsdom test written for this specific form this
+  pass (time budget) — its Combobox/`wasList()` wiring is lower incremental risk than
+  `SessionControls`' portal, since it reuses `app/propose`'s already-proven `lib/form-state` pattern
+  verbatim rather than inventing a new one.
+- **Two message-copy additions beyond the plan**, both found while wiring, not anticipated: the
+  cancel-confirm dialog needed the same "portal, so `form={id}`" treatment as proposals' reject
+  dialog, and `admin.sessions.errorSummaryTitle`/`errors.*` are new — the form had no error-summary
+  copy at all before (`invalid`/`failed` were single generic strings), since `<FormSummary>` is new
+  work here, not a re-skin.
+
+### 9. As built — members (`ef0586a`), and a real bug found here that reached back into sessions too
+
+- **A genuine React Flight serialisation trap, found while trying to unit-test the row actions —
+  not by reading the code.** `members-table.tsx` (and `sessions-table.tsx`, already committed)
+  passed a FACTORY prop from `page.tsx` to a `"use client"` table — `changeRoleAction: (id) =>
+  changeRole.bind(null, locale, id)`. That reads as "a bound Server Action per row" and `tsc`
+  accepts it without complaint, but the value crossing the server/client boundary is the OUTER
+  arrow function, which is a plain closure, not a Server Action reference — only the RESULT of
+  `.bind()` on a `"use server"` export carries the marker React Flight knows how to serialise.
+  Flight would refuse this at the point it actually tries to send the RSC payload. Both routes are
+  dynamic (session-gated), so this would not have surfaced in `npm run build` either — only at a
+  real request, which is why "only `npm run build` catches it" (this repo's own recurring caution
+  for Server Actions) undersells the risk here. **Fixed the same way in both files:** `page.tsx`
+  builds a plain `Record<id, boundAction>` map ONCE via `Object.fromEntries(rows.map(r => [r.id,
+  action.bind(null, locale, r.id)]))` and hands the finished map down; the client table indexes into
+  it per row. `sessions-table.tsx`'s `runTransitionAction` prop became `transitionActions` in the
+  same pass, once the shape of the bug was clear from fixing it here first.
+  ★ **How it was actually found:** members-table.tsx's OWN jsdom test tried `vi.spyOn` on the
+  imported `./actions` module directly and hit `server-only`'s own throw immediately (`actions.ts`
+  transitively imports `lib/dal/admin-members.ts`) — which is what forced the redesign to
+  props-not-imports in the first place, and made the factory-vs-map distinction visible once actions
+  became props instead of direct calls. Reading the component alone would not have caught it; the
+  jsdom test would have PASSED either way, since jsdom has no React Flight boundary to enforce this
+  — only a real Next.js server render does. Worth restating for whoever reads this later: **a green
+  jsdom test does not prove a Server-to-Client prop is real Server Action, only that the function
+  behaves correctly once called** — this class of bug needs either a real dev-server request or
+  reading the RSC rules directly, not a unit test.
+- **A feature dropped in the first draft, restored once missed:** the deactivation note (who, when,
+  why) existed in the pre-wave-6 screen (`deactivatedNote`, already translated, simply unused after
+  the rebuild) and REQ-ADM-009's own audit-visibility intent wants it. Needed `getOrgPrefs()` added
+  to `page.tsx` (not called there before) for the time zone `formatDateTime` needs.
+- `tests/e2e/admin-members.spec.ts` (this track's own file) rewritten, not flagged elsewhere — three
+  of its four tests are now desktop-only (`DataTable`'s phone card list has no `role="row"` to scope
+  a member by; the fourth, the 390 px capture, already was phone-only). Not a workaround: a real
+  browser's accessibility tree excludes a `display:none` subtree entirely, so `getByRole` queries
+  resolve singularly regardless of viewport — the row-scoping itself is what only desktop's `<table>`
+  offers.
+
+### 10. As built — the photo report queue (`98a27fb`) — the fifth and last route
+
+- **`Card`, confirmed as the right call, not `DataTable`.** Re-read `DEC-130` before starting this
+  one specifically, since my own §2.5 plan already flagged the ambiguity: the decision's own
+  DataTable justification sentence names proposals/sessions/members and treats this route
+  separately ("where a flag lands"), which settles it — no new finding, just confirming the plan's
+  own reasoning held once the other four routes' patterns were in hand for comparison.
+  Removal is a NARROWER problem than proposals'/sessions' reject/cancel confirmations: neither
+  needs the two-step details-then-dialog shape those two use, because there is no pre-existing
+  "reveal the reason first" UI to preserve here — the dialog itself is free to be the one and only
+  step, exactly like `members-table.tsx`'s `ActionsCell` (built two units earlier in this same wave,
+  and directly reused here without rediscovering the pattern).
+- **The `done`/dialog-closes-on-success shape from members carried over directly** — no new lint
+  trap, no new bug, because the pattern (derive the close from `state` during render, keep the toast
+  in the effect) was already correct from the members unit.
+- Nothing dropped this pass, unlike members' missing deactivation note — checked the ORIGINAL
+  `report-card.tsx`/`page.tsx` line by line against the rebuild before committing specifically
+  because of that earlier miss, and confirmed every field (uploader, session, reporter, reason, age)
+  made it into the new `CardBody`.
+
+### All five routes done, plus the layout — wave 6's console track complete pending sync
+
+Layout (`8de9b47`), dashboard (`b8501d7`), proposals (`ad7f5cc`), sessions top-level (`e0f0f2c`,
+`ef0586a`'s RSC-serialisation follow-up), members (`ef0586a`), reports (`98a27fb`). Every unit: `tsc`
+clean, lint 0 errors, `npm test` green including axe on every new interactive component, a
+same-track e2e spec written (`console.spec.ts`, `admin-dashboard.spec.ts`, `admin-proposals.spec.ts`,
+`admin-sessions.spec.ts`, `admin-members.spec.ts`, `admin-reports.spec.ts`) — **none run against a
+real build yet**, `.next/BUILD_ID` has predated every commit in this wave so far. Two cross-track
+test files flagged to their owners rather than edited (`sessions-admin-proposals.spec.ts` to
+`sessions`, with the exact fix; several transient DAL-shape failures in `content`'s and `sessions`'
+own files, not touched). One cross-track-relevant bug found and fixed (the React Flight
+factory-prop trap, §9) — reported to the lead in case it recurs elsewhere.
+
+### 11. The lead's real build found three more things this wave's jsdom coverage could not
+
+`npm test`/`tsc`/`lint` all being green never proved the app actually renders for a real request —
+only a real Next.js build does, and the lead ran several. Two rounds of fixes landed on top of the
+six "done" commits above, each its own commit as the lead asked:
+
+- **`1f4fffe` — the real BLOCKER.** `AdminRailItem` carried `Icon: ComponentType<...>`, built in
+  `admin/layout.tsx` (server) and passed to `admin-rail.tsx` ("use client"). `icons.tsx` is not a
+  client module, so its exports are plain functions, and React Flight refuses to serialise ANY
+  function crossing that boundary — not just the "factory returning a bound Server Action" shape
+  `§9` already found, but the plainer case of a component reference itself. **Every admin page
+  crashed for every staff member**, and none of this wave's own jsdom tests could have caught it —
+  jsdom has no React Flight boundary to enforce against. Fixed by moving the icon set into
+  `admin-rail.tsx` itself (the client module, so the functions never leave it) and passing a string
+  key (`icon: "home"`) instead. Same commit fixed the member-404 regression: `requireStaffSession()`
+  called `notFound()` **inside the layout**, and under Next 16's streaming contract a `notFound()`
+  raised under a `loading.tsx` boundary (an implicit `<Suspense>`, unrelated to anything this wave
+  added) can no longer set the response status once streaming starts — 200, not 404. Replaced with
+  `requireSession()` (never `notFound()`s an authenticated member) and moved the actual gate back to
+  every page's own existing check, which is what this file's own header comment already said the
+  design was.
+- **`1ee207a` — three smaller findings, one commit.** (1) Every "confirm {object}?" dialog title
+  interpolated a bare `{title}`/`{name}`/`{session}` — `sessions`' own catalogue test caught
+  `rejectConfirmTitle`; checked and fixed all FOUR dialogs across all five routes rather than only
+  the one reported, including `removeConfirmTitle`'s `{session}`, which that test's own regex does
+  not check for (`{title}`/`{name}` only) but is the identical bug. (2) `admin-proposals.spec.ts`'s
+  seed had no `category_id`, NOT NULL since `0010` — a schema fact this track's own plan-reading
+  should have caught and did not. (3) `sessions-table.tsx` hand-copied the house bordered-box class
+  string `ui-lint` (`REQ-UIX-001`) exists specifically to catch — replaced with `ui/panel`.
+
+**The pattern worth naming:** every one of these five bugs (the RSC factory-prop trap, this RSC
+component-reference trap, the streaming/`notFound()` interaction, the bidi gap, the schema
+constraint) is exactly the class this milestone's own testing strategy predicts jsdom cannot catch
+— a real request, a real database constraint, a cross-file catalogue sweep. `npm test` green was
+never the claim that the app works; it was the claim that what jsdom CAN check, it does. Not yet
+done: the lead's next rebuild + a real look at every `.qa-shots/rtl/wave6-console-*` capture, the
+
+### 12. The lead's real e2e run — DEC-134, a same-commit unmount, and a mis-wired empty state
+
+`1f4fffe`/`1ee207a` fixed what a served build's own render found; running the actual spec suite
+against that build found a second layer — timing and copy bugs no jsdom render can see either, since
+jsdom has neither a streaming HTTP response nor React's real commit ordering.
+
+- **DEC-134 (lead's).** Every "a member/moderator/staff gets a real 404" assertion this track wrote
+  was checking the wrong thing: `app/loading.tsx` streams the response before any DAL gate runs, so
+  `notFound()` under `/app` answers 200 with `noindex` and the not-found page, never a 404 status —
+  product-wide, not something this wave's layout caused. Rewrote all five affected assertions
+  (`admin-dashboard.spec.ts` ×2, `admin-members.spec.ts`, `admin-moderation.spec.ts` — not this
+  track's file, edited on the lead's explicit direction for this one line — and
+  `sessions-admin-proposals.spec.ts`, previously granted) to check the not-found `<h1>`, the
+  `noindex` meta tag, and that no guarded heading/content renders, instead of a status code.
+  `sessions-admin-proposals.spec.ts` also got the reject-flow diff granted earlier: rejecting now
+  opens `ui/dialog` (this wave's own rebuild), and the test still drove the pre-dialog "click أرسل,
+  submit" shape.
+- **A real bug, not a test bug: `report-card.tsx`'s toast never fired.** `admin-reports.spec.ts`'s
+  confirmation-toast assertion timed out for real. Root cause: `remove`/`dismiss` both resolve the
+  report, which the SAME `revalidatePath` round trip drops from the open-reports query — the
+  refreshed list and this action's own `useActionState` result land in one commit, and React
+  discards a fiber's pending update when its parent's reconciliation removes that fiber in the same
+  commit, so the `useEffect` keyed on `state` that fired the toast never got to run for the
+  disappearing card. Fixed by firing `toast.show()` from INSIDE the action passed to
+  `useActionState`, not from an effect reacting to its result — an ordinary callback on
+  `ToastProvider`, independent of whether `ReportCard` ever renders again. `admin-sessions.spec.ts`'s
+  own toast assertion (line 121) never showed this symptom because cancelling a session does not
+  remove its row from that list — the acted-on component staying mounted is what let the effect-based
+  version work there.
+- **Two strict-mode scoping bugs, real DOM, not flakiness.** `admin-sessions.spec.ts` matched
+  `DataTable`'s desktop `<table>` AND phone `<ul>` simultaneously on a bare `getByText` — scoped via
+  `page.getByRole("table").or(page.getByRole("list"))`, which resolves to exactly one in a real
+  browser since a `display:none` subtree drops out of the accessibility tree. `admin-reports.spec.ts`
+  matched a `<dd>` AND its only child `<bdi>` for the same reason — CLAUDE.md's own bidi-isolation
+  rule means a bare interpolated value's wrapper has no sibling text, so `<dd>` and `<bdi>` share
+  identical normalised content; `.last()` for the innermost, the same trap `event-comments.spec.ts`
+  already named. `console.spec.ts`'s skip-link test assumed a fixed two-Tab position; rewrote it to
+  walk the tab sequence (bounded, 8 presses) instead of pinning a count that belongs to the shell, not
+  this layout.
+- **Two real UX bugs from the lead's own look at `scr-042-sessions-390-rtl-desktop.png`.**
+  `sessions-table.tsx`'s empty state showed "لا جلسات مطابقة لبحثك." (no search matches) even with an
+  untouched search box, AND its action button was labelled with `scheduleNote` — a full sentence
+  written as `direct-session-form.tsx`'s own inline hint, not a button label — rendering a paragraph
+  inside a primary `ButtonLink`. Fixed: the title now branches on `query`, and a new short key
+  (`listEmptyAction`, "افتح المقترحات") replaced the misused one. Added jsdom coverage for both states
+  (`sessions-table.test.tsx`) since neither had it before — the reuse of an existing key across two
+  unrelated purposes is exactly the kind of thing a "does this string exist" check misses.
+- **The skip link in `scr-046-venues-390-rtl-phone.png` — investigated, not a bug.** That capture (an
+  UNTOUCHED route, `sessions-screens.spec.ts`, not this file) shows the admin layout's second skip
+  link overlapping the venues form's "السعة" field. Checked: the markup is byte-identical in class and
+  structure to the shell's own working skip link (`.skip-link`, `globals.css`, lead-owned, unchanged
+  this wave) — `translateY(-200%)` unfocused, `translateY(0)` on `:focus-visible` — and the test's own
+  flow never focuses or tabs to either skip link before that capture (its last action is `.fill()`ing
+  the capacity field). Most likely a `fullPage: true` + `position: fixed` screenshot-stitching
+  artifact (a known Playwright/Chromium quirk on a long, scrollable page), not a genuine hide failure.
+  Cannot confirm further without a fresh capture — reported to the lead rather than guessed at, since
+  `globals.css` and that spec file are both outside this track's edit list either way.
+actual `DEC-130` bar.

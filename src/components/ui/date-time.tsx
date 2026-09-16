@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import type { DateTimeProps } from "@/components/ui";
 
 // `console`'s file — ADOPTS the RTL picker built for SCR-043 (DEC-045)
@@ -44,12 +43,12 @@ import type { DateTimeProps } from "@/components/ui";
 // shape, not authority": the actual boundary is server-side, same as every
 // other field in this product.
 
-export function DateTime(props: DateTimeProps & { numerals?: NumeralSystem }) {
+export function DateTime(props: DateTimeProps & { }) {
   // `timeZone` is accepted by the contract and intentionally unused here —
   // the adopted picker is a wall-clock control, same as the native
   // `datetime-local` input it replaces; the zone is applied server-side
   // (`schedule-form.tsx`'s own `atZone()`), never in this component.
-  const { id, name, defaultValue, value, onChange, min, max, granularity = "minute", invalid, className = "", numerals = "western" } = props;
+  const { id, name, defaultValue, value, onChange, min, max, granularity = "minute", invalid, className = "" } = props;
   const generated = useId();
   const fieldId = id ?? generated;
   const locale = useLocale();
@@ -113,7 +112,6 @@ export function DateTime(props: DateTimeProps & { numerals?: NumeralSystem }) {
         // explicit `null` is a controlled, deliberately-empty value — `??`
         // alone would conflate the two, since it treats both as absent.
         defaultValue={(value !== undefined ? value : defaultValue) ?? ""}
-        numerals={numerals}
         locale={locale}
         clearLabel={t("clear")}
         todayLabel={t("today")}
@@ -121,6 +119,8 @@ export function DateTime(props: DateTimeProps & { numerals?: NumeralSystem }) {
         hourLabel={t("hour")}
         minuteLabel={t("minute")}
         emptyLabel={t("empty")}
+        prevMonthLabel={t("prevMonth")}
+        nextMonthLabel={t("nextMonth")}
       />
     </div>
   );

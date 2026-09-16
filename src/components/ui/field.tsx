@@ -80,9 +80,21 @@ const controlBase =
 // console rows where the row itself is the target; it is never a form control
 // a member fills in on a phone.
 const controlSizes: Record<Size, string> = {
-  sm: "min-h-9 px-3 py-1.5 text-caption",
-  md: "min-h-11 px-4 py-2.5 text-body",
-  lg: "min-h-12 px-4 py-3 text-body",
+  sm: "min-h-9 py-1.5 text-caption",
+  md: "min-h-11 py-2.5 text-body",
+  lg: "min-h-12 py-3 text-body",
+};
+
+// ★ The inline padding is its own table, because a control with a glyph inside
+// it needs a different START and the same END — and those are two properties,
+// never an axis utility with a directional one on top. `px-4` plus a caller's
+// `ps-10` both set `padding-inline-start`, and which wins is decided by the
+// order Tailwind emits them, not the order they are written (DEC-111). So a
+// control is either `px-*` or `ps-* pe-*`, chosen here, and no caller adds either.
+const controlInline: Record<Size, { plain: string; startIcon: string }> = {
+  sm: { plain: "px-3", startIcon: "ps-9 pe-3" },
+  md: { plain: "px-4", startIcon: "ps-11 pe-4" },
+  lg: { plain: "px-4", startIcon: "ps-11 pe-4" },
 };
 
 /**
@@ -90,8 +102,9 @@ const controlSizes: Record<Size, string> = {
  * never the only channel — the message, the glyph and `aria-invalid` carry it
  * too (`16` §8.2 item 3).
  */
-export function controlClass(invalid = false, size: Size = "md", extra = "") {
-  return `${controlBase} ${controlSizes[size]} ${invalid ? "border-error-border" : "border-edge-strong"} ${extra}`;
+export function controlClass(invalid = false, size: Size = "md", extra = "", options: { startIcon?: boolean } = {}) {
+  const inline = options.startIcon ? controlInline[size].startIcon : controlInline[size].plain;
+  return `${controlBase} ${controlSizes[size]} ${inline} ${invalid ? "border-error-border" : "border-edge-strong"} ${extra}`;
 }
 
 export function Field({ id, label, hint, error, required, children, className = "" }: FieldProps) {

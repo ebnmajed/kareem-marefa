@@ -26,8 +26,8 @@ describe("POL-orgs", () => {
       const asMember = await tx.q<{ id: string }>(`update public.orgs set name = 'x' where id = $1 returning id`, [f.a.id]);
       expect(asMember).toEqual([]);
       await tx.as(f.a.admin.claims);
-      const asAdmin = await tx.q<{ name: string }>(`update public.orgs set name = 'كريم معرفة ٢' where id = $1 returning name`, [f.a.id]);
-      expect(asAdmin[0].name).toBe("كريم معرفة ٢");
+      const asAdmin = await tx.q<{ name: string }>(`update public.orgs set name = 'كريم معرفة 2' where id = $1 returning name`, [f.a.id]);
+      expect(asAdmin[0].name).toBe("كريم معرفة 2");
       expect(await errorCode(() => tx.q(`delete from public.orgs where id = $1`, [f.a.id]))).toBe(PERMISSION_DENIED);
       // The slug is outside the update grant even for an admin.
       expect(await errorCode(() => tx.q(`update public.orgs set slug = 'other' where id = $1`, [f.a.id]))).toBe(PERMISSION_DENIED);
@@ -105,7 +105,7 @@ describe("POL-org_settings", () => {
       expect(asMod).toEqual([]);
       await tx.as(f.a.admin.claims);
       const asAdmin = await tx.q<{ time_zone: string }>(
-        `update public.org_settings set time_zone = 'Asia/Dubai', numerals = 'arabic_indic' where org_id = $1 returning time_zone`,
+        `update public.org_settings set time_zone = 'Asia/Dubai' where org_id = $1 returning time_zone`,
         [f.a.id],
       );
       expect(asAdmin[0].time_zone).toBe("Asia/Dubai");
@@ -115,7 +115,6 @@ describe("POL-org_settings", () => {
         [f.a.id, f.a.settingsId],
       );
       expect(history.map((h) => [h.field, h.old_value, h.new_value])).toEqual([
-        ["numerals", "western", "arabic_indic"],
         ["time_zone", "Asia/Riyadh", "Asia/Dubai"],
       ]);
       expect(history.every((h) => h.actor_id === f.a.admin.memberId)).toBe(true);

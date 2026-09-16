@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import type { CompanyBoardRow } from "@/lib/dal/leaderboards";
 
 // SCR-028 · سباق الشركات. Both metrics are always shown (REQ-LDR-004) — a
@@ -10,11 +10,9 @@ import type { CompanyBoardRow } from "@/lib/dal/leaderboards";
 // screen says so rather than implying a live number.
 export async function CompanyBoard({
   rows,
-  numerals,
   metric,
 }: {
   rows: CompanyBoardRow[];
-  numerals: NumeralSystem;
   metric: "total_points" | "points_per_active_member";
 }) {
   const t = await getTranslations("leaderboards");
@@ -34,7 +32,7 @@ export async function CompanyBoard({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="text-label text-fg-muted">
-                  <bdi>{formatNumber(row.rank, numerals)}</bdi>
+                  <bdi>{formatNumber(row.rank)}</bdi>
                 </span>
                 <span className="text-body text-fg-heading">
                   <bdi>{row.companyName}</bdi>
@@ -43,10 +41,10 @@ export async function CompanyBoard({
             </div>
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-body-sm text-fg-muted">
               <span>
-                {t("company.totalPoints")}: <bdi>{formatNumber(row.totalPoints, numerals)}</bdi>
+                {t("company.totalPoints")}: <bdi>{formatNumber(row.totalPoints)}</bdi>
               </span>
               <span>
-                {t("company.perActiveMember")}: <bdi>{row.pointsPerActiveMember != null ? formatNumber(Math.round(row.pointsPerActiveMember * 100) / 100, numerals) : "—"}</bdi>
+                {t("company.perActiveMember")}: <bdi>{row.pointsPerActiveMember != null ? formatNumber(Math.round(row.pointsPerActiveMember * 100) / 100) : "—"}</bdi>
               </span>
             </div>
           </li>

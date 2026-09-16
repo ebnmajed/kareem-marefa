@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { TaskSummary } from "@/lib/dal/tasks";
 import { submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 
 interface TaskItemProps {
   locale: string;
@@ -21,11 +22,26 @@ export function TaskItem({ locale, sessionId, task }: TaskItemProps) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // `DEC-135`: `toggleTaskCompletionAction` calls `revalidatePath` server-
+  // side, so this transition waits on the SAME re-render React 19.2.4 can
+  // lose the ping for. `usePendingNudge` re-renders this component every
+  // 300ms while pending to force the lost retry through.
+  usePendingNudge(pending);
+
   function toggle(completed: boolean) {
     setError(null);
     startTransition(async () => {
-      const result = await toggleTaskCompletionAction(locale, sessionId, task.id, completed);
-      if (result.error) setError(result.error);
+      try {
+        const result = await toggleTaskCompletionAction(locale, sessionId, task.id, completed);
+        if (result.error) setError(result.error);
+      } catch {
+        // ★ A request that fails at the NETWORK level (offline, a dropped
+        // connection) makes the action REJECT rather than return an
+        // `{ error }` value — left uncaught, React would replace the whole
+        // event page with the route's error boundary (the lead's real-build
+        // finding on the discussion, same shape here).
+        setError(t("list.toggleFailed"));
+      }
     });
   }
 
@@ -79,6 +95,11 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(!task.completed);
 
+  // `DEC-135`: `submitTaskFormResponseAction` calls `revalidatePath`
+  // server-side too — same reasoning as `TaskItem`'s own `usePendingNudge`
+  // above.
+  usePendingNudge(pending);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -87,11 +108,19 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
     for (const field of task.formSchema ?? []) response[field.id] = String(formData.get(field.id) ?? "").trim();
 
     startTransition(async () => {
-      const result = await submitTaskFormResponseAction(locale, sessionId, task.id, response);
-      if (result.error) setError(result.error);
-      else {
-        setSubmitted(true);
-        setEditing(false);
+      try {
+        const result = await submitTaskFormResponseAction(locale, sessionId, task.id, response);
+        if (result.error) setError(result.error);
+        else {
+          setSubmitted(true);
+          setEditing(false);
+        }
+      } catch {
+        // Same real-build finding as `TaskItem.toggle` above: an uncaught
+        // network-level rejection here would crash the whole event page.
+        // The typed answers stay in the form either way — this branch never
+        // touches `submitted`/`editing`.
+        setError(t("submitFailed"));
       }
     });
   }

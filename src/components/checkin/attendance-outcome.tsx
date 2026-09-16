@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { Panel } from "@/components/ui/panel";
+import { CheckCircleIcon, InfoIcon } from "@/components/ui/icons";
 
 // AttendanceOutcome — `16` §5.3's ★ ask-4 cells (`ended`/`attended` and
 // `ended`/`absent`), REQ-UIX-015, DEC-090, DEC-045.
@@ -18,25 +19,30 @@ import { Panel } from "@/components/ui/panel";
 // is a self-contained "الحضور" section; this component is a fact inside
 // whatever the page wraps it in, not a section of its own.
 //
-// Not wired into the event page yet — `page.tsx` is the lead's file for M9
-// (DEC-103). Suggested spot: beside `<RsvpPanel>` in the `<aside>`; the two
-// self-gate on disjoint phases (`open` vs `ended`) so exactly one of them
-// ever prints anything for a given viewer.
+// Rendered inside the event page's action card, beside `<RsvpPanel>`'s parts;
+// the two self-gate on disjoint phases (`open` vs `ended`) so exactly one of
+// them ever prints anything for a given viewer.
 //
-// ★ Reads `getRsvpPanelData()` a second time — the same call `RsvpPanel`
-// makes. A real extra round trip, not a free one; `docs/plan/notes/
-// checkin.md` "Wave 5" scope decision 6 flags it as a follow-up once
-// `SlotProps` carries `viewerRelation` (DEC-092) and both slots can take it
-// as a prop instead of each re-deriving it.
+// Reads `getRsvpPanelData()` — the same call `RsvpPanel` makes, and since wave
+// 6 a request-scoped `cache()`, so it is one round trip for both.
 export async function AttendanceOutcome({ sessionId, locale }: SlotProps) {
   const [data, t] = await Promise.all([getRsvpPanelData(locale, sessionId), getTranslations("rsvp")]);
   if (!data || data.phase !== "ended") return null;
   if (data.relation !== "attended" && data.relation !== "absent") return null;
 
+  // Wave 6 (DEC-130), markup only: a green strip with a check for «حضرت», the
+  // quiet «ended» tone for «لم تُسجّل حضورك». Colour is never the only channel —
+  // the word carries it, and the glyph differs too (REQ-UIX-003). No margin of
+  // its own: the action card spaces its parts.
+  const attended = data.relation === "attended";
   return (
     <div role="status">
-      <Panel tone="info" className="mt-4 text-body text-fg-heading">
-        {data.relation === "attended" ? t("attended") : t("didNotAttend")}
+      <Panel
+        tone={attended ? "success" : "ended"}
+        className={`flex items-center gap-2.5 px-3.5 py-3 text-body font-medium ${attended ? "text-success" : "text-fg-body"}`}
+      >
+        {attended ? <CheckCircleIcon className="text-[1.25rem]" /> : <InfoIcon className="text-[1.25rem] text-fg-muted" />}
+        <span>{attended ? t("attended") : t("didNotAttend")}</span>
       </Panel>
     </div>
   );

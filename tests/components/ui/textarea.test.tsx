@@ -28,6 +28,16 @@ describe("Textarea", () => {
     expect(screen.getByRole("textbox")).toHaveAttribute("rows", "3");
   });
 
+  it("★ keeps the long-form floor only when no row count was asked for", () => {
+    // The composer asks for three rows and grows; an 8rem floor would make its
+    // first line sit in a box twice the height it asked for, and a `min-h-*`
+    // passed in cannot win against it reliably (emit order, DEC-111).
+    const { rerender } = render(<Textarea aria-label="النبذة" />);
+    expect(screen.getByRole("textbox").className).toContain("min-h-32");
+    rerender(<Textarea aria-label="تعليق" rows={3} />);
+    expect(screen.getByRole("textbox").className).not.toContain("min-h-32");
+  });
+
   it("★ never clips its own text — `overflow: hidden` cuts tashkeel", () => {
     render(<Textarea aria-label="النبذة" />);
     const area = screen.getByRole("textbox");

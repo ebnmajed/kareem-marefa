@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
-import { PLATFORM_NUMERALS } from "@/lib/dal/platform";
 import { listPlatformTemplates, listPromotableVersions, type PlatformTemplate } from "@/lib/dal/platform-templates";
 import { promoteAction, retireAction, setDefaultAction } from "./actions";
 import { PromoteForm } from "./promote-form";
@@ -40,7 +39,7 @@ export default async function PlatformTemplatesPage({ params }: { params: Promis
     getTranslations("platform.templates"),
     getTranslations("templates.family"),
   ]);
-  const num = (n: number) => formatNumber(n, PLATFORM_NUMERALS);
+  const num = (n: number) => formatNumber(n);
 
   return (
     <>

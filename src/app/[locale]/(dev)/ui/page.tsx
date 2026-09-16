@@ -53,6 +53,7 @@ const ICON_NAMES: Record<string, string> = {
   ArrowIcon: "سهم",
   BellIcon: "الإشعارات",
   BookmarkIcon: "حفظ",
+  BuildingIcon: "شركة",
   BookmarkFilledIcon: "محفوظ",
   CalendarIcon: "تقويم",
   CheckIcon: "تم",
@@ -64,6 +65,7 @@ const ICON_NAMES: Record<string, string> = {
   DownloadIcon: "تنزيل",
   EyeIcon: "رؤية",
   FilterIcon: "تصفية",
+  GearIcon: "إعدادات",
   HomeIcon: "الرئيسية",
   ImageIcon: "صورة",
   InfoIcon: "معلومة",
@@ -72,6 +74,7 @@ const ICON_NAMES: Record<string, string> = {
   LockIcon: "مقفل",
   MenuIcon: "قائمة",
   MoreIcon: "المزيد",
+  PaletteIcon: "هوية",
   PinIcon: "مكان",
   PlusIcon: "إضافة",
   SearchIcon: "بحث",
@@ -79,11 +82,14 @@ const ICON_NAMES: Record<string, string> = {
   SortIcon: "ترتيب",
   SpinnerIcon: "تحميل",
   StarIcon: "تقييم",
+  TagIcon: "وسم",
   TrashIcon: "حذف",
   UploadIcon: "رفع",
   UserIcon: "عضو",
   UsersIcon: "حضور",
 };
+
+const GLYPH_COUNT = Object.keys(Icons).filter((name) => name.endsWith("Icon")).length;
 
 const SEATS: SeatState[] = ["available", "full", "closed", "unlimited"];
 
@@ -188,11 +194,11 @@ export default async function GalleryPage({
             value={42}
             max={60}
             label="المقاعد المحجوزة"
-            valueText="٤٢ من ٦٠"
+            valueText="42 من 60"
           />
         </div>
-        <Stat label="الحضور" value="١٢٤" hint="هذا الشهر" />
-        <Stat label="الجلسات" value="١٨" href="/app/sessions" />
+        <Stat label="الحضور" value="124" hint="هذا الشهر" />
+        <Stat label="الجلسات" value="18" href="/app/sessions" />
       </Row>
 
       <Row title="الأسطح">
@@ -228,7 +234,10 @@ export default async function GalleryPage({
         <SectionHeader
           title="الأيقونات"
           as="h2"
-          description="٣٥ رمزًا، بخط واحد، مرسومة لهذا المنتج — ثمانية منها لغة الموقع التسويقي، والباقي للتطبيق."
+          // The count is derived, not typed: wave 6 added four glyphs and the
+          // literal «35» went stale beside them. Every count 11–99 takes the
+          // singular accusative, «رمزًا».
+          description={`${GLYPH_COUNT} رمزًا، بخط واحد، مرسومة لهذا المنتج — ثمانية منها لغة الموقع التسويقي، والباقي للتطبيق.`}
         />
         <ul className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-8">
           {Object.entries(Icons)

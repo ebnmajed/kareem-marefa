@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
-import { getJobHealth, getPlatformTotals, listOrgs, PLATFORM_NUMERALS } from "@/lib/dal/platform";
+import { getJobHealth, getPlatformTotals, listOrgs } from "@/lib/dal/platform";
 
 // SCR-084 · /app/platform/metrics — REQ-ADM-003, REQ-NFR-016 (the numbers; the
 // dashboards and the alerting are the lead's infra).
@@ -26,8 +26,8 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
     listOrgs(locale),
     getTranslations("platform.metrics"),
   ]);
-  const num = (n: number) => formatNumber(n, PLATFORM_NUMERALS);
-  // Seconds below a minute, minutes above: a queue age of «٤٬٣٢٠ ثانية» is a
+  const num = (n: number) => formatNumber(n);
+  // Seconds below a minute, minutes above: a queue age of «4,320 ثانية» is a
   // number nobody converts in their head. And ICU's `#` formats with the
   // LOCALE's numbering system, which for `ar` is Arabic-Indic and would
   // contradict this console's Western digits — so every plural in this

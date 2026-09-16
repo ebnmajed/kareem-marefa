@@ -91,14 +91,13 @@ describe("POL-sessions.public_card.anon", () => {
       // «these keys are ALL there is», so a column added to `sessions` next
       // year cannot arrive here by being selected accidentally.
       expect(Object.keys(row).sort()).toEqual(
-        ["ends_at", "numerals", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
+        ["ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
       );
       expect(row.title).toContain("جلسة منشورة");
       expect(row.starts_at).toBeTruthy();
       expect(row.time_zone).toBe("Asia/Riyadh");
       expect(row.venue_name).toBeTruthy();
       expect(row.org_name).toBeTruthy();
-      expect(row.numerals).toBe("western");
       expect(row.og_path).toBe(path);
       expect(row.og_width).toBe(1200);
       expect(row.og_height).toBe(630);

@@ -28,8 +28,9 @@ export async function SearchEntry({ locale }: { locale: string }) {
         <label htmlFor="shell-search" className="sr-only">
           {t("searchLabel")}
         </label>
-        <div className="relative flex w-full max-w-lg items-center">
-          <SearchIcon aria-hidden className="pointer-events-none absolute inset-inline-start-3 text-fg-muted" />
+        {/* A BLOCK, not a flex row: `ui/input` wraps itself in a block span once it
+            draws a start icon, and a flex item would shrink-wrap it to its content. */}
+        <div className="w-full max-w-lg">
           {/* ★ `ui/input`, not a hand-rolled control, and `ui-lint` is what
               caught the first version: the shell had copied the house class
               string, which is the sixty-five-file problem starting over in the
@@ -40,7 +41,12 @@ export async function SearchEntry({ locale }: { locale: string }) {
             type="search"
             name="q"
             placeholder={t("searchPlaceholder")}
-            className="w-full ps-10"
+            // ★ The FIELD draws the glyph and owns the padding that clears it
+            // (`sessions`, 32c71bf). The shell used to position the icon itself
+            // and pass `ps-10`, which paired with the size's `px-4` on one element
+            // — correct only by the order Tailwind emitted them (DEC-111, DEC-133).
+            startIcon={<SearchIcon className="text-fg-muted" />}
+            className="w-full"
           />
         </div>
       </form>

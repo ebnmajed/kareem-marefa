@@ -6,7 +6,7 @@
 // reason typed by the admin actually lands in the transaction.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -88,28 +88,71 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member cannot open the members screen", async ({ context, page }) => {
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireSession()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status; the requirement is that no guarded data renders, which this
+// checks directly instead of a status code.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout meta
+  // ("noindex, nofollow") plus the not-found boundary's own injected tag
+  // both match `meta[name="robots"]`, three elements in a real build — the
+  // content-based attribute selector plus `.first()` finds ANY of them
+  // carrying `noindex`, which is all DEC-134 actually asks for.
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار" })).toHaveCount(0);
+}
+
+test("a member cannot open the members screen — the streamed not-found page, not the roster (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  const response = await page.goto("/ar/app/admin/members");
-  expect(response!.status()).toBe(404);
+  await goto(page, "/ar/app/admin/members");
+  await expectGatedNotFound(page);
 });
 
-test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role change is refused, then audited once it succeeds", async ({ context, page }) => {
-  await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
-  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
-  await expect(page.getByText(memberEmail)).toBeVisible();
+// ★ Rebuilt onto `ui/data-table` for wave 6 (`16` §6.7, `DEC-130`): every row
+// now renders TWICE in the DOM (a desktop `<table>` row and a phone card),
+// one hidden by a CSS media query per width. Chromium's accessibility tree
+// excludes a `display:none` subtree entirely, so `getByRole` queries still
+// resolve singularly in a real browser — but a `<tr>`/`role="row"` only
+// exists in the desktop rendering, so these three interaction tests run
+// desktop-only; the 390 px phone review below is the card-stack's own proof.
 
-  const row = page.locator("li", { has: page.getByText("عضو تحت الاختبار", { exact: true }) });
+test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role change is refused, then audited once it succeeds", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/members");
+  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport) — f44d339 put the
+  // email back on both, which is exactly why a bare `getByText` now matches
+  // both copies. Scoped to whichever of the two roles is actually present,
+  // the same pattern used elsewhere for this DataTable dual render.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText(memberEmail)).toBeVisible();
+
+  const row = page.getByRole("row", { name: new RegExp(`عضو تحت الاختبار.*${memberEmail}`) });
   await row.getByLabel("الدور").selectOption("moderator");
   await row.getByRole("button", { name: "غيّر الدور" }).click();
-  // Not `toHaveValue("moderator")` on the select: it is uncontrolled
-  // (`defaultValue`), so it already reads "moderator" the instant
-  // `selectOption` runs and would pass even if the server action never
-  // completed — a race the DB assertion below would then lose. The
-  // confirmation text is driven by `useActionState`'s own returned state,
-  // which only updates once the RPC has actually returned.
-  await expect(row.getByText("غُيِّر الدور.")).toBeVisible();
+  // The toast, not an inline row confirmation: `ui/toast`'s success tone is
+  // `role="status"`, and `useActionState`'s own returned state is what
+  // drives it — only once the RPC has actually returned, unlike the
+  // `<select>`'s own (uncontrolled) value, which already reads "moderator"
+  // the instant `selectOption` runs regardless of whether the action ever
+  // completed.
+  await expect(page.getByRole("status")).toContainText("غُيِّر الدور.");
 
   const { rows: memberRow } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [memberId]);
   expect(memberRow[0].org_role).toBe("moderator");
@@ -117,53 +160,74 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   expect(audit.rowCount).toBe(1);
 });
 
-test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as a real sentence", async ({ context, page }) => {
+// ★ A real build's own run found this test trying to demote the last admin
+// through the SIGNED-IN VIEWER's own row — the only admin this seed creates
+// — but `RoleCell`/`ActionsCell` withhold the role select AND the deactivate
+// menu entirely on the viewer's own row (`isSelf`, no self-demotion in the
+// UI at all), so there never was a control to drive the RPC's guard
+// through. That guard's own error sentence is proved instead in
+// `members-table.test.tsx`, against a NON-self row, where the control (and
+// the toast that carries `error.last_admin`) actually exist. This test
+// proves the withholding itself: REQ-ADM-009 requires the admin to always
+// reach every member's information, and a role/status the viewer cannot
+// act on their own account is still information, correctly read-only here.
+test("REQ-ADM-009: the viewer's own admin row offers no role control and no deactivate", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   const { rows: adminMemberRows } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and org_role = 'admin'`, [orgId]);
   expect(adminMemberRows).toHaveLength(1);
-  await expect(page.getByText("مشرفة الأعضاء")).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport) — a bare
+  // `getByText` matches both copies. Scoped to whichever of the two roles
+  // is actually present, the same pattern used elsewhere for this DataTable
+  // dual render.
+  await expect(page.getByRole("table").or(page.getByRole("list")).getByText("مشرفة الأعضاء")).toBeVisible();
 
-  const row = page.locator("li", { has: page.getByText("مشرفة الأعضاء", { exact: true }) });
-  await row.getByLabel("الدور").selectOption("member");
-  await row.getByRole("button", { name: "غيّر الدور" }).click();
-  await expect(row.getByText("لا يمكن ترك المؤسسة بلا مشرف")).toBeVisible();
+  const row = page.getByRole("row", { name: new RegExp("مشرفة الأعضاء") });
+  await expect(row.getByText("مشرف المؤسسة", { exact: true })).toBeVisible(); // plain text, not a <select>
+  await expect(row.getByLabel("الدور")).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "غيّر الدور" })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /مزيد من الإجراءات/ })).toHaveCount(0);
 
   const { rows } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [adminMemberRows[0].id]);
   expect(rows[0].org_role).toBe("admin");
 });
 
-test("REQ-ADM-009: deactivation needs a written reason, and the reason lands in the audit log", async ({ context, page }) => {
+test("★ REQ-ADM-009: deactivation confirms in a dialog naming the member and needs a written reason; the reason lands in the audit log and the row's own note", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
-  const row = page.locator("li", { has: page.getByText("عضو تحت الاختبار", { exact: true }) });
+  await goto(page, "/ar/app/admin/members");
+  const row = page.getByRole("row", { name: new RegExp("عضو تحت الاختبار") });
 
-  // `member-row.tsx`'s "deactivate" control is a bare `<summary>` (the
-  // `<details>` disclosure itself, not a `<button>`) — Chromium's
-  // accessibility tree does not give it an implicit "button" role, so
-  // `getByRole("button", ...)` never matches it and this line used to hang
-  // for the full 30 s timeout. `getByText` matches the summary's own text.
-  await row.getByText("عطّل العضوية", { exact: true }).click();
-  await row.getByRole("button", { name: "أرسل" }).click();
-  await expect(row.getByText("اكتب سبب التعطيل أولًا")).toBeVisible();
+  await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "عطّل العضوية" }).click();
 
-  await row.getByLabel("سبب التعطيل الذي يُسجَّل في سجل التدقيق").fill("مغادرة الشركة");
-  await row.getByRole("button", { name: "أرسل" }).click();
+  const dialog = page.getByRole("dialog", { name: "تعطيل عضوية «عضو تحت الاختبار»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  // `Field`'s own error, inside the still-open dialog — not the details-then-
+  // submit shape the old `<summary>` disclosure had.
+  await expect(dialog.getByText("اكتب سبب التعطيل أولًا")).toBeVisible();
+
+  await dialog.getByLabel("سبب التعطيل الذي يُسجَّل في سجل التدقيق", { exact: false }).fill("مغادرة الشركة");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0); // closes itself once `state.done`
   await expect(row.getByText("معطَّل", { exact: true })).toBeVisible();
   await expect(row.getByText("مغادرة الشركة", { exact: true })).toBeVisible();
 
   const { rows } = await db.query<{ status: string; deactivated_reason: string }>(`select status, deactivated_reason from public.members where id = $1`, [memberId]);
   expect(rows[0]).toEqual({ status: "deactivated", deactivated_reason: "مغادرة الشركة" });
 
-  await row.getByRole("button", { name: "أعد تفعيل العضوية" }).click();
-  await expect(row.getByText("معطَّل")).toHaveCount(0);
+  await row.getByRole("button", { name: /أعد تفعيل العضوية/ }).click();
+  await expect(row.getByText("معطَّل", { exact: true })).toHaveCount(0);
 });
 
 test("SCR-049 at 390 px RTL: the members list reads down the page, never sideways", async ({ context, page }) => {
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
   // document the vertical scrollbar sits on the left, so that difference is the

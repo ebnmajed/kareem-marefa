@@ -141,7 +141,7 @@ export default async function EmailsPage({
           {/* OQ-019's 180 days, in the org's numeral system like every other
               number on the screen (REQ-INT-006). */}
           {t.rich("admin.emails.deliveries.retention", {
-            days: formatNumber(180, prefs.numerals),
+            days: formatNumber(180),
             bdi: (chunks) => <bdi>{chunks}</bdi>,
           })}
         </p>
@@ -166,7 +166,7 @@ export default async function EmailsPage({
                   </p>
                 ) : null}
                 <p className="mt-1 text-body-sm text-fg-muted">
-                  {formatDateTime(delivery.sentAt ?? delivery.createdAt, prefs.numerals, prefs.timeZone, locale)}
+                  {formatDateTime(delivery.sentAt ?? delivery.createdAt, prefs.timeZone, locale)}
                 </p>
               </li>
             ))}

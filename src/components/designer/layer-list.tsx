@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { DesignDocument } from "@kareem/designer-runtime";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-057's layer list — RTL-first (06 §10), top of the stack first.
 //
@@ -18,10 +18,9 @@ export interface LayerListProps {
   onToggleHidden: (layerId: string) => void;
   lockedLayerIds: string[];
   canEdit: boolean;
-  numerals: NumeralSystem;
 }
 
-export function LayerList({ document: doc, selectedLayerId, onSelect, onToggleHidden, lockedLayerIds, canEdit, numerals }: LayerListProps) {
+export function LayerList({ document: doc, selectedLayerId, onSelect, onToggleHidden, lockedLayerIds, canEdit }: LayerListProps) {
   const t = useTranslations("designer.layers");
 
   // Highest z first: the list reads the way the canvas stacks, so "above" in
@@ -30,7 +29,7 @@ export function LayerList({ document: doc, selectedLayerId, onSelect, onToggleHi
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-body-sm text-fg-muted">{t("count", { count: layers.length, value: formatNumber(layers.length, numerals) })}</p>
+      <p className="text-body-sm text-fg-muted">{t("count", { count: layers.length, value: formatNumber(layers.length) })}</p>
 
       {layers.length === 0 ? (
         <p className="text-body-sm text-fg-muted">{t("empty")}</p>

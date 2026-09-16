@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // The outcome banner for SCR-055/056. A separate component because both
 // screens render it and because a redirect's query string is the only channel
@@ -18,12 +18,10 @@ export async function TemplateResult({
   done,
   error,
   version,
-  numerals,
 }: {
   done?: string;
   error?: string;
   version?: string;
-  numerals: NumeralSystem;
 }) {
   const t = await getTranslations("templates.result");
 
@@ -42,7 +40,7 @@ export async function TemplateResult({
   return (
     <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
       {done === "published" && Number.isFinite(parsed)
-        ? t.rich("published", { value: formatNumber(parsed, numerals), bdi: (c) => <bdi>{c}</bdi> })
+        ? t.rich("published", { value: formatNumber(parsed), bdi: (c) => <bdi>{c}</bdi> })
         : t(done as "duplicated")}
     </p>
   );

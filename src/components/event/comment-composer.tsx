@@ -1,21 +1,53 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
+import { controlClass } from "@/components/ui/field";
+import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
+import { AlertCircleIcon } from "@/components/ui/icons";
+import { formatNumber } from "@/components/sessions/numerals";
 import { postCommentAction, searchMentionsAction } from "@/components/event/actions";
 import type { MentionCandidate } from "@/lib/dal/comments";
 
 // The composer for a new top-level comment or a reply (REQ-EVT-002,
-// REQ-EVT-006). One component for both — a reply only differs by carrying a
-// `parentId` and a smaller placeholder.
+// REQ-EVT-006, REQ-UIX-024). One component for both — a reply only differs
+// by carrying a `parentId` and a smaller placeholder.
+//
+// ★ A real editing affordance, wave 6 (REQ-UIX-024's "not a bare textarea"):
+// the field auto-grows with its content (measured, not `field-sizing` alone
+// — a JS measurement works everywhere `field-sizing: content` does not yet),
+// and a remaining-length counter appears once the member is close to the
+// 4000-character cap rather than staying silent until the 4001st character
+// is simply refused. `controlClass()` (`ui/field.tsx`, `sessions`' shared
+// style function) is used directly rather than `<Textarea>` — this field
+// needs a live DOM ref for both the grow measurement and the mention
+// cursor-position lookup below, and `Textarea` is a plain function
+// component with no `ref` of its own to forward one through.
 //
 // Mentions: typing "@" opens a small candidate list from
 // `members_member_view` (org-scoped by its own RLS, REQ-EVT-006's actual
 // guarantee); picking one inserts the name as plain text and records the
 // member id in `mentioned`, sent alongside the comment. Delivery — a
 // notification reaching that member — is M3's `notify` (docs/plan/notes/event.md §1).
+//
+// Pending/success/failure on every action (REQ-UIX-007, REQ-UIX-024): the
+// submit control shows its own pending state via `ui/button`'s `pending`
+// override (this is a `useTransition` call, not a native form submission, so
+// `useFormStatus` never fires); success clears the composer AND raises a
+// brief toast (real feedback for a REPLY, which can land below the fold of
+// what the member is looking at); failure keeps the typed text — it was
+// never cleared on the error path, before or after this rewrite — shows an
+// adjacent `Panel` (REQ-UIX-010: field errors are adjacent, coloured,
+// icon-marked) AND a persistent toast, since a composer scrolled out of view
+// still owes its author the truth.
+
+const MAX_LENGTH = 4000;
+const COUNTER_THRESHOLD = 200; // show the counter only once this close to the cap — visible from character zero is noise
+const MAX_GROW_PX = 240; // roughly ten rows before the box scrolls instead of growing further
 
 export function CommentComposer({
   locale,
@@ -34,6 +66,8 @@ export function CommentComposer({
 }) {
   const t = useTranslations("event.comments");
   const router = useRouter();
+  const toast = useToast();
+  const counterId = useId();
   const [body, setBody] = useState("");
   const [mentioned, setMentioned] = useState<Map<string, string>>(new Map()); // id -> displayName
   const [candidates, setCandidates] = useState<MentionCandidate[]>([]);
@@ -41,8 +75,34 @@ export function CommentComposer({
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // `DEC-135`: React 19.2.4 can lose the ping that would otherwise commit
+  // this transition once `router.refresh()`'s RSC response resolves — see
+  // the module comment on `submit()` below for the full mechanism.
+  usePendingNudge(pending);
+
+  // ★ The lead's real-build finding: a post can be slow enough that a
+  // member keeps typing the NEXT comment into this same field while «نشر»
+  // is still busy — only the button is disabled, not the textarea. `submit`
+  // below needs to know, at the moment ITS OWN post succeeds, whether the
+  // field still holds exactly what it sent — and the `body` a closure
+  // captures at submit time is frozen to that render, never the field's
+  // true value by the time the async work resolves. Mirrored in a ref
+  // instead, kept current on every render.
+  const bodyRef = useRef(body);
+  useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
+
+  function grow() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_GROW_PX)}px`;
+  }
+
   function handleChange(value: string) {
     setBody(value);
+    grow();
     const cursor = textareaRef.current?.selectionStart ?? value.length;
     const upToCursor = value.slice(0, cursor);
     const match = /(?:^|\s)@([^\s@]{1,40})$/.exec(upToCursor);
@@ -74,26 +134,88 @@ export function CommentComposer({
     if (!trimmed) return;
     setError(null);
     startTransition(async () => {
-      const result = await postCommentAction(locale, sessionId, parentId, Array.from(mentioned.keys()), trimmed);
-      if (result.error) {
-        setError(result.error);
+      let result: { error: string | null };
+      try {
+        result = await postCommentAction(locale, sessionId, parentId, Array.from(mentioned.keys()), trimmed);
+      } catch {
+        // ★ The lead's real-build finding: a request that fails at the
+        // NETWORK level (offline, a dropped connection — never reaches the
+        // server at all) makes `postCommentAction` REJECT rather than
+        // return an `{ error }` value. Left uncaught, that rejection was
+        // thrown out of this `startTransition` callback, React treated it
+        // as a render error, and the WHOLE event page was replaced by the
+        // route's error boundary — with the member's typed comment gone.
+        // The owner's ask for this exact state is the opposite: the text
+        // kept, the member told next to it. `body`/`mentioned` are
+        // untouched below — nothing here reaches the clearing branch — and
+        // `router.refresh()` never runs.
+        //
+        // ★ No toast here (REQ-UIX-010): the adjacent Panel below IS the
+        // feedback for a field the member is looking at right now — a
+        // second, full-width toast repeating the identical sentence covered
+        // the thread at 390 px (the lead's discussion-review capture,
+        // state 5-failed).
+        setError("network");
         return;
       }
-      setBody("");
-      setMentioned(new Map());
-      setCandidates([]);
+      if (result.error) {
+        setError(result.error);
+        toast.show({ tone: "error", title: t(`errors.${result.error}`) });
+        return;
+      }
+      // ★ The lead's real-build finding: their discussion review posted,
+      // then typed into the SAME composer while that post was still
+      // pending — when it resolved, this unconditionally wiped whatever
+      // they had typed since, silently. Only clear the field/mentions when
+      // NOTHING has changed since THIS post was submitted: `bodyRef.current`
+      // is the field's actual current value (not the `trimmed` this
+      // closure captured, which is frozen to submit time by definition and
+      // would always match itself). If the member typed something new in
+      // the meantime, their draft survives — the post that just succeeded
+      // still shows up in the thread below either way.
+      if (bodyRef.current === trimmed) {
+        setBody("");
+        setMentioned(new Map());
+        setCandidates([]);
+        if (textareaRef.current) textareaRef.current.style.height = "";
+      }
       onPosted?.();
-      // The realtime echo (03 §7.4) is what shows this to everyone ELSE
-      // live; the poster's own copy must not depend on a websocket round
-      // trip completing, so a server-rendered refresh guarantees it — the
-      // gap this closes is real, not defensive: a subscription that has not
-      // finished establishing yet by the time the insert commits leaves the
-      // poster staring at their own empty composer with no comment to show
-      // for it (caught by tests/e2e/event-comments.spec.ts against the real
-      // page, not assumed from the component test alone).
+      // `router.refresh()` is the LAST statement inside this SAME
+      // `startTransition` — deliberately, so this Button's own `pending`/
+      // `aria-busy` honestly lasts until the refreshed thread has actually
+      // committed, not just until `postCommentAction` returns. The realtime
+      // echo (03 §7.4) is what shows the new comment to everyone ELSE live;
+      // the poster's own copy must not depend on a websocket round trip
+      // completing, so a server-rendered refresh guarantees it — a
+      // subscription that has not finished establishing yet by the time the
+      // insert commits would otherwise leave the poster staring at their
+      // own empty composer with nothing to show for it. The success toast
+      // that used to sit here is gone too — the comment appearing in the
+      // list IS the success feedback, and a full-width toast was covering
+      // exactly the new content it was announcing.
+      //
+      // ★ `usePendingNudge(pending)` above is why this transition reliably
+      // COMMITS at all (`DEC-135`): React 19.2.4 can lose the ping that
+      // would otherwise resume this render once the refresh's RSC response
+      // resolves — a chunk finishes parsing mid-render, Flight pings
+      // synchronously, and `pingSuspendedRoot` has nowhere to record it
+      // because the root is already marked suspended-with-delay. Nothing is
+      // then scheduled to retry, and the transition can hang indefinitely —
+      // the lead measured one press in three on a real build, both before
+      // and after two earlier attempts here (a `setTimeout(…, 0)` decoupling
+      // at 44485b8, then a paint-deferred `requestAnimationFrame` version at
+      // 4582b17) that each only moved the odds, because both treated a
+      // SYMPTOM (the refresh racing this transition's own completion) of a
+      // cause that was never actually about timing. `usePendingNudge` is the
+      // real fix — it re-renders this component every 300ms while pending,
+      // and each re-render un-suspends the root and lets the lost retry run.
       router.refresh();
     });
   }
+
+  const remaining = MAX_LENGTH - body.length;
+  const showCounter = remaining <= COUNTER_THRESHOLD;
+  const label = parentId ? t("replyPlaceholder") : t("placeholder");
 
   return (
     <div className="relative">
@@ -101,12 +223,13 @@ export function CommentComposer({
         ref={textareaRef}
         value={body}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder={parentId ? t("replyPlaceholder") : t("placeholder")}
+        placeholder={label}
         rows={parentId ? 2 : 3}
-        maxLength={4000}
+        maxLength={MAX_LENGTH}
         autoFocus={autoFocus}
-        aria-label={parentId ? t("replyPlaceholder") : t("placeholder")}
-        className="w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading"
+        aria-label={label}
+        aria-describedby={showCounter ? counterId : undefined}
+        className={controlClass(false, "md", "resize-none overflow-hidden")}
       />
       {candidates.length > 0 ? (
         <ul className="absolute z-10 mt-1 w-full max-w-xs rounded-field border border-edge-strong bg-[var(--color-canvas)] shadow-card">
@@ -123,10 +246,29 @@ export function CommentComposer({
           ))}
         </ul>
       ) : null}
-      <p className="mt-1 text-body-sm text-fg-muted">{t("mentionHint")}</p>
-      {error ? <p className="mt-1 text-body-sm text-fg-heading">{t(`errors.${error}`)}</p> : null}
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <p className="text-body-sm text-fg-muted">{t("mentionHint")}</p>
+        {showCounter ? (
+          // No `<bdi>` here — matching the house convention every other
+          // `{count, value}` line in this codebase already follows
+          // (`materials.list.count`, `photos.gallery.count`,
+          // `event.comments.count`): a short digit count embedded in an
+          // otherwise-Arabic sentence does not reorder the surrounding text
+          // the way an interpolated NAME or TITLE can, so isolation is
+          // reserved for those (`10` §3).
+          <p id={counterId} aria-live="polite" className="shrink-0 text-caption text-fg-muted">
+            {t("remainingChars", { count: remaining, value: formatNumber(remaining) })}
+          </p>
+        ) : null}
+      </div>
+      {error ? (
+        <Panel tone="error" className="mt-2 flex items-start gap-2 p-3">
+          <AlertCircleIcon aria-hidden className="mt-0.5 shrink-0" />
+          <p className="text-body-sm text-fg-heading">{t(`errors.${error}`)}</p>
+        </Panel>
+      ) : null}
       <div className="mt-2 flex gap-2">
-        <Button type="button" onClick={submit} disabled={pending || body.trim().length === 0} className="h-10 px-5">
+        <Button type="button" onClick={submit} disabled={body.trim().length === 0} pending={pending} pendingLabel={t("sending")} className="h-10 px-5">
           {parentId ? t("reply") : t("submit")}
         </Button>
         {onCancel ? (

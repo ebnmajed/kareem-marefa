@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import type { TemplateLibraryData, TemplateSummary } from "@/lib/dal/templates";
 import { familiesFor } from "@/lib/dal/templates";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { createTemplate, duplicateFromPlatform, editTemplate, makeDefault, publishVersion, toggleRetired } from "@/app/[locale]/app/admin/templates/actions";
 
 // SCR-055 · SCR-056 — the two libraries, one component.
@@ -19,7 +19,7 @@ import { createTemplate, duplicateFromPlatform, editTemplate, makeDefault, publi
 const field = "mt-1 block h-11 w-full rounded-field border border-edge-strong bg-canvas px-3 text-body text-fg-heading";
 const action = "h-11 rounded-field border border-edge-strong px-4 text-body-sm text-fg-heading";
 
-export async function TemplateLibrary({ data, numerals }: { data: TemplateLibraryData; numerals: NumeralSystem }) {
+export async function TemplateLibrary({ data }: { data: TemplateLibraryData; }) {
   const t = await getTranslations("templates");
 
   return (
@@ -37,7 +37,7 @@ export async function TemplateLibrary({ data, numerals }: { data: TemplateLibrar
           <ul className="flex flex-col gap-3">
             {data.platform.map((template) => (
               <li key={template.id}>
-                <Card template={template} canManage={data.canManage} numerals={numerals} />
+                <Card template={template} canManage={data.canManage} />
               </li>
             ))}
           </ul>
@@ -56,7 +56,7 @@ export async function TemplateLibrary({ data, numerals }: { data: TemplateLibrar
           <ul className="flex flex-col gap-3">
             {data.org.map((template) => (
               <li key={template.id}>
-                <Card template={template} canManage={data.canManage} numerals={numerals} />
+                <Card template={template} canManage={data.canManage} />
               </li>
             ))}
           </ul>
@@ -121,7 +121,7 @@ async function SectionHints({ templates }: { templates: TemplateSummary[] }) {
   );
 }
 
-async function Card({ template, canManage, numerals }: { template: TemplateSummary; canManage: boolean; numerals: NumeralSystem }) {
+async function Card({ template, canManage }: { template: TemplateSummary; canManage: boolean; }) {
   const t = await getTranslations("templates");
   const isPlatform = template.scope === "platform";
 
@@ -140,11 +140,11 @@ async function Card({ template, canManage, numerals }: { template: TemplateSumma
       <p className="mt-2 text-body-sm text-fg-muted">
         {template.latestVersion === null
           ? t("card.noVersion")
-          : t.rich("card.version", { value: formatNumber(template.latestVersion, numerals), bdi: (c) => <bdi>{c}</bdi> })}
+          : t.rich("card.version", { value: formatNumber(template.latestVersion), bdi: (c) => <bdi>{c}</bdi> })}
         {" · "}
-        {t("card.versionCount", { count: template.versionCount, value: formatNumber(template.versionCount, numerals) })}
+        {t("card.versionCount", { count: template.versionCount, value: formatNumber(template.versionCount) })}
         {" · "}
-        {t("card.lockedRegions", { count: template.lockedRegionCount, value: formatNumber(template.lockedRegionCount, numerals) })}
+        {t("card.lockedRegions", { count: template.lockedRegionCount, value: formatNumber(template.lockedRegionCount) })}
       </p>
 
 

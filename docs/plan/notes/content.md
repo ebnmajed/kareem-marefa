@@ -568,3 +568,919 @@ concurrent WIP (one is a literal `ReferenceError` mid-edit), nothing under this 
 Ready for sync. Next, absent other direction: help drive `npm run qa`/`visual`/the gallery wiring once
 the lead is ready for it, or start on M10's `browse.json`-owned screens once M9 closes — both are the
 lead's call, not mine to start early.
+
+---
+
+# Wave 6 — the discussion, materials, photos (REQ-UIX-024, DEC-130)
+
+**PLANNING ONLY.** No source file touched writing this. Read (this session): `STATUS.md`'s START
+HERE + WAVE 6 blocks, `CLAUDE.md`'s wave-6 ownership map, `.claude/agents/content.md` (regenerated,
+authoritative over the spawn prompt), `DECISIONS.md` `DEC-100`, `DEC-110`, `DEC-112`, `DEC-114`,
+`DEC-124`, `DEC-130`, `DEC-132`, `16-ui-redesign.md` §5.4.1a(b), §6.3, §6.4, §6.8.3, §7.1, §7.3,
+§7.5, `01-prd.md` `REQ-UIX-007/010/012/013/018/020/024`, `REQ-EVT-001…015`, `REQ-MAT-001…012`, the
+nine `ui/` primitives as shipped (all built and green from M9 — `card`, `badge`, `tag-chip`,
+`avatar`, `progress`, `empty-state`, `stat`, `panel`, `file-drop`), the current
+`components/event/{comments,comment-composer,comment-item,comment-list,actions}.tsx`,
+`components/{materials,photos,viewer,tasks}/**`, `lib/dal/{comments,reactions,reports,materials,
+photos,tasks}.ts`, `lib/realtime/channel.ts`, and `components/sessions/slots.ts`. `docs/plan/
+notes/sessions.md` has **no wave-6 section yet** — noted in §3 below, not blocking this plan.
+
+## 0. What changes and what doesn't, in one paragraph
+
+Wave 6 is "put these three surfaces on the M9 system," not "redesign the data model." Every DAL
+function, RPC, RLS policy and Realtime trigger from waves 1/5 (M5) stays as-is. What changes is
+presentation: raw `<textarea>`/`<input type=file>`/hand-rolled `<span>` badges become the nine
+`ui/` primitives; every write action gets a real pending/success/failure story instead of an inline
+`<p>` that may be off-screen; the reaction gets the Tier-2 whisper (`DEC-100`, pulled into this wave
+by `DEC-110`'s "the comments surface becomes a Notion-style comment experience"); uploads move onto
+`ui/file-drop`, stating type and size **before** a file is picked, which is new DAL surface (the
+byte limits exist today only as a post-hoc 413 message, §2.3 below).
+
+## 1. The discussion (`REQ-UIX-024`, `REQ-EVT-001…015`)
+
+### 1.1 The composer — a real editing affordance, not a bare textarea
+
+`comment-composer.tsx` keeps its shape (one component for a top-level post and a reply, mentions
+via `@`-search, the same `postCommentAction`/`searchMentionsAction`) and gains:
+
+- **Auto-grow.** The `<textarea>` starts at its current row count and grows with content up to a
+  cap (~10 rows), via `field-sizing: content` where supported with a `useLayoutEffect` height
+  measurement as the fallback — no new dependency. It renders through **`ui/textarea`** (`sessions`'
+  file, consumed not edited) for the border/focus/invalid styling every other text control in the
+  product now shares, wrapped in a container this component owns for the grow behaviour `ui/textarea`
+  itself does not provide.
+- **A remaining-length counter with all six ICU forms**, replacing the silent `maxLength={4000}`
+  that gives no feedback until the 4001st character is simply refused. `event.comments.remaining`
+  keys `{zero,one,two,few,many,other}`, shown once the member is within ~200 characters of the cap
+  (quiet otherwise — a counter visible from character zero is noise, `16` §3's own "not everything
+  needs to shout" applies to microcopy as much as colour).
+- **The failed-post text is already kept** — `postCommentAction`'s error path never clears `body`
+  (`comment-composer.tsx:78-81`, today). I keep that and make the failure visible: the inline error
+  paragraph (`REQ-UIX-010` — adjacent, coloured, icon-marked) moves into a small `Panel tone="error"`
+  with `AlertCircleIcon` under the textarea, **and** the same failure raises `useToast().show({tone:
+  "error", ...})` so a reply composer scrolled out of view still tells its author it failed. The
+  toast stays until dismissed (lead's `ui/toast`, `role="alert"`, no auto-dismiss on error — already
+  built that way); the inline panel satisfies "adjacent" for the member still looking at the field.
+- **Submit and reply buttons become `ui/button` with `pending`/`pendingLabel`** (`Button`'s own
+  override prop for a non-`<form>` pending source — these are `useTransition` calls, not native form
+  submissions, so `useFormStatus` never fires and the explicit prop is the documented escape hatch,
+  `ui/index.ts:342-344`). Label stays, spinner appears beside it, `aria-busy` — `REQ-UIX-007` met by
+  construction rather than by a manually-set `disabled` with no visual state, which is all today's
+  code does.
+- **Success**: the composer clears and a brief success toast confirms the post — mostly redundant
+  with "your comment now appears in the thread," but real for a reply, where the new item can land
+  below the fold of what the member is looking at. `router.refresh()` for the actor's own copy stays
+  exactly as documented in `actions.ts`'s header (the realtime-race fix from wave 1) — nothing about
+  this wave touches that mechanism.
+- **Mentions stay a plain `<ul>` dropdown** — not a `ui/combobox` (that is `console`'s file and this
+  is a free-text `@`-search inside a textarea, not a form field with a bound value; forcing it into
+  `combobox`'s contract would be the wrong tool). Each candidate row gets `Avatar` at 24 px (§1.4)
+  so a member picks a mention by face, not name alone — a real, cheap win now that avatars exist as
+  a primitive, even though the upload/import half of `16` §6.8 is `scoring`'s in M10.
+
+### 1.2 Every action's pending/success/failure, action by action
+
+| Action | Pending | Success | Failure |
+|---|---|---|---|
+| Post / reply | `ui/button pending` | clears composer, toast (brief) | inline `Panel` + toast (persists) |
+| Edit save | `ui/button pending` | closes edit mode, comment updates in place | inline `Panel` under the edit field + toast |
+| Delete (own) | spinner replaces the trigger's icon while `useTransition` is pending | comment becomes the tombstone / thread updates immediately | toast (persists) — the comment is still there, so no inline slot survives a failed delete to show text next to |
+| Moderator remove/restore | same as delete | toast (brief) naming the action taken | toast (persists) |
+| Report | `ui/button pending` inside the dialog | dialog closes, `t("report.already")` replaces the action, toast (brief, "تم إرسال بلاغك") | inline `Panel` inside the still-open dialog + toast |
+| Reaction toggle | **optimistic, no pending UI** (§1.3) | the whisper motion IS the success feedback | optimistic state reverts, toast (persists, quiet copy — "تعذّر تسجيل إعجابك") |
+
+Delete and moderator actions get a toast rather than an inline slot because both can relocate or
+remove the very row the inline error would have sat next to — a `<p>` next to a comment that is
+about to vanish (moderator "remove") is a message nobody reads. This is the one place the model
+departs from "adjacent, `REQ-UIX-010`" on purpose, and it is what `REQ-UIX-010`'s own text allows:
+that requirement governs **field** errors: a delete/moderate control is an action, not a field.
+
+### 1.3 The reaction — the whisper (`DEC-100`, `REQ-EVT-004`, `REQ-UIX-018`)
+
+Redesigning `toggleLike()`/its button in `comment-item.tsx`:
+
+- **The glyph is `DotIcon`** (`ui/icons.tsx`, lead's, consumable), not a heart — `DEC-100`/§7.5.1's
+  "no heart, no burst, no particles" plus "one metaphor everywhere: knowledge starts as a dot of
+  light" point at the same glyph the constellation itself uses, not an invented one. Unreacted: an
+  outline dot at the caption size. Reacted: filled.
+- **Optimistic, per `16` §7.1 layer 4** — reactions are explicitly named alongside bookmarks as the
+  one place optimism is correct ("never for RSVP"). `useOptimistic` (React 19, already in the stack)
+  flips the glyph and the count the instant the button is pressed; `toggleReactionAction` runs behind
+  it; on failure the optimistic value is discarded (React reverts it automatically) and a quiet
+  persistent toast explains it did not stick — the realtime broadcast and `router.refresh()` already
+  in `actions.ts`/`comment-item.tsx` are what reconciles the optimistic guess with the server's real
+  totals either way, exactly as they do today for the non-optimistic path.
+- **The motion**: on the transition from "not reacted" to "reacted" only (never on unreact, never on
+  a re-render that merely receives a new prop) — the dot ignites (`dot-pulse`) and one ring expands
+  from it (`ripple-ring`), both **already-written keyframes** (`globals.css:499-521`), 200–260 ms,
+  one iteration, transform/opacity only. **I cannot add the one-shot utility classes this needs** —
+  the two existing consumers of these keyframes are both tuned for continuous ambient motion
+  (`.network-svg .pulse-dot`: 6 s infinite; `.ripple-ring`: 8 s infinite) — so this is request §4.1 to
+  the lead.
+- **Static under reduced motion**: the glyph simply becomes filled, no animation — already correct
+  by the global `prefers-reduced-motion` block's universal `animation-duration: 0.01ms !important`
+  (`globals.css:1005-1010`), which overrides any duration regardless of where it is declared. The
+  ring additionally needs `display: none` under reduced motion the way `.ripple-ring` already gets
+  it (`:1012-1014`) — folded into request §4.1 so the new class(es) inherit the same treatment rather
+  than needing a second rule.
+- **Count formatting**: after the numerals sweep lands, `formatNumber` takes no numerals argument —
+  this file's `formatNumber(likeCount, numerals)` call becomes `formatNumber(likeCount)`, a mechanical
+  change already covered by the sweep landing before I edit anything (per the spawn instruction).
+
+### 1.4 Avatars, `<bdi>`, and what else moves onto the nine primitives
+
+- **`Avatar` at 32 px** next to every comment's author name (`16` §6.8.3's own row for "Comments and
+  ratings," already fetched by `comments.ts`, drawn nowhere today) — `memberId`/`displayName`/`src`
+  exactly as `CommentAuthor` already carries them (`comments.ts:17-21`), no DAL change needed here.
+  Mention candidates get `Avatar` at 24 px (§1.1).
+- **The empty thread** (`t("empty")`, today a bare `<p>`) becomes `EmptyState`: title "لا توجد
+  تعليقات بعد", action = focus the composer (an `onClick` that calls a ref'd `.focus()`, not a link —
+  there is nowhere else to go, the composer is right above it). `REQ-UIX-012` is explicit that the
+  action is required; "start the conversation" is a real next step here, not a filler action.
+- **The cancelled-session frozen notice** (`t("frozenOnCancelled")`, today a bare `<p>`) becomes a
+  `Panel tone="neutral"` — a static aside, exactly panel.tsx's own stated purpose ("a warning aside").
+- **The deleted tombstone** stays a plain `<p className="italic">` — `Panel`/`Badge` would overstate
+  a single muted sentence that exists specifically to be quiet.
+- **`Badge`** for "تم التعديل" (today plain text appended to the timestamp) — `tone="neutral"
+  outline size="sm"`, so an edited comment is scannable in a long thread without reading every
+  timestamp. Not used for the report state (`t("report.already")`) — that is a sentence about what
+  the viewer did, not a status label on the comment itself, and forcing it into `Badge` would read as
+  the comment being flagged, which is exactly the information `REQ-EVT-008` keeps from a non-staff
+  viewer.
+- **No `Card`.** A comment is not a navigable object with a media box; wrapping each one in `Card`
+  would add hover-raise and link semantics that mean nothing here. `EmptyState`/`Panel`/`Badge`/
+  `Avatar` already put the discussion route on the system (`scripts/ui-reach.mjs`, strict reading) —
+  `Card` earns its place on materials/photos below, not here.
+
+## 2. Materials (`components/materials/list.tsx`, `/app/sessions/[id]/materials/[materialId]`)
+
+### 2.1 The list — rows, the phase badge, a download with a pending state
+
+- **`materials/list.tsx`** renders each material as a **`Card density="row"`** (`16` §6.4's own
+  second density, "lists" — a materials list is exactly that list), body-only (no `CardMedia` — a
+  material has no poster-shaped image; an icon by kind, `ImageIcon`/`DownloadIcon`/`LinkIcon` from
+  the house set, sits in the row instead). Each row: title (`<bdi>`), kind label, and the **قبل/بعد
+  phase badge** — `Badge tone="info" outline` for `before`, `Badge tone="neutral" outline` for
+  `after` — replacing today's plain `{t(kind)} · {t(phase)}` text line, which is invisible at a
+  glance in a list of eight rows.
+- **`renderStatus`** — `pending`/`rendering` today reads as a static sentence; it becomes
+  `Progress` in indeterminate mode (`value` omitted — exactly `progress.tsx`'s documented mode for
+  "queued work with no known extent") next to the row, and `failed` becomes `Badge tone="error"`. A
+  `ready` PDF's row keeps its `"open the viewer"` link — that link is the row's own primary action,
+  so it stays a plain `Link`, not a nested button inside `Card`'s own link (materials rows use
+  `Card` **without** an `href` — the row is a static container, not itself the link, so `CardActions`'
+  stopped-propagation nesting rule from `card.tsx`'s own header does not apply here the way it will
+  for the session card in M10).
+- **The count line** (`t("count", {...})`) stays — a bare sentence above the list is right; wrapping
+  a count in `Stat` would overstate one number sitting above eight rows it is not summarising a
+  dashboard for.
+- **Empty state**: `EmptyState` — title "لا توجد مواد بعد", action = scroll to / open the upload form
+  for a presenter/admin (`canManage`), or, for a member with no upload right, no action is possible
+  — and `EmptyState.action` is **required by the type**. Resolved: for a non-manager the empty state
+  is simply not rendered at all (today's code already gates `UploadForm` on `canManage`; the same
+  gate decides whether the *empty state itself* renders, and a non-manager instead sees nothing where
+  the list would be, matching the session-card pattern of "a section that renders nothing" rather
+  than forcing a fake action into a primitive that refuses to allow one). ★ Flagged as request §4.3
+  in case the lead reads `REQ-UIX-012` as requiring a visible line either way.
+
+### 2.2 The viewer route (`materials/[materialId]/page.tsx`)
+
+- The pending/failed/no-pages states (`t("states.pending")` etc., today three plain `<p>`s) become
+  `Panel` (neutral for pending — matches Photos' processing notice below — `error` tone for failed).
+- **`DownloadButton`** becomes `ui/button pending pendingLabel`, replacing the manual
+  `disabled={pending}` with no visual pending state; on `unavailable` (no signed URL — REQ-MAT-005's
+  audited-download path returning nothing) the message becomes a persistent toast rather than the
+  inline `<p>` it is today, since a download failure has nowhere obvious "adjacent" to sit once the
+  member has already clicked away toward their downloads folder.
+- **The font-substitution warning** (`REQ-MAT-011`) becomes `Panel tone="info"` with `InfoIcon` — it
+  is advisory, not an error, and today's plain paragraph does not distinguish it from a real failure.
+- **`PageViewer` itself is out of scope this wave** — its RTL next/previous keyboard model
+  (`page-viewer.tsx`) is already correct and already tested (`tests/components/viewer/
+  page-viewer.test.tsx`); the wave-6 measure is the route reaching an M9 primitive, which the page
+  shell above already does. I will touch `PageViewer` only to thread the numerals-sweep's parameter
+  removal through `formatNumber`/`t.rich("pageOf", …)` — mechanical, not a redesign.
+
+### 2.3 The uploader — `ui/file-drop`, stating type and size before a file is chosen
+
+This is the one place materials needs new DAL surface, not just new markup:
+
+- **`getMaterialsPageData`/`getProposalMaterialsPageData`** gain a **new** `org_settings` select for
+  `limit_document_mb, limit_audio_mb, limit_image_mb` — ★ re-checked against disk after the numerals
+  sweep (`c20b901`): both functions read no `org_settings` at all today, since the sweep deleted the
+  `numerals`-only select they used to carry and neither had anything else to read there. So this is
+  a genuinely new query, not an extension of an existing one — my first draft undersold it as the
+  latter. Returned in the page DTO, `UploadForm` receives the three limits as props and picks the
+  right one for the selected `kind`, computing `maxBytes = limitMb * 1024 * 1024` and a
+  `requirements` line — «PDF فقط، حتى 50 ميغابايت» / equivalent for image/audio, Western numerals
+  throughout (DEC-124; my own first draft of this line used «٥٠» and is corrected here) — **before**
+  any file is chosen, which is what `REQ-UIX-024`'s acceptance actually asks for and what today's
+  code cannot do (the limit is only ever learned from a 413 response, after the fact).
+- **`accept`** varies with the selected `kind` radio/select — `["application/pdf", ".pdf"]` for
+  `pdf`, `["image/png","image/jpeg","image/webp"]` for `image`, the four audio MIME types for
+  `audio`. This is client-side, advisory — `FileDrop`'s own header is explicit that it is "the
+  control, not the enforcement," and `sniffedKindMatchesDeclared()` server-side (`0077`, DEC-058)
+  is unchanged and still the real gate. **No SVG anywhere** — `accept` never includes `image/svg+xml`
+  and never will (invariant 11, DEC-009).
+- **Per-file progress and per-file error** — `FileDrop`'s own `Picked[]` state already renders a
+  `Progress` per selected file and an `error` per file (`file-drop.tsx`'s header: "each pending file
+  shows `Progress` in its indeterminate mode"); `UploadForm`'s own `handleSubmit` stays the two-step
+  signed-PUT-then-complete flow, now driving `FileDrop`'s `onFiles` instead of a bare `<input>`.
+- **The link-kind fields** (`video_link`/`external_link` — a URL, not a file) stay `ui/input`
+  (`sessions`' file) exactly as today; `FileDrop` only replaces the branch where `isFileKind` is true.
+
+## 3. Photos (`components/photos/gallery.tsx`)
+
+- **The grid stays a plain `<ul>` grid** (`Card` does not fit — a photo tile opens nothing, it is
+  itself the content, and `Card`'s "whole thing is one link" contract has no destination to give it).
+  What changes: the **hidden badge** (`t("hiddenBadge")`, a bare `<span>`) becomes `Badge tone="error"
+  outline size="sm"`; the **empty gallery** becomes `EmptyState` (title "لا توجد صور بعد", action =
+  open the uploader for `canUpload`, and — same resolution as §2.1 — no empty state at all for a
+  viewer who cannot upload, since there is truly no next action to offer them and the type forbids
+  a fake one); the **upload notice** (`REQ-EVT-013` — "shared with everyone in the org," today a bare
+  `<p>`) becomes `Panel tone="info"` with `InfoIcon`, sitting directly above `UploadWidget` so it is
+  read at the point of upload, not buried.
+- **`UploadWidget` moves onto `ui/file-drop`** the same way materials does: `accept=["image/jpeg",
+  "image/png","image/webp"]`, `maxBytes` from `getPhotosPageData`'s new `limit_image_mb` select
+  (mirrors §2.3 — one new column on an existing query, not a new table read), `requirements` stating
+  the size before pick. `sniffKindFromFile` stays as today's client-side declared-kind guess; the
+  server sniff (`process_photo`, the worker) is unaffected.
+- **Takedown/restore**: `TakedownButton` becomes `ui/button pending pendingLabel`; the confirmation
+  moves from `window.confirm` (today, `takedown-button.tsx:25` — a native browser dialog, unstyled,
+  unlocalized-feeling even though its string comes from `t()`, and invisible to any test that does
+  not stub `window.confirm`) into **`ui/dialog`** exactly as the discussion's own `DeleteConfirm`
+  pattern already does (`comment-item.tsx:183-208`) — `REQ-UIX-013`'s "every destructive action
+  confirms in a dialog naming the object" is a requirement, not a preference, and a photo takedown is
+  exactly the destructive action it describes. Restore (staff-only, reversible, not destructive) keeps
+  no confirmation, matching today.
+- **A real gap this surfaces, not fixed this wave, flagged as a finding**: `REQ-EVT-010` ("an
+  uploaded photo appears at once… without a refresh") does not match what `upload-widget.tsx`
+  actually does today — `complete` only confirms the request was accepted (202), the photo appears
+  once the worker's `process_photo` job finishes (EXIF strip, WebP derivative), and the widget's own
+  comment says so plainly. The `notice`/`processing` text is honest about this gap, and I am keeping
+  it exactly as-is (a `Panel tone="info"` version of the same sentence) rather than quietly
+  implementing something REQ-EVT-010 promises and M5 did not build — realtime-pushing the finished
+  photo into the gallery would need a new broadcast on `photos`' own table, which is schema/pipeline
+  work outside "put the screen on the system." Raised as a question, §4.4.
+
+## 4. Requests and questions
+
+### 4.1 Request to the lead — two one-shot motion utilities in `globals.css`
+
+For §1.3's reaction whisper, reusing the existing keyframes but not their existing (continuous,
+long-duration) class applications:
+
+```css
+.reaction-dot {
+  animation: dot-pulse 220ms var(--ease-out, ease-out) 1 both;
+}
+.reaction-ring {
+  animation: ripple-ring 260ms var(--ease-out, ease-out) 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction-ring { display: none; }
+}
+```
+(names negotiable — I will consume whatever the lead lands on). The universal reduced-motion rule
+already zeroes both durations; the `display: none` line only needs adding for the ring, matching
+`.ripple-ring`'s own treatment two lines above it (`globals.css:1012-1014`), so the dot and ring
+never show even a one-frame flash.
+
+### 4.2 Request to `sessions` — confirm `ui/textarea` fits the composer's auto-grow wrapper
+
+`ui/textarea` (`TextareaProps = ComponentProps<"textarea"> & { invalid?: boolean }`, per
+`ui/index.ts:195`) is a thin styled wrapper with no grow/measure behaviour of its own, which I read
+as intentional — the grow behaviour is mine to build around it, not something to ask `textarea.tsx`
+to grow itself into. Flagging only so `sessions` can correct me if `field-sizing`/measurement was
+meant to live in `textarea.tsx` itself for every consumer, not just mine.
+
+### 4.3 Question for the lead — an ungated empty state with no action
+
+§2.1/§3: for a materials/photos viewer with no upload right, I am rendering **nothing** where the
+list/gallery would otherwise be empty, rather than an `EmptyState` with a fabricated action, because
+`EmptyState.action` is required and there is genuinely no next step to offer that viewer. Is "render
+nothing" the right read of `REQ-UIX-012`, or should a manager-only empty state exist and a
+non-manager instead get a quieter, action-less sentence outside `EmptyState` entirely (closer to
+`Materials`'s pre-wave-6 `t("empty")` paragraph, just for the no-action case only)? Either is a small
+change; I want the rule fixed once rather than guessed per-surface.
+
+### 4.4 Finding, not a request — `REQ-EVT-010`'s "without a refresh" does not match the shipped pipeline
+
+§3's last bullet: today's photo upload is honestly "processing, revisit to see it," not "appears at
+once." Not fixing it this wave (it is pipeline/Realtime work, not a system-primitive swap); recording
+it here so it is not mistaken for something wave 6 silently addressed.
+
+### 4.5 Canvas check (`DEC-114`)
+
+Materials/Photos/Comments have no dedicated canvas artboard (`STATUS.md`'s own finding, restated in
+`.claude/agents/content.md`) — built from `System.dc.html`, `Main.dc.html`'s materials/discussion
+sections, and the PRD, not transcribed from a picture that does not exist. Nothing in `Main`/
+`EventPhone`/`EventEnded` contradicts a requirement as far as I can tell once its numerals are read
+as Western (`DEC-124`) and its `box-sizing` overlap is read as the mockup artefact it is (`DEC-122`)
+— no new canvas question beyond those two, already recorded.
+
+## 5. Slot props I need from `sessions`
+
+`docs/plan/notes/sessions.md` has no wave-6 section as of this writing, so this is what I am building
+against and will reconcile once it lands:
+
+- **`Comments`, `Materials`, `Photos` keep `SlotProps` exactly as `components/sessions/slots.ts`
+  already defines it today** (`sessionId`, `memberId`, `locale` — all three already used; `Materials`/
+  `Photos` currently only destructure `sessionId`/`locale`, `Comments` uses all three). No widening
+  needed for anything in §1–§3 above — `viewerRelation` (the `RelationSlotProps` extension, `slots.ts:
+  51`) is not something any of my three slots need to know for themselves, consistent with `16`
+  §5.4.1a(b)/`DEC-103`'s rule that **the page**, not the slot, gates a section that can render
+  nothing (comments/materials/photos already render "no heading of their own," per each file's own
+  header comment, and that stays true).
+- **`SLOT_NAMES`** (`slots.ts:55`) lists `RsvpPanel`, `AttendanceOutcome`, `Comments`, `Ratings` only
+  — `Materials`/`Photos`/`Tasks` are not in it. Since `slots.ts` is `sessions`' file this wave, I am
+  not adding to it myself; noting that the constant is stale against what the page actually renders
+  (it has rendered Materials/Photos/Tasks since wave 2) so `sessions` can decide whether it is worth
+  fixing or is simply unused for anything but documentation.
+- **What I will check once `sessions.md`'s wave-6 section exists**: the exact `<section
+  aria-labelledby>`/`id` the page wraps each slot in (for the sub-nav scroll-spy, `16` §6.3), and
+  whether the page still calls `Materials`/`Photos`/`Comments` with a bare `{sessionId, locale}` or
+  starts passing `memberId` to all three for consistency. Neither changes anything in this plan; both
+  are drop-in either way.
+
+## 6. Test/capture plan
+
+`tests/components/event/{comments,comment-item}.test.tsx` extend for: the auto-grow composer, the
+counter's six ICU forms at the boundary, the optimistic reaction (flips instantly, reverts on a
+mocked failure), `axe-core` over a thread with a reply, an edit in progress, and a reported comment.
+`tests/components/materials/{list,upload-form}.test.tsx` and `tests/components/photos/{gallery,
+upload-widget}.test.tsx` extend for the `FileDrop` wiring (accept/maxBytes asserted **before** a file
+is picked, per-file error) and `axe-core`. New: a reduced-motion assertion on the reaction (asserts
+the end state, nothing mid-transition, matching `16` §7.5.5's gate) once request §4.1 lands.
+`.qa-shots/rtl/wave6-content-*.png`: discussion empty / thread+reply / mid-composition / failed-post;
+materials list / viewer; gallery + uploader — the eight states the definition of done lists, each
+looked at at 390 px RTL before I call the surface done.
+
+## 7. ★ Re-checked against disk after «numerals landed at `57f1103`»
+
+Per the lead's rule ("re-read from disk before editing anything you did not write this session") —
+checked every file this plan cites against `git log -1 -- <file>` and the sweep (`c20b901`) plus its
+follow-up (`73b0f3e`) and the ownership-map update (`57f1103`). **The plan above stands unchanged**;
+two things worth recording rather than silently folding in:
+
+- **§2.3's DAL change is bigger than I first described.** I wrote it as "gain three columns on the
+  existing `org_settings` select." On disk, `getMaterialsPageData`/`getProposalMaterialsPageData`
+  read **no** `org_settings` at all now — the sweep deleted the numerals-only select they used to
+  carry and neither function had another reason to query it. Same for `getPhotosPageData`: it had no
+  size-limit read before the sweep either (the org's `limit_image_mb` check lives only inside
+  `record_photo_upload`'s `SECURITY DEFINER` body, `0050_photo_pipeline.sql:88`, never surfaced to a
+  DTO). So this is a **new** query in both places, not an extension — corrected in §2.3 itself, not
+  just here.
+- **My own draft had violated `DEC-124` once.** The example upload-notice string in §2.3 used
+  Arabic-Indic «٥٠» for "50 MB." Fixed to Western «50» in place — worth naming because it is exactly
+  the failure mode `tests/unit/messages-numerals.test.ts` exists to catch in `src/messages/**`, and a
+  planning note is not exempt from the house rule any more than a comment is (`DEC-132`: "a comment
+  is where the next author copies from" — the same is true of a plan).
+- **Confirmed no other structural surprise**: `formatNumber`/`formatDateTime`/`formatTime` are
+  single-argument now exactly as §1.3 anticipated; no DTO in `comments.ts`/`materials.ts`/
+  `photos.ts`/`tasks.ts` carries `numerals` any more; `comment-item.tsx`'s reaction code
+  (`likeCount`/`iReacted`, `comment-item.tsx:50-51`) is untouched by the sweep beyond its
+  `formatNumber` call site, so §1.3's plan against it is still accurate line-for-line.
+- **The three "decided, NOT this wave" items the lead named** (multi-day sessions `DEC-119…121`, the
+  manual check-in switch + walk-ins `DEC-113/116/117/118`, gradient posters + `canvasRaise` `DEC-127`)
+  touch none of §1–§3: no day-scoped material/task/photo, no check-in-switch affordance and no poster
+  background appears anywhere in this plan already.
+- **`ui/tag-chip`'s count** (DEC-123's «أتمتة 5» finding — the canvas's own chip renders its count at
+  1.96:1, "worth a design answer," not yet a verdict) — checked `tag-chip.tsx` on disk: the count
+  already renders with `className="text-fg-muted"` (`tag-chip.tsx`, unchanged by the sweep), the same
+  token DEC-123 measured at 5.68:1 elsewhere in the app (the placeholder case). So the shipped
+  component is not reproducing the canvas's low-contrast count today, as far as I can tell without
+  running the actual contrast scorer — I am not touching `tag-chip.tsx` this wave (none of my three
+  surfaces render `TagChip`), and I'm recording this as "verified, not regressed" rather than closing
+  it outright, since I have not run the headless measurement DEC-123 itself used.
+
+---
+
+Ready for sync. This plan is complete for all three surfaces and re-verified against the swept tree;
+nothing here is blocked on the owner. Two small requests are still open (§4.1 to the lead, §4.2 to
+`sessions`, both non-blocking) and one genuine question for the lead (§4.3). Holding for the lead's
+explicit go before the first source edit, per this reply's own "wait for my reply before starting
+code."
+
+## 8. Five more lead primitives went live (`1d73e89`) — folded in
+
+Read the real implementations, not the stubs: `ui/link.tsx`, `ui/icon-button.tsx`, `ui/prose.tsx`,
+`ui/page-header.tsx`, `ui/section-header.tsx`. All consumed by path, none edited.
+
+- **`ui/link`** replaces the raw `next/link`/`Link` uses in my three surfaces where the destination
+  is internal: `materials/list.tsx`'s "افتح العارض" (open-viewer) link, and the viewer page's
+  "back to the session" link. **Not `quiet`** on either — both are inline text links, not a
+  card-whole-surface link, so the pending dot is real, useful feedback (`ui/link.tsx`'s own
+  distinction). External material links (`m.externalUrl`, a Google Slides/video URL) stay a bare
+  `<a target="_blank" rel="noopener noreferrer">` — they leave the app, `ui/link`'s locale-prefixing
+  has nothing to do there, and `REQ-MAT-007`'s "explicit indication of leaving the platform" wants an
+  icon/notice `ui/link` does not carry, not its pending dot.
+- **`ui/icon-button`** replaces the discussion's text-only action row for the four affordances the
+  lead named — reaction, reply, report, delete — each becoming a 44 px square control with a
+  mandatory `label` (so the accessible name survives losing its visible text). Icon mapping against
+  the house set (`icons.tsx`, 34 exports, none added): reaction → `DotIcon` (already planned, §1.3 —
+  doubles as both the glyph and the `IconButton`'s child); delete → `TrashIcon` (unambiguous); report
+  → `AlertTriangleIcon` (the set's existing "flag a problem" glyph, same one `Panel`'s error framing
+  reads from). **Reply has no obvious icon in the 34-export set** — flagged as request §4.6 below
+  rather than guessed. **Edit and moderator remove/restore stay `ui/button`, not `IconButton`**: edit
+  toggles a whole editing UI (not a single unambiguous glyph-shaped action) and moderation is a
+  staff-only, infrequent action where a visible Arabic label reads as more deliberate than an icon a
+  moderator has to hover to confirm — the lead named four controls, not six, and I'm reading that as
+  a decision already made rather than an omission to extend on my own.
+- **`ui/prose`** wraps the comment body (`comment-item.tsx`'s `<p className="mt-1 whitespace-pre-wrap
+  …">{comment.body}</p>`) at `size="sm"` — the body text is plain (newlines only, no markup), so
+  `Prose`'s `[&_p+p]`/`[&_h2]` rules do nothing extra, but its base rhythm (line-height 1.7, the
+  `text-body-sm` ramp, no justification) is exactly right for a paragraph of member-authored Arabic
+  and replaces a hand-rolled class string with the house one. **No material gets `Prose`** —
+  `MaterialSummary`/`ViewerData` carry no description field today (title, kind, phase, render status,
+  the substitution warning, the external URL — checked both DTOs on disk, §2 above), so there is no
+  long-form text on a material to wrap; the substitution warning stays `Panel tone="info"` (§2.2),
+  which is the right primitive for a short advisory line, not a paragraph.
+- **`ui/page-header`** replaces the viewer route's hand-built `← back` link + `<h1>` (§2.2). Shape:
+  `title={data.title}`, `breadcrumb={[{ href: `/app/sessions/${id}`, label: t("back") }]}` — reusing
+  today's existing "back to session" copy key as the crumb label rather than fetching the session's
+  real title for a one-level breadcrumb (`ViewerData` carries no session title today and I am not
+  adding a join for a single generic crumb; `PageHeader`'s own worked examples — `Browse`, `Schedule`
+  — show real category names because those breadcrumbs are two or three levels deep, which this one
+  is not). `eyebrow` = the material's kind label (`t("materials.list.kind.pdf")` etc.), `meta` and
+  `actions` left empty this wave — nothing in `ViewerData` yet justifies a meta chip row, and adding
+  one is a scope decision, not a wiring one.
+- **`ui/section-header`** — confirmed, no use in any of my three slots: the lead's own note ("your
+  slots render none") matches what §1/§2/§3 above already say — the event page owns every `<section>`
+  and `<h2>`, my three slots render content only. Recorded so this reply shows the note was read, not
+  assumed unnecessary.
+
+### 4.6 Request to the lead — no reply-shaped icon in `icons.tsx`
+
+For `IconButton`'s reply control (above): the 34-export set has nothing that reads as "reply" at a
+glance — `ArrowIcon` (`direction="back"`/`"forward"`, RTL-aware) is the closest shape, but an arrow
+also means "next"/"previous" elsewhere in this exact codebase (`PageViewer`'s own next/previous
+controls, §2.2) and reusing it for reply risks the same glyph meaning two different things on the
+same page. Options as I see them: (a) `ArrowIcon` anyway, accepting the reuse since context
+disambiguates; (b) a new icon (`icons.tsx` is lead-only, so this is a request either way); (c) reply
+stays `ui/button` with its Arabic label, matching my read of edit/moderate above rather than forcing
+a fourth control into `IconButton`. I have a mild preference for (c) — it is the smallest change and
+"reply" benefits from a visible word more than "delete"/"report" do — but the lead named reply
+explicitly, so raising it rather than quietly picking (c) myself.
+
+---
+
+## 9. Built and committed — all three surfaces, wave 6's floor and bar both attempted
+
+The lead's go landed (§7, `57f1103`), then the five real primitives (§8, `1d73e89`), then rulings on
+every open item: §4.3 → render nothing for a non-manager with nothing to show; §4.6 → option (c),
+reply stays `ui/button`; §4.4 → recorded, not fixed; §4.2 → `sessions` fixed `min-h-32` (`7593967`).
+One more ruling, not in my plan: badge/tag-chip/avatar move from pills to the canvas's 6 px rounded
+squares (`rounded-field`) — done first, its own commit, §9.1 below.
+
+### 9.1 `6182ed1` — badge/tag-chip/avatar: rounded squares, not pills
+
+`rounded-full` → `rounded-field` on `Badge`, `TagChip`'s outer chip (the remove control's own small
+circular hit area is unnamed and stays round), `Avatar`/`AvatarStack`'s ring. tsc clean, lint clean,
+all 51 existing tests unchanged (none asserted the pill shape).
+
+### 9.2 `3151630` — `CardMedia.dimmed` and `TagChip.selected`/`removeHref`, for `sessions`
+
+The lead landed the *types* for `sessions`' requests at `607ecbe`; this is the *implementation*, since
+`content` owns `card.tsx`/`tag-chip.tsx`. `dimmed`: grayscale + reduced opacity on the image/
+placeholder only, never `overlay` (DEC-123 item 1 — the canvas's own defect was nesting the status
+badge INSIDE the dimmed element). `selected`: `aria-current="true"` on the link (never
+`aria-pressed` — a link is not a toggle button) plus a filled navy/white pair, so "applied" is never
+colour-alone. `removeHref`: removal as a link, works before hydration. The remove control's hit area
+grew `size-4` → `size-6` (24px), clearing WCAG 2.5.8 (DEC-123's touch-target sweep). Both files' own
+internal `Link` moved onto `ui/link` with `quiet` (R-C4) — a card-whole-surface link and a dense
+inline chip row are exactly `ui/link`'s own documented case for suppressing the pending dot.
+
+### 9.3 The three surfaces, in build order
+
+**`40e23a6` — the discussion.** Auto-grow (a real `scrollHeight` measurement, not `field-sizing`
+alone — needed a DOM ref `ui/textarea`'s plain-function-component shape does not forward, so the
+composer's own field is a raw `<textarea>` reusing `controlClass()` directly, not `<Textarea>`); the
+remaining-length counter, all six Arabic ICU forms, silent until 200 characters from the cap; the
+failed-post text was already kept (unchanged), now visible via an adjacent `Panel` AND a persistent
+toast. Reaction/report/delete → `IconButton` (`DotIcon`/`AlertTriangleIcon`/`TrashIcon`); reply/edit/
+moderate stay `ui/button`. The reaction is optimistic (`useOptimistic`, reverts on failure, no visible
+pending state — the whisper motion IS the feedback) and fires `.reaction-ignite`/`.reaction-ring`
+only on the false→true transition, cleared by a fixed 400 ms timer rather than `onAnimationEnd` (the
+ring is `display:none` under reduced motion and animation events on a never-painted element are not
+something to depend on). `commentsSummary()` new; `Comments()` returns `null` exactly when frozen
+and empty (REQ-EVT-003: a member may still post otherwise).
+
+**`a0448bf` — materials.** List rows on `Card density="row"`, `Badge` for قبل/بعد, `Progress` for a
+pending render, `Panel` for the substitution warning. The viewer route gets `ui/page-header` (a
+one-crumb breadcrumb reusing the existing "back" copy — `ViewerData` has no session title to join
+for a single crumb). Both uploaders (materials and proposal-materials) move onto `ui/file-drop`,
+stating the org's real per-kind limit before a file is chosen — a **new** `org_settings` query in
+`getMaterialsPageData`/`getProposalMaterialsPageData` (neither read it at all after the sweep, not
+even for numerals, contrary to my own first draft's guess in §7). Two real bugs found building this,
+both fixed, neither hypothetical: an inline `onFiles` closure recreated every render put
+`ui/file-drop`'s own effect into an infinite loop (`useCallback` breaks it — cost a genuine hung test
+run before I traced it); `ui/link`'s automatic locale prefix would have doubled the old manual
+`/${locale}` prefix carried over from the `next/link` import it replaced.
+
+**`3d185d0` — photos.** The grid stays plain — `Card` has no `href` to hang its "whole thing is one
+link" contract off a photo tile that opens nothing. Hidden badge → `Badge`; the upload notice → `Panel`
+with `InfoIcon`. `TakedownButton`'s request-hide moves from `window.confirm` to `ui/dialog`
+(REQ-UIX-013); restore stays a plain click, staff-only and reversible by construction. `imageLimitMb`
+is new on `getPhotosPageData` for the same before-a-file-is-chosen reason as materials.
+
+**`05e511b` — tasks, light touch.** `tasksSummary()` (the fourth reader the contract requires) and an
+`EmptyState` in place of a bare paragraph — nothing else; `TaskItem`/`CreateTaskForm` untouched.
+
+### 9.4 Verified, and how
+
+`npx tsc --noEmit` clean across every file this track owns (the only remaining errors are `sessions`'/
+`console`'s own in-flight files — `app/sessions/page.tsx`, `lib/dal/search.ts`, `browse/session-card.tsx`,
+`admin/sessions/**` — never touched here). `npm run lint`: 0 errors (20 pre-existing warnings, the
+launch-era baseline, unchanged). `npm test` on every touched directory: 88/88 in
+`tests/components/{event,materials,photos,tasks}/` plus `tests/unit/content-i18n.test.ts`; the full
+`npm test` run: 1160/1161, the one failure (`admin.proposals.rejectConfirmTitle`) is `sessions`'/
+`console`'s own key, untouched by anything here. `npm run test:rls` on
+`{materials,photos,event-comments,realtime}-schema.test.ts`: 70/70 on a clean re-run (a combined run
+hit two 20 s timeouts on unrelated tests — `event-comments`' edit-window case and `realtime`'s
+cross-org case, neither touching anything this wave changed — that cleared on an isolated re-run,
+consistent with local DB contention from an earlier stuck process, not a regression). `axe-core`
+added to `comment-item`, `comment-composer`, `comment-list`, `materials/list`, `photos/gallery`.
+
+**A real bug found and fixed mid-build, worth recording on its own:** my own first draft of the
+`requirementAudio`/`requirementPdf`/etc. messages tripped `tests/unit/content-i18n.test.ts` twice —
+once for a literal Western digit outside ICU syntax ("MP3", "M4A" both contain one baked into the
+format name itself, not a counted quantity) and once for an un-isolated `{limitMb}` interpolation
+(the established `{count, value}` convention I'd followed elsewhere is plural-exempt; a bare
+non-plural `{limitMb}` needs `<bdi>{limitMb}</bdi>` in the message itself, matching the pre-existing
+`sizeLimitExceeded` key I should have matched from the start). Fixed: `requirementAudio` reworded to
+name WAV/OGG and "similar formats" rather than spell out MP3/M4A; all four `requirement*` keys wrap
+`{limitMb}` in `<bdi>`; the component call sites use `t.markup(...)` (a plain string, matching
+`FileDrop.requirements: string[]`) rather than plain `t(...)`.
+
+### 9.5 Not done — genuinely blocked, not skipped
+
+**No real `npm run test:e2e:local` run, and no `.qa-shots/rtl/wave6-content-*.png` captures.** Both
+need a server started from a FRESH `.next` build reflecting today's work — `scripts/e2e-local.mjs`
+refuses to run without one ("Run `npm run build` first"), and the `.next` on disk right now
+(12:28–12:29) predates essentially all of the component code in §9.3. `npm run build` is lead-only
+this milestone. The e2e specs themselves ARE updated for the new markup and pass `tsc`/lint
+(`event-comments.spec.ts`'s delete locator now walks two levels, not one — the body moved one level
+deeper into `ui/prose`'s own wrapping div; `materials.spec.ts`'s upload now targets
+`#materials-upload-form input[type="file"]`, since `ui/file-drop`'s hidden input carries no
+accessible label the old `getByLabel("الملف")` depended on; `photos.spec.ts`'s takedown test opens
+the dialog and confirms inside it, scoped with `getByRole("dialog")`, instead of accepting a native
+`window.confirm` that no longer appears) — they are ready to run the moment a fresh build exists.
+**Asking the lead**: either build and hand the gate lock back for me to drive these three specs
+through it, or fold them into the wave's own `qa`/`e2e` pass at sync — whichever fits the wave's
+rhythm better.
+
+Ready for sync. All four commits above are on `wave-6/screens`. Nothing is blocked on the owner;
+one thing (§9.5) is blocked on the lead's next build.
+
+---
+
+## 10. The lead's real-build findings, fixed — `e533ad8` … `9a8340a`
+
+Two runs against a real build (`448ff6d`, `68e645d`) found five things, three real failures and two
+390 px findings on the owner-named discussion surface. All fixed:
+
+1. **`materials.spec.ts:198` (both projects)** — a latent, pre-wave-6 bug, not a regression: the
+   substitution-warning wording changed from «استُبدل الخط» to «غير مضمَّن» when DEC-058 reworded it
+   for PDF-only uploads (`2f336a2`); the e2e assertion was never updated and had been silently unable
+   to pass since. Fixed to the current wording (`133b26c`).
+2. **`photos.spec.ts:199` (desktop, 30 s timeout)** and **3. `event-comments.spec.ts:123` (phone)** —
+   the SAME root cause: `DeleteConfirm`/`TakedownButton`'s confirm button was `DialogClose asChild`
+   wrapping an `onClick` that starts a transition (`ReportDialog`'s `type="submit"` had the analogous
+   shape). Composing Radix's own close-on-click with a caller's handler via `asChild` is documented
+   Radix usage, but it is not a pattern worth continuing to lean on for a handler that also has to run
+   reliably — both dialogs are now controlled (`open`/`onOpenChange`), with a plain button that closes
+   and fires the action as two ordered statements I own end to end (`e533ad8`, `358eac4`).
+4. **★ FileDrop's copy order** — «أو اسحب…» sat above «اختر ملفات», so "or" preceded the choice.
+   Swapped: the button (the one affordance with no drag equivalent) first, the drag hint after
+   (`09d02a4`).
+5. **★ The discussion's doubled empty-state CTA** — the owner's own named surface. An `EmptyState`
+   card offering "write the first comment" sat directly under the already-visible composer — the one
+   action doubled, and the one that looked primary was not the composer. Reverted to a quiet sentence,
+   no button; the composer is unconditionally the next action whenever that branch is reachable at all
+   (`e533ad8`).
+
+**Also fixed along the way, not one of the five but the same class of finding** — both uploaders'
+submit buttons were enabled with nothing ready to submit (no file for photos; no title/file for
+materials), reading as dead primaries. Both now disabled until ready (`133b26c`, `358eac4`).
+
+### ★★ A git mistake, caught and fixed the same turn
+
+`358eac4` accidentally deleted `src/components/sessions/focus-clearance.tsx` — `sessions`' own file,
+nothing I intended to touch. Root cause: `git add <my files> && git commit -m "..."` without a
+trailing `-- <paths>` commits the WHOLE index, not just what was just staged — a deletion `sessions`
+had already staged in this shared index (presumably mid-way through their own next commit) rode
+along with mine. Restored byte-for-byte in `9a8340a`, verified against `sessions`' own last commit of
+it (`05f739a`) — exact match. No build ran against the broken state. Told `sessions` directly. Every
+commit from here is `git commit -m "..." -- <explicit paths>`, which is what a shared index actually
+requires and what I should have been doing from my very first commit this wave.
+
+**★ Correction, same day:** the deletion was INTENTIONAL — the lead had moved `FocusClearance` into
+the shell and asked `sessions` to remove the event page's own copy; `sessions` had staged exactly
+that removal when my commit swept it in. My restore (`9a8340a`) brought back an orphan nothing
+imports, and `sessions` deleted it again at `17404f9`. The lead's rule going forward, stated plainly
+and correctly: **never restore, create or delete a file outside my ownership, even to undo my own
+mistake — tell the lead or the owner instead, since only that file's owner knows whether the state I
+see is intended.** Owning the mistake was right; acting on it unilaterally was not. Not touching that
+file again.
+
+---
+
+## 11. The discussion review — two blockers, one real debugging story — `44485b8`
+
+The lead's own capture pass of the owner-named discussion surface (five captures, 390 px phone,
+`68e645d` build) found two blockers and three judgement items. Full detail is in the commit; the part
+worth keeping here is how blocker 1 was actually found, because the first two hypotheses were wrong
+in instructive ways.
+
+**★★ BLOCKER 1 — the composer stayed `aria-busy` indefinitely after one post**, through typing new
+text and past 3890 characters, 80+ seconds observed live. My first hypothesis: `router.refresh()`,
+called as the last statement inside the SAME `startTransition` a component's own `pending` is read
+from, races with sibling components' own `router.refresh()` calls (a reply post, a reaction) and
+Next's router dedupes the underlying request in a way that starves an earlier caller's own "done"
+signal. I moved `router.refresh()` into `setTimeout(…, 0)` for all five actions across both files —
+genuinely outside the tracked transition — and wrote a test to prove it.
+
+**The test lied, in an instructive way.** `expect(button).toBeEnabled()` immediately after a
+successful clear FAILED — not because `pending` was stuck, but because the button is CORRECTLY
+disabled at that instant: an empty composer has nothing to submit (`body.trim().length === 0`,
+`Button`'s own `disabled || pending`), and that's a completely different reason than the bug. This is
+exactly the shape of assertion every earlier test here (including mine) would have written — check
+that something the action did (a toast, a cleared field) happened — and it is presumably WHY nothing
+caught this sooner: the button's `disabled` and the button's `pending` were never independently
+verified.
+
+**Bisecting properly**: removing `router.refresh()` ENTIRELY from the transition (not moving it,
+deleting the call outright) made NO DIFFERENCE to the false-positive test above — proving the
+`setTimeout` fix does not address whatever THAT specific jsdom symptom was, because that symptom
+was never `pending` in the first place. The test that actually exercises the real complaint — type
+fresh text AFTER a successful post, then check `aria-busy` directly rather than the button's overall
+enabled state — passes cleanly, with or without the `setTimeout` change, in jsdom's mocked
+environment.
+
+**Recorded honestly, not smoothed over**: I cannot confirm from here that `setTimeout` is what fixes
+the live-build failure specifically — jsdom cannot model Next's real router/RSC internals closely
+enough to know for certain, and the mocked `router.refresh()` in every test here resolves trivially
+either way. What I can say: the change removes a coupling I could identify and articulate, is
+unconditionally safe (a macrotask genuinely runs outside any transition), and matches the lead's own
+hypothesis. Whether it is the WHOLE fix is the next build's question, not something claimed here.
+
+**BLOCKER 2** (success toasts covering the thread) and the **reaction affordance redesign** (a literal
+filled vs. outline circle, not a colour/opacity shift on the same glyph) are more straightforward —
+see the commit for both. One e2e locator bug fixed alongside (`event-comments.spec.ts:103`, the same
+outer/inner `<li>` nesting trap the delete locator already had to account for).
+
+Ready for sync.
+
+## §12 — the re-drive: which commit, the cross-component test, the token bug
+
+**Which commit fixed the two blockers**: 44485b8, not e533ad8. e533ad8 landed one dialog-timeout fix
+and one empty-state fix only — the `setTimeout(…, 0)` decoupling of every `router.refresh()` (both
+blockers' actual fix) is 44485b8, which came after. The lead's captures and re-drive message predate
+both e533ad8 and 44485b8, so this note exists to say plainly: the fix the re-drive re-asked for was
+already in the branch by the time the message arrived, at 44485b8, three commits before the re-drive.
+
+**The specific test the lead asked for** — "post, then react, then the composer's button is idle" —
+is now `comment-list.test.tsx`'s new describe block (da1b09c). It is the cross-component shape blocker
+1 actually was: `CommentComposer` and `CommentItem` are siblings under `CommentList`, each with its
+own `useTransition`, and the live failure was one sibling's `router.refresh()` leaving another
+sibling's transition unsignalled. Same honesty caveat as §11's blocker-1 test: jsdom's
+`useRouter().refresh` is a no-op stub that cannot fold two calls together the way the real router did
+live, so this proves the composer's `pending` never depends on a sibling's action at all — necessary,
+not sufficient. The real mechanism is only provable against a real build.
+
+**The navy-token bug (23698df)**: real, exactly as reported. `MEDIA_TINTS` (card.tsx) and `TINTS`
+(avatar.tsx) both referenced `bg-navy-600`/`bg-navy-200` — `globals.css` only ever defined
+navy-1000/950/900/850/800 and silver-100…400. Worse: `avatar.test.tsx`'s own `TINT_PAIRS` had
+independently fabricated hex values for the same two fake tokens and never caught the drift, because
+it was a hand-copied duplicate rather than a read of the real file. Fixed by swapping the two entries
+for `navy-900`/`silver-200` (both real, keeping the dark/light balance) in both arrays, and — more
+durably — exporting both arrays for the first time and adding a test in each file that reads
+`globals.css` directly and asserts every class against the real `--color-*` set, so a typo like this
+one fails a test instead of rendering invisibly. `placeholderGlyph` (card.tsx) also went from two
+letters (reading as a pause glyph, «اا», on any title starting with «ا» twice) to one, skipping a
+leading «ال» — `card.test.tsx` covers the skip and the "«ال» alone" edge case.
+
+**Housekeeping**: the three `.bak`/`.bak2`/`.bak3` files the lead flagged were already gone — `find`
+across the tree found none, tracked or untracked. Nothing to `rm`; noting it here rather than staying
+silent about a request I did nothing for.
+
+Ready for sync.
+
+## §13 — the second blocker: aria-busy stuck after a slow post
+
+The lead's diag (aria-busy polled every 500ms against a served build, POST held ~1.5s then
+released): stuck `aria-busy="true"` and a disabled button for several seconds after the response
+arrived, clearing only when the member typed. Suspected mechanism, per the lead: `setTimeout(fn, 0)`
+(44485b8's own fix) is a macrotask, but a macrotask can still run before the browser paints the
+current frame, so `router.refresh()` — its own update, a real RSC refetch — could start before this
+transition's `pending=false` had actually been painted.
+
+**Fix (4582b17)**: replaced `setTimeout(fn, 0)` with `afterPaint(fn)` — two nested
+`requestAnimationFrame` calls, the standard "wait for the browser to have painted" idiom — across
+all five call sites sharing the pattern: `comment-composer.tsx`'s `submit()`, and
+`comment-item.tsx`'s `saveEdit`/`deleteMine`/`moderate`/`toggleLike`. Confirmed empirically that
+`vi.advanceTimersByTimeAsync` flushes queued `requestAnimationFrame` callbacks too, so the fix stays
+testable under fake timers.
+
+**On the jsdom test, honestly**: before writing the real test, I spent real effort trying to actually
+REPRODUCE the stuck state in jsdom, on the code as it stood before this fix — fake timers advancing
+1500ms, real wall-clock timers with no fake anything, an `act()`-wrapped settle, and a mock
+`router.refresh()` that itself calls React's `startTransition` around its own slow (2s) update, to
+simulate what Next's real router does internally. Every single configuration resolved `aria-busy`
+cleanly and promptly, even on the PRE-fix code. The mocked `postCommentAction` is a `vi.fn()`;
+whatever the real bug's mechanism is, it almost certainly lives inside Next's actual Server-Action-
+dispatch client runtime (`callServer` and friends), which never executes at all under a mock — so no
+jsdom test built on this mock can discriminate the bug from the fix. I wrote the test the lead asked
+for anyway (`comment-composer.test.tsx`, in 4582b17) as the regression guard it's meant to be — it
+documents the intent and would catch a component-level regression — but said plainly in its own
+comment that it passes on both sides of the fix and isn't proof the live symptom is gone.
+
+Ready for sync.
+
+## §14 — DEC-135: adopting usePendingNudge
+
+Root cause landed by the lead (`DEC-135`, `docs/plan/DECISIONS.md`, `5376c32`): the stuck «نشر» was
+never a timing race in my own code. React 19.2.4 can lose the ping that would resume a transition
+once a Flight chunk resolves synchronously mid-render, and nothing is then scheduled to retry —
+measured at one press in three on a real build. My two earlier attempts (`setTimeout(…, 0)` at
+44485b8, `afterPaint` via double `requestAnimationFrame` at 4582b17) each only moved the odds, since
+both treated a symptom (the refresh racing this transition's own completion) of a cause that was
+never about timing at all.
+
+**Applied (1fd7980)**: deleted `afterPaint` from both event files, put `router.refresh()` back as the
+last statement inside its original `startTransition` (pre-44485b8 shape), and called
+`usePendingNudge(pending)` once per component in `comment-composer.tsx`/`comment-item.tsx`. Rewrote
+both files' module comments to cite DEC-135, not "overlapping refreshes" or "a macrotask before
+paint" — those explanations are retired now, not just superseded.
+
+**Untracked refreshes found and fixed**: `materials/upload-form.tsx` and `photos/upload-widget.tsx`
+both called `router.refresh()` from a manually-managed `busy` boolean, entirely outside any
+transition — meaning DEC-135's race applied to them too and nothing was even ATTEMPTING to track it.
+Converted both to `useTransition`, feeding `pending` to both the button's busy state and
+`usePendingNudge`.
+
+**Audited each candidate against the lead's own stated rule** ("a Server Action which revalidates or
+refreshes") rather than adding the hook mechanically everywhere named:
+- `tasks/task-item.tsx` (`TaskItem` and `TaskForm`) and `photos/takedown-button.tsx` — all four
+  actions they await (`toggleTaskCompletionAction`, `submitTaskFormResponseAction`,
+  `requestPhotoTakedownAction`, `restorePhotoAction`) call `revalidatePath` server-side. Added.
+- `materials/settings-form.tsx` — checked `saveMaterialSettings`/`updateMaterialSettings`: neither
+  calls `revalidatePath`/`revalidateTag`, and the component never calls `router.refresh()` either
+  (both fields are purely local optimistic state). Added `usePendingNudge` anyway, since the lead
+  named this exact file — it's a no-op today, kept as a defensive guard against a future change to
+  this action reopening the race silently. Flagged the discrepancy to the lead rather than silently
+  complying or silently skipping.
+- `materials/[materialId]/download-button.tsx` — NOT touched. `requestMaterialDownload` only reads a
+  signed URL, no revalidation, and the button navigates via `window.location.href` (a hard browser
+  navigation, not a Next transition) — nothing here can hit DEC-135's race at all.
+
+tsc clean, lint 0 errors, 89/89 component tests green (event, materials, photos, tasks).
+
+Ready for sync.
+
+## §15 — the photos empty state's duplicate button
+
+Found from a 390 px capture at 5376c32: the empty gallery's `EmptyState` carried its own enabled
+«إضافة صورة» action, wired to the SAME `upload.action` label the uploader's own submit button already
+uses right below it — duplicate accessible name, one of the two disabled.
+
+Checked the lead's second bullet (keep the button only where the uploader is NOT rendered) against
+the actual code: `if (photos.length === 0 && !canUpload) return null;` already returns null upstream
+whenever the uploader would be absent, so every path that reaches the empty-state branch has
+`canUpload === true` — the uploader is NEVER absent there. That hypothetical case is structurally
+unreachable in this component, so there was nothing to preserve; text-only unconditionally.
+
+Fixed (9752358): `EmptyState` replaced with a plain quiet sentence, same shape as the discussion's own
+empty state. Test now asserts exactly one "إضافة صورة" button remains, guarding the regression
+directly rather than just checking presence.
+
+Ready for sync.
+
+## §16 — a slow post wiping the next comment being typed
+
+Found by the lead's discussion review on a real build (DEC-135 verified separately, sha 1fd7980
+confirmed: a held post's lost ping committed at the nudge's first tick). Separate, real defect: a
+member typing the next comment into the SAME field while an earlier, slow post is still pending had
+it silently wiped when that earlier post succeeded — `submit()`'s success path cleared `body`
+unconditionally, and only the BUTTON is disabled while pending, not the textarea itself.
+
+**Fixed (d5f8b10)**: a `bodyRef` mirrors `body` via an effect, always current; the success path now
+clears the field/mentions/candidates only when `bodyRef.current === trimmed` — nothing changed since
+THIS post was submitted. `trimmed` itself (the closure's own captured value) can't be compared against
+directly, since a closure comparing a frozen value against itself is always true — the check needs the
+field's true, live value. `onPosted?.()` and `router.refresh()` stay unconditional, per the lead's
+explicit "keep the rest of the success path as is."
+
+Added the exact test requested: type, submit, change the text while the mocked action is still
+pending, resolve it, assert the new text survives. Unlike the DEC-135/blocker-1 tests, this one is
+pure synchronous state-comparison logic with no React-scheduling ambiguity — no jsdom-limitation
+caveat needed here; it directly proves the fix.
+
+Ready for sync.
+
+## §17 — catching network-level rejections across every transition
+
+The lead's real-build finding: a request failing at the NETWORK level (offline, a dropped
+connection) makes the Server Action call itself REJECT, not return an `{error}` value. Uncaught
+inside `startTransition`, that's a render error — React replaces the WHOLE event page with the
+route's error boundary, losing whatever the member typed. Fixed with try/catch at every transition
+call site across my four surfaces (event, materials, photos, tasks) — 9 call sites in 7 files.
+
+**toggleLike's rollback, reasoned rather than assumed**: the lead asked for an explicit rollback of
+the optimistic reaction on a throw. Read `useOptimistic`'s own reducer first: `count: likeCount +
+(nextReacted ? 1 : -1)` always computes off the REAL base total (`likeCount`, a prop), never off the
+CURRENT optimistic value — so a second `setOptimisticReaction` dispatch trying to "undo" the first
+has no value that reconstructs the exact original pair; it would either repeat the flip or land one
+off. No redispatch added. Catching the throw lets the transition settle NORMALLY instead of crashing,
+and `useOptimistic` discards the optimistic override once it does — the identical mechanism the
+existing `result.error` branch already relied on (confirmed by its own comment, unchanged). Added a
+test proving this holds for a THROW, not just a returned error, since the mechanism is the same one
+but exercised via a different exit.
+
+**settings-form.tsx is the one real exception**: no `useOptimistic` there, so nothing reverts
+automatically — added an explicit `previous` capture and revert, plus wired in `useToast` (this
+component had neither error handling nor a toast import before this).
+
+**Broadened beyond comments**: the lead's list named uploaders/tasks/takedown explicitly ("wherever
+an awaited Server Action sits in a transition without a catch") — I read this as covering the
+uploaders' `fetch()` calls too, since an uncaught fetch rejection is the identical crash shape even
+though it's a Route Handler, not a Server Action. Wrapped both upload forms' entire request chain.
+
+**New message keys, ar first**: `event.comments.errors.network`, `tasks.list.toggleFailed`,
+`materials.list.settingsFailed` (reused `materials.list`'s existing `uploadFailed`/photos.gallery's
+`requestHideFailed`/`restoreFailed`/tasks.form's `submitFailed` where the existing wording already
+fit, rather than adding redundant keys).
+
+**Test-file discovery**: `ui/button`'s pending label gets concatenated into the accessible name
+(`SpinnerIcon`'s own `aria-label`) while `pending=true` — a fast lookup by exact button name during
+that window can miss it; and `comment-item.tsx`'s save button's real label is "حفظ التعديل", not
+"حفظ" — caught both while writing the new tests, not guessed.
+
+tsc clean, lint 0 errors, 93/93 component tests (event/materials/photos/tasks), 698/698 unit tests.
+
+Ready for sync.
+
+## §18 — the materials capture: system controls, Arabic quoting
+
+Two items from the materials capture at 296aec4 (row 8).
+
+**settings-form.tsx onto ui/select/ui/checkbox (9a71f48)**: swapped the raw native `<select>`/
+checkbox for `sessions`' `ui/select`/`ui/checkbox` — import only, no edits to those files. `ui/select`
+has no size prop at all (always renders "md", a pre-existing limit I already knew about from the
+earlier `<Select size="sm">` type-error fix); used it as-is rather than asking for a variant I don't
+actually need yet — the row isn't dense enough to obviously require one. Noting here per the lead's
+"say so in your note" in case the real-build capture at the next density shows otherwise. Added the
+FIRST dedicated test file this component has ever had (six tests: renders, both optimistic updates,
+both network-failure reverts, axe) — the network-failure try/catch from the previous fix had zero
+test coverage until now.
+
+**Arabic guillemets, not ASCII quotes (de8db45)**: `substitutionWarning.body`'s ar string quoted the
+font name with `\"..\"` — switched to `«..»`, matching house convention (`10` §3). `en` keeps plain
+`"quotes"`, its own convention, untouched — checked before assuming otherwise. Two component tests
+(`list.test.tsx`, `proposal-list.test.tsx`) had the old ASCII-quoted sentence hardcoded for an exact
+`textContent` match; updated both.
+
+Ready for sync.
+
+## §19 — 5-failed and 6-frozen: three items from the discussion review
+
+**1. Double error feedback, composer only.** Dropped the toast from `comment-composer.tsx`'s
+network-catch path — the inline Panel is the right feedback per REQ-UIX-010, and the toast repeating
+the identical sentence covered the thread at 390 px. Deliberately did NOT touch `comment-item.tsx`'s
+`saveEdit`/`submitReport` network catches, even though they have the exact same "inline Panel +
+identical toast" shape — the lead's ask named the composer specifically ("For the composer..."), and
+the general principle they stated afterward ("Keep toasts only where there's no inline spot") could
+be read as extending further, but I chose not to guess. Flagged this explicitly in my report rather
+than silently narrowing OR widening the fix.
+
+**2. Missing period.** `errors.network`'s ar string was the one sentence in `event.json` missing its
+final «.». Fixed. Checked my other two new network-adjacent keys (`materials.list.settingsFailed`,
+`tasks.list.toggleFailed`) for the same gap on both ar/en — both already correctly punctuated when I
+wrote them, nothing else needed fixing.
+
+**3. Reactions on a frozen thread.** `comment-item.tsx` takes a new `frozen?: boolean` prop; when
+true, the `IconButton` reaction toggle is withdrawn entirely (no interactive control offering an
+action RLS would refuse anyway) and only a read-only count shows, and only when non-zero. Threaded
+from `comment-list.tsx` to BOTH the top-level and reply `<CommentItem>` instances (the reply list was
+easy to miss — same prop needed at both call sites). Report is untouched, per the ask — moderation
+still needs to work on a frozen thread.
+
+tsc clean, lint 0 errors, 52/52 event component tests (3 new frozen-state tests), 698/698 unit tests.
+
+Ready for sync.
+
+## §20 — the same toast drop, extended to saveEdit/submitReport
+
+The lead confirmed: apply the same rule I flagged as a discovered-but-not-yet-widened parallel in
+§19 — `saveEdit` and `submitReport` both carry the identical "inline Panel + toast repeating the
+same sentence" shape as the composer's own fix. Dropped the toast from both functions' catch AND
+`result.error` branches. `deleteMine`/`moderate`/`toggleLike` are unchanged — no inline spot, matching
+the lead's own examples. `submitReport`'s SUCCESS toast stays: the dialog has already closed by then
+(no inline Panel for a success state to duplicate).
+
+Tightened the existing saveEdit network test from "at least one match" to exactly one, and added the
+equivalent test for submitReport's network catch (previously untested).
+
+53/53 event component tests, tsc clean, lint 0 errors.
+
+Ready for sync.

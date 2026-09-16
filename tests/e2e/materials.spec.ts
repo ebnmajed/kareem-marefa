@@ -160,6 +160,18 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ The lead's real-build finding (reproduced under a CPU throttle): while a
+// Suspense boundary is still streaming, React leaves a HIDDEN copy of it in
+// `body>div#S:n[hidden]` alongside the visible copy under `#main` for a few
+// hundred ms. Playwright's strict-mode locators count the hidden node too,
+// so a `getByText`/`getByRole` right after `goto` can resolve to two
+// elements — this spec's own `materials:198` and `:222` were two of three
+// specs that hit it. Not a bug in this slot; wait for the stream to finish
+// settling before any strict locator.
+async function waitForStreamsToSettle(page: Page) {
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 /** The half of a 390 px review a screenshot cannot do — same shape as
  *  tests/e2e/sessions-screens.spec.ts's own `review()`. */
 async function review(p: Page, name: string) {
@@ -199,8 +211,15 @@ test("the Materials slot shows the substitution warning on the material, and lin
   await page.setViewportSize(PHONE);
   await signIn(context, presenterEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
-  await expect(page.getByText(/استُبدل الخط/)).toBeVisible();
+  // ★ latent bug found by the lead's real-build run, not a wave-6 regression:
+  // the wording changed from "استُبدل الخط" ("the font was substituted") to
+  // "غير مضمَّن" ("not embedded") when DEC-058 reworded this for PDF-only
+  // uploads (`2f336a2`) — this assertion was never updated to match, so it
+  // has been silently unable to pass since. `materials.list.substitution
+  // Warning.body`'s own current text is the source of truth.
+  await expect(page.getByText(/غير مضمَّن/)).toBeVisible();
   await expect(page.getByText("Amiri")).toBeVisible();
   await review(page, "materials-event-page");
 
@@ -217,6 +236,7 @@ test("★ REQ-MAT-003/010: the viewer's arrows follow the RTL reading direction 
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
   await page.goto(`/ar/app/sessions/${sessionId}/materials/${materialId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByTestId("page-indicator")).toHaveText(/1.*3/);
   // The arrows are a window keydown handler attached on hydration; a key
   // pressed before the client bundle has run is lost (deterministic on the
@@ -240,12 +260,17 @@ test("★ REQ-MAT-001/012: the presenter drives a real upload through the form e
   const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
   await signIn(context, presenterEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
+  await waitForStreamsToSettle(page);
 
   await page.getByLabel("نوع المادة").selectOption("image");
   await page.getByLabel("عنوان المادة").fill("صورة من الجلسة");
-  // Scoped to the المواد region: photos.spec.ts's own UploadWidget shares
-  // the same "الملف" file-input label on the SAME event page.
-  await page.getByRole("region", { name: "المواد" }).getByLabel("الملف").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
+  // ★ wave 6: the file input moved onto `ui/file-drop` (REQ-UIX-024), whose
+  // hidden native input carries no accessible label of its own (the button
+  // and the drop zone are the two labelled affordances — file-drop.tsx's
+  // own header). Scoped to `#materials-upload-form` (the uploader's own
+  // wrapper id, also the EmptyState's anchor target): photos.spec.ts's own
+  // UploadWidget shares the same `name="file"` input on the SAME event page.
+  await page.locator("#materials-upload-form input[type=\"file\"]").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
   await page.getByRole("button", { name: "رفع" }).click();
 
   // completeMaterialUpload() downloads the object it just wrote through the

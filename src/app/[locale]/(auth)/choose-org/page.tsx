@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { createServerClient } from "@/lib/supabase/server";
 import { getSessionState, pathForState } from "@/lib/dal/session";
 import { destinationFor, PLATFORM_LOCALE, provision } from "@/lib/auth/flow";
@@ -8,6 +12,11 @@ import { chooseOrg } from "./actions";
 
 // SCR-003 · /choose-org — appears ONLY when the domain genuinely matches
 // more than one org, and never again after the choice (REQ-AUT-004, A2).
+//
+// ★ The fork that fixes which `org_id` the whole session carries, permanently —
+// `members.org_id` is immutable. So the description says the choice is final
+// BEFORE the button, the button shows it is working while the choice is being
+// written, and a failed write says so rather than repeating the description.
 export default async function ChooseOrgPage({
   params,
   searchParams,
@@ -33,27 +42,26 @@ export default async function ChooseOrgPage({
   const t = await getTranslations("auth.chooseOrg");
   return (
     <>
-      <h1 className="text-h2 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 text-body text-fg-muted">{t("body")}</p>
+      <PageHeader title={t("title")} description={t("body")} />
       {error ? (
-        <p role="alert" className="mt-4 text-body text-fg-body">
-          {t("body")}
-        </p>
+        <Panel tone="error" className="mt-6">
+          <p role="alert" className="text-body text-error">
+            {t("error")}
+          </p>
+        </Panel>
       ) : null}
       <form action={chooseOrg} className="mt-6">
         {next ? <input type="hidden" name="next" value={next} /> : null}
-        <fieldset className="space-y-3">
-          <legend className="sr-only">{t("title")}</legend>
-          {envelope.orgs.map((org, i) => (
-            <label key={org.id} className="flex cursor-pointer items-center gap-3 rounded-field border border-edge p-4 hover:border-edge-strong">
-              <input type="radio" name="org" value={org.id} required defaultChecked={i === 0} className="size-5 accent-white" />
-              <bdi className="text-body text-fg-heading">{org.name}</bdi>
-            </label>
-          ))}
-        </fieldset>
-        <button type="submit" className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-field bg-white px-6 text-label text-navy-950 hover:bg-silver-200">
+        <RadioGroup
+          name="org"
+          legend={t("legend")}
+          defaultValue={envelope.orgs[0]?.id}
+          // Org names are interpolated values and bidi-isolated (`10` §3).
+          options={envelope.orgs.map((org) => ({ value: org.id, label: <bdi>{org.name}</bdi> }))}
+        />
+        <SubmitButton size="lg" className="mt-6 w-full" pendingLabel={t("pending")}>
           {t("confirm")}
-        </button>
+        </SubmitButton>
       </form>
     </>
   );

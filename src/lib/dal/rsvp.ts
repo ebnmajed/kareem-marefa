@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { seatState, sessionPhase, viewerRelation, type PhaseInput, type SeatState, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
@@ -32,8 +33,12 @@ export interface RsvpPanelData {
   canCancel: boolean;
 }
 
-/** Everything the RsvpPanel and AttendanceOutcome slots need, in one round trip. Null when the session doesn't exist or isn't visible. */
-export async function getRsvpPanelData(locale: string, sessionId: string): Promise<RsvpPanelData | null> {
+/** Everything the RsvpPanel and AttendanceOutcome slots need, in one round trip. Null when the session doesn't exist or isn't visible.
+ *  ★ Request-scoped `cache()` (wave 6): the event page's hero badge, the panel, the phone action bar and the
+ *  outcome all read it, and without the cache each made its own round trip. No logic change. */
+export const getRsvpPanelData = cache(loadRsvpPanelData);
+
+async function loadRsvpPanelData(locale: string, sessionId: string): Promise<RsvpPanelData | null> {
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 

@@ -1,11 +1,14 @@
 // A single comment row (REQ-EVT-002, REQ-EVT-005, REQ-EVT-008). Real
 // ar/event.json through NextIntlClientProvider; only the Server Actions
 // module is mocked.
+import { Component, type ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import axe from "axe-core";
 import ar from "@/messages/ar/event.json";
+import { ToastProvider } from "@/components/ui/toast";
 import type { CommentDTO } from "@/lib/dal/comments";
 
 vi.mock("@/components/event/actions", () => ({
@@ -46,9 +49,24 @@ const baseComment: CommentDTO = {
 function renderItem(comment: CommentDTO, extra: Partial<Parameters<typeof CommentItem>[0]> = {}) {
   return render(
     <NextIntlClientProvider locale="ar" messages={ar}>
-      <CommentItem locale="ar" comment={comment} reactions={{ totals: {}, mine: [] }} reported={false} numerals="western" {...extra} />
+      <CommentItem locale="ar" comment={comment} reactions={{ totals: {}, mine: [] }} reported={false} {...extra} />
     </NextIntlClientProvider>,
   );
+}
+
+// ★ Stands in for the route's own `error.tsx` boundary — same reasoning as
+// `comment-composer.test.tsx`'s identical class: a network-level failure
+// (the action call itself rejects) used to be thrown out of
+// `startTransition`'s async callback and replace the whole event page.
+class TestErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return <p data-testid="boundary-reached">error boundary reached</p>;
+    return this.props.children;
+  }
 }
 
 describe("CommentItem", () => {
@@ -93,9 +111,152 @@ describe("CommentItem", () => {
     expect(screen.queryByRole("button", { name: "إبلاغ" })).not.toBeInTheDocument();
   });
 
-  it("shows the like count next to the reaction toggle, formatted in the org's numeral system", () => {
+  it("shows the like count beside the reaction toggle — the IconButton itself carries no visible text, only the accessible name", () => {
     renderItem(baseComment, { reactions: { totals: { like: 3 }, mine: [] } });
-    expect(screen.getByRole("button", { name: /إعجاب/ })).toHaveTextContent("3");
+    const toggle = screen.getByRole("button", { name: "إعجاب" });
+    expect(toggle).toHaveTextContent(""); // icon-only — REQ-NFR-007's name is `aria-label`, not visible text
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("a count of zero renders no count text at all", () => {
+    renderItem(baseComment);
+    expect(screen.getByRole("button", { name: "إعجاب" })).toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  // ★ The lead's real-build finding, discussion-review capture state
+  // 6-frozen: a cancelled session's discussion is read-only (REQ-SES-010,
+  // the notice already covers replies/the composer) but the reaction
+  // toggle was still offered on every comment — an action the DAL/RLS
+  // would refuse regardless, and offering one that can only fail is the
+  // thing to avoid.
+  it("★ frozen: the reaction toggle is withdrawn, and a non-zero count shows read-only", () => {
+    renderItem(baseComment, { reactions: { totals: { like: 3 }, mine: [] }, frozen: true });
+    expect(screen.queryByRole("button", { name: "إعجاب" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "إلغاء الإعجاب" })).not.toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("★ frozen with a zero count: no toggle and no count text at all", () => {
+    renderItem(baseComment, { frozen: true });
+    expect(screen.queryByRole("button", { name: "إعجاب" })).not.toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("★ frozen still offers the report control — moderation must work on a frozen thread", () => {
+    renderItem(baseComment, { frozen: true });
+    expect(screen.getByRole("button", { name: "إبلاغ" })).toBeInTheDocument();
+  });
+
+  it("reacting flips the accessible name and the count OPTIMISTICALLY — before the action resolves (`16` §7.1 layer 4)", () => {
+    renderItem(baseComment, { reactions: { totals: {}, mine: [] } });
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    // The mocked action's promise has not resolved yet at this point in the
+    // test (no `await`) — a passing assertion here IS the proof the flip is
+    // optimistic, not a wait for the server to confirm it.
+    expect(screen.getByRole("button", { name: "إلغاء الإعجاب" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("a failed reaction reverts the optimistic state and tells the member, quietly and persistently", async () => {
+    const { toggleReactionAction } = await import("@/components/event/actions");
+    vi.mocked(toggleReactionAction).mockResolvedValueOnce({ error: "generic" });
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    expect(await screen.findByText("تعذّر تسجيل تفاعلك")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "إعجاب" })).toBeInTheDocument(); // reverted
+  });
+
+  // ★ The lead's real-build finding, the same class of bug as
+  // `comment-composer.test.tsx`'s network-failure test: a network-level
+  // failure (offline, a dropped connection) makes `toggleReactionAction`
+  // REJECT rather than return an `{ error }` value. No explicit second
+  // dispatch tries to "undo" the optimistic flip on this path (see
+  // `comment-item.tsx`'s own comment on `toggleLike` for why that would
+  // actually land on the WRONG count) — catching the throw lets the
+  // transition settle normally, and `useOptimistic` reverts to the real
+  // base props on its own, the same mechanism the returned-error test above
+  // already relies on. This proves that holds for a THROW too, not just a
+  // returned error, and that the whole component survives rather than
+  // handing the error to a boundary above it.
+  it("★ a network-level failure while reacting reverts the optimistic flip and never reaches the error boundary", async () => {
+    const { toggleReactionAction } = await import("@/components/event/actions");
+    vi.mocked(toggleReactionAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    expect(await screen.findByText("تعذّر تسجيل تفاعلك")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "إعجاب" })).toBeInTheDocument(); // reverted
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
+  });
+
+  // ★ Same shape as `comment-composer.test.tsx`'s composer-level test,
+  // proving the identical try/catch pattern holds here too: a network-level
+  // failure keeps the edited text in the field (never enters `setEditing
+  // (false)`) and never crashes to the error boundary.
+  it("★ a network-level failure while saving an edit keeps the draft and never reaches the error boundary", async () => {
+    const { editCommentAction } = await import("@/components/event/actions");
+    vi.mocked(editCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={{ ...baseComment, isMine: true, canEditNow: true }} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "تعديل" }));
+    const editField = screen.getByRole("textbox", { name: "تعديل" });
+    fireEvent.change(editField, { target: { value: "نص معدَّل لن يصل" } });
+    fireEvent.click(screen.getByRole("button", { name: "حفظ التعديل" }));
+
+    // ★ Exactly ONE — the lead's real-build capture 5-failed found the
+    // adjacent Panel (REQ-UIX-010) and a toast repeating the identical
+    // sentence together, covering the thread at 390 px. Fixed in
+    // comment-composer.tsx first, then here (the same defect, same fix).
+    await screen.findByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.");
+    expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.")).toHaveLength(1);
+    expect(screen.getByRole("textbox", { name: "تعديل" })).toHaveValue("نص معدَّل لن يصل"); // still editing, text kept
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
+  });
+
+  // ★ Same fix, same reasoning: the report dialog closes synchronously on
+  // submit (its own `onSubmit`), so by the time the catch runs the member
+  // is back at the adjacent Panel — no toast needed, and none shown now.
+  it("★ a network-level failure while reporting keeps the sentence to ONE place and never reaches the error boundary", async () => {
+    const { reportCommentAction } = await import("@/components/event/actions");
+    vi.mocked(reportCommentAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <TestErrorBoundary>
+            <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+          </TestErrorBoundary>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إبلاغ" }));
+    fireEvent.change(screen.getByLabelText("سبب الإبلاغ"), { target: { value: "سبب واضح للإبلاغ" } });
+    fireEvent.click(screen.getByRole("button", { name: "إرسال البلاغ" }));
+
+    await screen.findByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.");
+    expect(screen.getAllByText("تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.")).toHaveLength(1);
+    expect(screen.queryByText("تم إرسال بلاغك عن هذا التعليق")).not.toBeInTheDocument(); // not reported — the throw never reached success
+    expect(screen.queryByTestId("boundary-reached")).not.toBeInTheDocument();
   });
 
   it("pressing reply calls onReply, and only top-level comments offer it", () => {
@@ -106,5 +267,14 @@ describe("CommentItem", () => {
 
     renderItem({ ...baseComment, parentId: "parent1" }, { onReply });
     expect(screen.getAllByRole("button", { name: "رد" })).toHaveLength(1); // still just the top-level one from above
+  });
+
+  it("is accessible with every affordance showing at once — mine, editable, reported by someone else, reacted", async () => {
+    const { container } = renderItem(
+      { ...baseComment, isMine: true, canEditNow: true },
+      { reactions: { totals: { like: 4 }, mine: ["like"] }, onReply: () => {} },
+    );
+    const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(violations.map((v) => v.id)).toEqual([]);
   });
 });

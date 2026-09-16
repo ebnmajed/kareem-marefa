@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import { subscribeToSessionTopic } from "@/lib/realtime/channel";
+import { Panel } from "@/components/ui/panel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
 import type { CommentDTO } from "@/lib/dal/comments";
@@ -56,7 +56,6 @@ export function CommentList({
   viewerMemberId,
   isStaffViewer,
   editWindowMinutes,
-  numerals,
   initialComments,
   initialReactions,
   initialReported,
@@ -67,7 +66,6 @@ export function CommentList({
   viewerMemberId: string;
   isStaffViewer: boolean;
   editWindowMinutes: number | null;
-  numerals: NumeralSystem;
   initialComments: CommentDTO[];
   initialReactions: Record<string, ReactionSummary>;
   initialReported: string[];
@@ -146,7 +144,9 @@ export function CommentList({
   return (
     <div>
       {frozen ? (
-        <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
+        <Panel tone="neutral">
+          <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
+        </Panel>
       ) : (
         <div className="mb-4">
           <CommentComposer locale={locale} sessionId={sessionId} parentId={null} />
@@ -154,7 +154,14 @@ export function CommentList({
       )}
 
       {topLevel.length === 0 ? (
-        <p className="text-body text-fg-muted">{t("empty")}</p>
+        // ★ Not `EmptyState` — the lead's 390 px review of the live build
+        // caught this: the composer is ALREADY the visible, primary next
+        // action right above this (it is unconditional whenever this branch
+        // is reachable at all — frozen+empty never gets here, `Comments()`
+        // returns null first), so a SECOND card offering "write the first
+        // comment" duplicated the one action into two, and the one that
+        // looked primary was not the composer. A quiet sentence, no button.
+        frozen ? null : <p className="text-body text-fg-muted">{t("empty")}</p>
       ) : (
         <ul className="divide-y divide-[var(--edge)]">
           {topLevel.map((comment) => {
@@ -167,10 +174,10 @@ export function CommentList({
                   comment={comment}
                   reactions={reactions[comment.id] ?? emptySummary}
                   reported={reported.has(comment.id)}
-                  numerals={numerals}
                   onReply={frozen ? undefined : () => setOpenReplyFor((v) => (v === comment.id ? null : comment.id))}
                   isReplyOpen={openReplyFor === comment.id}
                   onReported={() => setReported((prev) => new Set(prev).add(comment.id))}
+                  frozen={frozen}
                 />
                 {openReplyFor === comment.id ? (
                   <div className="ms-8 mb-3">
@@ -193,8 +200,8 @@ export function CommentList({
                           comment={reply}
                           reactions={reactions[reply.id] ?? emptySummary}
                           reported={reported.has(reply.id)}
-                          numerals={numerals}
                           onReported={() => setReported((prev) => new Set(prev).add(reply.id))}
+                          frozen={frozen}
                         />
                       </li>
                     ))}

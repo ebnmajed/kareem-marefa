@@ -21,11 +21,15 @@
       "language": {
         "ar": "Arabic",
         "en": "English"
-      }
+      },
+      "tagLabel": "Tag"
     },
     "bookmarkButton": {
       "add": "Add to bookmarks",
-      "remove": "Remove from bookmarks"
+      "remove": "Remove from bookmarks",
+      "short": "Save",
+      "icon": "Save session",
+      "failed": "The session could not be saved. Try again."
     },
     "bookmarksPage": {
       "heading": "Bookmarks",

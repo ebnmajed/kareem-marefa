@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getSessionCertificates, getOrgTimeZone, type CertificateRow } from "@/lib/dal/certificates";
-import { formatDateTime, formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { release, revoke } from "./actions";
 
 // SCR-045 · `/app/admin/sessions/[id]/certificates` — REQ-CRT-004,
@@ -56,7 +56,7 @@ export default async function SessionCertificatesPage({
 
       {released !== null && Number.isFinite(released) ? (
         <p role="status" className="mt-4 text-body-sm text-fg-heading">
-          {t("review.released", { count: released, value: formatNumber(released, data.numerals) })}
+          {t("review.released", { count: released, value: formatNumber(released) })}
         </p>
       ) : null}
       {done === "revoked" ? (
@@ -112,7 +112,7 @@ export default async function SessionCertificatesPage({
           <ul className="mt-4 flex flex-col gap-2">
             {data.issued.map((c) => (
               <li key={c.id} className="rounded-field border border-edge p-3">
-                <Row certificate={c} numerals={data.numerals} timeZone={timeZone} locale={locale} />
+                <Row certificate={c} timeZone={timeZone} locale={locale} />
                 {data.canRelease ? <RevokeForm certificate={c} sessionId={data.sessionId} /> : null}
               </li>
             ))}
@@ -129,7 +129,7 @@ export default async function SessionCertificatesPage({
           <ul className="mt-4 flex flex-col gap-2">
             {data.revoked.map((c) => (
               <li key={c.id} className="rounded-field border border-edge p-3">
-                <Row certificate={c} numerals={data.numerals} timeZone={timeZone} locale={locale} />
+                <Row certificate={c} timeZone={timeZone} locale={locale} />
                 {/* The reason IS shown here — this screen is the org's own.
                     /verify never shows it (OQ-015, REQ-CRT-011). */}
                 {c.revocationReason ? (
@@ -148,12 +148,10 @@ export default async function SessionCertificatesPage({
 
 async function Row({
   certificate: c,
-  numerals,
   timeZone,
   locale,
 }: {
   certificate: CertificateRow;
-  numerals: NumeralSystem;
   timeZone: string;
   locale: string;
 }) {
@@ -171,11 +169,11 @@ async function Row({
       </span>
       {c.revokedAt ? (
         <span className="text-body-sm text-fg-muted">
-          {t.rich("review.revokedAt", { date: formatDateTime(c.revokedAt, numerals, timeZone, locale), bdi: (x) => <bdi>{x}</bdi> })}
+          {t.rich("review.revokedAt", { date: formatDateTime(c.revokedAt, timeZone, locale), bdi: (x) => <bdi>{x}</bdi> })}
         </span>
       ) : c.issuedAt ? (
         <span className="text-body-sm text-fg-muted">
-          <bdi>{formatDateTime(c.issuedAt, numerals, timeZone, locale)}</bdi>
+          <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi>
         </span>
       ) : null}
     </p>

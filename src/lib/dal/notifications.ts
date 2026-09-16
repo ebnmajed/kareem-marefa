@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 
 // Notifications — the inbox and the preference matrix of SCR-026
 // (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006), plus the unread count the shell's
@@ -82,10 +81,6 @@ export interface CategoryPreference {
 
 export interface PreferenceMatrix {
   rows: CategoryPreference[];
-  /** The org's display settings, carried here so SCR-026 fetches once. The
-   *  spelling is `public.numeral_system`'s own, so there is no second place
-   *  for the database and the formatter to disagree. */
-  numerals: NumeralSystem;
   timeZone: string;
 }
 
@@ -104,7 +99,7 @@ export async function getPreferenceMatrix(locale: string): Promise<PreferenceMat
   const [matrix, { data: stored, error }, { data: settings }] = await Promise.all([
     getNotificationMatrix(locale),
     supabase.from("notification_preferences").select("category, channel, enabled").eq("member_id", session.memberId),
-    supabase.from("org_settings").select("numerals, time_zone").eq("org_id", session.orgId).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`notification_preferences: ${error.message}`);
 
@@ -128,7 +123,6 @@ export async function getPreferenceMatrix(locale: string): Promise<PreferenceMat
 
   return {
     rows,
-    numerals: settings?.numerals ?? "western",
     timeZone: settings?.time_zone ?? "Asia/Riyadh",
   };
 }
@@ -467,10 +461,6 @@ export async function listDeliveries(locale: string, opts: { limit?: number } = 
 export interface ReminderSchedule {
   offsetsMinutes: number[];
   ratingPromptDelayMinutes: number;
-  /** REQ-INT-006: the screen prints these numbers, so it needs the org's
-   *  system. Without it the hint under the input rendered «١٠٠٨٠» while the
-   *  input itself held «10080» — two numeral systems, one screen. */
-  numerals: NumeralSystem;
 }
 
 export async function getReminderSchedule(locale: string): Promise<ReminderSchedule | null> {
@@ -479,14 +469,13 @@ export async function getReminderSchedule(locale: string): Promise<ReminderSched
   const { session, supabase } = client;
   const { data, error } = await supabase
     .from("org_settings")
-    .select("reminder_offsets_minutes, rating_prompt_delay_minutes, numerals")
+    .select("reminder_offsets_minutes, rating_prompt_delay_minutes")
     .eq("org_id", session.orgId)
     .maybeSingle();
   if (error) throw new Error(`org_settings: ${error.message}`);
   return {
     offsetsMinutes: data?.reminder_offsets_minutes ?? [10080, 1440, 120],
     ratingPromptDelayMinutes: data?.rating_prompt_delay_minutes ?? 60,
-    numerals: data?.numerals === "arabic_indic" ? "arabic_indic" : "western",
   };
 }
 

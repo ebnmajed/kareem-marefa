@@ -67,7 +67,7 @@ export function MemberPicker({
           // with wave 3 («لا يوجد عضو مطابق»); a non-zero count falls back to
           // `ui/combobox`'s own generic announcement, since this form never
           // had one before and this is a strict addition, not a regression.
-          resultsLabel={(count) => (count === 0 ? noMatches : t("resultsCount", { count, value: formatNumber(count, "western") }))}
+          resultsLabel={(count) => (count === 0 ? noMatches : t("resultsCount", { count, value: formatNumber(count) }))}
         />
       </div>
     </div>

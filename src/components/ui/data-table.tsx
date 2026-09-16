@@ -141,14 +141,22 @@ export function DataTable<Row>({
               a scrolling table on the PHONE, which is the card list below. */}
           <div className="hidden overflow-x-auto md:block">
             <table aria-label={label} className="w-full border-collapse text-body-sm">
-              {/* `position: sticky` on each `<th>`, not on the `<tr>` — sticky
-                  positioning on a table ROW is unreliable across browsers;
-                  every cell gets it individually, which is the portable
-                  form. */}
+              {/* ★ NOT `position: sticky` — a real build's own run found it
+                  covering row 1's own controls, not just on scroll: the
+                  wrapper above (`overflow-x-auto`) is itself a scroll
+                  container, so `sticky` on a `<th>` sticks to THAT box, not
+                  the page — with `top: var(--header-h)`, the header row
+                  sits permanently pushed down inside its own wrapper,
+                  covering the first data row outright, for a mouse click
+                  AND a keyboard focus alike. A `<thead>` cannot stick to
+                  the page from inside a horizontal-scroll container; making
+                  one stick for real needs the wrapper to be the VERTICAL
+                  scroller too (a `max-height` and `top-0`), which is a
+                  later story, not this one. */}
               <thead>
                 <tr>
                   {selection ? (
-                    <th scope="col" className="sticky top-[var(--header-h)] z-10 w-10 border-b border-edge bg-canvas px-3 py-2.5">
+                    <th scope="col" className="w-10 border-b border-edge bg-canvas px-3 py-2.5">
                       <span id={selectAllLabelId} className="sr-only">
                         {t("selectAll")}
                       </span>
@@ -165,7 +173,7 @@ export function DataTable<Row>({
                       key={col.key}
                       scope="col"
                       aria-sort={ariaSort(col)}
-                      className={`sticky top-[var(--header-h)] z-10 border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}`}
+                      className={`border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}`}
                     >
                       {col.sortable ? (
                         <button

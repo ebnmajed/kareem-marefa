@@ -21,7 +21,7 @@ export default async function PointsPage({
   const { session: sessionId, month } = await searchParams;
 
   const [t, history] = await Promise.all([getTranslations("scoring.points"), getPointsHistory(locale, { sessionId, month })]);
-  const value = formatNumber(history.totalPoints, history.numerals);
+  const value = formatNumber(history.totalPoints);
   const filtered = Boolean(sessionId || month);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -79,10 +79,10 @@ export default async function PointsPage({
           scope a test locator to (the catalogue below repeats a rule's own
           reasonAr, which can equal a specific award's reason here). */}
       <div id="history">
-        <PointsHistoryList rows={history.rows} numerals={history.numerals} timeZone={history.timeZone} />
+        <PointsHistoryList rows={history.rows} timeZone={history.timeZone} />
       </div>
 
-      <PointsCatalogue entries={history.catalogue} numerals={history.numerals} />
+      <PointsCatalogue entries={history.catalogue} />
     </>
   );
 }

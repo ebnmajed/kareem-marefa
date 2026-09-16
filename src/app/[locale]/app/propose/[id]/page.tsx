@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs, getProposal } from "@/lib/dal/proposals";
+import { getProposal } from "@/lib/dal/proposals";
 import { answerPresenterInvite, dropCoPresenter } from "../actions";
 import { ProposalMaterials } from "@/components/materials/proposal-list";
 
@@ -29,9 +29,8 @@ export default async function ProposalPage({
   setRequestLocale(locale);
   const { created } = await searchParams;
 
-  const [proposal, prefs, t, tp] = await Promise.all([
+  const [proposal, t, tp] = await Promise.all([
     getProposal(locale, id),
-    getOrgPrefs(locale),
     getTranslations("proposals.proposal"),
     getTranslations("proposals.propose"),
   ]);
@@ -80,7 +79,7 @@ export default async function ProposalPage({
           <div className="flex gap-2">
             <dt>{tp("form.durationLabel")}</dt>
             <dd>
-              <bdi>{tp("duration", { count: proposal.expectedDurationMinutes, value: formatNumber(proposal.expectedDurationMinutes, prefs.numerals) })}</bdi>
+              <bdi>{tp("duration", { count: proposal.expectedDurationMinutes, value: formatNumber(proposal.expectedDurationMinutes) })}</bdi>
             </dd>
           </div>
         ) : null}

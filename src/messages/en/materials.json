@@ -3,6 +3,7 @@
     "list": {
       "count": "{count, plural, zero {No materials} one {One material} two {Two materials} few {{value} materials} many {{value} materials} other {{value} materials}}",
       "empty": "No materials for this session yet.",
+      "addAction": "Add a material",
       "phase": {
         "before": "Before the session",
         "after": "After the session"
@@ -28,7 +29,8 @@
       "downloadAudited": "This download will be recorded in the audit log.",
       "openExternal": "Open link — leaves the platform",
       "removedByAdmin": "This material was removed.",
-      "allowDownloadLabel": "Allow download"
+      "allowDownloadLabel": "Allow download",
+      "settingsFailed": "Could not save that setting. Try again."
     },
     "upload": {
       "notice": "This file will be available to every member of the organization on the schedule you choose.",
@@ -36,13 +38,19 @@
       "sniffMismatch": "The file's actual content does not match the declared type — check the file and try again.",
       "notAuthorized": "You do not have permission to add materials to this session.",
       "submit": "Upload",
+      "uploading": "Uploading…",
+      "success": "Material added successfully",
       "titleLabel": "Material title",
+      "titleRequired": "Enter a title for the material first.",
       "phaseLabel": "Timing",
       "kindLabel": "Material kind",
       "fileLabel": "File",
       "fileRequired": "Choose a file first.",
       "urlLabel": "Link",
-      "uploadFailed": "The upload failed. Try again."
+      "uploadFailed": "The upload failed. Try again.",
+      "requirementPdf": "PDF only · up to <bdi>{limitMb}</bdi> MB",
+      "requirementImage": "JPEG, PNG or WebP · up to <bdi>{limitMb}</bdi> MB",
+      "requirementAudio": "An audio recording (WAV, OGG and similar formats) · up to <bdi>{limitMb}</bdi> MB"
     },
     "remove": {
       "action": "Remove",
@@ -53,6 +61,7 @@
     },
     "viewer": {
       "back": "Back to session materials",
+      "breadcrumbLabel": "Breadcrumb",
       "pageOf": "Page <bdi>{current}</bdi> of <bdi>{total}</bdi>",
       "thumbnailsLabel": "Pages",
       "thumbnailLabel": "Go to page <bdi>{number}</bdi>",
@@ -63,6 +72,7 @@
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
       "download": "Download the original file",
+      "downloading": "Preparing…",
       "downloadAudited": "This download will be recorded in the audit log.",
       "downloadUnavailable": "Download is not available for this material.",
       "states": {

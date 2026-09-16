@@ -59,7 +59,7 @@ export default async function CalendarPage({
         <p className="mt-2 text-body text-fg-body">
           {isConnected
             ? t.rich("connection.connected", {
-                since: formatDateTime(connection!.connectedAt, settings.numerals, settings.timeZone, locale),
+                since: formatDateTime(connection!.connectedAt, settings.timeZone, locale),
                 bdi: (chunks) => <bdi>{chunks}</bdi>,
               })
             : t("connection.disconnected")}
@@ -105,7 +105,7 @@ export default async function CalendarPage({
                   <bdi>{event.sessionTitle}</bdi>
                 </Link>
                 {event.startsAt ? (
-                  <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(event.startsAt, settings.numerals, settings.timeZone, locale)}</p>
+                  <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(event.startsAt, settings.timeZone, locale)}</p>
                 ) : null}
                 <p className="mt-2 text-body-sm text-fg-body">{t(`synced.state.${event.state}`)}</p>
                 {/* REQ-CAL-005: a failed sync is surfaced to the member, and
@@ -114,7 +114,7 @@ export default async function CalendarPage({
                 {event.lastSyncedAt ? (
                   <p className="mt-1 text-body-sm text-fg-muted">
                     {t.rich("synced.lastSynced", {
-                      at: formatDateTime(event.lastSyncedAt, settings.numerals, settings.timeZone, locale),
+                      at: formatDateTime(event.lastSyncedAt, settings.timeZone, locale),
                       bdi: (chunks) => <bdi>{chunks}</bdi>,
                     })}
                   </p>

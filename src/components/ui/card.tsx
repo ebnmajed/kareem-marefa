@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/components/ui/link";
 import type { CardActionsProps, CardBodyProps, CardDensity, CardMediaProps, CardProps } from "@/components/ui";
 
 // content's file — `16` §6.4. ONE component, four densities: `grid`
@@ -41,8 +41,14 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
       className={`group relative overflow-hidden rounded-card border border-edge bg-surface shadow-card transition-shadow duration-150 hover:shadow-raise ${className}`}
     >
       {href ? (
+        // ★ `quiet` (R-C4, `sessions`' request): the whole card is the
+        // link (`16` §6.4), so `ui/link`'s own inline pending dot would be
+        // noise on every hovered card — exactly the case its own header
+        // names. The store `RouteProgress` reads still counts the
+        // navigation either way.
         <Link
           href={href}
+          quiet
           className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
         >
           {inner}
@@ -78,11 +84,20 @@ const ASPECT: Record<NonNullable<CardMediaProps["aspect"]>, string> = {
 // display name a session/material title is the entity's own identity, not a
 // spelling that gets corrected later. This is a narrower, separate rule from
 // avatar's id-hash and must not be generalised back onto it.
-const MEDIA_TINTS = [
+//
+// ★ The lead's real-build finding: `bg-navy-600` and `bg-navy-200` are not
+// tokens `globals.css` defines — only navy-1000/950/900/850/800 and
+// silver-100…400 exist (`@theme`, `src/app/globals.css:12-22`) — so those two
+// classes resolved to nothing and the placeholder either went invisible
+// (navy-600, transparent background) or rendered dark text on a transparent
+// background (navy-200). Exported so `card.test.tsx` can assert every entry
+// resolves to a real `--color-*` custom property directly, instead of a
+// hand-copied hex pair that can drift from `globals.css` the way this one did.
+export const MEDIA_TINTS = [
   "bg-navy-950 text-white",
+  "bg-navy-900 text-white",
   "bg-navy-800 text-white",
-  "bg-navy-600 text-white",
-  "bg-navy-200 text-navy-950",
+  "bg-silver-200 text-navy-950",
   "bg-silver-300 text-navy-950",
   "bg-silver-400 text-navy-950",
 ] as const;
@@ -95,11 +110,20 @@ function hashString(value: string): number {
   return Math.abs(hash);
 }
 
+// ★ The lead's real-build finding: two letters from the first two words (or
+// the first two characters of a one-word title) rendered pairs like «اا» for
+// any title whose first word or two both started with «ا» — indistinguishable
+// from a horizontal pause/loading glyph, not a letter at all. One letter
+// only, matching `avatar.tsx`'s own `initial()`. A leading «ال» (the definite
+// article) is skipped first, so a title like «الجلسة» shows «ج» — the noun's
+// own first letter — rather than «ا», which nearly every Arabic title would
+// otherwise produce.
 function placeholderGlyph(title: string): string {
   const words = title.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "؟"; // Arabic question mark: an unnamed placeholder.
-  if (words.length === 1) return words[0]!.slice(0, 2);
-  return `${words[0]!.charAt(0)}${words[1]!.charAt(0)}`;
+  const first = words[0]!;
+  const withoutAl = first.startsWith("ال") && first.length > 2 ? first.slice(2) : first;
+  return withoutAl.charAt(0);
 }
 
 /**
@@ -107,7 +131,14 @@ function placeholderGlyph(title: string): string {
  * box: when `src` is absent it renders a generated typographic placeholder
  * built from `placeholderFrom` (`16` §6.4).
  */
-export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", overlay, priority, className = "" }: CardMediaProps) {
+export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", overlay, priority, dimmed, className = "" }: CardMediaProps) {
+  // ★ `dimmed` (R-C1, `sessions`' request, DEC-123 item 1): the grayscale/
+  // opacity wash goes on the IMAGE OR PLACEHOLDER ONLY, never on `overlay` —
+  // the canvas's own defect was nesting the status badge INSIDE the dimmed
+  // element, which took a compliant badge to a quarter of its contrast
+  // («انتهت» measured 1.87:1 that way; the badge's own tokens are 5.11:1).
+  // `overlay` renders in a sibling node below, entirely outside this wash.
+  const wash = dimmed ? "grayscale opacity-45" : "";
   return (
     <div data-slot="media" className={`relative shrink-0 overflow-hidden bg-navy-900 ${ASPECT[aspect]} ${className}`}>
       {src ? (
@@ -122,10 +153,13 @@ export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", over
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : undefined}
           decoding="async"
-          className="h-full w-full object-cover"
+          className={`h-full w-full object-cover ${wash}`}
         />
       ) : (
-        <div aria-hidden className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${MEDIA_TINTS[hashString(placeholderFrom) % MEDIA_TINTS.length]}`}>
+        <div
+          aria-hidden
+          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${MEDIA_TINTS[hashString(placeholderFrom) % MEDIA_TINTS.length]} ${wash}`}
+        >
           <bdi>{placeholderGlyph(placeholderFrom)}</bdi>
         </div>
       )}

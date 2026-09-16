@@ -45,7 +45,7 @@ test.beforeAll(async ({}, testInfo) => {
     [`leaderboards-e2e-${tag}`],
   );
   orgId = orgRows[0].id;
-  await db.query(`insert into public.org_settings (org_id, numerals) values ($1, 'arabic_indic')`, [orgId]);
+  await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: companyRows } = await db.query<{ id: string }>(`insert into public.companies (org_id, name) values ($1, $2) returning id`, [orgId, companyName]);
   companyId = companyRows[0].id;
@@ -100,7 +100,7 @@ test("a member sees the all-time board, and both metrics on the company race", a
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("لوحات الصدارة");
   const allTimeSection = page.locator("#all-time");
   await expect(allTimeSection.getByText("قائد اللوحة")).toBeVisible();
-  await expect(allTimeSection).toContainText("٦٥");
+  await expect(allTimeSection).toContainText("65");
   await expect(allTimeSection.getByText("أنت")).toBeVisible();
 
   // The company board — a snapshot must exist for a row to appear, so

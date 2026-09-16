@@ -5,7 +5,7 @@
       "cancelledReason": "السبب الذي ذكره المشرف",
       "cancelledNote": "الصفحة باقية والمواد متاحة لمن حجز، والتعليقات مغلقة للكتابة.",
       "whenLabel": "الموعد",
-      "toTime": "حتى {value}",
+      "toTime": "حتى {value}",
       "whereLabel": "المكان",
       "mapLink": "افتح الموقع على الخريطة",
       "oneOffVenue": "مكان لمرة واحدة",
@@ -18,13 +18,13 @@
       "seats": "{count, plural, zero {لا مقاعد} one {مقعد واحد} two {مقعدان} few {{value} مقاعد} many {{value} مقعدًا} other {{value} مقعد}}",
       "rsvpDeadlineLabel": "آخر موعد للحجز",
       "cutoffLabel": "آخر موعد لإلغاء الحجز",
-      "aboutLabel": "عن الجلسة",
+      "aboutLabel": "نبذة",
       "languageLabel": "لغة الجلسة",
       "languageAr": "العربية",
       "languageEn": "الإنجليزية",
       "levelLabel": "المستوى",
       "categoryLabel": "التصنيف",
-      "commentsLabel": "التعليقات",
+      "commentsLabel": "النقاش",
       "ratingLabel": "التقييم",
       "hostView": "شاشة التقديم",
       "stateLabel": "حالة الجلسة",
@@ -50,7 +50,46 @@
       "manageCertificates": "الشهادات",
       "shareLabel": "شارك الرابط",
       "shareCopied": "نُسخ الرابط",
-      "shareHint": "رابط عام يعرض العنوان والموعد والمكان واسم الجهة والملصق فقط."
+      "shareHint": "رابط عام يعرض العنوان والموعد والمكان واسم الجهة والملصق فقط.",
+      "breadcrumbRoot": "الجلسات",
+      "presentedBy": "يقدّمها",
+      "presentedByPast": "قدّمها",
+      "presenterFallback": "مُقدِّم",
+      "duration": "{count, plural, zero {أقل من دقيقة} one {دقيقة واحدة} two {دقيقتان} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
+      "level": {
+        "introductory": "تمهيدي",
+        "intermediate": "متوسط",
+        "advanced": "متقدم"
+      },
+      "seatsTaken": "{count, plural, zero {{taken} من {value} مقعد} one {{taken} من مقعد واحد} two {{taken} من مقعدين} few {{taken} من {value} مقاعد} many {{taken} من {value} مقعدًا} other {{taken} من {value} مقعد}}",
+      "seatsProgress": "المقاعد المحجوزة",
+      "ribbonEnded": "انتهت هذه الجلسة يوم {date} — التسجيل مغلق.",
+      "tagsLabel": "الوسوم",
+      "sectionsNav": "أقسام الجلسة",
+      "nav": {
+        "about": "نبذة",
+        "tasks": "المهام",
+        "materials": "المواد",
+        "photos": "الصور",
+        "discussion": "النقاش",
+        "rating": "التقييم"
+      },
+      "actions": {
+        "tasks": "المهام التحضيرية",
+        "tasksOutstanding": "{count, plural, zero {لا مهام متبقية} one {مهمة واحدة متبقية} two {مهمتان متبقيتان} few {{value} مهام متبقية} many {{value} مهمة متبقية} other {{value} مهمة متبقية}}",
+        "confirmedHint": "وصلتك رسالة التأكيد ومعها ملف التقويم.",
+        "rate": "قيّم الجلسة",
+        "ratingWindow": "باب التقييم مفتوح حتى {date}. تقييمك لا يُنسب إليك.",
+        "certificate": "نزّل شهادتك",
+        "materials": "المواد",
+        "share": "شارك",
+        "staffHeading": "إدارة الجلسة"
+      },
+      "stats": {
+        "materials": "المواد المنشورة",
+        "photos": "الصور"
+      },
+      "shareFailed": "تعذّر نسخ الرابط. انسخه من هنا:"
     },
     "card": {
       "presentedBy": "من تنظيم <bdi>{org}</bdi>",

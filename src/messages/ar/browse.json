@@ -1,9 +1,9 @@
 {
   "browse": {
     "title": "الجلسات",
-    "intro": "تصفّح جلسات مؤسستك وابحث عن الجلسة التي تهمّك.",
+    "intro": "ما يمكنك حضوره، مرتّبًا بالتاريخ.",
     "empty": "لا جلسات تطابق بحثك",
-    "clearFilters": "امسح الفلاتر",
+    "clearFilters": "امسح كل عوامل التصفية",
     "count": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}",
     "filterSheet": {
       "open": "الفلاتر",
@@ -24,7 +24,15 @@
         "en": "الإنجليزية"
       },
       "cancelledBadge": "جلسة ملغاة",
-      "inProgressBadge": "جارية الآن"
+      "inProgressBadge": "جارية الآن",
+      "others": "{count, plural, zero {} one {وآخر} two {وآخران} few {و{value} آخرون} many {و{value} آخرًا} other {و{value} آخر}}",
+      "seatsLeft": "{count, plural, zero {لا مقاعد متبقية} one {يتبقى مقعد واحد} two {يتبقى مقعدان} few {يتبقى {value} مقاعد} many {يتبقى {value} مقعدًا} other {يتبقى {value} مقعد}}",
+      "waitlist": "{count, plural, zero {لا أحد في قائمة الانتظار} one {شخص واحد في قائمة الانتظار} two {شخصان في قائمة الانتظار} few {{value} أشخاص في قائمة الانتظار} many {{value} شخصًا في قائمة الانتظار} other {{value} شخص في قائمة الانتظار}}",
+      "mine": {
+        "confirmed": "مقعدك محجوز",
+        "waitlisted": "في قائمة الانتظار"
+      },
+      "attended": "حضرت"
     },
     "status": {
       "open": "التسجيل مفتوح",
@@ -44,6 +52,68 @@
       "tooLarge": "حجم الملف أكبر من المسموح",
       "queued": "{file} في الانتظار",
       "removeFile": "إزالة {file}"
+    },
+    "timeline": {
+      "label": "الجلسات",
+      "pinned": "التالية لك",
+      "groups": {
+        "live": "جارية الآن",
+        "thisWeek": "هذا الأسبوع",
+        "nextWeek": "الأسبوع القادم",
+        "thisMonth": "هذا الشهر",
+        "later": "لاحقًا"
+      }
+    },
+    "filters": {
+      "label": "تصفية الجلسات",
+      "status": {
+        "upcoming": "القادمة",
+        "live": "جارية الآن",
+        "ended": "انتهت"
+      },
+      "categories": "التصنيفات",
+      "more": "المزيد من عوامل التصفية",
+      "applied": "{count, plural, zero {لا عوامل مطبّقة} one {عامل واحد مطبّق} two {عاملان مطبّقان} few {{value} عوامل مطبّقة} many {{value} عاملًا مطبّقًا} other {{value} عامل مطبّق}}",
+      "active": "عوامل التصفية المطبّقة",
+      "clearAll": "امسح الكل",
+      "remove": "أزل عامل التصفية: {label}",
+      "chip": {
+        "tag": "الوسم: {value}",
+        "venue": "المكان: {value}",
+        "company": "الشركة: {value}",
+        "level": "المستوى: {value}",
+        "language": "اللغة: {value}",
+        "presenter": "المُقدِّم: {value}",
+        "from": "من {value}",
+        "to": "حتى {value}",
+        "q": "بحث: {value}"
+      },
+      "sheet": {
+        "title": "عوامل التصفية",
+        "apply": "اعرض النتائج",
+        "reset": "امسح",
+        "close": "أغلق"
+      }
+    },
+    "emptyState": {
+      "upcoming": {
+        "title": "لا جلسات قادمة بعد",
+        "description": "عندك موضوع يستحق أن يُقال؟ اكتب الفكرة فقط — الجدولة والمكان والملصق علينا.",
+        "action": "اقترح موضوعًا"
+      },
+      "live": {
+        "title": "لا جلسات جارية الآن",
+        "action": "اعرض الجلسات القادمة"
+      },
+      "ended": {
+        "title": "لا جلسات منتهية بعد",
+        "action": "اعرض الجلسات القادمة"
+      },
+      "filtered": {
+        "title": "لا جلسات تطابق «{value}» مع بقية عوامل التصفية",
+        "restores": "{count, plural, zero {إزالته وحده لا تُظهر شيئًا} one {إزالته وحده تُظهر جلسة واحدة} two {إزالته وحده تُظهر جلستين} few {إزالته وحده تُظهر {value} جلسات} many {إزالته وحده تُظهر {value} جلسة} other {إزالته وحده تُظهر {value} جلسة}}",
+        "drop": "أزل «{value}»"
+      }
     }
   }
 }

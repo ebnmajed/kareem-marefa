@@ -7,14 +7,17 @@
       "placeholder": "اكتب تعليقًا…",
       "replyPlaceholder": "اكتب ردًا…",
       "submit": "نشر",
+      "sending": "جارٍ الإرسال…",
       "reply": "رد",
       "cancel": "إلغاء",
       "edit": "تعديل",
       "save": "حفظ التعديل",
+      "saving": "جارٍ الحفظ…",
       "edited": "(معدَّل)",
       "deletedTombstone": "حُذف هذا التعليق",
       "frozenOnCancelled": "التعليقات مغلقة — هذه الجلسة ملغاة",
       "mentionHint": "اكتب @ لذكر عضو من مؤسستك",
+      "remainingChars": "{count, plural, zero {لا مساحة متبقية} one {حرف واحد متبقٍ} two {حرفان متبقيان} few {{value} أحرف متبقية} many {{value} حرفًا متبقيًا} other {{value} حرف متبقٍ}}",
       "delete": {
         "action": "حذف",
         "confirmTitle": "حذف التعليق؟",
@@ -24,18 +27,25 @@
       },
       "moderator": {
         "remove": "إزالة",
-        "restore": "استعادة"
+        "removing": "جارٍ الإزالة…",
+        "restore": "استعادة",
+        "restoring": "جارٍ الاستعادة…"
       },
       "reactions": {
-        "like": "إعجاب"
+        "like": "إعجاب",
+        "unlike": "إلغاء الإعجاب"
+      },
+      "toasts": {
+        "reactionFailed": "تعذّر تسجيل تفاعلك"
       },
       "report": {
         "action": "إبلاغ",
         "already": "تم إرسال بلاغك عن هذا التعليق",
         "dialogTitle": "الإبلاغ عن تعليق",
         "reasonLabel": "سبب الإبلاغ",
-        "reasonHint": "من ٣ إلى ١٠٠٠ حرف",
+        "reasonHint": "من 3 إلى 1000 حرف",
         "submit": "إرسال البلاغ",
+        "sending": "جارٍ الإرسال…",
         "cancel": "إلغاء",
         "success": "تم إرسال البلاغ. سيراجعه فريق الإشراف."
       },
@@ -47,7 +57,8 @@
         "invalid_comment": "تعليق غير صالح",
         "invalid_target": "عنصر غير صالح",
         "already_reacted": "لديك تفاعل مسجَّل بالفعل",
-        "generic": "حدث خطأ. حاول مرة أخرى"
+        "generic": "حدث خطأ. حاول مرة أخرى",
+        "network": "تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى."
       }
     }
   }

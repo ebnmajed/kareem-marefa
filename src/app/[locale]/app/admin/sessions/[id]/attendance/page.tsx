@@ -42,7 +42,7 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
   const isAdmin = session.role === "admin";
   const ratings = isAdmin ? await getRatingsForAdmin(locale, id) : [];
 
-  const num = (n: number) => formatNumber(n, prefs.numerals);
+  const num = (n: number) => formatNumber(n);
   const ratePct = report.attendanceRate === null ? null : Math.round(report.attendanceRate * 100);
 
   return (
@@ -134,7 +134,7 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
                       <bdi>{r.displayName ?? r.memberId}</bdi>
                     </td>
                     <td className="py-2 pe-4 text-fg-body">{r.isWalkIn ? t("statusWalkIn") : r.isNoShow ? t("statusNoShow") : t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")}</td>
-                    <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.numerals, prefs.timeZone, locale)}</bdi> : "—"}</td>
+                    <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</td>
                     <td className="py-2 text-fg-body">
                       {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}
                     </td>

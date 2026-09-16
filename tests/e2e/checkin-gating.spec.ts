@@ -64,6 +64,15 @@ test.beforeAll(async ({}, testInfo) => {
     [orgId, catRows[0].id, venueRows[0].id],
   );
   liveSessionId = sessRows[0].id;
+  // One task, so the tasks section exists to be gated. Since wave 6 the page
+  // also drops the section when the Tasks slot has nothing to show (c4e7642,
+  // `SlotSummary`); without a task both assertions below would hold for the
+  // wrong reason — the bystander's "no heading" trivially, the confirmed
+  // member's "heading" not at all.
+  await db.query(
+    `insert into public.session_tasks (org_id, session_id, kind, title) values ($1, $2, 'checklist', 'أحضر حاسوبك المحمول')`,
+    [orgId, liveSessionId],
+  );
 
   bystanderEmail = `bystander@${domain}`;
   const { data: bystanderAuth, error: e1 } = await admin.auth.admin.createUser({ email: bystanderEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو بلا حجز" } });
@@ -116,8 +125,9 @@ test("a member with no seat, on a live session with walk-ins off, sees none of t
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسة اختبار البوابات");
 
   // ★ DEC-090's own example: no calendar link for a viewer with no seat.
-  await expect(page.getByRole("link", { name: "تقويم Google" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "أضِف إلى تقويمك" })).toHaveCount(0);
+  // The calendar is ONE button over a menu since wave 6 (sessions, R-L7): no button at all.
+  await expect(page.getByRole("button", { name: "أضِف إلى تقويمك" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "تقويم Google" })).toHaveCount(0);
   // §5.4.1a(b): the heading is gated WITH the panel — no empty "مهام ما قبل
   // الجلسة" left behind for a non-attendee.
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة" })).toHaveCount(0);
@@ -136,8 +146,11 @@ test("a confirmed member sees the calendar, the tasks heading, and the check-in 
   await page.goto(`/ar/app/sessions/${liveSessionId}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسة اختبار البوابات");
 
-  await expect(page.getByRole("heading", { name: "أضِف إلى تقويمك" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "تقويم Google" })).toBeVisible();
+  const calendar = page.getByRole("button", { name: "أضِف إلى تقويمك" });
+  await expect(calendar).toBeVisible();
+  await calendar.click();
+  await expect(page.getByRole("menuitem", { name: "تقويم Google" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة" })).toBeVisible();
   await expect(page.getByRole("link", { name: "تسجيل الحضور" })).toBeVisible();
 });

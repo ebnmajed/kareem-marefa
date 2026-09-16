@@ -42,7 +42,6 @@ function renderForm() {
         locale="ar"
         kit={KIT}
         fonts={[]}
-        numerals="western"
         logoPreviewUrl={null}
         saveAction={vi.fn(async (prev) => prev)}
         resetAction={vi.fn(async (prev) => prev)}

@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import type { MemberBoardRow } from "@/lib/dal/leaderboards";
 
 // SCR-027's per-member board half (all-time and monthly). The viewer's own
@@ -7,7 +7,7 @@ import type { MemberBoardRow } from "@/lib/dal/leaderboards";
 // medal or a callout — REQ-LDR-008 lets a member see their own rank even
 // when everyone else on the board is hidden from them by opt-out, so this
 // component must render correctly with as few as one row.
-export async function MemberBoard({ rows, numerals }: { rows: MemberBoardRow[]; numerals: NumeralSystem }) {
+export async function MemberBoard({ rows }: { rows: MemberBoardRow[]; }) {
   const t = await getTranslations("leaderboards");
 
   if (rows.length === 0) {
@@ -23,14 +23,14 @@ export async function MemberBoard({ rows, numerals }: { rows: MemberBoardRow[]; 
         >
           <div className="flex items-center gap-3">
             <span className="text-label text-fg-muted">
-              <bdi>{formatNumber(row.rank, numerals)}</bdi>
+              <bdi>{formatNumber(row.rank)}</bdi>
             </span>
             <span className="text-body text-fg-heading">
               <bdi>{row.displayName}</bdi>
               {row.isSelf ? <span className="text-body-sm text-fg-muted"> — {t("you")}</span> : null}
             </span>
           </div>
-          <span className="text-label text-fg-heading">{t("pointsValue", { count: row.points, value: formatNumber(row.points, numerals) })}</span>
+          <span className="text-label text-fg-heading">{t("pointsValue", { count: row.points, value: formatNumber(row.points) })}</span>
         </li>
       ))}
     </ol>

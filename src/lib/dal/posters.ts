@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { cache } from "react";
 import { z } from "zod";
 import { imageSize, PRESETS, presetsFor, SCHEMA_VERSION, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
 import { storagePaths } from "@/lib/storage/paths";
@@ -303,8 +304,15 @@ export type PosterVariant = "master" | "square" | "og" | "landscape";
  * slot renders as nothing rather than as a broken frame, because a session
  * whose render has not finished is the same to a reader as one with no
  * poster at all.
+ *
+ * ★ Request-scoped `cache()` (wave 6, DEC-130): the event page draws the poster
+ * twice — in the hero from `md` up, and under «نبذة» on the phone — and each
+ * read was its own round trip plus a signed URL. No logic change; no caller
+ * reads it inside a Server Action, where a cached read could outlive a write.
  */
-export async function getSessionPoster(locale: string, sessionId: string, variant: PosterVariant = "master"): Promise<SessionPosterData | null> {
+export const getSessionPoster = cache(loadSessionPoster);
+
+async function loadSessionPoster(locale: string, sessionId: string, variant: PosterVariant = "master"): Promise<SessionPosterData | null> {
   const { supabase } = await sessionClient(locale);
 
   const { data: poster } = await supabase

@@ -75,7 +75,7 @@ export default async function AuditLogPage({
                   {entries.map((e) => (
                     <tr key={e.id} className="border-b border-edge">
                       <td className="min-w-0 py-2 pe-4 text-fg-body">
-                        <bdi>{formatDateTime(e.occurredAt, prefs.numerals, prefs.timeZone, locale)}</bdi>
+                        <bdi>{formatDateTime(e.occurredAt, prefs.timeZone, locale)}</bdi>
                       </td>
                       <td className="py-2 pe-4 text-fg-heading">
                         <bdi>{e.actorName ?? t("systemActor")}</bdi>

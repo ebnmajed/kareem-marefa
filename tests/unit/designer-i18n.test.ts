@@ -45,7 +45,7 @@ describe("REQ-INT-006 — no numeral system is frozen into the copy", () => {
     // Two exemptions, both narrow and both proper nouns rather than counts:
     // ICU's own `=0` selector, and the ISO 216 paper names. «A4» is what a
     // print shop is told, in every locale and under either numeral system —
-    // rendering it «A٤» would be wrong, not localised. The screens wrap them
+    // rendering its digit in Arabic-Indic would be wrong, not localised. The screens wrap them
     // in <bdi dir="ltr"> so they do not scramble against Arabic neighbours.
     const ISO_PAPER = /\bA[0-9]\b/g;
     const offenders = arabic

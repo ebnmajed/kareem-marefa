@@ -23,7 +23,6 @@ const card: PublicCardMeta = {
   title: "كيف نكتب تقريرًا يُقرأ",
   startsAt: "2026-09-16T15:00:00.000Z",
   timeZone: "Asia/Riyadh",
-  numerals: "arabic_indic",
   venueName: "قاعة الابتكار",
   orgName: "نادي المعرفة",
   hasImage: true,
@@ -72,20 +71,14 @@ describe("the card's image", () => {
 });
 
 describe("the description", () => {
-  it("is the date, the venue and the org, in the org's numerals and time zone", () => {
+  it("is the date, the venue and the org, in Western digits and the org's time zone", () => {
     const text = cardDescription(card, "ar");
-    // 18:00 in Riyadh, not 15:00 in UTC, and Arabic-Indic digits because the
-    // ORG asked for them (REQ-INT-006).
+    // 18:00 in Riyadh, not 15:00 in UTC — and Western digits, always
+    // (REQ-INT-006, DEC-124), although `ar`'s CLDR default is Arabic-Indic.
     expect(text).toContain("قاعة الابتكار");
     expect(text).toContain("نادي المعرفة");
-    expect(text).toMatch(/[٠-٩]/);
-    expect(text).toContain("٦:٠٠");
-  });
-
-  it("follows the org's numerals when they are western", () => {
-    const text = cardDescription({ ...card, numerals: "western" }, "ar");
-    expect(text).toMatch(/[0-9]/);
-    expect(text).not.toMatch(/[٠-٩]/);
+    expect(text).toContain("6:00");
+    expect(text).not.toMatch(/[\u0660-\u0669\u06F0-\u06F9]/);
   });
 
   it("drops a missing part instead of leaving a stray separator", () => {

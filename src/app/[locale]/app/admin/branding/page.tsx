@@ -4,7 +4,6 @@ import type { Locale } from "@/i18n/routing";
 import { requireSession } from "@/lib/dal/session";
 import { getBrandKit } from "@/lib/brand/kit";
 import { listSelectableFonts } from "@/lib/brand/fonts";
-import { getOrgNumerals } from "@/lib/dal/designer";
 import { signDesignAssetUrl } from "@/lib/dal/posters";
 import { BrandKitForm } from "@/components/branding/brand-kit-form";
 import { saveBrandKitAction, resetBrandKitAction, signLogoPreview } from "./actions";
@@ -20,10 +19,9 @@ export default async function BrandingPage({ params }: { params: Promise<{ local
   const session = await requireSession(locale);
   if (session.role !== "admin") notFound();
 
-  const [kit, fonts, numerals, t] = await Promise.all([
+  const [kit, fonts, t] = await Promise.all([
     getBrandKit(locale, session.orgId),
     listSelectableFonts(locale),
-    getOrgNumerals(locale),
     getTranslations("branding"),
   ]);
 
@@ -37,7 +35,6 @@ export default async function BrandingPage({ params }: { params: Promise<{ local
         locale={locale as Locale}
         kit={kit}
         fonts={fonts}
-        numerals={numerals}
         logoPreviewUrl={logoPreviewUrl}
         saveAction={saveBrandKitAction.bind(null, locale as Locale)}
         resetAction={resetBrandKitAction.bind(null, locale as Locale)}
