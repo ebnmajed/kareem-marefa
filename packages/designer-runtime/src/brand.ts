@@ -83,8 +83,15 @@ const DARK: Record<BrandColourToken, string> = {
 
 /** The platform brand as `brand.*` binding values. Every template family ships
  *  in a light and a dark variant (06 §3.3), and the variant is the SCHEME —
- *  not a second template. */
-export function platformBrand(scheme: BrandScheme = 'light'): Record<string, string> {
+ *  not a second template.
+ *
+ *  `scheme` is required, not defaulted (wave 8, DEC-125/127): every call
+ *  site in the tree already passed one explicitly, and a default that
+ *  silently means `'light'` is exactly how two worker call sites carried
+ *  the wrong scheme for a poster and a certificate until DEC-125/128 wrote
+ *  the right one down. Making the compiler ask is cheaper than a golden
+ *  diff finding it again. */
+export function platformBrand(scheme: BrandScheme): Record<string, string> {
   const palette = scheme === 'dark' ? DARK : LIGHT
   const out: Record<string, string> = {}
   for (const token of BRAND_COLOUR_TOKENS) out[`brand.${token}`] = palette[token]
@@ -117,7 +124,7 @@ export interface BrandOverrides {
 
 export function resolveBrand(
   overrides: BrandOverrides | null | undefined,
-  scheme: BrandScheme = 'light',
+  scheme: BrandScheme,
 ): Record<string, string> {
   const out = platformBrand(scheme)
   const schemeOverride = scheme === 'dark' ? overrides?.dark : overrides?.light

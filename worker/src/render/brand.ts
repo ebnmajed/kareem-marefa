@@ -50,7 +50,8 @@ export async function loadBrandOverrides(helpers: Query, orgId: string): Promise
 }
 
 /** The `brand.*` bindings for a render request: the platform palette with
- *  the org's override applied. */
-export async function brandBindings(helpers: Query, orgId: string, scheme: BrandScheme = "light"): Promise<Record<string, string>> {
+ *  the org's override applied. `scheme` is required, not defaulted (wave 8)
+ *  — see `platformBrand()`'s own comment; the caller decides, always. */
+export async function brandBindings(helpers: Query, orgId: string, scheme: BrandScheme): Promise<Record<string, string>> {
   return resolveBrand(await loadBrandOverrides(helpers, orgId), scheme);
 }
