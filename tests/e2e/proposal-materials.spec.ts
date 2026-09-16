@@ -179,7 +179,10 @@ test("★ REQ-PRO-004: not visible to an unrelated member; visible to an admin",
   // not-found page — and renders none of what it guards. That, not the status
   // code, is what the requirement protects.
   await page.goto(`/ar/app/propose/${proposalId}`);
-  await waitForStreamsToSettle(page);
+  // Not `waitForStreamsToSettle`: a streamed `notFound()` can leave an empty
+  // hidden `S:` segment behind for good (Fizz's `$RX` never swaps it — see
+  // wave7-sessions-proposal.spec.ts). The visible not-found page is the wait.
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
   // Several robots metas are expected — the layout's, the page's, and the
   // `noindex` Next adds on `notFound()`. Every one must say noindex.
   const robots = await page.locator('meta[name="robots"]').all();

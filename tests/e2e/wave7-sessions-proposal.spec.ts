@@ -185,7 +185,17 @@ test("edit: a change request is answered by resubmitting — pre-filled, one act
 
 test("the edit page is not there for a state that cannot be edited", async ({ context, page }) => {
   await signIn(context);
-  await open(page, `/ar/app/propose/${ids.rejected}/edit`);
+  // ★ Not `open()`: a streamed `notFound()` (DEC-134) can leave React's hidden
+  // copy behind for good. When the loading boundary has already flushed one
+  // segment — `<div hidden id="S:0"><template id="P:1">…` — and the page then
+  // throws, Fizz sends `$RX("B:0", "NEXT_HTTP_ERROR_FALLBACK;404")` and never
+  // a `$RC` for that segment, so the empty `S:0` stays in `<body>`. Timing
+  // decides whether the segment flushed first (1 run in 2 on the sync build).
+  // It holds no text and is `hidden`, so the role queries below are unaffected.
+  await page.setViewportSize(PHONE);
+  await page.goto(`/ar/app/propose/${ids.rejected}/edit`);
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.getByLabel("عنوان الموضوع المقترح")).toHaveCount(0);
   // Several robots metas are expected — the layout's and the one Next adds on
   // `notFound()` (DEC-134). Every one must say noindex.
