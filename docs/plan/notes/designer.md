@@ -1246,3 +1246,29 @@ came from v1's 60 px `l_where` box being shorter than its line — v2 (`0098`) m
 layer moved to x = 0 is clamped into the safe area by `derive()` — so the fixture now stretches the
 layer edge to edge; and toast assertions across the three wave-8 specs are `exact`, because the toast
 now carries a second, live-region copy of its text that strict mode counts.
+
+### W8.n The parity background block as built (2026-09-17)
+
+`scripts/parity/backgrounds.mjs`, run by `harness.mjs` after the 28 and reported apart — locally
+«21 of 28 assertions · background block 3 of 3». The seven text goldens and `signature.json` do not
+move; the block's golden is `goldens/backgrounds/gradient-rtl.png` with its own `record.json`,
+written by `--update-backgrounds` (which touches nothing else) and **left uncommitted for the lead**.
+
+- **gradient-rtl** — the gradient the first v2 poster declares (`talk`), bound to `platformBrand('dark')`:
+  Chromium's computed `background-image` carries the declared angle and exactly the palette's stop
+  colours (no stop fell back to white); the first stop sits at the start corner; Tier B against the
+  golden, advisory off `darwin-arm64` (`DEC-028`).
+- **gradient-ltr** — `220deg` computed, and the LTR capture flipped equals the RTL capture (0.000 %);
+  unflipped they differ by 71.7 %, so a renderer that forgot the mirror fails it on every platform.
+- **ink-on-dark** — the worker's own sequence (capture, `INK_REFERENCE_CSS`, reference, `inkedRatio`):
+  the layer-less dark page measures 0.000 % (blank, refused), the same page with one line of text
+  1.634 %; the pre-wave-8 rule would have called the blank page 100.0 % inked.
+- **`gradient-unresolved` dropped from the plan:** `backgroundCss()` falls back to `#ffffff` for an
+  unbound token by `branding`'s design, so «never white» is not the renderer's contract. What holds
+  the trap shut is `brandViolations()` refusing an unknown token in a template, and gradient-rtl's
+  «no stop fell back» under the real palette.
+
+★ **Found while building it:** in headless Chrome a `clip` or element screenshot of a gradient root
+came back one flat `rgb(18, 18, 18)`, while the viewport screenshot of the same page is the gradient.
+The worker already captures the viewport (`captureBeyondViewport: false`), so production is not
+affected; the block captures the same way, and says why.

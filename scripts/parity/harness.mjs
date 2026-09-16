@@ -5,6 +5,10 @@
 //   node scripts/parity/harness.mjs            # check against goldens
 //   node scripts/parity/harness.mjs --update   # rewrite goldens (REVIEW THE DIFF)
 //   node scripts/parity/harness.mjs --break-font   # prove the harness can fail
+//   node scripts/parity/harness.mjs --update-backgrounds   # the background block's golden only
+//
+// Plus a BACKGROUND BLOCK of three cases (`backgrounds.mjs`, DEC-127), reported
+// apart from the 28 so «28 of 28» keeps meaning what it says.
 //
 // SEVEN CASES × FOUR PATHS = 28 assertions (`scripts/parity/paths.mjs` says
 // what each path is and how it can go wrong). Path 4 needs poppler and cwebp
@@ -40,12 +44,14 @@ import { renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runt
 import { CASES } from './cases.mjs'
 import { ASSERTIONS, buildDocument, CONTROL_CSS, PATHS } from './paths.mjs'
 import { runPopplerPath } from './poppler.mjs'
+import { BACKGROUND_CASES, runBackgroundBlock } from './backgrounds.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const GOLDENS = join(HERE, 'goldens')
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const UPDATE = process.argv.includes('--update')
 const BREAK_FONT = process.argv.includes('--break-font')
+const UPDATE_BACKGROUNDS = process.argv.includes('--update-backgrounds')
 const PAD = 12
 
 mkdirSync(GOLDENS, { recursive: true })
@@ -173,6 +179,26 @@ const cropOf = (b64, mime, rect, scale) =>
     rect,
     scale,
   )
+
+/* ---------- the background block's golden, alone ---------- */
+// Writes `goldens/backgrounds/` and touches nothing else, so a reviewer's diff
+// is the one image this block adds rather than a re-encode of seven others.
+if (UPDATE_BACKGROUNDS) {
+  const out = await runBackgroundBlock({
+    browser,
+    diffPage,
+    diffOf,
+    facesFor,
+    family: PATHS[0].family,
+    goldens: GOLDENS,
+    platform: `${platform}-${arch}`,
+    update: true,
+    report: null,
+  })
+  await browser.close()
+  if (out.wrote) console.log('REVIEW THE DIFF — goldens are never refreshed unreviewed (REQ-DSG-015).')
+  process.exit(out.failed ? 2 : 0)
+}
 
 /* ---------- one DOM path ---------- */
 async function renderDomPath(path) {
@@ -333,6 +359,8 @@ if (UPDATE) {
   } else {
     console.log('NOTE  the poppler path was not run, so its goldens were left as they are.')
   }
+  const backgrounds = await runBackgroundBlock({ browser, diffPage, diffOf, facesFor, family: PATHS[0].family, goldens: GOLDENS, platform: PLATFORM, update: true, report: null })
+  if (backgrounds.failed) process.exit(2)
   console.log(`goldens written for ${CASES.length} cases over ${Object.keys(record.paths).length + 1} DOM path(s) (font ${fontFingerprint})`)
   console.log('REVIEW THE DIFF — goldens are never refreshed unreviewed (REQ-DSG-015).')
   process.exit(0)
@@ -498,7 +526,25 @@ if (poppler.skipped) {
   }
 }
 
+// The background block, apart from the 28 (DEC-127). Its failures count
+// toward the exit code like any other.
+const failedBefore = fail
+const backgrounds = await runBackgroundBlock({
+  browser,
+  diffPage,
+  diffOf,
+  facesFor,
+  family: PATHS[0].family,
+  goldens: GOLDENS,
+  platform: PLATFORM,
+  update: false,
+  report: { problem, ok, advisory },
+})
+
 await browser.close()
 
-console.log(`\n${fail ? `${fail} FAILED` : 'parity holds'} — ${asserted} of ${ASSERTIONS} assertions, ${CASES.length} cases × ${PATHS.length} paths`)
+console.log(
+  `\n${fail ? `${fail} FAILED` : 'parity holds'} — ${asserted} of ${ASSERTIONS} assertions, ${CASES.length} cases × ${PATHS.length} paths` +
+    ` · background block ${backgrounds.asserted - (fail - failedBefore)} of ${BACKGROUND_CASES.length}`,
+)
 process.exit(fail ? 1 : 0)
