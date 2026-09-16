@@ -164,7 +164,8 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           <Stat label={t("checkInsTotal")} value={num(data.checkInsTotal)} href="/app/admin/sessions" />
           <Stat
             label={t("attendanceRateLabel")}
-            value={attendanceRatePct === null ? t("attendanceRateEmpty") : t("attendanceRateValue", { value: num(attendanceRatePct) })}
+            value={attendanceRatePct === null ? "—" : t("attendanceRateValue", { value: num(attendanceRatePct) })}
+            hint={attendanceRatePct === null ? t("attendanceRateEmpty") : undefined}
             href="/app/admin/sessions"
           />
           <Stat label={t("activeMembersTitle")} value={num(data.activeMembers)} href="/app/admin/members" />
