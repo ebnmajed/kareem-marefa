@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
@@ -40,26 +40,37 @@ export function ReportCard({
 }) {
   const t = useTranslations("admin.moderation");
   const toast = useToast();
-  const [state, formAction, pending] = useActionState(action, emptyModerationState);
+  // ★ The toast fires FROM INSIDE the action, not from a `useEffect` reacting
+  // to `state` (the shape every other route in this wave uses). Both `remove`
+  // and `dismiss` resolve the report, which drops it from the open-reports
+  // query the same round trip revalidates — the refreshed list and this
+  // action's own return land in one commit, and React discards a fiber's
+  // pending update when its parent's reconciliation removes that fiber in
+  // the same commit, so a `useEffect` keyed on `state` never gets to run for
+  // `ReportCard`'s own success case (the card is the thing disappearing).
+  // Calling `toast.show()` here, in the action's own body, fires it as an
+  // ordinary callback on `ToastProvider` — independent of whether
+  // `ReportCard` ever re-renders again, the same reason a toast queued from
+  // a `fetch().then()` survives the click handler's component unmounting.
+  const [state, formAction, pending] = useActionState(async (prev: ModerationState, formData: FormData) => {
+    const result = await action(prev, formData);
+    if (result.done) toast.show({ title: t("done"), tone: "success" });
+    else if (result.error) toast.show({ title: t(`error.${result.error}`), tone: "error" });
+    return result;
+  }, emptyModerationState);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const reasonId = useId();
 
   // Closing the dialog is DERIVED from `state`, adjusted DURING RENDER — the
-  // same pattern `members-table.tsx`'s `ActionsCell` uses and the same
-  // reason: `react-hooks/set-state-in-effect` refuses a `setState` call
-  // inside the effect below, which stays for the genuine side effect (the
-  // toast) alone.
+  // same pattern `members-table.tsx`'s `ActionsCell` uses, and safe even
+  // though the success case above usually never reaches this render at all:
+  // on the error path (the row survives) this still runs normally, and the
+  // dialog correctly stays open to show the inline field error.
   const [lastHandledState, setLastHandledState] = useState(state);
   if (state !== lastHandledState) {
     setLastHandledState(state);
     if (state.done) setConfirmOpen(false);
   }
-
-  useEffect(() => {
-    if (state.done) toast.show({ title: t("done"), tone: "success" });
-    else if (state.error) toast.show({ title: t(`error.${state.error}`), tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `toast`/`t` are stable; re-running on them would re-fire the same acknowledgement.
-  }, [state]);
 
   return (
     <Card>
