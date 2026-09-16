@@ -205,7 +205,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── SCR-042 · sessions ────────────────────────────────────────────────────
   await boss.goto("/ar/app/admin/sessions");
-  await expect(boss.getByText(title)).toBeVisible(); // waiting under «جاهزة للجدولة»
+  // waiting under «جاهزة للجدولة». `visible`: console's DataTable renders the
+  // rows twice — a table from md and a stacked card list below it, one of them
+  // hidden by CSS — so the title is in the DOM twice at every width.
+  await expect(boss.getByText(title).filter({ visible: true })).toBeVisible();
   await review(boss, "scr-042-sessions", /أنشئ الجلسة/);
   // REQ-NFR-007: the card's control names its proposal, so it is not one of
   // two buttons on the page answering to the same accessible name.
@@ -269,7 +272,9 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   const attendee = await phone(page, attendeeEmail);
   await attendee.goto(`/ar/app/sessions/${sessionId}`);
   await expect(attendee.getByRole("heading", { level: 1 })).toContainText(title);
-  await expect(attendee.getByText("قاعة الابتكار")).toBeVisible();
+  // The venue is one of the action card's facts (REQ-SES-013), so it is asked
+  // for there: the page carried a second match outside #main on a build run.
+  await expect(attendee.getByRole("region", { name: "الحضور" }).getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-008: no remote-attendance affordance anywhere on the page.
   await expect(attendee.getByText(/بث مباشر|رابط الانضمام|عن بعد|أونلاين/)).toHaveCount(0);
   await expect(attendee.getByText("الحضور في القاعة فقط.")).toBeVisible();
