@@ -942,3 +942,27 @@ doesn't match what the tree can support is a question, not something to implemen
   touched here, not re-reported (already sent one heads-up to `sessions` this session).
 - **Still unverified against a real build** — same `.next/BUILD_ID` staleness as the layout unit;
   `tests/e2e/admin-dashboard.spec.ts`'s source is correct by review but not yet run green.
+
+### 7. As built — proposals (`ad7f5cc`), what changed from the plan
+
+- **`ReviewState` already carried `done: boolean`** — my plan's §2.2 said I'd add it; re-reading
+  `actions.ts` before touching it found it was already there (built with the form for the "values
+  survive a failed round trip" rule, `16` §8.2 item 6, before this wave). Nothing to add.
+- **One generic success toast, not three per-decision messages.** `admin.proposals.done` — "سُجّل
+  قرارك ووصل صاحب المقترح" — already existed, unused, clearly written for exactly this. Using it
+  is simpler than my plan's three-message design and needed no new copy.
+- **`form={formId}` is the real substance of the reject dialog**, not a detail: Radix portals
+  `DialogContent` onto `document.body`, outside the `<details>` the trigger lives in, so the
+  confirm button's DOM ancestry no longer includes the `<form>` at all — an implicit,
+  ancestry-based association (what a plain submit button inside the form gets for free) does
+  nothing once the button is portalled out. Found this while writing the component test, not while
+  writing the component — the jsdom test's first attempt submitted nothing on "confirm" until the
+  `form` attribute was added.
+- **A cross-track test consequence, not touched:** `tests/e2e/sessions-admin-proposals.spec.ts`
+  (wave 1's file, outside this track's `admin-proposals*.spec.ts` glob) drives the old immediate-
+  submit reject flow and will fail against the new dialog. Flagged to the lead with the exact fix
+  rather than edited — it is `sessions`' named file and may be mid-edit.
+- Two more unrelated, pre-existing failures found on this pass, both `content`'s (materials/photos
+  upload-widget tests, mid-transition on `uploadLimits`/`imageLimitMb`) — not touched, not
+  re-reported individually (the pattern is now familiar: several tracks landing DAL shape changes
+  ahead of their own tests in the same window).
