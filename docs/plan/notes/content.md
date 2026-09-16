@@ -1900,3 +1900,28 @@ Ready for sync.
 `tsc` clean, lint 0 errors, `npm test` 1401/1401.
 
 Ready for sync.
+
+## §5 — sync-4b: two more locators, the `#main` diagnosis, `tasks.spec.ts` finally applied (`6e3a780`)
+
+Two more strict-mode violations of the same shape as before (an unscoped `getByText` matching a
+second real element — the catalogue's own repeat of a reasonAr; a session title containing a badge's
+exact text as a substring). Scoped both.
+
+**The `wave7-content-me.spec.ts:93` diagnosis, done before touching anything, per the ask**: read
+`profile-form.tsx` directly — `FormSummary` DOES render inside `<form>`, no portal, nothing between
+them. The actual cause: `page.locator("form")` on any `/app` page matches THREE forms, not one — the
+shell renders its own (`search-entry.tsx`, `account-menu.tsx`'s sign-out) on every route, including
+`/app/me`. Not a rendering bug. `shell-frame.tsx`'s own `<main id="main">` wraps the routed page's
+content only, so `page.locator("#main")` is the fix.
+
+**`tasks.spec.ts:143`, finally applied rather than left as a standing ruling**: I diagnosed this back
+in the wave-7 plan (§4 item 3) — `checkin`'s `AFFORDANCE_MATRIX` withholds `tasks` for a viewer with
+no stake in the session, and the fixture never gave `memberEmail` a reservation — but never actually
+committed the fix until now. Seeded a confirmed RSVP in `beforeAll`, the same shape `fixture-m2.ts`
+already uses for every org's own member role.
+
+`tsc` clean, lint 0 errors, `npm test` 1409/1409. `supabase/proposed/content/01_photos_broadcast.sql`
+is gone from the tree — the lead's promotion to `0091_photos_broadcast.sql` is already in the shared
+checkout as I write this.
+
+Ready for sync.
