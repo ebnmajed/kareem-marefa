@@ -918,3 +918,27 @@ doesn't match what the tree can support is a question, not something to implemen
   `event-subnav.tsx`'s comment (the comment literally contains the string "overflow: hidden" while
   explaining why the component doesn't use it) — `sessions`' file, flagged to them directly, not
   touched here.
+
+### 6. As built — the dashboard (`b8501d7`), what changed from the plan
+
+- **The click-through redesign wasn't in the original §2.1 plan.** Rebuilding onto `SectionHeader`
+  lost the old shape's "the heading itself is the link" pattern (`SectionHeader`'s `title` is plain
+  text by design — `PageHeader`'s own comment on `breadcrumb` links is the only place `Link` lives
+  inside either lead primitive). Fixed by giving `pipeline`/`top-categories`/`top-companies` a
+  `SectionHeader.actions` slot carrying a distinct «عرض القائمة» link per section (the existing,
+  previously-unused `admin.dashboard.viewList` key), each disambiguated from the other two identical-
+  looking links by its own `aria-label` — same pattern `admin/sessions/page.tsx`'s
+  `createFromProposal` button already uses for an identical problem. `attendance`/`activeMembers`/
+  `pointsIssued` needed no such fix: they became individual `Stat` tiles, each carrying its own
+  `href` natively, which is MORE click-through surface than the old one-link-per-section-heading
+  shape had, not less.
+- `admin-dashboard.spec.ts` (mine) updated to match — the old test located sections by an
+  "الحضور"/"الأعضاء النشطون"/"النقاط الممنوحة" heading each; those headings don't exist anymore
+  (three `Stat` tiles inside one "نظرة عامة" section instead). Rewritten, not deleted — same figures
+  asserted, same click-throughs proven, against the shape that actually ships.
+- Second unrelated, pre-existing failure found on this pass (not `sessions`' this time):
+  `tests/unit/search-normalize.test.ts` fails against `src/lib/dal/search.ts`, which carries a
+  `__TIMELINE__` placeholder token mid-edit — also `sessions`' file (the `search.ts` transfer), not
+  touched here, not re-reported (already sent one heads-up to `sessions` this session).
+- **Still unverified against a real build** — same `.next/BUILD_ID` staleness as the layout unit;
+  `tests/e2e/admin-dashboard.spec.ts`'s source is correct by review but not yet run green.
