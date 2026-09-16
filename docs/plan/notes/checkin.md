@@ -842,3 +842,38 @@ key — render literally, in `<bdi>`, same pattern as `0032`'s «حُذف الم
 reason is **not** on this row (`check_ins.removal_reason` and the audit log only) — `REQ-CHK-017` asks
 only that the reversal read "as an entry," and the lead already approved the fixed phrase. `content`
 needs no special-casing beyond treating `source: 'reversal'` like any other `points_ledger` row.
+
+## `checkInAllowed()` retired — commit `34d4c08`
+
+Confirmed by `sessions` (contract 2 wired at `a55cf37`) that nothing in their files calls
+`checkInAllowed()` or `canOfferCheckInLink()` any more — the deferred half of condition (a)'s deal
+("delete only once confirmed unused") is now done:
+
+- `session-matrix.ts`: `checkInAllowed()` deleted outright. `checkInIneligibleReason()` added
+  (the reason-returning sibling `checkInWindowAllowed()` now derives from — `=== null`), covering
+  the full `CHECK_IN_ATTENDANCE_STATES` gate, the floor, the `ends_at + 2h` ceiling, the
+  `check_in_open` switch, and the walk-in door, in that order — the same order `0084`'s `check_in()`
+  itself checks them in. `sessionPhaseSource` import dropped (dead once `checkInAllowed()` was gone).
+- `dal/checkin.ts`: `canOfferCheckInLink()` deleted. `getCheckInScreenData()` rebuilt onto
+  `checkInIneligibleReason()` on raw viewer facts (`isStaff`, `isPresenter`, `rsvpStatus`,
+  `checkedIn`) plus the newly-selected `check_in_open` column — `phase`/`relation` stay on the DTO
+  (other things on the screen may still want them) but no longer decide eligibility. The local
+  `ineligibleReasonFor()` and its duplicate `CheckInIneligibleReason` type are gone, replaced by a
+  `export type { CheckInIneligibleReason }` re-export from `session-matrix.ts`. `CheckInError` gains
+  `"check_in_closed"` for `check_in()`'s new envelope status; both `KNOWN_ERRORS` sets
+  (`check-in/page.tsx`, `check-in/actions.ts`) and `checkin.json`'s `error.*` (both languages) follow.
+- `canOfferCheckInFor()` (already wired by `sessions`) is untouched — it already called
+  `checkInWindowAllowed()` directly.
+- `session-matrix.test.ts`: the retired `checkInAllowed` describe block is gone; a new
+  `checkInIneligibleReason` block asserts the specific reason per case (`presenter_cannot_check_in`,
+  `cancelled`, `not_published`, `session_ended` both faces — archived and past-ceiling —,
+  `not_started`, the grace-window `null`, `check_in_closed`, `reservation_required`).
+- Gate: `tsc` clean, `lint` 0 errors, `npm test` 1407/1407, `npm run test:rls` 791/791 (4 pre-existing
+  todo).
+
+`checkInAllowed()` and `canOfferCheckInLink()` no longer exist anywhere in the tree except as prose in
+two comments (`sessions-event-check-in.test.ts`'s header, and one now-historical line of
+`session-matrix.ts`'s own DEC-141 section) — neither is a live reference.
+
+Next, per the lead's ordering: the switch TOGGLE UI on the host view (calling `set_check_in_open()`),
+and C3 — `/app/admin/sessions/[id]/attendance` with the removal control (`REQ-CHK-017`).
