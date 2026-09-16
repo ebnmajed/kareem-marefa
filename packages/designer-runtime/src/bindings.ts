@@ -114,8 +114,7 @@ export function declaredBindingsOf(doc: {
   // Duck-typed rather than imported from `model.ts` (as the three callers
   // above already required before this file existed). Kept in the shape of
   // DEC-127's `background` union so a gradient document type-checks here
-  // too — ★ the stops are NOT walked yet (held open, same as `render.ts`):
-  // that is `branding`'s next task, with a failing test first.
+  // too.
   background?:
     | { type: 'solid'; color?: string }
     | { type: 'gradient'; angle?: number; stops?: { color?: string; at?: number }[] }
@@ -142,11 +141,13 @@ export function declaredBindingsOf(doc: {
     add(shape?.fill)
     add(shape?.stroke)
   }
-  // ★ DEC-127's second silent trap, held open on purpose (contract 1 is
-  // types only): a gradient's stops are not walked yet, so their
-  // `{{brand.*}}` tokens are not collected as bindings — a rebrand does not
-  // reach them until this is taught to loop `doc.background.stops`.
-  // `branding`'s next task fixes this with a failing test first.
-  add(doc.background?.type === 'solid' ? doc.background.color : undefined)
+  // DEC-127: a solid background contributes its one colour; a gradient
+  // contributes every stop, in array order, so a rebrand reaches all of
+  // them rather than only the first.
+  if (doc.background?.type === 'solid') {
+    add(doc.background.color)
+  } else if (doc.background?.type === 'gradient') {
+    for (const stop of doc.background.stops ?? []) add(stop.color)
+  }
   return found
 }
