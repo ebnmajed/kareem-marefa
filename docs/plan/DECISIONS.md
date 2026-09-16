@@ -2264,3 +2264,51 @@ useful.
 - **Supersedes:** <DEC-NNN | A-NN | nothing>
 - **Documents changed:** <files>
 ```
+
+---
+
+## DEC-122 — The canvas's fourth error, named by the owner: the ended session's poster overlaps the action card, and the cause is the mockup's own missing `box-sizing` reset
+
+- **Date:** 2026-09-16 · **Decided by:** owner («the mockup errors are in الجلسة المنتهية — الطلبان ٤ و ٦ page there is a slight overlap»), measured and diagnosed by the lead
+- **Amends `DEC-114`**, which catalogued three classes found by inspection and said the owner would add any others. This is the fourth, and it is the one the owner actually saw. `DEC-114`'s rules are unchanged.
+
+### What it is
+
+In `EventEnded.dc.html` — the artboard `canvas.json` titles **«الجلسة المنتهية — الطلبان ٤ و ٦»** — the greyed poster block overlaps the sidebar's action card. Measured in a real browser at the artboard's own 1240 px width:
+
+| | |
+|---|---|
+| Poster box | `l=392.3 … r=1183.0`, 190 px tall — **790.7 px wide** |
+| Its grid column | **726.7 px** wide (`minmax(0, 2fr)` of a 1126 px content box, 36 px gap) |
+| Overspill | **64 px** past the column's inline-end |
+| Sidebar card | `l=57.0 … r=420.3` |
+| **Visible collision** | **28 px × 190 px**, and `elementFromPoint` at its centre returns the **poster** |
+
+The poster paints *on top* because it carries `position: relative` (for no reason — it has no positioned child), which lifts it above the static sidebar card. What it covers: the second line of «باب التقييم مفتوح حتى الاثنين ١٥ سبتمبر. تقييمك لا يُنسب إليك.» and the inline-end edge of the «نزّل شهادتك» and «المواد» buttons.
+
+### The cause, which is the part that matters
+
+```html
+<div style="width: 100%; … padding: 0 32px; …">
+```
+
+The artboard sets `box-sizing: border-box` **inline on its root `<div>` only**. `box-sizing` does not inherit, and the artboard's `<helmet>` has no `*` reset — so every descendant is back to the initial `content-box`. `width: 100%` therefore resolves to the column's 726.7 px and the 2 × 32 px padding is added *outside* it: 726.7 + 64 = **790.7**. Exactly the measured number.
+
+★ **This means the overlap cannot be reproduced by building the screen correctly.** `src/app/globals.css:1` is `@import "tailwindcss"`, whose preflight sets `box-sizing: border-box` on `*, ::before, ::after`; the same markup in the app is 726.7 px wide and does not overlap anything. **The defect lives in the mockup's rendering environment, not in its design.**
+
+### What an implementer must therefore do
+
+1. **Do not reproduce the bleed.** A poster that runs out of its column into the sidebar is not a full-bleed treatment the design is asking for — it is 64 px of missing reset. The poster is **exactly as wide as its column**.
+2. **Drop the `position: relative`.** It has no positioned descendant; it exists only in the mockup and is what makes the collision paint over the card instead of under it.
+3. Trust the **intent** of an artboard's geometry, not its **measurements**. This is `DEC-114`'s standing rule with a number attached to it.
+
+### One more instance of the same class, found by the same measurement
+
+`Main.dc.html` has it too: a `width: 100%` element with `padding: 26px` in a 372 px column, rendering **426 px** — a **54 px** overspill on the card beginning «كيف اختصرنا وقت التقارير الشهرية». Same cause, same instruction. **A sweep of all 18 artboards found no third instance**, so this class is now closed.
+
+### How it was found, because the method is reusable
+
+Not by reading the HTML — the artboard contains no `position: absolute`, no negative margin and no `z-index`, so inspection finds nothing. It was rendered headless at its own width and every element compared against its containing block. Two other detectors (sibling-box intersection, text overflowing its box) produced only deliberate overlaps — stacked avatars, badges on posters — which is the expected signal-to-noise and the reason the `box-sizing` detector was narrowed to *declared percentage width under `content-box` with horizontal padding*.
+
+- **Supersedes:** nothing. Extends `DEC-114`'s catalogue from three classes to four.
+- **Documents changed:** `STATUS.md` (the owner-blocked item is now closed)
