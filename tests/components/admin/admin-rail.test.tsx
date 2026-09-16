@@ -12,11 +12,15 @@ import { NextIntlClientProvider } from "next-intl";
 import { Direction } from "radix-ui";
 import { describe, expect, it } from "vitest";
 import { AdminRail, type AdminRailItem } from "@/components/admin/admin-rail";
-import { CalendarIcon, HomeIcon } from "@/components/ui/icons";
 
+// ★ `icon` is a STRING KEY into `admin-rail.tsx`'s own icon map, not a
+// component reference — passing a component here would be exactly the real
+// bug this file's sibling, `admin/layout.tsx`, shipped and got fixed for
+// (a `ComponentType` crossing the server/client boundary, which React
+// Flight refuses at a real request even though `tsc` sees nothing wrong).
 const ITEMS: AdminRailItem[] = [
-  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", Icon: HomeIcon, current: true },
-  { key: "sessions", href: "/app/admin/sessions", label: "الجلسات", Icon: CalendarIcon, current: false },
+  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", icon: "home", current: true },
+  { key: "sessions", href: "/app/admin/sessions", label: "الجلسات", icon: "calendar", current: false },
 ];
 
 function renderRail() {
