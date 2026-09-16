@@ -50,8 +50,12 @@ export function TagChip({ label, href, count, onRemove, removeLabel, className =
     </span>
   );
   return (
+    // ★ `rounded-field` (6 px), not a pill — the canvas's own chip shape
+    // (`Browse`, `Main`'s tag links), the lead's ruling. The remove button's
+    // own small circular hit area (below) is a separate, un-named affordance
+    // and stays round.
     <span
-      className={`inline-flex w-fit items-center gap-1.5 rounded-full border border-edge bg-surface px-3 py-1 text-caption text-fg-body ${className}`}
+      className={`inline-flex w-fit items-center gap-1.5 rounded-field border border-edge bg-surface px-3 py-1 text-caption text-fg-body ${className}`}
     >
       {content}
       {onRemove ? (

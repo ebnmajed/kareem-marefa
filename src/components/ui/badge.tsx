@@ -53,11 +53,16 @@ const SIZE: Record<"sm" | "md", string> = {
   md: "h-7 gap-1.5 px-2.5 text-label",
 };
 
+// ★ `rounded-field` (6 px), not a pill — the canvas's own shape for a status
+// badge (`Main`, `Browse`), matched here per the lead's ruling (DEC-110's
+// "match the mockups"; `docs/plan/notes/content.md` §8's own note). Was
+// `rounded-full` through M9; no test asserted the pill shape, so nothing
+// else moves.
 export function Badge({ tone = "neutral", outline, size = "md", icon, children, className = "" }: BadgeProps) {
   const filled = FILLED_TONE[tone];
   const toneClass = outline || !filled ? OUTLINE_TONE[tone] : filled;
   return (
-    <span className={`inline-flex w-fit items-center rounded-full font-medium ${SIZE[size]} ${toneClass} ${className}`}>
+    <span className={`inline-flex w-fit items-center rounded-field font-medium ${SIZE[size]} ${toneClass} ${className}`}>
       {icon}
       <bdi>{children}</bdi>
     </span>
