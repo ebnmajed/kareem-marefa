@@ -100,9 +100,15 @@ test("★ an outside click closes the menu", async ({ context, page }, testInfo)
   // outside point is on the right, well clear of it.
   const { width } = page.viewportSize()!;
   // The phone project is a touch device: a tap is the honest outside press there.
-  if (testInfo.project.use.hasTouch) await page.touchscreen.tap(width - 30, 420);
-  else await page.mouse.click(width - 30, 420);
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  // ★ Retried as a unit: Radix registers its outside-press listener a tick AFTER the
+  // menu opens, so a press in that tick is not "outside" yet — it passed alone 5/5
+  // and lost the race once under two workers. The assertion is the behaviour, not
+  // the timing.
+  await expect(async () => {
+    if (testInfo.project.use.hasTouch) await page.touchscreen.tap(width - 30, 420);
+    else await page.mouse.click(width - 30, 420);
+    await expect(page.getByRole("menu")).toHaveCount(0, { timeout: 500 });
+  }).toPass({ timeout: 5000 });
 });
 
 test("★ desktop: «تصفّح» closes on navigation, and never two menus are open at once", async ({ context, page }, testInfo) => {
