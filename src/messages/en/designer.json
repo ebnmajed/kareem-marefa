@@ -49,6 +49,10 @@
         "light": "Light",
         "dark": "Dark",
         "hint": "A template carries no colour scheme: a certificate is issued light or dark by what is chosen for its session."
+      },
+      "liveGate": {
+        "title": "This poster is linked to its template",
+        "body": "It is generated from the template and the session's data and rebuilt on every change, so an edit here would be lost. Detach it first to edit it."
       }
     },
     "save": {
@@ -188,13 +192,13 @@
       "staleWhy": "This poster is customised, so it is not regenerated automatically: an edit that erases someone's work is worse than a prompt asking them to look.",
       "picker": {
         "heading": "Poster",
-        "intro": "Every published session has a poster. The automatic path produces every size with no design work at all.",
+        "intro": "Every published session has a poster, three ways. The automatic one produces every size with no design work at all.",
         "auto": "Automatic",
         "autoHint": "Built from the template and the session's data, and rebuilt whenever the title, time, venue or presenters change.",
         "customise": "Customise",
-        "customiseHint": "Opens the designer. The first edit detaches the poster from its template, one way: after that it is never regenerated automatically, only flagged when details change.",
+        "customiseHint": "Opens the designer once the poster is detached from its template, one way: it is never regenerated automatically again, only flagged when details change.",
         "upload": "Upload a finished poster",
-        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start: there is no template to regenerate it from.",
+        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start, and every size is cropped from it.",
         "openDesigner": "Open the designer",
         "state": {
           "auto": "Automatic",
@@ -202,7 +206,39 @@
           "uploaded": "Uploaded"
         },
         "live": "Linked to its template",
-        "detached": "Detached"
+        "detached": "Detached",
+        "current": "Current",
+        "customiseAction": "Customise",
+        "readOnly": "Choosing how the poster is made is an admin's.",
+        "autoDetached": "There is no way back to automatic after detaching: a detached poster is never replaced from the template.",
+        "staleAction": "Review the poster",
+        "detach": {
+          "title": "Customise the poster for «<bdi>{title}</bdi>»?",
+          "body": "The poster is detached from its template before the designer opens, one way: it is never regenerated automatically, and if the title, time, venue or presenters change you are told to review it yourself.",
+          "brand": "Your organisation's brand colours still apply to it, so a change to them shows at its next export.",
+          "confirm": "Detach and open the designer",
+          "cancel": "Cancel",
+          "failed": "The poster could not be detached. Try again."
+        },
+        "uploadAction": "Upload poster",
+        "uploadFormats": "<bdi>PNG</bdi>, <bdi>JPEG</bdi> or <bdi>WebP</bdi>. <bdi>SVG</bdi> is not accepted.",
+        "replace": {
+          "title": "Replace the poster for «<bdi>{title}</bdi>»?",
+          "auto": "The uploaded poster replaces the automatic one, one way: it is never regenerated from the template afterwards.",
+          "customised": "The uploaded poster replaces the customised one, and its edits are not kept.",
+          "uploaded": "The new poster replaces the one uploaded before.",
+          "confirm": "Upload and replace",
+          "cancel": "Cancel"
+        },
+        "uploaded": "Poster uploaded; its sizes are being prepared.",
+        "uploadErrors": {
+          "file_too_large": "The file is larger than the limit (<bdi>{limit}</bdi> MB).",
+          "rejected_content": "The file's content is not a <bdi>PNG</bdi>, <bdi>JPEG</bdi> or <bdi>WebP</bdi> image, whatever its extension.",
+          "too_small": "The image's short side is <bdi>{shortSide}</bdi> px; the minimum is <bdi>{minimum}</bdi>.",
+          "unreadable": "The image could not be read. Try another file.",
+          "not_authorized": "Uploading a poster is an admin's.",
+          "unknown": "The poster could not be uploaded. Try again."
+        }
       }
     },
     "inspector": {

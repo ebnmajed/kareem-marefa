@@ -328,7 +328,11 @@ export type AutosaveResult =
   | { status: "invalid"; issues: ValidationIssue[] }
   | { status: "conflict"; updatedAt: string }
   | { status: "not_authorized" }
-  | { status: "locked_region"; layerId: string };
+  | { status: "locked_region"; layerId: string }
+  /** The document is a session's LIVE poster: it is the template's, and an
+   *  edit would be discarded by the next regeneration. Detach first, through
+   *  the confirm (REQ-DSG-003, REQ-UIX-013). */
+  | { status: "live_poster" };
 
 /**
  * SCR-057's autosave. A Route Handler calls this, never a Server Action:
@@ -341,8 +345,16 @@ export async function saveDesignDocument(locale: string, documentId: string, inp
 
   const { session, supabase } = await sessionClient(locale);
 
-  const { data: current } = await supabase.from("design_documents").select("updated_at").eq("id", documentId).maybeSingle();
+  const [{ data: current }, { data: livePoster }] = await Promise.all([
+    supabase.from("design_documents").select("updated_at").eq("id", documentId).maybeSingle(),
+    supabase.from("session_posters").select("id").eq("document_id", documentId).eq("binding", "live").maybeSingle(),
+  ]);
   if (!current) return { status: "not_authorized" };
+  // ★ A live poster is a pure function of template and data; a save to it
+  // would stay `live` and be regenerated away on the next title change — the
+  // admin's work silently gone. Refused, never detached on the side: detaching
+  // is confirmed by name (REQ-UIX-013), in the picker or the studio's gate.
+  if (livePoster) return { status: "live_poster" };
   if (new Date(current.updated_at as string).getTime() !== new Date(input.baseUpdatedAt).getTime()) {
     return { status: "conflict", updatedAt: current.updated_at as string };
   }

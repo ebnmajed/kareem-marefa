@@ -8,11 +8,13 @@ import { assetSizesFor } from "@/lib/dal/posters";
 import { DesignerEditor } from "@/components/designer/editor";
 import { ExportActionButton } from "@/components/designer/export-action-button";
 import { ExportPanel } from "@/components/designer/export-panel";
+import { CustomiseButton } from "@/components/posters/picker-controls";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { LockIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { queueExports } from "./actions";
 
@@ -104,6 +106,11 @@ export default async function DesignerPage({
 
   const { context } = data;
   const back = backOf(context);
+  // ★ A LIVE poster is the template's, rebuilt on every change: an edit here
+  // would be regenerated away (and the save is refused, REQ-DSG-003). The
+  // studio opens read-only with the one way forward — the same confirmed
+  // detach as the picker's «خصّص» (REQ-UIX-013).
+  const liveGate = context.kind === "session_poster" && context.binding === "live" && data.canEdit;
   const title = context.kind === "unbound" ? t(`untitled.${context.purpose}`) : context.title;
 
   const status = (
@@ -166,6 +173,16 @@ export default async function DesignerPage({
         }
       />
 
+      {liveGate ? (
+        <Panel tone="info" className="mt-8 flex flex-col gap-3">
+          <p className="text-label text-fg-heading">{t("liveGate.title")}</p>
+          <p className="text-body-sm text-fg-body">{t("liveGate.body")}</p>
+          <div>
+            <CustomiseButton sessionId={context.sessionId} sessionTitle={context.title} />
+          </div>
+        </Panel>
+      ) : null}
+
       <div className="mt-8">
         <DesignerEditor
           documentId={data.id}
@@ -176,7 +193,7 @@ export default async function DesignerPage({
           declaredBindings={data.declaredBindings}
           faces={faces}
           lockedLayerIds={data.lockedLayerIds}
-          canEdit={data.canEdit}
+          canEdit={data.canEdit && !liveGate}
           origin={origin}
           assetSizes={assetSizes}
           variantPreviews={variantPreviews}

@@ -1212,3 +1212,37 @@ the `REQ-CRT-004` case ticks the recipient's row and confirms the release. 8/8, 
 `tests/e2e/wave8-designer-certificates.spec.ts` covers the same guarantees plus the design, the
 lock, redesign-held, the estimate and the moderator, and writes
 `wave8-designer-certificates-{held,release-confirm,design-landscape,design-portrait,revoked,revoke-dialog,design-locked,mode-off,moderator}.png`.
+
+### W8.m The poster picker on the system, and the detach that was never wired (2026-09-17)
+
+**Found while building the chooser — a live REQ-DSG-003 defect.** `detach_poster()` (`0063`) had no
+caller. The copy said «أول تعديل يفصل الملصق», but a save to a live poster's document updated the
+row and left `session_posters.binding = 'live'`; `regenerate_poster` renders the TEMPLATE for a live
+poster, so the admin's edit never reached an export and the next title change regenerated over it —
+the overwrite `DEC-012` exists to prevent, silently. Fixed without SQL:
+
+- `saveDesignDocument()` refuses a save to a live poster (`live_poster`, 409 from the autosave route).
+  It does not detach on the side: `REQ-UIX-013` names detaching among the acts that confirm by name.
+- The studio opens a live poster **read-only** with a panel and the same confirm as the way forward.
+- The picker's «خصّص» is that confirm: it names the session, says the detach is one way, and says
+  the only brand truth (`DEC-148` q3) — never regenerated, brand colours still apply at its next
+  export. Confirm → `detach_poster()` (audited `design.poster_detached`) → the studio, editable.
+
+**The chooser** (`PosterPicker`, props unchanged): three `ui/card`s — تلقائي, تخصيص, رفع ملصق جاهز —
+the current one marked, the stale prompt when details moved under a detached poster, and the
+automatic card saying there is no way back once detached. **The upload path was also unbuilt in the
+UI** (`attachUploadedPoster()` had no caller): it is now `ui/file-drop` → the two asset Route
+Handlers (sniffed after landing, `DEC-009`; `limit_poster_mb` when the upload is a poster) → a confirm
+naming what it replaces → `attachPosterUpload` → `requestExports()` for every variant.
+
+`tests/e2e/wave8-designer-posters.spec.ts` proves: the cancel changes nothing and the confirm flips row,
+mode and audit together; a save sent to a live poster anyway is 409; an SVG named `.png` typed
+`image/png` is refused on its bytes; an 800 × 900 PNG is refused with its numbers; a 1200 × 1500 PNG
+becomes the poster, detached, with artifacts requested. Captures:
+`wave8-designer-posters-{picker-live,detach-confirm,upload-rejected,picker-stale,studio-live-gate}.png`.
+
+**Two of my specs had drifted, fixed in the same sitting:** `wave8-designer-editor`'s failing check
+came from v1's 60 px `l_where` box being shorter than its line — v2 (`0098`) made it 70 px, and a
+layer moved to x = 0 is clamped into the safe area by `derive()` — so the fixture now stretches the
+layer edge to edge; and toast assertions across the three wave-8 specs are `exact`, because the toast
+now carries a second, live-region copy of its text that strict mode counts.

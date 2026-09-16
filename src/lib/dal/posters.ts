@@ -40,6 +40,9 @@ export const initiateAssetInput = z.object({
   byteSize: z.number().int().positive(),
   /** What the client thinks it is. Advisory only — the sniff decides. */
   declaredType: z.string().max(100).optional(),
+  /** Set when the upload is a finished poster, which the org sizes on its
+   *  own limit (`org_settings.limit_poster_mb`) rather than the image one. */
+  sessionId: z.uuid().optional(),
 });
 
 export const completeAssetInput = z.object({
@@ -72,8 +75,8 @@ export async function initiateAssetUpload(locale: string, input: z.infer<typeof 
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin") return { status: "not_authorized" };
 
-  const { data: settings } = await supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle();
-  const limitMb = (settings?.limit_image_mb as number | undefined) ?? 20;
+  const { data: settings } = await supabase.from("org_settings").select("limit_image_mb, limit_poster_mb").eq("org_id", session.orgId).maybeSingle();
+  const limitMb = ((input.sessionId ? settings?.limit_poster_mb : settings?.limit_image_mb) as number | undefined) ?? 20;
   if (input.byteSize > limitMb * 1024 * 1024) return { status: "file_too_large", limitMb };
 
   const assetId = randomUUID();
@@ -366,11 +369,53 @@ async function loadSessionPoster(locale: string, sessionId: string, variant: Pos
   };
 }
 
-/** DEC-012 / REQ-DSG-003 — the one-way flip, on the admin's first edit. */
-export async function detachPoster(locale: string, sessionId: string): Promise<{ status: "ok" } | { status: "not_authorized" }> {
+/**
+ * DEC-012 / REQ-DSG-003 — the one-way flip.
+ *
+ * ★ CONFIRMED, NEVER IMPLIED (REQ-UIX-013 names «detaching a poster»). Until
+ * wave 8 nothing called this: the copy said «the first edit detaches», but an
+ * edit to a live poster's document saved and left it `live`, so the next title
+ * change regenerated from the template and the admin's work never reached an
+ * export. Now the picker's «خصّص» and the studio's gate both go through a
+ * dialog that names the session and then call this, and a save to a live
+ * poster is refused (`saveDesignDocument`). The returned document is where the
+ * studio opens.
+ */
+export async function detachPoster(locale: string, sessionId: string): Promise<{ status: "ok"; documentId: string | null } | { status: "not_authorized" }> {
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("detach_poster", { p_session: sessionId });
-  return error ? { status: "not_authorized" } : { status: "ok" };
+  const { data, error } = await supabase.rpc("detach_poster", { p_session: sessionId });
+  if (error) return { status: "not_authorized" };
+  const row = (Array.isArray(data) ? data[0] : data) as { document_id?: string | null } | null;
+  return { status: "ok", documentId: row?.document_id ?? null };
+}
+
+/* ── SCR-043's picker (DEC-012, `16` §10.3) ─────────────────────────────── */
+
+export interface PosterPickerData {
+  sessionTitle: string;
+  /** Detaching, uploading and opening the studio are an org admin's acts. */
+  canEdit: boolean;
+  /** `org_settings.limit_poster_mb`, stated before the picker opens. */
+  limitMb: number;
+  poster: SessionPosterData | null;
+}
+
+/** Everything the three cards need, `null` when the session is not this
+ *  org's. The poster itself is the slot's own read, shared through `cache()`. */
+export async function getPosterPicker(locale: string, sessionId: string): Promise<PosterPickerData | null> {
+  const { session, supabase } = await sessionClient(locale);
+  const [{ data: sessionRow }, { data: settings }, poster] = await Promise.all([
+    supabase.from("sessions").select("title").eq("id", sessionId).maybeSingle(),
+    supabase.from("org_settings").select("limit_poster_mb").eq("org_id", session.orgId).maybeSingle(),
+    getSessionPoster(locale, sessionId, "square"),
+  ]);
+  if (!sessionRow) return null;
+  return {
+    sessionTitle: sessionRow.title as string,
+    canEdit: session.role === "admin",
+    limitMb: (settings?.limit_poster_mb as number | undefined) ?? 20,
+    poster,
+  };
 }
 
 /** A signed URL for a design asset, five minutes. `null` when the id names
