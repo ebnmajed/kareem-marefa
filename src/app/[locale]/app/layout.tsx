@@ -7,6 +7,7 @@ import { getSessionState } from "@/lib/dal/session";
 import { getBrandKit, type BrandKit } from "@/lib/brand/kit";
 import { getMe } from "@/lib/dal/members";
 import { AccountMenu } from "@/components/shell/account-menu";
+import { FocusClearance } from "@/components/shell/focus-clearance";
 import { SearchEntry } from "@/components/shell/search-entry";
 import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
@@ -129,6 +130,10 @@ export default async function AppLayout({
         {/* Layer 1 of the loading model (`16` §7.1.1): a bar only past 150 ms,
             fed by every `ui/link`. */}
         <RouteProgress />
+        {/* SC 2.4.11 — keeps a focused control out from under the sticky header
+            and the fixed bars, on every route (Chromium's sequential focus
+            scroll ignores scroll-padding). */}
+        <FocusClearance />
 
         {/* ★ SC 2.4.1 — the first focusable element in the shell. Visually
           hidden until focused (.skip-link in globals.css). Today it saves a
