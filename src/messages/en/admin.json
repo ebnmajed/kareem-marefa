@@ -410,7 +410,7 @@
     },
     "exports": {
       "title": "Exports",
-      "intro": "Every file is UTF-8 with a BOM, so Excel opens the Arabic directly; its headers are Arabic, and its dates are in a format Excel sorts, on your organisation's clock.",
+      "intro": "Each file is a spreadsheet that Excel opens with the Arabic intact: its column headings in Arabic, and its dates on your organisation's clock, sorting correctly.",
       "download": "Download CSV",
       "sessions": {
         "title": "Sessions",
@@ -525,7 +525,9 @@
           "kit_saved": "Brand kit saved"
         },
         "certificate": {
+          "design_set": "Certificate design chosen",
           "issued": "Certificate issued",
+          "redesigned": "Held certificates redesigned",
           "released": "Certificate released",
           "revoked": "Certificate revoked"
         },
