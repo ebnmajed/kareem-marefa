@@ -180,11 +180,17 @@ test("★ filtered-empty names the filter that emptied it; «أزل» drops only
   // «فني» holds only the introductory session, so adding «متقدم» empties it —
   // and removing «متقدم» alone restores one session.
   await page.goto(`/ar/app/sessions?category=${catId}&level=advanced`);
-  await expect(page.getByText("لا جلسات تطابق «\u2068متقدم\u2069» مع بقية عوامل التصفية")).toBeVisible();
-  await expect(page.getByText("إزالته وحده تُظهر جلسة واحدة")).toBeVisible();
+  // Scoped to <main>. A build run once found a second match OUTSIDE #main while
+  // the page was still streaming — not reproducible after load, and consistent
+  // with React's hidden streaming container before its swap script runs under
+  // load. What a member reads is the copy in <main>, and there must be exactly
+  // one of those.
+  const main = page.locator("#main");
+  await expect(main.getByText("لا جلسات تطابق «\u2068متقدم\u2069» مع بقية عوامل التصفية")).toBeVisible();
+  await expect(main.getByText("إزالته وحده تُظهر جلسة واحدة")).toBeVisible();
   if (testInfo.project.name === "phone") await capture(page, "timeline-filtered-empty");
 
-  await page.getByRole("link", { name: "أزل «\u2068متقدم\u2069»" }).click();
+  await main.getByRole("link", { name: "أزل «\u2068متقدم\u2069»" }).click();
   await expect(page).toHaveURL(new RegExp(`category=${catId}$`));
   await expect(page.getByText(SOON)).toBeVisible();
 });

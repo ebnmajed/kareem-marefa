@@ -204,6 +204,11 @@ test("before reserving: one primary «احجز مقعدك», no calendar, the he
 });
 
 test("★ after reserving: the same card, re-rendered — «أضِف إلى تقويمك» where «احجز مقعدك» was, and it survives a reload", async ({ context, page }, testInfo) => {
+  // The reservation redirects back to this page, and the pending state lasts
+  // until the whole page — every slot — has re-rendered, because React does not
+  // fall back to a skeleton for a section already on screen. Truthful, and slow
+  // on a busy gate; the assertion below allows for it.
+  test.slow();
   memberId = await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
   // Each project reserves once; clear any seat from the other worker's run.
@@ -214,7 +219,7 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   // never runs, and not what this test is about.
   await page.waitForLoadState("networkidle");
   await page.getByRole("region", { name: "الحضور" }).getByRole("button", { name: "احجز مقعدك" }).click();
-  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible();
+  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible({ timeout: 45_000 });
 
   await page.reload();
   const region = page.getByRole("region", { name: "الحضور" });
@@ -263,6 +268,8 @@ test("★ an ended session: the ribbon, «حضرت», «قيّم الجلسة» 
 });
 
 test("★ nothing fixed or sticky covers the focused element, tabbing the whole page (SC 2.4.11)", async ({ context, page }, testInfo) => {
+  // Sixty presses, each waiting out the focus scroll: slow by construction.
+  test.slow();
   await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
   else await page.setViewportSize({ width: 1280, height: 800 });
