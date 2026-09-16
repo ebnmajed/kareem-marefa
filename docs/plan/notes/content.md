@@ -2064,3 +2064,27 @@ content on a hard navigation — a wave-5 loading-model property, not specific t
 cross-cutting.
 
 Ready for sync.
+
+## §10 — both closed (`967d1a7`)
+
+**1 and 2 were never my bug.** The lead's own read of the offending-element array confirmed it: every
+entry was `MeTabStrip`'s own tabs, scrolled out of view inside its own `overflow-x-auto` — by design,
+the same edge-fade scroll strip approved back at sync 1. `notify-screens.spec.ts`/`scoring-screens.spec.ts`'s
+own `widerThanViewport` (both unspawned tracks', not mine to touch) flagged anything outside the
+viewport even inside a legitimate scroller; the lead fixed the helper (custodian) to check the
+document's own `scrollWidth` and skip scroller content. Nothing changed in my code.
+
+**3 was confirmed, and certain, not timing-dependent**: `/app`'s `loading.tsx` makes the response
+stream — the skeleton flushes, the real page arrives in a `<div hidden>` React's own inline `$RC`
+script reveals, and with JS off that script never runs. A property of M9's loading model
+(DEC-087/DEC-134) for every `/app` route, not of this form; the only no-JS contract in the whole plan
+is the frozen register form (`16` §8.2, `qa:contract`). Skipped the whole `describe` with
+`test.describe.skip` and the reasoning attached in a comment, rather than deleting it — per the lead's
+ruling, this is a known, documented, permanent skip, not a bug to chase.
+
+`tsc` clean, lint clean, full `npm test` 145/145 files, 1439/1439 tests.
+
+All four sync-5 findings and both sync-5-message-2 findings are now closed. Holding e2e/RLS for
+sync 6, per the lead.
+
+Ready for sync.
