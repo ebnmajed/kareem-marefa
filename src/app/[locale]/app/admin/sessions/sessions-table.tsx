@@ -138,6 +138,14 @@ export function AdminSessionsTable({
       key: "actions",
       header: t("actionsLabel"),
       align: "end",
+      // ★ Real phone defect the lead's real-build run found: without
+      // `onCard`, this column simply never rendered in the stacked card
+      // list — "فتح الجلسة" (and schedule/attendance/certificates) had no
+      // way in on a phone at all, only on desktop's table. `DataTable`'s
+      // card layout renders it as an ordinary label:value row, the trigger
+      // `IconButton` sitting where the value goes — no different from how
+      // the status badge or presenter-status column already render there.
+      onCard: true,
       cell: (s) => (
         <Menu
           align="end"

@@ -66,7 +66,7 @@ describe("AdminSessionsTable", () => {
     expect(screen.getAllByText("جلسة الأمان السحابي").length).toBeGreaterThan(0);
     expect(screen.getAllByText("أساسيات الشبكات").length).toBeGreaterThan(0);
 
-    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في الجلسات" }), "خالد");
+    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في جلسات المؤسسة" }), "خالد");
     expect(screen.queryByText("جلسة الأمان السحابي")).not.toBeInTheDocument();
     expect(screen.getAllByText("أساسيات الشبكات").length).toBeGreaterThan(0);
   }, 15000);
@@ -90,7 +90,7 @@ describe("AdminSessionsTable", () => {
 
   it("the empty state switches to 'no matches' once a search finds nothing, keeping the short action label", async () => {
     renderTable();
-    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في الجلسات" }), "لا يوجد شيء بهذا الاسم");
+    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في جلسات المؤسسة" }), "لا يوجد شيء بهذا الاسم");
     expect(screen.getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();
     expect(screen.queryByText("لا جلسات بعد.")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "افتح المقترحات" })).toBeVisible();

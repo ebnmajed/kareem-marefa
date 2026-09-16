@@ -144,7 +144,7 @@
       "listTitle": "All sessions",
       "listEmpty": "No sessions yet.",
       "listEmptyAction": "Open proposals",
-      "searchLabel": "Search sessions",
+      "searchLabel": "Search the organization's sessions",
       "searchPlaceholder": "Title or presenter name",
       "searchEmpty": "No sessions match your search.",
       "moreActions": "More actions on <t>{title}</t>",
