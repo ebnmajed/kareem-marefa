@@ -68,11 +68,12 @@ async function renderPage(query: Record<string, string>, role: "admin" | "modera
 const cardList = (container: HTMLElement) => container.querySelector("ul.space-y-3") as HTMLElement;
 
 describe("AuditLogPage", () => {
-  it("reads each action in Arabic, the key beneath, and «النظام» for a row no member wrote", async () => {
+  it("reads each action in Arabic alone, and «النظام» for a row no member wrote", async () => {
     const { container } = await renderPage({});
     const [first, second] = within(cardList(container)).getAllByRole("listitem");
     expect(first).toHaveTextContent("تغيير دور عضو");
-    expect(first).toHaveTextContent("member.role_changed");
+    // The raw key is not shown (sync 2): the label maps back to it one to one.
+    expect(first).not.toHaveTextContent("member.role_changed");
     expect(first).toHaveTextContent("مشرفة السجل");
     expect(first).toHaveTextContent("مشرف المؤسسة");
     expect(second).toHaveTextContent("اختلاف في رصيد النقاط");

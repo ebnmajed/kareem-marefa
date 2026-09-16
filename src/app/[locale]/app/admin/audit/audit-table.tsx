@@ -12,13 +12,15 @@ import { Link } from "@/components/ui/link";
 // A read-only list: an audit row is evidence, and nothing on this screen edits
 // one, so there is no actions column and no selection.
 //
-// The action leads each row and each card, in Arabic, with its key beneath as
-// a caption — the key is what `write_audit()` wrote and what a support
-// conversation quotes; the sentence is what an admin reads.
+// The action leads each row and each card, in Arabic, and only in Arabic. The
+// raw key (`member.role_changed`) was a caption beneath it until sync 2 and is
+// gone: every label maps back to exactly one key through `admin.audit.actions`
+// (`admin-audit-labels.test.ts` fails on a key without one), a key with no
+// label is shown raw as the label itself, and nobody who reads this screen
+// needs the machine's word for what happened.
 
 export interface AuditTableRow {
   id: string;
-  action: string;
   actionLabel: string;
   actorName: string | null;
   actorRole: string | null;
@@ -40,14 +42,7 @@ export function AuditTable({ rows, timeZone, locale, empty }: { rows: AuditTable
       key: "action",
       header: t("colAction"),
       onCard: true,
-      cell: (r) => (
-        <div className="min-w-0">
-          <p className="text-label text-fg-heading">{r.actionLabel}</p>
-          <p className="mt-0.5 text-caption text-fg-muted">
-            <bdi dir="ltr">{r.action}</bdi>
-          </p>
-        </div>
-      ),
+      cell: (r) => <p className="text-label text-fg-heading">{r.actionLabel}</p>,
     },
     {
       key: "when",

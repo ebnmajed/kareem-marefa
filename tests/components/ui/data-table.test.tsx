@@ -181,6 +181,14 @@ describe("DataTable — the phone card list (16 §6.7's actual requirement)", ()
     expect(within(cardList).getAllByText("جلسة تصوير المشاهد الليلية").length).toBe(1);
   });
 
+  it("a card's label never shrinks — a long value wraps beside it instead (a capture broke «آخر تصدير» over two lines)", () => {
+    const columns: DataTableColumn<Row>[] = [...COLUMNS, { key: "long", header: "آخر تصدير", cell: () => "منذ ثلاثة أيام، نزّله عضو باسم طويل جدًا لا يتّسع له السطر", onCard: true }];
+    render(<Wrap><Basic columns={columns} /></Wrap>);
+    const label = within(screen.getByRole("list")).getAllByText("آخر تصدير")[0];
+    expect(label).toHaveClass("shrink-0");
+    expect(label.nextElementSibling).toHaveClass("min-w-0");
+  });
+
   it("the card's title is the first column even when the caller forgot to mark it onCard", () => {
     const columns: DataTableColumn<Row>[] = [{ key: "title", header: "العنوان", cell: (r) => r.title }, ...COLUMNS.slice(1)];
     render(<Wrap><Basic columns={columns} /></Wrap>);

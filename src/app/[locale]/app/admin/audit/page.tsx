@@ -95,7 +95,6 @@ export default async function AuditLogPage({
 
   const rows: AuditTableRow[] = page.rows.map((r) => ({
     id: r.id,
-    action: r.action,
     actionLabel: actionLabel(r.action),
     actorName: r.actorName,
     actorRole: r.actorRole,

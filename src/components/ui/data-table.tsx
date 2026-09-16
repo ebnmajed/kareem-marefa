@@ -256,9 +256,12 @@ export function DataTable<Row>({
                       {cardColumns
                         .filter((c) => c.key !== primaryColumn?.key)
                         .map((col) => (
+                          // The label keeps its line and the value wraps
+                          // beside it: a capture found «آخر تصدير» broken over
+                          // two lines by a long value (wave 8).
                           <div key={col.key} className="flex justify-between gap-3 text-body-sm text-fg-muted">
-                            <span>{col.header}</span>
-                            <span className="text-fg-body">{col.cell(row)}</span>
+                            <span className="shrink-0">{col.header}</span>
+                            <span className="min-w-0 text-end text-fg-body">{col.cell(row)}</span>
                           </div>
                         ))}
                     </div>
