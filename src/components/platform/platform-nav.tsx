@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { BuildingIcon, ChevronIcon, ClockIcon, HomeIcon, ImageIcon, LockIcon } from "@/components/ui/icons";
+import { BuildingIcon, ChartIcon, ChevronIcon, HomeIcon, ImageIcon, LockIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
 
@@ -40,9 +40,7 @@ const ITEMS: { key: PlatformNavKey; href: string; Icon: ComponentType<{ classNam
   { key: "home", href: "/app/platform", Icon: HomeIcon },
   { key: "orgs", href: "/app/platform/orgs", Icon: BuildingIcon },
   { key: "templates", href: "/app/platform/templates", Icon: ImageIcon },
-  // No chart glyph exists in the house set yet (requested, notes W8.15 L3);
-  // SCR-084's headline number is an age, so the clock stands in.
-  { key: "metrics", href: "/app/platform/metrics", Icon: ClockIcon },
+  { key: "metrics", href: "/app/platform/metrics", Icon: ChartIcon },
   { key: "impersonate", href: "/app/platform/impersonate", Icon: LockIcon },
 ];
 
