@@ -966,3 +966,40 @@ doesn't match what the tree can support is a question, not something to implemen
   upload-widget tests, mid-transition on `uploadLimits`/`imageLimitMb`) — not touched, not
   re-reported individually (the pattern is now familiar: several tracks landing DAL shape changes
   ahead of their own tests in the same window).
+
+### 8. As built — sessions, top level (`e0f0f2c`), what changed from the plan
+
+- **The biggest deviation from the plan, found by my own jsdom test, not by review:** §2.3 said
+  "`SessionControls`' start/complete/reopen stay plain buttons" — my first pass instead gated the
+  whole block behind an "إجراءات المشرف" item in the row `Menu`, reasoning (wrongly) that a row of
+  several buttons plus a cancel disclosure had nowhere to fit. That directly contradicts what I
+  planned, AND — checked before committing, not after — breaks
+  `tests/e2e/sessions-screens.spec.ts:320`'s `expect(boss.getByRole("button", {name: "ابدأ الجلسة
+  الآن"})).toBeVisible()` immediately on page load, with no click first. Fixed to always-visible,
+  rendered below the table (not inside a `DataTable` cell — still nowhere for a multi-button block
+  to fit in one cell), which is both what the plan said and what the existing M2 demonstrable
+  assumes. `sessions-screens.spec.ts` itself needed no edit — verified by reading it, not assumed.
+- **`actionsFor()` cannot be imported into `sessions-table.tsx`** — it lives in `lib/dal/sessions.ts`
+  (sessions' file, `import "server-only"`), and that module cannot be pulled into a `"use client"`
+  bundle at all, not even for one function. Computed server-side in `page.tsx` per row into an
+  `actionsById: Record<string, SessionAction[]>` and threaded down as plain data instead.
+  `DataTableColumn`/`AdminSession`/`SessionAction` TYPES are still imported directly — type-only
+  imports are erased before `"server-only"`'s runtime check would ever see them.
+- **`t()` vs `t.markup()`, found by the same jsdom test:** the row menu's `moreActions` label uses a
+  `<t>{title}</t>` tag (`admin.combobox.removeChip`'s own precedent) so two rows' triggers are never
+  announced identically — calling it with plain `t()` instead of `t.markup()` rendered the literal
+  string `"admin.sessions.moreActions"` as the accessible name. The test's own `getByRole` query
+  caught it immediately; nothing about reading the component would have.
+- **The direct-create form's adoption of `lib/form-state` is real, not partial**, but it skips one
+  piece of `app/propose/proposal-form.tsx`'s own model on purpose: the live reward/punish on-blur
+  error-clearing. `FormSummary` + adjacent error + «مطلوب» + value survival is REQ-UIX-009/010/011's
+  full acceptance criteria on its own, and this is DEC-130's own "secondary action," not the
+  flagship form the extra polish was built for. No jsdom test written for this specific form this
+  pass (time budget) — its Combobox/`wasList()` wiring is lower incremental risk than
+  `SessionControls`' portal, since it reuses `app/propose`'s already-proven `lib/form-state` pattern
+  verbatim rather than inventing a new one.
+- **Two message-copy additions beyond the plan**, both found while wiring, not anticipated: the
+  cancel-confirm dialog needed the same "portal, so `form={id}`" treatment as proposals' reject
+  dialog, and `admin.sessions.errorSummaryTitle`/`errors.*` are new — the form had no error-summary
+  copy at all before (`invalid`/`failed` were single generic strings), since `<FormSummary>` is new
+  work here, not a re-skin.
