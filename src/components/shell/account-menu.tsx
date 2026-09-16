@@ -35,11 +35,12 @@ export interface AccountMenuProps {
   labels: {
     account: string;
     profile: string;
-    rsvps: string;
     points: string;
     certificates: string;
     bookmarks: string;
     calendar: string;
+    notifications: string;
+    privacy: string;
     admin: string;
     platform: string;
     signOut: string;
@@ -49,14 +50,18 @@ export interface AccountMenuProps {
 export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatformAdmin, labels }: AccountMenuProps) {
   const signOutFormId = useId();
 
+  // The seven `/app/me` routes, in the hub's own tab order (`me/layout.tsx`).
+  // «حجوزاتي» went with wave 7: it pointed at `/app/me` beside «ملفي», a second
+  // link to the same page, while notifications and privacy had none.
   const items: MenuItem[] = memberId
     ? [
         { label: labels.profile, href: "/app/me" },
-        { label: labels.rsvps, href: "/app/me" },
         { label: labels.points, href: "/app/me/points" },
         { label: labels.certificates, href: "/app/me/certificates" },
         { label: labels.bookmarks, href: "/app/me/bookmarks" },
         { label: labels.calendar, href: "/app/me/calendar" },
+        { label: labels.notifications, href: "/app/me/notifications" },
+        { label: labels.privacy, href: "/app/me/privacy" },
       ]
     : [];
   const staff: MenuItem[] = [
