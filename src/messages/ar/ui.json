@@ -24,6 +24,11 @@
     },
     "pageHeader": {
       "breadcrumb": "مسار الصفحة"
+    },
+    "combobox": {
+      "removeChip": "إزالة <t>{name}</t>",
+      "createOption": "إضافة «<t>{name}</t>»",
+      "resultsCount": "{count, plural, zero {لا نتائج} one {نتيجة واحدة} two {نتيجتان} few {{value} نتائج} many {{value} نتيجة} other {{value} نتيجة}}"
     }
   }
 }
