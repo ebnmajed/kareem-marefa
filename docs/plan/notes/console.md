@@ -1732,3 +1732,33 @@ through the same `review()` helper (honours `E2E_SHOTS_DIR`, the same overflow/d
 categories and companies already get). `npx tsc --noEmit` clean, lint zero errors; not run locally —
 matching how captures land this wave, the next sync build produces it and the lead opens it. Committed
 alone: `4ee8005`.
+
+### Sync 6 finding — the same status-cell defect on all three managed lists, not just venues
+
+K3 closed (the lead opened `wave7-console-venues-populated-390-rtl-phone.png`), but flagged one thing
+in it: the card's «الحالة» row had a label with no value for the active venue (السعة and الجلسات
+القادمة both had values beside them). Root cause, found by reading `ui/data-table.tsx`'s card mode
+(content's file, not touched): it always renders an `onCard` column's label, with no notion of "skip
+this field" — `venues-table.tsx`'s own status `cell()` returned a `Badge` only for the deactivated case
+and `null` otherwise, so the active case's value slot was always empty on the phone card (the desktop
+table has the same gap, just less visible next to a `Badge`-shaped column that simply isn't there).
+
+Checked `categories-table.tsx` and `companies-table.tsx` before fixing anything — identical `cell()`
+shape, same defect, same three-tables-built-together reasoning `venues-table.tsx`'s own header comment
+already names ("one list pattern three times"). Fixed all three rather than venues alone: the cell now
+always renders a `Badge` — `tone="success"` active, `tone="neutral" outline` deactivated — matching
+`admin/members/members-table.tsx`'s own status-cell convention exactly (`docs/plan/notes/console.md`
+never needed to invent a new pattern; it already existed one screen over). Added an `active` message
+key to all three namespaces, gendered per noun the same way each existing `deactivated` key already is:
+«نشط» (مكان/تصنيف, masculine) for venues and categories, «نشطة» (شركة, feminine) for companies.
+
+New test, `tests/components/admin/managed-lists-status-badge.test.tsx`, one case per table, scoped to
+the phone card `<ul>` specifically (`container.querySelector("ul")` — `getByRole("list")` is ambiguous
+against `ToastProvider`'s always-mounted `<ol>` toast region, which carries the same implicit role).
+Each table imports its own `./actions` directly (unlike `members-table.tsx`, which takes actions as
+props), so each is `vi.mock`ed the same way `me/profile-form.test.tsx` mocks
+`@/app/[locale]/app/me/actions`. Confirmed failing against the pre-fix cells by hand — reverted all
+three table files to `HEAD`, ran (all three cases failed, empty string where a Badge's text should be),
+restored from a scratchpad copy, ran green again — before committing. `npx tsc --noEmit` clean, lint
+zero errors, `npx vitest run` 146/146 files, 1444/1444 tests green. Committed alone: `7f452d6`. Still
+holding the sync-6 e2e/RLS constraint.
