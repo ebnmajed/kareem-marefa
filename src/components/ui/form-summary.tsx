@@ -49,7 +49,7 @@ function controlFor(fieldId: string): HTMLElement | null {
   return el.matches(FOCUSABLE) ? el : el.querySelector<HTMLElement>(FOCUSABLE);
 }
 
-export function FormSummary({ errors, title, className = "" }: FormSummaryProps) {
+export function FormSummary({ errors, title, description, className = "" }: FormSummaryProps) {
   const region = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,6 +78,10 @@ export function FormSummary({ errors, title, className = "" }: FormSummaryProps)
         <AlertCircleIcon className="mt-[0.2em]" />
         <span>{title}</span>
       </h2>
+      {/* The reassurance under the title — «ما كتبته محفوظ كما هو» (`16` §8.2
+          item 6, said out loud). Plain body text, not a link and not an error:
+          it is the one line in the region that is good news. */}
+      {description ? <p className="mt-1 text-caption text-fg-body">{description}</p> : null}
       <ul className="mt-2 space-y-1">
         {errors.map((e) => (
           <li key={e.fieldId}>

@@ -126,7 +126,8 @@ test("★ the summary lists one LINK per failed field, in the order the page ren
   await failTheForm(page);
 
   const summary = proposalForm(page).locator("[role=alert]");
-  await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
+  await expect(summary).toContainText("لم نستطع إرسال المقترح — 3 حقول تحتاج تصحيحًا");
+  await expect(summary).toContainText("ما كتبته محفوظ كما هو");
 
   // The M2 defect in one assertion: these used to be sentences.
   const links = summary.getByRole("link");

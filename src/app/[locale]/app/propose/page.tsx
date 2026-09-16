@@ -1,20 +1,29 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
-import { Link } from "@/i18n/navigation";
+import { ProposalStatusBadge } from "@/components/sessions/proposal-status-badge";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardBody } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, listCategories, listMyProposals, listNameableMembers } from "@/lib/dal/proposals";
 import { submitProposal } from "./actions";
 import { ProposalForm } from "./proposal-form";
 
 // SCR-017 · /app/propose — propose a topic (REQ-PRO-001, REQ-PRO-002,
-// REQ-PRO-003).
+// REQ-PRO-003), on the M9 system for wave 7 (DEC-137, DEC-141).
 //
 // The page is dynamic because the DAL reads cookies — no `export const
 // dynamic`, per DEC-013 and the Next 16 notes in CLAUDE.md.
 //
-// The list underneath is deliberately thin: it exists so a named co-presenter
-// can REACH their invitation, which REQ-PRO-003 needs. The pipeline itself,
-// with its reasons and its history, is SCR-018 and REQ-PRO-008.
+// «مقترحاتي» underneath stays, deliberately thin: it is how a named
+// co-presenter REACHES their invitation, which REQ-PRO-003 needs. The
+// pipeline itself — the state, the reason, the edit — is SCR-018.
+//
+// ★ The canvas's lead line («ما تكتبه هنا هو ما سيظهر في صفحة الجلسة…») is not
+// used: it is untrue until `0084` copies the audience and the duration into
+// the session (DEC-075, DEC-141 ruling 9f). The live site's own argument is.
 
 export default async function ProposePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -27,17 +36,13 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
     listMyProposals(locale),
     getTranslations("proposals.propose"),
   ]);
-  const ts = await getTranslations("proposals.proposal");
 
   const action = submitProposal.bind(null, locale as Locale);
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body-lg text-fg-heading">{t("lead")}</p>
-      <p className="mt-2 max-w-2xl text-body text-fg-muted">{t("leadBody")}</p>
-      {/* REQ-PRO-001, said to the member and not only to the schema. */}
-      <p className="mt-4 max-w-2xl rounded-field border border-edge bg-silver-100 p-4 text-body-sm text-fg-body">{t("noScheduleNote")}</p>
+      <PageHeader title={t("title")} description={t("lead")} />
+      <p className="mt-3 max-w-2xl text-body text-fg-body">{t("leadBody")}</p>
 
       <ProposalForm
         action={action}
@@ -47,30 +52,37 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
         maxCoPresentersLabel={t("form.coPresentersLimit", { count: prefs.maxCoPresenters, value: formatNumber(prefs.maxCoPresenters) })}
       />
 
-      <section aria-labelledby="mine" className="mt-14 max-w-2xl border-t border-edge pt-8">
-        <h2 id="mine" className="text-h2 text-fg-heading">
-          {t("mine.title")}
-        </h2>
+      <section aria-labelledby="mine" className="mt-14 flex max-w-2xl flex-col gap-4 border-t border-edge pt-8">
+        <SectionHeader id="mine" title={t("mine.title")} count={mine.length > 0 ? mine.length : undefined} />
         {mine.length === 0 ? (
-          <p className="mt-3 text-body text-fg-muted">{t("mine.empty")}</p>
+          <EmptyState size="sm" title={t("mine.empty")} action={{ label: t("mine.emptyAction"), href: "#title" }} />
         ) : (
-          <>
-            <p className="mt-2 text-body-sm text-fg-muted">{t("mine.count", { count: mine.length, value: formatNumber(mine.length) })}</p>
-            <ul className="mt-4 space-y-3">
-              {mine.map((p) => (
-                <li key={p.id} className="rounded-field border border-edge p-4">
-                  <Link href={`/app/propose/${p.id}`} className="text-label text-fg-heading underline underline-offset-4">
-                    <bdi>{p.title}</bdi>
-                  </Link>
-                  <p className="mt-1 text-body-sm text-fg-muted">
-                    {ts(`state.${p.state}`)}
-                    {p.viewerIsProposer ? "" : ` · ${t("mine.invited")}`}
-                    {p.viewerInvite === "pending" ? ` · ${t("mine.awaitingYou")}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </>
+          <ul className="flex flex-col gap-3">
+            {mine.map((p) => (
+              <li key={p.id}>
+                <Card density="row" href={`/app/propose/${p.id}`}>
+                  <CardBody>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ProposalStatusBadge state={p.state} size="sm" />
+                      {p.viewerIsProposer ? null : (
+                        <Badge tone="info" outline size="sm">
+                          {t("mine.invited")}
+                        </Badge>
+                      )}
+                      {p.viewerInvite === "pending" ? (
+                        <Badge tone="live" size="sm">
+                          {t("mine.awaitingYou")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <h3 className="text-h3 text-fg-heading">
+                      <bdi>{p.title}</bdi>
+                    </h3>
+                  </CardBody>
+                </Card>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </>

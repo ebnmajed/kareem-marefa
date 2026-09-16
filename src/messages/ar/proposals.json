@@ -31,7 +31,15 @@
         "coPresentersLabel": "مقدّمون مشاركون",
         "coPresentersHint": "اختر زملاء يقدّمون معك. سيصل كلًّا منهم إشعار، ولكل منهم أن يعتذر.",
         "coPresentersLimit": "{count, plural, zero {لا يمكن إضافة مقدّمين مشاركين} one {يمكنك تسمية زميل واحد} two {يمكنك تسمية زميلين} few {يمكنك تسمية {value} زملاء} many {يمكنك تسمية {value} زميلًا} other {يمكنك تسمية {value} زميل}}",
-        "coPresentersNone": "لا يوجد زملاء آخرون في مؤسستك بعد."
+        "coPresentersNone": "لا يوجد زملاء آخرون في مؤسستك بعد.",
+        "errorSummaryCount": "{count, plural, zero {لم نستطع إرسال المقترح} one {لم نستطع إرسال المقترح — حقل واحد يحتاج تصحيحًا} two {لم نستطع إرسال المقترح — حقلان يحتاجان تصحيحًا} few {لم نستطع إرسال المقترح — {value} حقول تحتاج تصحيحًا} many {لم نستطع إرسال المقترح — {value} حقلًا يحتاج تصحيحًا} other {لم نستطع إرسال المقترح — {value} حقل يحتاج تصحيحًا}}",
+        "errorSummaryDescription": "اضغط على أيٍّ منها للانتقال إليه. ما كتبته محفوظ كما هو.",
+        "progressLabel": "أقسام النموذج",
+        "sectionTopic": "الموضوع",
+        "sectionPeople": "المُقدِّمون والملاحظات",
+        "remaining": "{count, plural, zero {اكتملت الحقول المطلوبة} one {المتبقّي: حقل مطلوب واحد} two {المتبقّي: حقلان مطلوبان} few {المتبقّي: {value} حقول مطلوبة} many {المتبقّي: {value} حقلًا مطلوبًا} other {المتبقّي: {value} حقل مطلوب}}",
+        "charCount": "{value} من {max}",
+        "materialsNote": "يمكنك إرفاق مواد مبدئية بعد حفظ المقترح."
       },
       "errors": {
         "titleRequired": "فضلًا أدخل عنوان موضوعك المقترح",
@@ -62,7 +70,8 @@
         "count": "{count, plural, zero {لا مقترحات} one {مقترح واحد} two {مقترحان} few {{value} مقترحات} many {{value} مقترحًا} other {{value} مقترح}}",
         "invited": "دُعيت للتقديم",
         "awaitingYou": "بانتظار ردّك",
-        "open": "افتح المقترح"
+        "open": "افتح المقترح",
+        "emptyAction": "اكتب أول مقترح"
       }
     },
     "proposal": {

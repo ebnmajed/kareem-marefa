@@ -5,6 +5,7 @@ import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { createProposal, proposalInput, removeCoPresenter, respondToPresenterInvite } from "@/lib/dal/proposals";
 import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
+import { proposalErrorKey } from "@/components/sessions/proposal-rules";
 import { PROPOSAL_VALUE_FIELDS, type ProposalField, type ProposeState } from "./state";
 import { z } from "zod";
 
@@ -38,34 +39,6 @@ import { z } from "zod";
 // async functions and nothing else" — and it means types too. Import the type
 // from `./state`, which is what that file is for.
 
-/**
- * The message key for a failed field.
- *
- * A member reading «العنوان قصير جدًا» when they left the box empty is being
- * told the wrong thing, so "missing" and "too short" are different keys even
- * though Zod raises one code for both.
- */
-function errorKey(field: ProposalField, code: string, empty: boolean): string {
-  switch (field) {
-    case "title":
-      return empty ? "titleRequired" : code === "too_big" ? "titleTooLong" : "titleTooShort";
-    case "abstract":
-      return code === "too_big" ? "abstractTooLong" : "abstractRequired";
-    case "categoryId":
-      return "categoryRequired";
-    case "level":
-      return "levelRequired";
-    case "targetAudience":
-      return "audienceTooLong";
-    case "expectedDurationMinutes":
-      return "durationInvalid";
-    case "adminNotes":
-      return "notesTooLong";
-    default:
-      return "failed";
-  }
-}
-
 /** An optional text field: trimmed, and absent rather than empty. */
 function blank(raw: string): string | null {
   const trimmed = raw.trim();
@@ -98,7 +71,7 @@ export async function submitProposal(locale: Locale, prev: ProposeState, formDat
 
   const parsed = proposalInput.safeParse(raw);
   // The member's text stays in the form — see the header.
-  if (!parsed.success) return withErrors(state, zodErrors<ProposalField>(parsed.error, errorKey, raw));
+  if (!parsed.success) return withErrors(state, zodErrors<ProposalField>(parsed.error, proposalErrorKey, raw));
 
   const submit = formData.get("intent")?.toString() !== "draft";
   let created: { id: string };

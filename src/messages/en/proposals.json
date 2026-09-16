@@ -31,7 +31,15 @@
         "coPresentersLabel": "Co-presenters",
         "coPresentersHint": "Choose colleagues presenting with you. Each is notified and each may decline.",
         "coPresentersLimit": "{count, plural, =0 {no co-presenters can be added} one {you may name one colleague} other {you may name {value} colleagues}}",
-        "coPresentersNone": "There are no other members in your organisation yet."
+        "coPresentersNone": "There are no other members in your organisation yet.",
+        "errorSummaryCount": "{count, plural, =0 {We couldn't send the proposal} one {We couldn't send the proposal — one field needs fixing} other {We couldn't send the proposal — {value} fields need fixing}}",
+        "errorSummaryDescription": "Select any of them to go straight to it. What you typed is still here.",
+        "progressLabel": "Form sections",
+        "sectionTopic": "The topic",
+        "sectionPeople": "Presenters and notes",
+        "remaining": "{count, plural, =0 {All required fields are filled in} one {Remaining: one required field} other {Remaining: {value} required fields}}",
+        "charCount": "{value} of {max}",
+        "materialsNote": "You can attach draft materials once the proposal is saved."
       },
       "errors": {
         "titleRequired": "Please enter a title for your proposed topic",
@@ -62,7 +70,8 @@
         "count": "{count, plural, =0 {no proposals} one {one proposal} other {{value} proposals}}",
         "invited": "You were invited to present",
         "awaitingYou": "Waiting for your answer",
-        "open": "Open the proposal"
+        "open": "Open the proposal",
+        "emptyAction": "Write your first proposal"
       }
     },
     "proposal": {

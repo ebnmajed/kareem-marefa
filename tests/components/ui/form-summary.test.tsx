@@ -59,6 +59,14 @@ describe("FormSummary — what it says", () => {
     expect(screen.getByRole("link", { name: "الفئة: اختر تصنيفًا" })).toBeInTheDocument();
   });
 
+  it("says the optional reassurance under the title, and it is not a link", () => {
+    render(<FormSummary title={TITLE} description="ما كتبته محفوظ كما هو." errors={ERRORS} />);
+    const summary = screen.getByRole("alert");
+    expect(summary).toHaveTextContent("ما كتبته محفوظ كما هو.");
+    expect(screen.queryByRole("link", { name: /محفوظ/ })).toBeNull();
+    expect(screen.getAllByRole("link")).toHaveLength(ERRORS.length);
+  });
+
   it("★ every failure is a LINK, not a sentence — one per failed field", () => {
     render(<Form />);
     // This is the M2 defect, in one assertion.
