@@ -2381,7 +2381,7 @@ the RPC as themselves (the key present); the read-back carries the stored value.
   tests assert the attribute on a negative row, and they fail with it removed.
 - **Not changed, because it cannot be negative:** `member-board`'s points and every rank. The
   member boards keep only `total > 0` (0042, 0044, 0081).
-- ★ **R8, a request.** Two negative-capable values reach `ui/stat`: `/app/members/[id]`'s points,
+- ~~**R8, a request.**~~ **Withdrawn, not needed (the lead, after sync 6).** At full resolution the «20-» capture reads «-20»: it was a misreading of a downscaled image, so there is no reorder for `ui/stat` to fix. The original request, kept for the record: two negative-capable values reach `ui/stat`: `/app/members/[id]`'s points,
   which come from `points_balances` and can go below zero after a negative manual adjustment, and the
   breakdown's company balance (every company-ledger insert is positive today, but nothing in the
   schema forces it). `StatProps.value` is a `string` (the lead's type) and the `<bdi>` belongs to
