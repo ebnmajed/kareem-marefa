@@ -29,7 +29,7 @@ async function refuseEmpty(prev: ProposeState, formData: FormData): Promise<Prop
 function renderForm() {
   return render(
     <NextIntlClientProvider locale="ar" messages={messages}>
-      <ProposalForm action={refuseEmpty} categories={[{ id: CATEGORY, name: "فني" }]} members={[]} maxCoPresenters={4} maxCoPresentersLabel="يمكنك تسمية 4 زملاء" />
+      <ProposalForm mode="create" action={refuseEmpty} categories={[{ id: CATEGORY, name: "فني" }]} members={[]} maxCoPresenters={4} maxCoPresentersLabel="يمكنك تسمية 4 زملاء" />
     </NextIntlClientProvider>,
   );
 }
@@ -94,5 +94,39 @@ describe("ProposalForm — after a failed submit", () => {
     expect(screen.queryByText(errors.titleTooShort)).toBeNull();
     fireEvent.blur(title());
     expect(screen.getByText(errors.titleTooShort)).toBeInTheDocument();
+  });
+});
+
+describe("ProposalForm — edit (SCR-018's edit path, DEC-141)", () => {
+  const initial = { title: "أتمتة الفواتير بلا برمجة", abstract: "تجربة عملية.", categoryId: CATEGORY, level: "advanced", targetAudience: "", expectedDurationMinutes: "45", adminNotes: "" };
+
+  function renderEdit(allowDraft: boolean) {
+    return render(
+      <NextIntlClientProvider locale="ar" messages={messages}>
+        <ProposalForm mode="edit" action={refuseEmpty} categories={[{ id: CATEGORY, name: "فني" }]} initial={initial} allowDraft={allowDraft} />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it("starts from the proposal as saved, with nothing invalid and nothing left to fill", () => {
+    renderEdit(true);
+    expect(title()).toHaveValue(initial.title);
+    expect(duration()).toHaveValue(45);
+    expect(title()).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByText("اكتملت الحقول المطلوبة")).toBeInTheDocument();
+  });
+
+  it("a change request is resubmitted, never saved back to a draft — one action, and no co-presenter list", () => {
+    renderEdit(false);
+    expect(screen.getByRole("button", { name: form.resubmit })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: form.saveDraft })).toBeNull();
+    expect(screen.queryByRole("group", { name: form.coPresentersLabel })).toBeNull();
+    expect(screen.getByText(form.presentersElsewhere)).toBeInTheDocument();
+  });
+
+  it("a draft keeps both actions", () => {
+    renderEdit(true);
+    expect(screen.getByRole("button", { name: form.submit })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: form.saveDraft })).toBeInTheDocument();
   });
 });

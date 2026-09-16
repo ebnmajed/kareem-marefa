@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
+import { emptyFormState, hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { PROPOSAL_FIELDS, emptyProposeState, type ProposalField, type ProposeState } from "./state";
 
 // SCR-017's form. A client component because it renders field errors from
@@ -77,21 +77,32 @@ const LEVEL_DEFAULT = "introductory";
  */
 type Stamped<T> = { attempt: number; value: T };
 
+/**
+ * `create` is SCR-017. `edit` is SCR-018's edit path (DEC-141): the same
+ * fields, pre-filled, with two differences the database dictates —
+ * co-presenters are managed on the proposal's own page, and a change request
+ * can only be resubmitted (`allowDraft={false}`), never saved back to a draft.
+ */
+export type ProposalFormMode =
+  | { mode: "create"; members: ProposalFormMember[]; maxCoPresenters: number; maxCoPresentersLabel: string }
+  | { mode: "edit"; initial: Partial<Record<ProposalField, string>>; allowDraft: boolean };
+
 export function ProposalForm({
   action,
   categories,
-  members,
-  maxCoPresenters,
-  maxCoPresentersLabel,
+  ...variant
 }: {
   action: (prev: ProposeState, formData: FormData) => Promise<ProposeState>;
   categories: ProposalFormCategory[];
-  members: ProposalFormMember[];
-  maxCoPresenters: number;
-  maxCoPresentersLabel: string;
-}) {
+} & ProposalFormMode) {
   const t = useTranslations("proposals.propose");
-  const [state, formAction, pending] = useActionState(action, emptyProposeState);
+  // An edit starts from the proposal as saved: attempt 0, so nothing is
+  // invalid, and `was()` hands every field its stored value.
+  const [state, formAction, pending] = useActionState(
+    action,
+    variant.mode === "edit" ? { ...emptyFormState<ProposalField>(), values: variant.initial } : emptyProposeState,
+  );
+  const allowDraft = variant.mode === "create" || variant.allowDraft;
   const attempted = hasAttempted(state);
 
   const [checked, setChecked] = useState<Stamped<Partial<Record<ProposalField, string | null>>>>({ attempt: 0, value: {} });
@@ -180,11 +191,11 @@ export function ProposalForm({
         <ol className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {[
             [SECTION_TOPIC, t("form.sectionTopic")],
-            [SECTION_PEOPLE, t("form.sectionPeople")],
+            [SECTION_PEOPLE, variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes")],
           ].map(([href, label], i) => (
             <li key={href}>
               <a href={`#${href}`} className="inline-flex min-h-11 items-center gap-2.5 text-label text-fg-heading underline-offset-4 hover:underline">
-                <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-field border border-edge-strong text-caption">
+                <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-md border border-edge-strong text-caption">
                   {formatNumber(i + 1)}
                 </span>
                 {label}
@@ -267,7 +278,7 @@ export function ProposalForm({
       </section>
 
       <section aria-labelledby={SECTION_PEOPLE} className="flex flex-col gap-7">
-        <SectionHeader id={SECTION_PEOPLE} title={t("form.sectionPeople")} />
+        <SectionHeader id={SECTION_PEOPLE} title={variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes")} />
 
         {/* REQ-PRO-003. Checkboxes until `ui/combobox` reads the field wiring
             and stops forcing left-to-right input (DEC-141, R2): a multi-select
@@ -276,46 +287,51 @@ export function ProposalForm({
             so it cannot show anyone outside the org — and the database refuses
             one anyway.
             ★ `id="coPresenters"` is how the summary's link reaches this group:
-            a <fieldset> is not focusable, so the link focuses the first
-            checkbox inside it. */}
-        <fieldset id="coPresenters">
-          <legend className="text-label text-fg-heading">{t("form.coPresentersLabel")}</legend>
-          <p className="mt-1 text-caption text-fg-muted">{t("form.coPresentersHint")}</p>
-          <p className="mt-1 text-caption text-fg-muted">{maxCoPresentersLabel}</p>
-          {members.length === 0 ? (
-            <p className="mt-3 text-caption text-fg-muted">{t("form.coPresentersNone")}</p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-1">
-              {members.map((m) => (
-                <li key={m.id}>
-                  <Checkbox
-                    name="coPresenters"
-                    value={m.id}
-                    defaultChecked={wasList(state, "coPresenters").includes(m.id)}
-                    disabled={maxCoPresenters === 0}
-                    label={
-                      <span>
-                        <bdi>{m.displayName}</bdi>
-                        {m.jobTitle ? (
-                          <span className="text-fg-muted">
-                            {" · "}
-                            <bdi>{m.jobTitle}</bdi>
-                          </span>
-                        ) : null}
-                      </span>
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-          {err("coPresenters") ? (
-            <p className="mt-2 flex items-start gap-2 text-caption text-error">
-              <AlertCircleIcon className="mt-[0.2em]" />
-              <span>{err("coPresenters")}</span>
-            </p>
-          ) : null}
-        </fieldset>
+            a fieldset is not focusable, so the link focuses the first checkbox
+            inside it. An edit names nobody new here — co-presenters are managed
+            on the proposal's own page. */}
+        {variant.mode === "create" ? (
+          <fieldset id="coPresenters">
+            <legend className="text-label text-fg-heading">{t("form.coPresentersLabel")}</legend>
+            <p className="mt-1 text-caption text-fg-muted">{t("form.coPresentersHint")}</p>
+            <p className="mt-1 text-caption text-fg-muted">{variant.maxCoPresentersLabel}</p>
+            {variant.members.length === 0 ? (
+              <p className="mt-3 text-caption text-fg-muted">{t("form.coPresentersNone")}</p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-1">
+                {variant.members.map((m) => (
+                  <li key={m.id}>
+                    <Checkbox
+                      name="coPresenters"
+                      value={m.id}
+                      defaultChecked={wasList(state, "coPresenters").includes(m.id)}
+                      disabled={variant.maxCoPresenters === 0}
+                      label={
+                        <span>
+                          <bdi>{m.displayName}</bdi>
+                          {m.jobTitle ? (
+                            <span className="text-fg-muted">
+                              {" · "}
+                              <bdi>{m.jobTitle}</bdi>
+                            </span>
+                          ) : null}
+                        </span>
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {err("coPresenters") ? (
+              <p className="mt-2 flex items-start gap-2 text-caption text-error">
+                <AlertCircleIcon className="mt-[0.2em]" />
+                <span>{err("coPresenters")}</span>
+              </p>
+            ) : null}
+          </fieldset>
+        ) : (
+          <p className="text-body-sm text-fg-muted">{t("form.presentersElsewhere")}</p>
+        )}
 
         <Field id="adminNotes" label={t("form.notesLabel")} hint={t("form.notesHint")} error={err("adminNotes")}>
           <Textarea name="adminNotes" maxLength={PROPOSAL_LIMITS.notesMax} rows={3} defaultValue={was(state, "adminNotes")} {...validating("adminNotes")} />
@@ -337,25 +353,27 @@ export function ProposalForm({
             pendingLabel={t("form.submitting")}
             disabled={pending}
           >
-            {t("form.submit")}
+            {allowDraft ? t("form.submit") : t("form.resubmit")}
           </Button>
-          <Button
-            type="submit"
-            name="intent"
-            value="draft"
-            variant="secondary"
-            onClick={() => setIntent("draft")}
-            pending={pending && intent === "draft"}
-            pendingLabel={t("form.submitting")}
-            disabled={pending}
-          >
-            {t("form.saveDraft")}
-          </Button>
+          {allowDraft ? (
+            <Button
+              type="submit"
+              name="intent"
+              value="draft"
+              variant="secondary"
+              onClick={() => setIntent("draft")}
+              pending={pending && intent === "draft"}
+              pendingLabel={t("form.submitting")}
+              disabled={pending}
+            >
+              {t("form.saveDraft")}
+            </Button>
+          ) : null}
         </div>
         {/* REQ-PRO-001, said to the member and not only to the schema — and
             where the draft materials go, since this form cannot hold them. */}
         <p className="text-body-sm text-fg-muted">{t("noScheduleNote")}</p>
-        <p className="text-body-sm text-fg-muted">{t("form.materialsNote")}</p>
+        {variant.mode === "create" ? <p className="text-body-sm text-fg-muted">{t("form.materialsNote")}</p> : null}
       </div>
     </form>
   );

@@ -45,6 +45,7 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
       <p className="mt-3 max-w-2xl text-body text-fg-body">{t("leadBody")}</p>
 
       <ProposalForm
+        mode="create"
         action={action}
         categories={categories}
         members={members}

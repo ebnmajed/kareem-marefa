@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { createProposal, proposalInput, removeCoPresenter, respondToPresenterInvite } from "@/lib/dal/proposals";
+import { createProposal, proposalInput, removeCoPresenter, respondToPresenterInvite, updateProposal, type ProposalInput } from "@/lib/dal/proposals";
 import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { proposalErrorKey } from "@/components/sessions/proposal-rules";
 import { PROPOSAL_VALUE_FIELDS, type ProposalField, type ProposeState } from "./state";
@@ -45,7 +45,14 @@ function blank(raw: string): string | null {
   return trimmed ? trimmed : null;
 }
 
-export async function submitProposal(locale: Locale, prev: ProposeState, formData: FormData): Promise<ProposeState> {
+/**
+ * Capture the whole form, then parse it — the half both writes share.
+ *
+ * Returns the state carrying every typed value, and the parsed input when the
+ * schema accepts it. A refusal is already a `withErrors` state: the member's
+ * text stays in the form (see the header).
+ */
+function captureProposal(prev: ProposeState, formData: FormData): { state: ProposeState; input: ProposalInput | null; coPresenters: string[] } {
   const captured = formStateFrom<ProposalField>(formData, {
     fields: PROPOSAL_VALUE_FIELDS,
     lists: ["coPresenters"],
@@ -70,13 +77,18 @@ export async function submitProposal(locale: Locale, prev: ProposeState, formDat
   };
 
   const parsed = proposalInput.safeParse(raw);
-  // The member's text stays in the form — see the header.
-  if (!parsed.success) return withErrors(state, zodErrors<ProposalField>(parsed.error, proposalErrorKey, raw));
+  if (!parsed.success) return { state: withErrors(state, zodErrors<ProposalField>(parsed.error, proposalErrorKey, raw)), input: null, coPresenters };
+  return { state, input: parsed.data, coPresenters };
+}
+
+export async function submitProposal(locale: Locale, prev: ProposeState, formData: FormData): Promise<ProposeState> {
+  const { state, input, coPresenters } = captureProposal(prev, formData);
+  if (!input) return state;
 
   const submit = formData.get("intent")?.toString() !== "draft";
   let created: { id: string };
   try {
-    created = await createProposal(locale, parsed.data, submit, coPresenters);
+    created = await createProposal(locale, input, submit, coPresenters);
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
     if (message.includes("too_many_presenters")) return withErrors(state, { coPresenters: "coPresentersTooMany" });
@@ -89,6 +101,30 @@ export async function submitProposal(locale: Locale, prev: ProposeState, formDat
   // redirect comes off a destructured object, so TypeScript does not apply
   // its never-return analysis to it and the function would look fall-through.
   return redirect({ href: { pathname: `/app/propose/${created.id}`, query: { created: "1" } }, locale });
+}
+
+/**
+ * SCR-018's edit path — the proposer saves their draft, sends it, or answers a
+ * change request (REQ-PRO-005, REQ-PRO-006, DEC-141).
+ *
+ * `allowDraft` is bound by the page from the state it READ: a change request
+ * can only be resubmitted (`updateProposal`'s header), so a smuggled
+ * `intent=draft` on one is ignored rather than trusted. The authority is still
+ * the policy and the transition guard — a proposal that moved under the member
+ * comes back `not_editable`, with every typed word kept.
+ */
+export async function updateProposalAction(locale: Locale, proposalId: string, allowDraft: boolean, prev: ProposeState, formData: FormData): Promise<ProposeState> {
+  const { state, input } = captureProposal(prev, formData);
+  if (!input) return state;
+
+  const submit = !allowDraft || formData.get("intent")?.toString() !== "draft";
+  try {
+    await updateProposal(locale, proposalId, input, submit);
+  } catch (e) {
+    return withFormError(state, e instanceof Error && e.message === "not_editable" ? "notEditable" : "failed");
+  }
+
+  return redirect({ href: { pathname: `/app/propose/${proposalId}`, query: { updated: submit ? "submitted" : "draft" } }, locale });
 }
 
 /**

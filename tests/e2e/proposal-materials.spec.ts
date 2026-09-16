@@ -104,6 +104,17 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * React's hidden streamed copy of a section (`body > div[hidden][id^="S:"]`)
+ * stays beside the visible one until its swap script runs, and a strict locator
+ * counts BOTH — `getByLabel("نوع المادة")` resolved to two elements on every
+ * run of this spec, on `main` too. `185fbb1` added this wait to the three other
+ * upload specs; this one was missed. The page has one uploader.
+ */
+async function waitForStreamsToSettle(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
   expect(p.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
@@ -141,10 +152,14 @@ test("★ REQ-PRO-004: the proposer uploads a draft material through the real up
   await page.setViewportSize(PHONE);
   await signIn(context, proposerEmail);
   await page.goto(`/ar/app/propose/${proposalId}`);
+  await waitForStreamsToSettle(page);
 
   await page.getByLabel("نوع المادة").selectOption("image");
   await page.getByLabel("عنوان المادة").fill("صورة توضيحية");
-  await page.getByLabel("الملف").setInputFiles({ name: "diagram.png", mimeType: "image/png", buffer: TINY_PNG });
+  // ★ wave 6 moved the picker onto `ui/file-drop`, whose native input is
+  // `hidden` and carries no label of its own — «الملف» names nothing now.
+  // The proposal page has exactly one uploader, so the input is unambiguous.
+  await page.locator('input[type="file"]').setInputFiles({ name: "diagram.png", mimeType: "image/png", buffer: TINY_PNG });
   await page.getByRole("button", { name: "رفع" }).click();
 
   await expect(page.getByText("صورة توضيحية")).toBeVisible();
@@ -160,11 +175,18 @@ test("★ REQ-PRO-004: the proposer uploads a draft material through the real up
 
 test("★ REQ-PRO-004: not visible to an unrelated member; visible to an admin", async ({ context, page }) => {
   await signIn(context, bystanderEmail);
-  const res = await page.goto(`/ar/app/propose/${proposalId}`);
-  expect(res?.status()).toBe(404);
+  // DEC-134: under `/app` a `notFound()` streams — 200, `noindex`, the
+  // not-found page — and renders none of what it guards. That, not the status
+  // code, is what the requirement protects.
+  await page.goto(`/ar/app/propose/${proposalId}`);
+  await waitForStreamsToSettle(page);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByText("اقتراح جلسة عن الذكاء الاصطناعي")).toHaveCount(0);
+  await expect(page.getByText("صورة توضيحية")).toHaveCount(0);
 
   await context.clearCookies();
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/propose/${proposalId}`);
+  await waitForStreamsToSettle(page);
   await expect(page.getByText("صورة توضيحية")).toBeVisible();
 });
