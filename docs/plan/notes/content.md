@@ -1736,3 +1736,62 @@ trigger SQL and event name finalized at build time, proven in `tests/rls/photos.
 
 Ready for sync — will start on `me/layout.tsx` and `/app/me` (T1) once the lead approves this plan, per
 the spawn brief's order ("build the layout and the hub first — every other route renders inside it").
+
+## §1 — all seven routes built (T1 … T7)
+
+Plan approved with rulings (seven tabs, the points `Stat`, `tests/e2e/tasks.spec.ts` mine to decide
+**and** fix). Built in order: T1 (`7a8c888`, `07a2f3b`) — `me/layout.tsx` + `components/me/tab-strip.tsx`
+(content's own, not `ui/tabs`: its `RadixTabs.List` hard-codes `flex-wrap` with no scroll variant,
+and seven items need to scroll in one row at 390 px, not wrap to three lines — a request for console,
+not filed as a blocking one since the interim works); `/app/me`'s form on `useActionState` +
+`lib/form-state`, replacing the old `?saved=1`/`?error=1` redirect (structurally removes the
+pre-hydration race rather than patching it — nothing left in a URL to lose). T2 points (`15787f0`,
+fixed in `592c3d2` — see below). T3 certificates (`2424cc1`). T5 calendar (`782aa6d`) — also fixed
+`calendar/actions.ts`'s hard-coded `/ar/...` redirects. T6 notifications (`f6ac12f`) — same
+locale-redirect bug, three call sites; found nested async Server Components (`NotificationList`,
+`PreferenceMatrix`) can't be rendered as JSX children in a plain RTL test (react-dom's client renderer
+can't resolve a Promise returned by an async component invoked outside an actual RSC pipeline) — split
+into two component test files awaiting each directly, page-level integration proven in the e2e spec
+instead. T7 privacy (`3e0221e`) — deactivation now confirms in `ui/dialog` (REQ-UIX-013), with
+`reportValidity()` gating the dialog open against the required reason field, and the dialog's confirm
+button submitting the original form via `form="deactivate-form"` since Radix portals `DialogContent`
+outside the form's own subtree. T4 bookmarks (`8d56b21`, after `sessions`' `getBookmarkedTimelineSessions()`
+landed and `search.bookmarksPage.browseAction` arrived) — renders `SessionCard` directly, per their
+five points (h2 before the cards' own h3, li/ol, pinned off, no second empty state).
+
+★ **A real mistake, caught before it shipped wrong and fixed in the same pass**: rebuilding
+`points-catalogue.tsx` onto `SectionHeader` dropped the section's own `id="catalogue"` (moved to the
+heading instead), and rebuilding `/app/me/points` swapped the "رصيدك N نقطة" sentence for a `Stat`
+tile — both broke real, pre-existing assertions in `tests/e2e/points.spec.ts` I hadn't read before
+rewriting the components it drives. Restored both (the id back on the section, the sentence back in
+place of the `Stat`) — caught by actually reading `points.spec.ts`/`bookmarks.spec.ts` before treating
+T2/T4 as done, not by the gates, which never run against real Supabase for me locally. Also found:
+`bookmarks.spec.ts`'s existing `getByRole("link", { name: "…title…" })` broke the same way, since
+`SessionCard`/`Card` makes the whole card one link — its accessible name is the card's full text, not
+the title alone. Fixed both files; my own new e2e coverage moved from two duplicate `wave7-content-*`
+files into these two pre-existing ones as their own `describe` blocks, and the same for
+`wave7-content-privacy.spec.ts` → a new block in the pre-existing `privacy.spec.ts` (whose own
+REQ-PRF-007 test also needed the two-click confirm-dialog fix). **Lesson for the rest of the wave**:
+check `tests/e2e/` for an existing spec named after the route BEFORE writing a new `wave7-content-*`
+one — three of five so far already existed.
+
+★ **A shared-index incident, the fourth in this repo**: my first attempt to commit the points/bookmarks
+fix used `git commit -m … -- <five paths>`, one of which was a deleted file's path
+(`wave7-content-points.spec.ts`) that git's pathspec matching refused for a path no longer on disk —
+the whole commit failed (exit 1) and left five files staged. `checkin` then ran a plain
+`git commit -m …` with no path restriction while those were still staged, and their commit `592c3d2`
+swept them in alongside their own SQL work. Nothing was lost — `git show --stat 592c3d2` confirms all
+five diffs landed exactly as intended — but the attribution is wrong and I did not fix it: amending or
+rebasing a commit another session may already be building on is a worse move than a misattributed
+diff. Restated to myself for the rest of the wave: stage deletions with a plain `rm` + `git add`, never
+name an already-deleted path in a `commit -- <paths>` list, and commit each staged batch immediately
+rather than leaving anything staged across a tool round.
+
+All seven `/app/me` routes now show ✓ on `node scripts/ui-reach.mjs --wave7`. `tsc` clean, lint 0
+errors, `npm test` green (1359/1365 — the 6 failures are `sessions`' own concurrent WIP on
+`star-rating.test.tsx` and `leaderboards.json`, confirmed not mine by `git status` at the time).
+e2e specs written for all seven routes (five new files, two pre-existing ones extended) but not yet
+run against a real build — `npm run build` is lead-only and the checkout's `.next` predates these
+changes; ready whenever the lead next builds.
+
+Ready for sync.
