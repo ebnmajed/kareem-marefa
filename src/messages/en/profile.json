@@ -17,9 +17,6 @@
       "moderator": "Moderator",
       "member": "Member"
     },
-    "memberSince": "Member since {date}",
-    "notFound": "Member not found",
-    "noBio": "No bio yet",
     "nav": {
       "label": "My pages",
       "profile": "My profile",

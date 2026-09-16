@@ -105,9 +105,14 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await capture(page, "empty");
 
   // A field error: clear the required name and submit.
+  // ★ Scoped to the form — TEAM.md §5's own trap: an unscoped
+  // `getByRole("alert")` resolves to Next's `__next-route-announcer__`
+  // (an empty, always-present live region) before it resolves to
+  // `FormSummary`'s own alert, which failed this assertion at sync 2.
+  const form = page.locator("form");
   await page.getByLabel("الاسم", { exact: false }).fill("");
   await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByRole("alert")).toContainText("يرجى تصحيح الأخطاء التالية");
+  await expect(form.getByRole("alert")).toContainText("يرجى تصحيح الأخطاء التالية");
   await capture(page, "error");
 
   // Populated + saved: fill every field and submit.
@@ -125,4 +130,25 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await page.getByRole("link", { name: "الخصوصية والبيانات" }).click();
   await expect(page).toHaveURL(/\/app\/me\/privacy$/);
   await capture(page, "tabstrip-privacy");
+});
+
+// ★ The lead's standard, restated: `useActionState`'s own fix for the old
+// `?saved=1` gap (a save submitted before hydration landed without the
+// confirmation) is only as good as what actually happens on a REAL no-JS
+// POST — nobody had checked whether Next renders the returned state for a
+// submission the client runtime never touched. `javaScriptEnabled: false`
+// disables the page's OWN scripts (no hydration, no React event handling)
+// while Playwright's own automation still drives the DOM directly, which
+// is exactly the "pressed before hydration" shape.
+test.describe("no-JS save", () => {
+  test.use({ javaScriptEnabled: false, viewport: PHONE });
+
+  test("a save submitted with no JavaScript still shows the confirmation, with the value persisted", async ({ context, page }) => {
+    await signIn(context, memberEmail);
+    await page.goto("/ar/app/me");
+    await page.getByLabel("الاسم", { exact: false }).fill("عضو بلا جافاسكربت");
+    await page.getByRole("button", { name: "حفظ" }).click();
+    await expect(page.getByText("تم الحفظ")).toBeVisible();
+    await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو بلا جافاسكربت");
+  });
 });

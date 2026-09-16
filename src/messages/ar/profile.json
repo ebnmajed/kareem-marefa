@@ -17,9 +17,6 @@
       "moderator": "مُنظِّم",
       "member": "عضو"
     },
-    "memberSince": "عضو منذ {date}",
-    "notFound": "العضو غير موجود",
-    "noBio": "لا توجد نبذة بعد",
     "nav": {
       "label": "صفحاتي",
       "profile": "ملفي",

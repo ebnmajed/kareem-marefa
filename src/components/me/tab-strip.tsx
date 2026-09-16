@@ -53,25 +53,46 @@ export function MeTabStrip({ label, items }: { label: string; items: MeTabItem[]
   }, [withoutLocale]);
 
   return (
-    <nav aria-label={label} className="overflow-x-auto border-b border-edge">
-      <ul className="flex gap-1">
-        {items.map((item) => {
-          const current = withoutLocale === item.href;
-          return (
-            <li key={item.href} ref={current ? activeRef : undefined}>
-              <Link
-                href={item.href}
-                aria-current={current ? "page" : undefined}
-                className={`relative -mb-px inline-flex h-11 items-center whitespace-nowrap px-3 text-label outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] ${
-                  current ? "border-b-2 border-[var(--btn-bg)] text-fg-heading" : "text-fg-body hover:text-fg-heading"
-                }`}
-              >
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    // ★ Sync-2 finding: at 390 px, two of the seven tabs sit past the
+    // inline-end edge with no cue that the strip scrolls at all. `relative`
+    // on the wrapper, and an edge fade positioned with `inset-inline-end`
+    // (logical) so it sits on the correct side in both directions.
+    <div className="relative">
+      <nav aria-label={label} className="overflow-x-auto border-b border-edge">
+        <ul className="flex gap-1">
+          {items.map((item) => {
+            const current = withoutLocale === item.href;
+            return (
+              <li key={item.href} ref={current ? activeRef : undefined}>
+                <Link
+                  href={item.href}
+                  aria-current={current ? "page" : undefined}
+                  className={`relative -mb-px inline-flex h-11 items-center whitespace-nowrap px-3 text-label outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] ${
+                    current ? "border-b-2 border-[var(--btn-bg)] text-fg-heading" : "text-fg-body hover:text-fg-heading"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      {/* Decorative only — the tabs themselves are reachable by keyboard and
+          scroll regardless of whether this paints. `ltr:`/`rtl:` here pair
+          two MUTUALLY EXCLUSIVE zero-specificity selectors against the SAME
+          property, never one of them against a bare physical utility — the
+          pairing `10` §2.3 and DEC-111/133 forbid is a real physical class
+          left standing beside an `rtl:` override; this has none. A plain
+          physical gradient (`bg-gradient-to-l`) would point the wrong way
+          half the time with no override at all. */}
+      {/* `end-0`, not `inset-inline-end-0` — Tailwind 4 has no
+          `inset-inline-*` utility; it compiles to nothing, silently
+          (DEC-133, `tests/unit/logical-utilities.test.ts`). */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 end-0 w-8 [background:linear-gradient(to_var(--me-tab-fade-dir,right),transparent,var(--color-canvas))] ltr:[--me-tab-fade-dir:right] rtl:[--me-tab-fade-dir:left]"
+      />
+    </div>
   );
 }
