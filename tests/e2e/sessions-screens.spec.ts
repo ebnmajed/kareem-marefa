@@ -192,7 +192,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await boss.getByLabel("العنوان").fill("الدور الثالث، مبنى الإدارة");
   await boss.getByLabel("السعة").fill("30");
   await boss.getByRole("button", { name: "أضف المكان" }).click();
-  await expect(boss.getByText("قاعة الابتكار")).toBeVisible();
+  // Wave 7: the venues list is `ui/data-table`, which renders a desktop table
+  // AND a phone card list and hides one with CSS — the role queries skip the
+  // hidden one, a bare getByText does not (console's rebuild, `1fdf521`).
+  await expect(boss.getByRole("table").or(boss.getByRole("list")).getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-006: there is no delete control at all, and the page says why.
   await expect(boss.getByRole("button", { name: /احذف/ })).toHaveCount(0);
   await expect(boss.getByText(/لا يمكن حذف مكان/)).toBeVisible();
