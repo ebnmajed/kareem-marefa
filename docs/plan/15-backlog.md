@@ -217,15 +217,25 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - Overlapping attendance is rejected by the exclusion constraint, naming the conflict.
 - A checked-in member requesting the host view is denied by **policy**.
 
-#### STORY-CHK-006 — Check-in is opened and closed by hand, with a two-hour ceiling
+#### STORY-CHK-006 — Check-in is open by default and closed by hand, with a two-hour ceiling
 **Covers:** `REQ-CHK-015`, `REQ-CHK-016` · **M9** · **M**
-- The switch starts closed and is one tap from the host view.
-- The phase no longer gates check-in; the switch and the ceiling do.
+- The switch starts **open** and is one tap from the host view to close and reopen.
+- Presenter, moderator and admin may close it; the ceiling is `ends_at + 2h`, in the RPC.
+- The floor is `REQ-CHK-004`'s unchanged code window, which is what stops an early check-in.
 - The ceiling is `ends_at + 2h`, enforced in the RPC — a forged request past it is refused.
 - Closing stops new check-ins and revokes none.
 - Every open and close is audited with who and when.
 - ★ `checkIn` leaves `GRANTING_AFFORDANCES`: once a stored switch is the gate, the clock can no
   longer grant it and there is nothing for the direction guard to protect against.
+
+#### STORY-CHK-007 — An admin can edit the attendance list, and the reversal is the hard half
+**Covers:** `REQ-CHK-017` · **M9** · **M**
+- Admin-only: add and **remove**, each with a mandatory reason, each audited with actor and member.
+- A removal is never a side effect of closing check-in, and never a bulk act without naming members.
+- ★★ **Design the reversal before the UI.** `points_ledger` is append-only with `service_role`
+  revoked, so a removal cannot delete the award: it needs a compensating entry with its own
+  idempotency key. An issued certificate has a gapless serial and is revoked, not un-issued.
+- The member's points history shows the reversal as an entry, never a number that quietly changed.
 
 ## EPIC-MAT — Materials
 

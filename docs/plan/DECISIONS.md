@@ -2083,6 +2083,21 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-116 — Check-in is open by default and closed by hand; the admin can edit the attendance list at any time
+
+- **Date:** 2026-09-16 · **Decided by:** owner («the check-in starts open where people can check in but is closed manually, and the checked-in list can be updated manually by the admin at any time … the presenter and moderator control when to close, and the admin has the additional ability and editing. I think it is much simpler this way»), reversing `DEC-115`'s second clause with the reason given
+- **The model, and it IS simpler than both versions before it.** Nothing has to be opened. Check-in is available from the moment a code is valid, the people who are in the room decide when to stop taking attendance, and an admin can repair the list afterwards. The previous design put a manual act in front of the common case and relied on someone remembering to perform it in a room, under time pressure, on the screen that is projected in front of an audience.
+- **Decision.**
+  1. **The switch defaults to OPEN.** `check_in_open` defaults to `true`. No one opens check-in; it is already available.
+  2. **Closing is manual**, by the session's accepted **مُقدِّمون**, any **مُنظِّم** or any **مشرف المؤسسة**. Reopening is the same act by the same people.
+  3. ★ **The window has a floor as well as a ceiling, and the floor is `REQ-CHK-004`'s, unchanged.** A code is only valid while the session is running, so "open by default" cannot mean a member checks into a talk three weeks early — there is no code to enter. `DEC-113`'s ceiling extends the tail to **`ends_at` + 2 hours** so the room can finish taking attendance after the session ends. The switch closes the window early; it never opens it wider.
+  4. ★ **The admin may edit the attendance list at any time — including REMOVING a record.** `REQ-CHK-008` already lets an admin or moderator *add* a member with a mandatory reason. Removal is new, it is **admin-only** (not moderator, not presenter), and it is the escape hatch that makes a default-open switch safe: anything the door lets through can be corrected afterwards by the one role accountable for the org's records.
+- ★★ **The consequence that must be designed, not assumed: removing a check-in cannot un-pay its points by deleting a row.** `points_ledger` is **append-only and `service_role` is revoked** (invariant 9, `REQ-PTS-011`) precisely so balances are recomputable and the ledger is evidence. So removing an attendance record leaves the award standing unless something reverses it, and the reversal must be a **compensating entry** carrying its own idempotency key and reason — never a delete, and never a silent recompute. The same applies to anything else attendance grants: a certificate already issued has a **gapless serial** (`REQ-CRT-*`) and is revoked, not un-issued. **Whoever builds `REQ-CHK-017` designs that reversal first; it is the hard half.**
+- **Supersedes:** `DEC-115`'s second clause (the switch starting closed) and `DEC-113`'s default (a). `DEC-115`'s **first** clause stands and is untouched: **closing still admits nobody new and revokes nobody** — an admin removing a record is a separate, deliberate, audited act on one member, not a side effect of closing the door.
+- **Documents changed:** `01-prd.md` (`REQ-CHK-015` amended, `REQ-CHK-017` added), `02-domain-model.md` (`sessions.check_in_open` default `true`), `03-permissions-rls.md` (the close RPC's role set; the removal RPC is admin-only), `09-sitemap-screens.md` SCR-016 · SCR-044, `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

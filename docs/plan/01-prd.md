@@ -736,14 +736,14 @@ exclusion constraint rather than by a validation check.
 
 #### REQ-CHK-015 — Check-in is opened and closed by hand
 **Serves:** owner 2026-09-15 · DEC-113
-A session carries a **switch** that decides whether check-in is accepting anyone. The session's
-accepted **مُقدِّمون**, any **مُنظِّم** and any **مشرف المؤسسة** may open or close it at any time.
-The session's *phase* does not gate check-in: a presenter may open the window before the session
-starts, and closing it is a deliberate act rather than a clock event.
+A session carries a **switch** that decides whether check-in is accepting anyone. It is **open by
+default** — nobody has to open it — and the session's accepted **مُقدِّمون**, any **مُنظِّم** and
+any **مشرف المؤسسة** may close it, and reopen it, at any time.
 **Acceptance:**
-- The switch starts **closed**; an attendance window nobody opened is safer than one nobody closed.
-- Opening and closing are one tap from the host view (SCR-016), the screen already projected in
-  the room.
+- The switch starts **open** (`DEC-116`). The previous design put a manual act in front of the
+  common case and relied on someone performing it in a room, under time pressure, on a screen
+  projected in front of an audience.
+- Closing and reopening are one tap from the host view (SCR-016), the screen already in the room.
 - Closing stops admitting new check-ins and **never revokes one already recorded** (`DEC-115`) —
   an attendance record is evidence that someone was in the room, and the switch governs the door,
   not the people already inside. Withdrawing one moves that member's points, certificate
@@ -760,6 +760,9 @@ From **`ends_at` + 2 hours** the switch can no longer be opened, and an open swi
 - The ceiling is computed from the session's **scheduled** end, not from when it actually finished.
 - A session with no scheduled end cannot accept a check-in at all, which is already true: nothing
   reaches `published` without both ends (`REQ-SES-001`).
+- ★ **The floor is `REQ-CHK-004`'s and is unchanged**: a code is valid only while the session is
+  running. "Open by default" therefore cannot mean checking into a talk three weeks early — there
+  is no code to enter. The switch closes the window early; it never opens it wider.
 
 #### REQ-CHK-014 — Host-view access
 **Serves:** OQ-013 · A1
@@ -2496,6 +2499,25 @@ a hidden control is a courtesy.
 - An empty slot renders no heading, proven by one component test per slot.
 - The derived phase never adds an affordance the stored state would not permit, proven for every
   phase pair.
+
+#### REQ-CHK-017 — An admin can edit the attendance list at any time, including removing a record
+**Serves:** owner 2026-09-16 · DEC-116
+An **مشرف المؤسسة** — not a moderator, not a presenter — may add to and **remove from** a session's
+checked-in list at any time, with a mandatory reason. `REQ-CHK-008` already covers adding; removal
+is what makes an open-by-default switch safe, because anything the door lets through can be
+corrected by the one role accountable for the org's records.
+**Acceptance:**
+- Every add and every removal is audited with the actor, the member, the reason and the time.
+- A removal is a deliberate act on one member — never a side effect of closing check-in
+  (`DEC-115`), and never a bulk operation without naming each member.
+- ★★ **Removal reverses what attendance granted, and it cannot do so by deleting rows.**
+  `points_ledger` is append-only with `service_role` revoked (`REQ-PTS-011`, invariant 9), so a
+  removal that leaves the award standing is a silent inconsistency and a delete is impossible by
+  design. The reversal is a **compensating ledger entry** with its own idempotency key and reason.
+  A certificate already issued carries a gapless serial (`REQ-CRT-004`) and is **revoked**, not
+  un-issued.
+- The member sees the outcome honestly: their «حضرت» becomes «لم تُسجّل حضورك», and their points
+  history shows the reversal as an entry rather than a number that quietly changed.
 
 #### REQ-UIX-021 — The member's landing screen is the sessions timeline
 **Serves:** owner 2026-09-15 · DEC-112

@@ -1250,10 +1250,20 @@ has a tab for each. That is part of the work, not a detail.
 admin, with a **hard ceiling at `ends_at + 2 hours`** enforced in the RPC. The phase no longer gates
 check-in — a presenter may open it before the session starts.
 
-**Both defaults are now CONFIRMED by the owner (`DEC-115`):** the switch starts **closed**, and
-closing **stops admitting and revokes nothing**. `check_in_open` is a plain boolean defaulting to
-`false`, and closing is an update of one column — there is no cascade and no "undo check-in" path
-in this feature.
+★ **Revised by the owner to something simpler (`DEC-116`): the switch is OPEN by default.** Nobody
+opens check-in; the presenter, a moderator or an admin **closes** it when attendance is done, and
+reopens it the same way. The floor is `REQ-CHK-004`'s unchanged code window — "open by default"
+cannot mean checking in three weeks early, because there is no code to enter — and `DEC-113`'s
+ceiling extends the tail to `ends_at + 2h`.
+
+★ **The admin can edit the attendance list at any time, including REMOVING a record** (`REQ-CHK-017`,
+admin-only). That is what makes an open-by-default switch safe. **Its hard half is the reversal, and
+it must be designed before the UI:** `points_ledger` is append-only with `service_role` revoked
+(invariant 9), so a removal cannot delete the award — it needs a compensating entry with its own
+idempotency key, and an issued certificate has a gapless serial and is *revoked*, not un-issued.
+
+`DEC-115`'s other clause stands: closing still admits nobody new and **revokes nobody**. A removal
+is a separate, deliberate, audited act on one member.
 
 ★ **This dissolves one of `DEC-090`'s four instances.** Once a stored switch is the gate, the clock
 cannot grant check-in, so `checkIn` leaves `GRANTING_AFFORDANCES` — `rate`, `survey`, `certificate`

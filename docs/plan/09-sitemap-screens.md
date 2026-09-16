@@ -548,7 +548,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-013 viewer | `REQ-MAT-002`, `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`, `REQ-MAT-007`, `REQ-MAT-010`, `REQ-MAT-011`, `REQ-MAT-012`, `REQ-UIX-005` |
 | SCR-014 check-in | `REQ-CHK-003` … `REQ-CHK-006`, `REQ-CHK-009` … `REQ-CHK-013`, `REQ-UIX-015`, `REQ-UIX-019`, `REQ-CHK-015`, `REQ-CHK-016` |
 | SCR-015 rate | `REQ-RAT-001` … `REQ-RAT-004`, `REQ-RAT-006`, `REQ-SUR-001` … `REQ-SUR-004`, `REQ-SUR-009` |
-| SCR-016 host view | `REQ-CHK-001`, `REQ-CHK-002`, `REQ-CHK-007`, `REQ-CHK-014`, `REQ-PRF-009`, `REQ-CHK-015`, `REQ-CHK-016` |
+| SCR-016 host view | `REQ-CHK-001`, `REQ-CHK-002`, `REQ-CHK-007`, `REQ-CHK-014`, `REQ-PRF-009`, `REQ-CHK-015`, `REQ-CHK-016`, `REQ-CHK-017` |
 | SCR-017 propose | `REQ-PRO-001` … `REQ-PRO-004`, `REQ-REC-008`, `REQ-PRO-010`, `REQ-UIX-008`, `REQ-UIX-009`, `REQ-UIX-010`, `REQ-UIX-011` |
 | SCR-018 my proposal | `REQ-PRO-006`, `REQ-PRO-008` |
 | SCR-019 directory | `REQ-PRF-005` |
@@ -565,7 +565,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
 | SCR-043 schedule | `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020`, `REQ-PRO-009`, `REQ-SES-014`, `REQ-DSG-027` |
-| SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005` |
+| SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005`, `REQ-CHK-017` |
 | SCR-045 certificates | `REQ-CRT-001`, `REQ-CRT-003`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-012`, `REQ-DSG-031` |
 | SCR-046 venues | `REQ-ADM-006`, `REQ-SES-006` |
 | SCR-047 categories | `REQ-ADM-007`, `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-004`, `REQ-DSC-008` |
