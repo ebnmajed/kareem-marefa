@@ -14,6 +14,10 @@ import { COMPANY_FIELDS, COMPANY_REQUIRED_FIELDS, emptyCompanyState, type Compan
 
 const LABEL_KEY: Record<CompanyField, string> = { name: "nameLabel" };
 
+const FIELD_ID: Record<CompanyField, string> = {
+  name: "co-name",
+};
+
 export function CompanyForm({ action }: { action: (prev: CompanyState, formData: FormData) => Promise<CompanyState> }) {
   const t = useTranslations("admin.companies");
   const [state, formAction, pending] = useActionState(action, emptyCompanyState);
@@ -24,6 +28,10 @@ export function CompanyForm({ action }: { action: (prev: CompanyState, formData:
     fields: COMPANY_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
+    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
+    // below — not the field's name. Without this map every link pointed at an
+    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
+    fieldId: (field) => FIELD_ID[field],
   });
 
   return (

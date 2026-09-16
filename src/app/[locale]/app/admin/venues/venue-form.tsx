@@ -23,6 +23,15 @@ const LABEL_KEY: Record<VenueField, string> = {
   timeZone: "timeZoneLabel",
 };
 
+const FIELD_ID: Record<VenueField, string> = {
+  name: "v-name",
+  address: "v-address",
+  mapUrl: "v-map",
+  capacity: "v-capacity",
+  notes: "v-notes",
+  timeZone: "v-tz",
+};
+
 export function VenueForm({ action }: { action: (prev: VenueState, formData: FormData) => Promise<VenueState> }) {
   const t = useTranslations("admin.venues");
   const [state, formAction, pending] = useActionState(action, emptyVenueState);
@@ -33,6 +42,10 @@ export function VenueForm({ action }: { action: (prev: VenueState, formData: For
     fields: VENUE_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
+    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
+    // below — not the field's name. Without this map every link pointed at an
+    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
+    fieldId: (field) => FIELD_ID[field],
   });
 
   return (

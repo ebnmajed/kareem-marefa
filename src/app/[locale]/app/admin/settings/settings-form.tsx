@@ -42,6 +42,23 @@ const LABEL_KEY: Record<SettingsField, string> = {
   ratingMinAggregate: "ratingMinAggregateLabel",
 };
 
+const FIELD_ID: Record<SettingsField, string> = {
+  timeZone: "s-timezone",
+  checkInRotationSeconds: "s-checkin-rotation",
+  checkInGraceSeconds: "s-checkin-grace",
+  maxCoPresenters: "s-max-copresenters",
+  companyMetric: "s-company-metric",
+  priorityRsvpHours: "s-priority-rsvp",
+  limitDocumentMb: "s-limit-document",
+  limitAudioMb: "s-limit-audio",
+  limitImageMb: "s-limit-image",
+  limitPosterMb: "s-limit-poster",
+  allowJpegExport: "s-allow-jpeg",
+  emailFromName: "s-email-from-name",
+  emailReplyTo: "s-email-reply-to",
+  ratingMinAggregate: "s-rating-min",
+};
+
 export function SettingsForm({ action, settings }: { action: (prev: SettingsState, formData: FormData) => Promise<SettingsState>; settings: OrgSettingsAdmin }) {
   const t = useTranslations("admin.settings");
   const [state, formAction, pending] = useActionState(action, emptySettingsState);
@@ -54,6 +71,10 @@ export function SettingsForm({ action, settings }: { action: (prev: SettingsStat
     fields: SETTINGS_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
+    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
+    // below — not the field's name. Without this map every link pointed at an
+    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
+    fieldId: (field) => FIELD_ID[field],
   });
 
   return (

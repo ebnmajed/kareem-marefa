@@ -14,6 +14,10 @@ import { CATEGORY_FIELDS, CATEGORY_REQUIRED_FIELDS, emptyCategoryState, type Cat
 
 const LABEL_KEY: Record<CategoryField, string> = { name: "nameLabel" };
 
+const FIELD_ID: Record<CategoryField, string> = {
+  name: "c-name",
+};
+
 export function CategoryForm({ action }: { action: (prev: CategoryState, formData: FormData) => Promise<CategoryState> }) {
   const t = useTranslations("admin.categories");
   const [state, formAction, pending] = useActionState(action, emptyCategoryState);
@@ -24,6 +28,10 @@ export function CategoryForm({ action }: { action: (prev: CategoryState, formDat
     fields: CATEGORY_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
+    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
+    // below — not the field's name. Without this map every link pointed at an
+    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
+    fieldId: (field) => FIELD_ID[field],
   });
 
   return (
