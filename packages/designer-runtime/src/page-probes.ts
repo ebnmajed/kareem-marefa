@@ -190,31 +190,76 @@ export function tierASignatureBatch(layerIds: string[]): Record<string, LayerSig
   return out
 }
 
-/** The inked fraction of a capture. A blank golden passes every comparison
- *  forever and proves nothing, which is exactly what happened when
- *  `font-display: block` hid the glyphs while the metrics still resolved
- *  (DEC-024). Below 0.1% is a hard failure, never a warning. */
-export function inkedRatio(base64Png: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onerror = () => reject(new Error('the capture could not be decoded'))
-    img.onload = () => {
-      const cv = document.createElement('canvas')
-      cv.width = img.width
-      cv.height = img.height
-      const ctx = cv.getContext('2d', { willReadFrequently: true })
-      if (!ctx) return reject(new Error('no 2d context'))
-      ctx.drawImage(img, 0, 0)
-      const d = ctx.getImageData(0, 0, cv.width, cv.height).data
-      let inked = 0
-      for (let i = 0; i < d.length; i += 4) {
-        if ((d[i] as number) < 240 || (d[i + 1] as number) < 240 || (d[i + 2] as number) < 240) inked++
+export interface InkInput {
+  /** The capture, as a base64 PNG. */
+  capture: string
+  /** The SAME page with every layer hidden — its background alone, as a
+   *  base64 PNG. Absent, ink is measured against white, which is right for
+   *  a white page and nothing else. */
+  reference?: string | null
+}
+
+/**
+ * The inked fraction of a capture. A blank golden passes every comparison
+ * forever and proves nothing, which is exactly what happened when
+ * `font-display: block` hid the glyphs while the metrics still resolved
+ * (DEC-024). Below 0.1% is a hard failure, never a warning.
+ *
+ * ★ INK IS WHAT DIFFERS FROM THE PAGE'S OWN BACKGROUND, not what is darker
+ * than white. The first version counted any channel below 240 as ink, so on
+ * a dark poster (DEC-125) or its gradient (DEC-127) EVERY pixel was ink, and
+ * a poster whose text never painted read 100% inked and shipped. With a
+ * reference capture of the same page and its layers hidden, a pixel is ink
+ * when any channel differs from the reference by more than 2/255 — Tier B's
+ * own per-channel tolerance — so the check holds on a solid fill, a gradient
+ * and an image background alike.
+ */
+export function inkedRatio(input: InkInput): Promise<number> {
+  const decode = (base64Png: string): Promise<{ data: ArrayLike<number>; width: number; height: number }> =>
+    new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('the capture could not be decoded'))
+      img.onload = () => {
+        const cv = document.createElement('canvas')
+        cv.width = img.width
+        cv.height = img.height
+        const ctx = cv.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return reject(new Error('no 2d context'))
+        ctx.drawImage(img, 0, 0)
+        resolve({ data: ctx.getImageData(0, 0, cv.width, cv.height).data, width: cv.width, height: cv.height })
       }
-      resolve(inked / (d.length / 4))
+      img.src = 'data:image/png;base64,' + base64Png
+    })
+
+  return Promise.all([decode(input.capture), input.reference ? decode(input.reference) : Promise.resolve(null)]).then(([page, ref]) => {
+    if (ref && (ref.width !== page.width || ref.height !== page.height)) {
+      throw new Error('the reference capture is not the size of the capture')
     }
-    img.src = 'data:image/png;base64,' + base64Png
+    const d = page.data
+    const r = ref ? ref.data : null
+    let inked = 0
+    for (let i = 0; i < d.length; i += 4) {
+      if (r) {
+        if (
+          Math.abs((d[i] as number) - (r[i] as number)) > 2 ||
+          Math.abs((d[i + 1] as number) - (r[i + 1] as number)) > 2 ||
+          Math.abs((d[i + 2] as number) - (r[i + 2] as number)) > 2
+        ) {
+          inked++
+        }
+      } else if ((d[i] as number) < 240 || (d[i + 1] as number) < 240 || (d[i + 2] as number) < 240) {
+        inked++
+      }
+    }
+    return inked / (d.length / 4)
   })
 }
+
+/** The stylesheet that turns a rendered page into its own reference: every
+ *  layer hidden, layout untouched (`visibility`, never `display`), so the
+ *  background pixels are exactly the capture's. A string rather than a probe,
+ *  because it is injected, not evaluated. */
+export const INK_REFERENCE_CSS = '.dr-layer{visibility:hidden !important}'
 
 /* ────────────────────────────────────────────────────────────────────────
  * Probe 3 — advances for a list of strings in one family.

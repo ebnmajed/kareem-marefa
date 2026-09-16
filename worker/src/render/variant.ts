@@ -6,6 +6,7 @@ import {
   compareTierA,
   derive,
   describeTierA,
+  INK_REFERENCE_CSS,
   inkedRatio,
   measureTextBatch,
   pickAutoFit,
@@ -219,7 +220,16 @@ async function capture(page: Page, request: RenderRequest, width: number, height
   // or JPEG of the same page is the same pixels, so the PNG check stands for
   // all three and the extra capture is cheap next to a 30-second A3.
   if (request.format === "png") {
-    const ratio = (await page.evaluate(inkedRatio, base64)) as number;
+    // ★ Measured against the page's OWN background, captured after the
+    // artifact with every layer hidden. Against white, a dark poster
+    // (DEC-125) is 100% ink whether or not its text painted, and the guard
+    // that caught two blank goldens would pass a blank export.
+    await page.addStyleTag({ content: INK_REFERENCE_CSS });
+    const reference = await page.screenshot({ type: "png", encoding: "base64", captureBeyondViewport: false });
+    const ratio = (await page.evaluate(inkedRatio, {
+      capture: base64,
+      reference: typeof reference === "string" ? reference : Buffer.from(reference).toString("base64"),
+    })) as number;
     if (ratio < MIN_INK_RATIO) {
       throw new Error(`render: the capture is blank (${(ratio * 100).toFixed(3)}% inked) — an empty artifact passes every later check`);
     }
