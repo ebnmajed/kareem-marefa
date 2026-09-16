@@ -1672,3 +1672,533 @@ page · `ac09c09` the timeline on `/app` and `/app/sessions`. `ui-reach --wave6`
 - ★ **Shared index.** A `git rm` stages at once, and `content` committed without a pathspec in the
   gap before my commit. From `358eac4` to `06da10b`, HEAD deleted a file the page still imported.
   From now on I delete with plain `rm`, and `git commit -- <path>` picks up the removal.
+
+---
+
+# Wave 7 plan — propose, my proposal, rate, the public card, the profile, the leaderboards (DEC-137)
+
+**PLANNING ONLY — no source file touched.** Written on `wave-7/screens` at `c9e67ee`. Read this
+session: `.claude/agents/sessions.md` from disk (the wave-7 file), `STATUS.md` START HERE + WAVE 7,
+`CLAUDE.md` § Ownership map (wave 7), `DEC-066`, `DEC-074`, `DEC-075`, `DEC-094`, `DEC-099`,
+`DEC-110` … `DEC-115`, `DEC-122` … `DEC-124`, `DEC-134` … `DEC-137`; `16` §3, §3.1, §5.0 – §5.4.2,
+§6.8.3, §7.1 – §7.4, §8, §9, §9.1, §9.2, §9.2a, §9.2b; `01` `REQ-PRO-001` … `010`, `REQ-RAT-001` …
+`007`, `REQ-LDR-001` … `008`, `REQ-PRF-001` … `011`, `REQ-UIX-009` … `013`; `09` SCR-007, SCR-015,
+SCR-017, SCR-018 (tree and coverage rows only — it has no section of its own), SCR-020, SCR-027/028;
+`ASSUMPTIONS.md` A33; `03` §5.1b; the six routes and everything they import; `lib/dal/{proposals,
+ratings,leaderboards,members,sessions}.ts`; the `proposals`, `proposal_presenters`, `ratings`,
+`members`, `check_ins`, `rsvps`, recognition and board policies in `0004`, `0010`, `0011`, `0027`,
+`0044`, `0080`, `0082`; `ui/{field,select,form-summary,combobox,tabs,badge}.tsx` and `ui/index.ts`;
+`components/materials/{proposal-list,upload-form}.tsx`; the specs I now own. **Canvas:** `Propose`
+rendered headless at its own 1000 px and looked at (scratchpad only); `Survey` read as markup — it
+is SCR-064, not a member screen (§34.3). **Every canvas number below is quoted in Western digits**
+(`DEC-124`).
+
+`ui-reach --wave7` at `c9e67ee`: `propose` ✓ and `propose/[id]` ✓ (both the floor — `Field` and
+`FileDrop` through children); `rate`, `s/[id]`, `members/[id]`, `leaderboards` ·.
+
+## 31. Order of work
+
+| # | Unit | Why here |
+|---|---|---|
+| 0 | **Contracts 1 and 2** the hour `checkin` publishes them (§39) | Small, and they unblock `checkin`'s schedule field and the event page's link |
+| 1 | S4 `/s/[id]` | Smallest; settles the 404 rules (§35) before anything else under my routes adds a boundary |
+| 2 | S1 `/app/propose` | The form model's largest consumer; S2's edit form is the same component |
+| 3 | S2 `/app/propose/[id]` + the edit path + the `proposal-materials` spec fix (§38.1) | Same page as the carried spec |
+| 4 | S3 `/app/sessions/[id]/rate` | Independent; the star control is the one piece with real risk |
+| 5 | S6 `/app/leaderboards` | Independent; no DAL change beyond add-only |
+| 6 | S5 `/app/members/[id]` | Last because it waits on a ruling about `lib/dal/members.ts` (Q4) |
+| 7 | Carried: the filter sheet's date mask (§38.2) | After the six, as the agent file says |
+
+Each unit: its commit(s), `tsc`, lint (grep `problems`), `npm test`, `test:rls` when SQL moved, one
+spec through the gate lock, the captures opened, then **"ready for sync"**.
+
+---
+
+## 32. S1 · `/app/propose` (SCR-017)
+
+### 32.1 The field inventory — against `DEC-075`, the columns and the canvas
+
+`create_session()` (`0020`) copies title, abstract, category, level and the accepted presenters
+**today**; `0084` (copy audience and duration too) is **not this wave**.
+
+| Field | Column (`0010`) | Form today | Canvas | Copied by `create_session()` today | This wave |
+|---|---|---|---|---|---|
+| العنوان | `title` 3–150 | ✅ «عنوان الموضوع المقترح», `maxLength` 150 | «عنوان الجلسة», «90 حرفًا كحدّ أقصى», counter «41 / 90» | ✅ | keep the label and 150; **add** a counter at 150 (Q9a) |
+| النبذة | `abstract` 1–2000 | ✅ | error «اكتب 50 حرفًا على الأقل — الآن 19» | ✅ | keep min 1 — the column's rule; **add** a counter at 2000 (Q9b) |
+| التصنيف | `category_id` | ✅ select | select, half-width | ✅ | two columns with المستوى from `md`, stacked on the phone |
+| المستوى | `level` | ✅ «تمهيدي / متوسط / متقدم» | «مبتدئ» | ✅ | keep `REQ-PRO-002`'s words (Q9c) |
+| الفئة المستهدفة | `target_audience` ≤ 300 | ✅ | **absent** | ❌ dropped (`DEC-075`) | keep — `REQ-PRO-002` lists it and the column exists |
+| المدة المتوقعة | `expected_duration_minutes` 15–480 | ✅ | **absent** | ❌ dropped | keep |
+| مقدّمون مشاركون | `proposal_presenters` | ✅ a checkbox list | a search combobox, chips with initials | ✅ accepted ones | **→ `ui/combobox multiple`** (`REQ-UIX-008`, §32.3) |
+| ملاحظات للمشرف | `admin_notes` ≤ 2000 | ✅ | **absent** | not session content — correctly not copied | keep (`REQ-PRO-002`) |
+| مواد مبدئية | `materials.proposal_id` | ❌ — an upload needs a proposal id | absent | carried over on creation (`REQ-PRO-004`) | stays on SCR-018; one line under the buttons says materials are attached after saving |
+| **أهداف التعلّم** | **no column** | ❌ | step 2, a repeatable list «أضف هدفًا — 6 متبقّية» | — | **not built** — Q8 |
+| **الوسوم** | **no column on `proposals`** (`session_tags` is on sessions) | ❌ | step 2, a creatable tag combobox with counts | — | **not built** — Q8 |
+| date / time / venue | none, by design | none | none, and says so beside the buttons | — | unchanged (`REQ-PRO-001`); the note moves beside the buttons as in the canvas |
+
+★ `16` §9.1 names the objectives migration «`0082`». On disk `0082` is `0082_western_numerals.sql`;
+objectives and tags have no migration and no proposed SQL anywhere. The canvas's step 2 is a
+screen for columns that do not exist.
+
+### 32.2 The form model — what already holds, and the three gaps
+
+**Holds, from M9 (§15–§21):** `formStateFrom()` captures every field once; `was()`/`wasList()` hand
+values back so React 19's reset restores what was typed; `<FormSummary key={state.attempt}>` focuses
+once per failed round trip and links each failed field in page order; «مطلوب» on the four required
+labels; red, glyphed, bordered errors wired by `<Field>`; «reward early, punish late» after the
+first attempt; pending on the pressed button only.
+
+**Gap 1 — blur validates only what the server already rejected.** `punish()` re-shows
+`state.errors[field]`. A field that was valid at submit and emptied afterwards shows nothing until
+the next submit, which is "only on submit" for that field. Fix: move `proposalInput` and `errorKey`
+into a client-safe module, `src/components/sessions/proposal-schema.ts` (no `server-only`; the DAL
+re-exports `proposalInput`, the `arNormalize` precedent from wave 6). On blur, **after the first
+attempt only** (`REQ-UIX-011` — nothing is invalid before a submit), the form parses the one field
+with `proposalInput.shape[field]` and maps the issue through the same `errorKey`. One rule set at
+blur and at submit, so they cannot drift. `tests/components/sessions/proposal-schema.test.tsx`
+changes its import path only.
+
+**Gap 2 — the summary does not count and does not reassure.** The canvas's «لم نستطع إرسال المقترح —
+حقلان ناقصان» is a count with all six plural forms — a new key `form.errorSummaryCount`, passed as
+`title`. Its second line, «اضغط على أيٍّ منهما للانتقال إليه. ما كتبته محفوظ كما هو», has no slot:
+`FormSummaryProps` is title + errors, and the type is the lead's (**R1**). Without it the line is
+dropped; `errors.failed` already says «بياناتك ما زالت في النموذج» for the write-failure case.
+
+**Gap 3 — a long form shows no progress** (`16` §8.2 item 7). With objectives and tags out, the
+canvas's three steps are two sections: **«الموضوع»** (title … duration) and **«المُقدِّمون
+والملاحظات»**. Built as two `SectionHeader` sections plus a two-item in-page list of links at the
+top carrying «المتبقّي: N» — the required fields still empty, six plural forms, updated on change
+and **not** a live region (a count announced on every keystroke is noise; the summary is the
+announcement). Not a wizard: one form, one submit, nothing hidden (Q7).
+
+**Values surviving a failed submit, restated for the new control.** `ui/combobox` writes its
+selection as hidden inputs, so `formData.getAll("coPresenters")`, `actions.ts` and `state.ts` do not
+change. React's form reset does not touch value-controlled hidden inputs and the combobox's own
+state survives the action; `defaultValue={wasList(state, "coPresenters")}` covers a remount. The
+existing «a rejected submission keeps every word» e2e gains a chosen co-presenter.
+
+### 32.3 The page
+
+| Region | Primitives | Notes |
+|---|---|---|
+| header | `ui/page-header` (title, description = `lead` + `leadBody`) | no breadcrumb — it would point at itself |
+| progress | the section links + «المتبقّي» | §32.2 gap 3 |
+| failure | `ui/form-summary`, or the local `FormError` for a failed write | unchanged split (§16) |
+| «الموضوع» | `ui/section-header`, `Field` + `Input` / `Textarea` / `Select` | counters are `<span id>`s merged into `aria-describedby` by `describedIds()` — described, never live |
+| «المُقدِّمون والملاحظات» | `Field` + `ui/combobox multiple max={maxCoPresenters}`, `Field` + `Textarea` | option label = name, hint = job title · company (`listNameableMembers` gains the company name — mine) |
+| actions | `ui/button` primary «أرسل المقترح», secondary «احفظ كمسودة» | `REQ-PRO-001`'s note and the materials line beside them |
+| «مقترحاتي» | `ui/card density="row"`, `ui/badge` (§33.1's tone map), `ui/empty-state` | empty action «اكتب أول مقترح» → `#title`; the list stays because it is how a named co-presenter reaches an invitation |
+
+★ **The combobox is not ready for this field** (**R2**, `console`'s file): its input is hard-coded
+`dir="ltr"`, so Arabic names are typed and aligned left-to-right; it does not read
+`useFieldWiring()`, so the hint and the error are not in `aria-describedby` and `aria-required` is
+absent; it draws its own `border-edge-strong`, so `invalid` changes no border; and it reads strings
+from `admin.combobox`. If R2 has not landed when S1 is otherwise done, S1 ships the checkbox list on
+the system and the combobox follows.
+
+**DAL:** `listCategories`, `listNameableMembers` (+ company), `getOrgPrefs`, `listMyProposals` —
+all mine, no signature change.
+
+**Captures:** `wave7-sessions-propose-empty.png` · `wave7-sessions-propose-error.png` (summary
+focused, two field errors, typed values intact) · `wave7-sessions-propose-copresenter.png` (the
+combobox open) · `wave7-sessions-propose-submitted.png` (SCR-018's created receipt).
+**Specs:** `forms-propose.spec.ts` and `sessions-propose.spec.ts` (their co-presenter steps move to
+the combobox), new `wave7-sessions-propose.spec.ts` for the captures, `E2E_SHOTS_DIR` honoured; a
+jsdom test for gap 1.
+
+---
+
+## 33. S2 · `/app/propose/[id]` (SCR-018) and the edit path
+
+### 33.1 The state, on the shared vocabulary
+
+`Tone` is `neutral | info | success | live | ended | error` (`DEC-073`). A proposal's six states:
+
+| State | Tone | Label (existing keys) | Next step shown |
+|---|---|---|---|
+| `draft` | `neutral`, outline | «مسودة عندك» | «أكمل وأرسل» → edit |
+| `submitted` | `info` | «بانتظار المراجعة» | a line: the decision arrives as a notification |
+| `in_review` | `info` | «قيد المراجعة» | same |
+| `changes_requested` | `live` — it needs the member's action, as «قائمة انتظار» does | «بانتظار تعديلك» | the reason + primary «عدّل مقترحك» → edit |
+| `approved` | `success` | «مقبول» | `approvedNote` |
+| `rejected` | `error` | «غير مقبول» | the reason |
+
+`PageHeader`: `status` = that badge, title = the proposal, `meta` = category · level · duration,
+breadcrumb «مقترحاتي».
+
+★ **A stale reason, found while reading.** The page shows «ما كتبه المشرف» whenever
+`decision_reason` is non-null. Approval clears it (§3.3); **a resubmission does not** — the proposer
+cannot write the column. So a proposal resubmitted after a change request would show the old
+request under «بانتظار المراجعة». The reason renders only in `changes_requested` and `rejected`.
+
+### 33.2 The edit path (Q1)
+
+What the database allows (`0010` `proposals_update_own_editable`, `0011` guard):
+
+| From | May become | So the edit form offers |
+|---|---|---|
+| `draft` | `draft` or `submitted` | «احفظ كمسودة» and «أرسل المقترح» |
+| `changes_requested` | `submitted` only (→ `draft` is an illegal edge; staying in `changes_requested` fails the `with check`) | «أعد إرسال المقترح» only |
+| anything else | — | no edit link; the route answers `notFound()` |
+
+- **Route:** `/app/propose/[id]/edit` — the same `ProposalForm` with `mode="edit"` and initial
+  values. A second URL rather than an inline toggle: the record and the form are two documents, and
+  a failed edit round trip should not re-render the materials slot and the invitation above it.
+- **DAL (mine):** `getProposal` gains `targetAudience` and `adminNotes`, returned only when
+  `viewerIsProposer`; new `updateProposal(locale, id, input, submit)` — Zod first, `.update().eq("id")
+  .select("id")`, zero rows → `not_editable`. The audit row and `MSG-proposal_submitted` are the
+  existing state triggers (`0011`, `0039`).
+- **Not in the edit form:** co-presenters. Adding one after creation has no UI today and removal
+  already lives on SCR-018; mixing both into an edit diff is where a silently removed accepted
+  presenter would come from. Discarding a draft (`proposals_delete_draft`) is not built either — it
+  would need `REQ-UIX-013`'s dialog; say so if wanted.
+
+### 33.3 The rest of the page
+
+- **The invitation** — accept/decline onto `ui/submit-button` forms (pending on the pressed one).
+- **Presenters** — a list with `ui/avatar` at 32 (initials), the name, a small `Badge` for
+  accepted / pending / declined. Removing a co-presenter is destructive: it confirms in `ui/dialog`
+  naming the person (`REQ-UIX-013`) instead of a bare text button.
+- **Materials** — `content`'s `ProposalMaterials` slot, unchanged; the page owns `<section>` and
+  `<h2>`. No request needed.
+- **Not found** — `[id]/not-found.tsx` stays; under `/app` it is `DEC-134`'s streamed 200 + `noindex`.
+
+**Captures:** `wave7-sessions-proposal-pending.png` (`submitted`) · `wave7-sessions-proposal-changes.png`
+(`changes_requested` with the reason and the edit action) · `wave7-sessions-proposal-rejected.png` ·
+`wave7-sessions-proposal-edit.png`. **Spec:** new `wave7-sessions-proposal.spec.ts`; the proposal is
+seeded in each state through `pg`, as `proposal-materials.spec.ts` does.
+
+---
+
+## 34. S3 · `/app/sessions/[id]/rate` (SCR-015)
+
+### 34.1 Stars that fill from the right
+
+**Today** (`components/event/star-rating.tsx`): five `<button role="radio">` in a
+`role="radiogroup"`, each named «1» … «5», with a hidden input. The DOM order is right — star 1 at
+the inline start, so the fill runs from the right in RTL and the file warns against
+`flex-row-reverse`. But it is a radiogroup in ARIA only: every star is a tab stop, no arrow keys,
+no roving focus, a name of a bare digit, and **with no JavaScript the form submits `0`**.
+
+**Planned:** native radios.
+
+```
+<fieldset>  <legend>تقييم الجلسة <Required/></legend>
+  flex-row: [ input.sr-only name=sessionStars value=1 + label ★ ] … [ … value=5 + label ★ ]
+```
+
+- **Direction without a physical property.** DOM 1 → 5 in a plain flex row: star 1 at the start
+  edge, which is the right in Arabic and the left in English. Unchanged, and still commented.
+- **The fill** is every star whose value ≤ the checked one — client state, and `:has(:checked)` so
+  it is already right before hydration. `StarIcon filled` from `ui/icons`, 44 px labels.
+- **The name** of each radio is a count: «نجمة واحدة», «نجمتان», «3 نجوم», «4 نجوم», «5 نجوم» — one
+  key, all six ICU forms.
+- **Keyboard** is the browser's. ★ Whether Chromium's arrow keys follow the visual direction in an
+  RTL radio group is **measured, not assumed**: the e2e presses ArrowLeft on star 1 and asserts
+  star 2. If it moves the other way, a `keydown` handler maps it.
+- **The pin.** The e2e asserts star 1's box is to the right of star 5's, chooses the leftmost star,
+  and reads `session_stars = 5` from the database — the silent data error, tested end to end.
+
+### 34.2 What «ratings only» leaves on the screen
+
+| Region | Content | Primitives |
+|---|---|---|
+| header | breadcrumb الجلسات › the session › التقييم; «قيّم الجلسة»; description = the session's title and date in the **org's** zone | `ui/page-header` |
+| the promise | `form.anonymityNotice` (it already names the admin exception — SCR-015's honesty rule) and «يُغلق باب التقييم في …» | `ui/panel tone="info"` |
+| the form | two star fieldsets («مطلوب»), the comment in `Field` + `Textarea` | mine |
+| failure | `ui/form-summary` — missing stars link to their fieldset | mine |
+| submit | `ui/submit-button` «إرسال التقييم» / «تحديث التقييم» | lead's |
+
+Changes inside the model:
+
+- **The submit button is enabled.** Today it is disabled until both rows have a star — a control
+  that does nothing and says nothing. Missing stars become field errors «اختر عدد النجوم» and a
+  summary, as every other form (`REQ-UIX-009`).
+- **`RateFormState` → `FormState<"sessionStars" | "presenterStars" | "comment">`.** The native
+  radios reset with the form too, so `defaultChecked` reads `was(state, …)` exactly as the comment
+  already does.
+- **Success is a receipt** (Q2): the action redirects to `rate?rated=1` — a success panel, the
+  rating shown with filled stars, «عدّل تقييمك» and «العودة إلى الجلسة». Today it lands on the event
+  page, which reads nothing from `?rated=1`, so success is silent.
+- **Not eligible is a way back, not a sentence.** `not_completed` and `not_checked_in` render a
+  bare `<p>` with no heading; they become `ui/empty-state` with «العودة إلى الجلسة». A uuid that
+  names no visible session calls `notFound()` instead of «التقييم متاح بعد انتهاء الجلسة».
+- **Closed** shows the existing rating read-only as filled stars (not «5 / 5» text) under
+  «أُغلق باب التقييم».
+- **Dates in the org's zone.** `getFormatter().dateTime` runs in the server's zone — no `timeZone`
+  is configured in `src/i18n/` — so the closing date can be a day off. `formatDate(iso, orgTz,
+  locale)` instead.
+- **Its own `loading.tsx`**, form-shaped. Today the route inherits the event page's hero skeleton.
+
+**DAL:** `getRatingEligibility` unchanged. Add-only `getRatePageData(locale, sessionId)` in
+`ratings.ts` (eligibility + `rating_min_aggregate` + the org's zone) so the page stops paying for
+`getRatingsSummary`'s presenter and staff reads; add-only `getSessionHeading(locale, id)` in
+`sessions.ts` (id, title, state, times, zone — or `null`).
+
+**Captures:** `wave7-sessions-rate-empty.png` · `-chosen.png` (five stars on the session row) ·
+`-submitted.png` · `-closed.png` · `-not-eligible.png`. **Spec:** `event-rate.spec.ts` (its
+`getByRole("radio", { name: "5" })` and redirect assertions change with the control) and new
+`wave7-sessions-rate.spec.ts`.
+
+### 34.3 What `Survey.dc.html` has, and what I do not build
+
+The artboard is **«نتائج الاستبانة»** — SCR-064, the staff results page — not the member's form.
+Not built, all of it: the response rate, «يوصون بها», the three question distributions, the free
+text, «نزّل CSV», «من يرى ماذا», the template card, and a survey half on the rate route. Its rating
+half is one card, «متوسط تقييم الجلسة … من 5» — the presenter/staff aggregate, which lives in the
+event page's Ratings slot (`components/event/ratings.tsx`, mine this wave), not on SCR-015 (Q11).
+
+★ **A contradiction, raised not implemented:** the artboard withholds free text «إن قلّت عن 5 —
+نفس عتبة التقييمات». `REQ-RAT-006` and `org_settings.rating_min_aggregate` say **3** (Q9e).
+
+### 34.4 `16` §9.2a, read before touching `ratings`
+
+Nothing here writes `submitted_at`. **But `updateRating()` writes `edited_at: new Date().toISOString()`
+at millisecond precision.** Harmless while there is no survey; the day `0085` lands, an edit made in
+the same minute as a survey response is the same attribution oracle §9.2a describes for
+`submitted_at`. Not mine to change (not add-only) and not this wave — recorded for whoever writes
+`0085`: coarsen `edited_at` with `submitted_at`, and let the ±N-minute test cover both (Q12).
+
+---
+
+## 35. S4 · `/s/[id]` (SCR-007)
+
+### 35.1 How the real 404 survives (`DEC-134` item 4)
+
+Why it holds today: nothing at or above `s/[id]` streams — `[locale]/` has `layout.tsx` only, `/s`
+is outside `app/` so `app/loading.tsx` never applies, and the page calls `notFound()` after two
+awaits (`platformConfigured()`, `card(id)`) with no `<Suspense>` above it. The rules for the rebuild:
+
+1. **No `loading.tsx` anywhere under `src/app/[locale]/s/`**, and no `<Suspense>` in the page above
+   the `notFound()`. A comment at the top of the page says why.
+2. `platformConfigured()` and `card(id)` stay the first two awaits; nothing that can suspend renders
+   before them.
+3. ★ **The missing card is probably rendered in English today.** A `notFound()` under `[locale]/s`
+   has no `not-found.tsx` to reach: `(marketing)/not-found.tsx` covers its own group and
+   `app/not-found.tsx` covers `/app`. Unverified until the first run; if so, **`s/[id]/not-found.tsx`**
+   — Arabic, SCR-007's neutral «هذه الجلسة غير متاحة», one link home. A `not-found.tsx` is not a
+   Suspense boundary, so the status is unaffected.
+4. **Tested with a browser as well as a crawler.** The spec asserts 404 through `request` today;
+   Next streams metadata differently for bot and browser user agents, so `page.goto()` asserts
+   `status() === 404` too, for an unknown uuid, a malformed id and a draft.
+
+### 35.2 The card
+
+- `ui/card` framing the poster: the `og` render as a plain `<img>` at its own ratio (unchanged —
+  `CardMedia` crops to three fixed ratios); **no render** → `CardMedia` with the typographic
+  placeholder from the title instead of nothing.
+- **The status badge** (SCR-007's note). `session_public_card()` returns no `state` and no seats —
+  `DEC-066`'s allowlist. So the phase comes from the clock alone (`sessionPhase({ state:
+  "published", startsAt, endsAt })`): `live` → «جارية الآن», `ended` → «انتهت» with the wash on the
+  image only (`DEC-123`); **`open` shows no badge**, because «التسجيل مفتوح» would be a claim about
+  seats the card cannot see (Q3).
+- «من تنظيم …», the title, when/where as a `dl`, «الحضور في القاعة فقط», and one primary action,
+  sign in with `next` — kept as an anchor, because sign-in is a document navigation.
+- **Captures, signed out:** `wave7-sessions-public-card-open.png` · `-ended.png` · `-missing.png`
+  (with the 404 asserted in the same test). **Spec:** `sessions-public-card.spec.ts` + new
+  `wave7-sessions-public-card.spec.ts`.
+
+---
+
+## 36. S5 · `/app/members/[id]` (SCR-020)
+
+### 36.1 What exists
+
+`getMemberProfile()` reads `members_member_view` — the member tier — and the page renders name,
+role, company, job title, bio and «عضو منذ». **No tier is rendered but the member tier**, and none
+of A33's other member-tier rows (interests, level, badges, streak, points and rank, sessions
+presented, photos uploaded). A missing member is an `<h1>` «العضو غير موجود» with a 200 and no way
+on. «عضو منذ» is formatted in the server's zone.
+
+### 36.2 The page, by tier
+
+| Section | member | self | admin | Read |
+|---|---|---|---|---|
+| header: `ui/avatar` 96 (initials, `DEC-099`), name, company, job title, role badge | ✅ | ✅ | ✅ | `getMemberProfile` |
+| نبذة, اهتماماتي (`ui/tag-chip`) | ✅ | ✅ | ✅ | profile + `member_interests` (P1) |
+| النقاط والترتيب, المستوى (`ui/stat`) | ✅ | ✅ | ✅ | add-only `getMemberStanding()` in `leaderboards.ts` (`points_balances` P1, the row from `all_time_leaderboard()`) and new `recognition.ts` (`levels`) |
+| الشارات, السلسلة الحالية | ✅ | ✅ | ✅ | new `recognition.ts` (`member_badges` + `badges`, `streak_awards`) — P1 |
+| الجلسات التي قدّمها (cards with the status badge) | ✅ | ✅ | ✅ | add-only `listSessionsPresentedBy()` in `sessions.ts` (`session_presenters` P1 ∩ `sessions_read`) |
+| الصور التي رفعها | ✅ | ✅ | ✅ | needs a `photos.ts` read — `content`'s (Q4c) |
+| «هكذا يرى زملاؤك ملفك» + links to `/app/me` and `/app/me/points` | — | ✅ | — | none — the self-only data lives in `content`'s hub, not twice |
+| البريد, الجلسات التي حضرها, التغيّب والإلغاء المتأخر | — | via `/app/me` | ✅ | an admin read (§36.3) |
+| التقييمات التي قدّمها | — | via `/app/me` | ❌ this wave (Q4d) | would need an **audited** RPC (`REQ-RAT-005`) |
+
+★ **An opted-out member (`REQ-LDR-008`).** `all_time_leaderboard()` already omits them for other
+callers, so their rank disappears by itself. Their total still reads from `points_balances`, whose
+policy is org-wide. Default: the member tier hides points **and** rank for an opted-out member —
+showing the number that the leaderboard withholds defeats the opt-out (Q5).
+
+### 36.3 Tiering is a DAL guarantee, so this is a request (**R3**, `content`)
+
+`lib/dal/members.ts` is `content`'s this wave. What the page needs from it:
+
+```ts
+getMemberProfileForViewer(locale, id): Promise<
+  | { tier: "member" | "self"; profile: MemberTier; interests: { id: string; name: string }[] }
+  | { tier: "admin"; profile: MemberTier; interests: …; email: string;
+      attended: { sessionId: string; title: string; startsAt: string }[];
+      noShows: number; lateCancels: number }
+  | null>
+```
+
+- a **new export**, so `getMemberProfile()` and `/app/me` do not move;
+- `tier` decided in the DAL: `self` when `id === session.memberId`; `admin` only for
+  `role === "admin"` — a moderator reads the member tier (A33);
+- the admin fields: `email` is outside the column grant, so it needs an `assert_fresh_admin()`-gated
+  definer read (`03` §5.1b) — a single-member `admin_member_profile(uuid)`; attended and the counts
+  come from `check_ins` and `rsvps`, which staff may read, but gated to `admin` in the same function
+  so a moderator cannot get them by URL.
+
+Two ways to do it, and I recommend the first: **(a)** the lead grants me add-only on `members.ts` for
+that one function, and I write `admin_member_profile()` under `supabase/proposed/sessions/` with its
+cases in `tests/rls/sessions-member-profile.test.ts`; **(b)** `content` writes both and I render. (a)
+keeps the reader and the one page that uses it with one writer; `/app/me` never calls it.
+
+### 36.4 Strings — `profile.json` → `members.json`
+
+`members/[id]/page.tsx` reads `profile.role.{admin,moderator,member}`, `profile.memberSince`,
+`profile.notFound`, `profile.noBio`. `me/page.tsx` also reads `profile.role.*`.
+
+- **New `src/messages/{ar,en}/members.json`**, top-level key `members` (free — checked against every
+  file's top-level keys), with `members.profile.*`: those four plus every new section string, `ar`
+  first. `"members"` is appended to `NAMESPACES` in `src/messages/index.ts` in the same commit.
+- **Requested of `content`** once my page no longer reads them: delete `profile.memberSince`,
+  `profile.notFound`, `profile.noBio`. **`profile.role.*` stays** — `/app/me` uses it; mine is a copy
+  under `members.profile.role`, so neither file depends on the other.
+
+### 36.5 Not found, and captures
+
+A missing, other-org or deactivated id calls `notFound()` → `app/not-found.tsx` (`DEC-134`), instead
+of an `<h1>` with a 200. **Captures:** `wave7-sessions-profile-member.png` · `-self.png` ·
+`-admin.png`. **Spec:** new `wave7-sessions-profile.spec.ts`, with a DAL-level assertion that the
+member tier's payload has no `email` (the page cannot be the test of a DAL guarantee).
+
+---
+
+## 37. S6 · `/app/leaderboards` (SCR-027, SCR-028)
+
+- **One page, three boards as `ui/tabs` with `href`** — `?board=all` (default) · `?board=month` ·
+  `?board=companies`. Linkable, server-rendered, nothing hidden client-side; `SCR-028`'s separate
+  `/leaderboards/companies` is not created (Q6).
+- **Member boards** (`member-board.tsx`, mine): an `<ol>`; rank, the name linking to
+  `/app/members/[id]`, points with six plural forms. **No avatars** (`DEC-099`). The viewer's row
+  carries a «أنت» badge. ★ **`REQ-LDR-001`'s own rank outside the displayed range:** today every row
+  renders. Planned: the top 20, then — when the viewer is below — a separator and their own row.
+  Presentation only; `all_time_leaderboard()` already returns their row.
+- **Company board** (`company-board.tsx`): both metrics on every row, the ranking one marked with a
+  badge «الترتيب حسب» and first in the row; provisional / final as a badge; «محسوبة بعدد الأعضاء
+  النشطين وقت الحساب» kept. `company-points-breakdown.tsx` stays under the companies tab as its own
+  section, onto `ui/stat` for the balance.
+- **Empty** is `ui/empty-state` with an action — «تصفّح الجلسات» → `/app/sessions` (how points are
+  earned) — instead of a bordered `<p>`.
+- **Not this wave:** the per-topic board (`REQ-LDR-003` — the worker snapshots `topic`, no DAL reads
+  it) and the seasonal board (Q6).
+- **DAL:** `getLeaderboards`, `getCompanyPointsBreakdown` unchanged; add-only `getMemberStanding()`
+  (§36.2) is the only new export.
+
+**Captures:** `wave7-sessions-leaderboards-members.png` · `-companies.png` · `-empty.png`.
+**Specs:** `leaderboards.spec.ts`, `scoring-company-points.spec.ts`; `scoring-screens.spec.ts`
+also captures `/app/me/points` and admin screens that are not mine — I change only its
+leaderboards step and say so if another step breaks.
+
+---
+
+## 38. The two carried items
+
+### 38.1 `proposal-materials.spec.ts:140` — the spec is wrong, the page is right
+
+Read, not run. The page renders **one** uploader (`ProposalMaterials` → one `UploadForm` in each
+branch; «نوع المادة» exists once in the catalogue). The spec fails three ways, each deterministic:
+
+1. **Line 145, the reported failure.** `getByLabel` counts hidden nodes. Right after `goto`,
+   React's hidden streamed copy (`body > div[hidden][id^="S:"]`) is still in the document beside the
+   visible one — `185fbb1` found and fixed exactly this in `materials`, `photos` and
+   `event-comments` with `waitForStreamsToSettle()`, and this spec was not in that commit. On this
+   page the slot does four reads before it streams, so the window is wide.
+2. **Line 147 would fail next.** `getByLabel("الملف")` names nothing since wave 6 moved the upload
+   onto `ui/file-drop`, whose native input is `hidden` and unlabelled; `materials.spec.ts:265`
+   already selects `input[type="file"]` for this reason.
+3. **Line 164, the second test** asserts a 404 status; under `/app` that is `DEC-134`'s streamed 200
+   with `noindex` and the not-found page.
+
+Fix, in S2's commit: settle the streams after each `goto`; `page.locator('input[type="file"]')`
+(the page has one uploader); the not-found page + `noindex` + no material title instead of the
+status. No product change.
+
+### 38.2 The filter sheet's English date mask
+
+`browse/filter-sheet.tsx:124,127` are native `<input type="date">`. Measured in headless Chromium:
+the mask reads `dd/mm/yyyy` under an `en-US` **and** an `ar-SA` context with `lang="ar"
+dir="rtl"` — it follows the browser's own locale, never the page. So the fix cannot be a
+localisation of the native control, and what a phone set to Arabic shows (possibly Arabic-Indic
+digits, `DEC-124`) is not ours to decide either. **Default:** replace the free range with
+`DEC-098`'s period chips — هذا الأسبوع · الأسبوع القادم · هذا الشهر · سابقة — as one more removable
+filter, and keep parsing `from`/`to` from an old link into a chip «من … إلى …». The alternative is a
+text field with an explicit `YYYY-MM-DD` hint. After the six routes (Q15).
+
+---
+
+## 39. Contracts 1 and 2 — threaded the day `checkin` publishes them
+
+**Contract 1 — `schedule_session()`'s walk-in parameter** (`DEC-118`):
+- `scheduleInput` (`.strict()`) gains `allowWalkIns`; `scheduleSession()` passes it;
+  `getSessionForSchedule()`'s DTO gains `allowWalkIns` so the form can show the stored value.
+- ★ **The hazard, raised before either side writes code:** a strict schema with a required key
+  breaks `checkin`'s action until their field lands, and **a default of `false` silently turns
+  walk-ins off for any session re-saved in between**. Asked of `checkin` through the lead: the
+  parameter is `default null` meaning «leave unchanged», and my key is optional and passed as
+  `null` when absent. Then the order of the two commits does not matter (Q13).
+- Tests: a unit on the schema; the RLS case is `checkin`'s, with their SQL.
+
+**Contract 2 — the switch as a DTO field and a predicate** (`DEC-113`, `DEC-115`, `DEC-116`):
+- `getSessionForEvent()` selects `check_in_open` → `EventSession.checkInOpen`.
+- The event page passes it to `checkin`'s predicate wherever its new signature wants it; the action
+  card, the bottom bar and `primaryActionFor()` already take `canCheckIn` as a boolean, so nothing
+  else on the page moves. The matrix column and the predicate stay `checkin`'s.
+- Tests: `event-page.spec.ts` gains closed → no link, open → link, for a confirmed member on a live
+  session.
+
+---
+
+## 40. Requests — by owner
+
+| # | To | File | What, and why |
+|---|---|---|---|
+| R1 | lead | `ui/index.ts` `FormSummaryProps` | an optional `description?: string` under the title — the canvas's «ما كتبته محفوظ كما هو». I render it in `form-summary.tsx` (mine) |
+| R2 | `console` | `ui/combobox.tsx` | (a) drop `dir="ltr"` on the input — Arabic names; (b) read `useFieldWiring()` for `id`, `aria-describedby`, `aria-required`, `aria-invalid`; (c) the border from `controlClass(invalid)`; (d) strings from `ui.json` rather than `admin.combobox` — a member form should not depend on the admin catalogue |
+| R3 | lead → `content` | `lib/dal/members.ts` | §36.3 — `getMemberProfileForViewer()`, or add-only rights to me for it |
+| R4 | `content` | `messages/*/profile.json` | delete `memberSince`, `notFound`, `noBio` after S5 lands (§36.4) |
+| R5 | lead | `ui/index.ts` `RouteErrorProps` | carried from §21 item 5: `retryLabel`/`reset` optional, so `s/[id]/not-found.tsx` does not invent a retry for something that is gone |
+| R6 | `checkin` via lead | `schedule_session()` | §39 — `default null` = unchanged |
+
+---
+
+## 41. Questions for the lead
+
+1. **The edit path** is `/app/propose/[id]/edit`, a seventh page under `propose/**` (§33.2) — yes?
+2. **Rating success lands on `rate?rated=1`** as a receipt instead of the event page (§34.2) — yes?
+3. **The public card's badge** comes from the clock only, with no badge while `open`; adding `state`
+   to `session_public_card()` would widen `DEC-066`'s allowlist (§35.2) — clock only?
+4. **The profile:** (a) R3 as add-only for me, or `content`'s; (b) the admin read as proposed SQL
+   under `supabase/proposed/sessions/`; (c) «الصور التي رفعها» — request a `photos.ts` read, or leave
+   the section out this wave; (d) «التقييمات التي قدّمها» for an admin left out — it needs an audited
+   read.
+5. **An opted-out member's points** hidden on their profile's member tier, with the rank (§36.2)?
+6. **Leaderboards:** three tabs on one route; no per-topic or seasonal board this wave (§37)?
+7. **Progress on the propose form:** two section links and «المتبقّي» rather than the canvas's
+   three-step bar, whose middle step has no columns (§32.2)?
+8. **Objectives and tags** — confirmed not built and not stubbed, the canvas's step 2 included.
+9. **Canvas contradictions** (`DEC-114`; none implemented): (a) title limit 90 vs the column's 150;
+   (b) abstract minimum 50 vs 1; (c) «عنوان الجلسة» and «مبتدئ» vs `REQ-PRO-002`'s labels, which
+   must match the pre-launch form; (d) the artboard drops الفئة المستهدفة, المدة المتوقعة and
+   ملاحظات للمشرف, which `REQ-PRO-002` lists; (e) `Survey`'s withhold at 5 vs `REQ-RAT-006`'s 3;
+   (f) `Propose`'s lead «ما تكتبه هنا هو ما سيظهر في صفحة الجلسة…» is false until `0084` copies
+   audience and duration — the page keeps «لست بحاجة لأن تكون خبيرًا».
+10. **R1, R2, R5** routed; S1 ships the checkbox list on the system if R2 is not in by then.
+11. **`components/event/ratings.tsx`** (the event page's slot, mine): restyle onto `ui/stat` and
+    `ui/link` this wave, no gate touched — or leave the event page alone?
+12. **`ratings.edited_at`** at millisecond precision (§34.4) — record it against `0085`?
+13. **Contract 1's `null` semantics** (§39) — put to `checkin`?
+14. **`proposal-materials.spec.ts`**: fixed as a spec change in S2's commit (§38.1)?
+15. **The date mask**: period chips instead of the native date range (§38.2)?
