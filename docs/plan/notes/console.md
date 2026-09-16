@@ -1208,7 +1208,7 @@ map onto the current 19 (soon 20 — see below) flat items as:
 | الأماكن | venues | no |
 | الإشراف | moderation/comments, moderation/photos, moderation/reports | **yes — 3** |
 | النقاط والتقدير | scoring, recognition | **yes — 2** |
-| التصاميم | designer, templates/posters, templates/certificates | **yes — 3** |
+| التصاميم | templates/posters, templates/certificates | **yes — 2** |
 | الهوية | branding | no |
 | الإشعارات | emails, reminders | **yes — 2** |
 | التصدير | exports | no |
@@ -1216,19 +1216,24 @@ map onto the current 19 (soon 20 — see below) flat items as:
 | الإعدادات | settings | no |
 
 Ten single-route groups render exactly as today (an `<a>`-equivalent rail item, unchanged
-`AdminRailItem` shape). Four groups disclose 2–3 children each — ten routes total inside disclosure,
-matching `admin/layout.tsx`'s own header comment that "13 routes I do not rebuild this wave" sit
-behind grouping decisions (12 of those 13 are the 10 disclosed here plus `designer`'s two; the 13th
-was `venues`, since wave 6 counted it before it was reassigned to me — no longer live).
+`AdminRailItem` shape). Four groups disclose 2–3 children each — **nine routes total inside
+disclosure** (moderation's three, scoring+recognition, templates' two libraries, emails+reminders) —
+against wave 6's own note's "thirteen routes" figure for the same grouping decision
+(`docs/plan/notes/console.md:575-576`, written before `venues`/`categories`/`companies` were
+reassigned to me and apparently over-counting even then; not reconciled further here, since it isn't
+load-bearing for this plan).
 
-**A second, real discrepancy found in the same pass: `admin/designer` (the template-studio landing
-page, distinct from `designer/[documentId]`) is not in `NAV_ITEMS` at all today** —
-`grep -c` on the array (`admin/layout.tsx:52-85`) gives 20 entries, not the header comment's stated
-19, and `admin/designer/page.tsx` exists on disk but is reachable from nowhere in the rail (only
-`templates/{posters,certificates}` link into individual documents, and a document itself links back
-to its own template, never to the studio's own landing route). Adding it under `التصاميم` closes
-that gap in the same commit as the regroup — a one-line `NAV_ITEMS` addition, not a `designer`-owned
-file.
+★ **CORRECTION, per the lead's sync-1 review: there is no `admin/designer/page.tsx`.**
+`src/app/[locale]/app/admin/designer/` holds only `[documentId]/` — `ls` confirms it, and I should
+have run that instead of inferring a landing page from the directory's existence. `/app/admin/designer`
+is not a route; **`التصاميم` discloses exactly `templates/posters` and `templates/certificates`**
+(the table above is corrected), and a designer document stays reached only from its template, as
+today — no rail entry to add, and no `designer`-file question to raise. The one real, still-true
+observation from that pass stands on its own: `NAV_ITEMS` (`admin/layout.tsx:52-85`) has **20**
+entries today (verified by counting `{ key: "…"` occurrences, minus the type declaration's own
+`{ key: string; … }` on line 50, which matches the same grep), not the header comment's stated 19 —
+a stale-by-one comment, not a missing route. Nothing to fix beyond noting it; the comment gets
+corrected in the same commit as the regroup since I'm editing that file anyway.
 
 **Data model.** `AdminRailItem` (`components/admin/admin-rail.tsx`) gains an optional
 `children?: AdminRailItem[]`. A leaf item (no `children`) renders exactly as today. A group item
@@ -1395,15 +1400,16 @@ own missing capture (§4) at the same time.
 - **The populated photo-report card on `moderation/reports`** — never captured in wave 6. Taken as
   part of K1/K2's capture pass (§2), since the shared `Tabs` strip (§3) touches that page's markup
   anyway and the capture should reflect the final shape, not a pre-strip one.
-- **The dashboard's «أكثر …» alignment** — investigated before planning further work: `page.tsx`'s
-  `TopList` (`app/admin/page.tsx:15-40`) already renders `flex items-baseline justify-between`, which
-  pushes the count to the row's far edge regardless of name length — i.e. it already reads as "the
-  pipeline"'s style, not "beside the name." Either this was fixed in a commit after the carried note
-  was written, or the note describes a visual impression from a capture that the class names don't
-  bear out. **Closing this without a code change**, pending one more look: I will pull
-  `scr-040-dashboard-390-rtl*.png` (whichever capture exists from wave 6) before writing it off
-  entirely, and only reopen it if that capture actually shows misalignment the classes above don't
-  explain.
+- **The dashboard's «أكثر …» alignment — CLOSED, no code change, confirmed by opening the actual
+  capture** (`.qa-shots/rtl/scr-040-admin-dashboard-390-rtl-phone.png`, per the lead's sync-1
+  instruction not to close it on the class read alone). `page.tsx`'s `TopList`
+  (`app/admin/page.tsx:15-40`) renders `flex items-baseline justify-between`, and the capture shows
+  exactly what that predicts: every «أكثر …» card («أكثر المُقدِّمين مشاركة» etc.) pins its count to
+  the row's far edge, and «مسار المقترحات» (the pipeline list directly above it, same screen) pins
+  its counts to the same edge, at the same horizontal position. The two sections read identically in
+  the actual render — the carried finding does not reproduce today, whether because it was already
+  fixed by the time this capture was taken or because it described a different impression. Nothing to
+  build.
 - **`admin.attendance.*` and the walk-in keys, after `checkin` moves them.** `admin.json`'s
   `attendance` namespace (`ar.json:360-408`, `en` twin) is SCR-044's strings — the screen transfers to
   `checkin` this wave (`DEC-137`: `★ admin/sessions/[id]/attendance` — C3). **Not touched by me until
@@ -1418,28 +1424,25 @@ own missing capture (§4) at the same time.
 
 ### 5. Requests and questions
 
-**5.1 — For the lead.**
+**5.1 — For the lead. RULED, sync 1.**
 
-1. **The 14-vs-15 count in `16` §6.7.** My working reading (§1): `لوحة` is the root/home link, not
-   one of the fourteen groups. If that's wrong, tell me which of the other fourteen tokens is not
-   its own group (a merge I haven't guessed, e.g. `الأعضاء`+`الشركات`) before I build the grouping
-   table above into code.
-2. **`admin/designer`'s missing nav entry** (§1) — a real gap (the studio landing page is
-   unreachable from the rail today), not something I introduced. I'm adding it under `التصاميم` in
-   the same commit as the regroup, since it's a one-line `NAV_ITEMS` entry and `admin/designer/**`
-   itself stays untouched. Flagging in case `designer` would rather land it themselves.
+1. ~~The 14-vs-15 count in `16` §6.7.~~ **Ruled: `لوحة` is the root/home link, not one of the
+   fourteen groups; the other fourteen tokens each map to their own group.** Grouping table above
+   built as planned, no merge.
+2. ~~`admin/designer`'s missing nav entry.~~ **Withdrawn — my own error.** There is no
+   `admin/designer/page.tsx`; see the ★ CORRECTION above. `التصاميم` discloses `templates/posters`
+   and `templates/certificates` only.
 3. **Four rail icons still on interim/reused glyphs** since wave 6 (tag, building, palette/swatch,
-   gear — `docs/plan/notes/console.md:582-592`, still open). Not blocking this wave's build; repeating
-   the request since the regroup is the natural point to also carry it into `icons.tsx` if it's
-   landed by then.
+   gear — `docs/plan/notes/console.md:582-592`, still open). **Ruled: build with the interim glyphs
+   this wave; the request stands in this note and the lead routes it.** Not blocking.
 
-**5.2 — For `checkin`.** Confirm (a) the `checkin.json` namespace and key names the attendance
-screen's strings land under, so I know `admin.json`'s `attendance` object is safe to delete, and
-(b) whether any walk-in-setting string is going into `admin.json` at all (my grep found none there
-today) or staying entirely inside `checkin`'s own files — if the latter, §4's "walk-in keys" item
-closes as a non-issue rather than a delete.
+**5.2 — For `checkin`.** Asked; the lead is routing it with their approval attached. **Do not delete
+`admin.json`'s `attendance` object until the lead confirms `checkin`'s strings are live** — holding.
 
 **5.3 — For `sessions`.** None this wave — `listVenuesForAdmin` and its write actions in
-`lib/dal/sessions.ts` need no change for K3's rebuild (§2). Flagging only for visibility: `venues`
-stops being "already built, wave 1, untouched" (`console.md:23-24`'s original framing) as of this
-wave.
+`lib/dal/sessions.ts` need no change for K3's rebuild (§2), **ruled**: consume as-is. Flagging only
+for visibility: `venues` stops being "already built, wave 1, untouched" (`console.md:23-24`'s
+original framing) as of this wave.
+
+**5.4 — The dashboard «أكثر …» alignment.** Ruled by the lead: open the capture before closing it —
+done, closed, recorded in §4.
