@@ -1073,6 +1073,42 @@ real build yet**, `.next/BUILD_ID` has predated every commit in this wave so far
 test files flagged to their owners rather than edited (`sessions-admin-proposals.spec.ts` to
 `sessions`, with the exact fix; several transient DAL-shape failures in `content`'s and `sessions`'
 own files, not touched). One cross-track-relevant bug found and fixed (the React Flight
-factory-prop trap, §9) — reported to the lead in case it recurs elsewhere. Not yet done: the lead's
-rebuild + a real look at every `.qa-shots/rtl/wave6-console-*` capture, which is the actual bar
-`DEC-130` sets, not the floor `scripts/ui-reach.mjs` checks.
+factory-prop trap, §9) — reported to the lead in case it recurs elsewhere.
+
+### 11. The lead's real build found three more things this wave's jsdom coverage could not
+
+`npm test`/`tsc`/`lint` all being green never proved the app actually renders for a real request —
+only a real Next.js build does, and the lead ran several. Two rounds of fixes landed on top of the
+six "done" commits above, each its own commit as the lead asked:
+
+- **`1f4fffe` — the real BLOCKER.** `AdminRailItem` carried `Icon: ComponentType<...>`, built in
+  `admin/layout.tsx` (server) and passed to `admin-rail.tsx` ("use client"). `icons.tsx` is not a
+  client module, so its exports are plain functions, and React Flight refuses to serialise ANY
+  function crossing that boundary — not just the "factory returning a bound Server Action" shape
+  `§9` already found, but the plainer case of a component reference itself. **Every admin page
+  crashed for every staff member**, and none of this wave's own jsdom tests could have caught it —
+  jsdom has no React Flight boundary to enforce against. Fixed by moving the icon set into
+  `admin-rail.tsx` itself (the client module, so the functions never leave it) and passing a string
+  key (`icon: "home"`) instead. Same commit fixed the member-404 regression: `requireStaffSession()`
+  called `notFound()` **inside the layout**, and under Next 16's streaming contract a `notFound()`
+  raised under a `loading.tsx` boundary (an implicit `<Suspense>`, unrelated to anything this wave
+  added) can no longer set the response status once streaming starts — 200, not 404. Replaced with
+  `requireSession()` (never `notFound()`s an authenticated member) and moved the actual gate back to
+  every page's own existing check, which is what this file's own header comment already said the
+  design was.
+- **`1ee207a` — three smaller findings, one commit.** (1) Every "confirm {object}?" dialog title
+  interpolated a bare `{title}`/`{name}`/`{session}` — `sessions`' own catalogue test caught
+  `rejectConfirmTitle`; checked and fixed all FOUR dialogs across all five routes rather than only
+  the one reported, including `removeConfirmTitle`'s `{session}`, which that test's own regex does
+  not check for (`{title}`/`{name}` only) but is the identical bug. (2) `admin-proposals.spec.ts`'s
+  seed had no `category_id`, NOT NULL since `0010` — a schema fact this track's own plan-reading
+  should have caught and did not. (3) `sessions-table.tsx` hand-copied the house bordered-box class
+  string `ui-lint` (`REQ-UIX-001`) exists specifically to catch — replaced with `ui/panel`.
+
+**The pattern worth naming:** every one of these five bugs (the RSC factory-prop trap, this RSC
+component-reference trap, the streaming/`notFound()` interaction, the bidi gap, the schema
+constraint) is exactly the class this milestone's own testing strategy predicts jsdom cannot catch
+— a real request, a real database constraint, a cross-file catalogue sweep. `npm test` green was
+never the claim that the app works; it was the claim that what jsdom CAN check, it does. Not yet
+done: the lead's next rebuild + a real look at every `.qa-shots/rtl/wave6-console-*` capture, the
+actual `DEC-130` bar.
