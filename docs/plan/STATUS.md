@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. ★ **`0082`–`0091` rehearsed on production's schema: all ten clean, RLS 791/791.** **The owner, in this order: (1) `supabase db push` `0082`–`0091` to production, (2) runs `DEC-143`'s scoped data fix, (3) merges PR #24 — the push precedes the merge (below) — and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
+**Last updated:** 2026-09-17 · **Branch:** `wave-8/screens` (draft PR #25) · **`main`:** **LAUNCHED 2026-09-15; wave 7 merged 2026-09-16** (PR #24, `4f19cd6`; `0082`–`0091` live on production) · **Phase:** ★★ **WAVE 8 — Step 0 landed.** Task one: `e7d0657` (Next 16.3.5; the patch and `patch-package` retired; reserve probe 16/16 twice against a 7/16 control — `DEC-146`, `DEC-147`); then the wave-8 map, all ten agent files and the checklist below. **Next: spawn `designer`, `console`, `platform`, `branding`, planning first.** ★ **Server Action IDs rotate when this wave deploys — the owner deploys outside a scheduled session.** The wave-8 block is directly under START HERE.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-137`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-7 map is the map in force** (`DEC-137`); wave 6's and wave 5's are the record |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-147`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-8 map is the map in force** (`DEC-147`); waves 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -69,13 +69,128 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 7's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-137`). A
-wave-8 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 8's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-147`). A
+wave-9 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 7 — COMPLETE on `wave-7/screens` (PR #24, the owner merges) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
+## ★★ WAVE 8 — IN PROGRESS on `wave-8/screens` (draft PR #25) — the last nineteen routes onto the M9 system, gradient posters and the certificate library (`DEC-147`)
+
+**The owner's goal, in substance** (`docs/plan/notes/wave-8-lead.md`): **finish the redesign's route coverage**
+— nineteen routes, and the whole app is on the M9 system — and build `DEC-127` (the gradient poster background,
+the `canvasRaise` token) and `DEC-128` (the certificate library) in the files they live in, so no screen is
+rebuilt twice. **Multi-day sessions are wave 9's whole subject. Do not start wave 9.**
+
+**The measure** (`DEC-147`, as `DEC-137`'s). A row closes only when **(1)** `node scripts/ui-reach.mjs --wave8`
+shows the page reaching an **M9** primitive (strict), **and (2)** a 390 px RTL capture exists **at the path the
+row cites** — `.qa-shots/rtl/wave8-<track>-<route>-<state>.png` in the **main checkout**, phone project,
+`390 × 844` — from a production build the row names by commit, **opened by the lead**, with the spec that
+regenerates it named in the row. `.qa-shots/` is gitignored: the row text is the only artefact anyone
+downstream can trust.
+
+**Baseline at Step 0 (`e7d0657`):** `--wave8` **2/20 strict** (8/20 loose) — the schedule reaches `ui/date-time`
+and scoring reaches `ui/combobox` through the member picker; neither is on the system. By group: `(auth)` 3/3 ·
+`/app` 1/1 · `app/sessions` 6/6 · `app/me` 7/7 · `app/admin` 14/24 · `app/platform` 0/7. ★ **Outside those
+groups and outside the brief's nineteen**, `verify/[code]` and `legal/{privacy,terms}` do not reach the system
+either; they are named here so «the whole app» is not over-claimed, and they are not this wave.
+
+### Before anyone spawns — task one and Step 0
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **Task one — `DEC-146`**: `next` 16.2.10 → 16.3.5; the patch, `react-dom-ping-patch.test.ts`, `patch-package` and `postinstall` out together; the lock through Docker | `e7d0657` | the probe below; the gates in `DEC-147` |
+| ✅ | **Step 0**: the wave-8 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`designer`, `platform`, `branding` four waves stale); this checklist; `DEC-147`; `scripts/ui-reach.mjs --wave8` | the Step 0 commit | — |
+
+**The reserve probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, production builds, back to back):
+
+| Build | Result |
+|---|---|
+| 16.3.5 as shipped, run 1 | **16/16** — 105–211 ms (load average 32: the build had just finished) |
+| 16.3.5 **with React's fix undone** in the vendored `react-dom` (the control, `$scratchpad/wt-verify`) | `104 STUCK 107 STUCK STUCK 105 105 STUCK 108 105 STUCK 106 106 109 STUCK STUCK` — **7 of 16 hung** |
+| 16.3.5 as shipped, run 2 | **16/16** — 105–108 ms |
+
+**Gates on task one's tree (`e7d0657`):** `tsc` clean (app, worker) · lint **0 errors** (`✖ 24 problems (0 errors,
+24 warnings)`) · vitest **145 files, 1440/1440** · build green · `qa` **44 passed, 0 failed** · `visual`
+`wave-6-final → wave-8-task-one` **0.000 % on all eight pairs** · `db:reset` clean + RLS **72 files, 791 passed, 4
+todo** · `parity` **21 of 28 pass** (path 4 skips loudly without `cwebp`; CI runs 28 in the image) · e2e **426
+passed, 7 failed, 11 did not run** — every failure green alone or explained in `DEC-147`, including an interleaved
+`budgets` A/B against 16.2.10 that found **no LCP regression and 13 KB less JS** on 16.3.5.
+
+### The checklist — every route named
+
+| # | Owner | Route / work | Serves | (1) `--wave8` | (2) capture — path · spec · build | State |
+|---|---|---|---|---|---|---|
+| L1 | lead | **task one** — Next 16.3.5, the patch retired | `DEC-146` | — | the probe above | **closed** `e7d0657` |
+| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (incidental: `ui/date-time`) | `wave8-lead-schedule-*.png` · spec to write · build to name | **open** — the lead's plan decides, and records here, whether `DEC-075`'s two-tab re-cut and `REQ-SES-016`'s one-day behaviours (end follows duration, validation on blur) are in; the walk-in parameter stays `default null` = unchanged (`DEC-141`) |
+| L3 | lead | ★ `org_domains`' check converged across environments — a migration, **rehearsed against a production schema dump** | invariant 3, `REQ-TEN-*`, `DEC-147` | — | — | **open** — ★ **corrected diagnosis** (`DEC-147`): the normalise trigger lowercases before the check, so no member is refused today; the drift is real and is fixed as a convergence. **Needs the owner's schema dump** |
+| L4 | lead | the worker's startup line says «polling every 60 s»; it is 15 s (`DEC-057`) | `REQ-NFR-016` | — | — | **open** |
+| L5 | lead | `REQ-EVT-010` reconciled with the pipeline | `DEC-139` | — | — | **closed** — already amended in wave 7 (`01-prd.md`, «Photos publish without moderation, the moment their metadata is stripped»); `0091` carries the no-reload clause |
+| L6 | lead | ★ **the parity goldens move** — every before and after reviewed by eye, then committed | `REQ-DSG-015`, `DEC-127` | — | the harness's diff images | **open** — after D6 |
+| L7 | lead | promotion — `designer`'s roster seed, `branding`'s brand-kit columns, anything proposed — with `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | invariants 3, 5, 6 | — | — | **open** |
+| D1 | `designer` | `/app/admin/designer/[documentId]` — mobile view and approve | SCR-057 · `REQ-DSG-005`, `010`, `022`, `DEC-093`, `DEC-096` | · | `wave8-designer-editor-*.png` | **open** |
+| D2 | `designer` | `/app/admin/templates/posters` | SCR-055 · `REQ-ADM-013`, `REQ-DSG-004`, `007`, `008`, `024`, `026` | · | `wave8-designer-templates-posters-*.png` | **open** |
+| D3 | `designer` | `/app/admin/templates/certificates` | SCR-056 · same | · | `wave8-designer-templates-certificates-*.png` | **open** |
+| D4 | `designer` | `/app/admin/sessions/[id]/certificates` — review, release, revoke, **and the template chosen at issue time** | SCR-045 · `REQ-CRT-004`, `011`, `DEC-128` | · | `wave8-designer-certificates-*.png` | **open** |
+| D5 | `designer` | ★ **`DEC-128`** — the certificate library and the completed poster roster, seeded by a new migration; **the roster counted in CI** | `REQ-DSG-026`, `DEC-125`, `DEC-128` | — | — | **open** — ★ **contract 3 first**: what a baseline row is, ruled by the lead at sync 1 |
+| D6 | `designer` | the scheme passed at every call site; gradient parity cases **in both directions** | `REQ-DSG-014`, `015`, `DEC-125`, `DEC-127` | — | — | **open** — after B1 |
+| K1 | `console` | `/app/admin/audit` | SCR-062 · `REQ-ADM-018` | · | `wave8-console-audit-*.png` | **open** |
+| K2 | `console` | `/app/admin/exports` | SCR-061 · `REQ-ADM-017`, `REQ-INT-006` | · | `wave8-console-exports-*.png` | **open** |
+| K3 | `console` | `/app/admin/reminders` | SCR-060 · `REQ-NTF-*` | · | `wave8-console-reminders-*.png` | **open** |
+| K4 | `console` | `/app/admin/recognition` — with the held achievement certificates | SCR-054 · `REQ-REC-*`, `REQ-CRT-012` | · | `wave8-console-recognition-*.png` | **open** |
+| K5 | `console` | `/app/admin/scoring` — the fixed catalogue and the company rules | SCR-053 · `REQ-PTS-004` … `010`, `REQ-ADM-011` | ✓ (incidental: `ui/combobox`) | `wave8-console-scoring-*.png` | **open** |
+| K6 | `console` | `/app/admin/emails` — around what it does today, **not** the email studio | SCR-058 · `REQ-ADM-014`, `REQ-NTF-007`, `008` | · | `wave8-console-emails-*.png` | **open** |
+| P0 | `platform` | the console's layout and navigation, with `ImpersonationBanner` | SCR-080 … 085 · `REQ-ADM-001`, `REQ-UIX-017` | · | `wave8-platform-shell-*.png` | **open** |
+| P1 | `platform` | `/app/platform` | `REQ-ADM-001` | · | `wave8-platform-home-*.png` | **open** |
+| P2 | `platform` | `/app/platform/orgs` — create, suspend, the first admin | SCR-080 · `REQ-ADM-001`, `REQ-TEN-*` | · | `wave8-platform-orgs-*.png` | **open** |
+| P3 | `platform` | `/app/platform/orgs/new` | SCR-081 | · | `wave8-platform-orgs-new-*.png` | **open** |
+| P4 | `platform` | `/app/platform/orgs/[id]/domains` — contract 4 | SCR-082 · `REQ-TEN-*` | · | `wave8-platform-domains-*.png` | **open** |
+| P5 | `platform` | `/app/platform/templates` — the platform library, with `DEC-128`'s roster | SCR-083 · `REQ-DSG-008`, `026` | · | `wave8-platform-templates-*.png` | **open** |
+| P6 | `platform` | `/app/platform/metrics` — aggregate only | SCR-084 · `REQ-ADM-003` | · | `wave8-platform-metrics-*.png` | **open** |
+| P7 | `platform` | `/app/platform/impersonate` — and the banner on an org screen | SCR-085 · `REQ-ADM-002`, `019`, `DEC-014` | · | `wave8-platform-impersonate-*.png` | **open** |
+| B0 | `branding` | ★ **contract 1, as types** — the `background` union and `canvasRaise` | `DEC-127` | — | — | **open** — day one; unblocks `designer` |
+| B1 | `branding` | ★ the gradient rendered and collected — **both silent traps red first** — and the LTR mirror `360 − angle` in the renderer | `REQ-DSG-021`, `DEC-127` | — | — | **open** |
+| B2 | `branding` | `canvasRaise` in the brand kit — columns, `brand_kit()`, `save_brand_kit()`, `getBrandKit()`, the schema | `REQ-DSG-021`, `REQ-ADM-015` | — | — | **open** |
+| B3 | `branding` | `/app/admin/branding` — the preview carries a gradient surface | SCR-059 · `REQ-ADM-015`, `REQ-DSG-019`, `021` | · | `wave8-branding-*.png` | **open** |
+
+★ Every capture path above is the **prefix** the row will cite in full; a row closes on the exact file names, the
+spec and the build.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| `console` | the populated photo-report card on `moderation/reports` has e2e coverage and no 390 px capture — take it when `moderation/**` is next touched | wave 6 row 14, wave 7 |
+| `console` | `console.spec`'s untouched-route capture at Pixel 7's 412 px; the dashboard's «أكثر …» cards — **closed or not, stated in its plan** | wave 6 |
+| `designer` | a member re-added after a removal gets no new attendance certificate (`fan_out_certificates()` fires only into `completed`) — **this wave or not, stated in its plan** | wave 7, sync 1 |
+| `designer` · `console` · `platform` | `noValidate` on the eleven forms wave 7 found with a native `required` — every one is in this wave's routes except `me/privacy` (deliberate) | wave 7, sync 5 |
+| lead (custodian) | `content`: the photo tile's takedown label wraps under a half-width tile; a save pressed before hydration on `/app/me`. `sessions`: the filter sheet's native date mask; `0085`'s `ratings.edited_at` at millisecond precision | wave 6, wave 7 |
+| lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
+| lead | watch, not open: `bookmarks:237` and `notify-screens:108` under full-suite load (post-action refetch) — if either recurs as «never updates», read `DEC-135` first, then remember `DEC-146` retired its cause | wave 7 |
+
+### Order inside the wave
+
+1. **Task one and Step 0** — done, before anyone spawns. Push; the draft PR is #25.
+2. **Spawn** `designer`, `console`, `platform`, `branding` with a **planning-first** task: each writes its plan
+   into `docs/plan/notes/<name>.md` and edits nothing else until the lead approves it. **`branding`'s contract 1
+   (types only) may land before its plan is approved**, because it unblocks `designer`.
+3. **Sync 1** — the four plans read in full and answered; **contract 3 ruled** (what a baseline row is) before
+   anyone seeds; the studio's M12 mechanics in or out; the lead's own schedule plan written beside them.
+4. The tracks build. At each sync (`TEAM.md` §3) the lead promotes SQL, builds **committed HEAD** in the
+   verification worktree (`$scratchpad/wt-verify`, own `npm ci`, a two-line `.env.local`), runs e2e there with
+   `E2E_SHOTS_DIR` set to the main checkout's `.qa-shots/rtl` and `STUBBED_SERVER_LOG`, opens every capture at
+   full resolution where a glyph or sign order matters, and ticks rows here only against `ui-reach --wave8` and a
+   capture actually opened.
+5. The lead's own rows (L2–L4) between syncs; L3 when the owner's schema dump is in hand; L6 after `designer`'s
+   `--update`.
+6. Freeze, the final build and the full gate set on the final commits — `parity` included — this file, the PR
+   ready; **the owner merges.** ★ **The migration order for this wave is written here before the PR is marked
+   ready**, from what its migrations add or remove, as wave 7's was.
+
+
+---
+
+## ★★ WAVE 7 — COMPLETE and MERGED (PR #24, `4f19cd6`; `0082`–`0091` pushed) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
 
 **The owner's goal, in substance:** put the remaining member and staff routes onto the M9 design system —
 about eighteen routes in the brief, **twenty-two pages and the admin IA** once every route is named — with

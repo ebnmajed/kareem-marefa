@@ -17,6 +17,7 @@
 //   node scripts/ui-reach.mjs -v         every route, ✓ or ·
 //   node scripts/ui-reach.mjs --wave6    the fourteen of DEC-130
 //   node scripts/ui-reach.mjs --wave7    the twenty-two pages and the admin layout of DEC-137
+//   node scripts/ui-reach.mjs --wave8    the nineteen routes and the platform layout of DEC-147
 //   node scripts/ui-reach.mjs --loose    count the pre-M9 files too
 //   node scripts/ui-reach.mjs <file…>    any files, with the path that reaches
 
@@ -116,6 +117,29 @@ const WAVE7 = [
   ["console", `${L}/app/admin/settings/page.tsx`],
 ];
 
+const WAVE8 = [
+  ["lead", `${L}/app/admin/sessions/[id]/schedule/page.tsx`],
+  ["designer", `${L}/app/admin/designer/[documentId]/page.tsx`],
+  ["designer", `${L}/app/admin/templates/certificates/page.tsx`],
+  ["designer", `${L}/app/admin/templates/posters/page.tsx`],
+  ["designer", `${L}/app/admin/sessions/[id]/certificates/page.tsx`],
+  ["console", `${L}/app/admin/audit/page.tsx`],
+  ["console", `${L}/app/admin/exports/page.tsx`],
+  ["console", `${L}/app/admin/reminders/page.tsx`],
+  ["console", `${L}/app/admin/recognition/page.tsx`],
+  ["console", `${L}/app/admin/scoring/page.tsx`],
+  ["console", `${L}/app/admin/emails/page.tsx`],
+  ["platform", `${L}/app/platform/layout.tsx`],
+  ["platform", `${L}/app/platform/page.tsx`],
+  ["platform", `${L}/app/platform/orgs/page.tsx`],
+  ["platform", `${L}/app/platform/orgs/new/page.tsx`],
+  ["platform", `${L}/app/platform/orgs/[id]/domains/page.tsx`],
+  ["platform", `${L}/app/platform/templates/page.tsx`],
+  ["platform", `${L}/app/platform/metrics/page.tsx`],
+  ["platform", `${L}/app/platform/impersonate/page.tsx`],
+  ["branding", `${L}/app/admin/branding/page.tsx`],
+];
+
 const files = args.filter((a) => !a.startsWith("-"));
 const mode = loose ? "loose" : "strict";
 
@@ -124,8 +148,8 @@ if (files.length) {
     const t = trail(path.join(root, f));
     console.log(`${t ? "✓" : "·"} ${f}${t ? "\n    " + t.map(rel).join("\n    → ") : ""}`);
   }
-} else if (args.includes("--wave6") || args.includes("--wave7")) {
-  const wave = args.includes("--wave7") ? WAVE7 : WAVE6;
+} else if (args.includes("--wave6") || args.includes("--wave7") || args.includes("--wave8")) {
+  const wave = args.includes("--wave8") ? WAVE8 : args.includes("--wave7") ? WAVE7 : WAVE6;
   let ok = 0;
   for (const [owner, f] of wave) {
     const hit = reaches(f);
