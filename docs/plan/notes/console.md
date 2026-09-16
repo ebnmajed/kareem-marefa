@@ -1003,3 +1003,41 @@ doesn't match what the tree can support is a question, not something to implemen
   dialog, and `admin.sessions.errorSummaryTitle`/`errors.*` are new — the form had no error-summary
   copy at all before (`invalid`/`failed` were single generic strings), since `<FormSummary>` is new
   work here, not a re-skin.
+
+### 9. As built — members (`ef0586a`), and a real bug found here that reached back into sessions too
+
+- **A genuine React Flight serialisation trap, found while trying to unit-test the row actions —
+  not by reading the code.** `members-table.tsx` (and `sessions-table.tsx`, already committed)
+  passed a FACTORY prop from `page.tsx` to a `"use client"` table — `changeRoleAction: (id) =>
+  changeRole.bind(null, locale, id)`. That reads as "a bound Server Action per row" and `tsc`
+  accepts it without complaint, but the value crossing the server/client boundary is the OUTER
+  arrow function, which is a plain closure, not a Server Action reference — only the RESULT of
+  `.bind()` on a `"use server"` export carries the marker React Flight knows how to serialise.
+  Flight would refuse this at the point it actually tries to send the RSC payload. Both routes are
+  dynamic (session-gated), so this would not have surfaced in `npm run build` either — only at a
+  real request, which is why "only `npm run build` catches it" (this repo's own recurring caution
+  for Server Actions) undersells the risk here. **Fixed the same way in both files:** `page.tsx`
+  builds a plain `Record<id, boundAction>` map ONCE via `Object.fromEntries(rows.map(r => [r.id,
+  action.bind(null, locale, r.id)]))` and hands the finished map down; the client table indexes into
+  it per row. `sessions-table.tsx`'s `runTransitionAction` prop became `transitionActions` in the
+  same pass, once the shape of the bug was clear from fixing it here first.
+  ★ **How it was actually found:** members-table.tsx's OWN jsdom test tried `vi.spyOn` on the
+  imported `./actions` module directly and hit `server-only`'s own throw immediately (`actions.ts`
+  transitively imports `lib/dal/admin-members.ts`) — which is what forced the redesign to
+  props-not-imports in the first place, and made the factory-vs-map distinction visible once actions
+  became props instead of direct calls. Reading the component alone would not have caught it; the
+  jsdom test would have PASSED either way, since jsdom has no React Flight boundary to enforce this
+  — only a real Next.js server render does. Worth restating for whoever reads this later: **a green
+  jsdom test does not prove a Server-to-Client prop is real Server Action, only that the function
+  behaves correctly once called** — this class of bug needs either a real dev-server request or
+  reading the RSC rules directly, not a unit test.
+- **A feature dropped in the first draft, restored once missed:** the deactivation note (who, when,
+  why) existed in the pre-wave-6 screen (`deactivatedNote`, already translated, simply unused after
+  the rebuild) and REQ-ADM-009's own audit-visibility intent wants it. Needed `getOrgPrefs()` added
+  to `page.tsx` (not called there before) for the time zone `formatDateTime` needs.
+- `tests/e2e/admin-members.spec.ts` (this track's own file) rewritten, not flagged elsewhere — three
+  of its four tests are now desktop-only (`DataTable`'s phone card list has no `role="row"` to scope
+  a member by; the fourth, the 390 px capture, already was phone-only). Not a workaround: a real
+  browser's accessibility tree excludes a `display:none` subtree entirely, so `getByRole` queries
+  resolve singularly regardless of viewport — the row-scoping itself is what only desktop's `<table>`
+  offers.
