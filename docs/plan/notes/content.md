@@ -1377,3 +1377,45 @@ pure synchronous state-comparison logic with no React-scheduling ambiguity — n
 caveat needed here; it directly proves the fix.
 
 Ready for sync.
+
+## §17 — catching network-level rejections across every transition
+
+The lead's real-build finding: a request failing at the NETWORK level (offline, a dropped
+connection) makes the Server Action call itself REJECT, not return an `{error}` value. Uncaught
+inside `startTransition`, that's a render error — React replaces the WHOLE event page with the
+route's error boundary, losing whatever the member typed. Fixed with try/catch at every transition
+call site across my four surfaces (event, materials, photos, tasks) — 9 call sites in 7 files.
+
+**toggleLike's rollback, reasoned rather than assumed**: the lead asked for an explicit rollback of
+the optimistic reaction on a throw. Read `useOptimistic`'s own reducer first: `count: likeCount +
+(nextReacted ? 1 : -1)` always computes off the REAL base total (`likeCount`, a prop), never off the
+CURRENT optimistic value — so a second `setOptimisticReaction` dispatch trying to "undo" the first
+has no value that reconstructs the exact original pair; it would either repeat the flip or land one
+off. No redispatch added. Catching the throw lets the transition settle NORMALLY instead of crashing,
+and `useOptimistic` discards the optimistic override once it does — the identical mechanism the
+existing `result.error` branch already relied on (confirmed by its own comment, unchanged). Added a
+test proving this holds for a THROW, not just a returned error, since the mechanism is the same one
+but exercised via a different exit.
+
+**settings-form.tsx is the one real exception**: no `useOptimistic` there, so nothing reverts
+automatically — added an explicit `previous` capture and revert, plus wired in `useToast` (this
+component had neither error handling nor a toast import before this).
+
+**Broadened beyond comments**: the lead's list named uploaders/tasks/takedown explicitly ("wherever
+an awaited Server Action sits in a transition without a catch") — I read this as covering the
+uploaders' `fetch()` calls too, since an uncaught fetch rejection is the identical crash shape even
+though it's a Route Handler, not a Server Action. Wrapped both upload forms' entire request chain.
+
+**New message keys, ar first**: `event.comments.errors.network`, `tasks.list.toggleFailed`,
+`materials.list.settingsFailed` (reused `materials.list`'s existing `uploadFailed`/photos.gallery's
+`requestHideFailed`/`restoreFailed`/tasks.form's `submitFailed` where the existing wording already
+fit, rather than adding redundant keys).
+
+**Test-file discovery**: `ui/button`'s pending label gets concatenated into the accessible name
+(`SpinnerIcon`'s own `aria-label`) while `pending=true` — a fast lookup by exact button name during
+that window can miss it; and `comment-item.tsx`'s save button's real label is "حفظ التعديل", not
+"حفظ" — caught both while writing the new tests, not guessed.
+
+tsc clean, lint 0 errors, 93/93 component tests (event/materials/photos/tasks), 698/698 unit tests.
+
+Ready for sync.
