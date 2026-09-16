@@ -6,6 +6,7 @@ import { toggleBookmarkAction } from "@/components/search/actions";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { BookmarkFilledIcon, BookmarkIcon } from "@/components/ui/icons";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { useToast } from "@/components/ui/toast";
 
 interface BookmarkButtonProps {
@@ -36,6 +37,9 @@ export function BookmarkButton({ locale, sessionId, initialBookmarked, variant =
   const toast = useToast();
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [pending, startTransition] = useTransition();
+  // The action revalidates the event page, so its response re-renders server
+  // content inside this transition — the case React 19.2 can lose (DEC-135).
+  usePendingNudge(pending);
 
   function toggle(event: MouseEvent<HTMLButtonElement>) {
     // ★ On a timeline card this button sits inside the card's own link.

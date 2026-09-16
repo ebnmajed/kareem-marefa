@@ -219,8 +219,13 @@ test("before reserving: one primary «احجز مقعدك», no calendar, the he
 test("★ after reserving: the same card, re-rendered — «أضِف إلى تقويمك» where «احجز مقعدك» was, and it survives a reload", async ({ context, page }, testInfo) => {
   // The reservation redirects back to this page, and the pending state lasts
   // until the whole page — every slot — has re-rendered, because React does not
-  // fall back to a skeleton for a section already on screen. Truthful, and slow
-  // on a busy gate; the assertion below allows for it.
+  // fall back to a skeleton for a section already on screen.
+  //
+  // ★ NO LONG TIMEOUT ON THE CONFIRMATION. A 45 s allowance here once hid
+  // React 19.2's lost ping (DEC-135): about one press in three never committed
+  // until something else updated the page. `usePendingNudge` in
+  // `ui/submit-button` is what commits it now, so a regression must fail here
+  // loudly rather than wait it out.
   test.slow();
   memberId = await signIn(context);
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
@@ -233,7 +238,7 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   // never runs, and not what this test is about.
   await page.waitForLoadState("networkidle");
   await page.getByRole("region", { name: "الحضور" }).getByRole("button", { name: "احجز مقعدك" }).click();
-  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText("تم تأكيد حجزك")).toBeVisible({ timeout: 10_000 });
 
   await page.reload();
   await streamed(page);
