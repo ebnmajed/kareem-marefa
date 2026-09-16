@@ -75,12 +75,28 @@ export function DeactivationForm({
     if (formRef.current?.reportValidity()) setConfirmOpen(true);
   }
 
+  // ★ Sync-3, the lead's real-build finding: "أُرسل طلبك" never appeared
+  // after confirming. The previous shape submitted via
+  // `type="submit" form="deactivate-form"` — a NATIVE HTML attribute
+  // lookup that has to resolve across Radix's own portal boundary
+  // (`DialogContent` renders into `document.body`, outside this
+  // component's own DOM subtree) at the exact moment `onClick` was ALSO
+  // closing the dialog. Every reasoning path said it should still work,
+  // and a jsdom test of the same shape passed (`deactivation-form.test.tsx`)
+  // — which is exactly `DEC-135`'s own lesson: jsdom cannot always
+  // reproduce a real Flight/transition timing bug, and a mechanism that
+  // "should" work is not the same claim as "does," in a production build.
+  // `requestSubmit()` on the form's own ref removes the cross-portal HTML
+  // attribute lookup entirely — the submission is dispatched directly from
+  // code that already holds the form, never through `form="id"` at all.
+  function confirmAndSubmit() {
+    setConfirmOpen(false);
+    formRef.current?.requestSubmit();
+  }
+
   return (
     <>
-      {/* `id` is what lets the dialog's confirm button — portaled outside
-          this element by Radix — submit THIS form via the native `form`
-          attribute, rather than needing a second copy of the action. */}
-      <form id="deactivate-form" ref={formRef} action={formAction} className="mt-4 max-w-xl">
+      <form ref={formRef} action={formAction} className="mt-4 max-w-xl">
         <Alert error={state.error} />
         <Field id="deactivate-reason" label={t("deactivateReasonLabel")} required className="mt-3">
           <Textarea name="reason" required minLength={3} maxLength={500} rows={3} />
@@ -94,7 +110,7 @@ export function DeactivationForm({
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent title={t("deactivateConfirmTitle")} description={t("deactivateConfirmBody")} closeLabel={t("cancel")}>
           <div className="flex gap-2">
-            <Button type="submit" form="deactivate-form" variant="danger" onClick={() => setConfirmOpen(false)} pending={pending} className="h-10 px-5">
+            <Button type="button" variant="danger" onClick={confirmAndSubmit} pending={pending} className="h-10 px-5">
               {t("deactivateSubmit")}
             </Button>
             <DialogClose asChild>

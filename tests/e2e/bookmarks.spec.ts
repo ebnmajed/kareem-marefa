@@ -144,7 +144,11 @@ test("★ REQ-DSC-006: SCR-024 lists the member's own bookmarked session, and li
   await page.goto(`/ar/app/me/bookmarks`);
 
   await expect(page.getByRole("heading", { name: "المحفوظات", level: 1 })).toBeVisible();
-  await expect(page.getByText("جلسة تستحق الحفظ")).toBeVisible();
+  // ★ Sync-3 finding: `getByText` matched both the card's own `<a>` (whose
+  // full text content includes the title) and the `<h3>` title inside it —
+  // the same "whole card is one link" fact row 155's comment already
+  // names, resolved here the same way: scope to the heading specifically.
+  await expect(page.getByRole("heading", { name: "جلسة تستحق الحفظ", level: 3 })).toBeVisible();
   await review(page, "bookmarks-page");
 
   // ★ M9: the row is `sessions`' own `SessionCard` now, not a plain list

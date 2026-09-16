@@ -106,7 +106,13 @@ test("the inbox, an unread notification marked read, and the preference matrix's
   // sees every switchable channel already enabled, straight from the DAL's
   // own default, not a seeded row.
   await page.locator("#preferences").scrollIntoViewIfNeeded();
-  await expect(page.getByText("يصلك دائمًا")).toBeVisible();
+  // ★ Sync-3 finding: `08` §2's fixed categories are three, not one — every
+  // one of them renders "يصلك دائمًا", so an unscoped `getByText` resolves
+  // to three elements. `.first()` proves the statement renders at all; the
+  // count proves all three are actually fixed, not just one of them.
+  const fixedStatements = page.getByText("يصلك دائمًا");
+  await expect(fixedStatements.first()).toBeVisible();
+  expect(await fixedStatements.count()).toBeGreaterThanOrEqual(3);
   const onToggles = page.getByRole("button", { name: /مُفعّل$/ });
   await expect(onToggles.first()).toBeVisible();
   await capture(page, "preferences");
