@@ -141,14 +141,22 @@ export function DataTable<Row>({
               a scrolling table on the PHONE, which is the card list below. */}
           <div className="hidden overflow-x-auto md:block">
             <table aria-label={label} className="w-full border-collapse text-body-sm">
-              {/* `position: sticky` on each `<th>`, not on the `<tr>` — sticky
-                  positioning on a table ROW is unreliable across browsers;
-                  every cell gets it individually, which is the portable
-                  form. */}
+              {/* ★ NOT `position: sticky` — a real build's own run found it
+                  covering row 1's own controls, not just on scroll: the
+                  wrapper above (`overflow-x-auto`) is itself a scroll
+                  container, so `sticky` on a `<th>` sticks to THAT box, not
+                  the page — with `top: var(--header-h)`, the header row
+                  sits permanently pushed down inside its own wrapper,
+                  covering the first data row outright, for a mouse click
+                  AND a keyboard focus alike. A `<thead>` cannot stick to
+                  the page from inside a horizontal-scroll container; making
+                  one stick for real needs the wrapper to be the VERTICAL
+                  scroller too (a `max-height` and `top-0`), which is a
+                  later story, not this one. */}
               <thead>
                 <tr>
                   {selection ? (
-                    <th scope="col" className="sticky top-[var(--header-h)] z-10 w-10 border-b border-edge bg-canvas px-3 py-2.5">
+                    <th scope="col" className="w-10 border-b border-edge bg-canvas px-3 py-2.5">
                       <span id={selectAllLabelId} className="sr-only">
                         {t("selectAll")}
                       </span>
@@ -165,7 +173,7 @@ export function DataTable<Row>({
                       key={col.key}
                       scope="col"
                       aria-sort={ariaSort(col)}
-                      className={`sticky top-[var(--header-h)] z-10 border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}`}
+                      className={`border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}`}
                     >
                       {col.sortable ? (
                         <button
@@ -188,23 +196,8 @@ export function DataTable<Row>({
                   const primaryCellId = `${tableId}-${key}-primary`;
                   return (
                     <tr key={key} className="border-b border-edge last:border-b-0 hover:bg-silver-100/60">
-                      {/* `scroll-mt-*` (`scroll-margin-top`) on every cell, not
-                          the `<tr>`: the property is not inherited, and a
-                          real build's own run found a keyboard user tabbing
-                          to a row's own trigger — the browser's default
-                          focus-scroll landed it right under the sticky
-                          `<thead>` (`top-[var(--header-h)]`), which then
-                          intercepted the click (SC 2.4.11). The offset is
-                          the shell's own fixed header PLUS the thead row's
-                          own rendered height (its `py-2.5` padding plus one
-                          `text-body-sm` line, ~44px) — `html`'s own
-                          `scroll-padding-block-start` (`globals.css`)
-                          already covers `--header-h` for page-level anchors,
-                          but a `<thead>` sticky WITHIN the page is invisible
-                          to that global rule, so this cell needs the whole
-                          offset itself. */}
                       {selection ? (
-                        <td className="scroll-mt-[calc(var(--header-h)+2.75rem)] px-3 py-2.5">
+                        <td className="px-3 py-2.5">
                           <IndeterminateCheckbox
                             checked={selectedSet.has(key)}
                             indeterminate={false}
@@ -217,7 +210,7 @@ export function DataTable<Row>({
                         <td
                           key={col.key}
                           id={i === 0 ? primaryCellId : undefined}
-                          className={`scroll-mt-[calc(var(--header-h)+2.75rem)] px-3 py-2.5 text-fg-body ${col.align === "end" ? "text-end" : "text-start"}`}
+                          className={`px-3 py-2.5 text-fg-body ${col.align === "end" ? "text-end" : "text-start"}`}
                         >
                           {i === 0 && rowHref ? <Link href={rowHref(row)}>{col.cell(row)}</Link> : col.cell(row)}
                         </td>
