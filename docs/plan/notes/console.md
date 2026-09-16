@@ -1612,3 +1612,16 @@ The lead's sync-3 build (`d8f0af9`) found eight real problems. All fixed, three 
    capture showing a group actually open. Added one per role.
 8. **Combobox strings** — still `admin.combobox`, not yet `ui.combobox`; reconfirmed to the lead a
    third time with the exact keys, since `ui.json` hasn't landed them yet.
+
+### R2 closed — the combobox namespace switch
+
+`ui.combobox.{removeChip,createOption,resultsCount}` landed in `ui.json` (both locales); switched
+`combobox.tsx` to `useTranslations("ui")` + the `combobox.` prefix at each call site, deleted the two
+now-dead `admin.combobox` keys (`createOption`/`removeChip`), kept `resultsCount` there for
+`member-picker.tsx`'s own separate override. The test file's `Wrap`/`WrapWithField` split collapsed
+into one `Wrap` merging both namespaces — `Combobox` now unconditionally needs `ui.combobox`
+regardless of whether it's inside a `<Field>`. 24 tests green, commit `b3ad776`. R2 is fully closed.
+
+Confirmed after the ~19:46 shared-index reset the lead flagged: all of this wave's commits
+(`addf939` through `9841c39`, plus `654ec91`) are still present in `git log`, working tree clean —
+the reset touched only what was staged at that moment, not committed history.
