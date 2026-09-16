@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-15 · **Branch:** `design/m9-m13-plan` (PR **#22** — the owner merges) · **`main`:** **LAUNCHED 2026-09-15** · **Phase:** ★★ **RESEQUENCED BY THE OWNER — the screens come first.** M9's system work is built and green, and the owner has reordered the milestone (`DEC-110` … `DEC-114`): the whole app is rebuilt to the canvas **including the admin console**, `/app` becomes the sessions timeline, the shell's disclosures are swept, and check-in becomes a manual switch. **Nothing further is implemented in this session — the next session executes it.**
+**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **RESEQUENCED BY THE OWNER — the screens come first.** M9's system work is built and green, and the owner has reordered the milestone (`DEC-110` … `DEC-114`): the whole app is rebuilt to the canvas **including the admin console**, `/app` becomes the sessions timeline, the shell's disclosures are swept, and check-in becomes a manual switch. **Nothing further is implemented in this session — the next session executes it.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -19,12 +19,12 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
 
-**The state of the tree.** M9's system work is **built, green and on this branch** — 34 `ui/`
+**The state of the tree.** M9's system work is **built, green and merged into `main`** — 34 `ui/`
 primitives, the shell, the status vocabulary, the loading and failure models, the form model, and
-the five live affordance fixes. `trace` is at **312 requirements · 145 stories · no gaps**; `qa`
-44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
+the five live affordance fixes. `trace` is at **313 requirements · 72 entities · 146 stories · no
+gaps**; `qa` 44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
 
-### ★ Four owner directives from 2026-09-16, all recorded
+### ★ Seven owner directives from 2026-09-16, all recorded
 
 1. **`DEC-124` — numerals are Western (`1 2 3`) everywhere, always.** No setting; `REQ-INT-006` is
    rewritten, `numeral_system` and `orgs.numerals` are dropped, `DEC-095`/`REQ-INT-010` subsumed.
@@ -33,8 +33,10 @@ the five live affordance fixes. `trace` is at **312 requirements · 145 stories 
    whose `NumeralSystem` parameter collapses to always-Western. ⚠ **Three of those glyphs are in
    `(marketing)/page.tsx:16`, inside the frozen contract — they can only change in M13.**
 2. **`DEC-125` — a generated poster is dark by default.** `scheme` defaulted to `'light'` in all
-   three signatures, so posters render white while every poster in the canvas is dark. Certificates
-   stay light. **This moves the parity goldens** — a reviewed diff, the lead's.
+   three signatures, so posters render white while every poster in the canvas is dark. ⚠ **This
+   entry originally said «certificates stay light»; `DEC-128` SUPERSEDED that** — certificates are a
+   library, both orientations and both schemes, chosen at issue time. **This moves the parity
+   goldens** — a reviewed diff, the lead's.
 3. **`DEC-126` — the marketing site has no door**, and it was never in the plan. `REQ-UIX-025` and
    `STORY-UIX-015` added, in **M13**, the only milestone allowed to touch the frozen routes.
 4. **`DEC-127` — the poster background is a GRADIENT**, not a flat fill: `140deg`, `{{brand.surface}}`
