@@ -17,6 +17,7 @@ import {
   allSafeAreaViolations,
   BASELINE_LIBRARY,
   brandViolations,
+  colourFieldsOf,
   declaredBindingsOf,
   presetsFor,
   validateDocument,
@@ -70,6 +71,64 @@ describe("REQ-DSG-026 — the brand constraint", () => {
       layers: [{ id: "p", kind: "image", frame: { x: 0, y: 0, w: 10, h: 10 }, image: { assetId: "some-photo" } } as never],
     };
     expect(brandViolations(withPhoto).join(" ")).toContain("embeds an asset");
+  });
+
+  it("★ every colour is a brand token that EXISTS — a gradient stop, rgb() and a misspelt token included (DEC-127)", () => {
+    const base = BASELINE_LIBRARY[0]!.document;
+    const gradient = (stops: Array<{ color: string }>): DesignDocument => ({ ...base, background: { type: "gradient", angle: 140, stops } });
+
+    expect(brandViolations(gradient([{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }]))).toEqual([]);
+    expect(brandViolations(gradient([{ color: "{{brand.surface}}" }, { color: "#1d2a42" }])).join(" ")).toContain("hard-coded colour");
+    expect(brandViolations(gradient([{ color: "rgb(29, 42, 66)" }, { color: "{{brand.canvasRaise}}" }])).join(" ")).toContain(
+      "background.stops[0].color = rgb(29, 42, 66)",
+    );
+    expect(brandViolations(gradient([{ color: "{{brand.surface}}" }, { color: "{{brand.canvsRaise}}" }])).join(" ")).toContain("unknown brand colour");
+    // A hex is reported once, not twice by the two checks.
+    expect(brandViolations(gradient([{ color: "{{brand.surface}}" }, { color: "#1d2a42" }]))).toHaveLength(1);
+  });
+
+  it("colourFieldsOf names every colour-bearing field — the background or each stop, color, fill, stroke", () => {
+    const base = BASELINE_LIBRARY[0]!.document;
+    const doc: DesignDocument = {
+      ...base,
+      background: { type: "gradient", angle: 140, stops: [{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }] },
+      layers: [
+        { id: "t", kind: "text", frame: { x: 0, y: 0, w: 1, h: 1 }, text: { literal: "ن" }, font: { family: "Amiri", size: 10 }, color: "{{brand.fgBody}}" },
+        { id: "s", kind: "shape", frame: { x: 0, y: 0, w: 1, h: 1 }, shape: { type: "rect", fill: "{{brand.spine}}", stroke: "{{brand.edge}}" } },
+        { id: "q", kind: "qr", frame: { x: 0, y: 0, w: 1, h: 1 }, qr: { binding: "session.eventUrl" } },
+      ],
+    };
+    expect(colourFieldsOf(doc).map((c) => c.path)).toEqual([
+      "background.stops[0].color",
+      "background.stops[1].color",
+      "layers[0].color",
+      "layers[1].shape.fill",
+      "layers[1].shape.stroke",
+    ]);
+    expect(colourFieldsOf({ ...doc, background: { type: "solid", color: "{{brand.canvas}}" }, layers: [] }).map((c) => c.path)).toEqual(["background.color"]);
+  });
+
+  it("★ the database's template guard walks the SAME colour fields as colourFieldsOf()", () => {
+    // Two lists of «where a colour lives» — this one and the SQL guard's —
+    // are one list only if something holds them together. Read from the
+    // proposed file while it exists, else from the promoted migration.
+    const proposed = join(process.cwd(), "supabase", "proposed", "designer", "0001_template_guard_walks_every_colour.sql");
+    const promotedDir = join(process.cwd(), "supabase", "migrations");
+    const promoted = readdirSync(promotedDir).find((f) => f.endsWith("_template_guard_walks_every_colour.sql"));
+    const file = existsSync(proposed) ? proposed : promoted ? join(promotedDir, promoted) : null;
+    if (!file) {
+      expect.fail("neither the proposed nor the promoted template-guard migration was found");
+      return;
+    }
+    const sql = readFileSync(file, "utf8");
+    expect(sql).toContain(`new.document->'background'->>'color'`);
+    expect(sql).toContain(`new.document->'background'->'stops'`);
+    expect(sql).toContain(`v_stop->>'color'`);
+    expect(sql).toContain(`v_layer->>'color'`);
+    expect(sql).toContain(`v_layer#>>'{shape,fill}'`);
+    expect(sql).toContain(`v_layer#>>'{shape,stroke}'`);
+    // …and an allowlist of the binding shape, not a denylist of `#`.
+    expect(sql).toContain(String.raw`!~ '^\{\{\s*brand\.[A-Za-z]+\s*\}\}$'`);
   });
 
   it("the only image layer anywhere is the org logo, bound rather than embedded", () => {

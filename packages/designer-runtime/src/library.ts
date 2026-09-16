@@ -25,6 +25,7 @@
  * mirror is a `direction` flip (06 §2.2).
  */
 
+import { BRAND_COLOUR_TOKENS } from './brand.js'
 import type { DesignDocument, Layer } from './model.js'
 import { SCHEMA_VERSION } from './model.js'
 import { PRESETS } from './presets.js'
@@ -383,6 +384,22 @@ export function brandViolations(document: DesignDocument): string[] {
   // version too, and this says so before it gets there (REQ-DSG-021).
   for (const hex of text.match(/"#[0-9a-fA-F]{3,8}"/g) ?? []) problems.push(`a hard-coded colour ${hex}`)
 
+  // ★ And every colour a template carries is a brand TOKEN THAT EXISTS —
+  // `rgb(…)`, `navy` and `{{brand.canvsRaise}}` are as hard-coded, or as
+  // broken, as a hex. Every stop of a gradient included (DEC-127): a
+  // gradient has no `background.color`, which is exactly where the first
+  // guard stopped looking. The database guard checks the binding SHAPE on the
+  // same fields; membership lives here, beside the token list, so there is
+  // one copy of it.
+  for (const { path, value } of colourFieldsOf(document)) {
+    const token = /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value)?.[1]
+    if (!token) {
+      if (!/^#[0-9a-fA-F]{3,8}$/.test(value)) problems.push(`a hard-coded colour ${path} = ${value}`)
+    } else if (!(BRAND_COLOUR_TOKENS as readonly string[]).includes(token)) {
+      problems.push(`an unknown brand colour ${path} = ${value}`)
+    }
+  }
+
   // No emoji. The permitted glyphs are dots, lines, chevron, check and
   // spinner, all of them drawn as shapes.
   if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(text)) problems.push('an emoji')
@@ -408,4 +425,32 @@ export function brandViolations(document: DesignDocument): string[] {
   }
 
   return problems
+}
+
+/**
+ * Every colour a document carries, with where it is — REQ-DSG-021, DEC-127.
+ *
+ * THE list of colour-bearing fields: the background's colour or every stop
+ * of its gradient, and each layer's `color`, `shape.fill` and
+ * `shape.stroke`. `brandViolations()` judges them, and the database's
+ * template guard walks the same fields (`tests/unit/designer-library.test.ts`
+ * holds the SQL to this list), so a colour field added to the model and to
+ * neither is a failing test rather than a template nobody can rebrand.
+ */
+export function colourFieldsOf(document: DesignDocument): Array<{ path: string; value: string }> {
+  const out: Array<{ path: string; value: string }> = []
+  const add = (path: string, value: unknown) => {
+    if (typeof value === 'string') out.push({ path, value })
+  }
+  const bg = document.background
+  if (bg?.type === 'solid') add('background.color', bg.color)
+  if (bg?.type === 'gradient') (bg.stops ?? []).forEach((stop, i) => add(`background.stops[${i}].color`, stop?.color))
+  document.layers.forEach((layer, i) => {
+    if ('color' in layer) add(`layers[${i}].color`, layer.color)
+    if (layer.kind === 'shape') {
+      add(`layers[${i}].shape.fill`, layer.shape.fill)
+      add(`layers[${i}].shape.stroke`, layer.shape.stroke)
+    }
+  })
+  return out
 }
