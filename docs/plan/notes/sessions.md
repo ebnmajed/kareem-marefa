@@ -2295,3 +2295,22 @@ predates every one of these commits; the build is the lead's.
   the first impression of a shared link. It is `content`'s primitive — **R7**: an optional
   `placeholderTone?: "dark"` on `CardMediaProps` (lead's type) restricting the hash to the three navy
   tints. Until then the card keeps the hash.
+
+### 42.5 Sync 3
+
+- **`a8e25d0` — specs only.** The rate specs press the star's `<label>` and then read the radio;
+  `.check()` on the visually hidden input timed out and never proved a pointer could choose.
+  `sessions-propose:304` and `leaderboards:116` matched React's hidden streamed copy: read from the
+  pages, SCR-018 renders the invitation `<h2>` once and the company board one row per company, so
+  they wait for the swap rather than scope a duplicate that does not exist.
+- **`9b2e0c5` — R2 adopted.** Co-presenters are `ui/combobox multiple` in `<Field id="coPresenters">`:
+  hidden `coPresenters` inputs, so the action is unchanged; the selection survives a failed submit.
+  `§32.3`'s checkbox fallback is gone. A native `<select>` also has role `combobox` — name the one you
+  mean in a query.
+- **R7 approved** — `placeholderTone?: "dark"` goes on `CardMediaProps`; `/s/[id]` adopts it when
+  `content` lands it.
+- ★ **A disclosure.** At about 19:46 a stray `git add -N . ; git reset -q` ran on the shared tree — a
+  whole-index reset, forbidden. The working tree was untouched and `git status` afterwards showed no
+  staged and no untracked entries, but anything another teammate had staged and not committed would
+  have been unstaged. Told the lead at once. Rule restated for myself: stage explicit paths only, and
+  nothing is ever chained onto a gate command.
