@@ -1,178 +1,182 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
-import { getPreferenceMatrix, getTemplateCatalogue, listDeliveries } from "@/lib/dal/notifications";
-import { removeEmailTemplate, saveEmailTemplate } from "./actions";
+import { KeysetPager } from "@/components/admin/keyset-pager";
+import { formatNumber } from "@/components/sessions/numerals";
+import { Link } from "@/components/ui/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { SectionHeader } from "@/components/ui/section-header";
+import { TagChip } from "@/components/ui/tag-chip";
+import { Tabs } from "@/components/ui/tabs";
+import type { Locale } from "@/i18n/routing";
+import { countDeliveryFailures, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
+import { getOrgPrefs } from "@/lib/dal/proposals";
+import { restoreDefaultTemplate, saveEmailTemplate } from "./actions";
+import { DeliveriesTable } from "./deliveries-table";
+import { TemplateEditor } from "./template-editor";
+import { TemplatesTable, type TemplateCatalogueRow } from "./templates-table";
 
-// SCR-058 · /app/admin/emails — REQ-ADM-014, REQ-NTF-007, REQ-NTF-008.
+// SCR-058 · /app/admin/emails — REQ-ADM-014, REQ-NTF-007, REQ-NTF-008, on the M9
+// system for wave 8 (K6), rebuilt around WHAT IT DOES TODAY: the string-template
+// catalogue with `08` §1's matrix beside it, the trigger's refusal at the field,
+// and the delivery log with its reasons. The email studio — blocks, the
+// three-pane editor, a preview, «أرسل اختبارًا», the designed library — is M12
+// and `notify`'s (`16` §11, `DEC-147`); none of it is here.
 //
-// Owned by `notify` for wave 2, handed to `console` at wave 3 (DEC-042's
-// pattern).
+// Admin only: the DAL answers null for anyone else and the page answers with the
+// streamed not-found (`DEC-134`).
 //
-// Two halves, and the second is the one an admin opens on a bad morning:
-// REQ-NTF-008 says a bounce or failure is visible WITH THE REASON, so the
-// delivery log renders `error` rather than a status pill that means
-// "something went wrong, ask an engineer".
-//
-// Every template is Arabic-first and RTL (08 §3.1). The editor does not
-// validate the required fields itself — the `notification_templates_validate`
-// trigger does, for every writer, and this screen renders its refusal.
+// The log is the half an admin opens on a bad morning, so a failure in the last
+// seven days is said at the top of either view, with the way to it.
 
-const field = "mt-1 block w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading";
+const PATH = "/app/admin/emails";
+const RETENTION_DAYS = 180; // OQ-019
 
 export default async function EmailsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string; key?: string }>;
+  searchParams: Promise<{ view?: string; key?: string; status?: string; before?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { saved, error, key } = await searchParams;
+  const sp = await searchParams;
+  const view = sp.view === "log" ? "log" : "templates";
+  const status = sp.status === "all" ? "all" : "failed";
+  const bound = locale as Locale;
 
-  const [t, catalogue, deliveries, prefs] = await Promise.all([
+  const [t, tn, catalogue, failures, prefs] = await Promise.all([
+    getTranslations("notifications.admin.emails"),
     getTranslations("notifications"),
     getTemplateCatalogue(locale),
-    listDeliveries(locale),
-    getPreferenceMatrix(locale),
+    countDeliveryFailures(locale, { days: 7 }),
+    getOrgPrefs(locale),
   ]);
-  if (!catalogue || !deliveries) notFound();
+  if (!catalogue || failures === null) notFound();
 
-  const byKey = new Map(catalogue.templates.filter((tpl) => tpl.channel === "email").map((tpl) => [tpl.key, tpl]));
-  const selected = key && catalogue.emailMessages.includes(key) ? key : catalogue.emailMessages[0];
-  const current = selected ? byKey.get(selected) : undefined;
-  const errorKey = error && ["missing_required_field", "unknown_message_key", "not_permitted"].includes(error) ? error : "generic";
+  const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+  const messageName = (key: string) => (tn.has(`message.${key}`) ? tn(`message.${key}`) : key);
+  const selectedKey = view === "templates" && sp.key && catalogue.emailMessages.includes(sp.key) ? sp.key : null;
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("admin.emails.title")}</h1>
-      <p className="mt-2 text-body text-fg-muted">{t("admin.emails.intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
-      {saved ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("admin.emails.saved")}
-        </p>
+      {failures > 0 ? (
+        <Panel tone="error" className="mt-6 max-w-3xl">
+          <p className="text-body-sm text-fg-heading">
+            {t.rich("failures", { count: failures, value: formatNumber(failures), bdi })}{" "}
+            <Link href={`${PATH}?view=log&status=failed`} className="underline underline-offset-4">
+              {t("failuresLink")}
+            </Link>
+          </p>
+        </Panel>
       ) : null}
-      {error ? (
-        <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-          {t(`admin.emails.errors.${errorKey}`)}
-        </p>
-      ) : null}
 
-      <section aria-labelledby="template-heading" className="mt-10">
-        <h2 id="template-heading" className="text-h2 text-fg-heading">
-          {t("admin.emails.templateHeading")}
-        </h2>
+      <Tabs
+        className="mt-6"
+        label={t("tabsLabel")}
+        value={view}
+        items={[
+          { value: "templates", label: t("tabTemplates"), href: PATH },
+          { value: "log", label: t("tabLog"), href: `${PATH}?view=log`, count: failures > 0 ? failures : undefined },
+        ]}
+      />
 
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {catalogue.emailMessages.map((msg) => (
-            <li key={msg}>
-              <a
-                href={`?key=${encodeURIComponent(msg)}`}
-                aria-current={msg === selected ? "true" : undefined}
-                className={`inline-flex h-11 items-center rounded-field border px-4 text-label ${
-                  msg === selected ? "border-edge-strong bg-silver-100 text-fg-heading" : "border-edge text-fg-body hover:border-edge-strong"
-                }`}
-              >
-                {t(`message.${msg}`)}
-              </a>
-            </li>
-          ))}
-        </ul>
-
-        {selected ? (
-          <>
-            <p className="mt-4 text-body-sm text-fg-muted">{current ? t("admin.emails.overridden") : t("admin.emails.usingDefault")}</p>
-            <form action={saveEmailTemplate} className="mt-4 max-w-2xl space-y-5">
-              <input type="hidden" name="key" value={selected} />
-              <div>
-                <label htmlFor="subject" className="text-label text-fg-heading">
-                  {t("admin.emails.subject")}
-                </label>
-                <input id="subject" name="subject" required maxLength={200} defaultValue={current?.subject ?? ""} className={field} />
-              </div>
-              <div>
-                <label htmlFor="body" className="text-label text-fg-heading">
-                  {t("admin.emails.body")}
-                </label>
-                {/* No `overflow: hidden` anywhere near a text line — it clips
-                    tashkeel (10 §2). A textarea scrolls, which is fine. */}
-                <textarea id="body" name="body" required rows={10} maxLength={20000} defaultValue={current?.body ?? ""} className={`${field} leading-[1.7]`} />
-              </div>
-              <div>
-                <label htmlFor="requiredFields" className="text-label text-fg-heading">
-                  {t("admin.emails.requiredFields")}
-                </label>
-                <input
-                  id="requiredFields"
-                  name="requiredFields"
-                  dir="ltr"
-                  defaultValue={(current?.requiredFields ?? []).join(", ")}
-                  className={`${field} text-start`}
-                />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center rounded-field bg-[var(--btn-bg)] px-7 text-label text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]"
-                >
-                  {t("admin.emails.save")}
-                </button>
-              </div>
-            </form>
-            {current ? (
-              <form action={removeEmailTemplate} className="mt-3">
-                <input type="hidden" name="id" value={current.id} />
-                <button type="submit" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-                  {t("admin.emails.remove")}
-                </button>
-              </form>
-            ) : null}
-          </>
-        ) : null}
-      </section>
-
-      <section aria-labelledby="deliveries-heading" className="mt-12">
-        <h2 id="deliveries-heading" className="text-h2 text-fg-heading">
-          {t("admin.emails.deliveries.heading")}
-        </h2>
-        <p className="mt-2 text-body-sm text-fg-muted">
-          {/* OQ-019's 180 days, in the org's numeral system like every other
-              number on the screen (REQ-INT-006). */}
-          {t.rich("admin.emails.deliveries.retention", {
-            days: formatNumber(180),
-            bdi: (chunks) => <bdi>{chunks}</bdi>,
-          })}
-        </p>
-
-        {deliveries.length === 0 ? (
-          <p className="mt-4 rounded-field border border-edge p-4 text-body text-fg-muted">{t("admin.emails.deliveries.empty")}</p>
+      {view === "templates" ? (
+        selectedKey ? (
+          <section aria-labelledby="editor-heading" className="mt-6">
+            <Link href={PATH} className="text-body-sm text-fg-heading underline underline-offset-4">
+              {t("editor.back")}
+            </Link>
+            <h2 id="editor-heading" className="mt-3 text-h2 text-fg-heading">
+              {t.rich("editor.heading", { name: messageName(selectedKey), bdi })}
+            </h2>
+            <p className="mt-1 text-caption text-fg-muted">
+              <bdi dir="ltr">{selectedKey}</bdi>
+            </p>
+            <div className="mt-4">
+              <TemplateEditor
+                messageKey={selectedKey}
+                name={messageName(selectedKey)}
+                template={catalogue.templates.find((tpl) => tpl.key === selectedKey && tpl.channel === "email") ?? null}
+                action={saveEmailTemplate.bind(null, bound)}
+                restore={restoreDefaultTemplate.bind(null, bound)}
+              />
+            </div>
+          </section>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {deliveries.map((delivery) => (
-              <li
-                key={delivery.id}
-                className={`rounded-field border p-4 ${delivery.status === "bounced" || delivery.status === "failed" ? "border-edge-strong" : "border-edge"}`}
-              >
-                <p className="text-label text-fg-heading">{t(`message.${delivery.key}`)}</p>
-                <p className="mt-1 text-body-sm text-fg-body">
-                  <bdi>{delivery.member?.displayName ?? "—"}</bdi> · {t(`admin.emails.deliveries.state.${delivery.status}`)}
-                </p>
-                {/* REQ-NTF-008: with the reason. */}
-                {delivery.error ? (
-                  <p className="mt-1 text-body-sm text-fg-heading">
-                    {t("admin.emails.deliveries.reason")}: <bdi>{delivery.error}</bdi>
-                  </p>
-                ) : null}
-                <p className="mt-1 text-body-sm text-fg-muted">
-                  {formatDateTime(delivery.sentAt ?? delivery.createdAt, prefs.timeZone, locale)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <TemplatesView locale={locale} timeZone={prefs.timeZone} catalogue={catalogue} messageName={messageName} categoryName={(c) => (tn.has(`category.${c}.name`) ? tn(`category.${c}.name`) : c)} />
+        )
+      ) : (
+        <LogView locale={locale} timeZone={prefs.timeZone} status={status} before={sp.before} messageName={messageName} />
+      )}
     </>
+  );
+}
+
+async function TemplatesView({
+  locale,
+  timeZone,
+  catalogue,
+  messageName,
+  categoryName,
+}: {
+  locale: string;
+  timeZone: string;
+  catalogue: NonNullable<Awaited<ReturnType<typeof getTemplateCatalogue>>>;
+  messageName: (key: string) => string;
+  categoryName: (category: string) => string;
+}) {
+  const matrix = await getNotificationMatrix(locale);
+  const rows: TemplateCatalogueRow[] = matrix
+    .filter((m) => m.email)
+    .map((m) => {
+      const own = catalogue.templates.find((tpl) => tpl.key === m.key && tpl.channel === "email");
+      return { key: m.key, name: messageName(m.key), category: categoryName(m.category), inApp: m.inApp, email: m.email, optional: m.optional, overriddenAt: own?.updatedAt ?? null };
+    });
+  return (
+    <section className="mt-6">
+      <TemplatesTable rows={rows} timeZone={timeZone} locale={locale} />
+    </section>
+  );
+}
+
+async function LogView({ locale, timeZone, status, before, messageName }: { locale: string; timeZone: string; status: "failed" | "all"; before?: string; messageName: (key: string) => string }) {
+  const [t, page] = await Promise.all([getTranslations("notifications.admin.emails.deliveries"), listDeliveryLog(locale, { status, before })]);
+  if (!page) notFound();
+  const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+  const base = `${PATH}?view=log&status=${status}`;
+  return (
+    <section aria-labelledby="deliveries-heading" className="mt-6">
+      <SectionHeader as="h2" id="deliveries-heading" title={t("heading")} description={t("intro")} />
+      <p className="mt-2 max-w-3xl text-body-sm text-fg-muted">
+        {t("bounceNote")} {t.rich("retention", { count: RETENTION_DAYS, value: formatNumber(RETENTION_DAYS), bdi })}
+      </p>
+      <div role="group" aria-label={t("filterLabel")} className="mt-4 flex flex-wrap gap-2">
+        <TagChip label={t("filterFailed")} href={`${PATH}?view=log&status=failed`} selected={status === "failed"} />
+        <TagChip label={t("filterAll")} href={`${PATH}?view=log&status=all`} selected={status === "all"} />
+      </div>
+      <div className="mt-4">
+        <DeliveriesTable
+          rows={page.rows.map((r) => ({ ...r, name: messageName(r.key) }))}
+          timeZone={timeZone}
+          locale={locale}
+          empty={
+            status === "failed"
+              ? { title: t("emptyFailedTitle"), action: { label: t("showAll"), href: `${PATH}?view=log&status=all` } }
+              : { title: t("emptyAllTitle"), action: { label: t("toTemplates"), href: PATH } }
+          }
+        />
+      </div>
+      <KeysetPager
+        label={t("pagerLabel")}
+        olderHref={page.nextBefore ? `${base}&before=${encodeURIComponent(page.nextBefore)}` : null}
+        olderLabel={t("older")}
+        newestHref={before ? base : null}
+        newestLabel={t("newest")}
+      />
+    </section>
   );
 }
