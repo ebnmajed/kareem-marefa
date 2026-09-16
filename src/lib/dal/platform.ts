@@ -402,6 +402,25 @@ export interface ImpersonationSession {
    * this reading, which matches what `my_impersonation()` and the hook do.
    */
   isActive: boolean;
+  /**
+   * How it ended — SCR-085's «expired» state (wave 8). `expire_impersonation_sessions()`
+   * writes `ended_at = expires_at`, and `end_impersonation()` writes
+   * `least(now(), expires_at)`, so a stop is an `ended_at` BEFORE the expiry and
+   * anything at or past it ended on its own — including a session the job has
+   * not swept yet. `null` while it is live.
+   */
+  endedBy: "stopped" | "expired" | null;
+  /** Ended, either way, within the last hour — the page says so at the top. */
+  endedRecently: boolean;
+}
+
+const RECENT_MS = 60 * 60 * 1000;
+
+function endOf(endedAt: string | null, expiresAt: string, now: number): Pick<ImpersonationSession, "isActive" | "endedBy" | "endedRecently"> {
+  const expires = Date.parse(expiresAt);
+  if (endedAt === null && expires > now) return { isActive: true, endedBy: null, endedRecently: false };
+  const ended = endedAt === null ? expires : Date.parse(endedAt);
+  return { isActive: false, endedBy: ended < expires ? "stopped" : "expired", endedRecently: now - ended <= RECENT_MS };
 }
 
 export const startImpersonationInput = z.object({
@@ -435,6 +454,7 @@ export async function listMyImpersonations(locale: string, limit = 20): Promise<
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("platform_impersonations", { p_limit: limit });
   if (error || !data) return [];
+  const now = Date.now();
   return (data as { id: string; org_id: string; org_name: string; org_slug: string; reason: string; started_at: string; expires_at: string; ended_at: string | null }[]).map(
     (r) => ({
       id: r.id,
@@ -445,7 +465,7 @@ export async function listMyImpersonations(locale: string, limit = 20): Promise<
       startedAt: r.started_at,
       expiresAt: r.expires_at,
       endedAt: r.ended_at,
-      isActive: r.ended_at === null && Date.parse(r.expires_at) > Date.now(),
+      ...endOf(r.ended_at, r.expires_at, now),
     }),
   );
 }

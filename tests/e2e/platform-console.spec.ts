@@ -52,6 +52,7 @@ let db: pg.Client;
 let a: SeededOrg;
 let b: SeededOrg;
 let platformEmail: string;
+let platformUserId: string;
 let tag: string;
 const userIds: string[] = [];
 const createdOrgIds: string[] = [];
@@ -133,11 +134,19 @@ test.beforeAll(async ({}, testInfo) => {
   // The super admin: an auth user with a row in `platform_admins` and NO
   // member row anywhere. That is the shape the whole design assumes.
   platformEmail = `super@platform-${tag}.example`;
-  const platformUserId = await makeUser(platformEmail, `مدير المنصة ${tag}`);
+  platformUserId = await makeUser(platformEmail, `مدير المنصة ${tag}`);
   await db.query(`insert into public.platform_admins (auth_user_id) values ($1)`, [platformUserId]);
 });
 
 test.afterAll(async () => {
+  // A failed case can leave a break-glass session open; close it as the job would,
+  // so a rerun's `impersonation_already_active` is never this run's leftover.
+  if (platformUserId) {
+    await db.query(
+      `update public.impersonation_sessions set ended_at = least(now(), expires_at) where platform_admin_id = $1 and ended_at is null`,
+      [platformUserId],
+    );
+  }
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
   for (const id of createdOrgIds) await db.query(`delete from public.orgs where id = $1`, [id]);
   await db.end();
@@ -180,6 +189,40 @@ async function signInMember(context: BrowserContext, email: string) {
   jar.length = 0;
   await client.auth.refreshSession();
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
+}
+
+/**
+ * The org claim on the access token the BROWSER holds right now — notes W8.0
+ * F1/F2. `@supabase/ssr` stores the session as a (possibly chunked) cookie,
+ * `base64-` prefixed; the access token's payload carries `app_metadata`, which
+ * is what RLS reads. `undefined` means no session cookie at all.
+ *
+ * ★ This is the assertion that proves what break-glass GRANTS. The audit row, the
+ * banner and the active panel are all readable without the claim, which is how
+ * a session that never reached the token passed every earlier check.
+ */
+async function orgClaim(context: BrowserContext): Promise<string | null | undefined> {
+  const chunks = (await context.cookies()).filter((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name));
+  if (chunks.length === 0) return undefined;
+  const order = (name: string) => (/\.(\d+)$/.test(name) ? Number(name.split(".").pop()) : -1);
+  chunks.sort((x, y) => order(x.name) - order(y.name));
+  const joined = chunks.map((c) => c.value).join("");
+  const raw = joined.startsWith("base64-") ? Buffer.from(joined.slice(7), "base64url").toString("utf8") : decodeURIComponent(joined);
+  const session = JSON.parse(raw) as { access_token: string };
+  const payload = JSON.parse(Buffer.from(session.access_token.split(".")[1], "base64url").toString("utf8")) as {
+    app_metadata?: { org_id?: string };
+  };
+  return payload.app_metadata?.org_id ?? null;
+}
+
+/** Start a session from SCR-085's form, as an operator would. */
+async function startFromForm(page: Page, orgId: string, reason: string) {
+  await page.goto("/ar/app/platform/impersonate");
+  await page.getByLabel(/المؤسسة/).selectOption(orgId);
+  await page.getByLabel(/^السبب/).fill(reason);
+  await page.getByRole("radio", { name: "30 دقيقة" }).check();
+  await page.getByRole("button", { name: /ابدأ الجلسة/ }).click();
+  await expect(page.getByRole("region", { name: /جلسة مفتوحة/ })).toBeVisible();
 }
 
 /**
@@ -376,12 +419,7 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
 
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
-  await page.goto("/ar/app/platform/impersonate");
-  await page.getByLabel(/المؤسسة/).selectOption(a.id);
-  await page.getByLabel(/^السبب/).fill("تحقيق في بلاغ من مشرف المؤسسة");
-  await page.getByLabel(/المدة بالدقائق/).fill("30");
-  await page.getByRole("button", { name: /ابدأ الجلسة/ }).click();
-  await expect(page.getByText(/جلسة مفتوحة/)).toBeVisible();
+  await startFromForm(page, a.id, "تحقيق في بلاغ من مشرف المؤسسة");
 
   // ★ The org's OWN admin, on the org's OWN audit screen, in a separate
   // browser context: this is the property REQ-ADM-019 asks for, and reading
@@ -427,10 +465,51 @@ test("REQ-ADM-001 · REQ-UIX-017: the console's home renders, and the rail follo
 test("REQ-ADM-002: a session cannot be silently extended — four hours is the ceiling", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/impersonate");
-  // The input refuses past 240 in the browser; the table refuses past four
-  // hours whatever the browser sends, which the RLS suite pins.
-  const minutes = page.getByLabel(/المدة بالدقائق/);
-  await expect(minutes).toHaveAttribute("max", "240");
+  // Five presets, the last the table's own ceiling: the form cannot ask for more
+  // than four hours, and the table refuses more whatever arrives (the RLS suite).
+  const group = page.getByRole("radiogroup", { name: "المدة" });
+  const values = await group.getByRole("radio").evaluateAll((els) => els.map((el) => Number((el as HTMLInputElement).value)));
+  expect(values).toEqual([15, 30, 60, 120, 240]);
+  await expect(group.getByRole("radio", { name: "ساعة واحدة" })).toBeChecked();
+  await expect(group.getByRole("radio", { name: /4 ساعات/ })).toBeVisible();
+});
+
+test("★ REQ-ADM-002 (F2, F1): starting from the page puts the org on the TOKEN, and stopping from the page takes it off", async ({ context, page }) => {
+  await signInPlatform(context);
+  expect(await orgClaim(context), "a super admin carries no org").toBeNull();
+
+  // F2 — measured red before wave 8: the session and its audit row existed, and
+  // the token never carried the org, because the refresh lived in an effect of a
+  // form the same response unmounted.
+  await startFromForm(page, a.id, "مراجعة صلاحية الجلسة على الرمز");
+  await expect.poll(() => orgClaim(context), { message: "the started session reaches the token" }).toBe(a.id);
+
+  // F1 — measured red before wave 8: the page's own stop was a plain form that
+  // ended the row and left the org on the token for up to 900 s.
+  await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
+  await expect(page.getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
+  await expect.poll(() => orgClaim(context), { message: "stopping takes the org off the token" }).toBeNull();
+  await expect(page.getByRole("status").filter({ hasText: "جلسة استثنائية" })).toHaveCount(0);
+});
+
+test("★ REQ-ADM-002 (C1): an org route lands on /no-access WITH the banner, and the banner's stop takes the org off the token", async ({ context, page }) => {
+  await signInPlatform(context);
+  await startFromForm(page, b.id, "التحقق من شاشة المؤسسة أثناء الجلسة");
+  await expect.poll(() => orgClaim(context)).toBe(b.id);
+
+  // DEC-055 option C, as built: a break-glass session has no member id, so an org
+  // screen sends it to /no-access — and the banner is there.
+  await page.goto("/ar/app/sessions");
+  await page.waitForURL(/\/ar\/no-access/);
+  const banner = page.getByRole("status").filter({ hasText: "جلسة استثنائية" });
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText(b.name);
+  await expect(banner).toContainText(/تنتهي عند/);
+  for (const secret of secrets(b)) await expect(page.locator("body")).not.toContainText(secret);
+
+  await banner.getByRole("button", { name: /أنهِ الجلسة/ }).click();
+  await expect(banner).toHaveCount(0);
+  await expect.poll(() => orgClaim(context), { message: "the banner's stop takes the org off the token" }).toBeNull();
 });
 
 test("REQ-NFR-007: the console passes axe at WCAG 2.2 AA", async ({ context, page }) => {
@@ -481,7 +560,32 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform/metrics");
     await review(page, "scr-084-platform-metrics");
 
+    // P7 — SCR-085's states, and the banner where an org route lands (C1).
     await page.goto("/ar/app/platform/impersonate");
-    await review(page, "scr-085-platform-impersonate");
+    await expect(page.getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
+    await review(page, "wave8-platform-impersonate-empty");
+
+    await startFromForm(page, a.id, "مراجعة شاشة المؤسسة للتصوير");
+    await expect(page.getByRole("status").filter({ hasText: "جلسة استثنائية" })).toBeVisible();
+    await review(page, "wave8-platform-impersonate-active");
+
+    await page.goto("/ar/app/sessions");
+    await page.waitForURL(/\/ar\/no-access/);
+    await expect(page.getByRole("status").filter({ hasText: "جلسة استثنائية" })).toBeVisible();
+    await review(page, "wave8-platform-impersonate-banner-org-route");
+    await page.getByRole("status").filter({ hasText: "جلسة استثنائية" }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
+    await expect(page.getByRole("status").filter({ hasText: "جلسة استثنائية" })).toHaveCount(0);
+
+    // Expired: the latest session ended on its own, arranged as the expiry job
+    // leaves one (`ended_at = expires_at`) — started after the one just stopped,
+    // so it is the one SCR-085 reports at the top.
+    await db.query(
+      `insert into public.impersonation_sessions (org_id, platform_admin_id, reason, started_at, expires_at, ended_at)
+       values ($1, $2, 'جلسة انتهت وحدها', now() - interval '100 milliseconds', now() - interval '50 milliseconds', now() - interval '50 milliseconds')`,
+      [b.id, platformUserId],
+    );
+    await page.goto("/ar/app/platform/impersonate");
+    await expect(page.getByText(/تلقائيًا عند/)).toBeVisible();
+    await review(page, "wave8-platform-impersonate-expired");
   });
 });
