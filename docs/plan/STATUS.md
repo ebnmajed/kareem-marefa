@@ -118,6 +118,8 @@ the strict one is the gate):
 | 14 | `console` | `/app/admin/moderation/reports` | ☐ | ☐ |
 | — | `console` | the admin layout (`admin/layout.tsx`) — not counted, required | ☐ | ☐ |
 | — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) — both menus onto `ui/menu`, the `ps-10`/`px-4` pairing, the Playwright gate | ☐ | ☐ |
+| — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`, `16` §7.1.1) — `ui/splash` is wave 7's | ☐ | — |
+| — | lead | **the date-time picker's unnamed month buttons** (WCAG 4.1.2, found in M9) — `prevMonthLabel`/`nextMonthLabel`, five call sites, a test | ☐ | — |
 | — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) — ~150 call sites, 27 message glyphs, the catalogue test; lands before any teammate edits code | ☐ | — |
 | — | lead | **`0082_western_numerals.sql`** — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
 
@@ -158,6 +160,22 @@ reports queue is where a flag from `content`'s rebuilt discussion lands. Not cho
   controls» are the photo and materials uploaders onto `ui/file-drop` — not attachments on a
   comment, which would be a schema decision for the owner (`DEC-130`).
 
+### The three M9 stubs — `ui/link`, `ui/route-progress`, `ui/splash` — decided
+
+`REQ-UIX-006` («no interaction leaves the interface apparently idle») is today satisfied by a **stub**:
+`route-progress.tsx` returns `null` and `link.tsx` has no `useLinkStatus()` child. That is a requirement
+met on paper only, and it is stated here rather than left to be found.
+
+- **`ui/link` and `ui/route-progress` close IN THIS WAVE** — the lead's, after the shell sweep, to
+  `16` §7.1.1's corrected design: a client child inside `ui/link` calls `useLinkStatus()`, renders the
+  inline pending affordance and writes a ~20-line store; `<RouteProgress>` in the shell subscribes and
+  shows the bar only past **150 ms**. **Why now:** the timeline and the event page are where
+  navigation is felt, and `DEC-110` carries M9's remaining system work *with the screens that need it*.
+- **`ui/splash` goes to WAVE 7.** `16` §7.2 makes it conditional on a measurement — it fades on the
+  shell's first paint, and **if it costs LCP it is dropped, not the budget** — and that measurement
+  belongs with the performance pass, not with fourteen routes. Until then it stays a stub that renders
+  nothing, which is the safe failure.
+
 ### NOT THIS WAVE — deferred, and never-touch in every agent file
 
 - **The other 19 `app/admin` routes** → wave 7: `audit` · `branding` · `categories` · `companies` ·
@@ -168,9 +186,11 @@ reports queue is where a flag from `content`'s rebuilt discussion lands. Not cho
 - **`app/me` — all 7 routes**; **`app/platform` — all 7 routes**
 - `app/sessions/[id]/{check-in,host,rate}`, `app/members/[id]`, `app/leaderboards`, `app/propose/**`,
   `s/[id]`, `verify/[code]`, `legal/**`
-- **Multi-day sessions** (`DEC-119` … `DEC-121`)
-- **The manual check-in switch** (`DEC-113`, `DEC-116`, `DEC-117`, `DEC-118`) — **decided, NOT built**
-- **Gradient posters and the certificate library** (`DEC-127`, `DEC-128`); the parity goldens do not move
+- **Multi-day sessions** (`DEC-119` … `DEC-121`) — **decided, NOT this wave**
+- **The manual check-in switch and walk-ins as a publishing setting** (`DEC-113`, `DEC-116`, `DEC-117`,
+  `DEC-118`) — **decided, NOT this wave**
+- **Gradient posters and the `canvasRaise` brand token** (`DEC-127`) — **decided, NOT this wave**; the
+  certificate library (`DEC-128`) likewise; the parity goldens do not move
 - **The survey**
 - **Anything under `src/app/[locale]/(marketing)/`** and `components/{chapter,header,footer,…}.tsx`
   it renders — frozen until M13. `DEC-126`'s «تسجيل الدخول» lands there, not here.

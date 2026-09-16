@@ -82,9 +82,15 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 - `src/app/[locale]/app/sessions/[id]/{check-in,host,rate}/**`, `src/app/[locale]/app/propose/**`,
   `src/app/[locale]/app/members/**`, `src/app/[locale]/app/leaderboards/**`, `src/app/[locale]/s/**`,
   `src/app/[locale]/verify/**`, `src/app/[locale]/legal/**`
-- **multi-day sessions** (`DEC-119` … `DEC-121`); **the manual check-in switch** (`DEC-113`, `DEC-116`,
-  `DEC-117`, `DEC-118` — decided, NOT built); **gradient posters and the certificate library**
-  (`DEC-127`, `DEC-128`) — the parity goldens do not move; **the survey**
+- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials and
+  tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they exist; the
+  schema does not. Build the event page for the one-day session that is in the database.
+- ★ **The manual check-in switch and walk-ins as a publishing setting** (`DEC-113`, `DEC-116`,
+  `DEC-117`, `DEC-118` — `check_in_open`, the admin's attendance removal, `allow_walk_ins` on the
+  schedule screen) — **decided, NOT this wave.** No `check_in_open` column exists yet.
+- ★ **Gradient posters and the `canvasRaise` brand token** (`DEC-127`) — **decided, NOT this wave.**
+  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do not move.
+- **The certificate library** (`DEC-128`) — **decided, NOT this wave.** **The survey** — NOT this wave.
 - **everything under `src/app/[locale]/(marketing)/`** and the components it renders —
   `src/components/{header,footer,chapter,registration-form,network-bg,network-gl,intro-sting,mobile-cta,ornaments,wordmark,language-toggle,form-token}.tsx` — frozen until M13
   (invariant 1). `DEC-126`'s «تسجيل الدخول» lands there, not here.

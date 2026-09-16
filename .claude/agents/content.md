@@ -54,7 +54,12 @@ and put a request in your note if you need a prop changed.
 **`.qa-shots/canvas/*.dc.html`** (gitignored). Yours: `Main` (the «النقاش» and «المواد» sections),
 `EventPhone`, `EventEnded` (materials after the session, photos), `System`, `Motion` (the reaction
 storyboard — its frames crush Arabic into narrow cards, a thumbnail artefact per `DEC-123`, not a
-width), `Loading`. **There is no artboard for the composer** — build it from `System` and
+width), `Loading`. ★ **Two contrast failures in the canvas are REAL, not artefacts** (`DEC-123`) — do not reproduce either, and `ui/tag-chip` is yours: the
+**tag-chip counts** in `Browse`'s filter chips (the «أتمتة 5» count, **1.96:1**) and `Main`'s **13 px poster
+caption** («الملصق · 4:5 · …», **3.30:1**). The count and the caption take `--color-fg-muted` —
+**5.68:1** on `--canvas` — and the caption no smaller than the house caption size.
+
+**There is no artboard for the composer** — build it from `System` and
 `REQ-UIX-024`. **Every number in the canvas is Arabic-Indic and wrong** — read it as Western.
 
 ## ★ Your first task is PLANNING ONLY
@@ -150,9 +155,15 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 - `src/app/[locale]/app/sessions/[id]/{check-in,host,rate}/**`, `src/app/[locale]/app/propose/**`,
   `src/app/[locale]/app/members/**`, `src/app/[locale]/app/leaderboards/**`, `src/app/[locale]/s/**`,
   `src/app/[locale]/verify/**`, `src/app/[locale]/legal/**`
-- **multi-day sessions** (`DEC-119` … `DEC-121`); **the manual check-in switch** (`DEC-113`, `DEC-116`,
-  `DEC-117`, `DEC-118` — decided, NOT built); **gradient posters and the certificate library**
-  (`DEC-127`, `DEC-128`) — the parity goldens do not move; **the survey**
+- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials and
+  tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they exist; the
+  schema does not. Build the event page for the one-day session that is in the database.
+- ★ **The manual check-in switch and walk-ins as a publishing setting** (`DEC-113`, `DEC-116`,
+  `DEC-117`, `DEC-118` — `check_in_open`, the admin's attendance removal, `allow_walk_ins` on the
+  schedule screen) — **decided, NOT this wave.** No `check_in_open` column exists yet.
+- ★ **Gradient posters and the `canvasRaise` brand token** (`DEC-127`) — **decided, NOT this wave.**
+  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do not move.
+- **The certificate library** (`DEC-128`) — **decided, NOT this wave.** **The survey** — NOT this wave.
 - **everything under `src/app/[locale]/(marketing)/`** and the components it renders —
   `src/components/{header,footer,chapter,registration-form,network-bg,network-gl,intro-sting,mobile-cta,ornaments,wordmark,language-toggle,form-token}.tsx` — frozen until M13
   (invariant 1). `DEC-126`'s «تسجيل الدخول» lands there, not here.

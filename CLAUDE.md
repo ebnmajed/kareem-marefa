@@ -351,9 +351,11 @@ pre-M9 `button`/`dialog`/`icons`) **plus** a 390 px RTL capture someone looked a
 - **Not this wave, and never-touch for every teammate:** the other 19 `app/admin` routes, all of
   `app/me/**`, all of `app/platform/**`, `app/sessions/[id]/{check-in,host,rate}/**`,
   `app/propose/**` (`sessions`' own, frozen this wave), `app/members/**`, `app/leaderboards/**`,
-  `s/[id]`, `verify/**`, `legal/**`, multi-day sessions (`DEC-119` … `121`), the manual check-in
-  switch (`DEC-113`/`116`/`117`/`118`), gradient posters and the certificate library
-  (`DEC-127`/`128`), the survey, and everything under `(marketing)/**` with the components it renders.
+  `s/[id]`, `verify/**`, `legal/**`, the survey, and everything under `(marketing)/**` with the components
+  it renders — and three things `DECISIONS.md` describes as if they existed: **multi-day sessions**
+  (`DEC-119` … `121`), **the manual check-in switch and walk-ins as a publishing setting**
+  (`DEC-113`/`116`/`117`/`118`), **gradient posters and the `canvasRaise` token** (`DEC-127`) — each
+  **decided, NOT this wave** — plus the certificate library (`DEC-128`).
 - **A teammate never edits a primitive it does not own.** All three primitive owners are in this
   wave, so a request goes in the requester's note and the lead routes it to the owning teammate.
 - **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
