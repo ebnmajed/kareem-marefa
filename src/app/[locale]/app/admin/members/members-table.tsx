@@ -134,13 +134,24 @@ function ActionsCell({
     }
   }
 
-  if (isSelf) return null;
+  // A value, never `null`: the phone card renders this column's label
+  // whatever the cell returns (wave 7, sync 6), and an empty slot beside
+  // «الإجراءات» reads as a missing control rather than «nothing to do here».
+  if (isSelf) return <span className="text-fg-muted">—</span>;
 
   if (member.status === "deactivated") {
+    // A worded button, not the «⋯» glyph: this control reactivates on the
+    // click, and the «more» icon promises a menu it never opens.
     return (
-      <IconButton label={`${t("reactivate")} — ${member.displayName ?? member.email}`} size="sm" pending={reactivatePending} onClick={handleReactivate}>
-        <MoreIcon />
-      </IconButton>
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-label={`${t("reactivate")} — ${member.displayName ?? member.email}`}
+        pending={reactivatePending}
+        onClick={handleReactivate}
+      >
+        {t("reactivate")}
+      </Button>
     );
   }
 
@@ -283,6 +294,10 @@ export function MembersTable({
       key: "actions",
       header: t("columnActions"),
       align: "end",
+      // ★ `onCard` — without it the phone card list drops this column: no
+      // deactivation and no reactivation at 390 px (wave 8, F1; the same
+      // defect `sessions-table.tsx` fixed in wave 6).
+      onCard: true,
       cell: (m) => (
         <ActionsCell
           member={m}

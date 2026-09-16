@@ -49,6 +49,10 @@ export function CompaniesTable({ companies, locale }: { companies: AdminCompany[
     {
       key: "actions",
       header: t("actionsColumn"),
+      // ★ `onCard` — without it the phone card list drops this column, and
+      // an admin at 390 px cannot deactivate anything (wave 8, F1; the same
+      // defect `sessions-table.tsx` fixed in wave 6).
+      onCard: true,
       cell: (c) => (
         <DeactivateToggle
           active={c.deactivatedAt === null}
