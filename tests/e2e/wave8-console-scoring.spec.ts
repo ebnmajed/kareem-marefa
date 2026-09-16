@@ -194,9 +194,22 @@ test("REQ-PTS-009: a manual adjustment — member chosen by name, confirmed by n
   const manual = group(page, "manual-heading");
   await manual.getByRole("combobox", { name: /العضو/ }).fill("سارة");
   await expect(page.getByRole("option", { name: /سارة العتيبي/ })).toBeVisible();
-  // What the capture is for: the open list on screen, beside its field.
+  // What the capture is for: the open list on screen, beside its field — and
+  // not merely "in the viewport", which a list under the fixed tab bar also
+  // is (the lead's sync-2 capture). The option must be what the eye reaches:
+  // the topmost element at its centre is the option, or inside it.
   await expect(manual.getByRole("listbox")).toBeInViewport();
   await expect(manual.getByRole("combobox", { name: /العضو/ })).toBeInViewport();
+  const option = page.getByRole("option", { name: /سارة العتيبي/ });
+  await expect
+    .poll(() =>
+      option.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return top !== null && (top === el || el.contains(top));
+      }),
+    )
+    .toBe(true);
   await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-member-picker-open.png` });
   await page.getByRole("option", { name: /سارة العتيبي/ }).click();
   await manual.getByRole("radio", { name: "خصم نقاط" }).check();

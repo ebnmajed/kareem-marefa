@@ -103,6 +103,7 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // A controlled single-select `value` changed from OUTSIDE (not by typing
@@ -146,6 +147,19 @@ export function Combobox({
     setLastRowCount(rowCount);
     if (highlight > rowCount - 1) setHighlight(rowCount === 0 ? -1 : rowCount - 1);
   }
+
+  // ★ The open list — or its «no match» line — is scrolled into view whenever
+  // it opens or its rows change. A picker near the bottom of a phone screen
+  // opened its list UNDER the fixed tab bar: the admin typed a name and
+  // nothing appeared to happen (the lead's sync-2 capture of the scoring
+  // screen's member picker). `nearest` moves nothing when it already shows;
+  // the document's `scroll-padding-block-end` (`globals.css`) already counts
+  // the tab bar, so the list stops clear of it without a margin of its own.
+  // Inside a dialog or sheet it scrolls that container instead.
+  useEffect(() => {
+    if (!open) return;
+    popupRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, rowCount]);
 
   useEffect(() => {
     if (!open) return;
@@ -301,13 +315,13 @@ export function Combobox({
           component's own test (`aria-live` region below covers the
           NON-zero case only, so the two never coexist). */}
       {open && rowCount === 0 ? (
-        <div role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg">
+        <div ref={(node) => { popupRef.current = node; }} role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg">
           {resultsText}
         </div>
       ) : null}
 
       {open && rowCount > 0 ? (
-        <ul id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg">
+        <ul ref={(node) => { popupRef.current = node; }} id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg">
           {/* `role="option"` lives ON THE BUTTON, not on the `<li>` wrapper —
               member-picker.tsx's own precedent, and the ARIA-correct place
               for it: a listbox option must not contain a nested interactive
