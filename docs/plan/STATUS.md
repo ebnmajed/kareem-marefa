@@ -134,33 +134,33 @@ with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 to
 | L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017`, `DEC-141` | — | — | **closed** `7b2ac81` — `0084`–`0089` (`checkin`) and `0090` (`sessions`' admin member profile); `db:reset` clean, `policy-diff` agrees, trace no gaps, RLS 790/791. The one red is `content`'s own `photos-broadcast` case from `7c6f9e5`, routed. Six older assertions of the replaced mechanisms were retired or re-aimed, each with a successor in `checkin`'s suites. Both worker readers skip removed check-ins. **Still open:** the app readers that ignore `removed_at`, routed to `checkin` (`checkin.ts`, `rsvp.ts`), `sessions` (`sessions.ts`, `search.ts`, `ratings.ts` by written grant) and `console` (`admin-dashboard.ts`, `admin-exports.ts` by written grant). ★ **Before merge, the owner rehearses `0083`–`0090` against a production schema dump, as with `0082`.** |
 | L7 | lead | ★ **Arabic-Indic digits seeded into every org's points catalogue** — found in `wave7-content-points-*.png`; `0083` fixes the seed, `numerals-seeds.test.ts` red before and green after | `REQ-INT-006`, `DEC-124`, `DEC-143` | — | — | code **closed**; ★ **production rows need the owner's scoped data fix** (`DEC-143`) |
 | L8 | lead | ★ **the primary button's glint visible at rest in RTL** — on every primary `ui/button` since M9, found in `wave7-sessions-public-card-*.png` | `REQ-UIX-001` | — | worktree sign-in capture at `07a2f3b` + the fix: a clean button; `visual` 0.000 % on all eight frozen pairs | **closed** `7da3a50` |
-| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ (floor) | — | open |
-| C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | · | — | open |
-| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | · | — | open |
-| C4 | `checkin` | the switch and its `ends_at + 2 h` ceiling — SQL, RLS, the matrix column | `REQ-CHK-015`, `016`, `DEC-113`, `DEC-116` | — | — | open |
-| C5 | `checkin` | **the reversal** — a compensating `reversal` ledger entry with its own key; `revoke_certificate()`; the late-job race | `REQ-CHK-017`, `REQ-PTS-013`, `REQ-CRT-004` | — | — | open |
-| C6 | `checkin` | walk-ins as a publishing setting — `schedule_session()`'s parameter, the field on SCR-043, `set_session_walk_ins()` retired | `REQ-CHK-010`, `DEC-117`, `DEC-118` | — | the schedule field | open |
-| S1 | `sessions` | `/app/propose` — the largest form in the product | SCR-017 · `REQ-PRO-001`…, `REQ-UIX-009`, `010` | ✓ (floor) | — | open |
-| S2 | `sessions` | `/app/propose/[id]` — my proposal | SCR-018 · `REQ-PRO-005` | ✓ (floor) | — | open |
-| S3 | `sessions` | ★ `/app/sessions/[id]/rate` — ratings only, stars fill from the right | SCR-015 · `REQ-RAT-001`…`006` | · | — | open |
-| S4 | `sessions` | `/s/[id]` — the public card, a real 404 | SCR-007 · `DEC-066`, `DEC-134` | · | — | open |
-| S5 | `sessions` | ★ `/app/members/[id]` — the two-tier profile | SCR-020 · `REQ-PRF-*`, A33 | · | — | open |
-| S6 | `sessions` | ★ `/app/leaderboards` — members and سباق الشركات | SCR-027, SCR-028 · `REQ-LDR-*` | · | — | open |
-| T1 | `content` | ★ `/app/me` — the profile and the hub, with `me/layout.tsx` | SCR-021 · `REQ-PRF-001`…, `16` §6.5 | · | — | open |
-| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | · | — | open |
-| T3 | `content` | ★ `/app/me/certificates` — issued and revoked | SCR-023 · `REQ-CRT-*` | · | — | open |
-| T4 | `content` | ★ `/app/me/bookmarks` | SCR-024 · `REQ-DSC-006` | · | — | open |
-| T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | · | — | open |
-| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | · | — | open |
-| T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | · | — | open |
-| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | — | — | open |
-| K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ (floor) | — | open |
-| K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | · | — | open |
-| K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | · | — | open |
-| K3 | `console` | `/app/admin/venues` | SCR-046 · `REQ-ADM-*` | · | — | open |
-| K4 | `console` | `/app/admin/categories` | SCR-047 · `REQ-ADM-*` | · | — | open |
-| K5 | `console` | `/app/admin/companies` | SCR-048 · `REQ-ADM-*` | · | — | open |
-| K6 | `console` | `/app/admin/settings` | SCR-063 · `REQ-ADM-*` | · | — | open |
+| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ | — | open — `checkin.spec` green at sync 5; its captures ignored `E2E_SHOTS_DIR` (fixed `043c03f`), re-take next sync |
+| C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | ✓ | — | open — the switch closes and reopens at 390 green (`checkin.spec:222`); captures re-take next sync (`043c03f`) |
+| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | ✓ | — | open — `bfe8e2a` built; `admin-attendance:177` strict locator stopped the serial block, so the removal case and its three captures did not run (fixed `4fd7b6e`); ui-lint fixed `399c35f` |
+| C4 | `checkin` | the switch and its `ends_at + 2 h` ceiling — SQL, RLS, the matrix column | `REQ-CHK-015`, `016`, `DEC-113`, `DEC-116` | ✓ | — | **closed** — `0084`/`0089` promoted `7b2ac81`, RLS 791/791 at `e73b239`; the matrix reads `checkInIneligibleReason()` (`34d4c08`); the event page and timeline follow the switch (`a55cf37`, `b3e5837`); `checkin.spec:222` green at `bfe8e2a` |
+| C5 | `checkin` | **the reversal** — a compensating `reversal` ledger entry with its own key; `revoke_certificate()`; the late-job race | `REQ-CHK-017`, `REQ-PTS-013`, `REQ-CRT-004` | ✓ | — | **closed** (SQL) — `0087`/`0088` promoted `7b2ac81` with the reversal, revocation, no-show symmetry and late-job rows green; every reader skips removed rows (`6178109`, `5248e6b`, `9fd0570`, workers in `7b2ac81`); the entry renders on `me/points` (`8ed4bf8`). The admin's removal UI is C3 |
+| C6 | `checkin` | walk-ins as a publishing setting — `schedule_session()`'s parameter, the field on SCR-043, `set_session_walk_ins()` retired | `REQ-CHK-010`, `DEC-117`, `DEC-118` | ✓ | the schedule field | open — `0085` (`7b2ac81`), the DAL (`55d40e1`), the field (`388b46e`, `9acc4bf`), the stored value (`343991d`), `ui-lint` (`399c35f`); no capture of the field yet |
+| S1 | `sessions` | `/app/propose` — the largest form in the product | SCR-017 · `REQ-PRO-001`…, `REQ-UIX-009`, `010` | ✓ | `wave7-sessions-propose-empty.png` · `wave7-sessions-propose-error.png` · `wave7-sessions-propose.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; `sessions-propose:207` phone strict locator open (spec) |
+| S2 | `sessions` | `/app/propose/[id]` — my proposal | SCR-018 · `REQ-PRO-005` | ✓ | `wave7-sessions-proposal-pending.png` · `wave7-sessions-proposal.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| S3 | `sessions` | ★ `/app/sessions/[id]/rate` — ratings only, stars fill from the right | SCR-015 · `REQ-RAT-001`…`006` | ✓ | `wave7-sessions-rate-empty.png` · `wave7-sessions-rate.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; stars fill from the right |
+| S4 | `sessions` | `/s/[id]` — the public card, a real 404 | SCR-007 · `DEC-066`, `DEC-134` | ✓ | `wave7-sessions-public-card-open.png` · `wave7-sessions-public-card.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; navy placeholder (`0d69474`), real 404 case green |
+| S5 | `sessions` | ★ `/app/members/[id]` — the two-tier profile | SCR-020 · `REQ-PRF-*`, A33 | ✓ | `wave7-sessions-profile-member.png` · `wave7-sessions-profile.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| S6 | `sessions` | ★ `/app/leaderboards` — members and سباق الشركات | SCR-027, SCR-028 · `REQ-LDR-*` | ✓ | `wave7-sessions-leaderboards-members.png` · `wave7-sessions-leaderboards-companies.png` · `wave7-sessions-leaderboards.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| T1 | `content` | ★ `/app/me` — the profile and the hub, with `me/layout.tsx` | SCR-021 · `REQ-PRF-001`…, `16` §6.5 | ✓ | — | open — sync 5: after «تم الحفظ» the company select shows the placeholder (persistence or read-back, `content` establishing); no-JS save case times out |
+| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | ✓ | — | open — sync 5: `/app/me/points` scrolls horizontally at 390 (`scoring-screens:103`); signed amounts read «20-» (the `<bdi>` needs `dir="ltr"`) |
+| T3 | `content` | ★ `/app/me/certificates` — issued and revoked | SCR-023 · `REQ-CRT-*` | ✓ | `wave7-content-certificates-issued-and-revoked.png` · `wave7-content-certificates.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; serial and code LTR |
+| T4 | `content` | ★ `/app/me/bookmarks` | SCR-024 · `REQ-DSC-006` | ✓ | `wave7-content-bookmarks-populated.png` · `bookmarks.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | ✓ | `wave7-content-calendar-connected.png` · `wave7-content-calendar.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; no token in sight |
+| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | ✓ | — | open — sync 5: `/app/me/notifications` scrolls horizontally at 390 (`notify-screens:284`, 8 elements) |
+| T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | ✓ | `wave7-content-privacy-deactivate-confirm.png` · `privacy.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; confirm in `ui/dialog` |
+| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | ✓ | — | code landed — `0091` (`e73b239`) + the widget, proven by RLS and component tests; no e2e drives the no-reload path yet |
+| K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ | `wave7-console-rail-drawer-admin-disclosed.png` · `wave7-console-rail-drawer-moderator-disclosed.png` · `console.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | ✓ | `wave7-console-moderation-comments-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | ✓ | `wave7-console-moderation-photos-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K3 | `console` | `/app/admin/venues` | SCR-046 · `REQ-ADM-*` | ✓ | — | open — no wave-7 capture of venues exists (the only one is sessions' M2 walk at 18:24); `console` adding it |
+| K4 | `console` | `/app/admin/categories` | SCR-047 · `REQ-ADM-*` | ✓ | `wave7-console-categories-populated-390-rtl-phone.png` · `admin-managed-lists.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K5 | `console` | `/app/admin/companies` | SCR-048 · `REQ-ADM-*` | ✓ | `wave7-console-companies-populated-390-rtl-phone.png` · `admin-managed-lists.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K6 | `console` | `/app/admin/settings` | SCR-063 · `REQ-ADM-*` | ✓ | `wave7-console-settings-populated-phone.png` · `admin-settings.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
 
 ★ = transferred for this wave (`DEC-137`). **Not this wave**, named in every agent file: the other twelve
 admin routes, `app/platform/**`, `verify/**`, `legal/**`, the survey, multi-day sessions (`DEC-119` … `121`),
@@ -273,6 +273,36 @@ DEC-134 and wave 7's forms (`dd03094`, `79d3932`).
 
 No row closes on sync 4: its captures came from builds with one or both defects. **Sync 5** is a full run at HEAD
 with both fixes and `STUBBED_SERVER_LOG`, then `reserve-probe` alone on a quiet machine.
+
+### Sync 5 — 2026-09-16 — the first clean full run: 16 rows closed
+
+**Build `bfe8e2a`** in the verification worktree, with both sync-4 fixes (`.env.local`, `c179a0d`) and
+`STUBBED_SERVER_LOG`. Static gates: `tsc` clean · lint 0 errors · vitest **144 files, 1435/1435** · `ui-reach --wave7`
+**23/23** · build green · ✗ `ui-lint` (10, all `checkin`'s two new forms, fixed `399c35f`). **e2e: 391 passed, 21
+failed, 27 did not run, in 4.2 min, with no server hang.** ★ **`reserve-probe` alone: 16/16**, 110–244 ms, so the
+`DEC-136` patch holds at HEAD.
+
+**The 21, sorted.** Eight were the local gateway's «invalid response from the upstream server» and two were load
+(the marketing TBT budget, one admin case). **Re-run alone, 16 of 18 passed**, including `budgets` (so the frozen
+landing's performance is intact). The remaining two were custodian specs, fixed and verified against this build:
+`second-org` (hidden `DataTable` copy, `58ae011`, 6/6) and the platform axe scan (streamed redirect, `2b95bc9`, 6/6 ×3).
+Real findings, routed with the build: `checkin` (`admin-attendance:177`, fixed `4fd7b6e`; captures ignored
+`E2E_SHOTS_DIR`, fixed `043c03f`) · `sessions` (`sessions-screens:183` check-in status; `sessions-propose:207` strict) ·
+`content` (two 390 px overflows, on `/app/me/points` and `/app/me/notifications`; signed amounts «20-»; the company
+select after save; the no-JS save; `tasks:153` strict) · `console` (a dashboard `Stat` with a sentence in its value
+slot on an empty org; no venues capture).
+
+**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T7, K0, K1, K2, K4, K5, K6.
+**Open:** C1–C6, T1, T2, T6, T8, K3. Each is named in its row.
+
+★ **The `noValidate` sweep.** `content` found a real bug (`7f4809f`): a `required` control with no `noValidate` lets
+the browser block the submit, so the app's own error never renders. Every wave-7 form that shows an app-side error
+now sets it (`7f4809f`, `1c9c911`, `1402e33`, `bfe8e2a`), with a test each. **Carried to M13:** eleven forms outside
+this wave with a native `required` and no `noValidate`: `platform/orgs/{org-controls,new/org-form,[id]/domains/forms}`,
+`platform/impersonate/impersonate-form`, `admin/{emails,scoring,recognition,reminders}/page`,
+`admin/sessions/[id]/certificates/page`, `designer/template-library`, and `me/privacy/forms` (deliberate:
+`reportValidity()` before the dialog). A plain grep for `required` over-reports, because `<Field required>` sets only
+`aria-required`.
 
 ### Carried — diagnosed, each with an owner
 
