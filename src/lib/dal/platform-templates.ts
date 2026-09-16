@@ -31,6 +31,21 @@ export interface PlatformTemplate {
   retiredAt: string | null;
   versions: number;
   createdAt: string;
+  /**
+   * Contract 3 (DEC-148): a certificate's orientation is a ROW attribute, read in
+   * SQL from its latest version's master; a poster has none. The scheme is never
+   * a row — every template renders light and dark. `null` too where the function
+   * predates `0009` or a version carries no master.
+   */
+  orientation: "landscape" | "portrait" | null;
+  /** Shipped with the platform, rather than promoted from an org (no `template.promoted` in the trail). */
+  isBaseline: boolean;
+  /**
+   * Whether `retire_platform_template()` would accept it — computed in SQL beside
+   * the guard, so SCR-083 never offers what the floor refuses (DEC-052) and never
+   * keeps a second copy of the rule.
+   */
+  retirable: boolean;
 }
 
 export async function listPlatformTemplates(locale: string): Promise<PlatformTemplate[]> {
@@ -47,6 +62,9 @@ export async function listPlatformTemplates(locale: string): Promise<PlatformTem
     retired_at: string | null;
     versions: number;
     created_at: string;
+    orientation?: "landscape" | "portrait" | null;
+    is_baseline?: boolean;
+    retirable?: boolean;
   }[]).map((r) => ({
     id: r.id,
     purpose: r.purpose,
@@ -56,6 +74,11 @@ export async function listPlatformTemplates(locale: string): Promise<PlatformTem
     retiredAt: r.retired_at,
     versions: r.versions,
     createdAt: r.created_at,
+    orientation: r.orientation ?? null,
+    isBaseline: r.is_baseline ?? true,
+    // Before `0009` the column is absent: offer the act and let the guard answer,
+    // rather than hide a control the database would accept.
+    retirable: r.retirable ?? r.retired_at === null,
   }));
 }
 

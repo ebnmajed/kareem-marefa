@@ -229,8 +229,7 @@ async function startFromForm(page: Page, orgId: string, reason: string) {
  * One 390 px RTL capture per screen state, plus the sideways check (TEAM.md §5).
  *
  * Wave 8 (DEC-147): a capture a STATUS row cites is `wave8-platform-<route>-<state>.png`,
- * phone project only, under `SHOTS`. The routes not yet rebuilt keep wave 4's names
- * until their own commit renames them.
+ * phone project only, under `SHOTS`.
  */
 async function review(p: Page, name: string) {
   const project = test.info().project.name;
@@ -238,8 +237,7 @@ async function review(p: Page, name: string) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
   await p.evaluate(() => document.fonts.ready);
   mkdirSync(SHOTS, { recursive: true });
-  const file = name.startsWith("wave8-") ? `${name}.png` : `${name}-390-rtl-${project}.png`;
-  await p.screenshot({ path: join(SHOTS, file), fullPage: true });
+  await p.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: true });
   // The sideways check runs on the phone project only: a desktop context
   // resized to 390 px carries a 12 px scrollbar a mobile one does not, so
   // every page would measure 402 px (TEAM.md §5).
@@ -537,6 +535,22 @@ test("★ REQ-ADM-003: SCR-084 reads all eight alerts through platform_alerts(),
   for (const s of [...secrets(a), ...secrets(b)]) await expect(page.locator("body")).not.toContainText(s);
 });
 
+test("★ REQ-DSG-026 · DEC-148: SCR-083 lists the baseline as rows of a composition — certificates in both orientations — and offers no retirement below the floor", async ({ context, page }) => {
+  // Needs `0009_platform_library_roster` and `designer`'s roster seed applied.
+  await signInPlatform(context);
+  await page.goto("/ar/app/platform/templates");
+  const phone = test.info().project.name === "phone";
+  const certificates = page.getByRole("region", { name: /^الشهادات/ });
+  const posters = page.getByRole("region", { name: /^الملصقات/ });
+  await expect(certificates).toContainText("أفقي");
+  await expect(certificates).toContainText("عمودي");
+  await expect(posters).not.toContainText("عمودي");
+  if (!phone) await expect(posters.getByRole("columnheader", { name: "الشكل" })).toHaveCount(0);
+  // The baseline is badged as such, and no document or preview is on the page.
+  await expect(page.getByText("أساسي").first()).toBeVisible();
+  await expect(page.locator("main img, main canvas")).toHaveCount(0);
+});
+
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
   await startFromForm(page, a.id, "تحقيق في بلاغ من مشرف المؤسسة");
@@ -696,8 +710,10 @@ test.describe("390 px RTL review", () => {
     await expect(page.getByText(shotDomain.toLowerCase(), { exact: true }).first()).toBeVisible();
     await review(page, "wave8-platform-domains-mixed-case-saved");
 
+    // P5 — the library with the baseline.
     await page.goto("/ar/app/platform/templates");
-    await review(page, "scr-083-platform-templates");
+    await expect(page.getByRole("heading", { level: 1, name: "مكتبة قوالب المنصة" })).toBeVisible();
+    await review(page, "wave8-platform-templates-baseline");
 
     // P6 — metrics: the alerts, the totals, job health as cards.
     await page.goto("/ar/app/platform/metrics");
