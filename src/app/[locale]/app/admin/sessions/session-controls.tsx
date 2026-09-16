@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -42,7 +42,25 @@ export function SessionControls({
 }) {
   const t = useTranslations("admin.sessions");
   const toast = useToast();
-  const [state, formAction, pending] = useActionState(action, emptyTransitionState);
+  // ★ The toast fires FROM INSIDE the action, not from a `useEffect`
+  // reacting to `state` — the same fix `report-card.tsx` needed (63fef6d)
+  // and a real build's own run found still missing here. Cancelling (and
+  // any transition that leaves no further action available) drops THIS
+  // panel from `sessions-table.tsx`'s own filter the same round trip
+  // revalidates: the refreshed list and this action's own return land in
+  // one commit, and React discards a fiber's pending update when its
+  // parent's reconciliation removes that fiber in the same commit, so a
+  // `useEffect` keyed on `state` never gets to run for `SessionControls`'
+  // own success case when it is the thing disappearing. Calling
+  // `toast.show()` here, in the action's own body, fires it as an ordinary
+  // callback on `ToastProvider` — independent of whether `SessionControls`
+  // ever re-renders again.
+  const [state, formAction, pending] = useActionState(async (prev: TransitionState, formData: FormData) => {
+    const result = await action(prev, formData);
+    if (result.done) toast.show({ title: t("transitionDone"), tone: "success" });
+    else if (result.error) toast.show({ title: t(result.error), tone: "error" });
+    return result;
+  }, emptyTransitionState);
   // ★ DEC-135: a transition re-renders this session's row (its status badge,
   // its own remaining actions) — exactly the shape React 19.2.4 can lose the
   // retry for; a workaround, not a feature, delete with `pending-nudge.ts`.
@@ -68,12 +86,6 @@ export function SessionControls({
     setLastHandledState(state);
     setConfirmOpen(false);
   }
-
-  useEffect(() => {
-    if (state.done) toast.show({ title: t("transitionDone"), tone: "success" });
-    else if (state.error) toast.show({ title: t(state.error), tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `toast`/`t` are stable; re-running on them would re-fire the same acknowledgement.
-  }, [state]);
 
   if (actions.length === 0) return null;
 

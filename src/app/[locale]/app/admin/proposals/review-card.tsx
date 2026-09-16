@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -48,23 +48,29 @@ export function ReviewCard({
 }) {
   const t = useTranslations("admin.proposals");
   const toast = useToast();
-  const [state, formAction, pending] = useActionState(action, emptyReviewState);
+  // ★ The toast fires FROM INSIDE the action, not from a `useEffect`
+  // reacting to `state` — the same fix `report-card.tsx` needed (63fef6d)
+  // and a real build's own run found still missing here. A decision drops
+  // the proposal from the queue the same round trip revalidates: the
+  // refreshed list and this action's own return land in one commit, and
+  // React discards a fiber's pending update when its parent's
+  // reconciliation removes that fiber in the same commit, so a `useEffect`
+  // keyed on `state` never gets to run for `ReviewCard`'s own success case
+  // (the card is the thing disappearing). Calling `toast.show()` here, in
+  // the action's own body, fires it as an ordinary callback on
+  // `ToastProvider` — independent of whether `ReviewCard` ever re-renders
+  // again.
+  const [state, formAction, pending] = useActionState(async (prev: ReviewState, formData: FormData) => {
+    const result = await action(prev, formData);
+    if (result.done) toast.show({ title: t("done"), tone: "success" });
+    else if (result.error) toast.show({ title: t(result.error), tone: "error" });
+    return result;
+  }, emptyReviewState);
   // ★ DEC-135: this transition re-renders server content (the queue drops the
   // decided proposal), which is exactly the shape React 19.2.4 can lose the
   // retry for — a workaround, not a feature; delete with `pending-nudge.ts`.
   usePendingNudge(pending);
   const formId = useId();
-
-  // ★ `state` is a fresh object on every action resolution (React 19 never
-  // reuses the previous one), so this effect is safe to key on the object
-  // itself rather than needing a separate "did this just change" ref — it
-  // never re-fires for a render the action did not just produce, including
-  // the very first mount (`emptyReviewState`'s `done`/`error` are both falsy).
-  useEffect(() => {
-    if (state.done) toast.show({ title: t("done"), tone: "success" });
-    else if (state.error) toast.show({ title: t(state.error), tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `toast`/`t` are stable; re-running on them would re-fire the same acknowledgement.
-  }, [state]);
 
   return (
     <li>

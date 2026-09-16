@@ -188,8 +188,23 @@ export function DataTable<Row>({
                   const primaryCellId = `${tableId}-${key}-primary`;
                   return (
                     <tr key={key} className="border-b border-edge last:border-b-0 hover:bg-silver-100/60">
+                      {/* `scroll-mt-*` (`scroll-margin-top`) on every cell, not
+                          the `<tr>`: the property is not inherited, and a
+                          real build's own run found a keyboard user tabbing
+                          to a row's own trigger — the browser's default
+                          focus-scroll landed it right under the sticky
+                          `<thead>` (`top-[var(--header-h)]`), which then
+                          intercepted the click (SC 2.4.11). The offset is
+                          the shell's own fixed header PLUS the thead row's
+                          own rendered height (its `py-2.5` padding plus one
+                          `text-body-sm` line, ~44px) — `html`'s own
+                          `scroll-padding-block-start` (`globals.css`)
+                          already covers `--header-h` for page-level anchors,
+                          but a `<thead>` sticky WITHIN the page is invisible
+                          to that global rule, so this cell needs the whole
+                          offset itself. */}
                       {selection ? (
-                        <td className="px-3 py-2.5">
+                        <td className="scroll-mt-[calc(var(--header-h)+2.75rem)] px-3 py-2.5">
                           <IndeterminateCheckbox
                             checked={selectedSet.has(key)}
                             indeterminate={false}
@@ -202,7 +217,7 @@ export function DataTable<Row>({
                         <td
                           key={col.key}
                           id={i === 0 ? primaryCellId : undefined}
-                          className={`px-3 py-2.5 text-fg-body ${col.align === "end" ? "text-end" : "text-start"}`}
+                          className={`scroll-mt-[calc(var(--header-h)+2.75rem)] px-3 py-2.5 text-fg-body ${col.align === "end" ? "text-end" : "text-start"}`}
                         >
                           {i === 0 && rowHref ? <Link href={rowHref(row)}>{col.cell(row)}</Link> : col.cell(row)}
                         </td>
