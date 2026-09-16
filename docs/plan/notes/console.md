@@ -1625,3 +1625,18 @@ regardless of whether it's inside a `<Field>`. 24 tests green, commit `b3ad776`.
 Confirmed after the ~19:46 shared-index reset the lead flagged: all of this wave's commits
 (`addf939` through `9841c39`, plus `654ec91`) are still present in `git log`, working tree clean —
 the reset touched only what was staged at that moment, not committed history.
+
+### Two removed_at readers, granted by the lead after promotion (7b2ac81)
+
+`check_ins.removed_at` (0087) is a soft delete; RLS does not hide the row. Fixed two readers that
+still counted a removed check-in as attendance: `admin-dashboard.ts`'s `checkInsTotal` (feeds the
+attendance-rate figure) and `admin-exports.ts`'s `exportAllAttendanceCsv` (the bulk export — outside
+this wave's list, the lead granted this one filter in writing). Both `.is("removed_at", null)`.
+
+Test pattern borrowed directly from `sessions-removed-check-in.test.ts` (the `memorySupabase()`
+in-memory stub + `vi.mock("@/lib/dal/session")`) — added `.not()` to that shared stub (additive only)
+since the dashboard's category query needs it even on an empty fixture. `tests/unit/
+admin-removed-check-in.test.ts`'s four cases were confirmed by hand to fail against the pre-fix
+queries (reverted the two files to `HEAD`, ran the suite, saw all four fail with the exact wrong
+numbers, restored the fix, saw them pass) before being committed — the "one that fails before the
+fix" the lead asked for, proven rather than assumed. Commit `9fd0570`.
