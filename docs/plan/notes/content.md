@@ -2105,3 +2105,35 @@ that first prompted it.
 difference expected or found).
 
 Ready for sync.
+
+## §12 — the final gates' two remaining items (`05f023b`)
+
+**`tasks.spec.ts:176`, desktop-only, `getByLabel('نوع المهمة')` → 2 elements.** Traced it properly
+before guessing: a one-off `page.evaluate` debug dump of every `<select>`'s full ancestor chain (run
+once against the real desktop project, discarded once I had the answer) showed the real, live
+create-task form under `main#main`, and a SECOND, identical copy — same `id="tasks"`,
+`id="tasks-create-form"`, same field labels — directly under `body > div#S:e`, outside `#main`
+entirely. This is the SAME `$S:`/`$RC` React streaming-SSR mechanism the no-JS finding already
+traced: an orphaned, `hidden` template segment the reveal script leaves behind instead of removing,
+on this route at desktop width. Materials' own upload form shows the identical duplicate on the same
+page — not something in my component, a page-wide artefact. `getByRole` calls are naturally immune
+(hidden content is excluded from the accessibility tree); `getByText`/`getByLabel` are not. Scoped
+every locator in both this test AND `:153` (the earlier `#tasks`-only scoping had the same exposure,
+just never exercised on desktop before) to `#main`, which never contains the orphaned copy. Verified
+4/4 passing on both projects, single run — `--repeat-each` would give false failures here too, same
+shape as `:153`'s own already-documented reason (each repeat re-inserts the same bookmark rows this
+describe's own fixture seeds, which is a distinct spec, but the same class of trap).
+
+**`bookmarks.spec.ts:237`, intermittent under load.** Implemented exactly what was asked:
+`page.waitForResponse` on the Server Action's own POST, then a separate, bounded wait for the card to
+disappear — so a slow response and a response that returns but never updates the list read as two
+different failures. Could not establish WHICH locally: my own `.next` build is stale, predating three
+of `sessions`' commits from today that moved this page onto `SessionCard` (`e461239`, `ac09c09`,
+`c20b901`) — the "populated" check fails before the un-bookmark step is ever reached, against a build
+still serving the OLD plain-list markup (`BookmarkedSession.abstract` as a paragraph, no `<h3>`).
+`npm run build` is the lead's; reported this rather than guessing at a fix against a build that
+doesn't match HEAD.
+
+`tsc` clean, lint clean on both files.
+
+Ready for sync.
