@@ -2217,13 +2217,14 @@ uncontrolled checkboxes/radios, and never for a `<select>` or a controlled radio
 (`components/admin/kept-select.tsx`) marks the option on show as the default; every action form `console`
 holds uses it — including the member role select, where a *successful* role change snapped back on screen.
 
-**Requests to the lead:**
-1. **`ui/select` (`sessions`', lead custodian):** mark the shown option as the default on change and after
-   render, as `KeptSelect` does, so every form gets it (the propose form, the schedule form); `console`
-   deletes the wrapper when it lands. `tests/components/admin/kept-select.test.tsx` has the red-first cases.
-2. **The lead's schedule form** has `<Switch checked={walkIns}>` — a controlled checkbox, which a reset puts
-   back to the value it mounted with while the state says otherwise. `ui/switch` and `ui/radio-group` in
-   controlled mode have the same gap (their `defaultChecked` is set at mount only).
-3. **`ui/index.ts`:** `MenuItem.current?: boolean` (`platform`'s addition). `console` then renders
-   `aria-current="page"` and the marker in `ui/menu`, and passes it from the collapsed rail's group flyout.
+**Requests to the lead — all three landed at `dcd5f05`:** the reset repaired in `ui/select`, `ui/switch`,
+`ui/radio-group` and `ui/checkbox` (so `KeptSelect` is deleted, `b12a7b6`), the schedule form's controlled
+switch with it, and `MenuItem.current` (rendered in `ui/menu` and passed from the collapsed rail, `c2c5f06`).
 
+**The rerun at `5a8f5bc`:** 104 passed, 3 failed. `scoring:124` on both projects — two deductions word the
+member's text differently from the name by design (`حُذف تعليق`, `حُذفت صورة`), the spec now asserts per card
+(`2cc8471`). `emails:128` on the phone — the editor's label never appeared and the artefacts say nothing more
+(no page snapshot, no trace); desktop's identical fill passed. No phone-only path found in the page, the
+editor, `ui/tabs`, `ui/textarea` or the DAL reads. The spec now asserts the page and editor headings before
+typing and refuses a failed session refresh, so a repeat names what rendered (`8d3a5a0`), which also names
+the three timed reminders for the admin («تذكير قبل الجلسة بيوم», not «غدًا»).
