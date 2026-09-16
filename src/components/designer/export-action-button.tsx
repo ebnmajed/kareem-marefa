@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import type { ButtonVariant, Size } from "@/components/ui";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -13,6 +13,11 @@ import { initialExportActionState, type ExportActionState } from "@/app/[locale]
 // The answer is a toast where the admin pressed (`16` §7.3), and the button
 // keeps its label while pending. No nudge, no timer: a transition that hangs
 // is reported with the build it hung on (DEC-146).
+//
+// ★ The toast is shown FROM THE ACTION'S RESULT, never from an effect keyed
+// on the state (wave 6's trap): a retried variant stops being `failed`, so
+// the row re-renders without this button, and an effect in an unmounting
+// component never runs — the retry would succeed and say nothing.
 
 export function ExportActionButton({
   action,
@@ -31,16 +36,13 @@ export function ExportActionButton({
 }) {
   const t = useTranslations("designer.exports");
   const toast = useToast();
-  const [state, formAction] = useActionState(action, initialExportActionState);
-  const seen = useRef(0);
-
-  useEffect(() => {
-    if (state.at === 0 || state.at === seen.current) return;
-    seen.current = state.at;
-    if (state.status === "queued") toast.show({ tone: "success", title: t("queuedNotice") });
-    else if (state.status === "retried") toast.show({ tone: "success", title: t("retriedNotice") });
-    else if (state.status === "not_authorized" || state.status === "invalid") toast.show({ tone: "error", title: t("notAuthorized") });
-  }, [state, t, toast]);
+  const [, formAction] = useActionState(async (previous: ExportActionState, form: FormData) => {
+    const result = await action(previous, form);
+    if (result.status === "queued") toast.show({ tone: "success", title: t("queuedNotice") });
+    else if (result.status === "retried") toast.show({ tone: "success", title: t("retriedNotice") });
+    else if (result.status === "not_authorized" || result.status === "invalid") toast.show({ tone: "error", title: t("notAuthorized") });
+    return result;
+  }, initialExportActionState);
 
   return (
     <form action={formAction} id={id}>
