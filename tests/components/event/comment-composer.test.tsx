@@ -217,9 +217,9 @@ describe("CommentComposer", () => {
   // a paint-deferred `requestAnimationFrame` version at 4582b17 — each only
   // moved the odds, because both treated a SYMPTOM (the refresh racing this
   // transition's own completion) of a cause that was never actually about
-  // timing. It is fixed in `react-dom` itself by
-  // `patches/next+16.2.10.patch` (`DEC-136`), which records a ping that
-  // arrives during the render instead of dropping it.
+  // timing. It is fixed in `react-dom` itself — facebook/react#36134,
+  // vendored by `next@16.3.5` (`DEC-140`, `DEC-146`) — which records a ping
+  // that arrives during the render instead of dropping it.
   // `router.refresh()` is back as the LAST statement inside the SAME
   // `startTransition`, its pre-44485b8 shape — `pending` now honestly lasts
   // until the refresh has actually committed.

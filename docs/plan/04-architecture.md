@@ -4,7 +4,7 @@
 **Serves:** `REQ-NFR-004`, `REQ-NFR-011`, `REQ-NFR-016`, `REQ-NFR-017`, `REQ-NFR-019`, D61–D64
 **Cites:** `02-domain-model.md`, `03-permissions-rls.md`
 
-> **Written against Next 16.2.10, verified in `node_modules/next/dist/docs/`.** Several things in
+> **Written against Next 16.2.10, verified in `node_modules/next/dist/docs/`; the tree runs 16.3.5 since `DEC-146`, whose docs were read for this document's claims and change none of them.** Several things in
 > this document contradict what a model trained before this release would assume. Each such point
 > is marked **[v16]** and the contradiction is stated, because a correction that does not say what
 > it corrects gets silently "fixed" back.
@@ -15,7 +15,7 @@
 
 | Package | Version | Notes |
 |---|---|---|
-| next | **16.2.10** | Middleware is `proxy.ts`; async request APIs |
+| next | **16.3.5** (`DEC-146`) | Middleware is `proxy.ts`; async request APIs; vendors `react-dom` 19.3.0-canary with facebook/react#36134 |
 | react / react-dom | 19.2.4 | |
 | next-intl | 4.13.2 | Makes `[locale]` the real root |
 | tailwindcss | 4.x | `@theme` in CSS; no `tailwind.config.*` |

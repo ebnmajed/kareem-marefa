@@ -192,7 +192,8 @@ export function CommentComposer({
       // `DEC-135` before touching the timing here. The cause was React 19.2.4
       // losing a ping mid-render, not this function's ordering: two timing
       // changes (`44485b8`, `4582b17`) only moved the odds. It is fixed in
-      // `react-dom` itself by `patches/next+16.2.10.patch` (`DEC-136`).
+      // `react-dom` itself — upstream in facebook/react#36134, vendored by
+      // `next@16.3.5` (`DEC-140`, `DEC-146`).
       router.refresh();
     });
   }

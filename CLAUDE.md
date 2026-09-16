@@ -51,7 +51,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 
 ## Stack
 
-**Next.js 16.2.10** · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
+**Next.js 16.3.5** (vendors `react-dom` 19.3.0-canary — DEC-146) · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
 Zod 4.4.3 · supabase-js 2.110.2 · Vitest 4.1.10
 **Infra:** Vercel · Supabase cloud · graphile-worker (host TBD by M3 — DEC-034, OQ-027) · Resend · Sentry
 **CLI:** `supabase` 2.109.1, linked to project `qnwbgzsgkftqaixzuhdo`
@@ -152,10 +152,11 @@ npm run lockfile     # regenerates package-lock.json with CI's npm, in a contain
 ```
 
 The lock is **npm-version-sensitive**. `next-intl` bundles `@swc/core`, which declares an optional
-peer `@swc/helpers >=0.5.17` while the root has `0.5.15` for Next. **npm 10 adds a nested
-`next-intl/node_modules/@swc/helpers`; npm 11 does not.** A lock written by npm 11 is missing an
-entry npm 10 insists on, so `npm ci` — strict, unlike `npm install` — fails in CI while everything
-looks fine locally. It has broken CI twice.
+peer `@swc/helpers >=0.5.17` while the root had `0.5.15` for Next 16.2. **npm 10 added a nested
+`next-intl/node_modules/@swc/helpers`; npm 11 did not.** A lock written by npm 11 was missing an
+entry npm 10 insisted on, so `npm ci` — strict, unlike `npm install` — failed in CI while everything
+looked fine locally. It broke CI twice. Next 16.3.5 ships `@swc/helpers 0.5.23`, so that one nested
+entry is gone from the lock (DEC-146) — **the rule is not**: the next optional peer will do the same.
 
 So: if you add or change a dependency, run `npm run lockfile` before committing. CI is the backstop
 if you forget.
