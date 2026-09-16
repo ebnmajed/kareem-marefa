@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
 import { MoreIcon } from "@/components/ui/icons";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -52,10 +51,6 @@ function RoleCell({ member, action, isSelf }: { member: AdminMemberRow; action: 
   const t = useTranslations("admin.members");
   const toast = useToast();
   const [state, formAction, pending] = useActionState(action, emptyRowState);
-  // ★ DEC-135: a role change re-renders this row's own cell — exactly the
-  // shape React 19.2.4 can lose the retry for; a workaround, not a feature,
-  // delete with `pending-nudge.ts`.
-  usePendingNudge(pending);
 
   useEffect(() => {
     if (state.done) toast.show({ title: t("roleChanged"), tone: "success" });
@@ -105,17 +100,8 @@ function ActionsCell({
   const t = useTranslations("admin.members");
   const toast = useToast();
   const [state, formAction, pending] = useActionState(deactivateAction, emptyRowState);
-  // ★ DEC-135: deactivating re-renders this row (the status badge, the
-  // deactivation note, the menu collapsing to a single reactivate control) —
-  // exactly the shape React 19.2.4 can lose the retry for; a workaround, not
-  // a feature, delete with `pending-nudge.ts`. Both this action's own
-  // `pending` and `reactivatePending` below wait on server content, so both
-  // get it — `onReactivate` is a bound Server Action too, just called
-  // manually rather than through `useActionState`.
-  usePendingNudge(pending);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reactivatePending, setReactivatePending] = useState(false);
-  usePendingNudge(reactivatePending);
 
   // ★ Closing the dialog is DERIVED from `state`, adjusted DURING RENDER
   // (react.dev's own pattern for this, and what `ui/combobox.tsx` already

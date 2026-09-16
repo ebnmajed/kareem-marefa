@@ -9,7 +9,6 @@ import { Select } from "@/components/ui/select";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import type { MaterialKind, MaterialUploadLimits } from "@/lib/dal/materials";
 
@@ -73,13 +72,6 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<ReactNode>(null);
 
-  // `DEC-135`: `router.refresh()` at the end of `handleSubmit` below is
-  // tracked by this SAME `useTransition`, so its `pending` honestly lasts
-  // until the refresh has committed — and React 19.2.4 can lose the ping
-  // that would otherwise resume that commit, so `usePendingNudge` re-renders
-  // this component every 300ms while pending to force the retry through.
-  usePendingNudge(pending);
-
   const isFileKind = (FILE_KINDS as readonly string[]).includes(kind);
   const isLinkKind = (LINK_KINDS as readonly string[]).includes(kind);
 
@@ -121,8 +113,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
     // `router.refresh()` at the end is the LAST statement inside this SAME
     // `startTransition` — `pending` (the uploader's busy state) honestly
     // lasts until the refreshed material list has actually committed, not
-    // just until the upload's own requests finish. See the `usePendingNudge`
-    // note above for why this reliably commits at all (`DEC-135`).
+    // just until the upload's own requests finish.
     //
     // ★ The lead's real-build finding on the event page's discussion (the
     // identical shape here): a request that fails at the NETWORK level

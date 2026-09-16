@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import type { PhotoKind } from "@/lib/dal/photos";
 
@@ -54,13 +53,6 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
   const [resetKey, setResetKey] = useState(0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<ReactNode>(null);
-
-  // `DEC-135`: `router.refresh()` at the end of `handleSubmit` below is
-  // tracked by this SAME `useTransition`, so its `pending` honestly lasts
-  // until the refresh has committed — and React 19.2.4 can lose the ping
-  // that would otherwise resume that commit, so `usePendingNudge` re-renders
-  // this component every 300ms while pending to force the retry through.
-  usePendingNudge(pending);
 
   function handleSubmit() {
     setError(null);

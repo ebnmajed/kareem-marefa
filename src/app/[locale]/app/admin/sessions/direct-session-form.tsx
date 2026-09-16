@@ -7,7 +7,6 @@ import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
@@ -58,12 +57,6 @@ export function DirectSessionForm({
   // original version of this form already did.
   const tp = useTranslations("proposals.propose");
   const [state, formAction, pending] = useActionState(action, emptyCreateState);
-  // ★ DEC-135: submitting re-renders the sessions list this form sits above
-  // (the new session, or a validation error) — exactly the shape React
-  // 19.2.4 can lose the retry for; a workaround, not a feature, delete with
-  // `pending-nudge.ts`. `ui/button`'s own `pending` prop is presentational
-  // only (a spinner) — unlike `ui/submit-button`, it does not call this.
-  usePendingNudge(pending);
   const err = (field: SessionField) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : undefined);
   const required = (field: SessionField) => SESSION_REQUIRED_FIELDS.includes(field);
 

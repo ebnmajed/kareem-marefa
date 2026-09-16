@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { type ModerationState } from "./actions";
@@ -59,10 +58,6 @@ export function ReportCard({
     else if (result.error) toast.show({ title: t(`error.${result.error}`), tone: "error" });
     return result;
   }, emptyModerationState);
-  // ★ DEC-135: this transition re-renders server content (the queue drops
-  // the resolved report), which is exactly the shape React 19.2.4 can lose
-  // the retry for — a workaround, not a feature; delete with `pending-nudge.ts`.
-  usePendingNudge(pending);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const reasonId = useId();
 

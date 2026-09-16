@@ -19,7 +19,6 @@ import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { CloseIcon, FilterIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
@@ -68,12 +67,10 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const wide = useSyncExternalStore(subscribe, isWide, () => false);
-  // ★ The push runs in a tracked transition so its re-render can be nudged:
-  // React 19.2 can lose the retry of a transition that re-renders server
-  // content, and the page would sit on the old results (DEC-135). The sheet
-  // has closed by then, so the busy state is on the button that opened it.
+  // ★ The push runs in a tracked transition, so the results re-rendering is
+  // visible as a busy state. The sheet has closed by then, so the busy state
+  // is on the button that opened it.
   const [pending, startTransition] = useTransition();
-  usePendingNudge(pending);
 
   const query = parseTimelineQuery(new URLSearchParams(search));
   const applied = SHEET_KEYS.filter((key) => getFilter(query, key) !== undefined).length;
