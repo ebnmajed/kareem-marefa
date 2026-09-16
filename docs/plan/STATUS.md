@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **WAVE 6 IN PROGRESS — all 14 routes are built and reach the system (16/16 strict at `185fbb1`); 9 of 14 captured and looked at on a real build; the closing gate set (`build` · `qa` · `visual` · `db:reset`+RLS · e2e) not yet run on the final HEAD.** The wave-6 record — checklist, deliveries, gates, wave 7 — is directly under START HERE.
+**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **WAVE 6 COMPLETE — PR #23 ready for the owner to merge.** All 14 routes reach the system (16/16 strict) and every one was captured at 390 px RTL on a production build and looked at; the full gate set ran on the final commits (`build` · `qa` 44/44 · `visual` 0.000% on the frozen six · `db:reset`+RLS 746 · e2e · allowlists shrunk). **Do not start wave 7 without a new ownership map.** The wave-6 record is directly under START HERE.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,7 +13,7 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-134`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-135`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
 | 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
@@ -75,7 +75,7 @@ or it does not exist.*
 
 ---
 
-## ★★ WAVE 6 — IN PROGRESS on `wave-6/screens` — fourteen routes onto the M9 system (`DEC-130`)
+## ★★ WAVE 6 — COMPLETE on `wave-6/screens` (PR #23, the owner merges) — fourteen routes onto the M9 system (`DEC-130`)
 
 **The owner's goal, verbatim in substance:** put **14 named routes** onto the M9 design system in
 one wave, without touching the frozen marketing contract. **Do not start wave 7.**
@@ -98,42 +98,41 @@ the strict one is the gate):
 | `app/platform` | 0/7 | 5/7 | 2/7 |
 | `/app` | 0/1 | 0/1 | 0/1 |
 
-### The 14-route checklist — as of `185fbb1`
+### The 14-route checklist — final, at `c802820`
 
-**(1)** is `node scripts/ui-reach.mjs --wave6` at `185fbb1`: **16/16 strict** (the fourteen plus the
-admin layout and the materials viewer page). **(2)** is a 390 px RTL capture from a production build of
-committed HEAD, **opened by the lead** — what it showed is written in the row. A row is **closed** only
-when both hold and no defect found in the capture is still open; a fix that is committed but not yet
-re-captured keeps the row open.
+**(1)** is `node scripts/ui-reach.mjs --wave6` at `c802820`: **16/16 strict** (the fourteen plus the
+admin layout and the materials viewer page). **(2)** is a 390 px RTL capture from a production build,
+**opened by the lead** — what it showed is written in the row, at the last build that re-captured it.
+A row is **closed** only when both hold and no defect found in a capture is still open.
 
 | # | Owner | Route / surface | (1) | (2) what the capture showed | State |
 |---|---|---|---|---|---|
-| 1 | lead | `(auth)/sign-in` | ✅ `f8a977c` | ✅ `wave6-auth-sign-in-390.png`, `-sign-in-error-390.png` — one named Google action and no field (`SC 3.3.8` by construction, `DEC-131`); the refused-domain error an alert on a readable panel, naming no org | **closed** — `auth-screens.spec` green both projects (`d092d81`) |
+| 1 | lead | `(auth)/sign-in` | ✅ `f8a977c` | ✅ `wave6-auth-sign-in-390.png`, `-sign-in-error-390.png` — one named Google action and no field (`SC 3.3.8` by construction, `DEC-131`); the refused-domain error an alert on a readable panel, naming no org | **closed** — `auth-screens.spec` green |
 | 2 | lead | `(auth)/choose-org` | ✅ `f8a977c` | ✅ `wave6-auth-choose-org-390.png` — a named radio group, each org name isolated, the choice stated as final | **closed** |
 | 3 | lead | `(auth)/no-access` | ✅ `f8a977c` | ✅ `wave6-auth-no-access-390.png` — every reason offers a next action; «الدخول بحساب آخر» primary when no reason | **closed** |
-| 4 | `sessions` | `/app` — the timeline (`DEC-112`, `REQ-UIX-021`/`022`) | ✅ `ac09c09` | ✅ `wave6-sessions-timeline-{items,empty}.png` (`e988ac6`) — h1 «الجلسات», the company nudge with «أكمل ملفك», status chips, «التالية لك» first then «هذا الأسبوع 1», the empty page inviting a proposal («اقترح موضوعًا»). **Found:** «جارية الآن» clipped to «جارية» by the filter button; placeholder initials «اا» read as a pause glyph; a dangling «·» | open — fixes committed (`2653321`, `e461239`, `content`'s `23698df`), not re-captured; `timeline.spec` 8/8 (`af33da7`) |
-| 5 | `sessions` | `/app/sessions` — browse | ✅ `ac09c09` | ✅ `wave6-sessions-browse-{chips,sheet-open}.png` — applied chips with ×, «امسح الكل», the filter count; the sheet's dates, tag, venue, company and level. **Found:** the sheet's apply action below its first screen; «جا» dark-on-navy (a colour token that does not exist); a venue name split across lines | open — fixes committed (`e461239`, `23698df`), not re-captured; `browse.spec` 10/10 (`af33da7`) |
-| 6 | `sessions` | `/app/sessions/[id]` — the event page | ✅ `ae7624e` | ✅ `wave6-sessions-event-{before,after,ended}.png` + `-viewport` — the dark hero, one primary per state; after reserving the «تم تأكيد حجزك» strip, «إلغاء الحجز», the calendar as the bar's primary; ended: the ribbon, «انتهت», «قدّمها», «حضرت», «قيّم الجلسة» exactly once; «حتى 3:38 م» kept whole | open — `event-page.spec` 4 passed, the ended test stopped on a streamed duplicate (spec wait `6e77830`, not yet run); «after reserving» pending ≥15 s under load — a quiet-machine timing run is owed |
-| 7 | `content` | the discussion — `components/event/comments.tsx` (`REQ-UIX-024`) | ✅ `40e23a6` | ✅ `wave6-discussion-{1-first-visit,2-thread,2b-mention,3-near-cap,4-pending}` (+`-viewport`), twice (`68e645d`, `af33da7`) — the thread and the indented reply, counts and all plural forms right («3 تعليقات», «110 أحرف متبقية»), the mention list («سالم الحربي»), reactions filled vs outline, no toast over the thread | ★ **open** — after a slow (~1.5 s) post «نشر» keeps `aria-busy` until the next keystroke (`content`); the failed-post and frozen captures not yet taken |
-| 8 | `content` | materials — `components/materials/list.tsx` and `/app/sessions/[id]/materials/[materialId]` | ✅ `a0448bf` | ☐ — `materials.spec`'s review step never reached: a stale assertion (`133b26c`), then a streamed duplicate (`185fbb1`) | open — rerun owed |
-| 9 | `content` | photos — `components/photos/gallery.tsx` | ✅ `3d185d0` | ✅ `photos-event-page-390-rtl-phone.png` (`68e645d`) — the privacy panel and the file limits read correctly. **Found:** «أو اسحب…» before «اختر ملفات»; the upload primary enabled with no file; the empty discussion's call to action doubled | open — fixed (`09d02a4`, `358eac4`, `e533ad8`), not re-captured; `photos.spec` 2/3 (`af33da7`) |
-| 10 | `console` | `/app/admin` — the dashboard, «يحتاج انتباهك» | ✅ `b8501d7` | ☐ — `scr-040` not reached: the spec stops at its first test (a status assertion `DEC-134` retires) | open — spec rewrite with `console` |
-| 11 | `console` | `/app/admin/proposals` | ✅ `ad7f5cc` | ☐ — `SCR-041` not reached (same cause) | open |
-| 12 | `console` | `/app/admin/sessions` | ✅ `e0f0f2c` | ✅ `scr-042-sessions-390-rtl-{desktop,phone}.png` (`1f4fffe`) — the admin top bar and drawer, «جاهزة للجدولة 1» with «أنشئ الجلسة», the secondary create, the search. **Found:** with an EMPTY search the list says «لا جلسات مطابقة لبحثك.»; a hint sentence rendered as a dark button-styled block, its two lines overflowing | ★ open — both with `console` |
-| 13 | `console` | `/app/admin/members` | ✅ `ef0586a` | ☐ — not reached | open |
-| 14 | `console` | `/app/admin/moderation/reports` — **photo** reports | ✅ `98a27fb` | ☐ — not reached (`admin-reports.spec` 1 passed, 2 failed, `1f4fffe`) | open |
-| — | `console` | the admin layout — not counted, required | ✅ `8de9b47`, ★ crash fixed `1f4fffe` | ✅ in `scr-042` and `scr-046-venues` — an untouched route renders under the new rail. **Found:** the rail skip link visible in a full-page capture | open — `console` confirming it hides until focused; `console.spec:68` |
-| — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) | ✅ `9d921cd` (+ `f797775`, `9cdcc89`, `e73803e`) | ✅ `wave6-shell-header-{390,desktop}.png`, `-account-menu-*`, `-tabbar-390.png` | **closed** — `shell-disclosures` 9/9, `shell-tab-bar` 8/8 (`68e645d`) |
-| — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`) — `ui/splash` is wave 7's | ✅ `1d73e89` — with `page-header`, `section-header`, `icon-button`, `prose` | — | **closed** |
+| 4 | `sessions` | `/app` — the timeline (`DEC-112`, `REQ-UIX-021`/`022`) | ✅ `ac09c09` | ✅ `wave6-sessions-timeline-{items,empty,filtered-empty}.png` at `5376c32` — h1 «الجلسات», the nudge «اختر شركتك قبل حجز مقعد أو اقتراح جلسة.» with «أكمل ملفك»; chips «القادمة» · «جارية الآن» (**whole** — the clip is fixed) · «انتهت» │ categories; «المزيد من عوامل التصفية» on its own line; «التالية لك» first («التسجيل مفتوح», «الجمعة، 25 سبتمبر · 4:31 م», venue, level, «مقعدك محجوز», bookmark); the poster placeholder **one** letter, white on navy (no «اا»); «هذا الأسبوع 1»; no dangling «·» | **closed** — `timeline.spec` green |
+| 5 | `sessions` | `/app/sessions` — browse | ✅ `ac09c09` | ✅ `wave6-sessions-browse-{chips,sheet-open}.png` at `5376c32` — named chips «المكان: قاعة التصفّح ×» (**whole**) and «المستوى: تمهيدي ×», the count «2», «امسح الكل»; the sheet «عوامل التصفية» with dates, tag «تقارير (1)», venue, company, level radios, and «اعرض النتائج · امسح · ×» **sticky in reach** | **closed** — `browse.spec` green. Carried: the native date mask (wave 7) |
+| 6 | `sessions` | `/app/sessions/[id]` — the event page | ✅ `ae7624e` | ✅ `wave6-sessions-event-{before,after,ended}.png` + `-viewport` at `5376c32` — the dark band, «الجلسات › إداري», «التسجيل مفتوح», chips, «يقدّمها سعد الحربي»; before: «0 من 60 مقعدًا», the bar, «يتبقى 60 مقعدًا», the phone bar «احجز مقعدك» + save + share; after: «تم تأكيد حجزك», «إلغاء الحجز», «وصلتك رسالة التأكيد ومعها ملف التقويم.», the bar's primary «أضِف إلى تقويمك»; ended: the ribbon «انتهت هذه الجلسة يوم الاثنين، 14 سبتمبر — التسجيل مغلق.», «انتهت», «قدّمها», «حضرت», the rating window, «قيّم الجلسة» once. **Found:** the sub-nav said «المُقدِّمون» over a one-presenter «المُقدِّم» — fixed `93e75d3`. ★ **And the reserve itself hung one press in three — `DEC-135`** | **closed** — `event-page.spec` green, «after reserving» at a 10 s ceiling (`4036774`), the reserve probe 16/16 |
+| 7 | `content` | the discussion — `components/event/comments.tsx` (`REQ-UIX-024`) | ✅ `40e23a6` | ✅ `wave6-discussion-{1-first-visit,2-thread,2b-mention,3-near-cap,4-pending,5-failed,6-frozen}` (+`-viewport`) at `861f236` — the thread and the indented reply; «3 تعليقات», «110 أحرف متبقية»; the mention list «سالم الحربي»; reacted «• 1» vs «○»; **4-pending:** the text stays, «نشر» greyed with a spinner; **5-failed:** the text kept, an inline panel «تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.» under the field, «نشر» ready to retry; **6-frozen:** «تعليق واحد», the notice «التعليقات مغلقة — هذه الجلسة ملغاة», the comment readable. **Found and fixed:** «نشر» stuck busy after a slow post (`DEC-135`); the success path wiped text typed meanwhile (`d5f8b10`); **a network-failed post replaced the whole event page with the route error, losing the text** (`6ea6e60`); the same error also as a toast over the thread (`e0317d0`, `0ccd698`); the reaction toggle offered on a frozen thread (`e0317d0`) | **closed** — `wave6-discussion-review` and `event-comments.spec` green at `04c5cf8` |
+| 8 | `content` | materials — `components/materials/list.tsx` and `/app/sessions/[id]/materials/[materialId]` | ✅ `a0448bf` | ✅ `materials-{event-page,viewer}-390-rtl-phone.png` at `296aec4` — «المواد», «مادة واحدة», the card «الشريحة الافتتاحية» · PDF · «بعد الجلسة», the font-substitution warning, «فتح العارض»; the uploader in order («اختر ملفات» then «أو اسحب…», «PDF فقط · حتى 50 ميغابايت», «رفع» disabled with no file); the viewer: «الرجوع إلى مواد الجلسة», «صفحة 2 من 3», zoom, previous · pages · next, thumbnails with the current outlined, «تحميل الملف الأصلي» + the audit note (blank page images are the spec's 1×1 seed). **Found and fixed:** the presenter's row was a native select and a blue browser checkbox (`9a71f48`); ASCII quotes round the font name (`de8db45`) | **closed** — `materials.spec` green |
+| 9 | `content` | photos — `components/photos/gallery.tsx` | ✅ `3d185d0` | ✅ `photos-event-page-390-rtl-phone.png` and the ended event page at `296aec4` — «الصور», the empty sentence «لا توجد صور لهذه الجلسة بعد.», the privacy panel, FileDrop in order, **one** «إضافة صورة», disabled with no file. **Found and fixed:** the empty state carried a second, enabled «إضافة صورة» (`9752358`) | **closed** — `photos.spec` green |
+| 10 | `console` | `/app/admin` — the dashboard, «يحتاج انتباهك» | ✅ `b8501d7` | ✅ `scr-040-admin-dashboard-390-rtl-phone.png` at `9b1e67c` — «لوحة المؤسسة» and its promise that every figure links to its list; «يحتاج انتباهك»: «مقترحات بانتظار قرار · اليوم 2», «جلسات لم تُجدول بعد 0», «بلاغات على الصور 0», «بلاغات على التعليقات 0»; «نظرة عامة» («معدّل الحضور 50٪», «الأعضاء النشطون 4», «النقاط الممنوحة 10»); «مسار المقترحات» with «عرض القائمة», six states; the three «أكثر …» lists | **closed** — `admin-dashboard.spec` green. Noted: the «أكثر …» cards set the count beside the name, the pipeline at the edge |
+| 11 | `console` | `/app/admin/proposals` | ✅ `ad7f5cc` | ✅ `scr-041-review-390-rtl.png` at `9b1e67c` — «مراجعة المقترحات» with the written-reason rule, «مقترح واحد», the card «مقترح للقياس البصري» · «بانتظار المراجعة · وصل اليوم», proposer · category · level, the abstract, «الاعتماد لا ينشر الجلسة — الجدولة والنشر خطوة منفصلة.», «اعتمد المقترح» primary, «اطلب تعديلًا». **Found and fixed:** two reason fields with one label (`f44d339`); the reject success toast never fired (`c9e5ac7`) | **closed** — `admin-proposals` and `sessions-admin-proposals` green |
+| 12 | `console` | `/app/admin/sessions` | ✅ `e0f0f2c` | ✅ `scr-042-sessions-390-rtl-phone.png` at `296aec4` — «جاهزة للجدولة 1» with «أنشئ الجلسة», the secondary «إنشاء جلسة بدون مقترح», the search «ابحث في جلسات المؤسسة», the empty list «لا جلسات بعد.» + «افتح المقترحات». **Found and fixed:** «no match» on an empty search and a sentence styled as a button (`a78eec2`); the search's name equal to the shell's; the row menu missing from the phone cards (`a2c09fe`); the cancel toast never fired (`c9e5ac7`); ★ the data table's sticky header covered row 1 on desktop — a sticky `<th>` inside `overflow-x-auto` sticks to the wrapper (`2f0bcf0`) | **closed** — `admin-sessions.spec` green |
+| 13 | `console` | `/app/admin/members` | ✅ `ef0586a` | ✅ `scr-049-members-390-rtl-phone.png` at `296aec4` and `9b1e67c` — «الأعضاء والأدوار», «ابحث في الأعضاء», cards with avatar, name, «عرض الملف الكامل», company, role, «نشط». **Found and fixed:** **no email on any member** (`REQ-ADM-009`, `f44d339`); «غيّر الدور» wrapping and clipped (`e1bdf52`); the viewer's own row offers no role control, and the spec now says so (`804ca74`) | **closed** — `admin-members.spec` green on the final build |
+| 14 | `console` | `/app/admin/moderation/reports` — **photo** reports | ✅ `98a27fb` | ✅ `scr-052-moderation-reports-390-rtl-phone.png` at `9b1e67c` — «الصور المُبلَّغ عنها», «بلاغات مفتوحة على صور لم تُخفَ بعد. الصورة تبقى ظاهرة حتى تقرر.», the empty queue «لا بلاغات مفتوحة على صور.» + «العودة إلى اللوحة». The populated queue is exercised by `admin-reports.spec` (remove, dismiss, the toast — fixed `63fef6d`), not captured | **closed** — `admin-reports.spec` green |
+| — | `console` | the admin layout — not counted, required | ✅ `8de9b47`, crash fixed `1f4fffe` | ✅ every admin capture above, and `wave6-console-layout-untouched-390.png` (venues) — the bar «لوحة إدارة المؤسسة» and its drawer. The skip link seen mid-page earlier is a full-page-capture artefact: a `fixed` element translated above the viewport, composited mid-page. The untouched venues page is 412 px wide at 390 — its own content, wave 7 | **closed** — `console.spec` green |
+| — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) | ✅ `9d921cd` (+ `f797775`, `9cdcc89`, `e73803e`) | ✅ `wave6-shell-header-{390,desktop}.png`, `-account-menu-*`, `-tabbar-390.png` | **closed** — `shell-disclosures`, `shell-tab-bar` green |
+| — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`) — `ui/splash` is wave 7's | ✅ `1d73e89` — with `page-header`, `section-header`, `icon-button`, `prose` | ✅ in the gallery capture | **closed** |
 | — | lead | **the date-time picker's unnamed month buttons** (WCAG 4.1.2) | ✅ `73b0f3e` | — | **closed** |
-| — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) | ✅ `c20b901` — tsc, vitest, build, qa 44/44, visual 0.000% on the frozen six, RLS 63/746 | — | **closed** |
-| — | lead | **`0082_western_numerals.sql`** — rehearsed against production's schema, then promoted (record below) | ✅ `66676b7` | — | **closed** |
-| — | lead | **focus clears the sticky header and fixed bars on every route** (`SC 2.4.11`, built by `sessions`) | ✅ `6ccb0e4` | — | closed; the event page's focus sweep reruns with the final e2e |
-| — | lead | **an Arabic not-found page for all of `/app`**, and the streamed-404 contract (`DEC-134`) | ✅ `c03391c` — not-found allowlist 6 → 0 | — | closed |
+| — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) | ✅ `c20b901` | ✅ the gallery's stats read «124», «18» | **closed** |
+| — | lead | **`0082_western_numerals.sql`** — rehearsed against production's schema, then promoted | ✅ `66676b7` | — | **closed** — `db:reset` + RLS on the final commits |
+| — | lead | **focus clears the sticky header and fixed bars on every route** (`SC 2.4.11`) | ✅ `6ccb0e4` | — | **closed** — the event page's tab sweep green |
+| — | lead | **an Arabic not-found page for all of `/app`**, and the streamed-404 contract (`DEC-134`) | ✅ `c03391c` | — | **closed** — not-found allowlist 6 → 0 |
+| — | lead | ★ **`DEC-135` — pending controls nudge React past a lost ping** | ✅ `5376c32`, adopted `6dedc29` `1fd7980` `4036774` | — | **closed** — see Sync 4 |
 
-**Tally at `185fbb1`:** (1) **16/16**. (2) looked at on a real build: **rows 1–7, 9, 12** and the layout;
-not yet: **8, 10, 11, 13, 14**. **Closed: 3 of 14** (the `(auth)` screens). Every other row is waiting
-on a re-capture of committed fixes, on one open defect (7, 12), or on `console`'s spec rewrite.
+**Tally at `c802820`:** (1) **16/16**. (2) **all 14 rows and the layout captured on a production build
+and looked at. Closed: 14 of 14.**
 
 **Console's five, and why** (`DEC-130`): the dashboard is where «يحتاج انتباهك» moved; proposals,
 sessions and members are the three weekly lists that most need `DataTable`'s phone card stack; the
@@ -183,21 +182,37 @@ reports queue is where a flag from `content`'s rebuilt discussion lands. Not cho
   timeline, the gated tasks section and hydration (`d092d81`, `abff454`, `fb50577`) · sync records
   (`5198bfe`, `20081fb`, this one).
 
-### Gates — which have run, and which have not
+- **After `e86f904` — the closing builds** (each finding is in its checklist row and in Sync 4):
+  `sessions` — the nudge in the filter sheet, bookmark and not-found retry, and «after reserving» at a
+  10 s ceiling (`4036774`); the sub-nav's presenter label (`93e75d3`); an independent Node + jsdom
+  reproduction of `DEC-135` and the one-line `react-dom` fix. `console` — the report, proposal and
+  session toasts fired from the action (`63fef6d`, `c9e5ac7`); the empty-state copy (`a78eec2`); the
+  `DEC-134` specs and stream waits (`5a7ae10`, `e8c546f`); the nudge (`6dedc29`); the phone row menu and
+  a distinct search name (`a2c09fe`); the email, the reason labels, the dialog close on result
+  (`f44d339`); the role button (`e1bdf52`); the sticky header dropped (`2f0bcf0`); specs `f9b23dc`,
+  `861f236`, `9b1e67c`, `6ccbe9d`, `804ca74`. `content` — the nudge across nine call sites (`1fd7980`);
+  the photo empty state (`9752358`); a slow post wiping the next draft (`d5f8b10`); **network
+  rejections caught everywhere** (`6ea6e60`); the settings row onto `ui/select` + `ui/checkbox`
+  (`9a71f48`); Arabic quotes (`de8db45`); the failed/frozen findings (`e0317d0`, `0ccd698`); its first
+  `4582b17` (afterPaint) retired by `DEC-135`; notes `dc2e424` … `04c5cf8`. **lead** — `DEC-135` and
+  `ui/pending-nudge` (`5376c32`); the review settles between states (`296aec4`); the gallery's glyph
+  names and count (`86f210d`); the ui-lint allowlist pruned 416 → 329 (`c802820`); this record.
 
-| Gate | Last run | Result |
+### Gates — all run on the final commits
+
+| Gate | Where | Result |
 |---|---|---|
-| `npm run build` | worktree builds of committed HEAD at `d092d81`, `448ff6d`, `68e645d`, `e988ac6`, `1f4fffe`, `af33da7` | green every time — **not yet on the final HEAD** |
-| `tsc` · `lint` · vitest | `028fa23` | clean · **0 errors** (19 warnings, read by grepping "problems") · **1176/1177** — the one failure fixed in `1ee207a`, not re-run |
-| `test:rls` | `f865c66` | **63 files, 746 passed, 4 todo** — on the local DB at `0082`, **without a fresh `db:reset`** |
-| `db:reset` + `test:rls` with `0082` | `66676b7` (promotion) | 63/746 — **not re-run at the final HEAD** |
-| `policy-diff` · `trace` | after `028fa23` | agree · 313 requirements, 72 entities, 147 stories, no gaps |
-| `loading-coverage` · `error-coverage` · not-found | `c03391c` | **0 · 0 · 0** allowlisted (not-found was 6) |
-| `ui-lint` | `028fa23` | allowlist **410** (416 on `main`); `console` reports 78 fewer violations since — **`--prune` not yet run** |
-| **e2e, green at last run** | | `auth-screens` (`d092d81`) · `shell-disclosures` 9/9, `shell-tab-bar` 8/8 (`68e645d`) · `session` 8/8 (`fb50577`) · `timeline` 8/8, `browse` 10/10, `checkin-gating` 4/4 (`af33da7`) |
-| **e2e, not green yet** | | `event-page`, `event-comments`, `materials`, `photos`, `sessions-screens` (streamed-duplicate waits committed, not run) · `wave6-discussion-review` (the slow-post bug) · all eight `console` specs (`DEC-134` rewrite pending) |
-| `npm run qa` 44/44 | `607ecbe` (sync 1) | **not run since** — owed: the shell and the numerals sweep reach files marketing can reach |
-| `npm run visual` 0.000% | `607ecbe` (sync 1) | **not run since** — owed on all six frozen pairs against `.qa-shots/visual/wave-6-before` |
+| `npm run build` | main checkout at `86f210d` (and the worktree at `04c5cf8`) | **green**, no warnings |
+| `npm run qa` | the `86f210d` build | **44 passed, 0 failed**; `.git/kareem-qa-verified` → `c802820` (only tests and the allowlist since) |
+| `npm run visual` | `capture wave-6-final` at `86f210d`, `compare wave-6-before` | **0.000%** on all six frozen pairs (`desktop_ar`, `desktop_ar_register`, `desktop_en`, `phone_ar`, `phone_ar_register`, `phone_en`). The `(dev)` gallery pair grew (1440×3358 → 3598, 390×4694 → 4914) and was **looked at**: real `page-header`/`section-header` headings, rounded-square badges and avatars, Western digits in the stats, a one-letter placeholder, four new glyphs — which carried Latin names and a stale «35» until `86f210d`. `wave-6-final` is wave 7's baseline |
+| `npm run db:reset` + `npm run test:rls` | local stack, migrations through `0082` | reset clean; **63 files, 746 passed, 4 todo** |
+| `policy-diff` · `trace` | `c802820` | migrations and `03` agree · **313 requirements · 72 entities · 147 stories · no gaps** |
+| `ui-lint` | `c802820` | **pruned: 80 files · 329 violations** (`main`: 103 · 416) |
+| `loading-coverage` · `error-coverage` · not-found | `c802820` | **0 · 0 · 0** allowlisted (`main`: 0 · 0 · **6**) |
+| `tsc` · `lint` · vitest | `c802820` | clean · **0 errors** (20 warnings; `✖ 20 problems (0 errors, 20 warnings)`) · **115 files, 1218 passed** |
+| **e2e — the whole wave-6 set** | the `04c5cf8` build, 21 specs, both projects | **136 passed, 1 failed, 11 skipped, 2 not run** — the one failure an unscoped `admin-members` locator; re-run on the `86f210d` build after `6ccbe9d` + `804ca74`: **6 passed, 4 skipped**. Every skip is a project gate (a phone-only review, a desktop-only control, a row interaction the card stack has no table for) |
+| `ui-reach --wave6` | `c802820` | **16/16 strict** |
+| the reserve probe (`DEC-135`) | 16 presses per build | **16/16** with the nudge (`5376c32`); **16/16 at ~105 ms** with `sessions`' `react-dom` patch and the nudge disabled (not shipped) |
 
 ### Order inside the wave
 
@@ -360,6 +375,44 @@ once, so delete with `rm`; never create, restore or delete a file outside your o
   load, recorded here, **not** explained.
 - **RLS at `f865c66`:** 63 files, 746 passed, 4 todo.
 
+### Sync 4 — 2026-09-16 — the closing builds: a lost React ping, and what the captures still held
+
+- ★★ **`DEC-135` — a transition that re-renders the event page could hang for good.** On a production
+  build, on a quiet machine, **one «احجز مقعدك» in three never committed**. The seat was stored, the
+  action's whole response had arrived and the main thread was idle, yet the page stayed as it was
+  until any other update. The same bug caused `content`'s «stuck busy» post and a tombstone that
+  never appeared.
+  - **Bisect** (8, then 16 presses per build): `ae7624e` introduced it, when the event page became
+    async server components (~95 lazy rows per payload). Six single-cause patches all still hung.
+  - **Cause, read from an instrumented `react-dom`:** a Flight chunk became `resolved_model` while
+    the render yielded. Attaching the ping listener then pinged **synchronously inside the render**.
+    The root was already `RootSuspendedWithDelay`, so the ping was dropped.
+  - **`sessions` reproduced the same in Node + jsdom** with Next's own `react-dom` and Flight client,
+    and wrote the one-line fix.
+  - **Shipped:** `ui/pending-nudge`, a 300 ms re-render while pending, in `SubmitButton`, `ui/link`'s
+    pending reporter and every tracked transition in the three tracks. **16/16.**
+  - **Not shipped:** the `react-dom` patch, also 16/16 at ~105 ms with the nudge off. That is the
+    owner's toolchain call (wave 7 below).
+- **What the full review found once it could reach its last states:** the composer wiped text typed
+  during a slow post; **a network-failed post replaced the whole event page with the route error**;
+  the same error showed twice; a frozen thread offered reactions. All fixed and re-captured (row 7).
+- **What the admin captures and runs found:**
+  - members had **no email**;
+  - «غيّر الدور» clipped;
+  - one card had two reason fields with one label;
+  - three success toasts never fired, because each was an effect in a card that unmounts in the same
+    commit;
+  - the phone cards had no row menu;
+  - the admin search had the shell's name;
+  - ★ **the data table's sticky header permanently covered row 1 on desktop.** A sticky `<th>` inside
+    an `overflow-x-auto` wrapper sticks to the wrapper, not the page, so `top: var(--header-h)` pushed
+    it down over the first row; it was dropped.
+
+  All fixed (rows 10–14).
+- **The gallery** named four new glyphs in Latin and still said «35»; fixed (`86f210d`).
+- **The freeze held:** the final build and gates ran with teammates frozen; the only two commits
+  after it were one spec each, re-run on the final build.
+
 ### ★ Findings recorded before any code
 
 - **`sign-in` has no input at all** — one Google OAuth button. `DEC-129`'s «paste into the code
@@ -418,9 +471,28 @@ met on paper only, and it is stated here rather than left to be found.
 - `REQ-EVT-010`'s «a photo appears at once» does not match the shipped pipeline (processing, then visible).
 - On `/app/me`, a save clicked before hydration lands without the `?saved=1` confirmation (the no-JS
   path) — `app/me` is wave 7.
-- **«after reserving» holds the reserve button pending until every section on the page has re-read** —
-  `reserveSeat` redirects to the same page. Measure on a quiet machine; if it is seconds, the action
-  should not `redirect()` (`checkin`'s `actions.ts`).
+- ★ **`DEC-135`'s real fix is the owner's call.** Either apply `sessions`' one-line `react-dom` change
+  (`pingSuspendedRoot`: `? 0 === (executionContext & 2) ? prepareFreshStack(root, 0) :
+  (workInProgressRootPingedLanes |= pingedLanes)`, verified 16/16 at ~105 ms) through `patch-package`
+  (a new dependency; the lockfile through Docker), or take a React/Next release that carries it. Then
+  **delete `ui/pending-nudge` and every caller together**, and report the bug upstream.
+- **The reserve's `redirect()` is not the hang** (`DEC-135` ruled it out). The earlier note to replace
+  it is withdrawn.
+- `/app/admin/venues` renders **412 px wide** at a 390 viewport, so the page scrolls sideways; it is the
+  page's own content (wave 7).
+- The populated photo-report queue has e2e coverage but no 390 capture; take one when
+  `moderation/{comments,photos}` are rebuilt.
+- The dashboard's three «أكثر …» cards set the count beside the name; the pipeline aligns it at the
+  edge. Pick one.
+- `ui/select` has no size variant, so `content`'s inline settings row uses `md` (noted in its note).
+- `ui/button`'s `pendingLabel` puts the spinner's live label into the button's accessible name while
+  pending. That is by design (a polite status), but specs need a regex in that window. Revisit with
+  the loading model.
+- **A long list's sticky header** needs its wrapper to be the vertical scroller (a max-height plus
+  `top-0`); `DataTable` has none now (`2f0bcf0`).
+- ⚠ **`supabase/config.toml` has an uncommitted change that is not a wave-6 change** (Google OAuth
+  enabled via `env()`, `site_url` → `localhost`, wildcard redirect URLs), dated 2026-09-15. Every
+  session left it unstaged. **The owner decides** whether it is committed.
 - The filter sheet's native date inputs show the browser's English `dd/mm/yyyy` mask.
 - The CSP is report-only; the one nonce-less inline script on every page is the frozen marketing intro
   in the locale layout — enforcement waits on M13.
