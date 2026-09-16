@@ -1,19 +1,6 @@
 {
   "$comment": "ui-lint allowlist (DEC-087). MAY ONLY SHRINK. A count is the number of existing violations a file is permitted to keep; exceeding it fails CI, going below it is progress. Regenerate DOWNWARD with `node scripts/ui-lint.mjs --prune`, never upward to admit a new one. Empty by M13, when the gate flips to --strict.",
   "files": {
-    "src/app/[locale]/(auth)/choose-org/page.tsx": {
-      "field": 1,
-      "class-string": 1
-    },
-    "src/app/[locale]/(auth)/layout.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/(auth)/no-access/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/(auth)/sign-in/page.tsx": {
-      "class-string": 1
-    },
     "src/app/[locale]/app/admin/audit/filter-form.tsx": {
       "field": 5,
       "class-string": 7
@@ -107,7 +94,7 @@
       "class-string": 2
     },
     "src/app/[locale]/app/admin/settings/settings-form.tsx": {
-      "field": 15,
+      "field": 14,
       "class-string": 3
     },
     "src/app/[locale]/app/admin/venues/page.tsx": {
