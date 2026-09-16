@@ -1,25 +1,11 @@
 {
   "$comment": "ui-lint allowlist (DEC-087). MAY ONLY SHRINK. A count is the number of existing violations a file is permitted to keep; exceeding it fails CI, going below it is progress. Regenerate DOWNWARD with `node scripts/ui-lint.mjs --prune`, never upward to admit a new one. Empty by M13, when the gate flips to --strict.",
   "files": {
-    "src/app/[locale]/app/admin/audit/filter-form.tsx": {
-      "field": 5,
-      "class-string": 7
-    },
     "src/app/[locale]/app/admin/categories/category-form.tsx": {
       "class-string": 1
     },
     "src/app/[locale]/app/admin/companies/company-form.tsx": {
       "class-string": 1
-    },
-    "src/app/[locale]/app/admin/designer/[documentId]/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/admin/emails/page.tsx": {
-      "field": 3,
-      "class-string": 4
-    },
-    "src/app/[locale]/app/admin/exports/page.tsx": {
-      "class-string": 2
     },
     "src/app/[locale]/app/admin/page.tsx": {
       "class-string": 1
@@ -27,18 +13,6 @@
     "src/app/[locale]/app/admin/proposals/review-card.tsx": {
       "field": 1,
       "class-string": 3
-    },
-    "src/app/[locale]/app/admin/recognition/page.tsx": {
-      "field": 11,
-      "class-string": 7
-    },
-    "src/app/[locale]/app/admin/reminders/page.tsx": {
-      "field": 2,
-      "class-string": 3
-    },
-    "src/app/[locale]/app/admin/scoring/page.tsx": {
-      "field": 14,
-      "class-string": 8
     },
     "src/app/[locale]/app/admin/sessions/[id]/attendance/manual-mark-form.tsx": {
       "field": 2,
@@ -50,13 +24,6 @@
     "src/app/[locale]/app/admin/sessions/[id]/certificates/page.tsx": {
       "field": 2,
       "class-string": 6
-    },
-    "src/app/[locale]/app/admin/sessions/[id]/schedule/publish-button.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/admin/sessions/[id]/schedule/schedule-form.tsx": {
-      "field": 9,
-      "class-string": 3
     },
     "src/app/[locale]/app/admin/sessions/direct-session-form.tsx": {
       "class-string": 1
@@ -80,62 +47,17 @@
     "src/app/[locale]/app/me/privacy/page.tsx": {
       "class-string": 1
     },
-    "src/app/[locale]/app/platform/impersonate/impersonate-form.tsx": {
-      "field": 3,
-      "class-string": 2
-    },
-    "src/app/[locale]/app/platform/impersonate/page.tsx": {
-      "class-string": 3
-    },
-    "src/app/[locale]/app/platform/metrics/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/platform/orgs/[id]/domains/forms.tsx": {
-      "field": 2,
-      "class-string": 2
-    },
-    "src/app/[locale]/app/platform/orgs/[id]/domains/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/platform/orgs/new/org-form.tsx": {
-      "field": 6,
-      "class-string": 2
-    },
-    "src/app/[locale]/app/platform/orgs/org-controls.tsx": {
-      "field": 2,
-      "class-string": 3
-    },
-    "src/app/[locale]/app/platform/orgs/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/platform/templates/page.tsx": {
-      "class-string": 2
-    },
-    "src/app/[locale]/app/platform/templates/promote-form.tsx": {
-      "field": 1,
-      "class-string": 2
-    },
     "src/components/admin/rtl-datetime-picker.tsx": {
       "field": 2,
-      "class-string": 4
-    },
-    "src/components/branding/brand-kit-form.tsx": {
-      "field": 1,
       "class-string": 3
     },
     "src/components/branding/colour-field.tsx": {
-      "field": 2,
-      "class-string": 2
+      "class-string": 1
     },
     "src/components/branding/contrast-badge.tsx": {
       "class-string": 1
     },
     "src/components/branding/logo-uploader.tsx": {
-      "field": 1,
-      "class-string": 1
-    },
-    "src/components/certificates/held-achievements.tsx": {
-      "field": 1,
       "class-string": 1
     },
     "src/components/checkin/code-input.tsx": {
@@ -148,26 +70,6 @@
     "src/components/designer/checks-panel.tsx": {
       "class-string": 1
     },
-    "src/components/designer/editor.tsx": {
-      "class-string": 5
-    },
-    "src/components/designer/export-panel.tsx": {
-      "class-string": 3
-    },
-    "src/components/designer/layer-list.tsx": {
-      "class-string": 1
-    },
-    "src/components/designer/properties-panel.tsx": {
-      "field": 4,
-      "class-string": 2
-    },
-    "src/components/designer/template-library.tsx": {
-      "field": 3,
-      "class-string": 3
-    },
-    "src/components/designer/template-result.tsx": {
-      "class-string": 2
-    },
     "src/components/event/comment-composer.tsx": {
       "field": 1,
       "class-string": 1
@@ -176,9 +78,6 @@
       "class-string": 1
     },
     "src/components/photos/gallery.tsx": {
-      "class-string": 1
-    },
-    "src/components/platform/stop-control.tsx": {
       "class-string": 1
     },
     "src/components/posters/picker.tsx": {
