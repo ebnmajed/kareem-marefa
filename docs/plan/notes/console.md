@@ -1659,3 +1659,19 @@ mistake. One test per changed form proving the app's own error actually renders 
 reason — three brand-new test files (`takedown-card`, comments' `report-card`, `session-controls` had
 zero coverage before this) plus two extended (`members-table`, `proposals-review-card`). Commit
 `1402e33`.
+
+### The gated-not-found wait flake — six specs, one precise fix
+
+`goto()`'s own zero-`div[hidden][id^="S:"]` wait can time out specifically on a gated route: a
+Suspense boundary can flush before the page's own `notFound()` throws, leaving an empty hidden div
+in the body permanently, not transiently — sessions' diagnosis (172bf22). Fixed in the exact spot
+named: for every gated-not-found test case (and only those — every other `goto()` call in these six
+files, real-content navigation, is untouched) across `admin-managed-lists.spec.ts`,
+`admin-settings.spec.ts`, `admin-moderation.spec.ts`, `admin-dashboard.spec.ts`,
+`admin-members.spec.ts` and `sessions-admin-proposals.spec.ts`, `page.goto()` bare replaces
+`goto(page, url)` — the visible not-found heading `expectGatedNotFound()` (or the inline equivalent
+in the three files that don't have that named helper yet) already asserts first is the real wait.
+
+`sessions-admin-proposals.spec.ts` — not mine by filename, but it tests `/app/admin/proposals`,
+squarely inside this wave's "fixes only" grant on `proposals/**`; touched on that basis, one line,
+same pattern as the other five. Commit `c337436`.
