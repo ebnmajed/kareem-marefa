@@ -124,19 +124,12 @@ async function TemplateCard({
 
   return (
     <Card density="grid" className="h-full">
-      <CardMedia
-        aspect={aspect}
-        placeholderFrom={template.name}
-        placeholderTone="dark"
-        dimmed={template.retired}
-        overlay={
-          template.isDefault ? (
-            <Badge size="sm" tone="success">
-              {t("card.isDefault")}
-            </Badge>
-          ) : undefined
-        }
-      >
+      {/* ★ Capped on a phone and the render CONTAINED inside it: at the
+          template's own aspect a full-width portrait certificate is a screen
+          tall, and six of them made a library nine screens long. The badges
+          sit in the body, never over the media, where «الافتراضي» covered the
+          logo region it is meant to let the admin judge. */}
+      <CardMedia aspect={aspect} placeholderFrom={template.name} placeholderTone="dark" dimmed={template.retired} className="max-sm:aspect-auto max-sm:h-56">
         {template.previewDocument ? (
           <TemplatePreview document={template.previewDocument} bindings={data.previewBindings} faces={faces} origin={origin} title={t("card.previewLabel")} />
         ) : undefined}
@@ -147,6 +140,11 @@ async function TemplateCard({
           <bdi>{template.name}</bdi>
         </h3>
         <div className="flex flex-wrap items-center gap-1.5">
+          {template.isDefault ? (
+            <Badge size="sm" tone="success">
+              {t("card.isDefault")}
+            </Badge>
+          ) : null}
           {isPlatform ? (
             <Badge size="sm" tone="info">
               {t("card.platformBadge")}

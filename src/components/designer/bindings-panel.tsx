@@ -17,10 +17,17 @@ export interface BindingsPanelProps {
    *  and a panel that says only «unbound» beside a canvas showing text
    *  reads as a contradiction — found by looking at the 390 px capture. */
   fallbacks?: Record<string, string>;
+  /** The name of the layer that carries each binding, for one the catalogue
+   *  below has no Arabic name for. */
+  layerNames?: Record<string, string>;
 }
 
-export function BindingsPanel({ declared, values, fallbacks = {} }: BindingsPanelProps) {
+export function BindingsPanel({ declared, values, fallbacks = {}, layerNames = {} }: BindingsPanelProps) {
   const t = useTranslations("designer.bindings");
+  // ★ An org admin never reads a plan identifier (DEC-149 §4): each row is
+  // headed by the field's Arabic name — «عنوان الجلسة», not `session.title`.
+  // The catalogue's keys ARE the binding paths, so the lookup is the path.
+  const label = (binding: string) => (t.has(`field.${binding}`) ? t(`field.${binding}`) : (layerNames[binding] ?? t("field.unknown")));
   // `brand.*` resolves from the platform theme and is never interesting here;
   // the fields an admin can get wrong are the data ones.
   const fields = declared.filter((b) => !b.startsWith("brand."));
@@ -37,7 +44,7 @@ export function BindingsPanel({ declared, values, fallbacks = {} }: BindingsPane
           return (
             <li key={binding} className="rounded-field border border-edge px-3 py-2">
               <p className="text-body-sm text-fg-muted">
-                <bdi dir="ltr">{binding}</bdi>
+                <bdi>{label(binding)}</bdi>
               </p>
               {value ? (
                 <p className="text-body-sm text-fg-heading">

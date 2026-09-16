@@ -9,6 +9,7 @@ import { Panel } from "@/components/ui/panel";
 import type { Tone } from "@/components/ui";
 import { ExportActionButton } from "@/components/designer/export-action-button";
 import { retryArtifact } from "@/app/[locale]/app/admin/designer/[documentId]/actions";
+import { exportFailureReason } from "@/components/designer/export-reason";
 
 // SCR-057's export queue — REQ-DSG-011, REQ-DSG-012, REQ-DSG-013, A29, after
 // `PosterFlow.dc.html`'s «طابور التصدير».
@@ -97,9 +98,16 @@ export async function ExportPanel({
                 </div>
 
                 {artifact.status === "failed" && artifact.error ? (
-                  <p role="alert" className="text-body-sm text-error">
-                    {t.rich("failed", { reason: artifact.error, bdi: (c) => <bdi dir="ltr">{c}</bdi> })}
-                  </p>
+                  <div role="alert" className="flex flex-col gap-1">
+                    <p className="text-body-sm text-error">
+                      {t.rich("failed", { reason: t(`reasons.${exportFailureReason(artifact.error)}`), bdi: (c) => <bdi>{c}</bdi> })}
+                    </p>
+                    {/* The worker's own text, for whoever debugs the render: it
+                        reads from its own start, isolated from the Arabic. */}
+                    <bdi dir="ltr" className="block break-words text-start text-caption text-fg-muted">
+                      {artifact.error}
+                    </bdi>
+                  </div>
                 ) : null}
               </li>
             );

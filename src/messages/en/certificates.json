@@ -165,7 +165,14 @@
       "revokeDone": "Certificate revoked.",
       "released": "{count, plural, zero {No certificate released} one {One certificate released} two {Two certificates released} few {{value} certificates released} many {{value} certificates released} other {{value} certificates released}}",
       "releaseSelected": "Release selected",
-      "retryFailed": "Could not retry the preparation."
+      "retryFailed": "Could not retry the preparation.",
+      "designIntroAfter": "The design the certificates were issued with. Changing it leaves what was issued as it is; it applies to held certificates if you apply it to them.",
+      "issuedWithLocked": "This kind was issued with «<bdi>{name}</bdi>» in <bdi>{scheme}</bdi> colours, and its design is fixed.",
+      "issuedWithHeld": "This kind was prepared with «<bdi>{name}</bdi>» in <bdi>{scheme}</bdi> colours. Change the design, then apply it to the held certificates if you want.",
+      "summary": "«<bdi>{name}</bdi>» · <bdi>{scheme}</bdi> colours",
+      "changeDesign": "Change the design",
+      "showDesign": "Show the design",
+      "hideDesign": "Hide the design"
     }
   }
 }

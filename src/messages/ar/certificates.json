@@ -165,7 +165,14 @@
       "revokeDone": "أُلغيت الشهادة.",
       "released": "{count, plural, zero {لم تُطلق أي شهادة} one {أُطلقت شهادة واحدة} two {أُطلقت شهادتان} few {أُطلقت {value} شهادات} many {أُطلقت {value} شهادة} other {أُطلقت {value} شهادة}}",
       "releaseSelected": "أطلِق المحدَّدة",
-      "retryFailed": "تعذّرت إعادة التجهيز."
+      "retryFailed": "تعذّرت إعادة التجهيز.",
+      "designIntroAfter": "التصميم الذي صدرت به الشهادات. تغييره لا يمسّ ما صدر؛ يُطبَّق على المحجوزة إن طبّقته عليها.",
+      "issuedWithLocked": "صدرت شهادات هذا النوع بقالب «<bdi>{name}</bdi>» وألوان <bdi>{scheme}</bdi>، والتصميم ثابت عليها.",
+      "issuedWithHeld": "جُهّزت شهادات هذا النوع بقالب «<bdi>{name}</bdi>» وألوان <bdi>{scheme}</bdi>. غيّر التصميم ثم طبّقه على المحجوزة إن أردت.",
+      "summary": "«<bdi>{name}</bdi>» · ألوان <bdi>{scheme}</bdi>",
+      "changeDesign": "غيّر التصميم",
+      "showDesign": "اعرض التصميم",
+      "hideDesign": "أخفِ التصميم"
     }
   }
 }

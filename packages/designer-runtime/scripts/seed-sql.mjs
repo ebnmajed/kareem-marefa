@@ -1,9 +1,18 @@
 #!/usr/bin/env node
-// Writes the baseline library's seed migration from `src/library.ts` —
+// Writes a baseline library seed from `src/library.ts` —
 // REQ-DSG-026, DEC-128, DEC-148.
 //
+// ★ FORWARD-ONLY (DEC-149 §3). Its first output is promoted as
+// `supabase/migrations/0098_certificate_library.sql`, and a migration is never
+// regenerated. A later change to `library.ts` is written as a NEW proposed
+// seed and promoted as a new migration:
+//
 //   npm run build -w @kareem/designer-runtime
-//   node packages/designer-runtime/scripts/seed-sql.mjs > supabase/proposed/designer/0002_certificate_library.sql
+//   node packages/designer-runtime/scripts/seed-sql.mjs > supabase/proposed/designer/NNNN_<what-changed>.sql
+//
+// Because the seed is idempotent by composition (below), the new file carries
+// the whole library and adds only the versions the database does not have.
+// Edit the header text below before handing it over — it names this seed.
 //
 // The library is the source and the SQL is a copy. `tests/unit/designer-
 // library.test.ts` parses every `$json$…$json$` back out of the seed files and

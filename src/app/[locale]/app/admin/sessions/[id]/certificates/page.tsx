@@ -43,6 +43,13 @@ import { storedPhase, type SessionState } from "@/lib/session-status";
 // issuance section says so rather than showing three empty tables that
 // would read as «none were issued».
 //
+// ★ THE ORDER FOLLOWS THE JOB. Before completion the job is the design, so it
+// comes first; once any certificate exists (or the session has completed) the
+// job is releasing and revoking, so «الإصدار» comes first and each kind's
+// design folds to one line — what it was issued with — behind «غيّر التصميم».
+// An admin arriving to release three held certificates used to scroll four
+// phone screens of template radios to reach them (the lead's capture review).
+//
 // ★ THE SERIAL LINE IS AN ESTIMATE, never a reservation (DEC-148, DEC-010):
 // «الرقم التالي المتوقع … والعدد», shown only before completion, when it
 // helps an admin who prints a register; the number is allocated at issue.
@@ -83,8 +90,75 @@ export default async function SessionCertificatesPage({ params }: { params: Prom
     if (r.name && (!current || r.name.length > current.length)) longestName[r.kind] = r.name;
   }
 
+  // Any certificate at all, or a completed session: the job is issuance now.
+  const afterIssue = completed || data.held.length + data.issued.length + data.revoked.length > 0;
   const showEstimate = isAdmin && estimate !== null && !completed && data.mode !== "off" && eligible.length > 0;
   const serial = estimate ? `${estimate.prefix}-${estimate.year}-${String(estimate.next).padStart(6, "0")}` : "";
+
+  const designSection = (
+    <section aria-labelledby="cert-design" className="flex flex-col gap-6">
+      <SectionHeader id="cert-design" title={t("sections.design")} description={t(afterIssue ? "designIntroAfter" : "designIntro")} />
+      <CertificateDesign locale={locale} sessionId={id} data={design} longestName={longestName} faces={faces} origin={origin} collapsed={afterIssue} />
+    </section>
+  );
+  const whoSection = (
+    <section aria-labelledby="cert-who" className="flex flex-col gap-4">
+      <SectionHeader id="cert-who" title={t("sections.who")} description={t("whoIntro")} count={eligible.length} />
+      {showEstimate ? (
+        <Panel>
+          <p className="text-body-sm text-fg-heading">
+            {t.rich("serialEstimate", {
+              serial,
+              count: eligible.length,
+              value: formatNumber(eligible.length),
+              bdi: (c) => (
+                <bdi dir="ltr" className="break-all">
+                  {c}
+                </bdi>
+              ),
+            })}
+          </p>
+          <p className="mt-1 text-caption text-fg-muted">{t("serialEstimateHint")}</p>
+        </Panel>
+      ) : null}
+      <EligibleList rows={eligible} sessionId={id} />
+    </section>
+  );
+  const issueSection = (
+    <section aria-labelledby="cert-issue" className="flex flex-col gap-6">
+      <SectionHeader id="cert-issue" title={t("sections.issue")} />
+      {!completed && data.mode !== "off" ? <p className="text-body-sm text-fg-muted">{t("notCompleted")}</p> : null}
+      {!isAdmin ? (
+        <p className="text-body-sm text-fg-muted">{t("notAuthorized")}</p>
+      ) : data.mode === "off" && data.held.length + data.issued.length + data.revoked.length === 0 ? (
+        // Off, and never on: two empty tables would say «none yet», and the
+        // truth is «none, ever» — the sentence under the title already says so.
+        <p className="text-body-sm text-fg-muted">{t("modeExplain.off")}</p>
+      ) : (
+        <CertificateIssuance
+          locale={locale}
+          sessionId={id}
+          sessionTitle={data.sessionTitle}
+          timeZone={timeZone}
+          mode={data.mode}
+          held={data.held}
+          issued={data.issued}
+          revoked={data.revoked}
+        />
+      )}
+    </section>
+  );
+  const ordered: Array<[string, React.ReactNode]> = afterIssue
+    ? [
+        ["issue", issueSection],
+        ["who", whoSection],
+        ["design", designSection],
+      ]
+    : [
+        ["design", designSection],
+        ["who", whoSection],
+        ["issue", issueSection],
+      ];
 
   return (
     <div className="space-y-12">
@@ -120,55 +194,11 @@ export default async function SessionCertificatesPage({ params }: { params: Prom
         </Panel>
       ) : null}
 
-      <section aria-labelledby="cert-design" className="flex flex-col gap-6">
-        <SectionHeader id="cert-design" title={t("sections.design")} description={t("designIntro")} />
-        <CertificateDesign locale={locale} sessionId={id} data={design} longestName={longestName} faces={faces} origin={origin} />
-      </section>
-
-      <section aria-labelledby="cert-who" className="flex flex-col gap-4 border-t border-edge pt-10">
-        <SectionHeader id="cert-who" title={t("sections.who")} description={t("whoIntro")} count={eligible.length} />
-        {showEstimate ? (
-          <Panel>
-            <p className="text-body-sm text-fg-heading">
-              {t.rich("serialEstimate", {
-                serial,
-                count: eligible.length,
-                value: formatNumber(eligible.length),
-                bdi: (c) => (
-                  <bdi dir="ltr" className="break-all">
-                    {c}
-                  </bdi>
-                ),
-              })}
-            </p>
-            <p className="mt-1 text-caption text-fg-muted">{t("serialEstimateHint")}</p>
-          </Panel>
-        ) : null}
-        <EligibleList rows={eligible} sessionId={id} />
-      </section>
-
-      <section aria-labelledby="cert-issue" className="flex flex-col gap-6 border-t border-edge pt-10">
-        <SectionHeader id="cert-issue" title={t("sections.issue")} />
-        {!completed && data.mode !== "off" ? <p className="text-body-sm text-fg-muted">{t("notCompleted")}</p> : null}
-        {!isAdmin ? (
-          <p className="text-body-sm text-fg-muted">{t("notAuthorized")}</p>
-        ) : data.mode === "off" && data.held.length + data.issued.length + data.revoked.length === 0 ? (
-          // Off, and never on: two empty tables would say «none yet», and the
-          // truth is «none, ever» — the sentence under the title already says so.
-          <p className="text-body-sm text-fg-muted">{t("modeExplain.off")}</p>
-        ) : (
-          <CertificateIssuance
-            locale={locale}
-            sessionId={id}
-            sessionTitle={data.sessionTitle}
-            timeZone={timeZone}
-            mode={data.mode}
-            held={data.held}
-            issued={data.issued}
-            revoked={data.revoked}
-          />
-        )}
-      </section>
+      {ordered.map(([name, section], index) => (
+        <div key={name} className={index > 0 ? "border-t border-edge pt-10" : undefined}>
+          {section}
+        </div>
+      ))}
     </div>
   );
 }

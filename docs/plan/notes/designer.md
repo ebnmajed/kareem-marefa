@@ -1272,3 +1272,34 @@ written by `--update-backgrounds` (which touches nothing else) and **left uncomm
 came back one flat `rgb(18, 18, 18)`, while the viewport screenshot of the same page is the gradient.
 The worker already captures the viewport (`captureBeyondViewport: false`), so production is not
 affected; the block captures the same way, and says why.
+
+### W8.o The lead's capture findings and (a), fixed (2026-09-17)
+
+**Product.**
+- **SCR-045 follows the job.** With any certificate (or a completed session) «الإصدار» comes first and
+  each kind's design folds to one line behind «غيّر التصميم» / «اعرض التصميم»; before completion the
+  design stays first. The line says what the kind **was issued with** — `issuedWith` (template name and
+  pinned scheme, read through the certificate's version) in `getCertificateDesign()` — never «لم يُختر
+  تصميم بعد» over certificates that exist.
+- **A name belongs to a kind.** The DAL's sample carries no recipient name; each kind's preview binds
+  its own longest eligible name, else the template's marked placeholder — no attendee on the presenter
+  preview.
+- **Template cards.** The media is capped at `h-56` under `sm` and the render **contained and centred**
+  in it (`TemplatePreview` fits both sides); «الافتراضي» moved into the body's badges. `TemplatePreview`
+  sets `data-rendered="true"` once its frame has loaded and its faces are ready, derived per html so a
+  scheme switch is not «rendered» until its own load.
+- **The studio.** The bindings panel and the canvas's unbound placeholder name fields in Arabic
+  (`designer.bindings.field.*`, keyed by the binding path; else the carrying layer's name); a failed
+  export says why in Arabic (`export-reason.ts`, unit-tested on the worker's real sentences) with the raw
+  text beneath in an isolated `dir="ltr"` block; the safe-area check says «590 بكسل»; the live gate says
+  the poster cannot be edited while linked, and its «خصّص» is secondary.
+- `seed-sql.mjs`'s header says forward-only (DEC-149 §3): a later library change is a NEW seed.
+
+**Specs.** All five scope page content to `#main` (DEC-145); captures emulate reduced motion, scroll
+every preview into view and assert `data-rendered`; the check in the editor spec is chosen by the layer
+it names. ★ **A `fullPage` screenshot left loaded iframes blank below the first screen** — Chromium
+throttles iframe painting outside the viewport — so full-page captures now set the viewport to the
+page's height, shoot, and restore 390 × 844. `certificates.spec.ts` no longer inserts a platform-wide
+template (the two projects saw each other's, and one afterAll deleted what the other's certificates
+pinned); a leftover of it (`قالب شهادة 1-1789600556691`, unreferenced) was deleted from the local
+database by id.

@@ -17,6 +17,12 @@ import { renderDocumentToHtml, type DesignDocument } from "@kareem/designer-runt
 // in eleven frames on a phone is a page that never settles. The frame is
 // inert — no pointer, no tab stop, hidden from assistive technology — because
 // the card's heading already names what it shows.
+//
+// ★ CONTAINED, NOT COVERED: the document is scaled to fit BOTH sides of its
+// box and centred, so a box capped short on a phone shows the whole page
+// rather than its top. And `data-rendered` turns true only once the frame's
+// document has loaded and its faces are ready — a capture waits for it, so a
+// blank render can be told from one that never mounted (DEC-149 §4).
 
 export interface TemplatePreviewProps {
   document: DesignDocument;
@@ -29,7 +35,10 @@ export interface TemplatePreviewProps {
 export function TemplatePreview({ document: doc, bindings, faces, origin, title }: TemplatePreviewProps) {
   const host = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [scale, setScale] = useState(0);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  // The html the frame last finished loading: a new document (a scheme
+  // switched) is not rendered until ITS load, so the marker is derived.
+  const [loadedHtml, setLoadedHtml] = useState<string | null>(null);
 
   useEffect(() => {
     const el = host.current;
@@ -50,13 +59,22 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const fit = () => setScale(el.clientWidth / doc.master.width);
+    const fit = () => setBox({ width: el.clientWidth, height: el.clientHeight });
     fit();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [doc.master.width]);
+  }, []);
+
+  // A box with no height yet (a parent sized by its content) fits the width.
+  const scale = box.width
+    ? box.height
+      ? Math.min(box.width / doc.master.width, box.height / doc.master.height)
+      : box.width / doc.master.width
+    : 0;
+  const offsetInline = Math.max(0, (box.width - doc.master.width * scale) / 2);
+  const offsetBlock = box.height ? Math.max(0, (box.height - doc.master.height * scale) / 2) : 0;
 
   const html = useMemo(
     () =>
@@ -72,7 +90,7 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
   return (
     // The frame is laid out in the DOCUMENT's direction, so its inline start
     // and its scaling origin are the same corner whatever the console's is.
-    <div ref={host} dir={doc.direction} className="relative h-full w-full overflow-hidden">
+    <div ref={host} dir={doc.direction} data-template-preview="" data-rendered={html !== "" && loadedHtml === html ? "true" : "false"} className="relative h-full w-full overflow-hidden">
       {visible && scale > 0 ? (
         <iframe
           title={title}
@@ -82,8 +100,21 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
           sandbox="allow-same-origin"
           tabIndex={-1}
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 border-0"
-          style={{ insetInlineStart: 0, transform: `scale(${scale})`, transformOrigin: doc.direction === "rtl" ? "top right" : "top left" }}
+          className="pointer-events-none absolute border-0"
+          style={{
+            top: offsetBlock,
+            insetInlineStart: offsetInline,
+            transform: `scale(${scale})`,
+            transformOrigin: doc.direction === "rtl" ? "top right" : "top left",
+          }}
+          onLoad={(event) => {
+            // Same-origin (the sandbox allows it), so the frame's own face set
+            // is readable; ready after the load event is ready to be looked at.
+            const loaded = html;
+            const fonts = event.currentTarget.contentDocument?.fonts;
+            if (fonts) void fonts.ready.then(() => setLoadedHtml(loaded));
+            else setLoadedHtml(loaded);
+          }}
         />
       ) : null}
     </div>

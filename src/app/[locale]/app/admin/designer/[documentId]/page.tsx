@@ -178,7 +178,8 @@ export default async function DesignerPage({
           <p className="text-label text-fg-heading">{t("liveGate.title")}</p>
           <p className="text-body-sm text-fg-body">{t("liveGate.body")}</p>
           <div>
-            <CustomiseButton sessionId={context.sessionId} sessionTitle={context.title} />
+            {/* Secondary: «اطلب التصدير» is the header's one primary action. */}
+            <CustomiseButton sessionId={context.sessionId} sessionTitle={context.title} variant="secondary" />
           </div>
         </Panel>
       ) : null}

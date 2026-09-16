@@ -147,7 +147,11 @@ export function DesignerEditor(props: DesignerEditorProps) {
   // ReactNode the renderer cannot use, and a message carrying a tag called
   // through plain `t()` renders the raw key (DEC-047's lesson, found on the
   // canvas by the wave-3 e2e). The renderer bidi-isolates the result itself.
-  const placeholderLabel = useCallback((binding: string) => `${tb("unbound")} · ${binding}`, [tb]);
+  // The field's Arabic name, never its path (DEC-149 §4).
+  const placeholderLabel = useCallback(
+    (binding: string) => `${tb("unbound")} · ${tb.has(`field.${binding}`) ? tb(`field.${binding}`) : tb("field.unknown")}`,
+    [tb],
+  );
 
   // The SAME faces the canvas loads, declared in this document too, because
   // the pre-export checks measure here. Measuring against a fallback face
@@ -338,14 +342,20 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const selected = useMemo(() => document.layers.find((l) => l.id === selectedLayerId) ?? null, [document.layers, selectedLayerId]);
   // What each binding's template fallback is, so an unbound field can say
   // what will actually print rather than only that nothing bound.
-  const fallbacks = useMemo(() => {
+  // …and the layer's own name, for a binding the catalogue has no Arabic name
+  // for: an org admin never reads a plan identifier (DEC-149 §4).
+  const { fallbacks, bindingLayerNames } = useMemo(() => {
     const out: Record<string, string> = {};
+    const names: Record<string, string> = {};
     for (const layer of document.layers) {
       const binding = layer.kind === "text" ? layer.text.binding : layer.kind === "dynamic_field" ? layer.field.binding : undefined;
       const fallback = layer.kind === "text" ? layer.text.fallback : layer.kind === "dynamic_field" ? layer.field.fallback : undefined;
-      if (binding && fallback) out[binding.replace(/^\{\{|\}\}$/g, "").trim()] = fallback;
+      if (!binding) continue;
+      const key = binding.replace(/^\{\{|\}\}$/g, "").trim();
+      if (fallback) out[key] = fallback;
+      if (layer.name && !names[key]) names[key] = layer.name;
     }
-    return out;
+    return { fallbacks: out, bindingLayerNames: names };
   }, [document.layers]);
   const fontFamilies = useMemo(() => [...new Set(props.faces.map((f) => f.family))], [props.faces]);
 
@@ -464,7 +474,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           <h2 id="dr-bindings-m" className="text-h3 text-fg-heading">
             {tb("heading")}
           </h2>
-          <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
+          <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} layerNames={bindingLayerNames} />
         </section>
       </div>
 
@@ -539,7 +549,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
                     {selected ? null : (
                       <div className="flex flex-col gap-3 pt-4">
                         <h3 className="text-label text-fg-heading">{tb("heading")}</h3>
-                        <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} />
+                        <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} layerNames={bindingLayerNames} />
                       </div>
                     )}
                   </section>

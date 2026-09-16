@@ -294,6 +294,10 @@ export interface CertificateDesignData {
     /** A certificate of this kind has reached a member — the design is fixed. */
     locked: boolean;
     heldCount: number;
+    /** What this kind's certificates were pinned to at issue (DEC-148), when
+     *  any exist — the screen says what they WERE issued with, not what a
+     *  design that was never saved would fall back to. */
+    issuedWith: { templateName: string; scheme: BrandScheme } | null;
   }>;
   /** The org's brand over the platform palette, in both schemes, so the
    *  preview follows the scheme the admin is choosing without a round trip. */
@@ -310,18 +314,18 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return null;
 
-  const [{ data: sessionRow }, { data: templates }, { data: designs }, { data: certs }, { data: org }, { data: settings }, { data: attendee }] = await Promise.all([
+  const [{ data: sessionRow }, { data: templates }, { data: designs }, { data: certs }, { data: org }, { data: settings }] = await Promise.all([
     supabase.from("sessions").select("id, title, completed_at, starts_at").eq("id", sessionId).maybeSingle(),
     supabase.from("design_templates").select("id, name, scope, family, is_default, org_id").eq("purpose", "certificate").is("retired_at", null).in("family", ["attendance", "presenter"]),
     // Absent before designer/0003 — an error there reads as «no design».
     supabase.from("session_certificate_designs").select("kind, template_id, scheme").eq("session_id", sessionId),
-    supabase.from("certificates").select("kind, state, recipient_name_snapshot").eq("session_id", sessionId),
+    supabase
+      .from("certificates")
+      .select("kind, state, scheme, issued_at, design_template_versions(design_templates(name))")
+      .eq("session_id", sessionId)
+      .order("serial"),
     supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
-    // `!check_ins_member_id_fkey`: `check_ins` reaches `members` three ways
-    // (the member, `marked_by`, `removed_by`), and an unnamed embed is an
-    // ambiguity error that reads as «no row».
-    supabase.from("check_ins").select("members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null).limit(1).maybeSingle(),
   ]);
   if (!sessionRow) return null;
 
@@ -345,7 +349,18 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
       .sort((a, b) => Number(a.scope === "platform") - Number(b.scope === "platform") || Number(b.isDefault) - Number(a.isDefault) || a.orientation.localeCompare(b.orientation));
     const design = ((designs ?? []) as Array<{ kind: string; template_id: string; scheme: BrandScheme }>).find((d) => d.kind === kind) ?? null;
     const fallback = options.find((o) => o.scope === "org" && o.isDefault) ?? options.find((o) => o.isDefault) ?? options[0] ?? null;
-    const mine = ((certs ?? []) as Array<{ kind: string; state: string }>).filter((c) => c.kind === kind);
+    type Cert = {
+      kind: string;
+      state: string;
+      scheme: BrandScheme;
+      design_template_versions: { design_templates: { name: string } | { name: string }[] | null } | { design_templates: { name: string } | { name: string }[] | null }[] | null;
+    };
+    const mine = ((certs ?? []) as unknown as Cert[]).filter((c) => c.kind === kind);
+    // A redesign re-pins only held rows, so the newest pin is the one a held
+    // row carries; an issued row's is fixed. The first row in serial order is
+    // what the kind was issued with.
+    const pinned = mine[0] ?? null;
+    const templateName = pinned ? (one(one(pinned.design_template_versions)?.design_templates ?? null)?.name ?? null) : null;
     return {
       kind,
       chosen: design ? { templateId: design.template_id, scheme: design.scheme } : null,
@@ -353,15 +368,16 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
       options,
       locked: mine.some((c) => c.state === "issued" || c.state === "revoked"),
       heldCount: mine.filter((c) => c.state === "held").length,
+      issuedWith: pinned && templateName ? { templateName, scheme: pinned.scheme } : null,
     };
   });
 
   const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
-  const name =
-    ((certs ?? []) as Array<{ recipient_name_snapshot: string }>)[0]?.recipient_name_snapshot ??
-    (one((attendee as { members: { display_name: string } | { display_name: string }[] | null } | null)?.members ?? null)?.display_name ?? null);
+  // ★ No recipient name here: a name belongs to a KIND — an attendee's name on
+  // the presenter preview is a person who will never receive that
+  // certificate. The panel binds each kind's own longest eligible name, and
+  // with none the template's marked placeholder shows (REQ-DSG-006).
   const sample: Record<string, string> = { "session.title": sessionRow.title as string };
-  if (name) sample["recipient.name"] = name;
   if (org?.name) sample["org.name"] = org.name as string;
   const when = (sessionRow.completed_at as string | null) ?? (sessionRow.starts_at as string | null);
   if (when) sample["certificate.issuedAt"] = formatBindingDate(when, timeZone, "ar");
