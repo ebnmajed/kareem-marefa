@@ -194,7 +194,9 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
             ]}
           />
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-edge pt-4">
+          {/* ★ Sticky at the sheet's bottom edge: on a phone the fields run past the
+              first screen, and «اعرض النتائج» must not be below the fold. */}
+          <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-[var(--color-canvas)] px-5 py-3">
             <Button type="submit" size="md">
               {t("sheet.apply")}
             </Button>

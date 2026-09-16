@@ -295,7 +295,8 @@ async function Meta({ session, phase, locale }: { session: EventSession; phase: 
             {session.startsAt ? (
               <>
                 <bdi>{when(session.startsAt)}</bdi>
-                {until ? <span className="text-fg-muted"> · {t("toTime", { value: until })}</span> : null}
+                {/* No-break space after the dot: a line may break before «·», never after it. */}
+                {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
               </>
             ) : (
               t("notScheduled")

@@ -37,7 +37,9 @@ export async function SessionCard({ session, locale, pinned = false }: { session
   const when = session.startsAt
     ? session.phase === "ended"
       ? formatDate(session.startsAt, session.timeZone, locale)
-      : `${formatDate(session.startsAt, session.timeZone, locale)} · ${formatTime(session.startsAt, session.timeZone, locale)}`
+      : // A no-break space AFTER the dot, so a break can come before it and never
+        // leave «·» alone at the end of a line.
+        `${formatDate(session.startsAt, session.timeZone, locale)} ·\u00A0${formatTime(session.startsAt, session.timeZone, locale)}`
     : null;
 
   const footer = (() => {
@@ -78,11 +80,16 @@ export async function SessionCard({ session, locale, pinned = false }: { session
             </span>
           </p>
         ) : null}
-        {when || session.venueName ? (
+        {/* When, then where, each on its own line: joined, a narrow card broke
+            the venue's name in two («قاعة» / «التصفّح») and left a «·» at a line end. */}
+        {when ? (
           <p className="text-body-sm text-fg-body">
-            {when ? <bdi>{when}</bdi> : null}
-            {when && session.venueName ? " · " : null}
-            {session.venueName ? <bdi>{session.venueName}</bdi> : null}
+            <bdi>{when}</bdi>
+          </p>
+        ) : null}
+        {session.venueName ? (
+          <p className="text-body-sm text-fg-muted">
+            <bdi>{session.venueName}</bdi>
           </p>
         ) : null}
         <div className="flex flex-wrap gap-1.5">
