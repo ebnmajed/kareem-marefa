@@ -7,14 +7,18 @@
       "placeholder": "Write a comment…",
       "replyPlaceholder": "Write a reply…",
       "submit": "Post",
+      "sending": "Sending…",
       "reply": "Reply",
       "cancel": "Cancel",
       "edit": "Edit",
       "save": "Save edit",
+      "saving": "Saving…",
       "edited": "(edited)",
       "deletedTombstone": "This comment was deleted",
       "frozenOnCancelled": "Comments are closed — this session was cancelled",
       "mentionHint": "Type @ to mention a member of your organisation",
+      "remainingChars": "{count, plural, =0 {no space left} one {one character left} other {{value} characters left}}",
+      "emptyAction": "Write the first comment",
       "delete": {
         "action": "Delete",
         "confirmTitle": "Delete this comment?",
@@ -24,10 +28,20 @@
       },
       "moderator": {
         "remove": "Remove",
-        "restore": "Restore"
+        "removing": "Removing…",
+        "restore": "Restore",
+        "restoring": "Restoring…"
       },
       "reactions": {
-        "like": "Like"
+        "like": "Like",
+        "unlike": "Remove like"
+      },
+      "toasts": {
+        "postSuccess": "Your comment was posted",
+        "editSuccess": "Edit saved",
+        "moderateRemoveSuccess": "Comment removed",
+        "moderateRestoreSuccess": "Comment restored",
+        "reactionFailed": "Could not record your reaction"
       },
       "report": {
         "action": "Report",
@@ -36,6 +50,7 @@
         "reasonLabel": "Reason for reporting",
         "reasonHint": "3 to 1000 characters",
         "submit": "Send report",
+        "sending": "Sending…",
         "cancel": "Cancel",
         "success": "Report sent. The moderation team will review it."
       },

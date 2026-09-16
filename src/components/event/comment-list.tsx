@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { subscribeToSessionTopic } from "@/lib/realtime/channel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
 import type { CommentDTO } from "@/lib/dal/comments";
@@ -143,15 +145,19 @@ export function CommentList({
   return (
     <div>
       {frozen ? (
-        <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
+        <Panel tone="neutral">
+          <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
+        </Panel>
       ) : (
-        <div className="mb-4">
+        <div id="comment-composer" className="mb-4 scroll-mt-4">
           <CommentComposer locale={locale} sessionId={sessionId} parentId={null} />
         </div>
       )}
 
       {topLevel.length === 0 ? (
-        <p className="text-body text-fg-muted">{t("empty")}</p>
+        frozen ? null : (
+          <EmptyState title={t("empty")} action={{ label: t("emptyAction"), href: "#comment-composer" }} size="sm" />
+        )
       ) : (
         <ul className="divide-y divide-[var(--edge)]">
           {topLevel.map((comment) => {

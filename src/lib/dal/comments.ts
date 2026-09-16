@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 
@@ -81,8 +82,13 @@ export interface CommentsPageData {
  * Everything the `Comments` slot needs, in one round trip: the thread, the
  * org's edit window and numeral setting, and whether the session is
  * cancelled. A slot fetches its own data (TEAM.md §2) — this is that fetch.
+ *
+ * ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page
+ * gates the discussion's `<section>` on `commentsSummary()` (below), which
+ * needs this same read — without `cache()` the gate would cost a second
+ * round trip per request.
  */
-export async function getCommentsPageData(locale: string, sessionId: string): Promise<CommentsPageData> {
+export const getCommentsPageData = cache(async (locale: string, sessionId: string): Promise<CommentsPageData> => {
   if (!z.uuid().safeParse(sessionId).success) {
     return { comments: [], editWindowMinutes: null, frozen: false, isStaffViewer: false };
   }
@@ -132,7 +138,7 @@ export async function getCommentsPageData(locale: string, sessionId: string): Pr
     frozen: sessionRow?.state === "cancelled",
     isStaffViewer: isStaff,
   };
-}
+});
 
 export const createCommentInput = z.object({
   sessionId: z.uuid(),

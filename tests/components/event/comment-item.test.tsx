@@ -5,7 +5,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import axe from "axe-core";
 import ar from "@/messages/ar/event.json";
+import { ToastProvider } from "@/components/ui/toast";
 import type { CommentDTO } from "@/lib/dal/comments";
 
 vi.mock("@/components/event/actions", () => ({
@@ -93,9 +95,42 @@ describe("CommentItem", () => {
     expect(screen.queryByRole("button", { name: "إبلاغ" })).not.toBeInTheDocument();
   });
 
-  it("shows the like count next to the reaction toggle, formatted in the org's numeral system", () => {
+  it("shows the like count beside the reaction toggle — the IconButton itself carries no visible text, only the accessible name", () => {
     renderItem(baseComment, { reactions: { totals: { like: 3 }, mine: [] } });
-    expect(screen.getByRole("button", { name: /إعجاب/ })).toHaveTextContent("3");
+    const toggle = screen.getByRole("button", { name: "إعجاب" });
+    expect(toggle).toHaveTextContent(""); // icon-only — REQ-NFR-007's name is `aria-label`, not visible text
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("a count of zero renders no count text at all", () => {
+    renderItem(baseComment);
+    expect(screen.getByRole("button", { name: "إعجاب" })).toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("reacting flips the accessible name and the count OPTIMISTICALLY — before the action resolves (`16` §7.1 layer 4)", () => {
+    renderItem(baseComment, { reactions: { totals: {}, mine: [] } });
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    // The mocked action's promise has not resolved yet at this point in the
+    // test (no `await`) — a passing assertion here IS the proof the flip is
+    // optimistic, not a wait for the server to confirm it.
+    expect(screen.getByRole("button", { name: "إلغاء الإعجاب" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("a failed reaction reverts the optimistic state and tells the member, quietly and persistently", async () => {
+    const { toggleReactionAction } = await import("@/components/event/actions");
+    vi.mocked(toggleReactionAction).mockResolvedValueOnce({ error: "generic" });
+    render(
+      <NextIntlClientProvider locale="ar" messages={ar}>
+        <ToastProvider closeLabel="إغلاق">
+          <CommentItem locale="ar" comment={baseComment} reactions={{ totals: {}, mine: [] }} reported={false} />
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "إعجاب" }));
+    expect(await screen.findByText("تعذّر تسجيل تفاعلك")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "إعجاب" })).toBeInTheDocument(); // reverted
   });
 
   it("pressing reply calls onReply, and only top-level comments offer it", () => {
@@ -106,5 +141,14 @@ describe("CommentItem", () => {
 
     renderItem({ ...baseComment, parentId: "parent1" }, { onReply });
     expect(screen.getAllByRole("button", { name: "رد" })).toHaveLength(1); // still just the top-level one from above
+  });
+
+  it("is accessible with every affordance showing at once — mine, editable, reported by someone else, reacted", async () => {
+    const { container } = renderItem(
+      { ...baseComment, isMine: true, canEditNow: true },
+      { reactions: { totals: { like: 4 }, mine: ["like"] }, onReply: () => {} },
+    );
+    const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(violations.map((v) => v.id)).toEqual([]);
   });
 });

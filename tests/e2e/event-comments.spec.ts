@@ -127,11 +127,20 @@ test("deleting a comment with replies leaves a tombstone; a reply-less comment v
   // "سؤال عن الجلسة" now has one reply ("إجابة أولى") from the previous test.
   // The reply's <li> nests INSIDE the original's <li> (comment-list.tsx), so
   // an `li` locator matching on text would also match the reply's own
-  // "حذف" button as a descendant. Scoping to the comment's own body
-  // paragraph and its immediate container (the CommentItem's own <div>,
-  // a sibling of the nested reply <ul>, not an ancestor of it) is precise.
+  // "حذف" button as a descendant. Scoping to the comment's own body text and
+  // walking up TWO levels — ★ wave 6: the body is now `<Prose><p>…</p>
+  // </Prose>`, one level deeper than before (a bare `<p>`), so the shared
+  // ancestor that also holds the actions row (delete, reaction, reply) is
+  // now the body's grandparent, not its immediate parent. `.locator("..")`
+  // chained twice, not `"../.."` as a single XPath-ish string, for the same
+  // reason `sessions`' own e2e specs chain it: Playwright resolves each
+  // segment against its own locator, not a raw XPath expression.
   const originalBody = page.getByText("سؤال عن الجلسة", { exact: true });
-  await originalBody.locator("..").getByRole("button", { name: "حذف" }).click();
+  const originalRow = originalBody.locator("..").locator("..");
+  // The delete trigger is icon-only now (`ui/icon-button`, REQ-NFR-007's
+  // name is the `aria-label`, not visible text) — `getByRole` matches the
+  // ACCESSIBLE name regardless, so "حذف" still resolves it.
+  await originalRow.getByRole("button", { name: "حذف" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -144,7 +153,8 @@ test("deleting a comment with replies leaves a tombstone; a reply-less comment v
   await page.getByRole("button", { name: "نشر" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toBeVisible();
   const freshBody = page.getByText("تعليق بلا ردود", { exact: true });
-  await freshBody.locator("..").getByRole("button", { name: "حذف" }).click();
+  const freshRow = freshBody.locator("..").locator("..");
+  await freshRow.getByRole("button", { name: "حذف" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "حذف" }).click();
   await expect(page.getByText("تعليق بلا ردود")).toHaveCount(0);
 });

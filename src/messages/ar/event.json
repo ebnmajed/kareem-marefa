@@ -7,14 +7,18 @@
       "placeholder": "اكتب تعليقًا…",
       "replyPlaceholder": "اكتب ردًا…",
       "submit": "نشر",
+      "sending": "جارٍ الإرسال…",
       "reply": "رد",
       "cancel": "إلغاء",
       "edit": "تعديل",
       "save": "حفظ التعديل",
+      "saving": "جارٍ الحفظ…",
       "edited": "(معدَّل)",
       "deletedTombstone": "حُذف هذا التعليق",
       "frozenOnCancelled": "التعليقات مغلقة — هذه الجلسة ملغاة",
       "mentionHint": "اكتب @ لذكر عضو من مؤسستك",
+      "remainingChars": "{count, plural, zero {لا مساحة متبقية} one {حرف واحد متبقٍ} two {حرفان متبقيان} few {{value} أحرف متبقية} many {{value} حرفًا متبقيًا} other {{value} حرف متبقٍ}}",
+      "emptyAction": "اكتب أول تعليق",
       "delete": {
         "action": "حذف",
         "confirmTitle": "حذف التعليق؟",
@@ -24,10 +28,20 @@
       },
       "moderator": {
         "remove": "إزالة",
-        "restore": "استعادة"
+        "removing": "جارٍ الإزالة…",
+        "restore": "استعادة",
+        "restoring": "جارٍ الاستعادة…"
       },
       "reactions": {
-        "like": "إعجاب"
+        "like": "إعجاب",
+        "unlike": "إلغاء الإعجاب"
+      },
+      "toasts": {
+        "postSuccess": "تم نشر تعليقك",
+        "editSuccess": "تم حفظ التعديل",
+        "moderateRemoveSuccess": "تمت إزالة التعليق",
+        "moderateRestoreSuccess": "تمت استعادة التعليق",
+        "reactionFailed": "تعذّر تسجيل تفاعلك"
       },
       "report": {
         "action": "إبلاغ",
@@ -36,6 +50,7 @@
         "reasonLabel": "سبب الإبلاغ",
         "reasonHint": "من 3 إلى 1000 حرف",
         "submit": "إرسال البلاغ",
+        "sending": "جارٍ الإرسال…",
         "cancel": "إلغاء",
         "success": "تم إرسال البلاغ. سيراجعه فريق الإشراف."
       },
