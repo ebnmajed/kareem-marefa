@@ -3085,3 +3085,31 @@ both are given (`f9fa70e`).
   not the tree.
 - **Supersedes:** `16` §7.2.
 - **Documents changed:** `src/components/ui/{splash.tsx,index.ts}`, `CLAUDE.md` and `.claude/agents/*.md` (the lead's file list), `STATUS.md`
+
+---
+
+## DEC-143 — The org seed wrote Arabic-Indic digits into every org's points catalogue; `0083` fixes the seed, and existing orgs need a scoped data fix the owner runs
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from wave 7's first capture of `/app/me/points` (sync 2)
+- **What the capture showed.** The catalogue «ماذا يمنحك نقاطًا؟» listed «سلسلة: **٣** حضور في الشهر». `DEC-124` forbids that glyph on every surface, and `DEC-132`'s sweep plus `tests/unit/messages-numerals.test.ts` had made the message files and the formatters clean — but **neither reads a string a migration writes into a row.**
+- **The source.** `_seed_org_scoring()` (`0027`, last re-created in `0081`) runs for every org on creation (`orgs_seed_scoring`) and in `0081`'s backfill. It seeds the `streak_month` rule's `reason_ar` «سلسلة: ٣ حضور في الشهر» and the `rated_presenter` badge's description «متوسط تقييم ٤.٥ فأعلى على ثلاث جلسات على الأقل». So **every org that exists, production's included, holds both.** `reason_ar` is also copied into `points_ledger.reason` when an award is made, and the ledger is append-only (invariant 9): any `streak_month` award already written keeps the glyph for good.
+- **Decision.**
+  1. **`0083_western_numerals_in_seeds.sql`** re-creates `_seed_org_scoring()` with Western digits and nothing else changed. Every org created from now on is right.
+  2. **`tests/rls/numerals-seeds.test.ts`** creates orgs through the real insert and scans every column of every public table — the fixture orgs' rows where a table has `org_id`, every row where it has none — for U+0660–U+0669 and U+06F0–U+06F9. **It failed before `0083` (two badge rows, two rule rows) and passes after.** It catches the next seeded glyph wherever a migration puts it.
+  3. **Existing orgs are a data fix, not a migration** (`CLAUDE.md`, `DEC-023`, `DEC-027`). The lead's read-only count against production was refused by the permission layer, so **the owner runs it**, read first:
+
+     ```sql
+     -- read
+     select org_id, action_key, reason_ar from public.scoring_rules where reason_ar ~ '[٠-٩۰-۹]';
+     select org_id, key, description from public.badges where description ~ '[٠-٩۰-۹]' or name ~ '[٠-٩۰-۹]';
+     select count(*) from public.points_ledger where reason ~ '[٠-٩۰-۹]';
+     -- write — scoped to the exact seeded default, so an admin's own edit is never overwritten
+     update public.scoring_rules set reason_ar = 'سلسلة: 3 حضور في الشهر'
+      where action_key = 'streak_month' and reason_ar = 'سلسلة: ٣ حضور في الشهر';
+     update public.badges set description = 'متوسط تقييم 4.5 فأعلى على ثلاث جلسات على الأقل'
+      where key = 'rated_presenter' and description = 'متوسط تقييم ٤.٥ فأعلى على ثلاث جلسات على الأقل';
+     ```
+
+     The `scoring_rules` update bumps the rule's `version` and writes one `scoring_config_history` row with no actor (`actor_id` is nullable, `0004:362`) — exactly what an admin editing the label would record, which is honest. **If the ledger count is not zero**, those rows cannot be rewritten; the owner decides whether `me/points` should render a streak entry's reason from the rule rather than the ledger row.
+- **Supersedes:** nothing. Extends `DEC-132`'s sweep to the one surface it could not see.
+- **Documents changed:** `supabase/migrations/0083_western_numerals_in_seeds.sql`, `tests/rls/numerals-seeds.test.ts`, `STATUS.md`
