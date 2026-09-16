@@ -116,5 +116,13 @@ describe("AdminRail — disclosure groups (wave 7, DEC-137)", () => {
     const menu = screen.getByRole("menu");
     expect(within(menu).getByRole("menuitem", { name: "التعليقات" })).toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "الصور" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "التعليقات" })).not.toHaveAttribute("aria-current");
+
+    // The group holding the page on show marks it inside its menu too.
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "النقاط والتقدير" }));
+    const points = screen.getByRole("menu");
+    expect(within(points).getByRole("menuitem", { name: "التسجيل" })).toHaveAttribute("aria-current", "page");
+    expect(within(points).getByRole("menuitem", { name: "التكريم" })).not.toHaveAttribute("aria-current");
   });
 });

@@ -334,7 +334,7 @@ function GroupDisclosure({ item, path, onNavigate }: { item: AdminRailItem; path
 /** A collapsed (icon-only) rail's rendering of a group — a `ui/menu` flyout
  *  from the group's own icon, since a collapsed column has no room for a
  *  label or a nested list. */
-function CollapsedGroupMenu({ item }: { item: AdminRailItem }) {
+function CollapsedGroupMenu({ item, path }: { item: AdminRailItem; path: string }) {
   const Icon = ICONS[item.icon];
   return (
     <Menu
@@ -344,7 +344,7 @@ function CollapsedGroupMenu({ item }: { item: AdminRailItem }) {
           <Icon className="shrink-0 text-[1.25rem]" />
         </IconButton>
       }
-      items={(item.children ?? []).map((child) => ({ label: child.label, href: child.href }))}
+      items={(item.children ?? []).map((child) => ({ label: child.label, href: child.href, current: isCurrent(child.href, path) }))}
     />
   );
 }
@@ -425,7 +425,7 @@ export function AdminRail({
         <ul className={`mt-4 space-y-1 ${collapsed ? "w-14" : "w-56"}`}>
           {items.map((item) => {
             if (item.children) {
-              return collapsed ? <CollapsedGroupMenu key={item.key} item={item} /> : <GroupDisclosure key={item.key} item={item} path={path} />;
+              return collapsed ? <CollapsedGroupMenu key={item.key} item={item} path={path} /> : <GroupDisclosure key={item.key} item={item} path={path} />;
             }
             const Icon = ICONS[item.icon];
             const current = itemContainsCurrent(item, path);

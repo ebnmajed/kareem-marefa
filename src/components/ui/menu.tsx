@@ -2,6 +2,7 @@
 
 import { DropdownMenu } from "radix-ui";
 import type { MenuProps } from "@/components/ui";
+import { CheckIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 
 // The house dropdown menu over Radix (DEC-019), the same wrapper shape as
@@ -46,24 +47,29 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
           className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)]"
         >
           {items.map((item, i) => {
+            // The page on show: `aria-current` for a screen reader, and a check
+            // at the inline end with the rail's own current tint, so the mark is
+            // never colour alone (wave 8 — the collapsed admin rail's group menu).
             const content = (
               <>
                 {item.icon}
                 <span className="flex-1">{item.label}</span>
+                {item.current ? <CheckIcon className="shrink-0 text-[1rem]" /> : null}
               </>
             );
-            const className = `${itemBase} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
+            const className = `${itemBase} ${item.current ? "bg-silver-100" : ""} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
+            const current = item.current ? ("page" as const) : undefined;
             return (
               <div key={item.label + i}>
                 {item.startsGroup ? <DropdownMenu.Separator className="my-1.5 h-px bg-edge" /> : null}
                 {item.href ? (
                   <DropdownMenu.Item asChild disabled={item.disabled} className={className}>
-                    <Link href={item.href} quiet>
+                    <Link href={item.href} quiet aria-current={current}>
                       {content}
                     </Link>
                   </DropdownMenu.Item>
                 ) : (
-                  <DropdownMenu.Item disabled={item.disabled} onSelect={item.onSelect} className={className}>
+                  <DropdownMenu.Item disabled={item.disabled} onSelect={item.onSelect} aria-current={current} className={className}>
                     {content}
                   </DropdownMenu.Item>
                 )}
