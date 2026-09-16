@@ -85,12 +85,13 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member sees the home with their name and org, and the company nudge", async ({ context, page }) => {
+test("a member lands on the sessions timeline, with the company nudge", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app");
+  // `/app` renders the timeline rather than redirecting to it (DEC-112,
+  // DEC-130): the address stays, the heading is the sessions list's.
   await expect(page).toHaveURL(/\/ar\/app$/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("عضو الاختبار");
-  await expect(page.getByText("مؤسسة الاختبار")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("الجلسات");
   await expect(page.getByRole("status")).toContainText("اختر شركتك");
 });
 
@@ -121,11 +122,9 @@ test("another member's profile renders at the member tier", async ({ context, pa
 test("signing out ends the session", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app");
-  // On a phone the secondary shell items, sign-out included, sit behind the
-  // native «المزيد» disclosure (DEC-064: one shell row at 390 px).
-  const more = page.getByRole("group").locator("summary", { hasText: "المزيد" });
-  if (await more.isVisible()) await more.click();
-  await page.getByRole("button", { name: "تسجيل الخروج" }).click();
+  // Sign-out is the last item of the account menu, at both widths (DEC-111).
+  await page.getByRole("button", { name: "حسابي" }).click();
+  await page.getByRole("menuitem", { name: "تسجيل الخروج" }).click();
   await expect(page).toHaveURL(/\/ar\/sign-in$/);
   await page.goto("/ar/app");
   await expect(page).toHaveURL(/\/ar\/sign-in\?next=/);
