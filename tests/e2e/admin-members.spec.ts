@@ -94,22 +94,31 @@ test("a member cannot open the members screen", async ({ context, page }) => {
   expect(response!.status()).toBe(404);
 });
 
-test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role change is refused, then audited once it succeeds", async ({ context, page }) => {
+// ★ Rebuilt onto `ui/data-table` for wave 6 (`16` §6.7, `DEC-130`): every row
+// now renders TWICE in the DOM (a desktop `<table>` row and a phone card),
+// one hidden by a CSS media query per width. Chromium's accessibility tree
+// excludes a `display:none` subtree entirely, so `getByRole` queries still
+// resolve singularly in a real browser — but a `<tr>`/`role="row"` only
+// exists in the desktop rendering, so these three interaction tests run
+// desktop-only; the 390 px phone review below is the card-stack's own proof.
+
+test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role change is refused, then audited once it succeeds", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/members");
   await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
   await expect(page.getByText(memberEmail)).toBeVisible();
 
-  const row = page.locator("li", { has: page.getByText("عضو تحت الاختبار", { exact: true }) });
+  const row = page.getByRole("row", { name: new RegExp(`عضو تحت الاختبار.*${memberEmail}`) });
   await row.getByLabel("الدور").selectOption("moderator");
   await row.getByRole("button", { name: "غيّر الدور" }).click();
-  // Not `toHaveValue("moderator")` on the select: it is uncontrolled
-  // (`defaultValue`), so it already reads "moderator" the instant
-  // `selectOption` runs and would pass even if the server action never
-  // completed — a race the DB assertion below would then lose. The
-  // confirmation text is driven by `useActionState`'s own returned state,
-  // which only updates once the RPC has actually returned.
-  await expect(row.getByText("غُيِّر الدور.")).toBeVisible();
+  // The toast, not an inline row confirmation: `ui/toast`'s success tone is
+  // `role="status"`, and `useActionState`'s own returned state is what
+  // drives it — only once the RPC has actually returned, unlike the
+  // `<select>`'s own (uncontrolled) value, which already reads "moderator"
+  // the instant `selectOption` runs regardless of whether the action ever
+  // completed.
+  await expect(page.getByRole("status")).toContainText("غُيِّر الدور.");
 
   const { rows: memberRow } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [memberId]);
   expect(memberRow[0].org_role).toBe("moderator");
@@ -117,46 +126,50 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   expect(audit.rowCount).toBe(1);
 });
 
-test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as a real sentence", async ({ context, page }) => {
+test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as a real sentence", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/members");
   const { rows: adminMemberRows } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and org_role = 'admin'`, [orgId]);
   expect(adminMemberRows).toHaveLength(1);
   await expect(page.getByText("مشرفة الأعضاء")).toBeVisible();
 
-  const row = page.locator("li", { has: page.getByText("مشرفة الأعضاء", { exact: true }) });
+  const row = page.getByRole("row", { name: new RegExp("مشرفة الأعضاء") });
   await row.getByLabel("الدور").selectOption("member");
   await row.getByRole("button", { name: "غيّر الدور" }).click();
-  await expect(row.getByText("لا يمكن ترك المؤسسة بلا مشرف")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("لا يمكن ترك المؤسسة بلا مشرف");
 
   const { rows } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [adminMemberRows[0].id]);
   expect(rows[0].org_role).toBe("admin");
 });
 
-test("REQ-ADM-009: deactivation needs a written reason, and the reason lands in the audit log", async ({ context, page }) => {
+test("★ REQ-ADM-009: deactivation confirms in a dialog naming the member and needs a written reason; the reason lands in the audit log and the row's own note", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/members");
-  const row = page.locator("li", { has: page.getByText("عضو تحت الاختبار", { exact: true }) });
+  const row = page.getByRole("row", { name: new RegExp("عضو تحت الاختبار") });
 
-  // `member-row.tsx`'s "deactivate" control is a bare `<summary>` (the
-  // `<details>` disclosure itself, not a `<button>`) — Chromium's
-  // accessibility tree does not give it an implicit "button" role, so
-  // `getByRole("button", ...)` never matches it and this line used to hang
-  // for the full 30 s timeout. `getByText` matches the summary's own text.
-  await row.getByText("عطّل العضوية", { exact: true }).click();
-  await row.getByRole("button", { name: "أرسل" }).click();
-  await expect(row.getByText("اكتب سبب التعطيل أولًا")).toBeVisible();
+  await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "عطّل العضوية" }).click();
 
-  await row.getByLabel("سبب التعطيل الذي يُسجَّل في سجل التدقيق").fill("مغادرة الشركة");
-  await row.getByRole("button", { name: "أرسل" }).click();
+  const dialog = page.getByRole("dialog", { name: "تعطيل عضوية «عضو تحت الاختبار»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  // `Field`'s own error, inside the still-open dialog — not the details-then-
+  // submit shape the old `<summary>` disclosure had.
+  await expect(dialog.getByText("اكتب سبب التعطيل أولًا")).toBeVisible();
+
+  await dialog.getByLabel("سبب التعطيل الذي يُسجَّل في سجل التدقيق", { exact: false }).fill("مغادرة الشركة");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0); // closes itself once `state.done`
   await expect(row.getByText("معطَّل", { exact: true })).toBeVisible();
   await expect(row.getByText("مغادرة الشركة", { exact: true })).toBeVisible();
 
   const { rows } = await db.query<{ status: string; deactivated_reason: string }>(`select status, deactivated_reason from public.members where id = $1`, [memberId]);
   expect(rows[0]).toEqual({ status: "deactivated", deactivated_reason: "مغادرة الشركة" });
 
-  await row.getByRole("button", { name: "أعد تفعيل العضوية" }).click();
-  await expect(row.getByText("معطَّل")).toHaveCount(0);
+  await row.getByRole("button", { name: /أعد تفعيل العضوية/ }).click();
+  await expect(row.getByText("معطَّل", { exact: true })).toHaveCount(0);
 });
 
 test("SCR-049 at 390 px RTL: the members list reads down the page, never sideways", async ({ context, page }) => {

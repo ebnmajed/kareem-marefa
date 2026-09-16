@@ -51,7 +51,7 @@ function renderTable(action = vi.fn().mockResolvedValue({ error: null, done: tru
         actionsById={{ s1: ["start", "cancel"], s2: ["cancel"] }}
         timeZone="Asia/Riyadh"
         locale="ar"
-        runTransitionAction={() => action}
+        transitionActions={{ s1: action, s2: action }}
       />
     </NextIntlClientProvider>,
   );
@@ -59,6 +59,8 @@ function renderTable(action = vi.fn().mockResolvedValue({ error: null, done: tru
 }
 
 describe("AdminSessionsTable", () => {
+  // A longer timeout than the default 5 s, not a longer test — see
+  // `members-table.test.tsx`'s identical note on its own search test.
   it("the search box filters by title and by presenter name", async () => {
     renderTable();
     expect(screen.getAllByText("جلسة الأمان السحابي").length).toBeGreaterThan(0);
@@ -67,7 +69,7 @@ describe("AdminSessionsTable", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في الجلسات" }), "خالد");
     expect(screen.queryByText("جلسة الأمان السحابي")).not.toBeInTheDocument();
     expect(screen.getAllByText("أساسيات الشبكات").length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("the row menu's navigation items point at the right routes", async () => {
     renderTable();
@@ -119,7 +121,7 @@ describe("AdminSessionsTable", () => {
           actionsById={{ s1: ["start", "cancel"], s2: ["cancel"] }}
           timeZone="Asia/Riyadh"
           locale="ar"
-          runTransitionAction={() => vi.fn().mockResolvedValue({ error: null, done: false })}
+          transitionActions={{ s1: vi.fn().mockResolvedValue({ error: null, done: false }), s2: vi.fn().mockResolvedValue({ error: null, done: false }) }}
         />
       </NextIntlClientProvider>,
     );

@@ -44,7 +44,7 @@ export function AdminSessionsTable({
   actionsById,
   timeZone,
   locale,
-  runTransitionAction,
+  transitionActions,
 }: {
   sessions: AdminSession[];
   /** `actionsFor(state)` (`lib/dal/sessions.ts`, sessions' file, `import
@@ -54,7 +54,14 @@ export function AdminSessionsTable({
   actionsById: Record<string, SessionAction[]>;
   timeZone: string;
   locale: string;
-  runTransitionAction: (sessionId: string) => (prev: TransitionState, formData: FormData) => Promise<TransitionState>;
+  /** Each entry is `runTransition.bind(null, locale, sessionId)`, bound ONCE
+   *  per row in `page.tsx` and handed down as a map — never a factory
+   *  function returning a bound action. A factory is a plain closure crossing
+   *  the server/client boundary as a prop, which React Flight cannot
+   *  serialise (only an actual bound Server Action reference survives the
+   *  crossing); `page.tsx`'s own comment on `transitionActions` has the
+   *  full reasoning. */
+  transitionActions: Record<string, (prev: TransitionState, formData: FormData) => Promise<TransitionState>>;
 }) {
   const t = useTranslations("admin.sessions");
   const [query, setQuery] = useState("");
@@ -174,13 +181,13 @@ export function AdminSessionsTable({
           cell — a row of several buttons plus a cancel-reason disclosure has
           nowhere to fit in one table cell, on either width. */}
       {sorted
-        .filter((s) => (actionsById[s.id]?.length ?? 0) > 0)
+        .filter((s) => (actionsById[s.id]?.length ?? 0) > 0 && transitionActions[s.id])
         .map((s) => (
           <div key={s.id} className="mt-3 rounded-field border border-edge p-4">
             <p className="text-label text-fg-heading">
               <bdi>{s.title}</bdi>
             </p>
-            <SessionControls action={runTransitionAction(s.id)} actions={actionsById[s.id] ?? []} sessionTitle={s.title} />
+            <SessionControls action={transitionActions[s.id]} actions={actionsById[s.id] ?? []} sessionTitle={s.title} />
           </div>
         ))}
     </div>

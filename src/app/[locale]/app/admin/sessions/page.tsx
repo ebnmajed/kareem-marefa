@@ -55,7 +55,17 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
   const actionsById = Object.fromEntries(sessions.map((s) => [s.id, actionsFor(s.state)]));
 
   const directAction = makeSessionDirectly.bind(null, locale as Locale);
-  const transitionAction = (sessionId: string) => runTransition.bind(null, locale as Locale, sessionId);
+  // ★ A MAP OF BOUND ACTIONS, not a factory function. `(id) => runTransition.
+  // bind(null, locale, id)` looks equivalent and type-checks the same, but it
+  // is a PLAIN CLOSURE crossing the server/client boundary as a prop — React
+  // Flight only knows how to serialise an actual Server Action reference (a
+  // bound `"use server"` export carries that marker; a function that RETURNS
+  // one does not), so passing the factory itself would fail to serialise at
+  // request time. Binding every row's action here, once, and handing down the
+  // finished map is what actually crosses correctly — `tsc` cannot see the
+  // difference, and this route is dynamic, so not even `npm run build` would
+  // have rendered it to catch this before a real request did.
+  const transitionActions = Object.fromEntries(sessions.map((s) => [s.id, runTransition.bind(null, locale as Locale, s.id)]));
 
   return (
     <>
@@ -117,7 +127,7 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
       <section aria-labelledby="all-heading" className="mt-12 max-w-5xl border-t border-edge pt-8">
         <SectionHeader as="h2" id="all-heading" title={t("listTitle")} />
         <div className="mt-4">
-          <AdminSessionsTable sessions={sessions} actionsById={actionsById} timeZone={prefs.timeZone} locale={locale} runTransitionAction={transitionAction} />
+          <AdminSessionsTable sessions={sessions} actionsById={actionsById} timeZone={prefs.timeZone} locale={locale} transitionActions={transitionActions} />
         </div>
       </section>
     </>
