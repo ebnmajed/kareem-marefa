@@ -1,7 +1,10 @@
 // SCR-052 · /app/admin/moderation/reports — the photo report queue, rebuilt
 // onto the system for wave 6 (`16` §6.7, `DEC-130`). Proves the Card grid
 // (not DataTable — DEC-130's own reasoning), the remove confirmation dialog
-// naming the session (REQ-UIX-013), and dismiss staying one click.
+// naming the session (REQ-UIX-013), and dismiss staying one click. Wave 7
+// (`DEC-137`) adds the shared `ModerationTabs` strip across all three
+// moderation queues — proved once here, since this file already seeds
+// exactly one open report and nothing on the other two queues.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -128,6 +131,25 @@ test("the page header and the report card render for a real open photo report", 
   // innermost, same nesting trap `event-comments.spec.ts` already documents.
   await expect(page.getByText("جلسة صور البلاغات").last()).toBeVisible();
   await expect(page.getByText("محتوى غير لائق")).toBeVisible();
+});
+
+// ★ ORDERED HERE, BEFORE THE RESOLUTION TEST BELOW, on purpose — a real
+// sync-3 finding: `test.describe.configure({ mode: "serial" })` above runs
+// every test in this file, in file order, and the resolution test below
+// RESOLVES this file's one seeded report. Run after it (its original
+// position), the tab strip correctly showed every count at 0 — not a
+// product bug, this file's own test order emptying the queue before
+// checking it.
+test("wave 7: the shared ModerationTabs strip counts each queue separately, and moves without merging them (DEC-005)", async ({ context, page }) => {
+  await signIn(context);
+  await goto(page, "/ar/app/admin/moderation/reports");
+  const tabs = page.getByRole("tablist", { name: "قوائم الإشراف" });
+  await expect(tabs.getByRole("tab", { name: /بلاغات الصور.*1/ })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs.getByRole("tab", { name: /التعليقات.*0/ })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: /طلبات الإخفاء.*0/ })).toBeVisible();
+
+  await tabs.getByRole("tab", { name: /التعليقات/ }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
 });
 
 test("★ removing confirms in a dialog naming the session — cancel changes nothing, confirm resolves the report and removes the photo", async ({ context, page }) => {

@@ -2,7 +2,6 @@
 
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import type { ButtonProps } from "@/components/ui";
 
 // The button that knows about the form it is inside — REQ-UIX-007, `16` §7.1.
@@ -22,13 +21,9 @@ import type { ButtonProps } from "@/components/ui";
 // Pending keeps the label and adds a spinner; the control is `aria-busy` and
 // cannot be submitted twice. `pending` as a prop overrides, for an action that
 // is not this form's.
-//
-// ★ While pending it nudges React (`ui/pending-nudge`, `DEC-135`): a form
-// action that re-renders server content can otherwise stay busy forever.
 
 export function SubmitButton({ pending, ...props }: ButtonProps) {
   const status = useFormStatus();
   const busy = pending ?? status.pending;
-  usePendingNudge(busy);
   return <Button type="submit" pending={busy} {...props} />;
 }

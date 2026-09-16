@@ -3,21 +3,28 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
+import { Panel } from "@/components/ui/panel";
 import { getAttendanceReport, listUncheckedForAdminManualMark } from "@/lib/dal/checkin";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getRatingsForAdmin } from "@/lib/dal/ratings";
 import { requireSession } from "@/lib/dal/session";
-import { markManually } from "./actions";
+import { markManually, removeCheckInAction } from "./actions";
 import { ManualMarkForm } from "./manual-mark-form";
+import { RemoveCheckInForm } from "./remove-check-in-form";
 
 // SCR-044 · /app/admin/sessions/[id]/attendance (REQ-CHK-008, REQ-CHK-012,
-// REQ-RAT-005). Staff — admin OR moderator (REQ-ADM-020's "event-day
-// operations"): `getAttendanceReport()` returns null for a plain member,
-// the same 404-not-message pattern every other admin screen uses. The CSV
-// export and the per-rater ratings section are admin-only WITHIN this
-// staff-accessible page, not a reason to 404 the whole screen for a
-// moderator — REQ-RAT-005 says a moderator lacks that one thing, not this
-// one.
+// REQ-CHK-017, REQ-RAT-005). Staff — admin OR moderator (REQ-ADM-020's
+// "event-day operations"): `getAttendanceReport()` returns null for a plain
+// member, the same 404-not-message pattern every other admin screen uses.
+// The CSV export, the removal control and the per-rater ratings section are
+// admin-only WITHIN this staff-accessible page, not a reason to 404 the
+// whole screen for a moderator — REQ-RAT-005 says a moderator lacks those
+// things, not this whole page.
+//
+// ★ DEC-137: this route moved to `checkin` this wave, and its strings moved
+// with it — `checkin.attendance` (`checkin.json`), not `admin.attendance`
+// (`admin.json`) anymore. The old namespace is still in `admin.json`,
+// unused; deleting it is `console`'s call on request (one writer per file).
 
 const STATUS_LABEL: Record<string, string> = {
   confirmed: "statusConfirmed",
@@ -35,12 +42,17 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
     listUncheckedForAdminManualMark(locale, id),
     getOrgPrefs(locale),
     requireSession(locale),
-    getTranslations("admin.attendance"),
+    getTranslations("checkin.attendance"),
   ]);
   if (report === null) notFound();
 
   const isAdmin = session.role === "admin";
   const ratings = isAdmin ? await getRatingsForAdmin(locale, id) : [];
+  // REQ-CHK-017: anyone with an ACTIVE check-in right now, confirmed or
+  // walk-in alike — `remove_check_in()` doesn't care which, only that one
+  // exists (`report.rows`' own `checkedIn` already means exactly that,
+  // post the removed_at fix).
+  const removeCandidates = report.rows.filter((r) => r.checkedIn).map((r) => ({ memberId: r.memberId, displayName: r.displayName }));
 
   const num = (n: number) => formatNumber(n);
   const ratePct = report.attendanceRate === null ? null : Math.round(report.attendanceRate * 100);
@@ -93,13 +105,33 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
         </h2>
         <p className="mt-2 text-body-sm text-fg-muted">{t("manualIntro")}</p>
         {report.sessionState !== "in_progress" ? (
-          <p role="status" className="mt-3 rounded-field border border-edge bg-silver-100 p-3 text-body-sm text-fg-body">
-            {t("manualNotOpen")}
-          </p>
+          <div role="status" className="mt-3">
+            <Panel tone="info" className="text-body-sm text-fg-body">
+              {t("manualNotOpen")}
+            </Panel>
+          </div>
         ) : (
           <ManualMarkForm action={markManually.bind(null, locale as Locale, id)} unchecked={unchecked} />
         )}
       </section>
+
+      {/* REQ-CHK-017, C3 — admin-only, unlike manual marking above: it needs
+          nothing about the session's own state (`remove_check_in()` has no
+          `in_progress` gate at all — a correction after the fact, once the
+          report is being reviewed post-event, is exactly REQ-CHK-017's own
+          case, not a live-session-only tool). "Design the reversal before
+          the UI" (the lead's own framing): the SQL (0087) does the whole
+          reversal — points, certificate, no-show symmetry — inline; this
+          section is only ever a thin call onto it. */}
+      {isAdmin ? (
+        <section aria-labelledby="remove" className="mt-10 max-w-2xl border-t border-edge pt-8">
+          <h2 id="remove" className="text-h2 text-fg-heading">
+            {t("removeTitle")}
+          </h2>
+          <p className="mt-2 text-body-sm text-fg-muted">{t("removeIntro")}</p>
+          <RemoveCheckInForm action={removeCheckInAction.bind(null, locale as Locale, id)} candidates={removeCandidates} sessionTitle={report.sessionTitle} />
+        </section>
+      ) : null}
 
       <section aria-labelledby="list" className="mt-10 border-t border-edge pt-8">
         <h2 id="list" className="text-h2 text-fg-heading">
@@ -133,7 +165,25 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
                     <td className="min-w-0 py-2 pe-4 text-fg-heading">
                       <bdi>{r.displayName ?? r.memberId}</bdi>
                     </td>
-                    <td className="py-2 pe-4 text-fg-body">{r.isWalkIn ? t("statusWalkIn") : r.isNoShow ? t("statusNoShow") : t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")}</td>
+                    <td className="py-2 pe-4 text-fg-body">
+                      {/* `removed` is checked first — it overrides walk-in/no-show/rsvp
+                          status, all of which a removal can make simultaneously true
+                          (a removed walk-in is still `isWalkIn`, and a removed
+                          confirmed member reads as `isNoShow` again per the RPC's own
+                          symmetry — see `AttendanceRow`'s own comment). */}
+                      {r.removed ? (
+                        <>
+                          <span className="text-fg-heading">{t("statusRemoved")}</span>
+                          {r.removalReason ? <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: r.removalReason, bdi: (c) => <bdi>{c}</bdi> })}</p> : null}
+                        </>
+                      ) : r.isWalkIn ? (
+                        t("statusWalkIn")
+                      ) : r.isNoShow ? (
+                        t("statusNoShow")
+                      ) : (
+                        t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")
+                      )}
+                    </td>
                     <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</td>
                     <td className="py-2 text-fg-body">
                       {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}

@@ -71,4 +71,29 @@ describe("ReviewCard — reject confirmation", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect((action.mock.calls[0][1] as FormData).get("action")).toBe("approve");
   });
+
+  // ★ This form's reason box is deliberately NOT `required` at all (the
+  // component's own header comment: a required control inside a collapsed
+  // `<details>` is unfocusable, so the browser refuses the whole form with
+  // no visible message) — `noValidate` here is a house-convention addition
+  // (`16` §8.2), not a fix for an active bug. What actually enforces the
+  // reason is the action/RPC, and this proves that round trip's own error
+  // still reaches the screen — the wiring `content`'s 7f4809f found missing
+  // for a DIFFERENT form's very different (native, `required`-attribute)
+  // cause.
+  it("an empty reason on request-changes shows the app's own error", async () => {
+    const action = vi.fn().mockResolvedValue({ error: "reasonRequired", done: false, reason: "" });
+    renderCard(action);
+    // `renderCard`'s own return is scoped to the REJECT `<details>` — this
+    // decision needs its own scope for the same reason (jsdom does not hide
+    // a closed `<details>`'s content the way a real browser does, so both
+    // boxes' identically-labelled «أرسل» buttons are both queryable at once).
+    const requestChangesDetails = within(screen.getByText("اطلب تعديلًا").closest("details")!);
+
+    await userEvent.click(requestChangesDetails.getByText("اطلب تعديلًا"));
+    await userEvent.click(requestChangesDetails.getByRole("button", { name: "أرسل" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("اكتب السبب أولًا — لن يصل صاحب المقترح قرار بلا سبب.")).toBeVisible();
+  });
 });

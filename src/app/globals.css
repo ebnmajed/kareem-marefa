@@ -1016,6 +1016,24 @@ html[data-sting="done"] {
 .btn-sheen:hover::after {
   animation: sting-sweep 650ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* ★ RTL (wave 7): `inset-inline-start` is the RIGHT edge in Arabic, so the
+   physical `translateX(-160%)` above left a strip of the glint visible at
+   rest on every primary button — «الدخول عبر Google» carried it since M9.
+   In RTL the glint parks past the right edge and sweeps leftward. */
+.btn-sheen:dir(rtl)::after {
+  transform: translateX(160%) skewX(18deg);
+}
+.btn-sheen:dir(rtl):hover::after {
+  animation-name: sting-sweep-rtl;
+}
+@keyframes sting-sweep-rtl {
+  from {
+    transform: translateX(160%) skewX(18deg);
+  }
+  to {
+    transform: translateX(-260%) skewX(18deg);
+  }
+}
 
 /* Register-route loading screen: three dots connecting */
 @keyframes loader-dot {

@@ -5,6 +5,7 @@
       "intro": "Every point here has a clear reason — you can explain any of them without asking anyone.",
       "balance": "{count, plural, =0 {Your balance is zero points} one {Your balance is one point} other {Your balance is {value} points}}",
       "empty": "No points yet. Your first check-in earns your first point.",
+      "browseAction": "Browse sessions",
       "filters": {
         "heading": "Filter",
         "session": "Session",

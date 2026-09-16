@@ -19,6 +19,29 @@ export function formatNumber(value: number): string {
   return numberFormat.format(value);
 }
 
+/** U+00A0. */
+const NBSP = "\u00A0";
+
+/**
+ * ★ A TIME NEVER BREAKS FROM ITS «م».
+ *
+ * `Intl` separates the clock from the day period with a plain space in Arabic
+ * («6:57 م») and U+202F in English. A plain space is a line-break opportunity, so
+ * on a narrow line «6:57» ended one line and «م» began the next — seen on the
+ * public card's capture and on the member's calendar in wave 7, and patched once
+ * before per page (`28e1a2b`). The fix belongs here, where every surface gets its
+ * time: the whitespace beside the day period becomes a no-break space, and
+ * nothing else in the string changes. `tests/unit/sessions-numerals.test.ts`
+ * pins the character.
+ */
+function joined(parts: Intl.DateTimeFormatPart[]): string {
+  return parts
+    .map((part, i) =>
+      part.type === "literal" && /^\s+$/u.test(part.value) && (parts[i + 1]?.type === "dayPeriod" || parts[i - 1]?.type === "dayPeriod") ? NBSP : part.value,
+    )
+    .join("");
+}
+
 /**
  * A date and time, in Western digits and the org's time zone (REQ-INT-003,
  * REQ-INT-006, OQ-018).
@@ -27,11 +50,13 @@ export function formatNumber(value: number): string {
  * and «6:00 م» has to mean the clock on that room's wall whoever is looking.
  */
 export function formatDateTime(iso: string, timeZone: string, locale = "ar"): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
-    dateStyle: "full",
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(iso));
+  return joined(
+    new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+      dateStyle: "full",
+      timeStyle: "short",
+      timeZone,
+    }).formatToParts(new Date(iso)),
+  );
 }
 
 /**
@@ -44,10 +69,12 @@ export function formatDateTime(iso: string, timeZone: string, locale = "ar"): st
  * days to a process running in UTC.
  */
 export function formatTime(iso: string, timeZone: string, locale = "ar"): string {
-  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(iso));
+  return joined(
+    new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+      timeStyle: "short",
+      timeZone,
+    }).formatToParts(new Date(iso)),
+  );
 }
 
 /**

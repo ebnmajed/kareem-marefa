@@ -2,6 +2,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPreferenceMatrix, listNotifications } from "@/lib/dal/notifications";
 import { NotificationList } from "@/components/notifications/notification-list";
 import { PreferenceMatrix } from "@/components/notifications/preference-matrix";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Panel } from "@/components/ui/panel";
+import { Link } from "@/i18n/navigation";
+import type { Locale } from "@/i18n/routing";
 import { markAllNotificationsRead } from "./actions";
 
 // SCR-026 · /app/me/notifications — the inbox and the preference matrix
@@ -31,8 +36,7 @@ export default async function NotificationsPage({
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-2 text-body text-fg-muted">{t("preferences.intro")}</p>
+      <PageHeader title={t("title")} description={t("preferences.intro")} />
 
       <nav aria-label={t("title")} className="mt-4 flex flex-wrap gap-4">
         <a href="#inbox" className="text-label text-fg-heading underline underline-offset-4">
@@ -44,47 +48,50 @@ export default async function NotificationsPage({
       </nav>
 
       {saved ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("preferences.saved")}
-        </p>
+        <div role="status">
+          <Panel tone="success" className="mt-4 p-3 text-body text-fg-heading">
+            {t("preferences.saved")}
+          </Panel>
+        </div>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-          {t("preferences.error")}
-        </p>
+        <div role="alert">
+          <Panel tone="error" className="mt-4 p-3 text-body text-fg-heading">
+            {t("preferences.error")}
+          </Panel>
+        </div>
       ) : null}
 
       <section id="inbox" aria-labelledby="inbox-heading" className="mt-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="inbox-heading" className="text-h2 text-fg-heading">
-            {t("inbox.heading")}
-          </h2>
-          <div className="flex flex-wrap items-center gap-4">
-            {/* A link, not a toggle button: it changes the URL, so `aria-current`
-                is the right announcement and `aria-pressed` is not supported on
-                role=link at all. */}
-            <a
-              href={unreadOnly ? "?" : "?unread=1"}
-              aria-current={unreadOnly ? "true" : undefined}
-              className={`text-label underline underline-offset-4 hover:text-fg-heading ${unreadOnly ? "text-fg-heading" : "text-fg-muted"}`}
-            >
-              {t("inbox.unreadOnly")}
-            </a>
-            <form action={markAllNotificationsRead}>
-              <button type="submit" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-                {t("inbox.markAllRead")}
-              </button>
-            </form>
-          </div>
-        </div>
-        <NotificationList items={items} timeZone={preferences.timeZone} />
+        <SectionHeader
+          id="inbox-heading"
+          title={t("inbox.heading")}
+          actions={
+            <>
+              {/* A link, not a toggle button: it changes the URL, so `aria-current`
+                  is the right announcement and `aria-pressed` is not supported on
+                  role=link at all. */}
+              <Link
+                href={unreadOnly ? "/app/me/notifications" : "/app/me/notifications?unread=1"}
+                aria-current={unreadOnly ? "true" : undefined}
+                className={`text-label underline underline-offset-4 hover:text-fg-heading ${unreadOnly ? "text-fg-heading" : "text-fg-muted"}`}
+              >
+                {t("inbox.unreadOnly")}
+              </Link>
+              <form action={markAllNotificationsRead.bind(null, locale as Locale)}>
+                <button type="submit" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
+                  {t("inbox.markAllRead")}
+                </button>
+              </form>
+            </>
+          }
+        />
+        <NotificationList items={items} timeZone={preferences.timeZone} locale={locale as Locale} />
       </section>
 
       <section id="preferences" aria-labelledby="preferences-heading" className="mt-12">
-        <h2 id="preferences-heading" className="text-h2 text-fg-heading">
-          {t("preferences.heading")}
-        </h2>
-        <PreferenceMatrix rows={preferences.rows} />
+        <SectionHeader id="preferences-heading" title={t("preferences.heading")} />
+        <PreferenceMatrix rows={preferences.rows} locale={locale as Locale} />
       </section>
     </>
   );

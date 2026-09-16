@@ -29,8 +29,8 @@ export type ProposalField = (typeof PROPOSAL_FIELDS)[number];
 /** The scalars. `coPresenters` is a list and is captured separately. */
 export const PROPOSAL_VALUE_FIELDS: readonly ProposalField[] = PROPOSAL_FIELDS.filter((f) => f !== "coPresenters");
 
-/** The four the schema refuses to do without — marked «مطلوب» (REQ-UIX-011). */
-export const PROPOSAL_REQUIRED_FIELDS: readonly ProposalField[] = ["title", "abstract", "categoryId", "level"];
+// The four the schema refuses to do without are `PROPOSAL_REQUIRED` in
+// `components/sessions/proposal-rules.ts`, beside the blur check that uses them.
 
 export type ProposeState = FormState<ProposalField>;
 

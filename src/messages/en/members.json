@@ -1,0 +1,39 @@
+{
+  "members": {
+    "profile": {
+      "role": {
+        "admin": "Organisation admin",
+        "moderator": "Moderator",
+        "member": "Member"
+      },
+      "memberSince": "Member since <bdi>{date}</bdi>",
+      "noBio": "No bio yet",
+      "selfNote": "This is how your colleagues see your profile.",
+      "editProfile": "Edit your profile",
+      "myPoints": "My points",
+      "bio": "Bio",
+      "interests": "Interests",
+      "standing": "Points and level",
+      "points": "Points",
+      "rank": "Rank",
+      "level": "Level",
+      "none": "—",
+      "streak": "Current streak",
+      "streakValue": "{count, plural, =0 {No streak now} one {one month} other {{value} months}}",
+      "badges": "Badges",
+      "noBadges": "No badges yet.",
+      "presented": "Sessions presented",
+      "noPresented": "No sessions presented yet.",
+      "admin": {
+        "heading": "For admins",
+        "note": "Only the organisation's admins see this section.",
+        "email": "Email",
+        "attended": "Sessions attended",
+        "attendedCount": "Attended",
+        "noShows": "No-shows",
+        "lateCancels": "Late cancellations",
+        "noAttended": "No attendance recorded yet."
+      }
+    }
+  }
+}

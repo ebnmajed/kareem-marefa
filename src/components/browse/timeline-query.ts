@@ -16,7 +16,7 @@
 // a hand-edited `?category=abc` is ignored rather than failing the page, and it
 // never reaches a chip, where it would print a string nobody chose.
 
-export const FILTER_KEYS = ["status", "category", "tag", "venue", "company", "level", "language", "presenter", "from", "to", "q"] as const;
+export const FILTER_KEYS = ["status", "category", "tag", "venue", "company", "level", "language", "presenter", "when", "from", "to", "q"] as const;
 export type FilterKey = (typeof FILTER_KEYS)[number];
 
 export type TimelineStatus = "open" | "live" | "ended";
@@ -25,7 +25,17 @@ export type TimelineLevel = "introductory" | "intermediate" | "advanced";
 /** The keys row A draws as toggles; every other active key is a removable chip in row B. */
 export const TOGGLE_KEYS: readonly FilterKey[] = ["status", "category"];
 /** The keys the filter sheet edits. */
-export const SHEET_KEYS: readonly FilterKey[] = ["from", "to", "tag", "venue", "company", "presenter", "level", "language"];
+export const SHEET_KEYS: readonly FilterKey[] = ["when", "tag", "venue", "company", "presenter", "level", "language"];
+
+/**
+ * ★ `from` and `to` are still READ — a link someone saved or shared keeps
+ * working and shows as a removable chip — but no control writes them any more
+ * (DEC-141 ruling 15). The sheet's native date inputs drew the BROWSER's own
+ * mask, `dd/mm/yyyy` in English under an Arabic page, and a browser set to
+ * Arabic may draw Arabic-Indic digits, which DEC-124 forbids. Choosing a period
+ * replaces them; clearing the sheet clears them.
+ */
+export const LEGACY_DATE_KEYS: readonly FilterKey[] = ["from", "to"];
 
 export interface TimelineQuery {
   /** Validated, in application order, one per key. */
@@ -49,6 +59,8 @@ function valid(key: FilterKey, raw: string): string | null {
       return value === "introductory" || value === "intermediate" || value === "advanced" ? value : null;
     case "language":
       return value === "ar" || value === "en" ? value : null;
+    case "when":
+      return value === "thisWeek" || value === "nextWeek" || value === "thisMonth" ? value : null;
     case "from":
     case "to":
       return DAY.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) ? value : null;

@@ -1,16 +1,23 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { Locale } from "@/i18n/routing";
 import { markAllRead, markRead, preferenceInput, setPreference } from "@/lib/dal/notifications";
 
 // Zod first, then the DAL (REQ-NFR-002). Authority is never in the form: the
 // DAL writes the session's own rows, and `p3_self_*` plus the `enabled`
 // column grant refuse everything else — a forged `category` reaches a check
 // constraint, not another member's settings.
+//
+// ★ Bound to the real locale (`.bind(null, locale)`, `privacy/actions.ts`'s
+// pattern) — every redirect here hard-coded `/ar/...` before, which sent an
+// `/en` member's save, mark-read or mark-all-read back to the Arabic route.
 
-const SCREEN = "/ar/app/me/notifications";
+function screen(locale: Locale): string {
+  return `/${locale}/app/me/notifications`;
+}
 
-export async function savePreference(formData: FormData) {
+export async function savePreference(locale: Locale, formData: FormData) {
   const parsed = preferenceInput.safeParse({
     category: formData.get("category")?.toString() ?? "",
     channel: formData.get("channel")?.toString() ?? "",
@@ -18,27 +25,27 @@ export async function savePreference(formData: FormData) {
     // idempotent rather than a toggle that races with itself.
     enabled: formData.get("enabled") === "on",
   });
-  if (!parsed.success) redirect(`${SCREEN}?error=1`);
+  if (!parsed.success) redirect(`${screen(locale)}?error=1`);
 
   try {
-    await setPreference("ar", parsed.data);
+    await setPreference(locale, parsed.data);
   } catch {
-    redirect(`${SCREEN}?error=1`);
+    redirect(`${screen(locale)}?error=1`);
   }
-  redirect(`${SCREEN}?saved=1#preferences`);
+  redirect(`${screen(locale)}?saved=1#preferences`);
 }
 
-export async function markNotificationRead(formData: FormData) {
+export async function markNotificationRead(locale: Locale, formData: FormData) {
   const id = formData.get("id")?.toString() ?? "";
   try {
-    await markRead("ar", id);
+    await markRead(locale, id);
   } catch {
-    redirect(`${SCREEN}?error=1`);
+    redirect(`${screen(locale)}?error=1`);
   }
-  redirect(SCREEN);
+  redirect(screen(locale));
 }
 
-export async function markAllNotificationsRead() {
-  await markAllRead("ar");
-  redirect(SCREEN);
+export async function markAllNotificationsRead(locale: Locale) {
+  await markAllRead(locale);
+  redirect(screen(locale));
 }

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { type ModerationState } from "./actions";
@@ -59,10 +58,6 @@ export function ReportCard({
     else if (result.error) toast.show({ title: t(`error.${result.error}`), tone: "error" });
     return result;
   }, emptyModerationState);
-  // ★ DEC-135: this transition re-renders server content (the queue drops
-  // the resolved report), which is exactly the shape React 19.2.4 can lose
-  // the retry for — a workaround, not a feature; delete with `pending-nudge.ts`.
-  usePendingNudge(pending);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const reasonId = useId();
 
@@ -90,7 +85,10 @@ export function ReportCard({
         ) : null}
 
         <CardActions className="mt-2 flex-wrap">
-          <form action={formAction}>
+          {/* `noValidate` — `16` §8.2's rule for any form that renders the
+              app's own error (the toast fired from inside the action). No
+              `required` control on this one at all. */}
+          <form action={formAction} noValidate>
             <Button type="submit" name="action" value="dismiss" variant="secondary" size="sm" disabled={pending}>
               {t("dismiss")}
             </Button>
@@ -104,7 +102,12 @@ export function ReportCard({
               title={t.rich("removeConfirmTitle", { session: sessionTitle, t: (chunks) => <bdi>{chunks}</bdi> })}
               closeLabel={t("closeDialog")}
             >
-              <form action={formAction}>
+              {/* `noValidate` — the reason field's `required` is `<Field>`-
+                  context-only, never a native attribute here, so nothing
+                  blocks this submission today. Set so a future edit that adds
+                  `required` straight to `<Textarea>` — `content`'s 7f4809f —
+                  cannot silently swallow this dialog's own submission. */}
+              <form action={formAction} noValidate>
                 <Field
                   id={reasonId}
                   label={t("reasonLabel")}

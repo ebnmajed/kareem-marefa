@@ -1484,3 +1484,656 @@ equivalent test for submitReport's network catch (previously untested).
 53/53 event component tests, tsc clean, lint 0 errors.
 
 Ready for sync.
+
+## Wave 7 plan
+
+Planning only, per the spawn brief. Read `STATUS.md`'s START HERE block and wave-7 block, `CLAUDE.md`'s
+wave-7 ownership map, `DEC-110` … `DEC-139` (the last two, `DEC-138`/`DEC-139`, landed on disk after
+spawn — `global-error.tsx`'s path and `REQ-EVT-010`'s pipeline amendment), `16` §6.5/§6.8.3/§7,
+`01-prd.md` `REQ-PRF-*`, `REQ-PTS-*`, `REQ-CRT-*`, `REQ-NTF-*`, `REQ-CAL-*`, `REQ-CHK-017`,
+`REQ-DSC-006`, `09-sitemap-screens.md`'s sitemap tree and route table (SCR-021 … 026 have no dedicated
+write-ups beyond the tree — SCR-021's row literally says «my profile», nothing more), and the current
+code of all seven `/app/me` routes, their components and every DAL module they read. Also re-read the
+regenerated `.claude/agents/content.md` on disk (not the wave-6 copy in this session's spawn context) —
+it changes the test-file edit list (`tasks.spec.ts` is now mine) and adds carried item **T8**
+(`DEC-139`).
+
+### 1 — The hub's IA: seven routes, six canvas tabs, and why they do not simply align
+
+`16` §6.5 names six tabs — **القادمة · الحاضرة · المقترحات · المحفوظات · الشهادات · النقاط** — and
+the tree (`09` §1) has seven routes under `/me`: profile (SCR-021, `/app/me` itself), points (022),
+certificates (023), bookmarks (024), calendar (025), notifications (026), privacy (`REQ-PRF-006/007`,
+no SCR number, M13 in the route table but pulled into wave 7 by `DEC-137`'s T7). Three of the seven —
+calendar, notifications, privacy — are not in §6.5's six-tab list at all, and three of §6.5's six —
+**القادمة** (upcoming), **الحاضرة** (past/attended), **المقترحات** (proposals) — name content this
+track has neither the route nor the DAL access to build this wave:
+
+- **القادمة/الحاضرة** read as a merged "my sessions" view — upcoming commitments and past attendance
+  outcomes. That data lives in `rsvp.ts`/`checkin.ts` (`checkin`'s, not in my edit list, not even
+  add-only) and `sessions.ts` (`sessions`', explicitly in my **never** list). `/app/sessions` already
+  is exactly this for the general case (`DEC-112`'s timeline, `sessions`' wave-6 build, date-grouped,
+  the member's own next commitment first) — building a second, narrower "my sessions" view under `/me`
+  would duplicate it with data I cannot read.
+- **المقترحات** is `/app/propose` and `/app/propose/[id]`, literally itemized to `sessions` in the
+  wave-7 checklist (S1/S2), not to me, and reads `proposals.ts` (also in my never list).
+
+So building literal **القادمة/الحاضرة/المقترحات** tabs this wave would mean either reading another
+track's DAL (against the "add-only, never a changed signature/select" rule and against the never-touch
+list naming those exact files) or faking the content. Neither is right. Reading `DEC-114`'s own rule —
+*"a mockup that contradicts a requirement is a question, not an instruction… raise it; do not implement
+it and do not silently correct it either"* — I am treating this the same way: **raised as question 2
+below, not silently built and not silently dropped.**
+
+**Proposed resolution**, pending the lead's ruling: `me/layout.tsx` renders a persistent tab strip on
+`ui/tabs` (console's, import-only — `Tabs` already supports `item.href` for a real navigation link per
+tab, exactly this shape: *"the admin sub-nav and any URL-addressable tab strip use this"*) with **seven
+items matching the seven real routes**, `value` derived from the active path segment in a small client
+wrapper (`ui/tabs`' own documented pattern: *"`value` stays the caller's source of truth, typically
+derived from the current route"*). This is exactly the *"chips → tabs, not unreachable → reachable"*
+migration `16` §6.5 itself describes: `me/page.tsx:29-37` already renders a six-item chip nav today
+(notifications, calendar, certificates, points, bookmarks, privacy) — the seventh, the profile edit
+form, is `/app/me`'s own content, not a chip pointing at itself. I am proposing the tab strip simply
+promotes that existing six-chip nav plus a first "profile" tab, using labels that borrow §6.5's spirit
+where they map cleanly (**النقاط**↔points, **الشهادات**↔certificates, **المحفوظات**↔bookmarks) and the
+sitemap tree's own Arabic for the rest (الملف الشخصي, التقويم, الإشعارات, الخصوصية).
+
+**What `/app/me` itself renders**: the profile edit form, unchanged in substance (`REQ-PRF-001`), on
+`sessions`' `Field`/`Input`/`Select`/`Textarea`/`Checkbox`/`FormSummary` in place of the current raw
+inputs. **Proposed addition** (question 3): one `Stat` (mine, `ui/stat.tsx`, already built —
+`label`/`value`/`hint`/`href`) showing the points balance via `getPointsStripData()` (already exists,
+`points.ts`, already used by the home page's own strip), linking to `/app/me/points` — the one piece of
+"renders content, not links" §6.5 asks for that content's own data actually reaches this wave. Not
+upcoming sessions, not proposals — just the one number I can honestly show. If the lead would rather
+keep `/app/me` exactly the form (smaller diff, no new visual element to review), I drop it.
+
+**No auth or data gate in `me/layout.tsx`**, confirmed against the DAL convention (`requireSession()`
+close to the data, never in a layout, `CLAUDE.md`'s Data access §3) — the layout only renders the tab
+chrome and `{children}`; every page underneath still calls its own DAL functions, which still gate.
+
+### 2 — The seven routes
+
+**T1 · `/app/me` (SCR-021).** Components: the profile form rebuilt on `Field`/`Input`/`Select`/
+`Textarea`/`Checkbox`/`FormSummary` (sessions'), `Panel` (mine, saved/error banners, replacing the raw
+`role="status"`/`role="alert"` paragraphs), optional `Stat` (§1). DAL: `getMe`, `listCompanies`,
+`updateMyProfile`, `profileInput` — all in `members.ts`, already correct, no new exports needed.
+**Bug found while reading, fixed in the same commit:** `me/actions.ts`'s `saveProfile` hard-codes
+`redirect("/ar/app/me?error=1")` / `?saved=1` regardless of the real locale — breaks the redirect target
+for an `/en` member. `privacy/actions.ts` (already correct, `${locale}`) is the pattern to match.
+States: empty-ish (a member with no company set — `REQ-PRF-001`'s acceptance criterion, the field
+required before reserving/proposing), populated, field error, after a save.
+
+**T2 · `/app/me/points` (SCR-022 ★).** Components: `PointsHistoryList`/`PointsCatalogue` (mine) restyled
+onto `Card`/`Panel` rows with `Badge` for the reversal/manual-adjustment tags (currently plain text);
+the session/month filters move onto `ui/select` (sessions', matching the materials settings-row fix
+from wave 6, `9a71f48`). DAL: `getPointsHistory`, `getPointsStripData` — `points.ts`, add-only, and I
+expect **zero new exports** (§3). States: empty, populated, filtered, a reversal entry, a capped-action
+explanation row (`SCR-022`'s own note — «بلغت الحد الأقصى للتعليقات في هذه الجلسة»).
+
+**T3 · `/app/me/certificates` (SCR-023).** Components: the existing list restyled onto `Card` +
+`Badge` (issued/revoked state), keeping the `dir="ltr"` `<bdi>` + `break-all` technique on the serial
+and verification code exactly as built (this is a real fix from a real 390 px review, not decoration —
+do not regress it) and the revoked-reason `Panel`. DAL: `listMyCertificates`, `signCertificateUrl`,
+`getOrgTimeZone` — `certificates.ts`, add-only, no new exports needed (read-only page, one signed-URL
+download link, no member-initiated write). States: empty, issued only, issued + revoked (with reason),
+a certificate still `preparing` (no `pdfPath` yet).
+
+**T4 · `/app/me/bookmarks` (SCR-024).** Components: replace the inline `<li>` list with `sessions`' own
+`SessionCard` (`components/browse/session-card.tsx` — density, the poster, the status badge, the
+bookmark toggle already built, exactly what a Coursera-style "saved sessions" list should look like) in
+a plain grid, `EmptyState` (mine) for zero bookmarks. DAL: **needs a new function from `sessions`** —
+see request 1 below; `bookmarks.ts` is fully `sessions`' (not even add-only for me) and `getBookmarksPageData`
+returns a thin DTO (`id`/`title`/`abstract`/`startsAt`/`state`/`bookmarkedAt`), not the `TimelineSession`
+shape `SessionCard` needs. States: empty, populated (mixed phases — open/ended).
+
+**T5 · `/app/me/calendar` (SCR-025).** Components: connect/disconnect restyled onto `Card`/`Panel`,
+`Badge` for connection status, synced events on `Card`. DAL: `getCalendarConnection`, `listSyncedEvents`,
+`disconnectCalendar` — `calendar.ts`, add-only, no new exports needed; already true by construction that
+no token is ever selectable (`calendar_connections`' granted columns exclude it — confirmed by reading
+the DAL, not assumed). **Bug found, fixed in the same commit:** `calendar/actions.ts`'s `disconnect`
+also hard-codes `/ar/...`. States: not connected, connected with synced events, a failed sync (the
+`synced.failedHint` row), just-connected/just-disconnected banners.
+
+**T6 · `/app/me/notifications` (SCR-026).** Components: `NotificationList`/`PreferenceMatrix` (mine)
+restyled onto `Card`/`Panel` rows with `Badge` for unread; the in-page `#inbox`/`#preferences` anchor
+nav stays (works with no JS, already accessible — `aria-current` on a link, not `aria-pressed` on a
+button) rather than moving to `ui/tabs`, since Radix's tab state and a hash-anchor two-section page are
+different mechanisms and the anchor version already satisfies the same need. DAL: `getPreferenceMatrix`,
+`listNotifications`, `markRead`, `markAllRead`, `setPreference` — `notifications.ts`, add-only, no new
+exports needed. **Bug found, fixed in the same commit:** `notifications/actions.ts` hard-codes `/ar/...`
+in three places. States: inbox empty, inbox populated (read + unread), unread-only filter, preferences
+with a fixed (non-switchable) category and its reason, preferences saved/error.
+
+**T7 · `/app/me/privacy` (`REQ-PRF-006`/`007`).** Components: restyle onto `Panel` (status boxes),
+`Field`/`Textarea` (sessions', replacing the raw `<textarea>`), and — the one real gap against the
+agent brief's "the destructive act confirmed in `ui/dialog`" — wrap the deactivation submit in a
+controlled `Dialog`/`DialogTrigger`/`DialogContent` (lead's, import-only), following
+`takedown-button.tsx`'s own established shape exactly (a plain `onClick` inside the confirm button that
+closes the dialog then starts the transition — never `DialogClose asChild` wrapping the action, which
+the lead's own real-build e2e run already found broken for this exact pattern). Today's form submits
+straight through with no confirm step at all. DAL: `getMyExportRequest`, `requestMyExport`,
+`requestDeactivation`, `deactivationReason` — `privacy.ts`, add-only, no new exports needed;
+`getOrgPrefs` stays imported read-only from `proposals.ts` (a read of another track's file is fine,
+only editing it is not). States: no export yet, export queued/building/ready/failed/expired, rate-limited
+(cannot request again), the deactivation dialog open, deactivation sent.
+
+### 3 — `me/points` and `checkin`'s reversal entry (REQ-CHK-017, contract 3)
+
+Read `points_ledger`'s own migration before assuming anything: `0027_m4_schema.sql:55-59` declares
+`ledger_source` as a Postgres enum whose literal values already include **`'reversal'`**, alongside
+`'content_removed'` and the rest — used today for `REQ-PTS-013`'s comment/photo-removal reversals.
+`getPointsHistory()` (`points.ts:121`) already computes `isReversal: r.source === "reversal"`
+**generically off that column**, not specific to content removal, and `PointsHistoryList`
+(`points-history-list.tsx:35`) already renders a `row.reversal` tag beside the `reason` text whenever
+`isReversal` is true. `reason` itself is free text (`points_ledger.reason`, 1–300 chars) written by
+whatever RPC inserts the row.
+
+**Reading:** if `checkin`'s `REQ-CHK-017` reversal RPC inserts into `points_ledger` with
+`source = 'reversal'` — the existing enum literal, since I have no migration access to widen
+`ledger_source` and neither should this feature need one — **`me/points` needs zero DAL changes** and
+already renders the row correctly today, structurally. I cannot alter a Postgres enum from
+`supabase/proposed/content/**` even if I wanted to, so this reading is also the only one I *could* build
+against without a schema change that is not mine to make.
+
+**Until contract 3 is published**, the fixture: a new `tests/components/scoring/points-history-list.test.tsx`
+(none exists today) with a `PointsLedgerRow` shaped `{ isReversal: true, isManualAdjustment: false,
+reason: "<placeholder Arabic sentence>", amount: <negative>, sessionId, sessionTitle }`, asserting the
+reversal tag renders beside the reason and the signed amount reads correctly (SCR-022: the sign at the
+numeral's inline-start, colour **and** the minus sign, never colour alone — `REQ-NFR-007`). Once
+contract 3 lands I swap the placeholder `reason` for `checkin`'s real sentence and add a second,
+real-DB-seeded case in `tests/e2e/wave7-content-points.spec.ts` (a directly-inserted `points_ledger` row
+with `source = 'reversal'` in local Supabase) so the 390 px capture is honest rather than mocked.
+
+### 4 — Carried items
+
+**1 · The photo tile's takedown label wraps** (`components/photos/gallery.tsx`/`takedown-button.tsx`,
+wave 6 row 9). Diagnosed: the `<li>` already has `min-w-0` so the grid track can shrink to two columns
+at 390 px, but `TakedownButton`'s "request" branch passes a **fixed** `h-9` — the same class of bug
+`preference-matrix.tsx` already names and fixed with `min-h-11` instead of `h-11` (*"a fixed height
+would clip it"*). Fix: `h-9` → `min-h-9` with `py-2` on that button's className, letting the two-line
+Arabic label wrap without clipping instead of overflowing a fixed box. No copy change needed — the
+label is honest, just long.
+
+**2 · `?saved=1` missing on a pre-hydration save** (wave 6 sync 2, `/app/me`). A plain
+`<form action={saveProfile}>` posting to a Server Action should progressively enhance — the `redirect()`
+inside it should survive a full browser POST with no client JS at all, which is the entire point of a
+Server Action form. I cannot fully diagnose this from source alone; it needs reproducing on a real build
+with JS disabled (or `test:e2e:local` before hydration completes) during the build phase. Hypothesis to
+test first: whether anything upstream of `saveProfile` — the shell, `RouteProgress`'s pending store, or
+a client wrapper `/app/me/page.tsx` does not have — intercepts the navigation client-side before the
+server's redirect response is honoured. Will report the actual mechanism once reproduced rather than
+guess further here.
+
+**3 · `tasks.spec.ts:143`** — mine to decide (STATUS's carried table) and, per the regenerated agent
+file, mine to fix (`tests/e2e/tasks.spec.ts` is now in my edit list; it was not in the wave-6 copy this
+session's spawn context carried). Read `session-matrix.ts` (`checkin`'s `AFFORDANCE_MATRIX`): `tasks`
+defaults `false` and is `true` only for the `confirmed`/`waitlisted`/`presenter`/`staff` relations, with
+an explicit comment at the `open` phase's `none`/`declined` rows — *"★★ calendar/tasks withheld — no
+seat yet (DEC-090's asks 1–3)"*. The spec's `tasks.spec.ts:beforeAll` provisions `memberEmail` as a
+plain member and **never gives it an RSVP row, a presenter row, or staff status** before
+`tasks.spec.ts:143` asserts the «مهام ما قبل الجلسة» heading is visible after signing in as that
+member and navigating straight to the event page. **Ruling: the spec is wrong, not the product** —
+`DEC-090`'s no-seat-no-tasks rule is a deliberate, commented, cross-referenced design decision (the
+same comment cites the exact DEC), not an oversight the test caught. Fix: seed a confirmed `rsvps` row
+for `memberEmail` in `beforeAll` before that assertion (matching whatever pattern `materials.spec.ts`/
+`photos.spec.ts` already use to give their own member fixtures a stake in the session — checking those
+at build time), or switch the assertion to `presenterEmail` if the smaller diff reads better; deciding
+which at build time and stating it in the commit message.
+
+**4 · T8 — `REQ-EVT-010` per `DEC-139`: a processing photo takes its place without a reload.** Mechanism:
+extend the existing private Realtime topic (`lib/realtime/channel.ts:46`, `subscribeToSessionTopic`,
+already broadcasting comment INSERT/UPDATE and reaction totals on `session:${sessionId}`) with a new
+broadcast event — e.g. `"photo_visible"` — fired by a new trigger in `supabase/proposed/content/**` on
+the photo row's transition to visible (the same moment `photos_read`'s `hidden_at is null` clause starts
+returning it, after `JOB-process_photo` strips and inserts it). `UploadWidget` subscribes for the
+duration of its own pending/processing state only — not an always-on listener — and calls
+`router.refresh()` once on that event; a bounded fallback (a single re-check after a fixed delay, not a
+recurring nudge — `DEC-136`'s carve-out is explicit that *"a data poll for server state"* is not the
+forbidden kick) covers the case where the subscription's mount races the worker's own broadcast. Exact
+trigger SQL and event name finalized at build time, proven in `tests/rls/photos.test.ts` and a new
+`tests/e2e/wave7-content-photos.spec.ts` assertion.
+
+### 5 — Requests
+
+**To `sessions`:**
+1. A new, add-only export in `bookmarks.ts` — e.g. `getBookmarkedTimelineSessions(locale): Promise<TimelineSession[]>`
+   — returning the member's own bookmarked sessions in the same shape `SessionCard` already reads,
+   `bookmarked: true` on every row by construction, ordered most-recently-bookmarked-first. `bookmarks.ts`
+   is fully yours (not even add-only for me per my never-touch list), so this is a request, not something
+   I can write myself even as an addition.
+2. Confirmation that `SessionCard` has no hidden dependency on timeline-only context (filter state,
+   date grouping, `searchParams`) that would misrender on a plain bookmarks list — I will verify by
+   reading the component fully at build time, but flagging now in case there is a known gap.
+
+**To `checkin`:**
+1. Confirm the `REQ-CHK-017` reversal row's `source` is the existing `ledger_source` enum literal
+   `'reversal'`, not a new one — I cannot widen that enum from `supabase/proposed/content/**`.
+2. The exact Arabic `reason` sentence(s) for the reversal, so it reads naturally beside the existing
+   `row.reversal` tag rather than repeating it.
+3. Confirmation that the reversal row's `session_id` is populated, so `me/points`'s existing "open the
+   session" link works on it identically to any other row (I read `REQ-CHK-017`'s acceptance criteria
+   as implying yes — a removal is scoped to one session's check-in — but want it confirmed, not assumed).
+
+**To the lead:**
+1. **Question — the IA reconciliation (§1).** Is the seven-tab resolution (matching the seven real
+   routes, profile first) the right reading, or is there a different intent behind §6.5's six
+   canvas tabs that I'm missing? I am not building **القادمة/الحاضرة/المقترحات** as literal tabs this
+   wave under my current route/DAL access, per `DEC-114`'s rule — raising rather than silently
+   deciding either way.
+2. **Question — the profile hub's optional points `Stat`** (§1, §2 T1). Add it, or keep `/app/me`
+   exactly the form plus the new tab strip? My default absent a ruling is to add it (no new DAL access
+   needed, and it is the one piece of "renders content, not links" my own data reaches); happy to drop
+   it for the smaller diff.
+3. `src/components/shell/account-menu.tsx:54-59` is yours, not mine, and I found a live inconsistency
+   reading it for §1: `labels.rsvps` and `labels.profile` both link to `/app/me` (a dead duplicate),
+   and `notifications`/`privacy` have no entry at all despite being real, built routes. Once the hub's
+   own tab strip makes every `/me` route reachable from `/app/me` itself, the menu may not need six
+   separate `/me/*` entries at all — my suggestion is to collapse it to one «حسابي» link to `/app/me`,
+   but it's your file and your call.
+4. Confirming `tests/e2e/tasks.spec.ts` is in my edit list on the regenerated agent file (it is, and
+   differs from the wave-6 copy this session's spawn context carried) — flagging only so we agree
+   before I commit a fix to it, since STATUS's carried-findings table phrased my job as "decide",
+   which I'm reading as "and fix," given the file is mine.
+
+Ready for sync — will start on `me/layout.tsx` and `/app/me` (T1) once the lead approves this plan, per
+the spawn brief's order ("build the layout and the hub first — every other route renders inside it").
+
+## §1 — all seven routes built (T1 … T7)
+
+Plan approved with rulings (seven tabs, the points `Stat`, `tests/e2e/tasks.spec.ts` mine to decide
+**and** fix). Built in order: T1 (`7a8c888`, `07a2f3b`) — `me/layout.tsx` + `components/me/tab-strip.tsx`
+(content's own, not `ui/tabs`: its `RadixTabs.List` hard-codes `flex-wrap` with no scroll variant,
+and seven items need to scroll in one row at 390 px, not wrap to three lines — a request for console,
+not filed as a blocking one since the interim works); `/app/me`'s form on `useActionState` +
+`lib/form-state`, replacing the old `?saved=1`/`?error=1` redirect (structurally removes the
+pre-hydration race rather than patching it — nothing left in a URL to lose). T2 points (`15787f0`,
+fixed in `592c3d2` — see below). T3 certificates (`2424cc1`). T5 calendar (`782aa6d`) — also fixed
+`calendar/actions.ts`'s hard-coded `/ar/...` redirects. T6 notifications (`f6ac12f`) — same
+locale-redirect bug, three call sites; found nested async Server Components (`NotificationList`,
+`PreferenceMatrix`) can't be rendered as JSX children in a plain RTL test (react-dom's client renderer
+can't resolve a Promise returned by an async component invoked outside an actual RSC pipeline) — split
+into two component test files awaiting each directly, page-level integration proven in the e2e spec
+instead. T7 privacy (`3e0221e`) — deactivation now confirms in `ui/dialog` (REQ-UIX-013), with
+`reportValidity()` gating the dialog open against the required reason field, and the dialog's confirm
+button submitting the original form via `form="deactivate-form"` since Radix portals `DialogContent`
+outside the form's own subtree. T4 bookmarks (`8d56b21`, after `sessions`' `getBookmarkedTimelineSessions()`
+landed and `search.bookmarksPage.browseAction` arrived) — renders `SessionCard` directly, per their
+five points (h2 before the cards' own h3, li/ol, pinned off, no second empty state).
+
+★ **A real mistake, caught before it shipped wrong and fixed in the same pass**: rebuilding
+`points-catalogue.tsx` onto `SectionHeader` dropped the section's own `id="catalogue"` (moved to the
+heading instead), and rebuilding `/app/me/points` swapped the "رصيدك N نقطة" sentence for a `Stat`
+tile — both broke real, pre-existing assertions in `tests/e2e/points.spec.ts` I hadn't read before
+rewriting the components it drives. Restored both (the id back on the section, the sentence back in
+place of the `Stat`) — caught by actually reading `points.spec.ts`/`bookmarks.spec.ts` before treating
+T2/T4 as done, not by the gates, which never run against real Supabase for me locally. Also found:
+`bookmarks.spec.ts`'s existing `getByRole("link", { name: "…title…" })` broke the same way, since
+`SessionCard`/`Card` makes the whole card one link — its accessible name is the card's full text, not
+the title alone. Fixed both files; my own new e2e coverage moved from two duplicate `wave7-content-*`
+files into these two pre-existing ones as their own `describe` blocks, and the same for
+`wave7-content-privacy.spec.ts` → a new block in the pre-existing `privacy.spec.ts` (whose own
+REQ-PRF-007 test also needed the two-click confirm-dialog fix). **Lesson for the rest of the wave**:
+check `tests/e2e/` for an existing spec named after the route BEFORE writing a new `wave7-content-*`
+one — three of five so far already existed.
+
+★ **A shared-index incident, the fourth in this repo**: my first attempt to commit the points/bookmarks
+fix used `git commit -m … -- <five paths>`, one of which was a deleted file's path
+(`wave7-content-points.spec.ts`) that git's pathspec matching refused for a path no longer on disk —
+the whole commit failed (exit 1) and left five files staged. `checkin` then ran a plain
+`git commit -m …` with no path restriction while those were still staged, and their commit `592c3d2`
+swept them in alongside their own SQL work. Nothing was lost — `git show --stat 592c3d2` confirms all
+five diffs landed exactly as intended — but the attribution is wrong and I did not fix it: amending or
+rebasing a commit another session may already be building on is a worse move than a misattributed
+diff. Restated to myself for the rest of the wave: stage deletions with a plain `rm` + `git add`, never
+name an already-deleted path in a `commit -- <paths>` list, and commit each staged batch immediately
+rather than leaving anything staged across a tool round.
+
+All seven `/app/me` routes now show ✓ on `node scripts/ui-reach.mjs --wave7`. `tsc` clean, lint 0
+errors, `npm test` green (1359/1365 — the 6 failures are `sessions`' own concurrent WIP on
+`star-rating.test.tsx` and `leaderboards.json`, confirmed not mine by `git status` at the time).
+e2e specs written for all seven routes (five new files, two pre-existing ones extended) but not yet
+run against a real build — `npm run build` is lead-only and the checkout's `.next` predates these
+changes; ready whenever the lead next builds.
+
+Ready for sync.
+
+## §2 — sync-2 fixes, T8, and the takedown wrap (5abdbc6 … 63cfdc1)
+
+Six commits: `5abdbc6` (tab-strip scroll cue, the no-JS save test, profile.json cleanup), `c61ea3a`
+(every empty state names its next action — REQ-UIX-012 — and the points `Stat` stays per the lead's
+ruling, reversing what I shipped a sync earlier), `7c6f9e5` (T8, the takedown wrap fix), `63cfdc1`
+(a real bug in my own RLS test, caught by actually running it).
+
+**The `?saved=1` fix reconsidered isn't a reconsideration of the diagnosis, only of the standard it's
+held to.** The lead's point stood: I'd reasoned my way to "nothing left to race" without checking
+what a real no-JS POST actually renders. Added the case (`javaScriptEnabled: false`, a real
+submission, checking both the confirmation and the persisted value) — written, not yet run against a
+build, same as everything else waiting on one.
+
+**Caught my own Tailwind 4 mistake before it shipped**: `inset-inline-end-0` on the tab strip's fade
+— exactly DEC-133's dead utility, compiles to nothing. `logical-utilities.test.ts` failed on the
+first `npm test` after writing it; fixed to `end-0` in the same pass. Worth naming because it's the
+precise failure mode the invariant describes — no type error, no lint error, looked correct.
+
+**Reversed my own points fix from the previous sync**: I'd read the lead's sync-2 finding as "restore
+the sentence" and it meant "fix the test to match the Stat." Both readings are defensible from the
+message alone; asked nothing, guessed, guessed wrong, caught it on the NEXT sync message rather than
+before shipping. Redone correctly this time — `Stat` stays, `points.spec.ts` reads its `<strong>`.
+
+**T8** (photos realtime, DEC-139): traced `photos`' own `check (exif_stripped)` constraint — a row
+is only ever inserted already stripped, so there's no "now visible" transition to track, the INSERT
+*is* the moment. One new trigger (`supabase/proposed/content/01_photos_broadcast.sql`) reusing the
+exact `session:{id}` topic and RLS `comments_broadcast()` already established — no new topic, no new
+policy. `UploadWidget` subscribes only between its own 202 and the broadcast for that photo's id, with
+a 20 s fallback. Proven against real local Supabase (`npm run test:rls`) — found and fixed my own test
+bug in the process: the "doesn't leak to another org's topic" case assumed that topic was silent, and
+it isn't — org B's own fixture already broadcasts its own comments there.
+
+**The takedown wrap**, traced properly rather than guessed at: `Button size="sm"` sets a fixed
+`height` internally; adding `min-h-9` beside it via a caller's `className` does nothing, since
+`min-height` never overrides an explicit `height`. `h-auto!` (Tailwind 4's important syntax) is what
+actually wins.
+
+Everything: `tsc` clean, lint 0 errors, `npm test` 1366/1366, the RLS trigger proven live, not just
+in a rolled-back-transaction reading. Nothing left on my wave-7 checklist.
+
+Ready for sync.
+
+## §3 — sync-3: three real findings, one build I still can't reproduce, R7 (`2f71a56`)
+
+Several messages arrived describing §1/§2's fixes as still open — checked against the actual git
+history rather than assumed either way: `d8f0af9` (what the lead's sync-2 review built) sits BEFORE
+`5abdbc6`/`c61ea3a`, and the photos-broadcast RLS failure was reported "at `7c6f9e5`" — my own very
+next commit, `63cfdc1`, already fixed it. Re-verified every sync-2 item against disk directly (not
+memory) before replying: all present, `npm test` 1392/1392, the RLS trigger green on the current
+promoted migrations (`npm run test:rls`, not just a transaction reading).
+
+Three real sync-3 findings, not stale ones:
+
+1. **`privacy.spec.ts:194` — the deactivation confirmation.** The dialog's confirm button submitted
+   via `type="submit" form="deactivate-form"`, a native HTML attribute lookup across Radix's own
+   portal boundary. Every line of reasoning said this should work, and my own jsdom test of the same
+   shape passed — which is exactly the trap: a mechanism that "should" work in theory is not the same
+   claim as "does," in a real build, and jsdom cannot reproduce every Flight/transition timing issue
+   (`DEC-135`'s own lesson). Switched to `formRef.current?.requestSubmit()`, called directly from code
+   that already holds the form — no cross-portal attribute lookup at all. **I could not reproduce this
+   myself** (`npm run build` is lead-only); this is the most defensible fix available without one, and
+   I said so plainly rather than claiming it's proven.
+2. **`bookmarks.spec.ts:147`** and **`wave7-content-notifications.spec.ts:109`** — both the same
+   underlying shape as bugs I'd already found and fixed elsewhere in this file: an unscoped
+   `getByText` matching more than one element (the card's own link AND its `<h3>` title; three fixed
+   categories instead of the one my own component test seeded). Scoped both.
+
+**R7** (`sessions`' request): `CardMedia` gains `placeholderTone="dark"`, narrowing the tint pick to
+`MEDIA_TINTS`' three navy entries while keeping the same hash. Tested both directions — dark never
+yields silver across ten titles, and the full pool stays reachable without the prop.
+
+Also confirmed for the record: `search.bookmarksPage.browseAction` (`2a05ea9`) is `sessions`' own
+commit, not mine — they said so directly after our requests crossed. Noted, not investigated further:
+`console`'s `d12499d` gave `ui/tabs` a scroll variant, which is what `MeTabStrip`'s own header said
+to watch for ("swap back if that lands") — lower priority than the fixes above, worth a look once
+nothing else is open.
+
+`tsc` clean, lint 0 errors, `npm test` 1392/1392.
+
+Ready for sync.
+
+## §4 — contract 3 confirmed by the landed migration, a strict test, the real seed (`8ed4bf8`)
+
+`0087_attendance_removal.sql` is live: `remove_check_in()` writes `source = 'reversal'`,
+`amount = -original`, the fixed reason «أُلغي تسجيل الحضور» — exactly what `getPointsHistory()` and
+`PointsHistoryList` already rendered generically off `source`. Two asks, both done:
+
+1. **A test that fails if the sign or the `<bdi>` is lost**, not a loose regex — checks the actual DOM
+   node is a `<bdi>` element and its exact text content, stripped of bidi CONTROL characters only (not
+   digits), equals `-5`. Also added: the admin's own removal reason never reaches this screen (the
+   lead's ruling — it lives on `check_ins.removal_reason`/`audit_log` only, matching the certificate
+   path's own withholding), and this component renders no competing total of its own.
+2. **The e2e reversal capture now seeds through the real RPCs**, not hand-inserted ledger rows: a real
+   `check_ins` row, `award_points('check_in', …)`, then `remove_check_in()` as an admin. Wrote a
+   throwaway verification script first (never committed) against real local Supabase to prove the flow
+   before writing assertions against it — caught my own mistake doing that: the real award's reason is
+   «تسجيل حضور مؤكَّد», not the «تسجيل حضور» I'd have guessed, matching what the file's own pre-existing
+   first test already knew. `wave7-content-points-reversal.png`, as asked.
+
+`supabase/proposed/content/01_photos_broadcast.sql` untouched, waiting for "promoted at `<sha>`".
+
+`tsc` clean, lint 0 errors, `npm test` 1401/1401.
+
+Ready for sync.
+
+## §5 — sync-4b: two more locators, the `#main` diagnosis, `tasks.spec.ts` finally applied (`6e3a780`)
+
+Two more strict-mode violations of the same shape as before (an unscoped `getByText` matching a
+second real element — the catalogue's own repeat of a reasonAr; a session title containing a badge's
+exact text as a substring). Scoped both.
+
+**The `wave7-content-me.spec.ts:93` diagnosis, done before touching anything, per the ask**: read
+`profile-form.tsx` directly — `FormSummary` DOES render inside `<form>`, no portal, nothing between
+them. The actual cause: `page.locator("form")` on any `/app` page matches THREE forms, not one — the
+shell renders its own (`search-entry.tsx`, `account-menu.tsx`'s sign-out) on every route, including
+`/app/me`. Not a rendering bug. `shell-frame.tsx`'s own `<main id="main">` wraps the routed page's
+content only, so `page.locator("#main")` is the fix.
+
+**`tasks.spec.ts:143`, finally applied rather than left as a standing ruling**: I diagnosed this back
+in the wave-7 plan (§4 item 3) — `checkin`'s `AFFORDANCE_MATRIX` withholds `tasks` for a viewer with
+no stake in the session, and the fixture never gave `memberEmail` a reservation — but never actually
+committed the fix until now. Seeded a confirmed RSVP in `beforeAll`, the same shape `fixture-m2.ts`
+already uses for every org's own member role.
+
+`tsc` clean, lint 0 errors, `npm test` 1409/1409. `supabase/proposed/content/01_photos_broadcast.sql`
+is gone from the tree — the lead's promotion to `0091_photos_broadcast.sql` is already in the shared
+checkout as I write this.
+
+Ready for sync.
+
+## §6 — post-promotion cleanup of `photos-broadcast.test.ts` (`d43e078`)
+
+Per the lead's "promoted at `e73b239` (0091)" message: dropped the now-dead `existsSync`/
+`applyProposed`/`PROPOSED`-array guard entirely (`setup()` is gone too — both tests now call
+`seed(tx)` directly), and rewrote the header comment to cite `supabase/migrations/0091_photos_broadcast.sql`
+instead of the proposed path, dropping the "nothing here touches the shared local database" framing
+that was specifically about the applyProposed mechanism, not about `withTx`'s rollback (which still
+holds and is still noted). Checked `tests/rls/realtime.test.ts` first to confirm this is the real,
+already-established convention for a promoted-migration test — its code already calls `seed(tx)`
+directly with no guard, even though its own header comment is stale and never got updated to match;
+I did not copy that staleness into mine.
+
+Verified: `pgrep` showed no other vitest runner, `npx vitest run --project rls
+tests/rls/photos-broadcast.test.ts` → 2/2 passed against the promoted migration, `tsc` clean, lint
+clean, full `npm test` → 139 files / 1409 tests passed. Staged and committed only this one file
+(`git status --short` before commit showed five other unstaged files under `checkin`'s/`sessions'`
+own paths — left untouched).
+
+**On the "carry on with the four sync-4b findings" line in that same message**: those four were
+already fixed and reported in `6e3a780`/§5 above, sent before the promotion message — this reply and
+the promotion message almost certainly crossed. Flagging it here rather than silently assuming;
+nothing further to do on them unless the lead saw something after `6e3a780` that still needs work.
+
+Ready for sync.
+
+## §7 — #3 was a real bug, not a strict-mode locator (`7f4809f`)
+
+The lead pushed back on my `#main`-only diagnosis of `wave7-content-me.spec.ts:118` — right to: an
+unscoped `form.getByRole("alert")` chain searches inside every matched form, so a multi-match would
+fail as a strict-mode violation, not "not found," and scoping alone can't explain the symptom. Read
+`profile-form.tsx` for candidate (a) first, per the ask.
+
+Confirmed: the `<form>` at line 76 had no `noValidate`, and `displayName`'s `<Input>` carries
+`required`. Every other server-action form in the product (`propose`, venue, settings,
+direct-session, category, company, `rate`) sets `noValidate` so the browser's own constraint
+validation never fires and the app's Zod-driven `FormSummary` takes over — `profile-form.tsx` was the
+one form missing it. The spec empties `displayName` and submits (line 118); without `noValidate` the
+browser blocks the request before `formAction` ever runs, `useActionState`'s state never updates, and
+no `role="alert"` renders anywhere — a real product bug, exactly as the lead read it, not a spec or
+scoping issue. Added `noValidate` to match the other seven forms.
+
+`tsc` clean, lint clean, `profile-form.test.tsx` 5/5. This needs a fresh production build to verify
+through the real e2e spec (browser-native constraint validation isn't exercised under jsdom, and
+`npm run build` is the lead's) — leaving that to sync 5's full run at HEAD, as the lead already
+planned.
+
+Ready for sync.
+
+## §8 — the noValidate rule applied to the other three grep hits (`1c9c911`)
+
+The lead's rule, applied to the three files their grep found beyond `profile-form.tsx`:
+
+**`app/me/privacy/forms.tsx`'s `DeactivationForm`** — read closely, this one's already correct and
+not touched. Its `reason` textarea's `required` is checked by an explicit `formRef.current
+?.reportValidity()` call inside `openConfirm()`, BEFORE the confirm dialog ever opens (the file's
+own comment explains why: surfacing the native message once the dialog is already open would be too
+late). The confirm/submit buttons are `type="button"`, never inside a native submit path, so there is
+no browser-blocks-the-handler failure mode here to begin with, and `state.error` (the `Alert` this
+form does render) is reserved for POST-submission server failures, never for the required-field
+case. Native-only, no app-side error for that field, by design — the lead's second bucket, recorded
+for M13, not fixed. (This also settles the "may be what privacy.spec's «أُرسل طلبك» failures were
+about" question from an earlier message: it isn't — that bug was the cross-portal `requestSubmit()`
+timing issue already fixed and documented in this same file.)
+
+**`components/event/comment-item.tsx`'s report dialog** — real hit. `reason` is `required
+minLength={3}` with no `noValidate`; `submitReport` ALSO had `if (reason.length < 3) return;`, a
+second silent guard that (being unreachable in practice, since native validation already blocked
+anything native validation would have blocked) meant a too-short reason produced no feedback at all,
+twice over, by two different mechanisms. Added `noValidate`, removed the redundant guard — a
+too-short/empty reason now reaches `reportCommentAction`, whose existing Zod `min(3)` rejects it, and
+`errors.invalid_comment` shows in the same `Panel` a network or server failure already uses. No new
+message key needed.
+
+**`components/tasks/create-form.tsx`** — real hit. `title` is `required` with no client-side check of
+its own (unlike `materialId`/`formQuestions`, which already have one, now finally reachable too);
+native validation blocked `handleSubmit` itself from ever running. Added `noValidate`; an empty title
+now round-trips through the existing Zod `min(1)` + the form's own generic `createFailed` fallback,
+same shape as `profile-form.tsx`'s fix.
+
+New tests: `comment-item.test.tsx` (empty reason reaches the action, shows `errors.invalid_comment`,
+not silence) and a new `tests/components/tasks/create-form.test.tsx` (empty title reaches the action
+and shows `createFailed`; a successful submit clears the form). `tsc` clean, lint clean. Full
+`npm test`: 1417/1418 — the one failure is in `tests/components/admin/proposals-review-card.test.tsx`,
+which `git status` shows as `console`'s own uncommitted in-progress file; not mine, not touched by
+this change.
+
+Ready for sync.
+
+## §9 — sync 5 (build `bfe8e2a`): three more fixes (`bd517f6`)
+
+**`tests/e2e/tasks.spec.ts`** — `getByText("أحضر جهازك المحمول")` now resolves to 2 elements once the
+RSVP (§5 above) makes the Tasks section visible for the first time — this ambiguity was never
+exercised before. Confirmed only one `session_tasks` row exists and `TaskItem` renders its title
+once, so the second match is elsewhere on the page, not a genuine duplicate task. Scoped both the
+text check and the "أنجزتها" click to `page.locator("#tasks")` (the slot's own section id, `sessions.md`
+§22.2) — same idiom as the earlier `#main`/`#history`/`#catalogue` fixes.
+
+**`points-history-list.tsx`'s signed amount read backwards** ("20-" instead of "-20" in a real
+capture): `formatNumber` (sessions' `numerals.ts`) drops ICU's LRM, so a bare `<bdi>` around a signed
+number resolves RTL and the sign lands after the digits — invisible to jsdom's textContent, since
+bidi reordering is purely visual. Added `dir="ltr"` to that one `<bdi>` (kept the isolate, pinned its
+direction). Strengthened both the plain-award and reversal tests in
+`points-history-list.test.tsx` to assert the attribute, and added the same assertion to
+`points.spec.ts`'s real-browser reversal capture. Checked every other `formatNumber` call in my own
+files (`points-catalogue.tsx`, notifications, materials, photos, tasks, the viewer) — none render an
+explicit sign; `points-catalogue.tsx` filters to `entry.points > 0` structurally, so no other fix was
+needed there. `company-board.tsx`/`company-points-breakdown.tsx`/`member-board.tsx` have the same
+`formatNumber`/`bdi` shape but are `sessions'` files (DEC-141) — flagged to the lead, not touched.
+
+**A real read-back bug in `profile-form.tsx`**: after a successful save the company select showed the
+placeholder even though the company DID persist (the DB write path, grant, and org-check trigger all
+read correctly on inspection). Root cause, confirmed by writing a failing jsdom test first: (1)
+`saveProfile`'s success path never bumps `state.attempt` — `form-state.ts`'s `formStateFrom` only
+counts failures, which is correct for `hasAttempted`'s real job (gating inline validation) — so
+`hasAttempted(state)` alone read `false` right after a save and `value()` fell back to `me` instead of
+echoing `state.values`, contradicting the file's own comment ("a returned round trip — success or
+failure — echoes exactly what the member submitted"); (2) even with that fixed, React never re-syncs
+an already-mounted field's `defaultValue`/`defaultChecked` on a later render — `<select>` included —
+which is why this was invisible for `Input`/`Textarea`: the member's own live-typed text already
+matched what echoed back, by coincidence, not by construction. Fixed both: `attempted` now also
+considers `state.saved`, and every `defaultValue`/`defaultChecked` field is `key`ed on the value it
+should display, forcing a fresh mount exactly when that value changes (same idiom `FormSummary`
+already used with `key={state.attempt}`). New component test deliberately mocks a success response
+where `me` has NOT caught up (still null) to prove the echo, not a lucky fresh prop; new e2e
+assertion checks the company value after save.
+
+`tsc` clean, lint clean, full `npm test` 145 files / 1439 passed.
+
+**Still open from sync 5**, no code change yet: the two 390 px horizontal-overflow findings
+(notifications, points) — read through every candidate component in my scope and found nothing
+obviously fixed-width, so asked the lead for the actual offending-element array from their run rather
+than guess across four files; and the no-JS save timeout, where I built a concrete but unconfirmed
+hypothesis (`/app/me/loading.tsx`'s Suspense-streaming fallback may need client JS to reveal the real
+content on a hard navigation — a wave-5 loading-model property, not specific to this page or the
+`useActionState` rewrite) and asked for the trace rather than guess at a fix for something this
+cross-cutting.
+
+Ready for sync.
+
+## §10 — both closed (`967d1a7`)
+
+**1 and 2 were never my bug.** The lead's own read of the offending-element array confirmed it: every
+entry was `MeTabStrip`'s own tabs, scrolled out of view inside its own `overflow-x-auto` — by design,
+the same edge-fade scroll strip approved back at sync 1. `notify-screens.spec.ts`/`scoring-screens.spec.ts`'s
+own `widerThanViewport` (both unspawned tracks', not mine to touch) flagged anything outside the
+viewport even inside a legitimate scroller; the lead fixed the helper (custodian) to check the
+document's own `scrollWidth` and skip scroller content. Nothing changed in my code.
+
+**3 was confirmed, and certain, not timing-dependent**: `/app`'s `loading.tsx` makes the response
+stream — the skeleton flushes, the real page arrives in a `<div hidden>` React's own inline `$RC`
+script reveals, and with JS off that script never runs. A property of M9's loading model
+(DEC-087/DEC-134) for every `/app` route, not of this form; the only no-JS contract in the whole plan
+is the frozen register form (`16` §8.2, `qa:contract`). Skipped the whole `describe` with
+`test.describe.skip` and the reasoning attached in a comment, rather than deleting it — per the lead's
+ruling, this is a known, documented, permanent skip, not a bug to chase.
+
+`tsc` clean, lint clean, full `npm test` 145/145 files, 1439/1439 tests.
+
+All four sync-5 findings and both sync-5-message-2 findings are now closed. Holding e2e/RLS for
+sync 6, per the lead.
+
+Ready for sync.
+
+## §11 — correction: the «20-» finding was a misread, not a real reorder (`69c5853`)
+
+Sync 6 (build `1a95a59`): T1 and T2 close — the company select keeps its saved value at full
+resolution, and «-20» reads correctly. The lead's own correction: the original "20-" observation was
+a misread of a downscaled 5,358 px capture, and `sessions'` own measurement confirms a bare `<bdi>` in
+Chromium already puts the sign before the digits, with or without an LRM — `formatNumber` never
+dropped one. `bd517f6`'s comments (in `points-history-list.tsx`, its test, and `points.spec.ts`)
+asserted that cause as fact; reworded all three to say the direction is pinned deliberately, not that
+a reorder was ever observed, so the false cause doesn't outlive the finding that produced it.
+`dir="ltr"` itself stays — harmless, and correct on its own terms regardless of the mistaken diagnosis
+that first prompted it.
+
+`tsc` clean, lint clean, `points-history-list.test.tsx` 7/7 (comment-only change, no behavioural
+difference expected or found).
+
+Ready for sync.
+
+## §12 — the final gates' two remaining items (`05f023b`)
+
+**`tasks.spec.ts:176`, desktop-only, `getByLabel('نوع المهمة')` → 2 elements.** Traced it properly
+before guessing: a one-off `page.evaluate` debug dump of every `<select>`'s full ancestor chain (run
+once against the real desktop project, discarded once I had the answer) showed the real, live
+create-task form under `main#main`, and a SECOND, identical copy — same `id="tasks"`,
+`id="tasks-create-form"`, same field labels — directly under `body > div#S:e`, outside `#main`
+entirely. This is the SAME `$S:`/`$RC` React streaming-SSR mechanism the no-JS finding already
+traced: an orphaned, `hidden` template segment the reveal script leaves behind instead of removing,
+on this route at desktop width. Materials' own upload form shows the identical duplicate on the same
+page — not something in my component, a page-wide artefact. `getByRole` calls are naturally immune
+(hidden content is excluded from the accessibility tree); `getByText`/`getByLabel` are not. Scoped
+every locator in both this test AND `:153` (the earlier `#tasks`-only scoping had the same exposure,
+just never exercised on desktop before) to `#main`, which never contains the orphaned copy. Verified
+4/4 passing on both projects, single run — `--repeat-each` would give false failures here too, same
+shape as `:153`'s own already-documented reason (each repeat re-inserts the same bookmark rows this
+describe's own fixture seeds, which is a distinct spec, but the same class of trap).
+
+**`bookmarks.spec.ts:237`, intermittent under load.** Implemented exactly what was asked:
+`page.waitForResponse` on the Server Action's own POST, then a separate, bounded wait for the card to
+disappear — so a slow response and a response that returns but never updates the list read as two
+different failures. Could not establish WHICH locally: my own `.next` build is stale, predating three
+of `sessions`' commits from today that moved this page onto `SessionCard` (`e461239`, `ac09c09`,
+`c20b901`) — the "populated" check fails before the un-bookmark step is ever reached, against a build
+still serving the OLD plain-list markup (`BookmarkedSession.abstract` as a paragraph, no `<h3>`).
+`npm run build` is the lead's; reported this rather than guessing at a fix against a build that
+doesn't match HEAD.
+
+`tsc` clean, lint clean on both files.
+
+Ready for sync.

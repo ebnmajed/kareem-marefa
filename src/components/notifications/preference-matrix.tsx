@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
+import { Panel } from "@/components/ui/panel";
 import { savePreference } from "@/app/[locale]/app/me/notifications/actions";
+import type { Locale } from "@/i18n/routing";
 import type { CategoryPreference } from "@/lib/dal/notifications";
 
 // SCR-026's preference half (REQ-NTF-003): category × channel, and exactly
@@ -27,6 +29,7 @@ function Toggle({
   label,
   on,
   off,
+  action,
 }: {
   category: string;
   channel: "in_app" | "email";
@@ -34,9 +37,10 @@ function Toggle({
   label: string;
   on: string;
   off: string;
+  action: (formData: FormData) => void | Promise<void>;
 }) {
   return (
-    <form action={savePreference}>
+    <form action={action}>
       <input type="hidden" name="category" value={category} />
       <input type="hidden" name="channel" value={channel} />
       {/* The value being switched TO — a double submit lands on the same state. */}
@@ -57,8 +61,9 @@ function Toggle({
   );
 }
 
-export async function PreferenceMatrix({ rows }: { rows: CategoryPreference[] }) {
+export async function PreferenceMatrix({ rows, locale }: { rows: CategoryPreference[]; locale: Locale }) {
   const t = await getTranslations("notifications");
+  const action = savePreference.bind(null, locale);
   const channels = [
     { id: "in_app" as const, key: "inApp" as const, label: t("preferences.channel.inApp") },
     { id: "email" as const, key: "email" as const, label: t("preferences.channel.email") },
@@ -67,50 +72,53 @@ export async function PreferenceMatrix({ rows }: { rows: CategoryPreference[] })
   return (
     <ul className="mt-6 space-y-4">
       {rows.map((row) => (
-        <li key={row.category} className="rounded-field border border-edge p-4">
-          <h3 className="text-label text-fg-heading">{t(`category.${row.category}.name`)}</h3>
-          <p className="mt-1 text-body-sm text-fg-muted">{t(`category.${row.category}.hint`)}</p>
+        <li key={row.category}>
+          <Panel className="p-4">
+            <h3 className="text-label text-fg-heading">{t(`category.${row.category}.name`)}</h3>
+            <p className="mt-1 text-body-sm text-fg-muted">{t(`category.${row.category}.hint`)}</p>
 
-          {row.switchable ? (
-            <>
-              {/* Two columns at EVERY width, not just from `sm`. Stacked, the
-                  eleven categories make SCR-026 ten thousand pixels tall on a
-                  phone; side by side the labels still fit in ~180 px. */}
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {channels.map((channel) => (
-                  <div key={channel.id}>
-                    <span className="block text-body-sm text-fg-muted">{channel.label}</span>
-                    <div className="mt-1">
-                      {row.available[channel.key] ? (
-                        <Toggle
-                          category={row.category}
-                          channel={channel.id}
-                          enabled={row.enabled[channel.key]}
-                          label={`${t(`category.${row.category}.name`)} — ${channel.label}`}
-                          on={t("preferences.on")}
-                          off={t("preferences.off")}
-                        />
-                      ) : (
-                        <p className={`${cell} border-transparent text-fg-muted`}>{t("preferences.notAvailable")}</p>
-                      )}
+            {row.switchable ? (
+              <>
+                {/* Two columns at EVERY width, not just from `sm`. Stacked, the
+                    eleven categories make SCR-026 ten thousand pixels tall on a
+                    phone; side by side the labels still fit in ~180 px. */}
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {channels.map((channel) => (
+                    <div key={channel.id}>
+                      <span className="block text-body-sm text-fg-muted">{channel.label}</span>
+                      <div className="mt-1">
+                        {row.available[channel.key] ? (
+                          <Toggle
+                            category={row.category}
+                            channel={channel.id}
+                            enabled={row.enabled[channel.key]}
+                            label={`${t(`category.${row.category}.name`)} — ${channel.label}`}
+                            on={t("preferences.on")}
+                            off={t("preferences.off")}
+                            action={action}
+                          />
+                        ) : (
+                          <p className={`${cell} border-transparent text-fg-muted`}>{t("preferences.notAvailable")}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              {row.alwaysOn.length > 0 ? (
-                <p className="mt-3 text-body-sm text-fg-muted">
-                  {t.rich("preferences.alwaysOn", {
-                    list: row.alwaysOn.map((key) => t(`message.${key}`)).join("، "),
-                    bdi: (chunks) => <bdi>{chunks}</bdi>,
-                  })}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="mt-3 rounded-field border border-edge-strong bg-silver-100 p-3 text-body-sm text-fg-heading">
-              <strong className="text-label">{t("preferences.fixed")}</strong> — {t(`category.${row.category}.why`)}
-            </p>
-          )}
+                  ))}
+                </div>
+                {row.alwaysOn.length > 0 ? (
+                  <p className="mt-3 text-body-sm text-fg-muted">
+                    {t.rich("preferences.alwaysOn", {
+                      list: row.alwaysOn.map((key) => t(`message.${key}`)).join("، "),
+                      bdi: (chunks) => <bdi>{chunks}</bdi>,
+                    })}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <Panel tone="info" className="mt-3 p-3 text-body-sm text-fg-heading">
+                <strong className="text-label">{t("preferences.fixed")}</strong> — {t(`category.${row.category}.why`)}
+              </Panel>
+            )}
+          </Panel>
         </li>
       ))}
     </ul>

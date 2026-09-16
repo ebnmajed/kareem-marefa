@@ -31,7 +31,19 @@
         "coPresentersLabel": "Co-presenters",
         "coPresentersHint": "Choose colleagues presenting with you. Each is notified and each may decline.",
         "coPresentersLimit": "{count, plural, =0 {no co-presenters can be added} one {you may name one colleague} other {you may name {value} colleagues}}",
-        "coPresentersNone": "There are no other members in your organisation yet."
+        "coPresentersNone": "There are no other members in your organisation yet.",
+        "errorSummaryCount": "{count, plural, =0 {We couldn't send the proposal} one {We couldn't send the proposal — one field needs fixing} other {We couldn't send the proposal — {value} fields need fixing}}",
+        "errorSummaryDescription": "{count, plural, =0 {What you typed is still here.} one {Select it to go straight to it. What you typed is still here.} other {Select any of them to go straight to it. What you typed is still here.}}",
+        "progressLabel": "Form sections",
+        "sectionTopic": "The topic",
+        "sectionPeople": "Presenters and notes",
+        "remaining": "{count, plural, =0 {All required fields are filled in} one {Remaining: one required field} other {Remaining: {value} required fields}}",
+        "charCount": "{value} of {max}",
+        "materialsNote": "You can attach draft materials once the proposal is saved.",
+        "resubmit": "Send the proposal again",
+        "sectionNotes": "Notes",
+        "presentersElsewhere": "Presenters are managed on the proposal's own page.",
+        "coPresentersPlaceholder": "Search by name or job title"
       },
       "errors": {
         "titleRequired": "Please enter a title for your proposed topic",
@@ -46,7 +58,8 @@
         "notesTooLong": "Those notes are longer than they need to be — shorten them a little",
         "failed": "We couldn't save your proposal — try again. Your text is still in the form.",
         "coPresentersTooMany": "That is more co-presenters than your organisation allows",
-        "coPresentersUnknown": "One of the people you chose is no longer a member of your organisation"
+        "coPresentersUnknown": "One of the people you chose is no longer a member of your organisation",
+        "notEditable": "This proposal can no longer be edited — an admin may have just reviewed it. What you typed is still in the form."
       },
       "created": {
         "submittedTitle": "We have your proposal — thank you",
@@ -62,7 +75,8 @@
         "count": "{count, plural, =0 {no proposals} one {one proposal} other {{value} proposals}}",
         "invited": "You were invited to present",
         "awaitingYou": "Waiting for your answer",
-        "open": "Open the proposal"
+        "open": "Open the proposal",
+        "emptyAction": "Write your first proposal"
       }
     },
     "proposal": {
@@ -91,7 +105,22 @@
       "decline": "Decline",
       "remove": "Remove from presenters",
       "removeLabel": "Remove <t>{name}</t> from the presenters",
-      "materialsLabel": "Attached materials"
+      "materialsLabel": "Attached materials",
+      "editDraft": "Finish your proposal",
+      "editChanges": "Edit your proposal",
+      "editTitle": "Edit the proposal",
+      "nextPending": "You'll be notified when an admin decides.",
+      "nextDraft": "This is your draft — it hasn't reached an admin yet.",
+      "detailsLabel": "Proposal details",
+      "removeConfirmTitle": "Remove <t>{name}</t> from the presenters?",
+      "removeConfirmBody": "Their name will no longer appear among this proposal's presenters.",
+      "removeConfirm": "Remove",
+      "cancel": "Cancel",
+      "updated": {
+        "draftTitle": "Your changes are saved",
+        "submittedTitle": "Your proposal is sent for review",
+        "submittedBody": "Your proposal <t>{title}</t> is with an admin now, and you'll be notified of the decision."
+      }
     }
   }
 }

@@ -68,6 +68,8 @@ export async function FilterBar({ query, data, locale }: { query: TimelineQuery;
         return t("filters.chip.level", { value: t(`card.level.${value as "introductory"}`) });
       case "language":
         return t("filters.chip.language", { value: t(`card.language.${value as "ar"}`) });
+      case "when":
+        return t("filters.chip.when", { value: t(`timeline.groups.${value as "thisWeek"}`) });
       case "from":
       case "to":
         return t(`filters.chip.${key}`, { value: formatDate(`${value}T12:00:00Z`, "UTC", locale) });

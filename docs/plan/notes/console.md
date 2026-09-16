@@ -1170,3 +1170,595 @@ jsdom has neither a streaming HTTP response nor React's real commit ordering.
   Cannot confirm further without a fresh capture — reported to the lead rather than guessed at, since
   `globals.css` and that spec file are both outside this track's edit list either way.
 actual `DEC-130` bar.
+
+---
+
+## Wave 7 plan (DEC-137) — the fourteen-group rail, and the six remaining admin routes
+
+Written before code, per the spawn brief. `console` is opus this wave. Six routes —
+`moderation/{comments,photos}`, `venues`, `categories`, `companies`, `settings` — plus the admin
+layout's regroup (K0–K6 in `STATUS.md`'s checklist). `moderation/reports` (wave 6, already on M9)
+is not a checklist row this wave, but it sits inside my full edit glob
+(`app/admin/{moderation,venues,categories,companies,settings}/**`, unconditional — not the "five
+wave-6 routes, fixes only" list, which names only `proposals/**`, `sessions/`'s top level and
+`members/**`) and carries wave 6's one open finding (the uncaptured populated-report-card state), so
+§3 below touches it too.
+
+### 1. The rail's IA — `16` §6.7, `REQ-ADM-020`, `REQ-UIX-017`
+
+**The count in `16` §6.7 does not match its own label, and wave 6's note already repeated the error
+once.** The prose lists, verbatim: لوحة · المقترحات · الجلسات · الأعضاء · الشركات · التصنيفات
+والوسوم · الأماكن · الإشراف · النقاط والتقدير · التصاميم · الهوية · الإشعارات · التصدير · السجل ·
+الإعدادات — **fifteen** tokens, comma-counted twice. `STATUS.md`, `CLAUDE.md` and `DEC-137` all call
+it "the fourteen-group IA" regardless, and wave 6's note (`docs/plan/notes/console.md:571-581`)
+already transcribed the same fifteen under a "14 grouped Arabic labels" heading without recounting.
+**My working reading, pending the lead's confirmation (§5.1): لوحة is the rail's home/root link, not
+one of the fourteen navigational groups that organise the other routes underneath it** — the same
+relationship `admin/layout.tsx` already gives it today (`current: withoutLocale === item.href`
+computed specially, never prefix-matched, because nothing nests under it). Fourteen groups then
+map onto the current 19 (soon 20 — see below) flat items as:
+
+| Group (rail label) | Children (routes) | Disclosure? |
+|---|---|---|
+| المقترحات | proposals | no — direct link |
+| الجلسات | sessions | no |
+| الأعضاء | members | no |
+| الشركات | companies | no |
+| التصنيفات والوسوم | categories | no |
+| الأماكن | venues | no |
+| الإشراف | moderation/comments, moderation/photos, moderation/reports | **yes — 3** |
+| النقاط والتقدير | scoring, recognition | **yes — 2** |
+| التصاميم | templates/posters, templates/certificates | **yes — 2** |
+| الهوية | branding | no |
+| الإشعارات | emails, reminders | **yes — 2** |
+| التصدير | exports | no |
+| السجل | audit | no |
+| الإعدادات | settings | no |
+
+Ten single-route groups render exactly as today (an `<a>`-equivalent rail item, unchanged
+`AdminRailItem` shape). Four groups disclose 2–3 children each — **nine routes total inside
+disclosure** (moderation's three, scoring+recognition, templates' two libraries, emails+reminders) —
+against wave 6's own note's "thirteen routes" figure for the same grouping decision
+(`docs/plan/notes/console.md:575-576`, written before `venues`/`categories`/`companies` were
+reassigned to me and apparently over-counting even then; not reconciled further here, since it isn't
+load-bearing for this plan).
+
+★ **CORRECTION, per the lead's sync-1 review: there is no `admin/designer/page.tsx`.**
+`src/app/[locale]/app/admin/designer/` holds only `[documentId]/` — `ls` confirms it, and I should
+have run that instead of inferring a landing page from the directory's existence. `/app/admin/designer`
+is not a route; **`التصاميم` discloses exactly `templates/posters` and `templates/certificates`**
+(the table above is corrected), and a designer document stays reached only from its template, as
+today — no rail entry to add, and no `designer`-file question to raise. The one real, still-true
+observation from that pass stands on its own: `NAV_ITEMS` (`admin/layout.tsx:52-85`) has **20**
+entries today (verified by counting `{ key: "…"` occurrences, minus the type declaration's own
+`{ key: string; … }` on line 50, which matches the same grep), not the header comment's stated 19 —
+a stale-by-one comment, not a missing route. Nothing to fix beyond noting it; the comment gets
+corrected in the same commit as the regroup since I'm editing that file anyway.
+
+**Data model.** `AdminRailItem` (`components/admin/admin-rail.tsx`) gains an optional
+`children?: AdminRailItem[]`. A leaf item (no `children`) renders exactly as today. A group item
+renders as a WAI-ARIA disclosure: `<button aria-expanded>` + a nested `<ul>` of its children,
+default-**expanded** if any child is `current`, default-**collapsed** otherwise, per-viewer
+`localStorage` (one key per group, same try/catch-and-render-expanded-on-failure discipline the
+rail's own whole-rail collapse already uses — `getServerSnapshot` always "expanded when current,
+else per the stored preference, defaulting to collapsed" so there is no hydration mismatch). The
+group row itself never carries `aria-current` (it is not a destination); a child does.
+
+**Collapsed (icon-only) rail — the interaction the disclosure pattern cannot use there.** When the
+whole rail is icon-only (the existing whole-rail toggle), a group's label and nested `<ul>` have no
+room. Rather than invent a flyout, a collapsed group's icon becomes a **`ui/menu`** trigger (mine
+already) opening its children as `href` items — `menu.tsx`'s own header comment records that
+`MenuItem.href` was fixed to route through `ui/link` (not a raw `<a>`) "while planning wave 6,"
+found writing this exact plan, so that mechanism is already correct to build on; no new bug to work
+around. A leaf item's collapsed behaviour (icon + `title` tooltip, direct link) is unchanged.
+
+**Phone drawer (`ui/sheet`).** Same disclosure widget as desktop, nested inside the sheet's `<ul>`
+(never a `Menu` flyout there — a full-height sheet has room for a real nested list, and a popover
+inside a popover-ish sheet is the wrong composition). Selecting any child closes the sheet
+(`onClick={() => setSheetOpen(false)}`, already wired per-item; extends to nested items unchanged).
+
+**Moderator view — `REQ-ADM-020`, listed exactly.** Filtering is unchanged in substance, just
+applied one level deeper: a leaf's own `adminOnly` gates it; a group renders **only if at least one
+child survives the filter**, and only its surviving children render inside it. Today's five
+moderator-visible flat items (`adminOnly: false`: `sessions`, `moderationComments`,
+`moderationPhotos`, `moderationReports`, `audit`) become, regrouped, **three top-level rail
+entries — الجلسات (direct), الإشراف (disclosed, all three children survive), السجل (direct) — five
+reachable routes, unchanged from today.** No `لوحة` (dashboard stays admin-only, matching
+`REQ-ADM-020`'s "and nothing else" — a moderator has never seen the dashboard and this regroup does
+not add it).
+
+**Current-route marking.** A leaf's `current` is unchanged (exact match or `startsWith` for nested
+paths, e.g. `sessions/[id]/attendance` still marks `sessions` current). A group is `current` in the
+sense of "contains the active route" (drives default-expanded above) but is never itself
+`aria-current` — only whichever child is.
+
+**Second skip link (`REQ-UIX-017`).** Unchanged target and position — first focusable element,
+`href="#admin-content"`, `tabIndex={-1}` — but the tab sequence it has to clear grows (a disclosure
+button plus, when expanded, its children, for four groups). Re-verified with the same
+walk-the-tab-sequence approach wave 6's bug-fix pass already adopted for `console.spec.ts` (bounded,
+not a pinned count) rather than reintroducing a pinned-position assertion the last teammate already
+found and removed once.
+
+**The untouched-screen capture (`16` §6.7's own requirement, plus the carried finding below).**
+`.qa-shots/rtl/wave7-console-layout-untouched.png` — `/app/admin/exports` (not on my edit list this
+wave, not `venues` again, since `venues` IS touched this wave and would no longer prove "the layout
+alone"), 390×844, phone project, after the layout lands.
+
+### 2. Per-route plan, K1–K6
+
+**Shared pattern for K3–K5 (venues, categories, companies) — "one list pattern three times," per
+`DEC-137`'s own framing.** One design, not one component: each keeps its own `*-table.tsx` (domain
+fields differ — venue carries address/capacity/timeZone/mapUrl, category and company carry only a
+usage count) built on `ui/data-table` exactly like `members/members-table.tsx`'s already-proven
+shape (primary column `bdi`-wrapped name `onCard`, a count column `onCard`, a status `Badge`
+`onCard`, an actions column not `onCard` since the phone card renders the row's primary action
+inline below the label:value pairs — `DataTable`'s own card layout, unchanged). What genuinely is
+identical across all three and worth extracting once: the deactivate/reactivate action shape —
+reactivate is a single `IconButton`, no confirmation (reversible, restorative, matches
+`members-table.tsx`'s own asymmetry); deactivate opens `ui/dialog` naming the entity
+(`REQ-UIX-013`'s pattern, generalised past proposals: "تعطيل «القاعة الكبرى»؟" / "تعطيل «شركة
+كذا»؟"), plain confirm/cancel, **no reason field** — `setCategoryActive()`/`setCompanyActive()`/
+venue's toggle action take no reason parameter today (`lib/dal/admin-lists.ts`, `lib/dal/sessions.ts`)
+and REQ-ADM-006/007/008's acceptance criteria do not ask for one, unlike `REQ-ADM-009`'s member
+deactivation. A shared `components/admin/deactivate-toggle.tsx` (my own file, under
+`components/admin/**`) takes the entity's rendered name, the two bound actions and a namespace key,
+and every one of the three tables uses it — the toast-in-body-vs-effect question doesn't arise here
+either way, since a toggled row never leaves its own table (unlike a resolved moderation card).
+
+**K3 — `/app/admin/venues`.** DAL: `listVenuesForAdmin`/`addVenue`-equivalent/`toggleVenue`
+already live in **`sessions`' `lib/dal/sessions.ts`**, unchanged this wave — the existing DTO
+(name, address, capacity, upcomingSessions, timeZone, mapUrl, deactivatedAt) already covers every
+column the rebuild needs, so **no DAL change and no request to `sessions`** — I only consume it.
+Add form: `venue-form.tsx` onto `Field` + `Input` + `Textarea` (notes) + `FormSummary`, using
+`lib/form-state.ts`'s `formStateFrom()`/`zodErrors()`/`was()` contract (sessions' shared module,
+imported not edited) instead of the current ad hoc `{error}` shape — the same "an uncontrolled field
+empties on a failed round trip" bug class `form-state.ts`'s own header names is live here today
+(five plain `<input>`s with no `was()` read-back). List: `venues-table.tsx` on `DataTable`, columns
+name/address (primary, `onCard`), capacity+upcoming-sessions (`onCard`, one combined body-sm line,
+matching the current page's own `·`-joined `<dl>`), status `Badge`, map link (kept as a plain
+external `<a>` inside the primary cell, `rel="noreferrer noopener"`, unchanged behaviour), actions
+via `DeactivateToggle`. States to capture: populated table (desktop + phone stacked cards), empty
+list, the add form with a `FormSummary` validation failure.
+
+**K4 — `/app/admin/categories`.** DAL: `lib/dal/admin-lists.ts` (already mine), unchanged shape —
+`listCategoriesForAdmin`/`createCategory`/`setCategoryActive` need no new fields. Form: `Field` +
+`Input` + `FormSummary`, same `form-state.ts` contract. List: `categories-table.tsx`, columns name
+(primary), session count (`onCard`), status `Badge`, `DeactivateToggle`. States: populated, empty,
+validation failure on add (duplicate-name handling stays server-side, unchanged — no unique
+constraint surfaced client-side today, not adding one this wave).
+
+**K5 — `/app/admin/companies`.** Same shape as K4, `listCompaniesForAdmin`/`createCompany`/
+`setCompanyActive`, member count instead of session count. States: populated, empty, validation
+failure.
+
+**K6 — `/app/admin/settings`.** DAL: `lib/dal/admin-settings.ts` (already mine, and already past
+the numerals sweep — no `numerals` field in `OrgSettingsAdmin` today, confirmed by reading the
+file). This is the one route where the rebuild is substantive, not a re-skin: fourteen fields across
+six `fieldset`s, all plain `<input>`/`<select>`/checkbox today, zero `ui/` imports beyond `Button`.
+Plan: `Field` wrapping every control (`Input` for text/number/email, `Select` for `companyMetric`,
+`Switch` for `allowJpegExport` — `Switch` posts a real value via `name`, so the existing
+`FormData.get("allowJpegExport") === "on"` parsing in `actions.ts` needs a one-line check against
+`Switch`'s actual posted value, not a DAL change), grouped under `ui/section-header`-headed
+`fieldset`s (replacing the plain `<legend className="text-h3">` pattern), `FormSummary` at the top
+fed by `form-state.ts` (replacing the current `state.error`/`state.saved` two-message shape — the
+saved confirmation becomes a `useToast()` call in the action's own body, not an effect, consistent
+with §3's toast-placement rule since nothing here unmounts but consistency costs nothing). States:
+the form populated with current values, a `FormSummary` validation failure (e.g. `emailReplyTo` not
+an email), the save-confirmation toast.
+
+**No DAL request to any other track for K1–K6.** `content`'s `lib/dal/photos.ts` is touched only via
+the existing `restorePhoto()` import `admin-moderation.ts` already has (wave 6); nothing new is
+needed there for K2's rebuild — it is a UI-only pass on data the DAL already returns.
+
+**K1 — `/app/admin/moderation/comments` and K2 — `/app/admin/moderation/photos`.** Both are
+UI-only rebuilds — `lib/dal/admin-moderation.ts` (already mine) needs no field changes, only two
+small additions used by §3's shared sub-nav (below). Bring both onto exactly the shape
+`moderation/reports/report-card.tsx` (wave 6) already proved: `Card`/`CardBody`/`CardActions` (K2
+also `CardMedia`, since a photo takedown has an image; K1 has none — plain `Card`/`CardBody` only),
+`ui/dialog` for the remove confirmation (`Field` + `Textarea` for the reason **inside** the dialog's
+own form, one step, matching `report-card.tsx`'s own comment on why there is no "reveal the reason
+first" two-step here), `useToast()`. **Toast fires from inside the action passed to
+`useActionState`, not from a `useEffect` keyed on `state`** — this is not a style preference, it is
+the exact bug wave 6's own note (§12) already found and fixed once for `moderation/reports`: a
+resolved card is a card that disappears from its list in the same commit the toast would have to
+fire from, so an effect on a discarded fiber never runs. K1/K2 get it right from the start instead of
+repeating the fix. `PageHeader` replaces the plain `<h1>`+`<p>` pair on both; `EmptyState` replaces
+the plain empty-state `<p>` on both (K1 currently has neither). Dismiss stays instant, no dialog
+(unchanged from today — only removal, which is permanent, confirms). States per route: populated
+list (desktop grid + phone), empty state, the remove-confirmation dialog open with a validation
+error (empty reason), the post-action toast.
+
+### 3. The two moderation queues never merge (`DEC-005`) — and a sub-nav that keeps them apart while tying them together
+
+`admin-moderation.ts`'s own header already states the rule precisely: comments have one moderation
+path (open reports — no "instant hide" concept exists for a comment), photos have two, and the two
+photo paths are **never merged into one list** because they carry opposite urgency — a takedown
+(`moderation/photos`, `REQ-EVT-012`) is already hidden, awaiting review; a report (`moderation/
+reports`, `REQ-EVT-008`) is still publicly visible, awaiting one. That separation is unchanged and
+is not mine to revisit.
+
+What I am adding: a `ui/tabs` strip, `href`-mode, atop all three moderation pages —
+`tabs.tsx`'s own header comment names this exact use case ("the admin sub-nav... uses this"), so it
+is not a new pattern, just its first real caller. Each tab carries a live open-count
+(`Tabs`' `count` prop, Western-formatted, matching `date-time`/`combobox`'s own documented numeral
+gap). This does not merge the two photo queues into one *list* — DEC-005's actual rule — it lets a
+moderator move between three still-separate lists without the rail round-trip, which is squarely
+inside `REQ-ADM-010`'s "queues for proposals, comments, photos and reports" being read as one
+functional group, matching §6.7's own `الإشراف` grouping. Requires two small count-only additions to
+`admin-moderation.ts` (mine, no request): `countCommentReports`/`countPhotoTakedowns` alongside the
+existing `countPhotoReports`-shaped query (a `head: true` count, not a full row fetch, on each of the
+three tables' existing predicates). `moderation/reports/page.tsx` gains the same strip in the same
+commit (inside my edit glob — see the note at the top of this section), closing the "reports" tab's
+own missing capture (§4) at the same time.
+
+### 4. Carried items, and how each closes
+
+- **`console.spec`'s "untouched route" capture** — wrong viewport (Pixel 7's 412 px, no explicit
+  size set) and, after this wave, the wrong route (`venues` stops being untouched). Fixed in the same
+  commit as §1's layout change: explicit `390×844`, retargeted to `/app/admin/exports` (§1's own
+  reasoning for the choice).
+- **The populated photo-report card on `moderation/reports`** — never captured in wave 6. Taken as
+  part of K1/K2's capture pass (§2), since the shared `Tabs` strip (§3) touches that page's markup
+  anyway and the capture should reflect the final shape, not a pre-strip one.
+- **The dashboard's «أكثر …» alignment — CLOSED, no code change, confirmed by opening the actual
+  capture** (`.qa-shots/rtl/scr-040-admin-dashboard-390-rtl-phone.png`, per the lead's sync-1
+  instruction not to close it on the class read alone). `page.tsx`'s `TopList`
+  (`app/admin/page.tsx:15-40`) renders `flex items-baseline justify-between`, and the capture shows
+  exactly what that predicts: every «أكثر …» card («أكثر المُقدِّمين مشاركة» etc.) pins its count to
+  the row's far edge, and «مسار المقترحات» (the pipeline list directly above it, same screen) pins
+  its counts to the same edge, at the same horizontal position. The two sections read identically in
+  the actual render — the carried finding does not reproduce today, whether because it was already
+  fixed by the time this capture was taken or because it described a different impression. Nothing to
+  build.
+- **`admin.attendance.*` and the walk-in keys, after `checkin` moves them.** `admin.json`'s
+  `attendance` namespace (`ar.json:360-408`, `en` twin) is SCR-044's strings — the screen transfers to
+  `checkin` this wave (`DEC-137`: `★ admin/sessions/[id]/attendance` — C3). **Not touched by me until
+  `checkin` confirms the strings are live under its own `checkin.json` namespace** (`DEC-137`'s "one
+  writer per file" rule: the screen's owner moves its strings, the old file's owner deletes the old
+  keys on request). I will delete `admin.json`'s `attendance` object (both locales) in a single small
+  commit once that confirmation lands — **not** `admin.json`'s `exports.attendance` (a different,
+  unrelated key path — the CSV-export label — which stays). No walk-in keys exist under `admin.json`
+  yet (grepped; none found), so there is nothing to delete there today — `checkin`'s C6 adds and
+  presumably keeps its own walk-in strings in its own namespace from the start, so this half of the
+  carried item may already be moot; confirming with `checkin` rather than assuming (§5.2).
+
+### 5. Requests and questions
+
+**5.1 — For the lead. RULED, sync 1.**
+
+1. ~~The 14-vs-15 count in `16` §6.7.~~ **Ruled: `لوحة` is the root/home link, not one of the
+   fourteen groups; the other fourteen tokens each map to their own group.** Grouping table above
+   built as planned, no merge.
+2. ~~`admin/designer`'s missing nav entry.~~ **Withdrawn — my own error.** There is no
+   `admin/designer/page.tsx`; see the ★ CORRECTION above. `التصاميم` discloses `templates/posters`
+   and `templates/certificates` only.
+3. ~~Four rail icons still on interim/reused glyphs.~~ **Withdrawn — my own error, a second one.**
+   §1's request repeated wave 6's PLANNING-stage note (`console.md:582-592`) instead of that same
+   file's own later "as built" entry (`console.md:893-894`): the lead's `607ecbe` landed
+   `TagIcon`/`BuildingIcon`/`PaletteIcon`/`GearIcon` before wave 6 wrote a line of code, so the
+   interim reuses never shipped and `NAV_ITEMS` already uses the real glyphs today (verified again
+   just now: `categories→"tag"`, `companies→"building"`, `branding→"palette"`, `settings→"gear"`,
+   all resolving through `admin-rail.tsx`'s own `ICONS` map, lines 50/51/58/63). No request to the
+   lead here; sorry for the noise on a ruling already given.
+
+**5.2 — For `checkin`.** Asked; the lead is routing it with their approval attached. **Do not delete
+`admin.json`'s `attendance` object until the lead confirms `checkin`'s strings are live** — holding.
+
+**5.3 — For `sessions`.** None this wave — `listVenuesForAdmin` and its write actions in
+`lib/dal/sessions.ts` need no change for K3's rebuild (§2), **ruled**: consume as-is. Flagging only
+for visibility: `venues` stops being "already built, wave 1, untouched" (`console.md:23-24`'s
+original framing) as of this wave.
+
+**5.4 — The dashboard «أكثر …» alignment.** Ruled by the lead: open the capture before closing it —
+done, closed, recorded in §4.
+
+## Wave 7 — as built, all six routes plus the rail (K0–K6)
+
+Commits, in order: `3683f76` (K0, the rail regroup), `53bc68d` (K1/K2, comments+photos
+moderation), `1fdf521` (K3–K5, venues/categories/companies), K6 (settings — see the ★ note below,
+not its own commit), `421db5c` (messages, both locales, covering all six routes at once — see §"why
+one commit" below).
+
+### K0 — the rail
+
+Built exactly to the plan's §1, with one correction already recorded above (no `admin/designer`
+entry, `التصاميم` discloses two children not three) and one omission caught late: `AdminRailChild`
+has no `icon` field by design (nested rows are text-only — §1 already reasoned this through), so the
+type split is `AdminRailItem` (top-level, always `icon`) vs `AdminRailChild` (nested, never one).
+`react-hooks/immutability` (the React Compiler lint) refused the first draft of `useGroupExpanded` —
+mutating a `GroupStore` obtained via a plain function call, inside a closure defined in the hook's
+own body, even un-memoized. Fixed by moving the three mutating functions
+(`groupSubscribe`/`groupGetSnapshot`/`groupToggle`) to genuine module scope, parameterised by `key`,
+with the hook only wiring thin non-mutating wrapper closures to `useSyncExternalStore` — the compiler
+analyses a component/hook's own literal body, not functions it merely calls, so an external function
+is opaque to it. `console.spec.ts` proves the moderator regroup against real RLS (a moderator's rail:
+`الجلسات` direct, `الإشراف` disclosed with all three children, `السجل` direct — three top-level
+entries, five reachable routes, matching wave 6's flat count) and the collapsed-rail `ui/menu` flyout
+against a real Radix portal.
+
+### K1/K2 — comments and photos moderation
+
+Both rebuilt on `moderation/reports/report-card.tsx`'s already-proven wave-6 shape exactly (`Card`,
+`ui/dialog`'s confirmation, toast fired from inside the action). New: `ModerationTabs`
+(`components/admin/moderation-tabs.tsx`), an `href`-mode `ui/tabs` strip across all three queues —
+`tabs.tsx`'s own header comment already named "the admin sub-nav" as its first real use — badged with
+`listModerationCounts()` (three `head: true` counts, my own file, no request to anyone). `reports`
+picked up the same strip in the same commit, closing wave 6's own uncaptured "populated photo-report
+card" finding. `admin-moderation.spec.ts`'s comment-removal test needed the same dialog-scoping fix
+its own photo-removal test already carried a comment about (the dialog portals outside the card's
+`<li>`); `admin-reports.spec.ts` gained one new test proving the tab counts and the no-merge rule.
+
+### K3–K5 — venues, categories, companies
+
+One shared `DeactivateToggle` (`components/admin/deactivate-toggle.tsx`) for the genuinely identical
+half of "one list pattern three times" — reactivate instant, deactivate dialog-confirmed, no reason
+field (none of the three DAL toggles collect one). Labels are PROPS, not a shared translation
+namespace — three real namespaces already existed (`admin.venues`/`categories`/`companies`), and a
+fourth shared one would just be a second source of truth. Each keeps its own `*-table.tsx` since the
+domain fields differ. All three add forms moved onto `lib/form-state`'s model — `admin-managed-
+lists.spec.ts` needed the DEC-134 not-found rewrite (never carried for this file before, since
+venues/categories/companies weren't rebuilt when wave 6 did that pass elsewhere) and the
+`getByRole("table").or(getByRole("list"))` dual-render scoping `admin-members.spec.ts` already
+proved, for the exact same reason.
+
+★ **Cross-track flag sent, not fixed by me:** `sessions-screens.spec.ts` (not mine) drives
+`/app/admin/venues` as the first step of its own M2 demonstrable chain and asserts
+`boss.getByText("قاعة الابتكار")` unscoped — now a strict-mode violation against `DataTable`'s dual
+render. Sent `sessions` the exact line and the exact one-line fix (the same `.or()` pattern above).
+
+### K6 — settings
+
+The one substantive rebuild: fourteen fields, `lib/form-state`'s model in full, `fieldValue()`
+distinguishing "first render, show the real settings" from "failed round trip, show what was typed"
+— an edit-in-place form needed a helper `direct-session-form.tsx`'s blank-create shape never had to
+solve. `?saved=1` (the `admin/scoring`/`admin/emails` convention, neither rebuilt yet) plus a new
+`SavedToast` — the first real `ui/toast` caller for that convention, firing once on mount and
+stripping the query param so a refresh never replays it. `admin-settings.spec.ts` got the DEC-134
+rewrite for its moderator-404 test and a scoped `getByRole("status")` assertion for the new toast.
+
+★ **A shared-index incident, not mine to have caused or to fix:** `checkin`'s commit `592c3d2`
+("the window, the reversal and every removed_at hook") landed carrying 26 files — its own ~16, my 6
+settings files (staged seconds earlier for my own commit, which then found nothing left to commit
+for those paths), and 4 of `content`'s (`me/points`, `points-catalogue.tsx`, two specs). The content
+at HEAD is exactly what this section already describes — nothing lost, verified file by file — the
+only casualty is that K6's commit message doesn't exist as its own entry; it reads as SQL for
+check-in windows. Flagged to the lead (recommended: leave it, no rewrite) and to `checkin` directly
+(likely `git add -A`/`git commit -a` rather than an explicit pathspec) so it isn't repeated on
+someone else's staged work next time. Reported here so K6's own commit sha in the list above is
+honestly `592c3d2`, not a sha this file invents to look tidier than what happened.
+
+### Why the messages commit is one commit, not six
+
+`src/messages/{ar,en}/admin.json` accumulated every route's keys across the session before any of
+the four code commits landed (I did not commit incrementally as I built), so by the time I could
+commit K0's code in isolation, the working file already held K1–K6's additions too. Splitting it into
+per-route commits would have meant either fragile hunk-level `git add -p` surgery on one JSON file or
+leaving an intermediate commit referencing a translation key (`t("groups.moderation")` etc.) that
+does not exist yet at that point in history. One commit for both locale files, covering all six
+routes, correctly described, was the honest choice over a prettier-looking history that doesn't match
+what actually happened.
+
+### Verification run, and what is still open
+
+`npx tsc --noEmit`, `npm run lint` (grep `problems` — 0 errors throughout, only pre-existing warnings
+in files I do not own) and `npx vitest run` (full suite) were run repeatedly across the session —
+consistently clean on every file this track owns; every failure seen belonged to other tracks'
+concurrent in-progress work in the shared tree (`scoring-i18n.test.ts`, `star-rating.test.tsx`,
+`notifications-page.test.tsx`, `deactivation-form.test.tsx` — none mine, confirmed by re-running after
+each appeared and finding a different set the next time). `node scripts/ui-reach.mjs --wave7` shows
+all seven of this track's rows (K0–K6) at ✓ — part (1) of the measure, done.
+
+**Not done by me, and why:**
+
+- **`npm run test:rls`** — not run this session. The single-runner rule held throughout: a vitest
+  process (later specifically `--project rls`) was active in the shared tree at every point I checked.
+  Nothing in this wave's DAL changes touches SQL, a grant, or a new table — `listModerationCounts()`
+  reads `reports`/`photo_takedowns` through the SAME `requireStaff()` session client and the SAME
+  predicates the pre-existing, already-RLS-tested `listCommentReports`/`listPhotoTakedowns`/
+  `listPhotoReports` already cover — so this is inherited coverage, not untested surface, but the gate
+  is still owed a real run once the runner is free.
+- **390 px captures** — none taken. `npm run test:e2e:local` needs a production build
+  (`scripts/serve-stub.mjs` serves an EXISTING `.next`, it does not build one), and `npm run build` is
+  lead-only. The `.next` on disk predates every commit in this section — running e2e against it would
+  test the OLD markup, not this work, so I left it for the lead's sync-point build in the verification
+  worktree (`STATUS.md`'s "Order inside the wave" step 4), the same point every wave-7 row's part (2)
+  is ticked from. All six new/updated specs (`console.spec.ts`, `admin-moderation.spec.ts`,
+  `admin-reports.spec.ts`, `admin-managed-lists.spec.ts`, `admin-settings.spec.ts`) name the capture
+  path each row cites, ready for that pass.
+
+### Closing the RLS gap, and R2 — the combobox fix for `sessions`
+
+- **`npm run test:rls` — run once the shared runner freed up: 71 files, 790 passed, 4 todo, 0
+  failed.** Confirms the §"Verification run" note above — nothing in this wave's DAL changes
+  touches SQL, a grant or a policy, so this was always inherited coverage, now proven rather than
+  asserted.
+- **R2** (`sessions`' request, routed by the lead) — four fixes to `ui/combobox.tsx` for `/app/
+  propose`'s co-presenter field, the primitive's first non-admin caller: dropped the hard-coded
+  `dir="ltr"` (Arabic names were typing and reading left-to-right), wired `useFieldWiring()`
+  (`aria-describedby`/`aria-required`/`aria-invalid`, `id` falling back to `field?.id`, same
+  precedence `ui/input.tsx` already uses), and moved the input's classes onto `controlClass()`.
+  The fourth ask — moving its strings off `admin.combobox` — needs `ui.json` (the lead's); sent
+  the exact `ui.combobox` keys (unchanged text, just relocated) and left the component reading
+  `admin.combobox` with an inline note, rather than switch to a namespace that does not exist yet
+  and break every caller. `member-picker.tsx` and both admin callers stay green, four new tests
+  added, axe clean. Commit `654ec91`.
+
+### Sync 3 — eight findings, all fixed
+
+The lead's sync-3 build (`d8f0af9`) found eight real problems. All fixed, three commits (`b75afeb`,
+`d12499d`, `85cf171`):
+
+1. **Capture path.** Every capture helper hard-coded `process.cwd()`, so a verification-worktree run
+   never lands at the path a checklist row cites. All six now read `process.env.E2E_SHOTS_DIR` first
+   — the convention every other track's specs already use, missed here because K0-K6 were all
+   written before any capture ever actually ran through the lock.
+2. **"Populated" captures showing empty — a real test-order bug, not a product bug.** `mode:
+   "serial"` runs a file's tests in file order; `admin-moderation.spec.ts`'s and
+   `admin-reports.spec.ts`'s own resolution tests ran BEFORE their capture tests and had already
+   emptied the seeded queues by the time the screenshot fired. Moved each capture to right after the
+   read-only view test. `admin-managed-lists.spec.ts`'s was a different cause — the add tests are
+   desktop-only, so the phone project's own org never got a row through them; seeded one directly by
+   DB insert instead.
+3. **Toast ambiguity** (`admin-managed-lists.spec.ts:165`) — `getByRole('status')` matched two
+   stacked toasts. Filtered by text.
+4. **`ui/tabs` wrapping at 390 px** — `flex-wrap` → `overflow-x-auto`, the fix `content`'s own
+   `me/tab-strip.tsx` had already requested and forked around rather than wait for.
+5. **Stale DEC-124 copy** on `/app/admin/exports` — "أرقامها بنظام ترقيم مؤسستك" survived past the
+   numerals sweep. Dropped the clause; grepped for more, found none.
+6. **Two "add" controls on one screen** — venues/categories/companies' empty-state action reused
+   `addTitle`, duplicating the visible form's own submit button. New `emptyAction` copy applied to
+   all three, not just the one sync-3 named.
+7. **The missing rail-disclosure capture** — K0's own headline (the fourteen-group regroup) had no
+   capture showing a group actually open. Added one per role.
+8. **Combobox strings** — still `admin.combobox`, not yet `ui.combobox`; reconfirmed to the lead a
+   third time with the exact keys, since `ui.json` hasn't landed them yet.
+
+### R2 closed — the combobox namespace switch
+
+`ui.combobox.{removeChip,createOption,resultsCount}` landed in `ui.json` (both locales); switched
+`combobox.tsx` to `useTranslations("ui")` + the `combobox.` prefix at each call site, deleted the two
+now-dead `admin.combobox` keys (`createOption`/`removeChip`), kept `resultsCount` there for
+`member-picker.tsx`'s own separate override. The test file's `Wrap`/`WrapWithField` split collapsed
+into one `Wrap` merging both namespaces — `Combobox` now unconditionally needs `ui.combobox`
+regardless of whether it's inside a `<Field>`. 24 tests green, commit `b3ad776`. R2 is fully closed.
+
+Confirmed after the ~19:46 shared-index reset the lead flagged: all of this wave's commits
+(`addf939` through `9841c39`, plus `654ec91`) are still present in `git log`, working tree clean —
+the reset touched only what was staged at that moment, not committed history.
+
+### Two removed_at readers, granted by the lead after promotion (7b2ac81)
+
+`check_ins.removed_at` (0087) is a soft delete; RLS does not hide the row. Fixed two readers that
+still counted a removed check-in as attendance: `admin-dashboard.ts`'s `checkInsTotal` (feeds the
+attendance-rate figure) and `admin-exports.ts`'s `exportAllAttendanceCsv` (the bulk export — outside
+this wave's list, the lead granted this one filter in writing). Both `.is("removed_at", null)`.
+
+Test pattern borrowed directly from `sessions-removed-check-in.test.ts` (the `memorySupabase()`
+in-memory stub + `vi.mock("@/lib/dal/session")`) — added `.not()` to that shared stub (additive only)
+since the dashboard's category query needs it even on an empty fixture. `tests/unit/
+admin-removed-check-in.test.ts`'s four cases were confirmed by hand to fail against the pre-fix
+queries (reverted the two files to `HEAD`, ran the suite, saw all four fail with the exact wrong
+numbers, restored the fix, saw them pass) before being committed — the "one that fails before the
+fix" the lead asked for, proven rather than assumed. Commit `9fd0570`.
+
+### noValidate sweep — a real finding, not just a mechanical fix
+
+Checked each of the six named forms before touching any of them, since `content`'s bug
+(`profile-form.tsx`, 7f4809f) was specifically `required` passed DIRECTLY to `<Input required>` —
+which genuinely becomes a native HTML attribute via `{...props}`. `ui/field.tsx`'s own contract is
+different: `required` passed to `<Field required>` only conveys `aria-required` through context —
+`ui/textarea.tsx`/`ui/input.tsx` never forward it as a native attribute unless a caller *also* passes
+it directly to the control (which `profile-form.tsx` did; none of these six ever did).
+
+So none of the six had an ACTIVE bug — `proposals/review-card.tsx` and `sessions/session-controls.tsx`
+have no `required` control at all, by design (both already explain why in their own header comments:
+one inside a collapsed `<details>` would be unfocusable and silently block the whole form). Added
+`noValidate` to every form in all six anyway, per `16` §8.2's actual rule ("every form that renders
+the app's own error") and as a guard against a future edit making the exact `profile-form.tsx`
+mistake. One test per changed form proving the app's own error actually renders on an empty/refused
+reason — three brand-new test files (`takedown-card`, comments' `report-card`, `session-controls` had
+zero coverage before this) plus two extended (`members-table`, `proposals-review-card`). Commit
+`1402e33`.
+
+### The gated-not-found wait flake — six specs, one precise fix
+
+`goto()`'s own zero-`div[hidden][id^="S:"]` wait can time out specifically on a gated route: a
+Suspense boundary can flush before the page's own `notFound()` throws, leaving an empty hidden div
+in the body permanently, not transiently — sessions' diagnosis (172bf22). Fixed in the exact spot
+named: for every gated-not-found test case (and only those — every other `goto()` call in these six
+files, real-content navigation, is untouched) across `admin-managed-lists.spec.ts`,
+`admin-settings.spec.ts`, `admin-moderation.spec.ts`, `admin-dashboard.spec.ts`,
+`admin-members.spec.ts` and `sessions-admin-proposals.spec.ts`, `page.goto()` bare replaces
+`goto(page, url)` — the visible not-found heading `expectGatedNotFound()` (or the inline equivalent
+in the three files that don't have that named helper yet) already asserts first is the real wait.
+
+`sessions-admin-proposals.spec.ts` — not mine by filename, but it tests `/app/admin/proposals`,
+squarely inside this wave's "fixes only" grant on `proposals/**`; touched on that basis, one line,
+same pattern as the other five. Commit `c337436`.
+
+### `admin.attendance` deleted — checkin's DEC-137 move closed the loop
+
+`checkin.json` gained its own `attendance` namespace (confirmed: `src/messages/ar/checkin.json`
+line 76) as part of moving SCR-044's screen strings off `admin.json`, so the top-level
+`admin.attendance` block (both `ar`/`en`, 51 lines each — `title`, `manualTitle`, `reasonLabel`,
+`error.reason_required`, etc.) was dead. Grepped `src/` and `tests/` for `admin\.attendance` /
+`adminAr.attendance` / `adminEn.attendance` before deleting: the only hit is a comment in checkin's
+own `admin/sessions/[id]/attendance/page.tsx` confirming the move ("… `checkin.attendance`
+(`checkin.json`), not `admin.attendance`"). Re-ran the same grep after deleting — same single hit,
+now with nothing left for it to describe a stale reference to.
+
+Two other `"attendance"` keys in `admin.json` are unrelated and stayed: `admin.sessions.attendance`
+(the row-menu link label to the attendance route, read in `sessions-table.tsx:160`) and
+`admin.exports.attendance` (the CSV export card's title/note). Both confirmed to have live readers
+before touching anything, so the deletion is exactly the one dead block, nothing adjacent.
+
+`npx tsc --noEmit` clean, lint zero errors, `npx vitest run` 144/144 files, 1435/1435 tests green.
+Committed alone: `066e8b7`. Per the lead's sync-5 hold, no e2e and no `npm run test:rls` run this
+pass — both remain pending on the sync-5 results.
+
+### Sync 5 finding — the dashboard's attendance-rate Stat, value slot vs. hint slot
+
+Sync 5 (build `bfe8e2a`): six specs green on re-run (the three "failed" phone admin cases and the
+dashboard case were the harness hang/a gateway flake, not real, per the lead). One real finding from
+the drawer capture's empty-org background: `admin/page.tsx`'s attendance-rate `Stat` put the whole
+`attendanceRateEmpty` sentence («لا جلسات بدأت بعد لحساب المعدّل.») in the VALUE slot when there was
+nothing to divide by yet — stat-number size (`text-h2`), wrapping three lines. `ui/stat.tsx` (content's
+file, not touched) already has a `hint` prop built for exactly this — short value, explanation
+underneath in caption type. Fixed at the call site: value becomes `"—"` (the bare-dash convention
+already used in `moderation/{comments,photos,reports}/page.tsx` for a missing name, not a new message
+key), the sentence moves to `hint`. Populated case (`attendanceRatePct !== null`) unchanged — no hint,
+real percentage in the value slot as before.
+
+New test, `tests/components/admin/admin-dashboard-page.test.tsx` — first component test of this page,
+same mocked-DAL + real-`ar/admin.json` + `createTranslator` pattern `content`'s
+`me/certificates-page.test.tsx`/`me/calendar-page.test.tsx` established for an async Server Component
+awaited directly (`setRequestLocale: () => {}` + `getTranslations` mocked, `next/navigation` needs no
+mock since `notFound()` is never reached with non-null fixture data). Three cases: no-data value/hint
+split, populated case has no hint, axe-clean in the no-data state. Confirmed failing against the
+pre-fix page by hand — `git show HEAD:path` over the file, ran (the placeholder test failed exactly as
+expected, `getByText("—")` found nothing), restored from a scratchpad copy, ran green again — before
+committing. `npx tsc --noEmit` clean, lint zero errors on both files, `npx vitest run` 145/145 files,
+1438/1438 tests green. Committed alone: `c2bc2b9`. Still holding the sync-5 e2e/RLS constraint.
+
+### K3 — the venues capture gap
+
+Sync 5's own review found no wave-7 venues capture: the only file on disk
+(`scr-046-venues-390-rtl-phone.png`) predates promotion, from sessions' M2 walk, not this wave's spec;
+`wave7-console-layout-untouched-390.png` is `/app/admin/exports`, not venues. Added a venue seed row to
+`admin-managed-lists.spec.ts`'s `beforeAll` (same reasoning as its existing categories/companies rows —
+the add-flow tests are desktop-only, so the phone project's org would otherwise reach the capture with
+zero rows) and a new phone-only test producing `wave7-console-venues-populated-390-rtl-phone.png`
+through the same `review()` helper (honours `E2E_SHOTS_DIR`, the same overflow/dir/viewport assertions
+categories and companies already get). `npx tsc --noEmit` clean, lint zero errors; not run locally —
+matching how captures land this wave, the next sync build produces it and the lead opens it. Committed
+alone: `4ee8005`.
+
+### Sync 6 finding — the same status-cell defect on all three managed lists, not just venues
+
+K3 closed (the lead opened `wave7-console-venues-populated-390-rtl-phone.png`), but flagged one thing
+in it: the card's «الحالة» row had a label with no value for the active venue (السعة and الجلسات
+القادمة both had values beside them). Root cause, found by reading `ui/data-table.tsx`'s card mode
+(content's file, not touched): it always renders an `onCard` column's label, with no notion of "skip
+this field" — `venues-table.tsx`'s own status `cell()` returned a `Badge` only for the deactivated case
+and `null` otherwise, so the active case's value slot was always empty on the phone card (the desktop
+table has the same gap, just less visible next to a `Badge`-shaped column that simply isn't there).
+
+Checked `categories-table.tsx` and `companies-table.tsx` before fixing anything — identical `cell()`
+shape, same defect, same three-tables-built-together reasoning `venues-table.tsx`'s own header comment
+already names ("one list pattern three times"). Fixed all three rather than venues alone: the cell now
+always renders a `Badge` — `tone="success"` active, `tone="neutral" outline` deactivated — matching
+`admin/members/members-table.tsx`'s own status-cell convention exactly (`docs/plan/notes/console.md`
+never needed to invent a new pattern; it already existed one screen over). Added an `active` message
+key to all three namespaces, gendered per noun the same way each existing `deactivated` key already is:
+«نشط» (مكان/تصنيف, masculine) for venues and categories, «نشطة» (شركة, feminine) for companies.
+
+New test, `tests/components/admin/managed-lists-status-badge.test.tsx`, one case per table, scoped to
+the phone card `<ul>` specifically (`container.querySelector("ul")` — `getByRole("list")` is ambiguous
+against `ToastProvider`'s always-mounted `<ol>` toast region, which carries the same implicit role).
+Each table imports its own `./actions` directly (unlike `members-table.tsx`, which takes actions as
+props), so each is `vi.mock`ed the same way `me/profile-form.test.tsx` mocks
+`@/app/[locale]/app/me/actions`. Confirmed failing against the pre-fix cells by hand — reverted all
+three table files to `HEAD`, ran (all three cases failed, empty string where a Badge's text should be),
+restored from a scratchpad copy, ran green again — before committing. `npx tsc --noEmit` clean, lint
+zero errors, `npx vitest run` 146/146 files, 1444/1444 tests green. Committed alone: `7f452d6`. Still
+holding the sync-6 e2e/RLS constraint.

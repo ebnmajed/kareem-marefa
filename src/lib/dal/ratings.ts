@@ -72,7 +72,9 @@ export async function getRatingEligibility(locale: string, sessionId: string): P
   const { session, supabase } = await sessionClient(locale);
   const [{ data: sessionRow }, { data: checkIn }, { data: settings }, { data: existingRow }] = await Promise.all([
     supabase.from("sessions").select("id, state, completed_at").eq("id", sessionId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+    // ★ A removed check-in grants nothing (REQ-CHK-017): the database refuses the
+    // rating (0087, POL-ratings.write_self_excludes_removed), so the gate agrees.
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
     supabase.from("org_settings").select("rating_window_days").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("ratings")
@@ -258,4 +260,33 @@ export async function getRatingsForAdmin(locale: string, sessionId: string): Pro
       ? { id: r.member_id, displayName: byId.get(r.member_id)!.display_name, avatarUrl: byId.get(r.member_id)!.avatar_url }
       : null,
   }));
+}
+
+export interface RatePageData {
+  eligibility: RatingEligibility;
+  /** `org_settings.rating_min_aggregate` — the anonymity promise's number (REQ-RAT-006). */
+  minAggregate: number;
+  /** The org's zone, so «يُغلق باب التقييم في …» is the org's date, not the server's. */
+  timeZone: string;
+}
+
+/**
+ * SCR-015's read — wave 7, add-only (DEC-137).
+ *
+ * Exactly what the rate screen renders: the eligibility, the minimum it
+ * promises, and the zone the closing date is written in. `getRatingsSummary`
+ * serves the event page's slot and also reads the presenter's and staff's
+ * aggregate, which this screen never shows.
+ */
+export async function getRatePageData(locale: string, sessionId: string): Promise<RatePageData> {
+  const { session, supabase } = await sessionClient(locale);
+  const [eligibility, { data: settings }] = await Promise.all([
+    getRatingEligibility(locale, sessionId),
+    supabase.from("org_settings").select("rating_min_aggregate, time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  return {
+    eligibility,
+    minAggregate: settings?.rating_min_aggregate ?? 3,
+    timeZone: settings?.time_zone ?? "Asia/Riyadh",
+  };
 }

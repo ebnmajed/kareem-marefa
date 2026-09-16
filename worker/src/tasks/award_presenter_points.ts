@@ -38,7 +38,13 @@ export const award_presenter_points: Task = async (payload, helpers) => {
 
   await helpers.query(`select public.award_points('session_delivered', $1, 'session_delivered', $2, $2)`, [member_id, session_id]);
 
-  const { rows: checkIns } = await helpers.query<{ id: string }>(`select id from public.check_ins where session_id = $1`, [session_id]);
+  // REQ-CHK-017 (DEC-141): a check-in an admin removed earns its presenter nothing.
+  // award_points() skips a removed check-in only for source = 'check_in', and this
+  // award's source is 'attendee_bonus' keyed to the same row — so the filter is here.
+  const { rows: checkIns } = await helpers.query<{ id: string }>(
+    `select id from public.check_ins where session_id = $1 and removed_at is null`,
+    [session_id],
+  );
   for (const { id } of checkIns) {
     await helpers.query(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [member_id, id, session_id]);
   }

@@ -31,7 +31,15 @@
       "submitted": "Your rating was submitted",
       "updated": "Your rating was updated",
       "sessionStarsLabel": "Session star rating",
-      "presenterStarsLabel": "Presenter star rating"
+      "presenterStarsLabel": "Presenter star rating",
+      "breadcrumb": "Rating",
+      "starCount": "{count, plural, =0 {no stars} one {one star} other {{value} stars}}",
+      "errorSummaryTitle": "We couldn't send your rating",
+      "errorSummaryDescription": "What you typed is still here.",
+      "submittedBody": "You can change it until rating closes.",
+      "backToSession": "Back to the session",
+      "yourRating": "Your rating",
+      "submitting": "Sending…"
     },
     "states": {
       "notCompleted": "Rating opens once the session has ended",
@@ -51,7 +59,9 @@
       "already_rated": "You already rated this session",
       "not_permitted": "You do not have permission for this action",
       "window_closed": "Rating is closed for this session",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "starsRequired": "Choose a number of stars",
+      "commentTooLong": "Those notes are longer than they need to be — shorten them a little"
     }
   }
 }

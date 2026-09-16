@@ -284,6 +284,8 @@ export interface SchedulableSession {
   rsvpDeadlineAt: string | null;
   cancellationCutoffAt: string | null;
   certificateMode: "off" | "automatic" | "review";
+  /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
+  allowWalkIns: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
   missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
@@ -305,7 +307,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, time_zone",
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, time_zone",
     )
     .eq("id", id)
     .maybeSingle();
@@ -334,6 +336,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     rsvpDeadlineAt: data.rsvp_deadline_at,
     cancellationCutoffAt: data.cancellation_cutoff_at,
     certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
+    allowWalkIns: data.allow_walk_ins === true,
     timeZone: data.time_zone,
     missing,
   };
@@ -361,6 +364,15 @@ export const scheduleInput = z
     cancellationCutoffAt: z.iso.datetime({ offset: true }).nullable(),
     certificateMode: z.enum(["off", "automatic", "review"]),
     language: z.enum(["ar", "en"]),
+    /**
+     * Walk-ins as a publishing setting (DEC-117, DEC-118, contract 1, 0085).
+     * ★ `null` means UNCHANGED — `schedule_session()` keeps the stored value
+     * (`coalesce(p_allow_walk_ins, target.allow_walk_ins)`, DEC-141 correction B).
+     * It is never coerced to `false`: a save that does not carry the field must
+     * not switch walk-ins off. An absent key parses to `null` too, so a schedule
+     * form without the control saves exactly as before.
+     */
+    allowWalkIns: z.boolean().nullable().default(null),
   })
   .strict();
 export type ScheduleInput = z.infer<typeof scheduleInput>;
@@ -381,6 +393,8 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_cancellation_cutoff_at: input.cancellationCutoffAt,
     p_certificate_mode: input.certificateMode,
     p_language: input.language,
+    // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».
+    p_allow_walk_ins: input.allowWalkIns,
   });
   if (error) throw new Error(`schedule_session: ${error.message}`);
 }
@@ -390,6 +404,91 @@ export async function publishSession(locale: string, sessionId: string): Promise
   const { supabase } = await sessionClient(locale);
   const { error } = await supabase.rpc("publish_session", { p_session: sessionId });
   if (error) throw new Error(`publish_session: ${error.message}`);
+}
+
+// ── A session's heading, for the screens under it ──────────────────────────
+
+export interface SessionHeading {
+  id: string;
+  title: string;
+  state: SessionState;
+  startsAt: string | null;
+  /** The session's zone, else the org's — the room's clock (OQ-018). */
+  timeZone: string;
+}
+
+/**
+ * What a screen UNDER a session needs to say which session it is — the rate
+ * screen's breadcrumb and date (SCR-015, wave 7). `null` for an id the viewer
+ * cannot see, through `sessions_read`, so the screen can `notFound()` rather
+ * than explain a rule about a session that is not there for them.
+ */
+export async function getSessionHeading(locale: string, id: string): Promise<SessionHeading | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  const [{ data, error }, { data: settings }] = await Promise.all([
+    supabase.from("sessions").select("id, title, state, starts_at, time_zone").eq("id", id).maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    title: data.title as string,
+    state: data.state as SessionState,
+    startsAt: (data.starts_at as string | null) ?? null,
+    timeZone: (data.time_zone as string | null) ?? (settings?.time_zone as string | undefined) ?? "Asia/Riyadh",
+  };
+}
+
+// ── The sessions a member presented, for their profile ─────────────────────
+
+export interface PresentedSession {
+  id: string;
+  title: string;
+  state: SessionState;
+  startsAt: string | null;
+  endsAt: string | null;
+  durationMinutes: number | null;
+  timeZone: string;
+}
+
+/**
+ * A33's «الجلسات التي قدّمها» — visible at every tier (SCR-020, wave 7).
+ *
+ * Accepted presenter rows only, and only sessions a member can see through
+ * `sessions_read` and would recognise as having happened or being on the
+ * schedule: a draft, an approved session and a cancelled one are not a
+ * member's record of presenting. Newest first.
+ */
+export async function listSessionsPresentedBy(locale: string, memberId: string, limit = 12): Promise<PresentedSession[]> {
+  if (!z.uuid().safeParse(memberId).success) return [];
+  const { session, supabase } = await sessionClient(locale);
+  const { data: rows, error } = await supabase.from("session_presenters").select("session_id").eq("member_id", memberId).eq("accepted", true);
+  if (error) throw new Error(`session_presenters: ${error.message}`);
+  const ids = (rows ?? []).map((r) => r.session_id as string);
+  if (ids.length === 0) return [];
+  const [{ data, error: sessionsError }, { data: settings }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone")
+      .in("id", ids)
+      .in("state", ["published", "in_progress", "completed", "archived"])
+      .order("starts_at", { ascending: false })
+      .limit(limit),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (sessionsError) throw new Error(`sessions.select: ${sessionsError.message}`);
+  const orgZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
+  return (data ?? []).map((s) => ({
+    id: s.id as string,
+    title: s.title as string,
+    state: s.state as SessionState,
+    startsAt: (s.starts_at as string | null) ?? null,
+    endsAt: (s.ends_at as string | null) ?? null,
+    durationMinutes: (s.duration_minutes as number | null) ?? null,
+    timeZone: (s.time_zone as string | null) ?? orgZone,
+  }));
 }
 
 // ── The event page (SCR-012, REQ-SES-013, REQ-SES-008, REQ-SES-010) ─────────
@@ -464,11 +563,26 @@ export interface EventSession {
   viewerRelation: ViewerRelation;
   /**
    * ★ `sessions.allow_walk_ins` (DEC-065). Not in DEC-092's amendment and
-   * needed by it: `canOfferCheckInLink()` takes a THIRD input the
+   * needed by it: `canOfferCheckInFor()` takes an input the
    * (phase, relation) pair cannot encode, because a walk-in switch turns
    * `none` from ineligible into eligible for that session alone.
    */
   allowWalkIns: boolean;
+  /**
+   * ★ Contract 2 (checkin, `5248e6b`; DEC-113, DEC-116, REQ-CHK-015) —
+   * `sessions.check_in_open`, the switch the room opens and closes by hand.
+   */
+  checkInOpen: boolean;
+  /**
+   * ★ Contract 2 — the RAW facts `viewerRelation` is derived from, for
+   * `canOfferCheckInFor()`. The check-in window runs to `ends_at + 2 h`,
+   * past the moment the phase reads `ended` and a relation stops being
+   * «confirmed», so a relation cannot say whether the link is still owed.
+   * Neither is a new read: both were already fetched to derive the relation.
+   */
+  rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
+  /** The viewer's ACTIVE check-in — `removed_at is null` (REQ-CHK-017). */
+  checkedIn: boolean;
 }
 
 /**
@@ -489,7 +603,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
+      "id, title, abstract, state, level, language, category_id, duration_minutes, starts_at, ends_at, time_zone, capacity, rsvp_deadline_at, cancellation_cutoff_at, cancellation_reason, allow_walk_ins, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, categories(name), venues(name, address, map_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -516,7 +630,11 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   const [presentersRes, mineRes, checkInRes, tagsRes] = await Promise.all([
     supabase.from("session_presenters").select("member_id, accepted").eq("session_id", id).eq("accepted", true),
     supabase.from("rsvps").select("status").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).maybeSingle(),
+    // ★ `removed_at is null` (REQ-CHK-017, 0087): an admin's removal soft-deletes
+    // the row and RLS does not hide it, so the reader says «active» itself —
+    // and with a removed row beside a re-added one, `.maybeSingle()` would
+    // otherwise refuse two rows.
+    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
     supabase.from("session_tags").select("tags(label, normalised)").eq("session_id", id),
   ]);
   const { data: presenters, error: pErr } = presentersRes;
@@ -535,15 +653,9 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
   });
-  const relation = deriveRelation(
-    {
-      isStaff: viewerIsStaff,
-      isPresenter: viewerIsPresenter,
-      rsvpStatus: (mineRes.data?.status as "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | undefined) ?? null,
-      checkedIn: Boolean(checkInRes.data),
-    },
-    phase,
-  );
+  const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
+  const checkedIn = Boolean(checkInRes.data);
+  const relation = deriveRelation({ isStaff: viewerIsStaff, isPresenter: viewerIsPresenter, rsvpStatus, checkedIn }, phase);
 
   return {
     id: row.id as string,
@@ -571,6 +683,9 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     viewerIsStaff,
     viewerRelation: relation,
     allowWalkIns: Boolean(row.allow_walk_ins),
+    checkInOpen: row.check_in_open === true,
+    rsvpStatus,
+    checkedIn,
   };
 }
 

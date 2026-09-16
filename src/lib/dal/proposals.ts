@@ -42,6 +42,8 @@ export interface ProposalSummary {
   title: string;
   abstract: string;
   categoryName: string | null;
+  /** The category's id, so an edit can pre-select it. */
+  categoryId: string;
   level: ProposalLevel;
   state: ProposalState;
   /** The admin's written reason on a rejection or a change-request (REQ-PRO-005). Read-only here. */
@@ -198,13 +200,14 @@ async function presentersOf(
   }));
 }
 
-const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
+const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, category_id, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
 
 type ProposalRow = {
   id: string;
   title: string;
   abstract: string;
   proposer_id: string;
+  category_id: string;
   level: string;
   state: string;
   decision_reason: string | null;
@@ -224,6 +227,7 @@ function toSummary(row: ProposalRow, presenters: ProposalPresenter[], viewerId: 
     id: row.id,
     title: row.title,
     categoryName: category?.name ?? null,
+    categoryId: row.category_id,
     level: row.level as ProposalLevel,
     state: row.state as ProposalState,
     decisionReason: row.decision_reason,
@@ -234,6 +238,13 @@ function toSummary(row: ProposalRow, presenters: ProposalPresenter[], viewerId: 
   };
 }
 
+/** SCR-018's read: the summary plus the two fields only its own page shows. */
+export interface ProposalDetail extends ProposalSummary {
+  targetAudience: string | null;
+  /** The proposer's note to the reviewer — returned to the PROPOSER only, never to a named co-presenter. */
+  adminNotes: string | null;
+}
+
 /**
  * One proposal the caller can see, or null.
  *
@@ -241,15 +252,68 @@ function toSummary(row: ProposalRow, presenters: ProposalPresenter[], viewerId: 
  * of the proposal too, and `proposals_read_own_or_staff` already draws that
  * line. Adding an application filter here would take back what the policy
  * grants, and would hide the very row a co-presenter has to answer.
+ *
+ * ★ `admin_notes` is readable by a co-presenter at the row level — the policy
+ * cannot hide one column — so the DTO withholds it: it is what the proposer
+ * wrote to the reviewer, not to the people they named.
  */
-export async function getProposal(locale: string, id: string): Promise<ProposalSummary | null> {
+export async function getProposal(locale: string, id: string): Promise<ProposalDetail | null> {
   if (!z.uuid().safeParse(id).success) return null;
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("proposals").select(PROPOSAL_COLUMNS).eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("proposals").select(`${PROPOSAL_COLUMNS}, target_audience, admin_notes`).eq("id", id).maybeSingle();
   if (error) throw new Error(`proposals.select: ${error.message}`);
   if (!data) return null;
-  const row = data as unknown as ProposalRow;
-  return toSummary(row, await presentersOf(supabase, row.id, row.proposer_id), session.memberId);
+  const row = data as unknown as ProposalRow & { target_audience: string | null; admin_notes: string | null };
+  const summary = toSummary(row, await presentersOf(supabase, row.id, row.proposer_id), session.memberId);
+  return { ...summary, targetAudience: row.target_audience, adminNotes: summary.viewerIsProposer ? row.admin_notes : null };
+}
+
+/** The states a proposer may edit in (`proposals_update_own_editable`, `0010`). */
+export const EDITABLE_PROPOSAL_STATES: readonly ProposalState[] = ["draft", "changes_requested"];
+
+/**
+ * The proposer edits their own draft, or answers a change request
+ * (REQ-PRO-005, REQ-PRO-006, SCR-018's edit path, DEC-141).
+ *
+ * What the database allows, and so what this asks for:
+ *
+ *   draft             → draft (save) or submitted (send)
+ *   changes_requested → submitted, and only submitted: `0011`'s guard refuses
+ *                       → draft, and the policy's `with check` refuses staying
+ *                       in changes_requested
+ *
+ * `submit` is therefore forced for a change request by the caller, and a
+ * refusal of any kind — a state that moved under the member, someone else's
+ * proposal, a co-presenter — arrives as zero rows and becomes `not_editable`.
+ * `decision_reason` is absent from the column grant, so the reason stays as
+ * the reviewer wrote it; SCR-018 shows it only in the states it belongs to.
+ * The transition's audit row and `MSG-proposal_submitted` are the existing
+ * state triggers (`0011`, `0039`).
+ */
+export async function updateProposal(locale: string, id: string, input: ProposalInput, submit: boolean): Promise<{ id: string; state: ProposalState }> {
+  if (!z.uuid().safeParse(id).success) throw new Error("not_editable");
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("proposals")
+    .update({
+      title: input.title,
+      abstract: input.abstract,
+      category_id: input.categoryId,
+      level: input.level,
+      target_audience: input.targetAudience,
+      expected_duration_minutes: input.expectedDurationMinutes,
+      admin_notes: input.adminNotes,
+      state: submit ? "submitted" : "draft",
+    })
+    .eq("id", id)
+    .select("id, state");
+  if (error) {
+    if (error.code === "23514" || error.code === "42501") throw new Error("not_editable");
+    throw new Error(`proposals.update: ${error.message}`);
+  }
+  const row = data?.[0];
+  if (!row) throw new Error("not_editable");
+  return { id: row.id as string, state: row.state as ProposalState };
 }
 
 /**

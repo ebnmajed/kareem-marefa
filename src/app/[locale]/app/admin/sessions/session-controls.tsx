@@ -4,7 +4,6 @@ import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Prose } from "@/components/ui/prose";
 import { useToast } from "@/components/ui/toast";
 import type { SessionAction } from "@/lib/dal/sessions";
@@ -61,10 +60,6 @@ export function SessionControls({
     else if (result.error) toast.show({ title: t(result.error), tone: "error" });
     return result;
   }, emptyTransitionState);
-  // ★ DEC-135: a transition re-renders this session's row (its status badge,
-  // its own remaining actions) — exactly the shape React 19.2.4 can lose the
-  // retry for; a workaround, not a feature, delete with `pending-nudge.ts`.
-  usePendingNudge(pending);
   const formId = useId();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -91,7 +86,11 @@ export function SessionControls({
 
   const plain = actions.filter((a) => a !== "cancel");
   return (
-    <form id={formId} action={formAction} className="mt-3">
+    // `noValidate` — `16` §8.2's rule for any form that renders the app's
+    // own error (`state.error` below). No `required` control here at all
+    // (the header comment explains why on purpose) — set anyway so it stays
+    // true if that ever changes.
+    <form id={formId} action={formAction} noValidate className="mt-3">
       {state.error ? (
         <p role="alert" className="mb-3 text-body-sm text-fg-heading">
           {t(state.error)}

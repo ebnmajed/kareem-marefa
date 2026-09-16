@@ -221,7 +221,12 @@ async function review(p: Page, name: string) {
  */
 async function scan(page: Page, path: string) {
   await page.goto(path);
-  await expect(page.locator("main, [role=main]").first()).toBeVisible();
+  // The page's own h1, not `main`: app/loading.tsx streams a skeleton inside
+  // `main` first, and `/app/platform`'s redirect to the org list then runs in
+  // the browser (DEC-134's streaming model). Evaluating before that navigation
+  // lands destroyed the context on the phone project, twice in sync 5.
+  // The skeleton carries no h1; every platform page's PageHeader does.
+  await expect(page.locator("main h1, [role=main] h1").first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
@@ -298,12 +303,23 @@ test("★ REQ-ADM-002: the org's own screens are closed to a super admin, and so
   for (const s of never) expect(body, `the members export carries nothing an org owns (${s})`).not.toContain(s);
 });
 
+// ★ DEC-134: `app/loading.tsx` puts every `/app` page inside a Suspense boundary,
+// so the status is committed before the gate runs, and a gated page's
+// `notFound()` streams 200 with `noindex` and the not-found page. What the gate
+// protects is the content, so that is what is asserted: the not-found page is
+// the only `h1`, and nothing the page guards rendered.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+}
+
 test("REQ-ADM-001: the console answers NOT FOUND for an org admin, not forbidden", async ({ context, page }) => {
   await signInMember(context, a.adminEmail);
-  const response = await page.goto("/ar/app/platform/orgs");
+  await page.goto("/ar/app/platform/orgs");
   // A 403 would confirm the console exists and that this account is not on
-  // it. 404 says nothing at all.
-  expect(response!.status()).toBe(404);
+  // it. The not-found page says nothing at all — streamed, so 200 (DEC-134).
+  await expectGatedNotFound(page);
 });
 
 test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, and the org's own log records both", async ({ context, page }) => {

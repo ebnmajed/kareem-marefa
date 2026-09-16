@@ -3,7 +3,6 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { RouteError } from "@/components/ui/route-error";
 
 // sessions's file — `16` §7.4, REQ-UIX-016, DEC-091, DEC-101.
@@ -16,14 +15,13 @@ import { RouteError } from "@/components/ui/route-error";
 // Next hands `not-found.tsx` no props, so `reset` re-fetches the current route
 // rather than re-running a boundary that was never entered: harmless if the
 // session really is gone — the same page renders again — and a real recovery
-// if a member arrived a moment before it was published. The refresh is a
-// tracked transition and nudged, so a retry React loses still commits (DEC-135).
+// if a member arrived a moment before it was published. The refresh runs in a
+// transition, so the page stays interactive while it re-renders.
 export default function SessionNotFound() {
   const t = useTranslations("ui.error");
   const locale = useLocale();
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  usePendingNudge(pending);
+  const [, startTransition] = useTransition();
   return (
     <RouteError
       title={t("notFoundTitle")}

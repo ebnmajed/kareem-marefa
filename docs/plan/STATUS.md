@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **WAVE 6 COMPLETE — PR #23 ready for the owner to merge.** All 14 routes reach the system (16/16 strict) and every one was captured at 390 px RTL on the final build and looked at (the photo-report queue only empty — its populated card is spec-covered, row 14); the full gate set ran on the final commits (`build` · `qa` 44/44 · `visual` 0.000% on the frozen six · `db:reset`+RLS 746 · e2e · allowlists shrunk). **Do not start wave 7 without a new ownership map.** The wave-6 record is directly under START HERE.
+**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. ★ **`0082`–`0091` rehearsed on production's schema: all ten clean, RLS 791/791.** **The owner, in this order: (1) `supabase db push` `0082`–`0091` to production, (2) runs `DEC-143`'s scoped data fix, (3) merges PR #24 — the push precedes the merge (below) — and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-135`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-137`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-7 map is the map in force** (`DEC-137`); wave 6's and wave 5's are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -69,13 +69,376 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 6's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-130`). A
-wave-7 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 7's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-137`). A
+wave-8 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 6 — COMPLETE on `wave-6/screens` (PR #23, the owner merges) — fourteen routes onto the M9 system (`DEC-130`)
+## ★★ WAVE 7 — COMPLETE on `wave-7/screens` (PR #24, the owner merges) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
+
+**The owner's goal, in substance:** put the remaining member and staff routes onto the M9 design system —
+about eighteen routes in the brief, **twenty-two pages and the admin IA** once every route is named — with
+four teammates, and build the manual check-in switch **with** the screens it lives on. **Do not start wave 8.**
+
+**The measure** (`DEC-137`, `DEC-130`'s with the capture made checkable). A row closes only when **(1)**
+`node scripts/ui-reach.mjs --wave7` shows the page reaching an **M9** primitive (strict), **and (2)** a 390 px
+RTL capture exists **at the path the row cites** — `.qa-shots/rtl/wave7-<track>-<route>-<state>.png` in the
+**main checkout**, phone project, `390 × 844` — from a production build the row names by commit, **opened by
+the lead**, with the spec that regenerates it named in the row. `.qa-shots/` is gitignored: the row text is
+the only artefact anyone downstream can trust.
+
+**Baseline on `7d50e64`:** `--wave7` **4/23 strict** (13/23 loose). By group: `(auth)` 3/3 · `/app` 1/1 ·
+`app/sessions` 4/6 · `app/admin` 6/24 · `app/me` **0/7** · `app/platform` 0/7 (not this wave).
+
+### Before anyone spawned — task one and Step 0
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **Task one — `DEC-136`**: `patch-package` (lockfile through Docker), `patches/next+16.2.10.patch` on the four client builds of Next's vendored `react-dom`, `ui/pending-nudge` and all 21 referencing files removed in the same commit | `7d50e64` | the probe on production builds, same machine, back to back — see below |
+| ✅ | **Step 0**: the wave-7 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`console` → **opus**); this checklist; `DEC-137`; `scripts/ui-reach.mjs --wave7` | the Step 0 commit | — |
+
+**The reserve probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, one press each, STUCK = no
+«تم تأكيد حجزك» within 10 s):
+
+| Build | Result |
+|---|---|
+| nudge deleted, `react-dom` **unpatched** (the control) | `105 STUCK STUCK STUCK 104 STUCK STUCK 107 STUCK 104 105 105 104 STUCK 105 STUCK` — **9 of 16 hung** |
+| nudge deleted, **patched**, run 1 | **16/16** — 132, then 103–108 ms |
+| nudge deleted, **patched**, run 2 | **16/16** — 103–107 ms |
+
+At a one-in-three hang rate, 32 clean presses by chance is about 2 in a million; the control shows the
+machine reproduces the bug today. `tests/unit/react-dom-ping-patch.test.ts` fails on the unpatched copy
+(proven) and passes patched. ⚠ An orphaned `next-server` from wave 6's verification worktree (PID 98585,
+`ppid 1`) spun at 100 % of one core throughout; the lead's kill was refused by the permission classifier, so
+**the owner removes it** — the control reproduced under the same load, so the A/B stands.
+
+**Gates on task one's tree (`7d50e64`):** `tsc` clean · `lint` **0 errors** (`✖ 20 problems (0 errors, 20
+warnings)`, unchanged) · vitest **115 files, 1220 passed** · `qa` **44 passed, 0 failed** · `visual`
+`wave-6-final → wave-7-task-one` **0.000 % on all eight pairs** · e2e over every spec touching a changed file
+(20 specs, both projects): **105 passed**, 7 failed; re-run alone, three pass (the local gateway's «invalid
+response from the upstream server» at sign-in, and a proposal save that failed in the same window) and four
+fail deterministically — `proposal-materials:140` and `tasks:143` on both projects — **and fail identically on a
+build of `main` (`f4bfb82`) in the verification worktree**, so they are carried below. `db:reset` + RLS ran
+with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 todo** — and `build`, `qa` 44/44 and `visual` 0.000 % on all eight pairs again on that tree.
+
+### The checklist — every route named
+
+| # | Owner | Route / work | Serves | (1) `--wave7` | (2) capture — path · spec · build | State |
+|---|---|---|---|---|---|---|
+| L1 | lead | **task one** — the patch, the nudge deleted | `DEC-135`, `DEC-136` | — | the probe above | **closed** `7d50e64` |
+| L2 | lead | **`global-error` resolved by a test** — throw in `[locale]/layout.tsx` on a production build; if ours does not render, move it to `src/app/global-error.tsx` | `REQ-UIX-016`, `16` §7.4, `DEC-138` | — | ✅ worktree probe at `c9e67ee` (`$scratchpad/global-error-probe*/`, not a cited capture): **beside the locale layout Next rendered its English «This page couldn't load», no `lang`/`dir`; at `src/app/` ours renders on `/ar`, `/ar/sign-in`, `/en`** — opened by the lead | **closed** — moved to `src/app/global-error.tsx`; `route-coverage --kind=error` asserts the new path; `build`, `qa` 44/44, `visual` 0.000 % on the tree with the move |
+| L3 | lead | **`ui/splash`** — built to `16` §7.2 and measured; kept only if `/app`'s LCP holds | `REQ-UIX-006`, `REQ-NFR-008`, `DEC-142` | — | Lighthouse A → B → A in the worktree (35 runs): `/app` LCP 2862/2936 without, **3010** with; event page 3009/3010 without, **3167** with, FCP +450 ms | **closed — dropped** (`DEC-142`); the stub and `SplashProps` deleted |
+| L4 | lead | **`REQ-EVT-010` reconciled** with the shipped photo pipeline (processing, then visible) | `REQ-EVT-010`, `REQ-EVT-011`, `DEC-139` | — | — | **decided** (`DEC-139`): the requirement bends to the strip; the no-reload clause stays and is row T8 |
+| L5 | lead | **`DEC-135` reported upstream** with the instrumented-`react-dom` reasoning | `DEC-136`, `DEC-140` | — | — | **closed, no report filed** (`DEC-140`): React already fixed it — facebook/react#36134, in `react-dom@19.3.0` and vendored by `next@16.3.5`. The patch stays this wave; **the owner schedules the upgrade that retires it** |
+| L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017`, `DEC-141` | — | — | **closed** `7b2ac81` — `0084`–`0089` (`checkin`) and `0090` (`sessions`' admin member profile); `db:reset` clean, `policy-diff` agrees, trace no gaps, RLS 790/791. The one red is `content`'s own `photos-broadcast` case from `7c6f9e5`, routed. Six older assertions of the replaced mechanisms were retired or re-aimed, each with a successor in `checkin`'s suites. Both worker readers skip removed check-ins. **Still open:** the app readers that ignore `removed_at`, routed to `checkin` (`checkin.ts`, `rsvp.ts`), `sessions` (`sessions.ts`, `search.ts`, `ratings.ts` by written grant) and `console` (`admin-dashboard.ts`, `admin-exports.ts` by written grant). ★ **Before merge, the owner rehearses `0083`–`0090` against a production schema dump, as with `0082`.** |
+| L7 | lead | ★ **Arabic-Indic digits seeded into every org's points catalogue** — found in `wave7-content-points-*.png`; `0083` fixes the seed, `numerals-seeds.test.ts` red before and green after | `REQ-INT-006`, `DEC-124`, `DEC-143` | — | — | code **closed**; ★ **production rows need the owner's scoped data fix** (`DEC-143`) |
+| L8 | lead | ★ **the primary button's glint visible at rest in RTL** — on every primary `ui/button` since M9, found in `wave7-sessions-public-card-*.png` | `REQ-UIX-001` | — | worktree sign-in capture at `07a2f3b` + the fix: a clean button; `visual` 0.000 % on all eight frozen pairs | **closed** `7da3a50` |
+| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ | `wave7-checkin-check-in-ready.png` · `wave7-checkin-check-in-closed.png` · `checkin.spec.ts` · `70bfb21` (final gates) | **closed** — opened by the lead: the six-box form, and «أُغلق تسجيل الحضور لهذه الجلسة» |
+| C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | ✓ | `wave7-checkin-host-open.png` · `wave7-checkin-host-closed.png` · `checkin.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead: the switch closes and reopens, the live code stays visible, «تم إغلاق تسجيل الحضور» |
+| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | ✓ | `wave7-checkin-attendance-remove-dialog.png` · `wave7-checkin-attendance-removed.png` · `admin-attendance.spec.ts` · `70bfb21` (final gates) | **closed** — ★ `admin-attendance:319` (REQ-CHK-017, the removal through the confirm dialog) green on both projects; opened by the lead: the dialog names member and session and states the reversal and revocation, the removed row keeps its reason; the table scrolls in its own keyboard region at 390 |
+| C4 | `checkin` | the switch and its `ends_at + 2 h` ceiling — SQL, RLS, the matrix column | `REQ-CHK-015`, `016`, `DEC-113`, `DEC-116` | ✓ | — | **closed** — `0084`/`0089` promoted `7b2ac81`, RLS 791/791 at `e73b239`; the matrix reads `checkInIneligibleReason()` (`34d4c08`); the event page and timeline follow the switch (`a55cf37`, `b3e5837`); `checkin.spec:222` green at `bfe8e2a` |
+| C5 | `checkin` | **the reversal** — a compensating `reversal` ledger entry with its own key; `revoke_certificate()`; the late-job race | `REQ-CHK-017`, `REQ-PTS-013`, `REQ-CRT-004` | ✓ | — | **closed** (SQL) — `0087`/`0088` promoted `7b2ac81` with the reversal, revocation, no-show symmetry and late-job rows green; every reader skips removed rows (`6178109`, `5248e6b`, `9fd0570`, workers in `7b2ac81`); the entry renders on `me/points` (`8ed4bf8`). The admin's removal UI is C3 |
+| C6 | `checkin` | walk-ins as a publishing setting — `schedule_session()`'s parameter, the field on SCR-043, `set_session_walk_ins()` retired | `REQ-CHK-010`, `DEC-117`, `DEC-118` | ✓ | `wave7-checkin-schedule-walk-ins.png` · `checkin-schedule-walk-ins.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead: a stored-on value renders checked, the guard for `343991d` |
+| S1 | `sessions` | `/app/propose` — the largest form in the product | SCR-017 · `REQ-PRO-001`…, `REQ-UIX-009`, `010` | ✓ | `wave7-sessions-propose-empty.png` · `wave7-sessions-propose-error.png` · `wave7-sessions-propose.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; `sessions-propose:207` phone strict locator open (spec) |
+| S2 | `sessions` | `/app/propose/[id]` — my proposal | SCR-018 · `REQ-PRO-005` | ✓ | `wave7-sessions-proposal-pending.png` · `wave7-sessions-proposal.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| S3 | `sessions` | ★ `/app/sessions/[id]/rate` — ratings only, stars fill from the right | SCR-015 · `REQ-RAT-001`…`006` | ✓ | `wave7-sessions-rate-empty.png` · `wave7-sessions-rate.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; stars fill from the right |
+| S4 | `sessions` | `/s/[id]` — the public card, a real 404 | SCR-007 · `DEC-066`, `DEC-134` | ✓ | `wave7-sessions-public-card-open.png` · `wave7-sessions-public-card.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; navy placeholder (`0d69474`), real 404 case green |
+| S5 | `sessions` | ★ `/app/members/[id]` — the two-tier profile | SCR-020 · `REQ-PRF-*`, A33 | ✓ | `wave7-sessions-profile-member.png` · `wave7-sessions-profile.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| S6 | `sessions` | ★ `/app/leaderboards` — members and سباق الشركات | SCR-027, SCR-028 · `REQ-LDR-*` | ✓ | `wave7-sessions-leaderboards-members.png` · `wave7-sessions-leaderboards-companies.png` · `wave7-sessions-leaderboards.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| T1 | `content` | ★ `/app/me` — the profile and the hub, with `me/layout.tsx` | SCR-021 · `REQ-PRF-001`…, `16` §6.5 | ✓ | `wave7-content-me-populated-saved.png` · `wave7-content-me.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead; the company select keeps its saved value (`bd517f6`: a success did not bump `attempt`, and a mounted select never re-syncs `defaultValue`) |
+| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | ✓ | `wave7-content-points-reversal.png` · `points.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead at full resolution: the reversal reads «-20» |
+| T3 | `content` | ★ `/app/me/certificates` — issued and revoked | SCR-023 · `REQ-CRT-*` | ✓ | `wave7-content-certificates-issued-and-revoked.png` · `wave7-content-certificates.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; serial and code LTR |
+| T4 | `content` | ★ `/app/me/bookmarks` | SCR-024 · `REQ-DSC-006` | ✓ | `wave7-content-bookmarks-populated.png` · `bookmarks.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | ✓ | `wave7-content-calendar-connected.png` · `wave7-content-calendar.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; no token in sight |
+| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | ✓ | `wave7-content-notifications-preferences.png` · `wave7-content-notifications.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; the 390 px «overflow» was the old helper counting tabs inside the strip's own scroller (`e3633bc`) |
+| T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | ✓ | `wave7-content-privacy-deactivate-confirm.png` · `privacy.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead; confirm in `ui/dialog` |
+| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | ✓ | — | **closed at the component and RLS layers** — `0091` (`e73b239`) proven by `photos-broadcast.test.ts`, the widget by its component test; not driven end-to-end, because the worker's processing step is outside the e2e stub. Recorded as such, not claimed as an e2e |
+| K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ | `wave7-console-rail-drawer-admin-disclosed.png` · `wave7-console-rail-drawer-moderator-disclosed.png` · `console.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | ✓ | `wave7-console-moderation-comments-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | ✓ | `wave7-console-moderation-photos-populated-390-rtl-phone.png` · `admin-moderation.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K3 | `console` | `/app/admin/venues` | SCR-046 · `REQ-ADM-*` | ✓ | `wave7-console-venues-populated-390-rtl-phone.png` · `admin-managed-lists.spec.ts` · `1a95a59` (sync 6) | **closed** — opened by the lead; the card's «الحالة» shows no value, routed to `console` |
+| K4 | `console` | `/app/admin/categories` | SCR-047 · `REQ-ADM-*` | ✓ | `wave7-console-categories-populated-390-rtl-phone.png` · `admin-managed-lists.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K5 | `console` | `/app/admin/companies` | SCR-048 · `REQ-ADM-*` | ✓ | `wave7-console-companies-populated-390-rtl-phone.png` · `admin-managed-lists.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+| K6 | `console` | `/app/admin/settings` | SCR-063 · `REQ-ADM-*` | ✓ | `wave7-console-settings-populated-phone.png` · `admin-settings.spec.ts` · `bfe8e2a` (sync 5) | **closed** — opened by the lead |
+
+★ = transferred for this wave (`DEC-137`). **Not this wave**, named in every agent file: the other twelve
+admin routes, `app/platform/**`, `verify/**`, `legal/**`, the survey, multi-day sessions (`DEC-119` … `121`),
+gradient posters and `canvasRaise` (`DEC-127`), the certificate library (`DEC-128`), `DEC-075`'s two-tab
+schedule and `0084`, objectives, tags, avatar storage, downloads, and `(marketing)/**`.
+
+### Sync 1 — 2026-09-16 — four plans approved, and what they found (`DEC-141`)
+
+All four teammates planned before editing: `checkin` `17e5772`, `sessions` `f146ff6` (+ `ce227a4`), `content`
+`ff3c6fc`, `console` `addf939` (+ `ee64527`, `893da43`). Each was read in full and answered with rulings; the
+decisions are `DEC-141`. What the plans found that was not in the brief:
+
+- ★ **`certificates.check_in_id` is `on delete restrict`** — a removal must soft-delete, and 12 migrations and
+  11 TypeScript files read `check_ins`. `checkin` writes the reader inventory before any SQL.
+- ★ **`schedule_session()`'s walk-in parameter at `default false` would have silently reset walk-ins** on every
+  reschedule — both `checkin` and `sessions` raised it; it is `default null` = unchanged.
+- **`mark_checked_in_manually()` never awarded points** (a live `REQ-CHK-008` gap) — fixed as it is re-created.
+- **A re-added member's revoked certificate is not re-issued** — `fan_out_certificates()` fires only on the edge
+  into `completed`; recorded for the certificate library (`DEC-128`), not built.
+- **`/s/[id]`'s missing card probably renders Next's English not-found** — no `not-found.tsx` covers `[locale]/s`;
+  `sessions` verifies and adds one without breaking the real 404.
+- **Hard-coded `/ar/` redirects** in three `/app/me` action files (`content`); **`proposal-materials:140` fails three
+  ways**, all spec-side (`sessions`); **`tasks.spec:143` is a wrong spec** (`content`).
+- **The account menu** links «حجوزاتي» and the profile both to `/app/me` — the lead's, after `content`'s tab strip.
+- `console`'s proposed `admin/designer` rail entry would have linked to a page that does not exist; withdrawn.
+- **`members.ts` moves to `sessions`** (one writer). **R1 and R5 landed** (`f9fa70e`); R2 (`ui/combobox` on a
+  member form) is `console`'s after the rail.
+
+### Syncs 2 and 3 — 2026-09-16 — the first real builds of wave 7, and what they found
+
+**How it was verified.** Every build is of **committed HEAD** in the verification worktree
+(`$scratchpad/wt-verify`, own `npm ci`), every e2e run against that build with `E2E_SHOTS_DIR` set to the
+main checkout's `.qa-shots/rtl`, and the lead opened each capture named below. Sync 2 at `782aa6d`;
+sync 3 at `d8f0af9` (static gates: `tsc` clean · lint 0 errors · vitest 132 files, 1358/1359 — the one
+failure fixed in `8a83df4` · `ui-lint` passes, 88 under the allowlist · `ui-reach --wave7` **21/23** · build
+green · e2e 147 passed, 22 failed, 22 not run).
+
+**Found by looking, and fixed — none of these was visible to a green spec:**
+- ★ **A light band at rest on every primary `ui/button` in Arabic**, since M9 — `.btn-sheen`'s physical
+  `translateX` parks the glint inside an RTL button (`7da3a50`, row L8).
+- ★ **Arabic-Indic digits seeded into every org's points catalogue** — «سلسلة: ٣ حضور في الشهر» (`0083`,
+  `DEC-143`, row L7; ★ production rows need the owner's scoped data fix).
+- ★ **A time broke from its «م» on every surface** — «…في 7:18» / «م» — fixed once in the shared formatter
+  with a no-break space (`07e4fc8`), then the public card's range (`58ab535`).
+- **The propose form's summary counted two fields while three showed errors**, and its «اضغط على …» line
+  was not plural-aware (`3386178`).
+- **`/app/me`'s tab strip hid two of seven tabs with no cue** (`5abdbc6`); **dead-end empty states** on
+  certificates, points and calendar (`c61ea3a`).
+- **The public card showed Next's English 404** before `2dc71e9` — now Arabic, a real 404, no retry
+  (`f9fa70e`'s optional retry).
+
+**Open from sync 3, with their owners:** `console` — the "populated" moderation and categories captures
+are **empty** and the photo-report tab never counts a seeded report (spec or product, to establish); its
+capture helpers ignore `E2E_SHOTS_DIR`; the exports page's copy still says numerals follow an org setting
+(`DEC-124`); the moderation tab strip wraps at 390. `content` — ★ **the privacy deactivation's «أُرسل طلبك»
+never appears** (possibly real); two strict locators. `sessions` — the rate specs and three strict locators
+(`a8e25d0`, pending the next build).
+
+**`592c3d2` — a shared-index sweep, left in history by ruling.** `checkin`'s SQL commit ran without a
+pathspec and carried `console`'s K6 (`admin/settings/**`, `admin-settings.spec.ts`) and `content`'s points
+and bookmarks work (`me/points/page.tsx`, `points-catalogue.tsx`, `{bookmarks,points}.spec.ts`, the deletion
+of `wave7-content-points.spec.ts`). Both owners verified their files at HEAD match what they built. **K6
+landed in `592c3d2`.** HEAD type-checked; no history was rewritten.
+
+**`checkin`'s SQL — reviewed, not yet promoted.** Six proposed files, 37 RLS cases. Every re-created
+function was diffed against its latest migration; none is based on a stale body, and the behaviours
+spot-checked hold. **Two fixes stand before promotion:** the predecessor comments dropped from 01, 04 and 05,
+and `schedule_session()` still writing `session.walk_ins_changed`. The lead's half landed ahead of it:
+`GRANTING_AFFORDANCES.live` without `checkIn`, and `parseInstant`/`scheduledEnd` exported (`d8f0af9`).
+★ **Before merge**, the promoted migrations (they alter `check_ins`' constraints on a live table) are
+rehearsed against the owner's production schema dump, as `0082` was (`DEC-132`). **Done — all ten, `0082`–`0091`;
+see «`0082`–`0091` — the rehearsal against production's schema».**
+
+**Contract changes the lead made:** `FormSummaryProps.description?`, `RouteErrorProps.retryLabel?`/`reset?`
+(`f9fa70e`); `CardMediaProps.placeholderTone?: "dark"` (`6232a8a`); `ui.combobox` strings (`3c92185`);
+`star-rating.test.tsx` → `sessions` (`25fc741`).
+
+### Sync 4 — 2026-09-16 — two harness defects found and fixed, `0091` promoted, and the valid findings routed
+
+**What made syncs 2–4 unreliable, both now fixed and measured:**
+
+1. ★ **The verification worktree had no `.env.local`**, so its build inlined no `NEXT_PUBLIC_SUPABASE_*`. Every page
+   with a browser Supabase client threw client-side into «تعذّر تحميل هذا القسم» (the event page's Realtime above
+   all), with a clean server log. A Playwright trace's console showed it. The worktree now has a two-line
+   `.env.local` (local URL, local publishable key), never a copy of the main one. **Event-page failures cited
+   from earlier worktree syncs may be this artefact.**
+2. ★ **`scripts/lib/stubbed-server.mjs` never read `next start`'s piped output.** Once a long run's `csp-report:` lines
+   filled the pipe, the server stayed listening and answered nothing, and every later test timed out at 30–35 s.
+   The phone half of both sync-4 runs collapsed this way, and `sample` on the hung process showed its main thread
+   in a blocked write. **Fixed at `c179a0d`**, measured on the same build: 1500 csp-reports, then `GET /ar`, answers
+   nothing before the fix and 200 after. `STUBBED_SERVER_LOG=<file>` now keeps the server's output.
+
+**Landed since sync 3:** `7b2ac81` (`0084`–`0090`, L6) · `e73b239` **`0091`** (T8's photo broadcast; RLS 72 files, 791
+passed) · every `check_ins` reader skips removed rows (`6178109` sessions, `5248e6b` checkin, `9fd0570` console,
+worker in `7b2ac81`) · contracts 1–3 wired (`55d40e1`, `388b46e`, `a55cf37`, `b3e5837`, `8ed4bf8`) ·
+`checkInAllowed()`/`canOfferCheckInLink()` retired (`34d4c08`) · the host-view switch (`b03f057`) · ★ **a
+walk-in hazard closed before any build shipped it** (`343991d`, then `9acc4bf`: the schedule form would have
+switched walk-ins off on any save) · the account menu (`b4539ab`) · DEC-144 · six custodian specs onto
+DEC-134 and wave 7's forms (`dd03094`, `79d3932`).
+
+**Sync 4b at `34d4c08`, the valid half** (static gates: `tsc` clean · lint 0 errors · vitest 138 files, 1407/1407 ·
+`ui-reach --wave7` **22/23**, C3 outstanding · build green). Real findings, routed:
+
+| Owner | Finding |
+|---|---|
+| `sessions` | ★ axe serious on the event page: `definition-list`/`dlitem` in the action card |
+| `sessions` | `sessions-screens:183` asserts a code dies at `ends_at`; under `DEC-141` it lives to the ceiling |
+| `sessions` | `wave7-sessions-proposal:186` — a hidden `S:` copy stays on the not-editable state |
+| `content` | `points.spec:235` and `wave7-content-certificates:111` strict locators; `wave7-content-me:93` no form alert after a cleared name (spec or product, to be established); `tasks.spec:143` carried |
+| `console` | three phone admin cases failed as the hang began — unconfirmed until the next full run |
+
+No row closes on sync 4: its captures came from builds with one or both defects. **Sync 5** is a full run at HEAD
+with both fixes and `STUBBED_SERVER_LOG`, then `reserve-probe` alone on a quiet machine.
+
+### Sync 5 — 2026-09-16 — the first clean full run: 19 rows closed
+
+**Build `bfe8e2a`** in the verification worktree, with both sync-4 fixes (`.env.local`, `c179a0d`) and
+`STUBBED_SERVER_LOG`. Static gates: `tsc` clean · lint 0 errors · vitest **144 files, 1435/1435** · `ui-reach --wave7`
+**23/23** · build green · ✗ `ui-lint` (10, all `checkin`'s two new forms, fixed `399c35f`). **e2e: 391 passed, 21
+failed, 27 did not run, in 4.2 min, with no server hang.** ★ **`reserve-probe` alone: 16/16**, 110–244 ms, so the
+`DEC-136` patch holds at HEAD.
+
+**The 21, sorted.** Eight were the local gateway's «invalid response from the upstream server» and two were load
+(the marketing TBT budget, one admin case). **Re-run alone, 16 of 18 passed**, including `budgets` (so the frozen
+landing's performance is intact). The remaining two were custodian specs, fixed and verified against this build:
+`second-org` (hidden `DataTable` copy, `58ae011`, 6/6) and the platform axe scan (streamed redirect, `2b95bc9`, 6/6 ×3).
+Real findings, routed with the build: `checkin` (`admin-attendance:177`, fixed `4fd7b6e`; captures ignored
+`E2E_SHOTS_DIR`, fixed `043c03f`) · `sessions` (`sessions-screens:183` check-in status; `sessions-propose:207` strict) ·
+`content` (signed amounts «20-»; the company select after save; `tasks:153` strict). ~~Two 390 px overflows~~ were the
+old `widerThanViewport` counting the hub's tabs inside their own scroller, fixed in the helper (`e3633bc`, 7/7). ~~The
+no-JS save~~ cannot work under `/app`: `loading.tsx` streams the page into a hidden segment only React's inline script
+reveals, and no requirement asks for no-JS under `/app` (the only no-JS contract is the frozen register form) · `console` (a dashboard `Stat` with a sentence in its value
+slot on an empty org; no venues capture).
+
+**Rows closed on captures the lead opened, all from `bfe8e2a`:** S1–S6, T3, T4, T5, T6, T7, K0, K1, K2, K4, K5, K6; and C4, C5 on their SQL, RLS and specs.
+**Open:** C1, C2, C3, C6, T1, T2, T8, K3. Each is named in its row.
+
+★ **The `noValidate` sweep.** `content` found a real bug (`7f4809f`): a `required` control with no `noValidate` lets
+the browser block the submit, so the app's own error never renders. Every wave-7 form that shows an app-side error
+now sets it (`7f4809f`, `1c9c911`, `1402e33`, `bfe8e2a`), with a test each. **Carried to M13:** eleven forms outside
+this wave with a native `required` and no `noValidate`: `platform/orgs/{org-controls,new/org-form,[id]/domains/forms}`,
+`platform/impersonate/impersonate-form`, `admin/{emails,scoring,recognition,reminders}/page`,
+`admin/sessions/[id]/certificates/page`, `designer/template-library`, and `me/privacy/forms` (deliberate:
+`reportValidity()` before the dialog). A plain grep for `required` over-reports, because `<Field required>` sets only
+`aria-required`.
+
+### Sync 6 — 2026-09-16 — 24 of 27 rows closed
+
+**Build `1a95a59`.** Static gates all green: `tsc` · lint 0 errors · vitest **145 files, 1439/1439** · `ui-reach --wave7`
+**23/23** · `ui-lint` passes · build. **e2e: 428 passed, 6 failed, 7 did not run, in 4.6 min.** The 6 were:
+- two cases of the no-JS save, skipped since (`967d1a7`);
+- `budgets` (phone) and `bookmarks:237` (phone), both passing when re-run alone (load: TBT 269 ms vs a 243 ms baseline);
+- `checkin`'s two strict locators in `admin-attendance`.
+
+**Closed on captures the lead opened:** T1, T2, K3, C2, C6. **Open:** C1 (no capture of the check-in page), C3 (the
+removal case has never run on a build), T8 (no e2e drives the no-reload path).
+
+★ **A correction, recorded so nobody trusts it later.** Sync 5's «signed amounts read "20-"» was **the lead's misreading
+of a downscaled 5,358 px capture**. At full resolution the reversal reads «-20», and `sessions` measured the same in
+Chromium: a bare `<bdi>` puts the sign first with or without the LRM. The `dir="ltr"` pins in `bd517f6` and `2c6f632` are
+harmless and correct, but the cause in their comments did not happen. `sessions`' R8 (`StatProps.valueDir`) was
+declined for the same reason. **Lesson:** a finding about glyph order is read from a full-resolution crop, never from the
+thumbnail.
+
+### The final gates — 2026-09-16 — `70bfb21`
+
+Every gate ran on one SHA, with teammates holding every database, port-3000 and commit action for the run.
+
+| Gate | Result |
+|---|---|
+| `db:reset` · `policy-diff` · `trace` | clean · migrations and `03` agree · **313 requirements · 72 entities · 147 stories · no gaps** |
+| RLS (single runner) | **72 files, 791 passed**, 4 todo, 0 deadlocks |
+| `tsc` app · worker | clean · clean |
+| lint | **0 errors** (23 warnings) |
+| vitest | **146 files, 1444/1444** |
+| `ui-reach --wave7` | **23/23** |
+| `ui-lint` | passes; the allowlist pruned to what is on disk (`e1f33e0`: 229 across 58 files) |
+| build | green, with the local `NEXT_PUBLIC_*` inlined |
+| ★ `qa` | **44 passed, 0 failed** |
+| ★ `visual` `wave-6-final → wave-7-final` | **0.000 % on all eight pairs** |
+| ★ `reserve-probe` alone (phone) | **16/16**, 103–130 ms, so `DEC-136`'s patch holds at the wave's HEAD |
+| e2e (full, both projects) | **425 passed, 6 failed**: `budgets`, `forms-propose:124` and `notify-screens:108` pass alone (load); `tasks:176` (a hidden orphaned streaming copy of the form, `DEC-145`) fixed in `05f023b` |
+| ★ e2e confirmation at `fb13d0a` (no product code changed since `70bfb21`; the same build) | **439 passed, 1 failed**: `budgets` (phone), which fails only under suite contention and passes alone twice (TBT 269 ms vs a 243 ms baseline). `tasks:176`, `bookmarks:237` and `notify-screens:108` green under full load |
+
+**Rows:** 27 of 27 are closed on their measure (T8 at the component and RLS layers, recorded as such).
+
+**Watch, not open:** `bookmarks:237` failed under full-suite load in three of five runs (the card still present 5 s
+after un-bookmarking) and never alone. `notify-screens:108` (mark-as-read) failed the same way once. Both end in Next's
+post-action refetch of the current route. The spec now waits on the action's POST and then bounds the card's removal
+(`05f023b`), so if it recurs it separates «slow» from «never updates». **If it recurs as «never updates», treat it as
+`DEC-135`'s class first.** The `budgets` spec is noisy under suite contention; its real reading is the alone run.
+
+### `0082`–`0091` — the rehearsal against production's schema (invariant 3), and why the push precedes the merge
+
+**Production is at `0081`; `0082` through `0091` are unpushed.** Wave 6 merged without pushing `0082`, so all ten
+were rehearsed together, in order, against the owner's dump — not only wave 7's.
+
+**The dump** (15,607 lines) was checked before use: **schema only, zero `COPY`/`INSERT`**, exactly at `0081` (`0081`'s
+company-points objects present; `0082`'s `org_settings.numerals` and `numeral_system` still there; none of the objects
+`0084`–`0091` introduce). **Deleted once the rehearsal had run**, along with the rehearsal container.
+
+| Step | Result |
+|---|---|
+| A fresh `postgres:17` + `scripts/ci/roles.sql` + the `supabase_realtime` publication; the dump with its `supabase_vault` line stripped | **0 errors** |
+| **`0082`–`0091` applied in order, each in one transaction, `ON_ERROR_STOP=1`** | **all ten clean** — `numerals`/`numeral_system` gone, `sessions.check_in_open` default `true` |
+| Grants on the **17 functions the ten re-create** (`check_in`, `transition_session`, `_seed_org_scoring`, `award_points`, `issue_certificate`, `session_public_card`, …) | **every execute grant and `SECURITY DEFINER` flag identical before and after** |
+| New and dropped | 5 new (`admin_member_profile`, `remove_check_in`, `set_check_in_open`, the 14-argument `schedule_session`, the `photos_broadcast` trigger), 2 dropped (the 13-argument `schedule_session`, `set_session_walk_ins`, as `DEC-118` intends). The new `schedule_session` carries the old one's grant; `photos_broadcast` has the same `PUBLIC`-on-a-trigger ACL as `0016`'s `comments_broadcast`/`reactions_broadcast` |
+| ★ **Production + `0082`–`0091` against the local chain `0001`–`0091`**, catalog by catalog (columns, enums, function bodies and grants, policies, RLS flags, triggers, constraints, indexes, table and column grants, views) | **identical, except 9 lines, none from these migrations.** 3 are rendering (`extensions.citext` vs `citext`, `extensions.gin_trgm_ops`). 1 is a production-only platform event-trigger function (`rls_auto_enable`). One is **pre-existing production drift**, identical before and after the ten, recorded below |
+| RLS suite on the rehearsal database, as dumped | 45 failures in 9 files, **every one** a missing seed or a missing non-`public` policy: bucket rows (`objects_bucket_id_fkey`), the A27 templates (`no_certificate_template`), retention periods, and the `storage`/`realtime` policies a `public`-only dump leaves out |
+| ★ **The same suite after restoring exactly those** — 6 buckets, 7 retention periods, 8 platform templates and versions, 13 `storage`/`realtime` policies, copied from the local chain (platform seed, no member data) | **72 files, 791 passed, 4 todo, 0 deadlocks** |
+
+(`graphile-worker --schema-only`, the RLS runner's first step, fails on a schema-only dump: production's
+`graphile_worker` tables are there but its migration rows are not, so it re-creates `jobs`. The suite was run
+directly; `graphile_worker.add_job` is present from the dump.)
+
+★ **Pre-existing drift, not introduced by wave 7, for the owner.** Production's `org_domains_domain_check` is
+`CHECK ((domain)::text ~ '…'::text)`, a **case-sensitive** match. The chain's is `CHECK (domain ~ '…'::citext)`,
+where citext's `~` is **case-insensitive**. On production, a domain with an upper-case letter fails the check; on
+the chain it passes. It dates from how `0004` landed on production, and none of `0082`–`0091` touch `org_domains`.
+**Not changed here:** a fix is a migration of its own, with its own rehearsal.
+
+#### ★ For wave 7, the push precedes the merge
+
+**Order: `supabase db push` (`0082`–`0091`) → `DEC-143`'s data fix → merge PR #24.**
+
+`0082` could merge first because it was **subtractive**. It dropped a column and an enum that wave 6's app code had
+already stopped reading, so that code ran correctly on production's `0081` schema, and the drop could follow.
+**`0083`–`0091` are the opposite: additive, and the app depends on them.** Merging deploys, and the deployed code
+calls what only these migrations create:
+- `schedule_session(…, p_allow_walk_ins)`, whose 14-argument signature `0085` creates while dropping the 13-argument one;
+- `remove_check_in()`, `set_check_in_open()`, `admin_member_profile()`;
+- `sessions.check_in_open`, which the event page, timeline, check-in and host screens select;
+- `check_ins.removed_at`, which every attendance reader filters on.
+
+Merging first would put that code on a schema without them. The event page's select would fail on a missing
+column, scheduling would call a signature that does not exist, and staff would get errors on live sessions.
+Pushed first, the old deployed app keeps working on the new schema, with one exception:
+- `main`'s own calls were checked: its 13-argument `schedule_session` call resolves to the new function, because `p_allow_walk_ins` defaults to null, which means unchanged. Its check-in, code and transition calls keep their signatures.
+- The one incompatibility is `set_session_walk_ins()` (`main`'s `lib/dal/checkin.ts:74`), which `0085` drops. Between the push and the merge, **toggling walk-ins from the host view errors**, and **an early completion closes check-in (`0089`) with no reopen control yet**. Everything else the old app does keeps working.
+- So push and merge back to back, outside a scheduled session.
+- `0082` is in the same push and is safe in either order.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| `console` | `console.spec`'s «untouched route» capture runs at Pixel 7's 412 px — give it `390 × 844` | wave 6 row «admin layout» |
+| `console` | the populated photo-report card on `moderation/reports` was never captured | wave 6 row 14 |
+| `console` | the dashboard's «أكثر …» cards set the count beside the name, the pipeline at the edge — pick one | wave 6 row 10 |
+| `content` | the photo tile's takedown label «احذف الصور التي أظهر فيها» wraps under a half-width tile | wave 6 row 9 |
+| `content` | on `/app/me`, a save pressed before hydration lands without `?saved=1` | wave 6 sync 2 |
+| `content` | ★ `tasks.spec.ts:143` — the event page's tasks section is absent for the member the spec seeds, on `main` too: the spec or the product? | task one's gates |
+| `sessions` | ★ `proposal-materials.spec.ts:140` — `getByLabel("نوع المادة")` resolves to two elements, on `main` too | task one's gates |
+| `sessions` | the filter sheet's native date inputs show the browser's English `dd/mm/yyyy` mask | wave 6 row 5 |
+| lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
+| lead | ~~the account menu links «حجوزاتي» and the profile both to `/app/me`; `notifications` and `privacy` have no entry~~ **closed `b4539ab`** — the seven hub routes in the hub's order, asserted in `shell-disclosures` | sync 1 |
+| `0085`'s author | `ratings.edited_at` is written at millisecond precision — coarsen it with `submitted_at` (`16` §9.2a) | sync 1 (`sessions`) |
+| certificate library (`DEC-128`) | a member re-added after a removal does not get a new attendance certificate — the fan-out fires only on the edge into `completed` | sync 1 (`checkin`) |
+
+### Order inside the wave
+
+1. **Task one and Step 0** — done, before anyone spawned. Push; the draft PR at the first push.
+2. **Spawn** `checkin`, `sessions`, `content`, `console` with a **planning-first** task: each writes its plan
+   into `docs/plan/notes/<name>.md` and edits nothing else until the lead approves it. `checkin`'s window and
+   reversal questions are decided by the lead and logged before its SQL is written.
+3. **`checkin` publishes its three contracts** on day one; `sessions` threads contracts 1 and 2 as soon as
+   they exist — they unblock two tracks.
+4. The tracks build. At each sync (`TEAM.md` §3) the lead promotes SQL, builds **committed HEAD** in the
+   verification worktree (`$scratchpad/wt-verify`, own `npm ci`), runs e2e there with `E2E_SHOTS_DIR` set to
+   the main checkout's `.qa-shots/rtl`, opens every capture, and ticks rows here only against
+   `ui-reach --wave7` and a capture actually opened.
+5. The lead's own rows (L2–L5) between syncs.
+6. Freeze, the final build and the full gate set on the final commits, this file, the PR ready; **the owner
+   merges.**
+
+---
+
+## ★★ WAVE 6 — COMPLETE and MERGED (PR #23, `5ef56ae`) — fourteen routes onto the M9 system (`DEC-130`)
 
 **The owner's goal, verbatim in substance:** put **14 named routes** onto the M9 design system in
 one wave, without touching the frozen marketing contract. **Do not start wave 7.**
@@ -484,7 +847,13 @@ met on paper only, and it is stated here rather than left to be found.
 - `REQ-EVT-010`'s «a photo appears at once» does not match the shipped pipeline (processing, then visible).
 - On `/app/me`, a save clicked before hydration lands without the `?saved=1` confirmation (the no-JS
   path) — `app/me` is wave 7.
-- ★ **`DEC-135`'s real fix is the owner's call.** Either apply `sessions`' one-line `react-dom` change
+- ✅ **`DEC-135`'s real fix — DECIDED by the owner 2026-09-16, `DEC-136`: take the patch.** Wave 7
+  opens with it: `patch-package` added (lockfile via Docker), the patch applied and
+  `ui/pending-nudge` plus all **21** referencing files deleted in **one** change, verified at the
+  bug's own standard (**16/16 presses on a production build**, because it is probabilistic), then the
+  full gate set, then reported upstream. If it cannot be verified to that standard the nudge stays.
+  The original framing follows.
+- ~~`DEC-135`'s real fix is the owner's call.~~ Either apply `sessions`' one-line `react-dom` change
   (`pingSuspendedRoot`: `? 0 === (executionContext & 2) ? prepareFreshStack(root, 0) :
   (workInProgressRootPingedLanes |= pingedLanes)`, verified 16/16 at ~105 ms) through `patch-package`
   (a new dependency; the lockfile through Docker), or take a React/Next release that carries it. Then

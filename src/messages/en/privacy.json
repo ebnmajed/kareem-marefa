@@ -24,6 +24,9 @@
       "deactivateHonest": "There is no immediate self-service deletion, and here is why rather than a silence: what you wrote is depended on by other members, and deleting it tears holes in pages that are not only yours. Twelve months after deactivation your personal data is erased, what you wrote stays attributed to a former member, and your ledger rows keep a pseudonymous id so the org's balances still reconcile.",
       "deactivateReasonLabel": "Reason for the request",
       "deactivateSubmit": "Send the request",
+      "deactivateConfirmTitle": "Confirm sending the request",
+      "deactivateConfirmBody": "Your request will reach your org's admin with the reason you wrote above. Continue?",
+      "cancel": "Cancel",
       "deactivateSent": "Your request was sent. Your org's admin will see it in the audit log."
     },
     "errors": {

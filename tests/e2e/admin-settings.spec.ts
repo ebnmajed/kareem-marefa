@@ -4,7 +4,7 @@
 // change lands in `org_settings_history` with the old and new value.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -86,15 +86,42 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a moderator cannot open the settings screen", async ({ context, page }) => {
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>`, and a strict locator
+ * counts it. Same helper as `console.spec.ts`'s/`admin-moderation.spec.ts`'s.
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// the DAL's own gate runs. A gated page's `notFound()` therefore answers 200
+// with `noindex` and the not-found page, never a real 404 status — this
+// test used to assert `.status() === 404`, which DEC-134 makes false. Same
+// rewrite `admin-moderation.spec.ts`/`admin-managed-lists.spec.ts` already
+// carry for their own routes, applied here now that settings is rebuilt.
+//
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically — a gated
+// route can flush one Suspense boundary before its page's own `notFound()`
+// throws, so an empty hidden div stays in the body for good, not just
+// transiently. `page.goto()` bare, then the visible not-found heading is the
+// wait — it already auto-retries.
+test("a moderator gets the streamed not-found page on the settings screen (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  const response = await page.goto("/ar/app/admin/settings");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin/settings");
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
 });
 
 test("REQ-TEN-008: an admin changes the time zone, it persists, and the history records the old and new value", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/settings");
+  await goto(page, "/ar/app/admin/settings");
   await expect(page.getByRole("heading", { name: "إعدادات المؤسسة", level: 1 })).toBeVisible();
 
   // REQ-INT-006, DEC-124: numerals are Western everywhere and there is no
@@ -102,7 +129,12 @@ test("REQ-TEN-008: an admin changes the time zone, it persists, and the history 
   await expect(page.getByLabel("نظام الترقيم")).toHaveCount(0);
   await page.getByLabel("المنطقة الزمنية").fill("Asia/Dubai");
   await page.getByRole("button", { name: "احفظ الإعدادات" }).click();
-  await expect(page.getByText("حُفظت الإعدادات.")).toBeVisible();
+  // ★ Wave 7: the save now travels through a `redirect(...?saved=1)`
+  // (`admin/scoring`/`admin/emails`'s own established convention) rather
+  // than returning `{saved: true}` in place — `SavedToast` fires a real
+  // `ui/toast` (`role="status"`) on mount, then strips the query param.
+  await expect(page.getByRole("status")).toContainText("حُفظت الإعدادات.");
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/settings$/);
 
   const { rows } = await db.query<{ time_zone: string }>(`select time_zone from public.org_settings where org_id = $1`, [orgId]);
   expect(rows[0].time_zone).toBe("Asia/Dubai");
@@ -113,7 +145,7 @@ test("REQ-TEN-008: an admin changes the time zone, it persists, and the history 
   );
   expect(history.rows).toEqual([{ old_value: "Asia/Riyadh", new_value: "Asia/Dubai" }]);
 
-  // Reload: the select shows the persisted value, not the old default.
+  // Reload: the field shows the persisted value, not the old default.
   await page.reload();
   await expect(page.getByLabel("المنطقة الزمنية")).toHaveValue("Asia/Dubai");
 });
@@ -122,7 +154,7 @@ test("SCR-063 at 390 px RTL: the settings form reads down the page, never sidewa
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/settings");
+  await goto(page, "/ar/app/admin/settings");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
     // phone project innerWidth already includes no classic scrollbar.)
@@ -149,5 +181,9 @@ test("SCR-063 at 390 px RTL: the settings form reads down the page, never sidewa
     return offenders.slice(0, 6);
   });
   expect(overflow, "the settings form must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-063-settings-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/wave7-console-settings-populated-${test.info().project.name}.png`, fullPage: true });
 });

@@ -317,7 +317,62 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 6 — the screens, DEC-130) — ★ THE MAP IN FORCE
+### Ownership map (wave 7 — the remainder, DEC-137) — ★ THE MAP IN FORCE
+
+**Twenty-two named pages and one admin IA onto the M9 system, plus the manual check-in switch.**
+The checklist is `STATUS.md`'s wave-7 block, every route named; the measure is
+`node scripts/ui-reach.mjs --wave7` (strict, as in wave 6) **plus** a 390 px RTL capture at the path
+the row cites, from the build the row names, opened by the lead.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ **task one, alone, before anyone spawns** — `DEC-136`'s `react-dom` patch and `ui/pending-nudge` deleted in one change, verified 16/16 · `global-error` resolved by a test · `ui/splash`'s LCP measurement · `REQ-EVT-010` reconciled · promotion, gates, the PR | the lead-only paths below, `patches/**`, the lead's fourteen `ui/` files, `src/app/globals.css`, `src/lib/session-status.ts`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `messages/*/{ui,app,auth}.json`. **Custodian** of every file of a track not spawned — `event`, `notify`, `scoring`, `designer`, `platform`, `branding` — edited only on a teammate's written request |
+| `checkin` | sonnet | `/app/sessions/[id]/check-in` · `/app/sessions/[id]/host` · `/app/admin/sessions/[id]/attendance` ★ — **and** the manual check-in switch, its ceiling, the admin's removal with its reversal, walk-ins as a publishing setting (`DEC-113`, `DEC-116` … `DEC-118`, `REQ-CHK-010`, `015`, `016`, `017`) | `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`, `src/app/[locale]/app/admin/sessions/[id]/attendance/**` ★, **feature-only** `src/app/[locale]/app/admin/sessions/[id]/schedule/{schedule-form.tsx,actions.ts,state.ts}` ★ (the walk-in field and its parameter — no redesign), `src/components/checkin/**` (all of it again — the wave-6 presentation transfer ends), `src/lib/dal/{rsvp,checkin}.ts`, `messages/*/{rsvp,checkin}.json`, `supabase/proposed/checkin/**`, its tests, its note |
+| `sessions` | opus | `/app/propose` · `/app/propose/[id]` · `/app/sessions/[id]/rate` ★ · `/s/[id]` · `/app/members/[id]` ★ · `/app/leaderboards` ★ | `src/app/[locale]/app/propose/**`, `src/app/[locale]/app/sessions/[id]/rate/**` ★, `src/app/[locale]/s/**`, `src/app/[locale]/app/members/**` ★, `src/app/[locale]/app/leaderboards/**` ★, `src/components/event/{ratings,star-rating}.tsx` ★, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx` ★, `src/components/{sessions,browse,search}/**`, `src/lib/dal/{sessions,proposals,search,bookmarks}.ts`, `src/lib/dal/members.ts` ★ (sync 1, `DEC-141`), **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts` ★, `src/lib/form-state.ts`, its eight `ui/` form primitives, `messages/*/{sessions,proposals,browse,search,ratings,leaderboards}.json` (★ the last two), a **new** `messages/*/members.json` ★, `supabase/proposed/sessions/**`, its tests, its note |
+| `content` | sonnet | **all seven `/app/me` routes** ★ — `/app/me` · `me/points` · `me/certificates` · `me/bookmarks` · `me/calendar` · `me/notifications` · `me/privacy` | `src/app/[locale]/app/me/**` ★ (including a new `me/layout.tsx`), `src/components/notifications/{notification-list,preference-matrix}.tsx` ★, `src/components/scoring/{points-history-list,points-catalogue}.tsx` ★, `src/components/me/**` (new), **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts` ★, `messages/*/{profile,scoring,certificates,notifications,calendar,privacy}.json` ★, and everything it held in wave 6 — `src/components/event/{comments,comment-composer,comment-item,comment-list,actions}`, `src/lib/dal/{comments,reactions,reports,materials,photos,tasks}.ts`, `src/lib/realtime/**`, `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/app/api/upload/**`, `src/lib/storage/**`, its nine `ui/` primitives, `messages/*/{event,materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, its note |
+| `console` | ★ **opus** | **the admin rail's 14-group IA** (`16` §6.7) + **exactly six routes**: `/app/admin/moderation/comments` · `/app/admin/moderation/photos` · `/app/admin/venues` · `/app/admin/categories` · `/app/admin/companies` · `/app/admin/settings` | `src/app/[locale]/app/admin/{layout,page,loading,error}.tsx`, `src/app/[locale]/app/admin/{moderation,venues,categories,companies,settings}/**`, the five wave-6 routes for fixes only (`proposals/**`, the top level of `sessions/`, `members/**`), `src/lib/dal/{admin-dashboard,admin-lists,admin-members,admin-moderation,admin-settings}.ts`, `src/components/admin/**`, its six `ui/` primitives, `messages/*/admin.json`, `supabase/proposed/console/**`, its tests, its note |
+
+★ = transferred for this wave by `DEC-137`.
+
+**Wave-7 rules.**
+
+- ★ **Task one lands before anyone spawns.** `ui/pending-nudge` had 21 referencing files across three
+  tracks' ownership; the lead deletes it with the patch in one commit and verifies 16/16 on a
+  production build, against a control build that hangs. Teammates never re-add a nudge, a timer or
+  a "kick" to a pending control — a transition that hangs is reported with the build it hung on.
+- **`checkin`'s screens and its switch travel together**, and the reversal is designed **before** any
+  UI: `points_ledger` is append-only with `service_role` revoked (invariant 9), so removing an
+  attendance record writes a **compensating entry** with its own idempotency key, and an issued
+  certificate is **revoked** through `revoke_certificate()`, never un-issued. Its SQL hooks into
+  `scoring` and `designer` are SQL only; the lead holds their files.
+- **Three contracts, published in the owner's note on day one:** `checkin` publishes the new
+  `schedule_session()` signature (`sessions` threads the parameter through `lib/dal/sessions.ts`), the
+  switch's DTO field and predicate (`sessions` wires the event page's check-in link from it), and
+  the reversal entry's `action_key` and reason shape (`content` renders it in `me/points`).
+- **One writer per file, including JSON and specs.** A screen's strings move with the screen:
+  `checkin` moves the attendance and walk-in strings from `admin.json` into `checkin.json`, and
+  `sessions` moves the public profile's from `profile.json` into a new `members.json`; the old keys
+  are deleted by the file's owner on request. A shared spec is its owner's; another track that breaks
+  it writes the request.
+- **Captures land where the row says.** `.qa-shots/rtl/wave7-<track>-<route>-<state>.png` in the
+  **main checkout**, phone project, `390 × 844`, from a production build the row names by commit,
+  and the row names the spec that regenerates it. A run in a verification worktree sets
+  `E2E_SHOTS_DIR` to the main checkout's `.qa-shots/rtl`, and every new review spec honours it.
+- **Not this wave, and never-touch for every teammate:** the other twelve `app/admin` routes
+  (`audit` · `branding` · `designer/**` · `emails` · `exports` · `recognition` · `reminders` · `scoring`
+  · `sessions/[id]/{certificates,schedule}` beyond `checkin`'s one field · `templates/**`), all of
+  `app/platform/**`, `verify/**`, `legal/**`, the survey, **multi-day sessions** (`DEC-119` … `121`),
+  **gradient posters and the `canvasRaise` token** (`DEC-127`), **the certificate library**
+  (`DEC-128`), `DEC-075`'s two-tab schedule re-cut and `0084`, objectives, tags, avatar storage,
+  downloads (`DEC-076`), and everything under `(marketing)/**` with the components it renders.
+- **A teammate never edits a primitive it does not own**; all three primitive owners are spawned, so
+  a request goes in the requester's note and the lead routes it.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 6 — the screens, DEC-130) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 6 merged as PR #23 (`5ef56ae`). Its map is kept as the record; **wave 7's map is directly above** (`DEC-137`).
 
 **Fourteen named routes onto the M9 system, and nothing else.** The checklist is `STATUS.md`'s
 wave-6 block; the measure is `node scripts/ui-reach.mjs --wave6` (strict: an M9 primitive, not the
@@ -325,7 +380,7 @@ pre-M9 `button`/`dialog`/`icons`) **plus** a 390 px RTL capture someone looked a
 
 | Teammate | Model | Delivers | Edits only |
 |---|---|---|---|
-| **lead** | — | `(auth)/{sign-in,choose-org,no-access}`; **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`); **the numerals sweep** (`DEC-124`, `DEC-132`) — pre-spawn-code, atomic, cross-tree, with `0082`; tokens, promotion, gates, the PR | `src/app/[locale]/(auth)/**`, `messages/*/auth.json`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `messages/*/app.json`, the lead's fifteen `ui/` files, `messages/*/ui.json`, `src/app/globals.css`, `src/lib/session-status.ts`, the named `loading.tsx`/`error.tsx` boundaries it already owns, `src/app/[locale]/(dev)/**`, and the lead-only paths below. **Custodian** of every file of a track not spawned this wave — `checkin`, `event`'s ratings, `notify`, `scoring`, `designer`, `platform`, `branding`: no redesign, edited only by the numerals sweep or on a teammate's written request |
+| **lead** | — | `(auth)/{sign-in,choose-org,no-access}`; **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`); **the numerals sweep** (`DEC-124`, `DEC-132`) — pre-spawn-code, atomic, cross-tree, with `0082`; tokens, promotion, gates, the PR | `src/app/[locale]/(auth)/**`, `messages/*/auth.json`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `messages/*/app.json`, the lead's fourteen `ui/` files, `messages/*/ui.json`, `src/app/globals.css`, `src/lib/session-status.ts`, the named `loading.tsx`/`error.tsx` boundaries it already owns, `src/app/[locale]/(dev)/**`, and the lead-only paths below. **Custodian** of every file of a track not spawned this wave — `checkin`, `event`'s ratings, `notify`, `scoring`, `designer`, `platform`, `branding`: no redesign, edited only by the numerals sweep or on a teammate's written request |
 | `sessions` | opus | `/app` (the timeline, `DEC-112`) · `/app/sessions` (browse) · `/app/sessions/[id]` (the event page) | `src/app/[locale]/app/page.tsx` ★, `src/app/[locale]/app/sessions/{page,loading,error}.tsx` ★, `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx` ★, `src/components/{sessions,browse,search}/**` ★, **presentation only** `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` ★ and `src/components/calendar/add-to-calendar.tsx` ★, `src/lib/dal/{sessions,proposals,search,bookmarks}.ts`, `src/lib/form-state.ts`, its eight `ui/` form primitives, `messages/*/{sessions,proposals,browse,search}.json`, `supabase/proposed/sessions/**`, its tests, its note |
 | `content` | sonnet | the discussion on the event page (`REQ-UIX-024`) · materials · photos | `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` ★ and `src/components/event/actions.ts` ★, `src/lib/dal/{comments,reactions,reports}.ts` ★, `src/lib/realtime/**` ★, `messages/*/event.json` ★, `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/lib/dal/{materials,photos,tasks}.ts`, `src/app/api/upload/**`, `src/lib/storage/**`, its nine `ui/` primitives, `messages/*/{materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, its note |
 | `console` | sonnet | the admin layout + **exactly five routes**: `/app/admin` · `/app/admin/proposals` · `/app/admin/sessions` · `/app/admin/members` · `/app/admin/moderation/reports` | `src/app/[locale]/app/admin/{layout,page,loading,error}.tsx`, `src/app/[locale]/app/admin/proposals/**`, the **top level only** of `src/app/[locale]/app/admin/sessions/` (never `[id]/**`), `src/app/[locale]/app/admin/members/**`, `src/app/[locale]/app/admin/moderation/reports/**`, `src/lib/dal/{admin-dashboard,admin-lists,admin-members,admin-moderation}.ts`, `src/components/admin/**`, its six `ui/` primitives, `messages/*/admin.json`, `supabase/proposed/console/**`, its tests, its note |
@@ -400,7 +455,7 @@ to hard-fail in M13.
 `.claude/**` · `.github/**` · `package.json`, `package-lock.json` · `src/app/[locale]/layout.tsx` ·
 `src/app/[locale]/(marketing)/**` · `public/**` · `src/proxy.ts` · `src/lib/supabase/**` ·
 `src/lib/dal/session.ts` · `src/i18n/**` · `src/messages/*/marketing.json` · `scripts/**` ·
-`vitest.config.ts` · `playwright.config.ts`.
+`vitest.config.ts` · `playwright.config.ts` · ★ `patches/**` (`DEC-136`).
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:

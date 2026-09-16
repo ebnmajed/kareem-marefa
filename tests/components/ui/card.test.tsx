@@ -186,6 +186,37 @@ describe("CardMedia — the generated placeholder", () => {
     expect(a.querySelector("[aria-hidden]")?.className).toBe(b.querySelector("[aria-hidden]")?.className);
   });
 
+  // R7 (`sessions`' request, `/s/[id]`'s own dark background): the pick
+  // narrows to `MEDIA_TINTS`' three navy entries — never one of the three
+  // silver ones, which would be unreadable against a dark page — while
+  // staying keyed to the same hash, so a title's tint does not change
+  // depending on whether the surrounding card happens to ask for `"dark"`.
+  it('placeholderTone="dark" never yields a silver tint, across many titles, and stays deterministic', () => {
+    const titles = ["جلسة تصوير الأفلام", "ورشة عمل", "مؤتمر", "الجلسة التمهيدية", "ندوة", "لقاء", "معرض", "دورة", "محاضرة", "نقاش"];
+    for (const title of titles) {
+      const { container } = render(<CardMedia placeholderFrom={title} placeholderTone="dark" />);
+      const el = container.querySelector("[aria-hidden]");
+      expect(el?.className, title).toMatch(/bg-navy-(950|900|800)\b/);
+      expect(el?.className, title).not.toMatch(/bg-silver-/);
+    }
+
+    const { container: a } = render(<CardMedia placeholderFrom="جلسة الإخراج" placeholderTone="dark" />);
+    const { container: b } = render(<CardMedia placeholderFrom="جلسة الإخراج" placeholderTone="dark" />);
+    expect(a.querySelector("[aria-hidden]")?.className).toBe(b.querySelector("[aria-hidden]")?.className);
+  });
+
+  it('placeholderTone="dark" absent leaves behaviour unchanged — the full six-tint pool stays reachable', () => {
+    // No `placeholderTone` still reaches the light half of the pool for AT
+    // LEAST one of these titles — proves the prop's absence, not merely
+    // that "dark" avoids silver (the test above already covers that half).
+    const titles = ["جلسة تصوير الأفلام", "ورشة عمل", "مؤتمر", "الجلسة التمهيدية", "ندوة", "لقاء", "معرض", "دورة", "محاضرة", "نقاش"];
+    const sawSilver = titles.some((title) => {
+      const { container } = render(<CardMedia placeholderFrom={title} />);
+      return /bg-silver-(200|300|400)\b/.test(container.querySelector("[aria-hidden]")?.className ?? "");
+    });
+    expect(sawSilver).toBe(true);
+  });
+
   it("renders a real image, not a placeholder, once a src is given", () => {
     // Not `getByRole("img")`: an empty `alt` (the default, decorative — the
     // card's own heading carries the meaning) computes to role

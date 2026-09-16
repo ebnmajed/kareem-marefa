@@ -67,6 +67,14 @@ describe("matchesTimeline — filters combine", () => {
     expect(matchesTimeline(late, parseTimelineQuery({ to: "2026-09-19" }), ctx)).toBe(false);
   });
 
+  it("matches a period on the org's calendar, and a period is not a date range", () => {
+    // Wednesday 16 September 2026 in Riyadh; the week starts on Sunday the 13th.
+    const nextWeek = row({ startsAt: "2026-09-21T15:00:00Z" });
+    expect(matchesTimeline(nextWeek, parseTimelineQuery({ when: "nextWeek" }), { ...ctx, weekStartsOn: 7 })).toBe(true);
+    expect(matchesTimeline(nextWeek, parseTimelineQuery({ when: "thisWeek" }), { ...ctx, weekStartsOn: 7 })).toBe(false);
+    expect(matchesTimeline(nextWeek, parseTimelineQuery({ when: "thisMonth" }), { ...ctx, weekStartsOn: 7 })).toBe(true);
+  });
+
   it("the free-text search is the SQL id set", () => {
     const q = parseTimelineQuery({ q: "تقارير" });
     expect(matchesTimeline(row(), q, { ...ctx, textIds: new Set(["s1"]) })).toBe(true);

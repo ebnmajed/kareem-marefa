@@ -71,7 +71,12 @@ export function CreateTaskForm({ locale, sessionId, materials }: CreateTaskFormP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-field border border-edge p-4">
+    // `noValidate`: `handleSubmit` is this form's only path to `error`/`setError`
+    // (`materialRequired`, `formQuestionsRequired`, the generic server-round-trip
+    // fallback below). Without it, the browser's own check on `title`'s `required`
+    // blocks the native submit event before `handleSubmit` ever runs, so an empty
+    // title shows nothing at all — the same failure mode `profile-form.tsx` had.
+    <form noValidate onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-field border border-edge p-4">
       <label className="flex flex-col gap-1 text-body-sm text-fg-body">
         {t("kindLabel")}
         <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)} className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">

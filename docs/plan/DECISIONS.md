@@ -2786,3 +2786,351 @@ A route counts as done only when (1) its `page.tsx` **reaches `src/components/ui
 - **Remove when** the bundled React records a synchronous render-phase ping on a `RootSuspendedWithDelay` root. The e2e reserve test and the discussion review are the proof; delete the file and its callers together.
 - **Supersedes:** `content`'s `setTimeout(…, 0)` (`44485b8`) and `afterPaint` (`4582b17`) explanations of the stuck «نشر». Both treated a symptom of this.
 - **Documents changed:** `src/components/ui/{pending-nudge.ts,submit-button.tsx,route-progress.tsx}`, `tests/components/ui/pending-nudge.test.tsx`, `STATUS.md`
+
+---
+
+## DEC-136 — The owner takes the `react-dom` patch: `DEC-135`'s nudge is a workaround with an end date, and wave 7 opens by removing it
+
+- **Date:** 2026-09-16 · **Decided by:** owner («apply sessions' one-line React patch and delete the workaround»), on the choice `DEC-135` left open
+- **Decision.** `sessions`' one-line change to `pingSuspendedRoot` is applied through **`patch-package`**, and **`src/components/ui/pending-nudge.ts` and every caller are deleted in the same change**. The bug is reported upstream to React.
+
+### Why the workaround could not simply stay
+
+`DEC-135` established the cause: a transition suspends on a Flight chunk still `pending`; the chunk
+resolves to `resolved_model`; React resumes, `isThenableResolved` counts only `fulfilled`/`rejected`,
+so it unwinds and attaches a ping listener that never fires. **About one press in three of
+«احجز مقعدك» never commits** — on a production build, on a quiet machine, with the RSVP already
+written and the Server Action's whole response delivered.
+
+`usePendingNudge` makes a lost ping harmless by forcing a later update. It does not make the ping
+arrive. Every new pending control has to remember to adopt it, and **nothing fails when one
+forgets** — the control simply hangs one press in three, on the action that matters most. A
+workaround whose failure mode is silent and whose adoption is manual is a workaround with a short
+shelf life.
+
+### The blast radius, measured — this is why it is a task, not an edit
+
+**21 files** reference the nudge today: 18 under `src/`, 3 under `tests/`. They span
+`admin/{sessions,members,proposals,moderation}`, `ui/{submit-button,route-progress}`,
+`{materials,photos,event,tasks,browse,search}` — **three tracks' ownership and the lead's**.
+`patch-package` is **not** installed.
+
+### The order, and it is not negotiable
+
+1. **`patch-package` added**, lockfile regenerated **through Docker** (`npm run lockfile` — never a
+   plain `npm install`; the npm-version trap has broken CI twice).
+2. **The patch applied and the nudge deleted in one change**, so no state exists where a control has
+   neither.
+3. ★ **Verified against the bug's own shape.** It is **probabilistic**, so a single green run proves
+   nothing: the bisect that found it used **8 presses per build** and the fix measured **16/16 at
+   ~105 ms**. Reproduce that standard before the PR, on a production build, on a quiet machine.
+4. The full gate set — `build`, `qa` 44/44, `visual` 0.000%, `db:reset` + `test:rls`, e2e.
+5. **Reported upstream**, with the instrumented-`react-dom` reasoning from `DEC-135`.
+
+★ **If the patch cannot be verified to that standard, the nudge stays and this entry is amended by a
+follow-up.** Reverting to a silent 1-in-3 hang on the product's primary action is not an acceptable
+outcome of a tidying change.
+
+### And the exit
+
+When a React or Next release carries the fix, the patch is dropped and the pin removed. `DEC-135`'s
+diagnosis is the record of why the patch existed, so a later reader does not restore a workaround
+whose cause is gone.
+
+- **Supersedes:** `DEC-135`'s open choice. The diagnosis stands unchanged.
+- **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-7-lead.md`
+
+---
+
+## DEC-137 — Wave 7 is the remaining member and staff routes on the M9 system, with the check-in switch built on the screens it lives on; `console` becomes opus
+
+- **Date:** 2026-09-16 · **Decided by:** owner (the wave-7 brief: «about eighteen routes, four teammates», `checkin`'s screens and switch together, `console` promoted to opus, six admin routes the lead names), the file-level map by the lead
+- **Supersedes:** `DEC-130`'s wave-6 map as the map in force (kept in `CLAUDE.md` as the record); `DEC-085`'s placement of `src/app/[locale]/app/me/layout.tsx` with the lead; the lead's hold on `src/lib/dal/members.ts` and `messages/*/profile.json`; `DEC-130`'s presentation-only transfer of `components/checkin/{rsvp-panel,attendance-outcome}.tsx` and `components/calendar/add-to-calendar.tsx`, which ends.
+
+### Task one came first, and it held
+
+`DEC-136` was executed before anyone spawned, in one commit (`7d50e64`): `patch-package` added through the
+Docker lockfile, `patches/next+16.2.10.patch` applied to the four client builds of the `react-dom` Next
+vendors, and `ui/pending-nudge` deleted with all 21 files that referenced it. **Verified at the bug's own
+standard on this machine, on production builds, back to back:** nudge deleted and `react-dom` unpatched —
+the probe hung **9 of 16** presses; patched — **16 of 16, twice, at ~104 ms**. The probe is now
+`tests/e2e/reserve-probe.spec.ts`, and `tests/unit/react-dom-ping-patch.test.ts` fails when the patch is
+not installed (proven red on the unpatched copy). `DEC-136` needs no amendment.
+
+### The measure — `DEC-130`'s, with the capture made checkable
+
+A route is done when (1) `node scripts/ui-reach.mjs --wave7` shows it reaching an **M9** primitive
+(strict) and (2) a 390 px RTL capture exists **at the path its row cites** — `.qa-shots/rtl/wave7-<track>-<route>-<state>.png`
+in the main checkout, phone project, `390 × 844` — from a production build the row names by commit, opened
+by the lead, with the spec that regenerates it named in the row. Wave 6 lost an hour to captures taken in a
+verification worktree that never reached the cited path; so every review spec honours `E2E_SHOTS_DIR`, and a
+worktree run points it at the main checkout. **Baseline on `7d50e64`: 4 of 23 strict** (check-in, both
+propose pages, the admin layout — the floor, not the bar).
+
+### The routes, by owner
+
+| Owner | Routes / work |
+|---|---|
+| **lead** | task one (above) · `global-error` resolved by a test on a production build · `ui/splash`'s LCP measurement (`16` §7.2) · `REQ-EVT-010` reconciled with the pipeline · the upstream report of `DEC-135` · promotion, gates, the PR |
+| **`checkin`** (sonnet) | `/app/sessions/[id]/check-in` · `/app/sessions/[id]/host` · ★ `/app/admin/sessions/[id]/attendance` — **and** the switch with its ceiling (`REQ-CHK-015`, `016`), the admin's removal with its reversal (`REQ-CHK-017`), walk-ins as a publishing setting (`REQ-CHK-010`, `DEC-117`, `DEC-118`) |
+| **`sessions`** (opus) | `/app/propose` · `/app/propose/[id]` · ★ `/app/sessions/[id]/rate` · `/s/[id]` · ★ `/app/members/[id]` · ★ `/app/leaderboards` |
+| **`content`** (sonnet) | ★ all seven `/app/me` routes, as one hub (`16` §6.5) |
+| **`console`** (★ opus) | the admin rail's fourteen-group IA (`16` §6.7) · `/app/admin/moderation/comments` · `/app/admin/moderation/photos` · `/app/admin/venues` · `/app/admin/categories` · `/app/admin/companies` · `/app/admin/settings` |
+
+### Why these six admin routes, and not the other thirteen
+
+- **`moderation/{comments,photos}`** complete the moderation group whose third queue wave 6 rebuilt, and
+  the dashboard's «يحتاج انتباهك» links straight into them; they also carry wave 6's one uncaptured state,
+  the populated photo-report card.
+- **`venues`, `categories`, `companies`** are one list pattern three times — `DataTable`'s phone card stack
+  with a create/edit form — so they cost one design and complete the org-setup group; **`settings`**
+  completes «الإعدادات», and its numerals field is already gone (`DEC-124`).
+- **Not chosen:** `sessions/[id]/schedule` — its artboard is `DEC-075`'s two-tab re-cut, which needs `0084`
+  (not this wave); rebuilding it now means rebuilding it twice. `sessions/[id]/attendance` — `checkin`'s this
+  wave (below). `audit`, `exports`, `scoring`, `recognition`, `reminders` — wave 8. `designer/**`,
+  `templates/**`, `sessions/[id]/certificates` — `designer`'s, M12. `emails` — `notify`'s, M12. `branding` —
+  `branding`'s.
+
+### `checkin`'s surface, and the two admin screens it reaches
+
+- ★ **`admin/sessions/[id]/attendance` transfers to `checkin`.** `REQ-CHK-017`'s removal is an act on that
+  screen (SCR-044) and its hard half — a compensating `reversal` entry on an append-only ledger with its own
+  idempotency key, and `revoke_certificate()` for an issued certificate — is `checkin`'s design. The screen
+  and the feature travel together, which is the brief's rule and wave 6's lesson.
+- ★ **`admin/sessions/[id]/schedule` is transferred feature-only**: `checkin` adds the walk-in field and its
+  parameter to `schedule-form.tsx`, `actions.ts` and `state.ts`, and nothing else. **It cannot wait for the
+  re-cut**: `DEC-117` removes the host view's toggle, so a wave that removes the toggle without adding the
+  field leaves an admin on a live product no way to set walk-ins at all.
+- **What `checkin`'s plan must settle before code, and bring to the lead rather than decide:** (a) the
+  check-in window, because `REQ-CHK-004` and `REQ-SES-005` close it when the session ends «including when an
+  admin completes it early», and `0078` made the code live-only, while `DEC-116` extends the tail to
+  `ends_at + 2 h`; (b) what a removal does to everything else attendance granted beyond points and the
+  certificate — the rating right, photo upload, streaks, badges, levels, no-show evaluation; (c) how a late
+  `award_points` or `issue_certificates` finds its check-in gone.
+
+### Three contracts, published in the owner's note on day one
+
+1. **`checkin` → `sessions`:** `schedule_session()`'s new signature; `sessions` threads the parameter through
+   `lib/dal/sessions.ts`.
+2. **`checkin` → `sessions`:** the switch as a DTO field and a predicate; `sessions` wires the event page's
+   check-in link from it.
+3. **`checkin` → `content`:** the reversal entry's `action_key`, key shape and reason; `content` renders it in
+   `me/points` as an entry, never a number that quietly changed.
+
+### One writer per file — JSON and specs included
+
+Wave 6 held the rule for source and primitives; this wave extends it to the two kinds of file that had
+several readers and no named writer. **A screen's strings move with the screen** — `checkin` moves the
+attendance and walk-in strings from `admin.json` into `checkin.json`, `sessions` moves the public profile's
+from `profile.json` into a new `members.json` — and the old keys are deleted by the file's owner on request.
+**A spec has one writer**; the lead holds the specs that span routes of several tracks or of none this wave
+(`a11y`, `budgets`, `second-org`, `session`, `shell-*`, `notify-screens`, `certificates`, `reserve-probe`, …).
+**"Add-only"** on another track's DAL module means a new exported function or a new optional DTO field behind
+`requireSession()` — never a changed signature, select, filter or gate.
+
+### Found while gating task one, and carried
+
+`proposal-materials.spec.ts:140` (a strict locator resolving to two elements) and `tasks.spec.ts:143` (the
+event page's tasks section absent for the member the spec seeds) fail **identically on a build of `main`
+(`f4bfb82`)**, so they are wave-6 debt, not task one's: the first goes to `sessions` (whose spec it is this
+wave), the second to `content`, each to decide whether the spec or the product is wrong.
+
+- **Documents changed:** `CLAUDE.md` (the wave-7 map; `patches/**` lead-only), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (`--wave7`)
+
+---
+
+## DEC-138 — `global-error.tsx` lives at `src/app/`, because a test showed Next ignores it beside the locale layout
+
+- **Date:** 2026-09-16 · **Decided by:** lead, by measurement (wave 7, STATUS row L2; carried from wave 6's closing list)
+- **The question.** `16` §7.4 put the hand-written Arabic last-resort page at `src/app/[locale]/global-error.tsx`. Next's docs place `global-error` «in the root app directory, even when leveraging internationalization». This repo has **no `src/app/layout.tsx`** — `[locale]/layout.tsx` is the root layout — so either reading was plausible, and wave 6 saw Next's English «This page couldn't load» once under load without being able to explain it.
+- **The test** (verification worktree at `c9e67ee`, production build, the QA stub, a headless browser at 390 px). A header-keyed `throw` was added to `[locale]/layout.tsx` after `setRequestLocale()`:
+
+  | File at | `/ar` with the throw | `/ar/sign-in` | `/en` |
+  |---|---|---|---|
+  | `src/app/[locale]/global-error.tsx` (as shipped) | **500, Next's English «This page couldn't load · Reload»**, no `lang`, no `dir` | same | same |
+  | `src/app/global-error.tsx` | **500, «حدث خطأ غير متوقع»**, `lang="ar"`, `dir="rtl"`, both actions, the digest in Western digits | same | same |
+
+  Without the header both builds render `/ar` normally. The build agrees: `.next/server/app/_global-error` is registered at the app root either way, and at `[locale]` the prerendered file is Next's default.
+- **Decision.** The file moves to `src/app/global-error.tsx`, unchanged apart from a comment recording this; `scripts/route-coverage.mjs` asserts the new path, so moving it back fails CI. `/en` also gets the Arabic page — the file is the one place allowed to hard-code Arabic (`16` §7.4), and a member of this product reads Arabic.
+- **Supersedes:** `16` §7.4's placement.
+- **Documents changed:** `src/app/global-error.tsx`, `scripts/route-coverage.mjs`, `.claude/agents/*.md` (the lead-only list), `STATUS.md`
+
+---
+
+## DEC-139 — "A photo appears at once" means no moderation step, not "before its metadata is stripped"; `REQ-EVT-010` is amended to the pipeline, and the uploader still never reloads
+
+- **Date:** 2026-09-16 · **Decided by:** lead (wave 7, STATUS row L4; carried from wave 6 sync 1)
+- **The disagreement.** `REQ-EVT-010` says «an uploaded photo appears at once» and its acceptance says «the uploader sees their photo in the gallery without a refresh». The shipped pipeline (`0050`, `JOB-process_photo`) makes the photo visible only once the worker has downloaded, sniffed, stripped and inserted it; the uploader's widget says «تتم معالجة الصورة الآن…», refreshes once when the request is accepted, and the photo shows on the next visit.
+- **Why the requirement bends, not the pipeline.** D34 — «Photos appear immediately; admins can remove them» — sets immediacy against **moderation**; `REQ-EVT-010`'s own body says «There is no pre-moderation queue». `REQ-EVT-011` (DEC-005) requires the EXIF and GPS strip to happen **«before the object is retrievable, not as a later cleanup job»**, and the strip runs in the worker (DEC-047). A photo that appeared before the strip would publish a colleague's location to the whole organisation. The two requirements cannot both hold literally, and the stricter one is about safety.
+- **Decision.** `REQ-EVT-010` is rewritten: a photo publishes with **no human step**, the moment its strip completes; the uploader is told at once that it is being processed; and — kept, because it is what "at once" means to the person holding the phone — **the photo takes its place in the uploader's gallery without a reload once processing completes.** The last clause is not met today, so it is `content`'s wave-7 row **T8**; the mechanism is `content`'s design (a private Realtime broadcast on the photo row, or a bounded refresh while the member's own upload is processing — a data poll for server state, which is not the "nudge" `DEC-136` forbids, and the plan says which).
+- **Supersedes:** `REQ-EVT-010` as written.
+- **Documents changed:** `01-prd.md` (`REQ-EVT-010`), `STATUS.md` (rows L4, T8)
+
+---
+
+## DEC-140 — React has already fixed the lost ping (facebook/react#36134, in `react-dom@19.3.0` and `next@16.3.5`), so nothing is reported upstream and the patch's exit is an upgrade the owner schedules
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from React's own source (wave 7, STATUS row L5)
+- **What `DEC-136` step 5 asked:** report the bug upstream with `DEC-135`'s reasoning. Before writing it, the lead checked whether it was already known.
+- **What the check found.**
+  - **React `main` carries the fix, word for word.** `pingSuspendedRoot` in `packages/react-reconciler/src/ReactFiberWorkLoop.js` now has the `else` branch our patch adds, commented «record the pinged lanes so markRootSuspended won't mark them as suspended, allowing a retry». Bisected over the file's history, it arrived in **`c0d218f0f3` — «Fix useDeferredValue getting stuck» (facebook/react#36134), 2026-03-24**.
+  - **Released:** `react-dom@19.3.0` has it; `19.2.4` through `19.2.8` do not. **`next@16.3.5`** (npm `latest` today) vendors `19.3.0-canary-cbb046ab-20260731`, which has it; this repo pins `next@16.2.10`.
+  - **A dependency-free reproduction** (plain npm `react` + `react-dom@19.2.4` under jsdom, a Flight-shaped thenable that parks as `resolved_model` while React yields and resolves synchronously in `then()`): production and development both stay on the old tree with `pendingLanes === suspendedLanes` and `pingedLanes 0` until an unrelated `setState`; Next's patched copy commits at once. Kept at `$scratchpad/upstream/repro.cjs`, not committed.
+- **Decision.** (1) **No upstream report** — filing one would duplicate a merged, released fix. `DEC-136` step 5 is closed by this entry. (2) **The patch stays for this wave.** It is verified (16/16 twice against a control that hung 9/16) and a Next minor upgrade inside a wave is exactly what `DEC-135` item 5 kept out: `16.2 → 16.3` moves the vendored React to a 19.3 canary across every screen four teammates are rebuilding. (3) **`DEC-136`'s exit condition is met**: when the owner schedules `next@16.3.x` (lockfile through Docker, the full gate set, `reserve-probe.spec.ts` run at its own standard), `patches/next+16.2.10.patch` stops applying and is deleted with `tests/unit/react-dom-ping-patch.test.ts`, and the probe stays. **The owner decides when.**
+- **Supersedes:** `DEC-136` step 5.
+- **Documents changed:** `STATUS.md` (row L5)
+
+---
+
+## DEC-141 — Wave 7, sync 1: the four plans approved, the check-in window read as a clock, check-ins soft-deleted, and `members.ts` moves to `sessions`
+
+- **Date:** 2026-09-16 · **Decided by:** lead, on the four planning-only first tasks (`docs/plan/notes/{checkin,sessions,content,console}.md` at `17e5772`, `f146ff6`, `ff3c6fc`, `addf939`)
+- **Supersedes:** `DEC-137`'s placement of `src/lib/dal/members.ts` with `content`; `REQ-CHK-004`'s state-based gate on check-in, as `DEC-113` already said and `DEC-116` restated ambiguously.
+
+### `checkin` — the window, the removal, and what it reverses
+
+1. ★ **The check-in window is read from the schedule, not from the state.** Floor: `now >= starts_at`.
+   Switch: `sessions.check_in_open`, default `true` (`DEC-116`). Ceiling: `now < ends_at + 2 h`,
+   scheduled (`REQ-CHK-016`). **Plus the condition the plan omitted:** `state in ('published',
+   'in_progress', 'completed')`, so a cancelled session whose start has passed never accepts a code.
+   `DEC-113` says «the phase no longer gates check-in», and `REQ-CHK-016` computes the ceiling «from the
+   scheduled end, not from when it actually finished» — which only holds if the whole window is
+   scheduled. `DEC-116`'s «the floor is `REQ-CHK-004`'s, unchanged» is read as keeping a floor, not the
+   `in_progress` mechanism `DEC-113` retired; it also stops check-in waiting on `JOB-start_session`.
+   **Early completion** (`REQ-SES-005`'s note) sets `check_in_open = false` in `complete_session()` —
+   `sessions`' RPC, a SQL hook `checkin` proposes — and the room can reopen it until the ceiling.
+2. ★ **A removal soft-deletes.** `certificates.check_in_id` is `on delete restrict` with a not-null check
+   for attendance certificates (`0055`), so a check-in with a certificate cannot be deleted at all.
+   `check_ins` gains `removed_at`, `removed_by`, `removal_reason`; its unique and exclusion constraints
+   become partial on `removed_at is null`, so a member can be re-added. **The cost is the blast radius** —
+   12 migrations and 11 TypeScript files read `check_ins` — so `checkin` writes a reader inventory before
+   any SQL, and every "checked in" excludes removed rows unless it is a report that must show them.
+3. **What a removal reverses:** the attendance award (a compensating `reversal` row, key
+   `reversal:<ledger id>:v1`, the fixed reason «أُلغي تسجيل الحضور») and an issued certificate
+   (`revoke_certificate()`); the **future** right to rate and to upload photos (through `has_checked_in()`);
+   and it records `no_show` — **0 points** (`0027:537`), the outcome the member now sees — with the
+   evaluator's own key. **Not reversed:** anything already submitted (ratings, photos), streaks, badges,
+   levels, company points — no reversal anywhere in the product walks those back, and this one is not
+   special. The admin's free-text reason stays on the row and in the audit log; **the member does not see
+   it.**
+4. **Manual marks:** an admin on SCR-044 at any time after the scheduled start (`REQ-CHK-017`); a
+   moderator only inside floor → ceiling (`REQ-CHK-008`); the host view inside floor → ceiling and not
+   gated by the switch. `mark_checked_in_manually()`'s missing `award_points` enqueue — a live gap
+   against `REQ-CHK-008` — is fixed as it is re-created.
+5. ★ **`schedule_session()`'s walk-in parameter is `default null`, meaning unchanged.** A `default false`
+   would switch walk-ins off every time an admin rescheduled through a path that does not send the
+   field. The old signature is dropped; `set_session_walk_ins()` is dropped (`DEC-118`: no other door).
+6. **`canOfferCheckInLink()`** gains `checkInOpen` as an optional parameter defaulting to `true`, so the
+   shared tree builds before `sessions` wires it.
+
+### `sessions`
+
+`src/lib/dal/members.ts` is `sessions`' for the wave: `content`'s `/app/me` needs no change to it, and
+`sessions` needs a tiered `getMemberProfileForViewer()` with an `assert_fresh_admin()`-gated
+`admin_member_profile()` — one writer. The edit route `/app/propose/[id]/edit`; the rating receipt at
+`rate?rated=1`; the public card's badge from the clock only, none while `open` (`DEC-066`'s allowlist
+unchanged); an opted-out member's points and rank hidden on the member tier; leaderboards as three tabs
+on one route; the propose form as two sections with a remaining count; objectives and tags not built.
+**Canvas contradictions resolved for the requirement** (`DEC-114`): the title limit stays 150, the
+abstract minimum 1, `REQ-PRO-002`'s labels and its three fields the artboard drops, `REQ-RAT-006`'s
+threshold of 3. The filter sheet's native date range becomes `DEC-098`'s period chips, after the six
+routes. `ratings.edited_at`'s millisecond precision is recorded against `0085`.
+
+### `content` and `console`
+
+**The `/app/me` hub has seven tabs, one per route that exists**, profile first; `16` §6.5's القادمة and
+الحاضرة are the timeline `DEC-112` made `/app`, and المقترحات is `sessions`' propose screens. The strip
+never widens a 390 px page. A points `Stat` on `/app/me`. `tasks.spec.ts:143` is a wrong spec, not a
+wrong product (`DEC-090`: no seat, no tasks). T8 is a private Realtime broadcast from a trigger plus one
+bounded re-check.
+
+**The admin rail is لوحة plus fourteen groups** — `16` §6.7 lists fifteen labels and the first is the
+root. `console` proposed a rail entry for an `admin/designer` landing page; **there is no such page**
+(`admin/designer/` holds only `[documentId]`), so none is added. The three moderation queues share an
+`href` tab strip with open counts and stay three lists (`DEC-005`).
+
+### Contract changes the lead made at this sync
+
+`FormSummaryProps.description?` and `RouteErrorProps.retryLabel?`/`reset?`, the retry rendered only when
+both are given (`f9fa70e`).
+
+- **Documents changed:** `CLAUDE.md` and `.claude/agents/*.md` (`members.ts`), `STATUS.md`
+
+---
+
+## DEC-142 — `ui/splash` is dropped: measured against the same build without it, it cost LCP on both screens it would cover
+
+- **Date:** 2026-09-16 · **Decided by:** lead, by `16` §7.2's own rule — «if it costs LCP, the splash is dropped, not the budget» (STATUS row L3, `DEC-110`'s carried stub)
+- **What was built and measured.** The splash as `16` §7.2 specifies it: CSS only, in `app/layout.tsx`, a
+  fixed layer with the wordmark and a 2 px indeterminate bar, fading from its first paint over
+  `--dur-slow` and ending `visibility: hidden`, collapsed under reduced motion. Built in the verification
+  worktree on `979cf5c`; never in the shared tree.
+- **The measurement.** Lighthouse's throttled mobile profile, 390 × 844, a signed-in member, the
+  production build on the QA stack. Arms interleaved **A → B → A** so the teammates' load starting
+  mid-run hits both. Lantern's LCP moves in ~150 ms steps.
+
+  | | `/app` LCP median · mean | event page LCP median · mean | event page FCP median |
+  |---|---|---|---|
+  | A1 — no splash, 5 runs | 2862 · 2954 | 3009 · 2980 | 1209 |
+  | **B — splash, 10 runs** | **3010 · 3035** | **3167 · 3172** | **1662** |
+  | A2 — no splash, 10 runs | 2936 · 2926 | 3010 · 3071 | 1214 |
+
+  The LCP element was the same page paragraph in every run, never the splash. Both controls agree with
+  each other, and the splash arm is worse on both screens' LCP (a step, ~100 ms on the means) and on the
+  event page's first contentful paint (+450 ms).
+- **Decision.** Dropped. `src/components/ui/splash.tsx` (an unused stub since M9) and `SplashProps` are
+  deleted; the lead owns fourteen `ui/` files. **What would reopen it:** a design that shows nothing
+  until content is already painted — which is to say, not a splash — or a real-device measurement on
+  production that contradicts the lab. The code and the measuring spec are kept in the lead's scratchpad,
+  not the tree.
+- **Supersedes:** `16` §7.2.
+- **Documents changed:** `src/components/ui/{splash.tsx,index.ts}`, `CLAUDE.md` and `.claude/agents/*.md` (the lead's file list), `STATUS.md`
+
+---
+
+## DEC-143 — The org seed wrote Arabic-Indic digits into every org's points catalogue; `0083` fixes the seed, and existing orgs need a scoped data fix the owner runs
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from wave 7's first capture of `/app/me/points` (sync 2)
+- **What the capture showed.** The catalogue «ماذا يمنحك نقاطًا؟» listed «سلسلة: **٣** حضور في الشهر». `DEC-124` forbids that glyph on every surface, and `DEC-132`'s sweep plus `tests/unit/messages-numerals.test.ts` had made the message files and the formatters clean — but **neither reads a string a migration writes into a row.**
+- **The source.** `_seed_org_scoring()` (`0027`, last re-created in `0081`) runs for every org on creation (`orgs_seed_scoring`) and in `0081`'s backfill. It seeds the `streak_month` rule's `reason_ar` «سلسلة: ٣ حضور في الشهر» and the `rated_presenter` badge's description «متوسط تقييم ٤.٥ فأعلى على ثلاث جلسات على الأقل». So **every org that exists, production's included, holds both.** `reason_ar` is also copied into `points_ledger.reason` when an award is made, and the ledger is append-only (invariant 9): any `streak_month` award already written keeps the glyph for good.
+- **Decision.**
+  1. **`0083_western_numerals_in_seeds.sql`** re-creates `_seed_org_scoring()` with Western digits and nothing else changed. Every org created from now on is right.
+  2. **`tests/rls/numerals-seeds.test.ts`** creates orgs through the real insert and scans every column of every public table — the fixture orgs' rows where a table has `org_id`, every row where it has none — for U+0660–U+0669 and U+06F0–U+06F9. **It failed before `0083` (two badge rows, two rule rows) and passes after.** It catches the next seeded glyph wherever a migration puts it.
+  3. **Existing orgs are a data fix, not a migration** (`CLAUDE.md`, `DEC-023`, `DEC-027`). The lead's read-only count against production was refused by the permission layer, so **the owner runs it**, read first:
+
+     ```sql
+     -- read
+     select org_id, action_key, reason_ar from public.scoring_rules where reason_ar ~ '[٠-٩۰-۹]';
+     select org_id, key, description from public.badges where description ~ '[٠-٩۰-۹]' or name ~ '[٠-٩۰-۹]';
+     select count(*) from public.points_ledger where reason ~ '[٠-٩۰-۹]';
+     -- write — scoped to the exact seeded default, so an admin's own edit is never overwritten
+     update public.scoring_rules set reason_ar = 'سلسلة: 3 حضور في الشهر'
+      where action_key = 'streak_month' and reason_ar = 'سلسلة: ٣ حضور في الشهر';
+     update public.badges set description = 'متوسط تقييم 4.5 فأعلى على ثلاث جلسات على الأقل'
+      where key = 'rated_presenter' and description = 'متوسط تقييم ٤.٥ فأعلى على ثلاث جلسات على الأقل';
+     ```
+
+     The `scoring_rules` update bumps the rule's `version` and writes one `scoring_config_history` row with no actor (`actor_id` is nullable, `0004:362`) — exactly what an admin editing the label would record, which is honest. **If the ledger count is not zero**, those rows cannot be rewritten; the owner decides whether `me/points` should render a streak entry's reason from the rule rather than the ledger row.
+- **Supersedes:** nothing. Extends `DEC-132`'s sweep to the one surface it could not see.
+- **Documents changed:** `supabase/migrations/0083_western_numerals_in_seeds.sql`, `tests/rls/numerals-seeds.test.ts`, `STATUS.md`
+
+## DEC-144 — The propose form's error summary lists the errors on the page, not the errors of the last submit
+
+- **Date:** 2026-09-16 · **Decided by:** lead, recording `sessions`' sync-2 change (`3386178`)
+- **What the capture showed.** Sync 2's `/app/propose` capture had the summary counting two fields while three fields showed an error. The third was a duration of 5, typed after the submit and caught on blur. The server refuses 5 too, so the rules agree; the summary disagreed because M9 built it as **a record of one attempt** (`proposal-form.tsx`'s own comment, `sessions`' M9 note). It did not shrink as fields were fixed and did not grow as fields were broken.
+- **Decision.** The summary is built from the errors **shown**: the server's refusals as blur validation has since revised them. A field joins it on blur and leaves it when its value first passes, so it changes once per field state, never per keystroke. Focus still moves to it only when a submit mounts it (`key={state.attempt}`), and its description is a plural with all six forms.
+- **Why this is not a departure from `16`.** `16` §8.2 item 4 says the summary lists **every failed field**; item 5 says fields validate on blur after the first submit. The M9 design satisfied item 4 only at the instant of submitting. This one satisfies it for as long as the summary is on screen.
+- **The cost, stated.** `FormSummary` is `role="alert"`, so each change re-announces the list. That is bounded to one announcement per field that changes state on blur, which is the reason M9 froze it and the reason the per-keystroke version was never built.
+- **Scope.** The propose form only. The primitive does not change; every other form that adopts `FormSummary` chooses per form, and a form with blur validation should follow this one.
+- **Supersedes:** nothing in a settled document. It replaces an implementation choice recorded in `sessions`' M9 note.
+- **Documents changed:** `DECISIONS.md`
+
+## DEC-145 — There is no no-JavaScript path under `/app`; the frozen register form keeps the only no-JS contract
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from wave 7's sync-5 build and `content`'s trace
+- **What the build showed.** `wave7-content-me.spec.ts`'s «no-JS save» case timed out on `getByLabel('الاسم')` on both projects. With JavaScript disabled the browser stayed on `/app/me`'s aria-hidden skeleton.
+- **Why it cannot work.** `/app/me` has a `loading.tsx`, like every `/app` route since M9 (`DEC-087`, `REQ-UIX-005`). The response streams: the fallback flushes first, and the page arrives in a `<div hidden id="S:…">` that React's inline `$RC` script swaps in. Without JavaScript that script never runs, so no `/app` page can render its content, and no form on it can be reached. This is the streaming model `DEC-134` accepted, not a defect of one form.
+- **Decision.** A no-JavaScript path is **not a requirement anywhere under `/app`**. No `REQ-*` asks for one, and the only no-JS contract in the plan is the frozen register form's (`16` §8.2, `qa:contract`, `DEC-126`'s M13 rebuild). The case is kept as `test.describe.skip` with its reason attached (`967d1a7`), so the reasoning travels with the code. Nobody re-adds a no-JS spec under `/app` without first removing the loading boundary above that route, which `DEC-134` already rejected.
+- **Related, recorded for M13.** The same streaming can leave an **orphaned hidden segment** in a fully working page: an event page at desktop width carried a second hidden copy of the tasks and materials forms under `body > div#S:…`, duplicating `id="tasks"` and `id="tasks-create-form"` (`05f023b`). It is invisible and outside the accessibility tree, but duplicate ids are invalid HTML. Locators under `/app` scope to `#main`.
+- **Supersedes:** nothing.
+- **Documents changed:** `DECISIONS.md`, `STATUS.md`, `tests/e2e/wave7-content-me.spec.ts`

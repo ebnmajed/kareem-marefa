@@ -200,15 +200,23 @@ async function expectGatedNotFound(page: Page) {
   await expect(page.getByRole("heading", { name: "لوحة المؤسسة" })).toHaveCount(0);
 }
 
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out on a GATED route
+// specifically — one Suspense boundary can flush before the page's own
+// `notFound()` throws, so an empty hidden div stays in the body for good,
+// not just transiently. `page.goto()` bare below, then
+// `expectGatedNotFound()`'s own first assertion (the visible not-found
+// heading) is the wait — it already auto-retries, and it is the real signal
+// here, unlike the hidden-div count.
 test("a member gets the streamed not-found page on the admin console, not the dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, mem2Email);
-  await goto(page, "/ar/app/admin");
+  await page.goto("/ar/app/admin");
   await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-020: a moderator gets the streamed not-found page on the (admin-only) dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  await goto(page, "/ar/app/admin");
+  await page.goto("/ar/app/admin");
   await expectGatedNotFound(page);
 });
 
@@ -311,5 +319,9 @@ test("SCR-040 at 390 px RTL: the dashboard reads down the page, never sideways",
     return offenders.slice(0, 6);
   });
   expect(overflow, "the dashboard must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-040-admin-dashboard-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
+  // captures where the cited path actually points — a hard-coded
+  // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/scr-040-admin-dashboard-390-rtl-${test.info().project.name}.png`, fullPage: true });
 });

@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Panel } from "@/components/ui/panel";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Prose } from "@/components/ui/prose";
 import { useToast } from "@/components/ui/toast";
 import { type ReviewState } from "./actions";
@@ -66,10 +65,6 @@ export function ReviewCard({
     else if (result.error) toast.show({ title: t(result.error), tone: "error" });
     return result;
   }, emptyReviewState);
-  // ★ DEC-135: this transition re-renders server content (the queue drops the
-  // decided proposal), which is exactly the shape React 19.2.4 can lose the
-  // retry for — a workaround, not a feature; delete with `pending-nudge.ts`.
-  usePendingNudge(pending);
   const formId = useId();
 
   return (
@@ -87,7 +82,12 @@ export function ReviewCard({
           </p>
         ) : null}
 
-        <form id={formId} action={formAction} className="mt-5 border-t border-edge pt-5">
+        {/* `noValidate` — `16` §8.2's rule for any form that renders the app's
+            own error (`state.error` above). This form has no `required`
+            control at all today (the header comment on `Reason` below
+            explains why on purpose), so nothing native was ever going to
+            block it — set anyway so it stays true if that ever changes. */}
+        <form id={formId} action={formAction} noValidate className="mt-5 border-t border-edge pt-5">
           <input type="hidden" name="proposalId" value={proposalId} />
           <p className="text-body-sm text-fg-muted">{t("approveNote")}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">

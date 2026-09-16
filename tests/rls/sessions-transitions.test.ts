@@ -161,12 +161,11 @@ describe("RPC-transition_session.closes_check_in", () => {
       await tx.as(f.a.admin.claims);
       await act(tx, f.m2.a.published, "complete");
 
+      // Since 0089 (DEC-141) "closed" is the switch, not a truncated code: the window
+      // is the clock's, so a truncated code would simply be re-minted.
       await tx.asOwner();
-      const [{ live }] = await tx.q<{ live: string }>(
-        `select count(*) as live from public.check_in_codes where session_id = $1 and valid_until > now() and revoked_at is null`,
-        [f.m2.a.published],
-      );
-      expect(Number(live)).toBe(0);
+      const [{ check_in_open }] = await tx.q<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [f.m2.a.published]);
+      expect(check_in_open).toBe(false);
     });
   });
 
@@ -180,11 +179,8 @@ describe("RPC-transition_session.closes_check_in", () => {
       await act(tx, f.m2.a.published, "cancel", "أُلغيت لظرف طارئ");
 
       await tx.asOwner();
-      const [{ live }] = await tx.q<{ live: string }>(
-        `select count(*) as live from public.check_in_codes where session_id = $1 and valid_until > now() and revoked_at is null`,
-        [f.m2.a.published],
-      );
-      expect(Number(live)).toBe(0);
+      const [{ check_in_open }] = await tx.q<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [f.m2.a.published]);
+      expect(check_in_open).toBe(false);
     });
   });
 });

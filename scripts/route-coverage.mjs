@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SCOPE = join(ROOT, 'src/app/[locale]/app') // the 49 pages this milestone is scoped to
-const GLOBAL_ERROR = join(ROOT, 'src/app/[locale]/global-error.tsx')
+const GLOBAL_ERROR = join(ROOT, 'src/app/global-error.tsx')
 const ALLOWLIST = join(ROOT, 'scripts', 'route-coverage-allowlist.json')
 
 const argKind = process.argv.find((a) => a.startsWith('--kind='))?.slice(7)
@@ -126,14 +126,14 @@ if (KINDS.includes('error')) {
   check('error', 'error.tsx')
   check('not-found', 'not-found.tsx')
   if (!existsSync(GLOBAL_ERROR)) {
-    if (!allow.globalError) failures.push('src/app/[locale]/global-error.tsx does not exist — the root has no boundary (REQ-UIX-016)')
+    if (!allow.globalError) failures.push('src/app/global-error.tsx does not exist — the root has no boundary (REQ-UIX-016)')
   } else {
     if (allow.globalError) shrunk.push('globalError')
     const body = readFileSync(GLOBAL_ERROR, 'utf8')
     // Not negotiable and not allowlistable: it is the ONE file that cannot get its direction
     // from a provider, so if it lacks dir="rtl" a member meets an English LTR page.
     if (!/dir\s*=\s*["'{`]?\s*rtl/.test(body)) {
-      failures.push('src/app/[locale]/global-error.tsx does not contain dir="rtl" — it has no provider above it (DEC-091)')
+      failures.push('src/app/global-error.tsx does not contain dir="rtl" — it has no provider above it (DEC-091)')
     }
     // ★ Comments are stripped before this test, and that is not fussiness: the
     // first version matched the file's own explanation of why it cannot use
@@ -141,7 +141,7 @@ if (KINDS.includes('error')) {
     // reader. A gate that punishes its own documentation gets deleted.
     const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
     if (/from\s+['"]next-intl/.test(code) || /\b(getTranslations|useTranslations)\s*\(/.test(code)) {
-      failures.push('src/app/[locale]/global-error.tsx uses next-intl — it replaces the root layout, so there is no provider; hand-write the two sentences (DEC-091)')
+      failures.push('src/app/global-error.tsx uses next-intl — it replaces the root layout, so there is no provider; hand-write the two sentences (DEC-091)')
     }
   }
 }

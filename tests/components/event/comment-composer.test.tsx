@@ -217,9 +217,9 @@ describe("CommentComposer", () => {
   // a paint-deferred `requestAnimationFrame` version at 4582b17 — each only
   // moved the odds, because both treated a SYMPTOM (the refresh racing this
   // transition's own completion) of a cause that was never actually about
-  // timing. The real fix is `usePendingNudge(pending)` (comment-
-  // composer.tsx): while pending, it re-renders this component every 300ms,
-  // and each re-render un-suspends the root and lets the lost retry run.
+  // timing. It is fixed in `react-dom` itself by
+  // `patches/next+16.2.10.patch` (`DEC-136`), which records a ping that
+  // arrives during the render instead of dropping it.
   // `router.refresh()` is back as the LAST statement inside the SAME
   // `startTransition`, its pre-44485b8 shape — `pending` now honestly lasts
   // until the refresh has actually committed.
@@ -235,7 +235,7 @@ describe("CommentComposer", () => {
   // REAL Flight stream, which never runs in this test at all — a mocked
   // promise resolving is not a Flight chunk transitioning `pending` →
   // `resolved_model` mid-render. So this test cannot discriminate the bug
-  // from the fix — it passes on both, with or without `usePendingNudge`. It
+  // from the fix — it passes on both, with or without the patch. It
   // stays as the regression guard the lead asked for (a slow action must
   // never leave `aria-busy` stuck without further input), not as proof the
   // live symptom is gone; only a real build settles that (`DEC-135`'s own

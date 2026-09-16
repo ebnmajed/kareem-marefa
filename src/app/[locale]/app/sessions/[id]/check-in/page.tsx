@@ -18,7 +18,7 @@ import { submitCheckInForm } from "./actions";
 // PLACE OF the form. The RPC stays authoritative (submitCheckInForm still
 // calls it and still handles every one of its refusals) — this screen just
 // stops lying before the member starts typing.
-const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "reservation_required", "invalid_code", "overlap", "unknown"]);
+const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "check_in_closed", "reservation_required", "invalid_code", "overlap", "unknown"]);
 
 export default async function CheckInPage({
   params,
@@ -75,7 +75,14 @@ export default async function CheckInPage({
             </div>
           ) : null}
 
-          <form action={submitCheckInForm.bind(null, locale, id)} className="mt-8 max-w-sm space-y-4">
+          {/* `noValidate`: renders `errorKey`'s own Panel below (the app's
+              Arabic error, post-submit) — content's bug class (7f4809f):
+              without it, a native-blocking field would silently stop the
+              submit and neither this banner nor the RPC's own refusal
+              would ever run. No `required` field exists on this form
+              today (`CodeInput` has none), but the rule is "renders an
+              app-side error", not "has a blocking field right now". */}
+          <form action={submitCheckInForm.bind(null, locale, id)} noValidate className="mt-8 max-w-sm space-y-4">
             <div>
               <label id="code-label" htmlFor="code-0" className="text-label text-fg-heading">
                 {t("codeLabel")}

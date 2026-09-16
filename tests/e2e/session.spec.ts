@@ -99,17 +99,15 @@ test("a member updates their profile through the action and the column grant", a
   await signIn(context);
   await page.goto("/ar/app/me");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ملفي");
-  // Interact after hydration: a click that lands first takes the no-JS path,
-  // which does not carry the `?saved=1` confirmation (found in wave 6, recorded
-  // in STATUS for app/me's own rebuild) — this test is about the action and
-  // the column grant, not about that race.
+  // Interact after hydration: this test is about the action and the column
+  // grant. Since wave 7 the form is `useActionState` (content's T1), so the
+  // confirmation is the form's own status line, not a `?saved=1` redirect.
   await page.waitForLoadState("networkidle");
   await page.getByLabel("الشركة").selectOption({ label: "شركة الاختبار" });
   await page.getByLabel("المسمى الوظيفي").fill("مهندسة برمجيات");
   await page.getByLabel("نبذة").fill("أحب مشاركة المعرفة.");
   await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page).toHaveURL(/\/ar\/app\/me\?saved=1$/);
-  await expect(page.getByRole("status")).toHaveText("تم الحفظ");
+  await expect(page.getByRole("status")).toContainText("تم الحفظ");
   await expect(page.getByLabel("المسمى الوظيفي")).toHaveValue("مهندسة برمجيات");
   // The nudge is gone now that a company is set.
   await page.goto("/ar/app");

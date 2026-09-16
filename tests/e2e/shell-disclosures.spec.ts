@@ -80,6 +80,26 @@ test("★ following a link inside the account menu leaves no menu over the desti
   await expect(page.getByRole("menu")).toHaveCount(0);
 });
 
+test("the account menu lists each /app/me route once, in the hub's tab order", async ({ context, page }) => {
+  await signIn(context);
+  await page.goto("/ar/app/leaderboards");
+  await header(page).getByRole("button", { name: "حسابي" }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  const hrefs = await page
+    .getByRole("menuitem")
+    .evaluateAll((items) => items.map((item) => item.getAttribute("href")).filter((href): href is string => href !== null));
+  expect(hrefs.map((href) => href.replace(/^\/(ar|en)(?=\/)/, ""))).toEqual([
+    "/app/me",
+    "/app/me/points",
+    "/app/me/certificates",
+    "/app/me/bookmarks",
+    "/app/me/calendar",
+    "/app/me/notifications",
+    "/app/me/privacy",
+  ]);
+  await page.keyboard.press("Escape");
+});
+
 test("★ Escape closes the menu and returns focus to the control that opened it", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app/leaderboards");

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { controlClass } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { postCommentAction, searchMentionsAction } from "@/components/event/actions";
@@ -74,11 +73,6 @@ export function CommentComposer({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // `DEC-135`: React 19.2.4 can lose the ping that would otherwise commit
-  // this transition once `router.refresh()`'s RSC response resolves — see
-  // the module comment on `submit()` below for the full mechanism.
-  usePendingNudge(pending);
 
   // ★ The lead's real-build finding: a post can be slow enough that a
   // member keeps typing the NEXT comment into this same field while «نشر»
@@ -194,21 +188,11 @@ export function CommentComposer({
       // list IS the success feedback, and a full-width toast was covering
       // exactly the new content it was announcing.
       //
-      // ★ `usePendingNudge(pending)` above is why this transition reliably
-      // COMMITS at all (`DEC-135`): React 19.2.4 can lose the ping that
-      // would otherwise resume this render once the refresh's RSC response
-      // resolves — a chunk finishes parsing mid-render, Flight pings
-      // synchronously, and `pingSuspendedRoot` has nowhere to record it
-      // because the root is already marked suspended-with-delay. Nothing is
-      // then scheduled to retry, and the transition can hang indefinitely —
-      // the lead measured one press in three on a real build, both before
-      // and after two earlier attempts here (a `setTimeout(…, 0)` decoupling
-      // at 44485b8, then a paint-deferred `requestAnimationFrame` version at
-      // 4582b17) that each only moved the odds, because both treated a
-      // SYMPTOM (the refresh racing this transition's own completion) of a
-      // cause that was never actually about timing. `usePendingNudge` is the
-      // real fix — it re-renders this component every 300ms while pending,
-      // and each re-render un-suspends the root and lets the lost retry run.
+      // ★ If «نشر» ever stays busy again after the thread has refreshed, read
+      // `DEC-135` before touching the timing here. The cause was React 19.2.4
+      // losing a ping mid-render, not this function's ordering: two timing
+      // changes (`44485b8`, `4582b17`) only moved the odds. It is fixed in
+      // `react-dom` itself by `patches/next+16.2.10.patch` (`DEC-136`).
       router.refresh();
     });
   }

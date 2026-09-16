@@ -80,6 +80,16 @@ test.beforeAll(async ({}, testInfo) => {
   const presenterMemberId = await provisionMemberId(presenterEmail);
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterMemberId]);
 
+  // ★ Wave-7 plan §4 item 3, ruled and now applied: `checkin`'s own
+  // AFFORDANCE_MATRIX withholds `tasks` for a viewer with no stake in the
+  // session (DEC-090 — "calendar/tasks withheld — no seat yet"), and this
+  // fixture never gave `memberEmail` a reservation before the test below
+  // asserted the tasks section was visible to them. The product is right;
+  // the spec was wrong. A confirmed RSVP, the same shape `fixture-m2.ts`
+  // seeds for every org's own "member" role, is what the test was missing.
+  const memberMemberId = await provisionMemberId(memberEmail);
+  await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, sessionId, memberMemberId]);
+
   const { rows: taskRows } = await db.query<{ id: string }>(
     `insert into public.session_tasks (org_id, session_id, kind, title) values ($1, $2, 'checklist', 'أحضر جهازك المحمول') returning id`,
     [orgId, sessionId],
@@ -145,10 +155,19 @@ test("★ REQ-TSK-004: a member marks a checklist task done, and it persists acr
   await signIn(context, memberEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await expect(page.getByRole("heading", { name: "مهام ما قبل الجلسة", exact: true, level: 2 })).toBeVisible();
-  await expect(page.getByText("أحضر جهازك المحمول")).toBeVisible();
+  // Scoped to #tasks INSIDE #main, not just #tasks: `getByRole` above is
+  // naturally immune (an orphaned, `hidden` streaming-SSR template segment
+  // — see the REQ-TSK-001/002 test's own note below — is excluded from the
+  // accessibility tree entirely), but `getByText` matches on raw DOM text
+  // regardless of `hidden`, and `#tasks` alone matches BOTH the real
+  // section and the orphaned copy's own duplicate id. `#main` (the routed
+  // page's own landmark) never contains the orphaned copy, which sits
+  // directly under `body`.
+  const tasksSection = page.locator("#main").locator("#tasks");
+  await expect(tasksSection.getByText("أحضر جهازك المحمول")).toBeVisible();
 
-  await page.getByRole("button", { name: "أنجزتها" }).click();
-  await expect(page.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
+  await tasksSection.getByRole("button", { name: "أنجزتها" }).click();
+  await expect(tasksSection.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
   await review(page, "tasks-event-page");
 
   await page.reload();
@@ -162,15 +181,31 @@ test("★ REQ-TSK-001/002: the presenter adds an external task through the inlin
   await signIn(context, presenterEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
 
-  await page.getByLabel("نوع المهمة").selectOption("external");
-  await page.getByLabel("عنوان المهمة").fill("ثبّت التطبيق قبل الحضور");
-  await page.getByLabel("الرابط").fill("https://example.com/app");
+  // ★ Desktop-only strict-mode find: `getByLabel('نوع المهمة')` resolved to
+  // 2 elements. Traced the actual DOM (a debug dump of every <select>'s
+  // ancestor chain, run once and discarded) rather than guessing between
+  // the lead's two candidates — it was neither. The real, live "تسجيل مهمة
+  // جديدة" form sits under `main#main > article > …`; the second match sits
+  // directly under `body > div#S:e`, outside `#main` entirely, with the
+  // SAME `id="tasks"`/`id="tasks-create-form"` and the same field labels —
+  // an orphaned, `hidden` React streaming-SSR template segment (the same
+  // `$S:`/`$RC` mechanism the no-JS finding traced) that the reveal script
+  // leaves behind instead of removing, on this route at desktop width.
+  // Materials' own upload form shows the identical duplicate — a page-wide
+  // artefact, not something in this component. Scoping to `#main` (the
+  // established idiom for excluding shell/duplicate content in this file)
+  // excludes the orphaned copy everywhere at once, since it never renders
+  // inside `#main` in the first place.
+  const main = page.locator("#main");
+  await main.getByLabel("نوع المهمة").selectOption("external");
+  await main.getByLabel("عنوان المهمة").fill("ثبّت التطبيق قبل الحضور");
+  await main.getByLabel("الرابط").fill("https://example.com/app");
   // exact: true — photos.spec.ts's own UploadWidget submit button
   // ("إضافة صورة") shares the same event page and would otherwise match too.
-  await page.getByRole("button", { name: "إضافة", exact: true }).click();
+  await main.getByRole("button", { name: "إضافة", exact: true }).click();
 
-  await expect(page.getByText("ثبّت التطبيق قبل الحضور")).toBeVisible();
-  await expect(page.getByRole("link", { name: "فتح الرابط — يغادر المنصة" })).toHaveAttribute("href", "https://example.com/app");
+  await expect(main.getByText("ثبّت التطبيق قبل الحضور")).toBeVisible();
+  await expect(main.getByRole("link", { name: "فتح الرابط — يغادر المنصة" })).toHaveAttribute("href", "https://example.com/app");
 
   // REQ-TSK-002, made structural: no scoring catalogue entry names a task
   // action, and no check-in RPC reads task_completions at all — proven at

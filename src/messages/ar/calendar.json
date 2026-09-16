@@ -24,6 +24,7 @@
     "synced": {
       "heading": "الجلسات المتزامنة",
       "empty": "لا جلسات متزامنة بعد. احجز مقعدًا وستُضاف إلى تقويمك.",
+      "browseAction": "تصفّح الجلسات",
       "count": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}",
       "state": {
         "pending": "بانتظار المزامنة",

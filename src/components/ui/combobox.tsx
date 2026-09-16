@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CloseIcon } from "@/components/ui/icons";
+import { controlClass, describedIds, useFieldWiring } from "@/components/ui/field";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { ComboboxOption, ComboboxProps } from "@/components/ui";
 
@@ -16,6 +17,29 @@ import type { ComboboxOption, ComboboxProps } from "@/components/ui";
 // co-presenter field (M10, `sessions`' track).
 //
 // `member-picker.tsx` now re-exports this file rather than duplicating it.
+//
+// ★ R2 (`sessions`, wave 8) — four fixes for a MEMBER-facing caller
+// (`/app/propose`'s co-presenter field), found because this file had only
+// ever been driven from an admin screen before:
+//
+// 1. The input no longer forces `dir="ltr"` — it was a copy-paste leftover
+//    from a URL/date-shaped input elsewhere, and it left every Arabic name
+//    typed and read left-to-right. Direction now inherits from the
+//    document's own `Direction.Provider`, same as every other control.
+// 2. It now reads `useFieldWiring()` (`ui/field.tsx`, `sessions`' file) —
+//    `<Field>`'s hint and error reach `aria-describedby`, and
+//    `aria-required`/`aria-invalid` are set, exactly like `ui/input.tsx`
+//    already does. An explicit `invalid` prop still wins over the context,
+//    same precedence rule `Input` documents.
+// 3. The input's classes come from `controlClass()` (`ui/field.tsx`'s own
+//    export), not a hard-coded string that never varied with `invalid` —
+//    the whole point of `controlClass` existing at all.
+// 4. Its own strings moved from `admin.combobox` to `ui.combobox` — a member
+//    form must not pull in the admin message catalogue to render a text
+//    field. `member-picker.tsx`'s OWN `resultsLabel` override is a
+//    different, admin-scoped string and stays exactly where it was
+//    (`admin.combobox.resultsCount`, the one key kept there — see that
+//    file); only what THIS file reads for itself moved.
 
 /** REQ-DSC-004 — the SAME transform `src/lib/dal/search.ts`'s `arNormalize()`
  *  applies (strip tashkeel/tatweel, fold alef/yaa/taa-marbuta, collapse
@@ -54,9 +78,15 @@ export function Combobox({
   className = "",
 }: ComboboxProps & { }) {
   const generatedId = useId();
-  const comboId = id ?? generatedId;
+  const field = useFieldWiring();
+  // Explicit prop wins, then `<Field>`'s own id, then a generated one —
+  // `ui/input.tsx`'s exact precedence for the same reason: a caller passing
+  // `id` directly (outside a `<Field>`, or overriding it) means it.
+  const comboId = id ?? field?.id ?? generatedId;
   const listboxId = `${comboId}-listbox`;
-  const t = useTranslations("admin.combobox");
+  const isInvalid = invalid ?? field?.invalid ?? false;
+  // `ui.combobox` — landed in `ui.json`; see the header comment's item 4.
+  const t = useTranslations("ui");
 
   const isControlled = value !== undefined;
   const [uncontrolledSelected, setUncontrolledSelected] = useState<string[]>(defaultValue ?? []);
@@ -193,7 +223,7 @@ export function Combobox({
   const resultsText = useMemo(() => {
     if (!open) return "";
     if (resultsLabel) return resultsLabel(filtered.length);
-    return t("resultsCount", { count: filtered.length, value: formatNumber(filtered.length) });
+    return t("combobox.resultsCount", { count: filtered.length, value: formatNumber(filtered.length) });
   }, [open, filtered.length, resultsLabel, t]);
 
   const activeDescendant =
@@ -225,7 +255,7 @@ export function Combobox({
                     // (`proposal-copy.test.tsx`) still requires the `<t>`
                     // tag in the SOURCE string; an attribute has no visual
                     // direction to isolate, so the tag here is a no-op.
-                    aria-label={t.markup("removeChip", { name: label, t: (chunks) => chunks })}
+                    aria-label={t.markup("combobox.removeChip", { name: label, t: (chunks) => chunks })}
                     className="inline-flex size-6 items-center justify-center rounded-field text-fg-muted hover:bg-silver-200 hover:text-fg-heading"
                   >
                     <CloseIcon className="text-sm" />
@@ -246,7 +276,9 @@ export function Combobox({
         aria-controls={listboxId}
         aria-autocomplete="list"
         aria-activedescendant={activeDescendant}
-        aria-invalid={invalid || undefined}
+        aria-invalid={isInvalid || undefined}
+        aria-required={field?.required || undefined}
+        aria-describedby={describedIds(field?.describedBy)}
         autoComplete="off"
         disabled={atMax && multiple}
         placeholder={atMax ? undefined : placeholder}
@@ -258,8 +290,7 @@ export function Combobox({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        dir="ltr"
-        className="block h-11 w-full rounded-field border border-edge-strong bg-canvas px-3 text-start text-body text-fg-heading disabled:cursor-not-allowed disabled:opacity-60"
+        className={controlClass(isInvalid)}
       />
 
       {/* The one place `resultsText` renders when there are zero rows: both
@@ -319,7 +350,7 @@ export function Combobox({
                 onClick={createFromQuery}
                 className={`block w-full px-3 py-2 text-start text-body-sm text-fg-heading ${highlight === filtered.length ? "bg-silver-100" : ""}`}
               >
-                {t.rich("createOption", { name: query.trim(), t: (chunks) => <bdi>{chunks}</bdi> })}
+                {t.rich("combobox.createOption", { name: query.trim(), t: (chunks) => <bdi>{chunks}</bdi> })}
               </button>
             </li>
           ) : null}

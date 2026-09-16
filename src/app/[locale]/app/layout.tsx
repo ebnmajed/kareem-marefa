@@ -196,11 +196,12 @@ export default async function AppLayout({
               labels={{
                 account: t("account"),
                 profile: t("profile"),
-                rsvps: t("rsvps"),
                 points: t("points"),
                 certificates: t("certificates"),
                 bookmarks: t("bookmarks"),
                 calendar: t("calendar"),
+                notifications: t("meNotifications"),
+                privacy: t("mePrivacy"),
                 admin: t("admin"),
                 platform: t("platform"),
                 signOut: t("signOut"),

@@ -162,18 +162,9 @@ describe("★ DEC-090 corollary 2 — the derived phase may only REMOVE an affor
     expect(canGrantOn(done, "rate", NOW)).toBe(true);
   });
 
-  it("refuses check-in on a clock-derived live — the RPC would refuse too", () => {
-    // published and past its start: the screen says `live`, start_session has
-    // not run, and check_in() refuses. §5.4.1 row 4's other half.
-    const early: PhaseInput = { state: "published", startsAt: at(-1), endsAt: at(1) };
-    expect(sessionPhase(early, NOW)).toBe("live");
-    expect(canGrantOn(early, "checkIn", NOW)).toBe(false);
-  });
-
-  it("allows check-in once the row says in_progress", () => {
-    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
-    expect(canGrantOn(running, "checkIn", NOW)).toBe(true);
-  });
+  // Check-in left GRANTING_AFFORDANCES in DEC-141: its gate is the scheduled
+  // window and the switch, tested against checkInWindowAllowed() in
+  // tests/unit/session-matrix.test.ts.
 
   it("every granting affordance is refused whenever the source is the clock", () => {
     const every = Object.values(GRANTING_AFFORDANCES).flat() as GrantingAffordance[];

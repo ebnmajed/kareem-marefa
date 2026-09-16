@@ -88,6 +88,17 @@ test.afterAll(async () => {
   await db.end();
 });
 
+/**
+ * React's hidden streamed copy of a section (`body > div[hidden][id^="S:"]`)
+ * sits beside the visible one until its swap runs, and a strict text locator
+ * counts both (`185fbb1`). SCR-018 renders the invitation ONCE — one
+ * `<h2>` in one section, read from the page — so a second match right after a
+ * navigation is that copy, not a duplicate to scope away.
+ */
+async function streamed(p: Page) {
+  await expect(p.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 async function signIn(context: BrowserContext, who: string = email) {
   const jar: { name: string; value: string }[] = [];
   const client = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, {
@@ -184,7 +195,8 @@ test("a rejected submission keeps every word the member typed", async ({ context
   // an unscoped getByRole("alert") is a strict-mode violation, not a bug in
   // the page.
   const summary = page.locator("form [role=alert]");
-  await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
+  // Wave 7: the summary counts what failed (`0916b9d`).
+  await expect(summary).toContainText("لم نستطع إرسال المقترح — حقل واحد يحتاج تصحيحًا");
   await expect(summary).toContainText("العنوان قصير جدًا");
   // ★ The abstract survives the round trip — the form's own promise.
   await expect(page.getByLabel("نبذة عن موضوعك")).toHaveValue(abstract);
@@ -196,6 +208,7 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   await signIn(context);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/ar/app/propose");
+  await streamed(page);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
   // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
@@ -254,19 +267,21 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   const box = await submit.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
 
-  // ★ The two mixed-direction rows, measured rather than eyeballed. In RTL the
+  // ★ The mixed-direction controls, measured rather than eyeballed. In RTL the
   // first flex child is the RIGHTMOST one, so a numeral must sit to the right
-  // of its unit («45 دقيقة» reads number-first) and a checkbox to the right of
-  // its label. Getting either backwards looks subtly wrong in a way a
-  // screenshot review misses and a coordinate comparison does not.
-  const duration = (await page.getByLabel("المدة المتوقعة").boundingBox())!;
-  const unit = (await page.getByText("دقيقة", { exact: true }).boundingBox())!;
+  // of its unit («45 دقيقة» reads number-first); and the co-presenter search
+  // types Arabic right to left — `ui/combobox` forced `dir="ltr"` until R2
+  // (`654ec91`). Getting either backwards looks subtly wrong in a way a
+  // screenshot review misses and a measurement does not.
+  // The unit is read from the duration field's own row (sync 5: an unscoped
+  // «دقيقة» matched twice on phone, the second outside `#main`).
+  const durationBox = page.getByLabel("المدة المتوقعة");
+  const duration = (await durationBox.boundingBox())!;
+  const unit = (await durationBox.locator("xpath=..").getByText("دقيقة", { exact: true }).boundingBox())!;
   expect(duration.x, "the number box sits to the right of «دقيقة» in RTL").toBeGreaterThan(unit.x);
 
-  const tick = page.getByRole("checkbox", { name: /زميلة الاختبار/ });
-  const tickBox = (await tick.boundingBox())!;
-  const tickRow = (await tick.locator("xpath=..").boundingBox())!;
-  expect(tickBox.x + tickBox.width, "the checkbox sits at the inline-start, which is the right in RTL").toBeGreaterThan(tickRow.x + tickRow.width / 2);
+  const search = page.getByRole("combobox", { name: /مقدّمون مشاركون/ });
+  expect(await search.evaluate((el) => getComputedStyle(el).direction), "the co-presenter search is right to left").toBe("rtl");
 
   // The reviewed screenshot of the definition of done.
   await page.screenshot({ path: ".qa-shots/rtl/scr-017-propose-390-rtl.png", fullPage: true });
@@ -277,7 +292,10 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await page.goto("/ar/app/propose");
   const title = "جلسة بمقدّمَين";
   await fillProposal(page, title);
-  await page.getByRole("checkbox", { name: /زميلة الاختبار/ }).check();
+  // Wave 7: a search, not a checkbox list (REQ-UIX-008).
+  await page.getByRole("combobox", { name: /مقدّمون مشاركون/ }).fill("زميلة");
+  await page.getByRole("option", { name: /زميلة الاختبار/ }).click();
+  await expect(page.getByRole("button", { name: /إزالة زميلة الاختبار/ })).toBeVisible();
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
 
@@ -300,8 +318,10 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await signIn(mateContext, mateEmail);
   const matePage = await mateContext.newPage();
   await matePage.goto(url.replace(/\?created=1$/, ""));
+  await streamed(matePage);
   await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toBeVisible();
   await matePage.getByRole("button", { name: "أوافق على التقديم" }).click();
+  await streamed(matePage);
   // Scoped to her own row: «وافق» is a substring of «أوافق على التقديم» and of
   // the invitation copy, so an unscoped text match is ambiguous, not a finding.
   await expect(matePage.getByRole("listitem").filter({ hasText: "زميلة الاختبار" })).toContainText("وافق");

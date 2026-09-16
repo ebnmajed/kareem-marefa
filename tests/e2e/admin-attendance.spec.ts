@@ -6,13 +6,22 @@
 // CSV export streams with the manual-mark flag intact.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+// `E2E_SHOTS_DIR` lets a look-only run against a dev server keep its
+// pictures out of the directory the review reads (`event-page.spec.ts`'s
+// own convention, `wave7-content-me.spec.ts`'s own precedent for this
+// exact helper shape). A verification worktree sets this to the MAIN
+// checkout's `.qa-shots/rtl`, so a sync build's captures land where
+// STATUS.md's row cites them, not inside the worktree that produced them.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -126,21 +135,47 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ DEC-134: `app/loading.tsx` puts every `/app` page inside a Suspense
+// boundary, so the status is committed before the gate runs, and a gated
+// page's `notFound()` streams 200 with `noindex` and the not-found page —
+// not a real 404 status. What the gate protects is the content, so that is
+// what is asserted: the not-found page is the only `h1`, and nothing the
+// page guards rendered (the pattern `dd03094` set for branding/exports/
+// designer/platform).
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+}
+
 test("a member cannot open the attendance report", async ({ context, page }) => {
   await signIn(context, attendeeEmail);
-  const response = await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  expect(response!.status()).toBe(404);
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
+  await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-020: a moderator reaches attendance through /admin/sessions, with no management controls anywhere on that page", async ({ context, page }) => {
   await signIn(context, modEmail);
   await page.goto("/ar/app/admin/sessions");
-  await expect(page.getByText("جلسة قيد الحضور")).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport), so a bare
+  // `getByText` strict-mode-fails by matching both copies — the idiom
+  // `admin-sessions.spec.ts` set: scope to whichever role is actually
+  // present (Chromium excludes a `display:none` subtree from the
+  // accessibility tree, so this resolves to exactly one match either way).
+  const visibleRows = page.getByRole("table").or(page.getByRole("list"));
+  await expect(visibleRows.getByText("جلسة قيد الحضور")).toBeVisible();
   // The admin-only pipeline/direct-create UI must not exist for a moderator.
   await expect(page.getByText("جاهزة للجدولة")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "أنشئ الجلسة" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "تقرير الحضور" }).click();
+  // ★ `sessions-table.tsx`'s `ModeratorSessionsTable` wraps the whole row's
+  // title cell in the link to attendance (`DataTable`'s own `rowHref`), so
+  // the link's accessible name is the session's own title, not a separate
+  // "تقرير الحضور" label — that string is only the empty-state's fallback
+  // action, never a per-row one. A stale expectation here (name: "تقرير
+  // الحضور") from before the DataTable rebuild timed out finding nothing.
+  await visibleRows.getByRole("link", { name: "جلسة قيد الحضور" }).click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/attendance$`));
   await expect(page.getByRole("heading", { name: /تقرير الحضور/ })).toBeVisible();
   // Export and per-rater ratings are admin-only, even on this shared screen.
@@ -164,16 +199,35 @@ test("REQ-CHK-012: the summary counts and the per-member table are correct", asy
   await expect(ddFor("لم يحضروا رغم الحجز")).toHaveText("0");
   await expect(ddFor("معدّل الحضور")).toHaveText("100٪");
 
-  await expect(page.getByText("حاضر مسجَّل")).toBeVisible();
+  // `getByRole("cell", …)`, not a bare `getByText`: the member's name now
+  // ALSO appears as an `<option>` in the "Remove attendance" section's
+  // select below (C3, `bfe8e2a`) — a real second occurrence on the page,
+  // not a markup duplicate to fix. A `<select><option>` carries no `cell`
+  // role, so scoping to the table cell is what the next line already does
+  // for the other member; this just matches it.
+  await expect(page.getByRole("cell", { name: "حاضر مسجَّل" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "بانتظار الحجز" })).toBeVisible();
-  await expect(page.getByText("رمز الحضور")).toBeVisible();
+  // Scoped to the cell role, not a bare `getByText` — sync 6 (phone): Next's
+  // dynamic-route streaming (this page touches `cookies()`, so it is
+  // dynamic) can transiently duplicate a matching text node elsewhere in
+  // the document during hydration, the same class of flake
+  // `checkin.spec.ts`'s own RsvpPanel test already documents for this
+  // reason. A `<td>` carries `cell`; a transient streamed copy does not.
+  await expect(page.getByRole("cell", { name: "رمز الحضور" })).toBeVisible();
 });
 
 test("REQ-CHK-008: a manual mark records a check-in with the manual method, and a written reason is required", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
 
-  await page.getByLabel("العضو").selectOption({ label: "بانتظار الحجز" });
+  // ★ Sync 6 (desktop): a bare "العضو" ambiguously matched BOTH this
+  // select and C3's own removal select, because Playwright's default
+  // string matching is a substring search — the removal select's longer
+  // label ("العضو المراد إلغاء تسجيل حضوره") still CONTAINS "العضو".
+  // Targeting the full, distinguishing label avoids that regardless of
+  // substring semantics, and `checkin.json`'s own two labels no longer
+  // read as the same control to a screen reader either.
+  await page.getByLabel("العضو المراد تسجيل حضوره").selectOption({ label: "بانتظار الحجز" });
   await page.getByRole("button", { name: "سجّل حضوره" }).click();
   await expect(page.getByText("اكتب السبب أولًا")).toBeVisible();
 
@@ -249,6 +303,76 @@ test("SCR-044 at 390 px RTL: the report reads down the page, never sideways, wit
     return offenders.slice(0, 6);
   });
   expect(overflow, "the page itself must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-044-attendance-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: join(SHOTS, `scr-044-attendance-390-rtl-${test.info().project.name}.png`), fullPage: true });
+});
+
+// ★ REQ-CHK-017, C3 — last in the file (not fetch order — Playwright's
+// serial mode runs it after everything above): removes `attendeeMemberId`'s
+// still-active code check-in from `beforeAll`, so no earlier test's
+// assertions (all already run by this point) depend on it staying checked
+// in. Proves the whole reversal end to end, through the RPC, not a mock —
+// the SQL (0087) already has its own RLS coverage for the exceptions;
+// this is the one thing only a real build can show: the confirmation
+// dialog actually gates the submit (REQ-UIX-013), and the report reflects
+// the removal afterward.
+test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and the report shows it removed", async ({ context, page }) => {
+  // 390 × 844, unconditionally — this test's own assertions don't depend on
+  // viewport size, so there's no cost to shaping it for the capture. The
+  // captures themselves are taken only on the phone PROJECT (matching
+  // SCR-044's own reasoning above: a desktop context at 390 px still
+  // carries a classic scrollbar a real phone doesn't), named for the
+  // lead's sync build: wave7-checkin-attendance-{populated,remove-dialog,removed}.png.
+  await page.setViewportSize(PHONE);
+  const isPhone = test.info().project.name === "phone";
+  await signIn(context, adminEmail);
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-populated.png"), fullPage: true });
+  }
+
+  const removeSection = page.locator("section", { has: page.getByRole("heading", { name: "إلغاء تسجيل حضور" }) });
+  await removeSection.getByLabel("العضو المراد إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
+  await removeSection.getByLabel("سبب الإلغاء").fill("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
+
+  // The submit button OPENS the confirmation dialog (REQ-UIX-013) — it must
+  // not submit on its own.
+  await removeSection.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
+  const dialog = page.getByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
+  await expect(dialog).toBeVisible();
+  // Names both the member AND the session (the lead's own restated
+  // constraint) — not just "this check-in", which a staff member managing
+  // several sessions could too easily confuse.
+  await expect(dialog.getByText("حاضر مسجَّل")).toBeVisible();
+  await expect(dialog.getByText("جلسة قيد الحضور")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-remove-dialog.png"), fullPage: true });
+
+  await dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
+  await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
+
+  // The report's own list now shows the removal, with the reason — not a
+  // bare "no-show" indistinguishable from never having checked in.
+  const row = page.getByRole("row", { name: /حاضر مسجَّل/ });
+  await expect(row.getByText("أُلغي تسجيل حضوره")).toBeVisible();
+  await expect(row.getByText("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-removed.png"), fullPage: true });
+
+  // The reversal itself, in the database — the RPC's own work, not this
+  // page's: the check-in is soft-deleted, its points award (if any) is
+  // compensated, and the removal is audited.
+  const { rows: ciRows } = await db.query<{ removed_at: string | null; removal_reason: string | null }>(
+    `select removed_at, removal_reason from public.check_ins where session_id = $1 and member_id = $2 and removed_at is not null`,
+    [sessionId, attendeeMemberId],
+  );
+  expect(ciRows).toHaveLength(1);
+  expect(ciRows[0].removal_reason).toBe("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
+
+  const audit = await db.query(`select action from public.audit_log where action = 'check_in.removed' and org_id = $1`, [orgId]);
+  expect(audit.rowCount).toBe(1);
+
+  // Removed, not deleted: they are offered again as a manual-mark
+  // candidate, the same "not checked in" state a fresh member would be in.
+  await expect(page.getByLabel("العضو المراد تسجيل حضوره", { exact: true }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
 });
 

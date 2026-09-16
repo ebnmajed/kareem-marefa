@@ -130,6 +130,8 @@ async function TimelineEmpty({ query, data, locale }: { query: TimelineQuery; da
           return t(`card.level.${value as "introductory"}`);
         case "language":
           return t(`card.language.${value as "ar"}`);
+        case "when":
+          return t(`timeline.groups.${value as "thisWeek"}`);
         case "from":
         case "to":
           return formatDate(`${value}T12:00:00Z`, "UTC", locale);

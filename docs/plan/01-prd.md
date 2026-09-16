@@ -1068,11 +1068,17 @@ an event page.
 - A member with a confirmed RSVP and no check-in cannot upload — enforced by policy.
 - The gate keys off the check-in event, nothing else (`REQ-CHK-009`).
 
-#### REQ-EVT-010 — Photos publish immediately
-**Serves:** D34
-An uploaded photo appears at once. There is no pre-moderation queue.
+#### REQ-EVT-010 — Photos publish without moderation, the moment their metadata is stripped (amended by DEC-139)
+**Serves:** D34 · `REQ-EVT-011`
+An uploaded photo is published with **no pre-moderation queue**: no person reviews it before the
+organisation sees it. It becomes visible as soon as the worker has stripped and stored it
+(`REQ-EVT-011`) — never before, because the original carries location and device data.
 **Acceptance:**
-- The uploader sees their photo in the gallery without a refresh.
+- No state between upload and visibility waits on a person.
+- The uploader is told at once that the photo is being processed, never that it was posted.
+- A photo is never retrievable before its strip completes (`REQ-EVT-011`).
+- Once processing completes, the photo takes its place in the uploader's gallery without the
+  uploader reloading the page.
 
 #### REQ-EVT-011 — EXIF and GPS are stripped before storage
 **Serves:** DEC-005

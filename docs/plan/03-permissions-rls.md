@@ -1172,7 +1172,7 @@ generated suite is the highest-value test in the product.
 | `RPC-transition_session.admin_only` | A member, a moderator, a presenter and a stale admin are all refused; an admin of another org cannot reach the session (migration `0023`). |
 | `RPC-transition_session.edges` | Only `02` §6.2's edges are accepted — starting a draft, completing a published session, archiving anything but a completed one are all refused; `reopen` is archived → completed (`cancelled` has no outgoing edge). |
 | `RPC-transition_session.cancel` | Cancelling requires a reason, keeps the page and the row, and is reachable from `completed` (`REQ-SES-010`). |
-| `RPC-transition_session.closes_check_in` | Completing early — or cancelling — closes the check-in window in the same transaction (`REQ-CHK-004`). |
+| `RPC-transition_session.closes_check_in` | Completing early — or cancelling — closes the check-in window in the same transaction (`REQ-CHK-004`). ★ *Since `0089` (`DEC-141`) by setting `check_in_open = false`, not by truncating the code.* |
 | `POL-sessions.transition.legal` | Every edge of `02` §6.2, and the presenter-decline return to `draft` (`REQ-PRO-007`), is accepted; `draft → published`, `approved → in_progress`, `completed → draft`, `published → draft` and anything out of `cancelled` are refused with `23514` — even by the migration owner, past every RPC (migration `0024`). |
 | `POL-sessions.transition.rpcs_pass` | `publish_session()`'s walk, both clock functions, `transition_session()` and the decline trigger all still succeed through the guard (migration `0024`). |
 | `POL-evidence.occurred_at.ordered` | `audit_log` and `session_state_transitions` rows written by one transaction carry strictly increasing `occurred_at`; the publish chain's rows order by time alone (migration `0024`, DEC-046). |
@@ -1345,7 +1345,7 @@ generated suite is the highest-value test in the product.
 | `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
 | `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
 | `RPC-check_in.reservation_required` | With `allow_walk_ins` off, a member with no confirmed reservation gets `reservation_required` — the attempt is recorded, the code is not revealed as right or wrong; with it on, the same member checks in (migration `0079`, DEC-065). |
-| `RPC-set_session_walk_ins.staff` | A member and a presenter are refused `42501`; an admin and a moderator flip the flag, audited as `session.walk_ins_changed` (migration `0079`). |
+| `RPC-set_session_walk_ins.staff` | A member and a presenter are refused `42501`; an admin and a moderator flip the flag, audited as `session.walk_ins_changed` (migration `0079`). ★ *Retired with the function by `0085` (`DEC-118`) — see `RPC-set_session_walk_ins.retired`.* |
 | `POL-sessions.public_card.anon` | `session_public_card()` as `anon` on a published, in-progress or completed session returns exactly the public fields (title, times, time zone, venue name, org name, the poster's `og.png` path and size — `numerals` left the row type in migration `0082`, DEC-124/DEC-132); the abstract, presenters, capacity and every other column are absent from the return type. A draft, approved, archived or cancelled session, a suspended org's session and an unknown uuid are the same empty answer. `anon` still has no policy on `sessions`, `venues`, `session_posters` or `export_artifacts` (migration `0080`, DEC-066). |
 | `POL-storage.exports.public_card` | `anon` reads the `og.png` object of a card-eligible session's poster and nothing else in `exports` — not the same poster's `master`, `a4`, `og.webp` or `cert_*`, not a draft's or a cancelled session's — and cannot write. A member of ANOTHER org reads the same object and no more: signing in never shows less than being a stranger (migration `0080`). |
 | `POL-company_scoring_rules.select` | Any org member reads the company rule catalogue; another org's rows are invisible (migration `0081`, DEC-067). |
@@ -1358,10 +1358,10 @@ generated suite is the highest-value test in the product.
 | `RPC-rebuild_company_points_balances.reproduces` | Truncate and re-sum always reproduces the same totals from the ledger. |
 | `POL-sessions.host_company_same_org` | A session cannot be assigned a host company from another org (`sessions_host_company_same_org`). |
 | `RPC-snapshot_leaderboard.company_ledger_included` | The company board's total is the member-derived sum plus the company ledger's sum for the period; the frozen `active_member_count` denominator is unchanged. |
-| `RPC-ensure_check_in_code.only_live` | The presenter of a `published` session is refused `not_open` before it starts and after it ends; once `in_progress` the same call returns a code (migration `0078`). |
+| `RPC-ensure_check_in_code.only_live` | The presenter of a `published` session is refused `not_open` before it starts and after it ends; once `in_progress` the same call returns a code (migration `0078`). ★ *Superseded by `RPC-ensure_check_in_code.floor_ceiling` (`0084`, `DEC-141`).* |
 | `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
 | `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
-| `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. |
+| `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. ★ *Since `0084` (`DEC-141`) the ceiling is `ends_at` + 2 h — see `RPC-check_in.floor` / `.ceiling`.* |
 | `POL-check_ins.revoked` | A revoked code is rejected; check-ins already recorded with it stand. |
 | `POL-check_ins.single_use` | A second check-in is a no-op returning the first, with `status = 'already_checked_in'` so SCR-014 renders its own state (`09`). |
 | `POL-check_ins.overlap` | Checking in to an overlapping session raises on the exclusion constraint. |
@@ -1525,6 +1525,46 @@ generated suite is the highest-value test in the product.
 | `POL-realtime.payload_shape` | The `session:{id}` payload carries **counts**, never `check_ins` rows. |
 | `POL-realtime.notification_payload` | The notification broadcast carries an **id**, not content. |
 | `POL-super_admin.no_data_plane` | A super admin selects from `sessions`, `members`, `points_ledger` and `certificates` → **zero rows in every case** (`REQ-ADM-002`). |
+| ★ **wave 7 (`DEC-141`), migrations `0084` – `0090`** — the check-in switch and its ceiling, walk-ins at publication, the admin's removal and its reversal, and the profile's admin tier | |
+| `RPC-check_in.floor` | A code entered before the session's scheduled start is refused `not_started`, clock-derived, independent of `state`. |
+| `RPC-check_in.ceiling` | A code entered at or after `ends_at + 2h` is refused `session_ended`, computed from the SCHEDULED end, not from when the session actually finished. |
+| `RPC-check_in.switch_closed` | Inside the window, with `check_in_open = false`, a correct code is refused `check_in_closed` — never revealing whether it was right. |
+| `RPC-check_in.attendance_states` | A `draft`/`approved`/`cancelled`/`archived` session refuses `not_started` regardless of the clock. |
+| `RPC-set_check_in_open.role_set` | A plain member is refused; the session's own accepted presenter, any moderator, any admin succeed; a presenter of a DIFFERENT session is refused. |
+| `RPC-set_check_in_open.ceiling` | Opening (not closing) past `ends_at + 2h` is refused; closing is always allowed. |
+| `RPC-set_check_in_open.audited` | Every open and close writes an audit row naming who and when. |
+| `RPC-ensure_check_in_code.floor_ceiling` | Mirrors `check_in()`'s own floor/ceiling/state gate — supersedes 0078's `RPC-ensure_check_in_code.only_live`. |
+| `RPC-schedule_session.walk_ins` | `p_allow_walk_ins = true`/`false` sets `allow_walk_ins`; admin-only, same as every other field this RPC writes. |
+| `RPC-schedule_session.walk_ins_unchanged` | Rescheduling WITHOUT passing the parameter (the default, `null`) leaves `allow_walk_ins` exactly as it was. |
+| `RPC-schedule_session.walk_ins_changed_audited` | A reschedule that actually changes `allow_walk_ins` writes a `session.walk_ins_changed` row with the old and new values, KEPT SEPARATE from `session.scheduled`'s own row (the lead's promotion-review fix) — a reschedule that leaves it unchanged writes none. |
+| `RPC-set_session_walk_ins.retired` | The function no longer exists — DEC-118: no door but `schedule_session()`. |
+| `RPC-mark_checked_in_manually.window` | An admin marks a member present any time after the scheduled start, including on an archived session; a moderator is refused outside the code family's floor/ceiling; both are refused on a cancelled session. |
+| `RPC-mark_checked_in_manually.award_points` | A manual mark enqueues exactly one `award_points` job, keyed `pts:check_in:<check_in.id>` — the same key shape a code check-in uses. |
+| `RPC-remove_check_in.admin_only` | A member, a presenter and a moderator are all refused `not_authorized`; only an admin succeeds. |
+| `RPC-remove_check_in.reason_required` | An empty reason is refused before anything is written. |
+| `RPC-remove_check_in.reversal` | Removing a check-in with a points award inserts ONE compensating `reversal` row per original award (attendee's own and the presenter's `attendee_bonus`), `-amount`, reason «أُلغي تسجيل الحضور»; a second removal attempt is refused, never a second reversal. |
+| `RPC-remove_check_in.certificate_revoked` | Removing a check-in with an issued attendance certificate revokes it through the existing `revoke_certificate()` path — audited, PDF not deleted, the member never sees the admin's own words. |
+| `RPC-remove_check_in.no_show_symmetry` | Removing a confirmed-RSVP member's check-in awards the `no_show` rule with the same key `evaluate_no_shows` would compute. |
+| `RPC-remove_check_in.not_found` | Removing a member with no active check-in (never checked in, or already removed) is refused `P0002`. |
+| `RPC-remove_check_in.readd` | After a removal, the same member can check in again (code or manual) with no special path — the partial index frees the slot. |
+| `POL-check_ins.removed_excluded_from_overlap` | A removed check-in no longer blocks an overlapping session's check-in (REQ-CHK-013). |
+| `POL-has_checked_in.excludes_removed` | `has_checked_in()` returns false once the check-in is removed — the photo-upload gate re-derives live. |
+| `POL-ratings.write_self_excludes_removed` | A rating insert whose `check_in_id` points at a removed check-in is refused, same as no check-in at all. |
+| `RPC-award_points.skips_removed_check_in` | A late `award_points('check_in', …)` call for a check-in removed before it ran writes nothing, silently — the same shape as a capped or cooled-down rule. |
+| `RPC-issue_certificate.no_check_in_when_removed` | A late `issue_certificates` job for a removed check-in raises `no_check_in`, the same refusal as for a member who never checked in. |
+| `RPC-fan_out_certificates.excludes_removed` | The completion fan-out does not enqueue an attendance certificate for a member whose check-in was removed before completion. |
+| `RPC-send_rating_prompt.excludes_removed` | A member whose check-in was removed is not prompted to rate the session. |
+| `RPC-evaluate_streaks.excludes_removed` | A removed check-in does not count toward a streak period not yet awarded; an already-awarded streak_awards row is untouched. |
+| `RPC-evaluate_badges.excludes_removed` | A removed check-in does not count toward the `check_ins_count` badge metric for a badge not yet granted; an already-granted member_badges row is untouched. |
+| `RPC-build_data_export_payload.shows_removal` | A member's own data export includes a removed check-in, with `removed_at`/`removal_reason` populated — never dropped from the list. |
+| `RPC-transition_session.check_in_open_early` | Completing a session BEFORE its scheduled end sets `check_in_open = false` in the same transaction; completing on or after the scheduled end leaves it untouched (the ceiling already governs). |
+| `RPC-transition_session.check_in_open_cancel` | Cancelling sets `check_in_open = false` too. |
+| `RPC-transition_session.check_in_open_reopenable` | An early close from completion is an ordinary close — the room can reopen it through `set_check_in_open()`, same as any other, up to the ceiling. |
+| `RPC-admin_member_profile.admin_only` | An admin of the member's org gets one row; a moderator, a member (including the member themselves) and an admin of another org get zero rows. |
+| `RPC-admin_member_profile.fields` | The row carries exactly email, attended_count, attended, no_show_count, late_cancel_count. |
+| `RPC-admin_member_profile.removed_excluded` | A removed check-in is neither counted nor listed as attended, and turns a confirmed reservation on an ended session into a no-show. |
+| ★ **wave 7 (`DEC-139`), migration `0091`** — a processing photo takes its place without a reload | |
+| `TRG-photos_broadcast.session_topic` | An insert on `photos` sends `{id, sessionId, uploaderId}` on `session:{session_id}` (event `INSERT`), the topic and `realtime.messages` policy `0016` already authorise. It carries no photo bytes and no path, and another org's subscriber receives nothing (`POL-realtime.messages.select`). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

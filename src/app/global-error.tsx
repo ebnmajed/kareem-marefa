@@ -3,6 +3,14 @@
 // ★★ THE ONE FILE IN THE PRODUCT THAT MAY HARD-CODE ARABIC AND dir="rtl".
 // `16` §7.4, REQ-UIX-016, DEC-091.
 //
+// ★ IT LIVES AT `src/app/`, NOT BESIDE `[locale]/layout.tsx` — measured, not
+// read (wave 7, DEC-138). With the file at `src/app/[locale]/global-error.tsx`,
+// a throw in the locale layout on a production build rendered Next's built-in
+// English «This page couldn't load» with no `lang` and no `dir`; moved here,
+// the same throw renders this page on `/ar`, `/ar/sign-in` and `/en`. Next's
+// docs say "the root app directory, even with internationalization", and they
+// are right even though this repo has no `src/app/layout.tsx`.
+//
 // `global-error.tsx` REPLACES THE ROOT LAYOUT when it renders. There is no
 // `NextIntlClientProvider` and no `<html lang>` above it, so `getTranslations`
 // is unavailable BY CONSTRUCTION — not by oversight, and not something a later

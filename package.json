@@ -37,7 +37,8 @@
     "lockfile": "node scripts/lockfile.mjs",
     "db:reset": "node scripts/db-reset.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
-    "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime"
+    "prepare": "npm run build -w @kareem/storage-paths && npm run build -w @kareem/designer-runtime",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@kareem/fonts": "0.1.0",
@@ -68,6 +69,7 @@
     "eslint-config-next": "16.2.10",
     "jsdom": "^30.0.1",
     "lighthouse": "^12.8.2",
+    "patch-package": "^8.0.1",
     "puppeteer-core": "^25.3.0",
     "tailwindcss": "^4",
     "typescript": "^5",

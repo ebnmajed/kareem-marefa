@@ -1,12 +1,12 @@
 // SCR-059 · /app/admin/branding — against REAL local Supabase
-// (REQ-DSG-021, REQ-ADM-015). Proves a moderator gets a real 404, an admin
+// (REQ-DSG-021, REQ-ADM-015). Proves a moderator gets the not-found page (DEC-134), an admin
 // can save a colour and a real uploaded logo and both persist, the kit
 // resolves back through public.brand_kit() with the override, and a reset
 // deletes the row — the identity override an unauthenticated screenshot or
 // a mocked client cannot prove.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -85,10 +85,21 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ DEC-134: `app/loading.tsx` puts every `/app` page inside a Suspense boundary,
+// so the status is committed before the gate runs, and a gated page's
+// `notFound()` streams 200 with `noindex` and the not-found page. What the gate
+// protects is the content, so that is what is asserted: the not-found page is
+// the only `h1`, and nothing the page guards rendered.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+}
+
 test("a moderator cannot open the branding screen", async ({ context, page }) => {
   await signIn(context, modEmail);
-  const response = await page.goto("/ar/app/admin/branding");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin/branding");
+  await expectGatedNotFound(page);
 });
 
 test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and both persist and resolve through brand_kit()", async ({ context, page }) => {

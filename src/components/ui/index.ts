@@ -27,7 +27,7 @@
 // request in their note — they do not edit it.
 //
 //   lead      index · button · icon-button · link · skeleton · route-progress
-//             splash · toast · page-header · section-header · prose
+//             toast · page-header · section-header · prose
 //             route-error · icons · dialog
 //   sessions  field · input · textarea · select · checkbox · radio-group
 //             switch · form-summary
@@ -97,6 +97,13 @@ export interface CardMediaProps extends Styleable {
   /** An ended or cancelled session: grayscale and reduced opacity on the IMAGE or placeholder
    *  only — never on `overlay`, whose status badge must keep its contrast (DEC-123 item 1). */
   dimmed?: boolean;
+  /**
+   * `"dark"` limits the generated placeholder to the navy tints, so a card that
+   * is a first impression — the public session card behind a shared link — reads
+   * like the dark posters `DEC-125` makes the default. Absent, the tint follows
+   * the title's hash across all six, as before (wave 7, `sessions`' R7).
+   */
+  placeholderTone?: "dark";
 }
 
 export interface CardBodyProps extends Styleable {
@@ -333,6 +340,8 @@ export interface FormSummaryProps extends Styleable {
   errors: FormSummaryError[];
   /** «تعذّر إرسال النموذج» — the heading above the list. */
   title: string;
+  /** One reassuring line under the title — «ما كتبته محفوظ كما هو». Optional (wave 7, `sessions`' R1). */
+  description?: string;
 }
 
 // ── Action (4) ────────────────────────────────────────────────────────────
@@ -578,21 +587,6 @@ export interface RouteProgressProps {
   delayMs?: number;
 }
 
-/**
- * lead · `splash.tsx` — the Preply touch, used ONCE: the first paint of the
- * app shell on a cold load.
- *
- * ★ A splash that covers content delays LCP by exactly as long as it is shown.
- * So it is CSS-only, painted in the same document as the shell, and it fades on
- * the shell's FIRST PAINT, not on hydration — a cross-fade over content that is
- * already there, never a gate in front of content that is not. If it costs LCP
- * against REQ-NFR-008, the splash is dropped, not the budget (`16` §7.2).
- */
-export interface SplashProps {
-  /** The wordmark's accessible name; the bar itself is decorative. */
-  label: string;
-}
-
 // ── Beyond §4.2's thirty-one ──────────────────────────────────────────────
 
 /**
@@ -648,10 +642,15 @@ export interface RouteErrorProps {
   /** One sentence. Not the exception's message. */
   title: string;
   description: string;
-  retryLabel: string;
+  /**
+   * The retry, rendered only when BOTH `retryLabel` and `reset` are given. A
+   * not-found page for something that is gone has nothing to retry, and an
+   * invented retry is a control that does nothing (wave 7, `sessions`' R5).
+   */
+  retryLabel?: string;
   backLabel: string;
   backHref: string;
-  reset: () => void;
+  reset?: () => void;
   /** Rendered small, for a support conversation. Never the headline. */
   digest?: string;
 }

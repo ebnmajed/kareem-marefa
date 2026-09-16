@@ -1,4 +1,5 @@
 import { arNormalize } from "@/components/browse/ar-normalize";
+import { inPeriod, type TimelinePeriod } from "@/components/browse/timeline-groups";
 import type { FilterKey, TimelineQuery } from "@/components/browse/timeline-query";
 import type { SessionPhase, SessionState } from "@/lib/session-status";
 
@@ -33,7 +34,7 @@ function dayIn(iso: string, timeZone: string): string {
 export function matchesTimeline(
   c: TimelineMatchable,
   query: TimelineQuery,
-  context: { textIds: Set<string> | null; now: Date; orgTimeZone: string; skip?: FilterKey },
+  context: { textIds: Set<string> | null; now: Date; orgTimeZone: string; skip?: FilterKey; /** ISO weekday the week starts on — `firstDayOfWeek()`; Sunday by default. */ weekStartsOn?: number },
 ): boolean {
   const { skip } = context;
   for (const [key, value] of query.entries) {
@@ -67,6 +68,9 @@ export function matchesTimeline(
         if (!c.presenters.some((p) => p.displayName && arNormalize(p.displayName).includes(needle))) return false;
         break;
       }
+      case "when":
+        if (!inPeriod(c.startsAt, value as TimelinePeriod, context.now, context.orgTimeZone, context.weekStartsOn)) return false;
+        break;
       case "from":
         if (!c.startsAt || dayIn(c.startsAt, context.orgTimeZone) < value) return false;
         break;

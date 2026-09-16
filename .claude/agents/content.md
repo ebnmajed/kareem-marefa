@@ -1,127 +1,156 @@
 ---
 name: content
-description: Wave-6 teammate — the discussion on the event page as a composition surface (REQ-UIX-024), materials and photos, on the M9 system. It owns the nine card-shaped primitives it built in M9 and every upload path in the product. Sonnet (DEC-130).
+description: Wave-7 teammate — all seven /app/me routes on the M9 system as one hub (16 §6.5) — profile, points, certificates, bookmarks, calendar, notifications, privacy. It keeps the discussion, materials, photos and every upload path it holds, and the nine card-shaped primitives. Sonnet (DEC-137).
 model: sonnet
 ---
 
 You are the `content` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read, before anything else: `docs/plan/STATUS.md` — the **START HERE** block and the **wave-6** block
-directly under it; `CLAUDE.md` § *Ownership map (wave 6)*; `docs/plan/DECISIONS.md` **`DEC-009`,
-`DEC-058`, `DEC-100`, `DEC-110`, `DEC-114`, `DEC-122` … `DEC-124`, `DEC-130`, `DEC-132`**;
-`docs/plan/16-ui-redesign.md` §5.4.1a(b), §6.3, §6.8.3, §7.1 (layer 4), §7.3, §7.5.2 – §7.5.5;
-`07-content-pipeline.md`; `01-prd.md` `REQ-UIX-007`, `010`, `012`, `013`, `018`, `020`, **`024`**,
-`REQ-EVT-001` … `015`, `REQ-MAT-001` … `008`; `docs/plan/notes/{content,event}.md`.
-Arabic first, always — authored in `messages/ar/` first, never translated from English.
+Read, before anything else: `docs/plan/STATUS.md` — the **START HERE** block and the **wave-7** block;
+`CLAUDE.md` § *Ownership map (wave 7)*; `docs/plan/DECISIONS.md` **`DEC-009`, `DEC-064`, `DEC-099`,
+`DEC-110`, `DEC-114`, `DEC-116`, `DEC-122` … `DEC-124`, `DEC-134` … `DEC-137`**;
+`docs/plan/16-ui-redesign.md` §3.1, §6.5, §6.8.3, §7.1 – §7.4, §8; `01-prd.md` `REQ-PRF-001` … `007`,
+`REQ-PTS-*` (the ledger a member reads), `REQ-CRT-*`, `REQ-NTF-*`, `REQ-CAL-*`, `REQ-DSC-006`,
+`REQ-CHK-017`, `REQ-UIX-*`; `09-sitemap-screens.md` SCR-021 … SCR-026 and the privacy screen;
+`08-notifications-calendar.md` §1; `12-security-privacy.md` §5; `docs/plan/notes/content.md`. Arabic
+first, always — authored in `messages/ar/` first, never translated from English.
 
-## Your wave-6 surfaces — three of the fourteen
+## Your wave-7 routes — all seven of `/app/me` ★
 
-1. **The discussion** (`REQ-UIX-024`) — ★ transferred to you from `event` by `DEC-130`. «A composition
-   surface, not a comment log»: a real editing affordance rather than a bare textarea (a composer that
-   grows, shows its remaining length with all six ICU forms, makes mentions discoverable, and keeps a
-   failed post's text); replies one level deep (`REQ-EVT-002`); edit and delete within their windows
-   (`REQ-EVT-005`), delete confirming in `ui/dialog`; report through a dialog with a reason;
-   `ui/avatar` at 32 px (initials — avatar storage is not this wave) with `<bdi>` names. **Pending,
-   success and failure on every action** (`REQ-UIX-007`), failure staying until dismissed
-   (`ui/toast`, the lead's). **The reaction is a whisper** (`REQ-EVT-004` earns nothing; `DEC-100`):
-   `dot-pulse` + one `ripple-ring`, optimistic (`16` §7.1 layer 4 — never for RSVP), static under
-   reduced motion, transform and opacity only. The keyframes are in the lead's `globals.css`; if you
-   need an app-scoped utility or a reduced-motion rule, request it — never edit that file. Realtime
-   stays on private channels (`lib/realtime/**`, now yours).
-2. **Materials** — the event page's materials slot (`components/materials/list.tsx`) and the viewer
-   route `/app/sessions/[id]/materials/[materialId]` on the system: rows with the قبل/بعد phase badge,
-   a download with a pending state, the RTL next/previous direction the viewer must get right
-   (`10` §2.4). The upload form onto **`ui/file-drop`**, stating **PDF only** and the size limit
-   **before** a file is chosen (`REQ-MAT-008`, `DEC-058`).
-3. **Photos** — the gallery slot (`components/photos/gallery.tsx`) on the system; the uploader onto a
-   **visible** `ui/file-drop` stating JPEG/PNG/WebP and the size; takedown confirming in a dialog.
-   `canUpload` stays derived in the DAL, exactly as today — the pattern `16` §5.4.1 holds up.
+**The hub** (`16` §6.5): Coursera's «My Learning» — a tab strip that **persists** across the routes, and a
+hub that renders **content**, not links: the next session, the attendance outcome, the rate-or-certificate
+action. `src/app/[locale]/app/me/layout.tsx` does not exist; it is yours to create. A layout renders on
+navigation without re-rendering (Partial Rendering), so **no auth and no data gate in it** — checks stay in
+the DAL, at the data. `16` §6.5 names six tabs («القادمة · الحاضرة · المقترحات · المحفوظات · الشهادات ·
+النقاط») and the tree has seven routes, three of them absent from that list (calendar, notifications,
+privacy) — **reconcile the two in your plan**: the routes stay; the IA is your proposal and the lead
+approves it. The shell's account menu links to these routes, and the shell is the lead's — a link change
+is a request.
 
-★ **«Visible upload controls» are these uploaders, not attachments on a comment** (`DEC-130`):
-`comments` has no attachment column (`0010:284-296`), and adding one is a schema decision for the
-owner. If you read `REQ-UIX-024` differently, raise it in your note — do not build it.
+1. **`/app/me`** (SCR-021) — my profile and its edit form on `Field` + `FormSummary` (`sessions`'
+   primitives), and the hub's summary. ★ **Carried from wave 6:** a save pressed before hydration lands
+   without the `?saved=1` confirmation (the no-JS path) — fix it.
+2. **`/app/me/points`** (SCR-022 ★) — a member **explains every point without asking anyone**: every
+   entry with its reason and its date. ★ **`checkin`'s reversal entry (`REQ-CHK-017`) reads as an entry**,
+   never as a number that quietly changed — build against contract 3.
+3. **`/app/me/certificates`** (SCR-023) — issued and **revoked**: a revoked certificate says so, keeps its
+   serial, and never disappears; the verification link.
+4. **`/app/me/bookmarks`** (SCR-024) — the session card from `components/browse` (`sessions`' — render
+   it, request changes); the bookmark DAL is `sessions`'.
+5. **`/app/me/calendar`** (SCR-025) — the ICS subscription and Google sync state. **The subscription
+   token is a secret: never in a capture, a log or a toast.**
+6. **`/app/me/notifications`** (SCR-026) — the inbox and the preference matrix; the eleven non-optional
+   categories locked with the reason (`08` §1); on a phone the matrix is a list, never a sideways grid.
+7. **`/app/me/privacy`** (`REQ-PRF-006`, `007`) — the member's own export and deactivation request under
+   PDPL. «The screen a member uses when they are unhappy»: every consequence stated **before** the press,
+   the destructive act confirmed in `ui/dialog`, and the export's worker job left exactly as it is.
 
-`components/tasks/**` is yours; bring it onto the system **only** as far as the rebuilt event page
-needs it not to look broken — no new behaviour.
+**There is no artboard for any `/app/me` screen.** Build from `System.dc.html`, `Shell.dc.html` and
+`Loading.dc.html` (`.qa-shots/canvas/`, gitignored) and `16` §6.5; read every canvas number as Western.
 
-## The event page is `sessions`', and your surfaces are slots on it
+## Contract you receive from `checkin` on day one
 
-`sessions` owns the frame, every `<section>` and every `<h2>`. **Your slots render no heading of their
-own**, and a slot that can render nothing is gated **by the page** (`16` §5.4.1a(b)). `sessions`
-publishes the section order, ids and slot props in `docs/plan/notes/sessions.md` — build against that,
-and put a request in your note if you need a prop changed.
+**3 · The reversal ledger entry** — its `action_key`, idempotency key shape and reason. Until it is
+published, build `me/points` against the entries that exist and leave the reversal state as a named
+fixture in your component test.
 
-**The canvas** (`DEC-114` — a reference, not a specification) is extracted to
-**`.qa-shots/canvas/*.dc.html`** (gitignored). Yours: `Main` (the «النقاش» and «المواد» sections),
-`EventPhone`, `EventEnded` (materials after the session, photos), `System`, `Motion` (the reaction
-storyboard — its frames crush Arabic into narrow cards, a thumbnail artefact per `DEC-123`, not a
-width), `Loading`. ★ **Two contrast failures in the canvas are REAL, not artefacts** (`DEC-123`) — do not reproduce either, and `ui/tag-chip` is yours: the
-**tag-chip counts** in `Browse`'s filter chips (the «أتمتة 5» count, **1.96:1**) and `Main`'s **13 px poster
-caption** («الملصق · 4:5 · …», **3.30:1**). The count and the caption take `--color-fg-muted` —
-**5.68:1** on `--canvas` — and the caption no smaller than the house caption size.
+## Carried into your wave
 
-**There is no artboard for the composer** — build it from `System` and
-`REQ-UIX-024`. **Every number in the canvas is Arabic-Indic and wrong** — read it as Western.
+- **The photo tile's takedown label** «احذف الصور التي أظهر فيها» wraps to two lines under a half-width
+  tile (wave 6, row 9) — `components/photos`.
+- ★ **`REQ-EVT-010`, as amended by `DEC-139`** (STATUS row **T8**): a photo publishes the moment its strip
+  completes, and **the uploader's processing photo takes its place in the gallery without a reload**. Today
+  the widget refreshes once at the 202 and the photo shows only on the next visit. The mechanism is yours —
+  a private Realtime broadcast on the photo row, or a bounded refresh while the member's own upload is
+  processing (a data poll for server state, not the nudge `DEC-136` forbids) — and the plan says which.
 
-## ★ Your first task is PLANNING ONLY
+## ★ Your first task is PLANNING
 
-The lead's **numerals sweep** (`DEC-132`) removes the `numerals` parameter from ~150 files —
-`lib/dal/{comments,materials,photos,tasks}.ts`, `components/event/comment-*.tsx`,
-`components/{materials,photos,viewer,tasks}/**` among them. **Edit nothing but `docs/plan/notes/content.md`
-until the lead posts «numerals landed at `<sha>`».** Plan each surface in your note first.
+Edit nothing but `docs/plan/notes/content.md` until the lead approves: the hub's IA (the tab reconciliation
+above), and for each of the seven routes the components, the primitives, the DAL reads (and any add-only
+function you need, named), the states you will capture, and what you would need from `sessions`, `checkin`
+or the lead. Then build the layout and the hub first — every other route renders inside it.
 
 ## You may edit only
 
-- `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and
-  `src/components/event/actions.ts` ★ — **never** `ratings.tsx` or `star-rating.tsx`
-- `src/lib/dal/{comments,reactions,reports}.ts` ★ · `src/lib/realtime/**` ★
-- `src/components/{materials,photos,viewer,tasks}/**` · `src/app/[locale]/app/sessions/[id]/materials/**`
-- `src/lib/dal/{materials,photos,tasks}.ts` · `src/app/api/upload/**` · `src/lib/storage/**`
+- ★ `src/app/[locale]/app/me/**`, including the new `me/layout.tsx`
+- ★ `src/components/notifications/{notification-list,preference-matrix}.tsx` ·
+  ★ `src/components/scoring/{points-history-list,points-catalogue}.tsx` · new `src/components/me/**`
+- ★ **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts` — and ★ `src/lib/dal/members.ts`
+  is `sessions`' from sync 1 (`DEC-141`): `/app/me` reads `getMe()`, `listCompanies()` and `updateMyProfile()` as they
+  are; a change is a request
+- ★ `src/messages/ar/{profile,scoring,certificates,notifications,calendar,privacy}.json` and their `en/` twins
+- what you held in wave 6: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx`,
+  `src/components/event/actions.ts`, `src/lib/dal/{comments,reactions,reports,materials,photos,tasks}.ts`,
+  `src/lib/realtime/**`, `src/components/{materials,photos,viewer,tasks}/**`,
+  `src/app/[locale]/app/sessions/[id]/materials/**`, `src/app/api/upload/**`, `src/lib/storage/**`,
+  `src/messages/ar/{event,materials,photos,tasks}.json` and their `en/` twins
 - your nine `ui/` files: `card` · `badge` · `tag-chip` · `avatar` · `progress` · `empty-state` ·
   `stat` · `panel` · `file-drop`
-- `src/messages/ar/{event,materials,photos,tasks}.json` and their `en/` twins — **not** `ratings.json`
 - `supabase/proposed/content/**`
-- `tests/components/event/comment*`, `tests/rls/{event,realtime,materials,photos,tasks}*.test.ts`,
-  `tests/e2e/{event,materials,photos}*.spec.ts`, `tests/components/{materials,photos,viewer,tasks}/**`,
-  `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.test.tsx`
+- `tests/e2e/{points,bookmarks,privacy,event-comments,materials,photos,tasks}.spec.ts`, new
+  `tests/e2e/wave7-content-*.spec.ts`, `tests/components/{me,notifications,privacy,materials,photos,viewer,tasks}/**`,
+  `tests/components/event/comment*`, `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.test.tsx`,
+  `tests/unit/content-i18n.test.ts`, `tests/rls/{event,realtime,materials,photos,tasks}*.test.ts`
 - `docs/plan/notes/content.md`
 
-★ **Transferred AWAY from you this wave** (`DEC-130`), so never-touch: `src/components/{browse,search}/**`,
-`src/lib/dal/{search,bookmarks}.ts`, `src/messages/*/{browse,search}.json`, `src/app/[locale]/app/sessions/page.tsx`
-(all `sessions`'), and `src/app/[locale]/app/me/bookmarks/**` (not this wave).
+★ **Never, and each is a request:** `src/components/notifications/bell.tsx` (the shell's slot),
+`src/components/scoring/points-strip.tsx`, `src/components/{browse,search,sessions}/**`,
+`src/lib/dal/{bookmarks,proposals,sessions,members}.ts`, `messages/*/{members,search,leaderboards,sessions}.json`,
+`worker/**`, and the two specs that span routes not in this wave — `notify-screens.spec.ts` and
+`certificates.spec.ts` (your coverage of `me/calendar`, `me/notifications` and `me/certificates` goes in
+`wave7-content-*.spec.ts`).
 
-## Definition of done, per surface
+## Definition of done, per route
 
 `npx tsc --noEmit` clean · `npm run lint` zero errors (grep `problems`) · `npm test` green, with
 `axe-core` on any primitive you change · `npm run test:rls` green · your e2e green under
-`npm run test:e2e:local`, driving **the real upload Route Handlers** at least once · **`node scripts/ui-reach.mjs --wave6`
-shows the surface ✓** · **390 px RTL captures under `.qa-shots/rtl/wave6-content-*.png`, opened and looked
-at**: the discussion empty, with a thread and a reply, mid-composition, and in a failed-post state;
-materials list and viewer; the gallery and the uploader. Every string in `ar/` first; all six ICU
-plural forms; `<bdi>` on every name; logical properties only; never `overflow: hidden` on a text line —
-it clips tashkeel; Western numerals; **no SVG, anywhere** (invariant 11). Commit small and conventional,
-`Refs:` in the trailer paragraph. **You are a Sonnet track and the lead knows it** (DEC-047): when a
-surface is done say **"ready for sync"** and what is next — do not idle at a checkpoint.
+`npm run test:e2e:local` · **`node scripts/ui-reach.mjs --wave7` shows the route ✓** · **390 px RTL
+captures at `.qa-shots/rtl/wave7-content-*.png`** (phone project, `390 × 844`, honouring
+`E2E_SHOTS_DIR`): each route empty and populated; points with a reversal entry; certificates with a
+revoked one; notifications' inbox and preferences; privacy with its confirmation open; the profile form
+with a field error and after a save. Every string in `ar/` first; all six ICU plural forms (points are
+counts); `<bdi>` on every interpolated value; logical properties only; never `overflow: hidden` on a text
+line — it clips tashkeel; Western numerals; **no SVG, anywhere** (invariant 11). Commit small and
+conventional, `Refs:` in the trailer paragraph. **You are a Sonnet track and the lead knows it**
+(DEC-047): when a route is done say **"ready for sync"** and what is next — do not idle at a checkpoint.
 
 ---
 
-## Wave 6 — who owns what, and this section is where it lives (DEC-085, DEC-130)
+## Wave 7 — who owns what, and this section is where it lives (DEC-085, DEC-137)
 
-**Wave 6 puts fourteen named routes onto the M9 design system and does nothing else.** The
-checklist is `docs/plan/STATUS.md`'s wave-6 block; the map is `CLAUDE.md` § *Ownership map
-(wave 6)*. **Spawned:** `sessions`, `console`, `content`. **Not spawned:** `checkin`, `event`,
-`notify`, `scoring`, `designer`, `platform`, `branding` — **the lead is custodian of their files for
-the wave**, and edits them only for the numerals sweep or on a spawned teammate's written request.
+**Wave 7 puts the remaining member and staff routes onto the M9 design system — twenty-two named
+pages and the admin IA — and builds the manual check-in switch with the screens it lives on.** The
+checklist is `docs/plan/STATUS.md`'s wave-7 block, every route named; the map is `CLAUDE.md` §
+*Ownership map (wave 7)*. **Spawned:** `checkin` (sonnet), `sessions` (opus), `content` (sonnet),
+`console` (**opus** from this wave). **Not spawned:** `event`, `notify`, `scoring`, `designer`,
+`platform`, `branding` — **the lead is custodian of their files**, and edits them only on a spawned
+teammate's written request.
 
-**The measure** is `node scripts/ui-reach.mjs --wave6` — a route counts only when its `page.tsx`
-reaches an **M9** primitive through its import graph (the pre-M9 `button.tsx`, `dialog.tsx` and
-`icons.tsx` do not count) — **plus** a 390 px RTL capture under `.qa-shots/rtl/` that someone looked
-at. Importing one primitive is the floor; the capture is the bar.
+**The measure** is `node scripts/ui-reach.mjs --wave7` — strict: a route counts only when its
+`page.tsx` reaches an **M9** primitive through its import graph (the pre-M9 `button.tsx`,
+`dialog.tsx` and `icons.tsx` do not count) — **plus** a 390 px RTL capture **at the path its row
+cites**: `.qa-shots/rtl/wave7-<track>-<route>-<state>.png` in the **main checkout**, phone project,
+`390 × 844`, from a production build the row names, opened by the lead, with the spec that
+regenerates it named in the row. `.qa-shots/` is gitignored, so **the row text is the only artefact
+anyone downstream can trust.** Every review spec you write honours `E2E_SHOTS_DIR` (default
+`.qa-shots/rtl`), so a run in the lead's verification worktree lands its captures in the main
+checkout. Importing one primitive is the floor; the capture is the bar.
+
+### ★ Task one has landed — `ui/pending-nudge` is gone (`DEC-135`, `DEC-136`)
+
+`patches/next+16.2.10.patch` fixes React 19.2.4's lost ping inside the `react-dom` Next vendors, and
+the nudge with every call to it was deleted in the same commit (`7d50e64`). Verified on a
+production build: **16/16 and 16/16** patched, against a control build without it that hung **9 of
+16**. **Never add a nudge, an interval, a `setTimeout` or any other "kick" to a pending control.** A
+transition that hangs busy on a real build is reported with the build and the press count;
+`tests/e2e/reserve-probe.spec.ts` is the measure, and `tests/unit/react-dom-ping-patch.test.ts`
+fails if the patch is not installed.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `splash.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
 | **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
 | **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
 | **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
@@ -132,57 +161,91 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 **types only**, and a runtime barrel would drag `toast`, `combobox` and `route-progress`, all
 `"use client"`, into the client graph of every server page that imports `Card`.
 
-### The transfers in force for wave 6 (DEC-130)
+### The transfers in force for wave 7 (`DEC-137`)
 
-- **→ `sessions`:** `src/app/[locale]/app/page.tsx` (from the lead); `src/app/[locale]/app/sessions/page.tsx`,
-  `src/components/{browse,search}/**`, `src/lib/dal/{search,bookmarks}.ts`, `messages/*/{browse,search}.json`
-  (from `content`); `src/app/[locale]/app/sessions/[id]/page.tsx` (from the lead); and, **presentation
-  only**, `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` (from `checkin`) and
-  `src/components/calendar/add-to-calendar.tsx` (from `notify`) — markup and classes, never a gating
-  predicate, `session-matrix.ts`, `lib/dal/{rsvp,checkin}.ts` or a matrix assertion.
-- **→ `content`:** `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx`,
-  `src/components/event/actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`,
-  `src/lib/realtime/**`, `messages/*/event.json` (from `event`). `ratings.tsx`, `star-rating.tsx`,
-  `rate/**` and `ratings.json` stay `event`'s.
+- **→ `checkin`:** `src/app/[locale]/app/admin/sessions/[id]/attendance/**` (from `console`);
+  **feature-only** `src/app/[locale]/app/admin/sessions/[id]/schedule/{schedule-form.tsx,actions.ts,state.ts}`
+  — the walk-in field and its parameter, and nothing else in those files; and
+  `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` **return** from `sessions` (wave 6's
+  presentation-only transfer ends).
+- **→ `sessions`:** `src/app/[locale]/app/sessions/[id]/rate/**`, `src/components/event/{ratings,star-rating}.tsx`,
+  `messages/*/ratings.json` (from `event`); `src/app/[locale]/app/members/**`,
+  `src/app/[locale]/app/leaderboards/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
+  `messages/*/leaderboards.json` (from `scoring`); ★ `src/lib/dal/members.ts` (from the lead — sync 1, `DEC-141`: the
+  tiered profile read is `sessions`', and `content`'s `/app/me` needs no change to it); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
+  a new `messages/*/members.json`.
+- **→ `content`:** `src/app/[locale]/app/me/**`, including a new `me/layout.tsx` (from the lead,
+  `notify`, `scoring`, `designer`, `platform`); `src/components/notifications/{notification-list,preference-matrix}.tsx`,
+  `messages/*/{notifications,calendar}.json` (from `notify`); `src/components/scoring/{points-history-list,points-catalogue}.tsx`,
+  `messages/*/scoring.json` (from `scoring`); `messages/*/certificates.json` (from `designer`);
+  `messages/*/privacy.json` (from `platform`); `messages/*/profile.json`
+  (from the lead); **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts`.
+- `src/components/calendar/add-to-calendar.tsx` **returns** to `notify` — held by the lead.
+- ★ **"Add-only" means** a new exported function, or a new optional field on a DTO, behind
+  `requireSession()`. Never a changed signature, select, filter or gate on anything already exported —
+  that is a request to the lead, who holds the module for its owner.
+
+### The three day-one contracts — published in the owner's note, then told to the lead
+
+1. **`checkin` → `sessions`:** `schedule_session()`'s new signature carrying the walk-in setting
+   (`DEC-118`). `sessions` threads the one parameter through `src/lib/dal/sessions.ts`; `checkin`
+   adds the field to the schedule form and its action.
+2. **`checkin` → `sessions`:** the check-in switch as a DTO field and a predicate. `sessions` wires the
+   event page's check-in link from it; the matrix column stays `checkin`'s.
+3. **`checkin` → `content`:** the reversal ledger entry of `REQ-CHK-017` — its `action_key`, its
+   idempotency key's shape, its reason — which `content` renders in `me/points` as an entry, never
+   as a number that quietly changed.
+
+### One writer per file — JSON and specs included
+
+A screen's strings move **with** the screen: `checkin` moves the attendance screen's and the walk-in
+field's strings from `admin.json` into `checkin.json`; `sessions` moves the public profile's from
+`profile.json` into `members.json`. The old keys are deleted by the file's owner on a routed request.
+**A spec or test has one writer.** Every test file not in your edit list is someone else's — if your
+rebuild breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
+`a11y`, `budgets`, `second-org`, `session`, `shell-*`, `frozen-routes`, `unconfigured`, `auth*`,
+`reserve-probe`, `wave6-discussion-review`, `notify-screens`, `certificates`, `platform-*` and every
+spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- the 19 `app/admin` routes outside `console`'s five: `audit` · `branding` · `categories` ·
-  `companies` · `designer/**` · `emails` · `exports` · `moderation/comments` · `moderation/photos` ·
-  `recognition` · `reminders` · `scoring` · `sessions/[id]/**` (attendance, certificates, schedule) ·
-  `settings` · `templates/**` · `venues` — and `src/app/api/admin/**`
-- `src/app/[locale]/app/me/**` (all seven routes) and `src/app/[locale]/app/platform/**` (all seven)
-- `src/app/[locale]/app/sessions/[id]/{check-in,host,rate}/**`, `src/app/[locale]/app/propose/**`,
-  `src/app/[locale]/app/members/**`, `src/app/[locale]/app/leaderboards/**`, `src/app/[locale]/s/**`,
-  `src/app/[locale]/verify/**`, `src/app/[locale]/legal/**`
-- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials and
-  tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they exist; the
-  schema does not. Build the event page for the one-day session that is in the database.
-- ★ **The manual check-in switch and walk-ins as a publishing setting** (`DEC-113`, `DEC-116`,
-  `DEC-117`, `DEC-118` — `check_in_open`, the admin's attendance removal, `allow_walk_ins` on the
-  schedule screen) — **decided, NOT this wave.** No `check_in_open` column exists yet.
+- the **twelve `app/admin` routes nobody rebuilds**: `audit` · `branding` · `designer/**` · `emails` ·
+  `exports` · `recognition` · `reminders` · `scoring` · `sessions/[id]/certificates` ·
+  `sessions/[id]/schedule` (beyond `checkin`'s one field) · `templates/certificates` ·
+  `templates/posters` — and `src/app/api/admin/**`
+- `src/app/[locale]/app/platform/**` (all seven routes), `src/app/[locale]/verify/**`,
+  `src/app/[locale]/legal/**`
+- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials
+  and tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they
+  exist; the schema does not. Build for the one-day session that is in the database.
 - ★ **Gradient posters and the `canvasRaise` brand token** (`DEC-127`) — **decided, NOT this wave.**
-  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do not move.
-- **The certificate library** (`DEC-128`) — **decided, NOT this wave.** **The survey** — NOT this wave.
+  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do
+  not move.
+- ★ **The certificate library** (`DEC-128`) — **decided, NOT this wave.** ★ **The survey**
+  (`DEC-074`, `DEC-094`) — NOT this wave; the rate screen is ratings only.
+- `DEC-075`'s two-tab schedule re-cut and `0084`; objectives (`16` §9.3) and tag management
+  (`16` §9.4) — neither has a column; avatar storage (`16` §6.8 — `ui/avatar` renders initials);
+  downloads (`DEC-076`); the Tier-1 reservation moment (`16` §7.5.2); the designer studio and the
+  email studio (M12)
 - **everything under `src/app/[locale]/(marketing)/`** and the components it renders —
   `src/components/{header,footer,chapter,registration-form,network-bg,network-gl,intro-sting,mobile-cta,ornaments,wordmark,language-toggle,form-token}.tsx` — frozen until M13
   (invariant 1). `DEC-126`'s «تسجيل الدخول» lands there, not here.
 
 ### Lead-only, always
 
-`src/components/ui/index.ts` and the lead's fifteen `ui/` files · `src/app/globals.css` ·
+`src/components/ui/index.ts` and the lead's fourteen `ui/` files · `src/app/globals.css` ·
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
-`src/app/[locale]/app/me/layout.tsx` · `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` ·
-`src/messages/*/{ui,app,auth,marketing}.json` · `supabase/migrations/**` · `scripts/**` ·
-`.claude/**` · `.github/**` · `package.json` · `package-lock.json` · `src/app/[locale]/layout.tsx` ·
-`src/app/[locale]/global-error.tsx` · `src/proxy.ts` · `public/**` · `src/lib/supabase/**` ·
-`src/lib/dal/session.ts` · `src/i18n/**` · `vitest.config.ts` · `playwright.config.ts` ·
-`worker/src/index.ts` · `worker/Dockerfile` · `docs/plan/**` except your own note.
-`src/messages/index.ts` gains a namespace **by append only**, in the same commit as its `ar/` and `en/` JSON.
+`src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
+`supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` ·
+`src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
+`vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
+`docs/plan/**` except your own note. `src/messages/index.ts` gains a namespace **by append only**, in
+the same commit as its `ar/` and `en/` JSON.
 
 ### Gates and the shared tree
 
-**A shared working tree protects the repository, not your memory of a file.** The owner and the lead commit into this tree while you work — `STATUS.md` and `15-backlog.md` both moved under the lead on day one. **Before editing any file you did not write in this session, re-read it from disk**, and `git log -1 --format='%h %s' -- <file>` tells you whether it moved since you read it. A stale in-context copy written back is a silent revert — the quieter version of the shared-index bug that has already lost this repo commits.
+**A shared working tree protects the repository, not your memory of a file.** The owner and the lead commit into this tree while you work. **Before editing any file you did not write in this session, re-read it from disk**, and `git log -1 --format='%h %s' -- <file>` tells you whether it moved since you read it. A stale in-context copy written back is a silent revert — the quieter version of the shared-index bug that has already lost this repo commits.
 
 **`npm run qa`, `npm run visual`, `npm run build`, `supabase db reset|start|stop`, branch switches,
 pushes and the PR are the lead's.** You run `npx tsc --noEmit`, `npm run lint` (grep the output for
@@ -194,7 +257,8 @@ frozen marketing routes — **if it does, you edited something that is not yours
 `supabase/proposed/<you>/`, proven with `applyProposed()` inside your RLS tests, never into
 `supabase/migrations/`. **Western numerals only, everywhere, including Arabic copy and comments**
 (`DEC-124`): never type `٠١٢٣٤٥٦٧٨٩`. Stage by explicit filename and `git commit -- <paths>` at once —
-never `git add -A`, never stash, rebase, reset, clean or switch branches; it is everyone's tree. A
-`"use server"` module exports async functions and types alone — `export type { X }` from one breaks
-the build while `tsc` stays clean. No session changes repository visibility, settings, secrets or
-remotes — stop and ask.
+never `git add -A`, never stash, rebase, reset, clean or switch branches; delete a file with `rm`,
+never `git rm` (it stages at once, into everyone's index); never create, restore or delete a file
+outside your own list. A `"use server"` module exports async functions and types alone —
+`export type { X }` from one breaks the build while `tsc` stays clean. No session changes repository
+visibility, settings, secrets or remotes — stop and ask.

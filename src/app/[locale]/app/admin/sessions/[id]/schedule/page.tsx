@@ -76,6 +76,10 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
           cancellationCutoffAt: localValue(session.cancellationCutoffAt, zone),
           certificateMode: session.certificateMode,
           language: session.language,
+          // The stored value, not a default: the action always sends the checkbox
+          // as an explicit boolean, so an unchecked default would switch walk-ins
+          // off on any save (DEC-118, DEC-141 correction B).
+          allowWalkIns: session.allowWalkIns,
         }}
       />
 

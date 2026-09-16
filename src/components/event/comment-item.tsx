@@ -11,7 +11,6 @@ import { Prose } from "@/components/ui/prose";
 import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon, AlertTriangleIcon, DotIcon, TrashIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { deleteMyCommentAction, editCommentAction, moderateCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
@@ -72,12 +71,6 @@ export function CommentItem({
   const [isReported, setIsReported] = useState(reported);
   const [pending, startTransition] = useTransition();
 
-  // `DEC-135`: React 19.2.4 can lose the ping that would otherwise commit
-  // one of these transitions once its `router.refresh()` RSC response
-  // resolves — see the module comment on `saveEdit` below for the full
-  // mechanism.
-  usePendingNudge(pending);
-
   const isDeleted = Boolean(comment.deletedAt);
   const likeCount = reactions.totals.like ?? 0;
   const iReacted = reactions.mine.includes("like");
@@ -107,22 +100,12 @@ export function CommentItem({
   // edit in place, the tombstone, the removal) IS the success feedback, and
   // a full-width toast was covering exactly the content it was announcing.
   //
-  // ★ `usePendingNudge(pending)` above is why these transitions reliably
-  // COMMIT at all (`DEC-135`): React 19.2.4 can lose the ping that would
-  // otherwise resume a render once a `router.refresh()` RSC response
-  // resolves — a chunk finishes parsing mid-render, Flight pings
-  // synchronously, and `pingSuspendedRoot` has nowhere to record it because
-  // the root is already marked suspended-with-delay. Nothing is then
-  // scheduled to retry, and the transition can hang indefinitely — measured
-  // on a real build at one press in three, and the exact shape of a deleted
-  // comment's tombstone that never appeared after `deleteMine` below. Two
-  // earlier attempts at this (a `setTimeout(…, 0)` decoupling at 44485b8,
-  // then a paint-deferred `requestAnimationFrame` version at 4582b17) each
-  // only moved the odds, because both treated a SYMPTOM — the refresh racing
-  // this transition's own completion — of a cause that was never actually
-  // about timing. `usePendingNudge` is the real fix: it re-renders this
-  // component every 300ms while pending, and each re-render un-suspends the
-  // root and lets the lost retry run.
+  // ★ If one of these ever stays busy again after the refresh (a tombstone
+  // that never appears after `deleteMine` was one symptom), read `DEC-135`
+  // before touching the timing here. The cause was React 19.2.4 losing a ping
+  // mid-render; two timing changes (`44485b8`, `4582b17`) only moved the odds.
+  // It is fixed in `react-dom` itself by `patches/next+16.2.10.patch`
+  // (`DEC-136`).
   // ★ The lead's real-build finding: a request that fails at the NETWORK
   // level (offline, a dropped connection — never reaches the server) makes
   // the action REJECT rather than return an `{ error }` value. Left
@@ -231,7 +214,6 @@ export function CommentItem({
 
   function submitReport(formData: FormData) {
     const reason = formData.get("reason")?.toString().trim() ?? "";
-    if (reason.length < 3) return;
     startTransition(async () => {
       let result: { error: string | null };
       try {
@@ -443,6 +425,7 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
       </DialogTrigger>
       <DialogContent title={t("dialogTitle")} closeLabel={t("cancel")}>
         <form
+          noValidate
           onSubmit={() => setOpen(false)}
           action={(formData) => {
             onSubmit(formData);
@@ -452,6 +435,13 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
             {t("reasonLabel")}
           </label>
           <p className="mt-1 text-body-sm text-fg-muted">{t("reasonHint")}</p>
+          {/* `noValidate` on the form above: `required`/`minLength` here are still real
+              constraints, but the browser's own blocking-before-submit check would silently
+              stop `onSubmit`/`action` from ever running for an empty or too-short reason —
+              the same failure mode `profile-form.tsx` had. `submitReport` no longer
+              short-circuits on a short reason either; it lets `reportCommentAction`'s own Zod
+              `min(3)` reject it and surface `errors.invalid_comment` through the same `Panel`
+              a network or server failure already uses. */}
           <Textarea id="reason" name="reason" required minLength={3} maxLength={1000} rows={3} className="mt-2" />
           <div className="mt-3 flex gap-2">
             <Button type="submit" pending={pending} pendingLabel={t("sending")} className="h-10 px-5">

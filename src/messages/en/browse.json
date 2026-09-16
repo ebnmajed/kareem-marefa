@@ -86,14 +86,16 @@
         "presenter": "Presenter: {value}",
         "from": "From {value}",
         "to": "Until {value}",
-        "q": "Search: {value}"
+        "q": "Search: {value}",
+        "when": "When: {value}"
       },
       "sheet": {
         "title": "Filters",
         "apply": "Show results",
         "reset": "Clear",
         "close": "Close"
-      }
+      },
+      "when": "When"
     },
     "emptyState": {
       "upcoming": {

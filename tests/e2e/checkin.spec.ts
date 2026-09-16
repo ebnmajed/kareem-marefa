@@ -12,11 +12,20 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext } from "@playwright/test";
 import pg from "pg";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+// `E2E_SHOTS_DIR` lets a look-only run against a dev server keep its
+// pictures out of the directory the review reads (`event-page.spec.ts`'s
+// own convention, `wave7-content-me.spec.ts`'s own precedent for this
+// exact helper shape). A verification worktree sets this to the MAIN
+// checkout's `.qa-shots/rtl`, so a sync build's captures land where
+// STATUS.md's row cites them, not inside the worktree that produced them.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -139,20 +148,32 @@ test("an ordinary member reaches the check-in field one tap away and checks in w
 
   const boxes = page.locator("input[maxlength='1']");
   await expect(boxes).toHaveCount(6);
-  for (const [i, ch] of Array.from(code!.trim()).entries()) {
-    await boxes.nth(i).fill(ch);
-  }
+  const codeValue = code!.trim();
+  // ★ The six boxes are a controlled client component, and the action reads
+  // the hidden `code` field their STATE assembles. A `fill` that lands
+  // before hydration sets the DOM and never reaches that state, so the
+  // action gets an empty code. Refill until the hidden field carries the
+  // whole code — that is the component live (sessions' own fix, 1e626cc,
+  // for the identical shape on their own walk through this same screen).
+  const assembled = page.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (const [i, ch] of Array.from(codeValue).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?success=1$/);
+  // The URL first, with a real timeout: a refusal then fails naming its
+  // reason (`?error=…`), not "no status" under full-suite load.
+  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
   await expect(page.getByRole("status")).toHaveText("تم تسجيل حضورك");
 
   // A second visit and submit is the DISTINCT "already checked in" state, not another success.
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  for (const [i, ch] of Array.from(code!.trim()).entries()) {
-    await boxes.nth(i).fill(ch);
-  }
+  await expect(async () => {
+    for (const [i, ch] of Array.from(codeValue).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?already=1$/);
+  await expect(page).toHaveURL(/\?already=1$/, { timeout: 15_000 });
   await expect(page.getByRole("status")).toHaveText("أنت مسجَّل بالفعل");
 });
 
@@ -166,11 +187,15 @@ test("an invalid code is rejected without revealing anything else, and the field
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   const boxes = page.locator("input[maxlength='1']");
-  for (let i = 0; i < 6; i++) {
-    await boxes.nth(i).fill("Z");
-  }
+  // Same hydration race as the live-code walk above: refill until the
+  // hidden `code` field actually holds "ZZZZZZ" before submitting.
+  const assembled = page.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (let i = 0; i < 6; i++) await boxes.nth(i).fill("Z");
+    await expect(assembled).toHaveValue("ZZZZZZ", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/);
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/, { timeout: 15_000 });
   // Next's own route announcer also carries role="alert" — scope to the copy, not the role alone.
   await expect(page.getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
   // React 19 resets the form on every action, redirect included (DEC-043) — the rejected
@@ -211,4 +236,72 @@ test("the RsvpPanel slot renders inside the real event page and reserves a seat,
     attendeeUserId,
   ]);
   expect(rows[0].status).toBe("confirmed");
+});
+
+// ★ DEC-141/REQ-CHK-015 — the manual switch, last in the file: closes and
+// reopens `sessionId`'s check-in (the same session tests 1–2 already used),
+// which every earlier test in this file has already finished asserting
+// against by the time this runs (serial mode). Captures named for the
+// lead's sync build: wave7-checkin-host-{open,closed}.png — phone PROJECT
+// only, same reasoning as `admin-attendance.spec.ts`'s own capture guard.
+test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px", async ({ context, page }) => {
+  const isPhone = test.info().project.name === "phone";
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(context, staffEmail, true);
+  await page.goto(`/ar/app/sessions/${sessionId}/host`);
+
+  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-host-open.png"), fullPage: true });
+  }
+
+  await page.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
+  await expect(page).toHaveURL(/\?switch=closed$/);
+  await expect(page.getByText("تم إغلاق تسجيل الحضور")).toBeVisible();
+  await expect(page.getByText("تسجيل الحضور مغلق الآن")).toBeVisible();
+  // DEC-115: closing revokes nothing already recorded — the hint says so,
+  // and the code above (still valid the whole time — 0084's own comment:
+  // the switch never gates issuance) still shows, unrevoked.
+  await expect(page.getByText("لن يُقبل أي رمز جديد")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-host-closed.png"), fullPage: true });
+
+  const { rows: closedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
+  expect(closedRows[0].check_in_open).toBe(false);
+
+  // Reopen it, leaving the session as every earlier test in this file found it.
+  await page.getByRole("button", { name: "افتح تسجيل الحضور" }).click();
+  await expect(page).toHaveURL(/\?switch=opened$/);
+  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  const { rows: reopenedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
+  expect(reopenedRows[0].check_in_open).toBe(true);
+});
+
+// ★ C1's own captures, last in the file: `getCheckInScreenData()`'s
+// `ineligibleReason` doesn't consult `viewer.checkedIn` (session-matrix.ts's
+// own comment on `checkInIneligibleReason()`) — an already-checked-in
+// member still sees the same "ready" form the next member would, so
+// `attendeeEmail` (checked in by the first test above) works for the
+// "ready" capture unmodified. `check_in_open` is toggled directly through
+// the database rather than the host UI — that round trip is already
+// covered above; this is only ever the check-in SCREEN's own two states.
+test("C1 captures: the ready code form, and the proactive check_in_closed banner, at 390px", async ({ context, page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const isPhone = test.info().project.name === "phone";
+  await signIn(context, attendeeEmail, false);
+
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(page.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();
+  if (isPhone) {
+    mkdirSync(SHOTS, { recursive: true });
+    await page.screenshot({ path: join(SHOTS, "wave7-checkin-check-in-ready.png"), fullPage: true });
+  }
+
+  await db.query(`update public.sessions set check_in_open = false where id = $1`, [sessionId]);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await expect(page.getByText("أُغلق تسجيل الحضور لهذه الجلسة")).toBeVisible();
+  if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-check-in-closed.png"), fullPage: true });
+
+  // Leave the session as every earlier test in the file found it.
+  await db.query(`update public.sessions set check_in_open = true where id = $1`, [sessionId]);
 });

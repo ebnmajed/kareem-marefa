@@ -3,6 +3,12 @@ import { Link } from "@/i18n/navigation";
 import { getCalendarConnection, listSyncedEvents } from "@/lib/dal/calendar";
 import { formatDateTime } from "@/components/sessions/numerals";
 import { getPreferenceMatrix } from "@/lib/dal/notifications";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Panel } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import type { Locale } from "@/i18n/routing";
 import { disconnect } from "./actions";
 
 // SCR-025 · /app/me/calendar — REQ-CAL-003, REQ-CAL-007.
@@ -34,28 +40,30 @@ export default async function CalendarPage({
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
+      <PageHeader title={t("title")} />
 
       {connected ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("connection.justConnected")}
-        </p>
+        <div role="status">
+          <Panel tone="success" className="mt-4 p-3 text-body text-fg-heading">
+            {t("connection.justConnected")}
+          </Panel>
+        </div>
       ) : null}
       {disconnected ? (
-        <p role="status" className="mt-4 rounded-field border border-edge bg-silver-100 p-3 text-body text-fg-heading">
-          {t("connection.afterDisconnect")}
-        </p>
+        <div role="status">
+          <Panel className="mt-4 p-3 text-body text-fg-heading">{t("connection.afterDisconnect")}</Panel>
+        </div>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body text-fg-heading">
-          {t("connection.error")}
-        </p>
+        <div role="alert">
+          <Panel tone="error" className="mt-4 p-3 text-body text-fg-heading">
+            {t("connection.error")}
+          </Panel>
+        </div>
       ) : null}
 
       <section aria-labelledby="connection-heading" className="mt-8">
-        <h2 id="connection-heading" className="text-h2 text-fg-heading">
-          {t("connection.heading")}
-        </h2>
+        <SectionHeader id="connection-heading" title={t("connection.heading")} />
         <p className="mt-2 text-body text-fg-body">
           {isConnected
             ? t.rich("connection.connected", {
@@ -70,13 +78,10 @@ export default async function CalendarPage({
 
         <div className="mt-4">
           {isConnected ? (
-            <form action={disconnect}>
-              <button
-                type="submit"
-                className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100"
-              >
+            <form action={disconnect.bind(null, locale as Locale)}>
+              <Button type="submit" variant="secondary">
                 {t("connection.disconnect")}
-              </button>
+              </Button>
             </form>
           ) : (
             /* A Route Handler (the OAuth redirect), not a page: <Link /> would client-navigate into it. */
@@ -92,33 +97,34 @@ export default async function CalendarPage({
       </section>
 
       <section aria-labelledby="synced-heading" className="mt-12">
-        <h2 id="synced-heading" className="text-h2 text-fg-heading">
-          {t("synced.heading")}
-        </h2>
+        <SectionHeader id="synced-heading" title={t("synced.heading")} count={events.length} />
         {events.length === 0 ? (
-          <p className="mt-4 rounded-field border border-edge p-4 text-body text-fg-muted">{t("synced.empty")}</p>
+          // ★ REQ-UIX-012 — an empty state names the next action, here too.
+          <EmptyState title={t("synced.empty")} action={{ label: t("synced.browseAction"), href: "/app/sessions" }} className="mt-4" />
         ) : (
           <ul className="mt-4 space-y-3">
             {events.map((event) => (
-              <li key={event.sessionId} className="rounded-field border border-edge p-4">
-                <Link href={`/app/sessions/${event.sessionId}`} className="text-label text-fg-heading underline underline-offset-4">
-                  <bdi>{event.sessionTitle}</bdi>
-                </Link>
-                {event.startsAt ? (
-                  <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(event.startsAt, settings.timeZone, locale)}</p>
-                ) : null}
-                <p className="mt-2 text-body-sm text-fg-body">{t(`synced.state.${event.state}`)}</p>
-                {/* REQ-CAL-005: a failed sync is surfaced to the member, and
-                    REQ-CAL-008's promise is made explicit beside it. */}
-                {event.state === "failed" ? <p className="mt-1 text-body-sm text-fg-muted">{t("synced.failedHint")}</p> : null}
-                {event.lastSyncedAt ? (
-                  <p className="mt-1 text-body-sm text-fg-muted">
-                    {t.rich("synced.lastSynced", {
-                      at: formatDateTime(event.lastSyncedAt, settings.timeZone, locale),
-                      bdi: (chunks) => <bdi>{chunks}</bdi>,
-                    })}
-                  </p>
-                ) : null}
+              <li key={event.sessionId}>
+                <Panel className="p-4">
+                  <Link href={`/app/sessions/${event.sessionId}`} className="text-label text-fg-heading underline underline-offset-4">
+                    <bdi>{event.sessionTitle}</bdi>
+                  </Link>
+                  {event.startsAt ? (
+                    <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(event.startsAt, settings.timeZone, locale)}</p>
+                  ) : null}
+                  <p className="mt-2 text-body-sm text-fg-body">{t(`synced.state.${event.state}`)}</p>
+                  {/* REQ-CAL-005: a failed sync is surfaced to the member, and
+                      REQ-CAL-008's promise is made explicit beside it. */}
+                  {event.state === "failed" ? <p className="mt-1 text-body-sm text-fg-muted">{t("synced.failedHint")}</p> : null}
+                  {event.lastSyncedAt ? (
+                    <p className="mt-1 text-body-sm text-fg-muted">
+                      {t.rich("synced.lastSynced", {
+                        at: formatDateTime(event.lastSyncedAt, settings.timeZone, locale),
+                        bdi: (chunks) => <bdi>{chunks}</bdi>,
+                      })}
+                    </p>
+                  ) : null}
+                </Panel>
               </li>
             ))}
           </ul>

@@ -110,6 +110,16 @@ function hashString(value: string): number {
   return Math.abs(hash);
 }
 
+// R7 (`sessions`, `/s/[id]`'s own dark background): `placeholderTone="dark"`
+// restricts the pick to `MEDIA_TINTS`' three navy entries — the first three
+// in the array, silver after them — keeping the SAME hash so a given title
+// still always lands on the same shade, just within a narrower pool. Absent,
+// behaviour is exactly what it was before this prop existed.
+function mediaTint(value: string, tone?: "dark"): (typeof MEDIA_TINTS)[number] {
+  const pool = tone === "dark" ? MEDIA_TINTS.slice(0, 3) : MEDIA_TINTS;
+  return pool[hashString(value) % pool.length]!;
+}
+
 // ★ The lead's real-build finding: two letters from the first two words (or
 // the first two characters of a one-word title) rendered pairs like «اا» for
 // any title whose first word or two both started with «ا» — indistinguishable
@@ -131,7 +141,7 @@ function placeholderGlyph(title: string): string {
  * box: when `src` is absent it renders a generated typographic placeholder
  * built from `placeholderFrom` (`16` §6.4).
  */
-export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", overlay, priority, dimmed, className = "" }: CardMediaProps) {
+export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, aspect = "4/5", overlay, priority, dimmed, className = "" }: CardMediaProps) {
   // ★ `dimmed` (R-C1, `sessions`' request, DEC-123 item 1): the grayscale/
   // opacity wash goes on the IMAGE OR PLACEHOLDER ONLY, never on `overlay` —
   // the canvas's own defect was nesting the status badge INSIDE the dimmed
@@ -158,7 +168,7 @@ export function CardMedia({ src, alt = "", placeholderFrom, aspect = "4/5", over
       ) : (
         <div
           aria-hidden
-          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${MEDIA_TINTS[hashString(placeholderFrom) % MEDIA_TINTS.length]} ${wash}`}
+          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${mediaTint(placeholderFrom, placeholderTone)} ${wash}`}
         >
           <bdi>{placeholderGlyph(placeholderFrom)}</bdi>
         </div>

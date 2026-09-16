@@ -192,7 +192,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await boss.getByLabel("العنوان").fill("الدور الثالث، مبنى الإدارة");
   await boss.getByLabel("السعة").fill("30");
   await boss.getByRole("button", { name: "أضف المكان" }).click();
-  await expect(boss.getByText("قاعة الابتكار")).toBeVisible();
+  // Wave 7: the venues list is `ui/data-table`, which renders a desktop table
+  // AND a phone card list and hides one with CSS — the role queries skip the
+  // hidden one, a bare getByText does not (console's rebuild, `1fdf521`).
+  await expect(boss.getByRole("table").or(boss.getByRole("list")).getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-006: there is no delete control at all, and the page says why.
   await expect(boss.getByRole("button", { name: /احذف/ })).toHaveCount(0);
   await expect(boss.getByText(/لا يمكن حذف مكان/)).toBeVisible();
@@ -374,8 +377,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
   const boxes = attendee.locator("input[maxlength='1']");
   await expect(boxes).toHaveCount(6);
-  for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+  // ★ The six boxes are a controlled client component, and the action reads the
+  // hidden `code` field their STATE assembles. A `fill` that lands before
+  // hydration sets the DOM and never reaches that state, so the action gets an
+  // empty code. Refill until the hidden field carries the whole code — that is
+  // the component live. (Sync 5, desktop only: no status after the click.)
+  const assembled = attendee.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(code, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await attendee.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  // The URL first: a refusal then fails naming its reason (`?error=…`), not «no status».
+  await expect(attendee).toHaveURL(/\/check-in\?success=1$/, { timeout: 15_000 });
   await expect(attendee.getByRole("status")).toHaveText("تم تسجيل حضورك");
 
   const checkIn = await db.query<{ method: string }>(`select method from public.check_ins where session_id = $1 and member_id = $2`, [sessionId, attendeeId]);
@@ -428,12 +442,25 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   );
   expect(manualRow.rows[0].is_manual, "a person completed it, and the row says so").toBe(true);
   expect(manualRow.rows[0].actor_id).not.toBeNull();
-  // REQ-CHK-004: completing closes the check-in window in the same transaction.
-  const live = await db.query<{ n: string }>(
-    `select count(*) as n from public.check_in_codes where session_id = $1 and valid_until > now() and revoked_at is null`,
+  // REQ-SES-005 on DEC-141's switch (0089): completing BEFORE the scheduled end
+  // closes check-in in the same transaction. The code is no longer truncated —
+  // the window is the clock's (`starts_at` … `ends_at + 2h`), so a code row
+  // stays valid — and what refuses a correct code now is `check_in_open = false`.
+  const closed = await db.query<{ check_in_open: boolean; early: boolean }>(
+    `select check_in_open, now() < ends_at as early from public.sessions where id = $1`,
     [sessionId],
   );
-  expect(Number(live.rows[0].n), "the code stops working the moment the session ends").toBe(0);
+  expect(closed.rows[0].early, "the admin completed it before its scheduled end").toBe(true);
+  expect(closed.rows[0].check_in_open, "completing early closes check-in in the same transaction").toBe(false);
+  // …and the code the host view showed, still inside its own validity, is refused.
+  // The admin asks: the presenter is refused as a presenter and the attendee as
+  // already checked in, both before the switch is read (0087's order).
+  const late = createClient(SUPABASE_URL, PUBLISHABLE_KEY!, { auth: { persistSession: false } });
+  const { error: lateSignIn } = await late.auth.signInWithPassword({ email: adminEmail, password: PASSWORD });
+  if (lateSignIn) throw lateSignIn;
+  const { data: refused, error: lateError } = await late.rpc("check_in", { p_session: sessionId, p_code: code });
+  expect(lateError).toBeNull();
+  expect(refused, "a correct code after an early completion").toEqual({ status: "check_in_closed" });
 
   // ── SCR-015 · rate · REQ-RAT-001, through `event` ─────────────────────────
   await attendee.goto(`/ar/app/sessions/${sessionId}/rate`);
@@ -441,16 +468,21 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("heading", { name: "قيّم الجلسة" })).toBeVisible();
   const groups = attendee.getByRole("radiogroup");
   await expect(groups).toHaveCount(2);
-  // .click(), not .check(): these are <button role="radio">, and Playwright's
-  // check() only drives a real input.
-  await groups.nth(0).getByRole("radio", { name: "5" }).click();
-  await groups.nth(1).getByRole("radio", { name: "4" }).click();
+  // Wave 7: native radios named as counts («5 نجوم»), visually hidden inside the
+  // star a member presses — so the walk presses the STAR (its <label>), which
+  // also proves pointer selection, and then reads the radio.
+  for (const [group, name] of [[groups.nth(0), "5 نجوم"], [groups.nth(1), "4 نجوم"]] as const) {
+    const radio = group.getByRole("radio", { name });
+    await radio.locator("xpath=..").click();
+    await expect(radio).toBeChecked();
+  }
   await attendee.getByLabel("ملاحظات (اختياري)").fill("جلسة عملية ومباشرة.");
   await attendee.getByRole("button", { name: "إرسال التقييم" }).click();
-  // The form redirects back to the event page with ?rated=1; waiting for the
-  // URL is what stops the database read below racing the action.
-  await expect(attendee).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}\\?rated=1$`));
+  // Wave 7 (DEC-141 ruling 2): success is a receipt on the rate page itself.
+  // Waiting for the URL is what stops the database read below racing the action.
+  await expect(attendee).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}/rate\\?rated=1$`));
   await streamed(attendee);
+  await expect(attendee.getByRole("status").filter({ hasText: "تم إرسال تقييمك" })).toBeVisible();
 
   const rating = await db.query<{ session_stars: number; presenter_stars: number; check_in_id: string }>(
     `select session_stars, presenter_stars, check_in_id from public.ratings where session_id = $1 and member_id = $2`,
@@ -462,8 +494,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // REQ-RAT-001 made structural: a rating cannot exist without a check-in.
   expect(rating.rows[0].check_in_id).not.toBeNull();
 
-  // The rating section exists now that the session is complete, and the
-  // attendee is told their rating landed.
+  // Back on the event page: the rating section exists now that the session is
+  // complete, and it knows the attendee has rated.
+  await attendee.goto(`/ar/app/sessions/${sessionId}`);
+  await streamed(attendee);
   await expect(attendee.getByRole("heading", { name: "التقييم" })).toBeVisible();
   // Still inside the rating window, so the slot offers the edit link rather
   // than the «شكرًا على تقييمك» that appears once the window has closed.

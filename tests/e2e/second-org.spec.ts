@@ -110,14 +110,17 @@ async function walk(page: Page, mine: Org, other: Org) {
   for (const path of ["/ar/app/admin", "/ar/app/admin/members", "/ar/app/admin/sessions", "/ar/app/admin/categories", "/ar/app/admin/audit", "/ar/app/sessions"]) {
     const response = await page.goto(path);
     expect(response!.status(), `${path} answers for ${mine.name}'s admin`).toBe(200);
-    const text = await page.locator("body").innerText();
+    // `textContent`, not `innerText`: ui/data-table renders a table AND a card
+    // list and hides one per viewport, and `innerText` skips hidden text — so on
+    // a phone the hidden table's rows were never checked for org B.
+    const text = (await page.locator("body").textContent()) ?? "";
     for (const s of never) expect(text, `${path} shows nothing of ${other.name} (${s})`).not.toContain(s);
   }
-  // Own rows ARE there — the walk is not vacuous.
+  // Own rows ARE there — the walk is not vacuous. The copy this viewport shows.
   await page.goto("/ar/app/admin/members");
-  await expect(page.getByText(mine.memberName).first()).toBeVisible();
+  await expect(page.getByText(mine.memberName).filter({ visible: true }).first()).toBeVisible();
   await page.goto("/ar/app/sessions");
-  await expect(page.getByText(mine.sessionTitle).first()).toBeVisible();
+  await expect(page.getByText(mine.sessionTitle).filter({ visible: true }).first()).toBeVisible();
   // The bulk read too: an export is the widest window an admin has (REQ-ADM-017).
   const csv = await page.request.get("/api/admin/exports/members");
   expect(csv.status()).toBe(200);
@@ -143,7 +146,7 @@ test("a member of org A cannot open org B's session by id, and the URL is not a 
   // The event page streams through its slots, so `notFound()` fires after the
   // headers went out and the status is 200; the not-found boundary is what
   // renders, and nothing of org B's session with it. Assert on the page.
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("404");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("لم نعثر على ما تبحث عنه"); // app/not-found.tsx (DEC-134)
   const text = await page.locator("body").innerText();
   expect(text).not.toContain(b.sessionTitle);
   expect(text).not.toContain(b.name);

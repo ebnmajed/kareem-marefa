@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ScheduleState } from "./actions";
 import { emptyScheduleState } from "./state";
 
@@ -46,14 +47,32 @@ export function ScheduleForm({
     cancellationCutoffAt: string;
     certificateMode: string;
     language: string;
+    /** `sessions.allow_walk_ins` (DEC-117, DEC-118, contract 1) — `checkin`'s
+     *  one feature-only field on this form, ★ transferred by DEC-137.
+     *  Required: `page.tsx` reads it back as of `343991d`, so a page that
+     *  forgot to pass it is a build failure here, not a silent unchecked
+     *  box that writes `false` over a session's real setting on save (the
+     *  hazard `sessions` found and this type now makes impossible). */
+    allowWalkIns: boolean;
   };
 }) {
   const t = useTranslations("admin.schedule");
+  // ★ `checkin`'s own namespace, for its one field only — DEC-137's "a
+  // screen's strings move with the screen" moved the attendance/host-view
+  // strings to checkin.json; admin.json isn't in `checkin`'s edit list this
+  // wave, so this is the only file the walk-in field's copy can live in.
+  const tc = useTranslations("checkin.schedule");
   const [state, formAction, pending] = useActionState(action, emptyScheduleState);
   const [custom, setCustom] = useState(initial.customVenueName !== "");
 
   return (
-    <form action={formAction} className="mt-8 max-w-2xl space-y-7">
+    // `noValidate`: renders `state.error` below (the app's own Arabic
+    // error), so the browser's native validation on the several `required`
+    // fields here must stay out of the way — content's own real-build
+    // finding (7f4809f): without it, a `required` field blocks the submit
+    // silently and neither the server action's error nor `scheduleInput`'s
+    // own refusal is ever reached.
+    <form action={formAction} noValidate className="mt-8 max-w-2xl space-y-7">
       {state.error ? (
         <p role="alert" className="rounded-field border border-edge-strong p-4 text-body-sm text-fg-heading">
           {t(state.error)}
@@ -174,6 +193,28 @@ export function ScheduleForm({
         </label>
         <p className="mt-1 text-body-sm text-fg-muted">{t("capacityHint")}</p>
         <input id="capacity" name="capacity" type="number" inputMode="numeric" min={1} max={10000} dir="ltr" defaultValue={initial.capacity} className={`${FIELD} w-32 text-center`} />
+      </div>
+
+      {/* DEC-117/DEC-118: a publishing-time setting, changed only through
+          this same form — no in-room toggle exists anymore. An unchecked
+          checkbox sends no key at all, so the action reads presence, never
+          treating "absent" as "unchanged" (this form always states an
+          explicit value, unlike a reschedule call that skips the field) —
+          safe now that `initial.allowWalkIns` is required and always the
+          session's real value (the interim `allowWalkInsKnown` marker this
+          comment used to describe is gone as of `page.tsx`'s own read-back
+          at `343991d`).
+
+          ★ `ui/checkbox.tsx`: SELF-LABELLING, not wrapped in `<Field>` — its
+          own header is explicit that wrapping it would give the control a
+          second label (an axe `form-field-multiple-labels` violation), not
+          merely be redundant. `ui-lint`'s `field` rule excludes
+          `src/components/ui/` entirely, so importing `Checkbox` (whose own
+          raw `<input>` lives there) is what clears this file of a raw
+          control, not nesting it inside `<Field>`. */}
+      <div>
+        <Checkbox name="allowWalkIns" defaultChecked={initial.allowWalkIns} label={tc("allowWalkIns.label")} />
+        <p className="mt-1 text-body-sm text-fg-muted">{tc("allowWalkIns.hint")}</p>
       </div>
 
       <RtlDateTimePicker

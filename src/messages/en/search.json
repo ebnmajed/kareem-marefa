@@ -34,7 +34,8 @@
     "bookmarksPage": {
       "heading": "Bookmarks",
       "empty": "You have not bookmarked any session yet.",
-      "count": "{count, plural, zero {No bookmarked sessions} one {One bookmarked session} two {Two bookmarked sessions} few {{value} bookmarked sessions} many {{value} bookmarked sessions} other {{value} bookmarked sessions}}"
+      "count": "{count, plural, zero {No bookmarked sessions} one {One bookmarked session} two {Two bookmarked sessions} few {{value} bookmarked sessions} many {{value} bookmarked sessions} other {{value} bookmarked sessions}}",
+      "browseAction": "Browse sessions"
     }
   }
 }

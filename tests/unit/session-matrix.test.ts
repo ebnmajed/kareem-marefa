@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SESSION_PHASES, VIEWER_RELATIONS, canGrantOn, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
-import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInAllowed, rateAllowed } from "@/components/checkin/session-matrix";
+import { SESSION_PHASES, VIEWER_RELATIONS, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
+import { AFFORDANCE_MATRIX, type AffordanceCell, affordancesFor, checkInIneligibleReason, checkInWindowAllowed, rateAllowed } from "@/components/checkin/session-matrix";
 
 // `16` §5.3, REQ-UIX-015, DEC-090, DEC-101. `docs/plan/notes/checkin.md`
 // "Wave 5" records the two departures from the plan's printed table: six
@@ -97,46 +97,128 @@ describe("★ cancel does not stop at the cutoff (`16` §5.3's starred note) —
   });
 });
 
-describe("checkInAllowed — the walk-in tri-state plus the direction guard", () => {
+describe("checkInIneligibleReason — the specific reason, not just the boolean", () => {
+  const confirmed: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: false };
+  const noSeat: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const presenter: ViewerInput = { isStaff: false, isPresenter: true, rsvpStatus: "confirmed", checkedIn: false };
   const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
 
-  it("a confirmed seat may check in during a genuinely in_progress session", () => {
-    expect(checkInAllowed(running, "confirmed", false, NOW)).toBe(true);
+  it("null exactly when checkInWindowAllowed is true", () => {
+    expect(checkInIneligibleReason(running, confirmed, false, true, NOW)).toBeNull();
+    expect(checkInWindowAllowed(running, confirmed, false, true, NOW)).toBe(true);
   });
 
-  it("a bystander with no seat is refused with walk-ins off, allowed with them on", () => {
-    expect(checkInAllowed(running, "none", false, NOW)).toBe(false);
-    expect(checkInAllowed(running, "none", true, NOW)).toBe(true);
+  it("presenter_cannot_check_in — REQ-CHK-011, checked before anything else", () => {
+    expect(checkInIneligibleReason(running, presenter, true, true, NOW)).toBe("presenter_cannot_check_in");
   });
 
-  it("a presenter is refused regardless of walk-ins (REQ-CHK-011) — the cell itself has no true branch", () => {
-    expect(checkInAllowed(running, "presenter", true, NOW)).toBe(false);
+  it("cancelled — DEC-141 ruling 1, even with a scheduled start in the past", () => {
+    const cancelled: PhaseInput = { state: "cancelled", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInIneligibleReason(cancelled, confirmed, false, true, NOW)).toBe("cancelled");
   });
 
-  it("★ refuses check-in on a clock-derived live even with walk-ins on — the RPC would refuse too", () => {
-    const early: PhaseInput = { state: "published", startsAt: at(-1), endsAt: at(1) };
-    expect(checkInAllowed(early, "none", true, NOW)).toBe(false);
-    expect(checkInAllowed(early, "confirmed", false, NOW)).toBe(false);
+  it("not_published — no code has ever existed for this state", () => {
+    const draft: PhaseInput = { state: "draft", startsAt: null, endsAt: null };
+    expect(checkInIneligibleReason(draft, confirmed, false, true, NOW)).toBe("not_published");
   });
 
-  it("agrees with canGrantOn's own direction sweep for every state x schedule combination", () => {
-    const relations: ViewerRelation[] = ["none", "confirmed", "waitlisted", "presenter", "staff"];
-    const states: PhaseInput["state"][] = ["published", "in_progress", "completed", "cancelled"];
-    const schedules = [
-      { startsAt: at(-1), endsAt: at(1) },
-      { startsAt: at(-5), endsAt: at(-3) },
-      { startsAt: at(3), endsAt: at(5) },
-    ];
-    for (const state of states) {
-      for (const schedule of schedules) {
-        const session: PhaseInput = { state, ...schedule };
-        for (const relation of relations) {
-          const viaMatrix = checkInAllowed(session, relation, true);
-          const gateAllows = canGrantOn(session, "checkIn", NOW);
-          if (!gateAllows) expect(viaMatrix, `${state}/${relation}`).toBe(false);
-        }
-      }
-    }
+  it("session_ended — archived reads the same as a code long past its ceiling", () => {
+    const archived: PhaseInput = { state: "archived", startsAt: at(-10), endsAt: at(-8) };
+    expect(checkInIneligibleReason(archived, confirmed, false, true, NOW)).toBe("session_ended");
+  });
+
+  it("not_started — before the floor", () => {
+    const early: PhaseInput = { state: "published", startsAt: at(1), endsAt: at(3) };
+    expect(checkInIneligibleReason(early, confirmed, false, true, NOW)).toBe("not_started");
+  });
+
+  it("session_ended — once the 2h ceiling itself has passed (REQ-CHK-016)", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) };
+    expect(checkInIneligibleReason(pastCeiling, confirmed, false, true, NOW)).toBe("session_ended");
+  });
+
+  it("★ null during the 2h grace window — the reason string matches the boolean's own pinning test", () => {
+    const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
+    expect(checkInIneligibleReason(graceWindow, confirmed, false, true, NOW)).toBeNull();
+  });
+
+  it("check_in_closed — REQ-CHK-015, the switch, checked after the window but before the walk-in door", () => {
+    expect(checkInIneligibleReason(running, confirmed, false, false, NOW)).toBe("check_in_closed");
+  });
+
+  it("reservation_required — no seat, walk-ins off; null once they're on", () => {
+    expect(checkInIneligibleReason(running, noSeat, false, true, NOW)).toBe("reservation_required");
+    expect(checkInIneligibleReason(running, noSeat, true, true, NOW)).toBeNull();
+  });
+});
+
+describe("checkInWindowAllowed — DEC-141, self-contained: never through sessionPhase()/viewerRelation()", () => {
+  const confirmed: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: "confirmed", checkedIn: false };
+  const noSeat: ViewerInput = { isStaff: false, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const staff: ViewerInput = { isStaff: true, isPresenter: false, rsvpStatus: null, checkedIn: false };
+  const presenter: ViewerInput = { isStaff: false, isPresenter: true, rsvpStatus: "confirmed", checkedIn: false };
+
+  it("a confirmed seat may check in while genuinely in_progress, switch open", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, confirmed, false, true, NOW)).toBe(true);
+  });
+
+  it("refuses before the floor — a code that would not yet exist", () => {
+    const early: PhaseInput = { state: "published", startsAt: at(1), endsAt: at(3) };
+    expect(checkInWindowAllowed(early, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("REQ-CHK-011: a presenter is refused regardless of window, switch or walk-ins", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, presenter, true, true, NOW)).toBe(false);
+  });
+
+  it("a bystander with no seat needs the walk-in door open", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, noSeat, false, true, NOW)).toBe(false);
+    expect(checkInWindowAllowed(running, noSeat, true, true, NOW)).toBe(true);
+    expect(checkInWindowAllowed(running, staff, true, true, NOW)).toBe(true);
+  });
+
+  it("REQ-CHK-015: refuses while the switch is closed, even mid-window", () => {
+    const running: PhaseInput = { state: "in_progress", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(running, confirmed, false, false, NOW)).toBe(false);
+  });
+
+  it("DEC-141 ruling 1: refuses on a cancelled session whose scheduled start has passed", () => {
+    const cancelled: PhaseInput = { state: "cancelled", startsAt: at(-1), endsAt: at(1) };
+    expect(checkInWindowAllowed(cancelled, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("draft/approved sessions have no window to be in at all", () => {
+    const draft: PhaseInput = { state: "draft", startsAt: null, endsAt: null };
+    const approved: PhaseInput = { state: "approved", startsAt: null, endsAt: null };
+    expect(checkInWindowAllowed(draft, confirmed, false, true, NOW)).toBe(false);
+    expect(checkInWindowAllowed(approved, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  // ★ The grace-window fix itself, DEC-141's condition (c) — the thing the
+  // lead asked to see pinned. `ends_at` was 30 minutes ago: `sessionPhase()`
+  // ALREADY calls this session "ended" (its own clock clause has no
+  // knowledge of the 2h ceiling), and `viewerRelation()` would reclassify a
+  // confirmed, not-yet-checked-in member as "absent" — the bug this function
+  // exists to route around entirely.
+  it("★ still offers check-in during the 2h grace window, even though the screen already calls the session ended", () => {
+    const graceWindow: PhaseInput = { state: "in_progress", startsAt: at(-1.5), endsAt: at(-0.5) };
+    expect(checkInWindowAllowed(graceWindow, confirmed, false, true, NOW)).toBe(true);
+  });
+
+  it("refuses once the 2h ceiling itself has passed", () => {
+    const pastCeiling: PhaseInput = { state: "completed", startsAt: at(-3.5), endsAt: at(-2.17) }; // ends 2h10m ago
+    expect(checkInWindowAllowed(pastCeiling, confirmed, false, true, NOW)).toBe(false);
+  });
+
+  it("the ceiling is computed from the SCHEDULED end, not extended by a late actual finish (REQ-CHK-016)", () => {
+    // The row is still in_progress (the clock job hasn't caught up), but the
+    // scheduled end was well over 2h ago — the ceiling doesn't care that the
+    // room is apparently still running.
+    const overrun: PhaseInput = { state: "in_progress", startsAt: at(-4), endsAt: at(-2.5) };
+    expect(checkInWindowAllowed(overrun, confirmed, false, true, NOW)).toBe(false);
   });
 });
 

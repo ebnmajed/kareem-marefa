@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firstDayOfWeek, groupEnded, groupUpcoming, monthLabel, upcomingGroupOf, type Groupable } from "@/components/browse/timeline-groups";
+import { firstDayOfWeek, groupEnded, groupUpcoming, inPeriod, monthLabel, upcomingGroupOf, type Groupable } from "@/components/browse/timeline-groups";
 
 // The timeline's date groups — `16` §6.2, REQ-UIX-021. In the org's zone,
 // weeks starting where the locale says (Sunday for ar-SA).
@@ -68,5 +68,36 @@ describe("groupEnded", () => {
     const label = monthLabel("month:2026-09", "ar")!;
     expect(label).toContain("2026");
     expect(label).not.toMatch(/[٠-٩]/);
+  });
+});
+
+describe("inPeriod — the period filter (DEC-141 ruling 15)", () => {
+  // Riyadh, week from Sunday 13 September 2026; today is Wednesday the 16th.
+  it("«هذا الأسبوع» is Sunday to Saturday of the week holding today, on the org's calendar", () => {
+    expect(inPeriod(at("2026-09-13T00:30:00"), "thisWeek", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-09-19T23:30:00"), "thisWeek", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-09-20T00:30:00"), "thisWeek", NOW, TZ)).toBe(false);
+  });
+
+  it("«الأسبوع القادم» is the seven days after it", () => {
+    expect(inPeriod(at("2026-09-20T00:30:00"), "nextWeek", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-09-26T23:30:00"), "nextWeek", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-09-27T00:30:00"), "nextWeek", NOW, TZ)).toBe(false);
+  });
+
+  it("«هذا الشهر» is the whole calendar month — this week and next week included, the next month not", () => {
+    expect(inPeriod(at("2026-09-17T18:00:00"), "thisMonth", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-09-30T23:30:00"), "thisMonth", NOW, TZ)).toBe(true);
+    expect(inPeriod(at("2026-10-01T00:30:00"), "thisMonth", NOW, TZ)).toBe(false);
+  });
+
+  it("the day turns in the org's zone, not in UTC", () => {
+    // 22:30 UTC on Saturday the 19th is 01:30 on Sunday the 20th in Riyadh — next week.
+    expect(inPeriod("2026-09-19T22:30:00Z", "thisWeek", NOW, TZ)).toBe(false);
+    expect(inPeriod("2026-09-19T22:30:00Z", "nextWeek", NOW, TZ)).toBe(true);
+  });
+
+  it("a session with no start is in no period", () => {
+    expect(inPeriod(null, "thisMonth", NOW, TZ)).toBe(false);
   });
 });

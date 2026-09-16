@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { requestPhotoTakedownAction, restorePhotoAction } from "@/components/photos/actions";
 
 interface TakedownButtonProps {
@@ -29,13 +28,6 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [open, setOpen] = useState(false);
-
-  // `DEC-135`: both `requestPhotoTakedownAction` and `restorePhotoAction`
-  // call `revalidatePath` server-side, so this transition waits on the SAME
-  // re-render React 19.2.4 can lose the ping for. `usePendingNudge`
-  // re-renders this component every 300ms while pending to force the lost
-  // retry through.
-  usePendingNudge(pending);
 
   function run() {
     startTransition(async () => {
@@ -84,7 +76,18 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="h-9 self-start px-3 text-error hover:bg-error-bg">
+        {/* ★ Carried from wave 6, row 9: under a half-width photo tile at
+            390 px this label wraps to two lines. `size="sm"` sets a FIXED
+            `h-9` inside `Button` (a `height`, not a `min-height`), and
+            merely adding `min-h-9` beside it changes nothing — a fixed
+            `height` wins over an unrelated `min-height` regardless of
+            which is written first, the same emit-order class of bug
+            DEC-111/DEC-133 document repeatedly. `h-auto!` (Tailwind 4's
+            important syntax, which DOES reliably win) plus `min-h-9`
+            restores the 36 px floor while letting a wrapped label grow
+            instead of clipping — the rule against `overflow: hidden` on a
+            text line, applied to a component's own fixed height. */}
+        <Button type="button" variant="ghost" size="sm" className="h-auto! min-h-9 self-start px-3 py-2 text-error hover:bg-error-bg">
           {t("requestHide")}
         </Button>
       </DialogTrigger>

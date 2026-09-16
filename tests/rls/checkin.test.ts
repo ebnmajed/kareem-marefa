@@ -88,76 +88,26 @@ describe("DEC-065 — walk-ins are a per-session switch staff turn on (0079)", (
       await tx.as(f.a.members[1].claims);
       expect((await checkIn(tx, sessionId, code.code)).status).toBe("ok");
 
-      // A second member with no reservation: refused while off, admitted once a moderator opens the session.
+      // A second member with no reservation: refused while off, admitted once the session allows walk-ins.
+      // Since 0085 (DEC-118) the only door is schedule_session(), covered by
+      // checkin-walk-ins-publishing.test.ts — here the flag is arranged directly, because
+      // this case is check_in()'s gate, not who may set it.
       await tx.asOwner();
       const walkIn = await addMember(tx, f.a, "walk-in", "زائر بلا حجز");
       await tx.as(walkIn.claims);
       expect((await checkIn(tx, sessionId, code.code)).status).toBe("reservation_required");
-      await tx.as(f.a.mod.claims);
-      const [opened] = await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, true)`, [sessionId]);
-      expect(opened.allow_walk_ins).toBe(true);
+      await tx.asOwner();
+      await tx.q(`update public.sessions set allow_walk_ins = true where id = $1`, [sessionId]);
       await tx.as(walkIn.claims);
       expect((await checkIn(tx, sessionId, code.code)).status).toBe("ok");
     });
   });
-
-  it("RPC-set_session_walk_ins.staff — a member and a presenter are refused; an admin and a moderator flip it, audited", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await tx.asOwner();
-      const sessionId = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60, endsInMinutes: 120, allowWalkIns: false });
-      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
-
-      await tx.as(f.a.members[1].claims);
-      expect(await errorMessage(() => tx.q(`select * from public.set_session_walk_ins($1, true)`, [sessionId]))).toMatch(/not_authorized/);
-      await tx.as(f.a.members[0].claims); // the presenter is not staff
-      expect(await errorMessage(() => tx.q(`select * from public.set_session_walk_ins($1, true)`, [sessionId]))).toMatch(/not_authorized/);
-
-      await tx.as(f.a.admin.claims);
-      expect((await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, true)`, [sessionId]))[0].allow_walk_ins).toBe(true);
-      await tx.as(f.a.mod.claims);
-      expect((await tx.q<{ allow_walk_ins: boolean }>(`select allow_walk_ins from public.set_session_walk_ins($1, false)`, [sessionId]))[0].allow_walk_ins).toBe(false);
-
-      await tx.asOwner();
-      const audit = await tx.q<{ actor_role: string; after: { allow_walk_ins: boolean } }>(
-        `select actor_role, after from public.audit_log where subject_id = $1 and action = 'session.walk_ins_changed' order by occurred_at`,
-        [sessionId],
-      );
-      expect(audit.map((a) => [a.actor_role, a.after.allow_walk_ins])).toEqual([["admin", true], ["moderator", false]]);
-    });
-  });
+  // RPC-set_session_walk_ins.staff retired with the function (0085, DEC-118) —
+  // see RPC-set_session_walk_ins.retired in checkin-walk-ins-publishing.test.ts.
 });
 
-describe("RPC-ensure_check_in_code.only_live — a code exists only while the session is live (0078)", () => {
-  it("★ the presenter of a published session is refused not_open before it starts; once in_progress the same call returns a code; after completion it is refused again", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await tx.asOwner();
-      const sessionId = await makeSession(tx, f.a, { state: "published", startsInMinutes: 60, endsInMinutes: 120 });
-      await addPresenter(tx, f.a, sessionId, f.a.members[0].memberId);
-
-      await tx.as(f.a.members[0].claims);
-      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
-      // Staff are refused the same way — the window is not a role question.
-      await tx.as(f.a.admin.claims);
-      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
-      // A member is still refused by ROLE, never told about the window (REQ-CHK-014).
-      await tx.as(f.a.members[1].claims);
-      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_authorized/);
-
-      await tx.asOwner();
-      await tx.q(`update public.sessions set state = 'in_progress', starts_at = now() - interval '5 minutes', ends_at = now() + interval '55 minutes' where id = $1`, [sessionId]);
-      await tx.as(f.a.members[0].claims);
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
-      expect(code.code).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
-
-      await tx.asOwner();
-      await tx.q(`update public.sessions set state = 'completed', completed_at = now(), ends_at = now() - interval '1 minute' where id = $1`, [sessionId]);
-      await tx.as(f.a.members[0].claims);
-      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1)`, [sessionId]))).toMatch(/not_open/);
-    });
-  });
-});
+// RPC-ensure_check_in_code.only_live (0078) is superseded by .floor_ceiling (0084, DEC-141):
+// the code follows the clock window, not the state — checkin-window.test.ts.
 
 describe("POL-check_in_codes.select.member and .select.presenter — ensure_check_in_code authorization", () => {
   it("a member cannot read the current code, including a checked-in member; the presenter and staff can", async () => {
@@ -276,11 +226,12 @@ describe("POL-check_ins.window", () => {
     });
   });
 
-  it("a code entered after the session ends is rejected as session_ended", async () => {
+  it("a code entered after the two-hour ceiling is rejected as session_ended (DEC-141)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -120, endsInMinutes: -60 });
+      // ends_at + 2 h is the ceiling (0084); inside it a completed session still takes a code.
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -240, endsInMinutes: -180 });
 
       await tx.as(f.a.members[0].claims);
       const r = await checkIn(tx, sessionId, "WHATEVER");

@@ -3,6 +3,10 @@ import { Link } from "@/i18n/navigation";
 import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
 import { formatNumber, formatDateTime } from "@/components/sessions/numerals";
 import { getOrgTimeZone } from "@/lib/dal/certificates";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // SCR-023 · `/app/me/certificates` — REQ-CRT-013, REQ-CRT-014, OQ-015.
 //
@@ -27,10 +31,17 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <h1 className="text-h1 text-fg-heading">{t("mine.title")}</h1>
+      <PageHeader title={t("mine.title")} />
 
       {certificates.length === 0 ? (
-        <p className="mt-4 max-w-2xl text-body text-fg-muted">{t("mine.empty")}</p>
+        // ★ REQ-UIX-012, the lead's sync-2 finding: an empty state always
+        // names the next action, and "earned, not requested" is not an
+        // exception to it — attending is the action, and browsing sessions
+        // is how a member gets there. Reconsidered from the wave-6 photos
+        // precedent this originally copied: that empty state sits beside an
+        // uploader that is ALREADY the next action in view, which is not
+        // true here.
+        <EmptyState title={t("mine.empty")} action={{ label: t("mine.browseAction"), href: "/app/sessions" }} className="mt-4" />
       ) : (
         <>
           <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("mine.intro")}</p>
@@ -40,76 +51,78 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
 
           <ul className="mt-6 flex flex-col gap-4">
             {certificates.map((c, i) => (
-              <li key={c.id} className="rounded-card border border-edge p-4">
-                <p className="text-body font-medium text-fg-heading">
-                  <bdi>{c.sessionTitle ?? c.achievementName ?? t(`kind.${c.kind}`)}</bdi>
-                </p>
-                <p className="mt-1 text-body-sm text-fg-body">{t(`kind.${c.kind}`)}</p>
+              <li key={c.id}>
+                <Panel className="p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-body font-medium text-fg-heading">
+                        <bdi>{c.sessionTitle ?? c.achievementName ?? t(`kind.${c.kind}`)}</bdi>
+                      </p>
+                      <p className="mt-1 text-body-sm text-fg-body">{t(`kind.${c.kind}`)}</p>
+                    </div>
+                    <Badge tone={c.state === "revoked" ? "error" : "success"} outline size="sm">
+                      {t(`state.${c.state}`)}
+                    </Badge>
+                  </div>
 
-                {/* ★ `dir="ltr"` INSIDE a `<bdi>`. The serial and the code are
-                    Latin-and-digit strings; unisolated they reorder against
-                    their Arabic label and print as nonsense (09 SCR-023). */}
-                {/* ★ `break-all` on the two codes, and `min-w-0` on their
-                    rows. A verification code is 24 unbroken base64url
-                    characters and a serial is 14 — neither has a break
-                    opportunity, so at 390 px the flex item refuses to
-                    shrink below its own min-content width and the page
-                    scrolls sideways. The 390 px review caught it: 432 px
-                    of content in a 390 px viewport with NO single element
-                    wider than the screen, which is what a row of
-                    unbreakable tokens looks like. Breaking a Latin code
-                    mid-string is fine; the rule against clipping is about
-                    Arabic text lines, and nothing here is clipped. */}
-                <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-body-sm sm:grid-cols-2">
-                  <div className="flex min-w-0 flex-wrap gap-2">
-                    <dt className="text-fg-muted">{t("mine.serial")}</dt>
-                    <dd className="min-w-0 break-all text-fg-heading">
-                      <bdi dir="ltr">{c.serial}</bdi>
-                    </dd>
-                  </div>
-                  <div className="flex min-w-0 flex-wrap gap-2">
-                    <dt className="text-fg-muted">{t("mine.code")}</dt>
-                    <dd className="min-w-0 break-all text-fg-heading">
-                      <bdi dir="ltr">{c.verificationCode}</bdi>
-                    </dd>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <dt className="text-fg-muted">{t("mine.issuedAt")}</dt>
-                    <dd className="text-fg-heading">
-                      {c.issuedAt ? <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi> : t("mine.notIssued")}
-                    </dd>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {/* «الحالة», not «الشهادات» — the 390 px capture read
-                        «الشهادات صالحة», which is the namespace's own label
-                        reused where a field label belonged. */}
-                    <dt className="text-fg-muted">{t("mine.status")}</dt>
-                    <dd className={c.state === "revoked" ? "font-medium text-fg-heading" : "text-fg-heading"}>{t(`state.${c.state}`)}</dd>
-                  </div>
-                </dl>
+                  {/* ★ `dir="ltr"` INSIDE a `<bdi>`. The serial and the code are
+                      Latin-and-digit strings; unisolated they reorder against
+                      their Arabic label and print as nonsense (09 SCR-023). */}
+                  {/* ★ `break-all` on the two codes, and `min-w-0` on their
+                      rows. A verification code is 24 unbroken base64url
+                      characters and a serial is 14 — neither has a break
+                      opportunity, so at 390 px the flex item refuses to
+                      shrink below its own min-content width and the page
+                      scrolls sideways. The 390 px review caught it: 432 px
+                      of content in a 390 px viewport with NO single element
+                      wider than the screen, which is what a row of
+                      unbreakable tokens looks like. Breaking a Latin code
+                      mid-string is fine; the rule against clipping is about
+                      Arabic text lines, and nothing here is clipped. */}
+                  <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-body-sm sm:grid-cols-2">
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                      <dt className="text-fg-muted">{t("mine.serial")}</dt>
+                      <dd className="min-w-0 break-all text-fg-heading">
+                        <bdi dir="ltr">{c.serial}</bdi>
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                      <dt className="text-fg-muted">{t("mine.code")}</dt>
+                      <dd className="min-w-0 break-all text-fg-heading">
+                        <bdi dir="ltr">{c.verificationCode}</bdi>
+                      </dd>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="text-fg-muted">{t("mine.issuedAt")}</dt>
+                      <dd className="text-fg-heading">
+                        {c.issuedAt ? <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi> : t("mine.notIssued")}
+                      </dd>
+                    </div>
+                  </dl>
 
-                {c.state === "revoked" && c.revocationReason ? (
-                  <p className="mt-3 rounded-field border border-edge bg-silver-100 p-3 text-body-sm text-fg-body">
-                    {t.rich("mine.revokedReason", { reason: c.revocationReason, bdi: (chunk) => <bdi>{chunk}</bdi> })}
+                  {c.state === "revoked" && c.revocationReason ? (
+                    <Panel tone="error" className="mt-3 p-3 text-body-sm text-fg-body">
+                      {t.rich("mine.revokedReason", { reason: c.revocationReason, bdi: (chunk) => <bdi>{chunk}</bdi> })}
+                    </Panel>
+                  ) : null}
+
+                  <p className="mt-3 flex flex-wrap items-center gap-4 text-body-sm">
+                    {/* A revoked certificate keeps its PDF (REQ-CRT-011) — the
+                        document exists, the claim it makes no longer holds, and
+                        /verify is what says so. Not offering the download would
+                        not un-print the copies already in the world. */}
+                    {links[i] ? (
+                      <a className="text-fg-heading underline" href={links[i] as string} download>
+                        {t("mine.download")}
+                      </a>
+                    ) : (
+                      <span className="text-fg-muted">{t("mine.preparing")}</span>
+                    )}
+                    <Link className="text-fg-heading underline" href={`/verify/${c.verificationCode}`}>
+                      {t("mine.verify")}
+                    </Link>
                   </p>
-                ) : null}
-
-                <p className="mt-3 flex flex-wrap items-center gap-4 text-body-sm">
-                  {/* A revoked certificate keeps its PDF (REQ-CRT-011) — the
-                      document exists, the claim it makes no longer holds, and
-                      /verify is what says so. Not offering the download would
-                      not un-print the copies already in the world. */}
-                  {links[i] ? (
-                    <a className="text-fg-heading underline" href={links[i] as string} download>
-                      {t("mine.download")}
-                    </a>
-                  ) : (
-                    <span className="text-fg-muted">{t("mine.preparing")}</span>
-                  )}
-                  <Link className="text-fg-heading underline" href={`/verify/${c.verificationCode}`}>
-                    {t("mine.verify")}
-                  </Link>
-                </p>
+                </Panel>
               </li>
             ))}
           </ul>

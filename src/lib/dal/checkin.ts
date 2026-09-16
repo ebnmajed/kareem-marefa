@@ -1,17 +1,22 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
-import { sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
-import { affordancesFor, checkInAllowed } from "@/components/checkin/session-matrix";
+import { sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
+import { affordancesFor, checkInIneligibleReason, checkInWindowAllowed, type CheckInIneligibleReason } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
-// Check-in and the host view (REQ-CHK-001…014, STORY-CHK-001..006, REQ-UIX-015,
-// DEC-090). RPCs live in supabase/proposed/checkin/02_check_in.sql. check_in()
-// returns a JSON envelope rather than raising for expected outcomes (rate
-// limit, wrong code, wrong window, overlap) — see that file's header for why:
-// raising would roll back the check_in_attempts row DEC-015 requires to
-// survive. No SQL changed this wave — every fix below is presentation-layer,
-// re-reading the same authoritative RPCs (docs/plan/notes/checkin.md "Wave 5").
+// Check-in and the host view (REQ-CHK-001…017, STORY-CHK-001..006, REQ-UIX-015,
+// DEC-090, DEC-141). RPCs live in supabase/migrations/0084-0089 (promoted
+// 7b2ac81). check_in() returns a JSON envelope rather than raising for
+// expected outcomes (rate limit, wrong code, wrong window, overlap) — see
+// 0084's header for why: raising would roll back the check_in_attempts row
+// DEC-015 requires to survive.
+//
+// ★ REQ-CHK-017: `check_ins.removed_at is null` means "still counts as
+// checked in." RLS does not hide a removed row (it is a staff-readable
+// history row, not a secret), so every read below that decides "is this
+// member checked in" filters it explicitly — a bug found post-promotion,
+// not caught by the RLS suite because RLS was never the boundary here.
 
 export interface HostViewData {
   sessionId: string;
@@ -22,6 +27,12 @@ export interface HostViewData {
   startsAt: string | null;
   /** DEC-065: off means a code is accepted only from a member with a confirmed reservation. */
   allowWalkIns: boolean;
+  /** DEC-141/REQ-CHK-015 — the manual switch, independent of `allowWalkIns`
+   *  and of the code's own existence: `ensure_check_in_code()` still issues
+   *  a rotating code while closed (0084's own comment — the room can see
+   *  what reopening would accept), but `check_in()` refuses every attempt
+   *  with `check_in_closed` until it's flipped back open. */
+  checkInOpen: boolean;
   validFrom: string | null;
   validUntil: string | null;
   checkInCount: number;
@@ -37,9 +48,9 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
 
   const [codeRes, countRes, settingsRes, sessionRes] = await Promise.all([
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
-    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
+    supabase.from("check_ins").select("id", { count: "exact", head: true }).eq("session_id", sessionId).is("removed_at", null),
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
-    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
   ]);
   // Authorisation is the RPC's (REQ-CHK-014): a member gets `not_authorized`
   // whatever the state, so the window is never revealed to someone who may
@@ -53,6 +64,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   const rotationSeconds = settingsRes.data?.check_in_rotation_seconds ?? 600;
   const checkInCount = countRes.count ?? 0;
   const allowWalkIns = s.allow_walk_ins === true;
+  const checkInOpen = s.check_in_open === true;
   const phase = sessionPhase({ state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes });
   // "staff" and "presenter" carry an identical cell (both are the console's
   // two eligible viewers) — `getHostView()` already only reaches this point
@@ -61,22 +73,37 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   const consoleActive = affordancesFor(phase, "staff").hostConsole;
 
   if (codeRes.error) {
-    return { sessionId, code: null, phase, startsAt: s.starts_at, allowWalkIns, validFrom: null, validUntil: null, checkInCount, rotationSeconds, consoleActive };
+    return { sessionId, code: null, phase, startsAt: s.starts_at, allowWalkIns, checkInOpen, validFrom: null, validUntil: null, checkInCount, rotationSeconds, consoleActive };
   }
 
   const c = codeRes.data as { code: string; valid_from: string; valid_until: string };
-  return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
+  return { sessionId, code: c.code, phase, startsAt: s.starts_at, allowWalkIns, checkInOpen, validFrom: c.valid_from, validUntil: c.valid_until, checkInCount, rotationSeconds, consoleActive };
 }
 
-/** DEC-065: staff open or close a session to walk-ins. The RPC re-derives the role; a member is refused. */
-export async function setWalkIns(locale: string, sessionId: string, allow: boolean): Promise<void> {
+// ═══════════════════════════════════════════════════════════════════════════
+// the switch itself — REQ-CHK-015/016, DEC-141. A thin wrapper: authority,
+// the role set (presenter of THIS session, or staff) and the ceiling are
+// all `set_check_in_open()`'s own (0084) — this only turns its three named
+// exceptions into the DAL's usual result shape, the same pattern every
+// other RPC wrapper in this file already uses.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type SetCheckInOpenError = "not_found" | "not_authorized" | "not_open" | "ceiling_passed" | "unknown";
+
+export async function setCheckInOpen(locale: string, sessionId: string, open: boolean): Promise<{ ok: true } | { ok: false; error: SetCheckInOpenError }> {
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase.rpc("set_session_walk_ins", { p_session: sessionId, p_allow: allow });
+  const { error } = await supabase.rpc("set_check_in_open", { p_session: sessionId, p_open: open });
   if (error) {
-    if (error.message.includes("not_authorized")) throw new Error("not_authorized");
-    throw new Error(`set_session_walk_ins: ${error.message}`);
+    const known: SetCheckInOpenError[] = ["not_found", "not_authorized", "not_open", "ceiling_passed"];
+    return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
   }
+  return { ok: true };
 }
+
+// ★ `setWalkIns()` is gone — DEC-117: walk-ins move to a publishing setting
+// (`schedule_session()`'s new `p_allow_walk_ins` parameter, 0085) and the
+// host view loses the toggle entirely. `set_session_walk_ins()` itself is
+// dropped as of 0085 too; nothing here calls it anymore either way.
 
 export async function revokeCode(locale: string, sessionId: string): Promise<void> {
   const { supabase } = await sessionClient(locale);
@@ -88,10 +115,10 @@ export async function revokeCode(locale: string, sessionId: string): Promise<voi
 //
 // Reuses the same `error.*` translation keys the post-submit banner already
 // carries (`not_started`, `session_ended`, `presenter_cannot_check_in`,
-// `reservation_required`) as proactive reasons, not just refusals — they
-// already say the right thing before a keystroke, not only after one. Only
-// two keys are genuinely new: `not_published`, `cancelled`.
-export type CheckInIneligibleReason = "not_published" | "cancelled" | "not_started" | "session_ended" | "presenter_cannot_check_in" | "reservation_required";
+// `reservation_required`, and now `check_in_closed`) as proactive reasons,
+// not just refusals — they already say the right thing before a keystroke,
+// not only after one.
+export type { CheckInIneligibleReason };
 
 export interface CheckInScreenData {
   sessionId: string;
@@ -99,7 +126,7 @@ export interface CheckInScreenData {
   phase: SessionPhase;
   relation: ViewerRelation;
   allowWalkIns: boolean;
-  /** From `checkInAllowed()` — the screen renders the form on this, never re-derives it. */
+  /** From `checkInIneligibleReason()` — the screen renders the form on this, never re-derives it. */
   canAttemptCheckIn: boolean;
   /** Null exactly when `canAttemptCheckIn` is true — nothing to explain. */
   ineligibleReason: CheckInIneligibleReason | null;
@@ -111,16 +138,23 @@ export interface CheckInScreenData {
  * and let the member find out after typing six characters). Null when the
  * session doesn't exist or `sessions_read` doesn't show it to this viewer —
  * the page turns that into a 404, the same boundary the event page uses.
+ *
+ * ★ DEC-141: `canAttemptCheckIn`/`ineligibleReason` come from
+ * `checkInIneligibleReason()` (session-matrix.ts) — self-contained, on the
+ * RAW viewer facts, never `phase`/`relation` (the grace window outlives the
+ * phase those are bucketed by). `phase`/`relation` are still returned on the
+ * DTO — other things on this page may want them later — but nothing here
+ * derives eligibility from them any more.
  */
 export async function getCheckInScreenData(locale: string, sessionId: string): Promise<CheckInScreenData | null> {
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
   const [sessionRes, presenterRes, rsvpRes, checkInRes] = await Promise.all([
-    supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, allow_walk_ins").eq("id", sessionId).maybeSingle(),
+    supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("rsvps").select("status").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -132,10 +166,13 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   const phaseInput: PhaseInput = { state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes };
   const phase = sessionPhase(phaseInput);
   const isStaff = session.role === "admin" || session.role === "moderator";
+  const isPresenter = Boolean(presenterRes.data);
   const rsvpStatus = (rsvpRes.data?.status as RsvpStatus | undefined) ?? null;
-  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: Boolean(checkInRes.data) }, phase);
+  const checkedIn = Boolean(checkInRes.data);
+  const relation = viewerRelation({ isStaff, isPresenter, rsvpStatus, checkedIn }, phase);
   const allowWalkIns = s.allow_walk_ins === true;
-  const canAttemptCheckIn = checkInAllowed(phaseInput, relation, allowWalkIns);
+  const checkInOpen = s.check_in_open === true;
+  const ineligibleReason = checkInIneligibleReason(phaseInput, { isStaff, isPresenter, rsvpStatus, checkedIn }, allowWalkIns, checkInOpen);
 
   return {
     sessionId,
@@ -143,37 +180,31 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     phase,
     relation,
     allowWalkIns,
-    canAttemptCheckIn,
-    ineligibleReason: canAttemptCheckIn ? null : ineligibleReasonFor(phase, relation),
+    canAttemptCheckIn: ineligibleReason === null,
+    ineligibleReason,
   };
-}
-
-function ineligibleReasonFor(phase: SessionPhase, relation: ViewerRelation): CheckInIneligibleReason {
-  if (phase === "draft" || phase === "pending_schedule") return "not_published";
-  if (phase === "cancelled") return "cancelled";
-  if (phase === "open") return "not_started";
-  if (phase === "ended") return "session_ended";
-  // phase is "live" here, but the relation itself isn't eligible.
-  if (relation === "presenter") return "presenter_cannot_check_in";
-  return "reservation_required"; // none without walk-ins, waitlisted, staff with no seat
 }
 
 /**
  * The predicate for the event page's check-in LINK — bug (e), the worst of
  * the five (16 §5.4.1 row 4, DEC-090): a primary navy button offered to any
  * member on any live session, leading to a screen the RPC refuses. Exported
- * as a function, not handed to the lead as prose (DEC-103) — `page.tsx`
- * wires it once `getSessionForEvent()` carries `viewerRelation` (DEC-092,
- * already promised) and `allowWalkIns` (NOT in that DTO yet — flagged in
- * docs/plan/notes/checkin.md "Wave 5").
+ * as a function, not handed to the lead as prose (DEC-103).
+ *
+ * Thin re-export of `checkInWindowAllowed()` (session-matrix.ts) — pure,
+ * self-contained, never routed through `sessionPhase()`/`viewerRelation()`,
+ * because the grace window (`ends_at + 2h`) outlives the phase they derive
+ * from. `viewer` is the RAW facts, not a derived `ViewerRelation` — that is
+ * the whole point (see session-matrix.ts's own header for the bug this
+ * avoids). `sessions` wired the event page's call site at `a55cf37`.
  */
-export function canOfferCheckInLink(session: PhaseInput, relation: ViewerRelation, allowWalkIns: boolean, now: Date = new Date()): boolean {
-  return checkInAllowed(session, relation, allowWalkIns, now);
+export function canOfferCheckInFor(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
+  return checkInWindowAllowed(session, viewer, allowWalkIns, checkInOpen, now);
 }
 
 export const checkInInput = z.object({ code: z.string().trim().toUpperCase().length(6) });
 
-export type CheckInError = "not_found" | "presenter_cannot_check_in" | "rate_limited" | "not_started" | "session_ended" | "not_open" | "invalid_code" | "overlap" | "unknown";
+export type CheckInError = "not_found" | "presenter_cannot_check_in" | "rate_limited" | "not_started" | "session_ended" | "not_open" | "check_in_closed" | "invalid_code" | "overlap" | "unknown";
 
 export interface CheckInSuccess {
   ok: true;
@@ -218,7 +249,7 @@ export async function listUncheckedConfirmedRsvps(locale: string, sessionId: str
   const { supabase } = await sessionClient(locale);
   const [rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).eq("status", "confirmed"),
-    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId).is("removed_at", null),
   ]);
   if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
@@ -257,15 +288,29 @@ export interface AttendanceRow {
   memberId: string;
   displayName: string | null;
   rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
+  /** True only for an ACTIVE check-in (`removed_at is null`) — a removed
+   *  one reads as `false` here, same as never having checked in (REQ-CHK-017:
+   *  a removal reverses `no_show` symmetrically, so this row's own
+   *  `isNoShow` follows the same rule the RPC itself applies). */
   checkedIn: boolean;
   arrivedAt: string | null;
   method: "code" | "manual" | null;
-  /** Checked in with no confirmed RSVP at all (REQ-CHK-010's walk-in). */
+  /** Checked in with no confirmed RSVP at all (REQ-CHK-010's walk-in). Set
+   *  from the shape of the row (no matching RSVP), independent of removal —
+   *  a removed walk-in is still shown as one, just no longer `checkedIn`. */
   isWalkIn: boolean;
-  /** Confirmed RSVP, no check-in (`evaluate_no_shows`' own definition,
+  /** Confirmed RSVP, no ACTIVE check-in (`evaluate_no_shows`' own definition,
    *  `worker/src/tasks/evaluate_no_shows.ts` — computed the same way here so
    *  the report and the points job never disagree on what a no-show is). */
   isNoShow: boolean;
+  /** REQ-CHK-017's own report redesign, C3: the row's most recent check-in
+   *  was removed and never re-added. `checkedIn` is `false` in this case —
+   *  these three fields are what explain why, rather than reading like the
+   *  member simply never showed up. */
+  removed: boolean;
+  removedAt: string | null;
+  removalReason: string | null;
+  removedByName: string | null;
 }
 
 export interface AttendanceReport {
@@ -304,7 +349,7 @@ export async function listUncheckedForAdminManualMark(locale: string, sessionId:
 
   const [rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("rsvps").select("member_id, members(display_name)").eq("session_id", sessionId).in("status", ["confirmed", "waitlisted"]),
-    supabase.from("check_ins").select("member_id").eq("session_id", sessionId),
+    supabase.from("check_ins").select("member_id").eq("session_id", sessionId).is("removed_at", null),
   ]);
   if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
@@ -333,12 +378,25 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   const [sessionRes, rsvpsRes, checkInsRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state").eq("id", sessionId).maybeSingle(),
     supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
-    // `!check_ins_member_id_fkey`: `check_ins` has TWO foreign keys into
-    // `members` (`member_id` and `marked_by`, for a manual mark's actor) —
-    // an unqualified `members(...)` embed is ambiguous and PostgREST
-    // refuses it outright, a real bug this had until an e2e run against a
-    // real build actually exercised the query for the first time.
-    supabase.from("check_ins").select("member_id, arrived_at, method, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId),
+    // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
+    // `check_ins` has THREE foreign keys into `members` now (`member_id`,
+    // `marked_by`, `removed_by`) — an unqualified `members(...)` embed is
+    // ambiguous and PostgREST refuses it outright, a real bug this had
+    // until an e2e run against a real build actually exercised the query
+    // for the first time (`checkin.md`).
+    //
+    // ★ REQ-CHK-017/C3: no longer filtered to active rows — a removed
+    // check-in is still fetched, so the report can show it with its own
+    // reason instead of reading exactly like the member never showed up.
+    // `checkInByMember` below picks the ACTIVE row for a member when one
+    // exists, and only falls back to their most-recently-removed row when
+    // it doesn't (the rare re-added-after-removal case keeps the active row
+    // as the one truth; the removal is still on `check_ins`/`audit_log` for
+    // anyone who needs the history).
+    supabase
+      .from("check_ins")
+      .select("member_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name), remover:members!check_ins_removed_by_fkey(display_name)")
+      .eq("session_id", sessionId),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -348,37 +406,62 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
   const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
 
-  const checkIns = checkInsRes.data ?? [];
-  const checkInByMember = new Map(checkIns.map((c) => [c.member_id, c]));
+  type CheckInJoinRow = NonNullable<typeof checkInsRes.data>[number] & { member_id: string };
+  const allCheckIns = (checkInsRes.data ?? []) as unknown as CheckInJoinRow[];
+  const checkInByMember = new Map<string, CheckInJoinRow>();
+  for (const c of allCheckIns) {
+    const existing = checkInByMember.get(c.member_id);
+    if (!existing) {
+      checkInByMember.set(c.member_id, c);
+      continue;
+    }
+    const existingActive = !existing.removed_at;
+    const currentActive = !c.removed_at;
+    // An active row always wins; between two removed rows, the more
+    // recently removed one is the one worth showing.
+    if (currentActive && !existingActive) checkInByMember.set(c.member_id, c);
+    else if (!currentActive && !existingActive && (c.removed_at as string) > (existing.removed_at as string)) checkInByMember.set(c.member_id, c);
+  }
+
   const rows: AttendanceRow[] = [];
   const seen = new Set<string>();
 
   for (const r of rsvpsRes.data ?? []) {
     seen.add(r.member_id);
     const ci = checkInByMember.get(r.member_id);
+    const removed = !!ci?.removed_at;
     const status = r.status as AttendanceRow["rsvpStatus"];
     rows.push({
       memberId: r.member_id,
       displayName: nameOf(r.members as MemberEmbed),
       rsvpStatus: status,
-      checkedIn: !!ci,
+      checkedIn: !!ci && !removed,
       arrivedAt: ci?.arrived_at ?? null,
       method: (ci?.method as AttendanceRow["method"]) ?? null,
       isWalkIn: false,
-      isNoShow: status === "confirmed" && !ci,
+      isNoShow: status === "confirmed" && (!ci || removed),
+      removed,
+      removedAt: ci?.removed_at ?? null,
+      removalReason: ci?.removal_reason ?? null,
+      removedByName: removed ? nameOf(ci?.remover as MemberEmbed) : null,
     });
   }
-  for (const c of checkIns) {
-    if (seen.has(c.member_id)) continue;
+  for (const [memberId, c] of checkInByMember) {
+    if (seen.has(memberId)) continue;
+    const removed = !!c.removed_at;
     rows.push({
-      memberId: c.member_id,
+      memberId,
       displayName: nameOf(c.members as MemberEmbed),
       rsvpStatus: null,
-      checkedIn: true,
+      checkedIn: !removed,
       arrivedAt: c.arrived_at,
       method: c.method as AttendanceRow["method"],
       isWalkIn: true,
       isNoShow: false,
+      removed,
+      removedAt: c.removed_at,
+      removalReason: c.removal_reason,
+      removedByName: removed ? nameOf(c.remover as MemberEmbed) : null,
     });
   }
   rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
@@ -395,10 +478,37 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     counts: {
       reserved: rsvpsRes.data?.length ?? 0,
       confirmed,
-      checkedIn: checkIns.length,
-      walkedIn: rows.filter((r) => r.isWalkIn).length,
+      checkedIn: rows.filter((r) => r.checkedIn).length,
+      walkedIn: rows.filter((r) => r.isWalkIn && r.checkedIn).length,
       noShowed: rows.filter((r) => r.isNoShow).length,
     },
     attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
   };
+}
+
+export const removeCheckInInput = z.object({ memberId: z.uuid(), reason: z.string().trim().min(1).max(300) });
+
+// `not_a_member`/`stale_claims`/`not_an_admin` kept as three separate names,
+// verbatim from `assert_active_member()`/`assert_fresh_admin()` (0005) — the
+// same convention `admin-members.ts`'s own known-error unions already use,
+// rather than collapsing them into one bucket the RPC itself doesn't have.
+export type RemoveCheckInError = "not_a_member" | "stale_claims" | "not_an_admin" | "reason_required" | "not_found" | "unknown";
+
+/**
+ * REQ-CHK-017, C3. `remove_check_in()` (0087) is admin-only, does the whole
+ * reversal (points, certificate, no-show symmetry) inline in one
+ * transaction, and is idempotent against a second attempt on the same
+ * check-in (`not_found` — already removed). This wrapper adds nothing;
+ * every consequence is the RPC's, none re-derived here (invariant 9:
+ * `points_ledger` is append-only with `service_role` revoked, so a client
+ * could never do this write itself even if it wanted to).
+ */
+export async function removeCheckIn(locale: string, sessionId: string, memberId: string, reason: string): Promise<{ ok: true } | { ok: false; error: RemoveCheckInError }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("remove_check_in", { p_session: sessionId, p_member: memberId, p_reason: reason });
+  if (error) {
+    const known: RemoveCheckInError[] = ["not_a_member", "stale_claims", "not_an_admin", "reason_required", "not_found"];
+    return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
+  }
+  return { ok: true };
 }

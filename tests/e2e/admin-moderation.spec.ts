@@ -167,10 +167,17 @@ async function goto(page: Page, url: string) {
 // rebuilt, so their guarded heading text isn't known here — checking that
 // the not-found page's own `<h1>` is the ONLY one on the page proves no
 // guarded queue rendered alongside it, without needing each route's copy.
+//
+// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
+// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically — a gated
+// route can flush one Suspense boundary before its page's own `notFound()`
+// throws, so an empty hidden div stays in the body for good, not just
+// transiently. `page.goto()` bare, then the visible not-found heading is the
+// wait — it already auto-retries.
 test("a member gets the streamed not-found page on all three moderation queues (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["comments", "photos", "reports"]) {
-    await goto(page, `/ar/app/admin/moderation/${path}`);
+    await page.goto(`/ar/app/admin/moderation/${path}`);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
     // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout
@@ -203,17 +210,84 @@ test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the t
   await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
 });
 
+// ★ ORDERED HERE, BEFORE THE THREE RESOLUTION TESTS BELOW, on purpose — a
+// real sync-3 finding: `mode: "serial"` runs every test IN FILE ORDER within
+// a project, and none of the three resolution tests below carry a
+// project skip, so they ran on the phone project too. Captured AFTER them
+// (its original position), this test showed all three queues freshly
+// resolved — «لا بلاغات مفتوحة» and every tab count at 0 — not because the
+// product is broken, but because this file's own OWN prior tests had
+// already cleared the seeded data by the time it ran. Moved here, right
+// after the read-only moderator-view test and before anything mutates.
+test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sideways", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+  await page.setViewportSize(PHONE);
+  await signIn(context, modEmail);
+  // `wave7-console-…` — the row-cited path `docs/plan/notes/console.md`'s
+  // "Wave 7 plan" §2/§4 commits to for K1/K2, and `reports`' own missing
+  // capture (wave 6's own carried finding) closed in the same pass now that
+  // the shared `ModerationTabs` strip touches all three pages together.
+  // `E2E_SHOTS_DIR` — same reason `console.spec.ts` carries it: a run in the
+  // verification worktree must land its captures at the path `STATUS.md`
+  // cites, not `process.cwd()`.
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  for (const [path, name] of [
+    ["comments", "wave7-console-moderation-comments-populated"],
+    ["photos", "wave7-console-moderation-photos-populated"],
+    ["reports", "wave7-console-moderation-reports-populated"],
+  ] as const) {
+    await goto(page, `/ar/app/admin/moderation/${path}`);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
+    // document the vertical scrollbar sits on the left, so that difference is the
+    // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
+    // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
+    const overflow = await page.evaluate(() => {      // First question: does the page itself scroll sideways? (One number; on the
+      // phone project innerWidth already includes no classic scrollbar.)
+      if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+      // Second: which element is responsible. An element inside an
+      // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
+      // tables), and a `position: fixed` overlay spans the visual viewport by
+      // design; neither makes the page scroll, so neither is named.
+      const limit = window.innerWidth;
+      const offenders: string[] = [];
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+        if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
+        const box = el.getBoundingClientRect();
+        if (box.width === 0) continue;
+        if (box.right <= limit + 1 && box.left >= -1) continue;
+        let contained = false;
+        for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+        }
+        if (contained) continue;
+        offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
+      }
+      return offenders.slice(0, 6);
+    });
+    expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
+    await page.screenshot({ path: `${dir}/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  }
+});
+
 test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/moderation/comments");
-  const card = page.locator("li", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
+  const card = page.locator("article", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
 
-  await card.getByText("أزل", { exact: true }).click();
-  await card.getByRole("button", { name: "أرسل" }).click();
-  await expect(card.getByText("اكتب السبب أولًا")).toBeVisible();
+  // ★ `ui/dialog`'s confirmation (`report-card.tsx`, REQ-UIX-013, wave 7) is
+  // portalled onto `document.body`, OUTSIDE this card's own DOM subtree —
+  // same trap the photo-report test below already names for its own queue.
+  // Scoped to the dialog, not the card, from here on.
+  await card.getByRole("button", { name: "أزل" }).click();
+  const dialog = page.getByRole("dialog", { name: "حذف تعليق من «جلسة الإشراف»؟" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  await expect(dialog.getByText("اكتب السبب أولًا")).toBeVisible();
 
-  await card.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
-  await card.getByRole("button", { name: "أرسل" }).click();
+  await dialog.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
   await expect(page.getByText("تعليق مسيء يستحق المراجعة")).toHaveCount(0);
 
   const { rows: commentRows } = await db.query<{ deleted_at: string; removal_reason: string }>(`select deleted_at, removal_reason from public.comments where id = $1`, [commentId]);
@@ -269,49 +343,5 @@ test("REQ-PTS-013: removing a reported photo reverses its original points award 
     reportedPhotoId,
   ]);
   expect(reversal.rows).toEqual([{ amount: -3 }]);
-});
-
-test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sideways", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
-  await page.setViewportSize(PHONE);
-  await signIn(context, modEmail);
-  for (const [path, name] of [
-    ["comments", "scr-050-moderation-comments"],
-    ["photos", "scr-051-moderation-photos"],
-    ["reports", "scr-052-moderation-reports"],
-  ] as const) {
-    await goto(page, `/ar/app/admin/moderation/${path}`);
-    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
-    // document the vertical scrollbar sits on the left, so that difference is the
-    // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
-    // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
-    const overflow = await page.evaluate(() => {      // First question: does the page itself scroll sideways? (One number; on the
-      // phone project innerWidth already includes no classic scrollbar.)
-      if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
-      // Second: which element is responsible. An element inside an
-      // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
-      // tables), and a `position: fixed` overlay spans the visual viewport by
-      // design; neither makes the page scroll, so neither is named.
-      const limit = window.innerWidth;
-      const offenders: string[] = [];
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
-        if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
-        const box = el.getBoundingClientRect();
-        if (box.width === 0) continue;
-        if (box.right <= limit + 1 && box.left >= -1) continue;
-        let contained = false;
-        for (let n: HTMLElement | null = el; n; n = n.parentElement) {
-          const cs = getComputedStyle(n);
-          if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
-        }
-        if (contained) continue;
-        offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
-      }
-      return offenders.slice(0, 6);
-    });
-    expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
-    await page.screenshot({ path: `.qa-shots/rtl/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
-  }
 });
 

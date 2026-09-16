@@ -161,6 +161,11 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
     // the discovery).
     .select("arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
+    // `removed_at` (0087) is a soft delete — the export is who attended, and
+    // a removal is already evidenced in `audit_log` (the lead's own
+    // reasoning), so a removed check-in is excluded here rather than
+    // reported as attendance that no longer stands.
+    .is("removed_at", null)
     .order("arrived_at", { ascending: false });
   if (error) throw new Error(`check_ins: ${error.message}`);
   const prefs = await getOrgPrefs(locale);

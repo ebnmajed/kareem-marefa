@@ -1,40 +1,48 @@
-import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { getBookmarksPageData } from "@/lib/dal/bookmarks";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getBookmarkedTimelineSessions } from "@/lib/dal/bookmarks";
 import { formatNumber } from "@/components/sessions/numerals";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SessionCard } from "@/components/browse/session-card";
 
-// SCR-024 — «المحفوظات» (REQ-DSC-006). A member's own saved sessions, most
-// recently bookmarked first; `p7_self_read` (0037) is the entire boundary
-// — there is nothing here another member could ever see. A fully-owned
-// route, not a slot, so (unlike Materials/Photos/Tasks) it carries its own
-// heading.
+// SCR-024 — «المحفوظات» (REQ-DSC-006). `p7_self_read` (0037) is the entire
+// boundary — there is nothing here another member could ever see. A
+// fully-owned route, not a slot, so (unlike materials/photos/tasks) it
+// carries its own `<h1>`.
+//
+// On the system: `getBookmarkedTimelineSessions()` (`sessions`', landed
+// a424957) reads the same `TimelineSession` shape the timeline itself does,
+// so the card is `SessionCard` — one row-to-card derivation, not a second
+// one of this route's own. Per `sessions`' own notes on it: `pinned` stays
+// off (that variant is the timeline's "next session" hero), the list sits
+// under an `<h2>` so the heading levels don't skip from this page's `<h1>`
+// straight to the card's own `<h3>` title, and un-bookmarking runs inside
+// the card's own optimistic transition — its action already revalidates
+// this path, proven in `tests/e2e/bookmarks.spec.ts` rather than only
+// trusted.
 export default async function BookmarksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const t = await getTranslations("search.bookmarksPage");
-  const { sessions } = await getBookmarksPageData(locale);
+  setRequestLocale(locale);
+  const [t, sessions] = await Promise.all([getTranslations("search.bookmarksPage"), getBookmarkedTimelineSessions(locale)]);
 
   return (
     <div>
-      <h1 className="text-h1 text-fg-heading">{t("heading")}</h1>
+      <PageHeader title={t("heading")} />
 
       {sessions.length === 0 ? (
-        <p className="mt-4 text-body-sm text-fg-muted">{t("empty")}</p>
+        <EmptyState title={t("empty")} action={{ label: t("browseAction"), href: "/app/sessions" }} className="mt-6" />
       ) : (
-        <>
-          <p className="mt-2 text-body-sm text-fg-muted">{t("count", { count: sessions.length, value: formatNumber(sessions.length) })}</p>
-          <ul className="mt-4 flex flex-col gap-3">
-            {sessions.map((s) => (
-              <li key={s.id} className="rounded-field border border-edge p-4">
-                <Link href={`/${locale}/app/sessions/${s.id}`} className="text-body font-medium text-fg-heading hover:underline">
-                  <bdi>{s.title}</bdi>
-                </Link>
-                <p className="mt-1 text-body-sm text-fg-body">
-                  <bdi>{s.abstract}</bdi>
-                </p>
+        <div className="mt-6">
+          <SectionHeader as="h2" title={t("count", { count: sessions.length, value: formatNumber(sessions.length) })} />
+          <ol className="mt-4 flex flex-col gap-3">
+            {sessions.map((session) => (
+              <li key={session.id}>
+                <SessionCard session={session} locale={locale} />
               </li>
             ))}
-          </ul>
-        </>
+          </ol>
+        </div>
       )}
     </div>
   );

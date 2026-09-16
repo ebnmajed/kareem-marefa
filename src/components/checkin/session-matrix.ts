@@ -15,15 +15,16 @@
 //     the host screen needs a real answer, not an inline condition.
 //
 // `checkIn` is `boolean | "walkInsOnly"` because DEC-065's walk-in switch is
-// a THIRD input the (phase, relation) pair alone can't encode — the caller
-// resolves the tri-state through `checkInAllowed()`, never by reading the
-// cell directly.
+// a THIRD input the (phase, relation) pair alone can't encode. ★ DEC-141:
+// this column is now DISPLAY-ONLY — the actual gate is `checkInWindowAllowed()`
+// / `checkInIneligibleReason()` below, self-contained and never routed
+// through this matrix (see their own header for why).
 //
 // ★ RLS and the RPCs remain authoritative (REQ-NFR-001). A cell here is a
 // courtesy; the database refuses the write regardless.
 
-import type { PhaseInput, SessionPhase, ViewerRelation } from "@/lib/session-status";
-import { canGrantOn, sessionPhase } from "@/lib/session-status";
+import type { PhaseInput, SessionPhase, SessionState, ViewerInput, ViewerRelation } from "@/lib/session-status";
+import { canGrantOn, parseInstant, scheduledEnd, sessionPhase } from "@/lib/session-status";
 
 /** «قبل» · «أثناء» · «بعد» · مواد الجلسة الخاصة بمقدِّم أو مشرف قبل النشر. */
 export type MaterialsWindow = "none" | "pre" | "during" | "after" | "own";
@@ -33,6 +34,13 @@ export interface AffordanceCell {
   cancel: boolean;
   calendar: boolean;
   tasks: boolean;
+  /** ★ DEC-141: DISPLAY-ONLY since the grace-window fix. `checkInWindowAllowed()`
+   *  below is the source of truth for whether check-in may actually be
+   *  offered — it does not consult this cell, because the check-in window
+   *  (`ends_at + 2h`) now outlives the phase this cell is keyed on. Kept for
+   *  cells where phase-bucketing is still a reasonable summary (e.g. `open`'s
+   *  rows, unaffected by the grace period) and for `16` §5.3's own printed
+   *  column. */
   checkIn: boolean | "walkInsOnly";
   hostConsole: boolean;
   rate: boolean;
@@ -106,8 +114,8 @@ export const AFFORDANCE_MATRIX: Record<SessionPhase, Record<ViewerRelation, Affo
     staff: cell({ tasks: true, hostConsole: true, share: true, materials: "pre" }),
   },
   live: {
-    // §5.3 row 4 — «only if walk-ins are on» (DEC-065). `checkInAllowed()`
-    // resolves the tri-state; the cell alone can't say yes or no.
+    // §5.3 row 4 — «only if walk-ins are on» (DEC-065). This column is
+    // display-only since DEC-141; `checkInWindowAllowed()` resolves it for real.
     none: cell({ checkIn: "walkInsOnly", share: true, materials: "during" }),
     // §5.3 row 5. Cancel is GONE once live — you can't back out of a seat
     // once the session has started. This is bug (a)'s other half.
@@ -158,28 +166,92 @@ export function affordancesFor(phase: SessionPhase, relation: ViewerRelation): A
 }
 
 /**
- * Whether the check-in SCREEN or the check-in LINK may be offered.
- *
- * ★ Necessary but not sufficient to consult the cell alone: `checkIn` is a
- * GRANTING affordance (`session-status.ts`'s `GRANTING_AFFORDANCES.live`),
- * so a clock-derived `live` — `published` past its start, `start_session`
- * hasn't run yet — must still be refused even though the cell says
- * `"walkInsOnly"` or `true`. `canGrantOn()` is what enforces that; this
- * function is the one place the matrix cell and the direction guard combine,
- * so nobody has to remember to call both.
- */
-export function checkInAllowed(session: PhaseInput, relation: ViewerRelation, allowWalkIns: boolean, now: Date = new Date()): boolean {
-  const c = affordancesFor(sessionPhase(session, now), relation).checkIn;
-  if (c === false) return false;
-  if (c === "walkInsOnly" && !allowWalkIns) return false;
-  return canGrantOn(session, "checkIn", now);
-}
-
-/**
  * Reference for `event`'s track (M10+) — not consumed by any component this
  * wave. Built and tested because the matrix is the WHOLE 49-cell table, not
  * just checkin's own three columns (`16` §5.4.1 row 5, DEC-090 corollary 2).
  */
 export function rateAllowed(session: PhaseInput, relation: ViewerRelation, now: Date = new Date()): boolean {
   return affordancesFor(sessionPhase(session, now), relation).rate && canGrantOn(session, "rate", now);
+}
+
+// ── ★ DEC-141 — the grace-window fix ────────────────────────────────────────
+//
+// A phase-bucketed check (ask `sessionPhase()` which phase we're in, read a
+// matrix cell for it) is correct only as long as the check-in window matches
+// the phase boundary it was built from — but `REQ-CHK-016`'s ceiling
+// (`ends_at + 2h`) OUTLIVES `sessionPhase()`'s own clock clause, which still
+// calls a session "ended" the instant `ends_at` passes (it has no reason to
+// know about the grace period; it was never about check-in specifically).
+// Two consequences, found while designing `DEC-141`'s window ruling, not
+// assumed:
+//
+//   1. A phase-bucketed check would refuse a check-in the RPC accepts,
+//      during the grace window — `viewerRelation()` never even returns
+//      `"confirmed"`/`"waitlisted"` once phase is `"ended"` (its own
+//      contract), so the phase-bucketed `AFFORDANCE_MATRIX` row has nowhere
+//      to grant it from.
+//   2. The mirror bug: a confirmed, not-yet-checked-in member reads as
+//      `"absent"` once phase is `"ended"`, so `attendance-outcome.tsx` would
+//      say «لم تُسجّل حضورك» before the ceiling has even passed — declaring an
+//      outcome that isn't final yet.
+//
+// `checkInIneligibleReason()` and `checkInWindowAllowed()` below fix both by
+// NEVER going through `sessionPhase()`, `viewerRelation()` or the matrix at
+// all — they mirror `check_in()` and `ensure_check_in_code()`'s own gate
+// directly: the three-state family, the floor, the ceiling, the switch, the
+// walk-in door. The old phase-bucketed `checkInAllowed()` is gone — its last
+// caller (`dal/checkin.ts`'s `getCheckInScreenData()`) moved over once
+// `checkInOpen` was threaded through the DTO that needed it.
+
+/** DEC-141 ruling 1 — only these three states carry attendance meaning; a
+ *  clock-only window would otherwise accept a code on a cancelled session
+ *  whose scheduled start has passed. */
+export const CHECK_IN_ATTENDANCE_STATES: readonly SessionState[] = ["published", "in_progress", "completed"] as const;
+
+const TWO_HOURS_MS = 2 * 60 * 60_000;
+
+/** Every reason the check-in screen or link can be refused — mirrors
+ *  `check_in()`'s own envelope statuses one-for-one, plus the two states
+ *  (`not_published`, `cancelled`) that mean there's no code to fail on yet. */
+export type CheckInIneligibleReason = "not_published" | "cancelled" | "not_started" | "session_ended" | "presenter_cannot_check_in" | "reservation_required" | "check_in_closed";
+
+/**
+ * Self-contained — the courtesy twin of `check_in()`/`ensure_check_in_code()`
+ * (`supabase/migrations/0084_check_in_window.sql`). RLS remains authoritative
+ * (`REQ-NFR-001`); this decides only what the screen offers, and WHY not when
+ * it doesn't — `null` means eligible.
+ *
+ * `viewer` carries the RAW facts (`isPresenter`, `rsvpStatus`, `isStaff`),
+ * never a pre-derived `ViewerRelation` — that's the whole fix (see the header
+ * above). `viewer.checkedIn` is accepted (reusing `session-status.ts`'s
+ * `ViewerInput` shape as-is) but not consulted: whether to keep OFFERING the
+ * check-in link to someone already checked in is `check_in()`'s own
+ * `already_checked_in` no-op to answer, not this predicate's.
+ */
+export function checkInIneligibleReason(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): CheckInIneligibleReason | null {
+  if (viewer.isPresenter) return "presenter_cannot_check_in"; // REQ-CHK-011, absolute — no walk-in exception either.
+  if (session.state === "cancelled") return "cancelled";
+  if (!CHECK_IN_ATTENDANCE_STATES.includes(session.state)) {
+    // draft / submitted / in_review / changes_requested / approved (no code
+    // has ever existed) read the same as "archived" (the code existed once,
+    // long past its ceiling) — both say the same true thing to a member:
+    // there is nothing to check in to right now.
+    return session.state === "archived" ? "session_ended" : "not_published";
+  }
+
+  const start = parseInstant(session.startsAt);
+  const end = scheduledEnd(session, start);
+  if (!start || !end) return "not_published"; // defensive; unreachable for these three states (0010's check constraint).
+  if (now.getTime() < start.getTime()) return "not_started"; // the floor.
+  if (now.getTime() >= end.getTime() + TWO_HOURS_MS) return "session_ended"; // the ceiling, REQ-CHK-016.
+  if (!checkInOpen) return "check_in_closed"; // the switch, REQ-CHK-015.
+
+  if (viewer.rsvpStatus === "confirmed") return null; // always eligible, once the window's open.
+  if (allowWalkIns) return null; // waitlisted / no seat / staff — only through the walk-in door.
+  return "reservation_required";
+}
+
+/** `checkInIneligibleReason() === null`, for a caller that only needs the boolean. */
+export function checkInWindowAllowed(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
+  return checkInIneligibleReason(session, viewer, allowWalkIns, checkInOpen, now) === null;
 }

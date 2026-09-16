@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { TaskSummary } from "@/lib/dal/tasks";
 import { submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 
 interface TaskItemProps {
   locale: string;
@@ -21,12 +20,6 @@ export function TaskItem({ locale, sessionId, task }: TaskItemProps) {
   const t = useTranslations("tasks");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  // `DEC-135`: `toggleTaskCompletionAction` calls `revalidatePath` server-
-  // side, so this transition waits on the SAME re-render React 19.2.4 can
-  // lose the ping for. `usePendingNudge` re-renders this component every
-  // 300ms while pending to force the lost retry through.
-  usePendingNudge(pending);
 
   function toggle(completed: boolean) {
     setError(null);
@@ -94,11 +87,6 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
   const [submitted, setSubmitted] = useState(task.completed);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(!task.completed);
-
-  // `DEC-135`: `submitTaskFormResponseAction` calls `revalidatePath`
-  // server-side too — same reasoning as `TaskItem`'s own `usePendingNudge`
-  // above.
-  usePendingNudge(pending);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

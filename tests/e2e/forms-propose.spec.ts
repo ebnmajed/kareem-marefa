@@ -126,7 +126,8 @@ test("★ the summary lists one LINK per failed field, in the order the page ren
   await failTheForm(page);
 
   const summary = proposalForm(page).locator("[role=alert]");
-  await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
+  await expect(summary).toContainText("لم نستطع إرسال المقترح — 3 حقول تحتاج تصحيحًا");
+  await expect(summary).toContainText("ما كتبته محفوظ كما هو");
 
   // The M2 defect in one assertion: these used to be sentences.
   const links = summary.getByRole("link");
@@ -243,9 +244,12 @@ test("★ inline validation starts after the first submit and not before — rew
   await page.getByRole("button", { name: "أرسل المقترح" }).click();
   await expect(page.locator("#title-error")).toBeVisible();
 
-  // Reward early: the error goes as soon as it looks fixed, while typing.
+  // Reward early: the error goes as soon as it looks fixed, while typing —
+  // and it leaves the summary with it (sync 2, wave 7: the summary lists
+  // exactly the errors on the page).
   await title.fill("كيف اختصرنا وقت إعداد التقارير");
   await expect(page.locator("#title-error")).toHaveCount(0);
+  await expect(proposalForm(page).locator("[role=alert]").getByRole("link")).toHaveCount(2);
 
   // Punish late: emptying it again says nothing until the member leaves.
   await title.fill("");
@@ -253,8 +257,8 @@ test("★ inline validation starts after the first submit and not before — rew
   await title.blur();
   await expect(page.locator("#title-error")).toBeVisible();
 
-  // ★ And the summary does not move while any of that happens: it is
-  // `role="alert"`, and rewriting it on every keystroke would re-announce the
-  // whole list. It is a record of one attempt, rebuilt by the next submit.
+  // ★ The summary follows the page: the title is back in it. It changes when a
+  // field changes state — on blur, or when a value first passes — never per
+  // keystroke.
   await expect(proposalForm(page).locator("[role=alert]").getByRole("link")).toHaveCount(3);
 });

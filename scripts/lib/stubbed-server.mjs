@@ -11,7 +11,7 @@
 
 import { spawn } from 'node:child_process'
 import { acquireGate } from './gate-lock.mjs'
-import { existsSync } from 'node:fs'
+import { createWriteStream, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -74,8 +74,26 @@ export async function startStubbedServer({ log = console.log } = {}) {
     process.exit(143)
   })
 
+  // ★ THE TWO SERVERS' OUTPUT IS DRAINED. `stdio: 'pipe'` with nothing reading
+  // it fills the pipe's buffer, and then `next`'s next log line blocks its
+  // event loop: the server stays LISTENING on :3000 and answers nothing. A long
+  // e2e run's `csp-report:` lines were enough. Every later test timed out at
+  // 30–35 s, and the phone half of wave 7's sync-4 runs collapsed twice, with
+  // `sample` on the hung process showing the main thread in a blocked write.
+  // `STUBBED_SERVER_LOG=<file>` keeps the output instead, which is also the one
+  // place a server-side exception from an e2e run can be read.
+  // (`spawnChild` itself does not drain: qa-run.mjs pipes its own child.)
+  const serverLog = process.env.STUBBED_SERVER_LOG ? createWriteStream(process.env.STUBBED_SERVER_LOG, { flags: 'a' }) : null
+  const drain = (c) => {
+    for (const stream of [c.stdout, c.stderr]) {
+      if (serverLog) stream.pipe(serverLog, { end: false })
+      else stream.resume()
+    }
+    return c
+  }
+
   log(`· starting Supabase stub on ${STUB}`)
-  spawnChild('node', ['scripts/supabase-stub.mjs'])
+  drain(spawnChild('node', ['scripts/supabase-stub.mjs']))
   if (!(await waitFor(`${STUB}/__stub`))) {
     console.error(`stub did not come up at ${STUB}`)
     process.exit(2)
@@ -90,7 +108,7 @@ export async function startStubbedServer({ log = console.log } = {}) {
   }
 
   log('· starting next start on :3000, pointed at the stub')
-  spawnChild('npx', ['next', 'start'], {
+  drain(spawnChild('npx', ['next', 'start'], {
     // The whole point of this file. Without these two lines the app posts
     // registrations to the production project.
     SUPABASE_URL: STUB,
@@ -116,7 +134,7 @@ export async function startStubbedServer({ log = console.log } = {}) {
     // (scripts/e2e-unconfigured.mjs) serves the app with them empty.
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? STUB,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_stub',
-  })
+  }))
   if (!(await waitFor(`${BASE}/ar`))) {
     console.error(`next did not come up at ${BASE}`)
     process.exit(2)

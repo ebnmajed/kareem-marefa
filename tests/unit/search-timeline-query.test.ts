@@ -34,6 +34,12 @@ describe("parseTimelineQuery", () => {
     ]);
   });
 
+  it("reads a period, and drops one that is not the timeline's (DEC-141 ruling 15)", () => {
+    expect(parseTimelineQuery({ when: "nextWeek" }).entries).toEqual([["when", "nextWeek"]]);
+    expect(parseTimelineQuery({ when: "later" }).entries).toEqual([]);
+    expect(parseTimelineQuery({ when: "live" }).entries).toEqual([]);
+  });
+
   it("ignores keys that are not filters, and blank values", () => {
     expect(parseTimelineQuery({ page: "2", q: "  ", utm_source: "x" }).entries).toEqual([]);
   });

@@ -4,6 +4,9 @@ import { formatDateTime } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getMyExportRequest } from "@/lib/dal/privacy";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Panel } from "@/components/ui/panel";
 import { requestDeactivationAction, requestExportAction } from "./actions";
 import { DeactivationForm, RequestExportForm } from "./forms";
 
@@ -44,8 +47,7 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
       <p className="mt-2">
         <Link href="/legal/privacy" className="text-label text-fg-body underline underline-offset-4 hover:text-fg-heading">
           {t("policyLink")}
@@ -53,16 +55,13 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
       </p>
 
       <section aria-labelledby="export" className="mt-10 max-w-2xl">
-        <h2 id="export" className="text-h2 text-fg-heading">
-          {t("exportTitle")}
-        </h2>
-        <p className="mt-3 text-body text-fg-body">{t("exportIntro")}</p>
+        <SectionHeader id="export" title={t("exportTitle")} description={t("exportIntro")} />
         {/* REQ-PRF-006's second acceptance criterion, said to the person it
             protects rather than only tested. */}
         <p className="mt-2 text-body-sm text-fg-muted">{t("exportNote")}</p>
 
         {request && statusKey ? (
-          <div className="mt-6 rounded-field border border-edge p-4">
+          <Panel className="mt-6 p-4">
             <p className="text-body text-fg-heading">{t(statusKey)}</p>
             <p className="mt-2 text-body-sm text-fg-muted">
               {t("requestedAt")} {when(request.requestedAt)}
@@ -89,7 +88,7 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
                 <p className="mt-3 text-body-sm text-fg-muted">{t("expiryNote")}</p>
               </>
             ) : null}
-          </div>
+          </Panel>
         ) : null}
 
         {/* REQ-NFR-005 said before the click, not after it. The RPC refuses a
@@ -106,10 +105,7 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
       </section>
 
       <section aria-labelledby="deactivate" className="mt-12 max-w-2xl border-t border-edge pt-8">
-        <h2 id="deactivate" className="text-h2 text-fg-heading">
-          {t("deactivateTitle")}
-        </h2>
-        <p className="mt-3 text-body text-fg-body">{t("deactivateIntro")}</p>
+        <SectionHeader id="deactivate" title={t("deactivateTitle")} description={t("deactivateIntro")} />
         {/* ★ The honest paragraph. It says no, and it says why, in the place
             where someone is deciding — not in a policy page they may not open. */}
         <p className="mt-3 text-body text-fg-body">{t("deactivateHonest")}</p>

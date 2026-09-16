@@ -1,169 +1,228 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatNumber } from "@/components/sessions/numerals";
-import { Link } from "@/i18n/navigation";
-import type { Locale } from "@/i18n/routing";
-import { getProposal } from "@/lib/dal/proposals";
-import { answerPresenterInvite, dropCoPresenter } from "../actions";
 import { ProposalMaterials } from "@/components/materials/proposal-list";
+import { formatNumber } from "@/components/sessions/numerals";
+import { ProposalStatusBadge } from "@/components/sessions/proposal-status-badge";
+import { RemovePresenter } from "@/components/sessions/remove-presenter";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { SectionHeader } from "@/components/ui/section-header";
+import { SubmitButton } from "@/components/ui/submit-button";
+import type { Locale } from "@/i18n/routing";
+import { EDITABLE_PROPOSAL_STATES, getProposal, type ProposalPresenter } from "@/lib/dal/proposals";
+import { answerPresenterInvite, dropCoPresenter } from "../actions";
 
-// SCR-018 · /app/propose/[id] — my proposal.
-//
-// This wave it carries REQ-PRO-003's half: a named co-presenter answers their
-// invitation here, and the proposer sees who has answered. REQ-PRO-008's
-// pipeline view — the full history behind each state — is STORY-PRO-004.
+// SCR-018 · /app/propose/[id] — my proposal (REQ-PRO-003, REQ-PRO-005,
+// REQ-PRO-006, REQ-PRO-008), on the M9 system for wave 7 (DEC-137, DEC-141).
 //
 // Who may see this page is `proposals_read_own_or_staff`, not a check in this
 // component: the proposer and the named co-presenters, nobody else. A member
-// who is neither gets no row, and no row is a 404 rather than a message that
-// would confirm the id exists.
+// who is neither gets no row, and no row is `notFound()` rather than a message
+// that would confirm the id exists (under `/app`, DEC-134's streamed not-found).
+//
+// What the page says, in order: the state on the shared status vocabulary;
+// what the reviewer wrote, where there is a decision to read; what happens
+// next, and the edit where the state allows one; the proposal itself; its draft
+// materials; the invitation, for a co-presenter; the presenters.
+//
+// ★ THE REVIEWER'S REASON SHOWS ONLY IN THE STATES IT BELONGS TO. Approval
+// clears `decision_reason`; a RESUBMISSION does not — the proposer cannot write
+// the column. Shown whenever it was non-null, a resubmitted proposal would sit
+// under «بانتظار المراجعة» with last round's change request beneath it.
+
+const LEVEL_KEY = { introductory: "form.levelIntroductory", intermediate: "form.levelIntermediate", advanced: "form.levelAdvanced" } as const;
 
 export default async function ProposalPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; updated?: string }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const { created } = await searchParams;
+  const { created, updated } = await searchParams;
 
-  const [proposal, t, tp] = await Promise.all([
-    getProposal(locale, id),
-    getTranslations("proposals.proposal"),
-    getTranslations("proposals.propose"),
-  ]);
+  const [proposal, t, tp] = await Promise.all([getProposal(locale, id), getTranslations("proposals.proposal"), getTranslations("proposals.propose")]);
   if (!proposal) notFound();
 
   const answer = answerPresenterInvite.bind(null, locale as Locale, proposal.id);
-  const badge = (p: { isProposer: boolean; accepted: boolean; declinedAt: string | null }) =>
-    p.isProposer ? t("presenterProposer") : p.declinedAt ? t("presenterDeclined") : p.accepted ? t("presenterAccepted") : t("presenterPending");
+  const named = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+  const editable = proposal.viewerIsProposer && EDITABLE_PROPOSAL_STATES.includes(proposal.state);
+  const showReason = Boolean(proposal.decisionReason) && (proposal.state === "changes_requested" || proposal.state === "rejected");
+
+  const presenterBadge = (p: ProposalPresenter) =>
+    p.isProposer ? (
+      <Badge tone="neutral" outline size="sm">
+        {t("presenterProposer")}
+      </Badge>
+    ) : p.declinedAt ? (
+      <Badge tone="ended" size="sm">
+        {t("presenterDeclined")}
+      </Badge>
+    ) : p.accepted ? (
+      <Badge tone="success" size="sm">
+        {t("presenterAccepted")}
+      </Badge>
+    ) : (
+      <Badge tone="live" size="sm">
+        {t("presenterPending")}
+      </Badge>
+    );
+
+  // A receipt for the round trip that brought the member here. `role="status"`,
+  // because it is news about the member's own action and must not interrupt.
+  const receipt = created
+    ? {
+        title: proposal.state === "draft" ? tp("created.draftTitle") : tp("created.submittedTitle"),
+        body: tp.rich(proposal.state === "draft" ? "created.draftBody" : "created.submittedBody", { title: proposal.title, t: named }),
+      }
+    : updated
+      ? {
+          title: updated === "draft" ? t("updated.draftTitle") : t("updated.submittedTitle"),
+          body: updated === "draft" ? null : t.rich("updated.submittedBody", { title: proposal.title, t: named }),
+        }
+      : null;
 
   return (
-    <>
-      {created ? (
-        <div role="status" className="max-w-2xl rounded-field border border-edge bg-silver-100 p-5">
-          <p className="text-label text-fg-heading">{proposal.state === "draft" ? tp("created.draftTitle") : tp("created.submittedTitle")}</p>
-          <p className="mt-2 text-body text-fg-body">
-            {tp.rich(proposal.state === "draft" ? "created.draftBody" : "created.submittedBody", {
-              title: proposal.title,
-              t: (chunks) => <bdi>{chunks}</bdi>,
-            })}
-          </p>
+    <div className="flex max-w-2xl flex-col gap-8">
+      {receipt ? (
+        <div role="status">
+          <Panel tone="success">
+            <p className="text-label text-fg-heading">{receipt.title}</p>
+            {receipt.body ? <p className="mt-2 text-body text-fg-body">{receipt.body}</p> : null}
+          </Panel>
         </div>
       ) : null}
 
-      <h1 className={`text-h1 text-fg-heading ${created ? "mt-8" : ""}`}>
-        <bdi>{proposal.title}</bdi>
-      </h1>
-
-      <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-body-sm text-fg-muted">
-        <div className="flex gap-2">
-          <dt>{t("stateLabel")}</dt>
-          <dd className="text-fg-heading">{t(`state.${proposal.state}`)}</dd>
-        </div>
-        {proposal.categoryName ? (
-          <div className="flex gap-2">
-            <dt>{tp("form.categoryLabel")}</dt>
-            <dd>
-              <bdi>{proposal.categoryName}</bdi>
-            </dd>
-          </div>
-        ) : null}
-        <div className="flex gap-2">
-          <dt>{tp("form.levelLabel")}</dt>
-          <dd>{tp(`form.level${proposal.level === "introductory" ? "Introductory" : proposal.level === "intermediate" ? "Intermediate" : "Advanced"}`)}</dd>
-        </div>
-        {proposal.expectedDurationMinutes !== null ? (
-          <div className="flex gap-2">
-            <dt>{tp("form.durationLabel")}</dt>
-            <dd>
-              <bdi>{tp("duration", { count: proposal.expectedDurationMinutes, value: formatNumber(proposal.expectedDurationMinutes) })}</bdi>
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      <PageHeader
+        breadcrumb={[{ href: "/app/propose", label: tp("mine.title") }]}
+        breadcrumbLabel={(await getTranslations("ui.pageHeader"))("breadcrumb")}
+        status={<ProposalStatusBadge state={proposal.state} />}
+        title={proposal.title}
+        meta={
+          <p className="text-body-sm text-fg-muted">
+            {proposal.categoryName ? (
+              <>
+                <bdi>{proposal.categoryName}</bdi>
+                {" · "}
+              </>
+            ) : null}
+            {tp(LEVEL_KEY[proposal.level])}
+            {proposal.expectedDurationMinutes !== null ? (
+              <>
+                {" · "}
+                <bdi>{tp("duration", { count: proposal.expectedDurationMinutes, value: formatNumber(proposal.expectedDurationMinutes) })}</bdi>
+              </>
+            ) : null}
+          </p>
+        }
+        actions={
+          editable ? (
+            <ButtonLink href={`/app/propose/${proposal.id}/edit`} variant={proposal.state === "changes_requested" ? "primary" : "secondary"} size="md">
+              {proposal.state === "changes_requested" ? t("editChanges") : t("editDraft")}
+            </ButtonLink>
+          ) : null
+        }
+      />
 
       {/* REQ-PRO-005: the written reason is the point of a rejection or a
-          change-request, so it is not tucked into a status pill. */}
-      {proposal.decisionReason ? (
-        <div className="mt-6 max-w-2xl rounded-field border border-edge-strong p-5">
-          <h2 className="text-label text-fg-heading">{t("reasonLabel")}</h2>
-          <p className="mt-2 whitespace-pre-line text-body text-fg-body">
-            <bdi>{proposal.decisionReason}</bdi>
-          </p>
-        </div>
+          change request, so it is its own region, not a line under a pill. */}
+      {showReason ? (
+        <section aria-labelledby="reason">
+          <Panel tone={proposal.state === "rejected" ? "error" : "live"}>
+            <h2 id="reason" className="text-label text-fg-heading">
+              {t("reasonLabel")}
+            </h2>
+            <p className="mt-2 whitespace-pre-line text-body text-fg-body">
+              <bdi>{proposal.decisionReason}</bdi>
+            </p>
+          </Panel>
+        </section>
       ) : null}
-      {proposal.state === "approved" ? <p className="mt-6 max-w-2xl text-body text-fg-body">{t("approvedNote")}</p> : null}
 
-      <section aria-labelledby="abstract" className="mt-8 max-w-2xl">
-        <h2 id="abstract" className="text-label text-fg-heading">
-          {t("abstractLabel")}
-        </h2>
-        <p className="mt-2 whitespace-pre-line text-body text-fg-body">
+      {proposal.state === "approved" ? <p className="text-body text-fg-body">{t("approvedNote")}</p> : null}
+      {proposal.state === "submitted" || proposal.state === "in_review" ? <p className="text-body text-fg-muted">{t("nextPending")}</p> : null}
+      {proposal.state === "draft" && proposal.viewerIsProposer ? <p className="text-body text-fg-muted">{t("nextDraft")}</p> : null}
+
+      <section aria-labelledby="abstract" className="flex flex-col gap-3">
+        <SectionHeader id="abstract" title={t("abstractLabel")} />
+        <p className="whitespace-pre-line text-body text-fg-body">
           <bdi>{proposal.abstract}</bdi>
         </p>
+        {proposal.targetAudience || proposal.adminNotes ? (
+          <dl className="mt-2 flex flex-col gap-4 border-t border-edge pt-4">
+            {proposal.targetAudience ? (
+              <div>
+                <dt className="text-label text-fg-heading">{tp("form.audienceLabel")}</dt>
+                <dd className="mt-1 text-body text-fg-body">
+                  <bdi>{proposal.targetAudience}</bdi>
+                </dd>
+              </div>
+            ) : null}
+            {proposal.adminNotes ? (
+              <div>
+                <dt className="text-label text-fg-heading">{tp("form.notesLabel")}</dt>
+                <dd className="mt-1 whitespace-pre-line text-body text-fg-body">
+                  <bdi>{proposal.adminNotes}</bdi>
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
       </section>
 
-      {/* The content slot for draft materials on a proposal (REQ-PRO-004, DEC-045's deferral,
-          migration 0053): reassigned to the session the moment one is created from it. */}
-      <section aria-labelledby="materials" className="mt-8 max-w-2xl">
-        <h2 id="materials" className="text-label text-fg-heading">
-          {t("materialsLabel")}
-        </h2>
+      {/* The content slot for draft materials on a proposal (REQ-PRO-004,
+          DEC-045's deferral, migration 0053): reassigned to the session the
+          moment one is created from it. The page owns the landmark. */}
+      <section aria-labelledby="materials" className="flex flex-col gap-3">
+        <SectionHeader id="materials" title={t("materialsLabel")} />
         <ProposalMaterials proposalId={proposal.id} locale={locale} />
       </section>
 
       {proposal.viewerInvite === "pending" ? (
-        <section aria-labelledby="invite" className="mt-8 max-w-2xl rounded-field border border-edge-strong p-5">
-          <h2 id="invite" className="text-label text-fg-heading">
-            {t("inviteTitle")}
-          </h2>
-          <p className="mt-2 text-body text-fg-body">{t("inviteBody")}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <form action={answer.bind(null, true)}>
-              <button type="submit" className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900">
-                {t("accept")}
-              </button>
-            </form>
-            <form action={answer.bind(null, false)}>
-              <button type="submit" className="inline-flex h-12 items-center rounded-field border border-edge-strong px-6 text-label text-fg-heading hover:bg-silver-100">
-                {t("decline")}
-              </button>
-            </form>
-          </div>
+        <section aria-labelledby="invite">
+          <Panel tone="live">
+            <h2 id="invite" className="text-h3 text-fg-heading">
+              {t("inviteTitle")}
+            </h2>
+            <p className="mt-2 text-body text-fg-body">{t("inviteBody")}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <form action={answer.bind(null, true)}>
+                <SubmitButton size="md">{t("accept")}</SubmitButton>
+              </form>
+              <form action={answer.bind(null, false)}>
+                <SubmitButton variant="secondary" size="md">
+                  {t("decline")}
+                </SubmitButton>
+              </form>
+            </div>
+          </Panel>
         </section>
       ) : null}
 
-      <section aria-labelledby="presenters" className="mt-8 max-w-2xl">
-        <h2 id="presenters" className="text-label text-fg-heading">
-          {t("presentersLabel")}
-        </h2>
-        <ul className="mt-3 space-y-2">
+      <section aria-labelledby="presenters" className="flex flex-col gap-3">
+        <SectionHeader id="presenters" title={t("presentersLabel")} count={proposal.presenters.length} />
+        <ul className="flex flex-col gap-2">
           {proposal.presenters.map((p) => (
-            <li key={p.memberId} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-field border border-edge px-4 py-3">
+            <li key={p.memberId} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-edge px-4 py-3">
+              <Avatar memberId={p.memberId} displayName={p.displayName} size={32} decorative />
               <span className="text-body text-fg-heading">
                 <bdi>{p.displayName}</bdi>
               </span>
-              <span className="text-body-sm text-fg-muted">{badge(p)}</span>
+              {presenterBadge(p)}
               {proposal.viewerIsProposer && !p.isProposer ? (
-                <form action={dropCoPresenter.bind(null, locale as Locale, proposal.id, p.memberId)} className="ms-auto">
-                  <button type="submit" className="h-11 rounded-field px-3 text-body-sm text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-                    {t.rich("removeLabel", { name: p.displayName ?? "", t: (chunks) => <bdi>{chunks}</bdi> })}
-                  </button>
-                </form>
+                <span className="ms-auto">
+                  <RemovePresenter name={p.displayName} action={dropCoPresenter.bind(null, locale as Locale, proposal.id, p.memberId)} />
+                </span>
               ) : null}
             </li>
           ))}
         </ul>
       </section>
-
-      <p className="mt-10">
-        <Link href="/app/propose" className="text-label text-fg-heading underline underline-offset-4">
-          {t("back")}
-        </Link>
-      </p>
-    </>
+    </div>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { saveMaterialSettings } from "@/components/materials/actions";
-import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,17 +30,6 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
   const [pending, startTransition] = useTransition();
   const [localPhase, setLocalPhase] = useState(phase);
   const [localAllow, setLocalAllow] = useState(allowDownload);
-
-  // `DEC-135`, added defensively per the lead's list: `saveMaterialSettings`
-  // (`components/materials/actions.ts`) currently does a plain DB write with
-  // no `revalidatePath`/`revalidateTag`, and this component never calls
-  // `router.refresh()` either — both selects update from purely local
-  // optimistic state (`localPhase`/`localAllow`), so nothing here actually
-  // suspends on server-rendered content today. `usePendingNudge` is a no-op
-  // in that case (it only ever ticks while a real suspension is pending) —
-  // kept so a future change that adds revalidation to this action doesn't
-  // silently reopen DEC-135's race here.
-  usePendingNudge(pending);
 
   return (
     // ★ The lead's real-build finding, materials capture 296aec4 row 8: this
