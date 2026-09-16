@@ -115,7 +115,7 @@ describe("POL-org_settings.reminder_reschedule — REQ-NTF-004", () => {
 
       // A DAL that writes the whole settings row names the column on every
       // save; an unchanged value must not churn the queue.
-      await tx.q(`update public.org_settings set reminder_offsets_minutes = reminder_offsets_minutes, numerals = 'arabic_indic' where org_id = $1`, [f.a.id]);
+      await tx.q(`update public.org_settings set reminder_offsets_minutes = reminder_offsets_minutes, email_from_name = 'اسم مُرسِل آخر' where org_id = $1`, [f.a.id]);
       expect((await keysFor(tx, session)).map((r) => r.key)).toEqual(before);
     });
   });

@@ -121,7 +121,7 @@ the strict one is the gate):
 | — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`, `16` §7.1.1) — `ui/splash` is wave 7's | ✅ `1d73e89` — with `page-header`, `section-header`, `icon-button`, `prose`, which were stubs too | — |
 | — | lead | **the date-time picker's unnamed month buttons** (WCAG 4.1.2, found in M9) — `prevMonthLabel`/`nextMonthLabel`, five call sites, a test | ✅ `73b0f3e` | — |
 | — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) — ~150 call sites, 27 message glyphs, the catalogue test; lands before any teammate edits code | ✅ `c20b901` — tsc, vitest 96/1048, build, qa 44/44, visual 0.000% on the frozen six, RLS 63/746 after a reset | — |
-| — | lead | **`0082_western_numerals.sql`** — ⏳ **drafted, waiting on the owner's `supabase db dump --linked`** (a denied command for sessions) — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
+| — | lead | **`0082_western_numerals.sql`** — ✅ **rehearsed and promoted** (record below) — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
 
 **Console's five, and why** (`DEC-130`): the dashboard is where «يحتاج انتباهك» moved; proposals,
 sessions and members are the three weekly lists that most need `DataTable`'s phone card stack; the
@@ -143,6 +143,30 @@ reports queue is where a flag from `content`'s rebuilt discussion lands. Not cho
 4. The three tracks build; the lead does the shell sweep and the `(auth)` screens, syncs, promotes,
    runs `build`/`qa`/`visual`, and ticks this table only against `scripts/ui-reach.mjs` output and
    a capture actually opened.
+
+### `0082` — the rehearsal against production's schema (invariant 3, DEC-132)
+
+**Two dumps, because the first run's script deleted the first dump on a setup error** — the
+container lacked the `supabase_realtime` publication, and the exit trap removed the dump before the
+error could be fixed. The script now pre-shims the platform roles and the publication, runs a tolerant
+diagnostic apply first, and deletes the dump only once the rehearsal has actually run. The owner ran
+the dump a second time. Both dumps were **schema only — zero `COPY`/`INSERT` statements**, checked
+before use — and both are deleted.
+
+| Step | Result |
+|---|---|
+| Production's schema (15,607 lines) into a fresh `postgres:17` + `scripts/ci/roles.sql` + the platform pre-shim | **0 errors** (the `supabase_vault` extension line stripped, as at Launch step 2) |
+| Production before `0082` | `org_settings.numerals` present, `numeral_system` present — and exactly the four readers `DEC-132` names |
+| **`0082` applied with `ON_ERROR_STOP=1`** | **clean.** Column 0, enum 0; the grants on all four re-created functions identical to production's (`session_public_card` → `anon`, `authenticated`; the other three → `service_role`); `session_public_card`'s row type without `numerals` |
+| RLS suite against **production's schema + `0082`** | ★ **not a clean pass: 30 failures in 7 files**, and every one depends on what a schema-only `public` dump cannot contain — the seeded A27 templates (`0061`, all of `designer-certificates` and `platform-schema`'s library cases), the seeded retention periods (`retention`, `privacy`, `platform-schema`), the storage bucket rows (`materials-schema`), the policies in the `realtime` schema the dump excludes (`realtime`), and one exclusion-constraint case in `m2-schema`. **Every test that exercises what `0082` touches passed on it**: `sessions-public-card`, `notify-send`, `designer-posters`, `tenancy`, `notify-schedule-change` |
+| **The full chain locally** — every migration with its seeds, `0082` on top, `npm run db:reset` | **`test:rls` 63 files, 746 passed, 4 todo**; `policy-diff` agrees. `designer-certificates`, which covers `certificate_render_context`, passes here |
+
+★ **Stated plainly, because the owner's gate said "`npm run test:rls` green":** the suite was not green
+against production's schema, for the environmental reason above, and it is green on the full chain.
+A strictly green run on production's schema would need production's seed rows, and a data dump carries
+every member's personal data — so it is not proposed. If the owner wants a control run instead — the
+same dump **without** `0082`, to show the same 30 fail with no migration at all — it costs one more
+dump.
 
 ### Sync 1 — 2026-09-16, `607ecbe` — the plans are approved and the tracks are coding
 

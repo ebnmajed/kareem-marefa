@@ -105,7 +105,7 @@ describe("POL-org_settings", () => {
       expect(asMod).toEqual([]);
       await tx.as(f.a.admin.claims);
       const asAdmin = await tx.q<{ time_zone: string }>(
-        `update public.org_settings set time_zone = 'Asia/Dubai', numerals = 'arabic_indic' where org_id = $1 returning time_zone`,
+        `update public.org_settings set time_zone = 'Asia/Dubai' where org_id = $1 returning time_zone`,
         [f.a.id],
       );
       expect(asAdmin[0].time_zone).toBe("Asia/Dubai");
@@ -115,7 +115,6 @@ describe("POL-org_settings", () => {
         [f.a.id, f.a.settingsId],
       );
       expect(history.map((h) => [h.field, h.old_value, h.new_value])).toEqual([
-        ["numerals", "western", "arabic_indic"],
         ["time_zone", "Asia/Riyadh", "Asia/Dubai"],
       ]);
       expect(history.every((h) => h.actor_id === f.a.admin.memberId)).toBe(true);
