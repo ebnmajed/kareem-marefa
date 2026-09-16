@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import type { MaterialKind, MaterialUploadLimits } from "@/lib/dal/materials";
 
@@ -69,8 +70,15 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
   const [externalUrl, setExternalUrl] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [resetKey, setResetKey] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<ReactNode>(null);
+
+  // `DEC-135`: `router.refresh()` at the end of `handleSubmit` below is
+  // tracked by this SAME `useTransition`, so its `pending` honestly lasts
+  // until the refresh has committed — and React 19.2.4 can lose the ping
+  // that would otherwise resume that commit, so `usePendingNudge` re-renders
+  // this component every 300ms while pending to force the retry through.
+  usePendingNudge(pending);
 
   const isFileKind = (FILE_KINDS as readonly string[]).includes(kind);
   const isLinkKind = (LINK_KINDS as readonly string[]).includes(kind);
@@ -96,7 +104,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
     [kind],
   );
 
-  async function handleSubmit() {
+  function handleSubmit() {
     setError(null);
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -110,8 +118,12 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
     }
     const trimmedUrl = isLinkKind ? externalUrl.trim() : undefined;
 
-    setBusy(true);
-    try {
+    // `router.refresh()` at the end is the LAST statement inside this SAME
+    // `startTransition` — `pending` (the uploader's busy state) honestly
+    // lasts until the refreshed material list has actually committed, not
+    // just until the upload's own requests finish. See the `usePendingNudge`
+    // note above for why this reliably commits at all (`DEC-135`).
+    startTransition(async () => {
       const initiateRes = await fetch("/api/upload/material", {
         method: "POST",
         headers: { "content-type": "application/json", "x-locale": locale },
@@ -158,9 +170,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
       setResetKey((k) => k + 1);
       toast.show({ tone: "success", title: t("success") });
       router.refresh();
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -229,7 +239,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
         type="button"
         onClick={handleSubmit}
         disabled={title.trim().length === 0 || (isFileKind && files.length === 0) || (isLinkKind && externalUrl.trim().length === 0)}
-        pending={busy}
+        pending={pending}
         pendingLabel={t("uploading")}
         size="sm"
         className="self-start"

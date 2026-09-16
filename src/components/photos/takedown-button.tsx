@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { requestPhotoTakedownAction, restorePhotoAction } from "@/components/photos/actions";
 
 interface TakedownButtonProps {
@@ -28,6 +29,13 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // `DEC-135`: both `requestPhotoTakedownAction` and `restorePhotoAction`
+  // call `revalidatePath` server-side, so this transition waits on the SAME
+  // re-render React 19.2.4 can lose the ping for. `usePendingNudge`
+  // re-renders this component every 300ms while pending to force the lost
+  // retry through.
+  usePendingNudge(pending);
 
   function run() {
     startTransition(async () => {

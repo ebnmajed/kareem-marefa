@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import type { PhotoKind } from "@/lib/dal/photos";
 
@@ -51,10 +52,17 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
   const toast = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [resetKey, setResetKey] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<ReactNode>(null);
 
-  async function handleSubmit() {
+  // `DEC-135`: `router.refresh()` at the end of `handleSubmit` below is
+  // tracked by this SAME `useTransition`, so its `pending` honestly lasts
+  // until the refresh has committed — and React 19.2.4 can lose the ping
+  // that would otherwise resume that commit, so `usePendingNudge` re-renders
+  // this component every 300ms while pending to force the retry through.
+  usePendingNudge(pending);
+
+  function handleSubmit() {
     setError(null);
     const file = files[0] ?? null;
     if (!file) {
@@ -67,8 +75,10 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
       return;
     }
 
-    setBusy(true);
-    try {
+    // `router.refresh()` at the end is the LAST statement inside this SAME
+    // `startTransition` — `pending` (the uploader's busy state) honestly
+    // lasts until the refreshed gallery has actually committed.
+    startTransition(async () => {
       const initiateRes = await fetch("/api/upload/photo", {
         method: "POST",
         headers: { "content-type": "application/json", "x-locale": locale },
@@ -108,9 +118,7 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
       setResetKey((k) => k + 1);
       toast.show({ tone: "success", title: t("processing") });
       router.refresh();
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -134,7 +142,7 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
       {/* ★ the lead's live-build review: an enabled dark primary under an
           empty drop zone reads as a dead button — disabled until there is
           something to submit, not just while busy. */}
-      <Button type="button" onClick={handleSubmit} disabled={files.length === 0} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
+      <Button type="button" onClick={handleSubmit} disabled={files.length === 0} pending={pending} pendingLabel={t("uploading")} size="sm" className="self-start">
         {t("action")}
       </Button>
     </div>

@@ -11,6 +11,7 @@ import { Prose } from "@/components/ui/prose";
 import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon, AlertTriangleIcon, DotIcon, TrashIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { deleteMyCommentAction, editCommentAction, moderateCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
@@ -31,26 +32,6 @@ import type { ReactionSummary } from "@/lib/dal/reactions";
 // UI, not a single unambiguous glyph action, and moderation is staff-only
 // and infrequent enough that a visible Arabic label reads as more
 // deliberate than an icon a moderator has to hover to confirm.
-
-// ★ The lead's SECOND real-build finding, after 44485b8's setTimeout fix:
-// on a slow connection, `aria-busy` stayed stuck "true" for several seconds
-// after an action's response arrived, clearing only once the member did
-// something else. `setTimeout(fn, 0)` is a macrotask, but a macrotask can
-// still run BEFORE the browser paints the current frame — so `router.
-// refresh()` (its own update, a real RSC refetch that can take a while)
-// could be kicked off before this transition's own `pending=false` had
-// actually been PAINTED, on a slow enough action. Two nested
-// `requestAnimationFrame` calls is the standard "wait for paint" idiom: the
-// first fires immediately before the next paint; scheduling the real work
-// from INSIDE it, via a second `requestAnimationFrame`, defers it to the
-// frame AFTER that one — guaranteeing the paint already happened before
-// `router.refresh()`'s own, possibly slow, update starts. Same helper in
-// `comment-composer.tsx`, for the same reason.
-function afterPaint(fn: () => void) {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(fn);
-  });
-}
 
 export function CommentItem({
   locale,
@@ -83,6 +64,12 @@ export function CommentItem({
   const [isReported, setIsReported] = useState(reported);
   const [pending, startTransition] = useTransition();
 
+  // `DEC-135`: React 19.2.4 can lose the ping that would otherwise commit
+  // one of these transitions once its `router.refresh()` RSC response
+  // resolves — see the module comment on `saveEdit` below for the full
+  // mechanism.
+  usePendingNudge(pending);
+
   const isDeleted = Boolean(comment.deletedAt);
   const likeCount = reactions.totals.like ?? 0;
   const iReacted = reactions.mine.includes("like");
@@ -103,20 +90,31 @@ export function CommentItem({
   );
   const [ignite, setIgnite] = useState(false);
 
-  // ★ BLOCKER 1, the lead's live-build finding (see comment-composer.tsx's
-  // identical note for the full reasoning): `router.refresh()` used to be
-  // the last statement inside the SAME `startTransition` these actions'
-  // own `pending` is read from. Reply, post and react in one visit and the
-  // composer's own button was found stuck busy for 80+ seconds — three
-  // sibling components' overlapping `router.refresh()` calls can leave an
-  // earlier caller's transition with no way to know it ever finished.
-  // `setTimeout(…, 0)` runs the refresh in a genuinely separate macrotask,
-  // outside this transition, so `pending` resolves the moment the action
-  // itself settles. ★ BLOCKER 2: the success toasts that used to sit next
-  // to these are gone too, except report's below — the comment's own
-  // visible change (the edit in place, the tombstone, the removal) IS the
-  // success feedback, and a full-width toast was covering exactly the
-  // content it was announcing.
+  // `router.refresh()` is the LAST statement inside the SAME
+  // `startTransition` these actions' own `pending` is read from —
+  // deliberately: `pending`/`aria-busy` should honestly last until the
+  // refreshed thread has actually committed, not just until the action
+  // itself returns. The success toasts that used to sit next to these are
+  // gone too, except report's below — the comment's own visible change (the
+  // edit in place, the tombstone, the removal) IS the success feedback, and
+  // a full-width toast was covering exactly the content it was announcing.
+  //
+  // ★ `usePendingNudge(pending)` above is why these transitions reliably
+  // COMMIT at all (`DEC-135`): React 19.2.4 can lose the ping that would
+  // otherwise resume a render once a `router.refresh()` RSC response
+  // resolves — a chunk finishes parsing mid-render, Flight pings
+  // synchronously, and `pingSuspendedRoot` has nowhere to record it because
+  // the root is already marked suspended-with-delay. Nothing is then
+  // scheduled to retry, and the transition can hang indefinitely — measured
+  // on a real build at one press in three, and the exact shape of a deleted
+  // comment's tombstone that never appeared after `deleteMine` below. Two
+  // earlier attempts at this (a `setTimeout(…, 0)` decoupling at 44485b8,
+  // then a paint-deferred `requestAnimationFrame` version at 4582b17) each
+  // only moved the odds, because both treated a SYMPTOM — the refresh racing
+  // this transition's own completion — of a cause that was never actually
+  // about timing. `usePendingNudge` is the real fix: it re-renders this
+  // component every 300ms while pending, and each re-render un-suspends the
+  // root and lets the lost retry run.
   function saveEdit() {
     const trimmed = editBody.trim();
     if (!trimmed) return;
@@ -129,7 +127,7 @@ export function CommentItem({
         return;
       }
       setEditing(false);
-      afterPaint(() => router.refresh());
+      router.refresh();
     });
   }
 
@@ -142,7 +140,7 @@ export function CommentItem({
         // The tombstone IS the confirmation — no toast for a member's own
         // delete, unlike moderation below, which can change what a DIFFERENT
         // member sees.
-        afterPaint(() => router.refresh());
+        router.refresh();
       }
     });
   }
@@ -153,7 +151,7 @@ export function CommentItem({
       if (result.error) {
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       } else {
-        afterPaint(() => router.refresh());
+        router.refresh();
       }
     });
   }
@@ -172,7 +170,7 @@ export function CommentItem({
         toast.show({ tone: "error", title: t("toasts.reactionFailed") });
         return;
       }
-      afterPaint(() => router.refresh());
+      router.refresh();
     });
     window.setTimeout(() => setIgnite(false), 400); // clears after --dur-slow (360ms) + margin, both motion states
   }

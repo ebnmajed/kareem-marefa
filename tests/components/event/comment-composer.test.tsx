@@ -116,29 +116,39 @@ describe("CommentComposer", () => {
   // `aria-busy` poll against a served build: holding the POST for ~1.5 s
   // before releasing it left `aria-busy="true"` and the button disabled for
   // several MORE seconds after the response arrived, clearing only once the
-  // member typed. The suspected mechanism: `setTimeout(fn, 0)` (44485b8's
-  // own fix) is a macrotask, but a macrotask can still run BEFORE the
-  // browser paints the current frame, so `router.refresh()` — a real RSC
-  // refetch that can itself take a while — could start before this
-  // transition's own `pending=false` had actually been painted. Fixed by
-  // replacing the macrotask with `afterPaint()` (comment-composer.tsx): two
-  // nested `requestAnimationFrame` calls, the standard "wait for the browser
-  // to have painted" idiom, guaranteeing the paint happens before
-  // `router.refresh()`'s own update starts.
+  // member typed. The real cause, per `DEC-135`, is not a timing race this
+  // component's own code could ever fully own: React 19.2.4 can lose the
+  // ping that would resume a suspended transition once a Server Action's or
+  // `router.refresh()`'s RSC chunk finishes resolving mid-render, and
+  // nothing is then scheduled to retry — the lead measured this at one
+  // press in three on a real build, from an instrumented `react-dom`. Two
+  // earlier attempts here — a `setTimeout(…, 0)` decoupling at 44485b8, then
+  // a paint-deferred `requestAnimationFrame` version at 4582b17 — each only
+  // moved the odds, because both treated a SYMPTOM (the refresh racing this
+  // transition's own completion) of a cause that was never actually about
+  // timing. The real fix is `usePendingNudge(pending)` (comment-
+  // composer.tsx): while pending, it re-renders this component every 300ms,
+  // and each re-render un-suspends the root and lets the lost retry run.
+  // `router.refresh()` is back as the LAST statement inside the SAME
+  // `startTransition`, its pre-44485b8 shape — `pending` now honestly lasts
+  // until the refresh has actually committed.
   //
   // Full honesty, as required by this file's own earlier blocker-1 test:
   // extensive attempts to reproduce the STUCK state itself in jsdom —
   // fake timers, real timers, an `act()`-wrapped settle, and a mocked
   // `router.refresh()` that itself calls `startTransition` around its own
   // slow (2 s) update to simulate what Next's real refresh does — ALL
-  // resolved `aria-busy` to idle promptly, even against the CODE BEFORE this
-  // fix (the plain `setTimeout(fn, 0)` version). `postCommentAction` is a
-  // full mock here; Next's actual Server-Action-dispatch client runtime,
-  // where this race most plausibly lives, never runs in this test at all.
-  // So this test cannot discriminate the bug from the fix — it passes on
-  // both. It stays as the regression guard the lead asked for (a slow
-  // action must never leave `aria-busy` stuck without further input), not
-  // as proof the live symptom is gone; only a real build settles that.
+  // resolved `aria-busy` to idle promptly, even against code with NEITHER
+  // fix. `postCommentAction` is a full mock here; the actual lost-ping race
+  // lives inside `next/dist/compiled`'s bundled `react-dom` reconciling a
+  // REAL Flight stream, which never runs in this test at all — a mocked
+  // promise resolving is not a Flight chunk transitioning `pending` →
+  // `resolved_model` mid-render. So this test cannot discriminate the bug
+  // from the fix — it passes on both, with or without `usePendingNudge`. It
+  // stays as the regression guard the lead asked for (a slow action must
+  // never leave `aria-busy` stuck without further input), not as proof the
+  // live symptom is gone; only a real build settles that (`DEC-135`'s own
+  // e2e reserve probe and the discussion review are what does).
   it("★ a slow post (1.5s) still clears aria-busy on its own, with no further input", async () => {
     vi.useFakeTimers();
     try {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { controlClass } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { postCommentAction, searchMentionsAction } from "@/components/event/actions";
@@ -48,26 +49,6 @@ const MAX_LENGTH = 4000;
 const COUNTER_THRESHOLD = 200; // show the counter only once this close to the cap — visible from character zero is noise
 const MAX_GROW_PX = 240; // roughly ten rows before the box scrolls instead of growing further
 
-// ★ The lead's SECOND real-build finding, after 44485b8's setTimeout fix:
-// on a slow connection (held the POST ~1.5s), `aria-busy` stayed "true" for
-// several more seconds AFTER the response arrived, clearing only once the
-// member typed. `setTimeout(fn, 0)` is a macrotask, but a macrotask can
-// still run BEFORE the browser paints the current frame — so `router.
-// refresh()` (which starts its OWN update, a real RSC refetch that can take
-// a while) could still be kicked off before this transition's own
-// `pending=false` had actually been PAINTED to the screen, on a slow enough
-// action. Two nested `requestAnimationFrame` calls is the standard "wait
-// for paint" idiom: the first fires immediately before the next paint;
-// scheduling the real work from INSIDE it, via a second `requestAnimation
-// Frame`, defers it to the frame AFTER that one — guaranteeing the paint
-// already happened before `router.refresh()`'s own, possibly slow, update
-// starts. Same helper in `comment-item.tsx`, for the same reason.
-function afterPaint(fn: () => void) {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(fn);
-  });
-}
-
 export function CommentComposer({
   locale,
   sessionId,
@@ -93,6 +74,11 @@ export function CommentComposer({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // `DEC-135`: React 19.2.4 can lose the ping that would otherwise commit
+  // this transition once `router.refresh()`'s RSC response resolves — see
+  // the module comment on `submit()` below for the full mechanism.
+  usePendingNudge(pending);
 
   function grow() {
     const el = textareaRef.current;
@@ -146,34 +132,36 @@ export function CommentComposer({
       setCandidates([]);
       if (textareaRef.current) textareaRef.current.style.height = "";
       onPosted?.();
-      // ★ BLOCKER 1, the lead's live-build finding: router.refresh() used to
-      // be the last statement inside THIS SAME startTransition callback —
-      // the one this Button's own `pending`/`aria-busy` is read from. Reply
-      // to a comment, post at the top level, then react, and the MAIN
-      // composer's «نشر» was found stuck busy for 80+ seconds: three
-      // sibling components (this composer, a reply composer, a reaction)
-      // each call router.refresh() in close succession, and Next's router
-      // can fold overlapping refreshes into one underlying request without
-      // signalling every caller's own transition that ITS work is done —
-      // React then has no way to know this transition ever finished.
-      // `setTimeout(…, 0)` runs router.refresh() in a genuinely separate
-      // macrotask, outside any transition React is tracking here, so this
-      // component's own pending state resolves the moment postCommentAction
-      // itself settles and never depends on the refresh's own timing again.
-      // The realtime echo (03 §7.4) is what shows this to everyone ELSE
-      // live; the poster's own copy must not depend on a websocket round
-      // trip completing, so a server-rendered refresh guarantees it — the
-      // gap this closes is real, not defensive: a subscription that has not
-      // finished establishing yet by the time the insert commits leaves the
-      // poster staring at their own empty composer with no comment to show
-      // for it (caught by tests/e2e/event-comments.spec.ts against the real
-      // page, not assumed from the component test alone). The success toast
-      // that used to sit here is gone too (★ BLOCKER 2) — the comment
-      // appearing in the list IS the success feedback, and a full-width
-      // toast was covering exactly the new content it was announcing.
-      // ★ `afterPaint`, not `setTimeout(fn, 0)` — the lead's SECOND real-
-      // build finding, see the module comment above `afterPaint` itself.
-      afterPaint(() => router.refresh());
+      // `router.refresh()` is the LAST statement inside this SAME
+      // `startTransition` — deliberately, so this Button's own `pending`/
+      // `aria-busy` honestly lasts until the refreshed thread has actually
+      // committed, not just until `postCommentAction` returns. The realtime
+      // echo (03 §7.4) is what shows the new comment to everyone ELSE live;
+      // the poster's own copy must not depend on a websocket round trip
+      // completing, so a server-rendered refresh guarantees it — a
+      // subscription that has not finished establishing yet by the time the
+      // insert commits would otherwise leave the poster staring at their
+      // own empty composer with nothing to show for it. The success toast
+      // that used to sit here is gone too — the comment appearing in the
+      // list IS the success feedback, and a full-width toast was covering
+      // exactly the new content it was announcing.
+      //
+      // ★ `usePendingNudge(pending)` above is why this transition reliably
+      // COMMITS at all (`DEC-135`): React 19.2.4 can lose the ping that
+      // would otherwise resume this render once the refresh's RSC response
+      // resolves — a chunk finishes parsing mid-render, Flight pings
+      // synchronously, and `pingSuspendedRoot` has nowhere to record it
+      // because the root is already marked suspended-with-delay. Nothing is
+      // then scheduled to retry, and the transition can hang indefinitely —
+      // the lead measured one press in three on a real build, both before
+      // and after two earlier attempts here (a `setTimeout(…, 0)` decoupling
+      // at 44485b8, then a paint-deferred `requestAnimationFrame` version at
+      // 4582b17) that each only moved the odds, because both treated a
+      // SYMPTOM (the refresh racing this transition's own completion) of a
+      // cause that was never actually about timing. `usePendingNudge` is the
+      // real fix — it re-renders this component every 300ms while pending,
+      // and each re-render un-suspends the root and lets the lost retry run.
+      router.refresh();
     });
   }
 
