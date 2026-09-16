@@ -1,5 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
+import { PageHeader } from "@/components/ui/page-header";
+import { Stat } from "@/components/ui/stat";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { PointsHistoryList } from "@/components/scoring/points-history-list";
 import { PointsCatalogue } from "@/components/scoring/points-catalogue";
 import { getPointsHistory } from "@/lib/dal/points";
@@ -9,6 +15,12 @@ import { getPointsHistory } from "@/lib/dal/points";
 // point they hold without asking anyone. Filterable by session and by
 // month (`05` §8); both filters are plain GET params, so the filtered view
 // is a real, shareable URL rather than client-only state.
+//
+// ★ `checkin`'s REQ-CHK-017 reversal needs no new read here: `getPointsHistory()`
+// already flags `source = 'reversal'` generically (it was built for
+// REQ-PTS-013's content-removal reversal), and `PointsHistoryList` already
+// renders that row's own `reason` with a tag beside it. Once the removal RPC
+// writes that source literal, this screen already renders it correctly.
 export default async function PointsPage({
   params,
   searchParams,
@@ -21,7 +33,6 @@ export default async function PointsPage({
   const { session: sessionId, month } = await searchParams;
 
   const [t, history] = await Promise.all([getTranslations("scoring.points"), getPointsHistory(locale, { sessionId, month })]);
-  const value = formatNumber(history.totalPoints);
   const filtered = Boolean(sessionId || month);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -35,43 +46,44 @@ export default async function PointsPage({
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-2 text-body text-fg-muted">{t("intro")}</p>
-      <p className="mt-4 text-h3 text-fg-heading">{t("balance", { count: history.totalPoints, value })}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
-      <form method="get" aria-labelledby="filters-heading" className="mt-6 flex flex-wrap items-end gap-4">
+      <div className="mt-6 max-w-xs">
+        <Stat label={t("title")} value={formatNumber(history.totalPoints)} />
+      </div>
+
+      <form method="get" aria-labelledby="filters-heading" className="mt-8 flex flex-wrap items-end gap-4">
         <h2 id="filters-heading" className="sr-only">
           {t("filters.heading")}
         </h2>
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-fg-muted">{t("filters.session")}</span>
-          <select name="session" defaultValue={sessionId ?? ""} className="h-10 rounded-field border border-edge bg-canvas px-3 text-body text-fg-heading">
+        <Field id="session" label={t("filters.session")} className="w-48">
+          <Select name="session" defaultValue={sessionId ?? ""}>
             <option value="">{t("filters.allSessions")}</option>
             {history.sessionOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.title}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-fg-muted">{t("filters.month")}</span>
-          <select name="month" defaultValue={month ?? ""} className="h-10 rounded-field border border-edge bg-canvas px-3 text-body text-fg-heading">
+          </Select>
+        </Field>
+        <Field id="month" label={t("filters.month")} className="w-48">
+          <Select name="month" defaultValue={month ?? ""}>
             <option value="">{t("filters.allMonths")}</option>
             {monthOptions.map((m) => (
               <option key={m.key} value={m.key}>
                 {m.label}
               </option>
             ))}
-          </select>
-        </label>
-        <button type="submit" className="h-10 rounded-field bg-navy-950 px-5 text-label text-white hover:bg-navy-900">
-          {t("filters.heading")}
-        </button>
+          </Select>
+        </Field>
+        {/* A plain GET form, not a Server Action — `SubmitButton`'s
+            `useFormStatus` has nothing to report here, so this is `Button`
+            with no pending state, matching what the control actually does. */}
+        <Button type="submit">{t("filters.heading")}</Button>
         {filtered ? (
-          <a href="?" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
+          <Link href="/app/me/points" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
             {t("filters.clear")}
-          </a>
+          </Link>
         ) : null}
       </form>
 
