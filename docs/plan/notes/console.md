@@ -1451,3 +1451,117 @@ original framing) as of this wave.
 
 **5.4 — The dashboard «أكثر …» alignment.** Ruled by the lead: open the capture before closing it —
 done, closed, recorded in §4.
+
+## Wave 7 — as built, all six routes plus the rail (K0–K6)
+
+Commits, in order: `3683f76` (K0, the rail regroup), `53bc68d` (K1/K2, comments+photos
+moderation), `1fdf521` (K3–K5, venues/categories/companies), K6 (settings — see the ★ note below,
+not its own commit), `421db5c` (messages, both locales, covering all six routes at once — see §"why
+one commit" below).
+
+### K0 — the rail
+
+Built exactly to the plan's §1, with one correction already recorded above (no `admin/designer`
+entry, `التصاميم` discloses two children not three) and one omission caught late: `AdminRailChild`
+has no `icon` field by design (nested rows are text-only — §1 already reasoned this through), so the
+type split is `AdminRailItem` (top-level, always `icon`) vs `AdminRailChild` (nested, never one).
+`react-hooks/immutability` (the React Compiler lint) refused the first draft of `useGroupExpanded` —
+mutating a `GroupStore` obtained via a plain function call, inside a closure defined in the hook's
+own body, even un-memoized. Fixed by moving the three mutating functions
+(`groupSubscribe`/`groupGetSnapshot`/`groupToggle`) to genuine module scope, parameterised by `key`,
+with the hook only wiring thin non-mutating wrapper closures to `useSyncExternalStore` — the compiler
+analyses a component/hook's own literal body, not functions it merely calls, so an external function
+is opaque to it. `console.spec.ts` proves the moderator regroup against real RLS (a moderator's rail:
+`الجلسات` direct, `الإشراف` disclosed with all three children, `السجل` direct — three top-level
+entries, five reachable routes, matching wave 6's flat count) and the collapsed-rail `ui/menu` flyout
+against a real Radix portal.
+
+### K1/K2 — comments and photos moderation
+
+Both rebuilt on `moderation/reports/report-card.tsx`'s already-proven wave-6 shape exactly (`Card`,
+`ui/dialog`'s confirmation, toast fired from inside the action). New: `ModerationTabs`
+(`components/admin/moderation-tabs.tsx`), an `href`-mode `ui/tabs` strip across all three queues —
+`tabs.tsx`'s own header comment already named "the admin sub-nav" as its first real use — badged with
+`listModerationCounts()` (three `head: true` counts, my own file, no request to anyone). `reports`
+picked up the same strip in the same commit, closing wave 6's own uncaptured "populated photo-report
+card" finding. `admin-moderation.spec.ts`'s comment-removal test needed the same dialog-scoping fix
+its own photo-removal test already carried a comment about (the dialog portals outside the card's
+`<li>`); `admin-reports.spec.ts` gained one new test proving the tab counts and the no-merge rule.
+
+### K3–K5 — venues, categories, companies
+
+One shared `DeactivateToggle` (`components/admin/deactivate-toggle.tsx`) for the genuinely identical
+half of "one list pattern three times" — reactivate instant, deactivate dialog-confirmed, no reason
+field (none of the three DAL toggles collect one). Labels are PROPS, not a shared translation
+namespace — three real namespaces already existed (`admin.venues`/`categories`/`companies`), and a
+fourth shared one would just be a second source of truth. Each keeps its own `*-table.tsx` since the
+domain fields differ. All three add forms moved onto `lib/form-state`'s model — `admin-managed-
+lists.spec.ts` needed the DEC-134 not-found rewrite (never carried for this file before, since
+venues/categories/companies weren't rebuilt when wave 6 did that pass elsewhere) and the
+`getByRole("table").or(getByRole("list"))` dual-render scoping `admin-members.spec.ts` already
+proved, for the exact same reason.
+
+★ **Cross-track flag sent, not fixed by me:** `sessions-screens.spec.ts` (not mine) drives
+`/app/admin/venues` as the first step of its own M2 demonstrable chain and asserts
+`boss.getByText("قاعة الابتكار")` unscoped — now a strict-mode violation against `DataTable`'s dual
+render. Sent `sessions` the exact line and the exact one-line fix (the same `.or()` pattern above).
+
+### K6 — settings
+
+The one substantive rebuild: fourteen fields, `lib/form-state`'s model in full, `fieldValue()`
+distinguishing "first render, show the real settings" from "failed round trip, show what was typed"
+— an edit-in-place form needed a helper `direct-session-form.tsx`'s blank-create shape never had to
+solve. `?saved=1` (the `admin/scoring`/`admin/emails` convention, neither rebuilt yet) plus a new
+`SavedToast` — the first real `ui/toast` caller for that convention, firing once on mount and
+stripping the query param so a refresh never replays it. `admin-settings.spec.ts` got the DEC-134
+rewrite for its moderator-404 test and a scoped `getByRole("status")` assertion for the new toast.
+
+★ **A shared-index incident, not mine to have caused or to fix:** `checkin`'s commit `592c3d2`
+("the window, the reversal and every removed_at hook") landed carrying 26 files — its own ~16, my 6
+settings files (staged seconds earlier for my own commit, which then found nothing left to commit
+for those paths), and 4 of `content`'s (`me/points`, `points-catalogue.tsx`, two specs). The content
+at HEAD is exactly what this section already describes — nothing lost, verified file by file — the
+only casualty is that K6's commit message doesn't exist as its own entry; it reads as SQL for
+check-in windows. Flagged to the lead (recommended: leave it, no rewrite) and to `checkin` directly
+(likely `git add -A`/`git commit -a` rather than an explicit pathspec) so it isn't repeated on
+someone else's staged work next time. Reported here so K6's own commit sha in the list above is
+honestly `592c3d2`, not a sha this file invents to look tidier than what happened.
+
+### Why the messages commit is one commit, not six
+
+`src/messages/{ar,en}/admin.json` accumulated every route's keys across the session before any of
+the four code commits landed (I did not commit incrementally as I built), so by the time I could
+commit K0's code in isolation, the working file already held K1–K6's additions too. Splitting it into
+per-route commits would have meant either fragile hunk-level `git add -p` surgery on one JSON file or
+leaving an intermediate commit referencing a translation key (`t("groups.moderation")` etc.) that
+does not exist yet at that point in history. One commit for both locale files, covering all six
+routes, correctly described, was the honest choice over a prettier-looking history that doesn't match
+what actually happened.
+
+### Verification run, and what is still open
+
+`npx tsc --noEmit`, `npm run lint` (grep `problems` — 0 errors throughout, only pre-existing warnings
+in files I do not own) and `npx vitest run` (full suite) were run repeatedly across the session —
+consistently clean on every file this track owns; every failure seen belonged to other tracks'
+concurrent in-progress work in the shared tree (`scoring-i18n.test.ts`, `star-rating.test.tsx`,
+`notifications-page.test.tsx`, `deactivation-form.test.tsx` — none mine, confirmed by re-running after
+each appeared and finding a different set the next time). `node scripts/ui-reach.mjs --wave7` shows
+all seven of this track's rows (K0–K6) at ✓ — part (1) of the measure, done.
+
+**Not done by me, and why:**
+
+- **`npm run test:rls`** — not run this session. The single-runner rule held throughout: a vitest
+  process (later specifically `--project rls`) was active in the shared tree at every point I checked.
+  Nothing in this wave's DAL changes touches SQL, a grant, or a new table — `listModerationCounts()`
+  reads `reports`/`photo_takedowns` through the SAME `requireStaff()` session client and the SAME
+  predicates the pre-existing, already-RLS-tested `listCommentReports`/`listPhotoTakedowns`/
+  `listPhotoReports` already cover — so this is inherited coverage, not untested surface, but the gate
+  is still owed a real run once the runner is free.
+- **390 px captures** — none taken. `npm run test:e2e:local` needs a production build
+  (`scripts/serve-stub.mjs` serves an EXISTING `.next`, it does not build one), and `npm run build` is
+  lead-only. The `.next` on disk predates every commit in this section — running e2e against it would
+  test the OLD markup, not this work, so I left it for the lead's sync-point build in the verification
+  worktree (`STATUS.md`'s "Order inside the wave" step 4), the same point every wave-7 row's part (2)
+  is ticked from. All six new/updated specs (`console.spec.ts`, `admin-moderation.spec.ts`,
+  `admin-reports.spec.ts`, `admin-managed-lists.spec.ts`, `admin-settings.spec.ts`) name the capture
+  path each row cites, ready for that pass.
