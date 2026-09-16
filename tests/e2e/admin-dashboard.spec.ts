@@ -171,6 +171,18 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 // ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
 // boundary, so the response has begun streaming — status committed — before
 // `requireSession()`'s gate runs. A gated page's `notFound()` therefore
@@ -185,19 +197,19 @@ async function expectGatedNotFound(page: Page) {
 
 test("a member gets the streamed not-found page on the admin console, not the dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, mem2Email);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-020: a moderator gets the streamed not-found page on the (admin-only) dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-004: every figure is correct and the built ones click through", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   await expect(page.getByRole("heading", { name: "لوحة المؤسسة", level: 1 })).toBeVisible();
 
   // «يحتاج انتباهك» — 2 proposals awaiting a decision (submitted + in_review
@@ -257,7 +269,7 @@ test("SCR-040 at 390 px RTL: the dashboard reads down the page, never sideways",
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
   // document the vertical scrollbar sits on the left, so that difference is the

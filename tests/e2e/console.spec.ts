@@ -6,7 +6,7 @@
 // `docs/plan/notes/console.md`'s Wave 6 §1 commits to.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -65,9 +65,21 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test("the second skip link jumps past the rail, straight to the content region", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   // ★ Both skip links carried IDENTICAL text before this wave («تخطَّ إلى
   // المحتوى» twice, `app.shell.skipToContent` and the old `admin.shell.
   // skipToContent`) — a real, pre-existing ambiguity for a screen-reader
@@ -95,7 +107,7 @@ test("the second skip link jumps past the rail, straight to the content region",
 test("desktop: the rail lists the dashboard as current, and collapsing it keeps every link reachable", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "the persistent rail is a desktop control");
   await signIn(context);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
   await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveAttribute("aria-current", "page");
   const proposals = nav.getByRole("link", { name: "المقترحات" });
@@ -113,7 +125,7 @@ test("desktop: the rail lists the dashboard as current, and collapsing it keeps 
 test("phone: the rail is a drawer, and it closes on navigation — DEC-111's own bug, not repeated here", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
   await signIn(context);
-  await page.goto("/ar/app/admin");
+  await goto(page, "/ar/app/admin");
   await expect(page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" })).toBeHidden();
   await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
   const dialog = page.getByRole("dialog", { name: "لوحة إدارة المؤسسة" });
@@ -125,7 +137,7 @@ test("phone: the rail is a drawer, and it closes on navigation — DEC-111's own
 
 test("an admin screen this track did not rebuild this wave still renders correctly under the new rail, captured at both widths", async ({ context, page }, testInfo) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/venues");
+  await goto(page, "/ar/app/admin/venues");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   const dir = join(process.cwd(), ".qa-shots", "rtl");
   mkdirSync(dir, { recursive: true });

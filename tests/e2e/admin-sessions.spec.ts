@@ -9,7 +9,7 @@
 // draft, guarded again here as it is in the jsdom test).
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -78,9 +78,21 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test("the page header, the status badge and the search box all render for real data", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/sessions");
+  await goto(page, "/ar/app/admin/sessions");
   await expect(page.getByRole("heading", { name: "الجلسات", level: 1 })).toBeVisible();
   // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
   // list in the DOM at once (CSS hides one per viewport), so a bare
@@ -97,7 +109,7 @@ test("the page header, the status badge and the search box all render for real d
 
 test("★ the row menu navigates locale-aware, and start/cancel stay ALWAYS visible — not gated behind the menu", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/sessions");
+  await goto(page, "/ar/app/admin/sessions");
 
   // The regression this guards: an earlier draft hid these behind a row-menu
   // click, which would have broken sessions-screens.spec.ts's own assumption.
@@ -112,7 +124,7 @@ test("★ the row menu navigates locale-aware, and start/cancel stay ALWAYS visi
 
 test("★ cancelling confirms in a dialog naming the session — cancel changes nothing in the database, confirm does", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/sessions");
+  await goto(page, "/ar/app/admin/sessions");
   await page.getByText("ألغِ الجلسة").click();
   await page.getByLabel("سبب الإلغاء الذي سيصل الحاضرين").fill("سبب الإلغاء لهذا الاختبار");
   await page.getByRole("button", { name: "أكّد الإلغاء" }).click();

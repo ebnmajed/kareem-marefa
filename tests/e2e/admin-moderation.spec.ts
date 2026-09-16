@@ -5,7 +5,7 @@
 // reverses the original points award.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -147,6 +147,18 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 // ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
 // boundary, so the response has begun streaming — status committed — before
 // `requireStaff()`'s gate runs. A gated page's `notFound()` therefore
@@ -158,7 +170,7 @@ async function signIn(context: BrowserContext, email: string) {
 test("a member gets the streamed not-found page on all three moderation queues (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["comments", "photos", "reports"]) {
-    await page.goto(`/ar/app/admin/moderation/${path}`);
+    await goto(page, `/ar/app/admin/moderation/${path}`);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
     await expect(page.locator('meta[name="robots"]'), path).toHaveAttribute("content", /noindex/);
@@ -168,11 +180,11 @@ test("a member gets the streamed not-found page on all three moderation queues (
 test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the takedown queue separate from the report queue", async ({ context, page }) => {
   await signIn(context, modEmail);
 
-  await page.goto("/ar/app/admin/moderation/comments");
+  await goto(page, "/ar/app/admin/moderation/comments");
   await expect(page.getByRole("heading", { name: "التعليقات المُبلَّغ عنها", level: 1 })).toBeVisible();
   await expect(page.getByText("تعليق مسيء يستحق المراجعة")).toBeVisible();
 
-  await page.goto("/ar/app/admin/moderation/photos");
+  await goto(page, "/ar/app/admin/moderation/photos");
   await expect(page.getByRole("heading", { name: "طلبات إخفاء الصور", level: 1 })).toBeVisible();
   // The takedown queue shows only the taken-down photo's requester — never
   // the plain report's reporter (a different photo entirely here, but the
@@ -180,7 +192,7 @@ test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the t
   await expect(page.getByText("طالب الإخفاء")).toBeVisible();
   await expect(page.getByText("المُبلِّغ")).toHaveCount(0);
 
-  await page.goto("/ar/app/admin/moderation/reports");
+  await goto(page, "/ar/app/admin/moderation/reports");
   await expect(page.getByRole("heading", { name: "الصور المُبلَّغ عنها", level: 1 })).toBeVisible();
   await expect(page.getByText("المُبلِّغ")).toBeVisible();
   await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
@@ -188,7 +200,7 @@ test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the t
 
 test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/moderation/comments");
+  await goto(page, "/ar/app/admin/moderation/comments");
   const card = page.locator("li", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
 
   await card.getByText("أزل", { exact: true }).click();
@@ -210,7 +222,7 @@ test("REQ-EVT-014: removing a reported comment records the reason and audits the
 
 test("REQ-EVT-012: restoring a takedown clears the hide and resolves the request", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/moderation/photos");
+  await goto(page, "/ar/app/admin/moderation/photos");
   await page.getByRole("button", { name: "أعد الإظهار" }).click();
   await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
 
@@ -229,7 +241,7 @@ test("REQ-PTS-013: removing a reported photo reverses its original points award 
   );
 
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/moderation/reports");
+  await goto(page, "/ar/app/admin/moderation/reports");
   const card = page.locator("li", { has: page.getByText("محتوى غير مناسب") });
   await card.getByText("أزل", { exact: true }).click();
   await card.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("مخالفة صريحة");
@@ -255,7 +267,7 @@ test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sidew
     ["photos", "scr-051-moderation-photos"],
     ["reports", "scr-052-moderation-reports"],
   ] as const) {
-    await page.goto(`/ar/app/admin/moderation/${path}`);
+    await goto(page, `/ar/app/admin/moderation/${path}`);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
     // document the vertical scrollbar sits on the left, so that difference is the

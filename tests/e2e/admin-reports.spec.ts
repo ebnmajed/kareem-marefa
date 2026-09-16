@@ -4,7 +4,7 @@
 // naming the session (REQ-UIX-013), and dismiss staying one click.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -105,9 +105,21 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 test("the page header and the report card render for a real open photo report", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/moderation/reports");
+  await goto(page, "/ar/app/admin/moderation/reports");
   await expect(page.getByRole("heading", { name: "الصور المُبلَّغ عنها", level: 1 })).toBeVisible();
   // `page.tsx`'s `<dd><bdi>{sessionTitle}</bdi></dd>` — bidi-isolating every
   // interpolated value (CLAUDE.md's own rule) wraps it in a `<bdi>` with no
@@ -120,7 +132,7 @@ test("the page header and the report card render for a real open photo report", 
 
 test("★ removing confirms in a dialog naming the session — cancel changes nothing, confirm resolves the report and removes the photo", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/admin/moderation/reports");
+  await goto(page, "/ar/app/admin/moderation/reports");
   await page.getByRole("button", { name: "أزل" }).click();
 
   const dialog = page.getByRole("dialog", { name: "حذف صورة من «جلسة صور البلاغات»؟" });

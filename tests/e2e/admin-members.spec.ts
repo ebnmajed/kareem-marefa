@@ -88,6 +88,18 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/**
+ * Waits out React's streamed Suspense boundaries. While one streams, a
+ * second copy of its content sits in `body > div#S:n[hidden]` for a few
+ * hundred ms beside the copy already in `<main>` — the lead's own finding,
+ * under a CPU throttle — and a strict locator counts it. Same helper as
+ * `wave6-discussion-review.spec.ts`'s (sessions' file).
+ */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
 // ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
 // boundary, so the response has begun streaming — status committed — before
 // `requireSession()`'s gate runs. A gated page's `notFound()` therefore
@@ -102,7 +114,7 @@ async function expectGatedNotFound(page: Page) {
 
 test("a member cannot open the members screen — the streamed not-found page, not the roster (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   await expectGatedNotFound(page);
 });
 
@@ -117,7 +129,7 @@ test("a member cannot open the members screen — the streamed not-found page, n
 test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role change is refused, then audited once it succeeds", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
   await expect(page.getByText(memberEmail)).toBeVisible();
 
@@ -141,7 +153,7 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
 test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as a real sentence", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   const { rows: adminMemberRows } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and org_role = 'admin'`, [orgId]);
   expect(adminMemberRows).toHaveLength(1);
   await expect(page.getByText("مشرفة الأعضاء")).toBeVisible();
@@ -158,7 +170,7 @@ test("REQ-ADM-009: the last admin cannot be demoted — the RPC's guard reads as
 test("★ REQ-ADM-009: deactivation confirms in a dialog naming the member and needs a written reason; the reason lands in the audit log and the row's own note", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   const row = page.getByRole("row", { name: new RegExp("عضو تحت الاختبار") });
 
   await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
@@ -188,7 +200,7 @@ test("SCR-049 at 390 px RTL: the members list reads down the page, never sideway
   test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/members");
+  await goto(page, "/ar/app/admin/members");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
   // document the vertical scrollbar sits on the left, so that difference is the
