@@ -30,8 +30,6 @@ const { Photos, photosSummary } = await import("@/components/photos/gallery");
 const sessionId = "11111111-1111-1111-1111-111111111111";
 const base: PhotosPageData = { photos: [], canUpload: false, isStaff: false, myMemberId: "m1", imageLimitMb: 20 };
 
-// ★ `ui/link` (`EmptyState`'s action via `ButtonLink`) needs next-intl's
-// routing context now — every render below goes through this.
 async function renderSlot(data: PhotosPageData) {
   vi.mocked(getPhotosPageData).mockResolvedValue(data);
   const element = await Photos({ sessionId, memberId: "m1", locale: "ar" });
@@ -56,11 +54,21 @@ describe("Photos slot", () => {
     expect(screen.getByTestId("slot")).toBeEmptyDOMElement();
   });
 
-  it("★ REQ-EVT-013: shows the EmptyState, the upload notice and the widget once the viewer can upload (checked in / presenter / staff)", async () => {
+  it("★ REQ-EVT-013: shows the empty text, the upload notice and the widget once the viewer can upload (checked in / presenter / staff)", async () => {
     await renderSlot({ ...base, canUpload: true });
     expect(screen.getByText("لا توجد صور لهذه الجلسة بعد.")).toBeInTheDocument();
     expect(screen.getByText(/ستظهر هذه الصور لجميع أعضاء المؤسسة/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "إضافة صورة" })).toBeInTheDocument();
+    // ★ the lead's 390 px review of the ended-event capture: this text used
+    // to carry its own EmptyState action button, wired to the exact same
+    // "إضافة صورة" label as the uploader's own submit button right below it
+    // — a screen reader listed two buttons with the identical accessible
+    // name, one of them disabled, for one task. `photos.length === 0 &&
+    // !canUpload` already returns `null` above (the previous test), so this
+    // branch is only ever reached with `canUpload === true` — the uploader
+    // is never absent here, and the empty text has nowhere else to point.
+    // Exactly ONE "إضافة صورة" button — the uploader's own — guards the
+    // regression directly.
+    expect(screen.getAllByRole("button", { name: "إضافة صورة" })).toHaveLength(1);
   });
 
   it("shows the count and a photo grid, with a request-hide action per photo (REQ-EVT-012)", async () => {

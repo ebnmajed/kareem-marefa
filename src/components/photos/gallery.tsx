@@ -3,7 +3,6 @@ import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { getPhotosPageData } from "@/lib/dal/photos";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { InfoIcon } from "@/components/ui/icons";
 import { UploadWidget } from "@/components/photos/upload-widget";
@@ -18,11 +17,6 @@ import { TakedownButton } from "@/components/photos/takedown-button";
 // re-filters on top of what the DAL already returned.
 export async function Photos({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("photos.gallery");
-  // The empty state's action reuses "upload.action" ("إضافة صورة") rather
-  // than a second, differently-worded key — message keys are stable
-  // (CLAUDE.md, Naming), and the upload button right below it already
-  // says exactly this.
-  const tUpload = await getTranslations("photos.upload");
   const { photos, canUpload, isStaff, imageLimitMb } = await getPhotosPageData(locale, sessionId);
 
   // ★ visible === false exactly when this returns null (sessions.md §22.4):
@@ -42,9 +36,22 @@ export async function Photos({ sessionId, locale }: SlotProps) {
   ) : null;
 
   if (photos.length === 0) {
+    // ★ Not `EmptyState` with its own action — the lead's 390 px review of
+    // the ended-event capture: the guard above already returns `null`
+    // outright whenever `photos.length === 0 && !canUpload`, so every path
+    // that reaches HERE has `canUpload === true` and `uploader` is never
+    // `null` — the uploader is unconditionally rendered right below this
+    // text. `EmptyState`'s own «إضافة صورة» button was a SECOND primary for
+    // the one action already visible, both wired to reuse the exact same
+    // label ("upload.action"): a screen reader listed two buttons with the
+    // identical accessible name, one of them disabled, and a sighted member
+    // saw two primaries for one task. Same fix as the discussion's own
+    // empty state (`comment-list.tsx`, e533ad8) — a quiet sentence, no
+    // button, because there is nowhere for this viewer to reach this branch
+    // without the real action already being right there.
     return (
       <div>
-        <EmptyState title={t("empty")} action={{ label: tUpload("action"), href: "#photos-upload-form" }} size="sm" />
+        <p className="text-body text-fg-muted">{t("empty")}</p>
         {uploader}
       </div>
     );
