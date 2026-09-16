@@ -11,30 +11,31 @@ import { Stat } from "@/components/ui/stat";
 import { getAdminDashboardData, type AttentionRow, type DashboardData, type TopRow } from "@/lib/dal/admin-dashboard";
 
 /** A ranked "top N" list — module-level so it is not re-created on every
- *  render (react-hooks/static-components). */
+ *  render (react-hooks/static-components).
+ *
+ *  ★ The count sits at the row's edge, as «مسار المقترحات» sets it beside
+ *  these three cards — a column of numbers scans, a number trailing each name
+ *  does not (wave 6 row 10's finding). It is the row's SECOND child: with the
+ *  name and the count inside one span, as before, `justify-between` had one
+ *  child to distribute and the count sat beside the name. */
 function TopList({ rows, emptyLabel, linkFor }: { rows: TopRow[]; emptyLabel: string; linkFor?: (row: TopRow) => string }) {
-  if (rows.length === 0) return <p className="mt-2 text-body-sm text-fg-muted">{emptyLabel}</p>;
+  if (rows.length === 0) return <p className="text-body-sm text-fg-muted">{emptyLabel}</p>;
   return (
-    <ol className="mt-3 space-y-2">
-      {rows.map((row) => {
-        const content = (
-          <>
-            <bdi>{row.label}</bdi>
-            <span className="ms-2 text-fg-muted">{formatNumber(row.count)}</span>
-          </>
-        );
-        return (
-          <li key={row.id} className="flex items-baseline justify-between text-body-sm text-fg-body">
-            {linkFor ? (
-              <Link href={linkFor(row)} className="hover:text-fg-heading hover:underline">
-                {content}
-              </Link>
-            ) : (
-              <span>{content}</span>
-            )}
-          </li>
-        );
-      })}
+    <ol className="space-y-2">
+      {rows.map((row) => (
+        <li key={row.id} className="flex items-baseline justify-between gap-3 text-body-sm">
+          {linkFor ? (
+            <Link href={linkFor(row)} className="min-w-0 text-fg-body hover:text-fg-heading hover:underline">
+              <bdi>{row.label}</bdi>
+            </Link>
+          ) : (
+            <span className="min-w-0 text-fg-body">
+              <bdi>{row.label}</bdi>
+            </span>
+          )}
+          <span className="shrink-0 text-fg-heading">{formatNumber(row.count)}</span>
+        </li>
+      ))}
     </ol>
   );
 }
