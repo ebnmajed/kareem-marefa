@@ -73,7 +73,7 @@ export function ProfileForm({ locale, me, companies }: { locale: Locale; me: Sel
   });
 
   return (
-    <form action={formAction} className="mt-8 max-w-xl space-y-5">
+    <form action={formAction} noValidate className="mt-8 max-w-xl space-y-5">
       {state.formError ? (
         <FormError key={state.attempt} message={t(`errors.${state.formError}`)} />
       ) : (
