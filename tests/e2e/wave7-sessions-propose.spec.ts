@@ -125,12 +125,17 @@ test("error: the summary counts, reassures and takes focus; blur checks a field 
   await expect(summary.getByRole("link")).toHaveCount(2);
   await expect(page.getByLabel("نبذة عن موضوعك")).toHaveValue(abstract);
 
-  // ★ The duration was never refused; a bad one typed now is caught on blur.
+  await expect(summary).toContainText("اضغط على أيٍّ منهما للانتقال إليه.");
+
+  // ★ The duration was never refused; a bad one typed now is caught on blur —
+  // and joins the summary, which lists exactly the errors on the page (sync 2).
   const duration = page.getByLabel("المدة المتوقعة");
   await duration.fill("5");
   await duration.blur();
   await expect(page.locator("#expectedDurationMinutes-error")).toBeVisible();
   await expect(duration).toHaveAttribute("aria-invalid", "true");
+  await expect(summary).toContainText("لم نستطع إرسال المقترح — 3 حقول تحتاج تصحيحًا");
+  await expect(summary.getByRole("link")).toHaveCount(3);
 
   await summary.scrollIntoViewIfNeeded();
   await capture(page, "error");

@@ -63,19 +63,26 @@ test.beforeAll(async ({}, testInfo) => {
   userIds.push(data.user.id);
   const memberId = await provisionMemberId(email);
 
-  const proposal = async (title: string, state: string, reason: string | null) => {
+  // Born a draft with its presenter row — `proposal_presenters_addable` (0012)
+  // refuses a presenter on a decided proposal — then walked along 0011's legal
+  // edges to the state the test needs, the reason written with the decision.
+  const proposal = async (title: string, path: string[], reason: string | null) => {
     const { rows } = await db.query<{ id: string }>(
-      `insert into public.proposals (org_id, proposer_id, title, abstract, category_id, level, target_audience, expected_duration_minutes, state, decision_reason)
-       values ($1, $2, $3, 'تجربة عملية استغرقت ثلاثة أشهر، وما تعلّمناه منها.', $4, 'intermediate', 'من يعدّون التقارير الشهرية', 45, $5::public.proposal_state, $6)
+      `insert into public.proposals (org_id, proposer_id, title, abstract, category_id, level, target_audience, expected_duration_minutes, state)
+       values ($1, $2, $3, 'تجربة عملية استغرقت ثلاثة أشهر، وما تعلّمناه منها.', $4, 'intermediate', 'من يعدّون التقارير الشهرية', 45, 'draft')
        returning id`,
-      [orgId, memberId, title, category.rows[0].id, state, reason],
+      [orgId, memberId, title, category.rows[0].id],
     );
     await db.query(`insert into public.proposal_presenters (org_id, proposal_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, rows[0].id, memberId]);
+    for (const state of path) {
+      const decided = state === "changes_requested" || state === "rejected";
+      await db.query(`update public.proposals set state = $2::public.proposal_state, decision_reason = $3 where id = $1`, [rows[0].id, state, decided ? reason : null]);
+    }
     return rows[0].id;
   };
-  ids.submitted = await proposal("كيف اختصرنا وقت التقارير الشهرية", "submitted", null);
-  ids.changes = await proposal("أتمتة الفواتير بلا برمجة", "changes_requested", REASON);
-  ids.rejected = await proposal("مقدمة في كل شيء", "rejected", "الموضوع أوسع من جلسة واحدة.");
+  ids.submitted = await proposal("كيف اختصرنا وقت التقارير الشهرية", ["submitted"], null);
+  ids.changes = await proposal("أتمتة الفواتير بلا برمجة", ["submitted", "in_review", "changes_requested"], REASON);
+  ids.rejected = await proposal("مقدمة في كل شيء", ["submitted", "in_review", "rejected"], "الموضوع أوسع من جلسة واحدة.");
 });
 
 test.afterAll(async () => {

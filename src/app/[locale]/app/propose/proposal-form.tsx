@@ -144,15 +144,28 @@ export function ProposalForm({
 
   const remaining = PROPOSAL_REQUIRED.filter((field) => checkProposalField(field, current(field)) !== null).length;
 
-  // ★ The summary is a record of ONE attempt and does not shrink as fields are
-  // fixed. It is `role="alert"`: mutating it while the member types would
-  // re-announce the whole list on every keystroke. The inline error clears —
-  // that is the reward — and the summary is rebuilt by the next submit.
-  const summary = summaryErrors(state, {
-    fields: PROPOSAL_FIELDS,
-    label: (field) => t(LABEL_KEY[field]),
-    message: (key) => t(`errors.${key}`),
-  });
+  // ★ THE SUMMARY LISTS EXACTLY THE ERRORS ON THE PAGE (sync 2, wave 7). M9 made
+  // it a record of one attempt, so a field the member broke AFTER submitting —
+  // a duration of 5, caught on blur — showed its error while the summary above
+  // still counted two. A summary that disagrees with the fields is worse than
+  // none. So it is built from what is SHOWN: the server's refusals as the
+  // browser has since revised them — added on blur, cleared by a fix.
+  //
+  // It does not churn per keystroke: a field enters it only on blur and leaves
+  // it only when its value first passes, so an update is one field changing
+  // state. Focus moves to it only when a submit mounts it (`key={state.attempt}`).
+  const shown = Object.fromEntries(PROPOSAL_FIELDS.flatMap((field) => {
+    const key = shownKey(field);
+    return key ? [[field, key]] : [];
+  })) as Partial<Record<ProposalField, string>>;
+  const summary = summaryErrors(
+    { ...state, errors: shown },
+    {
+      fields: PROPOSAL_FIELDS,
+      label: (field) => t(LABEL_KEY[field]),
+      message: (key) => t(`errors.${key}`),
+    },
+  );
 
   // Which control the member pressed, so `pending` appears on THAT one.
   // `useFormStatus` reports the nearest enclosing form and cannot tell two
@@ -180,7 +193,7 @@ export function ProposalForm({
         <FormSummary
           key={state.attempt}
           title={t("form.errorSummaryCount", { count: summary.length, value: formatNumber(summary.length) })}
-          description={t("form.errorSummaryDescription")}
+          description={t("form.errorSummaryDescription", { count: summary.length })}
           errors={summary}
         />
       )}

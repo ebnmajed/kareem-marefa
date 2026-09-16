@@ -180,7 +180,11 @@ test("★ REQ-PRO-004: not visible to an unrelated member; visible to an admin",
   // code, is what the requirement protects.
   await page.goto(`/ar/app/propose/${proposalId}`);
   await waitForStreamsToSettle(page);
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  // Several robots metas are expected — the layout's, the page's, and the
+  // `noindex` Next adds on `notFound()`. Every one must say noindex.
+  const robots = await page.locator('meta[name="robots"]').all();
+  expect(robots.length).toBeGreaterThan(0);
+  for (const meta of robots) await expect(meta).toHaveAttribute("content", /noindex/);
   await expect(page.getByText("اقتراح جلسة عن الذكاء الاصطناعي")).toHaveCount(0);
   await expect(page.getByText("صورة توضيحية")).toHaveCount(0);
 

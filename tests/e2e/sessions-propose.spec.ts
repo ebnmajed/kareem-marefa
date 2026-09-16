@@ -184,7 +184,8 @@ test("a rejected submission keeps every word the member typed", async ({ context
   // an unscoped getByRole("alert") is a strict-mode violation, not a bug in
   // the page.
   const summary = page.locator("form [role=alert]");
-  await expect(summary).toContainText("يرجى تصحيح الأخطاء التالية");
+  // Wave 7: the summary counts what failed (`0916b9d`).
+  await expect(summary).toContainText("لم نستطع إرسال المقترح — حقل واحد يحتاج تصحيحًا");
   await expect(summary).toContainText("العنوان قصير جدًا");
   // ★ The abstract survives the round trip — the form's own promise.
   await expect(page.getByLabel("نبذة عن موضوعك")).toHaveValue(abstract);

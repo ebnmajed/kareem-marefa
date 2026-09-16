@@ -65,7 +65,26 @@ describe("ProposalForm — after a failed submit", () => {
     await submit();
     const summary = screen.getByRole("alert");
     expect(summary).toHaveTextContent("لم نستطع إرسال المقترح — 3 حقول تحتاج تصحيحًا");
-    expect(summary).toHaveTextContent(form.errorSummaryDescription);
+    expect(summary).toHaveTextContent("اضغط على أيٍّ منها للانتقال إليه. ما كتبته محفوظ كما هو.");
+  });
+
+  it("★ the summary lists exactly the errors on the page — a field broken after the submit joins it, a fixed one leaves", async () => {
+    renderForm();
+    await submit();
+    const links = () => screen.getByRole("alert").querySelectorAll("a");
+    expect(links()).toHaveLength(3);
+
+    fireEvent.change(duration(), { target: { value: "5" } });
+    fireEvent.blur(duration());
+    expect(links()).toHaveLength(4);
+    expect(screen.getByRole("alert")).toHaveTextContent("لم نستطع إرسال المقترح — 4 حقول تحتاج تصحيحًا");
+
+    fireEvent.change(title(), { target: { value: "كيف اختصرنا وقت التقارير" } });
+    fireEvent.change(duration(), { target: { value: "45" } });
+    expect(links()).toHaveLength(2);
+    // The dual, not the plural: «أيٍّ منهما».
+    expect(screen.getByRole("alert")).toHaveTextContent("حقلان يحتاجان تصحيحًا");
+    expect(screen.getByRole("alert")).toHaveTextContent("اضغط على أيٍّ منهما للانتقال إليه.");
   });
 
   it("★ blur checks a field the server did NOT refuse — a duration typed after the submit", async () => {
