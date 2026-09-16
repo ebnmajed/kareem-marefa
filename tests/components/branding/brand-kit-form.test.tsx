@@ -3,10 +3,25 @@
 // mocked (they are Server Actions in production); the point of this file is
 // the CLIENT behaviour: the live preview and the contrast badges track the
 // controlled colour state, and the reset flow requires an explicit confirm.
+//
+// `browse.json`'s `fileDrop` namespace is merged in too — `ui/file-drop`
+// (the logo picker) reads it, and `NextIntlClientProvider` here only ever
+// carries what this file hands it, unlike the real app's fully-merged
+// catalogue.
+//
+// `userEvent`, not `fireEvent`, for the tab switch: `ui/tabs`' Radix
+// trigger activates on `onMouseDown`/`onFocus`, never `onClick`
+// (`@radix-ui/react-tabs`) — `fireEvent.click` dispatches a bare `click`
+// with no preceding `mousedown`, so it never reaches Radix's handler and
+// the tab silently never switches. Every other interaction below is a
+// plain `<button onClick>` (`ui/button`, `ui/dialog`'s close), where
+// `fireEvent.click` is the house convention (`deactivation-form.test.tsx`).
 import { NextIntlClientProvider } from "next-intl";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/branding.json";
+import browseAr from "@/messages/ar/browse.json";
 import { BrandKitForm } from "@/components/branding/brand-kit-form";
 import type { BrandKit } from "@/lib/brand/schema";
 
@@ -39,12 +54,13 @@ const KIT: BrandKit = {
 
 function renderForm() {
   return render(
-    <NextIntlClientProvider locale="ar" messages={ar}>
+    <NextIntlClientProvider locale="ar" messages={{ ...ar, ...browseAr }}>
       <BrandKitForm
         locale="ar"
         kit={KIT}
         fonts={[]}
         logoPreviewUrl={null}
+        imageLimitMb={20}
         saveAction={vi.fn(async (prev) => prev)}
         resetAction={vi.fn(async (prev) => prev)}
         signPreview={vi.fn(async () => null)}
@@ -64,16 +80,16 @@ describe("BrandKitForm", () => {
     expect(heading).toHaveStyle({ color: "rgb(255, 0, 0)" });
   });
 
-  it("switching to the dark tab edits the dark set without losing the light edits", () => {
+  it("switching to the dark tab edits the dark set without losing the light edits", async () => {
     renderForm();
     const headingInput = screen.getByLabelText(ar.branding.colours.tokens.fgHeading) as HTMLInputElement;
     fireEvent.change(headingInput, { target: { value: "#ff0000" } });
 
-    fireEvent.click(screen.getByRole("tab", { name: ar.branding.colours.schemeDark }));
+    await userEvent.click(screen.getByRole("tab", { name: ar.branding.colours.schemeDark }));
     const darkHeadingInput = screen.getByLabelText(ar.branding.colours.tokens.fgHeading) as HTMLInputElement;
     expect(darkHeadingInput.value).toBe(DARK.fgHeading); // unaffected by the light-tab edit
 
-    fireEvent.click(screen.getByRole("tab", { name: ar.branding.colours.schemeLight }));
+    await userEvent.click(screen.getByRole("tab", { name: ar.branding.colours.schemeLight }));
     expect((screen.getByLabelText(ar.branding.colours.tokens.fgHeading) as HTMLInputElement).value).toBe("#ff0000");
   });
 

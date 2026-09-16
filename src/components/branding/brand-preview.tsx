@@ -3,11 +3,16 @@
 import { useTranslations } from "next-intl";
 import type { BrandColourSet } from "@/lib/brand/schema";
 
-// A heading, body text, a button and a card, in the colours currently
-// chosen — SCR-059's "one edit, four consumers" made visible before the
-// admin ever saves (06 §8.3). Direct inline colours, not the app's own
-// `@theme` tokens: this preview must reflect values that are not saved yet,
-// which the CSS layer cannot know about.
+// A heading, body text, a button, a card and a poster's gradient surface, in
+// the colours currently chosen — SCR-059's "one edit, four consumers" made
+// visible before the admin ever saves (06 §8.3). Direct inline colours, not
+// the app's own `@theme` tokens: this preview must reflect values that are
+// not saved yet, which the CSS layer cannot know about.
+//
+// DEC-127 — the gradient swatch is illustrative, not a document render: it
+// always shows the baseline poster's own RTL-source angle (140deg, `06`
+// §3.3). The LTR mirror (`360 − angle`) lives in `render.ts` alone, for a
+// real document; this preview is not one.
 export function BrandPreview({ colours, logoUrl }: { colours: BrandColourSet; logoUrl: string | null }) {
   const t = useTranslations("branding.preview");
   return (
@@ -44,6 +49,14 @@ export function BrandPreview({ colours, logoUrl }: { colours: BrandColourSet; lo
         </p>
         <p className="mt-1 text-body-sm" style={{ color: colours.fgMuted }}>
           {t("cardBody")}
+        </p>
+      </div>
+      <div
+        className="flex h-24 items-end rounded-field p-3"
+        style={{ background: `linear-gradient(140deg, ${colours.surface}, ${colours.canvasRaise})` }}
+      >
+        <p className="text-label" style={{ color: colours.fgHeading }}>
+          {t("posterGradientLabel")}
         </p>
       </div>
     </div>

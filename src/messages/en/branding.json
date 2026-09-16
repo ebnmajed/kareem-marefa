@@ -37,8 +37,10 @@
         "edge": "Edge colour",
         "edgeStrong": "Strong edge colour",
         "spine": "Spine colour",
-        "node": "Node colour"
-      }
+        "node": "Node colour",
+        "canvasRaise": "Gradient background"
+      },
+      "invalidHex": "Enter a valid colour in #rrggbb form."
     },
     "preview": {
       "title": "Live preview",
@@ -46,7 +48,8 @@
       "bodySample": "This is how body text looks in the app, in designer templates, and in email.",
       "buttonSample": "Action button",
       "cardTitle": "Card title",
-      "cardBody": "Explanatory text inside a card, in the colours chosen above."
+      "cardBody": "Explanatory text inside a card, in the colours chosen above.",
+      "posterGradientLabel": "This is how a generated poster's background looks."
     },
     "contrast": {
       "title": "Contrast (WCAG 2.2 AA)",
@@ -70,7 +73,9 @@
       "saving": "Saving…",
       "saved": "The brand kit was saved.",
       "reset": "Reset to platform default",
+      "resetTitle": "Reset the org's brand kit?",
       "cancel": "Cancel",
+      "closeDialog": "Close",
       "resetConfirm": "This will delete the org's customisation, and every screen will return to the platform's default identity. Continue?",
       "resetting": "Resetting…",
       "resetDone": "The brand kit was reset to the platform default."

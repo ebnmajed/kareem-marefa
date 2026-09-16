@@ -114,3 +114,17 @@ export async function resetBrandKit(locale: string): Promise<void> {
   const { error } = await supabase.rpc("reset_brand_kit");
   if (error) throw error;
 }
+
+/**
+ * `org_settings.limit_image_mb` — the same org-configurable ceiling
+ * `photos`/`materials` already read before their own uploader — so
+ * `ui/file-drop`'s advisory `maxBytes` on SCR-059's logo picker matches what
+ * `initiateAssetUpload()` (`designer`'s `lib/dal/posters.ts`) will actually
+ * enforce, rather than a number guessed into this screen. `20` is the same
+ * fallback `posters.ts` itself falls back to when the org has never set one.
+ */
+export async function getImageLimitMb(locale: string): Promise<number> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle();
+  return (data?.limit_image_mb as number | undefined) ?? 20;
+}

@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { FileDrop } from "@/components/ui/file-drop";
+import { useToast } from "@/components/ui/toast";
 import { formatNumber } from "@/components/sessions/numerals";
 import { MIN_LOGO_PX_FOR_A3, type PpiRating } from "@/lib/brand/ppi";
 import type { Locale } from "@/i18n/routing";
@@ -15,75 +17,91 @@ import type { Locale } from "@/i18n/routing";
 // action — `design_assets` has no public read, so nothing else can build
 // one. The PPI-at-A3 readout comes back from `complete` itself, computed
 // once server-side by `ppiAtA3()` (`src/lib/brand/ppi.ts`).
+//
+// ★ `ui/file-drop` is the PICKER, not the upload — the same shape
+// `photos/upload-widget.tsx` and `materials/upload-form.tsx` already use:
+// `onFiles` only reports what was chosen, and a separate `Button` (with its
+// own `pending`/`pendingLabel`) starts the real round trip. `requirements`
+// states the minimum resolution and the accepted formats BEFORE the picker
+// opens (REQ-DSG-019, SCR-059); `key={resetKey}` clears the picked-file
+// chip once the upload actually succeeds, the same trick those two files
+// use to reset an uncontrolled Radix-free widget without a form reset.
 export function LogoUploader({
   locale,
   assetId,
   previewUrl,
+  imageLimitMb,
   signPreview,
   onChange,
 }: {
   locale: Locale;
   assetId: string | null;
   previewUrl: string | null;
+  imageLimitMb: number;
   signPreview: (locale: Locale, assetId: string) => Promise<string | null>;
   onChange: (next: { assetId: string | null; previewUrl: string | null }) => void;
 }) {
   const t = useTranslations("branding.logo");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const toast = useToast();
+  const [files, setFiles] = useState<File[]>([]);
+  const [resetKey, setResetKey] = useState(0);
+  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [a3, setA3] = useState<{ ppi: number; rating: PpiRating } | null>(null);
 
-  async function handleFile(file: File) {
-    setUploading(true);
+  function handleUpload() {
+    const file = files[0];
+    if (!file) return;
     setError(null);
-    setA3(null);
-    try {
-      const initiated = await fetch("/api/admin/branding/logo", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-locale": locale },
-        body: JSON.stringify({ byteSize: file.size, declaredType: file.type }),
-      }).then((r) => r.json());
-      if ("status" in initiated) {
-        setError(initiated.status === "file_too_large" ? "file_too_large" : "not_authorized");
-        return;
-      }
 
-      const put = await fetch(initiated.uploadUrl, { method: "PUT", body: file, headers: { "content-type": file.type || "application/octet-stream" } });
-      if (!put.ok) {
+    startTransition(async () => {
+      try {
+        const initiated = await fetch("/api/admin/branding/logo", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-locale": locale },
+          body: JSON.stringify({ byteSize: file.size, declaredType: file.type }),
+        }).then((r) => r.json());
+        if ("status" in initiated) {
+          const code = initiated.status === "file_too_large" ? "file_too_large" : "not_authorized";
+          setError(code);
+          toast.show({ tone: "error", title: t(`errors.${code}`) });
+          return;
+        }
+
+        const put = await fetch(initiated.uploadUrl, { method: "PUT", body: file, headers: { "content-type": file.type || "application/octet-stream" } });
+        if (!put.ok) {
+          setError("unknown");
+          toast.show({ tone: "error", title: t("errors.unknown") });
+          return;
+        }
+
+        const completed = await fetch("/api/admin/branding/logo/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-locale": locale },
+          body: JSON.stringify({ assetId: initiated.assetId }),
+        }).then((r) => r.json());
+        if (completed.status !== "ok") {
+          const code = completed.status ?? "unknown";
+          setError(code);
+          toast.show({ tone: "error", title: t(`errors.${code}`) });
+          return;
+        }
+
+        setA3(completed.a3);
+        const signed = await signPreview(locale, completed.assetId);
+        onChange({ assetId: completed.assetId, previewUrl: signed });
+        setFiles([]);
+        setResetKey((k) => k + 1);
+      } catch {
         setError("unknown");
-        return;
+        toast.show({ tone: "error", title: t("errors.unknown") });
       }
-
-      const completed = await fetch("/api/admin/branding/logo/complete", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-locale": locale },
-        body: JSON.stringify({ assetId: initiated.assetId }),
-      }).then((r) => r.json());
-      if (completed.status !== "ok") {
-        setError(completed.status ?? "unknown");
-        return;
-      }
-
-      setA3(completed.a3);
-      const signed = await signPreview(locale, completed.assetId);
-      onChange({ assetId: completed.assetId, previewUrl: signed });
-    } catch {
-      setError("unknown");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
+    });
   }
 
   return (
-    <fieldset className="space-y-3">
-      <legend className="text-h3 text-fg-heading">{t("title")}</legend>
-
-      <p className="text-body-sm text-fg-muted">
-        {t("minResolutionHint", { width: formatNumber(MIN_LOGO_PX_FOR_A3.width), height: formatNumber(MIN_LOGO_PX_FOR_A3.height) })}
-      </p>
-      <p className="text-body-sm text-fg-muted">{t("formatHint")}</p>
+    <div className="space-y-3">
+      <h2 className="text-h3 text-fg-heading">{t("title")}</h2>
 
       <div className="flex flex-wrap items-center gap-4">
         {assetId && previewUrl ? (
@@ -92,28 +110,25 @@ export function LogoUploader({
         ) : (
           <p className="text-body-sm text-fg-muted">{t("none")}</p>
         )}
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="hidden"
-          id="brand-logo-input"
-          aria-label={assetId ? t("replace") : t("upload")}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
-          }}
-        />
-        <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
-          {uploading ? t("uploading") : assetId ? t("replace") : t("upload")}
-        </Button>
         {assetId ? (
-          <Button type="button" variant="secondary" onClick={() => onChange({ assetId: null, previewUrl: null })}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => onChange({ assetId: null, previewUrl: null })}>
             {t("remove")}
           </Button>
         ) : null}
       </div>
+
+      <FileDrop
+        key={resetKey}
+        name="logo"
+        accept={["image/png", "image/jpeg", "image/webp"]}
+        maxBytes={imageLimitMb * 1024 * 1024}
+        requirements={[
+          t("minResolutionHint", { width: formatNumber(MIN_LOGO_PX_FOR_A3.width), height: formatNumber(MIN_LOGO_PX_FOR_A3.height) }),
+          t("formatHint"),
+        ]}
+        onFiles={setFiles}
+        invalid={Boolean(error)}
+      />
 
       {a3 ? (
         <p role="status" className={a3.rating === "sufficient" ? "text-body-sm text-fg-muted" : "text-body-sm font-semibold text-fg-heading"}>
@@ -122,11 +137,18 @@ export function LogoUploader({
         </p>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-body-sm text-fg-heading">
-          {t(`errors.${error}`)}
-        </p>
-      ) : null}
-    </fieldset>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={handleUpload}
+        disabled={files.length === 0}
+        pending={pending}
+        pendingLabel={t("uploading")}
+        className="self-start"
+      >
+        {assetId ? t("replace") : t("upload")}
+      </Button>
+    </div>
   );
 }
