@@ -171,7 +171,18 @@ export function AdminSessionsTable({
         rowKey={(s) => s.id}
         sort={sort}
         onSortChange={(next) => setSort(next as { key: SortKey; direction: "asc" | "desc" })}
-        empty={{ title: t("searchEmpty"), action: { label: t("scheduleNote"), href: "/app/admin/proposals" } }}
+        // ★ Two real bugs from the lead's screenshot review, both here: the
+        // title was hard-coded to the "no search matches" copy even with an
+        // empty search box, and `scheduleNote` — a full sentence meant as
+        // `direct-session-form.tsx`'s own inline hint — was wired to the
+        // button's LABEL instead, rendering a paragraph inside a primary
+        // button. `query` (not just `filtered.length`) is the right branch:
+        // an org with zero sessions and one with a search that matches
+        // nothing are different situations even though both empty `sorted`.
+        empty={{
+          title: query ? t("searchEmpty") : t("listEmpty"),
+          action: { label: t("listEmptyAction"), href: "/app/admin/proposals" },
+        }}
       />
 
       {/* «إجراءات المشرف» (start/complete/cancel/archive/reopen, REQ-SES-005)

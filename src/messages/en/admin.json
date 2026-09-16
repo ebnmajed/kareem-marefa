@@ -143,6 +143,7 @@
       },
       "listTitle": "All sessions",
       "listEmpty": "No sessions yet.",
+      "listEmptyAction": "Open proposals",
       "searchLabel": "Search sessions",
       "searchPlaceholder": "Title or presenter name",
       "searchEmpty": "No sessions match your search.",

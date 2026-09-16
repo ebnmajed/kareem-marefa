@@ -143,6 +143,7 @@
       },
       "listTitle": "كل الجلسات",
       "listEmpty": "لا جلسات بعد.",
+      "listEmptyAction": "افتح المقترحات",
       "searchLabel": "ابحث في الجلسات",
       "searchPlaceholder": "العنوان أو اسم المُقدِّم",
       "searchEmpty": "لا جلسات مطابقة لبحثك.",

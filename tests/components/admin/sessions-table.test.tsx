@@ -71,6 +71,31 @@ describe("AdminSessionsTable", () => {
     expect(screen.getAllByText("أساسيات الشبكات").length).toBeGreaterThan(0);
   }, 15000);
 
+  // ★ Two real bugs the lead's screenshot review caught on a real build:
+  // the empty title was hard-coded to the "no search matches" copy even
+  // with an untouched search box, and the empty-state BUTTON was labelled
+  // with `scheduleNote` — a full sentence meant as `direct-session-form.tsx`'s
+  // own inline hint — rendering a paragraph inside a primary button.
+  it("the empty state reads 'no sessions yet', with a short action label, when the org has none", () => {
+    render(
+      <NextIntlClientProvider locale="ar" messages={messages}>
+        <AdminSessionsTable sessions={[]} actionsById={{}} timeZone="Asia/Riyadh" locale="ar" transitionActions={{}} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("لا جلسات بعد.")).toBeVisible();
+    expect(screen.queryByText("لا جلسات مطابقة لبحثك.")).not.toBeInTheDocument();
+    const action = screen.getByRole("link", { name: "افتح المقترحات" });
+    expect(action).toHaveAttribute("href", "/ar/app/admin/proposals");
+  });
+
+  it("the empty state switches to 'no matches' once a search finds nothing, keeping the short action label", async () => {
+    renderTable();
+    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في الجلسات" }), "لا يوجد شيء بهذا الاسم");
+    expect(screen.getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();
+    expect(screen.queryByText("لا جلسات بعد.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "افتح المقترحات" })).toBeVisible();
+  }, 15000);
+
   it("the row menu's navigation items point at the right routes", async () => {
     renderTable();
     // `t.markup` on `moreActions` (a `<t>{title}</t>` tag, like `ui/combobox`'s
