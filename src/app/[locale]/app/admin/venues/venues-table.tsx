@@ -57,12 +57,17 @@ export function VenuesTable({ venues, locale }: { venues: AdminVenue[]; locale: 
       key: "status",
       header: t("statusColumn"),
       onCard: true,
-      cell: (v) =>
-        v.deactivatedAt === null ? null : (
-          <Badge tone="neutral" outline>
-            {t("deactivated")}
-          </Badge>
-        ),
+      // ★ Always a Badge, never `null` for the active case (sync 6's own
+      // finding): the phone card list always renders the `statusColumn`
+      // label (`ui/data-table.tsx`'s card mode has no notion of "skip this
+      // field"), so a `null` cell left an "الحالة" row with no value beside
+      // it. Same tone/outline convention as `admin/members/members-table.tsx`'s
+      // own status cell.
+      cell: (v) => (
+        <Badge tone={v.deactivatedAt === null ? "success" : "neutral"} outline={v.deactivatedAt !== null}>
+          {t(v.deactivatedAt === null ? "active" : "deactivated")}
+        </Badge>
+      ),
     },
     {
       key: "actions",

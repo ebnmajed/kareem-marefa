@@ -38,12 +38,13 @@ export function CompaniesTable({ companies, locale }: { companies: AdminCompany[
       key: "status",
       header: t("statusColumn"),
       onCard: true,
-      cell: (c) =>
-        c.deactivatedAt === null ? null : (
-          <Badge tone="neutral" outline>
-            {t("deactivated")}
-          </Badge>
-        ),
+      // ★ Always a Badge, never `null` for the active case — same sync-6
+      // finding and fix as venues-table.tsx's own status cell.
+      cell: (c) => (
+        <Badge tone={c.deactivatedAt === null ? "success" : "neutral"} outline={c.deactivatedAt !== null}>
+          {t(c.deactivatedAt === null ? "active" : "deactivated")}
+        </Badge>
+      ),
     },
     {
       key: "actions",
