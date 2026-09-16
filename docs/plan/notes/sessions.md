@@ -2314,3 +2314,37 @@ predates every one of these commits; the build is the lead's.
   staged and no untracked entries, but anything another teammate had staged and not committed would
   have been unstaged. Told the lead at once. Rule restated for myself: stage explicit paths only, and
   nothing is ever chained onto a gate command.
+
+## 43. Contract 1 — the walk-in parameter, landed (`55d40e1`, against migration `0085`)
+
+Read from the landed SQL, not from `checkin`'s draft: `schedule_session()` has ONE signature (the
+13-parameter overload is dropped), ending `p_allow_walk_ins boolean default null`, and **`null` means
+unchanged** — `coalesce(p_allow_walk_ins, target.allow_walk_ins)`, `DEC-141` correction B.
+
+**The exact TypeScript, in `src/lib/dal/sessions.ts`:**
+
+```ts
+// scheduleInput — still .strict()
+allowWalkIns: z.boolean().nullable().default(null),
+// ScheduleInput (z.infer, the OUTPUT type) therefore has
+allowWalkIns: boolean | null;          // required on the parsed object
+// …and the INPUT accepts the key absent, which parses to null
+
+// scheduleSession(locale, sessionId, input: ScheduleInput) sends
+p_allow_walk_ins: input.allowWalkIns   // null stays null — never coerced to false
+
+// SchedulableSession — getSessionForSchedule()'s read-back, the form's `initial`
+allowWalkIns: boolean;                 // from sessions.allow_walk_ins
+```
+
+**For `checkin`'s half** (`schedule-form.tsx`, `actions.ts`, `state.ts`): read the control's initial
+value from `initial.allowWalkIns`; in the action, pass `allowWalkIns` into the object handed to
+`scheduleInput.safeParse(…)` — `true`/`false` from the control, or `null` if a form ever omits it.
+★ An unchecked HTML checkbox sends NO key at all, which would parse to `null` (unchanged) and make
+switching walk-ins OFF impossible — so the control must send an explicit value either way (a switch
+with a hidden input, or `formData.get(…) === "on"` read into a real boolean), never "absent means
+off".
+
+**Tests:** `tests/unit/sessions-schedule-walk-ins.test.ts` — null and an absent key parse to `null`;
+`false` and `true` survive; `.strict()` still refuses an unknown key; `null`, `false`, `true` reach
+the RPC as themselves (the key present); the read-back carries the stored value.
