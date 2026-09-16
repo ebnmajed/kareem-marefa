@@ -80,6 +80,16 @@ test.beforeAll(async ({}, testInfo) => {
   const presenterMemberId = await provisionMemberId(presenterEmail);
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterMemberId]);
 
+  // ★ Wave-7 plan §4 item 3, ruled and now applied: `checkin`'s own
+  // AFFORDANCE_MATRIX withholds `tasks` for a viewer with no stake in the
+  // session (DEC-090 — "calendar/tasks withheld — no seat yet"), and this
+  // fixture never gave `memberEmail` a reservation before the test below
+  // asserted the tasks section was visible to them. The product is right;
+  // the spec was wrong. A confirmed RSVP, the same shape `fixture-m2.ts`
+  // seeds for every org's own "member" role, is what the test was missing.
+  const memberMemberId = await provisionMemberId(memberEmail);
+  await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, sessionId, memberMemberId]);
+
   const { rows: taskRows } = await db.query<{ id: string }>(
     `insert into public.session_tasks (org_id, session_id, kind, title) values ($1, $2, 'checklist', 'أحضر جهازك المحمول') returning id`,
     [orgId, sessionId],

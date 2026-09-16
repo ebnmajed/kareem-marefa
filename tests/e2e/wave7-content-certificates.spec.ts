@@ -150,7 +150,11 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
   await page.reload();
   await expect(page.getByText("جلسة الشهادات").first()).toBeVisible();
   await expect(page.getByText("صالحة")).toBeVisible();
-  await expect(page.getByText("ملغاة")).toBeVisible();
+  // ★ Sync-4b: unscoped, this matched both the revoked cert's own Badge
+  // (whose text IS exactly "ملغاة") and the OTHER session's title
+  // «جلسة الشهادة الملغاة», which contains it as a substring — exact
+  // matching excludes the longer title.
+  await expect(page.getByText("ملغاة", { exact: true })).toBeVisible();
   await expect(page.getByText("إصدار مكرر بالخطأ")).toBeVisible();
   // The serial is dir="ltr" inside its own <bdi> (09 SCR-023).
   const serial = page.getByText("CRT-2026-000001");

@@ -269,20 +269,25 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     if (removeError) throw removeError;
 
     await page.reload();
+    // ★ Sync-4b: scoped to `#history` — this file's own pre-existing first
+    // test already names why (`checkin`'s scoring_rules row reuses its own
+    // reasonAr as the catalogue's "what earns points" text below), and an
+    // unscoped `getByText` here is a strict-mode violation across the two.
+    const history = page.locator("#history");
     // The real award_points('check_in', …) reason (`award_points.ts`'s
     // own scoring_rules seed) — "تسجيل حضور مؤكَّد", not the plain
     // "تسجيل حضور" a hand-written fixture might guess at; verified
     // directly against a real local run before writing this assertion.
-    await expect(page.getByText("تسجيل حضور مؤكَّد", { exact: true })).toBeVisible();
+    await expect(history.getByText("تسجيل حضور مؤكَّد", { exact: true })).toBeVisible();
     // Contract 3 exactly: the fixed system reason, never the admin's own
     // free-text one — the lead's ruling, that removal reason lives on
     // `check_ins.removal_reason` and `audit_log` only.
-    await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
-    await expect(page.getByText("إلغاء نقاط سابقة")).toBeVisible();
-    await expect(page.getByText(removalReason)).toHaveCount(0);
+    await expect(history.getByText("أُلغي تسجيل الحضور")).toBeVisible();
+    await expect(history.getByText("إلغاء نقاط سابقة")).toBeVisible();
+    await expect(history.getByText(removalReason)).toHaveCount(0);
     // The reversal readable next to what it reverses — never a number that
     // quietly changed (`REQ-CHK-017`).
-    await expect(page.getByRole("link", { name: "فتح الجلسة" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);
+    await expect(history.getByRole("link", { name: "فتح الجلسة" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);
     await capture(page, "reversal");
   });
 });

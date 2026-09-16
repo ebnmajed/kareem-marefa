@@ -105,14 +105,19 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await capture(page, "empty");
 
   // A field error: clear the required name and submit.
-  // ★ Scoped to the form — TEAM.md §5's own trap: an unscoped
-  // `getByRole("alert")` resolves to Next's `__next-route-announcer__`
-  // (an empty, always-present live region) before it resolves to
-  // `FormSummary`'s own alert, which failed this assertion at sync 2.
-  const form = page.locator("form");
+  // ★ Sync-4b: `page.locator("form")` alone is not enough to dodge TEAM.md
+  // §5's route-announcer trap — the shell renders its OWN forms on every
+  // `/app` page (`search-entry.tsx`, `account-menu.tsx`'s sign-out), so an
+  // unscoped `form.getByRole("alert")` searches three forms' worth of
+  // subtree, not one. `FormSummary` DOES render inside `<form>` here
+  // (`components/me/profile-form.tsx:76-81` — checked directly, not
+  // assumed), so the fix is narrower scoping, not a real rendering bug:
+  // `shell-frame.tsx`'s own `<main id="main">` wraps the routed page's
+  // content only, excluding the header entirely.
+  const main = page.locator("#main");
   await page.getByLabel("الاسم", { exact: false }).fill("");
   await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(form.getByRole("alert")).toContainText("يرجى تصحيح الأخطاء التالية");
+  await expect(main.getByRole("alert")).toContainText("يرجى تصحيح الأخطاء التالية");
   await capture(page, "error");
 
   // Populated + saved: fill every field and submit.
