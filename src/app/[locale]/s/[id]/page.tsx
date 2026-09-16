@@ -138,15 +138,22 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
                 {when ? (
                   <>
                     <bdi>{when}</bdi>
-                    {/* `whitespace-nowrap`, because at 390 px the clause broke
-                        between «3:03» and «م» and left the meridiem alone on the
-                        next line — seen in the RTL capture, not reasoned about.
-                        The clause moves as a whole instead. */}
+                    {/* ★ Where the line may break, and nowhere else. A time is
+                        joined to its «م» at the source (`numerals.ts`, U+00A0);
+                        «· حتى 8:27 م» is one unbreakable clause; and the ONLY
+                        break opportunity is the ordinary space BEFORE the «·»,
+                        which sits outside the clause. Wave 7's capture showed
+                        «… في 6:57» / «م · حتى 8:27 م» — the clause had its
+                        leading space inside it, so the line broke inside the
+                        start time instead. */}
                     {until ? (
-                      <span className="whitespace-nowrap text-fg-muted">
-                        {" · "}
-                        {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
-                      </span>
+                      <>
+                        {" "}
+                        <span className="whitespace-nowrap text-fg-muted">
+                          {"·\u00A0"}
+                          {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
+                        </span>
+                      </>
                     ) : null}
                   </>
                 ) : (

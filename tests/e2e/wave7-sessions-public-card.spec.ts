@@ -99,6 +99,14 @@ test("an open session's card shows no status badge, one primary action, and the 
   await expect(page.locator("body")).not.toContainText("نبذة لا تظهر على البطاقة العامة");
   await expect(page.locator("body")).not.toContainText("شارع لا يظهر");
 
+  // ★ A time never breaks from its «م» (numerals.ts, U+00A0), and the range's
+  // only break opportunity is before its «·» — wave 7's capture had «6:57» / «م».
+  const when = page.locator("dd").first();
+  expect(await when.textContent()).toMatch(/\d:\d\d\u00A0م/);
+  const clause = when.locator("span.whitespace-nowrap");
+  expect(await clause.textContent()).toMatch(/^·\u00A0حتى/);
+  expect(await clause.evaluate((el) => new Set([...el.getClientRects()].map((r) => Math.round(r.top))).size)).toBe(1);
+
   await capture(page, "open");
 });
 
@@ -141,7 +149,11 @@ test("a card that is not there is a real 404 to a browser and to a crawler, in A
   await expect(page.getByRole("link", { name: "إلى الصفحة الرئيسية" })).toHaveAttribute("href", "/ar");
   await expect(page.locator("body")).not.toContainText("مسودة لا تُشارَك");
   await expect(page.locator("body")).not.toContainText("This page could not be found");
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  // Two robots metas are expected: the page's own `noindex, nofollow` and the
+  // `noindex` Next adds on `notFound()`. Every one must say noindex.
+  const robots = await page.locator('meta[name="robots"]').all();
+  expect(robots.length).toBeGreaterThan(0);
+  for (const meta of robots) await expect(meta).toHaveAttribute("content", /noindex/);
 
   await capture(page, "missing");
 });
