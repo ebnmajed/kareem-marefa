@@ -1269,6 +1269,41 @@ is a separate, deliberate, audited act on one member.
 cannot grant check-in, so `checkIn` leaves `GRANTING_AFFORDANCES` — `rate`, `survey`, `certificate`
 and `attendanceOutcome` stay. Corollary 2 itself is unaffected.
 
+### ★★ 5 · Multi-day sessions — the biggest item, and it is an entity, not a form (`DEC-119`)
+
+«Each has its check-in and files and notes» gives a day **identity, lifecycle and its own access
+surface** — the same test `DEC-089` used to *refuse* an entity for objectives, which a session day
+passes on all three. `02` is frozen, so **`ENT-session_days` is defined under `DEC-119`**.
+
+**Per day:** `check_in_codes`, `check_ins`, `check_in_attempts`, `materials`, `calendar_events`, and
+the `ends_at + 2h` check-in ceiling. **Per session:** `rsvps` — one registration covers every day —
+certificates, ratings, comments, reactions, photos, bookmarks, tags, presenters, posters, tasks.
+
+★ **A one-day session is a session with one day.** No second code path; the common case is the
+general case at `n = 1`.
+
+★ **`sessions.starts_at`/`ends_at` become derived** from the first and last day and stay **stored**,
+so every existing index, sort, query and the `session_window` trigger keep working.
+
+★ **This is NOT `A14`'s recurring series**, and the distinction has to survive: that is N
+independent sessions each with its own registration and certificate; this is one session with N
+meetings, one registration, one certificate.
+
+**The form** (`REQ-SES-016`): multi-day behind an explicit affordance so one day costs nothing; the
+end follows the duration live and stops once explicitly edited; each added day defaults to the
+previous day's time and place; validation at the field on blur, never only on submit.
+
+★★ **Points and certificates require ALL days by default** (`REQ-SES-017`), and the consequence is
+structural: **for a multi-day session the award moves from the check-in trigger to session
+completion**, because the full day set is not known until then. `REQ-CHK-009` makes check-in the
+sole trigger today and `JOB-award_points` fires off it. A one-day session is unchanged. The
+idempotency key becomes per member **per session** so a re-run cannot double-pay a ledger that is
+append-only by invariant.
+
+**Two questions still open for the owner:** who reads a day's **notes** (staff, presenters or
+attendees — three different features), and whether **capacity** is per session or per day
+(recommend per session: one registration, one seat count).
+
 ### ★ The two check-in switches, so nobody confuses them
 
 After `DEC-116` and `DEC-117` there are two, and they answer different questions for different

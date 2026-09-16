@@ -162,6 +162,33 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - A ninth objective, an empty one or one over 140 characters is refused by the **database**.
 - A session with none renders no «ماذا ستتعلّم؟» section and no heading.
 
+#### STORY-SES-008 — A session spans days, and a day is a meeting in its own right
+**Covers:** `REQ-SES-015` · **M9** · **XL**
+- `ENT-session_days` with `org_id`, RLS, a full policy set and a generated-sweep row.
+- `check_in_codes`, `check_ins`, `check_in_attempts`, `materials` and `calendar_events` move to the
+  day; `rsvps`, certificates, ratings, comments, photos and tags stay on the session.
+- `sessions.starts_at`/`ends_at` become derived from the first and last day and stay stored, so
+  every existing index, sort and the `session_window` trigger keep working.
+- `sessionPhase()` is `live` while ANY day runs and `ended` after the LAST; the check-in ceiling is
+  per day.
+- A one-day session is a session with one day — no second code path.
+
+#### STORY-SES-009 — The scheduling form is quick for one day and honest about many
+**Covers:** `REQ-SES-016` · **M9** · **L**
+- Multi-day sits behind an explicit affordance; the one-day path is unchanged and costs nothing.
+- The end follows the duration live, and stops following once explicitly edited (OQ-001).
+- Each added day defaults to the previous day's time and place, both editable.
+- Overlapping days, an end before a start and a deadline after day one are each said at the field
+  on blur, never only on submit.
+
+#### STORY-SES-010 — Points and certificates require every day
+**Covers:** `REQ-SES-017` · **M9** · **L**
+- ★ For a multi-day session the award moves from the check-in trigger to session completion, where
+  the full day set is known; a one-day session is unchanged.
+- The idempotency key is per member per session, so a re-run cannot double-pay an append-only ledger.
+- Partial attendance earns nothing by default, and the member's history says which day they missed.
+- The all-days rule is a per-session setting beside `certificate_mode`, which an admin may relax.
+
 ## EPIC-RSV — RSVP
 
 #### STORY-RSV-001 — Reserve a seat, with capacity in the transaction

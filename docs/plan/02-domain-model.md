@@ -416,6 +416,52 @@ that can be bypassed. Indexes: `(org_id, state, starts_at)`, `(org_id, category_
 
 **`full` is not a column.** `REQ-SES-003`.
 
+#### `ENT-session_days`
+**Serves:** `REQ-SES-015`, `REQ-SES-016`, `REQ-CHK-015`, `REQ-MAT-001`
+
+**Added under DEC-119.** A session has **one or more days**, and a day is the unit a member turns
+up to. ★ It earns an entity by the same test `DEC-089` used to *refuse* one for objectives: a day
+has **identity, lifecycle and its own access surface** — its own check-in, its own materials, its
+own notes — where an objective had none of the three.
+
+★ **A one-day session is a session with one day.** There is no nullable second shape and no
+"simple" path beside a "multi-day" path; the common case is the general case with `n = 1`, which is
+what keeps it from paying for the rare one.
+
+| Column | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null references orgs(id)` | invariant 5 — RLS, full policy set, generated sweep |
+| `session_id` | `uuid not null references sessions(id)` | |
+| `position` | `int not null` | 1…n, the order a member reads them in |
+| `starts_at`, `ends_at` | `timestamptz not null` | the day's own window |
+| `venue_id` | `uuid references venues(id)` | defaults to the previous day's on creation, editable |
+| `custom_venue_name`, `custom_venue_address`, `custom_venue_map_url` | `text` | `REQ-SES-007`'s inline venue, per day |
+| `notes` | `text` | ★ the reader is an **open question** in DEC-119 — staff, presenters or attendees |
+
+Constraints:
+```sql
+check (ends_at > starts_at)
+unique (session_id, position)
+-- no two days of one session overlap
+exclude using gist (session_id with =, tstzrange(starts_at, ends_at, '[)') with &&)
+```
+
+**What hangs off the DAY, not the session:** `check_in_codes`, `check_ins`, `check_in_attempts`,
+`materials`, `calendar_events`. Attendance, content and the calendar are per meeting.
+
+**What stays on the SESSION:** `rsvps` — **one registration covers every day** — plus
+`certificates`, `ratings`, `comments`, `reactions`, `photos`, `bookmarks`, `session_tags`,
+`session_presenters`, `session_posters`, `session_tasks`.
+
+★ **`sessions.starts_at` and `ends_at` become DERIVED** — the first day's start and the last day's
+end — and stay **stored columns**, so every existing index, sort, query and the `session_window`
+trigger keep working untouched. `REQ-SES-001`'s publish constraint becomes "at least one day, and
+every day complete".
+
+★ **This is not `A14`'s recurring series.** That is N independent sessions, each with its own
+registration and certificate. This is one session with N meetings, one registration, one
+certificate.
+
 #### `ENT-session_state_transitions`
 **Serves:** `REQ-SES-003`, `REQ-PRO-006`, `REQ-SES-005`
 Append-only. `session_id`, `from_state`, `to_state`, `actor_id` (null when the clock did it),

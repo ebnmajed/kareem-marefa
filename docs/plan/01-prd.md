@@ -526,6 +526,56 @@ from the event page when empty rather than rendered as an empty heading.
 
 ## 6. RSVP and waitlist — `RSV`
 
+#### REQ-SES-015 — A session may span several days, and each day is a meeting in its own right
+**Serves:** owner 2026-09-16 · DEC-119
+A **جلسة** has one or more **أيام**, each with its own start, end and place, and each carrying its
+own **check-in**, its own **materials** and its own **notes**. A one-day session is a session with
+one day: there is no second code path and no second concept.
+**Acceptance:**
+- Every day has `org_id`, RLS and a full policy set, and appears in the generated isolation sweep
+  (`REQ-NFR-001`) — invariant 5, no exception.
+- Each day has its own rotating code, its own attendance list and its own rate-limit stream; the
+  check-in window and the `ends_at + 2h` ceiling (`REQ-CHK-016`) are **per day**.
+- One **حجز** covers every day: a member registers for the workshop, not for Tuesday.
+- One rating, one discussion, one certificate, one poster — those belong to the session.
+- A member's calendar gains one entry **per day**, and reminders fire per day.
+- ★ This is **not** the recurring series `A14` rules out: that is N independent sessions, each with
+  its own registration and certificate. This is one session with N meetings.
+
+#### REQ-SES-016 — The scheduling form is quick for the common case and honest about the rare one
+**Serves:** owner 2026-09-16 · DEC-119 · `REQ-UIX-009`, `REQ-UIX-010`
+Scheduling a session is the form an admin fills in most, and nearly every session is one day.
+**Acceptance:**
+- **One day is the default and costs nothing**: the multi-day controls sit behind an explicit
+  «جلسة متعدّدة الأيام» affordance, and an admin who never opens it fills in the fields they fill
+  in today.
+- **The end follows the duration**: entering a 60-minute duration puts the end 60 minutes after the
+  start and keeps it there as the start moves. An **explicitly edited end wins** and stops
+  following (`OQ-001` — the duration pre-fills and is never authoritative).
+- **Each added day defaults to the previous day's time and place**, both editable per day. Adding a
+  third evening to a workshop that meets 6–8 p.m. in the same room is one tap.
+- **Validation is immediate and at the field**: a day ending before it starts, two days overlapping,
+  a deadline after the first day begins — each said on blur, next to the control, never only on
+  submit.
+- The form is filled without scrolling back to check what was entered above.
+
+#### REQ-SES-017 — Points and certificates require attending every day, by default
+**Serves:** owner 2026-09-16 · DEC-119
+Attendance points and the certificate are awarded **once for the session**, and by default **only
+when the member attended every one of its days**. It is a per-session setting an admin may relax,
+sitting beside `certificate_mode` where that judgement already lives.
+**Acceptance:**
+- ★ **For a multi-day session the award is evaluated at session completion, not at check-in.**
+  `REQ-CHK-009` makes the verified check-in the sole *trigger* for attendance; the full day set is
+  not known until the session ends, so the award is computed then. A one-day session is unchanged,
+  because attending every day is attending the one.
+- The idempotency key is per member **per session**, so re-running the job cannot double-pay
+  (`REQ-PTS-011`'s ledger is append-only and must stay recomputable).
+- Partial attendance earns nothing by default, and the member can see why: their points history
+  says which day they missed rather than showing an absence.
+- A certificate is never issued for partial attendance while the default stands — a printed
+  artefact asserting attendance is a statement the org has to be able to defend.
+
 #### REQ-RSV-001 — A member reserves a seat
 **Serves:** D18
 A member can reserve a seat on any **published** session in their مؤسسة, before **آخر موعد

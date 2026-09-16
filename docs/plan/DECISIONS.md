@@ -2132,6 +2132,38 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-119 — A session can span several days, and a day is an entity: its own check-in, its own files, its own notes
+
+- **Date:** 2026-09-16 · **Decided by:** owner («nearly all the workshops are one day only, and the current form doesn't allow scheduling a multi-day session where each has its check-in and files and notes … the default assumes a one-day session unless the user explicitly clicked on multi-day settings»)
+- ★★ **This is not a form change.** «Each has its check-in and files and notes» gives a day **identity, lifecycle and its own access surface**, which is exactly the test `DEC-089` used to refuse an entity for objectives and which a session day passes. `02-domain-model.md` is **frozen**, so the entity is defined under this entry.
+- **The entity.** **`ENT-session_days`** — `org_id`, `session_id`, `position` (1…n), `starts_at`, `ends_at`, `venue_id` **or** the inline custom-venue trio, and `notes`. `org_id` on it, RLS enabled, a full policy set and a generated-sweep row: **invariant 5, no exception requested.** A one-day session is a session with **one** day — there is no second code path, and that is what keeps the common case from paying for the rare one.
+- **What moves to the day**, because attendance and content are per meeting:
+  - **`check_in_codes`**, **`check_ins`**, **`check_in_attempts`** — each day has its own rotating code, its own attendance list and its own rate-limit stream. `check_ins.session_window` is derived from **the day's** window.
+  - **`materials`** — a file belongs to the day it is for. A session-level file is a file on day 1, not a second concept.
+  - **`notes`** — a `text` column on the day, authored by the presenter or staff. ★ **The owner has not defined who reads these**; see the open questions.
+  - **`calendar_events`** — one per day, so a three-day workshop puts three entries in a member's calendar. **`MSG-reminder_*`** fire per day (`08` §5's reminders «move, they do not duplicate» rule applies per day).
+- **What stays on the session**, because they are about the *thing*, not the *meeting*: `rsvps` (**one registration covers every day** — a member signs up for the workshop, not for Tuesday), `certificates`, `ratings`, `comments`, `reactions`, `photos`, `bookmarks`, `session_tags`, `session_presenters`, `session_posters`, `session_tasks`.
+- ★ **This is NOT the recurring series `A14` rules out, and the distinction must survive this entry.** A recurring series is **N independent sessions** on a schedule, each with its own registration, its own certificate and its own identity. A multi-day workshop is **ONE session with N meetings**: one registration, one certificate, one rating, one discussion. `A14` stands untouched — nothing here schedules anything automatically or repeats a session into the future.
+- **The form, which is what the owner actually asked to be fixed** (`REQ-SES-016`):
+  1. **One day is the default and costs nothing.** The multi-day controls are behind an explicit «جلسة متعدّدة الأيام» affordance; a user who never touches it fills in exactly the fields they fill in today.
+  2. **End time follows duration.** Entering a 60-minute duration sets the end 60 minutes after the start, live, as the start moves. `OQ-001` already says the duration pre-fills and is never authoritative — **an explicitly edited end wins** and stops following.
+  3. **Each added day defaults to the previous day's time and place**, and both are editable per day. Adding day 3 to a workshop that meets 6–8 p.m. in القاعة الكبرى should take one tap.
+  4. **Validation is immediate and in-place** — a day that ends before it starts, days that overlap each other, a deadline after the first day's start — each said at the field, on blur, in the form model M9 built (`REQ-UIX-009`, `REQ-UIX-010`).
+- **Consequences that must be designed, not discovered:**
+  - **`sessionPhase()` becomes a function of the day set.** A session is `live` while **any** day is running, `ended` once the **last** day has ended. The `ends_at + 2 h` check-in ceiling (`DEC-113`) is per **day**, not per session.
+  - **`0010`'s publish constraint** — `starts_at`/`ends_at`/`capacity` not null from `published` onward (`DEC-105`) — becomes "at least one day, every day complete". The session's own `starts_at`/`ends_at` become **derived** from the first and last day, kept as stored columns so every existing index, sort and query keeps working.
+  - **`REQ-CHK-013`'s "a member cannot be in two rooms at once"** now compares day windows, not session windows.
+- ★★ **POINTS AND CERTIFICATES ARE AWARDED FOR FULL ATTENDANCE, and that is a bigger change than it reads** (owner, same message: «it also affects the certificates and points, where the default is only awarding them if the employee attends all the dates»). Both are awarded **once for the session** and **only when the member attended every day** — not accrued per day. It is **the default**, so it is a per-session setting an admin can relax, and it sits beside `certificate_mode` where that decision already lives.
+  - ★ **The consequence: for a multi-day session, attendance points can no longer be awarded at check-in.** `REQ-CHK-009` makes the verified check-in the sole trigger and `JOB-award_points` fires off it — which cannot work when the award depends on days that have not happened yet. **For a multi-day session the award moves to session completion**, where the full day set is known; for a one-day session nothing changes, because attending "all days" is attending the one. The idempotency key becomes per member **per session**, not per check-in, so a re-run cannot double-pay.
+  - **Partial attendance earns nothing by default.** That is the owner's call and it is the right default for a certificate — a printed artefact saying you attended a workshop you attended a third of is a false statement. It is stated here because it is also unforgiving, and the per-session setting is the release valve.
+- **Two questions still open, with my recommendation:**
+  1. **Who reads a day's notes** — staff only, presenters, or every attendee? The word covers all three and the answer sets the policy. *No recommendation: the three readings produce three different features.*
+  2. **Capacity — per session, or per day?** *Recommend per session*: one registration, one seat count. Per-day capacity implies per-day RSVP, which contradicts one registration covering the workshop.
+- **Supersedes:** `02` §4's single-window session for scheduling purposes; `REQ-SES-002`'s assumption that a session has one `starts_at`/`ends_at` pair as its source of truth.
+- **Documents changed:** `01-prd.md` (`REQ-SES-015`, `REQ-SES-016`, `REQ-SES-017`, amends `REQ-SES-002`, `REQ-CHK-002`, `REQ-CHK-009`, `REQ-CHK-013`, `REQ-MAT-001`, `REQ-PTS-012`, `REQ-CRT-001`), `02-domain-model.md` §4 (the entity and four FK moves, under this entry), `03-permissions-rls.md` (its policy set and the sweep), `08-notifications-calendar.md` §5, `09-sitemap-screens.md` SCR-043 · SCR-014 · SCR-016 · SCR-044 · SCR-045, `05-scoring-engine.md`, `11-background-jobs.md`, a migration
+
+---
+
 ## Template for new entries
 
 ```markdown
