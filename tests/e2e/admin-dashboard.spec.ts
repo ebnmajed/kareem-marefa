@@ -21,6 +21,9 @@ const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
 test.describe.configure({ mode: "serial" });
+// Viewport captures with motion reduced: `globals.css` scrolls smoothly
+// otherwise, and a capture after a scroll fires mid-animation (sync 2).
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
