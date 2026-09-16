@@ -6,7 +6,7 @@
 // CSV export streams with the manual-mark flag intact.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -126,21 +126,47 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ DEC-134: `app/loading.tsx` puts every `/app` page inside a Suspense
+// boundary, so the status is committed before the gate runs, and a gated
+// page's `notFound()` streams 200 with `noindex` and the not-found page —
+// not a real 404 status. What the gate protects is the content, so that is
+// what is asserted: the not-found page is the only `h1`, and nothing the
+// page guards rendered (the pattern `dd03094` set for branding/exports/
+// designer/platform).
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+}
+
 test("a member cannot open the attendance report", async ({ context, page }) => {
   await signIn(context, attendeeEmail);
-  const response = await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  expect(response!.status()).toBe(404);
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
+  await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-020: a moderator reaches attendance through /admin/sessions, with no management controls anywhere on that page", async ({ context, page }) => {
   await signIn(context, modEmail);
   await page.goto("/ar/app/admin/sessions");
-  await expect(page.getByText("جلسة قيد الحضور")).toBeVisible();
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport), so a bare
+  // `getByText` strict-mode-fails by matching both copies — the idiom
+  // `admin-sessions.spec.ts` set: scope to whichever role is actually
+  // present (Chromium excludes a `display:none` subtree from the
+  // accessibility tree, so this resolves to exactly one match either way).
+  const visibleRows = page.getByRole("table").or(page.getByRole("list"));
+  await expect(visibleRows.getByText("جلسة قيد الحضور")).toBeVisible();
   // The admin-only pipeline/direct-create UI must not exist for a moderator.
   await expect(page.getByText("جاهزة للجدولة")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "أنشئ الجلسة" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "تقرير الحضور" }).click();
+  // ★ `sessions-table.tsx`'s `ModeratorSessionsTable` wraps the whole row's
+  // title cell in the link to attendance (`DataTable`'s own `rowHref`), so
+  // the link's accessible name is the session's own title, not a separate
+  // "تقرير الحضور" label — that string is only the empty-state's fallback
+  // action, never a per-row one. A stale expectation here (name: "تقرير
+  // الحضور") from before the DataTable rebuild timed out finding nothing.
+  await visibleRows.getByRole("link", { name: "جلسة قيد الحضور" }).click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/attendance$`));
   await expect(page.getByRole("heading", { name: /تقرير الحضور/ })).toBeVisible();
   // Export and per-rater ratings are admin-only, even on this shared screen.
