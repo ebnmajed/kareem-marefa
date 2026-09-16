@@ -147,11 +147,21 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member gets a real 404 on all three moderation queues", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireStaff()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status. `comments` and `photos` are wave-7 routes this track never
+// rebuilt, so their guarded heading text isn't known here — checking that
+// the not-found page's own `<h1>` is the ONLY one on the page proves no
+// guarded queue rendered alongside it, without needing each route's copy.
+test("a member gets the streamed not-found page on all three moderation queues (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["comments", "photos", "reports"]) {
-    const response = await page.goto(`/ar/app/admin/moderation/${path}`);
-    expect(response!.status(), path).toBe(404);
+    await page.goto(`/ar/app/admin/moderation/${path}`);
+    await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
+    await expect(page.locator('meta[name="robots"]'), path).toHaveAttribute("content", /noindex/);
   }
 });
 

@@ -6,7 +6,7 @@
 // reason typed by the admin actually lands in the transaction.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -88,10 +88,22 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member cannot open the members screen", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireSession()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status; the requirement is that no guarded data renders, which this
+// checks directly instead of a status code.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار" })).toHaveCount(0);
+}
+
+test("a member cannot open the members screen — the streamed not-found page, not the roster (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  const response = await page.goto("/ar/app/admin/members");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin/members");
+  await expectGatedNotFound(page);
 });
 
 // ★ Rebuilt onto `ui/data-table` for wave 6 (`16` §6.7, `DEC-130`): every row

@@ -6,7 +6,7 @@
 // their reason, and the reason the admin typed is the text the proposer reads.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -89,10 +89,22 @@ async function memberProposes(context: BrowserContext, page: import("@playwright
   return page.url().replace(/\?created=1$/, "");
 }
 
-test("a member cannot open the review queue at all", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireStaff()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status; the requirement is that no guarded queue renders, which this
+// checks directly instead of a status code.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1); // no proposal heading rendered alongside it
+}
+
+test("a member cannot open the review queue at all — the streamed not-found page (DEC-134)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  const response = await page.goto("/ar/app/admin/proposals");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin/proposals");
+  await expectGatedNotFound(page);
 });
 
 test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({ context, page }) => {
@@ -128,16 +140,30 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   const boss = await bossContext.newPage();
   await boss.goto("/ar/app/admin/proposals");
   const card = boss.locator("li", { has: boss.getByRole("heading", { name: title }) });
+  // ★ Reject's final submit is behind `ui/dialog` now (REQ-UIX-013): «أرسل»
+  // inside the reason box opens a confirmation NAMING the proposal rather
+  // than submitting directly — `rejectConfirmTitle` interpolates the title,
+  // so the dialog's own accessible name is proposal-specific.
+  const dialog = boss.getByRole("dialog", { name: `رفض «${title}»؟` });
 
-  // Sending with the box empty is refused, and the proposal does not move.
+  // Sending with the box empty is refused, and the proposal does not move —
+  // the reason still travels empty into the dialog's own submit, which the
+  // server still refuses.
   await card.getByRole("group").filter({ hasText: "ارفض المقترح" }).getByText("ارفض المقترح").click();
   await card.getByRole("button", { name: "أرسل" }).last().click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
+  // The confirm button closes the dialog on click, before the round trip
+  // resolves — the alert then lands back in the card itself, not the dialog.
+  await expect(boss.getByRole("dialog")).toHaveCount(0);
   // Scoped: Next's route announcer is also role="alert".
   await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
   expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId])).rows[0].state).toBe("submitted");
 
   await card.getByLabel("السبب الذي سيصل صاحب المقترح").last().fill(reason);
   await card.getByRole("button", { name: "أرسل" }).last().click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
   await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
   await bossContext.close();
 

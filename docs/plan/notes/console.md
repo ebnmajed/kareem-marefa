@@ -1111,4 +1111,62 @@ constraint) is exactly the class this milestone's own testing strategy predicts 
 — a real request, a real database constraint, a cross-file catalogue sweep. `npm test` green was
 never the claim that the app works; it was the claim that what jsdom CAN check, it does. Not yet
 done: the lead's next rebuild + a real look at every `.qa-shots/rtl/wave6-console-*` capture, the
+
+### 12. The lead's real e2e run — DEC-134, a same-commit unmount, and a mis-wired empty state
+
+`1f4fffe`/`1ee207a` fixed what a served build's own render found; running the actual spec suite
+against that build found a second layer — timing and copy bugs no jsdom render can see either, since
+jsdom has neither a streaming HTTP response nor React's real commit ordering.
+
+- **DEC-134 (lead's).** Every "a member/moderator/staff gets a real 404" assertion this track wrote
+  was checking the wrong thing: `app/loading.tsx` streams the response before any DAL gate runs, so
+  `notFound()` under `/app` answers 200 with `noindex` and the not-found page, never a 404 status —
+  product-wide, not something this wave's layout caused. Rewrote all five affected assertions
+  (`admin-dashboard.spec.ts` ×2, `admin-members.spec.ts`, `admin-moderation.spec.ts` — not this
+  track's file, edited on the lead's explicit direction for this one line — and
+  `sessions-admin-proposals.spec.ts`, previously granted) to check the not-found `<h1>`, the
+  `noindex` meta tag, and that no guarded heading/content renders, instead of a status code.
+  `sessions-admin-proposals.spec.ts` also got the reject-flow diff granted earlier: rejecting now
+  opens `ui/dialog` (this wave's own rebuild), and the test still drove the pre-dialog "click أرسل,
+  submit" shape.
+- **A real bug, not a test bug: `report-card.tsx`'s toast never fired.** `admin-reports.spec.ts`'s
+  confirmation-toast assertion timed out for real. Root cause: `remove`/`dismiss` both resolve the
+  report, which the SAME `revalidatePath` round trip drops from the open-reports query — the
+  refreshed list and this action's own `useActionState` result land in one commit, and React
+  discards a fiber's pending update when its parent's reconciliation removes that fiber in the same
+  commit, so the `useEffect` keyed on `state` that fired the toast never got to run for the
+  disappearing card. Fixed by firing `toast.show()` from INSIDE the action passed to
+  `useActionState`, not from an effect reacting to its result — an ordinary callback on
+  `ToastProvider`, independent of whether `ReportCard` ever renders again. `admin-sessions.spec.ts`'s
+  own toast assertion (line 121) never showed this symptom because cancelling a session does not
+  remove its row from that list — the acted-on component staying mounted is what let the effect-based
+  version work there.
+- **Two strict-mode scoping bugs, real DOM, not flakiness.** `admin-sessions.spec.ts` matched
+  `DataTable`'s desktop `<table>` AND phone `<ul>` simultaneously on a bare `getByText` — scoped via
+  `page.getByRole("table").or(page.getByRole("list"))`, which resolves to exactly one in a real
+  browser since a `display:none` subtree drops out of the accessibility tree. `admin-reports.spec.ts`
+  matched a `<dd>` AND its only child `<bdi>` for the same reason — CLAUDE.md's own bidi-isolation
+  rule means a bare interpolated value's wrapper has no sibling text, so `<dd>` and `<bdi>` share
+  identical normalised content; `.last()` for the innermost, the same trap `event-comments.spec.ts`
+  already named. `console.spec.ts`'s skip-link test assumed a fixed two-Tab position; rewrote it to
+  walk the tab sequence (bounded, 8 presses) instead of pinning a count that belongs to the shell, not
+  this layout.
+- **Two real UX bugs from the lead's own look at `scr-042-sessions-390-rtl-desktop.png`.**
+  `sessions-table.tsx`'s empty state showed "لا جلسات مطابقة لبحثك." (no search matches) even with an
+  untouched search box, AND its action button was labelled with `scheduleNote` — a full sentence
+  written as `direct-session-form.tsx`'s own inline hint, not a button label — rendering a paragraph
+  inside a primary `ButtonLink`. Fixed: the title now branches on `query`, and a new short key
+  (`listEmptyAction`, "افتح المقترحات") replaced the misused one. Added jsdom coverage for both states
+  (`sessions-table.test.tsx`) since neither had it before — the reuse of an existing key across two
+  unrelated purposes is exactly the kind of thing a "does this string exist" check misses.
+- **The skip link in `scr-046-venues-390-rtl-phone.png` — investigated, not a bug.** That capture (an
+  UNTOUCHED route, `sessions-screens.spec.ts`, not this file) shows the admin layout's second skip
+  link overlapping the venues form's "السعة" field. Checked: the markup is byte-identical in class and
+  structure to the shell's own working skip link (`.skip-link`, `globals.css`, lead-owned, unchanged
+  this wave) — `translateY(-200%)` unfocused, `translateY(0)` on `:focus-visible` — and the test's own
+  flow never focuses or tabs to either skip link before that capture (its last action is `.fill()`ing
+  the capacity field). Most likely a `fullPage: true` + `position: fixed` screenshot-stitching
+  artifact (a known Playwright/Chromium quirk on a long, scrollable page), not a genuine hide failure.
+  Cannot confirm further without a fresh capture — reported to the lead rather than guessed at, since
+  `globals.css` and that spec file are both outside this track's edit list either way.
 actual `DEC-130` bar.

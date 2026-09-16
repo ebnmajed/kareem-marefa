@@ -7,7 +7,7 @@
 // member and a moderator both get a real 404 on this admin-only screen.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -171,16 +171,28 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member gets a real 404 on the admin console", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
+// boundary, so the response has begun streaming — status committed — before
+// `requireSession()`'s gate runs. A gated page's `notFound()` therefore
+// answers 200 with `noindex` and the not-found page, never a real 404
+// status; the requirement is that no guarded data renders, which this
+// checks directly instead of a status code.
+async function expectGatedNotFound(page: Page) {
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { name: "لوحة المؤسسة" })).toHaveCount(0);
+}
+
+test("a member gets the streamed not-found page on the admin console, not the dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, mem2Email);
-  const response = await page.goto("/ar/app/admin");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin");
+  await expectGatedNotFound(page);
 });
 
-test("REQ-ADM-020: a moderator gets a real 404 on the (admin-only) dashboard", async ({ context, page }) => {
+test("REQ-ADM-020: a moderator gets the streamed not-found page on the (admin-only) dashboard (DEC-134)", async ({ context, page }) => {
   await signIn(context, modEmail);
-  const response = await page.goto("/ar/app/admin");
-  expect(response!.status()).toBe(404);
+  await page.goto("/ar/app/admin");
+  await expectGatedNotFound(page);
 });
 
 test("REQ-ADM-004: every figure is correct and the built ones click through", async ({ context, page }) => {

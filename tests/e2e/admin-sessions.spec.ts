@@ -82,7 +82,14 @@ test("the page header, the status badge and the search box all render for real d
   await signIn(context);
   await page.goto("/ar/app/admin/sessions");
   await expect(page.getByRole("heading", { name: "الجلسات", level: 1 })).toBeVisible();
-  await expect(page.getByText("التسجيل مفتوح")).toBeVisible(); // published + future starts_at → the shared "open" badge, not a raw "published" string
+  // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
+  // list in the DOM at once (CSS hides one per viewport), so a bare
+  // `getByText` strict-mode-fails by matching both copies. Chromium excludes
+  // a `display:none` subtree from the accessibility tree, so scoping to
+  // whichever of the two roles is actually present resolves to exactly one
+  // match on either project.
+  const visibleRows = page.getByRole("table").or(page.getByRole("list"));
+  await expect(visibleRows.getByText("التسجيل مفتوح")).toBeVisible(); // published + future starts_at → the shared "open" badge, not a raw "published" string
 
   await page.getByRole("searchbox", { name: "ابحث في الجلسات" }).fill("لا يوجد شيء بهذا الاسم");
   await expect(page.getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();

@@ -109,7 +109,12 @@ test("the page header and the report card render for a real open photo report", 
   await signIn(context);
   await page.goto("/ar/app/admin/moderation/reports");
   await expect(page.getByRole("heading", { name: "الصور المُبلَّغ عنها", level: 1 })).toBeVisible();
-  await expect(page.getByText("جلسة صور البلاغات")).toBeVisible();
+  // `page.tsx`'s `<dd><bdi>{sessionTitle}</bdi></dd>` — bidi-isolating every
+  // interpolated value (CLAUDE.md's own rule) wraps it in a `<bdi>` with no
+  // sibling text, so the `<dd>` and the `<bdi>` share the exact same
+  // normalised text content and `getByText` matches both. `.last()` for the
+  // innermost, same nesting trap `event-comments.spec.ts` already documents.
+  await expect(page.getByText("جلسة صور البلاغات").last()).toBeVisible();
   await expect(page.getByText("محتوى غير لائق")).toBeVisible();
 });
 
