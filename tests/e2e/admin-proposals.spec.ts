@@ -91,7 +91,16 @@ test("the page header carries the title and intro, and the queue count reads cor
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
   await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
-  await expect(page.getByText("مقترح واحد بانتظار المراجعة")).toBeVisible();
+  // ★ Two separate strings, not one combined sentence: the queue count under
+  // the intro is a plain number ("admin.proposals.count", every ICU form),
+  // deliberately not "N awaiting review" — the queue mixes submitted and
+  // in_review proposals, and only the per-card line ("state.submitted" ·
+  // "age") names a specific proposal's own state. This test's old combined
+  // string never existed after the wave-6 rebuild; checking both separately
+  // is what the page actually renders.
+  await expect(page.getByText("مقترح واحد")).toBeVisible();
+  const card = page.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
+  await expect(card.getByText("بانتظار المراجعة", { exact: false })).toBeVisible();
 });
 
 test("★ rejecting confirms in a dialog naming the proposal — cancel changes nothing, confirm submits", async ({ context, page }) => {

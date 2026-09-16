@@ -173,7 +173,12 @@ test("a member gets the streamed not-found page on all three moderation queues (
     await goto(page, `/ar/app/admin/moderation/${path}`);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
-    await expect(page.locator('meta[name="robots"]'), path).toHaveAttribute("content", /noindex/);
+    // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout
+    // meta ("noindex, nofollow") plus the not-found boundary's own injected
+    // tag both match `meta[name="robots"]`, three elements in a real build —
+    // the content-based attribute selector plus `.first()` finds ANY of them
+    // carrying `noindex`, which is all DEC-134 actually asks for.
+    await expect(page.locator('meta[name="robots"][content*="noindex"]').first(), path).toBeAttached();
   }
 });
 

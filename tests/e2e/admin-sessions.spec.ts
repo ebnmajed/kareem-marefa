@@ -103,7 +103,11 @@ test("the page header, the status badge and the search box all render for real d
   const visibleRows = page.getByRole("table").or(page.getByRole("list"));
   await expect(visibleRows.getByText("التسجيل مفتوح")).toBeVisible(); // published + future starts_at → the shared "open" badge, not a raw "published" string
 
-  await page.getByRole("searchbox", { name: "ابحث في الجلسات" }).fill("لا يوجد شيء بهذا الاسم");
+  // ★ Scoped to `#main`, by a label distinct from the shell's own search
+  // field: both used to read «ابحث في الجلسات», a real a11y defect (two
+  // identically-named searchboxes on one page) as well as a spec one — this
+  // route's own field now reads «ابحث في جلسات المؤسسة».
+  await page.locator("#main").getByRole("searchbox", { name: "ابحث في جلسات المؤسسة" }).fill("لا يوجد شيء بهذا الاسم");
   await expect(page.getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();
 });
 

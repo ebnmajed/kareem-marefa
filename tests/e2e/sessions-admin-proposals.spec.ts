@@ -109,7 +109,12 @@ async function memberProposes(context: BrowserContext, page: Page, title: string
 // checks directly instead of a status code.
 async function expectGatedNotFound(page: Page) {
   await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout meta
+  // ("noindex, nofollow") plus the not-found boundary's own injected tag
+  // both match `meta[name="robots"]`, three elements in a real build — the
+  // content-based attribute selector plus `.first()` finds ANY of them
+  // carrying `noindex`, which is all DEC-134 actually asks for.
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1); // no proposal heading rendered alongside it
 }
 
