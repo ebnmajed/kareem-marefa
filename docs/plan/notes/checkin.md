@@ -958,3 +958,34 @@ guarded to fire only on the phone project — they'll come out of the lead's nex
 session's stale one.
 
 Gate: `tsc` clean, `lint` 0 errors, `npm test` 1435/1435.
+
+## C1–C6 closed — the record across syncs 5, 6 and the final gates
+
+The stale-build lesson (above) held for the rest of the wave: nothing was run against local e2e
+after it was learned, only `tsc`/`lint`/component tests, `node scripts/ui-lint.mjs`, and
+`npx playwright test … --list` to sanity-check a spec's own structure without executing it. Every
+finding below came back from the lead's own sync builds, never from a run of mine.
+
+- **`399c35f`** — sync 5's `ui-lint` gate: `Field` wrapping `Select`/`Textarea` in
+  `remove-check-in-form.tsx`; `ui/checkbox`'s own `Checkbox` (NOT wrapped in `Field` — its header is
+  explicit that would double the label) for the schedule form's walk-in field. The primitive's
+  documented contract won over the lead's own wording, confirmed right afterward.
+- **`4fd7b6e`** — the member's name legitimately appearing twice once C3 added it as a `<select>`
+  option too; scoped to `getByRole("cell", …)`.
+- **`043c03f`** — both specs' captures onto `E2E_SHOTS_DIR` (`wave7-content-me.spec.ts`'s own helper
+  shape); the one stale PNG this session's own local run had produced, deleted.
+- **`d79a8a9`** — C6's capture never existed anywhere: a new, minimal spec
+  (`checkin-schedule-walk-ins.spec.ts`) asserting the checkbox renders CHECKED for a session with
+  `allow_walk_ins` already true — the actual regression guard for the whole `343991d` arc, not merely
+  a screenshot.
+- **`a2baf05`** — `checkin.spec.ts`'s code-entry hydration race (`sessions`' own `1e626cc` for the
+  identical shape), applied at all three fill-then-submit sites in the file, not only the one cited.
+- **`4d1fbea`** — sync 6: `memberLabel`/`removeMemberLabel` were never really distinct once
+  Playwright's substring matching is accounted for — fixed for real this time (a genuine a11y
+  improvement, not only a test workaround), plus the same hydration-duplication class on
+  `"رمز الحضور"`, plus C1's two captures (`check_in_open` toggled straight through the database —
+  the host-UI round trip is the switch test's own, right above it).
+
+Final gates at `70bfb21`: every case in both specs passed on both projects, C1 and C3 closed
+alongside C2/C4/C5/C6 (already closed by sync 6). **All six rows (C1–C6) are closed.** Nothing
+queued; standing by for the PR.
