@@ -54,7 +54,7 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
       <PageHeader title={t("metrics.title")} description={t("metrics.intro")} />
 
       <section aria-labelledby="alerts" className="mt-10">
-        <SectionHeader as="h2" id="alerts" title={t("metrics.alertsTitle")} description={t("metrics.alertsIntro")} count={alerts ? fired : undefined} />
+        <SectionHeader as="h2" id="alerts" title={t("metrics.alertsTitle")} description={t("metrics.alertsIntro")} count={fired > 0 ? fired : undefined} />
         <div className="mt-4">
           {alerts === null ? (
             <Panel tone="error">

@@ -26,6 +26,23 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 // `E2E_SHOTS_DIR` lets a run in the lead's verification worktree land its
 // captures in the main checkout, where STATUS cites them (DEC-137, DEC-147).
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+
+/**
+ * ★ Every text or label locator on an `/app` page is scoped to `#main`, and every
+ * one that can match a `ui/data-table` cell also filters to the VISIBLE copy.
+ * Two different duplicates, both found on real builds (sync 2, sync 3):
+ *
+ * 1. DEC-145's orphaned streamed segment — React's `$RC` swap can leave a hidden
+ *    copy of the page under `body > div#S:…`, OUTSIDE `#main`. Scoping to `#main`
+ *    never sees it. Role locators skip it anyway (it is hidden); text locators do not.
+ * 2. `ui/data-table` renders a table AND a phone card list and hides one with CSS
+ *    per breakpoint, so a cell's text is in `#main` twice. `visible: true` picks
+ *    the one the project shows.
+ *
+ * Inputs are found by role and their own accessible name: a label locator also
+ * matches a section or a table named by the same words (sync 3's five-way match).
+ */
+const main = (page: Page) => page.locator("#main");
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
 const PASSWORD = "correct-horse-battery-staple-9";
@@ -218,8 +235,8 @@ async function orgClaim(context: BrowserContext): Promise<string | null | undefi
 /** Start a session from SCR-085's form, as an operator would. */
 async function startFromForm(page: Page, orgId: string, reason: string) {
   await page.goto("/ar/app/platform/impersonate");
-  await page.getByLabel(/المؤسسة/).selectOption(orgId);
-  await page.getByLabel(/^السبب/).fill(reason);
+  await main(page).getByRole("combobox", { name: /^المؤسسة/ }).selectOption(orgId);
+  await main(page).getByRole("textbox", { name: /^السبب/ }).fill(reason);
   await page.getByRole("radio", { name: "30 دقيقة" }).check();
   await page.getByRole("button", { name: /ابدأ الجلسة/ }).click();
   await expect(page.getByRole("region", { name: /جلسة مفتوحة/ })).toBeVisible();
@@ -322,11 +339,11 @@ test("★ REQ-ADM-002: a super admin walks the whole console and sees no member,
 
   // Not vacuous: the console DOES show what it manages.
   await page.goto("/ar/app/platform/orgs");
-  await expect(page.getByText(a.name).first()).toBeVisible();
-  await expect(page.getByText(b.name).first()).toBeVisible();
+  await expect(main(page).getByText(a.name).filter({ visible: true }).first()).toBeVisible();
+  await expect(main(page).getByText(b.name).filter({ visible: true }).first()).toBeVisible();
   await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
-  await expect(page.getByText(a.domain).first()).toBeVisible();
-  await expect(page.getByText(a.adminEmail).first()).toBeVisible();
+  await expect(main(page).getByText(a.domain).filter({ visible: true }).first()).toBeVisible();
+  await expect(main(page).getByText(a.adminEmail).filter({ visible: true }).first()).toBeVisible();
 });
 
 test("★ REQ-ADM-002: the org's own screens are closed to a super admin, and so are its APIs", async ({ context, page }) => {
@@ -384,16 +401,16 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
   const domain = `made-${tag}.example`;
 
   await page.goto("/ar/app/platform/orgs/new");
-  await page.getByLabel(/اسم المؤسسة/).fill(name);
-  await page.getByLabel(/المعرّف في الروابط/).fill(slug);
-  await page.getByLabel(/بادئة الشهادات/).fill("MDE");
-  await page.getByLabel(/النطاقات المسموح بها/).fill(domain);
-  await page.getByLabel(/بريد أول مشرف/).fill(`boss@${domain}`);
+  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(name);
+  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill(slug);
+  await main(page).getByRole("textbox", { name: /^بادئة الشهادات/ }).fill("MDE");
+  await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill(domain);
+  await main(page).getByRole("textbox", { name: /^بريد أول مشرف/ }).fill(`boss@${domain}`);
   await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
 
   // SCR-081 lands on SCR-082 for the org it just made.
   await page.waitForURL(/\/app\/platform\/orgs\/[0-9a-f-]+\/domains/);
-  await expect(page.getByText(domain).first()).toBeVisible();
+  await expect(main(page).getByText(domain).filter({ visible: true }).first()).toBeVisible();
 
   const { rows } = await db.query<{ id: string }>(`select id from public.orgs where slug = $1`, [slug]);
   expect(rows).toHaveLength(1);
@@ -434,7 +451,7 @@ test("★ REQ-TEN-006 · REQ-UIX-013: suspension confirms by name, refuses an em
   const { rows: still } = await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id]);
   expect(still[0].status, "an empty reason suspends nothing").toBe("active");
 
-  await dialog.getByLabel(/سبب الإيقاف/).fill("مراجعة مؤقتة لحساب المؤسسة");
+  await dialog.getByRole("textbox", { name: /^سبب الإيقاف/ }).fill("مراجعة مؤقتة لحساب المؤسسة");
   await dialog.getByRole("button", { name: /^أوقف/ }).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(async () => (await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id])).rows[0].status).toBe("suspended");
@@ -459,13 +476,13 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   await orgAct(page, { name }, "حذف المؤسسة");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(name);
-  await dialog.getByLabel(/معرّف المؤسسة/).fill(`${slug}-typo`);
+  await dialog.getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill(`${slug}-typo`);
   await dialog.getByRole("button", { name: /احذف نهائيًا/ }).click();
   await expect(dialog.getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
   const { rows: untouched } = await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [rows[0].id]);
   expect(untouched[0].status, "a mismatched slug deletes nothing and suspends nothing").toBe("active");
 
-  await dialog.getByLabel(/معرّف المؤسسة/).fill(slug);
+  await dialog.getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill(slug);
   await dialog.getByRole("button", { name: /احذف نهائيًا/ }).click();
   await expect(dialog).toHaveCount(0);
   await expect
@@ -476,17 +493,17 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
 test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/orgs/new");
-  await page.getByLabel(/اسم المؤسسة/).fill(`مؤسسة لم تُنشأ ${tag}`);
-  await page.getByLabel(/المعرّف في الروابط/).fill("Bad Slug");
-  await page.getByLabel(/النطاقات المسموح بها/).fill("Example.COM");
+  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(`مؤسسة لم تُنشأ ${tag}`);
+  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
+  await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill("Example.COM");
   await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
 
   const summary = page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("link")).toHaveCount(3); // slug, prefix, first admin
-  await expect(page.getByLabel(/المعرّف في الروابط/)).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByLabel(/اسم المؤسسة/)).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
-  await expect(page.getByLabel(/النطاقات المسموح بها/)).toHaveValue("Example.COM");
+  await expect(main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ })).toHaveAttribute("aria-invalid", "true");
+  await expect(main(page).getByRole("textbox", { name: /^اسم المؤسسة/ })).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
+  await expect(main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ })).toHaveValue("Example.COM");
   expect(new URL(page.url()).pathname).toBe("/ar/app/platform/orgs/new");
 });
 
@@ -495,16 +512,16 @@ test("★ REQ-TEN-007 (contract 4) · REQ-TEN-002 (F3): SCR-082 takes any case a
   await page.goto(`/ar/app/platform/orgs/${b.id}/domains`);
 
   const mixed = `Mixed-${tag}.Example`;
-  await page.getByLabel(/^النطاق/).fill(mixed);
+  await main(page).getByRole("textbox", { name: /^النطاق/ }).fill(mixed);
   await page.getByRole("button", { name: /أضف النطاق/ }).click();
   const storedDomain = mixed.toLowerCase();
-  await expect(page.getByText(storedDomain, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(mixed, { exact: true })).toHaveCount(0);
+  await expect(main(page).getByText(storedDomain, { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main(page).getByText(mixed, { exact: true })).toHaveCount(0);
   const { rows } = await db.query<{ domain: string }>(`select domain::text from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain]);
   expect(rows.map((r) => r.domain)).toEqual([storedDomain]);
 
   // F3 — measured refused before wave 8: a mixed-case address is saved, lowercase.
-  await page.getByLabel(/^بريد أول مشرف/).fill(`Boss@${mixed}`);
+  await main(page).getByRole("textbox", { name: /^بريد أول مشرف/ }).fill(`Boss@${mixed}`);
   await page.getByRole("button", { name: /^احفظ/ }).click();
   await expect
     .poll(async () => (await db.query<{ e: string }>(`select first_admin_email::text as e from public.orgs where id = $1`, [b.id])).rows[0].e)
@@ -547,7 +564,7 @@ test("★ REQ-DSG-026 · DEC-148: SCR-083 lists the baseline as rows of a compos
   await expect(posters).not.toContainText("عمودي");
   if (!phone) await expect(posters.getByRole("columnheader", { name: "الشكل" })).toHaveCount(0);
   // The baseline is badged as such, and no document or preview is on the page.
-  await expect(page.getByText("أساسي").first()).toBeVisible();
+  await expect(main(page).getByText("أساسي").filter({ visible: true }).first()).toBeVisible();
   await expect(page.locator("main img, main canvas")).toHaveCount(0);
 });
 
@@ -570,7 +587,7 @@ test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, w
   // the banner carries the same control (wave 8 — there is one stop control).
   await page.goto("/ar/app/platform/impersonate");
   await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
-  await expect(page.getByText(/ابدأ الجلسة/)).toBeVisible();
+  await expect(main(page).getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
 });
 
 test("REQ-ADM-001 · REQ-UIX-017: the console's home renders, and the rail follows a client-side navigation", async ({ context, page }) => {
@@ -581,19 +598,29 @@ test("REQ-ADM-001 · REQ-UIX-017: the console's home renders, and the rail follo
   expect(new URL(page.url()).pathname).toBe("/ar/app/platform");
   await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
   const rail = page.getByRole("navigation", { name: "لوحة المنصة" }).filter({ has: page.getByRole("link", { name: "المؤسسات" }) });
-  await expect(rail.getByRole("link", { name: "نظرة عامة" })).toHaveAttribute("aria-current", "page");
+  await expect(rail.getByRole("link", { name: "لوحة المنصة" })).toHaveAttribute("aria-current", "page");
 
   // ★ The layout does not re-render on this navigation; the rail must still move.
   await rail.getByRole("link", { name: "المؤسسات" }).click();
   await page.waitForURL(/\/ar\/app\/platform\/orgs$/);
   await expect(rail.getByRole("link", { name: "المؤسسات" })).toHaveAttribute("aria-current", "page");
-  await expect(rail.getByRole("link", { name: "نظرة عامة" })).not.toHaveAttribute("aria-current");
+  await expect(rail.getByRole("link", { name: "لوحة المنصة" })).not.toHaveAttribute("aria-current");
 
   // The second skip link lands past the rail.
   await page.goto("/ar/app/platform");
-  await page.locator('a[href="#platform-content"]').focus();
+  await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
+  // ★ Sync 2 found TWO identical skip links. The layout renders one, so the
+  // question was where the second lives — asserted here rather than assumed:
+  // exactly one inside `#main`, and any other copy inside a hidden ancestor
+  // outside it, which is DEC-145's orphaned streamed segment, not a double render.
+  const copies = await page
+    .locator('a[href="#platform-content"]')
+    .evaluateAll((els) => els.map((el) => ({ inMain: el.closest("#main") !== null, hidden: el.closest("[hidden]") !== null })));
+  expect(copies.filter((c) => c.inMain), "the layout renders exactly one skip link").toHaveLength(1);
+  expect(copies.filter((c) => !c.inMain).every((c) => c.hidden), "any other copy is the hidden orphaned segment").toBe(true);
+  await main(page).locator('a[href="#platform-content"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#platform-content")).toBeFocused();
+  await expect(main(page).locator("#platform-content")).toBeFocused();
 });
 
 test("REQ-ADM-002: a session cannot be silently extended — four hours is the ceiling", async ({ context, page }) => {
@@ -640,6 +667,11 @@ test("★ REQ-ADM-002 (C1): an org route lands on /no-access WITH the banner, an
   await expect(banner).toContainText(b.name);
   await expect(banner).toContainText(/تنتهي عند/);
   for (const secret of secrets(b)) await expect(page.locator("body")).not.toContainText(secret);
+  // L1 (the lead's b8d511d): a platform admin with no org is offered the console
+  // first here — not «sign in with another account», which during break-glass
+  // would sign the operator out.
+  await expect(page.getByRole("heading", { level: 1, name: "هذا الحساب لا ينتمي إلى مؤسسة" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "لوحة المنصة" })).toBeVisible();
 
   await banner.getByRole("button", { name: /أنهِ الجلسة/ }).click();
   await expect(banner).toHaveCount(0);
@@ -674,21 +706,21 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform");
     await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
     await review(page, "wave8-platform-home-default");
-    await page.getByRole("button", { name: "أقسام لوحة المنصة: نظرة عامة" }).click();
+    await page.getByRole("button", { name: "أقسام لوحة المنصة: لوحة المنصة" }).click();
     await expect(page.getByRole("menu")).toBeVisible();
     await review(page, "wave8-platform-shell-nav-open");
     await page.keyboard.press("Escape");
 
     // P2 — the stacked card list, a suspension confirm open, a refused deletion.
     await page.goto("/ar/app/platform/orgs");
-    await expect(page.getByText(a.name).first()).toBeVisible();
+    await expect(main(page).getByText(a.name).filter({ visible: true }).first()).toBeVisible();
     await review(page, "wave8-platform-orgs-cards");
     await orgAct(page, a, "إيقاف المؤسسة");
     await expect(page.getByRole("dialog")).toBeVisible();
     await review(page, "wave8-platform-orgs-suspend-confirm");
     await page.keyboard.press("Escape");
     await orgAct(page, a, "حذف المؤسسة");
-    await page.getByRole("dialog").getByLabel(/معرّف المؤسسة/).fill("not-the-slug");
+    await page.getByRole("dialog").getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill("not-the-slug");
     await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
     await expect(page.getByRole("dialog").getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
     await review(page, "wave8-platform-orgs-delete-mismatch");
@@ -696,8 +728,8 @@ test.describe("390 px RTL review", () => {
 
     // P3 — a new org with field errors, the summary focused, the values kept.
     await page.goto("/ar/app/platform/orgs/new");
-    await page.getByLabel(/اسم المؤسسة/).fill("مؤسسة التصوير");
-    await page.getByLabel(/المعرّف في الروابط/).fill("Bad Slug");
+    await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill("مؤسسة التصوير");
+    await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
     await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
     await expect(page.getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
     await review(page, "wave8-platform-orgs-new-field-error");
@@ -705,9 +737,9 @@ test.describe("390 px RTL review", () => {
     // P4 — a mixed-case domain saved, listed as stored (contract 4).
     await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
     const shotDomain = `Shot-${tag}.Example`;
-    await page.getByLabel(/^النطاق/).fill(shotDomain);
+    await main(page).getByRole("textbox", { name: /^النطاق/ }).fill(shotDomain);
     await page.getByRole("button", { name: /أضف النطاق/ }).click();
-    await expect(page.getByText(shotDomain.toLowerCase(), { exact: true }).first()).toBeVisible();
+    await expect(main(page).getByText(shotDomain.toLowerCase(), { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await review(page, "wave8-platform-domains-mixed-case-saved");
 
     // P5 — the library with the baseline.
@@ -745,7 +777,8 @@ test.describe("390 px RTL review", () => {
       [b.id, platformUserId],
     );
     await page.goto("/ar/app/platform/impersonate");
-    await expect(page.getByText(/تلقائيًا عند/)).toBeVisible();
+    // Scoped to `#main`: sync 2 found a second copy of this line outside it (DEC-145).
+    await expect(main(page).getByText(/تلقائيًا عند/)).toBeVisible();
     await review(page, "wave8-platform-impersonate-expired");
   });
 });

@@ -3,7 +3,7 @@
     "shell": {
       "brand": "Platform console",
       "nav": {
-        "home": "Overview",
+        "home": "Platform console",
         "orgs": "Orgs",
         "templates": "Template library",
         "metrics": "Metrics",

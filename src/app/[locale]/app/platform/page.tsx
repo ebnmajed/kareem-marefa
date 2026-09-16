@@ -58,7 +58,9 @@ export default async function PlatformHomePage({ params }: { params: Promise<{ l
       />
 
       <section aria-labelledby="attention" className="mt-10">
-        <SectionHeader as="h2" id="attention" title={t("home.attentionTitle")} count={alerts ? fired.length : undefined} />
+        {/* A count beside the heading only when something is firing: a bare «0»
+            next to «لا شيء يحتاج انتباهك» says the same thing twice (sync 2). */}
+        <SectionHeader as="h2" id="attention" title={t("home.attentionTitle")} count={fired.length > 0 ? fired.length : undefined} />
         {alerts === null ? (
           <Panel tone="error" className="mt-4">
             <p className="flex items-start gap-2 text-body text-fg-heading">

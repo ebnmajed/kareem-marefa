@@ -68,11 +68,17 @@ export function PlatformNav() {
 
   return (
     <>
-      {/* Phone: the brand and the section switcher. */}
+      {/* Phone: the brand and the section switcher. On the home page the
+          section IS «لوحة المنصة», so the brand is not said twice in one bar;
+          the switcher sits at the inline end either way. */}
       <nav aria-label={brand} className="flex items-center justify-between gap-3 border-b border-edge pb-3 md:hidden">
-        <p className="min-w-0 text-label text-fg-muted">
-          <bdi>{brand}</bdi>
-        </p>
+        {current === "home" ? (
+          <span aria-hidden />
+        ) : (
+          <p className="min-w-0 text-label text-fg-muted">
+            <bdi>{brand}</bdi>
+          </p>
+        )}
         <Menu
           align="end"
           trigger={

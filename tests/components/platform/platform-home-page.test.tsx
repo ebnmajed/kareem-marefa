@@ -78,6 +78,8 @@ describe("PlatformHomePage", () => {
   it("all clear is a quiet line with a way to the metrics, and the four numbers link to their screens", async () => {
     await renderPage([quiet("queue_stalled", { oldest_pending_seconds: 0, threshold_seconds: 300 })]);
     expect(screen.getByText(/لا شيء يحتاج انتباهك الآن/)).toBeInTheDocument();
+    // No bare «0» beside the heading when nothing fires (sync 2).
+    expect(screen.getByRole("heading", { level: 2, name: /يحتاج انتباهك/ })).toHaveTextContent(/^يحتاج انتباهك$/);
     const numbers = screen.getByRole("region", { name: "المنصة بالأرقام" });
     expect(within(numbers).getByRole("link", { name: /الأعضاء النشطون/ })).toHaveTextContent("1,100");
     expect(within(numbers).getByRole("link", { name: /المؤسسات النشطة/ })).toHaveAttribute("href", expect.stringContaining("/app/platform/orgs"));

@@ -52,7 +52,7 @@ describe("PlatformNav", () => {
     const rails = screen.getAllByRole("navigation", { name: "لوحة المنصة" });
     const rail = rails.find((n) => within(n).queryAllByRole("link").length > 0)!;
     const links = within(rail).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["نظرة عامة", "المؤسسات", "مكتبة القوالب", "المؤشرات", "الدخول الاستثنائي"]);
+    expect(links.map((l) => l.textContent)).toEqual(["لوحة المنصة", "المؤسسات", "مكتبة القوالب", "المؤشرات", "الدخول الاستثنائي"]);
     expect(within(rail).getByRole("link", { name: "المؤسسات" })).toHaveAttribute("aria-current", "page");
     expect(links.filter((l) => l.getAttribute("aria-current") === "page")).toHaveLength(1);
     // ★ Never a horizontal scroller (DEC-147): an item scrolled out of view at
@@ -74,7 +74,7 @@ describe("PlatformNav", () => {
         </Direction.Provider>
       </NextIntlClientProvider>,
     );
-    expect(within(rail()).getByRole("link", { name: "نظرة عامة" })).toHaveAttribute("aria-current", "page");
+    expect(within(rail()).getByRole("link", { name: "لوحة المنصة" })).toHaveAttribute("aria-current", "page");
     expect(within(rail()).getByRole("link", { name: "المؤشرات" })).not.toHaveAttribute("aria-current");
   });
 
@@ -99,7 +99,7 @@ describe("PlatformNav", () => {
   it("has no axe violations, closed or with the switcher open", async () => {
     const { container } = renderNav("/ar/app/platform");
     expect((await axe.run(container, { rules: RULES })).violations).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: "أقسام لوحة المنصة: نظرة عامة" }));
+    await userEvent.click(screen.getByRole("button", { name: "أقسام لوحة المنصة: لوحة المنصة" }));
     // The open menu is portalled to `body`, outside any landmark, which `region`
     // (moderate) reports for every Radix menu in the product; it is the
     // wrapper's portal, not this list.
