@@ -199,6 +199,59 @@ function layer(v: unknown, index: number, seen: Set<string>, is: Issues): Layer 
   return v as unknown as Layer
 }
 
+/** A gradient needs two stops to be one (CSS refuses `linear-gradient()`
+ *  with fewer), and eight is already more than any composition here uses. */
+const MAX_GRADIENT_STOPS = 8
+
+/**
+ * A solid fill or a gradient — DEC-127.
+ *
+ * ★ This is the door the worker and the autosave Route Handler both go
+ * through, so it had to learn the gradient BEFORE any gradient document
+ * existed: while it said «a background is solid», every poster seeded with
+ * DEC-127's background would have been refused by `regenerate_poster` and
+ * no automatic poster would have rendered at all.
+ *
+ * `angle` is the RTL source composition's, 0…360; the renderer alone mirrors
+ * it for an LTR document, so nothing here ever sees a mirrored angle. A
+ * stop's `at` is a fraction of the gradient line, 0…1 — the same unit as
+ * `image.focal` — and positions may not run backwards.
+ */
+function background(bg: unknown, is: Issues): void {
+  if (!isObj(bg)) return is.add('background', 'background', 'a background is {type: "solid", color} or {type: "gradient", angle, stops}')
+
+  if (bg.type === 'solid') {
+    if (!isStr(bg.color) || bg.color.trim() === '') is.add('background.color', 'background_color', 'a solid background needs a colour')
+    return
+  }
+
+  if (bg.type !== 'gradient') {
+    return is.add('background.type', 'background_type', 'a background is solid or gradient')
+  }
+  if (!isNum(bg.angle) || bg.angle < 0 || bg.angle > 360) {
+    is.add('background.angle', 'gradient_angle', 'a gradient angle is between 0 and 360 degrees')
+  }
+  if (!Array.isArray(bg.stops) || bg.stops.length < 2 || bg.stops.length > MAX_GRADIENT_STOPS) {
+    return is.add('background.stops', 'gradient_stops', `a gradient has between 2 and ${MAX_GRADIENT_STOPS} stops`)
+  }
+  let previous = -Infinity
+  bg.stops.forEach((stop, i) => {
+    const path = `background.stops[${i}]`
+    if (!isObj(stop) || !isStr(stop.color) || stop.color.trim() === '') {
+      return is.add(`${path}.color`, 'gradient_stop_color', 'every gradient stop needs a colour')
+    }
+    if (stop.at !== undefined) {
+      if (!isNum(stop.at) || stop.at < 0 || stop.at > 1) {
+        return is.add(`${path}.at`, 'gradient_stop_at', 'a stop position is a fraction between 0 and 1')
+      }
+      if (stop.at < previous) {
+        return is.add(`${path}.at`, 'gradient_stop_order', 'stop positions may not run backwards')
+      }
+      previous = stop.at
+    }
+  })
+}
+
 export function validateDocument(input: unknown): ValidationResult {
   const is = new Issues()
   if (!isObj(input)) {
@@ -229,12 +282,7 @@ export function validateDocument(input: unknown): ValidationResult {
     is.add('master.unit', 'master_unit', 'the only unit is px — presets are declared in pixels (06 §5)')
   }
 
-  if (input.background !== undefined) {
-    const bg = input.background
-    if (!isObj(bg) || bg.type !== 'solid' || !isStr(bg.color)) {
-      is.add('background', 'background', 'a background is {type: "solid", color}')
-    }
-  }
+  if (input.background !== undefined) background(input.background, is)
 
   if (!Array.isArray(input.layers)) {
     is.add('layers', 'layers_missing', 'a document needs a layers array')
