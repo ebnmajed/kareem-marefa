@@ -96,10 +96,14 @@ describe("UploadWidget", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("requires a file before submitting", async () => {
-    vi.stubGlobal("fetch", vi.fn());
+  it("★ the submit button is disabled with nothing to submit — the lead's live-build finding: an enabled dark primary over an empty drop zone reads as dead", () => {
     renderWidget();
-    fireEvent.click(screen.getByRole("button", { name: ar.photos.upload.action }));
-    expect(screen.getByText(ar.photos.upload.fileRequired)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: ar.photos.upload.action })).toBeDisabled();
+  });
+
+  it("enables the submit button once a file is picked", () => {
+    renderWidget();
+    pickFile(makeFile("photo.jpg", "image/jpeg"));
+    expect(screen.getByRole("button", { name: ar.photos.upload.action })).toBeEnabled();
   });
 });

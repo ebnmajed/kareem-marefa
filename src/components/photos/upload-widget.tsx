@@ -131,7 +131,10 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
           <p className="text-body-sm text-fg-heading">{error}</p>
         </Panel>
       ) : null}
-      <Button type="button" onClick={handleSubmit} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
+      {/* ★ the lead's live-build review: an enabled dark primary under an
+          empty drop zone reads as a dead button — disabled until there is
+          something to submit, not just while busy. */}
+      <Button type="button" onClick={handleSubmit} disabled={files.length === 0} pending={busy} pendingLabel={t("uploading")} size="sm" className="self-start">
         {t("action")}
       </Button>
     </div>

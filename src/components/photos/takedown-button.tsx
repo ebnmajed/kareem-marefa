@@ -27,6 +27,7 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
+  const [open, setOpen] = useState(false);
 
   function run() {
     startTransition(async () => {
@@ -57,8 +58,13 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
     );
   }
 
+  // ★ The dialog is CONTROLLED, and the confirm button is a plain button,
+  // not `DialogClose asChild` — the lead's real-build e2e run timed out on
+  // this exact shape (DialogClose wrapping an onClick that starts a
+  // transition). See `comment-item.tsx`'s `DeleteConfirm`, the identical
+  // fix for the identical shape.
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="h-9 self-start px-3 text-error hover:bg-error-bg">
           {t("requestHide")}
@@ -66,11 +72,17 @@ export function TakedownButton({ locale, sessionId, photoId, mode }: TakedownBut
       </DialogTrigger>
       <DialogContent title={t("requestHideConfirmTitle")} description={t("requestHideConfirm")} closeLabel={t("cancel")}>
         <div className="flex gap-2">
-          <DialogClose asChild>
-            <Button type="button" variant="danger" onClick={run} className="h-10 px-5">
-              {t("requestHide")}
-            </Button>
-          </DialogClose>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => {
+              setOpen(false);
+              run();
+            }}
+            className="h-10 px-5"
+          >
+            {t("requestHide")}
+          </Button>
           <DialogClose asChild>
             <Button type="button" variant="secondary" className="h-10 px-5">
               {t("cancel")}
