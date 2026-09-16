@@ -295,7 +295,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NTF-005` | — | — | `SCR-026` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-003` | M3 |
 | `REQ-NTF-006` | `ENT-notifications` | — | `SCR-026` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
 | `REQ-NTF-007` | `ENT-notification_templates` | `POL-notification_templates.required_fields` | `SCR-043` `SCR-045` `SCR-058` +3 | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
-| `REQ-NTF-008` | `ENT-email_deliveries` | — | `SCR-058` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
+| `REQ-NTF-008` | `ENT-email_deliveries` | — | `SCR-058` `SCR-085` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
 | `REQ-NTF-009` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
 | `REQ-NTF-010` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
 | `REQ-NTF-011` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |

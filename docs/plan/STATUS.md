@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-8/screens` (draft PR #25) · **`main`:** **LAUNCHED 2026-09-15; wave 7 merged 2026-09-16** (PR #24, `4f19cd6`; `0082`–`0091` live on production) · **Phase:** ★★ **WAVE 8 — Step 0 landed.** Task one: `e7d0657` (Next 16.3.5; the patch and `patch-package` retired; reserve probe 16/16 twice against a 7/16 control — `DEC-146`, `DEC-147`); then the wave-8 map, all ten agent files and the checklist below. **Next: spawn `designer`, `console`, `platform`, `branding`, planning first.** ★ **Server Action IDs rotate when this wave deploys — the owner deploys outside a scheduled session.** The wave-8 block is directly under START HERE.
+**Last updated:** 2026-09-17 · **Branch:** `wave-8/screens` (draft PR #25) · **`main`:** **LAUNCHED 2026-09-15; wave 7 merged 2026-09-16** (PR #24, `4f19cd6`; `0082`–`0091` live on production) · **Phase:** ★★ **WAVE 8 — building.** Task one `e7d0657` (Next 16.3.5, reserve probe 16/16 twice vs a 7/16 control); Step 0 `e3df1d3`; **sync 1 done** (`DEC-148`: four plans approved, contract 3 ruled — a baseline row is a composition, 11 rows, 22 variants); `0092`/`0093` promoted `e5d5b56` (RLS 74 files, 803 passed); **L2 closed** (SCR-043, captures from `d18cc9a`). `designer`, `console`, `platform`, `branding` building. ★ **Server Action IDs rotate when this wave deploys — the owner deploys outside a scheduled session.** ★ **`0092`–`0093` (and whatever else this wave promotes) need the owner's rehearsal against a production schema dump before merge.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -122,12 +122,12 @@ passed, 7 failed, 11 did not run** — every failure green alone or explained in
 | # | Owner | Route / work | Serves | (1) `--wave8` | (2) capture — path · spec · build | State |
 |---|---|---|---|---|---|---|
 | L1 | lead | **task one** — Next 16.3.5, the patch retired | `DEC-146` | — | the probe above | **closed** `e7d0657` |
-| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `016`, `REQ-PRO-009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (incidental: `ui/date-time`) | `wave8-lead-schedule-*.png` · `wave8-lead-schedule.spec.ts` · build to name | **open** — planned (below); the walk-in parameter stays `default null` = unchanged (`DEC-141`) |
-| L3 | lead | ★ `org_domains`' check converged across environments — a migration, **rehearsed against a production schema dump** | invariant 3, `REQ-TEN-*`, `DEC-147` | — | — | **open** — ★ **corrected diagnosis** (`DEC-147`): the normalise trigger lowercases before the check, so no member is refused today; the drift is real and is fixed as a convergence. **Needs the owner's schema dump** |
+| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `016`, `REQ-PRO-009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (`ui/field`, `ui/date-time`, `ui/select`, `ui/switch`, `ui/radio-group`, `ui/page-header`, `ui/panel`) | `wave8-lead-schedule-from-proposal.png` · `-field-error.png` · `-ready.png` · `-published-edit.png` · `wave8-lead-schedule.spec.ts` · `d18cc9a` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: the duration «45» from the proposal with «من المقترح: 45 دقيقة»; the content panel below the form with «من يُعدّ تقارير دورية»; «لا يمكن النشر بعد — ينقص: …» on one line and «انشر الجلسة» disabled; the end as «تنتهي الجلسة 7:00 م»; an explicit end at 17:00 refused at once with «نهاية الجلسة بعد بدايتها.»; «القاعة الكبرى · 40 مقعدًا» and the capacity following at 40; «قبل البدء بيوم» with «يُغلق الإلغاء الجمعة، 9 أكتوبر 2026 في 6:00 م»; after one press «التسجيل مفتوح» and «احفظ التعديلات» with the edited note; the stored row `published`, 60 minutes, capacity 40, walk-ins off. **Found by looking and fixed before closing:** two four-row radio lists made the phone form ~270 CSS px longer (`d18cc9a`). Full-page captures paint the sticky action bar, the header and the skip link mid-page — the known artefact. `sessions-screens` and `checkin-schedule-walk-ins` (custodian) green on the same build |
+| L3 | lead | ★ `org_domains`' check converged across environments — a migration, **rehearsed against a production schema dump** | invariant 3, `REQ-TEN-*`, `DEC-147` | — | — | **promoted** `e5d5b56` as `0092` (`CHK-org_domains.domain_lowercase_everywhere`, 3 RLS cases) — ★ **corrected diagnosis** (`DEC-147`): the normalise trigger lowercases before the check, so no member was refused; the drift is fixed as a convergence. **Rehearsal against the owner's production schema dump still to run** (with every other migration this wave promotes) |
 | L4 | lead | the worker's startup line says «polling every 60 s»; it is 15 s (`DEC-057`) | `REQ-NFR-016` | — | — | **closed** `41f8807` — one constant feeds the setting and the line |
 | L5 | lead | `REQ-EVT-010` reconciled with the pipeline | `DEC-139` | — | — | **closed** — already amended in wave 7 (`01-prd.md`, «Photos publish without moderation, the moment their metadata is stripped»); `0091` carries the no-reload clause |
 | L6 | lead | ★ **the parity goldens move** — every before and after reviewed by eye, then committed | `REQ-DSG-015`, `DEC-127` | — | the harness's diff images | **open** — after D6 |
-| L7 | lead | promotion — `designer`'s roster seed, `branding`'s brand-kit columns, anything proposed — with `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | invariants 3, 5, 6 | — | — | **open** |
+| L7 | lead | promotion — `designer`'s roster seed, `branding`'s brand-kit columns, anything proposed — with `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | invariants 3, 5, 6 | — | — | **in progress** — `0093` (`branding`'s canvasRaise) promoted `e5d5b56`, its three functions diffed live before and after (only the token added); the RLS fixture's brand-kit rows gained the pair (the first run failed 737 cases on that fixture alone). Next: `platform`'s `platform_alerts()`, `designer`'s guard, seed and certificate designs |
 | D1 | `designer` | `/app/admin/designer/[documentId]` — mobile view and approve | SCR-057 · `REQ-DSG-005`, `010`, `022`, `DEC-093`, `DEC-096` | · | `wave8-designer-editor-*.png` | **open** |
 | D2 | `designer` | `/app/admin/templates/posters` | SCR-055 · `REQ-ADM-013`, `REQ-DSG-004`, `007`, `008`, `024`, `026` | · | `wave8-designer-templates-posters-*.png` | **open** |
 | D3 | `designer` | `/app/admin/templates/certificates` | SCR-056 · same | · | `wave8-designer-templates-certificates-*.png` | **open** |
@@ -148,13 +148,45 @@ passed, 7 failed, 11 did not run** — every failure green alone or explained in
 | P5 | `platform` | `/app/platform/templates` — the platform library, with `DEC-128`'s roster | SCR-083 · `REQ-DSG-008`, `026` | · | `wave8-platform-templates-*.png` | **open** |
 | P6 | `platform` | `/app/platform/metrics` — aggregate only | SCR-084 · `REQ-ADM-003` | · | `wave8-platform-metrics-*.png` | **open** |
 | P7 | `platform` | `/app/platform/impersonate` — and the banner on an org screen | SCR-085 · `REQ-ADM-002`, `019`, `DEC-014` | · | `wave8-platform-impersonate-*.png` | **open** |
-| B0 | `branding` | ★ **contract 1, as types** — the `background` union and `canvasRaise` | `DEC-127` | — | — | **open** — day one; unblocks `designer` |
-| B1 | `branding` | ★ the gradient rendered and collected — **both silent traps red first** — and the LTR mirror `360 − angle` in the renderer | `REQ-DSG-021`, `DEC-127` | — | — | **open** |
-| B2 | `branding` | `canvasRaise` in the brand kit — columns, `brand_kit()`, `save_brand_kit()`, `getBrandKit()`, the schema | `REQ-DSG-021`, `REQ-ADM-015` | — | — | **open** |
+| B0 | `branding` | ★ **contract 1, as types** — the `background` union and `canvasRaise` | `DEC-127` | — | — | **closed** `391150e`, with `6b3ac7f` (`getBrandKit()` fills a missing token — without it every `/app` page would have failed once the runtime rebuilt, `DEC-148` finding 4) |
+| B1 | `branding` | ★ the gradient rendered and collected — **both silent traps red first** — and the LTR mirror `360 − angle` in the renderer | `REQ-DSG-021`, `DEC-127` | — | — | **landed** `6879ab5` (7 of 9 red first; `backgroundCss()` exported) and `0d76a17` (the `'light'` default removed) — the pixel proof is `designer`'s D6 background block |
+| B2 | `branding` | `canvasRaise` in the brand kit — columns, `brand_kit()`, `save_brand_kit()`, `getBrandKit()`, the schema | `REQ-DSG-021`, `REQ-ADM-015` | — | — | **closed** `f30944e`, promoted as `0093` at `e5d5b56` |
 | B3 | `branding` | `/app/admin/branding` — the preview carries a gradient surface | SCR-059 · `REQ-ADM-015`, `REQ-DSG-019`, `021` | · | `wave8-branding-*.png` | **open** |
 
 ★ Every capture path above is the **prefix** the row will cite in full; a row closes on the exact file names, the
 spec and the build.
+
+### Sync 1 — 2026-09-17 — four plans approved, contract 3 ruled (`DEC-148`)
+
+All four planned before building: `branding` `574f556`, `designer` `85deba7`, `console` `61cecd4`, `platform`
+`943f0d2`. Each was read in full and answered with rulings; the record is `DEC-148`. **What the plans found
+that the brief did not know:**
+
+- ★ **A dark poster voids the blank-capture guard** — every pixel of `#111a2c → #1d2a42` counts as ink, so a
+  poster whose text never painted would ship (`designer`; ink now measured against the page's own background,
+  before any `'dark'` call site).
+- ★ **`getBrandKit()` would have taken down every `/app` page** the moment the runtime rebuilt with
+  `canvasRaise` — the layout reads the kit for every member (`branding`'s contract 1 plus the lead; `6b3ac7f`).
+- ★ **A break-glass stop from SCR-085's own page left org access on the token for up to 900 s**, and a start may
+  never have refreshed it (`platform`'s F1/F2 — fixed in the submit path, proven on the decoded token).
+- ★ **Four admin lists had no row actions on a phone** — `members`, `venues`, `categories`, `companies` — live in
+  production since waves 6 and 7 (`console`'s F1, fixed `6df9dfb`).
+- **The portrait certificate `derive()`d from the landscape master is not a composition** — a 157 mm empty
+  band on every portrait certificate issued so far; contract 3 makes it a row.
+- `validate.ts` refused a gradient; `0055`'s guard never walked gradient stops; `set_first_admin()` refused a
+  mixed-case address; the «أكثر …» cards were never actually fixed in wave 7; `/app/platform` was a bare redirect
+  no `ui-reach` could count; «من حضر وقيّم» in `Certificate.dc.html` would disclose who rated.
+
+**Contract changes the lead made:** `CardMediaProps.aspect` gains `297/210`/`210/297` and `children`;
+`DateTimeProps.label` (`df01876`). **The lead's requests landed by `console`:** the picker's `onValueChange`,
+controlled value and `Field` wiring (`18672c8`), `admin.schedule` deleted (`1554d75`). **`platform`'s F6 in the
+lead's file:** `/no-access` offers a platform admin «لوحة المنصة» (`b8d511d`).
+
+**Carried for the owner, from sync 1:** ★ **a live `REQ-NTF-007` weakness** — an email template's required
+fields are admin-editable, so a template can be saved without `{{title}}` (`console`; `notify`/M12's email
+studio); **`REQ-NTF-008`'s bounce and delivery states are never written** — no webhook route exists (`notify`);
+after deploy, **a scoped `regenerate_poster` enqueue for live posters of upcoming sessions** (a data fix,
+`DEC-023`), which `designer` hands over with its seed.
 
 ### L2 — the lead's plan for SCR-043, written before any code
 
@@ -208,7 +240,7 @@ a new `tests/e2e/wave8-lead-schedule.spec.ts`; `checkin-schedule-walk-ins.spec.t
 
 | Owner | Finding | From |
 |---|---|---|
-| `console` | the populated photo-report card on `moderation/reports` has e2e coverage and no 390 px capture — take it when `moderation/**` is next touched | wave 6 row 14, wave 7 |
+| ~~`console`~~ | ~~the populated photo-report card has no 390 px capture~~ **closed**: `wave7-console-moderation-reports-populated-390-rtl-phone.png` (`admin-moderation.spec:237`, taken 2026-09-16 23:47) opened by the lead at sync 1 — the card, the reason, «تجاهل البلاغ» and «أزل» (the tab bar over the action row is the full-page artefact). It showed a real defect, routed: the moderation tab strip clips «بلاغات الصور»'s count at 390 with no scroll cue | wave 6 row 14, wave 7 |
 | `console` | `console.spec`'s untouched-route capture at Pixel 7's 412 px; the dashboard's «أكثر …» cards — **closed or not, stated in its plan** | wave 6 |
 | `designer` | a member re-added after a removal gets no new attendance certificate (`fan_out_certificates()` fires only into `completed`) — **this wave or not, stated in its plan** | wave 7, sync 1 |
 | `designer` · `console` · `platform` | `noValidate` on the eleven forms wave 7 found with a native `required` — every one is in this wave's routes except `me/privacy` (deliberate) | wave 7, sync 5 |
