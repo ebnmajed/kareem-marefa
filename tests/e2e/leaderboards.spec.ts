@@ -107,13 +107,14 @@ test("a member sees the all-time board, and both metrics on the company race", a
   // build one directly (what worker/src/tasks/snapshot_leaderboards.ts
   // would do on its own schedule).
   await db.query(`select public.snapshot_leaderboard($1, 'company', null, null, null, false)`, [orgId]);
-  await page.goto("/ar/app/leaderboards");
+  // Wave 7 (DEC-141 ruling 6): the company race is its own linked tab.
+  await page.goto("/ar/app/leaderboards?board=companies");
   const companySection = page.locator("#company");
-  // Scoped to the row itself: "نقاط لكل عضو نشط" also appears, correctly,
-  // in the section's "ranked by" summary line above the list — REQ-LDR-004
-  // means the label legitimately shows up twice on this screen.
+  // Scoped to the row itself: both metric labels appear on every row, and the
+  // ranking one carries «الترتيب حسبه» (REQ-LDR-004, REQ-LDR-005).
   const companyRow = companySection.locator("li", { hasText: companyName });
   await expect(companyRow).toBeVisible();
   await expect(companyRow.getByText("مجموع النقاط")).toBeVisible();
   await expect(companyRow.getByText("نقاط لكل عضو نشط")).toBeVisible();
+  await expect(companyRow.getByText("الترتيب حسبه")).toHaveCount(1);
 });

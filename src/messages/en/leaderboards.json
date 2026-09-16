@@ -20,7 +20,9 @@
       "rankedBy": "Ranked by <bdi>{metric}</bdi>",
       "asOf": "Computed against the active member count at the time — it does not change later",
       "provisional": "Provisional — refreshed nightly until the month closes",
-      "final": "Final"
+      "final": "Final",
+      "rankedMetric": "Ranked by this",
+      "takenAt": "Calculated on {date}"
     },
     "companyBreakdown": {
       "heading": "How your company earned its points",
@@ -42,7 +44,15 @@
       "meta": {
         "attended": "<bdi>{attended}</bdi> of <bdi>{active}</bdi> active members attended (<bdi>{percent}</bdi>%)",
         "presenting": "<bdi>{presenting}</bdi> of <bdi>{active}</bdi> active members presented (<bdi>{percent}</bdi>%)"
-      }
+      },
+      "balanceLabel": "Your company's balance from the company rules"
+    },
+    "description": "Who leads your organisation this month and since the start, and how the companies compare.",
+    "emptyAction": "Browse sessions",
+    "selfHeading": "Your rank",
+    "rankValue": "Rank {value}",
+    "allTime": {
+      "live": "Updates live with every point"
     }
   }
 }

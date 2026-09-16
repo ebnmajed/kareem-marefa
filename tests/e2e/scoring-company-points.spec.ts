@@ -145,7 +145,8 @@ test("the company board's breakdown shows the company ledger's points, explained
 
   await context.clearCookies();
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  // Wave 7 (DEC-141 ruling 6): the breakdown lives under the company race's tab.
+  await page.goto("/ar/app/leaderboards?board=companies");
 
   const breakdown = page.locator("#company-breakdown");
   await expect(breakdown.getByRole("heading", { name: "كيف حصلت شركتك على نقاطها" })).toBeVisible();

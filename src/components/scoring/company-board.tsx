@@ -1,56 +1,67 @@
 import { getTranslations } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { CompanyBoardRow } from "@/lib/dal/leaderboards";
 
-// SCR-028 · سباق الشركات. Both metrics are always shown (REQ-LDR-004) — a
-// company with a small, high-scoring roster and a company with a large,
-// modest one are both visible on their own terms, and the metric the org
-// ranks by is named rather than assumed. The active-member count behind
-// points-per-active-member is frozen at snapshot time (05 §6.2); the
-// screen says so rather than implying a live number.
-export async function CompanyBoard({
-  rows,
-  metric,
-}: {
-  rows: CompanyBoardRow[];
-  metric: "total_points" | "points_per_active_member";
-}) {
+// SCR-028 · سباق الشركات, on the M9 system for wave 7 (`sessions`' this wave).
+//
+// ★ BOTH METRICS, ALWAYS, AND THE RANKING ONE MARKED (REQ-LDR-004, REQ-LDR-005).
+// A company with a small, high-scoring roster and a company with a large,
+// modest one are both visible on their own terms. The metric the org ranks by
+// comes first in every row and carries «الترتيب حسبه»; the other follows,
+// quieter. The active-member count behind «نقاط لكل عضو نشط» is frozen at
+// snapshot time (`05` §6.2), and the screen says so under the list.
+
+export async function CompanyBoard({ rows, metric }: { rows: CompanyBoardRow[]; metric: "total_points" | "points_per_active_member" }) {
   const t = await getTranslations("leaderboards");
 
   if (rows.length === 0) {
-    return <p className="mt-4 rounded-field border border-edge p-4 text-body text-fg-muted">{t("empty")}</p>;
+    return <EmptyState size="sm" title={t("empty")} action={{ label: t("emptyAction"), href: "/app/sessions" }} />;
   }
 
-  const metricLabel = metric === "points_per_active_member" ? t("company.perActiveMember") : t("company.totalPoints");
+  const perMember = (v: number | null) => (v != null ? formatNumber(Math.round(v * 100) / 100) : "—");
+  const metrics = (row: CompanyBoardRow) => {
+    const total = { key: "total", label: t("company.totalPoints"), value: formatNumber(row.totalPoints) };
+    const per = { key: "per", label: t("company.perActiveMember"), value: perMember(row.pointsPerActiveMember) };
+    return metric === "points_per_active_member" ? [per, total] : [total, per];
+  };
 
   return (
-    <>
-      <p className="mt-2 text-body-sm text-fg-muted">{t.rich("company.rankedBy", { metric: metricLabel, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
-      <ol className="mt-4 space-y-2">
+    <div className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-2">
         {rows.map((row) => (
-          <li key={row.companyId} className="rounded-field border border-edge p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-label text-fg-muted">
-                  <bdi>{formatNumber(row.rank)}</bdi>
-                </span>
-                <span className="text-body text-fg-heading">
-                  <bdi>{row.companyName}</bdi>
-                </span>
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-body-sm text-fg-muted">
-              <span>
-                {t("company.totalPoints")}: <bdi>{formatNumber(row.totalPoints)}</bdi>
+          <li key={row.companyId} className="rounded-card border border-edge bg-surface px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="w-9 shrink-0 text-center text-label text-fg-muted">
+                <span className="sr-only">{t("rankValue", { value: formatNumber(row.rank) })}</span>
+                <span aria-hidden>{formatNumber(row.rank)}</span>
               </span>
-              <span>
-                {t("company.perActiveMember")}: <bdi>{row.pointsPerActiveMember != null ? formatNumber(Math.round(row.pointsPerActiveMember * 100) / 100) : "—"}</bdi>
+              <span className="min-w-0 flex-1 text-body text-fg-heading">
+                <bdi>{row.companyName}</bdi>
               </span>
             </div>
+            <dl className="mt-2 grid grid-cols-2 gap-3 ps-12">
+              {metrics(row).map((m, i) => (
+                <div key={m.key}>
+                  <dt className="flex flex-wrap items-center gap-1.5 text-caption text-fg-muted">
+                    {m.label}
+                    {i === 0 ? (
+                      <Badge tone="info" size="sm">
+                        {t("company.rankedMetric")}
+                      </Badge>
+                    ) : null}
+                  </dt>
+                  <dd className={i === 0 ? "mt-0.5 text-label text-fg-heading" : "mt-0.5 text-body-sm text-fg-body"}>
+                    <bdi>{m.value}</bdi>
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </li>
         ))}
-      </ol>
-      <p className="mt-3 text-body-sm text-fg-muted">{t("company.asOf")}</p>
-    </>
+      </ul>
+      <p className="text-body-sm text-fg-muted">{t("company.asOf")}</p>
+    </div>
   );
 }

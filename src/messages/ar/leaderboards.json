@@ -20,7 +20,9 @@
       "rankedBy": "الترتيب حسب <bdi>{metric}</bdi>",
       "asOf": "محسوبة بعدد الأعضاء النشطين وقت الحساب — لا يتغيّر لاحقًا",
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
-      "final": "نهائية"
+      "final": "نهائية",
+      "rankedMetric": "الترتيب حسبه",
+      "takenAt": "احتُسبت في {date}"
     },
     "companyBreakdown": {
       "heading": "كيف حصلت شركتك على نقاطها",
@@ -42,7 +44,15 @@
       "meta": {
         "attended": "<bdi>{attended}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين حضروا (<bdi>{percent}</bdi>٪)",
         "presenting": "<bdi>{presenting}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين قدّموا (<bdi>{percent}</bdi>٪)"
-      }
+      },
+      "balanceLabel": "رصيد شركتك من قواعد الشركات"
+    },
+    "description": "من يتصدّر مؤسستك هذا الشهر ومنذ البداية، وكيف تتسابق الشركات.",
+    "emptyAction": "تصفّح الجلسات",
+    "selfHeading": "ترتيبك",
+    "rankValue": "المرتبة {value}",
+    "allTime": {
+      "live": "تُحدَّث مباشرة مع كل نقطة"
     }
   }
 }
