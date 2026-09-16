@@ -2191,10 +2191,39 @@ extended `rtl-datetime-picker`, `tabs`, `admin-dashboard-page`; RLS `admin-recog
 `npm run test:rls` 74 files / 805 green after K1; unit + components 181 files / 1682 green before K6's last fix.
 
 **Open, and whose:**
-- **R-D1 (`designer`):** `releaseAchievements` still returns nothing, so a refusal inside it cannot be shown;
-  the held-achievements table reports a thrown error only.
+- ~~**R-D1 (`designer`):** `releaseAchievements` returns nothing~~ **closed** — `designer` shipped the result
+  (`246cfbf`); the table reads it (`bc17ae5`): the toast counts what was released, a refusal keeps the selection.
 - **`REQ-NTF-007` (`notify`, M12):** the default template text is not shown and the required fields are the
   admin's to declare — said on the screen, per the lead's Q2 ruling.
 - **`REQ-NTF-008` (`notify`):** nothing writes `bounced`/`delivered` (no webhook) — said on the log.
 - **Recognition edits are unaudited** (badges, levels, perks, streaks write no history or audit row) —
   flagged, not built.
+
+### Sync-2 fixes (2026-09-17)
+
+| Finding | Commit | Spec | Captures to regenerate |
+|---|---|---|---|
+| reminders:123 strict mode (summary link and field error share the text) | `bc17ae5` | `wave8-console-reminders` (reads each error through its control's description; asserts the units survive) | `reminders-field-error` |
+| scoring:121 — **a product defect**: the «يظهر للعضو» caption repeated the name on 12 of 14 seeded rules | `344a921` | `wave8-console-scoring` | `scoring-catalogue`, `scoring-penalties` |
+| K4 — the award refusal reset the badge select, and did not name the badge | `bc17ae5` | `wave8-console-recognition` (the option still checked; the badge named at the field and in the summary) | `recognition-award-already-held` |
+| K2 — «UTF-8 مع BOM» in the description; «آخر تصدير» wrapping on the card | `deafa87`, `9bc3673` | `admin-exports` | `exports-audit-note` |
+| K1 — the raw action key on every audit card: **dropped** | `9bc3673` | `admin-audit` | `audit-filtered-admin`, `audit-filtered-moderator` |
+| `0099`'s two audit actions unlabelled (`admin-audit-labels` red on `fa93a98`) | `deafa87` | — | — |
+| the rail's `current` went stale after a client-side navigation (`platform`) | `0594594` | `console`, `admin-*` (aria-current unchanged on load) | — |
+
+**The select reset is a class, not the award's bug.** React resets a `<form action>` after every submission;
+a reset restores each control's *default*; React keeps that default in step for inputs, textareas and
+uncontrolled checkboxes/radios, and never for a `<select>` or a controlled radio/checkbox. `KeptSelect`
+(`components/admin/kept-select.tsx`) marks the option on show as the default; every action form `console`
+holds uses it — including the member role select, where a *successful* role change snapped back on screen.
+
+**Requests to the lead:**
+1. **`ui/select` (`sessions`', lead custodian):** mark the shown option as the default on change and after
+   render, as `KeptSelect` does, so every form gets it (the propose form, the schedule form); `console`
+   deletes the wrapper when it lands. `tests/components/admin/kept-select.test.tsx` has the red-first cases.
+2. **The lead's schedule form** has `<Switch checked={walkIns}>` — a controlled checkbox, which a reset puts
+   back to the value it mounted with while the state says otherwise. `ui/switch` and `ui/radio-group` in
+   controlled mode have the same gap (their `defaultChecked` is set at mount only).
+3. **`ui/index.ts`:** `MenuItem.current?: boolean` (`platform`'s addition). `console` then renders
+   `aria-current="page"` and the marker in `ui/menu`, and passes it from the collapsed rail's group flyout.
+
