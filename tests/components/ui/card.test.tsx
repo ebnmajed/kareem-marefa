@@ -249,3 +249,23 @@ describe("MEDIA_TINTS — every class resolves to a real design token", () => {
     }
   });
 });
+
+describe("CardMedia — wave 8 additions (designer's W8.h, the lead as custodian)", () => {
+  it("renders children in place of the image or placeholder, with the A4 aspects", async () => {
+    const { CardMedia } = await import("@/components/ui/card");
+    const { render } = await import("@testing-library/react");
+    const { container } = render(
+      <CardMedia placeholderFrom="شهادة حضور" aspect="210/297" dimmed overlay={<span>افتراضي</span>}>
+        <div data-testid="live-render">render</div>
+      </CardMedia>,
+    );
+    const media = container.querySelector('[data-slot="media"]')!;
+    expect(media.className).toContain("aspect-[210/297]");
+    expect(media.querySelector("img")).toBeNull();
+    // The wash wraps the live render; the overlay sits outside it.
+    const live = media.querySelector('[data-testid="live-render"]')!;
+    expect(live.parentElement!.className).toContain("grayscale");
+    expect(media.textContent).toContain("افتراضي");
+    expect(media.querySelector("bdi")).toBeNull();
+  });
+});

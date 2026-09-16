@@ -77,6 +77,8 @@ const ASPECT: Record<NonNullable<CardMediaProps["aspect"]>, string> = {
   "4/5": "aspect-[4/5]",
   "16/9": "aspect-[16/9]",
   "1/1": "aspect-square",
+  "297/210": "aspect-[297/210]",
+  "210/297": "aspect-[210/297]",
 };
 
 // Six navy/silver tints, same register as `avatar.tsx` — but hashed from the
@@ -141,7 +143,7 @@ function placeholderGlyph(title: string): string {
  * box: when `src` is absent it renders a generated typographic placeholder
  * built from `placeholderFrom` (`16` §6.4).
  */
-export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, aspect = "4/5", overlay, priority, dimmed, className = "" }: CardMediaProps) {
+export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, aspect = "4/5", overlay, priority, dimmed, children, className = "" }: CardMediaProps) {
   // ★ `dimmed` (R-C1, `sessions`' request, DEC-123 item 1): the grayscale/
   // opacity wash goes on the IMAGE OR PLACEHOLDER ONLY, never on `overlay` —
   // the canvas's own defect was nesting the status badge INSIDE the dimmed
@@ -151,7 +153,11 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
   const wash = dimmed ? "grayscale opacity-45" : "";
   return (
     <div data-slot="media" className={`relative shrink-0 overflow-hidden bg-navy-900 ${ASPECT[aspect]} ${className}`}>
-      {src ? (
+      {children ? (
+        // A live render in place of an image (wave 8, `designer`'s template cards) — the wash
+        // wraps it exactly as it wraps an image, and `overlay` stays outside it.
+        <div className={`h-full w-full ${wash}`}>{children}</div>
+      ) : src ? (
         // Not `next/image`: `16` §6.4's media is a signed URL from a private
         // bucket (`03` §6) exactly like `posters/session-poster.tsx`, so
         // there is nothing to optimise and no stable remote pattern to
