@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronIcon } from "@/components/ui/icons";
-import { formatNumber, type NumeralSystem } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-043's carried-over item (DEC-045, console.md): a native
 // `datetime-local` renders its calendar and placeholder in the BROWSER's
@@ -29,7 +29,6 @@ export interface RtlDateTimePickerProps {
   required?: boolean;
   /** "YYYY-MM-DDTHH:mm", or "" for unset. */
   defaultValue: string;
-  numerals: NumeralSystem;
   locale: string;
   clearLabel: string;
   todayLabel: string;
@@ -37,6 +36,10 @@ export interface RtlDateTimePickerProps {
   hourLabel: string;
   minuteLabel: string;
   emptyLabel: string;
+  /** The month-navigation buttons carry only a chevron, so their name is
+   *  this label (WCAG 4.1.2) — M9's axe assertion found them unnamed. */
+  prevMonthLabel: string;
+  nextMonthLabel: string;
 }
 
 function pad(n: number): string {
@@ -60,7 +63,6 @@ export function RtlDateTimePicker({
   hint,
   required,
   defaultValue,
-  numerals,
   locale,
   clearLabel,
   todayLabel,
@@ -68,6 +70,8 @@ export function RtlDateTimePicker({
   hourLabel,
   minuteLabel,
   emptyLabel,
+  prevMonthLabel,
+  nextMonthLabel,
 }: RtlDateTimePickerProps) {
   const parsed = parse(defaultValue);
   const now = new Date();
@@ -94,19 +98,19 @@ export function RtlDateTimePicker({
     };
   }, [open]);
 
-  const num = (n: number) => formatNumber(n, numerals);
+  const num = (n: number) => formatNumber(n);
 
   const displayText = useMemo(() => {
     const p = parse(value);
     if (!p) return emptyLabel;
-    const nu = numerals === "arabic_indic" ? "arab" : "latn";
+    const nu = "latn";
     return new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { dateStyle: "long", timeStyle: "short" }).format(new Date(p.y, p.m, p.d, p.h, p.min));
-  }, [value, numerals, locale, emptyLabel]);
+  }, [value, locale, emptyLabel]);
 
   const monthLabel = useMemo(() => {
-    const nu = numerals === "arabic_indic" ? "arab" : "latn";
+    const nu = "latn";
     return new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { month: "long", year: "numeric" }).format(new Date(viewYear, viewMonth, 1));
-  }, [viewYear, viewMonth, numerals, locale]);
+  }, [viewYear, viewMonth, locale]);
 
   const weekdayNames = useMemo(() => {
     const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
@@ -194,13 +198,13 @@ export function RtlDateTimePicker({
       {open ? (
         <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-field border border-edge-strong bg-canvas p-4 shadow-lg">
           <div className="flex items-center justify-between">
-            <button type="button" onClick={goPrevMonth} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
+            <button type="button" onClick={goPrevMonth} aria-label={prevMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
               <ChevronIcon direction="back" />
             </button>
             <p className="text-label text-fg-heading">
               <bdi>{monthLabel}</bdi>
             </p>
-            <button type="button" onClick={goNextMonth} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
+            <button type="button" onClick={goNextMonth} aria-label={nextMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
               <ChevronIcon direction="forward" />
             </button>
           </div>
@@ -218,7 +222,7 @@ export function RtlDateTimePicker({
               // grid (e.g. a 30-day month with a 2-day lead reaches ten
               // days into next month) — the full date disambiguates both
               // for a screen reader and for anything that queries by name.
-              const nu = numerals === "arabic_indic" ? "arab" : "latn";
+              const nu = "latn";
               const fullDate = new Intl.DateTimeFormat(`${locale}-u-nu-${nu}`, { day: "numeric", month: "long", year: "numeric" }).format(new Date(cell.y, cell.m, cell.date));
               return (
                 <button

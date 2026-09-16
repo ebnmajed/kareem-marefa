@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
 import { Button } from "@/components/ui/button";
-import type { NumeralSystem } from "@/components/sessions/numerals";
 import type { ScheduleState } from "./actions";
 import { emptyScheduleState } from "./state";
 
@@ -28,13 +27,11 @@ const FIELD = "mt-2 block w-full rounded-field border border-edge-strong bg-canv
 export function ScheduleForm({
   action,
   venues,
-  numerals,
   locale,
   initial,
 }: {
   action: (prev: ScheduleState, formData: FormData) => Promise<ScheduleState>;
   venues: ScheduleVenue[];
-  numerals: NumeralSystem;
   locale: string;
   initial: {
     startsAt: string;
@@ -75,7 +72,6 @@ export function ScheduleForm({
         hint={t("whenHint")}
         required
         defaultValue={initial.startsAt}
-        numerals={numerals}
         locale={locale}
         clearLabel={t("pickerClear")}
         todayLabel={t("pickerToday")}
@@ -83,6 +79,8 @@ export function ScheduleForm({
         hourLabel={t("pickerHour")}
         minuteLabel={t("pickerMinute")}
         emptyLabel={t("pickerEmpty")}
+        prevMonthLabel={t("pickerPrevMonth")}
+        nextMonthLabel={t("pickerNextMonth")}
       />
 
       <div>
@@ -114,7 +112,6 @@ export function ScheduleForm({
         label={t("endsLabel")}
         hint={t("endsHint")}
         defaultValue={initial.endsAt}
-        numerals={numerals}
         locale={locale}
         clearLabel={t("pickerClear")}
         todayLabel={t("pickerToday")}
@@ -122,6 +119,8 @@ export function ScheduleForm({
         hourLabel={t("pickerHour")}
         minuteLabel={t("pickerMinute")}
         emptyLabel={t("pickerEmpty")}
+        prevMonthLabel={t("pickerPrevMonth")}
+        nextMonthLabel={t("pickerNextMonth")}
       />
 
       <fieldset>
@@ -183,7 +182,6 @@ export function ScheduleForm({
         label={t("rsvpDeadlineLabel")}
         hint={t("deadlineHint")}
         defaultValue={initial.rsvpDeadlineAt}
-        numerals={numerals}
         locale={locale}
         clearLabel={t("pickerClear")}
         todayLabel={t("pickerToday")}
@@ -191,6 +189,8 @@ export function ScheduleForm({
         hourLabel={t("pickerHour")}
         minuteLabel={t("pickerMinute")}
         emptyLabel={t("pickerEmpty")}
+        prevMonthLabel={t("pickerPrevMonth")}
+        nextMonthLabel={t("pickerNextMonth")}
       />
 
       <RtlDateTimePicker
@@ -198,7 +198,6 @@ export function ScheduleForm({
         name="cancellationCutoffAt"
         label={t("cutoffLabel")}
         defaultValue={initial.cancellationCutoffAt}
-        numerals={numerals}
         locale={locale}
         clearLabel={t("pickerClear")}
         todayLabel={t("pickerToday")}
@@ -206,6 +205,8 @@ export function ScheduleForm({
         hourLabel={t("pickerHour")}
         minuteLabel={t("pickerMinute")}
         emptyLabel={t("pickerEmpty")}
+        prevMonthLabel={t("pickerPrevMonth")}
+        nextMonthLabel={t("pickerNextMonth")}
       />
 
       <div>
