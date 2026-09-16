@@ -2515,3 +2515,144 @@ Two constraints that are not negotiable and are the reason this is not a five-mi
 
 - **Supersedes:** nothing. Fills a hole.
 - **Documents changed:** `01-prd.md` (`REQ-UIX-025`), `15-backlog.md`, `16-ui-redesign.md` §15 M13, `STATUS.md`
+
+---
+
+## DEC-127 — The poster background is a gradient, so the layer model gains a gradient fill and the brand gains one token
+
+- **Date:** 2026-09-16 · **Decided by:** owner («regarding the flat dark no it is not flat it is gradient»)
+- **Corrects `DEC-125`'s fallback.** `DEC-125` took the flat dark canvas because `model.ts:144` allows only `background?: { type: 'solid'; color: string }`. The owner has chosen the other branch it named: **the model gains a gradient fill.**
+
+### What the canvas actually paints
+
+`linear-gradient(140deg, #111a2c, #1d2a42)` — in `EventEnded`, `Browse` and `Home`, on every card
+medium and every poster surface. ★ **Both stops are house tokens**: `#111a2c` is `--color-navy-900`
+and `#1d2a42` is `--color-navy-800` (`globals.css:14`, `:16`). This is not an arbitrary pair.
+
+### The model change
+
+```ts
+background?:
+  | { type: 'solid';    color: string }
+  | { type: 'gradient'; angle: number; stops: { color: string; at?: number }[] }
+```
+
+Touching, at minimum: `model.ts:144`, `render.ts:201` and `:221` (both resolve
+`doc.background?.color` and would read `undefined` on a gradient — **this is the failure mode to
+watch: a gradient document silently renders on the `'#ffffff'` fallback**), and `bindings.ts:114`/`:137`,
+whose collector walks `background?.color` and must walk every stop or the gradient's colours are
+never counted as bindings.
+
+### The brand token, because a gradient stop is not allowed to be a hex literal
+
+`brand.canvas` is `#0b1220` and `brand.surface` is `#111a2c`; **the second stop `#1d2a42` is not any
+existing token.** Writing it as a literal would put a navy past `0055`'s guard and give an org that
+rebrands a gradient whose far end is somebody else's colour. So `BRAND_COLOUR_TOKENS` gains one
+entry — **`canvasRaise`** — `#1d2a42` in dark, `#f1f3f7` in light. The addition is add-only, which
+`brand.ts`'s own rule requires.
+
+The baseline poster background becomes
+`{ type: 'gradient', angle: 140, stops: [{ color: '{{brand.surface}}' }, { color: '{{brand.canvasRaise}}' }] }`.
+
+### Two consequences worth naming now
+
+1. ★ **The mirrored LTR variant must mirror the angle** — `360 − angle`, so `140°` becomes `220°`.
+   A gradient does not follow `dir`, so an unmirrored LTR poster lights from the wrong corner while
+   every other layer has flipped. `06` §3.1's «`align` is `start`/`end`, never `left`/`right`» has
+   no equivalent for angles, which is exactly why this is written down.
+2. **The parity goldens move**, as `DEC-125` already said. Both renderers consume the same CSS
+   string, so the editor and the worker agree; it is the stored goldens that change, and a golden
+   changes only through a lead-reviewed diff.
+
+- **Supersedes:** `DEC-125`'s "the flat colour is the default" clause. The dark default itself stands.
+- **Documents changed:** `06-visual-designer.md` §3.3, `01-prd.md` (`REQ-DSG-026`), `STATUS.md`
+
+---
+
+## DEC-128 — Certificates are a library of several templates, not one light default — and the roster `REQ-DSG-026` already promises was never seeded
+
+- **Date:** 2026-09-16 · **Decided by:** owner («for the certificates we would have multiple templates for them»)
+- **Corrects `DEC-125`.** That entry said «certificates stay light», reasoning from print. The owner's answer is that certificates are **a choice among templates**, so there is no single scheme for them to stay at.
+
+### ★ The check this prompted found something neither of us was looking for
+
+`REQ-DSG-026` promises poster families **«each light and dark»** and certificate families
+**«landscape and portrait»**. `0061_baseline_library.sql` seeds **8 families × 1 version** —
+`talk`, `workshop`, `panel`, `meetup`, `announcement`, `attendance`, `presenter`, `achievement`.
+
+| Promised | Seeded |
+|---|---|
+| 5 poster families × light + dark = **10** | **5** |
+| 3 certificate families × landscape + portrait = **6** | **3** |
+
+**Half the baseline library does not exist.** Nothing caught it because `REQ-DSG-026`'s acceptance
+criteria test what a template *declares* — dynamic fields, safe areas, forbidden imagery — and
+never that the roster is complete. `06` §3.3's "each light and dark" reads as a description of
+rows and is in fact a description of the **scheme mechanism** (`DEC-125`), which is how one
+sentence covered a missing half.
+
+### Decision
+
+1. **The certificate baseline is a real library** — the three families in **both orientations**, and
+   in **both schemes**, selectable by the admin at issue time. A certificate's look is a template
+   choice, never a global default.
+2. **The poster roster is completed too**, since it is the same omission and the same seed file.
+3. `REQ-DSG-026` gains an acceptance criterion that **counts** the seeded roster, so the next
+   missing half fails CI instead of surviving three milestones.
+
+⚠ **The exact roster is the owner's.** The shape above is what `REQ-DSG-026` already promises; if
+certificates should carry more than three families, or fewer orientations, say so and this entry is
+amended by a follow-up rather than edited.
+
+- **Supersedes:** `DEC-125`'s «certificates stay light» clause.
+- **Documents changed:** `06-visual-designer.md` §3.3, `01-prd.md` (`REQ-DSG-026`), `STATUS.md`
+
+---
+
+## DEC-129 — The three `(auth)` screens were assigned to M9 and shipped untouched; they are carried, not dropped
+
+- **Date:** 2026-09-16 · **Decided by:** owner («the login page wasn't touched at all in the first redesign attempt, so make sure to include it as well»), confirmed by the lead
+- **The owner is right, and it is a documented miss rather than a discovery.** `DEC-097` placed `(auth)/sign-in`, `(auth)/choose-org` and `(auth)/no-access` in **M9**. M9 shipped without them.
+
+### The measurement
+
+| Screen | `ui/` primitives imported |
+|---|---|
+| `(auth)/sign-in/page.tsx` | **0** |
+| `(auth)/choose-org/page.tsx` | **0** |
+| `(auth)/no-access/page.tsx` | **0** |
+
+Not "partly adopted" — **none of the three imports a single primitive**, and `sign-in` still carries
+hand-rolled control class strings. They are exactly as M0 left them.
+
+### Why this is the worst of the M9 misses
+
+`DEC-097`'s own reasoning, unchanged and now overdue: `sign-in` is **the first screen every member
+ever sees** and **the only place `SC 3.3.8` Accessible Authentication applies** — allow paste,
+`autocomplete="one-time-code"`, never block a password manager. `choose-org` is the fork that fixes
+which `org_id` the whole session carries. `no-access` is the product's only answer to «فتحت الرابط
+ولا شيء يعمل».
+
+★ **And `DEC-126` sharpens it.** That entry adds «تسجيل الدخول» to the public site because there is
+no door. **The door leads here.** Shipping the marketing entry point onto an unrebuilt sign-in screen
+would make the redesign's first impression the one screen the redesign never touched.
+
+### Decision
+
+The three screens are **carried into the next wave** with the screen work, not left at M9. Three
+things travel with them and are not optional:
+
+1. **`SC 3.3.8`** on `sign-in`, tested: paste is allowed into the code field,
+   `autocomplete="one-time-code"` is present, and no handler blocks a password manager.
+2. **The `DEC-124` numeral rule** applies here first — a one-time code is digits, and it is
+   **Western**, always.
+3. `no-access` names the next action (`REQ-UIX-012`), because a dead end that explains nothing is
+   the failure this screen exists to prevent.
+
+★ **The lesson for the next lead, which is the reusable part:** `DEC-097` existed *because* routes
+had gone unassigned, and it still did not get these built — **a route table proves a screen was
+decided about, not that it was done.** The next wave's definition of done names screens, and a
+milestone does not close while a screen it lists imports zero primitives. That check is one grep.
+
+- **Supersedes:** nothing. `DEC-097`'s placement stands; only the milestone moves.
+- **Documents changed:** `16` §15, `09-sitemap-screens.md` §8 coverage table, `STATUS.md`

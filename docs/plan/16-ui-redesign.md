@@ -1909,9 +1909,9 @@ in the product.
 
 | Route | Why it cannot be left out | Moves to |
 |---|---|---|
-| `(auth)/sign-in` | **The first screen every member ever sees**, and the only place `SC 3.3.8` Accessible Authentication applies — allow paste, `autocomplete="one-time-code"`, never block a password manager | **M9**, with the shell |
-| `(auth)/choose-org` | A multi-company group: the fork that decides which `org_id` the whole session carries, permanently (`REQ-AUT-004`) | **M9** |
-| `(auth)/no-access` | The dead end an invited-but-unprovisioned member lands on — the product's only answer to «فتحت الرابط ولا شيء يعمل». Principle 5 applies here more than anywhere | **M9** |
+| `(auth)/sign-in` | **The first screen every member ever sees**, and the only place `SC 3.3.8` Accessible Authentication applies — allow paste, `autocomplete="one-time-code"`, never block a password manager | **M9 ✗ NOT DONE — carried, `DEC-129`**, with the shell |
+| `(auth)/choose-org` | A multi-company group: the fork that decides which `org_id` the whole session carries, permanently (`REQ-AUT-004`) | **M9 ✗ NOT DONE — carried, `DEC-129`** |
+| `(auth)/no-access` | The dead end an invited-but-unprovisioned member lands on — the product's only answer to «فتحت الرابط ولا شيء يعمل». Principle 5 applies here more than anywhere | **M9 ✗ NOT DONE — carried, `DEC-129`** |
 | `app/sessions/[id]/check-in` | «The most operationally important input in the product» (`10` §6) — standing, one-handed, under time pressure. And §5.4.1 row 4b just rewrote it | **M10** |
 | `app/sessions/[id]/host` | Projected in front of a room, often landscape, from a shared machine with a possibly-wrong clock. **The only screen with an audience rather than a user** | **M10** |
 | `app/sessions/[id]/rate` | Appears above only as the *host* of the M11 survey. The rating screen itself was never designed while §9.2 rebuilt what sits on it | **M10** |

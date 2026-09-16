@@ -1745,7 +1745,13 @@ Poster families — **جلسة** (talk), **ورشة** (workshop, with a tasks st
 multi-presenter), **لقاء** (meetup), **إعلان** (announcement) — each light and dark, RTL-first
 with a mirrored LTR variant reserved for English. Certificate families — **حضور**, **تقديم**,
 **إنجاز** — landscape and portrait, formal Naskh, with locked regions.
+★ **Posters render on a GRADIENT background and default to the DARK scheme** (`DEC-125`, `DEC-127`);
+certificates are **a library the admin chooses from**, in both orientations and both schemes
+(`DEC-128`). Numerals on every template are **Western** (`REQ-INT-006`, `DEC-124`).
 **Acceptance:**
+- ★ **The seeded roster is counted, not assumed** — 5 poster families × 2 schemes and 3 certificate
+  families × 2 orientations. A short roster **fails CI**. `0061` seeds 8 × 1 today, which is half of
+  what this requirement promises and went unnoticed for three milestones (`DEC-128`).
 - Every template declares its dynamic fields and its safe area per preset.
 - Templates honour the brand's forbidden imagery: **no books, caps, lightbulbs, education
   iconography, cartoon illustration, icon libraries, emoji or photography**. The visual language

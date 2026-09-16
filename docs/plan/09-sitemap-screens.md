@@ -641,9 +641,9 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | Route | Screen | M | Note |
 |---|---|---|---|
 | `(marketing)/page.tsx` · `/register` · `[...rest]` | SCR-000 · SCR-001 | **M13** | The frozen contract, re-cut by `DEC-078`. Untouched before M13 |
-| ★ `(auth)/sign-in` | SCR-002 | **M9** | The first screen every member sees, and the only place `SC 3.3.8` applies |
-| ★ `(auth)/choose-org` | SCR-003 | **M9** | The fork that decides which `org_id` the session carries, permanently |
-| ★ `(auth)/no-access` | SCR-004 | **M9** | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
+| ★ `(auth)/sign-in` | SCR-002 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The first screen every member sees, and the only place `SC 3.3.8` applies |
+| ★ `(auth)/choose-org` | SCR-003 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The fork that decides which `org_id` the session carries, permanently |
+| ★ `(auth)/no-access` | SCR-004 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
 | `legal/privacy` · `legal/terms` | SCR-005 | **M13** | Public, and the home of the accessibility statement |
 | `verify/[code]` | SCR-006 | **M12** | Reached from a **printed** certificate; where `DEC-095`'s numeral bug fails silently |
 | ★ `s/[id]` | SCR-007 | **M10** | How members actually arrive — the WhatsApp entry path |
