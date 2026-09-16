@@ -926,3 +926,61 @@ the variant columns and a baseline marker to `design_templates`.
 3. **The capture list assumes a banner on an org screen that `DEC-055` does not allow**
    (C1), and a sign-in that dead-ends a super admin on `/no-access` (F6) — both in the
    lead's files. Without a ruling, P7's row cannot close exactly as written.
+
+---
+
+## Wave 8 — as built (2026-09-17), after sync 1's rulings (DEC-148)
+
+All eight platform files reach the system (`ui-reach --wave8`), and `ui-lint --strict`
+finds nothing in any platform file. **None of it has run on a production build yet** —
+the e2e and every capture wait on the lead's build (§1.11 still holds).
+
+| Row | Commit | What landed |
+|---|---|---|
+| P0 + P1 | `53a06f5` | rail + phone section switcher (`current` from `usePathname()`), the banner on `ui/panel` with an end TIME, the one stop control, `/app/platform` as a home, `platform_alerts()` proposed (promoted as `0095`) |
+| P7 | `fa0ed74` | F1 and F2 fixed, SCR-085 on the form model with duration presets, the history on `ui/data-table`, C4's line |
+| P2 + P3 | `d6d2331` | SCR-080 on `ui/data-table` with Menu→Dialog acts, SCR-081 on `lib/form-state` |
+| P4 | `4984951` | SCR-082, contract 4 at the screen, F3 in the DAL |
+| P6 | `42baf38` | SCR-084 with the eight alerts (C2), every list a card list on a phone |
+| — | `5af7767` | the rail's metrics item takes the lead's `ChartIcon` |
+| P5 | `c480f21` | SCR-083 on contract 3, `0009_platform_library_roster.sql` proposed |
+
+### W8.A F1 and F2, measured red before the fix
+
+A throwaway probe (never committed) ran against the build that predated P7 and decoded
+the browser's `sb-*-auth-token` cookie:
+
+- **F2:** three seconds after «ابدأ الجلسة», `app_metadata.org_id` was **null**. The
+  session row and the org's audit row existed; only a separate refresh put the org on
+  the token. Cause as diagnosed: the refresh lived in a `useEffect` of a form that the
+  same action response unmounted.
+- **F1:** three seconds after «أنهِ الجلسة» on the page's own form, `org_id` was **still
+  the org's**.
+
+The fix for both is one shape: **no `revalidatePath` in the action; the client awaits it,
+refreshes the session, then `router.refresh()`** — in the submit path or the transition's
+callback, never in an effect. `tests/e2e/platform-console.spec.ts` now decodes the token
+after start and after stop, from the page and from the banner.
+
+### W8.B Three things worth keeping
+
+1. **A token is the only proof of what break-glass grants.** The audit row, the banner
+   (`my_impersonation()` keys on `auth.uid()`) and the active panel all render without
+   the org claim. Every earlier check passed while the grant never arrived.
+2. **A toast title is plain text**, so `<bdi>` cannot reach it. An interpolated name goes
+   in as `⁨…⁩` (FSI…PDI) — the character form of the same isolation.
+3. **`[.theme-dark_&]:` on a primitive's `className`** is how the banner reads correctly
+   on the light console and on `/no-access`'s dark card with one component: `Panel`'s
+   `live` fill is a light constant, and the semantic text tokens flip under
+   `.theme-dark`.
+
+### W8.C Open, named
+
+- **Reinstate during a pending deletion.** `delete_org()` suspends and enqueues; until
+  the job runs, `reinstate_org()` accepts the org and the queued job still deletes it.
+  Seconds with the worker up. SQL, the lead's call (told at P2+P3).
+- **`platform-schema.test.ts`'s baseline cases** now assert DEC-052's property (every
+  family, one default per family) rather than eight rows, so `designer`'s seed promotion
+  cannot turn them red; the exact count is `REQ-DSG-026`'s.
+- **The e2e run and all 15 captures** (`wave8-platform-*`), on the lead's build with
+  `0009` and the roster seed applied.
