@@ -1950,3 +1950,26 @@ the promotion message almost certainly crossed. Flagging it here rather than sil
 nothing further to do on them unless the lead saw something after `6e3a780` that still needs work.
 
 Ready for sync.
+
+## §7 — #3 was a real bug, not a strict-mode locator (`7f4809f`)
+
+The lead pushed back on my `#main`-only diagnosis of `wave7-content-me.spec.ts:118` — right to: an
+unscoped `form.getByRole("alert")` chain searches inside every matched form, so a multi-match would
+fail as a strict-mode violation, not "not found," and scoping alone can't explain the symptom. Read
+`profile-form.tsx` for candidate (a) first, per the ask.
+
+Confirmed: the `<form>` at line 76 had no `noValidate`, and `displayName`'s `<Input>` carries
+`required`. Every other server-action form in the product (`propose`, venue, settings,
+direct-session, category, company, `rate`) sets `noValidate` so the browser's own constraint
+validation never fires and the app's Zod-driven `FormSummary` takes over — `profile-form.tsx` was the
+one form missing it. The spec empties `displayName` and submits (line 118); without `noValidate` the
+browser blocks the request before `formAction` ever runs, `useActionState`'s state never updates, and
+no `role="alert"` renders anywhere — a real product bug, exactly as the lead read it, not a spec or
+scoping issue. Added `noValidate` to match the other seven forms.
+
+`tsc` clean, lint clean, `profile-form.test.tsx` 5/5. This needs a fresh production build to verify
+through the real e2e spec (browser-native constraint validation isn't exercised under jsdom, and
+`npm run build` is the lead's) — leaving that to sync 5's full run at HEAD, as the lead already
+planned.
+
+Ready for sync.
