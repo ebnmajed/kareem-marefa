@@ -79,8 +79,8 @@ test.beforeAll(async ({}, testInfo) => {
   // A cancelled session with one comment on it: the discussion is frozen —
   // the composer becomes a notice and replies go (content's `getCommentsPageData`).
   const { rows: cancelled } = await db.query<{ id: string }>(
-    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
-     values ($1, 'جلسة أُلغيت', 'ملخص.', $2, 'introductory', now() + interval '5 days', 60, now() + interval '5 days 1 hour', $3, 40, 'cancelled', now())
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at, cancellation_reason)
+     values ($1, 'جلسة أُلغيت', 'ملخص.', $2, 'introductory', now() + interval '5 days', 60, now() + interval '5 days 1 hour', $3, 40, 'cancelled', now(), 'تعذّر حضور المقدّم')
      returning id`,
     [orgId, cat[0].id, venue[0].id],
   );

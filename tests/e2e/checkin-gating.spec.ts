@@ -64,6 +64,15 @@ test.beforeAll(async ({}, testInfo) => {
     [orgId, catRows[0].id, venueRows[0].id],
   );
   liveSessionId = sessRows[0].id;
+  // One task, so the tasks section exists to be gated. Since wave 6 the page
+  // also drops the section when the Tasks slot has nothing to show (c4e7642,
+  // `SlotSummary`); without a task both assertions below would hold for the
+  // wrong reason — the bystander's "no heading" trivially, the confirmed
+  // member's "heading" not at all.
+  await db.query(
+    `insert into public.session_tasks (org_id, session_id, kind, title) values ($1, $2, 'checklist', 'أحضر حاسوبك المحمول')`,
+    [orgId, liveSessionId],
+  );
 
   bystanderEmail = `bystander@${domain}`;
   const { data: bystanderAuth, error: e1 } = await admin.auth.admin.createUser({ email: bystanderEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو بلا حجز" } });
