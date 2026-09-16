@@ -71,6 +71,7 @@
       "title": "Review proposals",
       "intro": "Every proposal members have sent, waiting on your decision. Rejecting and requesting changes each need a written reason, which reaches the proposer.",
       "empty": "No proposals are waiting for review.",
+      "emptyAction": "Back to the dashboard",
       "count": "{count, plural, =0 {no proposals} one {one proposal} other {{value} proposals}}",
       "age": "{count, plural, =0 {arrived today} one {a day ago} other {{value} days ago}}",
       "proposerLabel": "Proposer",
@@ -94,6 +95,10 @@
       "reasonRequired": "Write the reason first — no decision reaches a proposer without one.",
       "send": "Send",
       "cancel": "Cancel",
+      "closeDialog": "Close",
+      "rejectConfirmTitle": "Reject “{title}”?",
+      "rejectConfirmBody": "The proposer will receive the reason you wrote above. This decision cannot be undone from this screen.",
+      "rejectConfirmAction": "Confirm rejection",
       "failed": "That decision could not be recorded — try again.",
       "done": "Your decision is recorded and has reached the proposer."
     },

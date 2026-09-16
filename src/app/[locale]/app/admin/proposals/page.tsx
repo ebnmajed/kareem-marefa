@@ -3,10 +3,14 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listProposalsForReview } from "@/lib/dal/proposals";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Prose } from "@/components/ui/prose";
 import { decideProposal } from "./actions";
 import { ReviewCard } from "./review-card";
 
-// SCR-041 · /app/admin/proposals — the review queue (REQ-PRO-005, REQ-PRO-006).
+// SCR-041 · /app/admin/proposals — the review queue (REQ-PRO-005, REQ-PRO-006),
+// rebuilt onto the system for wave 6 (`16` §6.7, `DEC-130`).
 //
 // Owned by `sessions` for wave 1 only and handed to `console` at wave 3
 // (DEC-042): M2's demonstrable runs propose → approve → schedule → publish,
@@ -36,17 +40,18 @@ export default async function AdminProposalsPage({ params }: { params: Promise<{
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("title")} description={t("intro")} />
 
       {queue.length === 0 ? (
-        <p className="mt-8 text-body text-fg-body">{t("empty")}</p>
+        <div className="mt-8">
+          <EmptyState title={t("empty")} action={{ label: t("emptyAction"), href: "/app/admin" }} />
+        </div>
       ) : (
         <>
           <p className="mt-6 text-body-sm text-fg-muted">{t("count", { count: queue.length, value: num(queue.length) })}</p>
           <ul className="mt-4 max-w-3xl space-y-5">
             {queue.map((p) => (
-              <ReviewCard key={p.id} action={action} proposalId={p.id}>
+              <ReviewCard key={p.id} action={action} proposalId={p.id} proposalTitle={p.title}>
                 <h2 className="text-h2 text-fg-heading">
                   <bdi>{p.title}</bdi>
                 </h2>
@@ -98,9 +103,11 @@ export default async function AdminProposalsPage({ params }: { params: Promise<{
                 ) : null}
 
                 <h3 className="mt-4 text-label text-fg-heading">{t("abstractLabel")}</h3>
-                <p className="mt-1 whitespace-pre-line text-body text-fg-body">
-                  <bdi>{p.abstract}</bdi>
-                </p>
+                <Prose size="sm" className="mt-1">
+                  <p>
+                    <bdi>{p.abstract}</bdi>
+                  </p>
+                </Prose>
 
                 {p.targetAudience ? (
                   <p className="mt-3 text-body-sm">
@@ -111,9 +118,11 @@ export default async function AdminProposalsPage({ params }: { params: Promise<{
                 {p.adminNotes ? (
                   <>
                     <h3 className="mt-4 text-label text-fg-heading">{t("notesLabel")}</h3>
-                    <p className="mt-1 whitespace-pre-line text-body text-fg-body">
-                      <bdi>{p.adminNotes}</bdi>
-                    </p>
+                    <Prose size="sm" className="mt-1">
+                      <p>
+                        <bdi>{p.adminNotes}</bdi>
+                      </p>
+                    </Prose>
                   </>
                 ) : null}
               </ReviewCard>
