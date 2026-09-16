@@ -100,7 +100,7 @@ either; they are named here so «the whole app» is not over-claimed, and they a
 | | What | Commit | Evidence |
 |---|---|---|---|
 | ✅ | **Task one — `DEC-146`**: `next` 16.2.10 → 16.3.5; the patch, `react-dom-ping-patch.test.ts`, `patch-package` and `postinstall` out together; the lock through Docker | `e7d0657` | the probe below; the gates in `DEC-147` |
-| ✅ | **Step 0**: the wave-8 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`designer`, `platform`, `branding` four waves stale); this checklist; `DEC-147`; `scripts/ui-reach.mjs --wave8` | the Step 0 commit | — |
+| ✅ | **Step 0**: the wave-8 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`designer`, `platform`, `branding` four waves stale); this checklist; `DEC-147`; `scripts/ui-reach.mjs --wave8` | `e3df1d3` | — |
 
 **The reserve probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, production builds, back to back):
 
@@ -122,9 +122,9 @@ passed, 7 failed, 11 did not run** — every failure green alone or explained in
 | # | Owner | Route / work | Serves | (1) `--wave8` | (2) capture — path · spec · build | State |
 |---|---|---|---|---|---|---|
 | L1 | lead | **task one** — Next 16.3.5, the patch retired | `DEC-146` | — | the probe above | **closed** `e7d0657` |
-| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (incidental: `ui/date-time`) | `wave8-lead-schedule-*.png` · spec to write · build to name | **open** — the lead's plan decides, and records here, whether `DEC-075`'s two-tab re-cut and `REQ-SES-016`'s one-day behaviours (end follows duration, validation on blur) are in; the walk-in parameter stays `default null` = unchanged (`DEC-141`) |
+| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `016`, `REQ-PRO-009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (incidental: `ui/date-time`) | `wave8-lead-schedule-*.png` · `wave8-lead-schedule.spec.ts` · build to name | **open** — planned (below); the walk-in parameter stays `default null` = unchanged (`DEC-141`) |
 | L3 | lead | ★ `org_domains`' check converged across environments — a migration, **rehearsed against a production schema dump** | invariant 3, `REQ-TEN-*`, `DEC-147` | — | — | **open** — ★ **corrected diagnosis** (`DEC-147`): the normalise trigger lowercases before the check, so no member is refused today; the drift is real and is fixed as a convergence. **Needs the owner's schema dump** |
-| L4 | lead | the worker's startup line says «polling every 60 s»; it is 15 s (`DEC-057`) | `REQ-NFR-016` | — | — | **open** |
+| L4 | lead | the worker's startup line says «polling every 60 s»; it is 15 s (`DEC-057`) | `REQ-NFR-016` | — | — | **closed** `41f8807` — one constant feeds the setting and the line |
 | L5 | lead | `REQ-EVT-010` reconciled with the pipeline | `DEC-139` | — | — | **closed** — already amended in wave 7 (`01-prd.md`, «Photos publish without moderation, the moment their metadata is stripped»); `0091` carries the no-reload clause |
 | L6 | lead | ★ **the parity goldens move** — every before and after reviewed by eye, then committed | `REQ-DSG-015`, `DEC-127` | — | the harness's diff images | **open** — after D6 |
 | L7 | lead | promotion — `designer`'s roster seed, `branding`'s brand-kit columns, anything proposed — with `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | invariants 3, 5, 6 | — | — | **open** |
@@ -155,6 +155,54 @@ passed, 7 failed, 11 did not run** — every failure green alone or explained in
 
 ★ Every capture path above is the **prefix** the row will cite in full; a row closes on the exact file names, the
 spec and the build.
+
+### L2 — the lead's plan for SCR-043, written before any code
+
+**What «more user friendly … intuitive to fill and quick» means here**, read against what exists:
+`REQ-SES-016` already states it for the one-day session every org schedules today — *the end follows the
+duration; validation at the field, on blur; filled without scrolling back to check* — and `REQ-PRO-009`
+says the proposal's `expected_duration_minutes` pre-fills the duration. `Schedule.dc.html` draws the
+screen as settings beside a read-only «المحتوى — كما كتبه المُقترِح» panel, with «انشر الجلسة» and
+«احفظ فقط» together at the end.
+
+**In:**
+1. **One form, grouped** — متى · أين · الحضور · الشهادة واللغة — on `ui/field` and its family,
+   `ui/radio-group` for the certificate mode and the room's language (three and two choices read faster
+   than a closed select), `ui/switch` for walk-ins, `FormSummary`, `form-state.ts` so a failed round trip
+   hands back what was typed.
+2. **Defaults that remove typing:** the duration pre-fills from the proposal when the session has none,
+   marked «من المقترح»; **the end is computed from start + duration and shown as a sentence**, and
+   «عدّل وقت الانتهاء» reveals the picker — **an explicit end wins and stops following** (`OQ-001`); the
+   capacity pre-fills from the chosen venue's capacity while the field is still empty; the two deadlines
+   offer presets relative to the start (at the start · a day before · …) with «تاريخ آخر» for the picker.
+3. **Validation at the field on blur**: an end before the start, a deadline after the start — the
+   rules `REQ-SES-002` already enforces as constraints, said before the database says them.
+4. **One press to publish**: «انشر الجلسة» saves and publishes in one action, disabled while anything
+   `REQ-SES-001` requires is missing — **naming what is missing** — with «احفظ فقط» beside it and the
+   note «النشر يُرسل إشعارًا لكل الأعضاء ويفتح الحجز.»; on a published session the primary is «احفظ
+   التعديلات» with `REQ-SES-009`'s warning that attendees are told what changed.
+5. **The proposal's content, read-only, beside the form** (desktop) and below it (phone): title,
+   proposer, when it was accepted, level, language, target audience, expected duration — read from
+   `proposals` through `sessions.ts` as custodian, **no migration**. The poster section keeps
+   `designer`'s `PosterPicker` slot.
+6. **Phone: one scroll, not a stepper.** `SCR-043`'s mobile note asks for «a stepper, one section per
+   step»; four steps are four more presses on the form an admin fills most, against the owner's
+   «quick». The groups carry headers, and the actions sit in a sticky bar in reach. **Recorded as a
+   decision at sync 1**, because `09`'s note says otherwise.
+
+**Not in, and why:** `DEC-075`'s audited **content edit** («تعديل المحتوى» — an audit row per field and a
+notification to the proposer) and copying `target_audience`/`expected_duration_minutes` onto
+`sessions` (`REQ-PRO-009`) — a migration, SQL and a notification each, and nothing in «quick to fill»
+needs them; **the survey** row the artboard draws (not this wave); **multi-day** (`REQ-SES-015`, wave 9).
+
+**Requests this makes:** `console` — `DateTimeProps` gains an accessible `label` (the lead adds the
+field to `ui/index.ts`, `console` wires it in `date-time.tsx`), because four date fields named alike are
+indistinguishable to a screen reader; until then the form keeps `RtlDateTimePicker` with its labels.
+`console` — delete `admin.schedule.*` once `schedule.json` lands.
+
+**Captures:** `wave8-lead-schedule-{from-proposal,end-edited,field-error,ready,published-edit}.png`, from
+a new `tests/e2e/wave8-lead-schedule.spec.ts`; `checkin-schedule-walk-ins.spec.ts` and
+`sessions-screens.spec.ts`'s schedule cases stay green (custodian).
 
 ### Carried — diagnosed, each with an owner
 
