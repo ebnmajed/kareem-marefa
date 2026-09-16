@@ -1269,6 +1269,22 @@ is a separate, deliberate, audited act on one member.
 cannot grant check-in, so `checkIn` leaves `GRANTING_AFFORDANCES` — `rate`, `survey`, `certificate`
 and `attendanceOutcome` stay. Corollary 2 itself is unaffected.
 
+### ★ The two check-in switches, so nobody confuses them
+
+After `DEC-116` and `DEC-117` there are two, and they answer different questions for different
+people. Building either one as the other is the mistake waiting here.
+
+| | Who | When | Question |
+|---|---|---|---|
+| `allow_walk_ins` | **admin**, at publish, on SCR-043's «الإعدادات» tab | before anyone arrives | **may someone without a reservation attend at all?** |
+| `check_in_open` | presenter · moderator · admin, from the host view | during, and up to `ends_at + 2 h` | **are we still taking attendance?** |
+
+**The org decides the door policy; the room decides the door's timing.** `DEC-117` moves walk-ins
+off the host view entirely — which `DEC-065` had already flagged as the design milestone's call —
+so **there is no in-room override**: a moderator in a room that fills with people who did not
+reserve cannot admit them, and an admin changes the setting from the schedule screen instead. That
+is the trade, chosen deliberately, because a walk-in earns attendance points and a certificate.
+
 ### ★ The one thing blocked on the owner
 
 **Which errors in the mockups.** `DEC-114` sets the rule — the PRD wins over the canvas, and a

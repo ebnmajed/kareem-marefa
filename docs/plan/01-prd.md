@@ -698,18 +698,22 @@ by an admin toggle that bypasses the event.
 - Each of the four rights is derived from the check-in record in policy, and a test proves each is
   denied to a member with a confirmed RSVP and no check-in.
 
-#### REQ-CHK-010 — Walk-in check-in is a per-session switch (amended by DEC-065)
+#### REQ-CHK-010 — Walk-ins are a publishing setting on the session (amended by DEC-065, DEC-117)
 **Serves:** OQ-005 · D24 (as narrowed by the owner at Launch)
-By default a code is accepted only from a member whose reservation is **confirmed**. An admin or a
-moderator may open a session to walk-ins (`sessions.allow_walk_ins`, from the host view); on an
-opened session a walk-in who enters a valid code is checked in and receives every attendance right.
-**السعة** remains a planning limit on reservations.
+By default a code is accepted only from a member whose reservation is **confirmed**.
+`sessions.allow_walk_ins` decides otherwise, and it is **a setting in the session's publishing
+settings** — SCR-043's «الإعدادات» tab — set by the **مشرف المؤسسة** who schedules and publishes
+the session. On an opened session a walk-in who enters a valid code is checked in and receives
+every attendance right. **السعة** remains a planning limit on reservations.
 **Acceptance:**
 - With the switch off, a member with no confirmed حجز is refused with «reservation required», before
   the code is checked, and the attempt is recorded.
 - With the switch on, a member with no حجز who checks in earns attendance points and receives a
   certificate; walk-ins are distinguishable in admin reporting.
-- Only an admin or a moderator can flip the switch; the change is audited.
+- The switch is set where the session's other settings are set, and every change is audited.
+- ★ **It is a policy about who may attend, decided when the session is published — not an in-room
+  control.** What the room controls is *when check-in stops accepting* (`REQ-CHK-015`), which is a
+  different question with a different role set.
 
 #### REQ-CHK-011 — Presenters do not check in to their own session
 **Serves:** OQ-025 · D9

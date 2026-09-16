@@ -2098,6 +2098,26 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-117 — Walk-ins are a publishing setting on the session, not an in-room control
+
+- **Date:** 2026-09-16 · **Decided by:** owner («regarding accepting walk-ins, it is a setting in the session publishing settings itself — the admin/approver can enable it or disable it»)
+- **Decision.** `sessions.allow_walk_ins` moves to **SCR-043's «الإعدادات» tab** — the second tab `DEC-075` re-cut the schedule screen into, and the one an admin normally lives in — set by the **مشرف المؤسسة** who schedules and publishes the session. **The host-view toggle (SCR-016) is removed**, and with it the moderator's ability to flip it mid-session.
+- ★ **This is exactly what `DEC-065` deferred.** Its own "Not in this change" line reads: «the switch on the admin schedule screen (SCR-043) — the host view is where both roles stand when it matters; **the design milestone can add it to the schedule form**». The design milestone is here, and the owner has decided it is not an addition but a relocation.
+- **Why the separation is now clean, and worth stating because two switches on one feature invites confusion.** After `DEC-116` there are two controls and they answer different questions for different people:
+
+  | | Who | When | Question |
+  |---|---|---|---|
+  | `allow_walk_ins` | **admin**, at publish | before anyone arrives | **may someone without a reservation attend at all?** — a policy about the session |
+  | `check_in_open` | presenter · moderator · admin, in the room | during and just after | **are we still taking attendance?** — an operational act |
+
+  The org decides the door policy; the room decides the door's timing.
+- ★ **The cost, stated rather than discovered: there is no longer an in-room override.** A moderator standing in a room that has filled with people who did not reserve cannot admit them; an admin changes the setting from the schedule screen instead, which takes seconds but requires a different person. That is the trade the owner has chosen, and it is the right way round — a walk-in earns attendance points and a certificate (`REQ-CHK-010`), so who may attend is an org decision, not a corridor one.
+- **What this changes in code:** `set_session_walk_ins()` narrows from `is_staff()` to admin; the host view loses its walk-in section; SCR-043's settings tab gains the field; the audit action `session.walk_ins_changed` is unchanged. **`check_in()`'s `reservation_required` answer is untouched** — the door logic does not care where the flag was set.
+- **Supersedes:** `DEC-065`'s placement of the switch on the host view and its `is_staff()` role set. Everything else in `DEC-065` stands: off by default, audited, the refusal never revealing whether the code was right.
+- **Documents changed:** `01-prd.md` `REQ-CHK-010`, `03-permissions-rls.md` (the RPC's role set), `09-sitemap-screens.md` SCR-016 · SCR-043, `16` §9.1, a migration
+
+---
+
 ## Template for new entries
 
 ```markdown

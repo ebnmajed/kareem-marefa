@@ -564,7 +564,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-040 dashboard | `REQ-ADM-004` |
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
-| SCR-043 schedule | `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020`, `REQ-PRO-009`, `REQ-SES-014`, `REQ-DSG-027` |
+| SCR-043 schedule | `REQ-CHK-010`, `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020`, `REQ-PRO-009`, `REQ-SES-014`, `REQ-DSG-027` |
 | SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005`, `REQ-CHK-017` |
 | SCR-045 certificates | `REQ-CRT-001`, `REQ-CRT-003`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-012`, `REQ-DSG-031` |
 | SCR-046 venues | `REQ-ADM-006`, `REQ-SES-006` |
