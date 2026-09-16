@@ -2936,3 +2936,46 @@ event page's tasks section absent for the member the spec seeds) fail **identica
 wave), the second to `content`, each to decide whether the spec or the product is wrong.
 
 - **Documents changed:** `CLAUDE.md` (the wave-7 map; `patches/**` lead-only), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (`--wave7`)
+
+---
+
+## DEC-138 — `global-error.tsx` lives at `src/app/`, because a test showed Next ignores it beside the locale layout
+
+- **Date:** 2026-09-16 · **Decided by:** lead, by measurement (wave 7, STATUS row L2; carried from wave 6's closing list)
+- **The question.** `16` §7.4 put the hand-written Arabic last-resort page at `src/app/[locale]/global-error.tsx`. Next's docs place `global-error` «in the root app directory, even when leveraging internationalization». This repo has **no `src/app/layout.tsx`** — `[locale]/layout.tsx` is the root layout — so either reading was plausible, and wave 6 saw Next's English «This page couldn't load» once under load without being able to explain it.
+- **The test** (verification worktree at `c9e67ee`, production build, the QA stub, a headless browser at 390 px). A header-keyed `throw` was added to `[locale]/layout.tsx` after `setRequestLocale()`:
+
+  | File at | `/ar` with the throw | `/ar/sign-in` | `/en` |
+  |---|---|---|---|
+  | `src/app/[locale]/global-error.tsx` (as shipped) | **500, Next's English «This page couldn't load · Reload»**, no `lang`, no `dir` | same | same |
+  | `src/app/global-error.tsx` | **500, «حدث خطأ غير متوقع»**, `lang="ar"`, `dir="rtl"`, both actions, the digest in Western digits | same | same |
+
+  Without the header both builds render `/ar` normally. The build agrees: `.next/server/app/_global-error` is registered at the app root either way, and at `[locale]` the prerendered file is Next's default.
+- **Decision.** The file moves to `src/app/global-error.tsx`, unchanged apart from a comment recording this; `scripts/route-coverage.mjs` asserts the new path, so moving it back fails CI. `/en` also gets the Arabic page — the file is the one place allowed to hard-code Arabic (`16` §7.4), and a member of this product reads Arabic.
+- **Supersedes:** `16` §7.4's placement.
+- **Documents changed:** `src/app/global-error.tsx`, `scripts/route-coverage.mjs`, `.claude/agents/*.md` (the lead-only list), `STATUS.md`
+
+---
+
+## DEC-139 — "A photo appears at once" means no moderation step, not "before its metadata is stripped"; `REQ-EVT-010` is amended to the pipeline, and the uploader still never reloads
+
+- **Date:** 2026-09-16 · **Decided by:** lead (wave 7, STATUS row L4; carried from wave 6 sync 1)
+- **The disagreement.** `REQ-EVT-010` says «an uploaded photo appears at once» and its acceptance says «the uploader sees their photo in the gallery without a refresh». The shipped pipeline (`0050`, `JOB-process_photo`) makes the photo visible only once the worker has downloaded, sniffed, stripped and inserted it; the uploader's widget says «تتم معالجة الصورة الآن…», refreshes once when the request is accepted, and the photo shows on the next visit.
+- **Why the requirement bends, not the pipeline.** D34 — «Photos appear immediately; admins can remove them» — sets immediacy against **moderation**; `REQ-EVT-010`'s own body says «There is no pre-moderation queue». `REQ-EVT-011` (DEC-005) requires the EXIF and GPS strip to happen **«before the object is retrievable, not as a later cleanup job»**, and the strip runs in the worker (DEC-047). A photo that appeared before the strip would publish a colleague's location to the whole organisation. The two requirements cannot both hold literally, and the stricter one is about safety.
+- **Decision.** `REQ-EVT-010` is rewritten: a photo publishes with **no human step**, the moment its strip completes; the uploader is told at once that it is being processed; and — kept, because it is what "at once" means to the person holding the phone — **the photo takes its place in the uploader's gallery without a reload once processing completes.** The last clause is not met today, so it is `content`'s wave-7 row **T8**; the mechanism is `content`'s design (a private Realtime broadcast on the photo row, or a bounded refresh while the member's own upload is processing — a data poll for server state, which is not the "nudge" `DEC-136` forbids, and the plan says which).
+- **Supersedes:** `REQ-EVT-010` as written.
+- **Documents changed:** `01-prd.md` (`REQ-EVT-010`), `STATUS.md` (rows L4, T8)
+
+---
+
+## DEC-140 — React has already fixed the lost ping (facebook/react#36134, in `react-dom@19.3.0` and `next@16.3.5`), so nothing is reported upstream and the patch's exit is an upgrade the owner schedules
+
+- **Date:** 2026-09-16 · **Decided by:** lead, from React's own source (wave 7, STATUS row L5)
+- **What `DEC-136` step 5 asked:** report the bug upstream with `DEC-135`'s reasoning. Before writing it, the lead checked whether it was already known.
+- **What the check found.**
+  - **React `main` carries the fix, word for word.** `pingSuspendedRoot` in `packages/react-reconciler/src/ReactFiberWorkLoop.js` now has the `else` branch our patch adds, commented «record the pinged lanes so markRootSuspended won't mark them as suspended, allowing a retry». Bisected over the file's history, it arrived in **`c0d218f0f3` — «Fix useDeferredValue getting stuck» (facebook/react#36134), 2026-03-24**.
+  - **Released:** `react-dom@19.3.0` has it; `19.2.4` through `19.2.8` do not. **`next@16.3.5`** (npm `latest` today) vendors `19.3.0-canary-cbb046ab-20260731`, which has it; this repo pins `next@16.2.10`.
+  - **A dependency-free reproduction** (plain npm `react` + `react-dom@19.2.4` under jsdom, a Flight-shaped thenable that parks as `resolved_model` while React yields and resolves synchronously in `then()`): production and development both stay on the old tree with `pendingLanes === suspendedLanes` and `pingedLanes 0` until an unrelated `setState`; Next's patched copy commits at once. Kept at `$scratchpad/upstream/repro.cjs`, not committed.
+- **Decision.** (1) **No upstream report** — filing one would duplicate a merged, released fix. `DEC-136` step 5 is closed by this entry. (2) **The patch stays for this wave.** It is verified (16/16 twice against a control that hung 9/16) and a Next minor upgrade inside a wave is exactly what `DEC-135` item 5 kept out: `16.2 → 16.3` moves the vendored React to a 19.3 canary across every screen four teammates are rebuilding. (3) **`DEC-136`'s exit condition is met**: when the owner schedules `next@16.3.x` (lockfile through Docker, the full gate set, `reserve-probe.spec.ts` run at its own standard), `patches/next+16.2.10.patch` stops applying and is deleted with `tests/unit/react-dom-ping-patch.test.ts`, and the probe stays. **The owner decides when.**
+- **Supersedes:** `DEC-136` step 5.
+- **Documents changed:** `STATUS.md` (row L5)

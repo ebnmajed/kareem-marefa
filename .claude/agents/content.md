@@ -57,8 +57,11 @@ fixture in your component test.
 
 - **The photo tile's takedown label** «احذف الصور التي أظهر فيها» wraps to two lines under a half-width
   tile (wave 6, row 9) — `components/photos`.
-- **`REQ-EVT-010`** says a photo appears at once; the shipped pipeline processes, then shows. The lead
-  reconciles it and logs the decision; if it changes the pipeline's behaviour, it is routed to you.
+- ★ **`REQ-EVT-010`, as amended by `DEC-139`** (STATUS row **T8**): a photo publishes the moment its strip
+  completes, and **the uploader's processing photo takes its place in the gallery without a reload**. Today
+  the widget refreshes once at the 202 and the photo shows only on the next visit. The mechanism is yours —
+  a private Realtime broadcast on the photo row, or a bounded refresh while the member's own upload is
+  processing (a data poll for server state, not the nudge `DEC-136` forbids) — and the plan says which.
 
 ## ★ Your first task is PLANNING
 
@@ -231,7 +234,7 @@ spec of an unspawned track.
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
 `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·
-`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/[locale]/global-error.tsx` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` ·
 `src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
 `vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
 `docs/plan/**` except your own note. `src/messages/index.ts` gains a namespace **by append only**, in

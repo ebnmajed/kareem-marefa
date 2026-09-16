@@ -119,18 +119,18 @@ warnings)`, unchanged) · vitest **115 files, 1220 passed** · `qa` **44 passed,
 (20 specs, both projects): **105 passed**, 7 failed; re-run alone, three pass (the local gateway's «invalid
 response from the upstream server» at sign-in, and a proposal save that failed in the same window) and four
 fail deterministically — `proposal-materials:140` and `tasks:143` on both projects — **and fail identically on a
-build of `main` (`f4bfb82`) in the verification worktree**, so they are carried below. `db:reset` + RLS are run
-at the first promotion (task one touches no SQL).
+build of `main` (`f4bfb82`) in the verification worktree**, so they are carried below. `db:reset` + RLS ran
+with the `global-error` move: **`db:reset` clean, RLS 63 files, 746 passed, 4 todo** — and `build`, `qa` 44/44 and `visual` 0.000 % on all eight pairs again on that tree.
 
 ### The checklist — every route named
 
 | # | Owner | Route / work | Serves | (1) `--wave7` | (2) capture — path · spec · build | State |
 |---|---|---|---|---|---|---|
 | L1 | lead | **task one** — the patch, the nudge deleted | `DEC-135`, `DEC-136` | — | the probe above | **closed** `7d50e64` |
-| L2 | lead | **`global-error` resolved by a test** — throw in `[locale]/layout.tsx` on a production build; if ours does not render, move it to `src/app/global-error.tsx` | `REQ-UIX-016`, `16` §7.4 | — | — | open |
+| L2 | lead | **`global-error` resolved by a test** — throw in `[locale]/layout.tsx` on a production build; if ours does not render, move it to `src/app/global-error.tsx` | `REQ-UIX-016`, `16` §7.4, `DEC-138` | — | ✅ worktree probe at `c9e67ee` (`$scratchpad/global-error-probe*/`, not a cited capture): **beside the locale layout Next rendered its English «This page couldn't load», no `lang`/`dir`; at `src/app/` ours renders on `/ar`, `/ar/sign-in`, `/en`** — opened by the lead | **closed** — moved to `src/app/global-error.tsx`; `route-coverage --kind=error` asserts the new path; `build`, `qa` 44/44, `visual` 0.000 % on the tree with the move |
 | L3 | lead | **`ui/splash`** — built to `16` §7.2 and measured; kept only if `/app`'s LCP holds | `REQ-UIX-006`, `REQ-NFR-008` | — | — | open |
-| L4 | lead | **`REQ-EVT-010` reconciled** with the shipped photo pipeline (processing, then visible) | `REQ-EVT-010`, `REQ-EVT-012` | — | — | open |
-| L5 | lead | **`DEC-135` reported upstream** with the instrumented-`react-dom` reasoning | `DEC-136` | — | — | open |
+| L4 | lead | **`REQ-EVT-010` reconciled** with the shipped photo pipeline (processing, then visible) | `REQ-EVT-010`, `REQ-EVT-011`, `DEC-139` | — | — | **decided** (`DEC-139`): the requirement bends to the strip; the no-reload clause stays and is row T8 |
+| L5 | lead | **`DEC-135` reported upstream** with the instrumented-`react-dom` reasoning | `DEC-136`, `DEC-140` | — | — | **closed, no report filed** (`DEC-140`): React already fixed it — facebook/react#36134, in `react-dom@19.3.0` and vendored by `next@16.3.5`. The patch stays this wave; **the owner schedules the upgrade that retires it** |
 | L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017` | — | — | open |
 | C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ (floor) | — | open |
 | C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | · | — | open |
@@ -151,6 +151,7 @@ at the first promotion (task one touches no SQL).
 | T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | · | — | open |
 | T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | · | — | open |
 | T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | · | — | open |
+| T8 | `content` | the uploader's processing photo takes its place in the gallery **without a reload** once processed | `REQ-EVT-010` (as amended by `DEC-139`) | — | — | open |
 | K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ (floor) | — | open |
 | K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | · | — | open |
 | K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | · | — | open |

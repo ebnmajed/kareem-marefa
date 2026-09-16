@@ -165,7 +165,7 @@ spec of an unspawned track.
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
 `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·
-`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/[locale]/global-error.tsx` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` ·
 `src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
 `vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
 `docs/plan/**` except your own note. `src/messages/index.ts` gains a namespace **by append only**, in
