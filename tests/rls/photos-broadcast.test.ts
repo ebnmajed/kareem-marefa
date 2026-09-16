@@ -54,20 +54,25 @@ describe("TRG-photos_broadcast.session_topic", () => {
     });
   });
 
-  it("does not broadcast on a session belonging to another org's topic", async () => {
+  it("broadcasts on the photo's OWN session topic only — org B's own topic, which already carries its own fixture's comment traffic, gets nothing FROM THIS insert", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       const sessionId = f.m2.a.published;
       const otherSessionId = f.m2.b.published;
 
-      await tx.q(
+      const [photo] = await tx.q<{ id: string }>(
         `insert into public.photos (org_id, session_id, uploader_id, storage_path, width, height, byte_size, sha256, exif_stripped)
          values ($1, $2, $3, $4, 1200, 800, 2048, $5, true) returning id`,
         [f.a.id, sessionId, f.a.members[0].memberId, `${f.a.id}/sessions/${sessionId}/photos/broadcast-test-2.jpg`, "c".repeat(64)],
       );
 
-      const otherTopicRows = await tx.q(`select id from realtime.messages where topic = $1`, [`session:${otherSessionId}`]);
-      expect(otherTopicRows).toEqual([]);
+      // Org B's own topic is not empty — its own fixture seeds comments on
+      // it, each broadcasting — so the assertion is that THIS photo's id
+      // never appears there, not that the topic is silent.
+      const otherTopicRows = await tx.q<{ payload: { id?: string } }>(`select payload from realtime.messages where topic = $1`, [
+        `session:${otherSessionId}`,
+      ]);
+      expect(otherTopicRows.some((r) => r.payload.id === photo.id)).toBe(false);
     });
   });
 });
