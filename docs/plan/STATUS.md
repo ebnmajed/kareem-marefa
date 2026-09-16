@@ -102,9 +102,9 @@ the strict one is the gate):
 
 | # | Owner | Route / surface | (1) reaches M9 `ui/` | (2) 390 px RTL looked at |
 |---|---|---|---|---|
-| 1 | lead | `(auth)/sign-in` | ☐ | ☐ |
-| 2 | lead | `(auth)/choose-org` | ☐ | ☐ |
-| 3 | lead | `(auth)/no-access` | ☐ | ☐ |
+| 1 | lead | `(auth)/sign-in` | ✅ `f8a977c` | ✅ `wave6-auth-sign-in-390.png`, `-sign-in-error-390.png` |
+| 2 | lead | `(auth)/choose-org` | ✅ `f8a977c` | ✅ `wave6-auth-choose-org-390.png` |
+| 3 | lead | `(auth)/no-access` | ✅ `f8a977c` | ✅ `wave6-auth-no-access-390.png` |
 | 4 | `sessions` | `/app` — the timeline (`DEC-112`, `REQ-UIX-021`/`022`) | ☐ | ☐ |
 | 5 | `sessions` | `/app/sessions` — browse | ☐ | ☐ |
 | 6 | `sessions` | `/app/sessions/[id]` — the event page | ☐ (✓ already, strict — the bar is the rebuild) | ☐ |
@@ -115,13 +115,13 @@ the strict one is the gate):
 | 11 | `console` | `/app/admin/proposals` | ☐ | ☐ |
 | 12 | `console` | `/app/admin/sessions` | ☐ | ☐ |
 | 13 | `console` | `/app/admin/members` | ☐ | ☐ |
-| 14 | `console` | `/app/admin/moderation/reports` | ☐ | ☐ |
+| 14 | `console` | `/app/admin/moderation/reports` — **photo** reports (a flag from `content`'s rebuilt gallery lands here; comment flags land on `moderation/comments`, which is not this wave — `console`'s correction of `DEC-130`'s wording) | ☐ | ☐ |
 | — | `console` | the admin layout (`admin/layout.tsx`) — not counted, required | ☐ | ☐ |
-| — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) — both menus onto `ui/menu`, the `ps-10`/`px-4` pairing, the Playwright gate | ☐ | ☐ |
-| — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`, `16` §7.1.1) — `ui/splash` is wave 7's | ☐ | — |
-| — | lead | **the date-time picker's unnamed month buttons** (WCAG 4.1.2, found in M9) — `prevMonthLabel`/`nextMonthLabel`, five call sites, a test | ☐ | — |
-| — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) — ~150 call sites, 27 message glyphs, the catalogue test; lands before any teammate edits code | ☐ | — |
-| — | lead | **`0082_western_numerals.sql`** — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
+| — | lead | **the shell disclosure sweep** (`DEC-111`, `REQ-UIX-023`) — both menus onto `ui/menu`, the `ps-10`/`px-4` pairing, the Playwright gate | ✅ `9d921cd` — two edges open in teammates' primitives: `ui/menu` `href` items (`console`) and `ui/input` `startIcon` (`sessions`) | ✅ `wave6-shell-header-{390,desktop}.png`, `-account-menu-*`, `-tabbar-390.png` |
+| — | lead | **`ui/link` + `ui/route-progress` out of stub** (`REQ-UIX-006`, `16` §7.1.1) — `ui/splash` is wave 7's | ✅ `1d73e89` — with `page-header`, `section-header`, `icon-button`, `prose`, which were stubs too | — |
+| — | lead | **the date-time picker's unnamed month buttons** (WCAG 4.1.2, found in M9) — `prevMonthLabel`/`nextMonthLabel`, five call sites, a test | ✅ `73b0f3e` | — |
+| — | lead | **the numerals sweep, code half** (`DEC-124`, `DEC-132`) — ~150 call sites, 27 message glyphs, the catalogue test; lands before any teammate edits code | ✅ `c20b901` — tsc, vitest 96/1048, build, qa 44/44, visual 0.000% on the frozen six, RLS 63/746 after a reset | — |
+| — | lead | **`0082_western_numerals.sql`** — ⏳ **drafted, waiting on the owner's `supabase db dump --linked`** (a denied command for sessions) — ★ **not part of the sweep**: rehearsed against the owner's `supabase db dump --linked` (schema only) on a fresh local Postgres, every migration on top, `npm run test:rls` green, dump deleted — **then** into the PR (invariant 3) | ☐ | — |
 
 **Console's five, and why** (`DEC-130`): the dashboard is where «يحتاج انتباهك» moved; proposals,
 sessions and members are the three weekly lists that most need `DataTable`'s phone card stack; the
@@ -143,6 +143,38 @@ reports queue is where a flag from `content`'s rebuilt discussion lands. Not cho
 4. The three tracks build; the lead does the shell sweep and the `(auth)` screens, syncs, promotes,
    runs `build`/`qa`/`visual`, and ticks this table only against `scripts/ui-reach.mjs` output and
    a capture actually opened.
+
+### Sync 1 — 2026-09-16, `607ecbe` — the plans are approved and the tracks are coding
+
+**Gates at `607ecbe`:** `build` green · `qa` **44/44** · `visual` **0.000%** on all six frozen captures
+(the `(dev)` gallery grew, looked at: its headers are real components now) · vitest 99/1062 at
+`9d921cd` · lint 0 errors · `ui-lint` pruned to 410 · `.git/kareem-qa-verified` advanced to `607ecbe`.
+
+**The three plans** are in `docs/plan/notes/{sessions,console,content}.md`, each written before any
+code. `sessions` §22 is **the event-page section contract** — DOM order, ids, headings, a
+`SlotSummary` reader per `content` slot so the page gates a section before rendering it, and
+`cache()`d DAL reads so the gate costs no second round trip. `content` builds against it.
+
+**Rulings the lead took at sync 1** (the plans' questions, none needing the owner):
+
+- The event page follows the canvas's sticky desktop action column; the phone hero is the dark band
+  with badge and title, the poster under «نبذة»; shipped copy wins over canvas copy; no rating and no
+  computed presenter history on a member surface; seats left shown on open cards.
+- **Objectives are not this wave** — the column does not exist; the section and its sub-nav entry are
+  absent, the id reserved.
+- **Badge, tag-chip and avatar follow the canvas's 6 px rounded squares**, not pills (`DEC-110`) —
+  `content`'s change, in its own commit, with a before/after capture.
+- The admin rail keeps its **19 flat items**; `16` §6.7's 14-group IA is a **wave-7 question**. The
+  dashboard's «يحتاج انتباهك» has four rows; **"job-queue depth" is dropped** — no org-scoped source
+  exists, and `REQ-ADM-010`'s enumeration is covered without it.
+- Reply stays a labelled button; reaction, report and delete are icon buttons.
+- A materials or photos viewer with nothing to show and no right to add renders nothing — the page's
+  summary gate removes the section.
+
+**Found since Step 0, all recorded:** four lead primitives were still M9 stubs (`1d73e89`); **`DEC-133`** —
+Tailwind 4 has no `inset-inline-*`, so the phone tab bar never spanned the screen, plus an invisible
+empty toast viewport over its middle tabs; `REQ-EVT-010`'s "a photo appears at once" does not match the
+shipped pipeline (processing, then visible) — a finding for a later wave, not built here.
 
 ### ★ Findings recorded before any code
 
