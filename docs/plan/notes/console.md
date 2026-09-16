@@ -1432,9 +1432,14 @@ own missing capture (§4) at the same time.
 2. ~~`admin/designer`'s missing nav entry.~~ **Withdrawn — my own error.** There is no
    `admin/designer/page.tsx`; see the ★ CORRECTION above. `التصاميم` discloses `templates/posters`
    and `templates/certificates` only.
-3. **Four rail icons still on interim/reused glyphs** since wave 6 (tag, building, palette/swatch,
-   gear — `docs/plan/notes/console.md:582-592`, still open). **Ruled: build with the interim glyphs
-   this wave; the request stands in this note and the lead routes it.** Not blocking.
+3. ~~Four rail icons still on interim/reused glyphs.~~ **Withdrawn — my own error, a second one.**
+   §1's request repeated wave 6's PLANNING-stage note (`console.md:582-592`) instead of that same
+   file's own later "as built" entry (`console.md:893-894`): the lead's `607ecbe` landed
+   `TagIcon`/`BuildingIcon`/`PaletteIcon`/`GearIcon` before wave 6 wrote a line of code, so the
+   interim reuses never shipped and `NAV_ITEMS` already uses the real glyphs today (verified again
+   just now: `categories→"tag"`, `companies→"building"`, `branding→"palette"`, `settings→"gear"`,
+   all resolving through `admin-rail.tsx`'s own `ICONS` map, lines 50/51/58/63). No request to the
+   lead here; sorry for the noise on a ruling already given.
 
 **5.2 — For `checkin`.** Asked; the lead is routing it with their approval attached. **Do not delete
 `admin.json`'s `attendance` object until the lead confirms `checkin`'s strings are live** — holding.
