@@ -18,11 +18,19 @@ import type { AvatarProps, AvatarStackProps } from "@/components/ui";
 // are M10 (`content` + `scoring`, `16` §6.8.2) — this file only draws
 // whatever `src`/`displayName` it is handed.
 
-const TINTS = [
+// ★ The lead's real-build finding: `bg-navy-600` and `bg-navy-200` are not
+// tokens `globals.css` defines — only navy-1000/950/900/850/800 and
+// silver-100…400 exist (`@theme`, `src/app/globals.css:12-22`). Both classes
+// resolved to nothing, so a member with no `src` landed on either an
+// invisible (transparent-background) or unreadable (dark-on-transparent)
+// avatar. Same register as `card.tsx`'s `MEDIA_TINTS`, and exported for the
+// same reason: `avatar.test.tsx` asserts every entry against the real
+// `--color-*` custom properties instead of a hand-copied hex pair.
+export const TINTS = [
   "bg-navy-950 text-white",
+  "bg-navy-900 text-white",
   "bg-navy-800 text-white",
-  "bg-navy-600 text-white",
-  "bg-navy-200 text-navy-950",
+  "bg-silver-200 text-navy-950",
   "bg-silver-300 text-navy-950",
   "bg-silver-400 text-navy-950",
 ] as const;

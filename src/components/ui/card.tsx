@@ -84,11 +84,20 @@ const ASPECT: Record<NonNullable<CardMediaProps["aspect"]>, string> = {
 // display name a session/material title is the entity's own identity, not a
 // spelling that gets corrected later. This is a narrower, separate rule from
 // avatar's id-hash and must not be generalised back onto it.
-const MEDIA_TINTS = [
+//
+// ★ The lead's real-build finding: `bg-navy-600` and `bg-navy-200` are not
+// tokens `globals.css` defines — only navy-1000/950/900/850/800 and
+// silver-100…400 exist (`@theme`, `src/app/globals.css:12-22`) — so those two
+// classes resolved to nothing and the placeholder either went invisible
+// (navy-600, transparent background) or rendered dark text on a transparent
+// background (navy-200). Exported so `card.test.tsx` can assert every entry
+// resolves to a real `--color-*` custom property directly, instead of a
+// hand-copied hex pair that can drift from `globals.css` the way this one did.
+export const MEDIA_TINTS = [
   "bg-navy-950 text-white",
+  "bg-navy-900 text-white",
   "bg-navy-800 text-white",
-  "bg-navy-600 text-white",
-  "bg-navy-200 text-navy-950",
+  "bg-silver-200 text-navy-950",
   "bg-silver-300 text-navy-950",
   "bg-silver-400 text-navy-950",
 ] as const;
@@ -101,11 +110,20 @@ function hashString(value: string): number {
   return Math.abs(hash);
 }
 
+// ★ The lead's real-build finding: two letters from the first two words (or
+// the first two characters of a one-word title) rendered pairs like «اا» for
+// any title whose first word or two both started with «ا» — indistinguishable
+// from a horizontal pause/loading glyph, not a letter at all. One letter
+// only, matching `avatar.tsx`'s own `initial()`. A leading «ال» (the definite
+// article) is skipped first, so a title like «الجلسة» shows «ج» — the noun's
+// own first letter — rather than «ا», which nearly every Arabic title would
+// otherwise produce.
 function placeholderGlyph(title: string): string {
   const words = title.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "؟"; // Arabic question mark: an unnamed placeholder.
-  if (words.length === 1) return words[0]!.slice(0, 2);
-  return `${words[0]!.charAt(0)}${words[1]!.charAt(0)}`;
+  const first = words[0]!;
+  const withoutAl = first.startsWith("ال") && first.length > 2 ? first.slice(2) : first;
+  return withoutAl.charAt(0);
 }
 
 /**

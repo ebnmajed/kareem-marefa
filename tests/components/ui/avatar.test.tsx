@@ -1,10 +1,12 @@
 // `<Avatar>` / `<AvatarStack>` — `16` §6.8, DEC-099. Initials are the
 // DEFAULT and the PERMANENT fallback; there is no silhouette placeholder
 // anywhere. The tint is a stable hash of the MEMBER ID, never the name.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";
-import { Avatar, AvatarStack, tintIndex } from "@/components/ui/avatar";
+import { Avatar, AvatarStack, tintIndex, TINTS } from "@/components/ui/avatar";
 import { contrastRatio } from "@/lib/brand/contrast";
 
 async function expectAccessible(container: HTMLElement) {
@@ -80,11 +82,19 @@ describe("AvatarStack", () => {
 // jsdom has no layout engine; contrast is asserted numerically against the
 // exact six navy/silver hex pairs `avatar.tsx` uses (`16` §6.8), the same
 // reasoning as `badge.test.tsx`. AA body text is 4.5:1.
+//
+// ★ The lead's real-build finding: the previous two entries here (navy-600
+// #2e405e, navy-200 #d5dfec) were FABRICATED — `globals.css` never defined
+// either token, `avatar.tsx` referenced classes that resolved to nothing, and
+// this hand-copied hex pair passed anyway because it never checked against
+// the real `@theme` block. Corrected to the six tokens `TINTS` actually uses,
+// and the test below reads `globals.css` directly so a mismatch like this one
+// fails here instead of being invisible in both places at once.
 const TINT_PAIRS: [fg: string, bg: string][] = [
   ["#ffffff", "#0b1220"], // navy-950
+  ["#ffffff", "#111a2c"], // navy-900
   ["#ffffff", "#1d2a42"], // navy-800
-  ["#ffffff", "#2e405e"], // navy-600
-  ["#0b1220", "#d5dfec"], // navy-200
+  ["#0b1220", "#e6eaf0"], // silver-200
   ["#0b1220", "#c9ced6"], // silver-300
   ["#0b1220", "#a8b3c4"], // silver-400
 ];
@@ -92,5 +102,23 @@ const TINT_PAIRS: [fg: string, bg: string][] = [
 describe("Avatar — every tint clears AA contrast (4.5:1)", () => {
   it.each(TINT_PAIRS)("fg %s on bg %s", (fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("TINTS — every class resolves to a real design token", () => {
+  const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+  const definedTokens = new Set([...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]!));
+  const KNOWN_NON_TOKEN_UTILITIES = new Set(["white"]); // a Tailwind builtin, not a --color-* token
+
+  it.each(TINTS)("%s", (tintClasses) => {
+    const classes = tintClasses.split(/\s+/);
+    expect(classes.length).toBeGreaterThan(0);
+    for (const cls of classes) {
+      const match = /^(?:bg|text)-([a-z0-9-]+)$/.exec(cls);
+      if (!match) continue;
+      const name = match[1]!;
+      if (KNOWN_NON_TOKEN_UTILITIES.has(name)) continue;
+      expect(definedTokens.has(name), `${cls} has no matching --color-${name} in globals.css`).toBe(true);
+    }
   });
 });

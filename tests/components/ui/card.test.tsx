@@ -6,12 +6,14 @@
 // rule — which this pattern deliberately trips, and which is disabled below
 // with the same citation once the real concern is shown not to apply.
 import type React from "react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
-import { Card, CardActions, CardBody, CardMedia } from "@/components/ui/card";
+import { Card, CardActions, CardBody, CardMedia, MEDIA_TINTS } from "@/components/ui/card";
 import ar from "@/messages/ar/browse.json";
 
 function Wrap({ children }: { children: React.ReactNode }) {
@@ -155,14 +157,27 @@ describe("Card — REQ-NFR-007, the nested action", () => {
 });
 
 describe("CardMedia — the generated placeholder", () => {
-  it("shows a two-letter glyph built from the title's first two words, never an empty box", () => {
+  // ★ The lead's real-build finding: two letters read as a pause/loading
+  // glyph («اا») for any title whose first word or two both started with
+  // «ا» — one letter only now, matching `avatar.tsx`'s `initial()`.
+  it("shows a one-letter glyph built from the title's first word, never an empty box", () => {
     render(<CardMedia placeholderFrom="ورشة عمل" />);
-    expect(screen.getByText("وع")).toBeInTheDocument();
+    expect(screen.getByText("و")).toBeInTheDocument();
   });
 
-  it("takes the first two characters of a single-word title", () => {
+  it("takes the first character of a single-word title", () => {
     render(<CardMedia placeholderFrom="مؤتمر" />);
-    expect(screen.getByText("مؤ")).toBeInTheDocument();
+    expect(screen.getByText("م")).toBeInTheDocument();
+  });
+
+  it("skips a leading «ال» so the glyph is the noun's own first letter, not «ا» for nearly every Arabic title", () => {
+    render(<CardMedia placeholderFrom="الجلسة التمهيدية" />);
+    expect(screen.getByText("ج")).toBeInTheDocument();
+  });
+
+  it("a single word that is only «ال» itself is not emptied by the skip", () => {
+    render(<CardMedia placeholderFrom="ال" />);
+    expect(screen.getByText("ا")).toBeInTheDocument();
   });
 
   it("picks the same tint for the same title, deterministically", () => {
@@ -177,5 +192,29 @@ describe("CardMedia — the generated placeholder", () => {
     // "presentation", removed from the accessibility tree on purpose.
     const { container } = render(<CardMedia src="https://example.com/poster.webp" alt="" placeholderFrom="جلسة" />);
     expect(container.querySelector("img")).toHaveAttribute("src", "https://example.com/poster.webp");
+  });
+});
+
+// ★ The lead's real-build finding, guarded against recurring: `MEDIA_TINTS`
+// once referenced `bg-navy-600`/`bg-navy-200`, tokens `globals.css` never
+// defined — a hand-copied hex pair in a test would not have caught this
+// (`avatar.test.tsx` had exactly that and missed it too). This reads the
+// actual `@theme` block and checks every class in the real array against it,
+// so a token typo fails here instead of rendering invisibly in the browser.
+describe("MEDIA_TINTS — every class resolves to a real design token", () => {
+  const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+  const definedTokens = new Set([...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]!));
+  const KNOWN_NON_TOKEN_UTILITIES = new Set(["white"]); // a Tailwind builtin, not a --color-* token
+
+  it.each(MEDIA_TINTS)("%s", (tintClasses) => {
+    const classes = tintClasses.split(/\s+/);
+    expect(classes.length).toBeGreaterThan(0);
+    for (const cls of classes) {
+      const match = /^(?:bg|text)-([a-z0-9-]+)$/.exec(cls);
+      if (!match) continue;
+      const name = match[1]!;
+      if (KNOWN_NON_TOKEN_UTILITIES.has(name)) continue;
+      expect(definedTokens.has(name), `${cls} has no matching --color-${name} in globals.css`).toBe(true);
+    }
   });
 });
