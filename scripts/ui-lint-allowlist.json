@@ -29,10 +29,6 @@
     "src/app/[locale]/app/admin/exports/page.tsx": {
       "class-string": 2
     },
-    "src/app/[locale]/app/admin/members/member-row.tsx": {
-      "field": 2,
-      "class-string": 4
-    },
     "src/app/[locale]/app/admin/moderation/comments/report-card.tsx": {
       "field": 1,
       "class-string": 3
@@ -41,16 +37,12 @@
       "field": 1,
       "class-string": 3
     },
-    "src/app/[locale]/app/admin/moderation/reports/report-card.tsx": {
-      "field": 1,
-      "class-string": 3
-    },
     "src/app/[locale]/app/admin/page.tsx": {
-      "class-string": 7
+      "class-string": 1
     },
     "src/app/[locale]/app/admin/proposals/review-card.tsx": {
       "field": 1,
-      "class-string": 4
+      "class-string": 3
     },
     "src/app/[locale]/app/admin/recognition/page.tsx": {
       "field": 11,
@@ -83,11 +75,10 @@
       "class-string": 3
     },
     "src/app/[locale]/app/admin/sessions/direct-session-form.tsx": {
-      "field": 6,
-      "class-string": 2
+      "class-string": 1
     },
     "src/app/[locale]/app/admin/sessions/page.tsx": {
-      "class-string": 3
+      "class-string": 1
     },
     "src/app/[locale]/app/admin/sessions/session-controls.tsx": {
       "field": 1,
@@ -130,9 +121,6 @@
     },
     "src/app/[locale]/app/me/privacy/page.tsx": {
       "class-string": 2
-    },
-    "src/app/[locale]/app/page.tsx": {
-      "class-string": 1
     },
     "src/app/[locale]/app/platform/impersonate/impersonate-form.tsx": {
       "field": 3,
@@ -179,23 +167,8 @@
       "field": 2,
       "class-string": 9
     },
-    "src/app/[locale]/app/sessions/[id]/materials/[materialId]/download-button.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/sessions/[id]/materials/[materialId]/page.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/sessions/[id]/page.tsx": {
-      "class-string": 1
-    },
     "src/app/[locale]/app/sessions/[id]/rate/rate-form.tsx": {
       "field": 1,
-      "class-string": 1
-    },
-    "src/app/[locale]/app/sessions/loading.tsx": {
-      "class-string": 1
-    },
-    "src/app/[locale]/app/sessions/page.tsx": {
       "class-string": 1
     },
     "src/components/admin/rtl-datetime-picker.tsx": {
@@ -217,24 +190,12 @@
       "field": 1,
       "class-string": 1
     },
-    "src/components/browse/filter-sheet.tsx": {
-      "class-string": 1
-    },
-    "src/components/browse/session-card.tsx": {
-      "class-string": 1
-    },
-    "src/components/calendar/add-to-calendar.tsx": {
-      "class-string": 1
-    },
     "src/components/certificates/held-achievements.tsx": {
       "field": 1,
       "class-string": 1
     },
     "src/components/checkin/code-input.tsx": {
       "field": 1,
-      "class-string": 1
-    },
-    "src/components/checkin/rsvp-panel.tsx": {
       "class-string": 1
     },
     "src/components/designer/bindings-panel.tsx": {
@@ -265,25 +226,10 @@
     },
     "src/components/event/comment-composer.tsx": {
       "field": 1,
-      "class-string": 2
-    },
-    "src/components/event/comment-item.tsx": {
-      "field": 2,
-      "class-string": 2
-    },
-    "src/components/materials/list.tsx": {
       "class-string": 1
     },
     "src/components/materials/proposal-list.tsx": {
       "class-string": 1
-    },
-    "src/components/materials/settings-form.tsx": {
-      "field": 2,
-      "class-string": 1
-    },
-    "src/components/materials/upload-form.tsx": {
-      "field": 5,
-      "class-string": 6
     },
     "src/components/notifications/notification-list.tsx": {
       "class-string": 1
@@ -293,10 +239,6 @@
     },
     "src/components/photos/gallery.tsx": {
       "class-string": 1
-    },
-    "src/components/photos/upload-widget.tsx": {
-      "field": 1,
-      "class-string": 2
     },
     "src/components/platform/stop-control.tsx": {
       "class-string": 1
@@ -323,13 +265,6 @@
       "class-string": 2
     },
     "src/components/scoring/points-strip.tsx": {
-      "class-string": 1
-    },
-    "src/components/search/filters-form.tsx": {
-      "field": 9,
-      "class-string": 12
-    },
-    "src/components/sessions/share-link.tsx": {
       "class-string": 1
     },
     "src/components/tasks/create-form.tsx": {
