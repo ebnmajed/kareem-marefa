@@ -2072,6 +2072,17 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-115 — Closing check-in stops admitting and revokes nothing; the switch starts closed
+
+- **Date:** 2026-09-16 · **Decided by:** owner («yes, it is closing accepting check-ins»), confirming the two defaults `DEC-113` left open
+- **Decision.** (1) **Closing the switch stops admitting new check-ins and revokes none already recorded.** An attendance record is evidence that someone was in the room; the switch governs whether the door is open, never whether the people already inside were there. A member who checked in and then finds their attendance withdrawn because a presenter tidied up afterwards is a member whose points, certificate eligibility and «حضرت» all moved without them doing anything. (2) **The switch starts closed**, and is opened deliberately — an attendance window nobody opened is recoverable in the room; one nobody closed quietly admits people who were never there.
+- **What this settles for the implementation.** `check_in_open` is a plain boolean with a `false` default and no bearing on existing `check_ins` rows. Closing is an `update` of one column, not a cascade — there is no "undo check-in" path anywhere in this feature, and if one is ever wanted it is a separate, audited act on a single attendance record (which `REQ-CHK-008`'s manual marking already models).
+- ★ **The owner's words answered the second question directly; the first is taken as confirmed by the same «yes».** Recorded that way rather than as two equal confirmations, so a later reader can see which was explicit. If the switch was meant to default open, it is a one-line change and this entry is the place to look.
+- **Supersedes:** nothing — it closes `DEC-113`'s two stated defaults, which were flagged as open precisely so they would not be settled by silence.
+- **Documents changed:** `01-prd.md` (`REQ-CHK-015`), `STATUS.md`
+
+---
+
 ## Template for new entries
 
 ```markdown

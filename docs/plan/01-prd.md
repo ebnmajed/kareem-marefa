@@ -744,7 +744,10 @@ starts, and closing it is a deliberate act rather than a clock event.
 - The switch starts **closed**; an attendance window nobody opened is safer than one nobody closed.
 - Opening and closing are one tap from the host view (SCR-016), the screen already projected in
   the room.
-- Closing stops admitting new check-ins and **never revokes one already recorded**.
+- Closing stops admitting new check-ins and **never revokes one already recorded** (`DEC-115`) —
+  an attendance record is evidence that someone was in the room, and the switch governs the door,
+  not the people already inside. Withdrawing one moves that member's points, certificate
+  eligibility and «حضرت» without them acting.
 - Every open and close writes an audit row naming who and when — it decides whether attendance can
   be recorded, and attendance is what `REQ-PTS-012` pays points on.
 - A member may not open it, and a presenter of a *different* session may not open this one.

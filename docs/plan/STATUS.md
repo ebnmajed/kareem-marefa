@@ -1250,8 +1250,10 @@ has a tab for each. That is part of the work, not a detail.
 admin, with a **hard ceiling at `ends_at + 2 hours`** enforced in the RPC. The phase no longer gates
 check-in — a presenter may open it before the session starts.
 
-**Two defaults I chose and the owner has not confirmed:** the switch starts **closed**, and closing
-**does not revoke** check-ins already recorded.
+**Both defaults are now CONFIRMED by the owner (`DEC-115`):** the switch starts **closed**, and
+closing **stops admitting and revokes nothing**. `check_in_open` is a plain boolean defaulting to
+`false`, and closing is an update of one column — there is no cascade and no "undo check-in" path
+in this feature.
 
 ★ **This dissolves one of `DEC-090`'s four instances.** Once a stored switch is the gate, the clock
 cannot grant check-in, so `checkIn` leaves `GRANTING_AFFORDANCES` — `rate`, `survey`, `certificate`
