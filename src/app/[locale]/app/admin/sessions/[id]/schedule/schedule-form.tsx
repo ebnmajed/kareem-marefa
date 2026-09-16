@@ -191,13 +191,27 @@ export function ScheduleForm({
           this same form — no in-room toggle exists anymore. An unchecked
           checkbox sends no key at all, so the action reads presence, never
           treating "absent" as "unchanged" (this form always states an
-          explicit value, unlike a reschedule call that skips the field). */}
+          explicit value, unlike a reschedule call that skips the field).
+
+          ★ `allowWalkInsKnown` is an interim safety net, not the permanent
+          design: `initial.allowWalkIns` is optional because `page.tsx` (not
+          in checkin's edit list) doesn't read `allowWalkIns` back yet —
+          flagged to the lead, not yet landed. Until it does, the checkbox
+          below renders unchecked for EVERY session regardless of its real
+          value, and without this marker `saveSchedule()` would read that as
+          an explicit `false` and silently turn walk-ins off on save (found
+          by `sessions`). The marker lets the action distinguish "the box is
+          unchecked because it's really off" from "the box is unchecked
+          because we don't know yet" — sending `null` (unchanged) in the
+          second case. Delete this marker, and the `?? false` above, in the
+          same commit that makes `initial.allowWalkIns` required. */}
       <div>
         <label className="flex min-h-11 items-center gap-3 text-body text-fg-body">
           <input type="checkbox" name="allowWalkIns" defaultChecked={initial.allowWalkIns ?? false} className="size-5" />
           {tc("allowWalkIns.label")}
         </label>
         <p className="mt-1 text-body-sm text-fg-muted">{tc("allowWalkIns.hint")}</p>
+        {initial.allowWalkIns !== undefined ? <input type="hidden" name="allowWalkInsKnown" value="1" /> : null}
       </div>
 
       <RtlDateTimePicker

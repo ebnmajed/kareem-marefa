@@ -61,8 +61,14 @@ export async function saveSchedule(locale: Locale, sessionId: string, timeZone: 
     // is exactly the presence check that turns that into a real `false`
     // rather than letting "absent" stand in for it (sessions' own note on
     // contract 1). This form always states the setting; `null` is for a
-    // caller that doesn't touch the field at all, which this one isn't.
-    allowWalkIns: formData.has("allowWalkIns"),
+    // caller that doesn't touch the field at all, which this one isn't —
+    // EXCEPT during the interim window `allowWalkInsKnown` marks (see
+    // schedule-form.tsx's own comment on that field): until `page.tsx` reads
+    // `allow_walk_ins` back, the checkbox can't render the true value, so
+    // reading its presence would silently write `false` over whatever the
+    // session actually has. `allowWalkInsKnown` is absent in exactly that
+    // window, and only then does this fall back to `null` (unchanged).
+    allowWalkIns: formData.has("allowWalkInsKnown") ? formData.has("allowWalkIns") : null,
   });
   if (!parsed.success) return { error: "invalid", saved: false, published: false };
 
