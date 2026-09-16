@@ -377,8 +377,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
   const boxes = attendee.locator("input[maxlength='1']");
   await expect(boxes).toHaveCount(6);
-  for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+  // ★ The six boxes are a controlled client component, and the action reads the
+  // hidden `code` field their STATE assembles. A `fill` that lands before
+  // hydration sets the DOM and never reaches that state, so the action gets an
+  // empty code. Refill until the hidden field carries the whole code — that is
+  // the component live. (Sync 5, desktop only: no status after the click.)
+  const assembled = attendee.locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(code, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await attendee.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  // The URL first: a refusal then fails naming its reason (`?error=…`), not «no status».
+  await expect(attendee).toHaveURL(/\/check-in\?success=1$/, { timeout: 15_000 });
   await expect(attendee.getByRole("status")).toHaveText("تم تسجيل حضورك");
 
   const checkIn = await db.query<{ method: string }>(`select method from public.check_ins where session_id = $1 and member_id = $2`, [sessionId, attendeeId]);

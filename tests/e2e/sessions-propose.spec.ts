@@ -208,6 +208,7 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   await signIn(context);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/ar/app/propose");
+  await streamed(page);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
   // Layout-viewport measurement (TEAM.md §5): first, does the page scroll at all
@@ -272,8 +273,11 @@ test("SCR-017 at 390 px RTL: no horizontal scroll, and the primary action is ≥
   // types Arabic right to left — `ui/combobox` forced `dir="ltr"` until R2
   // (`654ec91`). Getting either backwards looks subtly wrong in a way a
   // screenshot review misses and a measurement does not.
-  const duration = (await page.getByLabel("المدة المتوقعة").boundingBox())!;
-  const unit = (await page.getByText("دقيقة", { exact: true }).boundingBox())!;
+  // The unit is read from the duration field's own row (sync 5: an unscoped
+  // «دقيقة» matched twice on phone, the second outside `#main`).
+  const durationBox = page.getByLabel("المدة المتوقعة");
+  const duration = (await durationBox.boundingBox())!;
+  const unit = (await durationBox.locator("xpath=..").getByText("دقيقة", { exact: true }).boundingBox())!;
   expect(duration.x, "the number box sits to the right of «دقيقة» in RTL").toBeGreaterThan(unit.x);
 
   const search = page.getByRole("combobox", { name: /مقدّمون مشاركون/ });
