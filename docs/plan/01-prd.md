@@ -710,10 +710,12 @@ every attendance right. **السعة** remains a planning limit on reservations.
   the code is checked, and the attempt is recorded.
 - With the switch on, a member with no حجز who checks in earns attendance points and receives a
   certificate; walk-ins are distinguishable in admin reporting.
-- The switch is set where the session's other settings are set, and every change is audited.
-- ★ **It is a policy about who may attend, decided when the session is published — not an in-room
-  control.** What the room controls is *when check-in stops accepting* (`REQ-CHK-015`), which is a
-  different question with a different role set.
+- ★ **It is decided when the session is scheduled and published**, alongside the date, the venue,
+  the capacity and the deadlines — written by the same audited RPC — and is changeable afterwards
+  **only** through that same act, by an admin (`DEC-118`). There is no toggle anywhere else.
+- ★ **It is a policy about who may attend, not an in-room control.** What the room controls is
+  *when check-in stops accepting* (`REQ-CHK-015`), which is a different question, at a different
+  time, with a different role set.
 
 #### REQ-CHK-011 — Presenters do not check in to their own session
 **Serves:** OQ-025 · D9

@@ -2118,6 +2118,20 @@ decision. Every decision taken **after** the source brief gets an entry here.
 
 ---
 
+## DEC-118 — Walk-ins are fixed at publication and changed only where the date is changed — with one divergence from the analogy, flagged
+
+- **Date:** 2026-09-16 · **Decided by:** owner («the allowing of walk-ins is a setting before publishing that can't be changed, similar to the date and time of the session»)
+- **Decision.** `allow_walk_ins` is decided **when the session is scheduled and published**, on SCR-043's «الإعدادات» tab, alongside the date, the venue, the capacity and the deadlines. It is **not changeable from anywhere else** — not the host view (`DEC-117` removed that), not a member surface, not an ad-hoc toggle. It moves into `schedule_session()`'s parameter set, so it is written by the same audited RPC that writes the time and the place.
+- ★★ **THE ANALOGY DIVERGES, AND THE OWNER SHOULD KNOW WHERE.** «Can't be changed» and «similar to the date and time» point in different directions, because **the date and time of a published session CAN be changed** — deliberately, and by design. `0021_session_scheduling.sql` says so in a comment on the guard itself: *«REQ-SES-009 makes editing a PUBLISHED session legitimate (it notifies and re-syncs calendars)»*. Rescheduling is a first-class flow: `MSG-session_rescheduled` goes out, calendar events are upserted, and pending reminders **move** rather than duplicate (`08` §5).
+- **So the analogy is honoured and the literal phrase is not, deliberately.** `allow_walk_ins` behaves **exactly like the date**: set at publication, editable afterwards **only** through `schedule_session()`, by an admin, audited — and by nobody and nowhere else. It is not made immutable.
+- **Why that way round, since the two readings are not equally recoverable.** Immutable-after-publish creates a dead end with no exit: an admin who published with walk-ins off, standing in front of a room that has filled with people who did not reserve, has *no path at all* — the only remedy is cancelling and recreating the session, which destroys every reservation on it. The other error is cheap: if an admin changes it who should not have, the audit row names them. **A wrong setting that can be corrected beats a right setting that cannot.**
+- ★ **If the owner did mean immutable — stricter than the date — it is a trigger and this entry is the signpost.** `sessions_walk_ins_immutable`: refuse an update to `allow_walk_ins` when the row's state is already `published` or beyond. Three lines, one migration, and a follow-up entry.
+- **What is unchanged:** off by default (`DEC-065`); admin-only (`DEC-117`); audited as `session.walk_ins_changed`; `check_in()`'s `reservation_required` answer, which never cared where the flag was set.
+- **Supersedes:** nothing beyond `DEC-117`'s placement, which this narrows from "a settings field" to "a parameter of the scheduling act".
+- **Documents changed:** `01-prd.md` `REQ-CHK-010`, `03-permissions-rls.md` (`schedule_session`'s signature), `09-sitemap-screens.md` SCR-043, a migration
+
+---
+
 ## Template for new entries
 
 ```markdown

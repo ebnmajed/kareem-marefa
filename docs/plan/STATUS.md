@@ -1276,7 +1276,7 @@ people. Building either one as the other is the mistake waiting here.
 
 | | Who | When | Question |
 |---|---|---|---|
-| `allow_walk_ins` | **admin**, at publish, on SCR-043's «الإعدادات» tab | before anyone arrives | **may someone without a reservation attend at all?** |
+| `allow_walk_ins` | **admin**, as part of scheduling/publishing (SCR-043 «الإعدادات») | before anyone arrives, and changed only by rescheduling | **may someone without a reservation attend at all?** |
 | `check_in_open` | presenter · moderator · admin, from the host view | during, and up to `ends_at + 2 h` | **are we still taking attendance?** |
 
 **The org decides the door policy; the room decides the door's timing.** `DEC-117` moves walk-ins
@@ -1284,6 +1284,21 @@ off the host view entirely — which `DEC-065` had already flagged as the design
 so **there is no in-room override**: a moderator in a room that fills with people who did not
 reserve cannot admit them, and an admin changes the setting from the schedule screen instead. That
 is the trade, chosen deliberately, because a walk-in earns attendance points and a certificate.
+
+★★ **One divergence the owner should confirm (`DEC-118`).** They asked for walk-ins to be «a setting
+before publishing that can't be changed, **similar to the date and time**» — and those two halves
+point different ways, because **the date and time of a published session CAN be changed**.
+`0021_session_scheduling.sql` says so on the guard itself: «REQ-SES-009 makes editing a PUBLISHED
+session legitimate (it notifies and re-syncs calendars)». Rescheduling sends `MSG-session_rescheduled`,
+re-syncs calendars and *moves* pending reminders.
+
+**The analogy was honoured and the literal phrase was not**, on purpose: `allow_walk_ins` behaves
+exactly like the date — set at publication, changed afterwards only through `schedule_session()`, by
+an admin, audited, and nowhere else. Immutable-after-publish would create a dead end with no exit:
+an admin who published with walk-ins off, in front of a room that has filled with people who did not
+reserve, could only cancel and recreate the session — destroying every reservation on it. **A wrong
+setting that can be corrected beats a right setting that cannot.** If immutable was genuinely meant,
+it is a three-line trigger and `DEC-118` is the signpost.
 
 ### ★ The one thing blocked on the owner
 

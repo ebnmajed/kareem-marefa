@@ -13,7 +13,7 @@
 | Stories (`STORY-*`) | **141** |
 | Screens cited (`SCR-*`) | 55 |
 | Jobs cited (`JOB-*`) | 37 |
-| Messages cited (`MSG-*`) | 20 |
+| Messages cited (`MSG-*`) | 21 |
 
 ## Cross-cutting requirements
 
@@ -117,7 +117,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-007` | `ENT-check_in_codes` | — | `SCR-016` | `JOB-rotate_check_in_code` | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-008` | `ENT-check_ins` | — | `SCR-016` `SCR-044` | — | — | `STORY-CHK-004` | M2 |
 | `REQ-CHK-009` | `ENT-certificates` `ENT-check_ins` | `POL-issue_certificate.check_in` | `SCR-014` | `JOB-issue_certificates` | — | `STORY-CHK-005` | M2 |
-| `REQ-CHK-010` | — | — | `SCR-014` `SCR-016` `SCR-043` | — | — | `STORY-CHK-005` | M2 |
+| `REQ-CHK-010` | — | — | `SCR-014` `SCR-016` `SCR-043` | — | `MSG-session_rescheduled` | `STORY-CHK-005` | M2 |
 | `REQ-CHK-011` | `ENT-check_ins` | — | `SCR-014` `SCR-016` | — | — | `STORY-CHK-005` | M2 |
 | `REQ-CHK-012` | — | — | `SCR-014` `SCR-044` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-013` | `ENT-check_ins` | — | `SCR-014` | — | — | `STORY-CHK-006` | M2 |
@@ -407,7 +407,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-006` | `ENT-venues` | — | `SCR-043` `SCR-046` | — | — | `STORY-SES-004` | M2 |
 | `REQ-SES-007` | `ENT-venues` | — | `SCR-043` | — | — | `STORY-SES-004` | M2 |
 | `REQ-SES-008` | — | — | `SCR-012` | — | — | `STORY-SES-006` | M2 |
-| `REQ-SES-009` | — | — | `SCR-043` `SCR-057` | — | `MSG-session_changed` | `STORY-SES-005` | M3 |
+| `REQ-SES-009` | — | — | `SCR-043` `SCR-057` | — | `MSG-session_changed` `MSG-session_rescheduled` | `STORY-SES-005` | M3 |
 | `REQ-SES-010` | — | — | `SCR-012` | — | — | `STORY-SES-005` | M3 |
 | `REQ-SES-011` | `ENT-sessions` | — | `SCR-011` `SCR-012` `SCR-043` | — | — | `STORY-SES-006` | M2 |
 | `REQ-SES-012` | — | — | `SCR-042` | `JOB-archive_sessions` `JOB-complete_session` +1 | — | `STORY-SES-002` | M2 |
