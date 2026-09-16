@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-6/screens` · **`main`:** **LAUNCHED 2026-09-15; M9 merged 2026-09-16** (PR #22, `413245f`) · **Phase:** ★★ **WAVE 6 COMPLETE — PR #23 ready for the owner to merge.** All 14 routes reach the system (16/16 strict) and every one was captured at 390 px RTL on the final build and looked at (the photo-report queue only empty — its populated card is spec-covered, row 14); the full gate set ran on the final commits (`build` · `qa` 44/44 · `visual` 0.000% on the frozen six · `db:reset`+RLS 746 · e2e · allowlists shrunk). **Do not start wave 7 without a new ownership map.** The wave-6 record is directly under START HERE.
+**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 IN PROGRESS** — task one landed and verified (`7d50e64`: the `react-dom` patch in, `ui/pending-nudge` out, the reserve probe 16/16 twice against a control that hung 9/16), Step 0 landed (the wave-7 map, all ten agent files, the checklist below, `DEC-137`). **The wave-7 block is directly under START HERE.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-135`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. Its wave-5 ownership map is **the record of a finished wave** — the next lead writes a new one |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-137`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-7 map is the map in force** (`DEC-137`); wave 6's and wave 5's are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -69,13 +69,134 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 6's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-130`). A
-wave-7 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 7's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-137`). A
+wave-8 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 6 — COMPLETE on `wave-6/screens` (PR #23, the owner merges) — fourteen routes onto the M9 system (`DEC-130`)
+## ★★ WAVE 7 — IN PROGRESS on `wave-7/screens` — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
+
+**The owner's goal, in substance:** put the remaining member and staff routes onto the M9 design system —
+about eighteen routes in the brief, **twenty-two pages and the admin IA** once every route is named — with
+four teammates, and build the manual check-in switch **with** the screens it lives on. **Do not start wave 8.**
+
+**The measure** (`DEC-137`, `DEC-130`'s with the capture made checkable). A row closes only when **(1)**
+`node scripts/ui-reach.mjs --wave7` shows the page reaching an **M9** primitive (strict), **and (2)** a 390 px
+RTL capture exists **at the path the row cites** — `.qa-shots/rtl/wave7-<track>-<route>-<state>.png` in the
+**main checkout**, phone project, `390 × 844` — from a production build the row names by commit, **opened by
+the lead**, with the spec that regenerates it named in the row. `.qa-shots/` is gitignored: the row text is
+the only artefact anyone downstream can trust.
+
+**Baseline on `7d50e64`:** `--wave7` **4/23 strict** (13/23 loose). By group: `(auth)` 3/3 · `/app` 1/1 ·
+`app/sessions` 4/6 · `app/admin` 6/24 · `app/me` **0/7** · `app/platform` 0/7 (not this wave).
+
+### Before anyone spawned — task one and Step 0
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **Task one — `DEC-136`**: `patch-package` (lockfile through Docker), `patches/next+16.2.10.patch` on the four client builds of Next's vendored `react-dom`, `ui/pending-nudge` and all 21 referencing files removed in the same commit | `7d50e64` | the probe on production builds, same machine, back to back — see below |
+| ✅ | **Step 0**: the wave-7 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`console` → **opus**); this checklist; `DEC-137`; `scripts/ui-reach.mjs --wave7` | the Step 0 commit | — |
+
+**The reserve probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, one press each, STUCK = no
+«تم تأكيد حجزك» within 10 s):
+
+| Build | Result |
+|---|---|
+| nudge deleted, `react-dom` **unpatched** (the control) | `105 STUCK STUCK STUCK 104 STUCK STUCK 107 STUCK 104 105 105 104 STUCK 105 STUCK` — **9 of 16 hung** |
+| nudge deleted, **patched**, run 1 | **16/16** — 132, then 103–108 ms |
+| nudge deleted, **patched**, run 2 | **16/16** — 103–107 ms |
+
+At a one-in-three hang rate, 32 clean presses by chance is about 2 in a million; the control shows the
+machine reproduces the bug today. `tests/unit/react-dom-ping-patch.test.ts` fails on the unpatched copy
+(proven) and passes patched. ⚠ An orphaned `next-server` from wave 6's verification worktree (PID 98585,
+`ppid 1`) spun at 100 % of one core throughout; the lead's kill was refused by the permission classifier, so
+**the owner removes it** — the control reproduced under the same load, so the A/B stands.
+
+**Gates on task one's tree (`7d50e64`):** `tsc` clean · `lint` **0 errors** (`✖ 20 problems (0 errors, 20
+warnings)`, unchanged) · vitest **115 files, 1220 passed** · `qa` **44 passed, 0 failed** · `visual`
+`wave-6-final → wave-7-task-one` **0.000 % on all eight pairs** · e2e over every spec touching a changed file
+(20 specs, both projects): **105 passed**, 7 failed; re-run alone, three pass (the local gateway's «invalid
+response from the upstream server» at sign-in, and a proposal save that failed in the same window) and four
+fail deterministically — `proposal-materials:140` and `tasks:143` on both projects — **and fail identically on a
+build of `main` (`f4bfb82`) in the verification worktree**, so they are carried below. `db:reset` + RLS are run
+at the first promotion (task one touches no SQL).
+
+### The checklist — every route named
+
+| # | Owner | Route / work | Serves | (1) `--wave7` | (2) capture — path · spec · build | State |
+|---|---|---|---|---|---|---|
+| L1 | lead | **task one** — the patch, the nudge deleted | `DEC-135`, `DEC-136` | — | the probe above | **closed** `7d50e64` |
+| L2 | lead | **`global-error` resolved by a test** — throw in `[locale]/layout.tsx` on a production build; if ours does not render, move it to `src/app/global-error.tsx` | `REQ-UIX-016`, `16` §7.4 | — | — | open |
+| L3 | lead | **`ui/splash`** — built to `16` §7.2 and measured; kept only if `/app`'s LCP holds | `REQ-UIX-006`, `REQ-NFR-008` | — | — | open |
+| L4 | lead | **`REQ-EVT-010` reconciled** with the shipped photo pipeline (processing, then visible) | `REQ-EVT-010`, `REQ-EVT-012` | — | — | open |
+| L5 | lead | **`DEC-135` reported upstream** with the instrumented-`react-dom` reasoning | `DEC-136` | — | — | open |
+| L6 | lead | **`checkin`'s SQL promoted** — `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | `REQ-CHK-010`, `015`–`017` | — | — | open |
+| C1 | `checkin` | `/app/sessions/[id]/check-in` | SCR-014 · `REQ-CHK-003`, `004`, `010`, `015`, `016` | ✓ (floor) | — | open |
+| C2 | `checkin` | `/app/sessions/[id]/host` — the close/reopen switch; no walk-in section | SCR-016 · `REQ-CHK-001`, `007`, `014`, `015` | · | — | open |
+| C3 | `checkin` | ★ `/app/admin/sessions/[id]/attendance` — manual add, **the removal** | SCR-044 · `REQ-CHK-008`, `012`, `017` | · | — | open |
+| C4 | `checkin` | the switch and its `ends_at + 2 h` ceiling — SQL, RLS, the matrix column | `REQ-CHK-015`, `016`, `DEC-113`, `DEC-116` | — | — | open |
+| C5 | `checkin` | **the reversal** — a compensating `reversal` ledger entry with its own key; `revoke_certificate()`; the late-job race | `REQ-CHK-017`, `REQ-PTS-013`, `REQ-CRT-004` | — | — | open |
+| C6 | `checkin` | walk-ins as a publishing setting — `schedule_session()`'s parameter, the field on SCR-043, `set_session_walk_ins()` retired | `REQ-CHK-010`, `DEC-117`, `DEC-118` | — | the schedule field | open |
+| S1 | `sessions` | `/app/propose` — the largest form in the product | SCR-017 · `REQ-PRO-001`…, `REQ-UIX-009`, `010` | ✓ (floor) | — | open |
+| S2 | `sessions` | `/app/propose/[id]` — my proposal | SCR-018 · `REQ-PRO-005` | ✓ (floor) | — | open |
+| S3 | `sessions` | ★ `/app/sessions/[id]/rate` — ratings only, stars fill from the right | SCR-015 · `REQ-RAT-001`…`006` | · | — | open |
+| S4 | `sessions` | `/s/[id]` — the public card, a real 404 | SCR-007 · `DEC-066`, `DEC-134` | · | — | open |
+| S5 | `sessions` | ★ `/app/members/[id]` — the two-tier profile | SCR-020 · `REQ-PRF-*`, A33 | · | — | open |
+| S6 | `sessions` | ★ `/app/leaderboards` — members and سباق الشركات | SCR-027, SCR-028 · `REQ-LDR-*` | · | — | open |
+| T1 | `content` | ★ `/app/me` — the profile and the hub, with `me/layout.tsx` | SCR-021 · `REQ-PRF-001`…, `16` §6.5 | · | — | open |
+| T2 | `content` | ★ `/app/me/points` — including `checkin`'s reversal entry | SCR-022 · `REQ-PTS-*`, `REQ-CHK-017` | · | — | open |
+| T3 | `content` | ★ `/app/me/certificates` — issued and revoked | SCR-023 · `REQ-CRT-*` | · | — | open |
+| T4 | `content` | ★ `/app/me/bookmarks` | SCR-024 · `REQ-DSC-006` | · | — | open |
+| T5 | `content` | ★ `/app/me/calendar` | SCR-025 · `REQ-CAL-*` | · | — | open |
+| T6 | `content` | ★ `/app/me/notifications` — inbox and preferences | SCR-026 · `REQ-NTF-*` | · | — | open |
+| T7 | `content` | ★ `/app/me/privacy` — export and deactivation | `REQ-PRF-006`, `007` | · | — | open |
+| K0 | `console` | the admin layout — **the fourteen-group IA** | `16` §6.7 · `REQ-ADM-020`, `REQ-UIX-017` | ✓ (floor) | — | open |
+| K1 | `console` | `/app/admin/moderation/comments` | SCR-050 · `REQ-EVT-008`, `014` | · | — | open |
+| K2 | `console` | `/app/admin/moderation/photos` — the takedown queue | SCR-051 · `REQ-EVT-012`, `DEC-005` | · | — | open |
+| K3 | `console` | `/app/admin/venues` | SCR-046 · `REQ-ADM-*` | · | — | open |
+| K4 | `console` | `/app/admin/categories` | SCR-047 · `REQ-ADM-*` | · | — | open |
+| K5 | `console` | `/app/admin/companies` | SCR-048 · `REQ-ADM-*` | · | — | open |
+| K6 | `console` | `/app/admin/settings` | SCR-063 · `REQ-ADM-*` | · | — | open |
+
+★ = transferred for this wave (`DEC-137`). **Not this wave**, named in every agent file: the other twelve
+admin routes, `app/platform/**`, `verify/**`, `legal/**`, the survey, multi-day sessions (`DEC-119` … `121`),
+gradient posters and `canvasRaise` (`DEC-127`), the certificate library (`DEC-128`), `DEC-075`'s two-tab
+schedule and `0084`, objectives, tags, avatar storage, downloads, and `(marketing)/**`.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| `console` | `console.spec`'s «untouched route» capture runs at Pixel 7's 412 px — give it `390 × 844` | wave 6 row «admin layout» |
+| `console` | the populated photo-report card on `moderation/reports` was never captured | wave 6 row 14 |
+| `console` | the dashboard's «أكثر …» cards set the count beside the name, the pipeline at the edge — pick one | wave 6 row 10 |
+| `content` | the photo tile's takedown label «احذف الصور التي أظهر فيها» wraps under a half-width tile | wave 6 row 9 |
+| `content` | on `/app/me`, a save pressed before hydration lands without `?saved=1` | wave 6 sync 2 |
+| `content` | ★ `tasks.spec.ts:143` — the event page's tasks section is absent for the member the spec seeds, on `main` too: the spec or the product? | task one's gates |
+| `sessions` | ★ `proposal-materials.spec.ts:140` — `getByLabel("نوع المادة")` resolves to two elements, on `main` too | task one's gates |
+| `sessions` | the filter sheet's native date inputs show the browser's English `dd/mm/yyyy` mask | wave 6 row 5 |
+| lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
+
+### Order inside the wave
+
+1. **Task one and Step 0** — done, before anyone spawned. Push; the draft PR at the first push.
+2. **Spawn** `checkin`, `sessions`, `content`, `console` with a **planning-first** task: each writes its plan
+   into `docs/plan/notes/<name>.md` and edits nothing else until the lead approves it. `checkin`'s window and
+   reversal questions are decided by the lead and logged before its SQL is written.
+3. **`checkin` publishes its three contracts** on day one; `sessions` threads contracts 1 and 2 as soon as
+   they exist — they unblock two tracks.
+4. The tracks build. At each sync (`TEAM.md` §3) the lead promotes SQL, builds **committed HEAD** in the
+   verification worktree (`$scratchpad/wt-verify`, own `npm ci`), runs e2e there with `E2E_SHOTS_DIR` set to
+   the main checkout's `.qa-shots/rtl`, opens every capture, and ticks rows here only against
+   `ui-reach --wave7` and a capture actually opened.
+5. The lead's own rows (L2–L5) between syncs.
+6. Freeze, the final build and the full gate set on the final commits, this file, the PR ready; **the owner
+   merges.**
+
+---
+
+## ★★ WAVE 6 — COMPLETE and MERGED (PR #23, `5ef56ae`) — fourteen routes onto the M9 system (`DEC-130`)
 
 **The owner's goal, verbatim in substance:** put **14 named routes** onto the M9 design system in
 one wave, without touching the frozen marketing contract. **Do not start wave 7.**

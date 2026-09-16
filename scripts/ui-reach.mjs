@@ -16,6 +16,7 @@
 //   node scripts/ui-reach.mjs            the group totals
 //   node scripts/ui-reach.mjs -v         every route, ✓ or ·
 //   node scripts/ui-reach.mjs --wave6    the fourteen of DEC-130
+//   node scripts/ui-reach.mjs --wave7    the twenty-two pages and the admin layout of DEC-137
 //   node scripts/ui-reach.mjs --loose    count the pre-M9 files too
 //   node scripts/ui-reach.mjs <file…>    any files, with the path that reaches
 
@@ -89,6 +90,31 @@ const WAVE6 = [
   ["console", `${L}/app/admin/moderation/reports/page.tsx`],
   ["console", `${L}/app/admin/layout.tsx`],
 ];
+const WAVE7 = [
+  ["checkin", `${L}/app/sessions/[id]/check-in/page.tsx`],
+  ["checkin", `${L}/app/sessions/[id]/host/page.tsx`],
+  ["checkin", `${L}/app/admin/sessions/[id]/attendance/page.tsx`],
+  ["sessions", `${L}/app/propose/page.tsx`],
+  ["sessions", `${L}/app/propose/[id]/page.tsx`],
+  ["sessions", `${L}/app/sessions/[id]/rate/page.tsx`],
+  ["sessions", `${L}/s/[id]/page.tsx`],
+  ["sessions", `${L}/app/members/[id]/page.tsx`],
+  ["sessions", `${L}/app/leaderboards/page.tsx`],
+  ["content", `${L}/app/me/page.tsx`],
+  ["content", `${L}/app/me/points/page.tsx`],
+  ["content", `${L}/app/me/certificates/page.tsx`],
+  ["content", `${L}/app/me/bookmarks/page.tsx`],
+  ["content", `${L}/app/me/calendar/page.tsx`],
+  ["content", `${L}/app/me/notifications/page.tsx`],
+  ["content", `${L}/app/me/privacy/page.tsx`],
+  ["console", `${L}/app/admin/layout.tsx`],
+  ["console", `${L}/app/admin/moderation/comments/page.tsx`],
+  ["console", `${L}/app/admin/moderation/photos/page.tsx`],
+  ["console", `${L}/app/admin/venues/page.tsx`],
+  ["console", `${L}/app/admin/categories/page.tsx`],
+  ["console", `${L}/app/admin/companies/page.tsx`],
+  ["console", `${L}/app/admin/settings/page.tsx`],
+];
 
 const files = args.filter((a) => !a.startsWith("-"));
 const mode = loose ? "loose" : "strict";
@@ -98,14 +124,15 @@ if (files.length) {
     const t = trail(path.join(root, f));
     console.log(`${t ? "✓" : "·"} ${f}${t ? "\n    " + t.map(rel).join("\n    → ") : ""}`);
   }
-} else if (args.includes("--wave6")) {
+} else if (args.includes("--wave6") || args.includes("--wave7")) {
+  const wave = args.includes("--wave7") ? WAVE7 : WAVE6;
   let ok = 0;
-  for (const [owner, f] of WAVE6) {
+  for (const [owner, f] of wave) {
     const hit = reaches(f);
     ok += hit ? 1 : 0;
     console.log(`${hit ? "✓" : "·"} ${owner.padEnd(9)} ${f}`);
   }
-  console.log(`\n${ok}/${WAVE6.length} reach the system (${mode}) — part (1) only; part (2) is a capture someone looked at`);
+  console.log(`\n${ok}/${wave.length} reach the system (${mode}) — part (1) only; part (2) is a capture someone looked at`);
 } else {
   const all = pages(path.join(root, L));
   const groups = [

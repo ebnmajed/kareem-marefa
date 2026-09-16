@@ -2839,3 +2839,100 @@ whose cause is gone.
 
 - **Supersedes:** `DEC-135`'s open choice. The diagnosis stands unchanged.
 - **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-7-lead.md`
+
+---
+
+## DEC-137 — Wave 7 is the remaining member and staff routes on the M9 system, with the check-in switch built on the screens it lives on; `console` becomes opus
+
+- **Date:** 2026-09-16 · **Decided by:** owner (the wave-7 brief: «about eighteen routes, four teammates», `checkin`'s screens and switch together, `console` promoted to opus, six admin routes the lead names), the file-level map by the lead
+- **Supersedes:** `DEC-130`'s wave-6 map as the map in force (kept in `CLAUDE.md` as the record); `DEC-085`'s placement of `src/app/[locale]/app/me/layout.tsx` with the lead; the lead's hold on `src/lib/dal/members.ts` and `messages/*/profile.json`; `DEC-130`'s presentation-only transfer of `components/checkin/{rsvp-panel,attendance-outcome}.tsx` and `components/calendar/add-to-calendar.tsx`, which ends.
+
+### Task one came first, and it held
+
+`DEC-136` was executed before anyone spawned, in one commit (`7d50e64`): `patch-package` added through the
+Docker lockfile, `patches/next+16.2.10.patch` applied to the four client builds of the `react-dom` Next
+vendors, and `ui/pending-nudge` deleted with all 21 files that referenced it. **Verified at the bug's own
+standard on this machine, on production builds, back to back:** nudge deleted and `react-dom` unpatched —
+the probe hung **9 of 16** presses; patched — **16 of 16, twice, at ~104 ms**. The probe is now
+`tests/e2e/reserve-probe.spec.ts`, and `tests/unit/react-dom-ping-patch.test.ts` fails when the patch is
+not installed (proven red on the unpatched copy). `DEC-136` needs no amendment.
+
+### The measure — `DEC-130`'s, with the capture made checkable
+
+A route is done when (1) `node scripts/ui-reach.mjs --wave7` shows it reaching an **M9** primitive
+(strict) and (2) a 390 px RTL capture exists **at the path its row cites** — `.qa-shots/rtl/wave7-<track>-<route>-<state>.png`
+in the main checkout, phone project, `390 × 844` — from a production build the row names by commit, opened
+by the lead, with the spec that regenerates it named in the row. Wave 6 lost an hour to captures taken in a
+verification worktree that never reached the cited path; so every review spec honours `E2E_SHOTS_DIR`, and a
+worktree run points it at the main checkout. **Baseline on `7d50e64`: 4 of 23 strict** (check-in, both
+propose pages, the admin layout — the floor, not the bar).
+
+### The routes, by owner
+
+| Owner | Routes / work |
+|---|---|
+| **lead** | task one (above) · `global-error` resolved by a test on a production build · `ui/splash`'s LCP measurement (`16` §7.2) · `REQ-EVT-010` reconciled with the pipeline · the upstream report of `DEC-135` · promotion, gates, the PR |
+| **`checkin`** (sonnet) | `/app/sessions/[id]/check-in` · `/app/sessions/[id]/host` · ★ `/app/admin/sessions/[id]/attendance` — **and** the switch with its ceiling (`REQ-CHK-015`, `016`), the admin's removal with its reversal (`REQ-CHK-017`), walk-ins as a publishing setting (`REQ-CHK-010`, `DEC-117`, `DEC-118`) |
+| **`sessions`** (opus) | `/app/propose` · `/app/propose/[id]` · ★ `/app/sessions/[id]/rate` · `/s/[id]` · ★ `/app/members/[id]` · ★ `/app/leaderboards` |
+| **`content`** (sonnet) | ★ all seven `/app/me` routes, as one hub (`16` §6.5) |
+| **`console`** (★ opus) | the admin rail's fourteen-group IA (`16` §6.7) · `/app/admin/moderation/comments` · `/app/admin/moderation/photos` · `/app/admin/venues` · `/app/admin/categories` · `/app/admin/companies` · `/app/admin/settings` |
+
+### Why these six admin routes, and not the other thirteen
+
+- **`moderation/{comments,photos}`** complete the moderation group whose third queue wave 6 rebuilt, and
+  the dashboard's «يحتاج انتباهك» links straight into them; they also carry wave 6's one uncaptured state,
+  the populated photo-report card.
+- **`venues`, `categories`, `companies`** are one list pattern three times — `DataTable`'s phone card stack
+  with a create/edit form — so they cost one design and complete the org-setup group; **`settings`**
+  completes «الإعدادات», and its numerals field is already gone (`DEC-124`).
+- **Not chosen:** `sessions/[id]/schedule` — its artboard is `DEC-075`'s two-tab re-cut, which needs `0084`
+  (not this wave); rebuilding it now means rebuilding it twice. `sessions/[id]/attendance` — `checkin`'s this
+  wave (below). `audit`, `exports`, `scoring`, `recognition`, `reminders` — wave 8. `designer/**`,
+  `templates/**`, `sessions/[id]/certificates` — `designer`'s, M12. `emails` — `notify`'s, M12. `branding` —
+  `branding`'s.
+
+### `checkin`'s surface, and the two admin screens it reaches
+
+- ★ **`admin/sessions/[id]/attendance` transfers to `checkin`.** `REQ-CHK-017`'s removal is an act on that
+  screen (SCR-044) and its hard half — a compensating `reversal` entry on an append-only ledger with its own
+  idempotency key, and `revoke_certificate()` for an issued certificate — is `checkin`'s design. The screen
+  and the feature travel together, which is the brief's rule and wave 6's lesson.
+- ★ **`admin/sessions/[id]/schedule` is transferred feature-only**: `checkin` adds the walk-in field and its
+  parameter to `schedule-form.tsx`, `actions.ts` and `state.ts`, and nothing else. **It cannot wait for the
+  re-cut**: `DEC-117` removes the host view's toggle, so a wave that removes the toggle without adding the
+  field leaves an admin on a live product no way to set walk-ins at all.
+- **What `checkin`'s plan must settle before code, and bring to the lead rather than decide:** (a) the
+  check-in window, because `REQ-CHK-004` and `REQ-SES-005` close it when the session ends «including when an
+  admin completes it early», and `0078` made the code live-only, while `DEC-116` extends the tail to
+  `ends_at + 2 h`; (b) what a removal does to everything else attendance granted beyond points and the
+  certificate — the rating right, photo upload, streaks, badges, levels, no-show evaluation; (c) how a late
+  `award_points` or `issue_certificates` finds its check-in gone.
+
+### Three contracts, published in the owner's note on day one
+
+1. **`checkin` → `sessions`:** `schedule_session()`'s new signature; `sessions` threads the parameter through
+   `lib/dal/sessions.ts`.
+2. **`checkin` → `sessions`:** the switch as a DTO field and a predicate; `sessions` wires the event page's
+   check-in link from it.
+3. **`checkin` → `content`:** the reversal entry's `action_key`, key shape and reason; `content` renders it in
+   `me/points` as an entry, never a number that quietly changed.
+
+### One writer per file — JSON and specs included
+
+Wave 6 held the rule for source and primitives; this wave extends it to the two kinds of file that had
+several readers and no named writer. **A screen's strings move with the screen** — `checkin` moves the
+attendance and walk-in strings from `admin.json` into `checkin.json`, `sessions` moves the public profile's
+from `profile.json` into a new `members.json` — and the old keys are deleted by the file's owner on request.
+**A spec has one writer**; the lead holds the specs that span routes of several tracks or of none this wave
+(`a11y`, `budgets`, `second-org`, `session`, `shell-*`, `notify-screens`, `certificates`, `reserve-probe`, …).
+**"Add-only"** on another track's DAL module means a new exported function or a new optional DTO field behind
+`requireSession()` — never a changed signature, select, filter or gate.
+
+### Found while gating task one, and carried
+
+`proposal-materials.spec.ts:140` (a strict locator resolving to two elements) and `tasks.spec.ts:143` (the
+event page's tasks section absent for the member the spec seeds) fail **identically on a build of `main`
+(`f4bfb82`)**, so they are wave-6 debt, not task one's: the first goes to `sessions` (whose spec it is this
+wave), the second to `content`, each to decide whether the spec or the product is wrong.
+
+- **Documents changed:** `CLAUDE.md` (the wave-7 map; `patches/**` lead-only), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (`--wave7`)

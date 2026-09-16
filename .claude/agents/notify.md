@@ -42,24 +42,41 @@ own `worker/src/mail/**`. With it comes `REQ-NTF-009` … `REQ-NTF-014`, `DEC-08
 the first task of that track is **reconciling `08` §3.2's 22 templates against `DEFAULT_TEMPLATES`'
 25 keys**, because a golden suite built to 22 silently misses three.
 
-## Wave 6 (`DEC-130`) — you are not spawned
+## Wave 7 (`DEC-137`) — you are not spawned
 
-`src/components/calendar/add-to-calendar.tsx` is restyled by `sessions` for the rebuilt event page — **presentation only**; its gating and its ICS stay yours. Everything else of yours is held by the lead as custodian.
+★ **`src/app/[locale]/app/me/{notifications,calendar}/**`, `src/components/notifications/{notification-list,preference-matrix}.tsx` and `messages/*/{notifications,calendar}.json` are `content`'s for wave 7**, and `src/lib/dal/{notifications,calendar}.ts` are add-only for `content` — `/app/me` is rebuilt as one hub. `src/components/calendar/add-to-calendar.tsx` returns to you from `sessions`. `bell.tsx`, the ICS and webhook routes, `worker/src/{mail,calendar}/**` and `admin/{emails,reminders}` are held by the lead as custodian; the email studio is M12.
 
 ---
 
-## Wave 6 — who owns what, and this section is where it lives (DEC-085, DEC-130)
+## Wave 7 — who owns what, and this section is where it lives (DEC-085, DEC-137)
 
-**Wave 6 puts fourteen named routes onto the M9 design system and does nothing else.** The
-checklist is `docs/plan/STATUS.md`'s wave-6 block; the map is `CLAUDE.md` § *Ownership map
-(wave 6)*. **Spawned:** `sessions`, `console`, `content`. **Not spawned:** `checkin`, `event`,
-`notify`, `scoring`, `designer`, `platform`, `branding` — **the lead is custodian of their files for
-the wave**, and edits them only for the numerals sweep or on a spawned teammate's written request.
+**Wave 7 puts the remaining member and staff routes onto the M9 design system — twenty-two named
+pages and the admin IA — and builds the manual check-in switch with the screens it lives on.** The
+checklist is `docs/plan/STATUS.md`'s wave-7 block, every route named; the map is `CLAUDE.md` §
+*Ownership map (wave 7)*. **Spawned:** `checkin` (sonnet), `sessions` (opus), `content` (sonnet),
+`console` (**opus** from this wave). **Not spawned:** `event`, `notify`, `scoring`, `designer`,
+`platform`, `branding` — **the lead is custodian of their files**, and edits them only on a spawned
+teammate's written request.
 
-**The measure** is `node scripts/ui-reach.mjs --wave6` — a route counts only when its `page.tsx`
-reaches an **M9** primitive through its import graph (the pre-M9 `button.tsx`, `dialog.tsx` and
-`icons.tsx` do not count) — **plus** a 390 px RTL capture under `.qa-shots/rtl/` that someone looked
-at. Importing one primitive is the floor; the capture is the bar.
+**The measure** is `node scripts/ui-reach.mjs --wave7` — strict: a route counts only when its
+`page.tsx` reaches an **M9** primitive through its import graph (the pre-M9 `button.tsx`,
+`dialog.tsx` and `icons.tsx` do not count) — **plus** a 390 px RTL capture **at the path its row
+cites**: `.qa-shots/rtl/wave7-<track>-<route>-<state>.png` in the **main checkout**, phone project,
+`390 × 844`, from a production build the row names, opened by the lead, with the spec that
+regenerates it named in the row. `.qa-shots/` is gitignored, so **the row text is the only artefact
+anyone downstream can trust.** Every review spec you write honours `E2E_SHOTS_DIR` (default
+`.qa-shots/rtl`), so a run in the lead's verification worktree lands its captures in the main
+checkout. Importing one primitive is the floor; the capture is the bar.
+
+### ★ Task one has landed — `ui/pending-nudge` is gone (`DEC-135`, `DEC-136`)
+
+`patches/next+16.2.10.patch` fixes React 19.2.4's lost ping inside the `react-dom` Next vendors, and
+the nudge with every call to it was deleted in the same commit (`7d50e64`). Verified on a
+production build: **16/16 and 16/16** patched, against a control build without it that hung **9 of
+16**. **Never add a nudge, an interval, a `setTimeout` or any other "kick" to a pending control.** A
+transition that hangs busy on a real build is reported with the build and the press count;
+`tests/e2e/reserve-probe.spec.ts` is the measure, and `tests/unit/react-dom-ping-patch.test.ts`
+fails if the patch is not installed.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
@@ -76,38 +93,71 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 **types only**, and a runtime barrel would drag `toast`, `combobox` and `route-progress`, all
 `"use client"`, into the client graph of every server page that imports `Card`.
 
-### The transfers in force for wave 6 (DEC-130)
+### The transfers in force for wave 7 (`DEC-137`)
 
-- **→ `sessions`:** `src/app/[locale]/app/page.tsx` (from the lead); `src/app/[locale]/app/sessions/page.tsx`,
-  `src/components/{browse,search}/**`, `src/lib/dal/{search,bookmarks}.ts`, `messages/*/{browse,search}.json`
-  (from `content`); `src/app/[locale]/app/sessions/[id]/page.tsx` (from the lead); and, **presentation
-  only**, `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` (from `checkin`) and
-  `src/components/calendar/add-to-calendar.tsx` (from `notify`) — markup and classes, never a gating
-  predicate, `session-matrix.ts`, `lib/dal/{rsvp,checkin}.ts` or a matrix assertion.
-- **→ `content`:** `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx`,
-  `src/components/event/actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`,
-  `src/lib/realtime/**`, `messages/*/event.json` (from `event`). `ratings.tsx`, `star-rating.tsx`,
-  `rate/**` and `ratings.json` stay `event`'s.
+- **→ `checkin`:** `src/app/[locale]/app/admin/sessions/[id]/attendance/**` (from `console`);
+  **feature-only** `src/app/[locale]/app/admin/sessions/[id]/schedule/{schedule-form.tsx,actions.ts,state.ts}`
+  — the walk-in field and its parameter, and nothing else in those files; and
+  `src/components/checkin/{rsvp-panel,attendance-outcome}.tsx` **return** from `sessions` (wave 6's
+  presentation-only transfer ends).
+- **→ `sessions`:** `src/app/[locale]/app/sessions/[id]/rate/**`, `src/components/event/{ratings,star-rating}.tsx`,
+  `messages/*/ratings.json` (from `event`); `src/app/[locale]/app/members/**`,
+  `src/app/[locale]/app/leaderboards/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
+  `messages/*/leaderboards.json` (from `scoring`); **add-only** `src/lib/dal/{ratings,leaderboards,recognition}.ts`;
+  a new `messages/*/members.json`.
+- **→ `content`:** `src/app/[locale]/app/me/**`, including a new `me/layout.tsx` (from the lead,
+  `notify`, `scoring`, `designer`, `platform`); `src/components/notifications/{notification-list,preference-matrix}.tsx`,
+  `messages/*/{notifications,calendar}.json` (from `notify`); `src/components/scoring/{points-history-list,points-catalogue}.tsx`,
+  `messages/*/scoring.json` (from `scoring`); `messages/*/certificates.json` (from `designer`);
+  `messages/*/privacy.json` (from `platform`); `src/lib/dal/members.ts`, `messages/*/profile.json`
+  (from the lead); **add-only** `src/lib/dal/{points,certificates,notifications,calendar,privacy}.ts`.
+- `src/components/calendar/add-to-calendar.tsx` **returns** to `notify` — held by the lead.
+- ★ **"Add-only" means** a new exported function, or a new optional field on a DTO, behind
+  `requireSession()`. Never a changed signature, select, filter or gate on anything already exported —
+  that is a request to the lead, who holds the module for its owner.
+
+### The three day-one contracts — published in the owner's note, then told to the lead
+
+1. **`checkin` → `sessions`:** `schedule_session()`'s new signature carrying the walk-in setting
+   (`DEC-118`). `sessions` threads the one parameter through `src/lib/dal/sessions.ts`; `checkin`
+   adds the field to the schedule form and its action.
+2. **`checkin` → `sessions`:** the check-in switch as a DTO field and a predicate. `sessions` wires the
+   event page's check-in link from it; the matrix column stays `checkin`'s.
+3. **`checkin` → `content`:** the reversal ledger entry of `REQ-CHK-017` — its `action_key`, its
+   idempotency key's shape, its reason — which `content` renders in `me/points` as an entry, never
+   as a number that quietly changed.
+
+### One writer per file — JSON and specs included
+
+A screen's strings move **with** the screen: `checkin` moves the attendance screen's and the walk-in
+field's strings from `admin.json` into `checkin.json`; `sessions` moves the public profile's from
+`profile.json` into `members.json`. The old keys are deleted by the file's owner on a routed request.
+**A spec or test has one writer.** Every test file not in your edit list is someone else's — if your
+rebuild breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
+`a11y`, `budgets`, `second-org`, `session`, `shell-*`, `frozen-routes`, `unconfigured`, `auth*`,
+`reserve-probe`, `wave6-discussion-review`, `notify-screens`, `certificates`, `platform-*` and every
+spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- the 19 `app/admin` routes outside `console`'s five: `audit` · `branding` · `categories` ·
-  `companies` · `designer/**` · `emails` · `exports` · `moderation/comments` · `moderation/photos` ·
-  `recognition` · `reminders` · `scoring` · `sessions/[id]/**` (attendance, certificates, schedule) ·
-  `settings` · `templates/**` · `venues` — and `src/app/api/admin/**`
-- `src/app/[locale]/app/me/**` (all seven routes) and `src/app/[locale]/app/platform/**` (all seven)
-- `src/app/[locale]/app/sessions/[id]/{check-in,host,rate}/**`, `src/app/[locale]/app/propose/**`,
-  `src/app/[locale]/app/members/**`, `src/app/[locale]/app/leaderboards/**`, `src/app/[locale]/s/**`,
-  `src/app/[locale]/verify/**`, `src/app/[locale]/legal/**`
-- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials and
-  tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they exist; the
-  schema does not. Build the event page for the one-day session that is in the database.
-- ★ **The manual check-in switch and walk-ins as a publishing setting** (`DEC-113`, `DEC-116`,
-  `DEC-117`, `DEC-118` — `check_in_open`, the admin's attendance removal, `allow_walk_ins` on the
-  schedule screen) — **decided, NOT this wave.** No `check_in_open` column exists yet.
+- the **twelve `app/admin` routes nobody rebuilds**: `audit` · `branding` · `designer/**` · `emails` ·
+  `exports` · `recognition` · `reminders` · `scoring` · `sessions/[id]/certificates` ·
+  `sessions/[id]/schedule` (beyond `checkin`'s one field) · `templates/certificates` ·
+  `templates/posters` — and `src/app/api/admin/**`
+- `src/app/[locale]/app/platform/**` (all seven routes), `src/app/[locale]/verify/**`,
+  `src/app/[locale]/legal/**`
+- ★ **Multi-day sessions** (`DEC-119` … `DEC-121` — `ENT-session_days`, day-scoped check-in, materials
+  and tasks, awards at completion) — **decided, NOT this wave.** `DECISIONS.md` reads as if they
+  exist; the schema does not. Build for the one-day session that is in the database.
 - ★ **Gradient posters and the `canvasRaise` brand token** (`DEC-127`) — **decided, NOT this wave.**
-  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do not move.
-- **The certificate library** (`DEC-128`) — **decided, NOT this wave.** **The survey** — NOT this wave.
+  Do not add the token to `BRAND_COLOUR_TOKENS` or a gradient to `model.ts`; the parity goldens do
+  not move.
+- ★ **The certificate library** (`DEC-128`) — **decided, NOT this wave.** ★ **The survey**
+  (`DEC-074`, `DEC-094`) — NOT this wave; the rate screen is ratings only.
+- `DEC-075`'s two-tab schedule re-cut and `0084`; objectives (`16` §9.3) and tag management
+  (`16` §9.4) — neither has a column; avatar storage (`16` §6.8 — `ui/avatar` renders initials);
+  downloads (`DEC-076`); the Tier-1 reservation moment (`16` §7.5.2); the designer studio and the
+  email studio (M12)
 - **everything under `src/app/[locale]/(marketing)/`** and the components it renders —
   `src/components/{header,footer,chapter,registration-form,network-bg,network-gl,intro-sting,mobile-cta,ornaments,wordmark,language-toggle,form-token}.tsx` — frozen until M13
   (invariant 1). `DEC-126`'s «تسجيل الدخول» lands there, not here.
@@ -116,17 +166,17 @@ prop, why — in `docs/plan/notes/<you>.md` and tell the lead; the lead routes i
 
 `src/components/ui/index.ts` and the lead's fifteen `ui/` files · `src/app/globals.css` ·
 `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` · `src/app/[locale]/(auth)/**` ·
-`src/app/[locale]/app/me/layout.tsx` · `src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` ·
-`src/messages/*/{ui,app,auth,marketing}.json` · `supabase/migrations/**` · `scripts/**` ·
-`.claude/**` · `.github/**` · `package.json` · `package-lock.json` · `src/app/[locale]/layout.tsx` ·
-`src/app/[locale]/global-error.tsx` · `src/proxy.ts` · `public/**` · `src/lib/supabase/**` ·
-`src/lib/dal/session.ts` · `src/i18n/**` · `vitest.config.ts` · `playwright.config.ts` ·
-`worker/src/index.ts` · `worker/Dockerfile` · `docs/plan/**` except your own note.
-`src/messages/index.ts` gains a namespace **by append only**, in the same commit as its `ar/` and `en/` JSON.
+`src/lib/session-status.ts` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
+`supabase/migrations/**` · `scripts/**` · `patches/**` · `.claude/**` · `.github/**` · `package.json` ·
+`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/[locale]/global-error.tsx` ·
+`src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` ·
+`vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
+`docs/plan/**` except your own note. `src/messages/index.ts` gains a namespace **by append only**, in
+the same commit as its `ar/` and `en/` JSON.
 
 ### Gates and the shared tree
 
-**A shared working tree protects the repository, not your memory of a file.** The owner and the lead commit into this tree while you work — `STATUS.md` and `15-backlog.md` both moved under the lead on day one. **Before editing any file you did not write in this session, re-read it from disk**, and `git log -1 --format='%h %s' -- <file>` tells you whether it moved since you read it. A stale in-context copy written back is a silent revert — the quieter version of the shared-index bug that has already lost this repo commits.
+**A shared working tree protects the repository, not your memory of a file.** The owner and the lead commit into this tree while you work. **Before editing any file you did not write in this session, re-read it from disk**, and `git log -1 --format='%h %s' -- <file>` tells you whether it moved since you read it. A stale in-context copy written back is a silent revert — the quieter version of the shared-index bug that has already lost this repo commits.
 
 **`npm run qa`, `npm run visual`, `npm run build`, `supabase db reset|start|stop`, branch switches,
 pushes and the PR are the lead's.** You run `npx tsc --noEmit`, `npm run lint` (grep the output for
@@ -138,7 +188,8 @@ frozen marketing routes — **if it does, you edited something that is not yours
 `supabase/proposed/<you>/`, proven with `applyProposed()` inside your RLS tests, never into
 `supabase/migrations/`. **Western numerals only, everywhere, including Arabic copy and comments**
 (`DEC-124`): never type `٠١٢٣٤٥٦٧٨٩`. Stage by explicit filename and `git commit -- <paths>` at once —
-never `git add -A`, never stash, rebase, reset, clean or switch branches; it is everyone's tree. A
-`"use server"` module exports async functions and types alone — `export type { X }` from one breaks
-the build while `tsc` stays clean. No session changes repository visibility, settings, secrets or
-remotes — stop and ask.
+never `git add -A`, never stash, rebase, reset, clean or switch branches; delete a file with `rm`,
+never `git rm` (it stages at once, into everyone's index); never create, restore or delete a file
+outside your own list. A `"use server"` module exports async functions and types alone —
+`export type { X }` from one breaks the build while `tsc` stays clean. No session changes repository
+visibility, settings, secrets or remotes — stop and ask.
