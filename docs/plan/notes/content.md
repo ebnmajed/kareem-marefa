@@ -1355,3 +1355,25 @@ empty state. Test now asserts exactly one "إضافة صورة" button remains, 
 directly rather than just checking presence.
 
 Ready for sync.
+
+## §16 — a slow post wiping the next comment being typed
+
+Found by the lead's discussion review on a real build (DEC-135 verified separately, sha 1fd7980
+confirmed: a held post's lost ping committed at the nudge's first tick). Separate, real defect: a
+member typing the next comment into the SAME field while an earlier, slow post is still pending had
+it silently wiped when that earlier post succeeded — `submit()`'s success path cleared `body`
+unconditionally, and only the BUTTON is disabled while pending, not the textarea itself.
+
+**Fixed (d5f8b10)**: a `bodyRef` mirrors `body` via an effect, always current; the success path now
+clears the field/mentions/candidates only when `bodyRef.current === trimmed` — nothing changed since
+THIS post was submitted. `trimmed` itself (the closure's own captured value) can't be compared against
+directly, since a closure comparing a frozen value against itself is always true — the check needs the
+field's true, live value. `onPosted?.()` and `router.refresh()` stay unconditional, per the lead's
+explicit "keep the rest of the success path as is."
+
+Added the exact test requested: type, submit, change the text while the mocked action is still
+pending, resolve it, assert the new text survives. Unlike the DEC-135/blocker-1 tests, this one is
+pure synchronous state-comparison logic with no React-scheduling ambiguity — no jsdom-limitation
+caveat needed here; it directly proves the fix.
+
+Ready for sync.
