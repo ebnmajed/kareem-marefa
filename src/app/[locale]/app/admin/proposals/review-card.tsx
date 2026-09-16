@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Panel } from "@/components/ui/panel";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Prose } from "@/components/ui/prose";
 import { useToast } from "@/components/ui/toast";
 import { type ReviewState } from "./actions";
@@ -48,6 +49,10 @@ export function ReviewCard({
   const t = useTranslations("admin.proposals");
   const toast = useToast();
   const [state, formAction, pending] = useActionState(action, emptyReviewState);
+  // ★ DEC-135: this transition re-renders server content (the queue drops the
+  // decided proposal), which is exactly the shape React 19.2.4 can lose the
+  // retry for — a workaround, not a feature; delete with `pending-nudge.ts`.
+  usePendingNudge(pending);
   const formId = useId();
 
   // ★ `state` is a fresh object on every action resolution (React 19 never

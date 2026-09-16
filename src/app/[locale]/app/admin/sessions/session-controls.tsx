@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { usePendingNudge } from "@/components/ui/pending-nudge";
 import { Prose } from "@/components/ui/prose";
 import { useToast } from "@/components/ui/toast";
 import type { SessionAction } from "@/lib/dal/sessions";
@@ -42,6 +43,10 @@ export function SessionControls({
   const t = useTranslations("admin.sessions");
   const toast = useToast();
   const [state, formAction, pending] = useActionState(action, emptyTransitionState);
+  // ★ DEC-135: a transition re-renders this session's row (its status badge,
+  // its own remaining actions) — exactly the shape React 19.2.4 can lose the
+  // retry for; a workaround, not a feature, delete with `pending-nudge.ts`.
+  usePendingNudge(pending);
   const formId = useId();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
