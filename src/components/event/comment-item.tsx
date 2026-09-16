@@ -32,6 +32,26 @@ import type { ReactionSummary } from "@/lib/dal/reactions";
 // and infrequent enough that a visible Arabic label reads as more
 // deliberate than an icon a moderator has to hover to confirm.
 
+// ★ The lead's SECOND real-build finding, after 44485b8's setTimeout fix:
+// on a slow connection, `aria-busy` stayed stuck "true" for several seconds
+// after an action's response arrived, clearing only once the member did
+// something else. `setTimeout(fn, 0)` is a macrotask, but a macrotask can
+// still run BEFORE the browser paints the current frame — so `router.
+// refresh()` (its own update, a real RSC refetch that can take a while)
+// could be kicked off before this transition's own `pending=false` had
+// actually been PAINTED, on a slow enough action. Two nested
+// `requestAnimationFrame` calls is the standard "wait for paint" idiom: the
+// first fires immediately before the next paint; scheduling the real work
+// from INSIDE it, via a second `requestAnimationFrame`, defers it to the
+// frame AFTER that one — guaranteeing the paint already happened before
+// `router.refresh()`'s own, possibly slow, update starts. Same helper in
+// `comment-composer.tsx`, for the same reason.
+function afterPaint(fn: () => void) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(fn);
+  });
+}
+
 export function CommentItem({
   locale,
   comment,
@@ -109,7 +129,7 @@ export function CommentItem({
         return;
       }
       setEditing(false);
-      setTimeout(() => router.refresh(), 0);
+      afterPaint(() => router.refresh());
     });
   }
 
@@ -122,7 +142,7 @@ export function CommentItem({
         // The tombstone IS the confirmation — no toast for a member's own
         // delete, unlike moderation below, which can change what a DIFFERENT
         // member sees.
-        setTimeout(() => router.refresh(), 0);
+        afterPaint(() => router.refresh());
       }
     });
   }
@@ -133,7 +153,7 @@ export function CommentItem({
       if (result.error) {
         toast.show({ tone: "error", title: t(`errors.${result.error}`) });
       } else {
-        setTimeout(() => router.refresh(), 0);
+        afterPaint(() => router.refresh());
       }
     });
   }
@@ -152,7 +172,7 @@ export function CommentItem({
         toast.show({ tone: "error", title: t("toasts.reactionFailed") });
         return;
       }
-      setTimeout(() => router.refresh(), 0);
+      afterPaint(() => router.refresh());
     });
     window.setTimeout(() => setIgnite(false), 400); // clears after --dur-slow (360ms) + margin, both motion states
   }

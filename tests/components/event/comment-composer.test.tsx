@@ -5,7 +5,7 @@
 // Server Actions module and next/navigation's router are mocked, same
 // pattern as comment-item.test.tsx.
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/event.json";
@@ -110,6 +110,59 @@ describe("CommentComposer", () => {
     fireEvent.change(textarea(), { target: { value: "تعليق جديد" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "نشر" })).not.toHaveAttribute("aria-busy", "true"), { timeout: 3000 });
     expect(screen.getByRole("button", { name: "نشر" })).toBeEnabled();
+  });
+
+  // ★ The lead's SECOND real-build finding, measured with a 500 ms
+  // `aria-busy` poll against a served build: holding the POST for ~1.5 s
+  // before releasing it left `aria-busy="true"` and the button disabled for
+  // several MORE seconds after the response arrived, clearing only once the
+  // member typed. The suspected mechanism: `setTimeout(fn, 0)` (44485b8's
+  // own fix) is a macrotask, but a macrotask can still run BEFORE the
+  // browser paints the current frame, so `router.refresh()` — a real RSC
+  // refetch that can itself take a while — could start before this
+  // transition's own `pending=false` had actually been painted. Fixed by
+  // replacing the macrotask with `afterPaint()` (comment-composer.tsx): two
+  // nested `requestAnimationFrame` calls, the standard "wait for the browser
+  // to have painted" idiom, guaranteeing the paint happens before
+  // `router.refresh()`'s own update starts.
+  //
+  // Full honesty, as required by this file's own earlier blocker-1 test:
+  // extensive attempts to reproduce the STUCK state itself in jsdom —
+  // fake timers, real timers, an `act()`-wrapped settle, and a mocked
+  // `router.refresh()` that itself calls `startTransition` around its own
+  // slow (2 s) update to simulate what Next's real refresh does — ALL
+  // resolved `aria-busy` to idle promptly, even against the CODE BEFORE this
+  // fix (the plain `setTimeout(fn, 0)` version). `postCommentAction` is a
+  // full mock here; Next's actual Server-Action-dispatch client runtime,
+  // where this race most plausibly lives, never runs in this test at all.
+  // So this test cannot discriminate the bug from the fix — it passes on
+  // both. It stays as the regression guard the lead asked for (a slow
+  // action must never leave `aria-busy` stuck without further input), not
+  // as proof the live symptom is gone; only a real build settles that.
+  it("★ a slow post (1.5s) still clears aria-busy on its own, with no further input", async () => {
+    vi.useFakeTimers();
+    try {
+      const { postCommentAction } = await import("@/components/event/actions");
+      let resolveAction: (value: { error: null }) => void = () => {};
+      vi.mocked(postCommentAction).mockImplementationOnce(
+        () => new Promise((resolve) => { resolveAction = resolve; }),
+      );
+      renderComposer();
+      fireEvent.change(textarea(), { target: { value: "تعليق بطيء" } });
+      fireEvent.click(screen.getByRole("button", { name: "نشر" }));
+      expect(screen.getByRole("button", { name: /نشر|جارٍ/ })).toHaveAttribute("aria-busy", "true");
+
+      await act(async () => {
+        resolveAction({ error: null });
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      // No further fireEvent of any kind below this line.
+      expect(screen.getByRole("button", { name: /نشر|جارٍ/ })).not.toHaveAttribute("aria-busy", "true");
+      expect(textarea().value).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("is accessible with the mention list and the counter both showing", async () => {

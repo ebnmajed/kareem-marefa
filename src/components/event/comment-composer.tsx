@@ -48,6 +48,26 @@ const MAX_LENGTH = 4000;
 const COUNTER_THRESHOLD = 200; // show the counter only once this close to the cap — visible from character zero is noise
 const MAX_GROW_PX = 240; // roughly ten rows before the box scrolls instead of growing further
 
+// ★ The lead's SECOND real-build finding, after 44485b8's setTimeout fix:
+// on a slow connection (held the POST ~1.5s), `aria-busy` stayed "true" for
+// several more seconds AFTER the response arrived, clearing only once the
+// member typed. `setTimeout(fn, 0)` is a macrotask, but a macrotask can
+// still run BEFORE the browser paints the current frame — so `router.
+// refresh()` (which starts its OWN update, a real RSC refetch that can take
+// a while) could still be kicked off before this transition's own
+// `pending=false` had actually been PAINTED to the screen, on a slow enough
+// action. Two nested `requestAnimationFrame` calls is the standard "wait
+// for paint" idiom: the first fires immediately before the next paint;
+// scheduling the real work from INSIDE it, via a second `requestAnimation
+// Frame`, defers it to the frame AFTER that one — guaranteeing the paint
+// already happened before `router.refresh()`'s own, possibly slow, update
+// starts. Same helper in `comment-item.tsx`, for the same reason.
+function afterPaint(fn: () => void) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(fn);
+  });
+}
+
 export function CommentComposer({
   locale,
   sessionId,
@@ -151,7 +171,9 @@ export function CommentComposer({
       // that used to sit here is gone too (★ BLOCKER 2) — the comment
       // appearing in the list IS the success feedback, and a full-width
       // toast was covering exactly the new content it was announcing.
-      setTimeout(() => router.refresh(), 0);
+      // ★ `afterPaint`, not `setTimeout(fn, 0)` — the lead's SECOND real-
+      // build finding, see the module comment above `afterPaint` itself.
+      afterPaint(() => router.refresh());
     });
   }
 
