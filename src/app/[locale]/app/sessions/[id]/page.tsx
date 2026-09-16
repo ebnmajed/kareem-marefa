@@ -11,7 +11,6 @@ import { ActionCard } from "@/components/sessions/action-card";
 import { EventHero } from "@/components/sessions/event-hero";
 import { primaryActionFor } from "@/components/sessions/event-actions";
 import { EventSubnav } from "@/components/sessions/event-subnav";
-import { FocusClearance } from "@/components/sessions/focus-clearance";
 import { GatedSection } from "@/components/sessions/gated-section";
 import { formatDate } from "@/components/sessions/numerals";
 import { PresenterList } from "@/components/sessions/presenter-list";
@@ -139,7 +138,6 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 
   return (
     <article>
-      <FocusClearance />
       <Notices session={session} phase={phase} published={published} locale={locale} />
 
       <EventHero session={session} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
