@@ -32,6 +32,12 @@ drop function if exists public.set_session_walk_ins(uuid, boolean);
 
 drop function if exists public.schedule_session(uuid, timestamptz, int, timestamptz, uuid, text, text, text, int, timestamptz, timestamptz, public.certificate_mode, public.session_language);
 
+-- ── schedule_session() ──────────────────────────────────────────────────────
+-- Definer, because 0010 grants an admin no write on any scheduling column:
+-- `grant update (title, abstract, level, language)` is the whole of it, which
+-- is D13/D14 as privileges. So `starts_at`, the venue, the capacity, the
+-- deadlines and `certificate_mode` can only move through here, and the 03 §1.3
+-- re-read is mandatory because definer bypasses RLS.
 create function public.schedule_session(
   p_session                 uuid,
   p_starts_at               timestamptz,
@@ -62,10 +68,14 @@ begin
   if target.id is null then
     raise exception 'session_not_found' using errcode = '42501';
   end if;
+  -- REQ-SES-009 makes editing a PUBLISHED session legitimate (it notifies and
+  -- re-syncs calendars). A finished, archived or cancelled one is history.
   if target.state in ('completed', 'archived', 'cancelled') then
     raise exception 'session_not_schedulable' using errcode = '23514';
   end if;
 
+  -- REQ-SES-007: a custom venue needs at minimum a name and an address, and
+  -- is NOT silently added to the org's list — promoting it is a separate act.
   if p_venue is not null and v_name is not null then
     raise exception 'venue_or_custom_venue_not_both' using errcode = '23514';
   end if;
@@ -79,8 +89,12 @@ begin
     end if;
   end if;
 
+  -- REQ-SES-002: `ends_at` is a STORED column derived at scheduling, and
+  -- independently editable — OQ-001 says the duration pre-fills and is never
+  -- authoritative, so an explicit end wins over the arithmetic.
   v_ends := coalesce(p_ends_at, p_starts_at + make_interval(mins => p_duration_minutes));
 
+  -- OQ-018: the venue's own zone, else the org's. A session happens in a room.
   select coalesce(v_venue.time_zone, os.time_zone, 'Asia/Riyadh') into v_tz
     from public.org_settings os where os.org_id = actor.org_id;
 

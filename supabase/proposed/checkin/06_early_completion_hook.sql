@@ -39,9 +39,24 @@
 --   | `RPC-transition_session.check_in_open_cancel` | Cancelling sets `check_in_open = false` too. |
 --   | `RPC-transition_session.check_in_open_reopenable` | An early close from completion is an ordinary close — the room can reopen it through `set_check_in_open()`, same as any other, up to the ceiling. |
 
+-- ── Why the edge set lives in this function and not in a trigger ────────────
+-- For `proposals` I argued the opposite (0011): the audit and the guard had to
+-- be triggers, because 03 §5.2b deliberately lets a member submit with a plain
+-- PostgREST update, so anything in an RPC would have been optional.
+--
+-- `sessions.state` is different. It is in NO grant — `grant update (title,
+-- abstract, level, language)` is the whole of an authenticated user's write —
+-- so there is no PostgREST path to the column at all, and every writer is
+-- already a definer function this track owns: create_session, publish_session,
+-- the two clock functions and this one. A table-level guard would be the
+-- stronger statement and I would still like one, but it would also start
+-- refusing the direct `update … set state` that several fixtures and tests
+-- across all three tracks use to arrange a scenario. That is a change to make
+-- deliberately, at the start of a wave, not at its gate.
+-- **Lead: `0008` is where I would put it. Not written, on purpose.**
 create or replace function public.transition_session(
   p_session uuid,
-  p_action  text,
+  p_action  text,   -- 'start' | 'complete' | 'cancel' | 'archive' | 'reopen'
   p_reason  text default null
 ) returns public.sessions
 language plpgsql security definer set search_path = '' as $$
@@ -58,6 +73,9 @@ begin
   end if;
   v_from := target.state;
 
+  -- 02 §6.2's edges, and only those. `reopen` is `archived → completed`: the
+  -- diagram gives `cancelled` no outgoing edge at all, so a cancelled session
+  -- is not reopened, it is superseded by a new one.
   v_to := case p_action
             when 'start'    then case when v_from = 'published'   then 'in_progress' end
             when 'complete' then case when v_from = 'in_progress' then 'completed'   end
@@ -74,6 +92,8 @@ begin
     raise exception 'illegal_session_transition: % from %', p_action, v_from using errcode = '23514';
   end if;
 
+  -- REQ-SES-010: "Cancelling requires a reason." The table's own check would
+  -- catch a null and say nothing useful; it would not catch «   ».
   if v_to = 'cancelled' and v_reason is null then
     raise exception 'cancellation_reason_required' using errcode = '23514';
   end if;
