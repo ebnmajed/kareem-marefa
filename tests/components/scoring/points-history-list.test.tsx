@@ -88,11 +88,13 @@ describe("PointsHistoryList", () => {
 
     const amountNode = screen.getByText(/-5/);
     expect(amountNode.tagName).toBe("BDI");
-    // ★ The lead's real-capture finding: `formatNumber` drops ICU's LRM, so
-    // a bare `<bdi>` resolves RTL and the sign lands AFTER the digits ("5-"
-    // in a real browser) — invisible to jsdom's own layout-free text
-    // content, which is exactly why this asserts the ATTRIBUTE, not just
-    // the string. `dir="ltr"` pins the isolate's direction explicitly.
+    // `dir="ltr"` is pinned deliberately on this bdi, not because a reorder
+    // was ever actually observed in a real browser (a sync-5 finding to that
+    // effect turned out to be a misread of a downscaled capture) — it just
+    // states outright what a bare bdi already does in Chromium, rather than
+    // leaving it to the bidi algorithm's default. Asserted as an attribute,
+    // not a string, since jsdom's layout-free textContent can't see a
+    // visual reorder either way.
     expect(amountNode).toHaveAttribute("dir", "ltr");
     // Strip only bidi CONTROL characters (LRM/RLM) — a sign or digit lost
     // would change this comparison, a bidi mark alone must not.

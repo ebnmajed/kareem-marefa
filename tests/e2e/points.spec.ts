@@ -285,11 +285,11 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     await expect(history.getByText("أُلغي تسجيل الحضور")).toBeVisible();
     await expect(history.getByText("إلغاء نقاط سابقة")).toBeVisible();
     await expect(history.getByText(removalReason)).toHaveCount(0);
-    // ★ The lead's real-capture finding: `formatNumber` drops ICU's LRM, so
-    // a bare `<bdi>` resolved RTL and the minus rendered AFTER the digits
-    // ("20-") — invisible to jsdom, which is why this needs a real browser,
-    // not just points-history-list.test.tsx's own strict assertion. The
-    // attribute is what a screenshot review can't check for itself.
+    // `dir="ltr"` on the amount's bdi is pinned deliberately (a sync-5
+    // finding that the sign rendered after the digits without it turned out
+    // to be a misread of a downscaled capture, not a real reorder) — this
+    // proves the attribute made it into a real render, which a jsdom test
+    // alone can't, regardless of why it's there.
     const reversalRow = history.locator("li", { hasText: "أُلغي تسجيل الحضور" });
     await expect(reversalRow.locator("bdi[dir='ltr']")).toBeVisible();
     // The reversal readable next to what it reverses — never a number that
