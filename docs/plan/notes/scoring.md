@@ -942,12 +942,23 @@ unprovable in the suite that is supposed to guard it.
    attendance at this session and awards under `v1`, `v2`, … With no reversal it is `v1`:
    `main`'s key, byte for byte.
 
-⚠ **`05` §2.1 says the epoch segment is bumped «only by a `DECISIONS.md`-logged re-award».**
-This reads it as covering a deliberate, audited re-establishment of attendance — an admin
-retracted a check-in and the member checked in again — rather than only a bulk recompute.
-**Flagged for the lead rather than assumed**: if the ruling is that the segment must stay
-reserved for `05` §4.3's procedure, the alternative is a separate generation segment in the
-key, and the same test proves it.
+### ★ The consequence for `05` §2.1, ruled at sync 2 and written down here
+
+`05` §2.1 says the trailing epoch «is bumped only by a `DECISIONS.md`-logged re-award», and
+`0028`'s comment says «nothing here ever writes anything but `v1`». **Neither is true for
+attendance any more**, and the lead approved the key as built:
+
+- The segment now also counts a **deliberate, audited re-establishment of attendance** — an admin
+  retracted a check-in (`remove_check_in()`, audited) and the member checked in again. That is
+  the kind of act `05` §2.1's own sentence is about; it is not a bulk recompute, which is `05`
+  §4.3's separate procedure and still needs its `DECISIONS.md` entry.
+- ⚠ **At ONE day this changes a string `main` writes.** A member re-added after a removal gets a
+  ledger key of `…:v2` where `main` writes `…:v1`. It is an internal identifier: **no screen
+  renders it, no existing test asserts it, and the ledger row's amount, reason, source, source_id
+  and `rule_version` are all unchanged.** So it is **not a named difference** — but it is written
+  here rather than left to be discovered, which is the whole point of the ledger.
+- The alternative, if this is ever revisited, is a separate generation segment in the key. The
+  same tests prove either.
 
 ## Two findings in live code, one fixed here
 
@@ -1001,3 +1012,26 @@ and an edited test file is exactly what the untouched-suite ledger exists to mak
   is promoted.
 - **Recognition edits still write no audit or history row.** Wave 10, with `console`
   (`DEC-151` answer 9).
+
+
+## Sync 2 — promoted, and what changed under my own tests
+
+`0102` (contract 5), `0107` (contract 6), `0113` (the award at completion), `0114` (the
+missed-day reader) are migrations. `0108` points the certificate path at
+`session_attendance_complete()` at five sites and returns early unless the session is
+`completed` or `archived` — so **the certificate and the points agree on timing**, which is what
+`DEC-151` answer 2 required. Row L4 needed no request from me; it was done.
+
+★ **Promoting `0113` turned two of my own contract-5 cases red, and the reason is worth keeping.**
+`applyProposed()` is a no-op for a file that has been promoted, so every case runs against the
+**latest** body — not the one it was written for. `0102`'s verbatim body reversed
+unconditionally, so a case could call `attendance_removed()` on a check-in that was never
+soft-deleted and still see a reversal. `0113`'s body asks the predicate, and a member whose
+check-in is still active has not stopped attending, so the same call correctly writes nothing.
+**The hook's precondition is `remove_check_in()`'s own order — soft-delete FIRST, then the
+hook** — and it is now a named `softDelete()` helper in the test rather than four repetitions,
+because leaving it out is exactly the mistake that was made. Fixed at `b23fab1`.
+
+**A general lesson for anyone writing against a proposed file:** a case written against the
+FIRST version of a seam is not automatically a case against its final body. When the behaviour
+lands, re-read every case that calls it and ask what precondition the real body now requires.

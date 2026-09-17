@@ -125,16 +125,7 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
   if (ledgerRes.error) throw new Error(`points_ledger: ${ledgerRes.error.message}`);
   if (allRes.error) throw new Error(`points_ledger (sessions): ${allRes.error.message}`);
   if (rulesRes.error) throw new Error(`scoring_rules: ${rulesRes.error.message}`);
-  // ★ PGRST202 is «no such function», and it is tolerated for one reason only:
-  // between this commit and the lead's promotion of
-  // supabase/proposed/scoring/0004_missed_attendance.sql the function does not
-  // exist locally, and every other teammate runs tests/e2e/points.spec.ts
-  // against that database. Without this the whole screen would fail on a
-  // feature that has nothing to do with the rows it is rendering. Any OTHER
-  // error still throws. **Delete this branch once 0004 is a migration.**
-  if (missedRes.error && missedRes.error.code !== "PGRST202") {
-    throw new Error(`missed_attendance_days: ${missedRes.error.message}`);
-  }
+  if (missedRes.error) throw new Error(`missed_attendance_days: ${missedRes.error.message}`);
 
   type LedgerJoinRow = {
     id: string;
