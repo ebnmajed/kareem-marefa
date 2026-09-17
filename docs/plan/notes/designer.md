@@ -2322,3 +2322,65 @@ This is the same discipline as Q7's measurement: there, «everything fits» mean
 ladder of growing strings proved the probe could report «does not fit». A control is what separates
 a measurement from a reassurance, and it is worth saying that the reviewer asked for the finding and
 the author supplied the control.
+
+### Two read-only reviews for other tracks, and what is OWED after the stand-down
+
+Both were read-only; I edited nothing in either track. Findings went to the lead, who routed them.
+
+**1 · The survey's SQL** (`0137_survey_submit`, `0138_survey_results`), read after `event`'s commit at
+`c652c95`, never the working tree.
+
+- ★ **F1 — `survey_results()` failed OPEN on a missing `org_settings` row** (`0138:77`). The column is
+  `not null default 3`, but a missing ROW leaves `v_min` NULL, and every guard is a comparison against
+  it: `if v_n < v_min` is NULL rather than false, so the withheld branch is skipped and the two
+  `case when a.answered < v_min` guards fall through to their else branches. At one response,
+  distributions and every free text released, with `withheld` reported as `null` rather than `true`.
+  **Fixed by the lead at `2b8fc93`** — `greatest(coalesce(v_min, 3), 3)`, fail closed at the floor,
+  mutation-checked in both directions. Not reachable in production (`create_org()` inserts the row)
+  but held closed only by a convention outside the function; the test fixtures create orgs without it.
+  The lead found the same shape in `limit_image_mb` (`0050`, `0115`) and the co-presenter cap (`0010`)
+  and carried it to wave 11 as a class — **read, backfill, then the trigger, in one change**, because a
+  trigger alone fixes no org that already lacks the row.
+- **F2** — the jitter's comment overstated: for the 10 minutes to 4 hours the job is pending, the queue
+  row holds the submit instant beside the payload. `service_role` only, so outside the threat model;
+  taken as a sentence, not a defect.
+- Clean and reported as such: «answered with nothing in the box» is **unreachable** (the only path that
+  removes an attached survey's questions is `survey_detach()`, which deletes the `surveys` row and
+  cascades the register and the box with it); `survey_for_member()` returns the same `null` for «no
+  survey» and «not for you»; no definer trusts a caller-supplied org or member.
+
+**2 · The mail's injection surface** (`compile/primitives/render/blocks.ts`, the preview route,
+`0125`/`0134`). All **24** interpolation sites in `compile.ts` enumerated rather than spot-checked —
+which is what makes «clean» a result rather than an impression. **F1–F3 routed to `notify`:**
+
+- **F1** — a RECOGNISED block with a missing field is fatal (`block.text`, `block.urlBinding`,
+  `block.items`, `block.src`), which is the opposite of `readBlocks`'s stated tolerance; the database
+  validates no field (`0134`). Fixed in `readBlocks()`, and the checks panel now NAMES the dropped
+  block — the lead's addition, and the better half: a silent drop still hides a broken template.
+- **F2** — `SPACER_PX[block.height]` returns an inherited property for `height: "constructor"`; not an
+  injection (no `Object.prototype` member stringifies with `"` or `>`), malformed output only.
+- **F3** — no scheme allowlist on a button's href; ruled IN. ★ My «and relative» was wrong for this
+  medium — a mail has no base document — and the lead's «same-origin as the configured app origin» is
+  the right tightening. The wrinkle I flagged: the app origin is `http://localhost:3000` in dev, so the
+  same-origin arm must compare **origins, not schemes**, or every designed template previews with no
+  buttons on every developer's machine.
+- Clean: escaping at every site (`paragraph` escapes **then** inserts `<br />`); the palette into
+  `style=`/`bgcolor=` is safe **structurally, not by escaping** — anchored `~* '^#[0-9a-f]{6}$'` column
+  checks (`0068:69-76`, `0093:48-49`), and Postgres's `$` is end-of-string by default, so the
+  `#ffffff\nevil` bypass is closed; interpolation is single-pass (a **function** replacer, so no
+  `$&` expansion and no re-scan); the preview is `sandbox` with no `allow-*`, reflects nothing from the
+  request, serves `text` mode as `text/plain` with `nosniff`, and is CSRF-inert; and no bound value can
+  carry a CR/LF into a subject (`render.ts:420` collapses `\s+`).
+
+### ★ OWED after the stand-down — two items, neither started
+
+1. **Re-read `notify`'s diff** for the three injection findings, when its hash arrives. The thing to
+   check is F3's same-origin arm against a `http://localhost:3000` origin, and that F1 drops rather
+   than throws for all four malformed shapes above.
+2. **Read the forced-dark capture** when `notify` sends it — three cells, the same artwork as
+   transparent PNG, flattened JPEG and light-ink PNG. **Read it, never accept a claim.** The reading
+   instruction is recorded above: «both pass» is more likely a blanket inversion than two safe logos,
+   and an empty cell means the `0126` mime gate, not the dark mode.
+
+Carried under my name, neither fixed this wave: the phone review layout's canvas missing from the
+heading outline (M13), and **one logo asset for two schemes** (`branding`/M13).
