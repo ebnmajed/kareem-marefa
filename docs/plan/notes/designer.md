@@ -2219,3 +2219,34 @@ cap the label column's width instead.
 The 21 compiler cases and the 116 pinned files are `notify`'s evidence and I did not re-run them; the **preview
 plumbing** (the sandboxed iframe, the form target) is `notify`'s and outside `16` §11.6's «`designer` reviews
 the compiler». F1 and F4 both move the pin, so whoever takes them takes the reviewed diff with them.
+
+### The captures — six files, and why not seven
+
+Taken by `tests/e2e/wave10-designer-reissue-and-days.spec.ts`, phone project, 390 x 844, into
+`E2E_SHOTS_DIR` (default `.qa-shots/rtl`). Opened by the lead in bands on the production build of
+`2ef91b3`.
+
+| File (`wave10-designer-…`) | What it shows |
+|---|---|
+| `scr045-reissued-and-revoked-final.png` | SCR-045 whole: «المصدَرة» carrying Sara's replacement, «الملغاة» carrying her original and Khalid's for-cause revocation with its own reason, and the eligible list's «مُلغاة نهائيًا — لن يصدر بديل.» under Khalid's name |
+| `me-certificates-both.png` | «شهادتان» — the live card, and the revoked one with «سبب الإلغاء: أُلغي تسجيل الحضور» |
+| `verify-issued.png` | «شهادة صالحة» for the replacement's own code |
+| `verify-revoked.png` | «هذه الشهادة ملغاة.» — and no reason shown to a stranger |
+| `poster-three-days.png` | «17–19 نوفمبر 2026 · 6:00 م» |
+| `poster-one-day.png` | «الثلاثاء، 17 نوفمبر 2026 في 6:00 م» — the characters `main` prints |
+
+★ **It was seven, and two of them were the same picture.** `scr045-reissued` and
+`scr045-revoked-final` were byte-identical (one md5): the two cases navigate to the same URL and
+assert different halves of **one screen state**, so each capture wrote the same image under a second
+name. Caught by the lead opening them. Two names for one image is a reviewer opening the same screen
+twice believing they have seen two — which is the opposite of what opening captures is for. The
+second case now asserts and captures nothing, and says so in place.
+
+**A rule for the next spec I write:** a capture is named for a *screen state*, not for a *test*. Two
+cases that leave the page in the same state share one file, and if a case cannot name a state of its
+own it does not get a picture.
+
+**Read in the poster captures, and correct:** «17–19 نوفمبر 2026» puts 17 on the right, because the
+en dash between two `EN` runs resolves as `R` in the bidi algorithm and the whole range sits in the
+Arabic paragraph direction. First day first, read right to left, which is what a range should do and
+is not something `formatRange` had to be told.

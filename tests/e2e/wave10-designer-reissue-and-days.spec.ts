@@ -327,7 +327,14 @@ test("★ SCR-045 after a remove and a re-add: one row under «الملغاة»,
   await expect(shown(issued, revoked.serial)).toHaveCount(0);
   await expect(shown(revokedList, replacement.serial)).toHaveCount(0);
 
-  if (onPhone()) await capture(page, "scr045-reissued");
+  // ★ ONE capture for this screen, and it carries BOTH facts: the two serials
+  // in their own sections, and — further down the same page — the eligible
+  // list's «مُلغاة نهائيًا». The next test asserts the second half and takes no
+  // picture of its own, because it navigates to the same URL in the same state
+  // and produced a byte-identical file under a second name (same md5). Two
+  // names for one image is a reviewer opening the same screen twice believing
+  // they have seen two.
+  if (onPhone()) await capture(page, "scr045-reissued-and-revoked-final");
 });
 
 test("★ the eligible list tells a removal's revocation from an admin's FOR CAUSE — two sentences, not one", async ({ context, page }) => {
@@ -342,7 +349,9 @@ test("★ the eligible list tells a removal's revocation from an admin's FOR CAU
   // closed, and the screen must stop talking about it.
   await expect(shown(main(page), "مُلغاة لإزالة الحضور")).toHaveCount(0);
 
-  if (onPhone()) await capture(page, "scr045-revoked-final");
+  // No capture here on purpose — see the previous test. This screen has one
+  // picture, `wave10-designer-scr045-reissued-and-revoked-final.png`, and the
+  // sentence asserted above is in it.
 });
 
 /* ── D1 · the member's own two documents ────────────────────────────────── */
