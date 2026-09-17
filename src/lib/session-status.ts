@@ -86,12 +86,34 @@ export const VIEWER_RELATIONS: readonly ViewerRelation[] = [
 
 // ── 1 · sessionPhase ──────────────────────────────────────────────────────
 
+/**
+ * One day of a session — `ENT-session_days` (DEC-119), as `listSessionDays()`
+ * returns it. `position` is the chronological rank and is derived in the
+ * database (DEC-150); nothing here sorts by it or trusts it over the instants.
+ */
+export interface DayWindow {
+  id: string;
+  position: number;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface PhaseInput {
   state: SessionState;
+  /** DERIVED AND STORED (DEC-150): the first day's start. Read it; never recompute it from `days`. */
   startsAt: string | null;
+  /** DERIVED AND STORED (DEC-150): the last day's end. */
   endsAt: string | null;
   /** Falls back to `startsAt + durationMinutes` when `endsAt` is null. */
   durationMinutes?: number | null;
+  /**
+   * The session's days (DEC-119). ★ OPTIONAL ON PURPOSE, AND NOT A MODE SWITCH:
+   * a caller that does not pass them — every caller that existed before wave 9
+   * — is asking about a session whose own window IS its one day's, which is
+   * what a session with one day is. With days, the only thing that changes is
+   * that the hours BETWEEN two days stop reading as `live`.
+   */
+  days?: readonly DayWindow[] | null;
 }
 
 /**
@@ -151,17 +173,104 @@ export function sessionPhase(session: PhaseInput, now: Date = new Date()): Sessi
   // anything. `pending_schedule` is the database's own spelling, kept.
   if (state === "approved") return "pending_schedule";
 
+  // ★ DEC-119: «a session is `live` while ANY day is running, `ended` once the
+  // LAST day has ended». The session's stored window already IS first start →
+  // last end, so `ended` needs nothing new. `live` needs one refinement: the
+  // night between two days is inside the window and is not a day. It reads
+  // `open` — the next day is ahead, its tasks and «قبل» materials are what a
+  // member needs, and registration is already shut by the deadline (≤ the
+  // first day's start, by CHECK). There is deliberately NO seventh phase: the
+  // 42-cell matrix and every badge stay as they are (DEC-150, contract 9).
+  // `betweenDays()` walks consecutive PAIRS of days, so with one day or none it
+  // has nothing to walk and is false — this is not a multi-day branch.
+  const inGap = betweenDays(session.days, now);
+
   if (state === "in_progress") {
     // The clock beats a stale row: a session the job started and never
     // completed is `ended` once its end time has passed.
-    return end && end.getTime() <= now.getTime() ? "ended" : "live";
+    if (end && end.getTime() <= now.getTime()) return "ended";
+    return inGap ? "open" : "live";
   }
 
   // state === "published"
   if (!start) return "open"; // reservable; nothing to compare to the clock
   if (end && end.getTime() <= now.getTime()) return "ended";
-  if (start.getTime() <= now.getTime()) return "live";
+  if (start.getTime() <= now.getTime()) return inGap ? "open" : "live";
   return "open";
+}
+
+// ── 1a · the days ─────────────────────────────────────────────────────────
+
+/** REQ-CHK-016: check-in may stay open until the day's end + 2 h, and no later. */
+export const CHECK_IN_CEILING_MS = 2 * 3_600_000;
+
+export type DayPhase = "upcoming" | "live" | "ended";
+
+/** One day against the clock. `[startsAt, endsAt)`, as the database's range is. */
+export function dayPhase(day: DayWindow, now: Date = new Date()): DayPhase {
+  const start = parseInstant(day.startsAt);
+  const end = parseInstant(day.endsAt);
+  if (!start || now.getTime() < start.getTime()) return "upcoming";
+  if (end && now.getTime() >= end.getTime()) return "ended";
+  return "live";
+}
+
+/** The days in the order they happen. Sorted by instant, never by a `position` someone typed. */
+function chronological(days: readonly DayWindow[] | null | undefined): DayWindow[] {
+  const at = (d: DayWindow) => parseInstant(d.startsAt)?.getTime() ?? 0;
+  // The same order as the database's `order by starts_at, id`.
+  return [...(days ?? [])].sort((a, b) => at(a) - at(b) || a.id.localeCompare(b.id));
+}
+
+/**
+ * True in the hours after one day has ended and before the next begins. Walks
+ * consecutive pairs, so it is false for one day and for none — by arithmetic,
+ * not by a branch.
+ */
+export function betweenDays(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): boolean {
+  const ordered = chronological(days);
+  const t = now.getTime();
+  for (let i = 0; i + 1 < ordered.length; i++) {
+    const ended = parseInstant(ordered[i].endsAt);
+    const next = parseInstant(ordered[i + 1].startsAt);
+    if (ended && next && t >= ended.getTime() && t < next.getTime()) return true;
+  }
+  return false;
+}
+
+/**
+ * The day a check-in made `now` would belong to: the day whose window — its
+ * start to its end + 2 h — contains `now`; the LATER-started when two do (a
+ * 9–12 day and a 13–16 day on one date both hold 13:30). Null when no day is
+ * taking attendance. This is rule 1 of `public.resolve_session_day()` (0100),
+ * and ONLY rule 1: the SQL function's fallbacks exist for inserters that must
+ * land somewhere; a screen asking «is check-in open?» must be told no.
+ *
+ * ★ PRESENTATION, NEVER AUTHORITY — `check_in()` decides, and resolves the day
+ * from the CODE, which belongs to exactly one day.
+ */
+export function checkInDay(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): DayWindow | null {
+  const t = now.getTime();
+  const open = chronological(days).filter((d) => {
+    const start = parseInstant(d.startsAt);
+    const end = parseInstant(d.endsAt);
+    return !!start && !!end && t >= start.getTime() && t < end.getTime() + CHECK_IN_CEILING_MS;
+  });
+  return open.at(-1) ?? null;
+}
+
+/**
+ * All three rules of `public.resolve_session_day()`, for a screen that must
+ * open on SOME day — the attendance list, the host view outside any window:
+ * the day taking attendance; else the latest day already begun; else, nothing
+ * having begun, the first. Null only when there are no days.
+ */
+export function resolveDay(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): DayWindow | null {
+  const taking = checkInDay(days, now);
+  if (taking) return taking;
+  const ordered = chronological(days);
+  const begun = ordered.filter((d) => (parseInstant(d.startsAt)?.getTime() ?? Infinity) <= now.getTime());
+  return begun.at(-1) ?? ordered[0] ?? null;
 }
 
 /** A stored instant, or null when absent or unparseable. Exported for `checkInWindowAllowed()` (DEC-141). */
