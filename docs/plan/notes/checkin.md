@@ -1724,3 +1724,84 @@ cases pin it: a leftover live code of a past day, and a code of a day not yet be
    errors, all in `tests/components/{materials,photos,tasks}/**` where a `sessionDayId` became
    required on three DTOs; and `tests/rls/materials-days.test.ts` fails on
    `session_days_no_overlap` from its own test data. Both are `content`'s, mid-change.
+
+---
+
+## C2–C4 built — the matrix, the job, the DAL and the three screens
+
+`86b538a` (the gate and `rotate_codes`), `60f48c2` (contract 5), `4325240` (the screens).
+tsc clean tree-wide · lint 0 errors · vitest **197 files / 1840 tests** · the ten check-in and
+reservation RLS files **85/85** with their assertions untouched.
+
+### The one rule, in one function
+
+`src/components/checkin/day-name.ts` — `dayName()` returns a label when the session has more than
+one day and **null** otherwise. All three screens key off it, and that is the whole of «at one day
+each renders as it does today»: not a condition repeated three times, which would drift, but a value
+that is absent. The words are contract 7's `dayLabel()`; nothing here re-spells a day, it only
+withholds one.
+
+The same shape on the DTOs: every one carries `day`, `dayCount` and `timeZone`, and the *words* stay
+out of the DAL because `dayLabel()` needs a translator and a DAL module has none.
+
+### The gate, and why the cap is never written twice
+
+`checkInIneligibleReason()` asks `checkInDay()` first. If it returns a day, `now` is inside that
+day's start-to-capped-ceiling window by construction — floor and ceiling both cleared, **no ceiling
+value read here at all**. If it returns null, the answer comes from `resolveDay()`'s own fallback:
+before the day's start it is `not_started`, otherwise the ceiling has passed and it is
+`session_ended` — which is exactly what `check_in()` gates on. So the cap lives in
+`session-status.ts` and in `public.check_in_ceiling()`, and in no third place.
+
+`canOfferCheckInFor()` keeps its exact five-argument shape, because the days ride on `PhaseInput`.
+`sessions` changed no call site.
+
+### What the three screens do
+
+| | At three days | At one |
+|---|---|---|
+| host view | the day's code, the day's switch, «أنت الآن في اليوم الثاني · الخميس»; candidates are that day's; between days «التالي: …» | no line, no change |
+| check-in | names the day; `not_started` / `session_ended` / `check_in_closed` read in that day's words | today's three strings |
+| SCR-044 | a column per day, «حضر 2 من 3», the mark and the removal each per day, «أكمل كل الأيام» | today's four columns |
+
+★ **The refusal and the label can never be about different meetings**: both come from one
+`checkInDayFor()` call. That was the point of exporting it rather than resolving twice.
+
+★ **`session_ended` is still the envelope status** when day 2's ceiling has passed and day 3 is
+ahead (contract 4 — statuses do not move). Only the sentence is the day's.
+
+### Two things held open, deliberately
+
+1. **`completedAllDays` is null** and the stat renders an em dash until `scoring` publishes
+   `session_attendance_complete()`. «Attended the session» has exactly one definition (contract 6)
+   and re-deriving it on a report screen is what that contract exists to prevent. One line to wire.
+2. **The attendance CSV's flat fields did not move.** `AttendanceRow.checkedIn` is still «an active
+   check-in on any day» and the arrival and removal fields still describe the representative
+   check-in, so `lib/dal/admin-exports.ts` — the lead's — is correct at one day and untouched. The
+   day column row L5 wants is `row.days`, already on the DTO.
+
+### `rotate_codes` — named difference 1, and what it actually buys
+
+The job now selects **days inside their own window** rather than sessions that are `in_progress`. A
+three-day workshop is `in_progress` for two nights, and the old query minted a code every rotation
+through them, for a room nobody was in. The difference at one day is the stale case: a session the
+clock job failed to complete stops minting at its ceiling instead of minting forever, because
+`_issue_check_in_code()` has no window gate of its own — only `ensure_check_in_code()` does.
+`tests/unit/checkin-rotate-codes-days.test.ts` also asserts the query contains no `interval` at all,
+so nobody can re-introduce a hand-rolled `+ 2 hours` that would miss the cap.
+
+### Findings from the tests, not from review
+
+- **A default day not in the list** would have travelled to the RPC and returned `not_found` — an
+  error an admin can neither see the cause of nor act on. Both forms now validate `defaultDayId`
+  against the days they were given. Only reachable through a stale render (a day deleted between
+  render and submit), which is precisely the case nobody would have written a case for.
+- **`already_checked_in` returns before the attempt row is written**, so a checked-in member never
+  reaches the rate limit. That is `main`'s ordering and `DEC-015`'s, and it cost one wrong
+  assertion to re-learn; the one-day end-to-end case now says so in a comment.
+
+### Ledger line requested
+
+`tests/components/checkin/remove-check-in-form.test.tsx` — `RemoveCheckInForm` gained three required
+props, so the render helper passes **one** day. Every assertion unchanged; the day select does not
+render below two. **Expectation for one day changed: no.**
