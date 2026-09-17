@@ -3448,3 +3448,139 @@ the rule is a review rule, recorded here so nobody "regenerates the seed".
   `MSG-*` ids are dropped from cards; rows still link by key.
 - **Recognition edits write no audit or history row** — recorded, not built this wave.
 - **Documents changed:** `STATUS.md`, `03-permissions-rls.md` §8.2 (`0099`'s ten rows, by the promotion)
+
+---
+
+## DEC-150 — Wave 9 is multi-day sessions, built on a day entity the lead lands first; the tracks meet in the data, so the wave is measured by its seams; `notify` runs, and `checkin` and `scoring` become opus
+
+- **Date:** 2026-09-17 · **Decided by:** owner (the wave-9 brief, `docs/plan/notes/wave-9-lead.md`: the five tracks, the four rulings, the two added definitions of done), the file-level map, the contracts and the foundation's mechanism by the lead
+- **Supersedes:** `DEC-147`'s wave-8 map as the map in force (kept in `CLAUDE.md` as the record); `DEC-147`'s transfer of `admin/sessions/[id]/schedule/**` and `messages/*/schedule.json` to the lead (they go to `sessions`, which builds `REQ-SES-016` in them); `DEC-137`'s placement of `app/me/{points,calendar,notifications}/**`, `components/scoring/{points-history-list,points-catalogue}.tsx`, `components/notifications/{notification-list,preference-matrix}.tsx` and their DAL modules with `content` (they return to `scoring` and `notify`, which are spawned); `DEC-147`'s placement of `messages/*/{scoring,notifications}.json` with `console` (not spawned); `REQ-SES-015`'s and `02` `ENT-session_days`' sentence «a task for the whole workshop is a task on day 1» (already superseded in substance by `DEC-121`; the PRD line is corrected with this entry).
+
+### Why this wave is measured differently
+
+Waves 6–8 moved routes onto a system and counted routes. This wave adds an entity under seven existing
+tables on a live database, and **no route count can say whether it worked**. The measure is two
+demonstrables (`STATUS.md`, wave-9 block): a three-day workshop end to end, and **a one-day session
+behaving exactly as it does on `main`, proven by the existing suites passing with their assertions
+untouched**. `STATUS.md` therefore carries a **contract list** — the seams between tracks — instead of a
+route checklist, and an **untouched-suite ledger**: every pre-existing test file a wave-9 commit modifies
+is named there with the reason, and an unexplained edit to an existing assertion is a defect.
+
+### The foundation — the lead's, landed before any teammate's SQL (`0100`)
+
+**One rule decides every choice below: `main`'s app and `main`'s worker must be correct on the new schema**,
+because the owner pushes migrations before merging (the order waves 7 and 8 used) and both deploy from
+`main`. So the wave is **additive**: no column is dropped or renamed, and no function `main` calls loses the
+name and named arguments `main` sends. A contracting migration — dropping what the new code no longer
+reads — is a later wave's, never this one's.
+
+1. **`ENT-session_days`** as `02` defines it (`org_id`, `session_id`, `position`, `starts_at`, `ends_at`,
+   `venue_id` or the custom-venue trio), RLS on, one `select` policy that defers to `sessions`' own
+   visibility, `grant select` to `authenticated`, no write policy (every write is a definer RPC, as for
+   every scheduling column since `0010`), a generated-sweep row and fixture rows. **`position` is derived
+   and stored** — the chronological rank, renumbered by trigger — because days of one session cannot
+   overlap, so their order is total and a hand-written position can only disagree with it.
+2. ★ **`sessions.starts_at`, `ends_at`, `venue_id` and the custom-venue trio are derived and stored.**
+   The window is the first day's start and the last day's end; **the venue is the first day's** — `DEC-119`
+   names only the window, but the venue columns cannot be dropped (additive) and `0010`'s publish check
+   reads them, so they need one meaning, and «where it begins» is the one a card can show.
+   **Two triggers keep the pair in step, and a third checks it at commit:**
+   - `session_days` → `sessions` (any `n`): after any day write, renumber, then update the session **only
+     where a value is distinct** — so `sessions_notify`, the poster hook and the reminder schedule fire
+     exactly when they fire today.
+   - `sessions` → `session_days` (**`n ≤ 1` only**): a writer that still writes the session's own window —
+     `main`'s `schedule_session()`, and every fixture and spec that inserts or moves a session directly,
+     of which there are more than forty — gets its one day created, moved or removed with it. **This is
+     what makes «a one-day session is a session with one day» true of rows nobody migrated by hand**, and
+     it is a shim for writers, never a reader's branch.
+   - a **deferred constraint trigger**: at commit, a session with days stores exactly its derived window
+     and venue, and a session at `published` or beyond has at least one day. A day-aware writer sets the
+     transaction-local `kareem.days_writer` and the second trigger stands down for it; the commit check
+     never does.
+3. **The backfill is the second trigger's own rule applied to every row**: each session with both ends
+   gets one day carrying its window and venue; a session with neither gets none. `check_in_codes`,
+   `check_ins` and `check_in_attempts` gain `session_day_id`, backfilled to that day; **`check_ins` and
+   `check_in_codes` `not null` afterwards**, filled for legacy inserters by their `before insert` trigger
+   (the code's day; else the day whose window, to `ends_at + 2 h`, contains `now()`, the later-started if
+   two do; else the latest day already begun). `check_ins.session_window` becomes **the day's** window.
+   `check_ins_session_member_active_uq` moves to `(session_day_id, member_id)`, and the exclusion
+   constraint is re-created **after** it, as `0087` did, so a duplicate is still refused `23505` and not
+   `23P01` (wave 8's rehearsal met exactly that inversion). `materials`, `session_tasks` and `photos` gain a
+   **nullable** `session_day_id` with **no backfill** — null is the whole session (`DEC-121`) — a composite
+   foreign key `(session_id, session_day_id)` so a day-scoped item can only name a day of its own session,
+   and **`on delete set null (session_day_id)`**, which *is* `DEC-121`'s «deleting a day promotes its
+   content to the session». `sessions.require_all_days boolean not null default true` sits beside
+   `certificate_mode` (`REQ-SES-017`).
+4. **Tables are the lead's; behaviour is the tracks'.** Every `alter table` of the wave goes through the
+   lead (`0100` and, after sync 1, `calendar_events`); a teammate proposes functions, policies and triggers
+   under `supabase/proposed/<name>/`. **A function has one writer**: where two tracks meet in one function,
+   the owner of the function calls a function the other track owns (contract 5).
+
+### The contracts — published before anyone spawns, in full in `STATUS.md`
+
+1. **lead → all: the day set is the truth and the session window is its stored shadow.** Nobody computes a
+   minimum or a maximum in TypeScript; a reader that needs the session's window reads `sessions`, a reader
+   that needs days reads `session_days` by `position`.
+2. **lead → all: additive, and `main` is correct on it.** `sessions.check_in_open` keeps its meaning at
+   `n = 1`; reminder job keys and the ICS `UID` of a one-day session do not change, so a job or a calendar
+   entry that exists today is moved, never duplicated.
+3. **`sessions` → all: `schedule_session()`'s day set and `listSessionDays()`.** Two trailing parameters,
+   `p_days jsonb default null` and `p_require_all_days boolean default null`; null is today's call. Days are
+   matched by `id`; a day left out is deleted, refused if it holds attendance. `SessionDay` and a
+   `cache()`-wrapped `listSessionDays()` are published from `lib/dal/sessions.ts` on day one and every track
+   reads days through them.
+4. **`checkin` → `sessions`, `scoring`, `content`: the day's check-in.** Every check-in RPC keeps
+   `p_session` and gains a trailing `p_day uuid default null`; null resolves the day exactly as `0100`'s
+   trigger does. The switch and the `ends_at + 2 h` ceiling are the day's.
+5. **`checkin` ⇄ `scoring`: one call when attendance changes.** `check_in()`, `mark_checked_in_manually()`
+   and `remove_check_in()` stop deciding what to award and call `scoring`'s `attendance_recorded()` and
+   `attendance_removed()`; `scoring` publishes them first with `main`'s behaviour, then `checkin` switches.
+6. **`scoring` → lead (as `designer`'s custodian), `content`: the attendance predicate.**
+   `session_attendance_complete(p_session, p_member)` is the only definition of «attended the session» for
+   points and certificates; `has_checked_in()` — any day, unchanged — stays the definition for rating,
+   photos and a session-scoped «بعد» material. The award's key is per member per session **and must
+   survive wave 7's remove → re-add**, which a naive per-session key turns into a net zero.
+7. **`content` → `sessions`: the three slots group themselves.** `SlotProps` does not change; a slot reads
+   days through contract 3, renders flat at `n ≤ 1`, and renders group headings as `<h3>` — the page still
+   owns the `<h2>`. `sessions` publishes the one day-label formatter.
+8. **`notify` ← 1, 3: one calendar entry and one reminder stream per day**, with contract 2's identities
+   held at `n = 1`.
+9. **lead → all: `src/lib/session-status.ts`.** `PhaseInput` gains `days`; `live` is «a day is running»,
+   `ended` is «the last day has ended», and between two days a session is `open` — never a seventh phase;
+   `dayPhase()` and `checkInDay()` are exported for the matrix and the slots. At `n ≤ 1` every function
+   returns what it returns today, asserted by the existing unit suite unmodified.
+10. **lead: `REQ-TSK-002` is enforced, not remembered.** A test fails if any check-in function's source, or
+    any module in the check-in import graph, names `session_tasks`, `task_completions` or
+    `task_form_responses`.
+
+### Staffing — one addition to the brief, and two models raised
+
+- ★ **`notify` runs as a fifth teammate.** The brief names `checkin`, `sessions`, `content` and `scoring`.
+  `DEC-119` moves `calendar_events` to the day and makes reminders fire per day, and `REQ-SES-015`'s
+  acceptance says so; the code is `notify`'s SQL, worker tasks and ICS route. Left alone, a three-day
+  workshop is one 72-hour calendar block with reminders before day 1 only — visibly wrong in the wave's own
+  demonstrable. The lead could do it as custodian; the owner's standing preference (2026-09-15) is that
+  feature work goes to the owning teammate. **The email studio stays out** (`REQ-NTF-009` … `014`, wave 10).
+- **`checkin` and `scoring` run on opus this wave** (both `sonnet` on file), for the reason `DEC-137` raised
+  `console`: each rewrites definer functions on an invariant that cannot be repaired afterwards —
+  attendance as evidence, and an append-only ledger (invariant 9) whose idempotency key changes shape.
+  `content` stays sonnet; `sessions` and `notify` are opus already.
+- **Not spawned, held by the lead as custodian:** `event`, `designer`, `console`, `platform`, `branding`.
+  Three custodian rows follow from the wave: `fan_out_certificates()`, `issue_certificate()` and
+  `listEligibleRecipients()` read contract 6's predicate (on `scoring`'s written request); the attendance
+  CSV gains a day column only when a session has more than one day; and **whether a multi-day poster shows a
+  date range is assessed at sync 1, not promised** — `0098` made the library a migration, so a new binding
+  is a new seed (`DEC-149` §3).
+
+### Two corrections of fact to the brief
+
+- **`REQ-EVT-010` is not carried: it was reconciled in wave 7** (`DEC-139` amended the requirement to the
+  pipeline; `0091` delivers the no-reload clause). What remains is `STATUS.md` row T8's honest gap — never
+  driven end to end, because the worker's processing step is outside the e2e stub — and `content` closes it
+  this wave with one real-worker run, since it changes `record_photo_upload()` anyway.
+- **`main`'s CI was red when the wave began** — one RLS case on PR #25's merge commit, green on the PR
+  itself. the realtime payload-shape case in `tests/rls/realtime.test.ts` read «the last message» by `order by inserted_at`, a column that
+  defaults to the transaction's start and is therefore identical for every row a rolled-back test writes.
+  A test defect from wave 1, fixed as this branch's first commit (`ad43ddb`); no product code involved.
+
+- **Documents changed:** `CLAUDE.md` (the wave-9 map; wave 8 demoted to the record), all ten `.claude/agents/*.md`, `STATUS.md` (the wave-9 block: contracts, the ledger, the standing Railway step), `01-prd.md` (`REQ-SES-015`'s task sentence, to `DEC-121`), `02-domain-model.md` `ENT-session_days` (the same sentence; `position` and the venue as derived — under this entry, the document being frozen), `docs/plan/notes/wave-9-lead.md` (unchanged — the brief)

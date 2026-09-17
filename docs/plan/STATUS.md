@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-8/screens` (PR #25, **ready**) · **`main`:** **LAUNCHED 2026-09-15; wave 7 merged 2026-09-16** (PR #24, `4f19cd6`; `0082`–`0091` live on production) · **Phase:** ★★ **WAVE 8 — COMPLETE, awaiting the owner.** All four tracks closed (`designer` D1–D6, `console` K1–K6, `platform` P0–P7, `branding` B0–B3) and the lead's L1–L7; `ui-reach --wave8` **20/20**. Final gates at `5bf0327`/`04fa967` (below): RLS 833, vitest 1715, qa 44/44, visual 0.000 %, parity 21/28 + 3/3 locally and **28/28 + 3/3 in the Linux image**, the real worker green, e2e 514 with every failure explained, CI 13/13. ★ **`0092`–`0099` REHEARSED 2026-09-17 on the owner's dump** (all eight clean, grants identical, catalog ≡ chain, RLS 832/833 with the one explained; dump deleted). **Next, the owner: the two production reads, then push, then merge** — «`0092`–`0099` — what the owner does». ★ **Server Action IDs rotate when this wave deploys — deploy outside a scheduled session.** **Do not start wave 9** until the owner says so.
+**Last updated:** 2026-09-17 · **Branch:** `wave-9/multi-day` (cut from `main` at `e1d8596`; draft PR at the first push) · **`main`:** **LAUNCHED 2026-09-15; wave 8 merged 2026-09-17** (PR #25, `b7f2f3a`; `0092`–`0099` live on production) · **Phase:** ★★ **WAVE 9 — multi-day sessions (`DEC-119` … `121`, `DEC-150`) — STEP 0 DONE, the foundation next.** The map is in `CLAUDE.md` and all ten agent files; the ten contracts and the untouched-suite ledger are in the wave-9 block below. **Migrations start at `0100` and are additive**, because the owner pushes before merging and `main` runs on the new schema first. ★ **`main`'s CI was red at the start of the wave** — one order-dependent RLS case from wave 1, fixed as this branch's first commit (`ad43ddb`); no product code involved. ★ **After every merge the owner checks Railway by hand** — its push trigger has never been armed (the standing step, below). **Do not start wave 10.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-149`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-8 map is the map in force** (`DEC-147`); waves 7, 6 and 5 are the record |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-150`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-9 map is the map in force** (`DEC-150`); waves 8, 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -54,7 +54,7 @@ gaps**; `qa` 44/44; `visual` 0.000%. ★ **Since wave 8, every route in the brie
    no template rows are seeded and `worker/src/mail/render.ts` still renders plain paragraphs
    against three brand tokens with hard-coded fallbacks.
 
-**The screens were waves 6, 7 and 8; wave 8 is complete below, awaiting the owner's rehearsal, push and merge. Wave 9 is multi-day sessions (`DEC-119` … `121`) — not started.** The owner reviewed M9 running and reordered the
+**The screens were waves 6, 7 and 8, all merged. Wave 9 is multi-day sessions (`DEC-119` … `121`, `DEC-150`) — in progress, directly below.** The owner reviewed M9 running and reordered the
 milestone — the screens come first, the admin console is in scope from the start, `/app` becomes the
 sessions timeline, and `16` §6.6's separate home page is withdrawn (`DEC-110` … `DEC-114`, `DEC-130`).
 
@@ -69,13 +69,142 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 8's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-147`). A
-wave-9 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 9's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-150`). A
+wave-10 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 8 — COMPLETE on `wave-8/screens` (PR #25, ready; the owner merges) — the last nineteen routes onto the M9 system, gradient posters and the certificate library (`DEC-147`)
+## ★★ WAVE 9 — IN PROGRESS on `wave-9/multi-day` — multi-day sessions: a day entity under seven live tables (`DEC-119` … `121`, `DEC-150`)
+
+**The owner's goal, in substance** (`docs/plan/notes/wave-9-lead.md`): a session can span several days, each
+day with its own check-in and its own content, one registration and one certificate for the whole — and **a
+one-day session, which is nearly every session, pays nothing for it**. It is the largest schema change since
+M1, on a live database with real members.
+
+**The measure — two demonstrables, not a route count.**
+
+1. ★ **A three-day workshop, end to end, as one run**: scheduled with three days; each day's code checked
+   into separately; a session-scoped material and a day-scoped one in the right groups; points and the
+   certificate awarded **only after the third day**; the whole at 390 px in Arabic. The spec is the lead's —
+   `tests/e2e/wave9-three-day-workshop.spec.ts`, real worker (`E2E_WORKER=1`) — and its captures land at
+   `.qa-shots/rtl/wave9-demo-*.png`, opened by the lead.
+2. ★ **A one-day session is byte-identical in behaviour to `main`.** The proof is the suites that exist
+   today passing **with their assertions untouched** — at wave 8's final gates the RLS suite (833), vitest (1,707), the e2e suite
+   (514), `qa` 44/44, `visual` 0.000 %, `parity`. It is proven **twice**: on `0100` alone, before any feature
+   exists, and on the final commit.
+
+### The untouched-suite ledger
+
+Every test file that existed on `main` at `e1d8596` and is modified on this branch is named here, with why.
+**A changed expectation for a one-day session is a defect, not a ledger line.** Checked by the lead at every
+sync with `git diff --stat e1d8596 -- tests/ | grep -v wave9 | grep -v days`.
+
+| File | Commit | Why | Expectation for one day changed? |
+|---|---|---|---|
+| `tests/rls/realtime.test.ts` | `ad43ddb` | the case read «the last message» by `order by inserted_at`, which is the transaction's start and identical for every row a rolled-back test writes; `main`'s CI failed on it at PR #25's merge | no — same assertion, read by id |
+
+### Before anyone spawns
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **`main`'s red CI diagnosed and fixed** — the realtime payload-shape case, a wave-1 test defect | `ad43ddb` | five consecutive local runs green; the fixture's seeded «like» on the same topic explains the `{ like: 1 }` CI read |
+| ✅ | **Step 0**: the wave-9 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`scoring` seven waves stale, `notify` six); `DEC-150`; this block | this commit | — |
+| ☐ | **The foundation — `0100`** (`DEC-150` §*The foundation*), with its RLS cases, the sweep row, the fixtures, `03` §8.2's rows, and **every existing suite green on it alone** | — | — |
+| ☐ | **Contract 9** — `src/lib/session-status.ts` on the day set, the existing unit suite unmodified | — | — |
+| ☐ | **Contract 10** — the `REQ-TSK-002` guard | — | — |
+
+### The contracts — the wave's checklist
+
+A contract is **published** when its owner has written the signature, the types and the `n = 1` behaviour in
+its note; **landed** when the code is promoted or committed; **held** when the consumer's own test exercises
+it. A row closes at *held*.
+
+| # | From → to | The seam | `n = 1` must | State |
+|---|---|---|---|---|
+| 1 | lead → all | **The day set is the truth; `sessions.starts_at` / `ends_at` / venue are its stored shadow.** `session_days` by `position`; nobody computes a min or a max in TypeScript. A writer of the session's own window is carried onto its one day while `n ≤ 1`; a day-aware writer sets the transaction-local `kareem.days_writer`, writes `sessions` **once** (so `sessions_notify` fires once) and its days; a deferred constraint trigger checks the pair at commit | every direct insert and update of `sessions` in a fixture, a spec or `main`'s `schedule_session()` leaves one day carrying the same window and venue | **published** (`DEC-150`) |
+| 2 | lead → all | **Additive; `main` and `main`'s worker are correct on the new schema.** No column dropped or renamed. A new parameter is trailing and defaulted, and the old signature is dropped in the same file. `sessions.check_in_open` keeps its meaning. Reminder keys (`remind:{session}:{offset}:{member}`), the nudge key and the ICS `UID` (`session-{id}@kareem.pp.sa`) of a one-day session do not change | the wave's migrations pushed onto `main`'s build: every screen and every job as today | **published** |
+| 3 | `sessions` → all | **`schedule_session(…, p_days jsonb default null, p_require_all_days boolean default null)`** — null is today's call. `p_days` is `[{ id?, starts_at, ends_at, venue_id?, custom_venue_name?, custom_venue_address?, custom_venue_map_url? }]`, matched by `id`; a day left out is deleted, refused `day_has_attendance` when it holds a check-in; its day-scoped content is promoted by the foreign key. **`SessionDay { id, position, startsAt, endsAt, venue }` and a `cache()`-wrapped `listSessionDays(sessionId)`** from `lib/dal/sessions.ts`, on day one — every track reads days through it | the form posts what it posts today and the RPC does what it does today, one audit row, one notice | — |
+| 4 | `checkin` → `sessions`, `scoring`, `content` | **The day's check-in.** Each RPC keeps `p_session` and gains a trailing `p_day uuid default null`; null resolves the day as `0100`'s trigger does — the code's day; else the day whose window to `ends_at + 2 h` contains `now()`, the later-started of two; else the latest day begun. The switch and the ceiling are the day's. **Whether a day's ceiling is capped by the next day's start is `checkin`'s plan, ruled at sync 1.** The event page's link and `has_checked_in()` (any day) are unchanged in shape | every envelope status, error code and audit row of `check_in()`, `mark_checked_in_manually()`, `set_check_in_open()`, `ensure_check_in_code()`, `remove_check_in()` as today | — |
+| 5 | `checkin` ⇄ `scoring` | **One call when attendance changes.** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` stop deciding what to award and call `scoring`'s `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)`. **Order: `scoring` publishes both with `main`'s exact behaviour; the lead promotes; then `checkin` switches its three call sites** | the same job, the same key (`pts:check_in:<id>`), the same ledger row and the same reversal as today | — |
+| 6 | `scoring` → lead (custodian of `designer`), `content` | **`session_attendance_complete(p_session, p_member)`** — the only definition of «attended the session» for points and certificates: an active check-in on every day when `require_all_days`, on any day otherwise. `has_checked_in()` stays the definition for rating, photos and a session-scoped «بعد» material. The award's key is per member per session **and survives remove → re-add** (wave 7's reversal); the missed-day reason's shape is published for `me/points`. The lead points `fan_out_certificates()`, `issue_certificate()` and `listEligibleRecipients()` at it on `scoring`'s written request | the predicate equals `has_checked_in()`; awards land at check-in; the ledger of an existing member recomputes to the same balance | — |
+| 7 | `content` → `sessions` | **The three slots group themselves.** `SlotProps` unchanged; a slot reads days through contract 3, renders **flat at `n ≤ 1`**, and renders group headings as `<h3>` (the page owns the `<h2>`). `sessions` publishes one day-label formatter («اليوم الأول · الأربعاء») and its strings; `content` reads them. `materials_read` and its storage twin release a day-scoped «بعد» material when **that day** ends | the DOM of the three sections as today: no group, no heading, no chip | — |
+| 8 | `notify` ← 1, 3 | **One calendar entry and one reminder stream per day.** `calendar_events` per `(member, day)` — its `alter table` through the lead after sync 1; one `VEVENT` per day; reminders per day, **with which offsets repeat per day decided in `notify`'s plan** (a 7-day reminder before each of three consecutive evenings is noise) | one entry, the same `UID`, the same three reminder jobs under the same keys | — |
+| 9 | lead → all | **`src/lib/session-status.ts`.** `PhaseInput.days?: readonly DayWindow[]`; `live` = a day is running, `ended` = the last day has ended, between two days `open` — **no seventh phase**. `dayPhase(day, now)` and `checkInDay(days, now)` exported for the matrix and the slots | `tests/unit/session-status.test.ts` and `session-matrix.test.ts` unmodified and green | **published** (`DEC-150`) |
+| 10 | lead | **`REQ-TSK-002` enforced.** A test fails if a check-in function's source or a module in the check-in import graph names `session_tasks`, `task_completions` or `task_form_responses` | — | — |
+
+### The rows — per track, closed against a contract held and a capture opened
+
+| # | Owner | Work | Serves | State |
+|---|---|---|---|---|
+| L1 | lead | the foundation, `0100` | `REQ-SES-015`, `REQ-NFR-001`, invariants 3, 5, 6 | ☐ |
+| L2 | lead | contract 9 | `REQ-UIX-003`, `REQ-SES-015` | ☐ |
+| L3 | lead | contract 10 | `REQ-TSK-002` | ☐ |
+| L4 | lead (custodian) | certificate eligibility reads contract 6 — `fan_out_certificates()`, `issue_certificate()`, `listEligibleRecipients()` | `REQ-SES-017`, `REQ-CRT-001` | ☐ |
+| L5 | lead (custodian) | the attendance CSV's day column, present only when a session has more than one day | `REQ-ADM-017` | ☐ |
+| L6 | lead (custodian) | a multi-day poster's date — **assessed at sync 1, not promised** | `REQ-DSG-002` | ☐ |
+| L7 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | ☐ |
+| L8 | lead | the three-day demonstrable, real worker | `REQ-SES-015` … `018` | ☐ |
+| L9 | lead | the owner's order for `0100`+: what each adds, the windows between push and merge, the reads to run first | invariant 3 | ☐ |
+| S1–S4 | `sessions` | contract 3 · the form (`REQ-SES-016`) · the event page, cards and public card showing days · the day label (contract 7) | `REQ-SES-015`, `016` | ☐ |
+| C1–C4 | `checkin` | contract 4's RPCs · the host view and check-in screen by day · the attendance screen across days · `rotate_codes` by day and contract 5's call sites | `REQ-CHK-002`, `009`, `013`, `015`, `016` | ☐ |
+| T1–T4 | `content` | scope on the three write paths and the re-scope chip · the grouped lists · `phase` relative to the scope · one photo end to end on the real worker | `REQ-SES-018`, `REQ-MAT-006`, `REQ-EVT-010` | ☐ |
+| P1–P4 | `scoring` | contract 5's two functions · contract 6's predicate and the key · the award at completion · the missed day in the points history | `REQ-SES-017`, `REQ-PTS-012` | ☐ |
+| N1–N3 | `notify` | the calendar per day (SQL, worker, ICS) · reminders per day · the reschedule notice naming the day | `REQ-SES-015`, `REQ-CAL-*`, `REQ-NTF-*` | ☐ |
+
+### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
+
+**Railway's push trigger has never been armed.** Three merges in a row (PRs #23, #24, #25) deployed the app
+on Vercel and left the worker on the previous commit until someone ran `railway service source connect` by
+hand. **After every merge to `main`, the owner checks the worker's deployed commit in Railway and reconnects
+the source if it has not moved.** For this wave it matters more than usual: between the merge and the
+worker's redeploy, the **old worker runs on the new schema** — contract 2 keeps that correct, and the
+owner's order (row L9) says what the old worker does not yet do. The fix is a dashboard setting
+(Service → Settings → Source → the branch's deploy trigger); it is the owner's, and no session changes it.
+
+### Two questions for the owner, asked once (`DEC-123`)
+
+Both are in the canvas, neither reaches the app, and **neither is reproduced meanwhile**: the browse
+tag-chip **counts at 1.96 : 1**, and a **13 px caption at 3.30 : 1**. Does the design want them as drawn —
+which fails `SC 1.4.3` — or at the app's tokens, which pass? The app ships the passing tokens until told
+otherwise.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| ~~lead~~ | ~~`REQ-EVT-010` says a photo appears at once; the pipeline processes, then shows~~ — **not carried: reconciled in wave 7** (`DEC-139` amended the requirement; `0091` delivers the no-reload clause). The one honest gap — never driven end to end — is `content`'s row T4 | wave 6 |
+| owner | **`bookmarks:237` «never updates» on Next 16.3.5** — a removed bookmark stays listed until a reload; a timing race, not load; the trace is wave 8's | wave 8 |
+| owner | break-glass opens no org screen (`DEC-055` C; option A is the owner's to schedule) | wave 8 |
+| owner · `notify`/wave 10 | `REQ-NTF-007`'s admin-editable required fields; `REQ-NTF-008`'s bounce webhook never written | wave 8 |
+| `scoring` | recognition edits write no audit or history row — **this wave or not, stated in its plan** | wave 8 |
+| `designer` (lead as custodian) | a member re-added after a removal gets no new attendance certificate (`fan_out_certificates()` fires only into `completed`) — **touches row L4; decided there** | wave 7 |
+| lead (custodian) | the photo tile's takedown label wraps; a save pressed before hydration on `/app/me`; the filter sheet's native date mask; `ratings.edited_at` at millisecond precision | waves 6–7 |
+| M13 | `controlClass`'s `w-full` beats a caller's `w-*`; `DEC-145`'s orphaned streaming segment; CSP report-only; status-colour contrast enforcement; `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven glyphs | waves 6–8 |
+
+### Order inside the wave
+
+1. **Step 0** — done. Push; the draft PR opens at the first push.
+2. **Spawn** `sessions`, `checkin`, `content`, `scoring`, `notify`, each **planning-only**: a plan in
+   `docs/plan/notes/<name>.md` against the contracts it owns and consumes, the `n = 1` proof it will give,
+   the columns it needs from the lead, and nothing else edited until the lead approves.
+3. **The lead builds the foundation while they plan** — `0100`, contracts 9 and 10 — and runs every existing
+   suite on it alone.
+4. **Sync 1** — five plans read in full and answered; the open points ruled (a day's ceiling against the next
+   day's start; which reminder offsets repeat; the award key across remove → re-add; row L6); `0100`
+   promoted; `calendar_events`' columns landed from `notify`'s plan.
+5. **The order the seams force**: contract 3 (`sessions`) and contract 5's two functions (`scoring`) first;
+   then contract 4 (`checkin`) and contract 6; then the screens; contract 7's slots and contract 8 alongside.
+6. At each sync (`TEAM.md` §3) the lead promotes SQL, builds **committed HEAD** in the verification worktree,
+   runs e2e there with `E2E_SHOTS_DIR` set to the main checkout's `.qa-shots/rtl`, opens every capture, reads
+   the ledger's `git diff`, and moves contract states here.
+7. Freeze; the demonstrable on the real worker; the full gate set on the final commits; ★ **the migration
+   order for the owner written here before the PR is marked ready** (row L9) — rehearse against a production
+   schema dump, push, merge, **then check Railway by hand**. The owner merges. **Do not start wave 10.**
+
+---
+
+## ★★ WAVE 8 — COMPLETE and MERGED (PR #25, `b7f2f3a`; `0092`–`0099` pushed) — the last nineteen routes onto the M9 system, gradient posters and the certificate library (`DEC-147`)
 
 **The owner's goal, in substance** (`docs/plan/notes/wave-8-lead.md`): **finish the redesign's route coverage**
 — nineteen routes, and the whole app is on the M9 system — and build `DEC-127` (the gradient poster background,
