@@ -300,6 +300,7 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 | `0132` | `event` | five definer functions — the survey's authoring half | none | nothing of `main` calls them |
 | `0133` | `notify` | `notification_bindings()`, two scanners, `notification_templates_validate()` re-created with `0026`'s three rules verbatim and a fourth | none | ★ **read first: `notification_templates` rows and their text** — an existing row with an unknown binding is refused on its NEXT update, not at the push |
 | `0134` | lead | `notification_templates_blocks_shape` dropped and re-added with `blocks ? 'blocks'` | none — validates over a column nothing has written yet | — |
+| `0135` | lead | `build_data_export_payload()` re-created (`create or replace`, same signature, grants kept) with one key appended — `surveys_answered` | none | `main`'s `build_data_export` task stores the payload opaquely (`record_data_export($1, $2::jsonb)`), so it carries a key it has never heard of; every key it knew is unchanged |
 
 #### What the lead has proved so far — run mid-wave on the chain through `0134`, re-run at the freeze
 
