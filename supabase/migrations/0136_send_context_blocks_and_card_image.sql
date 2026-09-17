@@ -1,4 +1,4 @@
--- proposed by `notify` (wave 10, N2's wiring + D3's F3) — what one send needs
+-- 0136_send_context_blocks_and_card_image.sql — proposed by `notify` (wave 10, N2's wiring + D3's F3), promoted by the lead. What one send needs
 -- in order to render a DESIGN: the template's blocks, and the session's state.
 --
 -- Serves:  REQ-NTF-009 (a template is an ordered list of blocks) ·

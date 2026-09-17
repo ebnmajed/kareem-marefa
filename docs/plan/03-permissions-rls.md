@@ -1895,6 +1895,10 @@ generated suite is the highest-value test in the product.
 | ★ **wave 10, migration `0135`** — lead, as `platform`'s custodian — the PDPL self-export lists the surveys a member answered (`REQ-PRF-006`, `REQ-SUR-009`, `DEC-160` §3) |
 | `RPC-build_data_export_payload.surveys_answered` | `surveys_answered` lists, for the member alone, the sessions whose survey they took part in — by title, each entry carrying that one key and so no instant, ordered by title and never by insertion. |
 | `RPC-build_data_export_payload.surveys_no_answers` | No answer text and no question prompt appears anywhere in the archive: there is no path from a member to a stored response. Every key `0088` returned is still returned, and `surveys_answered` is the only addition. |
+| ★ **wave 10, migration `0136`** — `notify` — what one send needs to render a design: the template's blocks, and whether the mail may carry the session card's image (`REQ-NTF-009`, `REQ-NTF-014`, contract 8, `DEC-162` §3) |
+| `RPC-notification_send_context.blocks` | The `template` object carries `blocks` — null for a string template, the stored document otherwise — so the worker renders a design without a second read. |
+| `RPC-notification_send_context.card_image` | Given a session id, the context says whether `/api/s/{id}/og` will answer with BYTES — derived from `session_public_card()`, the function the route itself reads, never from a second copy of its predicate. False for a cancelled session, false for one whose poster has not finished rendering, false for another org's id however eligible, false — not an error — for an id that is no session. |
+| `RPC-notification_send_context.definer_only` | Unchanged after the drop and re-create: `anon`, `authenticated` and an org admin are all refused on the grant, because it returns another member's email address. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
