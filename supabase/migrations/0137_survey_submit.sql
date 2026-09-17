@@ -252,6 +252,13 @@ begin
   -- names them — but to keep transaction ids, heap order and WAL position from
   -- pairing a response with the register row written beside the rating
   -- (DEC-160 §3.2).
+  -- ★ What the jitter does NOT do, so nobody believes it does: for the ten
+  -- minutes to four hours the job is pending, `graphile_worker`'s own row holds
+  -- the submit instant (`created_at`) beside the payload. The queue is readable
+  -- by `service_role` alone and that key is never on Vercel (invariant 7), so it
+  -- is outside the threat model of DEC-160 §3 — staff — and `response_id` must
+  -- be in the payload for the job to be exactly-once. It is a fact about the
+  -- queue, not a leak to close; it ends when the job runs and its row is deleted.
   v_run_at := now() + make_interval(secs => 600 + floor(random() * 13800));
   perform public.enqueue_job(
     'record_survey_response',

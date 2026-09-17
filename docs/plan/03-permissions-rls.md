@@ -1922,6 +1922,7 @@ generated suite is the highest-value test in the product.
 | `RPC-survey_results.free_text_order` | Free text comes back ordered by the answer's random id — never by insertion, which would be the order people answered in. |
 | `RPC-survey_results.response_rate` | The numerator is the stored responses and the denominator the session's active attendees; with no eligible attendee the count is zero and the caller says so rather than dividing. |
 | `RPC-survey_results.rate_never_exceeds_one` | A member whose check-in is removed AFTER they answered cannot be taken out of the box, so the denominator is `greatest(attendees, responses)` and the rate is never above 100 %. |
+| `RPC-survey_results.no_settings_row` | ★ An org with NO `org_settings` row still withholds: the minimum falls back to the floor of 3 and is never lower than it. Without the fallback `v_min` is NULL, every guard compares with NULL, and one response's free text is released with `withheld` reading null — mutation-checked: the case reads `ok` against the unfixed function. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

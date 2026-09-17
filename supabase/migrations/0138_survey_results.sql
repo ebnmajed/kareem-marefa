@@ -74,7 +74,20 @@ begin
     return jsonb_build_object('status', 'no_survey');
   end if;
 
+  -- ★ FAIL CLOSED (found by `designer`'s adversarial read, fixed by the lead
+  -- before this file reached any database but the local one). The COLUMN is
+  -- `not null default 3`, but a missing `org_settings` ROW assigns nothing and
+  -- leaves `v_min` NULL — and every guard below is a comparison with it. A NULL
+  -- comparison is not false, it is NULL: `if v_n < v_min` is not taken, `case
+  -- when a.answered < v_min` falls through, and ONE response's every free-text
+  -- answer is released with `withheld` reading null rather than true. Nothing in
+  -- the schema makes an org have a settings row — `create_org()` does it by
+  -- convention, and a fixture, a seed or a restore need not — so the withhold
+  -- must not depend on it. The floor of sync 1 (`0124`'s check) is the answer
+  -- when there is no row; `greatest()` holds it even against a row that a
+  -- future migration might let go lower.
   select os.survey_min_responses into v_min from public.org_settings os where os.org_id = m.org_id;
+  v_min := greatest(coalesce(v_min, 3), 3);
   v_released := array(select r.id from public.survey_responses r where r.survey_id = sv.id);
   -- `cardinality` of `{}` is 0 and of NULL is NULL; `array(select …)` over no
   -- rows gives `{}`, so the coalesce is belt and braces.
