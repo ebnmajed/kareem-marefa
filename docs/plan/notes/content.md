@@ -2980,3 +2980,47 @@ still clean on the materials suite's existing accessibility test with the closed
 
 Ready for sync — the lead re-captures `presenter-grouped` and `scope-chip-open`, which should now
 drop to a few thousand px.
+
+## §28 — the rescope chip onto `ui/menu`, one shared component (`4532f5c`)
+
+CI's design-system gate flagged what sync 1's design note called out as an acceptable shortcut at
+the time: `materials/photos/tasks`' three `rescope-chip.tsx` files each hand-rolled the identical
+`rounded-field border border-edge bg-canvas p-1 shadow-md` floating panel — `ui-lint`'s own class-
+string rule (`REQ-UIX-001`/`DEC-087`), and new files cannot join the allowlist. The lead's message
+named both fixes at once — build the control from the system, and three chips being the same
+control is a hint there should be one file, not three — so both landed together.
+
+`materials/rescope-chip.tsx` is now the one implementation; `tasks/rescope-chip.tsx` and
+`photos/rescope-chip.tsx` are deleted (`rm`, not `git rm`), and `task-item.tsx`/`gallery.tsx` import
+the materials file directly — a cross-directory import inside this track's own three directories,
+not a boundary crossing. `onRescope: (dayId) => Promise<{error}>` is the one thing each caller binds
+differently (`rescopeMaterialAction`/`rescopeTaskAction`/`rescopePhotoAction`, already the same
+`(locale, sessionId, itemId, sessionDayId)` shape); everything else — trigger, option list, the
+pending/error toast — is the one file now.
+
+The panel moved from a hand-rolled `<details>`/`<div>` to `ui/menu` (`console`'s, held by the lead
+as custodian this wave) — Radix owns focus trapping, typeahead and closing, and its floating panel
+is the system's own class string, not a second copy of the one that started this. A native `<select>`
+(`ui/select`, `sessions'`) was the other option the lead named; a menu fits what this control already
+was — a trigger opening a list of choices, never a form field with a value — and keeps the exact
+same interaction (open, pick one, it moves) rather than trading it for a full-width field. One trade-
+off, not hidden: `MenuItem.label` is a plain `string` (console's own type), so a day's label can no
+longer be wrapped in its own `<bdi>` the way the old per-option `<button>` was — day labels are
+always algorithmically generated Arabic strings (`dayShortLabel()`/`sessionScopeLabel`), never
+free-form/foreign text, so there is no real direction conflict for the isolate to guard against here;
+the trigger, which this file still renders directly, keeps its own `<bdi>{currentLabel}</bdi>`.
+Not worth a request against `console`'s type for a label that can never actually need it.
+
+Three component tests (one per directory) moved from `<details>`/`<summary>` queries to the
+role-based ones `ui/menu.test.tsx` already established — a real `<button>` trigger via
+`.closest("button")`, `userEvent.click`, `screen.getAllByRole("menuitem")` — same assertion (three
+options offered), different query shape for the same control. `list.test.tsx`/`panel.test.tsx`/
+`gallery.test.tsx` (the flat-branch byte-identical proofs) stayed untouched.
+
+`npm run ui-lint`: 0 violations (65 pre-existing held elsewhere in the tree, unrelated to this
+track; 16 fewer than the allowlist permits after the two files' deletion — `--prune` is the lead's,
+left alone). `npx tsc --noEmit`/`npm run lint` clean, `npm test` 208/208 files 1902/1902 tests,
+`npm run test:rls` 99/99 files 1039/1039 tests (single-runner checked first, none active).
+
+Ready for sync — told the lead ui-lint is green; the same rebuild that re-captures §27's two shots
+covers this.
