@@ -56,6 +56,19 @@ async function shoot(page: Page, name: string, isPhone: boolean) {
 // every other track's files are. Setting it in `beforeEach` rather than inside
 // `shoot()` means every assertion runs at the width the capture was taken at,
 // which is the point of reviewing one.
+// ★ EVERY PAGE-LEVEL LOCATOR COMES FROM `#main`, not from `page` — `DEC-145`'s
+// own rule, and the one that ends this class of failure rather than its latest
+// symptom. On the desktop project an orphaned streaming segment leaves a HIDDEN
+// second copy of rendered markup under `body > div#S:…`. `getByRole` skips it
+// (it is not in the accessibility tree) but `page.locator(…)` and
+// `main.getByText(…)` do not, so a CSS or text locator taken from `page`
+// resolves to two elements and fails strict mode. Anchoring one assertion at a
+// time fixes one line and leaves the next; the landmark fixes all of them.
+//
+// Dialogs are the exception and stay on `page`: Radix portals them outside
+// `#main`, so a dialog locator scoped to the landmark would find nothing.
+const inMain = (page: Page) => page.locator("#main");
+
 test.beforeEach(async ({ page }, testInfo) => {
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
 });
@@ -134,35 +147,40 @@ async function signIn(context: BrowserContext, email: string, asAdmin: boolean):
   return memberId;
 }
 
-/** «اليوم الأول», «اليوم الثاني» … — none of these may appear anywhere. */
+/** «اليوم الأول», «اليوم الثاني» … — none of these may appear in the page's own
+ *  content. Asserted against `#main`, which is both the rule (`DEC-145`) and
+ *  the honest claim: a hidden orphaned segment is not what the member reads. */
 const DAY_WORDS = /اليوم (الأول|الثاني|الثالث|الرابع)/;
 
 test("the host view says nothing about days, and the code is still one tap from the room", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/host`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
 
-  const code = (await page.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
+  const code = (await main.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
   expect(code).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
-  await expect(page.getByText("تسجيل الحضور مفتوح")).toBeVisible();
+  await expect(main.getByText("تسجيل الحضور مفتوح")).toBeVisible();
 
   // ★ ABSENCE.
-  await expect(page.locator("body")).not.toContainText(DAY_WORDS);
+  await expect(main).not.toContainText(DAY_WORDS);
   await shoot(page, "wave9-checkin-host-one-day", testInfo.project.name === "phone");
 });
 
 test("the check-in screen says nothing about days", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   await signIn(context, attendeeEmail, false);
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
-  await expect(page.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();
-  await expect(page.locator("input[maxlength='1']")).toHaveCount(6);
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
+  await expect(main.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();
+  await expect(main.locator("input[maxlength='1']")).toHaveCount(6);
 
-  await expect(page.locator("body")).not.toContainText(DAY_WORDS);
+  await expect(main).not.toContainText(DAY_WORDS);
   await shoot(page, "wave9-checkin-check-in-one-day", testInfo.project.name === "phone");
 });
 
 test("the attendance report has no day column, no day select and no completeness stat", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   const adminMemberId = await signIn(context, staffEmail, true);
   const { rows: member } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and display_name = 'نورة القحطاني'`, [orgId]);
   await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, sessionId, member[0].id]);
@@ -172,20 +190,20 @@ test("the attendance report has no day column, no day select and no completeness
   );
 
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
+  await expect(main.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
 
   // The four columns wave 7 shipped, and only those.
   for (const label of ["الاسم", "الحالة", "وقت الوصول", "الطريقة"]) {
-    await expect(page.getByRole("columnheader", { name: label })).toBeVisible();
+    await expect(main.getByRole("columnheader", { name: label })).toBeVisible();
   }
-  await expect(page.getByRole("columnheader", { name: "الأيام" })).toHaveCount(0);
+  await expect(main.getByRole("columnheader", { name: "الأيام" })).toHaveCount(0);
   // Neither form offers a day. The hidden `input[name="dayId"]` still carries
   // one — the day travels, it is just never a question.
-  await expect(page.locator('select[name="dayId"]')).toHaveCount(0);
-  await expect(page.locator('input[type="hidden"][name="dayId"]')).not.toHaveCount(0);
-  await expect(page.getByText("أكملوا كل الأيام")).toHaveCount(0);
-  await expect(page.getByText("النقاط والشهادة تتطلّب", { exact: false })).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText(DAY_WORDS);
+  await expect(main.locator('select[name="dayId"]')).toHaveCount(0);
+  await expect(main.locator('input[type="hidden"][name="dayId"]')).not.toHaveCount(0);
+  await expect(main.getByText("أكملوا كل الأيام")).toHaveCount(0);
+  await expect(main.getByText("النقاط والشهادة تتطلّب", { exact: false })).toHaveCount(0);
+  await expect(main).not.toContainText(DAY_WORDS);
 
   await shoot(page, "wave9-checkin-attendance-one-day", testInfo.project.name === "phone");
 });

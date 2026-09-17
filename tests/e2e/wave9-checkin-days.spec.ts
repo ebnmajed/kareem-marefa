@@ -68,6 +68,19 @@ async function shoot(page: Page, name: string, isPhone: boolean) {
 // every other track's files are. Setting it in `beforeEach` rather than inside
 // `shoot()` means every assertion runs at the width the capture was taken at,
 // which is the point of reviewing one.
+// ★ EVERY PAGE-LEVEL LOCATOR COMES FROM `#main`, not from `page` — `DEC-145`'s
+// own rule, and the one that ends this class of failure rather than its latest
+// symptom. On the desktop project an orphaned streaming segment leaves a HIDDEN
+// second copy of rendered markup under `body > div#S:…`. `getByRole` skips it
+// (it is not in the accessibility tree) but `page.locator(…)` and
+// `main.getByText(…)` do not, so a CSS or text locator taken from `page`
+// resolves to two elements and fails strict mode. Anchoring one assertion at a
+// time fixes one line and leaves the next; the landmark fixes all of them.
+//
+// Dialogs are the exception and stay on `page`: Radix portals them outside
+// `#main`, so a dialog locator scoped to the landmark would find nothing.
+const inMain = (page: Page) => page.locator("#main");
+
 test.beforeEach(async ({ page }, testInfo) => {
   if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
 });
@@ -162,27 +175,28 @@ async function signIn(context: BrowserContext, email: string, asAdmin: boolean):
 // SCR-016 — the host view says which day it is running
 // ═══════════════════════════════════════════════════════════════════════════
 test("the host view shows DAY 2's code and DAY 2's switch, and names the day", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   const isPhone = testInfo.project.name === "phone";
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/host`);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("رمز الحضور");
   // ★ The day, named — «اليوم الثاني» — which a one-day session never says.
-  await expect(page.getByText("اليوم الثاني", { exact: false })).toBeVisible();
+  await expect(main.getByText("اليوم الثاني", { exact: false })).toBeVisible();
 
-  const code = (await page.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
+  const code = (await main.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
   expect(code).toMatch(/^[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
   // The code the RPC minted belongs to day 2, not to the session.
   const { rows } = await db.query<{ session_day_id: string }>(`select session_day_id from public.check_in_codes where session_id = $1 and code = $2`, [sessionId, code]);
   expect(rows[0].session_day_id).toBe(dayIds[1]);
 
-  await expect(page.getByText("تسجيل الحضور مفتوح")).toBeVisible();
+  await expect(main.getByText("تسجيل الحضور مفتوح")).toBeVisible();
   await shoot(page, "wave9-checkin-host-day2-open", isPhone);
 
   // Closing moves DAY 2's switch and leaves days 1 and 3 alone.
-  await page.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
+  await main.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
   await expect(page).toHaveURL(/\?switch=closed$/, { timeout: 15_000 });
-  await expect(page.getByText("تسجيل الحضور مغلق")).toBeVisible();
+  await expect(main.getByText("تسجيل الحضور مغلق")).toBeVisible();
   await shoot(page, "wave9-checkin-host-day2-closed", isPhone);
 
   const { rows: switches } = await db.query<{ check_in_open: boolean }>(
@@ -196,7 +210,7 @@ test("the host view shows DAY 2's code and DAY 2's switch, and names the day", a
   const { rows: shadow } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
   expect(shadow[0].check_in_open).toBe(true);
 
-  await page.getByRole("button", { name: "افتح تسجيل الحضور" }).click();
+  await main.getByRole("button", { name: "افتح تسجيل الحضور" }).click();
   await expect(page).toHaveURL(/\?switch=opened$/, { timeout: 15_000 });
 });
 
@@ -204,25 +218,26 @@ test("the host view shows DAY 2's code and DAY 2's switch, and names the day", a
 // SCR-014 — the member is never asked which day, and is told which
 // ═══════════════════════════════════════════════════════════════════════════
 test("the check-in screen names the day, and refuses in THAT day's words once its ceiling has passed", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   const isPhone = testInfo.project.name === "phone";
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/host`);
-  const code = (await page.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
+  const code = (await main.locator("p[dir='ltr']").first().textContent())?.trim() ?? "";
 
   await context.clearCookies();
   attendeeMemberId = await signIn(context, attendeeEmail, false);
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
-  await expect(page.getByText("تسجيل حضور اليوم الثاني", { exact: false })).toBeVisible();
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
+  await expect(main.getByText("تسجيل حضور اليوم الثاني", { exact: false })).toBeVisible();
   await shoot(page, "wave9-checkin-check-in-day2", isPhone);
 
-  const boxes = page.locator("input[maxlength='1']");
-  const assembled = page.locator('input[type="hidden"][name="code"]');
+  const boxes = main.locator("input[maxlength='1']");
+  const assembled = main.locator('input[type="hidden"][name="code"]');
   await expect(async () => {
     for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
     await expect(assembled).toHaveValue(code, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
-  await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
+  await main.getByRole("button", { name: "تسجيل الحضور" }).last().click();
   await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
 
   // The row belongs to DAY 2.
@@ -238,9 +253,9 @@ test("the check-in screen names the day, and refuses in THAT day's words once it
   await context.clearCookies();
   await signIn(context, regularEmail, false);
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  await expect(page.getByRole("status")).toContainText("انتهى وقت تسجيل الحضور في اليوم الثاني");
+  await expect(main.getByRole("status")).toContainText("انتهى وقت تسجيل الحضور في اليوم الثاني");
   // and NOT the session-level sentence, which is what main would have said
-  await expect(page.getByText("انتهت الجلسة", { exact: true })).toHaveCount(0);
+  await expect(main.getByText("انتهت الجلسة", { exact: true })).toHaveCount(0);
   await shoot(page, "wave9-checkin-check-in-day2-ended", isPhone);
 
   await db.query(`update public.session_days set starts_at = now() - interval '1 hours', ends_at = now() + interval '1 hours' where id = $1`, [dayIds[1]]);
@@ -250,6 +265,7 @@ test("the check-in screen names the day, and refuses in THAT day's words once it
 // SCR-044 — who attended WHICH day (REQ-SES-017)
 // ═══════════════════════════════════════════════════════════════════════════
 test("the attendance report shows a column per day, one member missing day 2, and marks and removes per day", async ({ context, page }, testInfo) => {
+  const main = inMain(page);
   const isPhone = testInfo.project.name === "phone";
 
   // ★ SELF-CONTAINED, not leaning on the case above. Both members are
@@ -290,33 +306,27 @@ test("the attendance report shows a column per day, one member missing day 2, an
   await attend(regularMemberId, dayIds[2]);
 
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
+  await expect(main.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
 
   // One column per day, and the summary line that says what completeness means.
   for (const label of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
-    await expect(page.getByRole("columnheader", { name: label })).toBeVisible();
+    await expect(main.getByRole("columnheader", { name: label })).toBeVisible();
   }
-  // ★ SCOPED TO THE REGION, and not because the page renders this twice — it
-  // renders it once (`attendance/page.tsx`). On the desktop project a SECOND,
-  // hidden copy is in the DOM: `DEC-145`'s orphaned streaming segment, carried
-  // to M13. The evidence is in the failure itself — the `h1` and all three
-  // column headers resolved to exactly ONE element each by role, while this
-  // line resolved to two by text, and Playwright could derive a role path for
-  // the first copy and none for the second. `getByRole` skips what is not in
-  // the accessibility tree; `getByText` does not. So the extra copy is hidden,
-  // and a role-anchored locator is both the correct assertion and the one that
-  // does not go red on an artefact this spec is not about.
-  await expect(page.getByRole("region", { name: "ملخّص الحضور" }).getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
+  // Anchored to the region as well as to `#main`: the claim worth asserting is
+  // that the SUMMARY SECTION says what completeness means, not that the
+  // sentence exists somewhere in the document.
+  await expect(main.getByRole("region", { name: "ملخّص الحضور" }).getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
   // خالد: two of three. سارة: one of three.
-  await expect(page.getByRole("cell", { name: "2 من 3" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "1 من 3" })).toBeVisible();
+  await expect(main.getByRole("cell", { name: "2 من 3" })).toBeVisible();
+  await expect(main.getByRole("cell", { name: "1 من 3" })).toBeVisible();
   await shoot(page, "wave9-checkin-attendance-3days", isPhone);
 
-  // ★ SCOPED BY SECTION. Both forms carry a `dayId` select labelled «اليوم»,
-  // so an unscoped `getByLabel` is a strict-mode violation waiting to happen
-  // the first time someone reorders the page.
-  const markSection = page.locator('section[aria-labelledby="manual"]');
-  const removeSection = page.locator('section[aria-labelledby="remove"]');
+  // ★ SCOPED BY SECTION, on top of `#main`. Both forms carry a `dayId` select
+  // labelled «اليوم», so even within the landmark a page-level locator would
+  // resolve to two — a real ambiguity, unlike the orphaned copy the landmark
+  // deals with.
+  const markSection = main.locator('section[aria-labelledby="manual"]');
+  const removeSection = main.locator('section[aria-labelledby="remove"]');
 
   // The manual mark is per day: choosing day 2 offers خالد, who is missing it.
   await markSection.locator('select[name="dayId"]').selectOption(dayIds[1]);

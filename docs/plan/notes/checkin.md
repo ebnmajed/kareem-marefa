@@ -2012,3 +2012,26 @@ entirely, and a selection made for Tuesday must not survive into Wednesday.
 `remove-check-in-form.tsx`'s day select was already on `Field`/`Select`, which is why ui-lint never
 flagged it; confirmed rather than assumed. The three remaining violations in the run are `content`'s
 rescope chips.
+
+### Scoping to `#main` — the rule that ends the class, not the symptom
+
+Two rounds were spent anchoring one assertion at a time against `DEC-145`'s orphaned streaming
+segment: a hidden second copy of the rendered markup under `body > div#S:…`, desktop only.
+`getByRole` skips it — it is not in the accessibility tree — but `page.locator()` and
+`page.getByText()` do not, so each CSS or text locator taken from `page` failed strict mode in turn.
+Fixing one left the next.
+
+`DEC-145` already states the rule: **locators under `/app` scope to `#main`.** Both wave-9 specs now
+take every page-level locator from `const main = page.locator("#main")`. Exactly one locator stays
+on `page` — the removal's confirm dialog, which Radix portals **outside** the landmark, so a
+scoped locator would find nothing.
+
+★ **It is also the more honest assertion**, which is the part worth keeping. The one-day spec's
+central claim is an absence — «no day word appears» — and `body` includes a hidden orphan the member
+never reads. Scoped to `#main`, the claim is «not in the page's own content», which is what the case
+actually means and what a reviewer opening the capture would check.
+
+The general lesson for this repo's e2e: **under `/app`, a locator taken from `page` is a latent
+strict-mode failure**, and the shape that hides it longest is a role locator — it passes while the
+CSS locator three lines below it fails, which is exactly how the first round read as «only this one
+line is wrong».
