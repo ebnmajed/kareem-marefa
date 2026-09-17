@@ -99,8 +99,9 @@ definition trap, memory `m9-wave10-lead`); `designer` is needed only for two rea
    non-overlapping window; (b) `templates:131` — `getByRole('status')` matches the nested options list's status too:
    filter by «إلى الموضع»; (c) `survey-results:178` — «نسبة الاستجابة» is both the `<h2>` and the Stat's caption
    under it: use the heading role, **and look at whether the caption should say something the heading does not**.
-   `event` had these edits and `DEC-164`'s second-press update (`updateRating()` when the stars changed between
-   the two presses) **in its working tree at stand-down — check `git log` for its last commits before redoing them**.
+   ★ **All three, and `DEC-164`'s second-press update (`updateRating()` when the stars changed between the two
+   presses, with `tests/unit/ratings-second-press.test.ts`), LANDED at `e662de3` just before stand-down — unverified
+   on a build.** So action 1 is done on paper and action 2 is the proof.
 2. **Rebuild in the verification worktree, re-run `event`'s five specs, open its eleven captures in bands.**
 3. **Run the survey demonstrable** — `tests/e2e/wave10-demo-survey.spec.ts` (`7a697f3`) is **written, type-checked
    and linted, and has NEVER been run**. `E2E_WORKER=1`, production build, the real worker beside it from the
