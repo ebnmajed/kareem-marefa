@@ -127,19 +127,43 @@ export interface CalendarEventInput {
   now?: Date;
 }
 
+/** One meeting inside a calendar. The zone is the file's, not the day's. */
+export type CalendarDayInput = Omit<CalendarEventInput, "timeZone" | "now">;
+
 /**
- * One `VEVENT` in a `VCALENDAR`, UTF-8, CRLF, folded at 75 octets.
+ * The `UID` of one day, and the one rule that decides it.
+ *
+ * ★ Position 1 carries the SESSION's own identity —
+ * `session-{id}@kareem.pp.sa`, exactly what a one-day session has had since
+ * M3 — so a client that already holds that event UPDATES it and a member's
+ * calendar is never duplicated (contract 2). A later day is suffixed by its
+ * position, never by its id: the set of UIDs then depends on nothing but the
+ * number of days, so reordering two days rewrites both entries in place
+ * instead of orphaning one under an id that has moved.
+ *
+ * REQ-SES-015, DEC-119, DEC-151.
+ */
+export function uidForDay(sessionId: string, position: number): string {
+  return position <= 1 ? `session-${sessionId}@kareem.pp.sa` : `session-${sessionId}-day-${position}@kareem.pp.sa`;
+}
+
+/**
+ * One `VEVENT` per meeting in one `VCALENDAR`, UTF-8, CRLF, folded at 75 octets.
  *
  * `DTSTART;TZID=Asia/Riyadh` with an embedded `VTIMEZONE` rather than a
  * floating local time (08 §6.1), so a member in another zone sees the hour
- * the session actually happens.
+ * the session actually happens. The `VTIMEZONE` is the file's and is written
+ * once, from the first meeting — a session's days are all in the org's zone.
+ *
+ * ★ `buildIcs()` below is a one-element call of this, so a one-day session's
+ * file is byte-identical to the one M3 shipped and `tests/unit/ics.test.ts`
+ * proves it without being edited (rule 4).
  */
-export function buildIcs(event: CalendarEventInput): string {
-  const start = new Date(event.startsAt);
-  const end = new Date(event.endsAt);
-  const now = event.now ?? new Date();
-  const zone = event.timeZone;
-  const fixed = hasFixedOffset(zone, start.getUTCFullYear());
+export function buildIcsCalendar(days: readonly CalendarDayInput[], options: { timeZone: string; now?: Date }): string {
+  const zone = options.timeZone;
+  const now = options.now ?? new Date();
+  const first = days[0] ? new Date(days[0].startsAt) : now;
+  const fixed = hasFixedOffset(zone, first.getUTCFullYear());
 
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -150,7 +174,7 @@ export function buildIcs(event: CalendarEventInput): string {
   ];
 
   if (fixed) {
-    const offset = formatOffset(offsetMinutes(start, zone));
+    const offset = formatOffset(offsetMinutes(first, zone));
     lines.push(
       "BEGIN:VTIMEZONE",
       `TZID:${zone}`,
@@ -166,23 +190,33 @@ export function buildIcs(event: CalendarEventInput): string {
     );
   }
 
-  lines.push(
-    "BEGIN:VEVENT",
-    `UID:${event.uid}`,
-    `DTSTAMP:${utcStamp(now)}`,
-    fixed ? `DTSTART;TZID=${zone}:${localStamp(start, zone)}` : `DTSTART:${utcStamp(start)}`,
-    fixed ? `DTEND;TZID=${zone}:${localStamp(end, zone)}` : `DTEND:${utcStamp(end)}`,
-    `SUMMARY:${escapeText(event.title)}`,
-    `DESCRIPTION:${escapeText(event.description)}`,
-  );
-  if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
-  lines.push(
-    `URL:${escapeText(event.url)}`,
-    `SEQUENCE:${event.sequence ?? 0}`,
-    `STATUS:${event.cancelled ? "CANCELLED" : "CONFIRMED"}`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  );
+  for (const day of days) {
+    const start = new Date(day.startsAt);
+    const end = new Date(day.endsAt);
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${day.uid}`,
+      `DTSTAMP:${utcStamp(now)}`,
+      fixed ? `DTSTART;TZID=${zone}:${localStamp(start, zone)}` : `DTSTART:${utcStamp(start)}`,
+      fixed ? `DTEND;TZID=${zone}:${localStamp(end, zone)}` : `DTEND:${utcStamp(end)}`,
+      `SUMMARY:${escapeText(day.title)}`,
+      `DESCRIPTION:${escapeText(day.description)}`,
+    );
+    if (day.location) lines.push(`LOCATION:${escapeText(day.location)}`);
+    lines.push(
+      `URL:${escapeText(day.url)}`,
+      `SEQUENCE:${day.sequence ?? 0}`,
+      `STATUS:${day.cancelled ? "CANCELLED" : "CONFIRMED"}`,
+      "END:VEVENT",
+    );
+  }
 
+  lines.push("END:VCALENDAR");
   return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
+/** One meeting — the shape every caller used before days existed. */
+export function buildIcs(event: CalendarEventInput): string {
+  const { timeZone, now, ...day } = event;
+  return buildIcsCalendar([day], { timeZone, now });
 }

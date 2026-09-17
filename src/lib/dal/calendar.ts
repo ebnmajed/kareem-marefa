@@ -96,43 +96,78 @@ export async function getCalendarConnection(locale: string): Promise<CalendarCon
 }
 
 export interface SyncedEventDTO {
+  /** One row per (member, DAY) since wave 9, so this is not unique in the list. */
+  id: string;
   sessionId: string;
   sessionTitle: string;
+  /** The DAY's start, and the session's own when the day is gone. */
   startsAt: string | null;
+  /** The day's rank, 1…n. Null when the day has been deleted from the session. */
+  dayPosition: number | null;
+  /** How many days the session has, so a screen can tell one meeting from a set. */
+  dayCount: number;
   state: "pending" | "synced" | "failed" | "removed";
   error: string | null;
   lastSyncedAt: string | null;
 }
 
-/** SCR-025's list of synced sessions. `REQ-CAL-005` requires a failed sync be
- *  surfaced to the member rather than silently dropped, so `error` is part of
- *  the DTO and the screen renders it. */
+/**
+ * SCR-025's list of synced entries. `REQ-CAL-005` requires a failed sync be
+ * surfaced to the member rather than silently dropped, so `error` is part of
+ * the DTO and the screen renders it.
+ *
+ * ★ ONE ROW PER DAY since wave 9 (`REQ-SES-015`), so a three-day workshop is
+ * three entries — which is what a member's calendar holds. The day is embedded
+ * rather than read through `listSessionDays()`: DEC-151's rule is that a LIST
+ * over many sessions embeds in its own query and a single session goes through
+ * the DAL function. Nothing here computes a minimum or a maximum: `dayCount`
+ * is counted in the database and `startsAt` is the day's own column.
+ *
+ * Ordered by the day's start, because a calendar reads forwards.
+ */
 export async function listSyncedEvents(locale: string): Promise<SyncedEventDTO[]> {
   const { session, supabase } = await sessionClient(locale);
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("session_id, state, error, last_synced_at, sessions(title, starts_at)")
+    .select("id, session_id, state, error, last_synced_at, sessions(title, starts_at, session_days(id)), session_days(position, starts_at)")
     .eq("member_id", session.memberId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`calendar_events: ${error.message}`);
 
-  return ((data ?? []) as Array<{
+  type SessionEmbed = { title: string; starts_at: string | null; session_days: Array<{ id: string }> | null };
+  type Row = {
+    id: string;
     session_id: string;
     state: SyncedEventDTO["state"];
     error: string | null;
     last_synced_at: string | null;
-    sessions: { title: string; starts_at: string | null } | Array<{ title: string; starts_at: string | null }> | null;
-  }>).map((row) => {
-    const embedded = Array.isArray(row.sessions) ? (row.sessions[0] ?? null) : row.sessions;
-    return {
-      sessionId: row.session_id,
-      sessionTitle: embedded?.title ?? "",
-      startsAt: embedded?.starts_at ?? null,
-      state: row.state,
-      error: row.error,
-      lastSyncedAt: row.last_synced_at,
-    };
-  });
+    sessions: SessionEmbed | SessionEmbed[] | null;
+    session_days: { position: number; starts_at: string } | Array<{ position: number; starts_at: string }> | null;
+  };
+  const one = <T,>(embedded: T | T[] | null): T | null => (Array.isArray(embedded) ? (embedded[0] ?? null) : embedded);
+
+  const rows = (data ?? []) as unknown as Row[];
+
+  return rows
+    .map((row) => {
+      const s = one(row.sessions);
+      const day = one(row.session_days);
+      return {
+        id: row.id,
+        sessionId: row.session_id,
+        sessionTitle: s?.title ?? "",
+        startsAt: day?.starts_at ?? s?.starts_at ?? null,
+        dayPosition: day?.position ?? null,
+        // The session's OWN day count, embedded through the session — not the
+        // number of rows this member holds, which is short by one whenever a
+        // day's sync has not landed yet.
+        dayCount: s?.session_days?.length ?? 1,
+        state: row.state,
+        error: row.error,
+        lastSyncedAt: row.last_synced_at,
+      };
+    })
+    .sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""));
 }
 
 /** `REQ-CAL-007` — disconnect DELETES the row, immediately, outside the

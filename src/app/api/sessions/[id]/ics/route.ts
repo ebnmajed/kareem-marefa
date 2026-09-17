@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionForCalendar } from "@/lib/dal/calendar";
-import { buildIcs } from "@/components/calendar/ics";
+import { listSessionDays } from "@/lib/dal/sessions";
+import { buildIcsCalendar, uidForDay, type CalendarDayInput } from "@/components/calendar/ics";
 
 // GET /api/sessions/[id]/ics — REQ-CAL-001, 08 §6.1, SCR-012.
 //
@@ -31,21 +32,42 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!session) return new NextResponse("not_found", { status: 404 });
 
   const origin = new URL(request.url).origin;
-  const description = [session.abstract, session.venue?.mapUrl].filter(Boolean).join("\n\n");
+  const url = `${origin}/ar/app/sessions/${session.id}`;
+  const place = (venue: { name: string; address: string | null } | null) =>
+    venue ? [venue.name, venue.address].filter(Boolean).join("، ") : null;
 
-  const ics = buildIcs({
+  // ★ ONE VEVENT PER DAY (REQ-SES-015, DEC-119). The days are read through
+  // `sessions`' own `listSessionDays()` (contract 3) — nobody keeps a second
+  // query for them, and nobody computes the session's span in TypeScript.
+  const days = await listSessionDays("ar", session.id);
+
+  // `0100` gives every session with a window exactly one day, so an empty list
+  // means the day read came back empty rather than the session having no
+  // meetings — and a calendar file with no VEVENT is worse than the session's
+  // own window. This is the fallback, not a branch on «is it multi-day».
+  const meetings: CalendarDayInput[] = (
+    days.length > 0
+      ? days.map((day) => ({
+          position: day.position,
+          startsAt: day.startsAt,
+          endsAt: day.endsAt,
+          venue: day.venue as { name: string; address: string | null; mapUrl: string | null } | null,
+        }))
+      : [{ position: 1, startsAt: session.startsAt, endsAt: session.endsAt, venue: session.venue }]
+  ).map((day) => ({
     // Stable across downloads and across the Google sync, so a client that
     // already holds this event UPDATES it rather than adding a second copy.
-    uid: `session-${session.id}@kareem.pp.sa`,
+    uid: uidForDay(session.id, day.position),
     title: session.title,
-    description,
-    startsAt: session.startsAt,
-    endsAt: session.endsAt,
-    timeZone: session.timeZone,
-    location: session.venue ? [session.venue.name, session.venue.address].filter(Boolean).join("، ") : null,
-    url: `${origin}/ar/app/sessions/${session.id}`,
+    description: [session.abstract, day.venue?.mapUrl].filter(Boolean).join("\n\n"),
+    startsAt: day.startsAt,
+    endsAt: day.endsAt,
+    location: place(day.venue),
+    url,
     cancelled: session.cancelled,
-  });
+  }));
+
+  const ics = buildIcsCalendar(meetings, { timeZone: session.timeZone });
 
   return new NextResponse(ics, {
     status: 200,
