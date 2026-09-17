@@ -418,3 +418,398 @@ All four are recorded; none needs code from wave 3 except the third.
    M7-console.** That is the one piece of unfinished business on this track.
 4. `MSG-rsvp_deadline_soon` (§1.3) has no job in `11` §7. Unimplemented and not
    faked; it needs a job name and key from `11` before anyone builds it.
+
+---
+
+# Wave 9 plan — one calendar entry and one reminder stream per day
+
+**Written 2026-09-17, planning only, nothing built.** Serves `REQ-SES-015` («a member's calendar
+gains one entry per day, and reminders fire per day»), `REQ-CAL-001` … `008`, `REQ-NTF-004`,
+`REQ-SES-009`. Cites `DEC-119` (the `calendar_events` and `MSG-reminder_*` bullets), `DEC-120`,
+`DEC-121`, `DEC-150`, contracts 1, 2, 3 and 8 of `STATUS.md`'s wave-9 block.
+
+**Scope, stated once so it is not widened:** the calendar per day, reminders per day, and a
+reschedule notice that names the day. **The email studio is wave 10** — no block model, no editor,
+no template redesign. `/app/me/{calendar,notifications}` are not redesigned; they come back from
+wave 7 as they are and gain the day.
+
+---
+
+## W1. The identity scheme — every key at `n` days, with `n = 1` beside today's
+
+★ **Contract 2 in one line: at `n = 1` every key, `UID` and job is the one the row has today, so a
+pending job is moved and an existing calendar entry is updated — never a second one.**
+
+| Thing | today (`main`) | `n = 1` after this wave | `n` days |
+|---|---|---|---|
+| ICS `UID` | `session-{session}@kareem.pp.sa` | **identical** | position 1: identical · position `k >= 2`: `session-{session}-day-{k}@kareem.pp.sa` |
+| calendar upsert job key | `cal:{rsvp_id}` | **identical** | **identical** — one job per reservation, fanning out over the days |
+| calendar delete job key | `caldel:{rsvp_id}` | **identical** | **identical** — same reason |
+| reminder job key | `remind:{session}:{offset}:{member}` | **identical** | position 1: identical · position `k >= 2`: `remind:{session}:{offset}:{member}:{k}` |
+| nudge | `nudge:{session}` | **identical** | **identical** — once per session, `08` §4.2's restraint |
+| rating prompt | `rate:{session}` | **identical** | **identical** — one rating per session |
+| reminder sweep | `sched:{session}` | **identical** | **identical** |
+| token refresh | `caltok:{connection}` | **identical** | **identical** — untouched |
+
+**Why `cal:` and `caldel:` do not gain a day.** A per-day key would leave the pending
+`cal:{rsvp_id}` jobs that exist in production at push time unreplaced: the new scheduler would add a
+second job under a new key and the old one would still fire, which is precisely the duplication
+`08` §4.1 exists to prevent. Keeping the key means **the job's subject is the reservation, and its
+body is «make this member's calendar match the truth»** — it walks the days, creates what is
+missing, updates what moved, and removes what should not be there. Idempotency stays where
+`REQ-CAL-004` puts it: the unique constraint, now `(member_id, session_day_id)`. The cost is `n`
+provider calls when one day moved; at the sizes in this product that is the right trade against a
+key that can duplicate.
+
+**Why the ICS `UID` and the reminder key suffix by POSITION and not by day id.** Position 1 carries
+the session's own identity, which is what holds `n = 1`. Position is also the only suffix under
+which **the key set depends on nothing but `n`**: reordering two days leaves the same set of keys
+and re-enqueues each with the right payload, where an id suffix would orphan the key of the day that
+moved out of first place. A day removed shrinks the set, and the tail is swept (`W3`).
+The one oddity — after a reorder, «اليوم الأول» in a member's calendar holds whichever meeting is
+now first — is the truth, not a defect.
+
+**`SEQUENCE` stays `0`** (unchanged, contract 2). Clients update on a `UID` match; raising it is a
+separate, testable change and not this wave's.
+
+---
+
+## W2. N1 — the calendar per day
+
+### W2.1 What I need from the lead on `public.calendar_events` (I write no `alter table`)
+
+```sql
+alter table public.calendar_events
+  add column session_day_id uuid,
+  add constraint calendar_events_day_fk
+      foreign key (session_id, session_day_id)
+      references public.session_days (session_id, id)
+      on delete set null;            -- ★ set null on the DAY column only
+-- the backfill, below, runs here --
+alter table public.calendar_events drop constraint calendar_events_member_id_session_id_key;
+alter table public.calendar_events add  constraint calendar_events_member_day_key
+      unique (member_id, session_day_id);
+create index calendar_events_member_session_idx on public.calendar_events (member_id, session_id);
+```
+
+- The composite foreign key is `DEC-150`'s pattern for the content tables, for the same reason: a
+  row can only name a day **of its own session**. It needs `session_days` to carry
+  `unique (session_id, id)` — ★ **the lead's in-progress `0100` already has it**
+  (`session_days_session_id_id_key`), and uses the same `on delete set null (session_day_id)` on the
+  three content tables, so the syntax above is the foundation's own.
+- ★ **`on delete set null`, never `cascade`.** A `calendar_events` row is the only record of the
+  provider event id in a member's Google calendar. If the row died with its day, the event would
+  stay in the member's calendar forever with nothing left that knows its id. **Null therefore has
+  exactly one meaning: «the day this event belonged to is gone — remove the provider event».** No
+  other writer ever produces a null day, so the meaning cannot be confused with anything else.
+- `session_id` stays `not null` and keeps its own foreign key. Nothing is dropped or renamed.
+- ★ **The one non-additive act in my area is the constraint swap**, and it is safe only because
+  `record_calendar_sync()` is `create or replace`d **in the same file** (`W6`). Two files would give
+  a window in which `main`'s worker calls a function whose `on conflict (member_id, session_id)`
+  names a constraint that no longer exists — `42P10`, every calendar sync failing. **The migration
+  order (row L9) must keep them in one file.**
+
+### W2.2 The backfill — and why no member's calendar changes
+
+```sql
+update public.calendar_events ce
+   set session_day_id = (select d.id from public.session_days d
+                          where d.session_id = ce.session_id order by d.position limit 1)
+ where ce.session_day_id is null;
+```
+
+`0100` gives every session with both ends exactly one day, and today's
+`unique (member_id, session_id)` means at most one row per member per session — so the map is
+one-to-one and the new unique constraint holds the moment it is created. **The row that exists today
+IS the one day's row**: same `id`, same `provider_event_id`, same `state`. Nothing is inserted,
+nothing is deleted, and the first `calendar_upsert` after the redeploy updates day 1's event with
+day 1's window, which at `n = 1` is the session's window — the same body, so the provider records no
+change.
+
+Rows whose session has **no** day (a session that never had a time) cannot be produced by
+`calendar_upsert`, which returns before recording when `starts_at` is null — but a `failed` row from
+a historical path could exist. **Read before you write** (`DEC-023`): the lead runs the count first;
+my recommendation is to leave those `session_day_id` null, which my code reads as «remove it» and is
+the correct outcome for a session with no time (question Q2).
+
+### W2.3 What each piece does at `n` days
+
+- **`calendar_sync_target(p_rsvp)`** — `create or replace`, **every existing top-level key keeps its
+  name and meaning** (`main`'s worker reads them): `rsvp_id`, `org_id`, `member_id`, `session_id`,
+  `rsvp_status`, `connected`, `provider_event_id` (**day 1's**, so the old worker updates the event
+  it created), `session.{title,description,starts_at,ends_at,time_zone,state,cancelled,location}`
+  (the session's stored window and first venue — contract 1). **Added:**
+  `days: [{ day_id, position, starts_at, ends_at, location, provider_event_id, state }]` and
+  `orphans: [{ calendar_event_id, provider_event_id }]` for rows whose day is gone. The old worker
+  ignores both.
+- **`calendar_upsert`** — walks `days`: create where there is no `provider_event_id`, update where
+  there is, `CalendarNotFound` still recreates (`REQ-CAL-006` cuts both ways). Then walks `orphans`
+  and deletes. Every early return it has today is kept verbatim — no connection, not confirmed,
+  cancelled session, no time — so at `n = 1` the log lines and the API calls are today's.
+- **`calendar_delete`** — deletes **every** event of that member for that session, days and orphans
+  alike; a `404` is still success.
+- **`record_calendar_sync(...)`** — gains a **trailing** `p_day uuid default null`; null resolves to
+  the session's day at `position 1`. The old 6-argument signature is **dropped in the same file**
+  and re-created with 7, so `main`'s 6-argument call still resolves through the default and PostgREST
+  never sees two overloads (`0085`'s lesson). A new `record_calendar_event_removed(p_event uuid)`
+  addresses an orphan row, which has no day to key on.
+- **`calendar_disconnected()`** — unchanged; it already works row by row.
+- **ICS route** — one `VEVENT` per day, one `VTIMEZONE` for the file, taken from the first day.
+  `buildIcs(event)` is **kept exactly as it is** and becomes a one-element call of a new
+  `buildIcsDays(events)`, so `tests/unit/ics.test.ts` proves the byte-identity rather than being
+  edited to accommodate it (rule 4).
+- **`/app/me/calendar`** — one entry per day; at `n = 1` one entry, as today. `listSyncedEvents()`
+  returns the day's window and position (question Q8 on how it reads them).
+- **`AddToCalendar`** — the ICS carries every day in one download, unchanged in shape. Google and
+  Outlook are per-event links, so `n` days is `n` links; the menu is `sessions`' file
+  (`components/sessions/calendar-menu.tsx`) and grouping it is a request, not an edit (question Q7).
+
+---
+
+## W3. N2 — reminders per day, and which offsets repeat
+
+### The rule I propose, and why it is a rule rather than a list
+
+★ **An offset fires for day `k` only when its moment falls after day `k-1` has ended.** Day 1 always
+fires. Formally, schedule at `day_k.starts_at - offset` when `k = 1` or
+`day_k.starts_at - offset > day_{k-1}.ends_at`.
+
+| Shape | −2 h | −1 d | −7 d |
+|---|---|---|---|
+| Three consecutive evenings, 6–8 p.m. | fires before each day | day 1 only — day 2's moment is 6 p.m. on day 1, during it | day 1 only |
+| Three weekly meetings | fires before each day | fires before each day | day 1 only — day 2's moment is day 1's own start |
+| Three monthly meetings | fires before each day | fires before each day | fires before each day |
+
+It needs no threshold, no list of «long» offsets and no `if (isMultiDay)`: at `n = 1` there is no
+previous day, every offset fires, and the three jobs under the three keys are exactly today's.
+It is also the honest reading of `08` §4.2's restraint — a reminder is suppressed precisely when it
+would land while the member is already at the workshop or has just been told the same thing.
+
+The fallback, if the lead prefers something blunter: offsets below 12 hours repeat per day,
+offsets of 12 hours and above fire once, before day 1. It is one line and it gets the three-evening
+case right; it gets the monthly case wrong. **Question Q3.**
+
+**The nudge stays once per session** (`nudge:{session}`, at the first day's start minus 7 days,
+in-app only). A member is being asked whether they want the workshop, not whether they want
+Wednesday. **The rating prompt stays once per session**, at completion.
+
+### The sweep — how a key stops existing
+
+`schedule_session_reminders(p_session)` today recomputes every offset every time rather than
+diffing, which is why a session moved later gets its past offsets back. With days, the key **set**
+can also shrink — a day removed, a day reordered, an offset suppressed by the rule above — and
+`cancel_member_reminders()` already admits in its own comment that it guesses which offsets to
+cancel by unioning the org's current array with the hard-coded defaults.
+
+★ **Both are fixed by one function: after enqueueing, remove every pending job whose key matches
+`^remind:{session}:[0-9]+:[0-9a-f-]+(:[0-9]+)?$` and is not in the set just built.** It reads
+`graphile_worker.jobs` (the `key` column — the same table `tests/rls/notify-reminders.test.ts`
+already reads) from a `security definer` function and removes through `graphile_worker.remove_job`,
+never `add_job`. Exact, no tail margin, no memory of the past, and it makes the existing
+"guessed offsets" comment untrue in the good direction. **Question Q4.**
+
+### The send side
+
+`send_reminder_notification(p_session, p_member, p_offset)` gains a **trailing**
+`p_day uuid default null` (old signature dropped in the same file; null resolves to position 1, so
+`main`'s worker's three-argument call is unchanged). It re-reads the conditions at send time as it
+does today and adds one: the day must still exist. The payload keeps every key it has —
+`session_id`, `title`, `startsAt`, `offset_minutes` — with **`startsAt` now the day's start**, which
+at `n = 1` is `sessions.starts_at` (contract 1), and gains `dayPosition` and `dayCount`, `1` and `1`
+at `n = 1`. `reminder_message_key(offset)` is untouched, so `MSG-reminder_7d` / `_1d` / `_2h` /
+`_generic` and `0062`'s tolerance bands are exactly as they are.
+
+★ **Risk to check when I build:** if an existing RLS case asserts the whole payload object rather
+than individual keys, two added keys turn it red. That would be a finding for this note, not a test
+to repair (rule 4). From reading them, `notify-reminders.test.ts` asserts keys and `run_at`, and
+`notify-send.test.ts` asserts the notification rows — but I will name it here before I touch
+anything.
+
+`{{tasks}}` in the reminder templates stays unfilled, exactly as today. **Nothing I write this wave
+names `session_tasks`, `task_completions` or `task_form_responses`** — `REQ-TSK-002` and the lead's
+contract-10 guard are untouched by this track.
+
+---
+
+## W4. N3 — the reschedule notice names the day, and there is exactly one of it
+
+### The problem, stated exactly
+
+Moving day 2 of 3 changes neither `sessions.starts_at` (the first day's start) nor `sessions.ends_at`
+(the last day's end), so the lead's day-to-session trigger writes nothing distinct, `sessions_notify`
+never fires, and a member holding a seat is never told. Meanwhile at `n <= 1` the lead's
+session-to-day carry trigger writes the day **inside the same statement** as the session, so a naive
+trigger on `session_days` would send a second notice beside `sessions_notify`'s.
+
+### The design — a positional split, with no flag and no deferral
+
+★ **`sessions_notify()` keeps its time-and-venue diff exactly as it is today**, and a **new
+`session_days_notify()` trigger sends a notice only for a day whose position is `>= 2` both before
+and after the write.**
+
+- At `n = 1` there is no day at position 2, so the new trigger **never fires**, and the member
+  receives exactly one notice — `sessions_notify()`'s, byte-identical, because I do not change that
+  branch. The double notice is impossible by construction rather than suppressed by a flag.
+- At `n > 1`, day 1's window or venue moving changes the session's stored window or venue, so
+  `sessions_notify()` fires — one notice, about the session's start, which is day 1's start.
+- Day `k >= 2` moving fires only the day trigger — one notice, naming the day.
+- A day inserted or deleted **before** day 1 renumbers everything and moves the session's window, so
+  `sessions_notify()` covers it; one added or removed at position `>= 2` fires the day trigger.
+- A multi-row day statement (two days added at once) is de-duplicated by a transaction-local guard
+  so the member gets **one** notice carrying the new day set, not a delta and not one per row.
+
+The trigger is `security definer`, `after insert or update or delete on public.session_days`, and is
+tested **as a member**, not as the owner (the standing rule for a trigger that notifies).
+
+### What the notice says
+
+`MSG-session_changed` — the existing key, non-optional, both channels, to confirmed **and**
+waitlisted members, exactly as today. The payload keeps `session_id`, `title`, `startsAt`, `venue`
+and `changes`, and each `changes` entry gains two optional fields:
+
+```jsonc
+{ "field": "starts_at", "from": "...", "to": "...", "day": 2, "days": 3 }
+```
+
+`worker/src/mail/render.ts` already owns `CHANGE_LABELS` and builds the block; it renders «الموعد»
+when `days` is absent or `1` — **byte-identical to today at `n = 1`** — and «موعد اليوم الثاني» when
+`days` is greater than 1. The in-app string is mine, in `messages/ar/notifications.json`, with all
+six ICU plural forms where a count appears and `<bdi>` on every interpolated value.
+
+`sessions_notify()` gains the same two fields on its own entries, absent or `1` at `n = 1`, so a
+one-day session's mail does not move a byte (question Q11).
+
+★ **A day added or removed** has no `MSG-*` of its own in `08` §1.2 and `notify()` refuses a key
+outside the matrix, so I propose reusing `MSG-session_changed` with a change entry
+`{ "field": "days", "from": 3, "to": 4 }` rendering «الأيام: 3 ← 4». A new key would be a plan
+change and the lead's (question Q5).
+
+★ **A finding while reading this path:** `sessions_notify()` diffs `starts_at` and the venue but
+**not `ends_at`**, so a session whose end time alone moves tells nobody, today. At `n >= 2` the new
+day trigger covers the last day's end; at `n = 1` the silence is unchanged, which contract 2
+requires. Recorded, not fixed here.
+
+---
+
+## W5. How I read days
+
+- **In the app** — `listSessionDays(sessionId)` and `SessionDay` from `lib/dal/sessions.ts`
+  (contract 3), `cache()`-wrapped. The ICS route, `AddToCalendar` and the calendar screen all read
+  days through it. **No minimum or maximum is computed in TypeScript anywhere in this track**; the
+  session's window comes from `sessions`, which stores it.
+- **In SQL** — directly from `public.session_days` ordered by `position`, inside definer functions.
+- The one place I want a ruling is `listSyncedEvents()`, which lists a member's rows and would embed
+  `session_days(position, starts_at, ends_at)` in the same PostgREST query rather than fanning out a
+  `listSessionDays()` call per row (question Q8).
+
+---
+
+## W6. What `main`'s OLD worker does with my SQL, job by job
+
+The owner pushes migrations, then merges; Vercel deploys on the merge and Railway has to be
+reconnected by hand, so there is a window in which **`main`'s worker runs against the new schema**.
+Job by job:
+
+| Job | What the old worker does | Correct? |
+|---|---|---|
+| `calendar_upsert` | reads `calendar_sync_target`, sees only the old top-level keys, writes **one** event with the session's stored window, calls `record_calendar_sync` with 6 arguments — the new body resolves day 1 | ★ yes at `n = 1`, byte-for-byte. At `n > 1` it writes day 1's row with an event covering the whole span — which is what it does today; the new worker reconciles on the next `cal:` |
+| `calendar_delete` | deletes day 1's event, records `removed` on day 1's row | ★ yes at `n = 1`. At `n > 1` days 2+ keep their events until the new worker runs — the reconciliation below |
+| `schedule_reminders` | calls `schedule_session_reminders(session)`; the body is the database's, so the **new** per-day scheduling happens | yes |
+| `send_reminder` | calls `send_reminder_notification` with 3 arguments; the trailing `p_day` defaults to null and resolves to day 1 | ★ yes at `n = 1`. Pending jobs queued before the migration have no day in their payload and resolve the same way |
+| `rsvp_nudge`, `rating_prompt`, `send_notification`, `refresh_calendar_tokens` | unchanged in shape and in body | yes |
+
+★ **The reconciliation.** A multi-day session can only exist after the merge, so the exposure is the
+minutes between the merge and the Railway redeploy — and the standing post-merge step is the owner
+checking Railway anyway. I propose shipping `public.resync_calendars(p_session uuid default null)`,
+definer, which enqueues `cal:{rsvp_id}` for every confirmed reservation (and `caldel:` for a
+cancelled one whose rows are still `synced`), for the lead to run once after the redeploy and to name
+in the migration order (question Q9).
+
+★ **The riskiest single thing in this plan** is not any of the above: it is that
+`record_calendar_sync()`'s `on conflict (member_id, session_id)` names the constraint I am asking
+the lead to drop. **If the drop and the `create or replace` are in two different files, every
+calendar sync in production fails with `42P10` between them.** One file, constraint swap and
+function body together, backfill in between.
+
+---
+
+## W7. The `n = 1` proof — the files that already cover each path, none of them edited
+
+Rule 4: an existing test file is evidence. **I change none of these**, and if one of them turns red
+the assertion and the reason go in this note as a finding.
+
+| Path | Covered today by | What proves `n = 1` |
+|---|---|---|
+| the three reminder keys, and that a reschedule moves them | `tests/rls/notify-reminders.test.ts` | it asserts the three keys by **exact string equality** and their `run_at`; the positional scheme leaves them untouched |
+| a removed offset, a cancelled seat, a cancelled session | same file | the sweep is stricter than what it asserts, never looser |
+| the org changing its reminder schedule | `tests/rls/notify-schedule-change.test.ts` | `org_settings_reschedule()` is untouched |
+| the change notice with both values, publish, cancel, complete | `tests/rls/notify-session-notices.test.ts` | `sessions_notify()`'s branches are kept; the two new `changes` fields are absent at `n = 1` |
+| the promotion notice, the reservation notices, `cal:` / `caldel:` enqueued in the transaction | `tests/rls/notify-m2-notices.test.ts`, `notify-reminders.test.ts` | the job keys do not change at any `n` |
+| the matrix, the seventeen non-optional keys, `notify()`'s four properties | `tests/rls/notify-contract.test.ts` | untouched |
+| send-time re-checks, the nudge, the rating prompt | `tests/rls/notify-send.test.ts` | the nudge and the prompt stay once per session |
+| `calendar_sync_target`, `record_calendar_sync` idempotency, the disconnect notice | `tests/rls/calendar-sync.test.ts` | the old top-level keys keep their names and meanings |
+| ICS folding at 75 octets, the `VEVENT`, `VTIMEZONE` | `tests/unit/ics.test.ts` | `buildIcs()` keeps its signature and becomes a one-element call of `buildIcsDays()` |
+| the add-to-calendar links and their encoding | `tests/unit/ics-links.test.ts` | `calendarLinks()` keeps its signature |
+| the templates against the matrix, the RTL HTML, the subject encoding, the transport | `tests/unit/mail-render.test.ts`, `mail-mime.test.ts`, `mail-transport.test.ts` | no template is added or removed |
+| the worker tasks | `tests/unit/notify-jobs.test.ts`, `notify-calendar-api.test.ts` | the early returns and log lines are kept |
+| the screens | `tests/components/notifications/notification-list.test.tsx`, `tests/components/me/calendar-page.test.tsx`, `tests/e2e/{notify-screens,wave7-content-calendar,wave7-content-notifications}.spec.ts` | one entry per day is one entry at `n = 1` |
+
+**New behaviour gets new files:** `tests/rls/notify-days.test.ts`, `tests/rls/calendar-days.test.ts`,
+`tests/unit/ics-days.test.ts` (including the byte-identity assertion against a one-day fixture and
+three `VEVENT`s folded at 75 **octets**), `tests/unit/notify-jobs-days.test.ts`,
+`tests/e2e/wave9-notify-days.spec.ts`.
+
+---
+
+## W8. Questions for the lead, numbered
+
+1. **The constraint swap on `calendar_events`** — dropping `unique (member_id, session_id)` for
+   `unique (member_id, session_day_id)` — approved, given `record_calendar_sync()` is replaced in the
+   same file and no client role has a write grant on the table? (`unique (session_id, id)` on
+   `session_days` is already in your `0100`, so the composite foreign key needs nothing new.)
+2. **The backfill's edge**: `calendar_events` rows whose session has no day. Count them first; my
+   recommendation is to leave `session_day_id` null so the next sync removes the provider event.
+   Confirm, or tell me to fail the migration if the count is not zero.
+3. **N2's rule** — «an offset fires for day `k` only when its moment falls after day `k-1` ended» —
+   approved? Or the blunter «below 12 hours per day, 12 hours and above once»?
+4. **The reminder sweep** reading `graphile_worker.jobs` from a definer function and removing by
+   pattern, which also retires `cancel_member_reminders()`'s guessed offsets — approved?
+5. **A day added or removed from a published session**: reuse `MSG-session_changed` with a `days`
+   change entry, or does a new `MSG-*` key need a `DECISIONS.md` entry first? `notify()` raises
+   `22023` for a key outside the matrix, so I cannot invent one.
+6. **The day label in mail.** `worker/` is a standalone package and imports nothing from `src/`, so
+   it cannot use `sessions`' formatter (contract 7). May I keep a small Arabic ordinal table in
+   `worker/src/mail/render.ts`, or should `sessions` publish the ordinals somewhere both can read?
+7. **`components/sessions/calendar-menu.tsx` is `sessions`'.** Per-day Google and Outlook links need
+   a grouped shape on it, flat at `n <= 1`. Do I write the request to `sessions`, or do I render the
+   multi-day case as the ICS download alone?
+8. **`listSyncedEvents()`** — may it embed `session_days` in its own PostgREST query, or must every
+   day read go through `listSessionDays()`? No minimum or maximum is computed in TypeScript either
+   way.
+9. **`public.resync_calendars(p_session uuid default null)`** for the window between the merge and
+   the Railway redeploy — do you want it, and does it belong in row L9's order?
+10. **A defect found while reading, not multi-day**: `{{startsAt}}` is interpolated raw, so a
+    production mail renders `2026-10-01T18:00:00+03:00` rather than a formatted date —
+    `tests/unit/mail-render.test.ts` passes a pre-formatted string and never catches it, and
+    `formatChangeValue()` next door already does the right thing. Fix it in `render.ts` this wave
+    (it becomes more visible with a day range), or record it and leave it?
+11. **`sessions_notify()` is mine to `create or replace`** and I am adding two optional fields to its
+    `changes` entries, absent or `1` at `n = 1`. Confirm that is within contract 2.
+
+---
+
+## W9. Order of work, once the plan is approved
+
+1. The `calendar_events` columns to the lead (W2.1) — it is the only thing blocking anyone.
+2. `supabase/proposed/notify/0101_calendar_per_day.sql` — the constraint swap, the backfill,
+   `calendar_sync_target`, `record_calendar_sync`, `record_calendar_event_removed`,
+   `resync_calendars`; `tests/rls/calendar-days.test.ts` with `applyProposed()`.
+3. `supabase/proposed/notify/0102_reminders_per_day.sql` — `schedule_session_reminders`, the sweep,
+   `send_reminder_notification`, `cancel_member_reminders`; `tests/rls/notify-days.test.ts`.
+4. `supabase/proposed/notify/0103_day_change_notice.sql` — `session_days_notify()` and its trigger,
+   `sessions_notify()`'s two fields; tested as a member.
+5. The worker: `calendar_upsert`, `calendar_delete`, `send_reminder`, `render.ts`'s label.
+6. The ICS route and `buildIcsDays()`; `AddToCalendar`; `/app/me/calendar`; the strings, `ar/` first.
+7. The captures: `/app/me/calendar` with three entries, the add-to-calendar menu on a three-day
+   session, the notice naming day 2 in the inbox and in Mailpit, and `/app/me/calendar` for a
+   one-day session beside its wave-7 capture.
