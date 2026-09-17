@@ -1669,6 +1669,13 @@ generated suite is the highest-value test in the product.
 | `RPC-schedule_session.day_venue_rules` | A day names the org's venue OR the inline trio, never both and never a name without an address, and never another org's or a deactivated venue. |
 | `RPC-schedule_session.require_all_days` | `p_require_all_days` sets `sessions.require_all_days`; `null` leaves it exactly as it was, as `p_allow_walk_ins` does (DEC-141 correction B). |
 | `RPC-publish_session.missing_days` | Publishing a session with no day names `days`; a day after the first with no place names `day:<position>:venue`. A one-day session's `missing[]` is unchanged. |
+| ★ **wave 9 (`DEC-151`), migration `0107`** — contract 6: the one definition of «attended the session» for points and certificates, and the per-day reader behind it |
+| `RPC-session_attendance_complete.definer_only` | No client role can call it; only `service_role` and the function owner. |
+| `RPC-session_attendance_complete.every_day` | With `require_all_days` (the default), an active check-in on EVERY day is required: one missing day, or one removed check-in, makes it false. |
+| `RPC-session_attendance_complete.any_day` | With `require_all_days = false`, an active check-in on ANY day makes it true. |
+| `RPC-session_attendance_complete.one_day_equals_has_checked_in` | On a one-day session the predicate agrees with `has_checked_in()` for that member, in both directions and under both settings. |
+| `RPC-session_attendance_complete.no_days` | A session with no days is false under both settings — never vacuously true. |
+| `POL-session_attendance.reader` | A member reads their own per-day rows; staff and the session's presenter read any member's; another ordinary member sees every day with `attended` false and learns nothing. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

@@ -1,5 +1,6 @@
 -- wave 9 (DEC-150 contract 6) — the attendance predicate, and the per-day
 -- reader behind it.
+-- Promoted by the lead from supabase/proposed/scoring/0002_attendance_predicate.sql.
 --
 -- ★ `session_attendance_complete()` is the ONLY definition of «attended the
 -- session» for points and certificates. `has_checked_in()` — any day,
