@@ -1275,6 +1275,114 @@ properties, the 39-row matrix and the 25 email keys are untouched by this wave. 
 block template renders the pinned bytes** — see `Q2`, which is the one place that promise is in
 tension with a settled document, and the only question in this plan I cannot answer alone.
 
+## X0.1 ★ SYNC 1 — the plan is approved, with two paper defects corrected. This section wins
+
+The lead read all 915 lines and approved with two corrections and nine rulings. **Where anything
+below in this plan disagrees with this section, this section is what I build.** The sections it
+supersedes are marked at their head.
+
+**D1 — storage: no `email_designs` table.** My shared-design model had three defects, each fatal on
+its own. (i) **Bindings**: a design bound to `reminder_1d` (which offers `venue`) and to
+`rsvp_promoted` (which does not) cannot be policed by a trigger on `notification_templates` alone —
+editing the **design** later fires nothing there, and `REQ-NTF-012` says *every writer*. (ii) **A
+stale `body`**: the generated text on each bound row goes stale the moment the shared design is
+edited — two sources for one text, which is the drift `REQ-NTF-013` exists to prevent. (iii)
+**Copy**: a family is a **shape**, and the words differ per key — `reminder_7d`, `_1d` and `_2h` say
+different things — so one shared row cannot carry them.
+**The ruling.** `notification_templates` gains two nullable columns and no table is created:
+`blocks jsonb` (**null = a string template**, today's row, byte for byte) and
+`source_family public.email_design_family` — a **Postgres enum**, because the naming rule forbids
+`text` + check — carrying provenance. Both go into the **column-level update grant** beside
+`subject`, `body` and `required_fields`. One row per `(org_id, key, channel, locale)` as today, the
+four existing policies, and **one trigger — mine** — validating `subject`, `body` **and** `blocks`
+for every writer. The **subject stays `notification_templates.subject`**, so `subject` comes out of
+`EmailDesign`. The platform library is constants (`Q3` upheld), **per key**: a default block document
+is its family's shape plus that key's copy, and «duplicate» writes that document into the key's row.
+`Q1` upheld — jsonb — and the lead records the narrowing of `02`, `DEC-081` and `16` §11.6.
+`notification_send_context()` gains `blocks` in its `template` object, **same signature**, through
+`create or replace`. §X9's convert-and-clear works unchanged, on one row.
+**Supersedes §X3.3 entirely**, and the `EmailDesign.subject` field in §X3.1.
+
+**D2 — the preview: a form posting into a named iframe.** §X7.1 said POST with a body and §X7.2
+framed it with `src=`, which is a GET — and unsaved blocks do not fit a query string. The pattern is
+`<form method="post" target="mail-preview">` posting into the **named** sandboxed iframe; the
+response carries its own headers because it is a real navigation. **Never `blob:` and never
+`srcdoc`** — both inherit the parent's CSP, which is my own argument in §X7.2. The handler adds
+**`sandbox`** to its own CSP header as well, so the document is sandboxed even if someone opens it
+top-level. My `proxy.ts` finding is accepted: no change to that file.
+`/api/admin/emails/preview` goes into `04` §4 with `DEC-161`, and **I do not create the route until
+the lead says it is there.** **Supersedes §X7.1's transport and §X7.2's `src=`**; the rest of §X7
+stands.
+
+**R3 — `Q2` ruled: adoption is EXPLICIT, for every org, new or old.** No org-creation hook and no SQL
+copy of the designs — a seed would be a second copy of the constants plus a drift test, for nothing
+this wave. **A key with no row, or a row whose `blocks` is null, renders the pinned string bytes.**
+`DEC-081` already schedules the flip: the string path leaves in **M13**, and that is when
+`REQ-NTF-014`'s «no key falls back to unstyled text» becomes true for an untouched org. The lead
+amends the requirement's acceptance to say so. **Supersedes my `Q2` recommendation**, which proposed
+seeding at org creation.
+
+**R4 — contract 3, corrected against `renderEmail()`'s real assembly.** I had the value of `body`
+right and its **form** wrong. The greeting is **part of `body`** in every default template, and the
+string path appends «—\n{org} · SIGNATURE» **itself** (`render.ts:330`). So the `body` written into a
+block row is the blocks' text **in template form — `{{bindings}} intact, never rendered`** (a
+rendered text would send one member's name to everyone) and **without the composed footer's
+signature**, or `main`'s worker signs twice. A line whose only content is a binding the old worker
+cannot supply renders empty and `toParagraphs()` drops it — exactly what `{{url}}` does today, which
+the pinned files now show as bytes. **To pin: one unit case that feeds a block row's
+`{subject, body}` to the STRING path and asserts a sane mail** (lands with N2).
+**Supersedes §X6 step 3.**
+
+**R5 — `Q7` granted: `{{url}}` is named difference 1.** The broken bytes are pinned first (done,
+`38a6f46`); the fix is a reviewed diff over them. `RenderInput.appUrl?`, trailing. The worker reads
+**`APP_URL`** — an owner's step on Railway, which the lead puts in the order. ★ **When it is unset
+the renderer behaves exactly as today** and produces the pinned bytes: never a relative link, never
+`localhost`. `{{tasks}}` stays empty and carried — **but `tasks` is declared as OFFERED** for the
+three reminder keys that interpolate it (`7d`, `1d`, `generic`; `2h` does not), or X5's rule 4
+refuses the platform's own default text.
+
+**R6 — N8: the signature is verified IN THE DATABASE.** My §X12 relied on the route checking the
+signature before calling the function — and a function `anon` may execute cannot rely on a caller it
+does not control: anyone holding the publishable key calls `rpc/record_delivery_event` directly and
+never meets the route's check. So the route forwards `svix-id`, `svix-timestamp`, `svix-signature`
+and the **raw body**; the function recomputes the HMAC with pgcrypto's `hmac()`, enforces a
+**5-minute** tolerance, and only then calls the inner function; `void` either way.
+★ **Confirmed against the local database rather than assumed**: `pgcrypto` is installed in the
+`extensions` schema and `extensions.hmac('abc','key','sha256')` returns a digest; **`supabase_vault`
+is installed too**, in schema `vault`. Every definer function here carries `set search_path = ''`, so
+the call is written **`extensions.hmac(...)`** — unqualified it resolves to nothing and the webhook
+would fail closed on every event, which is the quiet way this design dies.
+**The secret lives in the database** — Vault or a no-grant table —
+set by the owner with one statement, **not on Vercel**, which is also truer to invariant 7. If that
+is heavier than the wave has room for, **N8 is carried with this design rather than shipped with the
+weaker one**. `Q4` granted on that basis. **Supersedes §X12's verification step and its owner's
+step.**
+
+**R7 —** `Q5` granted (the lead adds «أُرسلت رسالة اختبار» / "Test email sent" to `admin.json`);
+`Q6` closed; `Q8` granted — the eight names stay as the owner wrote them.
+
+**R8 — the logo (contract 9) is decided at sync 2**, with `designer`'s contract-8 answer:
+`REQ-NTF-014` says «changing the org logo restyles every message», so a logo must reach a mail. Two
+candidates: a proxied public URL of `/api/s/[id]/og`'s shape, or a **CID inline attachment**, which
+needs no public surface at all and which I had not considered. N1–N3 do not wait on it, and every
+design renders correctly with no image.
+
+**R9 — `send_test_email(p_key text, p_locale text default 'ar')`**, under D1: it sends **the saved
+row**, or the platform default when there is none. «Save, then test.» **No design argument**, and
+still **no address argument**. **Supersedes §X8.1's signature.**
+
+**R10 — `dist` staleness, a trap the pin creates.** After L3 the tests import
+`@kareem/mail-runtime` **by name**, which resolves to `dist` — so a stale `dist` makes the pin pass
+**falsely**. Whenever the package's `src/` changes I run `npm run build -w @kareem/mail-runtime`
+before `npm test` (a **workspace** build is mine; the **root** build is the lead's). The lead adds a
+guard at L3.
+
+**R11 — a standing trap `event` found**, recorded because of why it does not bite me:
+`tests/rls/isolation.test.ts`'s last assertion fails for any **new table** a plain member may select
+but sees zero rows of. Under D1 I add no table.
+
+§X13's ledger lines are accepted as written, as are the three import-line edits after L3.
+
 ## X1. N1 — pinning today's output, before anything else changes
 
 ### X1.1 The files
@@ -1545,6 +1653,13 @@ a design present → `compileDesign`; absent → today's `toParagraphs` + `toHtm
 
 ### X3.3 Storage — the columns I need from the lead
 
+> ★★ **SUPERSEDED BY D1 (§X0.1).** A design shared across keys cannot be policed by a trigger on
+> `notification_templates`, leaves a stale generated `body` on every bound row, and cannot carry copy
+> that differs per key. **There is no `email_designs` table.** `notification_templates` gains
+> `blocks jsonb` and `source_family public.email_design_family`, both nullable, both in the
+> column-level update grant; one row per `(org_id, key, channel, locale)` as today. The section below
+> is kept as the record of what was proposed and why it was wrong.
+
 ★ I write no `alter table` or `create table`. Here is every column, with the reason it exists.
 
 **New table `public.email_designs`** — the org's designs. `org_id not null`, so **no eighth exception
@@ -1712,6 +1827,12 @@ what makes `REQ-NTF-013` testable from SQL.
 
 ## X7. The preview (`REQ-NTF-010`)
 
+> ★★ **§X7.1's transport and §X7.2's `src=` are SUPERSEDED BY D2 (§X0.1)**: a POST with a body cannot
+> be framed by `src=`, and unsaved blocks do not fit a query string. It is a
+> `<form method="post" target="mail-preview">` posting into the **named** sandboxed iframe, and the
+> handler's own CSP carries `sandbox` as well. Everything else in §X7 — the reasoning against
+> `srcdoc`, the `proxy.ts` finding, the four modes, the checks panel, the blocks pane — stands.
+
 ### X7.1 Where the renderer runs — the server, through a Route Handler
 
 `POST /api/admin/emails/preview` → `text/html` (phone, desktop, dark) or `text/plain` (the text mode).
@@ -1814,11 +1935,14 @@ are written out at `Q6`; three properties of that arrangement matter here:
 
 ### X8.1 The RPC — no recipient parameter
 
+> ★ **The signature is R9's** (§X0.1), not the one first written here: under D1 there is no design id
+> to pass, and the test sends **the saved row** or the platform default — «save, then test».
+
 ```sql
-create function public.send_test_email(p_key text, p_design uuid default null)
+create function public.send_test_email(p_key text, p_locale text default 'ar')
   returns jsonb language plpgsql security definer set search_path = '' as $$ … $$;
-revoke execute on function public.send_test_email(text, uuid) from public, anon;
-grant  execute on function public.send_test_email(text, uuid) to authenticated;
+revoke execute on function public.send_test_email(text, text) from public, anon;
+grant  execute on function public.send_test_email(text, text) to authenticated;
 ```
 
 **There is no address argument.** Inside: `m := public.assert_active_member()`; refuse unless
@@ -1943,6 +2067,13 @@ two tabs stay two. SCR-058's `09` entry already cites `REQ-NTF-009` … `014`, s
 
 `update_email_delivery_by_provider(text, delivery_status, text)` is `service_role`-only (`0030`) and
 `service_role` is never on Vercel (invariant 7). `/api/webhooks/resend` has never existed.
+
+> ★★ **SUPERSEDED IN ITS VERIFICATION STEP BY R6 (§X0.1).** A function `anon` may execute cannot rely
+> on a caller it does not control: anyone holding the publishable key calls `rpc/record_delivery_event`
+> directly and never meets the route's check. **The HMAC is recomputed inside the function**, with a
+> 5-minute tolerance, and the secret lives in the **database**, not on Vercel. The wrapper's shape —
+> thin, `returns void`, calling the untouched inner function — is unchanged, and so is the owner's
+> Resend endpoint step; what changes is where the secret lives and who checks it.
 
 **What I recommend.** The route verifies Resend's signature with `RESEND_WEBHOOK_SECRET`, then calls
 a **new, thin definer wrapper granted to `anon` and nothing else**:
@@ -2095,6 +2226,25 @@ Railway since Launch.
 4. **No `src/proxy.ts` change is needed** for the preview (X7.2) — `/api/` is outside the matcher.
    This was the change I expected to have to ask for.
 5. `08` §3.1's numerals line and §5.1's «Fly» are both stale (X14).
+
+★ **Two more, found by N1 — by rendering the messages rather than by reading them.**
+
+6. **Seven keys have a template, an email channel, and no sender at all.**
+   `MSG-materials_added`, `MSG-badge_earned`, `MSG-level_reached`, `MSG-certificate_revoked`,
+   `MSG-role_changed`, `MSG-account_deactivated`, `MSG-export_ready` — nothing in any migration, any
+   worker task or `src/` calls `public.notify()` with them. `mail-render.test.ts` cannot see this: it
+   diffs the template table against the matrix, and the two agree; what is missing is a **caller**,
+   which neither describes. For those seven the pinned payload is the template's own bindings, filled
+   realistically and marked in the fixture, so the file moves as a reviewed diff the day a sender is
+   written. Not mine to fix — recognition is `scoring`'s, the account messages the lead's, materials
+   `content`'s — and reported to the lead as a wave-11 row.
+7. **The sign-off may print the org's name twice, on the live org.** `render.ts:330` builds
+   `…\n—\n${input.org.name} · ${SIGNATURE}` and `SIGNATURE` is «كريم معرفة · شارك المعرفة.. واصنع
+   الأثر». For «مؤسسة البريد» that reads org · platform · tagline, which is right; for an org called
+   **«كريم معرفة»** it reads «كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر», and every pinned
+   file shows it, because the fixture uses the existing suite's org name. One production read settles
+   whether it is live — `select name from public.orgs;` — and it is in L7's list either way. If it is,
+   the fix is one line in the designed footer (N6) and a named difference.
 
 ## X16. Order of work, once the plan is approved
 
