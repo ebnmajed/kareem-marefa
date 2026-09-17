@@ -2990,3 +2990,52 @@ honest shape anyway.
 `.next` predates every wave-9 commit and `npm run build` is the lead's, so the seven captures do not
 exist yet and that is the one part of this track's definition of done still open.
 
+
+#### W9.11a What the captures found — three defects no assertion had
+
+The build-and-open loop earned its place: every one of these was green in the suites and wrong on a
+390 px screen.
+
+1. ★ **THREE SURFACES, ONE INSTANT, TWO ANSWERS** (`201d6aa`, SQL promoted as `0122`). Between two
+   days of a workshop the PUBLIC CARD said «جارية الآن» while the event page and the browse card
+   said «التسجيل مفتوح» for the same session at the same moment. Contract 9's `sessionPhase()` reads
+   the night between days as `open` only when it is **given** the days, and three of this track's
+   call sites passed the session's stored window alone — a start that has passed, an end that has
+   not. Fixed at all three: `getSessionForEvent()` computes **one** phase per request through the
+   `cache()`d read the page already makes; `listSessionsPresentedBy()` embeds its days (a list may
+   embed — `DEC-151` ruling 3); and `session_public_card()` returns one `{ starts_at, ends_at }` per
+   day.
+   - ★ **`relation` could not have differed**, and the reasoning is in the code so it is not
+     rediscovered: `viewerRelation()` branches on `phase === "ended"` alone, and the day set never
+     moves that boundary because `sessions.ends_at` IS the last day's end (contract 1). The day set
+     only splits `live` into `live` and `open`. The defect was latent for the relation and real for
+     every other reader.
+   - ★ **Why not a boolean.** «Is a day running now» would have disclosed nothing at all and put
+     `betweenDays()` in SQL beside the TypeScript one. **Two implementations of one rule is exactly
+     what produced this defect**, so the rule stays in `session-status.ts` and the SQL feeds it.
+     `DEC-157` records it. `session_days` gains no `anon` grant; a day object carries two instants
+     and no key.
+   - **Open, not blocking:** `DayWindow` requires `id` and `position`, which the public card has by
+     design (`0122` returns none), so the DTO assigns `public-card-day-N`. A request is with the lead
+     to make both optional — `chronological()` uses `id` only to break a tie between two days
+     starting at the same instant, which `0100`'s exclusion constraint makes impossible.
+2. **A wrapped «الموعد» opened with its separator** — «· حتى السبت، 19 سبتمبر …». The rule is now
+   that **the separator belongs to the line it ENDS**: glued to what precedes it with U+00A0 and
+   followed by an ordinary space, so the only break opportunity is after it. Fixed on the event page
+   **and** on the public card, which had the same latent nit and keeps wave 7's rule that a time
+   never breaks from its «م».
+3. **The hero's duration chip said the workshop lasted two hours** (`f960c17`). `duration_minutes`
+   is day one's length and must stay so — the clock jobs and the check-in window key off it — while
+   the chip answers «how much of my week is this». It reads the day count above one day now.
+
+**And two spec defects of my own**, both found by the first real run and neither in the product:
+a fixture that tried to `update` a session from `draft` to `published` (`0024` accepts only `02`
+§6.2's edges for every writer, the owner included — a row is BORN with its state), and a `pick()`
+helper that gave one regular expression to both the trigger and the dialog when `ui/date-time` names
+them differently («{label}: {value}» and «{label}»), which cost 90 s of waiting for a dialog that
+could never be found. ★ **No defect in `ui/switch`**: its `<label>` wraps the input, the track and
+the text at `min-h-11`, so a thumb meets a 44 px row; only `click()` on the role locator meets the
+`sr-only` pixel, which Playwright then scrolls minimally under the sticky bar. `tapSwitch()` clicks
+the label, scrolls to centre and **asserts what `elementFromPoint` returns at the row's centre** —
+never `force: true`, which would pass whether or not the bar covered the row.
+
