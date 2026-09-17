@@ -2936,3 +2936,47 @@ the section rendered, so nothing else needed the fix.
 `notify` flake from §24/§25 is gone — not mine, not touched).
 
 Ready for sync — the lead re-runs.
+
+## §27 — a group's own form closed by default (`850f8ac`)
+
+The lead's real-build run found `presenter-grouped` (and `scope-chip-open`) at 9,059 CSS px: every
+group in the grouped materials/tasks view mounted its own `UploadForm`/`CreateTaskForm` OPEN, so a
+three-day workshop carried four forms on screen at once (session + 3 days) — a ten-day workshop
+(allowed) would be worse — while the header's «أضف مادة»/«إضافة» was only an anchor to a form
+already rendered below it, making the header control redundant.
+
+`GroupDisclosure` (new, one twin per directory per the standing per-directory-component
+convention — `materials/group-disclosure.tsx`, `tasks/group-disclosure.tsx`): a native
+`<details>`/`<summary>`, no new client state machine, works before hydration. The group's heading
+row keeps its `<h3>`; the header's add control becomes the `<summary>`, closed by default, and its
+own form sits inside as the disclosure's revealed content. Opening one group never closes another —
+each is an independent `<details>`. A `toggle` listener (real browsers fire this per spec; jsdom
+toggles `.open` on click but does not reliably dispatch the event itself, a documented test-env gap
+only, not a component bug) moves focus into the revealed form's first field, so the control stays
+usable from the keyboard and for a screen reader. The flat branch (`days.length <= 1`) never imports
+`GroupDisclosure` at all, so it is untouched byte for byte — `list.test.tsx`/`panel.test.tsx` stay
+green, unmodified.
+
+One real ambiguity surfaced while testing, not before: `CreateTaskForm`'s own submit button and its
+group's `GroupDisclosure` trigger both read `tasks.create.submit` ("إضافة") — the lead's own wording
+for the header control ("«إضافة»/«أضف مادة» in the header") keeps that as the intended visible
+label, so once a group is open a sighted user does see the word twice (header control, then the
+form's own submit button below it) — the same ambiguity the *pre-existing* empty-state action button
+already carried (it reused the identical string). Left the visible wording alone rather than
+second-guessing a label the lead specified; `summaryAriaLabel` already carries a distinct string
+(«إضافة مهمة — {scope}») for assistive tech, which is the channel that actually disambiguates.
+Materials has no such collision — the upload form's own submit button reads «رفع», distinct from the
+group trigger's «أضف مادة» — so only the tasks test needed a query fix: `getAllByText("إضافة")`
+alone matches both the 3 triggers and (once open) up to 3 forms' own submit buttons, since jsdom
+doesn't hide a closed `<details>`'s children the way a browser does; scoped to `<summary>` elements,
+which is exactly the header controls the suite is about, not a change to what the component renders.
+
+Three new tests per directory (materials', tasks'): none open on load; the header control opens
+exactly its own group's form and no other; opening moves focus to the form's first field. `axe`
+still clean on the materials suite's existing accessibility test with the closed disclosure present.
+
+`npx tsc --noEmit`/`npm run lint` clean, `npm test` 208/208 files 1902/1902 tests, `npm run test:rls`
+99/99 files 1039/1039 tests (single-runner checked first, none active).
+
+Ready for sync — the lead re-captures `presenter-grouped` and `scope-chip-open`, which should now
+drop to a few thousand px.
