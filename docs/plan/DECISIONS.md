@@ -3856,3 +3856,28 @@ New with contract 10 (`DEC-160`): the lead's DDL travels inside a track's propos
 - **A responsive twin is the default assumption in a spec under `/app`.** `ui/data-table` renders each row twice (table and stacked card) and the studio renders its canvas twice (review and editor); a `.first()` on either is a coin toss that passed on desktop for a reason the locator never claimed. `filter({ visible: true })` is the default, not the remedy. Recorded because it cost three runs on a production build to learn.
 
 - **Documents changed:** `STATUS.md` (sync 2), `03-permissions-rls.md` §8.2 (`0127`–`0134`), `vitest.config.ts` (the `globalSetup`), `tests/rls/global-lock.ts` (new)
+
+## DEC-163 — A moderator's scope names the survey; every CSV cell a person typed is neutralised against formula execution
+
+- **Date:** 2026-09-17 · **Decided by:** lead (wave 10), building row L4 as `console`'s custodian
+- **Amends:** `REQ-ADM-020` (the moderator's scope gains one clause and one acceptance line). Supersedes nothing.
+
+### 1. `REQ-ADM-020` said «and nothing else», and three other places already said otherwise
+
+`REQ-SUR-001` says a survey is «created by staff»; `09`'s SCR-065 names both staff roles since `DEC-160`; `assert_survey_staff()` (`0132`) admits both; `DEC-161` made the results screen admin-and-moderator. `REQ-ADM-020` still listed «moderation queues, event-day operations and content removal — and nothing else», so the requirement that defines the moderator's scope was the one document that did not know. It is amended to name the survey — templates, attaching, the **withheld** results — rather than left to be read around.
+
+The rail follows the requirement: «الاستبانات» is a leaf visible to both roles, so a moderator's rail is four top-level entries, not three. `tests/e2e/console.spec.ts`'s moderator case had a title that counted three; its title and one added assertion move with the rail, **by a ledger line** — no assertion it made before is weakened, and every «this is absent for a moderator» line stands.
+
+**What a moderator still cannot do** is export: `exportSurveyCsv()` refuses a non-admin and `write_admin_export_audit()` asserts a fresh admin regardless (`REQ-ADM-017`). The withheld screen is the moderator's whole view, which is the narrower of the two readings and the one `DEC-161` took.
+
+**`"survey"` is not added to `EXPORT_TYPES`.** `event`'s plan asked for it; that array drives SCR-061's table of **org-wide** exports, each a link to `/api/admin/exports/[type]`, and a survey's export is per session — a row there would link to nothing. It is a per-session route beside attendance's (`/api/admin/exports/survey/[sessionId]`), reached from SCR-064, audited with the session as its subject.
+
+### 2. A spreadsheet executes a cell that opens with `=`, `+`, `-` or `@`
+
+`buildCsv()` quoted per RFC 4180 and did nothing else. The survey's export is the first to carry **free text a member typed** into a file an admin opens in Excel — `=HYPERLINK(…)` or a DDE payload in an answer is CSV injection against the org's admin, from any attendee. Looking at it once showed the class is older than the survey: a display name, a proposal's title, a venue, a revocation reason all reach the existing seven exports.
+
+**Ruling:** the guard is in `csvField()`, the one builder, not in the survey's rows: a value opening with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe (OWASP's remedy — the cell reads as text and shows the value). **A plain signed number is left alone** — «-5» in a points column must still sum, and a number cannot carry a formula. `tests/unit/admin-exports-csv.test.ts` is untouched and green: a value that opens with none of those characters leaves the builder byte for byte as before. New cases in `tests/unit/admin-exports-csv-formula.test.ts`.
+
+This changes the bytes of an existing export only for a value that would have been executed. It is a **named difference** of wave 10 on those terms, and it ships to `main`'s seven exports with this wave rather than waiting for the survey to make it urgent.
+
+- **Documents changed:** `01-prd.md` (`REQ-ADM-020`), `STATUS.md` (row L4, the ledger)

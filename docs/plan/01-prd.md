@@ -2174,12 +2174,15 @@ See `REQ-ADM-002`.
 
 #### REQ-ADM-020 — The moderator scope is enforced, not merely hidden
 **Serves:** A1
-A **مُنظِّم** reaches moderation queues, event-day operations and content removal — and nothing
-else.
+A **مُنظِّم** reaches moderation queues, event-day operations, content removal and a session's
+**استبانة** — its templates, attaching one, and its withheld results (`REQ-SUR-001`, `DEC-163`) — and
+nothing else.
 **Acceptance:**
 - A moderator calling a settings, scoring, member-management or scheduling endpoint directly is
   rejected by policy.
 - A moderator cannot see per-rater ratings (`REQ-RAT-005`).
+- A moderator cannot export a survey's results: an export is an admin capability (`REQ-ADM-017`), and
+  the route answers a moderator exactly as it answers a stranger (`DEC-163`).
 
 #### REQ-ADM-021 — Staff may download session photographs, individually and as an album, audited
 **Serves:** owner 2026-09-15 (ask 7) · DEC-076
