@@ -7,6 +7,9 @@
 // new file (rule 4) — storage-content.test.ts is untouched. "A row readable whose object is not
 // is wave 2's 0054 bug again" (this track's own rule), so this always applies both proposed files
 // together and proves every dependant, not just the two originally planned.
+//
+// Days are placed the way `tests/rls/session-days.test.ts`'s own `addDay()` does — integer hour
+// offsets from `now()`, chosen with wide, obvious gaps between them.
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -18,16 +21,27 @@ async function apply(tx: Tx) {
   await applyProposed(tx, "content/0002_materials_phase_by_scope.sql");
 }
 
-// A session with its single, auto-created day (0100, trigger A) at `T0-3d .. T0-3d+2h` — well
-// clear of any second day a test inserts near "now", so the exclusion constraint never collides.
+/** A day written the way a day-aware RPC writes one: as the owner, offsets in hours from now. */
+async function addDay(tx: Tx, orgId: string, sessionId: string, venueId: string, fromH: number, toH: number) {
+  const [row] = await tx.q<{ id: string }>(
+    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
+     values ($1, $2, now() + ($3 || ' hours')::interval, now() + ($4 || ' hours')::interval, $5) returning id`,
+    [orgId, sessionId, String(fromH), String(toH), venueId],
+  );
+  return row.id as string;
+}
+
+// A session with its single, auto-created day (0100, trigger A) at `-72 .. -70` — well clear of
+// any second day a test adds (`-1 .. 2` or `48 .. 50` below), so the exclusion constraint never
+// collides.
 async function seedSession(tx: Tx, orgId: string, categoryId: string, venueId: string, presenterId: string, state: string = "published") {
   const [session] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                    venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at, completed_at)
      values ($1, 'ورشة ثلاثية الأيام', 'ملخص', $2, 'introductory',
-             now() - interval '3 days', 120, now() - interval '3 days' + interval '2 hours',
-             $3, 30, now() - interval '4 days', now() - interval '4 days', $4::public.session_state,
-             now() - interval '5 days', case when $4 = 'completed' then now() - interval '1 hour' end)
+             now() - interval '72 hours', 120, now() - interval '70 hours',
+             $3, 30, now() - interval '96 hours', now() - interval '96 hours', $4::public.session_state,
+             now() - interval '120 hours', case when $4 = 'completed' then now() - interval '1 hour' end)
      returning id`,
     [orgId, categoryId, venueId, state],
   );
@@ -65,15 +79,12 @@ describe("POL-storage.materials.day_scoped_after_release", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      // A day still running — none of the four should be visible yet.
+      // A day still running (-1 .. 2, well clear of day1's -72..-70) — none of the four should be
+      // visible yet.
       const sessionId = await seedSession(tx, f.a.id, f.a.categoryId, f.a.venueId, f.a.members[0].memberId);
-      const [runningDay] = await tx.q<{ id: string }>(
-        `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-         values ($1, $2, now() - interval '30 minutes', now() + interval '90 minutes', $3) returning id`,
-        [f.a.id, sessionId, f.a.venueId],
-      );
+      const runningDayId = await addDay(tx, f.a.id, sessionId, f.a.venueId, -1, 2);
       await apply(tx);
-      const { versionId, pageId, objectName, pageObjectName } = await dayScopedMaterialObject(tx, f.a.id, sessionId, runningDay.id, f.a.members[0].memberId);
+      const { versionId, pageId, objectName, pageObjectName } = await dayScopedMaterialObject(tx, f.a.id, sessionId, runningDayId, f.a.members[0].memberId);
 
       await tx.as(f.a.members[1].claims);
       expect(await tx.q(`select id from public.material_versions where id = $1`, [versionId])).toEqual([]);
@@ -83,7 +94,7 @@ describe("POL-storage.materials.day_scoped_after_release", () => {
 
       // The day ends.
       await tx.asOwner();
-      await tx.q(`update public.session_days set ends_at = now() - interval '1 minute' where id = $1`, [runningDay.id]);
+      await tx.q(`update public.session_days set ends_at = now() - interval '1 minute' where id = $1`, [runningDayId]);
 
       await tx.as(f.a.members[1].claims);
       expect((await tx.q(`select id from public.material_versions where id = $1`, [versionId])).length).toBe(1);
@@ -98,14 +109,10 @@ describe("POL-storage.materials.day_scoped_after_release", () => {
       const f = await seed(tx);
       await tx.asOwner();
       const sessionId = await seedSession(tx, f.a.id, f.a.categoryId, f.a.venueId, f.a.members[0].memberId, "completed");
-      // A second day in the FUTURE — the session completed early, before this day.
-      const [futureDay] = await tx.q<{ id: string }>(
-        `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-         values ($1, $2, now() + interval '1 day', now() + interval '1 day' + interval '2 hours', $3) returning id`,
-        [f.a.id, sessionId, f.a.venueId],
-      );
+      // A second day in the FUTURE (48 .. 50) — the session completed early, before this day.
+      const futureDayId = await addDay(tx, f.a.id, sessionId, f.a.venueId, 48, 50);
       await apply(tx);
-      const { versionId, pageId, objectName, pageObjectName } = await dayScopedMaterialObject(tx, f.a.id, sessionId, futureDay.id, f.a.members[0].memberId);
+      const { versionId, pageId, objectName, pageObjectName } = await dayScopedMaterialObject(tx, f.a.id, sessionId, futureDayId, f.a.members[0].memberId);
 
       await tx.as(f.a.members[1].claims);
       expect((await tx.q(`select id from public.material_versions where id = $1`, [versionId])).length).toBe(1);

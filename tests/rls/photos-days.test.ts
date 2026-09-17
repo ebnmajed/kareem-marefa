@@ -3,6 +3,9 @@
 // untouched (it calls record_photo_upload with its existing nine positional arguments, which
 // still resolve through the new function's tenth, defaulted parameter). Applied with
 // applyProposed() inside each test's rolled-back transaction (DEC-040).
+//
+// Days are placed the way `tests/rls/session-days.test.ts`'s own `addDay()` does — integer hour
+// offsets from `now()`.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
@@ -16,28 +19,33 @@ async function apply(tx: Tx) {
   await applyProposed(tx, "content/0001_day_scope_writes.sql");
 }
 
+/** A day written the way a day-aware RPC writes one: as the owner, offsets in hours from now. */
+async function addDay(tx: Tx, orgId: string, sessionId: string, venueId: string, fromH: number, toH: number) {
+  const [row] = await tx.q<{ id: string; starts_at: string; ends_at: string }>(
+    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
+     values ($1, $2, now() + ($3 || ' hours')::interval, now() + ($4 || ' hours')::interval, $5) returning id, starts_at, ends_at`,
+    [orgId, sessionId, String(fromH), String(toH), venueId],
+  );
+  return row;
+}
+
+// Day 1 (the session's own window, auto-created by trigger A, 0100) is `-72 .. -70`. Day 2 is
+// `-68 .. -66` — a real two-hour GAP between the two windows (day1 ends at -70, day2 starts at
+// -68), so a photo taken IN that gap has a genuine "nearer edge" question.
 async function seedThreeDaySession(tx: Tx, orgId: string, categoryId: string, venueId: string, presenterId: string) {
   const [session] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                    venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
      values ($1, 'ورشة ثلاثية الأيام', 'ملخص', $2, 'introductory',
-             now() - interval '3 days', 120, now() - interval '3 days' + interval '2 hours',
-             $3, 30, now() - interval '4 days', now() - interval '4 days', 'published', now() - interval '5 days')
+             now() - interval '72 hours', 120, now() - interval '70 hours',
+             $3, 30, now() - interval '96 hours', now() - interval '96 hours', 'published', now() - interval '120 hours')
      returning id`,
     [orgId, categoryId, venueId],
   );
   const sessionId = session.id as string;
   await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterId]);
   const [day1] = await tx.q<{ id: string; starts_at: string; ends_at: string }>(`select id, starts_at, ends_at from public.session_days where session_id = $1`, [sessionId]);
-  // Day 2 begins two hours after day 1 ends — a real gap between the two windows, so a photo
-  // taken IN that gap has a genuine "nearer edge" question.
-  const [day2] = await tx.q<{ id: string; starts_at: string; ends_at: string }>(
-    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-     values ($1, $2, (select ends_at from public.session_days where session_id = $2) + interval '2 hours',
-                      (select ends_at from public.session_days where session_id = $2) + interval '4 hours', $3)
-     returning id, starts_at, ends_at`,
-    [orgId, sessionId, venueId],
-  );
+  const day2 = await addDay(tx, orgId, sessionId, venueId, -68, -66);
   return { sessionId, day1, day2 };
 }
 

@@ -109,8 +109,11 @@ export interface PhotoSummary {
   /** Present only when the viewer is staff (`photos_read`, 03 §6) — a plain member never sees a hidden photo at all. */
   hiddenAt: string | null;
   /** REQ-SES-018/DEC-121: never chosen by the uploader — `record_photo_upload()` resolves it from
-   *  the upload's own moment, and leaves it null while the session has one day. */
-  sessionDayId: string | null;
+   *  the upload's own moment, and leaves it null while the session has one day. Absent or null
+   *  both read as the whole session (`item.sessionDayId ?? null`); OPTIONAL, not required, so an
+   *  existing fixture literal that predates this field still type-checks without editing a file
+   *  rule 4 asks to stay untouched. */
+  sessionDayId?: string | null;
 }
 
 export interface PhotosPageData {

@@ -230,9 +230,12 @@ export interface MaterialSummary {
   externalUrl: string | null;
   currentVersionId: string | null;
   createdAt: string;
-  /** REQ-SES-018/DEC-121: null is the whole session. A proposal's own material (no session) is
-   *  always null — `materials_day_needs_session` (0100) refuses it any other value. */
-  sessionDayId: string | null;
+  /** REQ-SES-018/DEC-121: absent or null is the whole session — both read the same way
+   *  (`item.sessionDayId ?? null`); OPTIONAL, not required, so an existing fixture literal that
+   *  predates this field (every one of them, on `main`) still type-checks without editing files
+   *  rule 4 asks to stay untouched. A proposal's own material (no session) is always null —
+   *  `materials_day_needs_session` (0100) refuses it any other value. */
+  sessionDayId?: string | null;
 }
 
 function toMaterialSummary(row: Record<string, unknown>): MaterialSummary {

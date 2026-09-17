@@ -68,7 +68,6 @@ describe("ProposalMaterials slot", () => {
           externalUrl: null,
           currentVersionId: null,
           createdAt: "2026-09-14T00:00:00Z",
-          sessionDayId: null,
         },
       ],
       canManage: true,

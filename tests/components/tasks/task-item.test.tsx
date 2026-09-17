@@ -27,7 +27,6 @@ const checklistTask: TaskSummary = {
   sortOrder: 0,
   completed: false,
   myFormResponse: null,
-  sessionDayId: null,
 };
 
 function renderTask(task: TaskSummary) {

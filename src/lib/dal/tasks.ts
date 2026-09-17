@@ -36,8 +36,10 @@ export interface TaskSummary {
   completed: boolean;
   /** Present only for `kind = 'form'` and only this viewer's own prior answer, if any. */
   myFormResponse: Record<string, string> | null;
-  /** REQ-SES-018/DEC-121: null is the whole session. */
-  sessionDayId: string | null;
+  /** REQ-SES-018/DEC-121: absent or null is the whole session — both read the same way
+   *  (`item.sessionDayId ?? null`); OPTIONAL, not required, so an existing fixture literal that
+   *  predates this field still type-checks without editing a file rule 4 asks to stay untouched. */
+  sessionDayId?: string | null;
 }
 
 export interface TasksPageData {

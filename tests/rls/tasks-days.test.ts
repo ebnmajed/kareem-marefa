@@ -1,6 +1,9 @@
 // content, wave 9 (DEC-119, DEC-120, DEC-121, DEC-150) — T1: session_tasks' day-scoped write path
 // and rescope_task(). New behaviour, new file (rule 4) — tasks-schema.test.ts is untouched.
 // Applied with applyProposed() inside each test's rolled-back transaction (DEC-040).
+//
+// Days are placed the way `tests/rls/session-days.test.ts`'s own `addDay()` does — integer hour
+// offsets from `now()`, chosen with wide, obvious gaps between them.
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -13,25 +16,35 @@ async function apply(tx: Tx) {
   await applyProposed(tx, "content/0001_day_scope_writes.sql");
 }
 
+/** A day written the way a day-aware RPC writes one: as the owner, offsets in hours from now. */
+async function addDay(tx: Tx, orgId: string, sessionId: string, venueId: string, fromH: number, toH: number) {
+  const [row] = await tx.q<{ id: string }>(
+    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
+     values ($1, $2, now() + ($3 || ' hours')::interval, now() + ($4 || ' hours')::interval, $5) returning id`,
+    [orgId, sessionId, String(fromH), String(toH), venueId],
+  );
+  return row.id as string;
+}
+
+// Day 1 (the session's own window, auto-created by trigger A, 0100) is `-72 .. -70`. Day 2 is
+// `48 .. 50` — well clear, so a second call in the same test (two independent sessions) never
+// collides with the first's days either (the exclusion constraint is scoped per session_id, but
+// wide gaps make every window trivially non-overlapping at a glance regardless).
 async function seedThreeDaySession(tx: Tx, orgId: string, categoryId: string, venueId: string, presenterId: string) {
   const [session] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                    venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at)
      values ($1, 'ورشة ثلاثية الأيام', 'ملخص', $2, 'introductory',
-             now() - interval '3 days', 120, now() - interval '3 days' + interval '2 hours',
-             $3, 30, now() - interval '4 days', now() - interval '4 days', 'published', now() - interval '5 days')
+             now() - interval '72 hours', 120, now() - interval '70 hours',
+             $3, 30, now() - interval '96 hours', now() - interval '96 hours', 'published', now() - interval '120 hours')
      returning id`,
     [orgId, categoryId, venueId],
   );
   const sessionId = session.id as string;
   await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterId]);
   const [day1] = await tx.q<{ id: string }>(`select id from public.session_days where session_id = $1`, [sessionId]);
-  const [day2] = await tx.q<{ id: string }>(
-    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-     values ($1, $2, now() + interval '1 day', now() + interval '1 day' + interval '2 hours', $3) returning id`,
-    [orgId, sessionId, venueId],
-  );
-  return { sessionId, day1Id: day1.id as string, day2Id: day2.id as string };
+  const day2Id = await addDay(tx, orgId, sessionId, venueId, 48, 50);
+  return { sessionId, day1Id: day1.id as string, day2Id };
 }
 
 describe("session_tasks — writing an optional day", () => {

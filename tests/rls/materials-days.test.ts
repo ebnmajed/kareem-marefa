@@ -1,6 +1,11 @@
 // content, wave 9 (DEC-119, DEC-120, DEC-121, DEC-150) — T1/T3: rescope_material() and the
 // day-scoped «بعد» release. New behaviour, new file (rule 4) — materials-schema.test.ts is
 // untouched. Applied with applyProposed() inside each test's rolled-back transaction (DEC-040).
+//
+// Days are placed the way `tests/rls/session-days.test.ts`'s own `addDay()` does — integer hour
+// offsets from `now()`, chosen with wide, obvious gaps between them — rather than ad hoc interval
+// arithmetic: a session_days_no_overlap collision is easy to introduce by accident when two
+// windows are each computed independently, and easy to rule out at a glance when they are not.
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -14,19 +19,29 @@ async function apply(tx: Tx) {
   await applyProposed(tx, "content/0002_materials_phase_by_scope.sql");
 }
 
+/** A day written the way a day-aware RPC writes one: as the owner, offsets in hours from now. */
+async function addDay(tx: Tx, orgId: string, sessionId: string, venueId: string, fromH: number, toH: number) {
+  const [row] = await tx.q<{ id: string }>(
+    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
+     values ($1, $2, now() + ($3 || ' hours')::interval, now() + ($4 || ' hours')::interval, $5) returning id`,
+    [orgId, sessionId, String(fromH), String(toH), venueId],
+  );
+  return row.id as string;
+}
+
 /** A three-day session, built directly (owner) rather than through schedule_session() — this
- * suite proves the READ/rescope behaviour against a day set, not the scheduling form. Day 1 is
- * in the past and has ENDED; day 2 spans "now" (still running); day 3 is in the future. The
- * session's own window/venue are re-derived by trigger B (0100) as each day is inserted — nothing
- * here writes `sessions.starts_at/ends_at` a second time. */
+ * suite proves the READ/rescope behaviour against a day set, not the scheduling form. Day 1
+ * (the session's own window, auto-created by trigger A, 0100) is `-72 .. -70` — ended, days ago.
+ * Day 2 is `-1 .. 2` — spans "now", still running. Day 3 is `48 .. 50` — has not begun. The gaps
+ * are wide on purpose, so a later `update` moving one of them can never collide with another. */
 async function seedThreeDaySession(tx: Tx, orgId: string, categoryId: string, venueId: string, presenterId: string, state: string = "published") {
   const [session] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                    venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at, completed_at)
      values ($1, 'ورشة ثلاثية الأيام', 'ملخص', $2, 'introductory',
-             now() - interval '3 days', 120, now() - interval '3 days' + interval '2 hours',
-             $3, 30, now() - interval '4 days', now() - interval '4 days', $4::public.session_state,
-             now() - interval '5 days', case when $4 = 'completed' then now() - interval '1 hour' end)
+             now() - interval '72 hours', 120, now() - interval '70 hours',
+             $3, 30, now() - interval '96 hours', now() - interval '96 hours', $4::public.session_state,
+             now() - interval '120 hours', case when $4 = 'completed' then now() - interval '1 hour' end)
      returning id`,
     [orgId, categoryId, venueId, state],
   );
@@ -35,19 +50,9 @@ async function seedThreeDaySession(tx: Tx, orgId: string, categoryId: string, ve
 
   // Day 1 already exists (trigger A, 0100) with the session's own window — ended.
   const [day1] = await tx.q<{ id: string }>(`select id from public.session_days where session_id = $1`, [sessionId]);
-  // Day 2: running right now.
-  const [day2] = await tx.q<{ id: string }>(
-    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-     values ($1, $2, now() - interval '30 minutes', now() + interval '90 minutes', $3) returning id`,
-    [orgId, sessionId, venueId],
-  );
-  // Day 3: has not begun.
-  const [day3] = await tx.q<{ id: string }>(
-    `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
-     values ($1, $2, now() + interval '1 day', now() + interval '1 day' + interval '2 hours', $3) returning id`,
-    [orgId, sessionId, venueId],
-  );
-  return { sessionId, day1Id: day1.id as string, day2Id: day2.id as string, day3Id: day3.id as string };
+  const day2Id = await addDay(tx, orgId, sessionId, venueId, -1, 2); // running right now
+  const day3Id = await addDay(tx, orgId, sessionId, venueId, 48, 50); // has not begun
+  return { sessionId, day1Id: day1.id as string, day2Id, day3Id };
 }
 
 async function seedDayScopedMaterial(tx: Tx, orgId: string, sessionId: string, dayId: string | null, presenterId: string, phase: "before" | "after" = "after") {
@@ -143,7 +148,7 @@ describe("POL-materials.day_scoped_after_release", () => {
       const f = await seed(tx);
       await tx.asOwner();
       await apply(tx);
-      // day3 has not begun — the material must stay hidden from a plain member.
+      // day3 (48 .. 50) has not begun — the material must stay hidden from a plain member.
       const { sessionId, day3Id } = await seedThreeDaySession(tx, f.a.id, f.a.categoryId, f.a.venueId, f.a.members[0].memberId);
       const materialId = await seedDayScopedMaterial(tx, f.a.id, sessionId, day3Id, f.a.members[0].memberId, "after");
 
@@ -156,11 +161,10 @@ describe("POL-materials.day_scoped_after_release", () => {
       await tx.as(f.a.mod.claims); // staff — sees it regardless of phase
       expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
 
-      // Move day3 into the past — its window has now ended. (day2 spans "now" in this fixture,
-      // T0-30min .. T0+90min — the new window is chosen well clear of it, or the exclusion
-      // constraint session_days_no_overlap refuses the update outright.)
+      // Move day3 into the past: -6 .. -4 — clear of day1 (-72..-70) and day2 (-1..2) alike, so
+      // session_days_no_overlap never fires.
       await tx.asOwner();
-      await tx.q(`update public.session_days set starts_at = now() - interval '4 hours', ends_at = now() - interval '1 hour' where id = $1`, [day3Id]);
+      await tx.q(`update public.session_days set starts_at = now() - interval '6 hours', ends_at = now() - interval '4 hours' where id = $1`, [day3Id]);
 
       await tx.as(f.a.members[1].claims);
       expect((await tx.q(`select id from public.materials where id = $1`, [materialId])).length).toBe(1);
