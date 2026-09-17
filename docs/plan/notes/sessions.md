@@ -2920,3 +2920,73 @@ two) · `card-range` (a timeline card and the public card).
    screen's. The **form's** own day strings («جلسة متعدّدة الأيام», «أضف يومًا», the confirm) stay in
    `schedule.json`. Confirm the split before four tracks import.
 
+
+### W9.11 As built — rows S1–S4, and where the build departed from the plan
+
+| Commit | What |
+|---|---|
+| `3cdc690` | contract 3's readers: `SessionDay`, `listSessionDays()`, `day-label.ts`, `sessions.days.*` |
+| `bb33db8` | `schedule_session()` on the day set; `publish_session()`'s per-day gap (promoted as `0106`) |
+| `97da9b2` | `REQ-SES-016` — the affordance, the day list, the confirm, `require_all_days` |
+| `4bc592c` | contract 11 — `0002`, the snapshot in `notify`'s words and the wired call (promoted as `0112`) |
+| `708f5d9` | the event page, the cards and the public card; `0003` for the public card's count |
+| `cfe0470` | the two e2e specs and their seven captures — **unrun** |
+
+**Four departures, each for a reason found in the building:**
+
+1. ★ **The day diff is ONE statement, not three.** The plan said «update, insert, delete». `0100`'s
+   trigger B re-derives the session after a day write, and three statements pass through day sets
+   that derive a window which was never the answer — B writes it to `sessions` and `sessions_notify`
+   mails a reschedule notice naming it. Postgres fires AFTER ROW triggers at the END of a statement
+   and data-modifying CTEs are one statement, so every firing of B sees the final set. **Measured:**
+   the «ONE reschedule notice» case passes against the shipped file and fails against a
+   three-statement control — and fails at `sessions_check1`, because B pulled `starts_at` back to the
+   doomed day's Thursday while `rsvp_deadline_at` already held Saturday. A shape that did not touch a
+   deadline would have failed silently, with the notice.
+2. ★ **Day one is composed from the flat fields, not from the payload.** The plan had `p_days` carry
+   day one in full. The form's custom-venue inputs are uncontrolled, so serialising them meant
+   mirroring a third value into state; and two copies of day one that can disagree is a bug waiting
+   for a race. The hidden field carries day one's **`id`**; the action builds the rest from the
+   controls that were already parsed and already validated.
+3. ★ **`0112`'s snapshot shape is `notify`'s, not mine.** `session_days_changed()` reads a day as
+   `{ id, position, starts_at, ends_at, venue_label }` and compares **labels**: a day that moves to a
+   one-off room of the same name has not moved as far as a member is concerned. `0106` snapshotted
+   raw rows. `session_day_notice()` shapes them through `session_venue_label()` (`0036`).
+4. **No primitive request was needed.** `ui/date-time` already carried `label`, `granularity`, `min`
+   and `max`, which is the whole of what a day row wants — including the date-only picker that makes
+   a third evening one tap.
+
+**The untouched-suite ledger — one line, and it is not an expectation.**
+
+| File | Commit | Why | Expectation for one day changed? |
+|---|---|---|---|
+| `tests/components/browse/fixtures.tsx` | `708f5d9` | the card DTO gained a required `days`; the base fixture gains `days: []`, a one-line harness addition. The card reads `days` for its LENGTH alone, so none and one render identically | no — 76 browse and sessions cases green, unmodified |
+
+Everything else is new: `tests/unit/{sessions-day-label,schedule-days}.test.ts`,
+`tests/components/sessions/schedule-days.test.tsx`, `tests/rls/sessions-schedule-days.test.ts`,
+`tests/e2e/wave9-sessions-{schedule-days,day-views}.spec.ts`. **Not touched, and green:**
+`wave8-lead-schedule.spec.ts`, `schedule-rules`, `schedule-actions`, `sessions-schedule-walk-ins`,
+`checkin-schedule-walk-ins.spec.ts`, and `tests/components/checkin/schedule-form.test.tsx` — the last
+of these is why every field added to `ScheduleInitial` is **optional**, which turned out to be the
+honest shape anyway.
+
+**Found on the way, each reported to the lead:**
+
+- ★ **`notify`'s `session_days_changed()` de-duplicates per TRANSACTION** (`kareem.days_notified`,
+  `0111`). Right in production, where every RPC is its own transaction; an RLS case is ONE
+  transaction, so a test that schedules twice sees only the first notice. Every track writing a
+  day-aware RLS case will hit this. Mine clears the setting and says why.
+- ★ **`resolveDay()` and `checkInDay()` throw away the element type**, so `checkin.ts` cannot read
+  `checkInOpen` off a `SessionDay` it passed in. Asked for `<T extends DayWindow>` on the lead's two
+  functions rather than widening `asCheckInDay`, which would lose exactly the guarantee `DEC-151`
+  ruling 8 asked for.
+- **`tests/rls/session-days-tasks-guard.test.ts` failed once in a full run and passed alone and in a
+  second full run.** It scans `pg_proc` from outside a transaction while other files are applying
+  proposed SQL inside one; an order-dependent scan is the class of defect that made `main`'s CI red
+  at the start of this wave (`ad43ddb`). The lead's file; recorded, not touched.
+
+**Gates at `cfe0470`:** `tsc` clean for every file of this track · `lint` 0 errors · `npm test`
+196 files / 1833 green · `npm run test:rls` **98 files / 1029 green**. **The e2e specs are unrun**:
+`.next` predates every wave-9 commit and `npm run build` is the lead's, so the seven captures do not
+exist yet and that is the one part of this track's definition of done still open.
+
