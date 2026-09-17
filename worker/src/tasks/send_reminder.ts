@@ -10,14 +10,18 @@ import type { Task } from "graphile-worker";
 // moment, and to check that the moment still means something — the reminder
 // was queued days ago and the seat or the session may be gone since.
 export const send_reminder: Task = async (payload, helpers) => {
-  const p = payload as { session_id?: string; member_id?: string; offset_minutes?: number } | null;
+  const p = payload as { session_id?: string; member_id?: string; offset_minutes?: number; session_day_id?: string } | null;
   if (!p?.session_id || !p.member_id || typeof p.offset_minutes !== "number") {
     throw new Error("send_reminder: payload needs session_id, member_id and offset_minutes");
   }
 
+  // ★ WAVE 9 (REQ-SES-015): the day is the fourth argument, and it is optional
+  // on purpose. A job queued before the migration carries no `session_day_id`,
+  // and so does every job `main`'s worker ever enqueued; null resolves to the
+  // session's FIRST day, which at one day is the only day (contract 2).
   const { rows } = await helpers.query<{ sent: boolean }>(
-    `select public.send_reminder_notification($1::uuid, $2::uuid, $3::int) as sent`,
-    [p.session_id, p.member_id, p.offset_minutes],
+    `select public.send_reminder_notification($1::uuid, $2::uuid, $3::int, $4::uuid) as sent`,
+    [p.session_id, p.member_id, p.offset_minutes, p.session_day_id ?? null],
   );
 
   helpers.logger.info(
