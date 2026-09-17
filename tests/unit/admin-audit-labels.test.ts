@@ -21,9 +21,12 @@ const sql = readdirSync(dir)
 // The `audit_log.action` check is `^[a-z_]+\.[a-z_]+$`, and so every literal of
 // that shape is read as an action — broad on purpose, so a new call site is
 // caught however it spells the call. What is NOT an action is named here, each
-// with where it comes from: `public.<table>` is a qualified name, and
-// `background.color` is a document path `0094`'s template guard walks.
-const NOT_ACTIONS = new Set(["background.color"]);
+// with where it comes from: `public.<table>` is a qualified name,
+// `background.color` is a document path `0094`'s template guard walks, and
+// `kareem.days_writer` is the transaction-local setting a day-aware writer
+// sets so `0100`'s single-day shim stands down (DEC-150) — a custom Postgres
+// setting must contain a dot, so it cannot be spelt any other way.
+const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer"]);
 const actions = Array.from(
   new Set(Array.from(sql.matchAll(/'([a-z_]+\.[a-z_]+)'/g), (m) => m[1]).filter((a) => !a.startsWith("public.") && !NOT_ACTIONS.has(a))),
 ).sort();

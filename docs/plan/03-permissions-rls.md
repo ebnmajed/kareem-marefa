@@ -446,6 +446,26 @@ for every writer including the migration owner and `service_role`. An RPC that w
 diagram does not draw fails its own test. Rows are born with a state and no edge, so there is no
 insert guard: `create_session()` is the only door for people (no insert grant, no insert policy).
 
+**A session's days (`0100`, `DEC-119`, `DEC-150`).** `session_days` — when, where and which meeting,
+and nothing else — is visible exactly when its session is. The subquery runs as the caller, so
+`sessions_read` decides and this policy cannot drift from it:
+
+```sql
+create policy "session_days_read" on public.session_days for select to authenticated
+  using (org_id = public.auth_org_id()
+         and exists (select 1 from public.sessions s where s.id = session_days.session_id));
+```
+
+**There is no write policy and no write grant**, as for every scheduling column since `0010`: a day is
+written only by a definer RPC, and `service_role` holds nothing on the table (invariant 7).
+★ **`sessions.starts_at` / `ends_at` / `venue_id` / the custom-venue trio are DERIVED from the days and
+stay STORED** — the first day's start, the last day's end, the first day's venue — so every policy, index,
+sort and job that reads them is unchanged. Two triggers keep the pair in step (a day write re-derives the
+session, only where a value is distinct; a write to the session's own window is carried onto its one day
+while `n ≤ 1`, unless the writer set the transaction-local `kareem.days_writer`), and a **deferred
+constraint trigger** refuses at commit any session whose stored window is not its derived one. `position`
+is derived too — the chronological rank.
+
 ### 5.3 RSVP
 
 | Table | select | insert | update | delete | Notes |
@@ -1594,6 +1614,17 @@ generated suite is the highest-value test in the product.
 | `RPC-issue_certificate.no_check_in_when_removed` | Kept from 0088: a late job for a removed check-in raises `no_check_in`. |
 | `RPC-redesign_held_certificates.held_only` | Re-pins the HELD certificates of a kind to the current design and re-enqueues each render with 11 §2.5's key; issued and revoked ones are untouched; audited; a moderator is refused. |
 | `RPC-record_certificate_document.follows_the_pin` | The certificate's document follows its pinned version, so a redesigned held certificate is not refused by the locked-region guard. |
+| ★ **wave 9 (`DEC-150`), migration `0100`** — a session's days (`ENT-session_days`, `DEC-119`): the entity, the two-way derivation of `sessions.starts_at` / `ends_at` / venue, check-in per day, content scoped to a day |
+| `POL-session_days.read_follows_session` | A member reads a day exactly when they can read its session: a published session's days are visible to the org, a draft's only to staff and its presenters; another org's never; `anon` is refused. |
+| `POL-session_days.no_direct_write` | `authenticated` holds no insert, update or delete on `session_days` (42501), and `service_role` holds nothing at all (invariant 7); every write is a definer RPC, as for every scheduling column since `0010`. `resolve_session_day()` is executable by no client role. |
+| `POL-session_days.single_day_follows_session` | A write to a session's own window or venue creates, moves or removes its one day while it has at most one — the same day id throughout; with `kareem.days_writer` on, or with several days, it does not. |
+| `POL-session_days.session_follows_days` | A day write re-derives the session's window (first start, last end), its venue (the first day's) and every day's `position` (chronological rank). ★ An equal value writes nothing — the session's row version is unchanged, so no notice, re-render or reschedule fires on a no-op. |
+| `POL-session_days.consistent_at_commit` | At commit a session with days stores its derived window and venue (`session_window_not_derived`), and a session at `published` or beyond has a day (`session_without_days`); `23514`, whatever `kareem.days_writer` says. The last day of a published session cannot be removed. |
+| `POL-session_days.no_overlap` | Two days of one session cannot overlap (`23P01`) — back to back is allowed, the range is `[start, end)` — and a day ends after it starts (`23514`). |
+| `POL-check_ins.day_derived` | `check_ins.session_day_id` and `session_window` are derived on insert — the code's day first, else `resolve_session_day()`: the day whose window to `ends_at + 2 h` holds the instant (the later-started of two), else the latest day begun, else the first — and the window is THE DAY'S. No day: `session_not_scheduled`, `23514`, as before. |
+| `POL-check_ins.one_active_per_day` | One active check-in per member per DAY (`23505`, never `23P01` — `0087`'s creation order is kept); a second day of the same session is a second row. `REQ-CHK-013`'s exclusion compares DAY windows, so a talk on Tuesday does not collide with a workshop that meets Monday and Wednesday. A day that holds attendance cannot be deleted (`23503`). |
+| `POL-content.day_of_own_session` | `materials`, `session_tasks` and `photos` may name a day only of their own session (`23503`); existing content is session-scoped (null) and adding a day re-scopes nothing; deleting a day sets the column null — the content is promoted to the session, never deleted (`DEC-121`). |
+| `POL-tasks.never_read_by_check_in` | `REQ-TSK-002`, enforced: no function names both a task table and anything of check-in, attendance or the day; no policy on a check-in table or on `session_days` names a task table; no trigger joins the two. The TypeScript half walks the check-in import graph (`tests/unit/tasks-never-read-by-check-in.test.ts`). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
