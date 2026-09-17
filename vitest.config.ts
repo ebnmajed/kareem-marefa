@@ -24,6 +24,9 @@ const rlsProject = process.env.RLS_DATABASE_URL
           name: "rls",
           include: ["tests/rls/**/*.test.ts"],
           environment: "node",
+          // One RUNNER at a time on the one local database — a lock, not a
+          // rule, and it holds however the suite is started (wave 10, DEC-162).
+          globalSetup: ["tests/rls/global-lock.ts"],
           // One connection, one transaction per test, rolled back. Files must
           // not interleave on the same database.
           fileParallelism: false,
