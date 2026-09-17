@@ -10,6 +10,8 @@ describe("exportFailureReason", () => {
     ["tier_a: l_title: fitted_size — auto-fit chose 96px, the page laid out 88px", "textDidNotFit"],
     ["tier_a: l_where: line_count — auto-fit predicted 1 line(s), the page laid out 2", "textDidNotFit"],
     ["tier_a: l_title: font_never_loaded — advance 400 equals the fallback's 400 — the face never resolved", "fontNeverLoaded"],
+    ["tier_a: l_title: font_never_loaded — no face of the layer's family is loaded in the page — every glyph is the fallback's", "fontNeverLoaded"],
+    ["tier_a: l_title: glyph_fallback — advance 92.09 over serif, 104.6 over monospace — some glyphs came from the fallback", "fontNeverLoaded"],
     ["tier_a: l_title: geometry_drift — lineWidths changed for an unchanged source fingerprint", "layoutMismatch"],
     ["render: the capture is blank (0.000% inked) — an empty artifact passes every later check", "blank"],
     ["render: these faces never became usable for Arabic: IBM Plex Sans Arabic 600", "fonts"],

@@ -40,7 +40,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
-import { renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runtime'
+import { faceResolved, renderDocumentToHtml, tierASignatureBatch } from '@kareem/designer-runtime'
 import { CASES } from './cases.mjs'
 import { ASSERTIONS, buildDocument, CONTROL_CSS, PATHS } from './paths.mjs'
 import { runPopplerPath } from './poppler.mjs'
@@ -422,8 +422,14 @@ function checkTierAAgainstGolden(pathId, label, signatures, goldenSignatures) {
       problem(`${label} · ${c.id}: the layer was not measured at all`)
       continue
     }
-    if (!s.distinctFromFallback) {
-      problem(`${label} · ${c.id}: the target face never loaded — every measurement below is a fallback`)
+    // The production decision, not a copy of it (`faceResolved`, tier-a.ts).
+    const face = faceResolved(s)
+    if (face !== 'resolved') {
+      problem(
+        face === 'never_loaded'
+          ? `${label} · ${c.id}: the target face never loaded — every measurement below is a fallback`
+          : `${label} · ${c.id}: some glyphs came from the fallback (${s.coverageAdvances.join(' vs ')})`,
+      )
       continue
     }
     if (s.letterSpacing !== 'normal' && s.letterSpacing !== '0px') {

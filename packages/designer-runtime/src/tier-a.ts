@@ -10,13 +10,23 @@
  * the LAYOUT AS CAPTURED against the DECISION THAT PRODUCED IT, plus three
  * absolute conditions. A mismatch fails the export rather than shipping it.
  *
- *   1. **The face actually loaded.** Each text layer's advance is compared
- *      against the same string in a face that certainly does not exist. Equal
- *      means the target face never resolved, and every other number is a
- *      measurement of a fallback. This is the single most valuable check
- *      here: a font that fails to load produces a plausible-looking poster
- *      with silently wrong Arabic, which is the D66 nightmare in one
- *      sentence.
+ *   1. **The face actually loaded, and drew every glyph.** A face of the
+ *      layer's family is `loaded` in the page's `document.fonts`, and the
+ *      same string measured over two DIFFERENT generic fallbacks is
+ *      identical — which it is only when the fallback was never consulted.
+ *      This is the single most valuable check here: a font that fails to
+ *      load produces a plausible-looking poster with silently wrong Arabic,
+ *      which is the D66 nightmare in one sentence.
+ *
+ *      ★ It used to compare the advance against a face that does not exist
+ *      and call anything within 1 px «never loaded». That compares against
+ *      whatever THE PLATFORM falls back to, so it was a coin toss by
+ *      construction: «جلسة», the talk poster's kicker, measured 92.09 in IBM
+ *      Plex Sans Arabic against macOS's fallback at 92.59, and a real render
+ *      whose face HAD loaded was refused (the lead's host-worker run, wave 8).
+ *      In the image, where the only Arabic faces fontconfig knows are our own,
+ *      the fallback can BE the layer's family, and every one-line layer in it
+ *      would collide. `faceResolved()` depends on neither.
  *   2. **Letter-spacing is zero.** A30. Spacing Arabic breaks the cursive
  *      join, so a spaced word is a BROKEN word, and nothing downstream
  *      recovers from it.
@@ -49,9 +59,27 @@ export interface TierAExpectation {
 
 export interface TierAFailure {
   layerId: string
-  code: 'font_never_loaded' | 'letter_spacing' | 'fitted_size' | 'line_count' | 'geometry_drift' | 'layer_missing'
+  code: 'font_never_loaded' | 'glyph_fallback' | 'letter_spacing' | 'fitted_size' | 'line_count' | 'geometry_drift' | 'layer_missing'
   /** Human-readable, for `export_artifacts.error` and the admin's retry. */
   detail: string
+}
+
+/** Two measurements of one string differing by less than this are the same
+ *  glyphs: an unrounded advance is stable to hundredths, and one substituted
+ *  glyph moves it by whole pixels. */
+export const COVERAGE_TOLERANCE_PX = 0.5
+
+/**
+ * Whether the layer was drawn in its own face — the decision check 1 makes,
+ * as a pure function so it is tested on the numbers that broke the old one.
+ * Platform-independent in the direction that matters: a face that loaded and
+ * covers its text passes everywhere, whatever `serif`, `monospace` or a
+ * missing family resolve to on the machine.
+ */
+export function faceResolved(signature: Pick<LayerSignature, 'faceLoaded' | 'coverageAdvances'>): 'resolved' | 'never_loaded' | 'glyph_fallback' {
+  if (!signature.faceLoaded) return 'never_loaded'
+  const [a, b] = signature.coverageAdvances
+  return Math.abs(a - b) <= COVERAGE_TOLERANCE_PX ? 'resolved' : 'glyph_fallback'
 }
 
 /** Structural, not tolerant (06 §9.3): these are counts and exact strings. */
@@ -65,12 +93,17 @@ export function checkTierA(signature: TierASignature, expectations: readonly Tie
       continue
     }
 
-    if (!actual.distinctFromFallback) {
-      failures.push({
-        layerId: expected.layerId,
-        code: 'font_never_loaded',
-        detail: `advance ${actual.totalAdvance} equals the fallback's ${actual.fallbackAdvance} — the face never resolved`,
-      })
+    const face = faceResolved(actual)
+    if (face !== 'resolved') {
+      failures.push(
+        face === 'never_loaded'
+          ? { layerId: expected.layerId, code: 'font_never_loaded', detail: 'no face of the layer\'s family is loaded in the page — every glyph is the fallback\'s' }
+          : {
+              layerId: expected.layerId,
+              code: 'glyph_fallback',
+              detail: `advance ${actual.coverageAdvances[0]} over serif, ${actual.coverageAdvances[1]} over monospace — some glyphs came from the fallback`,
+            },
+      )
       // Everything below would measure the fallback, so it is not worth
       // reporting three more failures for one cause.
       continue

@@ -341,17 +341,32 @@ test("★ «اطلب التصدير» queues every variant of the saved document
   expect(Number(rows[0].n)).toBe(12);
 
   if (WORKER) {
-    // ★ A real render through the worker (DEC-017): every variant ready.
+    // The render queue is serial and both projects export twelve variants,
+    // so the poll below outlives the 30 s default — and a test that times out
+    // runs its afterAll, which deleted the org under the worker mid-render.
+    test.setTimeout(12 * 60_000);
+    // ★ A real render through the worker (DEC-017): every variant SETTLES,
+    // and then every one is ready — a failed render is reported with the
+    // worker's own reason at once, not as ten minutes of «expected 12».
     await expect
       .poll(
         async () =>
           Number(
-            (await db.query<{ n: string }>(`select count(*)::text as n from public.export_artifacts where document_id = $1 and status = 'ready'`, [documentId]))
-              .rows[0].n,
+            (
+              await db.query<{ n: string }>(
+                `select count(*)::text as n from public.export_artifacts where document_id = $1 and status in ('ready', 'failed')`,
+                [documentId],
+              )
+            ).rows[0].n,
           ),
         { timeout: 10 * 60_000, intervals: [5_000] },
       )
       .toBe(12);
+    const { rows: failed } = await db.query<{ preset: string; format: string; error: string }>(
+      `select preset, format, error from public.export_artifacts where document_id = $1 and status = 'failed' order by preset, format`,
+      [documentId],
+    );
+    expect(failed, "every variant renders through the worker").toEqual([]);
     await page.reload();
     await expect(exports.getByText("جاهز").first()).toBeVisible();
     await expect(main(page).getByRole("navigation", { name: "المقاسات" }).first().locator("img").first()).toBeVisible();

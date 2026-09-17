@@ -1303,3 +1303,37 @@ page's height, shoot, and restore 390 × 844. `certificates.spec.ts` no longer i
 template (the two projects saw each other's, and one afterAll deleted what the other's certificates
 pinned); a leftover of it (`قالب شهادة 1-1789600556691`, unreferenced) was deleted from the local
 database by id.
+
+### W8.p Tier A's «face never loaded» was a coin toss — the lead's real-worker run (2026-09-17)
+
+The host worker refused three of twelve talk-poster variants: `tier_a: l_kicker: font_never_loaded —
+advance 92.09 equals the fallback's 92.59` (and 71.38 / 71.77). The rule was «one line, and within 1 px
+of the same string in a face that does not exist» — that is, within 1 px of whatever the PLATFORM falls
+back to. Not a v2 change: the kicker («جلسة», 40 px, 500) is unchanged since `bc84c43`; the host worker
+had simply never rendered it. Measured in real Chrome on the host, the worker's own load sequence:
+
+| Case | advance / fallback | old rule | `faceResolved()` |
+|---|---|---|---|
+| loaded — the lead's kicker at 40 and 31 px | 92.09/92.59 · 71.38/71.77 | **refused** | resolved |
+| loaded — «جلسة عن Next.js 16» | 346.19/322.53 | pass | resolved |
+| no faces at all · every face corrupt | 90.05/92.59 | **passed** | never_loaded |
+| Arabic subset corrupt, Latin loaded | 92.59/92.59 | refused | never_loaded |
+| Latin subset corrupt, mixed text | 324.61/322.53 | **passed** | never_loaded |
+| Amiri at 600 (no 600 face) | 245.19/344.75 | pass | resolved |
+
+The old rule was wrong in five of eight, in both directions. **In the image it is worse**: fontconfig
+knows only our own Arabic faces, so the fallback for a missing family can BE the layer's family, and every
+one-line layer in it would collide.
+
+**Now:** the probe reports `faceLoaded` — among the family's faces at the layer's weight (else all of
+the family's) one is `loaded` and none is `error`; a corrupt subset is `error` — and `coverageAdvances`,
+the string over the layer's family list followed by `serif`, then `monospace`, identical when the
+fallback drew nothing. `faceResolved()` in `tier-a.ts` decides (`never_loaded` · `glyph_fallback` ·
+`resolved`); `checkTierA` and the parity harness both call it; `fallbackAdvance` stays as information.
+`tests/unit/designer-tier-a-face.test.ts` is built on the lead's numbers. Parity against a scratch build:
+21 of 28 and background 3 of 3 with the goldens unmoved (the compared keys are unchanged), and
+`--break-font` still fails every case. Limit, stated: where `serif` and `monospace` map to one font, the
+coverage half cannot see a missing glyph — `faceLoaded` still sees a subset that failed to load.
+
+Also: the editor spec's worker branch sets its own 12-minute timeout and waits for every variant to
+SETTLE, then fails at once with the worker's reasons rather than polling ten minutes for «12 ready».

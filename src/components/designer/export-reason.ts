@@ -23,7 +23,7 @@ export type ExportFailureReason =
 export function exportFailureReason(error: string | null | undefined): ExportFailureReason {
   const text = error ?? "";
   if (text.startsWith("tier_a:")) {
-    if (text.includes("font_never_loaded")) return "fontNeverLoaded";
+    if (text.includes("font_never_loaded") || text.includes("glyph_fallback")) return "fontNeverLoaded";
     if (text.includes("fitted_size") || text.includes("line_count") || /fitted \d+px/.test(text)) return "textDidNotFit";
     return "layoutMismatch";
   }
