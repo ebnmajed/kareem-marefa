@@ -314,9 +314,107 @@ background, as posters look today. Nothing breaks; the data fix below re-renders
 3. **Outside a scheduled session** — ★ **Server Action IDs rotate when this wave deploys**; an open tab's next
    action fails until it reloads. `supabase db push` (`0092`–`0099`) → **merge PR #25** → confirm the Railway
    worker redeployed (its log line now reads «polling every 15 s», `41f8807`).
-4. **The scoped data fix** (`DEC-023`, never a migration), after the worker is on the new code: read, then
-   enqueue `regenerate_poster` for **live** posters of upcoming published sessions — the exact read and write
-   are in `docs/plan/notes/designer.md` (W8.l) and `DEC-148`. About 3 minutes per session, one at a time.
+4. **The scoped data fix** (`DEC-023`, never a migration), after the worker is on the new code — the exact SQL below.
+
+#### The owner's SQL — each statement tested against the local database on 2026-09-17
+
+**Step 2, the template colours** (read-only; **good = 0 rows**). The same walk and the same allowlist as `0094`'s guard. Tested by planting `#1d2a42` in a gradient stop, `navy` on a layer and `rgb(1,2,3)` on a fill inside a rolled-back transaction: all three reported, `{{ brand.edge }}` accepted.
+
+```sql
+-- Read-only. Every colour a template version carries, judged by 0094's own rule.
+-- Good: 0 rows.
+with colour as (
+  select v.id as version_id, v.template_id, v.version, v.published_at, c.path, c.value
+    from public.design_template_versions v
+    cross join lateral (
+      select 'background.color' as path, v.document #>> '{background,color}' as value
+      union all
+      select 'background.stops[' || (s.ord - 1) || '].color', s.stop ->> 'color'
+        from jsonb_array_elements(case when jsonb_typeof(v.document #> '{background,stops}') = 'array'
+                                       then v.document #> '{background,stops}' else '[]'::jsonb end)
+             with ordinality as s(stop, ord)
+      union all
+      select 'layer ' || (l.layer ->> 'id') || ' ' || f.field,
+             case f.field when 'color' then l.layer ->> 'color'
+                          when 'shape.fill' then l.layer #>> '{shape,fill}'
+                          else l.layer #>> '{shape,stroke}' end
+        from jsonb_array_elements(case when jsonb_typeof(v.document -> 'layers') = 'array'
+                                       then v.document -> 'layers' else '[]'::jsonb end) as l(layer)
+        cross join (values ('color'), ('shape.fill'), ('shape.stroke')) as f(field)
+    ) as c
+   where c.value is not null
+)
+select t.scope, t.org_id, o.name as org_name, t.purpose, t.name as template_name, colour.version,
+       colour.published_at is not null as published, colour.path, colour.value
+  from colour
+  join public.design_templates t on t.id = colour.template_id
+  left join public.orgs o on o.id = t.org_id
+ where colour.value !~ '^\{\{\s*brand\.[A-Za-z]+\s*\}\}$'
+ order by t.scope, o.name, t.name, colour.version, colour.path;
+```
+
+**Step 4, the re-render.** One `regenerate_poster` job per live poster; each requests **12** `render_variant` jobs (5 screen presets × PNG and WebP, plus A4 and A3 PDF) — at most, because a variant whose fingerprint is unchanged is a cache hit. The `render` queue runs **one job at a time**. ★ **About 3 minutes per poster, not per variant**: wave 3 measured all twelve to `ready` in about three minutes on the worker image (`designer.md` line 860's «three minutes each» is a misstatement); the lead's host worker took 0.2–1.1 s per variant. Plan for **up to 3 × posters minutes**.
+
+Count first (read-only):
+
+```sql
+-- Read-only. What the re-render will touch — run this first and keep the numbers.
+select count(*)                      as posters,
+       count(*)                      as regenerate_poster_jobs,
+       count(*) * 12                 as render_variant_jobs_at_most,
+       count(distinct s.org_id)      as orgs,
+       min(s.starts_at)              as first_session_starts,
+       max(s.starts_at)              as last_session_starts,
+       count(*) * 3                  as minutes_at_most
+  from public.session_posters p
+  join public.sessions s on s.id = p.session_id
+ where p.binding = 'live'
+   and s.state = 'published'
+   and s.starts_at > now();
+```
+
+Look at the rows (read-only):
+
+```sql
+-- Read-only. The same predicate, one row per poster, to look at before writing.
+select s.id as session_id, o.name as org_name, s.title, s.starts_at, p.mode, p.binding
+  from public.session_posters p
+  join public.sessions s on s.id = p.session_id
+  join public.orgs o on o.id = s.org_id
+ where p.binding = 'live'
+   and s.state = 'published'
+   and s.starts_at > now()
+ order by s.starts_at;
+```
+
+Then the write — tested in a rolled-back transaction on 4 local posters: 4 jobs on queue `render`, 3 attempts; run twice it still left 4 (the key replaces):
+
+```sql
+-- The write (DEC-023): the same predicate as the read, nothing wider.
+with enqueued as (
+  select s.id as session_id,
+         public.enqueue_job('regenerate_poster',
+                            jsonb_build_object('session_id', s.id),
+                            'poster:' || s.id::text,   -- 0063's key: re-running replaces, never duplicates
+                            null, 'render', 3) as job_id
+    from public.session_posters p
+    join public.sessions s on s.id = p.session_id
+   where p.binding = 'live'
+     and s.state = 'published'
+     and s.starts_at > now()
+)
+select count(*) as regenerate_poster_jobs_enqueued, now() as enqueued_at from enqueued;
+```
+
+Progress (read-only; paste the `enqueued_at` the write returned). **Done** when nothing is `queued` or `rendering`; **good** = every row `ready`; a `failed` row says why in `error` and retries from the studio's export list:
+
+```sql
+select a.status, count(*)
+  from public.export_artifacts a
+ where a.created_at >= '<enqueued_at>'
+ group by a.status
+ order by a.status;
+```
 
 ### Carried — diagnosed, each with an owner
 
