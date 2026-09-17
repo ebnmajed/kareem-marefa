@@ -432,11 +432,23 @@ statement** — `0102`–`0122` are functions, policies and grants. **No `sessio
 derivation trigger finds stored = derived and updates nothing (proven above: `sessions.updated_at` unchanged).
 `points_ledger`, `audit_log`, `certificates`, `rsvps`, `notifications` and the job queue are untouched.
 
-★ **The production reads did not run from the lead's session** — `supabase db query --linked` was refused by
-the session's permission layer twice, and a refusal is not worked around. They are one read-only statement
-(`select` and `count(*)` only, no personal data), proven against the local database, for the owner to run:
-the statement is in step 3 of the owner's order below. Expected: **a1 = 0, a2 = 0, c = false / false /
-false, d = 2, e = `0099`**; b1 and r1–r5 are the row counts.
+★ **The production reads — run by the owner 2026-09-17, every required value as expected.** (The lead's
+session was refused `supabase db query --linked` twice and did not work around it; the statement is in step 3
+of the owner's order below.)
+
+| Read | Must be | Production |
+|---|---|---|
+| a1 · check-ins on a session with no full window | 0 | **0** |
+| a2 · codes on a session with no full window | 0 | **0** |
+| c · `anon` / `authenticated` / `service_role` may run `_issue_check_in_code` | false / false / false | **f / f / f** |
+| d · the two `storage` policies `0116` replaces | 2 | **2** |
+| e · latest migration applied | `0099` | **`0099`** |
+
+**What the backfill touches on production: 11 rows.** `0100` **inserts 3** `session_days` rows (b1 — the
+three sessions that have a start and an end; b2 — two sessions have no full window yet and get no day) and
+**updates 8**: 4 `check_in_codes`, 2 `check_ins`, 2 `check_in_attempts` (r1–r3). `0101` **updates none**:
+there is no `calendar_events` row (r4 = 0) and no session whose door is closed by hand (r5 = 0). ★ **The push
+is clear to run.**
 
 #### The two windows
 
@@ -463,10 +475,8 @@ Railway's trigger has never fired on its own.** At one day the old worker is cor
 1. ~~**Run the security statement**~~ — ✅ **run and verified by the owner 2026-09-17**: `anon`, `authenticated` and `service_role` all false; the dump shows it.
 2. ~~**Rehearse `0100`–`0122` against a production schema dump**~~ — ✅ **done 2026-09-17 by the lead on the
    owner's dump**, recorded above; the dump is deleted.
-3. **The production reads first** (read only — `select` and `count(*)`, no personal data) — ★ **still to
-   run: the lead's session was refused `supabase db query --linked`, twice, and did not work around it.** One
-   statement, proven against the local database. Expected: **a1 = 0 · a2 = 0 · c = false / false / false ·
-   d = 2 · e = `0099`**; b1 and r1–r5 are the row counts the backfill touches.
+3. ~~**The production reads first**~~ — ✅ **run by the owner 2026-09-17, all as expected; 11 rows touched**
+   (recorded above). The statement, kept for the record:
    ```sql
    select * from (
    select 1 as n, 'a1 check_ins on a session with no full window — MUST BE 0 (0100 stops otherwise)' as "check", count(*)::text as value from public.check_ins c join public.sessions s on s.id = c.session_id where s.starts_at is null or s.ends_at is null
