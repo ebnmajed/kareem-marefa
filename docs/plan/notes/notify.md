@@ -1589,6 +1589,14 @@ flattens onto white) — one source, two encodings, one variable. Cell 3 is the 
 colour swapped. The org's `logo_asset_id` is pointed at each in turn, so every capture is one org,
 one design, one simulation.
 
+★ **If a cell comes back with NO logo, look at the door before the dark mode.** `0126` gates on
+`a.sniffed_mime in ('image/png','image/jpeg')` — the **sniffed** type — so a cell encoded as **WebP**,
+the obvious modern choice for a logo, yields no row from `org_public_logo()`, `logoUrl` is null, and
+the design falls back to the org's **name**. That renders as **no logo at all**, which reads exactly
+like «the logo vanished under forced dark» — the very finding being tested for. `designer` confirmed
+both of the method's encodings are admitted, so all three cells will serve; this is the reading
+instruction for the day one of them does not.
+
 ★ **Cell 3 is why this is worth the row**: it makes the root cause visible in the image rather than
 asserted in a note. The defect is **not** «transparency is bad» — it is **one asset, two grounds**,
 which is the carried poster defect stated as a picture.
