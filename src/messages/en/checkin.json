@@ -154,7 +154,8 @@
       "dayLabel": "Day",
       "dayPlaceholder": "Choose a day",
       "markDayHint": "Choose the day you are recording attendance for — an earlier day can be corrected at any time.",
-      "removeDayHint": "Choose the day whose attendance record you are removing."
+      "removeDayHint": "Choose the day whose attendance record you are removing.",
+      "complete": "Complete"
     },
     "dayLine": "Check-in for {day}"
   }

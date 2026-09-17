@@ -278,7 +278,15 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
                             )}
                           </td>
                         ))}
-                        <td className="py-2 text-fg-body">{t("daysAttended", { value: num(r.daysAttended), total: num(report.days.length) })}</td>
+                        <td className="py-2 text-fg-body">
+                          {t("daysAttended", { value: num(r.daysAttended), total: num(report.days.length) })}
+                          {/* ★ Not derivable from the count beside it: with
+                              `require_all_days` off, «1 من 3» IS complete.
+                              This reads contract 6's predicate through
+                              `session_complete_attendees()` and re-derives
+                              nothing. */}
+                          {r.attendanceComplete ? <span className="ms-2 text-fg-heading">{t("complete")}</span> : null}
+                        </td>
                       </>
                     ) : (
                       <>

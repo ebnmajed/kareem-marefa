@@ -11,22 +11,33 @@
 -- no-show symmetry still computes `evaluate_no_shows`' own key. Nothing here
 -- decides any of that any more.
 --
--- ★ WHAT DOES NOT MOVE, by the lead's ruling at sync 1: the certificate.
--- Contract 5 is POINTS ONLY, so `revoke_certificate()` stays inside
--- `remove_check_in()` until the lead's `attendance_certificate_sync(p_session,
--- p_member)` exists. The reason is `REQ-SES-017`: at n > 1 «should this
--- certificate survive» is «is `session_attendance_complete()` still true», which
--- is contract 6's predicate, and removing day 1 must be able to revoke a
--- certificate that names day 3. A `check_in_id` lookup cannot say that. When
--- that function lands, one more `perform` replaces the loop and this track's
--- three functions name nothing about points or certificates at all.
+-- ★ AND THE CERTIFICATE, through the third hook (`0108`). Contract 5 itself is
+-- points only; `attendance_certificate_sync(p_session, p_member)` is the lead's
+-- and reads contract 6's predicate. It REPLACES a lookup that was wrong the
+-- moment a session could have more than one day: `remove_check_in()` used to
+-- find the certificate by `check_in_id`, and a certificate names the SESSION,
+-- not a day — so removing day 1 must be able to revoke one issued off day 3,
+-- which that lookup cannot reach. The hook finds it by session, member and kind.
+-- It also closes the other direction (named difference 3): a member marked
+-- present the morning after a completed session becomes eligible at that moment,
+-- so `check_in()` and `mark_checked_in_manually()` call it too.
+--
+-- ★ THE RESULT, and it is the assertion worth having: the source of all three
+-- functions, comments stripped, names NONE of `points_ledger`, `award_points`,
+-- `enqueue_job`, `certificates` or `revoke_certificate`. Everything a check-in
+-- is worth is decided elsewhere, by one function per question.
 --
 -- ★ ONE ORDERING DIFFERENCE, STATED RATHER THAN DISCOVERED. On `main`
 -- `remove_check_in()` runs reversal → certificate → no-show; here it runs
--- (reversal → no-show, inside the hook) → certificate. Neither movement reads
--- what the other writes — the revocation does not consult the ledger and the
--- no-show award does not consult certificates — so the committed result is
+-- (reversal → no-show, inside the points hook) → certificate. Neither movement
+-- reads what the other writes — the revocation does not consult the ledger and
+-- the no-show award does not consult certificates — so the committed result is
 -- identical, and the whole thing is still one transaction.
+--
+-- ★ WHAT DOES NOT MOVE: the soft-delete runs FIRST, before either hook. Both
+-- read `removed_at is null`, so a hook called before the update would reverse
+-- nothing and revoke nothing — a silent no-op, which is the worst shape a bug
+-- of this kind can take.
 --
 -- ★ `create or replace`, not `create`: the signatures are `0105`'s and do not
 -- change, so the grants are preserved and PostgREST sees no new overload.
@@ -37,15 +48,21 @@
 -- Serves:  REQ-CHK-008, REQ-CHK-009, REQ-CHK-017, REQ-PTS-011, REQ-PTS-012,
 --          REQ-SES-017, invariant 9 · DEC-150 contract 5, DEC-151
 -- Cites:   0102 (attendance_recorded, attendance_removed — called, not copied),
---          0105 (the three bodies, re-created with one line each replaced),
---          0087 (the blocks 0102 lifted)
+--          0107 (session_attendance_complete — contract 6's predicate, reached
+--          only through the hooks; never called from here),
+--          0108 (attendance_certificate_sync — called, and it replaces this
+--          file's own check_in_id lookup),
+--          0105 (the three bodies, re-created with two lines each replaced),
+--          0087 (the blocks 0102 and 0108 lifted)
 -- Docs:    docs/plan/notes/checkin.md «Wave 9 plan» §5; docs/plan/notes/scoring.md
 --
 -- 03 §8.2 rows this adds:
 --   | `RPC-check_in.calls_attendance_recorded` | A code check-in enqueues exactly one `award_points` job under `pts:check_in:<check_in id>` — through the hook, and the source of all three functions names no points primitive. |
 --   | `RPC-mark_checked_in_manually.calls_attendance_recorded` | A manual mark enqueues the same one job under the same key, so REQ-CHK-008's «the same rights as a code check-in» is one call site each rather than two blocks kept in step. |
 --   | `RPC-remove_check_in.calls_attendance_removed` | A removal writes one compensating row per unreversed award and the no-show row, through the hook; a second removal of the same check-in is refused and writes no second row. |
---   | `RPC-remove_check_in.certificate_still_revoked` | The certificate is still revoked by this function until `attendance_certificate_sync()` exists, and only the fixed phrase reaches it. |
+--   | `RPC-remove_check_in.certificate_revoked_through_the_hook` | An issued attendance certificate is still revoked when a removal makes attendance incomplete — now through `attendance_certificate_sync()` rather than a `check_in_id` lookup, and still with only the fixed phrase «أُلغي تسجيل الحضور» reaching it. |
+--   | `RPC-check_in.certificate_synced` | A check-in on a session that is already `completed` reaches the same hook, so a member recorded after the fact becomes eligible rather than being silently skipped (named difference 3). |
+--   | `RPC-checkin_functions.decide_nothing` | ★ The source of `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of `points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of `REQ-TSK-002`'s three task tables. |
 
 create or replace function public.check_in(p_session uuid, p_code text, p_day uuid default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -185,6 +202,13 @@ begin
   -- payload are the hook's (0102) — lifted out of here verbatim, so the switch
   -- is a diff against main rather than a rewrite.
   perform public.attendance_recorded(ci.id);
+  -- ★ And the certificate (0108). At one day a member who checks in to a
+  -- COMPLETED session becomes eligible at that moment — named difference 3,
+  -- «a member marked present the morning after gets their certificate». The
+  -- hook decides all of it: it is a no-op unless attendance is complete, the
+  -- session is completed or archived, the mode is not `off` and no row of that
+  -- kind exists. From a member's own check-in it never revokes anything.
+  perform public.attendance_certificate_sync(p_session, m.id);
   return jsonb_build_object('status', 'ok', 'check_in', to_jsonb(ci));
 end $$;
 
@@ -269,6 +293,7 @@ begin
   -- REQ-CHK-008's «exactly the same rights as a code check-in» stops being a
   -- claim two functions must keep in step and becomes one call site each.
   perform public.attendance_recorded(ci.id);
+  perform public.attendance_certificate_sync(p_session, p_member);
 
   return ci;
 end $$;
@@ -281,7 +306,6 @@ declare
   v_day   uuid;
   before  public.check_ins;
   target  public.check_ins;
-  cert    public.certificates;
 begin
   if p_reason is null or btrim(p_reason) = '' then
     raise exception 'reason_required' using errcode = '23514';
@@ -309,19 +333,22 @@ begin
   -- nothing here decides that it should.
   perform public.attendance_removed(target.id);
 
-  -- ★ NOT contract 5's, by the lead's ruling at sync 1: the certificate stays
-  -- here until `attendance_certificate_sync(p_session, p_member)` exists. It
-  -- cannot simply move into the hook, because at n > 1 the question is «is
-  -- `session_attendance_complete()` still true» — contract 6's predicate — and
-  -- removing day 1 must be able to revoke a certificate that names day 3,
-  -- which this `check_in_id` lookup cannot express. Only the FIXED phrase
-  -- reaches it; the admin's own words stay on `check_ins.removal_reason` and
-  -- in the audit log.
-  for cert in
-    select * from public.certificates where check_in_id = target.id and state <> 'revoked'
-  loop
-    perform public.revoke_certificate(cert.id, 'أُلغي تسجيل الحضور');
-  end loop;
+  -- ★ AND THE CERTIFICATE, through the same predicate (0108). The lookup this
+  -- replaces was `where check_in_id = target.id`, and that is the thing which
+  -- is WRONG at three days: a certificate names the session, not a day, so
+  -- removing day 1 must be able to revoke one issued off day 3 — which a
+  -- `check_in_id` lookup cannot reach. The hook finds it by session, member and
+  -- kind, and revokes only while `session_attendance_complete()` is false.
+  --
+  -- ORDER: the soft-delete above runs FIRST. Both hooks read
+  -- `removed_at is null`, so calling either before the update would reverse
+  -- nothing and revoke nothing.
+  --
+  -- Only the FIXED phrase «أُلغي تسجيل الحضور» reaches the revocation, inside
+  -- the hook; the admin's own free-text reason stays on
+  -- `check_ins.removal_reason` and in the audit row below — the admin's words
+  -- about a colleague are not the member's to read.
+  perform public.attendance_certificate_sync(p_session, p_member);
 
   perform public.write_audit(admin.org_id, 'check_in.removed', 'check_in', target.id,
                              to_jsonb(before), to_jsonb(target), btrim(p_reason), admin.org_role::text, admin.id);

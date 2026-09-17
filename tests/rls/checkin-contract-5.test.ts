@@ -13,7 +13,8 @@
 // `03` §8.2 rows: RPC-check_in.calls_attendance_recorded,
 // RPC-mark_checked_in_manually.calls_attendance_recorded,
 // RPC-remove_check_in.calls_attendance_removed,
-// RPC-remove_check_in.certificate_still_revoked.
+// RPC-remove_check_in.certificate_revoked_through_the_hook,
+// RPC-check_in.certificate_synced, RPC-checkin_functions.decide_nothing.
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorMessage, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
@@ -130,7 +131,7 @@ describe("a removal still reverses exactly what it reversed", () => {
     });
   });
 
-  it("still revokes an issued attendance certificate — NOT contract 5's, and it stays here until attendance_certificate_sync() exists", async () => {
+  it("still revokes an issued attendance certificate — now through the hook, and by session and member rather than by check_in_id", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await apply(tx);
@@ -161,8 +162,35 @@ describe("a removal still reverses exactly what it reversed", () => {
   });
 });
 
-describe("★ the three functions name no points primitive at all", () => {
-  it("their source, comments stripped, mentions neither the ledger nor the award nor the queue", async () => {
+describe("a check-in after the fact reaches the certificate hook too", () => {
+  it("★ named difference 3 — a member marked present on a COMPLETED session becomes eligible, instead of being silently skipped", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await apply(tx);
+      await tx.asOwner();
+      const s = await liveSession(tx, f.a);
+      const member = f.a.members[0];
+      await tx.q(`update public.sessions set certificate_mode = 'automatic', state = 'completed', completed_at = now() where id = $1`, [s]);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select * from public.mark_checked_in_manually($1, $2, 'حضر ولم يُسجَّل', null)`, [s, member.memberId]);
+
+      await tx.asOwner();
+      const jobs = await tx.q<{ task_identifier: string }>(
+        `select t.identifier as task_identifier
+           from graphile_worker._private_jobs j
+           join graphile_worker._private_tasks t on t.id = j.task_id
+          where j.key = $1`,
+        [`cert:${s}:${member.memberId}:attendance`],
+      );
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].task_identifier).toBe("issue_certificates");
+    });
+  });
+});
+
+describe("★ the three functions decide nothing about points or certificates", () => {
+  it("their source, comments stripped, names neither the ledger nor the award nor the queue nor a certificate", async () => {
     await withTx(async (tx) => {
       await seed(tx);
       await apply(tx);
@@ -180,7 +208,9 @@ describe("★ the three functions name no points primitive at all", () => {
           .split("\n")
           .map((line) => line.replace(/--.*$/, ""))
           .join("\n");
-        for (const primitive of ["points_ledger", "award_points", "enqueue_job"]) {
+        // ★ The whole list now, not just the points half: the certificate
+        // left too, with the `check_in_id` lookup that could not see day 3.
+        for (const primitive of ["points_ledger", "award_points", "enqueue_job", "certificates", "revoke_certificate"]) {
           expect(`${proname}: ${code}`).not.toContain(primitive);
         }
       }
@@ -189,6 +219,11 @@ describe("★ the three functions name no points primitive at all", () => {
       expect(byName.check_in).toContain("attendance_recorded");
       expect(byName.mark_checked_in_manually).toContain("attendance_recorded");
       expect(byName.remove_check_in).toContain("attendance_removed");
+      // And all three defer the certificate to the one function that can read
+      // contract 6's predicate.
+      for (const name of ["check_in", "mark_checked_in_manually", "remove_check_in"]) {
+        expect(`${name}: ${byName[name]}`).toContain("attendance_certificate_sync");
+      }
       // REQ-TSK-002: nothing on this path reads a task, before or after.
       for (const { def } of defs) {
         for (const task of ["session_tasks", "task_completions", "task_form_responses"]) {

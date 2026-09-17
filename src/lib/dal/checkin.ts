@@ -239,6 +239,9 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     // DEC-119), and the screen wants the answer for the day it is about.
     supabase.from("check_ins").select("session_day_id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null),
     listSessionDays(locale, sessionId),
+    // ★ ONE CALL, and the ONLY definition of «attended the session» (contract
+    // 6). Staff-gated inside (`is_staff()`), which this reader already is.
+    supabase.rpc("session_complete_attendees", { p_session: sessionId }),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -449,6 +452,15 @@ export interface AttendanceRow {
   days: AttendanceCell[];
   /** How many days this member has an active check-in on. `days.length` means every day. */
   daysAttended: number;
+  /**
+   * ★ Whether this member counts as having attended the SESSION — contract 6's
+   * `session_attendance_complete()`, read through `session_complete_attendees()`
+   * (`0108`) and NEVER re-derived here. The predicate itself is executable by
+   * no client role, for a good reason: it takes a bare `(session, member)` pair
+   * and would otherwise let any member probe anyone's attendance. The staff-
+   * gated set function is how a staff screen reaches it, in one call.
+   */
+  attendanceComplete: boolean;
 }
 
 export interface AttendanceReport {
@@ -469,11 +481,11 @@ export interface AttendanceReport {
     walkedIn: number;
     noShowed: number;
     /**
-     * Members who count as having attended the SESSION (`REQ-SES-017`).
-     * ★ NULL until `scoring` publishes `session_attendance_complete()`
-     * (contract 6), because that predicate is the only definition of it and
-     * re-deriving it here is exactly what contract 6 forbids. The screen
-     * renders the stat only when it is a number, and only above one day.
+     * Members who count as having attended the SESSION (`REQ-SES-017`) —
+     * contract 6's predicate, counted through `session_complete_attendees()`.
+     * Null only when that call fails, which the screen renders as an em dash
+     * rather than as a zero: «nobody completed» and «I could not ask» are
+     * different sentences and a report must not confuse them.
      */
     completedAllDays: number | null;
   };
@@ -529,7 +541,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return null;
 
-  const [sessionRes, rsvpsRes, checkInsRes, days] = await Promise.all([
+  const [sessionRes, rsvpsRes, checkInsRes, days, completeRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state, time_zone, require_all_days").eq("id", sessionId).maybeSingle(),
     supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
     // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
@@ -554,11 +566,18 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       )
       .eq("session_id", sessionId),
     listSessionDays(locale, sessionId),
+    // ★ ONE CALL, and the ONLY definition of «attended the session» (contract
+    // 6). Staff-gated inside (`is_staff()`), which this reader already is.
+    supabase.rpc("session_complete_attendees", { p_session: sessionId }),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
   if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (checkInsRes.error) throw new Error(`check_ins: ${checkInsRes.error.message}`);
+
+  // A failure here is not fatal to the report: every other figure is still
+  // true, and the stat says so with an em dash.
+  const complete: Set<string> | null = completeRes.error ? null : new Set((completeRes.data as string[] | null) ?? []);
 
   type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
   const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
@@ -627,6 +646,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       removedByName: removed ? nameOf(ci?.remover as MemberEmbed) : null,
       days: cells,
       daysAttended: cells.filter((c) => c.checkedIn).length,
+      attendanceComplete: complete?.has(r.member_id) ?? false,
     });
   }
   for (const [memberId, c] of checkInByMember) {
@@ -648,6 +668,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       removedByName: removed ? nameOf(c.remover as MemberEmbed) : null,
       days: cells,
       daysAttended: cells.filter((cell) => cell.checkedIn).length,
+      attendanceComplete: complete?.has(memberId) ?? false,
     });
   }
   rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
@@ -670,10 +691,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       checkedIn: rows.filter((r) => r.checkedIn).length,
       walkedIn: rows.filter((r) => r.isWalkIn && r.checkedIn).length,
       noShowed: rows.filter((r) => r.isNoShow).length,
-      // TODO(checkin, contract 6): read `session_attendance_complete()` once
-      // `scoring` publishes it. Null, never re-derived here — «attended the
-      // session» has exactly one definition and it is not this file's.
-      completedAllDays: null,
+      completedAllDays: complete === null ? null : complete.size,
     },
     attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
   };
