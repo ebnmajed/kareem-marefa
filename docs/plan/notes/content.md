@@ -3126,3 +3126,20 @@ alongside whatever wave 10 does with the policy itself.
 | `wave9-content-photo-worker-visible.png` | `wave9-content-photo-worker.spec.ts` |
 
 Nothing further to send until the lead's next word — standing by through the freeze.
+
+## §31 — T4 on the real worker: the toast locator, not the pipeline (`0df944a`)
+
+The lead ran T4 on the real worker (build `15d8908`, `E2E_WORKER=1`); it failed on both projects at
+a strict-mode violation, not the pipeline. `getByText("تتم معالجة الصورة الآن…")` (no `exact`)
+resolved to two elements: the toast's own visible `<div>`, and Radix's live region
+(`<span role="status">`), which echoes every toast's text prefixed with the shell's own
+announcement word — a bug in the lead's own primitive (every toast product-wide has been announced
+in English, «Notification», since M9; fixed at `07e16a0`, «إشعار» from the next build on — so the
+live region keeps matching a substring query either way). Fixed with `{ exact: true }` at the one
+line, which excludes the prefixed live-region span and matches only the toast itself. Checked both
+wave-9 content specs for any other toast-by-text assertion under the same risk — none: the other
+`getByText` calls in `wave9-content-days.spec.ts` assert material TITLES scoped inside `#materials`,
+not a toast, and have no live-region duplicate to collide with.
+
+No RLS/e2e run started for this (freeze in force) — `tsc`/`lint` only, both clean. Ready for the
+lead's next real-worker run.
