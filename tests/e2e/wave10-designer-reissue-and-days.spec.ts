@@ -24,7 +24,7 @@
 // `wave10-designer-<surface>-<state>.png`, phone project, 390 × 844.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { formatBindingDateTime, formatBindingWhen } from "@kareem/designer-runtime";
 import pg from "pg";
 
@@ -273,6 +273,21 @@ async function capture(p: Page, name: string) {
 
 /* ── D1 · SCR-045 carries the member twice ──────────────────────────────── */
 
+/**
+ * ★ `ui/data-table` RENDERS EVERY ROW TWICE — a `<table>` and, below `md`, a
+ * stacked card list (`data-table.tsx:143` and `:231`) — and hides one by
+ * breakpoint. So a cell's text is in `#main` twice at every viewport, and a
+ * bare `.first()` is a coin toss that lands on the HIDDEN twin: the table's
+ * cell on the phone project, the card's on desktop. The repo's own answer is
+ * `.filter({ visible: true })` (`platform-console.spec.ts:39`), and this
+ * helper is it, so no assertion in this file can forget.
+ *
+ * It is deliberately used for the member's own certificate list too, which is
+ * a `<ul>` of cards with no twin: one way of asking is worth more here than
+ * knowing which surfaces happen to need it today.
+ */
+const shown = (scope: Locator, text: string) => scope.getByText(text, { exact: false }).filter({ visible: true });
+
 test("★ SCR-045 after a remove and a re-add: one row under «الملغاة», one under «المصدَرة», two serials", async ({ context, page }) => {
   await signIn(context, emails.admin);
   await page.goto(`/ar/app/admin/sessions/${sessions.reissue}/certificates`);
@@ -281,14 +296,20 @@ test("★ SCR-045 after a remove and a re-add: one row under «الملغاة»,
   // Both serials are on the screen, and they are different — the assertion
   // the old single-row world could not have made.
   expect(revoked.serial).not.toBe(replacement.serial);
-  for (const c of certs) await expect(main(page).getByText(c.serial, { exact: false }).first()).toBeVisible();
+  for (const c of certs) await expect(shown(main(page), c.serial).first()).toBeVisible();
 
   // Sara's name appears under both states. Scoped to each state's own section
-  // so «appears twice on the page» cannot pass for «appears in both lists».
+  // so «appears twice on the page» cannot pass for «appears in both lists» —
+  // which, with the twin above, is a distinction this screen really can lose.
   const issued = main(page).locator('section[aria-labelledby="cert-issued"]');
   const revokedList = main(page).locator('section[aria-labelledby="cert-revoked"]');
-  await expect(issued.getByText(replacement.serial, { exact: false })).toBeVisible();
-  await expect(revokedList.getByText(revoked.serial, { exact: false })).toBeVisible();
+  await expect(shown(issued, replacement.serial).first()).toBeVisible();
+  await expect(shown(revokedList, revoked.serial).first()).toBeVisible();
+  // …and each serial is in ITS OWN section only. The twin makes a count of 2
+  // the correct answer for «present», so «absent» is the assertion that has to
+  // be exact: 0 visible, whichever half of the table is showing.
+  await expect(shown(issued, revoked.serial)).toHaveCount(0);
+  await expect(shown(revokedList, replacement.serial)).toHaveCount(0);
 
   if (onPhone()) await capture(page, "scr045-reissued");
 });
@@ -298,11 +319,12 @@ test("★ the eligible list tells a removal's revocation from an admin's FOR CAU
   await page.goto(`/ar/app/admin/sessions/${sessions.reissue}/certificates`);
 
   // Khalid holds only a for-cause revocation and his check-in is still there,
-  // so the list must say NO replacement is coming.
-  await expect(main(page).getByText("مُلغاة نهائيًا — لن يصدر بديل.", { exact: true })).toBeVisible();
+  // so the list must say NO replacement is coming. The eligible list is a
+  // DataTable too, so this sentence has a hidden twin as well.
+  await expect(shown(main(page), "مُلغاة نهائيًا — لن يصدر بديل.").first()).toBeVisible();
   // Sara holds a live replacement, so she carries no warning at all: the gap
   // closed, and the screen must stop talking about it.
-  await expect(main(page).getByText("مُلغاة لإزالة الحضور", { exact: false })).toHaveCount(0);
+  await expect(shown(main(page), "مُلغاة لإزالة الحضور")).toHaveCount(0);
 
   if (onPhone()) await capture(page, "scr045-revoked-final");
 });
@@ -313,10 +335,10 @@ test("★ /app/me/certificates shows BOTH — the live one and the revoked one w
   await signIn(context, emails.sara);
   await page.goto("/ar/app/me/certificates");
 
-  for (const c of certs) await expect(main(page).getByText(c.serial, { exact: false }).first()).toBeVisible();
+  for (const c of certs) await expect(shown(main(page), c.serial).first()).toBeVisible();
   // The member is the one audience that sees WHY (03 §5.8a); the public page
   // never does.
-  await expect(main(page).getByText("أُلغي تسجيل الحضور", { exact: false })).toBeVisible();
+  await expect(shown(main(page), "أُلغي تسجيل الحضور").first()).toBeVisible();
 
   if (onPhone()) await capture(page, "me-certificates-both");
 });
