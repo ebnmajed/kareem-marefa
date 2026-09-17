@@ -610,11 +610,14 @@ describe("POL-calendar_events.* (0101) — one calendar entry per day", () => {
         );
       expect(await errorCode(() => insert(foreign.id))).toBe(FK_VIOLATION);
 
-      // ★ Today's `unique (member_id, session_id)` is still in force (0101's header): a SECOND day's
-      // row for the same member is refused until `notify`'s file drops it with the function that names it.
+      // ★ One row per member PER DAY. `0101` added that rule BESIDE the old `unique (member_id,
+      // session_id)`, which `main`'s record_calendar_sync() named in `on conflict`; `0109` dropped the
+      // old one in the same file as the function that replaced it. So a second DAY's row for the same
+      // member is accepted, and a second row for the same day is not.
       const [day1] = await daysOf(tx, id);
       await tx.q(`delete from public.calendar_events where member_id = $1 and session_id = $2`, [member, id]);
       const [row] = await insert(day2);
+      expect(await errorCode(() => insert(day1.id))).toBeNull();
       expect(await errorCode(() => insert(day1.id))).toBe(UNIQUE_VIOLATION);
 
       await tx.q(`delete from public.session_days where id = $1`, [day2]);

@@ -1683,6 +1683,18 @@ generated suite is the highest-value test in the product.
 | `RPC-attendance_certificate_sync.issues_when_completed_late` | A member whose attendance becomes complete after the session completed gets the issue job under `cert:<session>:<member>:attendance`; not while the session is still running, not with certificates off, and not when a certificate row already exists — a revoked one included (wave 7's carry). |
 | `RPC-attendance_certificate_sync.never_fails_a_check_in` | Called from a member's own check-in it raises nothing, whatever the state of the session or of their attendance. Executable by no client role. |
 | `RPC-session_complete_attendees.staff_only` | Staff of the session's org read the members whose attendance is complete; a member is refused 42501, another org's staff read nothing. |
+| ★ **wave 9 (`DEC-151`), migration `0109`** — contract 8: one calendar entry per day, under the reservation's existing job key; the old `unique (member_id, session_id)` leaves in the same file as the function that named it |
+| `RPC-record_calendar_sync.per_day` | One row per member per DAY: running it twice for one
+| `RPC-record_calendar_sync.legacy_call_gets_first_day` | `main`'s six-argument call resolves to
+| `RPC-calendar_sync_target.days_and_orphans` | The target carries one entry per day with that
+| `RPC-record_calendar_event_removed.worker_only` | Only the worker may mark an orphaned row
+| `RPC-resync_calendars.definer_only` | No client role may fan calendar jobs out across an org. |
+| ★ **wave 9 (`DEC-151`), migration `0110`** — contract 8: reminders fire per day — an offset for day `k` only when its moment falls after day `k − 1` ended — and a key set that can shrink |
+| `RPC-schedule_session_reminders.per_day` | A confirmed seat on a three-day session holds one
+| `RPC-schedule_session_reminders.offset_after_previous_day` | An offset fires for day `k` only
+| `RPC-cancel_unlisted_reminders.sweeps` | Every pending reminder of a session that the
+| `RPC-cancel_member_reminders.every_day` | Cancelling a seat removes that member's keys for
+| `RPC-send_reminder_notification.day_scoped` | The reminder names the DAY's moment and the
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

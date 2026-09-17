@@ -1,4 +1,5 @@
 -- notify (wave 9) — one reminder stream per DAY, and a key set that can shrink.
+-- Promoted by the lead from supabase/proposed/notify/02_reminders_per_day.sql.
 --
 -- Serves:  REQ-SES-015 («reminders fire per day») · REQ-NTF-004 (rescheduling
 --          MOVES a reminder, it does not duplicate one) · REQ-TSK-005 is NOT

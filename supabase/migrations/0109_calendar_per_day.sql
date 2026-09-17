@@ -1,5 +1,6 @@
 -- notify (wave 9) — one calendar entry per DAY, with a one-day session's row,
 -- job keys and provider event untouched.
+-- Promoted by the lead from supabase/proposed/notify/01_calendar_per_day.sql.
 --
 -- Serves:  REQ-SES-015 («a member's calendar gains one entry per day») ·
 --          REQ-CAL-004 (one event per member per day — the constraint, not job
