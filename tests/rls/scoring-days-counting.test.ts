@@ -191,3 +191,58 @@ describe("RPC-evaluate_company_points.counts_members_not_check_ins", () => {
     });
   });
 });
+
+describe("JOB-award_presenter_points.one_bonus_per_qualifying_attendee", () => {
+  it("★ the EXACT query worker/src/tasks/award_presenter_points.ts runs: one bonus per attendee, not one per day", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      const presenter = f.a.members[0].memberId;
+      const attendee = f.a.members[1].memberId;
+      const partial = f.a.mod.memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, offsetDays: 10 });
+
+      // One attendee comes to all three days; another comes to one.
+      const ids: string[] = [];
+      for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, attendee));
+      await attend(tx, f.a, sessionId, dayIds[0], partial);
+
+      // ★ Run the task's own SQL verbatim — nothing else executes it, and a
+      // task whose query has never run is a task nobody has tested.
+      //
+      // As the OWNER, not service_role: `check_ins` is revoked from every
+      // client role including service_role (0010), and the worker connects on
+      // its own DATABASE_URL as the owner. award-presenter-points.test.ts:188
+      // already splits it this way for the same reason — the owner for the
+      // table read, service_role for the definer-only award.
+      await tx.asOwner();
+      const rows = await tx.q<{ epoch_check_in: string }>(
+        `select distinct public.attendance_epoch_check_in($1, c.member_id) as epoch_check_in
+           from public.check_ins c
+          where c.session_id = $1
+            and c.removed_at is null
+            and public.session_attendance_complete($1, c.member_id)`,
+        [sessionId],
+      );
+
+      // ONE row, for the one member who actually attended the session — not
+      // three for the three days they came to, and not one for the member who
+      // came to a third of it.
+      expect(rows).toHaveLength(1);
+      // …and it is the same check-in the attendee's OWN award is keyed to, so
+      // attendance_removed() reverses the pair together.
+      expect(rows[0].epoch_check_in).toBe(ids[2]);
+
+      await tx.asServiceRole();
+      for (const { epoch_check_in } of rows) {
+        await tx.q(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [presenter, epoch_check_in, sessionId]);
+      }
+      await tx.asOwner();
+      const bonuses = await tx.q<{ amount: number }>(
+        `select amount from public.points_ledger where member_id = $1 and session_id = $2 and rule_key = 'attendee_bonus'`,
+        [presenter, sessionId],
+      );
+      expect(bonuses).toHaveLength(1); // before this, three days paid three bonuses for one attendee
+      expect(partial).not.toBe(attendee);
+    });
+  });
+});

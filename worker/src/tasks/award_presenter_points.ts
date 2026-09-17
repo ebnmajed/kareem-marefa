@@ -53,14 +53,19 @@ export const award_presenter_points: Task = async (payload, helpers) => {
   // nothing. award_points() skips a removed check-in only for
   // source = 'check_in', and this award's source is 'attendee_bonus' — so the
   // filter stays here, now inside the predicate.
-  const { rows: attendees } = await helpers.query<{ member_id: string; epoch_check_in: string }>(
-    `select c.member_id,
-            (array_agg(c.id order by c.created_at desc, c.id desc))[1] as epoch_check_in
+  // ★ The epoch comes from `attendance_epoch_check_in()`, NOT from an
+  // `order by created_at` here. This query carried exactly the defect 0113's
+  // header describes: `check_ins.created_at` defaults to `now()`, the
+  // TRANSACTION's timestamp, so «latest created» is a random uuid among rows
+  // written together — and it would also have keyed the presenter's bonus to a
+  // different check-in than the attendee's own award, which is the pairing
+  // attendance_removed() relies on. One definition, called.
+  const { rows: attendees } = await helpers.query<{ epoch_check_in: string }>(
+    `select distinct public.attendance_epoch_check_in($1, c.member_id) as epoch_check_in
        from public.check_ins c
       where c.session_id = $1
         and c.removed_at is null
-        and public.session_attendance_complete($1, c.member_id)
-      group by c.member_id`,
+        and public.session_attendance_complete($1, c.member_id)`,
     [session_id],
   );
   for (const { epoch_check_in } of attendees) {
