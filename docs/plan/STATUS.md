@@ -405,6 +405,39 @@ applied in order, each in one transaction, `ON_ERROR_STOP=1` — all twenty-one 
 
 The container held fixtures only and is removed. (`0121` and `0122` were promoted after this run; each is one function with no data statement, applied over the local database with its suites green.)
 
+#### ✅ The rehearsal on the owner's dump — 2026-09-17, by the lead
+
+**The dump** (16,139 lines) was checked before use: **schema only, zero `COPY`/`INSERT`**, exactly at **`0099`**
+— `0099`'s objects present, none of `0100`+'s — and it **shows the owner's security statement already applied**
+(`_issue_check_in_code` ACL `{postgres=X/postgres}`). **Deleted once the rehearsal had run**, with its
+vault-stripped copy and both containers.
+
+| Step | Result |
+|---|---|
+| `postgres:17` + `scripts/ci/roles.sql` + the `supabase_realtime` publication + the dump minus its `supabase_vault` and `pg_stat_statements` lines | **0 errors** — 72 tables, 225 functions, 161 policies |
+| `main`'s own RLS fixture **committed onto production's schema**, plus the shapes it lacks (the same set as the chain rehearsal above) | 107 rows across 17 tables, a 30-job queue |
+| ★ **`0100`–`0122`, each in one transaction, `ON_ERROR_STOP=1`** | **23 of 23 clean** — after one environmental repair: a `public`-only dump carries **no `storage` or `realtime` policies**, so `0116`'s `drop policy "materials_storage_read" on storage.objects` found nothing to drop and rolled back whole. The thirteen were restored from the chain at `0099` (wave 8's step) and `0116` applied. **On production those policies exist — read (d) below confirms it before the push** |
+| every pre-existing column of every pre-existing row, before against after | **identical** — 107 rows, the 30 jobs in key, `run_at`, payload and revision — except `calendar_events.updated_at` on its 3 rows (`0101`'s backfill; nothing reads the column) |
+| the backfill's invariants | 10 of 10 sessions with a window have exactly one day equal to the stored window, venue, switch and position 1 · the 2 without have none · 6 check-ins, 3 codes, 3 attempts each on the day of their own session, each check-in's stored window its day's · 3 of 3 calendar rows on their day · no content row names a day · the closed door carried · the re-created `_issue_check_in_code(uuid, uuid)` refused to `anon` **and** `authenticated` · `session_days` RLS on, one policy |
+| ★ **production + `0100`–`0122` against the chain `0001`–`0122`**, catalogue by catalogue — columns, function bodies by hash with ACL and settings, policies by hash, RLS flags, triggers, constraints, indexes, table grants, views, enums | **1,402 lines against 1,401: identical except `rls_auto_enable()`**, production's own platform event-trigger function, known since wave 7 |
+| `check_ins_member_id_session_window_excl`, dropped and re-created by `0100` | textually identical to production's current definition, so rows that satisfy it today satisfy it after; the new unique index is `(session_day_id, member_id)`, equivalent to today's `(session_id, member_id)` while every session has one day |
+
+★ **Which migration carries the backfill, and what it touches.** **`0100`** — it **inserts one `session_days`
+row per session that has both a start and an end** (read b1), then **updates every `check_in_codes`,
+`check_ins` and `check_in_attempts` row** to name that day (r1–r3), and stops with a named exception if a
+check-in or a code has no day to take (a1, a2). **`0101`** carries the second, smaller half: it **updates
+every `calendar_events` row** to name its day (r4 — and moves their `updated_at`), and sets a day's switch
+closed where its session's is closed today (r5). **No other file of the twenty-three contains a data
+statement** — `0102`–`0122` are functions, policies and grants. **No `sessions` row is written**: the
+derivation trigger finds stored = derived and updates nothing (proven above: `sessions.updated_at` unchanged).
+`points_ledger`, `audit_log`, `certificates`, `rsvps`, `notifications` and the job queue are untouched.
+
+★ **The production reads did not run from the lead's session** — `supabase db query --linked` was refused by
+the session's permission layer twice, and a refusal is not worked around. They are one read-only statement
+(`select` and `count(*)` only, no personal data), proven against the local database, for the owner to run:
+the statement is in step 3 of the owner's order below. Expected: **a1 = 0, a2 = 0, c = false / false /
+false, d = 2, e = `0099`**; b1 and r1–r5 are the row counts.
+
 #### The two windows
 
 **Push → merge: `main`'s app and `main`'s worker on `0120`.** Nothing a member sees changes except the two
@@ -427,21 +460,28 @@ Railway's trigger has never fired on its own.** At one day the old worker is cor
 
 #### The owner's order
 
-1. **Run the security statement now if it has not been run** — top of this block; it does not wait for anything.
-2. **Rehearse `0100`–`0122` against a production schema dump** (schema only — check it has no `COPY`/`INSERT`
-   before use, and delete it after), each file in one transaction with `ON_ERROR_STOP=1`. Expect twenty-three
-   clean files and the rehearsal table above.
-3. **Three production reads first** (read only; `supabase db query --linked`):
+1. ~~**Run the security statement**~~ — ✅ **run and verified by the owner 2026-09-17**: `anon`, `authenticated` and `service_role` all false; the dump shows it.
+2. ~~**Rehearse `0100`–`0122` against a production schema dump**~~ — ✅ **done 2026-09-17 by the lead on the
+   owner's dump**, recorded above; the dump is deleted.
+3. **The production reads first** (read only — `select` and `count(*)`, no personal data) — ★ **still to
+   run: the lead's session was refused `supabase db query --linked`, twice, and did not work around it.** One
+   statement, proven against the local database. Expected: **a1 = 0 · a2 = 0 · c = false / false / false ·
+   d = 2 · e = `0099`**; b1 and r1–r5 are the row counts the backfill touches.
    ```sql
-   -- (a) must be 0, or 0100 stops by design with a named exception
-   select count(*) from public.check_ins c join public.sessions s on s.id = c.session_id
-    where s.starts_at is null or s.ends_at is null;
-   select count(*) from public.check_in_codes c join public.sessions s on s.id = c.session_id
-    where s.starts_at is null or s.ends_at is null;
-   -- (b) informational: how many sessions become one day, how many have none
-   select (starts_at is not null and ends_at is not null) as gets_a_day, count(*) from public.sessions group by 1;
-   -- (c) must be false after step 1
-   select has_function_privilege('anon', 'public._issue_check_in_code(uuid)', 'execute');
+   select * from (
+   select 1 as n, 'a1 check_ins on a session with no full window — MUST BE 0 (0100 stops otherwise)' as "check", count(*)::text as value from public.check_ins c join public.sessions s on s.id = c.session_id where s.starts_at is null or s.ends_at is null
+   union all select 2, 'a2 check_in_codes on a session with no full window — MUST BE 0', count(*)::text from public.check_in_codes c join public.sessions s on s.id = c.session_id where s.starts_at is null or s.ends_at is null
+   union all select 3, 'b1 sessions that become exactly one day = rows 0100 INSERTS into session_days', count(*)::text from public.sessions where starts_at is not null and ends_at is not null
+   union all select 4, 'b2 sessions that get no day (no full window yet)', count(*)::text from public.sessions where starts_at is null or ends_at is null
+   union all select 5, 'c  anon / authenticated / service_role may run _issue_check_in_code — MUST BE false/false/false', concat_ws(' / ', has_function_privilege('anon', to_regprocedure('public._issue_check_in_code(uuid)')::oid, 'execute'), has_function_privilege('authenticated', to_regprocedure('public._issue_check_in_code(uuid)')::oid, 'execute'), has_function_privilege('service_role', to_regprocedure('public._issue_check_in_code(uuid)')::oid, 'execute'))
+   union all select 6, 'd  storage policies 0116 drops and re-creates, present — MUST BE 2', count(*)::text from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname in ('materials_storage_read', 'material_pages_storage_read')
+   union all select 7, 'e  latest migration applied — MUST BE 0099', max(version) from supabase_migrations.schema_migrations
+   union all select 8, 'r1 check_in_codes rows 0100 UPDATES (gains its day)', count(*)::text from public.check_in_codes
+   union all select 9, 'r2 check_ins rows 0100 UPDATES', count(*)::text from public.check_ins
+   union all select 10, 'r3 check_in_attempts rows 0100 UPDATES', count(*)::text from public.check_in_attempts a join public.sessions s on s.id = a.session_id where s.starts_at is not null and s.ends_at is not null
+   union all select 11, 'r4 calendar_events rows 0101 UPDATES (and moves updated_at on)', count(*)::text from public.calendar_events ce join public.sessions s on s.id = ce.session_id where s.starts_at is not null and s.ends_at is not null
+   union all select 12, 'r5 session_days rows 0101 UPDATES (a door closed by hand today)', count(*)::text from public.sessions where starts_at is not null and ends_at is not null and check_in_open = false
+   ) t order by n;
    ```
 4. **Outside a scheduled session** (Server Action IDs rotate on deploy): `supabase db push` (`0100`–`0122`) →
    **merge PR #26** → ★ **check the worker's deployed commit in Railway and reconnect the source if it has not
