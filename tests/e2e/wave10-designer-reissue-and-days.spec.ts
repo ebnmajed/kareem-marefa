@@ -386,10 +386,31 @@ test("★ /verify resolves each certificate separately — «ملغاة» withou
 
 /* ── D2 · the date on the canvas ────────────────────────────────────────── */
 
-/** The studio's canvas is the renderer's own output with real data
- *  (REQ-DSG-006) — the date layer read from inside the preview iframe. */
+/**
+ * The studio's canvas is the renderer's own output with real data
+ * (REQ-DSG-006) — the date layer read from inside the preview iframe.
+ *
+ * ★ THE CANVAS IS IN THE DOM TWICE, exactly as `ui/data-table`'s rows are.
+ * `editor.tsx` builds ONE `canvas` element and renders it in BOTH branches —
+ * the phone's «view and approve» column (`:463`) and the desktop editor's
+ * `<section aria-labelledby="dr-canvas">` (`:511`) — and hides one with
+ * `xl:hidden` / `hidden xl:flex`. So there are always two `iframe`s carrying
+ * the same `title`, and only one of them is showing.
+ *
+ * Scoping by the region «المعاينة» happened to pick the visible one ON
+ * DESKTOP, because that section exists only in the desktop branch — which is
+ * why the desktop cases passed and why that pass was luck rather than proof.
+ * The phone branch wraps the canvas in no region at all, so the same locator
+ * found nothing there. Picking the VISIBLE twin is right in both layouts and
+ * depends on neither.
+ */
 function whenLayer(page: Page) {
-  return main(page).getByRole("region", { name: "المعاينة" }).frameLocator('iframe[title="لوحة التصميم"]').locator('[data-layer="l_when"]');
+  return main(page)
+    .locator('iframe[title="لوحة التصميم"]')
+    .filter({ visible: true })
+    .first()
+    .contentFrame()
+    .locator('[data-layer="l_when"]');
 }
 
 test("★ a three-day session's poster prints a RANGE, and it is the runtime's own answer", async ({ context, page }) => {
