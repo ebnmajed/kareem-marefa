@@ -1515,7 +1515,8 @@ export interface EmailDesign {
 compiler appends it to every document, always, so `REQ-NTF-005`'s preference link cannot be deleted
 by an admin or forgotten by a design. It is not in the union, it has no id, and it is not reorderable.
 That is the requirement read literally and it is also the only shape in which «can never be
-forgotten» is true.
+forgotten» is true. It is still **shown** — as a fixed last row outside the reorderable set, so the
+pane does not tell an admin the mail ends where it does not (`Q6`).
 
 `alt` is `string` and not `string | undefined`: a mandatory field is mandatory in the type, and the
 checks panel's «an image with no `alt`» fires on the empty string.
@@ -1793,6 +1794,21 @@ image with no `alt`, a binding the key does not offer, a subject over 78 charact
 URL binding, text below 14 px. They run on the **client** over the block list for immediacy, and the
 binding check runs again in the **database** on save — the form never being the authority is
 `REQ-NTF-012`.
+
+### X7.5 The blocks pane, on contract 2 (`d260144`)
+
+`ui/reorderable-list` landed while this plan was being written, so the pane is specified against its
+real props rather than against a guess. The call, `getName`'s rule and the footer's fixed last row
+are written out at `Q6`; three properties of that arrangement matter here:
+
+- **The editor's state is the authority.** `onReorder(nextKeys, moved)` hands back the whole new
+  order and my state applies it, so a reorder is the same kind of edit as changing a heading's text:
+  one document, one dirty flag, one save. There is no per-block write and no autosave (`16` §11.4
+  does not ask for one, and a mail template is not a canvas).
+- **Taps alone, and no drag** — `SC 2.5.7`. Nothing in the pane adds a pointer-only path, and I add
+  no timer, interval or nudge to the save button (`DEC-146`).
+- **`size="sm"`** because the pane sits beside the preview at 390 px; the preview's own mode buttons
+  stay at the house 44 px target.
 
 ## X8. N5 — «أرسل اختبارًا» (`REQ-NTF-011`)
 
@@ -2147,10 +2163,43 @@ provider saw.
 (`console`'s, held by the lead) so `tests/unit/admin-audit-labels.test.ts` stays green.
 Proposed: `ar` «أُرسلت رسالة اختبار» · `en` "Test email sent".
 
-**Q6 — `ui/reorderable-list`'s props** (contract 2, in `ui/index.ts` on day one). What the block list
-needs: `items: { id: string; label: string }[]`, `onReorder(next: string[])`, a `label` for the list
-and an `itemLabel` for the ▲▼ buttons' accessible names. If the shape the lead lands differs, I adapt
-— I am naming it only so the two consumers do not discover a mismatch at sync 2.
+**Q6 — ★ CLOSED. `ui/reorderable-list` landed at `d260144`**, and it fits the blocks pane with no
+request. Read rather than guessed — `ReorderableListProps<Item>` in `src/components/ui/index.ts:442`
+and the file's header. How the editor uses it, in its real names (§X7.5):
+
+```tsx
+<ReorderableList
+  items={blocks}                                   // EmailBlock[], the editor's own state
+  getKey={(b) => b.id}                             // stable across reorders — the row keeps focus
+  getName={blockName}                              // «فقرة: مرحبًا {{member.name}}…» — never empty
+  renderItem={(b) => <BlockRow block={b} selected={b.id === selectedId} />}
+  renderActions={(b) => <><DuplicateBlock id={b.id} /><RemoveBlock id={b.id} /></>}
+  onReorder={(nextKeys) => setBlocks(byKey(nextKeys))}   // the whole new order; my state decides
+  label={t("blocks.listLabel")}                    // «كتل الرسالة»
+  disabled={saving}                                // every ▲▼ inert while a save is in flight
+  size="sm"                                        // 36 px — the dense pane beside the preview
+/>
+```
+
+`getName` is the one that needs care: it is what ▲▼ are described by and what is announced after a
+move, so «فقرة» twelve times over is the failure. It returns **the block's type and its first words**
+— «عنوان: تذكير بجلستك», «زر: أضف إلى تقويمك», «صورة: شعار المؤسسة», «بطاقة جلسة», «فاصل» — with the
+type alone for the four blocks that carry no text. A unit test asserts no two rows of a design share
+a name.
+
+The props are functions, so the pane is a client component; the block list is editor state and the
+document is saved by an action, which is the `DEC-159` shape the header warns about.
+
+★ **The `footer` — I agree with the lead: a fixed last row, outside the reorderable set.** It is
+rendered after `</ReorderableList>` as a row of the same shape, marked «يُضاف دائمًا», with no ▲▼ and
+no remove. It is **not** in `items`, so `total` never counts it, the last real block's ▼ is correctly
+`aria-disabled`, and nothing can move a block below it. Showing it is not decoration: a pane that
+omits it tells the admin the mail ends at their last block when it does not, and the checks panel's
+«a missing preference footer» check would have nothing to point at. Selecting it opens the properties
+pane read-only, so an admin can see what the org signature and the preference link will say and
+cannot delete either (`REQ-NTF-005`, `REQ-NTF-009`'s «composed, not typed»).
+
+No prop is missing, so there is no request against the file.
 
 **Q7 — do I fix `{{url}}` this wave, and is it a named difference?**
 **I recommend yes, as the wave's named difference 1**, on the same terms `DEC-151` set for named
