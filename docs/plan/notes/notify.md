@@ -1488,7 +1488,7 @@ unverified claim is what `REQ-NTF-009` forbids this wave. The string path leaves
 | # | Finding | What landed |
 |---|---|---|
 | **F1** HIGH | The mail declares no colour scheme, so Apple Mail and Outlook.com auto-invert — and an inverter that darkens a background while leaving explicit text colours alone gives **dark text on a dark card**, which a light-mode reviewer never sees | `<meta name="color-scheme">`, `<meta name="supported-color-schemes">` and the `:root` style, **on the block path only**. A test asserts the design has them and the string path has **no `color-scheme` and no `<style>` at all** |
-| **F2** HIGH | A brand logo is often **dark ink on transparency**, and Gmail on Android darkens the card whatever the mail declares (F1's opt-out does not reach it) — so the header of every designed mail goes blank | An explicit **`bgcolor` attribute** on the logo cell and the session card, never a CSS background: the attribute is what the Word engine reads and what the inverter respects. ★ I used the palette's **`surface`** rather than `designer`'s literal `#ffffff` — it is the colour the logo sits on today, so light mode is unchanged, where `#ffffff` would put a white patch on a tinted card. Flagged for confirmation |
+| **F2** HIGH | A brand logo is often **dark ink on transparency**, and Gmail on Android darkens the card whatever the mail declares (F1's opt-out does not reach it) — so the header of a designed mail goes blank | An explicit **`bgcolor` attribute** on the logo cell and the session card, never a CSS background. ★ **`surface`, not `#ffffff` — `designer` agreed and reversed its own request** (`7c44e74`): `palette.surface` is the LIGHT palette's, so it is a light colour **by construction**, and the case I worried about cannot occur without that org's app being broken by the same token. ★ **And it is a LEVER, NOT A FIX**, which `designer` corrected after writing it: a client that inverts wholesale inverts the attribute too, and **Gmail does not invert images**, so dark ink on a now-dark ground is invisible whatever we write. It improves the odds where explicit attributes are honoured and does nothing where they are not |
 | **F3** MEDIUM | ★ **`session_card_image_url` and `withImage` are set by nothing** — the image branch can never run. The same shape as the `{{url}}` defect, found the same way: by tracing the value rather than reading the code that consumes it | ★ **Asked, not copied** — see below |
 | **F4** MEDIUM | iOS and Android ship **none** of Plex, Segoe UI or Tahoma, so their Arabic is **discovered, not declared** — a platform reordering its fallbacks would change our Arabic silently on most readers | `DESIGN_STACK` adds `'Geeza Pro', 'Noto Naskh Arabic'` before `Arial`, **block path only**. A test asserts the design declares them and the string path still ends at `Tahoma` |
 | **F5** LOW | The session card's lines are bare `<div>`s — and they are the **bound values**, the worst place to rely on inheritance | `dir="rtl"` and `text-align:right` on both, like every other element |
@@ -1524,6 +1524,20 @@ Five cases, three of them the lead's: no session id → false · published **wit
 true · the same session with **no artifact yet** → false · **cancelled** → false even with a ready
 artifact · another org's → false · a stale id that is no session → false rather than an error, so a
 stale payload cannot dead-letter a send.
+
+### ★ A live defect F2 uncovered, one medium over — carried, not mine
+
+`designer` found the root cause while conceding F2, and it **predates this wave**: the product
+has **one logo asset for two schemes**. There is a single `brand_kits.logo_asset_id`; the poster
+template's logo layer binds it, and **a poster renders at scheme `dark`** (`DEC-125`). So an org
+whose logo is dark ink on transparency has an **invisible logo on every generated poster today** —
+the same failure as F2, in the medium this repo does control. A JPEG is safe by accident (no alpha,
+a white ground baked in); a transparent PNG is not.
+
+Not mine and not this wave: the answer is a per-scheme logo, or a stated requirement that the asset
+reads on both grounds, with an upload-time check — a `branding` change, the lead's as custodian.
+Recorded here because it is the reason F2 can only ever be a lever: **we cannot make a one-scheme
+asset safe on two grounds by choosing a background colour.**
 
 **Two things `designer` cleared, kept because each still looks like a hazard:** white on `fgHeading`
 is not a contrast risk — **contrast is symmetric**, so it is the pairing the brand kit already

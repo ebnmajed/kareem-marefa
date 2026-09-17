@@ -246,9 +246,22 @@ function compileOne(
       // logo is very often dark ink on TRANSPARENCY, and Gmail on Android
       // darkens the card's surface whatever the mail declares (F1's opt-out
       // does not reach it). A transparent PNG then has nothing to stand on and
-      // the header of every designed mail goes blank. The attribute is what
-      // Outlook's Word engine reads and what the inverter respects most
-      // consistently; a CSS `background` is the first thing it overrides.
+      // the header of a designed mail goes blank.
+      //
+      // ★ AND IT IS A LEVER, NOT A FIX — `designer` corrected its own finding
+      // on this and the correction matters more than the fix. The attribute is
+      // what Outlook's Word engine reads, and it beats a CSS `background`,
+      // which an inverter overrides first. But a client that inverts wholesale
+      // inverts the attribute too, and **Gmail does not invert images** — so
+      // dark ink on a now-dark ground is invisible whatever value is written
+      // here. This improves the odds where explicit attributes are honoured and
+      // does nothing where they are not. The pair surviving inversion is a
+      // thing to LOOK at, not to assert (item 4, the preview's dark toggle).
+      //
+      // The value is the LIGHT palette's `surface`, which is a light colour by
+      // construction — it is the ground the app's own dark body text sits on —
+      // so it never introduces the white patch a literal `#ffffff` would put on
+      // a tinted card, and it is never worse in the failure case.
       rows.push(
         row(
           `<td ${cell(`padding:0 0 16px 0;text-align:right;`)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${width}" style="display:block;width:${width}px;max-width:100%;height:auto;border:0;" /></td>`,
