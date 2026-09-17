@@ -145,6 +145,11 @@ export default async function MemberPage({ params }: { params: Promise<{ locale:
               <li key={s.id}>
                 <Card density="row" href={`/app/sessions/${s.id}`}>
                   <CardBody>
+                    {/* The badge here is the badge the event page and the timeline card
+                        show for the same session at the same instant — so between two days
+                        of a workshop it reads «التسجيل مفتوح», never «جارية».
+                        phase-days: on the DTO — `PresentedSession.days`, embedded by
+                        `listSessionsPresentedBy()` because this is a list (DEC-151 r3). */}
                     <SessionStatusBadge phase={sessionPhase(s, now)} size="sm" />
                     <h3 className="text-body text-fg-heading">
                       <bdi>{s.title}</bdi>

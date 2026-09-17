@@ -111,7 +111,13 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
   const dayCount = spans ? dayCountLabel(data.dayCount, tDays) : null;
   const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
   // Clock only, over a published session's times — see the header.
-  const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt });
+  // ★ THE DAYS ARE PASSED, and this line is the defect that made them
+  // necessary: with the stored window alone a three-day workshop read «جارية
+  // الآن» to the public through both of its nights, while the event page and
+  // the browse card — which pass days — said «التسجيل مفتوح» for the same
+  // session at the same instant. One implementation of the rule, fed
+  // everywhere (contract 9).
+  const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt, days: data.days });
   const ended = phase === "ended";
 
   return (
@@ -154,33 +160,37 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
                 {when ? (
                   <>
                     <bdi>{when}</bdi>
-                    {/* ★ Where the line may break, and nowhere else. A time is
-                        joined to its «م» at the source (`numerals.ts`, U+00A0);
-                        «· حتى 8:27 م» is one unbreakable clause; and the ONLY
-                        break opportunity is the ordinary space BEFORE the «·»,
-                        which sits outside the clause. Wave 7's capture showed
-                        «… في 6:57» / «م · حتى 8:27 م» — the clause had its
-                        leading space inside it, so the line broke inside the
-                        start time instead. */}
+                    {/* ★ Where the line may break, and nowhere else — two rules,
+                        each with a capture behind it.
+
+                        A time is joined to its «م» at the source
+                        (`numerals.ts`, U+00A0) and «حتى 8:27 م» is one
+                        unbreakable clause, so a line never breaks inside the
+                        time — wave 7's capture showed «… في 6:57» / «م · حتى
+                        8:27 م» when the clause held its own leading space.
+
+                        ★ And the SEPARATOR BELONGS TO THE LINE IT ENDS: glued
+                        to what precedes it with a no-break space, followed by
+                        an ordinary one. So the only break opportunity is AFTER
+                        the «·» and a wrapped line opens «حتى …» rather than
+                        «· حتى …», which reads as a fragment of the line
+                        above. Wave 9's three-day range is long enough to wrap
+                        and is where that showed. */}
                     {until ? (
-                      <>
-                        {" "}
-                        <span className="whitespace-nowrap text-fg-muted">
-                          {"·\u00A0"}
-                          {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
-                        </span>
-                      </>
+                      <span className="text-fg-muted">
+                        {"\u00A0· "}
+                        <span className="whitespace-nowrap">{t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}</span>
+                      </span>
                     ) : null}
-                    {/* The count rides on the same break rule as «· حتى …»: an
-                        ordinary space before the «·», nothing breakable after. */}
+                    {/* The count rides on the same rule: the «·» ends the line
+                        before it, and the count travels whole to the next. */}
                     {dayCount ? (
-                      <>
-                        {" "}
-                        <span className="whitespace-nowrap text-fg-muted">
-                          {"·\u00A0"}
+                      <span className="text-fg-muted">
+                        {"\u00A0· "}
+                        <span className="whitespace-nowrap">
                           <bdi>{dayCount}</bdi>
                         </span>
-                      </>
+                      </span>
                     ) : null}
                   </>
                 ) : (

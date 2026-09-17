@@ -633,6 +633,13 @@ export interface PresentedSession {
   endsAt: string | null;
   durationMinutes: number | null;
   timeZone: string;
+  /**
+   * ★ The session's days, so the profile's badge is the badge every other
+   * surface shows (contract 9). Embedded rather than read one session at a
+   * time: this is a LIST, and `DEC-151` ruling 3 says a list may embed while a
+   * single session goes through `listSessionDays()`.
+   */
+  days: readonly DayWindow[];
 }
 
 /**
@@ -653,7 +660,7 @@ export async function listSessionsPresentedBy(locale: string, memberId: string, 
   const [{ data, error: sessionsError }, { data: settings }] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone")
+      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone, session_days(id, position, starts_at, ends_at)")
       .in("id", ids)
       .in("state", ["published", "in_progress", "completed", "archived"])
       .order("starts_at", { ascending: false })
@@ -670,6 +677,14 @@ export async function listSessionsPresentedBy(locale: string, memberId: string, 
     endsAt: (s.ends_at as string | null) ?? null,
     durationMinutes: (s.duration_minutes as number | null) ?? null,
     timeZone: (s.time_zone as string | null) ?? orgZone,
+    days: (((s as unknown as Record<string, unknown>).session_days as Record<string, unknown>[] | null) ?? [])
+      .map((d) => ({
+        id: d.id as string,
+        position: d.position as number,
+        startsAt: d.starts_at as string,
+        endsAt: d.ends_at as string,
+      }))
+      .sort((a, b) => a.position - b.position),
   }));
 }
 
@@ -929,10 +944,24 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
 
   const viewerIsPresenter = (presenters ?? []).some((p) => p.member_id === session.memberId);
   const viewerIsStaff = session.role === "admin" || session.role === "moderator";
+  // ★ ONE PHASE PER REQUEST, AND IT KNOWS THE DAYS (contract 9). Without them
+  // this said `live` through the night between two days of a workshop while
+  // the page — which passes them — said `open`: two phases for one request.
+  // `listSessionDays()` is `cache()`d, so this is the page's own read.
+  //
+  // ★ `relation` CANNOT differ between the two today, and it is worth saying
+  // why rather than leaving it to be rediscovered: `viewerRelation()` branches
+  // on `phase === "ended"` alone, and the day set never moves that boundary —
+  // `sessions.ends_at` IS the last day's end (contract 1), so `ended` is the
+  // same with or without days. The day set only ever splits `live` into `live`
+  // and `open`, which `viewerRelation()` treats identically. The defect was
+  // latent for the relation and real for every other reader of this phase; it
+  // stops being latent the moment anything here distinguishes a running day.
   const phase = sessionPhase({
     state: row.state as SessionState,
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
+    days: await listSessionDays(locale, id),
   });
   const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
   const checkedIn = Boolean(checkInRes.data);
@@ -1134,6 +1163,25 @@ export interface PublicSessionCard {
    * without widening the one public read of `sessions` in the product.
    */
   dayCount: number;
+  /**
+   * ★ One window per day, for `sessionPhase()` and for nothing else
+   * (contract 9). Without these the card said «جارية الآن» through the night
+   * between two days of a workshop, while the event page and the browse card
+   * said «التسجيل مفتوح» for the same session at the same instant.
+   *
+   * ★ THE `id` AND `position` ARE THIS MODULE'S, NOT THE DATABASE'S.
+   * `session_public_card()` deliberately returns two instants per day and no
+   * identifier (`0004`): a link-holding stranger learns the meeting times, not
+   * a key. `DayWindow` wants both fields, so they are assigned here, from the
+   * order the function already sorted by — and the `id` is a string that could
+   * not be mistaken for a row's. `chronological()` uses `id` only to break a
+   * tie between two days that start at the same instant, which `0100`'s
+   * exclusion constraint makes impossible within one session.
+   *
+   * A REQUEST IS OPEN with the lead to make both optional on `DayWindow`, at
+   * which point this mapping becomes a plain `map`.
+   */
+  days: readonly DayWindow[];
   /** Whether a poster `og` render exists. The PATH never leaves this module:
    *  the page asks for `/api/s/{id}/og`, which asks again. */
   hasImage: boolean;
@@ -1149,6 +1197,7 @@ interface PublicCardRow {
   venue_name: string | null;
   org_name: string;
   day_count: number | null;
+  days: { starts_at: string; ends_at: string }[] | null;
   og_path: string | null;
   og_width: number | null;
   og_height: number | null;
@@ -1181,6 +1230,12 @@ export async function getPublicSessionCard(id: string): Promise<PublicSessionCar
     // count of none: a card-eligible session is published, and `0100`'s
     // commit check refuses a published session without a day.
     dayCount: row.day_count ?? 1,
+    days: (row.days ?? []).map((d, index) => ({
+      id: `public-card-day-${index + 1}`,
+      position: index + 1,
+      startsAt: d.starts_at,
+      endsAt: d.ends_at,
+    })),
     hasImage: Boolean(row.og_path),
     imageWidth: row.og_width,
     imageHeight: row.og_height,

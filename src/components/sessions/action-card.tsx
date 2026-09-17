@@ -319,8 +319,14 @@ async function Meta({ session, phase, days, locale }: { session: EventSession; p
           {session.startsAt ? (
             <>
               <bdi>{when(session.startsAt)}</bdi>
-              {/* No-break space after the dot: a line may break before «·», never after it. */}
-              {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
+              {/* ★ THE SEPARATOR BELONGS TO THE LINE IT ENDS. Glued to the date
+                  with a no-break space and followed by an ORDINARY one, so the
+                  only break opportunity is after it: a wrapped second line
+                  opens «حتى السبت، 19 سبتمبر …», never «· حتى …», which reads as a
+                  fragment of the line above. The previous rule put the
+                  breakable space BEFORE the dot and produced exactly that, on
+                  a three-day range that wraps. */}
+              {until ? <span className="text-fg-muted">{"\u00A0· "}{t("toTime", { value: until })}</span> : null}
               {/* ★ The days themselves, INSIDE the `<dd>`: a `<dl>`'s `<div>`
                   holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
                   `definition-list` refused an icon-beside-a-wrapper row at wave

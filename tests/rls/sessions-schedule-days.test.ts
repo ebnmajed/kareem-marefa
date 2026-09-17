@@ -632,3 +632,59 @@ describe("POL-sessions.public_card.day_count — a shared link says how many day
     });
   });
 });
+
+// ── The public card's day windows (0004) ────────────────────────────────────
+//
+// `03` §8.2 rows: POL-sessions.public_card.day_windows,
+// POL-sessions.public_card.one_day_unchanged.
+describe("POL-sessions.public_card.day_windows — enough for sessionPhase(), and nothing more", () => {
+  it("★ returns one window per day, ordered, with NO id, position or venue", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "sessions/0004_public_card_day_windows.sql");
+      const sessionId = await approvedSession(tx, f.a);
+
+      await tx.as(f.a.admin.claims);
+      const three = evenings(3, f.a.venueId);
+      await tx.q(CALL_16, [sessionId, STARTS, f.a.venueId, JSON.stringify(three), null]);
+      await tx.q(`select * from public.publish_session($1)`, [sessionId]);
+
+      await tx.asAnon();
+      const [card] = await tx.q<{ days: { starts_at: string; ends_at: string }[]; day_count: number }>(
+        `select days, day_count from public.session_public_card($1)`,
+        [sessionId],
+      );
+      expect(card.day_count).toBe(3);
+      expect(card.days.map((d) => new Date(d.starts_at).toISOString())).toEqual(three.map((d) => d.starts_at));
+      expect(card.days.map((d) => new Date(d.ends_at).toISOString())).toEqual(three.map((d) => d.ends_at));
+      // ★ A link-holding stranger learns the meeting TIMES and no key.
+      for (const day of card.days) expect(Object.keys(day).sort()).toEqual(["ends_at", "starts_at"]);
+
+      // …and the table itself is still shut to them.
+      expect(await errorCode(() => tx.q(`select id from public.session_days where session_id = $1`, [sessionId]))).not.toBeNull();
+    });
+  });
+
+  it("★ a one-day session returns ONE element — betweenDays() has no pair to walk", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "sessions/0004_public_card_day_windows.sql");
+      const sessionId = await approvedSession(tx, f.a);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(CALL_14, [sessionId, STARTS, f.a.venueId]);
+      await tx.q(`select * from public.publish_session($1)`, [sessionId]);
+
+      await tx.asAnon();
+      const [card] = await tx.q<{ days: { starts_at: string; ends_at: string }[]; starts_at: Date; ends_at: Date }>(
+        `select days, starts_at, ends_at from public.session_public_card($1)`,
+        [sessionId],
+      );
+      expect(card.days).toHaveLength(1);
+      // The one window IS the session's stored window (contract 1), so the
+      // card's phase is what it has always been for every session on `main`.
+      expect(new Date(card.days[0].starts_at).toISOString()).toBe(new Date(card.starts_at).toISOString());
+      expect(new Date(card.days[0].ends_at).toISOString()).toBe(new Date(card.ends_at).toISOString());
+    });
+  });
+});
