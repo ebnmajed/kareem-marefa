@@ -1251,3 +1251,918 @@ which `tests/components/calendar/synced-days.test.tsx` asserts as an absence.
   (§W11.10, `DEC-154`).
 - **`session_days_changed()` reads either snapshot shape** (§W11.4): the five published keys or a
   whole `session_days` row. `0112` sends the latter.
+
+---
+
+# Wave 10 plan — the email studio (`REQ-NTF-009` … `014`, `16` §11, `DEC-160` §4)
+
+Planning only. Nothing below is built until the lead approves at sync 1. Everything in it was read
+from the tree at `2665627`, not remembered: `worker/src/mail/**`, `worker/src/tasks/send_notification.ts`,
+`supabase/migrations/{0026,0030,0055,0062,0068,0073,0082,0093,0110,0119}`, `src/app/[locale]/app/admin/emails/**`,
+`src/lib/dal/notifications.ts`, `src/proxy.ts`, `packages/designer-runtime/{package.json,tsconfig.json}`,
+root `package.json`, `worker/{package.json,tsconfig.json,Dockerfile}`, the five `tests/unit/mail-*.test.ts`,
+`tests/components/admin/emails-page.test.tsx`, `tests/unit/admin-emails.test.ts`,
+`tests/e2e/wave8-console-emails.spec.ts`, `tests/rls/definer-exposure.test.ts`.
+
+## X0. The two contracts I own, published
+
+**Contract 4 — pin, then move, then build.** `renderEmail(input)` keeps its signature. `RenderInput`
+gains **optional, trailing** fields only (`appUrl?`, a widened `brand?`); no caller changes shape.
+The order is N1 → L3 → N2 and it is not negotiable, because the move has no proof without the pin.
+
+**Contract 5 — `public.notify()` and every `MSG-*` key unchanged.** `notify()`'s signature, its four
+properties, the 39-row matrix and the 25 email keys are untouched by this wave. **An org with no
+block template renders the pinned bytes** — see `Q2`, which is the one place that promise is in
+tension with a settled document, and the only question in this plan I cannot answer alone.
+
+## X1. N1 — pinning today's output, before anything else changes
+
+### X1.1 The files
+
+```
+tests/unit/mail-pinned/<case>.subject.txt     the subject, one line, no trailing newline
+tests/unit/mail-pinned/<case>.txt             the text/plain part, verbatim
+tests/unit/mail-pinned/<case>.brand.html      renderEmail({ …, brand: BRAND })
+tests/unit/mail-pinned/<case>.plain.html      renderEmail({ …, brand: null })
+```
+
+Four files per case. **The subject and the text part do not depend on the brand** — `renderEmail()`
+computes both before `toHtml()` and passes `brand` only to `toHtml()` — so pinning them once is
+correct, and a test asserts that fact rather than assuming it (`subject` and `text` are equal with
+and without a brand, for every case). The directory sits under `tests/unit/mail-*`, which is mine;
+vitest's `unit` project includes `tests/unit/**/*.test.ts` only, so the `.txt` and `.html` files are
+data, not tests.
+
+**A case is not a key.** It is `{ id, key, payload }`, because three renderer branches are worth
+freezing separately and each is a one-line fixture rather than a second key:
+
+| Extra case | Why |
+|---|---|
+| `MSG-reminder_1d.day2of3` | `dayBlock()` at `dayPosition = 2`, `dayCount = 3` — wave 9's «اليوم الثاني من 3». The plain `MSG-reminder_1d` case carries `dayCount = 1`, which must render **without** the day line. |
+| `MSG-session_changed.day2of3` | `changeLabel()`'s «الموعد · اليوم الثاني», and `changesFromPayload()` dropping an unchanged field. |
+| `MSG-rating_prompt.no-display-name` | `member.name ?? member.email` — the greeting's fallback, which no existing test renders end to end. |
+| `MSG-badge_earned.hostile` | `escapeHtml()` over `<script>alert(1)</script>`, so the escaping is bytes and not a `toContain`. |
+
+29 cases × 4 files = 116 files, each small. The test asserts the **set of case ids covers all 25
+keys of `notification_matrix()` with `email = true`**, so a deleted file fails rather than silently
+passing, and a key added to the matrix fails until it is pinned.
+
+### X1.2 The fixed org, member and brand
+
+```ts
+const ORG    = { name: "كريم معرفة", timeZone: "Asia/Riyadh" };
+const MEMBER = { name: "سارة العتيبي", email: "sara@kareem.example" };
+const BRAND  = { fgBody: "#2b3a55", fgMuted: "#6f7d93", surface: "#fffdf7" };  // deliberately none
+                                                                              // of render.ts's three
+                                                                              // fallbacks
+```
+
+`ORG` and `MEMBER` are the existing suite's, so a reader who knows `mail-render.test.ts` recognises
+the pinned bytes. `BRAND`'s three values differ from `#1a1a1a` / `#6b6b6b` / `#ffffff` in every
+digit, so `<case>.brand.html` and `<case>.plain.html` differ visibly and a brand that stopped being
+read would fail rather than produce two identical files.
+
+### X1.3 The payload per key — what the call site actually sends today
+
+★ **The pin freezes the mail members receive, so each payload is what the caller really passes**,
+read out of the migrations, not what the template happens to reference. Two bindings are in the
+default templates and in **no** payload anywhere in the product — `{{url}}` in all 25 and `{{tasks}}`
+in three reminders (§X15, finding 1) — so they render empty in the pinned files, on purpose. The
+fixture file names them in a comment; when `url` is fixed (`Q7`) the pinned files change as a
+reviewed diff, which is the mechanism doing its job.
+
+Fixed ids: session `11111111-1111-4111-8111-111111111111`, proposal `22222222-…`, comment
+`33333333-…`. Fixed instants in the local database's own shape, microseconds and offset included:
+`2026-10-01T15:00:00.123456+00:00` (→ Thursday 6:00 PM in Riyadh, Western digits), and
+`2026-10-02T16:00:00.123456+00:00` for a «to» value.
+
+| `MSG-*` | payload (fixed) |
+|---|---|
+| `proposal_submitted` | `proposal_id`, `proposer: "خالد المطيري"`, `title: "الذكاء الاصطناعي في العمل"` |
+| `proposal_approved` | `proposal_id`, `title` |
+| `proposal_rejected` | `proposal_id`, `title`, `reason: "الموضوع قريب من جلسة قادمة"` |
+| `proposal_changes` | `proposal_id`, `title`, `reason: "نحتاج تفصيل المحاور الثلاثة"` |
+| `copresenter_invited` | `proposal_id`, `title`, `inviter: "خالد المطيري"` |
+| `session_published` | `session_id`, `title`, `startsAt`, `venue: "قاعة الابتكار"` |
+| `presenter_assigned` | `session_id`, `title`, `startsAt`, `venue` |
+| `session_changed` | `session_id`, `title`, `startsAt`, `venue`, `changes: [{field:"venue",from:"قاعة أ",to:"قاعة ب"},{field:"starts_at",from:<A>,to:<A>}]` — the second is **unchanged** and must not print |
+| `session_changed.day2of3` | the above plus `{field:"starts_at",from:<A>,to:<B>,day:2,days:3}` |
+| `session_cancelled` | `session_id`, `title`, `startsAt`, `reason: "ظرف طارئ للمقدّم"` |
+| `rsvp_promoted` | `session_id`, `rsvp_id`, `title`, `startsAt` — **no `venue`**, as the call site sends none |
+| `reminder_7d` · `reminder_1d` · `reminder_2h` · `reminder_generic` | `session_id`, `title`, `startsAt`, `venue`, `offset_minutes`, `dayPosition: 1`, `dayCount: 1` |
+| `reminder_1d.day2of3` | the above with `dayPosition: 2`, `dayCount: 3`, `startsAt` = day 2's |
+| `rating_prompt` | `session_id`, `title` |
+| `rating_prompt.no-display-name` | the same, rendered with `member.name = null` |
+| `materials_added` | `session_id`, `title` |
+| `comment_reply` | `session_id`, `comment_id`, `title`, `author: "نورة القحطاني"` |
+| `mentioned` | `session_id`, `comment_id`, `title`, `name: "نورة القحطاني"` |
+| `badge_earned` | `badge: "أول جلسة"` |
+| `badge_earned.hostile` | `badge: "<script>alert(1)</script>"` |
+| `level_reached` | `level: 7` — a **number**, so `formatNumber()`'s Western digits are pinned |
+| `certificate_issued` | `certificate_id`, `serial: "KM-000001"`, `kind: "attendance"` |
+| `certificate_revoked` | `serial: "KM-000001"`, `reason: "أُلغي الحضور بعد المراجعة"` |
+| `role_changed` | `role: "منظّم"` |
+| `account_deactivated` | `reason: "بناءً على طلبك"` |
+| `export_ready` | `request_id` |
+
+`{{org}}` and `{{member.name}}` are injected by the renderer for every key and need no payload entry.
+
+### X1.4 How the files are produced, and why they can never be refreshed quietly
+
+`tests/unit/mail-pin-write.test.ts` — a file that is **skipped unless `MAIL_PIN_WRITE=1`**
+(`describe.runIf(process.env.MAIL_PIN_WRITE === "1")`). It imports `renderEmail` **as it stands on
+`main`** (`../../worker/src/mail/render`, before L3; `@kareem/mail-runtime` after) and writes the 116
+files. It asserts nothing.
+
+`tests/unit/mail-pinned.test.ts` — always runs, and compares byte for byte with `toBe()` after
+`readFileSync(…, "utf8")`, one `it` per case so a failure names the case and the part.
+
+Five reasons it cannot drift:
+
+1. **`MAIL_PIN_WRITE` is set in no script, no `package.json` entry and no workflow.** `npm test`,
+   the `TaskCompleted` hook and CI all run the comparison and cannot run the writer. There is no
+   `--update` flag to pass by habit, because there is no flag.
+2. **The writer is a different file from the test.** Nothing that fails can be made to pass by
+   re-running it.
+3. **The file set is asserted**, so deleting a pinned file is a red test, not a green one.
+4. **Every pinned file is committed**, so a change is a diff a person reads — the rule
+   `scripts/parity/goldens/**` already lives under, and `STATUS.md`'s untouched-suite ledger covers
+   `tests/**` by path.
+5. **The definition of done checks it mechanically**: `git diff --stat <N1's commit> -- tests/unit/mail-pinned/`
+   is empty on the final commit, unless a named difference says otherwise in this note.
+
+The moment N1 is committed I tell the lead, because L3 is blocked on it.
+
+## X2. The package boundary (contract 4)
+
+### X2.1 What moves, and the proof that it can
+
+Into `packages/mail-runtime/src/`, **mechanically, by the lead**:
+
+| From | To | Verified |
+|---|---|---|
+| `worker/src/mail/render.ts` (333 lines) | `src/render.ts` | imports `./templates.js` and nothing else; no `node:`, no `process`, no `Buffer`, no `fs` |
+| `worker/src/mail/templates.ts` (155 lines) | `src/templates.ts` | imports **nothing**; a const table and one lookup |
+
+Both use `Intl.NumberFormat("ar-u-nu-latn")` and `Intl.DateTimeFormat` with a `timeZone`, at module
+scope. Both are available in Node 22 (full ICU by default) and in every browser we target, so the
+package is isomorphic in fact and not only by intent. `grep -n "node:\|require(\|process\.env"` over
+the two files returns nothing.
+
+The lead also writes `src/index.ts`, re-exporting exactly the surface anything outside uses today:
+
+```ts
+export { renderEmail, interpolate, changeBlock, changesFromPayload, dayBlock, dayPhrase,
+         DAY_ORDINALS, TemplateMissingError } from "./render.js";
+export type { RenderInput, RenderedEmail, ChangedField } from "./render.js";
+export { DEFAULT_TEMPLATES, SIGNATURE, defaultTemplate } from "./templates.js";
+export type { EmailTemplate } from "./templates.js";
+```
+
+### X2.2 What stays in `worker/src/mail/`, and why each one has to
+
+| File | Why it cannot move |
+|---|---|
+| `transport.ts` | `process.env` in `fromAddress()` and `selectTransportName()` |
+| `index.ts` | the factory; the **one** place `RESEND_API_KEY` is read (`DEC-046`) |
+| `mime.ts` | `Buffer.byteLength` / `Buffer.from` at three call sites |
+| `smtp.ts` | `import net from "node:net"` |
+| `resend.ts` · `memory.ts` | transports; they belong with the factory and the app must never hold either |
+
+The app must not be able to import a transport at all. Keeping the five in `worker/` is that rule as
+a file boundary rather than as a comment.
+
+### X2.3 What the build must emit — the `.js` suffix question
+
+`render.ts` writes `from "./templates.js"` because `worker/tsconfig.json` is `module: NodeNext`,
+`moduleResolution: NodeNext`, where the suffix is **required**. The app is `moduleResolution: bundler`,
+where the suffix is **permitted and ignored**. So the suffixes stay exactly as they are and the
+package follows `packages/designer-runtime` verbatim:
+
+- `package.json`: `"type": "module"`, `"main": "./dist/index.js"`, `"types": "./dist/index.d.ts"`,
+  `"exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } }`,
+  `"files": ["dist"]`, `"scripts": { "build": "tsc -p tsconfig.json" }`.
+- `tsconfig.json`: `target ES2022`, `module ESNext`, **`moduleResolution: bundler`**, `declaration: true`,
+  `outDir: dist`, `rootDir: src`, `strict`, `noUncheckedIndexedAccess`, `skipLibCheck`.
+  `lib: ["ES2022"]` — **not `DOM`**; the mail runtime touches no DOM and saying so in the compiler
+  is the cheapest guard against someone reaching for `document` in the block compiler.
+
+The emitted `import … from "./templates.js"` is extension-ful ESM, which resolves under the worker's
+`NodeNext` **and** under Turbopack/Vite. `designer-runtime` is already consumed by both this way, so
+this is a precedent and not an experiment.
+
+The lead's four edits, named so they are one commit:
+
+1. root `package.json` — `build` and `prepare` gain `npm run build -w @kareem/mail-runtime` **before**
+   `next build` (order matters: the app imports it).
+2. `worker/package.json` — `"@kareem/mail-runtime": "0.1.0"` in `dependencies`.
+3. `worker/Dockerfile` — `COPY packages/mail-runtime/package.json packages/mail-runtime/` in **both**
+   stages (npm workspaces need every manifest to reconcile the lock), the build stage's
+   `COPY packages/mail-runtime/ …` + `npm run build --workspace @kareem/mail-runtime`, and the runtime
+   stage's `COPY --from=build /app/packages/mail-runtime/dist packages/mail-runtime/dist`.
+4. `npm run lockfile` (in the container, `CLAUDE.md`'s rule).
+
+### X2.4 What imports it afterwards
+
+| File | Before | After | Mine? |
+|---|---|---|---|
+| `worker/src/tasks/send_notification.ts` | `from "../mail/render.js"` | `from "@kareem/mail-runtime"` | yes |
+| `tests/unit/mail-render.test.ts` | two imports, `…/mail/render` + `…/mail/templates` | one, `@kareem/mail-runtime` | yes — **ledger line** |
+| `tests/unit/mail-day-words.test.ts` | `…/mail/render` | `@kareem/mail-runtime` | yes — **ledger line** |
+| `tests/unit/mail-instants.test.ts` | `…/mail/render` | `@kareem/mail-runtime` | yes — **ledger line** |
+| `tests/unit/mail-transport.test.ts` · `mail-mime.test.ts` | — | **unchanged** | — |
+| `tests/unit/mail-pinned*.ts` | `…/mail/render` | `@kareem/mail-runtime` | new files, no ledger line |
+
+Three ledger lines, each «an import moved with the module; no assertion touched». I considered
+leaving `worker/src/mail/render.ts` behind as a one-line re-export so **nothing** changed — and
+reject it: two names for one module is the drift the package exists to prevent, and contract 4 says
+`send_notification.ts` changes an import.
+
+`npm test` needs `packages/mail-runtime/dist` to exist, exactly as it already needs
+`designer-runtime`'s — `prepare` builds it on install.
+
+## X3. The block model, and where it is stored
+
+### X3.1 As types (`packages/mail-runtime/src/blocks.ts`, mine after L3)
+
+```ts
+export const SCHEMA_VERSION = 1;
+
+export type BlockId = string;                      // stable within a document; the checks panel
+                                                   // selects by it
+export type EmailBlock =
+  | { type: "heading";      id: BlockId; text: string; level: 1 | 2 }
+  | { type: "paragraph";    id: BlockId; text: string }                    // {{bindings}} allowed
+  | { type: "button";       id: BlockId; label: string; urlBinding: string;
+                                         style: "primary" | "secondary" }
+  | { type: "session_card"; id: BlockId }                                  // binds `session_id`
+  | { type: "detail_list";  id: BlockId; items: { label: string; value: string }[] }
+  | { type: "divider";      id: BlockId }
+  | { type: "spacer";       id: BlockId; height: "sm" | "md" | "lg" }
+  | { type: "image";        id: BlockId; src: ImageSource; alt: string; width: number };
+
+/** PNG and JPEG only — invariant 11 — and a URL a client with no session can fetch (X10). */
+export type ImageSource = { kind: "org_logo" } | { kind: "session_card_image" };
+
+export interface EmailDesign {
+  schemaVersion: typeof SCHEMA_VERSION;
+  subject: string;             // a string with bindings, exactly as today
+  blocks: EmailBlock[];        // the footer is NOT in here
+}
+```
+
+★ **Eight typed members, nine blocks.** `footer` is **composed, not typed** (`REQ-NTF-009`): the
+compiler appends it to every document, always, so `REQ-NTF-005`'s preference link cannot be deleted
+by an admin or forgotten by a design. It is not in the union, it has no id, and it is not reorderable.
+That is the requirement read literally and it is also the only shape in which «can never be
+forgotten» is true.
+
+`alt` is `string` and not `string | undefined`: a mandatory field is mandatory in the type, and the
+checks panel's «an image with no `alt`» fires on the empty string.
+
+### X3.2 The compiler and the generated text (`REQ-NTF-013`)
+
+One function, two outputs, one walk:
+
+```ts
+compileDesign(design: EmailDesign, ctx: RenderContext): { html: string; text: string }
+```
+
+Each block emits **one `<tr><td …>`** of the existing shell — `render.ts`'s `toHtml()` is correct
+and stays; the compiler produces its `rows` instead of `paragraphs.map(...)`. Every cell carries
+`dir="rtl" align="right"` and inline CSS, because Outlook ignores inherited direction. The text part
+comes from the same walk: a heading is a line, a paragraph is a paragraph, a button is `label: url`,
+a session card is four lines (title, day, time, venue), a detail list is `label: value` per line, a
+divider is a blank line, a spacer is nothing, an image is its `alt`. One edit, both parts, and they
+cannot drift because there is one traversal.
+
+The `button` is bulletproof — a VML `<v:roundrect>` behind a conditional comment, the anchor inside —
+which is the one place mail HTML needs something the web does not.
+
+**The string path stays beside it** (`DEC-081`; removing it is M13). `renderEmail()` branches once:
+a design present → `compileDesign`; absent → today's `toParagraphs` + `toHtml`, byte for byte.
+
+### X3.3 Storage — the columns I need from the lead
+
+★ I write no `alter table` or `create table`. Here is every column, with the reason it exists.
+
+**New table `public.email_designs`** — the org's designs. `org_id not null`, so **no eighth exception
+to invariant 5** (see `Q3`).
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `uuid pk default gen_random_uuid()` | |
+| `org_id` | `uuid not null references orgs(id) on delete cascade` | invariant 5 |
+| `name` | `text not null check (char_length(btrim(name)) between 1 and 120)` | what the library list shows — «تذكير قبل الجلسة» |
+| `family` | `text not null check (family in ('announcement','reminder','rsvp','rescheduled','cancelled','rating','certificate','recognition'))` | which of `DEC-082`'s eight it is or came from; `design_templates.family`'s shape |
+| `locale` | `text not null default 'ar' check (locale in ('ar','en'))` | `REQ-NTF-014` — Arabic and English |
+| `blocks` | `jsonb not null check (blocks ? 'schemaVersion' and jsonb_typeof(blocks -> 'blocks') = 'array')` | the document; `design_documents`' own constraint, verbatim in shape |
+| `source_family` | `text` | the platform design it was duplicated from, `null` when built from scratch. **Text, not a uuid**, because the original is a constant (`Q3`) |
+| `retired_at` | `timestamptz` | `design_templates`' pattern; a design a key still points at is hidden from the picker rather than deleted |
+| `created_by` | `uuid references members(id)` | |
+| `created_at` · `updated_at` | `timestamptz not null default now()` + `set_updated_at()` trigger | repo-wide |
+
+RLS on; `revoke all from anon, authenticated, service_role`; four policies, each
+`org_id = public.auth_org_id() and public.is_org_admin()` (select, insert, update, delete), with the
+matching grants — invariant 6. In the generated isolation sweep, which covers it the day it exists.
+`03` §8.2 rows: `POL-email_designs.select.admin` (a plain member reads none), `POL-email_designs.write.admin`,
+`POL-email_designs.isolation` (another org's design is invisible and unwritable).
+
+**On `public.notification_templates`, one nullable column**:
+
+| Column | Type | Why |
+|---|---|---|
+| `design_id` | `uuid references public.email_designs(id) on delete set null` | when set, this key renders from the design's blocks. `on delete set null` so deleting a design degrades the key to its string row rather than deleting the binding's history |
+
+Everything else on that table is untouched: `org_id` stays `not null`, `body` stays `not null`,
+`subject`, `required_fields`, the unique constraint and the validate trigger's existing rules all
+stand. **That is what makes the whole change additive** (X6).
+
+I considered `notification_template_blocks` (`02`, `DEC-081`, `16` §11.6 name it) — `Q1`.
+
+## X4. The 25 keys onto the 8 designs
+
+`DEC-082`'s eight names are fixed by `REQ-NTF-014`. Each is a **shape**, and six messages that have
+no session stretch the name they land under; the table says where and why, so the stretch is a
+decision and not an accident. The map lives in `packages/mail-runtime/src/designs.ts` as
+`DESIGN_FAMILY: Record<string, Family>`, and a unit test diffs it against `notification_matrix()`'s
+25 email rows — the same treatment `mail-render.test.ts` already gives the template table.
+
+| Design | Shape | Keys | n |
+|---|---|---|---|
+| **إعلان جلسة** `announcement` | logo band · heading · session card · one primary button | `session_published`, `presenter_assigned`, `proposal_approved`, `copresenter_invited` | 4 |
+| **تذكير** `reminder` | heading · session card · the day line · the tasks list · button | `reminder_7d`, `reminder_1d`, `reminder_2h`, `reminder_generic`, `materials_added` | 5 |
+| **تأكيد حجز** `rsvp` | heading · session card · «أضف إلى تقويمك» · a quiet cancel link | `rsvp_promoted` | 1 |
+| **تغيّر موعد** `rescheduled` | heading · **detail list of old ← new** · session card · button | `session_changed` | 1 |
+| **إلغاء** `cancelled` | heading · a reason detail · **no primary button** | `session_cancelled`, `proposal_rejected`, `role_changed`, `account_deactivated` | 4 |
+| **طلب تقييم** `rating` | heading · a short paragraph · **one** primary button, nothing else | `rating_prompt`, `proposal_submitted`, `proposal_changes`, `comment_reply`, `mentioned` | 5 |
+| **شهادة** `certificate` | heading · a detail list carrying the serial · button | `certificate_issued`, `certificate_revoked`, `export_ready` | 3 |
+| **تكريم** `recognition` | a celebratory heading · the badge or level · button | `badge_earned`, `level_reached` | 2 |
+
+25 of 25. The three stretches, stated: `proposal_approved` and `copresenter_invited` sit under
+**إعلان جلسة** because both are «good news with one thing to open» — and the design **omits the
+session card when the payload carries no `session_id`**, which is a compiler rule, not a second
+design. `role_changed` and `account_deactivated` sit under **إلغاء** because its shape is «a change
+with a reason and no action», which is what they are. `export_ready` sits under **شهادة** because its
+shape is «something of yours is ready, here is the link».
+
+## X5. Bindings per key (`REQ-NTF-012`)
+
+### X5.1 Where they are declared — the database, beside the matrix
+
+```sql
+create function public.notification_bindings()
+  returns table (key text, binding text)
+  language sql immutable parallel safe set search_path = '' as $$ values … $$;
+grant execute on function public.notification_bindings() to authenticated, service_role;
+```
+
+A **function, not a table**, for `0026`'s own stated reason about `notification_matrix()`: «the
+matrix is part of the specification, not org data: it has no `org_id`, nobody edits it at runtime,
+and a row appearing in it is a plan change that goes through a migration.» Every word of that is
+true of the bindings. It also means the editor and the trigger read **one** list, and the app reads
+it through the DAL rather than carrying a second copy in TypeScript.
+
+The rows are derived from what the call site actually sends (§X1.3), **union** the three the renderer
+injects for every key — `member.name`, `member.email`, `org` — and `day` where the payload carries
+`dayPosition`/`dayCount`. A unit test renders every `DEFAULT_TEMPLATES` entry and fails on any
+`{{binding}}` the key does not offer, so the platform's own defaults cannot contradict the
+declaration. ★ Today that test **fails on `url` and `tasks`** — see finding 1 and `Q7`; the
+declaration is what makes a binding nobody supplies visible for the first time.
+
+### X5.2 How the trigger reads them
+
+`public.notification_templates_validate()` is **re-created whole** in my proposed file (one writer;
+`create or replace` of a function whose owner I am), keeping every existing rule and adding one:
+
+1. unknown key → `22023` — **unchanged**.
+2. channel not in the matrix → `22023` — **unchanged**.
+3. every entry of `new.required_fields` appears in `subject || body` → `23514` — **unchanged**,
+   including its message shape `missing_required_field: <field>`, which
+   `saveTemplateChecked()` parses.
+4. ★ **new** — every `{{binding}}` appearing in `new.subject`, `new.body` **and, for a block
+   template, in the compiled text of `new.design_id`'s blocks**, is offered by the key:
+   `raise exception 'unknown_binding: %', b using errcode = '22023'`.
+
+The regex is the renderer's own, `\{\{\s*([\w.]+)\s*\}\}`, written once in a small
+`public._template_bindings(text) returns setof text` helper — revoked from every client role, so
+`definer-exposure.test.ts`'s underscore rule is satisfied in the file that creates it (`DEC-152`).
+
+For a **block** template the trigger reads the design's blocks through `email_designs.blocks` by
+`new.design_id`, extracting the text of `paragraph`, `heading`, `detail_list` and `button.urlBinding`.
+For a **string** template it reads `subject || body`, exactly as today. One trigger, both writers,
+which is `REQ-NTF-012`'s «for every writer, not by the form».
+
+### X5.3 What happens to today's free-typed `required_fields`
+
+**The column and rule 3 stay exactly as they are** — `REQ-NTF-012`'s second acceptance line is «a
+template missing a required field stays refused, **as today**», and `main`'s app writes the column in
+the merge → Railway window. What changes is the **input**: the `<input name="requiredFields" dir="ltr">`
+that an admin types a comma-separated list into becomes a **checkbox list of the key's offered
+bindings**, read from `notification_bindings()`. The admin still declares; they can no longer declare
+something that does not exist. That is the whole of `REQ-NTF-007`'s carried «the required fields are
+what the admin declares, not what the message needs» (the note `template-editor.tsx:32-35` leaves for
+this wave), closed without changing the column, the trigger rule or the stored value's shape.
+
+## X6. Contract 3 — what a block template's row gives `main`'s OLD worker
+
+The window: the owner pushes `0123`+ to production, Vercel and Railway are still on `f2ead54`, and
+an org admin saves a block template in that window.
+
+**What `main`'s worker does, step by step.**
+
+1. `public.notify(...)` → unchanged. The matrix, the key, the payload and the `notify:{message_id}`
+   job are identical; `notify()` is not touched by any file of this wave.
+2. `send_notification.ts` (old) calls
+   `public.notification_send_context($1,$2,$3)` — three arguments, positional. The new
+   `notification_bindings()` and `email_designs` do not appear in its signature, and I re-create
+   `notification_send_context` **only** if X5's work needs it, with any new argument **trailing and
+   defaulted** and the old signature dropped in the same file (`0085`'s lesson). Its return shape
+   keeps every key the old worker reads: `{key, category, optional, member{…}, org{name, from_name,
+   reply_to, time_zone}, template{subject, body, locale, required_fields}, email_allowed, in_app_allowed}`.
+   The old worker's `SendContext` interface types `template` as `{subject, body, locale}` and ignores
+   any extra key, so adding `design` to that object is invisible to it.
+3. `ctx.template` is **not null** — the org saved a row. `body` is `not null` on the table and the
+   row I write carries **the generated plain-text alternative of the blocks** (`REQ-NTF-013`'s
+   output, which the compiler produces anyway). `subject` is the design's subject string.
+4. The old `renderEmail()` takes that `{subject, body}` down the **string path** — `interpolate`,
+   `toParagraphs`, `toHtml` — and sends a correct, legible, Arabic, RTL mail with the org's brand
+   colours. It is unstyled relative to the design, and it carries the footer's preference link,
+   because the footer is in the generated text.
+5. `record_email_delivery` / `update_email_delivery` — unchanged.
+
+So the answer is: **a block template's row degrades to today's mail, not to a blank one**, and it
+does so because `body` keeps its meaning rather than being repurposed. Writing the text alternative
+into `body` is not a trick for the window; it is the right value for that column forever, and it is
+what makes `REQ-NTF-013` testable from SQL.
+
+**Two things the owner's order (L7) must carry.**
+
+- A production read **before** the migrations: `select count(*) from public.notification_templates;`
+  and, if non-zero, `select key, subject, body from public.notification_templates` — because X5's
+  rule 4 refuses an **existing** row with an unknown binding on its next update. I expect zero rows
+  (the one org at launch has never opened SCR-058 for a save; `wave8-console-emails.spec.ts` asserts
+  its own org ends with zero). If it is non-zero, the binding list for those keys is widened before
+  the trigger lands, or the rule is deferred to the second window.
+- The sentence wave 9 used: **nobody edits an email template between the push and the Railway
+  redeploy.** Not because anything breaks — step 4 shows it does not — but because an admin who
+  designs a template in that window and receives a text mail will reasonably think the feature is
+  broken.
+
+## X7. The preview (`REQ-NTF-010`)
+
+### X7.1 Where the renderer runs — the server, through a Route Handler
+
+`POST /api/admin/emails/preview` → `text/html` (phone, desktop, dark) or `text/plain` (the text mode).
+Body: `{ key, blocks?, subject?, designId? }`, Zod-validated, admin-checked through the DAL exactly
+as every other admin surface. It calls **`renderEmail()` from `@kareem/mail-runtime`** over the
+**sample payload for that key**, which lives in `packages/mail-runtime/src/samples.ts` and is the
+same object `tests/unit/mail-pinned.fixtures.ts` imports. One renderer, one sample set: the preview
+shows the bytes the pin pins.
+
+A Route Handler and not a Server Action, for three reasons: the iframe needs a **URL**, not a string;
+`04` §4.3 puts «anything a browser must fetch» here; and — the load-bearing one —
+
+### X7.2 The iframe, the `sandbox`, and why `src` beats `srcdoc`
+
+```html
+<iframe src="/api/admin/emails/preview?…" sandbox="" referrerpolicy="no-referrer"
+        loading="eager" title="معاينة الرسالة" />
+```
+
+`sandbox=""` — **every** capability denied, including `allow-same-origin`. The mail has no script and
+needs no origin; an opaque origin is the correct one. `loading="eager"` because a lazy iframe was a
+wave-8 capture trap (a capture of an unloaded frame proves nothing).
+
+★ **Not `srcdoc`.** A `srcdoc` document **inherits the parent's CSP**. `src/proxy.ts` ships
+`style-src 'self' 'nonce-…'`, and the mail's every cell is an inline `style=` attribute **by
+constraint** (`08` §3.1, `render.ts`'s first rule). The policy is report-only today, so a `srcdoc`
+preview would render — and spew reports at `/api/csp-report` — until M13 enforces it, at which point
+**the preview would silently render unstyled** and an admin would approve a message that is not the
+one that ships. That is exactly the «a preview drawn any other way is a second renderer and the one
+an admin approves is the one that would be wrong» failure `16` §11.4 names.
+
+**No change to `src/proxy.ts` is needed**, and I checked rather than assumed:
+
+- `config.matcher` is `"/((?!_next|_vercel|api/|.*\\..*).*)"` — `/api/` is **excluded**, so the
+  handler's response carries neither the proxy's CSP nor its `x-frame-options: DENY`. It sets its own.
+- The parent page has `default-src 'self'` and **no `frame-src`**, so `frame-src` falls back to
+  `default-src` and a same-origin frame is permitted.
+
+The handler's own headers:
+
+```
+Content-Type: text/html; charset=utf-8
+Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self' <supabase-origin> data:; base-uri 'none'; form-action 'none'; frame-ancestors 'self'
+X-Frame-Options: SAMEORIGIN
+Cache-Control: no-store
+```
+
+`frame-ancestors 'self'` plus `SAMEORIGIN` is the pair that lets our page frame it and nobody else's.
+A CSP question about this iframe is a request to the lead (`src/proxy.ts` is theirs) — **and my
+finding is that there is no request to make**, which is the answer worth having at sync 1.
+
+### X7.3 The four modes
+
+| Mode | How |
+|---|---|
+| **محمول** | the iframe at `width: 375px`, in a container that scales it to fit 390 px minus the gutter. 375 px is `16` §11.4's number and is also the narrowest client viewport worth designing for |
+| **سطح مكتب** | the iframe at `width: 640px`, in a horizontally scrollable container — never `overflow: hidden` on the page itself |
+| **نص فقط** | **not an iframe**. A `<pre dir="auto">` with `white-space: pre-wrap`, `line-height: 1.7`, showing `rendered.text` — what a stripped corporate client displays |
+| **داكن قسري** | the same iframe with `filter: invert(1) hue-rotate(180deg)` on the **element**, from outside |
+
+★ **Why forced dark is a filter and not an injected `<style>`.** Injecting anything into the document
+would mean previewing bytes we do not send. The six major clients that force dark on a light mail do
+it by inverting the rendered result, which is what the filter does — so the simulation is honest
+*because* it is crude. The checks panel says the rest out loud: the mail carries **no**
+`@media (prefers-color-scheme: dark)` block, by constraint (inline CSS only), so a client that
+honours the query has nothing to honour, and what the toggle shows is what an inverting client does.
+Images invert with everything else, which is exactly what those clients do to an image with no
+`prefers-color-scheme` hint — the reason the logo in the eight designs is authored to survive
+inversion.
+
+The mode switcher is **four buttons in `src/components/email/preview-modes.tsx`**, `role="radiogroup"`,
+not `ui/tabs`: `TabItem.href` makes a trigger a navigation link, and these modes are client state,
+not URLs. This avoids a request against a primitive I do not own.
+
+### X7.4 The checks panel
+
+Six checks, each naming and selecting its block (`16` §11.4): a missing preference footer (impossible
+by construction — the check states that and stays green, which is the point of composing it), an
+image with no `alt`, a binding the key does not offer, a subject over 78 characters, a button with no
+URL binding, text below 14 px. They run on the **client** over the block list for immediacy, and the
+binding check runs again in the **database** on save — the form never being the authority is
+`REQ-NTF-012`.
+
+## X8. N5 — «أرسل اختبارًا» (`REQ-NTF-011`)
+
+### X8.1 The RPC — no recipient parameter
+
+```sql
+create function public.send_test_email(p_key text, p_design uuid default null)
+  returns jsonb language plpgsql security definer set search_path = '' as $$ … $$;
+revoke execute on function public.send_test_email(text, uuid) from public, anon;
+grant  execute on function public.send_test_email(text, uuid) to authenticated;
+```
+
+**There is no address argument.** Inside: `m := public.assert_active_member()`; refuse unless
+`public.is_org_admin()`; the address is `m.email`, read from the row. «To their own address and to no
+other» is then a property of the function's *signature*, not of a check someone could forget — the
+call site has no way to name anyone else.
+
+Order inside, so `DEC-043` is satisfied without an envelope-after-write:
+
+1. key is in the matrix with `email = true`, else `22023`.
+2. `p_design`, when given, belongs to the caller's org, else `P0002`.
+3. **rate limit, before any write**: at most **10** test sends per member per hour, counted from
+   `audit_log` where `action = 'notify.test_email_sent'` and `actor_id = m.id` — `audit_log` is
+   append-only and already indexed by `(org_id, created_at)`. Over the limit returns
+   `jsonb_build_object('status','rate_limited','retryAfterMinutes', …)` rather than raising, so the
+   screen says it calmly; nothing has been written, so there is nothing to roll back.
+4. `public.write_audit(m.org_id, 'notify.test_email_sent', 'notification_template', null, null,
+   jsonb_build_object('key', p_key, 'design_id', p_design), null, m.org_role::text, m.id)`.
+5. `public.enqueue_job('send_test_email', jsonb_build_object('org_id', …, 'member_id', m.id, 'key',
+   p_key, 'design_id', p_design), 'testmail:' || m.id::text)` — the key is per **member**, and
+   `enqueue_job` is `job_key_mode => 'replace'`, so a double press replaces rather than duplicates.
+6. returns `{status:'queued'}`.
+
+★ `'notify.test_email_sent'` is a new audit action, and `tests/unit/admin-audit-labels.test.ts`
+reads every single-quoted dotted literal in a migration as one and requires a label in
+`messages/*/admin.json` — **`console`'s namespace, held by the lead**. That is a written request
+(`Q5`), not an edit of mine.
+
+### X8.2 The job
+
+`worker/src/tasks/send_test_email.ts` (mine; the registration in `worker/src/index.ts` is the lead's,
+contract 7). It reads the send context through a definer function, renders with `renderEmail()` over
+**the sample payload for the key** — the same one the preview uses — writes the `email_deliveries`
+row through `record_email_delivery(org, member, key, null)` as `queued`, sends through
+`mailTransport()`, and moves the row to `sent` or `failed` with the reason, exactly as
+`send_notification` does. So a test send appears in the delivery log beside real ones, with its
+reason if it fails, which is what makes «open Outlook on Windows» a real test rather than a hope.
+
+The subject is prefixed **«[اختبار] »** at the **transport call**, never in the renderer — the
+rendered bytes must be the bytes that ship. The task logs a count and the key, never a payload.
+
+Locally the transport is `SmtpSinkTransport` → **Mailpit on `:54325`**, so the demonstrable's «sends
+a test to their own address (Mailpit)» is the sink doing its job; in CI it is `MemoryTransport`;
+`RESEND_API_KEY` is read in the `resend` branch and nowhere else, unchanged.
+
+## X9. What an org's existing string override becomes in the editor
+
+It stays a string template and **renders byte-identically through the string path**. In the editor
+its key opens on a «نص» view carrying today's form — subject, body, the declared fields (now a
+checkbox list) — so `wave8-console-emails.spec.ts`'s save-and-restore case and the trigger's refusal
+case keep their subject.
+
+Beside it, one action: **«حوّله إلى تصميم»**. It creates an `email_designs` row whose blocks are one
+`paragraph` per paragraph of the body — the same `toParagraphs()` split the renderer already performs,
+so nothing is lost and nothing is invented — plus the composed footer, and points the key's
+`design_id` at it. Two properties I will hold:
+
+- **Converting changes nothing that is sent until the admin saves**, and the preview shows the design
+  beside «ما يُرسل الآن».
+- It is reversible: clearing `design_id` restores the string row, whose `subject` and `body` were
+  never overwritten.
+
+## X10. Images in mail (contract 8) and the brand kit (contract 9)
+
+### X10.1 What I need `designer` to tell me
+
+**A mail client fetches with no session, no cookie, and often months later.** Every one of the six
+buckets is private (`0037`: «None public; every read is a server-generated signed URL»), and the
+signed URLs in the DAL are 300 s or 3600 s. So a signed URL in an `image` block is a broken image by
+the time anyone opens the mail, and a long-lived one outlives the thing it depicts.
+
+The product has exactly one precedent, and it is the right one: **`/api/s/[id]/og`**, where
+`POL-storage.exports.public_card` admits `anon` to exactly the `og.png` objects of card-eligible
+sessions and the handler proxies those bytes as `anon`. Its own header sets out the three things it
+deliberately did **not** do, and all three apply here unchanged.
+
+So my question to `designer` is narrow: **which `design_assets` rows have, or can have, a URL of that
+shape** — a stable path, `anon`-readable by policy, proxied by a handler, with no signature. My
+answer if the answer is «none»: the `image` block offers **two sources only** (`org_logo`,
+`session_card_image`) and nothing else, ever; a free URL field is not in the model, because an admin
+pasting a URL into a mail is a tracking pixel, a mixed-content warning and a dead image waiting to
+happen.
+
+★ And the fallback that must exist either way: **every one of the eight designs renders correctly
+with no image at all.** An org with no logo is the common case at launch, and a design whose first
+row is a broken image is worse than the wall of text.
+
+### X10.2 What I need from the brand kit — and it is less than contract 9 assumed
+
+I read `0068` and `0093`. **`public.brand_kit(p_org uuid)` already returns everything the studio
+needs**: `light` and `dark`, nine tokens each plus `canvasRaise`, `logoAssetId`, `headingFontId`,
+`bodyFontId`, `updatedAt`, with per-token platform defaults. Contract 9's «three tokens today» is
+about what the **worker reads**, not what the function offers: `send_notification.ts:81-86` takes
+`light.fgBody`, `light.fgMuted`, `light.surface` and drops the rest.
+
+So **no SQL change to `public.brand_kit()` is requested.** The two requests are:
+
+1. **A public URL for the org logo**, of `/api/s/[id]/og`'s shape — `branding`'s and the lead's
+   (the brand kit is `branding`'s, held by the lead). Concretely: a storage policy admitting `anon`
+   to exactly the object `brand_kits.logo_asset_id` points at, and a handler that proxies it. If the
+   lead would rather not open one, the `image` block ships with `session_card_image` alone and the
+   designs carry the org **name** as a heading instead of a logo band — stated so the decision is
+   visible rather than discovered in a screenshot.
+2. **An agreement on `RenderInput.brand`'s shape**, which is mine to widen and costs nobody anything:
+   `brand?: { fgBody; fgMuted; surface } | { light: Palette; dark: Palette; logoUrl: string | null } | null`
+   — the current three-key object keeps working, so `renderEmail`'s signature is compatible and the
+   pinned files do not move; `send_notification.ts` starts passing the whole `brand_kit()` object.
+
+## X11. Routes beyond `/app/admin/emails` (`DEC-083`)
+
+| Route | State in `04` §4 | What it is |
+|---|---|---|
+| `/app/admin/emails` | present (SCR-058) | the frame stays: page header, the two tabs, the delivery log. The library and the editor replace the **content** of the first tab |
+| `/api/webhooks/resend` | ★ **already present** — `04` §4's tree lists `webhooks/{resend,google-calendar}/route.ts` | N8. No new entry needed |
+| `/api/admin/emails/preview` | ★ **absent — this is my one request for `04`** | the preview handler (X7). `POST`, admin-only, returns `text/html` or `text/plain` |
+
+**No new page route.** The design library, the catalogue and the block editor are all
+`/app/admin/emails` with `?view=`, `?key=` and `?design=`, so the frame wave 8 built is kept and the
+two tabs stay two. SCR-058's `09` entry already cites `REQ-NTF-009` … `014`, so `09` needs nothing.
+
+## X12. N8 — the bounce webhook, without `service_role` on Vercel
+
+`update_email_delivery_by_provider(text, delivery_status, text)` is `service_role`-only (`0030`) and
+`service_role` is never on Vercel (invariant 7). `/api/webhooks/resend` has never existed.
+
+**What I recommend.** The route verifies Resend's signature with `RESEND_WEBHOOK_SECRET`, then calls
+a **new, thin definer wrapper granted to `anon` and nothing else**:
+
+```sql
+create function public.record_delivery_event(
+  p_provider_message_id text,
+  p_status              public.delivery_status,
+  p_error               text default null
+) returns void                                     -- ★ void, not boolean
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform public.update_email_delivery_by_provider(p_provider_message_id, p_status, p_error);
+end $$;
+revoke execute on function public.record_delivery_event(text, public.delivery_status, text)
+  from public, authenticated, service_role;
+grant  execute on function public.record_delivery_event(text, public.delivery_status, text) to anon;
+```
+
+Why this and not the alternatives:
+
+- **`update_email_delivery_by_provider()` is not re-created and not re-granted.** One writer per
+  function; the wrapper calls it. Its `service_role` grant stands.
+- **`returns void`, deliberately.** The inner function returns whether a row moved, which is an
+  **oracle**: `anon` could probe whether a given provider id exists. Void removes it, and the route
+  must answer 200 either way anyway — a provider retries a 404 forever.
+- **What a forged request achieves** is exactly what `0030`'s own header already argues: mislabelling
+  a delivery row it can **name by the provider's opaque message id**. It can create nothing, read
+  nothing and enumerate nothing.
+- **Not an `anon`-executable `enqueue_job` wrapper** — that would let strangers write queue rows,
+  which is strictly worse than letting them mislabel a row they cannot name.
+- **Not a worker-hosted endpoint** — Railway has no HTTP surface and adding one is a deployment
+  change, not a wave-10 change.
+
+**The `definer-exposure` consequence, stated because it is the point of `DEC-152`.**
+`tests/rls/definer-exposure.test.ts` asserts the `anon`-executable definer set is **exactly** six.
+It becomes seven, and `ANON_MAY_EXECUTE` gains, in the lead's file (`Q4`):
+
+```ts
+"record_delivery_event(p_provider_message_id text, p_status delivery_status, p_error text)":
+  "REQ-NTF-008 — the Resend webhook's only door; the route verifies the signature first. Returns void: it can move a row it can NAME by the provider's opaque id, and cannot create, read or enumerate one",
+```
+
+**Status mapping.** `email.delivered` → `delivered`; `email.bounced` → `bounced`;
+`email.complained` → `bounced`, with the error text naming the complaint, because the enum has no
+`complained` value and inventing one would be an `alter type` on a live enum for a state the screen
+does not distinguish; `email.delivery_delayed` → left alone (the row is already `sent`).
+
+**The owner's step, written down for L7.**
+
+```
+1. Vercel → Project → Settings → Environment Variables:
+   RESEND_WEBHOOK_SECRET = <the signing secret Resend shows when the endpoint is created>
+   Scope: Production (and Preview, if previews should accept webhooks — they need not).
+2. Resend → Webhooks → Add endpoint:
+   URL    https://<the live domain>/api/webhooks/resend
+   Events email.delivered, email.bounced, email.complained
+3. Redeploy so the variable is in the running build.
+```
+
+No session does any of this; the repository's secrets and settings are the owner's (`CLAUDE.md`).
+
+## X13. The three specs the studio changes — every case, with its ledger line
+
+★ **The delivery-log cases do not change at all**, in any of the three files. Stated first because it
+is the rule the ledger is checked against.
+
+### `tests/e2e/wave8-console-emails.spec.ts` (5 cases)
+
+| Case | Changes? | Proposed ledger line |
+|---|---|---|
+| «a moderator gets the streamed not-found page» | **no** | — |
+| «SCR-058 at 390 px: the catalogue with the matrix…» | yes | *the templates tab gained the design library above the catalogue, so the first assertion now scopes the matrix chips to the catalogue section; the failure banner and the three matrix assertions are byte-identical and the capture keeps its name.* **Expectation for an untouched org changed: no** |
+| «REQ-NTF-007 … the refusal lands at the body, naming the field» | yes, **one line** | *«الحقول المطلوبة» became a checkbox list of the key's offered bindings (`REQ-NTF-012`), so `.fill("title")` becomes a check of the «title» box; the refusal, the field it lands at, the kept subject and the «no row written» assertion are unchanged.* **no** |
+| «a template saved, then its default restored after a confirmation» | yes, **the same one line** | *the same control change; the save, the toast, «تصل هذه الرسالة بقالب مؤسستك.», the confirm dialog's words and the zero-rows assertion are unchanged.* **no** |
+| «REQ-NTF-008 … the delivery log» | **no** | — |
+
+### `tests/components/admin/emails-page.test.tsx` (8 cases)
+
+| Case | Changes? | Proposed ledger line |
+|---|---|---|
+| «the catalogue lists every email message with the matrix…» | **no** | — |
+| «a failure in the last seven days is said at the top» | **no** | — |
+| «★ the editor: the trigger's refusal at the body…» | yes | *the required-fields control became a checkbox list; the submitted `FormData` is built from it. The refused state, the field named and the kept values are unchanged.* **no** |
+| «restoring the default confirms…» | **no** | — |
+| «the delivery log: the failure's reason…» | **no** | — |
+| «no failures: the empty log says so» | **no** | — |
+| «has no axe violations — catalogue, editor and log» | yes | *the render helper gained the design library and the block editor so axe covers them; the assertion (`violations` empty) is unchanged.* **no** |
+| — | | the new block editor, the preview modes and the checks panel get **new** files under `tests/components/email/**` |
+
+### `tests/unit/admin-emails.test.ts` (3 cases)
+
+| Case | Changes? | Proposed ledger line |
+|---|---|---|
+| `deliveryReason` — «names the provider's refusals by what an admin does next» | **no** | — |
+| «saves the trimmed subject and body, and the declared fields as a list» | yes | *the action reads `requiredFields` as repeated form values rather than one comma-separated string; the value handed to `saveTemplateChecked()` is the same `string[]`.* **no** |
+| «empty fields and malformed field names are refused before the database; an unknown key is a form error» | yes, **in part** | *a malformed field name can no longer be typed, so that third of the case moves to a new file as «a binding the key does not offer is refused by the database»; the empty-subject, empty-body and unknown-key assertions are unchanged.* **no** |
+
+Plus **three import lines** after L3 (X2.4), each «an import moved with the module; no assertion
+touched»: `mail-render`, `mail-day-words`, `mail-instants`.
+
+I considered keeping the free-text input beside the checkbox list so nothing changed at all, and
+reject it: two controls writing one value is a worse screen than three ledger lines are a cost.
+
+## X14. N7 — `08` §3.2 corrected, for the lead to paste
+
+`08` §3.2 lists **23** rows. `DEFAULT_TEMPLATES` has **25** keys and `notification_matrix()` (`0062`,
+the last definition on disk) has **25** rows with `email = true`. The document is short by exactly
+two — both of them added in wave 2 by this track and flagged then (`templates.ts:29-33`, this note
+§5.1, `DEC-047`), and the note above the table says so but the table was never extended.
+`DEC-081`'s «22 against 25» counted the older list.
+
+**The two missing rows**, to be inserted in `08` §1's order — `MSG-proposal_submitted` at the top of
+the proposals group, `MSG-presenter_assigned` after `MSG-session_published`:
+
+| `MSG-*` | Arabic subject |
+|---|---|
+| `MSG-proposal_submitted` | «مقترح جديد بانتظار المراجعة — {{title}}» |
+| `MSG-presenter_assigned` | «أُسندت إليك جلسة — {{title}}» |
+
+**The note above the table**, replacing the `DEC-047` one:
+
+> **Corrected under `DEC-160` §4.** The matrix in force (`0062`) gives **25** messages an email
+> channel and `worker/src/mail/templates.ts` carries **25** templates; this list carried 23 until
+> wave 10. `MSG-proposal_submitted` and `MSG-presenter_assigned` have had templates since wave 2.
+> `tests/unit/mail-render.test.ts` diffs the template file against the matrix read out of the
+> promoted migration, and `tests/unit/mail-pinned.test.ts` pins all 25 rendered messages, so the gap
+> cannot reopen quietly in either direction.
+
+★ Also for the lead, in the same edit: `08` §3.1's fourth constraint still reads «Numerals follow the
+org setting (A30, `REQ-INT-006`)». `DEC-124` abolished the setting and `0082` dropped the column;
+`render.ts:13` already reads «Western digits, always». The line should read **«Western digits,
+always — `REQ-INT-006`, `DEC-124`»**. And `08` §5.1 says `RESEND_API_KEY` lives «on Fly», which is
+Railway since Launch.
+
+## X15. Findings — things I found by reading, each now someone's
+
+1. ★ **`{{url}}` is supplied by no call site in the product.** `'url'` appears in **zero**
+   migrations, in no worker task's notify payload, and in neither `notify()` nor `renderEmail()`'s
+   injected keys — yet it is the last line of **20 of the 25** default templates. Every email this
+   product has sent since M3 ends with a blank where the link should be. `{{tasks}}` is the same, in
+   three reminders (`REQ-TSK-005`'s «outstanding preparatory tasks» — this note §W12.2 item 4 already
+   carried the empty placeholder, without noticing that `url` shares its fate). The pin records it
+   before anything changes; the fix is `Q7`.
+2. **`MSG-rsvp_promoted` and `MSG-certificate_issued` reference bindings their payloads do not carry**
+   (`venue`, `url`; `title`, `url`) — the same family, visible for the first time because X5 declares
+   what a key offers.
+3. **No new `brand_kit()` work is needed** (X10.2) — contract 9 is a URL question and a TypeScript
+   shape, not SQL.
+4. **No `src/proxy.ts` change is needed** for the preview (X7.2) — `/api/` is outside the matcher.
+   This was the change I expected to have to ask for.
+5. `08` §3.1's numerals line and §5.1's «Fly» are both stale (X14).
+
+## X16. Order of work, once the plan is approved
+
+1. **N1, the pin** — the fixtures, the writer, the 116 files, the comparison test. Nothing else is
+   touched. I tell the lead the moment it is committed (contract 4; L3 is blocked on it).
+2. **L3, the lead's move** — then my four import edits in one commit (`send_notification.ts` and the
+   three ledger lines), with the pinned test green as the proof.
+3. **N2, the block compiler and the generated text**, in `packages/mail-runtime/src/`, beside the
+   string path. The pinned files must not move: that is the unit's definition of done.
+4. **N3, the bindings** — `notification_bindings()`, the re-created validate trigger, its RLS tests,
+   and the editor's checkbox list (which is what changes the three specs above).
+5. **N6, the eight designs** as constants in the package, the 25 → 8 map and its test, and the
+   resolution order `Q2` settles.
+6. **N4, the editor** — the library, `ui/reorderable-list` for the blocks, the properties pane, the
+   preview route and its four modes, the checks panel.
+7. **N5, «أرسل اختبارًا»** — the RPC, the job, the delivery row, Mailpit.
+8. **N7** — written above; the lead edits `08` whenever it suits.
+9. **N8, last** — the wrapper, the route, the signature verification, the owner's step. If the wave
+   runs out, this is what is carried, with X12 as its design.
+
+## X17. Questions for the lead, each with my recommendation
+
+**Q1 — `blocks jsonb` on `email_designs`, or `notification_template_blocks` row-per-block?**
+`02`, `DEC-081` and `16` §11.6 all name a table. **I recommend the jsonb column**, as a narrowing the
+lead records: a reorder is a whole-document write, so a row-per-block table makes it N updates under
+a unique `(template_id, position)`; no query ever wants one block; and `design_documents` already
+settled this exact argument in this repository («An instance. Fully described by its JSON; nothing
+about its appearance lives outside it»). Isolation is not an argument for the table — `email_designs`
+is itself in the sweep, so its `blocks` column inherits the right boundary.
+
+**Q2 — ★ the one real conflict: does a key with no org row fall back to the platform design?**
+`16` §11.5 says yes, explicitly («a key with no org override falls back to the platform one rather
+than to a paragraph of unstyled text. That fallback is the whole difference»). `REQ-NTF-009`,
+contract 5 and the wave's second must-not-change say an org that has not touched its templates sends
+**byte-identical** mail. Both cannot hold for the org that exists today.
+**I recommend: adoption is explicit, and seeded at org creation.** A new org created after this wave
+gets its 25 keys bound to the eight designs when it is created — `REQ-NTF-014`'s «present for every
+org from creation», literally, on `0061`'s A27 pattern. Every org that exists today keeps the strings
+until an admin duplicates a design, which is exactly what demonstrable 2 has the admin do before the
+reminder «arrives designed». That satisfies both sentences, keeps the pinned bytes meaningful, and
+costs one hook in org creation — **not my file**, so it is a request if the lead takes it.
+The alternative I do **not** recommend is an `org_settings` switch: a setting nobody asked for, and
+`DEC-124` is the standing lesson about settings that exist to avoid a decision.
+
+**Q3 — where the platform library lives: constants in the package, or platform-owned rows (the
+eighth exception to invariant 5)?**
+**I recommend constants**, and I could not find the reason the exception would need. `REQ-NTF-014`'s
+three acceptance lines are satisfied without rows: «present for every org from creation» is stronger
+as code than as a seed plus a backfill; «an org duplicates one … the original is never mutated» is
+true by construction when the original is a constant; «changing the org logo restyles every message»
+is the renderer reading `brand_kit()`. `DEFAULT_TEMPLATES` is the precedent **in this very module** —
+`REQ-NTF-002`'s «every matrix row has an Arabic template» has been satisfied by constants since M3.
+The one thing rows would buy is **promotion** of an org design into the platform library, which is
+`platform`'s track, `/app/platform/templates`, and not this wave; the migration that would add it
+later is additive and small (`scope` + a nullable `org_id` + the `design_templates` policy set), and
+I would rather write it when someone needs it than carry an invariant-5 exception for a year.
+
+**Q4 — the seventh row in `ANON_MAY_EXECUTE`** (`tests/rls/definer-exposure.test.ts`, the lead's).
+**I recommend the `returns void` wrapper** of X12, with the line as written there. If the lead would
+rather not widen that set at all, the fallback is that `REQ-NTF-008`'s webhook stays unbuilt and
+carried again — which I think is the worse trade, because the delivery log then never learns about a
+bounce and `/app/admin/emails`' whole log tab is fed by failures the worker saw, not by the ones the
+provider saw.
+
+**Q5 — the audit label for `notify.test_email_sent`**, a row in `messages/*/admin.json`
+(`console`'s, held by the lead) so `tests/unit/admin-audit-labels.test.ts` stays green.
+Proposed: `ar` «أُرسلت رسالة اختبار» · `en` "Test email sent".
+
+**Q6 — `ui/reorderable-list`'s props** (contract 2, in `ui/index.ts` on day one). What the block list
+needs: `items: { id: string; label: string }[]`, `onReorder(next: string[])`, a `label` for the list
+and an `itemLabel` for the ▲▼ buttons' accessible names. If the shape the lead lands differs, I adapt
+— I am naming it only so the two consumers do not discover a mismatch at sync 2.
+
+**Q7 — do I fix `{{url}}` this wave, and is it a named difference?**
+**I recommend yes, as the wave's named difference 1**, on the same terms `DEC-151` set for named
+difference 4: the pin records the broken bytes **first**, the fix lands as a reviewed diff over them.
+The design costs no schema: SQL does not know the app's base URL, so instead of an `org_settings`
+column, **`RenderInput` gains an optional trailing `appUrl`** (the worker reads one env value; the
+preview passes its own origin), and the renderer derives `url` per key from the payload's
+`session_id` / `proposal_id` / `certificate_id`. One place, no migration, and it fixes all 20
+templates at once. `{{tasks}}` I recommend **leaving empty and carried** — it needs a reader of
+`session_tasks` on a mail path, and while that is not a check-in path (`REQ-TSK-002` is safe), it is
+`content`'s data and a wave-11 conversation.
+
+**Q8 — the eight design names.** `DEC-082` fixes them in Arabic and X4 maps all 25 keys onto them,
+with three stretches named. Confirm the names stay as the owner wrote them; I am not proposing to
+rename any.
