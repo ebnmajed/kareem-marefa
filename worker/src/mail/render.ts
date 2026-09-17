@@ -88,6 +88,56 @@ export interface ChangedField {
   to: string;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// The day words — contract 7's ordinals, in the worker.
+//
+// ★ WHY A SECOND COPY. `src/components/sessions/day-label.ts` is the one
+// formatter every SCREEN shares, and the worker is a standalone package that
+// imports nothing from `src/` — it has no next-intl, no message loader and no
+// bundler that reaches across. So the words live here too, and
+// `tests/unit/mail-day-words.test.ts` diffs this table against
+// `src/messages/ar/sessions.json`'s `days.ordinal.*` so the two cannot drift.
+// Same treatment `tests/unit/mail-render.test.ts` gives the template table
+// against the matrix in migration `0026`.
+//
+// Words to ten, the Western digit from eleven — `day-label.ts`'s rule and
+// DEC-124's numerals, so a mail and a screen switch at the same number.
+// ═══════════════════════════════════════════════════════════════════════════
+export const DAY_ORDINALS: readonly string[] = [
+  "الأول",
+  "الثاني",
+  "الثالث",
+  "الرابع",
+  "الخامس",
+  "السادس",
+  "السابع",
+  "الثامن",
+  "التاسع",
+  "العاشر",
+];
+
+/** «اليوم الثاني», and «اليوم 11» from eleven. */
+export function dayPhrase(position: number): string {
+  const named = Number.isInteger(position) && position >= 1 && position <= DAY_ORDINALS.length;
+  return named ? `اليوم ${DAY_ORDINALS[position - 1]}` : `اليوم ${formatNumber(position)}`;
+}
+
+/**
+ * The day line a reminder carries, and the empty string when there is nothing
+ * to tell apart.
+ *
+ * ★ A session with ONE day produces `""`, which `toParagraphs()` drops — so a
+ * one-day reminder is byte-identical to the one M3 shipped. Same mechanism
+ * `{{tasks}}` already uses: the template has no conditionals, so a block that
+ * may be absent is a pre-built value that may be empty.
+ */
+export function dayBlock(payload: Record<string, unknown>): string {
+  const position = Number(payload.dayPosition);
+  const count = Number(payload.dayCount);
+  if (!Number.isInteger(position) || !Number.isInteger(count) || count <= 1 || position < 1) return "";
+  return `${dayPhrase(position)} من ${formatNumber(count)}`;
+}
+
 /**
  * 08 §3.3 / REQ-SES-009: the old value and the new one, side by side.
  *
@@ -104,12 +154,19 @@ export function changeBlock(changes: ChangedField[]): string {
     .join("\n");
 }
 
-/** 08 §3.3's two fields, in Arabic. A field with no label here renders under
+/** 08 §3.3's fields, in Arabic. A field with no label here renders under
  *  its own name rather than being dropped — a change the member is not told
- *  about is the failure REQ-SES-009 exists to prevent. */
+ *  about is the failure REQ-SES-009 exists to prevent.
+ *
+ *  `ends_at` and `days` are wave 9's: at several days the last meeting's end
+ *  is not the session's, and a day added or removed reuses
+ *  `MSG-session_changed` rather than a new key the matrix would refuse
+ *  (DEC-151). */
 const CHANGE_LABELS: Readonly<Record<string, string>> = {
   starts_at: "الموعد",
+  ends_at: "الانتهاء",
   venue: "المكان",
+  days: "عدد الأيام",
 };
 
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
@@ -134,19 +191,66 @@ function formatChangeValue(value: unknown, org: RenderInput["org"]): string {
   }).format(parsed);
 }
 
+/**
+ * ★ NAMED DIFFERENCE 4 (DEC-151) — an instant in a payload is FORMATTED.
+ *
+ * `{{startsAt}}` appears in seven of `08` §3.2's templates and has been
+ * interpolated raw since M3, because `interpolate()` calls `String(value)` and
+ * a trigger ships `jsonb_build_object('startsAt', s.starts_at)`. The mail a
+ * member actually receives reads
+ *
+ *     الموعد: 2026-09-19T06:37:03.319767+00:00
+ *
+ * — measured with the exact string the local database produces, through this
+ * renderer. `tests/unit/mail-render.test.ts` never caught it because its
+ * fixtures pass a pre-formatted «الأحد 6:00 م».
+ *
+ * `formatChangeValue()` next door has always done the right thing for the
+ * change block, so this applies the same rule to every top-level value: a
+ * string that looks like an ISO instant is rendered in the ORG's zone with
+ * Western digits, and everything else is left exactly as it is. A session
+ * happens in a room, so the room's clock is the one that matters (OQ-018).
+ */
+function formatInstants(payload: Record<string, unknown>, org: RenderInput["org"]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    out[key] = typeof value === "string" && ISO_INSTANT.test(value) ? formatChangeValue(value, org) : value;
+  }
+  return out;
+}
+
 /** The trigger ships raw values (supabase/proposed/notify/0005); the block is
  *  built here so the formatting rule lives in one place instead of in every
  *  trigger that reports a change. */
 export function changesFromPayload(raw: unknown, org: RenderInput["org"]): string | null {
   if (!Array.isArray(raw)) return null;
   const fields = raw
-    .filter((c): c is { field: string; from: unknown; to: unknown } => Boolean(c) && typeof c === "object" && "field" in c)
+    .filter((c): c is { field: string; from: unknown; to: unknown; day?: unknown; days?: unknown } =>
+      Boolean(c) && typeof c === "object" && "field" in c,
+    )
     .map((c) => ({
-      label: CHANGE_LABELS[c.field] ?? c.field,
+      label: changeLabel(c),
       from: formatChangeValue(c.from, org),
       to: formatChangeValue(c.to, org),
     }));
   return changeBlock(fields);
+}
+
+/**
+ * «الموعد», and «الموعد · اليوم الثاني» when there is more than one meeting.
+ *
+ * ★ The qualifier is absent whenever `days` is missing or 1, so a one-day
+ * session's block is the one M3 shipped, character for character. A session
+ * with several days needs it: «تغيّر الموعد» on a three-day workshop that does
+ * not say WHICH day sends someone to the wrong room on the wrong evening,
+ * which is the failure `REQ-SES-009` exists to prevent.
+ */
+function changeLabel(change: { field: string; day?: unknown; days?: unknown }): string {
+  const base = CHANGE_LABELS[change.field] ?? change.field;
+  const position = Number(change.day);
+  const count = Number(change.days);
+  if (!Number.isInteger(position) || !Number.isInteger(count) || count <= 1 || position < 1) return base;
+  return `${base} · ${dayPhrase(position)}`;
 }
 
 function toParagraphs(text: string): string[] {
@@ -206,8 +310,13 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   // renders «مرحبًا ،» is the failure mode this prevents.
   const changes = changesFromPayload(input.payload.changes, input.org);
   const payload: Record<string, unknown> = {
-    ...input.payload,
+    // Named difference 4: an ISO instant becomes a date a person can read.
+    // Applied first, so `changes` and `day` below — both already strings — are
+    // untouched by it.
+    ...formatInstants(input.payload, input.org),
     ...(changes === null ? {} : { changes }),
+    // Empty at one day, so the paragraph disappears and the mail is today's.
+    day: dayBlock(input.payload),
     member: { ...(typeof input.payload.member === "object" && input.payload.member ? input.payload.member : {}), name: input.member.name ?? input.member.email, email: input.member.email },
     org: input.org.name,
   };
