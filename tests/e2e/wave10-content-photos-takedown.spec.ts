@@ -130,7 +130,7 @@ async function waitForStreamsToSettle(page: Page) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-test("★ T2·1: the takedown label «احذف الصور التي أظهر فيها» sits on one line under a half-width tile at 390 px", async ({ page, context }) => {
+test("★ T2·1: the takedown label «احذف الصور التي أظهر فيها» wraps without being clipped, and clears the 36px target, under a half-width tile at 390 px", async ({ page, context }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, attendeeEmail);
   await page.goto(`/ar/app/sessions/${sessionId}`);
