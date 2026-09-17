@@ -41,7 +41,16 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
   // `EmptyState` could honestly offer this viewer.
   if (tasks.length === 0 && !canManage) return null;
 
-  if (tasks.length === 0) {
+  // ★ REQ-SES-018/DEC-121 — the lead's real-build finding on the wave's demonstrable, met by
+  // starting from an empty session the way a person actually does: this used to return the FLAT
+  // empty state whenever there was nothing yet, even at `days.length > 1` — a brand-new workshop's
+  // manager had no group header to press, so the very first task could only ever land
+  // session-scoped (ruling 3's "pressing the control is the choice" has nothing to press when the
+  // only control is the flat one) — `materials/list.tsx`'s own twin defect, same fix. Gated on
+  // `days.length <= 1` too, matching the flat/grouped split below. A manager with nothing yet at
+  // `days.length > 1` falls through to the grouped branch, whose own group filter already keeps
+  // every (empty) group for a manager.
+  if (tasks.length === 0 && days.length <= 1) {
     const creator = canManage ? (
       <div id="tasks-create-form" className="scroll-mt-4">
         <CreateTaskForm locale={locale} sessionId={sessionId} materials={materials} />
@@ -85,6 +94,12 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
 
   return (
     <div>
+      {/* ★ A brand-new workshop reaches here too now (the fix above) — one line saying so, the
+          same sentence the flat empty state uses, above every (closed, empty) group's own header
+          and control. Never `ui/empty-state`: its `action` is required by design (REQ-UIX-012 —
+          no "empty, full stop"), and there is no single action here any more, only each group's
+          own. */}
+      {tasks.length === 0 ? <p className="text-body-sm text-fg-muted">{t("empty")}</p> : null}
       {groups
         .filter((g) => g.items.length > 0 || canManage)
         .map((g) => (

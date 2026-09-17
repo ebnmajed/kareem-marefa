@@ -180,3 +180,32 @@ describe("REQ-SES-018/DEC-121 — a group's own form sits behind its header cont
     expect(document.activeElement).toHaveAccessibleName("نوع المادة");
   });
 });
+
+// ★ The lead's finding on the wave's demonstrable, met by starting from an empty session the way
+// a person actually does: the OLD branch order returned the FLAT empty state whenever there was
+// nothing yet, even at `days.length > 1` — a brand-new workshop's manager had no group header to
+// press, so the very first material could only ever land session-scoped (ruling 3's "pressing the
+// control is the choice" has nothing to press when the only control is the flat one). This file's
+// own two-day fixture gives three groups (session + day 1 + day 2) rather than a third day added
+// only for this test — the property under test (every group renders, all closed, no open form)
+// does not depend on the count.
+describe("REQ-SES-018/DEC-121 — an empty slot at days.length > 1 still renders the grouped layout", () => {
+  it("a manager with nothing yet sees every group's own closed control, and no open form", async () => {
+    await renderSlot({ materials: [], canManageAll: true, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    const headings = screen.getAllByRole("heading", { level: 3 });
+    expect(headings).toHaveLength(3); // session + day1 + day2, all shown for a manager
+    const triggers = screen.getAllByText("أضف مادة");
+    expect(triggers).toHaveLength(3);
+    for (const trigger of triggers) {
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+    // Never the flat empty state's own markup — that branch is not reached here.
+    expect(document.querySelector("#materials-upload-form")).toBeNull();
+  });
+
+  it("a plain member with nothing yet sees nothing at all, exactly as before this fix", async () => {
+    await renderSlot({ materials: [], canManageAll: false, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(screen.queryByText("للورشة كاملة")).not.toBeInTheDocument();
+  });
+});

@@ -225,15 +225,28 @@ test("wave9-content-materials-presenter-grouped: the presenter sees every group,
   const materials = page.locator("#materials");
   await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
   await expect(materials.getByRole("heading", { name: /اليوم الثالث/, level: 3 })).toBeVisible();
-  await expect(materials.getByRole("link", { name: /^أضف مادة/ })).toHaveCount(4); // session + three days
+  // «أضف مادة» is a <summary> (a native disclosure closed by default — see GroupDisclosure). A
+  // <summary> is announced to assistive tech as a disclosure triangle/"button, collapsed" — right,
+  // and kept — but Playwright's `getByRole("button", ...)` does not resolve it (found 0 of 4 on a
+  // real build that had them): located by the element instead, on its own `aria-label` (unique per
+  // group — "أضف مادة — <day>").
+  await expect(materials.locator("summary[aria-label^='أضف مادة']")).toHaveCount(4); // session + three days
+  // None open on load — the whole reason for the change.
+  await expect(page.locator("#materials details[open]")).toHaveCount(0);
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-presenter-grouped.png`, fullPage: true });
 });
 
 test("wave9-content-materials-scope-chip-open: the presenter opens a material's scope chip", async ({ context, page }) => {
   await goToEvent(context, page, presenterEmail);
-  const chip = page.locator("#materials details").filter({ hasText: "اليوم الأول" }).first();
-  await chip.locator("summary").click();
-  await expect(chip.getByRole("button")).toHaveCount(4); // session + three days
+  // ★ `RescopeChip` moved onto `ui/menu` (Radix) after `ui-lint` flagged its hand-rolled floating
+  // panel (`content.md` §28) — no longer a `<details>` at all, and its open menu portals to the end
+  // of `<body>`, not inside `#materials`. The trigger is a real `<button>`, found on its own
+  // `aria-label` (day 1's material's chip reads "تغيير نطاق المادة: اليوم الأول"); the open menu is
+  // found by role, unscoped from `#materials` because of the portal.
+  const chipTrigger = page.locator("#materials").getByRole("button", { name: "تغيير نطاق المادة: اليوم الأول" });
+  await chipTrigger.click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveCount(4); // session + three days
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-scope-chip-open.png`, fullPage: true });
 });
 

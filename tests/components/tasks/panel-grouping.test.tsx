@@ -56,6 +56,17 @@ async function renderSlot(data: TasksPageData) {
   );
 }
 
+// ★ `tasks.create.submit` ("إضافة") is both a group's `GroupDisclosure` trigger AND
+// `CreateTaskForm`'s own submit button — the lead's wording keeps the header control's label
+// ("«إضافة»/«أضف مادة» in the header"), so the two elements share text once a group is open, and
+// `CreateTaskForm` is always mounted (just closed) even for an empty group. jsdom does not hide a
+// closed `<details>`'s non-summary children the way a real browser does, so `getAllByText` alone
+// would match both the triggers and the forms' own submit buttons. Scoping to `<summary>` picks
+// out exactly the header controls. Module-level — every describe below that opens a group needs it.
+function summaryTriggers() {
+  return screen.getAllByText("إضافة").filter((el) => el.tagName === "SUMMARY");
+}
+
 describe("Tasks slot, grouped (days.length > 1)", () => {
   it("shows the session's own content first, then day 1, under their own <h3>", async () => {
     await renderSlot({ tasks: [sessionTask, day1Task], canManage: false, materials: [], days, timeZone: "Asia/Riyadh" });
@@ -97,16 +108,6 @@ describe("Tasks slot, grouped (days.length > 1)", () => {
 // header control opens it — see `tests/components/materials/list-grouping.test.tsx`'s identical
 // suite for the twin.
 describe("REQ-SES-018/DEC-121 — a group's own form sits behind its header control, closed by default", () => {
-  // ★ `tasks.create.submit` ("إضافة") is both this trigger's visible label AND
-  // `CreateTaskForm`'s own submit button — the lead's wording keeps the header control's label
-  // ("«إضافة»/«أضف مادة» in the header"), so the two elements share text once a group is open.
-  // jsdom does not hide a closed `<details>`'s non-summary children the way a real browser does,
-  // so `getAllByText` alone would match both the 3 triggers and the 3 forms' own submit buttons.
-  // Scoping to `<summary>` picks out exactly the header controls this suite is about.
-  function summaryTriggers() {
-    return screen.getAllByText("إضافة").filter((el) => el.tagName === "SUMMARY");
-  }
-
   it("no group's form is open when the grouped view first renders", async () => {
     await renderSlot({ tasks: [day1Task], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
     const triggers = summaryTriggers(); // session + day1 + day2, one per group
@@ -139,5 +140,33 @@ describe("REQ-SES-018/DEC-121 — a group's own form sits behind its header cont
     // dispatched by hand, exactly as materials' own twin test does, and for the same reason.
     fireEvent(trigger.closest("details")!, new Event("toggle"));
     expect(document.activeElement).toHaveAccessibleName("نوع المهمة");
+  });
+});
+
+// ★ The lead's finding on the wave's demonstrable, met by starting from an empty session the way
+// a person actually does: the OLD branch order returned the FLAT empty state whenever there was
+// nothing yet, even at `days.length > 1` — a brand-new workshop's manager had no group header to
+// press, so the very first task could only ever land session-scoped — `materials/list.tsx`'s own
+// twin defect, same fix. This file's own two-day fixture gives three groups (session + day 1 +
+// day 2) rather than a third day added only for this test — the property under test (every group
+// renders, all closed, no open form) does not depend on the count.
+describe("REQ-SES-018/DEC-121 — an empty slot at days.length > 1 still renders the grouped layout", () => {
+  it("a manager with nothing yet sees every group's own closed control, and no open form", async () => {
+    await renderSlot({ tasks: [], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
+    const headings = screen.getAllByRole("heading", { level: 3 });
+    expect(headings).toHaveLength(3); // session + day1 + day2, all shown for a manager
+    const triggers = summaryTriggers();
+    expect(triggers).toHaveLength(3);
+    for (const trigger of triggers) {
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+    // Never the flat empty state's own markup — that branch is not reached here.
+    expect(document.querySelector("#tasks-create-form")).toBeNull();
+  });
+
+  it("a plain member with nothing yet sees nothing at all, exactly as before this fix", async () => {
+    await renderSlot({ tasks: [], canManage: false, materials: [], days, timeZone: "Asia/Riyadh" });
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(screen.queryByText("للورشة كاملة")).not.toBeInTheDocument();
   });
 });
