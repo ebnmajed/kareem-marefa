@@ -186,6 +186,48 @@ describe("RPC-session_days_changed.names_the_day", () => {
   });
 });
 
+describe("RPC-session_days_changed — either snapshot shape", () => {
+  it("★ `0106`'s `jsonb_agg(to_jsonb(d))` reads as well as the published five keys — including the VENUE", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const session = await workshop(tx, f.a, 2);
+      await reserve(tx, f.a.id, session, f.a.members[0].memberId);
+      await tx.q(`delete from public.notifications`);
+      const [other] = await tx.q<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة الندوات', 20) returning id`, [
+        f.a.id,
+      ]);
+      const days = await dayRows(tx, session);
+
+      // Exactly what `schedule_session()` builds: the whole row, which carries
+      // `venue_id` and no `venue_label` at all.
+      const rowShape = async () =>
+        (
+          await tx.q<{ days: unknown }>(
+            `select coalesce(jsonb_agg(to_jsonb(d) order by d.position), '[]'::jsonb) as days
+               from public.session_days d where d.session_id = $1`,
+            [session],
+          )
+        )[0].days;
+
+      await tx.q(`select set_config('kareem.days_writer', 'on', true)`);
+      const before = await rowShape();
+      await tx.q(`update public.session_days set venue_id = $1, starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
+                   where id = $2`, [other.id, days[1].id]);
+      const after = await rowShape();
+      await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [session, JSON.stringify(before), JSON.stringify(after)]);
+      await tx.q(`select set_config('kareem.days_writer', '', true)`);
+
+      const [sent] = await notices(tx, session);
+      const fields = sent.payload.changes!.map((c) => c.field).sort();
+      expect(fields).toEqual(["ends_at", "starts_at", "venue"]);
+      const venue = sent.payload.changes!.find((c) => c.field === "venue")!;
+      expect(venue.to).toBe("قاعة الندوات");
+      expect(venue.day).toBe(2);
+    });
+  });
+});
+
 describe("RPC-session_days_changed.day_added_or_removed", () => {
   it("a day added to a published session is announced as a change to the number of days", async () => {
     await withTx(async (tx) => {

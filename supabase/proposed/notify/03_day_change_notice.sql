@@ -31,12 +31,36 @@
 -- `session_days` that notifies.
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- 0 · the day's place, from either snapshot shape.
+--
+-- ★ `docs/plan/notes/notify.md` §W10.2 publishes the snapshot as
+-- `{ id, position, starts_at, ends_at, venue_label }`. `0106`'s day-aware
+-- `schedule_session()` builds `jsonb_agg(to_jsonb(d))` instead — the whole row,
+-- which carries `venue_id` and the custom-venue trio and NO `venue_label`.
+--
+-- Both are honest answers and both name the same day, so this reads either: the
+-- label when the caller computed one, the columns when it did not. Without it a
+-- day's VENUE moving would compare null against null and be announced to
+-- nobody, which is the half of `REQ-SES-009` that sends people to the wrong
+-- room.
+-- ═══════════════════════════════════════════════════════════════════════════
+create function public.session_day_place(p_day jsonb) returns text
+language sql stable security definer set search_path = '' as $$
+  select coalesce(
+           p_day ->> 'venue_label',
+           public.session_venue_label(nullif(p_day ->> 'venue_id', '')::uuid, p_day ->> 'custom_venue_name'))
+$$;
+revoke execute on function public.session_day_place(jsonb) from public, anon;
+grant  execute on function public.session_day_place(jsonb) to authenticated, service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 1 · session_days_changed — contract 11.
 --
 -- `p_before` and `p_after` are the day set as an array of
--- `{ id, position, starts_at, ends_at, venue_label }`, ordered by position;
--- null is read as the empty set. Days are matched by `id` — never by position,
--- which is a derived rank two different days can hold before and after.
+-- `{ id, position, starts_at, ends_at, venue_label }` — or of whole
+-- `session_days` rows, which `session_day_place()` above reads just as well.
+-- Null is the empty set. Days are matched by `id` — never by position, which is
+-- a derived rank two different days can hold before and after.
 -- ═══════════════════════════════════════════════════════════════════════════
 create function public.session_days_changed(p_session uuid, p_before jsonb, p_after jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
@@ -98,8 +122,11 @@ begin
     if (b->>'ends_at') is distinct from (a->>'ends_at') then
       v_changes := v_changes || (jsonb_build_object('field', 'ends_at', 'from', b->'ends_at', 'to', a->'ends_at') || v_day);
     end if;
-    if (b->>'venue_label') is distinct from (a->>'venue_label') then
-      v_changes := v_changes || (jsonb_build_object('field', 'venue', 'from', b->'venue_label', 'to', a->'venue_label') || v_day);
+    if public.session_day_place(b) is distinct from public.session_day_place(a) then
+      v_changes := v_changes || (jsonb_build_object(
+        'field', 'venue',
+        'from', public.session_day_place(b),
+        'to',   public.session_day_place(a)) || v_day);
     end if;
   end loop;
 
