@@ -18,6 +18,26 @@
 // breaks lam-alef.
 export const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif`;
 
+/**
+ * The stack a DESIGNED mail declares (D3 finding F4, block path only).
+ *
+ * `Segoe UI` and `Tahoma` are Windows, and `Tahoma`'s Arabic is solid — but
+ * **iOS and Android ship none of the three**, so on the majority of readers
+ * every Arabic run falls through `sans-serif` to the platform's glyph-level
+ * fallback: Geeza Pro on iOS, Noto Naskh Arabic on Android. It WORKS, because
+ * a fallback face shapes its own run and lam-alef survives. It is DISCOVERED
+ * rather than declared, and this repository's standard is the opposite
+ * (`06` §5.1). A platform reordering its fallbacks would change our Arabic
+ * silently, on most readers, and nothing would tell us.
+ *
+ * ★ Why the string path keeps the stack above: `FALLBACK_STACK` is in every
+ * cell of both paths, so widening it there would move all 116 pinned files —
+ * changing the mail every org already sends, on a claim nobody here can verify
+ * without opening iOS Mail. That is what `REQ-NTF-009` forbids this wave. The
+ * string path leaves in M13 regardless.
+ */
+export const DESIGN_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic', Arial, sans-serif`;
+
 // `latn` named explicitly: `ar`'s CLDR default is `arab`, the digits the owner
 // forbade everywhere (DEC-124).
 const numberFormat = new Intl.NumberFormat("ar-u-nu-latn");

@@ -24,7 +24,7 @@
 // do (REQ-NTF-009, contract 5). The two paths diverge here on purpose, and
 // `tests/unit/mail-blocks.test.ts` asserts that they do.
 
-import { escapeHtml, FALLBACK_STACK, formatValue, lookup } from "./primitives.js";
+import { DESIGN_STACK, escapeHtml, formatValue, lookup } from "./primitives.js";
 import { readBlocks, type EmailBlock, type ImageSource } from "./blocks.js";
 
 /** U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. Written as
@@ -86,7 +86,7 @@ const SPACER_PX: Record<string, number> = { sm: 8, md: 16, lg: 32 };
  *  does not inherit direction reliably through nested tables. A right-aligned
  *  cell is not an RTL cell. */
 function cell(style: string): string {
-  return `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};${style}"`;
+  return `dir="rtl" align="right" style="font-family:${DESIGN_STACK};${style}"`;
 }
 
 function row(inner: string): string {
@@ -187,17 +187,20 @@ function compileOne(
         image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border-radius:8px;" />` : "",
         ...lines.map((line, index) =>
           index === 0
-            ? `<div style="font-size:19px;line-height:1.4;font-weight:bold;color:${ctx.palette.fgHeading};padding:8px 0 4px 0;">${escapeHtml(isolate(line))}</div>`
-            : `<div style="font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};">${escapeHtml(isolate(line))}</div>`,
+            ? `<div dir="rtl" style="font-size:19px;line-height:1.4;font-weight:bold;color:${ctx.palette.fgHeading};padding:8px 0 4px 0;text-align:right;">${escapeHtml(isolate(line))}</div>`
+            : `<div dir="rtl" style="font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};text-align:right;">${escapeHtml(isolate(line))}</div>`,
         ),
       ].join("");
       rows.push(
         row(
-          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${ctx.palette.surface};border:1px solid ${ctx.palette.edge};border-radius:12px;"><tr><td ${cell(`padding:12px;text-align:right;`)}>${inner}</td></tr></table></td>`,
+          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${ctx.palette.surface}" style="background:${ctx.palette.surface};border:1px solid ${ctx.palette.edge};border-radius:12px;"><tr><td ${cell(`padding:12px;text-align:right;`)} bgcolor="${ctx.palette.surface}">${inner}</td></tr></table></td>`,
         ),
       );
-      // REQ-NTF-013: «a session card becomes four lines».
-      for (const line of lines) text.push(isolate(line));
+      // REQ-NTF-013: «a session card becomes four LINES» — one text entry
+      // carrying them, not four paragraphs. `text` entries are joined with a
+      // blank line, so pushing each separately would space the card's title,
+      // day, time and venue apart as if they were unrelated.
+      text.push(lines.map((line) => isolate(line)).join("\n"));
       return;
     }
 
@@ -209,12 +212,14 @@ function compileOne(
       const inner = pairs
         .map(
           (pair) =>
-            `<tr><td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:0 0 4px 0;text-align:right;white-space:nowrap;`)}>${escapeHtml(pair.label)}</td>` +
+            `<tr><td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:0 0 4px 0;text-align:right;`)} width="35%">${escapeHtml(pair.label)}</td>` +
             `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;`)}>${escapeHtml(pair.value)}</td></tr>`,
         )
         .join("");
       rows.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td>`));
-      for (const pair of pairs) text.push(`${pair.label}: ${pair.value}`);
+      // A list is a list: consecutive lines, one entry — the same reason as
+      // the session card's.
+      text.push(pairs.map((pair) => `${pair.label}: ${pair.value}`).join("\n"));
       return;
     }
 
@@ -237,9 +242,16 @@ function compileOne(
       // (contract 9).
       if (!src) return;
       const width = Math.min(Math.max(Math.trunc(block.width) || 160, 16), 512);
+      // ★ F2 — an explicit `bgcolor` ATTRIBUTE, never a CSS background. A brand
+      // logo is very often dark ink on TRANSPARENCY, and Gmail on Android
+      // darkens the card's surface whatever the mail declares (F1's opt-out
+      // does not reach it). A transparent PNG then has nothing to stand on and
+      // the header of every designed mail goes blank. The attribute is what
+      // Outlook's Word engine reads and what the inverter respects most
+      // consistently; a CSS `background` is the first thing it overrides.
       rows.push(
         row(
-          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)}><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${width}" style="display:block;width:${width}px;max-width:100%;height:auto;border:0;" /></td>`,
+          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${width}" style="display:block;width:${width}px;max-width:100%;height:auto;border:0;" /></td>`,
         ),
       );
       return;
@@ -267,7 +279,7 @@ function bulletproofButton(href: string, label: string, style: "primary" | "seco
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
   return [
-    `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="18%" strokecolor="${border}" fillcolor="${background}"><w:anchorlock/><center style="color:${colour};font-family:${FALLBACK_STACK};font-size:16px;">${safeLabel}</center></v:roundrect><![endif]-->`,
-    `<!--[if !mso]><!-- --><a href="${safeHref}" style="display:inline-block;background:${background};color:${colour};border:1px solid ${border};border-radius:8px;font-family:${FALLBACK_STACK};font-size:16px;line-height:44px;padding:0 24px;text-decoration:none;">${safeLabel}</a><!--<![endif]-->`,
+    `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="18%" strokecolor="${border}" fillcolor="${background}"><w:anchorlock/><center style="color:${colour};font-family:${DESIGN_STACK};font-size:16px;">${safeLabel}</center></v:roundrect><![endif]-->`,
+    `<!--[if !mso]><!-- --><a href="${safeHref}" style="display:inline-block;background:${background};color:${colour};border:1px solid ${border};border-radius:8px;font-family:${DESIGN_STACK};font-size:16px;line-height:44px;padding:0 24px;text-decoration:none;">${safeLabel}</a><!--<![endif]-->`,
   ].join("");
 }

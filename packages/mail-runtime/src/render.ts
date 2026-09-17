@@ -19,7 +19,7 @@
 // 1.7 on body text.
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
-import { escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
+import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
 import { isBlockDocument } from "./blocks.js";
 import { compileBlocks, type CompilePalette } from "./compile.js";
 
@@ -328,7 +328,8 @@ function toHtml(paragraphs: string[], org: string, brand?: LegacyBrand | null): 
   const rows = paragraphs
     .map((p) => `      <tr><td ${cell}>${escapeHtml(p).replace(/\n/g, "<br />")}</td></tr>`)
     .join("\n");
-  return shell(rows, org, brand);
+  // The string path declares nothing new: these are the values M3 shipped.
+  return shell(rows, org, brand, { declareScheme: false, stack: FALLBACK_STACK });
 }
 
 /**
@@ -340,16 +341,35 @@ function toHtml(paragraphs: string[], org: string, brand?: LegacyBrand | null): 
  * `tests/unit/mail-pinned/` are what proves the extraction moved not one byte
  * of the string path's output.
  */
-function shell(rows: string, org: string, brand?: LegacyBrand | null): string {
+/** What differs between the two paths. The STRING path passes today's values,
+ *  so the 116 pinned files cannot move; the BLOCK path passes the designed
+ *  ones (D3 findings F1 and F4). */
+interface ShellOptions {
+  /** F1 — declare `light` so Apple Mail and Outlook.com stop auto-inverting.
+   *  An inverter that darkens a background it judges light while leaving an
+   *  explicitly-set text colour alone produces dark text on a dark card, which
+   *  is the failure a light-mode reviewer never sees. */
+  declareScheme: boolean;
+  /** F4 — the stack the cells declare. */
+  stack: string;
+}
+
+function shell(rows: string, org: string, brand: LegacyBrand | null | undefined, options: ShellOptions): string {
   const fgBody = brand?.fgBody ?? "#1a1a1a";
   const fgMuted = brand?.fgMuted ?? "#6b6b6b";
   const surface = brand?.surface ?? "#ffffff";
-  const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
+  const cell = `dir="rtl" align="right" style="font-family:${options.stack};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
+  // The documented opt-out for Apple Mail and Outlook.com. Gmail on Android
+  // inverts regardless, which is what the `bgcolor` attributes in `compile.ts`
+  // are for.
+  const head = options.declareScheme
+    ? `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>`
+    : `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>`;
 
   return [
     `<!doctype html>`,
     `<html dir="rtl" lang="ar">`,
-    `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>`,
+    head,
     `<body dir="rtl" style="margin:0;padding:0;background:#f5f5f5;">`,
     `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:24px 0;">`,
     `    <tr><td dir="rtl" align="center">`,
@@ -417,7 +437,7 @@ export function renderEmail(input: RenderInput): RenderedEmail {
       // The same tail the string path writes, so a design and a default sign
       // off identically.
       text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-      html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand)),
+      html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand), { declareScheme: true, stack: DESIGN_STACK }),
     };
   }
 

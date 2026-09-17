@@ -56,7 +56,9 @@ describe("each block compiles to one table row and to its own text", () => {
 
   it("REQ-NTF-013 — a session card becomes its lines, and a detail list becomes `label: value`", () => {
     const card = compileBlocks(doc({ type: "session_card", id: "c1" }), ctx());
-    expect(lines(card)).toEqual([isolate("الذكاء الاصطناعي في العمل"), isolate("الخميس 6:00 م"), isolate("قاعة الابتكار")]);
+    // One entry, its lines joined — REQ-NTF-013 says four LINES, and four
+    // separate entries would space them apart as unrelated paragraphs.
+    expect(lines(card)).toEqual([[isolate("الذكاء الاصطناعي في العمل"), isolate("الخميس 6:00 م"), isolate("قاعة الابتكار")].join("\n")]);
 
     const list = compileBlocks(doc({ type: "detail_list", id: "d1", items: [{ label: "الموعد", value: "{{startsAt}}" }] }), ctx());
     expect(list.text[0]).toBe(`الموعد: ${FSI}الخميس 6:00 م${PDI}`);
@@ -231,5 +233,96 @@ describe("renderEmail's one branch", () => {
     const out = renderEmail({ ...base, override: { subject: "غدًا", body: "نص", blocks: doc({ type: "heading", id: "h1", text: "عنوان", level: 1 }) } });
     expect(out.html).not.toContain("href=\"/");
     expect(out.html).not.toContain("localhost");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// designer's D3 review (23cf353), finding by finding.
+//
+// ★ THE RULE THE LEAD SET: every fix lands on the BLOCK path. The STRING path
+// keeps the bytes `tests/unit/mail-pinned/` pins, because F1 and F4 are
+// plausible and UNVERIFIED — nobody here can open Apple Mail in dark mode —
+// and changing every mail every org already sends on an unverified claim is
+// what REQ-NTF-009 forbids this wave. So `shell()` takes what differs as
+// arguments, and each case below asserts BOTH halves: the design gains it, and
+// the string path does not.
+// ═══════════════════════════════════════════════════════════════════════════
+describe("D3's findings — on the block path, and not on the string path", () => {
+  const base = {
+    key: "MSG-reminder_1d",
+    payload: { title: "جلسة", startsAt: "الخميس 6:00 م", venue: "قاعة الابتكار", url: "https://kareem.pp.sa/x" },
+    member: { name: "سارة", email: "s@k.example" },
+    org: { name: "كريم معرفة", timeZone: "Asia/Riyadh" },
+  } as const;
+
+  const designed = (...blocks: EmailBlock[]) =>
+    renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "نص", blocks: doc(...blocks) }, appUrl: "https://kareem.pp.sa" });
+  const strung = () => renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "مرحبًا {{member.name}}." } });
+
+  it("F1 — a DESIGNED mail declares its scheme; a string mail declares nothing new", () => {
+    const out = designed({ type: "heading", id: "h1", text: "عنوان", level: 1 });
+    expect(out.html).toContain('<meta name="color-scheme" content="light" />');
+    expect(out.html).toContain('<meta name="supported-color-schemes" content="light" />');
+    expect(out.html).toContain("color-scheme:light;supported-color-schemes:light;");
+
+    const old = strung();
+    expect(old.html).not.toContain("color-scheme");
+    expect(old.html).not.toMatch(/<style[\s>]/);
+  });
+
+  it("F2 — the logo cell carries an explicit bgcolor ATTRIBUTE, so a transparent PNG has something to stand on", () => {
+    // A logo only renders when `0126` gave one a public URL, so this case must
+    // pass one — without it there is no image to put a background behind.
+    const out = renderEmail({
+      ...base,
+      override: { subject: "غدًا", body: "نص", blocks: doc({ type: "image", id: "i1", src: { kind: "org_logo" }, alt: "شعار", width: 160 }) },
+      appUrl: "https://kareem.pp.sa",
+      logoUrl: "https://kareem.pp.sa/api/brand/org-1/logo",
+      brand: { light: { fgBody: "#2b3a55", fgMuted: "#6f7d93", surface: "#fffdf7", fgHeading: "#0b1220", edge: "#e6eaf0" } },
+    });
+    // The ATTRIBUTE, and it carries the card's own surface: the colour the logo
+    // sits on today, so light mode is unchanged and an inverter has something
+    // explicit to respect.
+    expect(out.html).toMatch(/<td[^>]*bgcolor="#fffdf7"[^>]*>\s*<img/);
+    // Not a CSS background, which is the first thing Gmail's inverter overrides.
+    expect(out.html).not.toContain("background:#fffdf7;\"><img");
+  });
+
+  it("F3 — a design that asks for the card's image and has no URL renders NO img", () => {
+    const withoutUrl = designed({ type: "session_card", id: "c1", withImage: true });
+    expect(withoutUrl.html).not.toContain("<img");
+    // …and the card itself still renders, so the mail loses a row and not a block.
+    expect(withoutUrl.html).toContain("جلسة");
+
+    const withUrl = renderEmail({
+      ...base,
+      payload: { ...base.payload, session_card_image_url: "https://kareem.pp.sa/api/s/abc/og" },
+      override: { subject: "غدًا", body: "نص", blocks: doc({ type: "session_card", id: "c1", withImage: true }) },
+      appUrl: "https://kareem.pp.sa",
+    });
+    expect(withUrl.html).toContain('src="https://kareem.pp.sa/api/s/abc/og"');
+  });
+
+  it("F4 — a design DECLARES an Arabic face for iOS and Android; the string path keeps M3's stack", () => {
+    const out = designed({ type: "paragraph", id: "p1", text: "نص" });
+    expect(out.html).toContain("'Geeza Pro'");
+    expect(out.html).toContain("'Noto Naskh Arabic'");
+
+    const old = strung();
+    expect(old.html).not.toContain("Geeza Pro");
+    expect(old.html).toContain("Tahoma");
+  });
+
+  it("F5 — the session card's own lines carry dir, because they are the bound values", () => {
+    const out = designed({ type: "session_card", id: "c1" });
+    const divs = out.html.match(/<div[^>]*>/g) ?? [];
+    expect(divs.length).toBeGreaterThan(1);
+    for (const div of divs) expect(div).toContain('dir="rtl"');
+  });
+
+  it("F6 — a long authored label does not push the value column off a narrow card", () => {
+    const out = designed({ type: "detail_list", id: "d1", items: [{ label: "اسم القاعة ورقم الدور والمبنى", value: "{{venue}}" }] });
+    expect(out.html).not.toContain("white-space:nowrap");
+    expect(out.html).toContain('width="35%"');
   });
 });
