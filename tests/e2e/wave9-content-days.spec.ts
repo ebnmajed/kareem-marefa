@@ -308,7 +308,18 @@ test("wave9-content-photos-scope-chip-open: staff moves a photo between groups",
   // entirely — REQ-EVT-009, never ask, no manager exception — so day 1's own heading disappears
   // once its one photo moves, not just the photo; there is no stable "day 1's group" container to
   // keep querying against after that).
-  const day1Group = photos.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..").locator("..");
+  // ★ ONE `..` hop here, not two. `gallery.tsx`'s grouped branch has no header-row wrapper around
+  // its <h3> (no per-group add control, unlike materials/tasks — "photos never ask"), so the
+  // heading is a DIRECT child of the group <div>, not a grandchild. The two-hop version (copied
+  // from materials/tasks' own twin, which DOES need it) silently resolved to the outer <div>
+  // wrapping every group, so `.locator("li").first()` picked the SESSION group's own photo —
+  // already scoped to `null` — not day 1's; the click below was a real, harmless no-op on the
+  // wrong photo, which is exactly why day 1's own heading was still there after it. Found by
+  // re-reading `gallery.tsx`'s JSX against this locator, not by running it — the freeze forbids
+  // that — so this is the one place this file's own suite could not have caught the fixed bug
+  // above it either, and did not need to: day 1's heading never moving was real evidence of a
+  // click landing on the wrong element, not of the write or the revalidation failing.
+  const day1Group = photos.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..");
   const day1Li = day1Group.locator("li").first();
   const day1Src = await day1Li.locator("img").getAttribute("src");
   await day1Li.getByRole("button", { name: /^تغيير نطاق الصورة/ }).click();
@@ -318,7 +329,7 @@ test("wave9-content-photos-scope-chip-open: staff moves a photo between groups",
 
   await expect(photos.getByRole("heading", { name: /اليوم الأول/, level: 3 })).toHaveCount(0);
   const movedLi = photos.locator("li").filter({ has: page.locator(`img[src="${day1Src}"]`) });
-  const sessionGroup = photos.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..").locator("..");
+  const sessionGroup = photos.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..");
   await expect(sessionGroup.locator("li")).toHaveCount(2); // the original session-scoped photo + the moved one
 
   // Move it back — round-tripped so this test leaves the shared serial fixture exactly as it found it.
