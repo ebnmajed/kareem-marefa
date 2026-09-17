@@ -3039,3 +3039,44 @@ the text at `min-h-11`, so a thumb meets a 44 px row; only `click()` on the role
 the label, scrolls to centre and **asserts what `elementFromPoint` returns at the row's centre** —
 never `force: true`, which would pass whether or not the bar covered the row.
 
+
+### W9.12 ★ At the freeze — what is done, and what is carried
+
+**Done.** Rows S1–S4, and every fix the captures and the demonstrable asked for.
+
+| | |
+|---|---|
+| Contract 3 | `SessionDay`, `listSessionDays(locale, sessionId)` — the one reader of `session_days`; `schedule_session(…, p_days, p_require_all_days)` (`0106`) |
+| Contract 7 | `day-label.ts`, one formatter for four tracks; `sessions.days.*` |
+| Contract 11 | `session_day_notice()` and the call to `notify`'s `session_days_changed()` (`0112`, promoted with `0111`) |
+| `REQ-SES-016` | the form: the affordance, the day list, the confirm, `require_all_days` |
+| `REQ-SES-015` | the event page, the timeline and browse cards, the public card (`0118`, `0122`) |
+| `REQ-CAL-001` | `calendar-menu.tsx`'s `groups`, flat below two |
+
+★ **`supabase/proposed/sessions/` is EMPTY**: all four files are promoted (`0106`, `0112`, `0118`,
+`0122`). Nothing of this track's is waiting on the lead.
+
+**Carried, with an owner — none of it wave 9's, and none of it blocking.**
+
+1. ★ **The multi-day poster's date — `designer`'s, WAVE 10.** `STATUS.md` row L6 held it as «assessed
+   at sync 1, not promised», and it was not promised. A poster still renders the session's single
+   start; `0098` made the library a migration, so a date-range binding is a new seed and a template
+   change, which is `designer`'s work and not a fix. **Nothing in this track renders a poster date**
+   — the event page and the cards read the day set, and `PosterPicker` is a slot.
+2. **`DayWindow`'s `id` and `position` could be optional** — a request with the lead
+   (`src/lib/session-status.ts`). `session_public_card()` returns no identifier by design (`0122`),
+   so `getPublicSessionCard()` assigns `public-card-day-N`; the fields exist for a tie-break between
+   two days starting at the same instant, which `0100`'s exclusion constraint makes impossible
+   within a session. Contained in one mapping and commented.
+3. **The filter sheet's native date mask** (§38.2) — still open, still not a localisation problem,
+   default in force is `DEC-098`'s period chips. Browse's filter, not a day.
+4. **`ratings.edited_at` at millisecond precision** (§34.4, ruling 12) — still open. It belongs with
+   `submitted_at` and the survey, which is wave 10's.
+
+**Wave 9's own subject is finished for this track.** Multi-day sessions read correctly on every
+surface this track owns, at one day and at several, and the one-day path is pinned at the seam
+(`tests/unit/schedule-days.test.ts`), in the DOM (`tests/components/sessions/schedule-days.test.tsx`)
+and in the database (`tests/rls/sessions-schedule-days.test.ts`). **The untouched-suite ledger has
+one line from this track** — `tests/components/browse/fixtures.tsx`, `days: []` on the base session —
+and no expectation of a one-day session changed anywhere.
+
