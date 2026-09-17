@@ -2,6 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
 import { formatDateTime, formatTime, sameDay } from "@/components/sessions/numerals";
 import { buildPublicCardMetadata, publicCardImagePath, siteOrigin } from "@/components/sessions/public-card-metadata";
 import { SessionStatusBadge } from "@/components/ui/badge";
@@ -87,17 +88,36 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
   // page — the function gave the same answer for all three.
   if (!data) notFound();
 
-  const t = await getTranslations("sessions.card");
-  const when = data.startsAt ? formatDateTime(data.startsAt, data.timeZone, locale) : null;
+  const [t, tDays] = await Promise.all([getTranslations("sessions.card"), getTranslations("sessions.days")]);
+  // ★ A RANGE WHEN THE SESSION SPANS SEVERAL DAYS (REQ-SES-015). The span is
+  // the session's own STORED window — contract 1 makes `starts_at` the first
+  // day's start and `ends_at` the last day's end — so this page needs only the
+  // COUNT, which `session_public_card()` returns. It never reads `session_days`:
+  // this page answers `anon`, and that table is granted to `authenticated`.
+  const spans = data.dayCount > 1;
+  const when = !data.startsAt
+    ? null
+    : spans && data.endsAt
+      ? dayRange(data.startsAt, data.endsAt, data.timeZone, tDays, locale)
+      : formatDateTime(data.startsAt, data.timeZone, locale);
   const until =
-    data.startsAt && data.endsAt
+    !spans && data.startsAt && data.endsAt
       ? sameDay(data.startsAt, data.endsAt, data.timeZone)
         ? formatTime(data.endsAt, data.timeZone, locale)
         : formatDateTime(data.endsAt, data.timeZone, locale)
       : null;
+  // «3 أيام» beside the range: a stranger reading a shared link is deciding
+  // whether to ask for three evenings off, and a range alone does not say so.
+  const dayCount = spans ? dayCountLabel(data.dayCount, tDays) : null;
   const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
   // Clock only, over a published session's times — see the header.
-  const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt });
+  // ★ THE DAYS ARE PASSED, and this line is the defect that made them
+  // necessary: with the stored window alone a three-day workshop read «جارية
+  // الآن» to the public through both of its nights, while the event page and
+  // the browse card — which pass days — said «التسجيل مفتوح» for the same
+  // session at the same instant. One implementation of the rule, fed
+  // everywhere (contract 9).
+  const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt, days: data.days });
   const ended = phase === "ended";
 
   return (
@@ -154,6 +174,17 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
                         <span className="whitespace-nowrap text-fg-muted">
                           {"·\u00A0"}
                           {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
+                        </span>
+                      </>
+                    ) : null}
+                    {/* The count rides on the same break rule as «· حتى …»: an
+                        ordinary space before the «·», nothing breakable after. */}
+                    {dayCount ? (
+                      <>
+                        {" "}
+                        <span className="whitespace-nowrap text-fg-muted">
+                          {"·\u00A0"}
+                          <bdi>{dayCount}</bdi>
                         </span>
                       </>
                     ) : null}

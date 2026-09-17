@@ -15,7 +15,14 @@
       "markDone": "Mark as done",
       "markUndone": "Undo completion",
       "completedBadge": "Done",
-      "toggleFailed": "Could not record that. Try again."
+      "toggleFailed": "Could not record that. Try again.",
+      "group": {
+        "addAria": "Add a task — <bdi>{scope}</bdi>"
+      },
+      "rescope": {
+        "trigger": "Change the task's scope: <bdi>{label}</bdi>",
+        "failed": "Could not change the task's scope. Try again."
+      }
     },
     "form": {
       "submit": "Submit",

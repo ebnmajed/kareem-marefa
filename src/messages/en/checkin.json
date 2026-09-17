@@ -19,7 +19,10 @@
       "unknown": "Something went wrong — try again",
       "reservation_required": "This session is for confirmed reservations only. Reserve a seat from the session page, or ask staff to check you in.",
       "not_published": "This session hasn't been published yet",
-      "cancelled": "This session was cancelled"
+      "cancelled": "This session was cancelled",
+      "not_started_day": "{day} has not started yet.",
+      "session_ended_day": "Check-in for {day} has closed.",
+      "check_in_closed_day": "Check-in is closed for {day}."
     },
     "host": {
       "title": "Check-in code",
@@ -65,7 +68,9 @@
           "ceiling_passed": "This session is past the window for reopening check-in",
           "unknown": "Something went wrong — try again"
         }
-      }
+      },
+      "dayLine": "You are in {day}.",
+      "nextDay": "Next: {day}."
     },
     "attendance": {
       "title": "Attendance report",
@@ -137,7 +142,21 @@
         "reason_required": "Write the reason for removal first",
         "not_found": "There's no active check-in for that member to remove",
         "unknown": "That check-in could not be removed — try again"
-      }
-    }
+      },
+      "colDays": "Days",
+      "daysAttended": "{value} of {total}",
+      "dayPresent": "Attended",
+      "dayAbsent": "Did not attend",
+      "dayRemoved": "Removed",
+      "completedAllDays": "Attended every day",
+      "requireAllDaysOn": "Points and the certificate require attending every day.",
+      "requireAllDaysOff": "Points and the certificate require attending at least one day.",
+      "dayLabel": "Day",
+      "dayPlaceholder": "Choose a day",
+      "markDayHint": "Choose the day you are recording attendance for — an earlier day can be corrected at any time.",
+      "removeDayHint": "Choose the day whose attendance record you are removing.",
+      "complete": "Complete"
+    },
+    "dayLine": "Check-in for {day}"
   }
 }

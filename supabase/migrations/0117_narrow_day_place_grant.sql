@@ -1,0 +1,31 @@
+-- notify (wave 9) — `session_day_place()` is the worker's, not a member's.
+-- Promoted by the lead from supabase/proposed/notify/04_narrow_day_place_grant.sql.
+--
+-- Serves:  REQ-NFR-001 (isolation is not application-dependent) · REQ-TEN-001
+-- Cites:   DEC-152's sweep — `session_venue_label(uuid, text)` (`0036`) is
+--          executable by `authenticated` with no caller check, so a member
+--          holding another org's venue uuid can read that venue's name ·
+--          0111 (session_day_place) · docs/plan/notes/notify.md §W11.8
+--
+-- ── 03 §8.2 rows (added with this migration) ────────────────────────────────
+--   | `RPC-session_day_place.definer_only` | No client role may execute it; it exists for
+--     `session_days_changed()` and has no caller outside SECURITY DEFINER code. |
+--
+-- ── Why this is separate from the finding it came out of ───────────────────
+-- `0111` granted `session_day_place(jsonb)` to `authenticated` by copying the
+-- grant on `session_venue_label()` next to it — and so inherited the same
+-- hazard: it takes a day snapshot, reads `venue_id` out of it and returns the
+-- venue's name, with no check that the caller may see that venue.
+--
+-- It has no client caller and cannot acquire one by accident: its argument is a
+-- `session_days` snapshot that only a day-aware writer builds. So the grant is
+-- simply wrong, and the narrow one is free.
+--
+-- ★ `session_venue_label()` itself is NOT touched here. Every one of its seven
+-- call sites is inside a SECURITY DEFINER function, which executes as the
+-- owner, so its `authenticated` grant is unnecessary too — but it is `0036`'s,
+-- promoted, and read by `sessions`' `0112` as well as by this track, so
+-- narrowing it is a change with a blast radius the lead should schedule rather
+-- than one a teammate should slip in. The guard is written out in
+-- `docs/plan/notes/notify.md` §W11.8, ready to take.
+revoke execute on function public.session_day_place(jsonb) from authenticated;

@@ -1,8 +1,9 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { createServerClient } from "@/lib/supabase/server";
-import { sessionPhase, viewerRelation as deriveRelation, type ViewerRelation } from "@/lib/session-status";
+import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
 //
@@ -286,9 +287,39 @@ export interface SchedulableSession {
   certificateMode: "off" | "automatic" | "review";
   /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
   allowWalkIns: boolean;
+  /** `sessions.require_all_days` (`REQ-SES-017`), for the control beside `certificate_mode`. */
+  requireAllDays: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
   missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
+  /**
+   * ★ The session's days, in order, with what REMOVING one would cost
+   * (`REQ-SES-015`, `REQ-SES-016`, `DEC-121`).
+   *
+   * The form asks before it sends a removal, so it has to know two things the
+   * day row does not carry: whether the day holds attendance — in which case
+   * `schedule_session()` refuses `day_has_attendance` and the control is
+   * disabled — and how much content would be PROMOTED to the session by
+   * `0100`'s `on delete set null`, so the dialog can say so rather than let an
+   * admin guess.
+   */
+  days: ScheduleDay[];
+}
+
+/** One day, for the schedule form's list. */
+export interface ScheduleDay {
+  id: string;
+  position: number;
+  startsAt: string;
+  endsAt: string;
+  venueId: string | null;
+  customVenueName: string | null;
+  customVenueAddress: string | null;
+  customVenueMapUrl: string | null;
+  /** Any `check_ins` row, REMOVED OR NOT: a day someone attended is evidence (DEC-151). */
+  hasAttendance: boolean;
+  /** Materials, tasks and photos filed under this day. Promoted on delete, never deleted. */
+  contentCount: number;
 }
 
 export async function listVenues(locale: string): Promise<Venue[]> {
@@ -307,12 +338,33 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, time_zone",
+      // ★ ONE QUERY, counts embedded. `REQ-TSK-002` says nothing on a CHECK-IN
+      // path may read a task; this is a scheduling path — `sessions.ts` is in
+      // no check-in import graph — and the form needs both numbers to ask
+      // before it removes a day (DEC-151 ruling 6).
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
     )
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(`sessions.select: ${error.message}`);
   if (!data) return null;
+
+  type Counted = { count: number }[];
+  const total = (rows: Counted | null | undefined) => rows?.[0]?.count ?? 0;
+  const days: ScheduleDay[] = ((data as unknown as Record<string, unknown>).session_days as Record<string, unknown>[] | null ?? [])
+    .map((row) => ({
+      id: row.id as string,
+      position: row.position as number,
+      startsAt: row.starts_at as string,
+      endsAt: row.ends_at as string,
+      venueId: (row.venue_id as string | null) ?? null,
+      customVenueName: (row.custom_venue_name as string | null) ?? null,
+      customVenueAddress: (row.custom_venue_address as string | null) ?? null,
+      customVenueMapUrl: (row.custom_venue_map_url as string | null) ?? null,
+      hasAttendance: total(row.check_ins as Counted) > 0,
+      contentCount: total(row.materials as Counted) + total(row.session_tasks as Counted) + total(row.photos as Counted),
+    }))
+    .sort((a, b) => a.position - b.position);
 
   const missing: SchedulableSession["missing"] = [];
   if (!data.starts_at) missing.push("startsAt");
@@ -337,8 +389,10 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     cancellationCutoffAt: data.cancellation_cutoff_at,
     certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
     allowWalkIns: data.allow_walk_ins === true,
+    requireAllDays: data.require_all_days !== false,
     timeZone: data.time_zone,
     missing,
+    days,
   };
 }
 
@@ -410,6 +464,31 @@ export async function getScheduleContent(locale: string, sessionId: string): Pro
  * edit are not its business. The mirror of `proposalInput`, which refuses
  * exactly the opposite set.
  */
+/**
+ * One entry of `schedule_session()`'s `p_days` (contract 3).
+ *
+ * `id` present means «move this day», absent means «add one». It is never an
+ * index: matching by position would make «I deleted the second day» and «I
+ * moved the second day earlier» the same request.
+ *
+ * ★ NO `position` AND NO DURATION. `position` is the chronological rank the
+ * database derives (`0100`), so a client's would only ever be able to disagree
+ * with it; and a day carries a resolved window, because the start-plus-duration
+ * arithmetic has one home in `schedule/rules.ts` and this is not it.
+ */
+export const scheduleDayInput = z
+  .object({
+    id: z.uuid().nullable(),
+    startsAt: z.iso.datetime({ offset: true }),
+    endsAt: z.iso.datetime({ offset: true }),
+    venueId: z.uuid().nullable(),
+    customVenueName: z.string().trim().max(120).nullable(),
+    customVenueAddress: z.string().trim().max(300).nullable(),
+    customVenueMapUrl: z.url().startsWith("https://").nullable(),
+  })
+  .strict();
+export type ScheduleDayInput = z.infer<typeof scheduleDayInput>;
+
 export const scheduleInput = z
   .object({
     startsAt: z.iso.datetime({ offset: true }),
@@ -433,6 +512,32 @@ export const scheduleInput = z
      * form without the control saves exactly as before.
      */
     allowWalkIns: z.boolean().nullable().default(null),
+    /**
+     * ★ The session's WHOLE day set, day one included — or `null`, which is
+     * `main`'s call and must stay it (contract 3, `REQ-SES-015`).
+     *
+     * `null` is not «no days»: it is «this caller does not speak days», and
+     * `schedule_session()` then writes the session exactly as `0085` did and
+     * lets `0100`'s trigger carry the window onto its one day. The RPC refuses
+     * it by name — `days_required` — on a session that already has several, so
+     * a caller cannot silently strip a workshop down to its first evening.
+     *
+     * At most 30, which the RPC also enforces: this is a definer function's
+     * input, and a bound belongs on both sides of it.
+     */
+    days: z.array(scheduleDayInput).min(1).max(30).nullable().default(null),
+    /**
+     * `sessions.require_all_days` (`REQ-SES-017`). ★ `null` means UNCHANGED,
+     * exactly as `allowWalkIns` does — and for the opposite reason, which is
+     * worth stating because the two look alike and are not.
+     *
+     * The walk-in switch is always on the schedule form, so the form always
+     * sends an explicit boolean. This control lives INSIDE the multi-day
+     * affordance, so a one-day form never renders it and never sends it — and
+     * coercing that absence to `false` would switch `REQ-SES-017`'s default off
+     * on every save of the sessions that never asked about days at all.
+     */
+    requireAllDays: z.boolean().nullable().default(null),
   })
   .strict();
 export type ScheduleInput = z.infer<typeof scheduleInput>;
@@ -455,6 +560,23 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_language: input.language,
     // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».
     p_allow_walk_ins: input.allowWalkIns,
+    // ★ snake_case on the way out, because `p_days` is read by SQL —
+    // `jsonb_to_recordset(…) as x(starts_at timestamptz, …)` names the keys,
+    // and `02`'s column convention is the one that wins at the boundary.
+    // `null` stays `null`, which is main's call.
+    p_days:
+      input.days === null
+        ? null
+        : input.days.map((day) => ({
+            id: day.id,
+            starts_at: day.startsAt,
+            ends_at: day.endsAt,
+            venue_id: day.venueId,
+            custom_venue_name: day.customVenueName,
+            custom_venue_address: day.customVenueAddress,
+            custom_venue_map_url: day.customVenueMapUrl,
+          })),
+    p_require_all_days: input.requireAllDays,
   });
   if (error) throw new Error(`schedule_session: ${error.message}`);
 }
@@ -511,6 +633,13 @@ export interface PresentedSession {
   endsAt: string | null;
   durationMinutes: number | null;
   timeZone: string;
+  /**
+   * ★ The session's days, so the profile's badge is the badge every other
+   * surface shows (contract 9). Embedded rather than read one session at a
+   * time: this is a LIST, and `DEC-151` ruling 3 says a list may embed while a
+   * single session goes through `listSessionDays()`.
+   */
+  days: readonly DayWindow[];
 }
 
 /**
@@ -531,7 +660,7 @@ export async function listSessionsPresentedBy(locale: string, memberId: string, 
   const [{ data, error: sessionsError }, { data: settings }] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone")
+      .select("id, title, state, starts_at, ends_at, duration_minutes, time_zone, session_days(id, position, starts_at, ends_at)")
       .in("id", ids)
       .in("state", ["published", "in_progress", "completed", "archived"])
       .order("starts_at", { ascending: false })
@@ -548,6 +677,14 @@ export async function listSessionsPresentedBy(locale: string, memberId: string, 
     endsAt: (s.ends_at as string | null) ?? null,
     durationMinutes: (s.duration_minutes as number | null) ?? null,
     timeZone: (s.time_zone as string | null) ?? orgZone,
+    days: (((s as unknown as Record<string, unknown>).session_days as Record<string, unknown>[] | null) ?? [])
+      .map((d) => ({
+        id: d.id as string,
+        position: d.position as number,
+        startsAt: d.starts_at as string,
+        endsAt: d.ends_at as string,
+      }))
+      .sort((a, b) => a.position - b.position),
   }));
 }
 
@@ -560,6 +697,108 @@ export interface EventVenue {
   /** True when it is a one-off rather than an entry in the org's list. */
   oneOff: boolean;
 }
+
+/** The listed venue, else the inline one-off, else nowhere. One rule, two callers. */
+function venueFrom(row: {
+  venues?: { name: string; address: string | null; map_url: string | null } | null;
+  custom_venue_name?: string | null;
+  custom_venue_address?: string | null;
+  custom_venue_map_url?: string | null;
+}): EventVenue | null {
+  if (row.venues) return { name: row.venues.name, address: row.venues.address, mapUrl: row.venues.map_url, oneOff: false };
+  if (!row.custom_venue_name) return null;
+  return {
+    name: row.custom_venue_name,
+    address: row.custom_venue_address ?? null,
+    mapUrl: row.custom_venue_map_url ?? null,
+    oneOff: true,
+  };
+}
+
+// ══ CONTRACT 3 — the day set, and the one way every track reads it ══════════
+//
+// `ENT-session_days` (DEC-119, DEC-120, DEC-150). A session has one or more
+// days; a one-day session is a session with ONE day, and `0100` backfilled one
+// for every session that had a window, so this returns a list of length 1 for
+// nearly every session in the database and a reader that handles `n` is right.
+//
+// ★ NOBODY ELSE QUERIES `session_days`. `checkin`, `content`, `scoring` and
+// `notify` all read days through here, so the day a column moves there is one
+// file to change — and so the `cache()` below is shared rather than defeated by
+// four private copies of the same select.
+//
+// ★ NOBODY COMPUTES A MINIMUM OR A MAXIMUM OVER THIS LIST (contract 1). The
+// session's own window is DERIVED AND STORED — `sessions.starts_at` is the
+// first day's start, `ends_at` the last day's end — so a reader that needs the
+// span reads `sessions`, and a reader that needs the meetings reads this.
+
+/**
+ * One day of a session, as every track sees it.
+ *
+ * Structurally a `DayWindow` (`lib/session-status.ts`, contract 9) plus the
+ * day's place, so `listSessionDays()`'s result goes straight into
+ * `sessionPhase({ …, days })`, `checkInDay()` and the affordance matrix with
+ * no mapping step — and the switch can never go stale beside the window it was
+ * resolved with (DEC-151).
+ */
+export interface SessionDay extends DayWindow {
+  /** DERIVED IN THE DATABASE (DEC-150): the chronological rank, 1…n. Never written by a caller. */
+  position: number;
+  startsAt: string;
+  endsAt: string;
+  /** `session_days.check_in_open` — the day's own switch (DEC-116 per day, `0101`). */
+  checkInOpen: boolean;
+  /** The day's place: the org's venue, else its inline one-off (`REQ-SES-007` per day). */
+  venue: EventVenue | null;
+}
+
+/**
+ * Every day of one session, in the order they happen.
+ *
+ * ★ Request-scoped React `cache()`. On the event page alone the hero, the
+ * action card, the sub-nav and `content`'s three slots all want this list;
+ * without it that is six round trips for one fact on the product's most
+ * important page (the reason `getRsvpPanelData` and `getSessionPoster` are
+ * wrapped too, wave 6).
+ *
+ * No role filter of its own: `POL-session_days.read_follows_session` defers to
+ * `sessions_read`, so a day is visible exactly when its session is and
+ * re-stating that here could only get it wrong. An unreadable or unknown
+ * session returns `[]`, which every caller renders as «no days» — the same
+ * thing a session that has never been scheduled returns.
+ *
+ * Ordered by `position`, which the database derives as the chronological rank;
+ * the `starts_at` tie-break matches `session_days_derive()`'s own ordering, so
+ * a list read mid-transaction cannot disagree with the ranking that produced it.
+ */
+export const listSessionDays = cache(async (locale: string, sessionId: string): Promise<SessionDay[]> => {
+  if (!z.uuid().safeParse(sessionId).success) return [];
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("session_days")
+    .select("id, position, starts_at, ends_at, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, venues(name, address, map_url)")
+    .eq("session_id", sessionId)
+    .order("position", { ascending: true })
+    .order("starts_at", { ascending: true });
+  if (error) throw new Error(`session_days.select: ${error.message}`);
+
+  return (data ?? []).map((raw) => {
+    const row = raw as unknown as Record<string, unknown>;
+    return {
+      id: row.id as string,
+      position: row.position as number,
+      startsAt: row.starts_at as string,
+      endsAt: row.ends_at as string,
+      checkInOpen: row.check_in_open as boolean,
+      venue: venueFrom({
+        venues: row.venues as { name: string; address: string | null; map_url: string | null } | null,
+        custom_venue_name: row.custom_venue_name as string | null,
+        custom_venue_address: row.custom_venue_address as string | null,
+        custom_venue_map_url: row.custom_venue_map_url as string | null,
+      }),
+    };
+  });
+});
 
 /**
  * A presenter as the event page's «المُقدِّمون» section draws them (`16` §6.3).
@@ -671,17 +910,14 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   if (!data) return null;
   const row = data as unknown as Record<string, unknown>;
 
-  const listed = row.venues as { name: string; address: string | null; map_url: string | null } | null;
-  const venue: EventVenue | null = listed
-    ? { name: listed.name, address: listed.address, mapUrl: listed.map_url, oneOff: false }
-    : row.custom_venue_name
-      ? {
-          name: row.custom_venue_name as string,
-          address: (row.custom_venue_address as string) ?? null,
-          mapUrl: (row.custom_venue_map_url as string) ?? null,
-          oneOff: true,
-        }
-      : null;
+  // The same rule a DAY's place follows — `venueFrom()`, one expression, so the
+  // event page and its day list can never disagree about what «المكان» means.
+  const venue: EventVenue | null = venueFrom({
+    venues: row.venues as { name: string; address: string | null; map_url: string | null } | null,
+    custom_venue_name: row.custom_venue_name as string | null,
+    custom_venue_address: row.custom_venue_address as string | null,
+    custom_venue_map_url: row.custom_venue_map_url as string | null,
+  });
 
   // ★ The two reads DEC-092 buys: the viewer's own seat and their own
   // check-in. In parallel with the presenters, and once — the alternative was
@@ -708,10 +944,24 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
 
   const viewerIsPresenter = (presenters ?? []).some((p) => p.member_id === session.memberId);
   const viewerIsStaff = session.role === "admin" || session.role === "moderator";
+  // ★ ONE PHASE PER REQUEST, AND IT KNOWS THE DAYS (contract 9). Without them
+  // this said `live` through the night between two days of a workshop while
+  // the page — which passes them — said `open`: two phases for one request.
+  // `listSessionDays()` is `cache()`d, so this is the page's own read.
+  //
+  // ★ `relation` CANNOT differ between the two today, and it is worth saying
+  // why rather than leaving it to be rediscovered: `viewerRelation()` branches
+  // on `phase === "ended"` alone, and the day set never moves that boundary —
+  // `sessions.ends_at` IS the last day's end (contract 1), so `ended` is the
+  // same with or without days. The day set only ever splits `live` into `live`
+  // and `open`, which `viewerRelation()` treats identically. The defect was
+  // latent for the relation and real for every other reader of this phase; it
+  // stops being latent the moment anything here distinguishes a running day.
   const phase = sessionPhase({
     state: row.state as SessionState,
     startsAt: (row.starts_at as string) ?? null,
     endsAt: (row.ends_at as string) ?? null,
+    days: await listSessionDays(locale, id),
   });
   const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
   const checkedIn = Boolean(checkInRes.data);
@@ -902,6 +1152,36 @@ export interface PublicSessionCard {
    *  the owner's decision did not move it. */
   venueName: string | null;
   orgName: string;
+  /**
+   * ★ How many days the session has (`REQ-SES-015`). The card says a RANGE at
+   * more than one, and the range itself is `startsAt`–`endsAt` above, which
+   * contract 1 already makes the first day's start and the last day's end.
+   *
+   * It arrives from `session_public_card()` rather than from `session_days`,
+   * because this page is read by `anon` and that table is granted to
+   * `authenticated` alone — the definer function answers the one question
+   * without widening the one public read of `sessions` in the product.
+   */
+  dayCount: number;
+  /**
+   * ★ One window per day, for `sessionPhase()` and for nothing else
+   * (contract 9). Without these the card said «جارية الآن» through the night
+   * between two days of a workshop, while the event page and the browse card
+   * said «التسجيل مفتوح» for the same session at the same instant.
+   *
+   * ★ THE `id` AND `position` ARE THIS MODULE'S, NOT THE DATABASE'S.
+   * `session_public_card()` deliberately returns two instants per day and no
+   * identifier (`0004`): a link-holding stranger learns the meeting times, not
+   * a key. `DayWindow` wants both fields, so they are assigned here, from the
+   * order the function already sorted by — and the `id` is a string that could
+   * not be mistaken for a row's. `chronological()` uses `id` only to break a
+   * tie between two days that start at the same instant, which `0100`'s
+   * exclusion constraint makes impossible within one session.
+   *
+   * A REQUEST IS OPEN with the lead to make both optional on `DayWindow`, at
+   * which point this mapping becomes a plain `map`.
+   */
+  days: readonly DayWindow[];
   /** Whether a poster `og` render exists. The PATH never leaves this module:
    *  the page asks for `/api/s/{id}/og`, which asks again. */
   hasImage: boolean;
@@ -916,6 +1196,8 @@ interface PublicCardRow {
   time_zone: string;
   venue_name: string | null;
   org_name: string;
+  day_count: number | null;
+  days: { starts_at: string; ends_at: string }[] | null;
   og_path: string | null;
   og_width: number | null;
   og_height: number | null;
@@ -944,6 +1226,16 @@ export async function getPublicSessionCard(id: string): Promise<PublicSessionCar
     timeZone: row.time_zone,
     venueName: row.venue_name,
     orgName: row.org_name,
+    // `?? 1` is for a session whose days have not landed yet, never for a
+    // count of none: a card-eligible session is published, and `0100`'s
+    // commit check refuses a published session without a day.
+    dayCount: row.day_count ?? 1,
+    days: (row.days ?? []).map((d, index) => ({
+      id: `public-card-day-${index + 1}`,
+      position: index + 1,
+      startsAt: d.starts_at,
+      endsAt: d.ends_at,
+    })),
     hasImage: Boolean(row.og_path),
     imageWidth: row.og_width,
     imageHeight: row.og_height,

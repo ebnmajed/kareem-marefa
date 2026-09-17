@@ -6,6 +6,7 @@ import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { CertificateModeBadge } from "@/components/certificates/mode-badge";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { ActionBar } from "@/components/sessions/action-bar";
+import { dayLabel } from "@/components/sessions/day-label";
 import { formatDate, formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import type { PrimaryAction } from "@/components/sessions/event-actions";
 import { ShareLink } from "@/components/sessions/share-link";
@@ -16,7 +17,7 @@ import { Link } from "@/components/ui/link";
 import { Progress } from "@/components/ui/progress";
 import type { AffordanceCell } from "@/components/checkin/session-matrix";
 import type { RsvpPanelData } from "@/lib/dal/rsvp";
-import type { EventSession } from "@/lib/dal/sessions";
+import type { EventSession, SessionDay } from "@/lib/dal/sessions";
 import type { SessionPhase } from "@/lib/session-status";
 
 // The action card — `16` §5.4.2, §6.3, REQ-SES-013, REQ-UIX-004, REQ-UIX-015.
@@ -41,6 +42,12 @@ import type { SessionPhase } from "@/lib/session-status";
 export interface ActionCardProps {
   session: EventSession;
   phase: SessionPhase;
+  /**
+   * ★ The session's days (contract 3, `REQ-SES-015`). Always at least one for a
+   * scheduled session, so the «الموعد» row below reads a LIST and is right at
+   * `n = 1` because 1 is a value of `n` — there is no multi-day branch here.
+   */
+  days: readonly SessionDay[];
   can: AffordanceCell;
   rsvp: RsvpPanelData | null;
   primary: PrimaryAction | null;
@@ -164,7 +171,7 @@ export async function ActionCard(props: ActionCardProps) {
         </div>
       ) : null}
 
-      <Meta session={session} phase={phase} locale={locale} />
+      <Meta session={session} phase={phase} days={props.days} locale={locale} />
       <CertificateRow sessionId={session.id} locale={locale} />
 
       {session.viewerIsStaff || hostViewSecondary ? (
@@ -275,8 +282,8 @@ async function TasksJump({ tasks, label }: { tasks: Promise<SlotSummary>; label:
 }
 
 /** الموعد · المكان · the deadlines · the certificate mode — REQ-SES-013's facts, as icon rows. */
-async function Meta({ session, phase, locale }: { session: EventSession; phase: SessionPhase; locale: string }) {
-  const t = await getTranslations("sessions.event");
+async function Meta({ session, phase, days, locale }: { session: EventSession; phase: SessionPhase; days: readonly SessionDay[]; locale: string }) {
+  const [t, tDays] = await Promise.all([getTranslations("sessions.event"), getTranslations("sessions.days")]);
   const when = (iso: string) => formatDateTime(iso, session.timeZone, locale);
   const until =
     session.startsAt && session.endsAt
@@ -284,6 +291,17 @@ async function Meta({ session, phase, locale }: { session: EventSession; phase: 
         ? formatTime(session.endsAt, session.timeZone, locale)
         : when(session.endsAt)
       : null;
+
+  // ★ NO BRANCH ON THE COUNT (wave-9 rule 1). `days.length > 1` is not «is this
+  // a multi-day session» — it is «is there a second row to render», which is
+  // the same question a list always asks. At one day `more` is empty, the
+  // `<ol>` is not rendered, and the DOM is what wave 6 shipped.
+  const more = days.length > 1 ? days : [];
+  // The session's own window is DERIVED AND STORED (contract 1): the first
+  // day's start and the last day's end are already on the row above. Nothing
+  // here computes a minimum or a maximum over `days`.
+  const dayVenue = (day: SessionDay) => day.venue?.name ?? null;
+  const placeVaries = more.some((day) => dayVenue(day) !== (session.venue?.name ?? null));
 
   return (
     // ★ A `<dl>`'s `<div>` holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
@@ -303,6 +321,35 @@ async function Meta({ session, phase, locale }: { session: EventSession; phase: 
               <bdi>{when(session.startsAt)}</bdi>
               {/* No-break space after the dot: a line may break before «·», never after it. */}
               {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
+              {/* ★ The days themselves, INSIDE the `<dd>`: a `<dl>`'s `<div>`
+                  holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
+                  `definition-list` refused an icon-beside-a-wrapper row at wave
+                  6's sync 4b, and a sibling `<ol>` here would fail the same
+                  rule. Each line is contract 7's label and the day's own clock;
+                  a place is named only where it differs from the session's. */}
+              {more.length > 0 ? (
+                <ol className="mt-3 space-y-2 border-t border-edge pt-3">
+                  {more.map((day) => (
+                    <li key={day.id} className="text-body-sm">
+                      <span className="text-fg-heading">
+                        <bdi>{dayLabel(day, session.timeZone, tDays, locale)}</bdi>
+                      </span>
+                      <span className="text-fg-muted">
+                        {" ·"}
+                        {"\u00A0"}
+                        <bdi>{formatTime(day.startsAt, session.timeZone, locale)}</bdi>
+                        {" — "}
+                        <bdi>{formatTime(day.endsAt, session.timeZone, locale)}</bdi>
+                      </span>
+                      {dayVenue(day) && dayVenue(day) !== (session.venue?.name ?? null) ? (
+                        <span className="block text-fg-muted">
+                          <bdi>{dayVenue(day)}</bdi>
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
             </>
           ) : (
             t("notScheduled")
@@ -333,6 +380,11 @@ async function Meta({ session, phase, locale }: { session: EventSession; phase: 
               {t("mapLink")}
             </a>
           ) : null}
+          {/* ★ The row shows the FIRST day's place, because that is what the
+              session's own venue columns mean (contract 1). When a later day
+              meets somewhere else, the row says so and the day list above
+              names where — rather than silently showing one room for three. */}
+          {placeVaries ? <span className="mt-1 block text-body-sm text-fg-muted">{t("placeVaries")}</span> : null}
           {/* REQ-SES-008, said plainly and once. */}
           <span className="mt-1 block text-body-sm text-fg-muted">{t("inPersonNote")}</span>
         </dd>

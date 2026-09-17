@@ -123,7 +123,7 @@ export default async function AppLayout({
     // ★ The provider wraps the shell rather than each screen: an action's
     // acknowledgement must survive the navigation the action caused, and a
     // per-screen provider unmounts with the screen that triggered it.
-    <ToastProvider closeLabel={t("toastClose")}>
+    <ToastProvider closeLabel={t("toastClose")} label={t("toastLabel")}>
       <div
         className={
           theme

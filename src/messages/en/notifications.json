@@ -21,6 +21,16 @@
       "openSession": "Open the session",
       "count": "{count, plural, =0 {no notifications} one {one notification} other {{value} notifications}}"
     },
+    "change": {
+      "field": {
+        "starts_at": "Time",
+        "ends_at": "Ends",
+        "venue": "Place",
+        "days": "Number of days"
+      },
+      "line": "<bdi>{label}</bdi>: from <bdi>{from}</bdi> to <bdi>{to}</bdi>",
+      "lineWithDay": "<bdi>{label}</bdi> · <bdi>{day}</bdi>: from <bdi>{from}</bdi> to <bdi>{to}</bdi>"
+    },
     "preferences": {
       "heading": "Notification preferences",
       "intro": "There are two channels and only two: in-app and email. Choose what reaches you on each.",

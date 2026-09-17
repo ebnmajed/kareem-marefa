@@ -318,7 +318,82 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 8 — the last nineteen routes, DEC-147) — ★ THE MAP IN FORCE
+### Ownership map (wave 9 — multi-day sessions, DEC-150) — ★ THE MAP IN FORCE
+
+**One feature on a new entity — `ENT-session_days` (`DEC-119` … `DEC-121`) — and not a routes wave.** A
+session has one or more days; each day carries its own check-in; materials, tasks and photos belong to the
+session **or** to a day; points and the certificate need every day by default. **The checklist is
+`STATUS.md`'s wave-9 block, and its unit is the CONTRACT, not the route** — eleven seams between tracks
+(ten at Step 0; `DEC-151` added the eleventh at sync 1), each with an owner and a state. **The measure is two demonstrables**: a three-day workshop end to end at 390 px
+in Arabic, and **a one-day session byte-identical in behaviour to `main`** — proven by the existing suites
+passing with their assertions untouched, and tracked by `STATUS.md`'s *untouched-suite ledger*.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ **the foundation, before any teammate's SQL** — `0100`: `session_days`, the two-way sync that keeps `sessions.starts_at`/`ends_at`/venue **derived and stored**, the backfill of every session to one day, `session_day_id` on the six tables, `require_all_days` · **every `alter table` of the wave** · `src/lib/session-status.ts` on the day set (contract 9) · the `REQ-TSK-002` guard (contract 10) · the three custodian rows (certificate eligibility, the attendance CSV's day column, the poster's date assessed at sync 1) · the demonstrable spec · promotion, the rehearsal notes, gates, the PR | the lead-only paths below, `supabase/migrations/**` from `0100`, `src/lib/session-status.ts`, `tests/rls/{fixture*,isolation.test,db}.ts`, `tests/rls/session-days*.test.ts`, `tests/unit/{session-status,tasks-never-read-by-check-in}*.test.ts`, `tests/e2e/wave9-three-day-workshop.spec.ts`, the lead's fourteen `ui/` files, `src/app/globals.css`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `messages/*/{ui,app,auth}.json`, `worker/src/index.ts`. **Custodian** of every file of a track not spawned — `event`, `designer`, `console`, `platform`, `branding` — **including `console`'s six `ui/` primitives (`date-time` among them) and `components/admin/{rtl-datetime-picker,duration-input,duration}`**, edited only for its own rows or on a teammate's written request |
+| `sessions` | opus | **`REQ-SES-016` — the form**: multi-day behind «جلسة متعدّدة الأيام», the end following the duration until it is edited, each added day defaulting to the previous day's time and place, validation at the field on blur · `schedule_session()`'s day set and `listSessionDays()` (contract 3) · the event page, the cards and the public card showing days · the one day-label formatter (contract 7) | ★ `src/app/[locale]/app/admin/sessions/[id]/schedule/**` and `messages/*/schedule.json` (from the lead), `src/app/[locale]/app/{page.tsx,sessions/{page,loading,error}.tsx}`, `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx`, `src/app/[locale]/s/**`, `src/components/{sessions,browse,search}/**`, `src/lib/dal/{sessions,proposals,search,bookmarks,members}.ts`, `src/lib/form-state.ts`, its eight `ui/` form primitives, `worker/src/tasks/{start,complete}_session.ts`, `messages/*/{sessions,proposals,browse,search,members}.json`, `supabase/proposed/sessions/**`, its tests, its note. **Fixes only** on `propose/**`, `sessions/[id]/rate/**`, `members/**`, `leaderboards/**` |
+| `checkin` | ★ **opus** | **per-day check-in**: the code, the attendance list, the attempt stream, the switch (`DEC-116`) and the `ends_at + 2 h` ceiling, each **per day** (contract 4) · the host view and the attendance screen across days · `rotate_codes` by day · contract 5's call sites | `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`, `src/app/[locale]/app/admin/sessions/[id]/attendance/**`, `src/components/checkin/**`, `src/lib/dal/{rsvp,checkin}.ts`, `worker/src/tasks/{promote_waitlist,rotate_codes}.ts`, `messages/*/{rsvp,checkin}.json`, `supabase/proposed/checkin/**`, its tests, its note |
+| `content` | sonnet | **`DEC-121` — content scoping**: one grouped list per content type, session content first, **no groups and no headings at `n ≤ 1`**; the add control in each group's header; the re-scope chip; photos scoped by upload time and never asked; ★ **`materials.phase` relative to the scope** (`REQ-MAT-006`) · one photo driven end to end on the real worker (`DEC-139`'s last gap) | `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/lib/dal/{materials,photos,tasks}.ts`, `src/app/api/upload/**`, `src/lib/storage/**`, `worker/src/content/**` and `worker/src/tasks/{convert_document,render_pages,process_photo}.ts`, its nine `ui/` primitives, `messages/*/{materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, its note. **Fixes only** on what it holds from waves 6–7 and does not build in this wave: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and `actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`, `src/lib/realtime/**`, `src/app/[locale]/app/me/{page,layout,loading,error}.tsx`, `me/{bookmarks,certificates,privacy}/**`, `src/components/me/**`, `messages/*/{event,profile,certificates,privacy}.json` |
+| `scoring` | ★ **opus** | **`REQ-SES-017`**: points and the certificate need **every day** unless the session relaxes it; the award **moves from the check-in to session completion** when the day set is not known until then, and is unchanged at one day; the idempotency key per member **per session**, surviving wave 7's remove → re-add; `attendance_recorded()` / `attendance_removed()` (contract 5) and `session_attendance_complete()` (contract 6); the points history saying **which day was missed** | ★ `src/app/[locale]/app/me/points/**` and `src/components/scoring/{points-history-list,points-catalogue,points-strip}.tsx` (back from `content`), `src/lib/dal/{points,leaderboards,recognition}.ts`, its eight worker tasks (`award_points`, `award_presenter_points`, `evaluate_no_shows`, `evaluate_streaks`, `evaluate_badges`, `evaluate_levels_perks`, `snapshot_leaderboards`, `audit_balances`), ★ `messages/*/scoring.json` (back from `console`), `supabase/proposed/scoring/**`, its tests, its note |
+| `notify` | opus | **one calendar entry and one reminder stream per day** (contract 8) — `calendar_events` per day (its `alter table` through the lead), the ICS route's one `VEVENT` per day, `calendar_upsert`/`calendar_delete` per day, `schedule_session_reminders()` per day, a reschedule notice that names the day that moved — **with every identity a one-day session has today unchanged** | ★ `src/app/[locale]/app/me/{calendar,notifications}/**`, `src/components/{notifications,calendar}/**` and `src/lib/dal/{notifications,calendar}.ts` (back from `content` and `console`), `src/app/api/{sessions/[id]/ics,calendar}/**`, `worker/src/{mail,calendar}/**` and its eight tasks, ★ `messages/*/{notifications,calendar}.json`, `supabase/proposed/notify/**`, its tests, its note |
+
+★ = transferred or changed for this wave by `DEC-150`.
+
+**Wave-9 rules.**
+
+- ★ **The foundation lands before any teammate's SQL is promoted**, and **`0100` alone must leave every
+  existing suite green** — that is the first half of «byte-identical», proven before the feature exists.
+  Teammates spawn **planning-only**; sync 1 approves five plans against the ten contracts.
+- ★ **Additive, because `main` runs on it first.** The owner pushes migrations, then merges; Vercel and the
+  Railway worker both deploy from `main`. No column dropped or renamed; no function `main` calls loses the
+  name or the named arguments `main` sends; a new parameter is trailing and defaulted, and **the old
+  signature is dropped in the same file** so PostgREST never sees two overloads (`0085`'s lesson).
+- ★ **No `if (isMultiDay)` in a reader.** A reader handles `n` days and is correct at `n = 1` because 1 is a
+  value of `n`. The three places the specification itself names a difference are **writers** — the award's
+  timing (`REQ-SES-017`), a photo's automatic scope (`DEC-121`: null while the session has one day), and the
+  form's affordance — and each says so in a comment citing the requirement.
+- ★ **Tables are the lead's; behaviour is the tracks'.** A teammate never writes `alter table` or
+  `create table`, even in `proposed/` — it names the column in its plan and the lead lands it. **A function
+  has one writer**: two tracks never `create or replace` the same function; the function's owner calls a
+  function the other track owns (contract 5 is the pattern).
+- ★ **The existing suites are evidence, so they are not edited to fit.** A pre-existing `tests/**` file
+  changes only with a line in `STATUS.md`'s ledger saying why — a selector that moved, never an expectation
+  that changed for a one-day session. New behaviour gets **new** files (`*-days*.test.ts`,
+  `wave9-<track>-*.spec.ts`).
+- ★ **`REQ-TSK-002`: nothing on a check-in path reads a task** — not a function, not a DAL module, not a
+  component. Days put tasks beside attendance in the schema for the first time; the lead's guard test fails
+  the build if the two ever meet.
+- ★ **This is not `A14`'s recurring series.** One session, N meetings, one registration, one certificate,
+  one rating, one discussion, one poster. `rsvps` and `capacity` stay on the session (`DEC-120`); nothing
+  this wave creates, copies or repeats a session.
+- ★ **Sync 1's rulings (`DEC-151`) are part of this map**: a day's check-in ceiling is capped by the next
+  day's start and is **one function of the lead's** (`check_in_ceiling()`, `0101`); contract 5 has **three**
+  hooks — `scoring`'s two are points only, certificates go through the lead's
+  `attendance_certificate_sync()`; **no trigger on `session_days` notifies** — `sessions'` day-aware
+  `schedule_session()` calls `notify`'s `session_days_changed()` once (contract 11); an attendance award is
+  guarded by a **standing-award check under a lock**, its key being the second line of defence; with at most
+  one day the three content slots render **every** item flat. The two schedule-form tests follow the screen
+  to `sessions`. **Four named differences at one day** are approved fixes, listed in `STATUS.md`.
+- **One writer per file, JSON and specs included.** `schedule.json` is `sessions'` now; `scoring.json`,
+  `notifications.json` and `calendar.json` return to their tracks, and the `/app/me` and `/app/admin`
+  screens that read them keep every key they read.
+- **Captures land at `.qa-shots/rtl/wave9-<track>-<surface>-<state>.png`** in the main checkout, phone
+  project, `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR` —
+  **each surface twice: a three-day session, and the same surface on a one-day session beside its wave-7/8
+  capture.**
+- **Not this wave, and never-touch for every teammate:** **the survey** (`REQ-SUR-001` … `009`) and **the
+  email studio** (`REQ-NTF-009` … `014`, `16` §11) — both wave 10; recurring series (`A14`); per-day
+  capacity or per-day registration (`DEC-120`); a free-text note on a day (`DEC-120`); a scope picker
+  (`DEC-121`); every `app/admin` route except `sessions/[id]/{schedule,attendance}`; all of
+  `app/platform/**`, the studio, the brand kit, `verify/**`, `legal/**`; objectives, tags, avatar storage,
+  downloads (`DEC-076`); and everything under `(marketing)/**` with the components it renders — frozen
+  until M13, where `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven glyphs land.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 8 — the last nineteen routes, DEC-147) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 8 merged as PR #25 (`b7f2f3a`). Its map is kept as the record; **wave 9's map is directly above** (`DEC-150`).
 
 **The last nineteen routes onto the M9 system — and the whole app is on it — plus the two features
 that live in those files: gradient posters with `canvasRaise` (`DEC-127`) and the certificate library

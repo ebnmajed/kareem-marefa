@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { dayLabel, dayShortLabel } from "@/components/sessions/day-label";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import { Button } from "@/components/ui/button";
 import { DateTime } from "@/components/ui/date-time";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
@@ -18,16 +20,22 @@ import {
   CUSTOM_VENUE,
   DEADLINE_PRESETS,
   atZone,
+  checkDays,
   checkRelations,
+  dateOf,
+  dayEnd,
   deadlineFor,
   endFollows,
   followingEnd,
   missingForPublish,
+  nextDayAfter,
   presetOf,
+  withSameClock,
+  type DayDraft,
   type DeadlinePreset,
   type RelationField,
 } from "./rules";
-import { SCHEDULE_FIELDS, emptyScheduleState, type ScheduleField, type ScheduleState } from "./state";
+import { SCHEDULE_FIELDS, dayFieldId, emptyScheduleState, type DayField, type ScheduleField, type ScheduleState } from "./state";
 
 // SCR-043's form — REQ-SES-001, REQ-SES-002, REQ-SES-016, REQ-PRO-009,
 // DEC-117/118 (walk-ins), wave 8's lead row L2 (`DEC-147`).
@@ -79,13 +87,48 @@ export interface ScheduleInitial {
   /** `sessions.allow_walk_ins` — REQUIRED, and the stored value: an unticked
    *  default would switch walk-ins off on any save (DEC-118, DEC-141). */
   allowWalkIns: boolean;
+  /**
+   * ★ The session's stored days, in order (`REQ-SES-015`, wave 9).
+   *
+   * Day one's WINDOW and PLACE are the fields above — the day list does not
+   * render them twice — but its `id` is needed here, or a save would delete and
+   * re-create the day every attendance record and every day-scoped file hangs
+   * off. An unscheduled session has none; a scheduled one-day session has one.
+   *
+   * OPTIONAL, and that is deliberate rather than lax: an absent value honestly
+   * means «one day, as the fields above describe it», which is the safe
+   * reading. `allowWalkIns` stays REQUIRED because there an absent value would
+   * have meant «off», and switching walk-ins off by omission was the hazard.
+   */
+  days?: SavedDay[];
+  /** `sessions.require_all_days` (`REQ-SES-017`). Absent means «leave it». */
+  requireAllDays?: boolean;
 }
 
-const LABEL_KEY: Record<ScheduleField, string> = {
+/** A stored day, as the page hands it to the form. */
+export interface SavedDay {
+  id: string;
+  /** Wall clock in the session's zone, like every other value on this form. */
+  startsAt: string;
+  /** `""` when the day's end is exactly start + duration, so it keeps following it. */
+  endsAt: string;
+  venueId: string;
+  customVenueName: string;
+  customVenueAddress: string;
+  customVenueMapUrl: string;
+  /** Whether the day holds a check-in — removed or not. Its removal is refused. */
+  hasAttendance: boolean;
+  /** Materials, tasks and photos filed under this day. They are PROMOTED, never deleted. */
+  contentCount: number;
+}
+
+const LABEL_KEY: Record<(typeof SCHEDULE_FIELDS)[number], string> = {
   startsAt: "startsAt.label",
   durationMinutes: "duration.label",
   endMode: "ends.label",
   endsAt: "ends.label",
+  days: "days.legend",
+  requireAllDays: "requireAllDays.label",
   venueChoice: "venue.label",
   customVenueName: "venue.customName",
   customVenueAddress: "venue.customAddress",
@@ -101,6 +144,37 @@ const LABEL_KEY: Record<ScheduleField, string> = {
 };
 
 type Stamped<T> = { attempt: number; value: T };
+
+/** A stored day, as the day list edits it. */
+function draftOf(day: SavedDay): DayDraft {
+  return {
+    id: day.id,
+    key: day.id,
+    startsAt: day.startsAt,
+    endsAt: day.endsAt,
+    venueChoice: day.customVenueName ? CUSTOM_VENUE : day.venueId,
+    customVenueName: day.customVenueName,
+    customVenueAddress: day.customVenueAddress,
+    customVenueMapUrl: day.customVenueMapUrl,
+  };
+}
+
+/**
+ * What travels in the hidden `days` field — spelled out rather than spread, so
+ * this list IS the wire shape and `key`, which is React's and not the server's,
+ * cannot ride along by accident.
+ */
+function payloadOf(day: DayDraft) {
+  return {
+    id: day.id,
+    startsAt: day.startsAt,
+    endsAt: day.endsAt,
+    venueChoice: day.venueChoice,
+    customVenueName: day.customVenueName,
+    customVenueAddress: day.customVenueAddress,
+    customVenueMapUrl: day.customVenueMapUrl,
+  };
+}
 
 export function ScheduleForm({
   action,
@@ -122,6 +196,12 @@ export function ScheduleForm({
   published: boolean;
 }) {
   const t = useTranslations("schedule");
+  // ★ Contract 7's catalogue, read and never written here: one formatter names
+  // a day, and `content`'s slots, `checkin`'s screens and `notify`'s mail read
+  // the same words. A second «اليوم الثاني» in `schedule.json` is exactly the
+  // drift the contract exists to stop.
+  const tDays = useTranslations("sessions.days");
+  const tUi = useTranslations("ui");
   const [state, formAction, pending] = useActionState(action, emptyScheduleState());
   const [pressed, setPressed] = useState<"publish" | "save">("save");
 
@@ -137,6 +217,15 @@ export function ScheduleForm({
     initial.customVenueName ? CUSTOM_VENUE : initial.venueId,
   );
   const venueOf = (id: string) => venues.find((v) => v.id === id) ?? null;
+  // The custom place's three inputs are UNCONTROLLED — `defaultValue` plus
+  // `was()` is what survives React's form reset. What they hold is mirrored
+  // here so two things can read the form AS IT STANDS rather than as it was
+  // last saved: the publish gate below, and day one's entry in the day set.
+  const [customFilled, setCustomFilled] = useState({
+    name: was(state, "customVenueName") || initial.customVenueName,
+    address: was(state, "customVenueAddress") || initial.customVenueAddress,
+    mapUrl: was(state, "customVenueMapUrl") || initial.customVenueMapUrl,
+  });
   const [capacity, setCapacity] = useState(initial.capacity);
   // The capacity follows the venue until someone types a different number.
   const [capacityOwn, setCapacityOwn] = useState(
@@ -150,9 +239,67 @@ export function ScheduleForm({
   const [certificateMode, setCertificateMode] = useState<string>(initial.certificateMode);
   const [language, setLanguage] = useState<string>(initial.language);
 
+  // ── The day set (REQ-SES-015, REQ-SES-016) ───────────────────────────────
+  // ★ Day one is NOT in `extras`. Its window and place are the controls above,
+  // unmoved and unrenamed, which is what makes a one-day form identical to
+  // wave 8's — only its stored `id` is carried, so a save moves the day rather
+  // than replacing it.
+  const saved = initial.days ?? [];
+  const [multiDay, setMultiDay] = useState(saved.length > 1);
+  const [extras, setExtras] = useState<DayDraft[]>(() => saved.slice(1).map(draftOf));
+  const [nextKey, setNextKey] = useState(saved.length);
+  const [requireAllDays, setRequireAllDays] = useState(initial.requireAllDays ?? true);
+  const keyPrefix = useId();
+
   const endsAt = endMode === "explicit" ? explicitEnd : followingEnd(startsAt, duration);
   const rsvpDeadlineAt = deadlineFor(rsvpPreset, startsAt, rsvpCustom);
   const cancellationCutoffAt = deadlineFor(cutoffPreset, startsAt, cutoffCustom);
+
+  /** Day one as a draft: the controls above, plus the stored id. */
+  const dayOne: DayDraft = {
+    id: saved[0]?.id ?? null,
+    key: "day-1",
+    startsAt,
+    endsAt: endMode === "explicit" ? explicitEnd : "",
+    venueChoice,
+    customVenueName: customFilled.name,
+    customVenueAddress: customFilled.address,
+    customVenueMapUrl: customFilled.mapUrl,
+  };
+  /** The whole set, in the order the form renders it. Day one is always first. */
+  const allDays: DayDraft[] = [dayOne, ...extras];
+  /** The resolved windows, for validation and for what the page says. */
+  const windows = allDays.map((day) => ({ startsAt: day.startsAt, endsAt: dayEnd(day, duration) }));
+  const savedById = new Map(saved.map((day) => [day.id, day]));
+  const [confirm, setConfirm] = useState<{ kind: "one"; index: number } | { kind: "all" } | null>(null);
+
+  /**
+   * ★ WHETHER THE FORM SPEAKS DAYS AT ALL, and the rule the wave turns on.
+   *
+   * Both halves are needed. Without the first, adding a day would not reach the
+   * RPC; without the second, REMOVING the last extra day would send no `days`
+   * field and `schedule_session()` would leave the stored day two exactly where
+   * it was. With both, a session that has always had one day and an admin who
+   * never opened the affordance post no `days` key at all — and that is main's
+   * call, byte for byte.
+   */
+  const sendsDays = allDays.length > 1 || saved.length > 1;
+
+  /** The day a confirm is about, and what removing it would cost. */
+  const confirmDay = confirm?.kind === "one" ? extras[confirm.index] : null;
+  const confirmPosition = confirm?.kind === "one" ? confirm.index + 2 : 0;
+  const confirmName = confirmDay
+    ? confirmDay.startsAt
+      ? dayLabel({ position: confirmPosition, startsAt: `${confirmDay.startsAt}:00Z` }, "UTC", tDays)
+      : dayShortLabel({ position: confirmPosition, startsAt: "" }, tDays)
+    : "";
+  const confirmContent = confirmDay ? (savedById.get(confirmDay.id ?? "")?.contentCount ?? 0) : 0;
+  const confirmDescription =
+    confirm?.kind === "all"
+      ? t("days.confirm.allNote", { count: extras.length, value: formatNumber(extras.length) })
+      : confirmContent > 0
+        ? t("days.confirm.promotes", { count: confirmContent, value: formatNumber(confirmContent) })
+        : t("days.confirm.oneNote");
 
   // ── Errors: the relations at once, everything else after a submit ────────
   const [overlay, setOverlay] = useState<Stamped<Partial<Record<ScheduleField, string | null>>>>({ attempt: 0, value: {} });
@@ -170,9 +317,32 @@ export function ScheduleForm({
     if ((next.startsAt ?? startsAt) && state.errors.startsAt) value.startsAt = null;
     setOverlay({ attempt: state.attempt, value });
   };
-  const shown = (field: ScheduleField): string | undefined => (field in fresh ? (fresh[field] ?? undefined) : state.errors[field]);
+  // ★ A DAY'S TWO RELATIONS ARE DERIVED ON EVERY RENDER, not stamped into the
+  // overlay above. A date PICKER commits a whole value — there is no
+  // half-typed date to be rude about (REQ-UIX-011) — so «live» and «on commit»
+  // are the same moment for it, which is already why `recheck` runs from the
+  // pickers' own `onChange`. Deriving costs nothing and cannot go stale.
+  const dayRelations = checkDays(windows);
+
+  const shown = (field: ScheduleField): string | undefined => {
+    // Day one has no card: an overlap involving it is said at «التاريخ والوقت»,
+    // the control that would be moved to fix it.
+    if (field === "startsAt" && dayRelations[0] === "daysOverlap") return "daysOverlap";
+    return field in fresh ? (fresh[field] ?? undefined) : state.errors[field];
+  };
   const err = (field: ScheduleField) => {
     const key = shown(field);
+    return key ? t(`errors.${key}`) : undefined;
+  };
+
+  /** A day CARD's failure — day one's two windows are `shown()`'s, above. */
+  const dayErrorKey = (index: number, field: DayField): string | undefined => {
+    if (field === "startsAt" && dayRelations[index] === "daysOverlap") return "daysOverlap";
+    if (field === "endsAt" && dayRelations[index] === "dayEndBeforeStart") return "dayEndBeforeStart";
+    return state.errors[`days.${index}.${field}`];
+  };
+  const dayErr = (index: number, field: DayField) => {
+    const key = dayErrorKey(index, field);
     return key ? t(`errors.${key}`) : undefined;
   };
 
@@ -197,12 +367,6 @@ export function ScheduleForm({
   };
 
   // ── Publish ──────────────────────────────────────────────────────────────
-  // The custom place's two required fields are uncontrolled; what they hold is
-  // mirrored here only so the gate below reads the form as it stands.
-  const [customFilled, setCustomFilled] = useState({
-    name: was(state, "customVenueName") || initial.customVenueName,
-    address: was(state, "customVenueAddress") || initial.customVenueAddress,
-  });
   const missing = missingForPublish({
     startsAt,
     durationMinutes: duration,
@@ -220,7 +384,23 @@ export function ScheduleForm({
     field === "rsvpDeadlineAt" && rsvpPreset !== "custom" ? "rsvpPreset"
     : field === "cancellationCutoffAt" && cutoffPreset !== "custom" ? "cutoffPreset"
     : field;
+  const DAY_FIELDS: DayField[] = ["startsAt", "endsAt", "venueChoice", "customVenueName", "customVenueAddress"];
   const summary = SCHEDULE_FIELDS.flatMap((field) => {
+    // ★ `days` is one FormData field carrying a list, so it expands here into
+    // the failures of the cards on the page, in day order — the summary's
+    // first link stays the first problem on the page (DEC-144).
+    if (field === "days") {
+      return extras.flatMap((day, i) => {
+        const index = i + 1;
+        const name = dayShortLabel({ position: index + 1, startsAt: day.startsAt }, tDays);
+        return DAY_FIELDS.flatMap((f) => {
+          const key = dayErrorKey(index, f);
+          return key
+            ? [{ fieldId: dayFieldId(index, f), label: `${name}: ${t(`days.field.${f}`)}`, message: t(`errors.${key}`) }]
+            : [];
+        });
+      });
+    }
     const key = shown(field);
     return key ? [{ fieldId: targetOf(field), label: t(LABEL_KEY[field]), message: t(`errors.${key}`) }] : [];
   });
@@ -374,12 +554,78 @@ export function ScheduleForm({
               </Button>
             </div>
           )}
+
+          {/* ── جلسة متعدّدة الأيام — REQ-SES-015, REQ-SES-016, DEC-119 ──── */}
+          {/* ★ ONE DAY IS THE DEFAULT AND COSTS NOTHING. With the switch off,
+              everything above is exactly what wave 8 shipped — the same fields,
+              the same order, the same strings — and this one control at the end
+              of the section is the whole of what an admin who never schedules a
+              workshop ever sees of days. */}
+          <div className="border-t border-edge pt-6">
+            <Switch
+              checked={multiDay}
+              onCheckedChange={(on) => {
+                if (on) setMultiDay(true);
+                else if (extras.length === 0) setMultiDay(false);
+                // Turning it off with days on the page removes them, so it
+                // asks first and names every one (DEC-121).
+                else setConfirm({ kind: "all" });
+              }}
+              label={t("days.switch")}
+              description={t("days.switchHint")}
+            />
+
+            {multiDay ? (
+              <div className="mt-6 space-y-5">
+                <p className="text-body-sm text-fg-muted">{t("days.intro", { count: allDays.length, value: formatNumber(allDays.length) })}</p>
+                {extras.map((day, i) => (
+                  <DayCard
+                    key={day.key}
+                    day={day}
+                    index={i + 1}
+                    duration={duration}
+                    venues={venues}
+                    saved={savedById.get(day.id ?? "") ?? null}
+                    error={dayErr}
+                    spoken={spoken}
+                    tDays={tDays}
+                    t={t}
+                    onChange={(next) => setExtras((list) => list.map((d, j) => (j === i ? next : d)))}
+                    onRemove={() => setConfirm({ kind: "one", index: i })}
+                  />
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    // ★ REQ-SES-016: «each added day defaults to the previous
+                    // day's time and place», so a third evening is one tap.
+                    const previous = allDays[allDays.length - 1];
+                    setExtras((list) => [...list, nextDayAfter({ ...previous, endsAt: dayEnd(previous, duration) === followingEnd(previous.startsAt, duration) ? "" : previous.endsAt }, duration, `${keyPrefix}-${nextKey}`)]);
+                    setNextKey((n) => n + 1);
+                  }}
+                >
+                  {t("days.add")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          {/* ★ ABSENT unless the session really has more than one day: with no
+              `days` field, `schedule_session()` takes main's path exactly
+              (`tests/unit/schedule-days.test.ts` pins the argument object). */}
+          {sendsDays ? <input type="hidden" name="days" value={JSON.stringify(allDays.map(payloadOf))} /> : null}
         </div>
       </section>
 
       {/* ── أين ─────────────────────────────────────────────────────────── */}
       <section aria-labelledby="schedule-where" className="space-y-6">
         <SectionHeader id="schedule-where" title={t("sections.where")} />
+        {/* The venue control does not move when days appear: it is day one's,
+            and every day after it inherits this place until someone changes
+            that day. Said once, here, rather than repeated on every card. */}
+        {multiDay ? <p className="text-body-sm text-fg-muted">{t("days.placeNote")}</p> : null}
         <Field id="venueChoice" label={t("venue.label")} error={err("venueChoice")}>
           <Select
             name="venueChoice"
@@ -420,7 +666,13 @@ export function ScheduleForm({
               />
             </Field>
             <Field id="customVenueMapUrl" label={t("venue.customMap")} hint={t("venue.customMapHint")} error={err("customVenueMapUrl")}>
-              <Input name="customVenueMapUrl" type="url" dir="ltr" defaultValue={was(state, "customVenueMapUrl") || initial.customVenueMapUrl} />
+              <Input
+                name="customVenueMapUrl"
+                type="url"
+                dir="ltr"
+                defaultValue={was(state, "customVenueMapUrl") || initial.customVenueMapUrl}
+                onChange={(e) => setCustomFilled((c) => ({ ...c, mapUrl: e.currentTarget.value }))}
+              />
             </Field>
           </div>
         ) : null}
@@ -470,6 +722,21 @@ export function ScheduleForm({
             { value: "review", label: t("certificate.review"), hint: t("certificate.reviewHint") },
           ]}
         />
+        {/* ★ REQ-SES-017 puts this beside `certificate_mode`, where that
+            judgement already lives — and INSIDE the multi-day affordance,
+            because «attended every day» is «attended» at one day and the
+            control would be a question with one answer.
+
+            The hidden input is what actually posts: a Radix switch sends
+            nothing when it is off, which the action would have to read as
+            «unchanged» rather than as «false». Absent (the affordance closed)
+            IS «unchanged»; present-and-false is a decision. */}
+        {multiDay ? (
+          <div>
+            <Switch checked={requireAllDays} onCheckedChange={setRequireAllDays} label={t("requireAllDays.label")} description={t("requireAllDays.hint")} />
+            <input type="hidden" name="requireAllDays" value={requireAllDays ? "true" : "false"} />
+          </div>
+        ) : null}
         <div>
           <RadioGroup
             name="language"
@@ -530,6 +797,191 @@ export function ScheduleForm({
           )}
         </div>
       </div>
+
+      {/* ★ REMOVING A DAY ASKS, AND NAMES IT (DEC-121). Nothing is deleted as a
+          side effect of a scheduling change: a day's materials, tasks and
+          photos are PROMOTED to the session by `0100`'s foreign key, and the
+          dialog says so before anything is sent. A day holding attendance has
+          no remove control at all, and `schedule_session()` refuses it anyway. */}
+      <Dialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <DialogContent
+          title={confirm?.kind === "all" ? t("days.confirm.allTitle") : t("days.confirm.oneTitle", { day: confirmName })}
+          description={confirmDescription}
+          closeLabel={tUi("dialog.close")}
+        >
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={() => {
+                if (confirm?.kind === "one") setExtras((list) => list.filter((_, j) => j !== confirm.index));
+                if (confirm?.kind === "all") {
+                  setExtras([]);
+                  setMultiDay(false);
+                }
+                setConfirm(null);
+              }}
+            >
+              {t("days.confirm.remove")}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setConfirm(null)}>
+              {t("days.confirm.keep")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
+  );
+}
+
+/**
+ * One day after the first — `REQ-SES-016`'s «each added day defaults to the
+ * previous day's time and place, both editable per day».
+ *
+ * ★ THE DATE PICKER IS DATE-ONLY BY DEFAULT. The clock already came from the
+ * day before, so adding a third evening is one tap on a number; «غيّر الوقت»
+ * reveals the minute picker for the day that really is different.
+ *
+ * ★ NO DRAG HANDLE AND NO ARROWS. `position` is the chronological rank `0100`
+ * derives, so a day is moved by changing its date and the list re-sorts; a
+ * reorder control could only ever disagree with the ranking the database
+ * applies (DEC-150). That is one fewer control, not a missing one.
+ *
+ * ★ EVERY CONTROL HERE IS UNNAMED FOR THE FORM. The day set travels in ONE
+ * hidden `days` field, so these post nothing of their own — which is also why
+ * they are controlled rather than uncontrolled: there is no `defaultValue` for
+ * React's form reset to restore, and what was typed lives in the parent's
+ * state, which the reset does not touch (DEC-149 §1).
+ */
+function DayCard({
+  day,
+  index,
+  duration,
+  venues,
+  saved,
+  error,
+  spoken,
+  tDays,
+  t,
+  onChange,
+  onRemove,
+}: {
+  day: DayDraft;
+  /** The day's index in the whole set, so day two is `1`. */
+  index: number;
+  duration: string;
+  venues: ScheduleVenue[];
+  /** The stored row, when this day has been saved — what its removal would cost. */
+  saved: SavedDay | null;
+  error: (index: number, field: DayField) => string | undefined;
+  spoken: (local: string, withDate: boolean) => string;
+  tDays: (key: string, values?: Record<string, string | number>) => string;
+  t: (key: string, values?: Record<string, string | number>) => string;
+  onChange: (next: DayDraft) => void;
+  onRemove: () => void;
+}) {
+  const [timeShown, setTimeShown] = useState(false);
+  const [placeShown, setPlaceShown] = useState(false);
+  const position = index + 1;
+  const end = dayEnd(day, duration);
+  const custom = day.venueChoice === CUSTOM_VENUE;
+  // The wall clock is already in the session's zone, so it is named as UTC to
+  // be READ as the calendar it is — the same trick `rules.ts` uses for its
+  // arithmetic, and the reason no zone is consulted twice.
+  const heading = day.startsAt
+    ? dayLabel({ position, startsAt: `${day.startsAt}:00Z` }, "UTC", tDays)
+    : dayShortLabel({ position, startsAt: "" }, tDays);
+  const set = (patch: Partial<DayDraft>) => onChange({ ...day, ...patch });
+
+  return (
+    <div className="rounded-card border border-edge p-4">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <h3 className="text-label text-fg-heading">{heading}</h3>
+        <Button type="button" variant="ghost" size="sm" onClick={onRemove} disabled={saved?.hasAttendance ?? false}>
+          {t("days.remove")}
+        </Button>
+      </div>
+      {/* REQ-CHK-017: attendance is evidence, and a scheduling change does not
+          delete it. `schedule_session()` refuses `day_has_attendance` too; this
+          says so before an admin presses anything. */}
+      {saved?.hasAttendance ? <p className="mb-4 text-caption text-fg-muted">{t("days.locked")}</p> : null}
+
+      <div className="space-y-4">
+        <Field id={dayFieldId(index, "startsAt")} label={t("days.field.startsAt")} error={error(index, "startsAt")}>
+          <DateTime
+            // Named for the browser and ignored by the action: the day set
+            // travels in the hidden `days` field, and `SCHEDULE_FIELDS` does
+            // not list these, so `formStateFrom()` never reads them.
+            name={`day-${position}-startsAt`}
+            // ★ ONE PHRASE, ONE COLON. `ui/date-time` names its trigger
+            // «{label}: {value}» and its dialog «{label}», so a label that
+            // already contains a colon gives «… : بداية اليوم: 12 أكتوبر» to a
+            // screen reader and two different names to a test. «بداية اليوم
+            // الثالث · السبت» reads as what it is.
+            label={t("days.field.startsAtOf", { day: heading })}
+            // ★ THE PICKER IS SYMMETRIC ABOUT ITS GRANULARITY: in date mode it
+            // parses and returns «YYYY-MM-DD». Handing it the day's wall clock
+            // made `parse()` return null and the trigger read «لم يُحدَّد بعد»
+            // on a day whose heading and end line both said otherwise — and a
+            // date picked in that mode came back CLOCKLESS, which broke the
+            // end sentence, the overlap check and the save, each silently.
+            granularity={timeShown ? "minute" : "date"}
+            value={timeShown ? day.startsAt : dateOf(day.startsAt)}
+            onChange={(value) => set({ startsAt: withSameClock(value ?? "", day.startsAt) })}
+          />
+        </Field>
+        {timeShown ? null : (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setTimeShown(true)}>
+            {t("days.changeTime")}
+          </Button>
+        )}
+
+        <div>
+          <p className="text-body-sm text-fg-body" aria-live="polite">
+            {end ? t("days.ends", { time: spoken(end, false) }) : t("ends.followsEmpty")}
+          </p>
+          {day.endsAt ? (
+            <Field id={dayFieldId(index, "endsAt")} label={t("days.field.endsAt")} error={error(index, "endsAt")} className="mt-2">
+              <DateTime name={`day-${position}-endsAt`} label={t("days.field.endsAtOf", { day: heading })} value={day.endsAt} onChange={(value) => set({ endsAt: value ?? "" })} />
+            </Field>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => set({ endsAt: day.endsAt ? "" : end })}>
+            {t(day.endsAt ? "ends.follow" : "ends.edit")}
+          </Button>
+        </div>
+
+        {placeShown || custom || !day.venueChoice ? (
+          <>
+            <Field id={dayFieldId(index, "venueChoice")} label={t("days.field.venueChoice")} error={error(index, "venueChoice")}>
+              <Select value={day.venueChoice} onChange={(e) => set({ venueChoice: e.currentTarget.value })}>
+                <option value="">{t("venue.placeholder")}</option>
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+                <option value={CUSTOM_VENUE}>{t("venue.other")}</option>
+              </Select>
+            </Field>
+            {custom ? (
+              <div className="space-y-4 border-s-2 border-edge ps-4">
+                <Field id={dayFieldId(index, "customVenueName")} label={t("venue.customName")} required error={error(index, "customVenueName")}>
+                  <Input maxLength={120} value={day.customVenueName} onChange={(e) => set({ customVenueName: e.currentTarget.value })} />
+                </Field>
+                <Field id={dayFieldId(index, "customVenueAddress")} label={t("venue.customAddress")} required error={error(index, "customVenueAddress")}>
+                  <Input maxLength={300} value={day.customVenueAddress} onChange={(e) => set({ customVenueAddress: e.currentTarget.value })} />
+                </Field>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div>
+            <p className="text-body-sm text-fg-muted">{t("days.samePlace", { name: venues.find((v) => v.id === day.venueChoice)?.name ?? "" })}</p>
+            <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => setPlaceShown(true)}>
+              {t("days.changePlace")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

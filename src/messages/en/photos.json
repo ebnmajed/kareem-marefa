@@ -14,7 +14,11 @@
       "restoring": "Restoring…",
       "restored": "The photo was restored.",
       "restoreFailed": "Could not restore the photo. Try again.",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "rescope": {
+        "trigger": "Change the photo's scope: <bdi>{label}</bdi>",
+        "failed": "Could not change the photo's scope. Try again."
+      }
     },
     "upload": {
       "action": "Add a photo",

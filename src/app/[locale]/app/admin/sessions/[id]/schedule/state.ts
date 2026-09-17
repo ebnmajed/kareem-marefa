@@ -19,6 +19,11 @@ export const SCHEDULE_FIELDS = [
   "durationMinutes",
   "endMode",
   "endsAt",
+  // ★ The day set, as one JSON field (REQ-SES-015, wave 9). It sits here
+  // because the day list is in «متى», right under the end; and it is ABSENT
+  // from the FormData unless the session actually has more than one day, which
+  // is what keeps `schedule_session()` on main's path for everyone else.
+  "days",
   "venueChoice",
   "customVenueName",
   "customVenueAddress",
@@ -30,10 +35,23 @@ export const SCHEDULE_FIELDS = [
   "cutoffPreset",
   "cancellationCutoffAt",
   "certificateMode",
+  // REQ-SES-017 puts this beside `certificateMode`, which is where that
+  // judgement already lives. Rendered only inside the multi-day affordance —
+  // it means nothing at one day — so an absent value is «unchanged», never
+  // «false» (see `scheduleInput.requireAllDays`).
+  "requireAllDays",
   "language",
 ] as const;
 
-export type ScheduleField = (typeof SCHEDULE_FIELDS)[number];
+/** A per-day failure, keyed by the day's index in the list. */
+export type DayField = "startsAt" | "endsAt" | "venueChoice" | "customVenueName" | "customVenueAddress";
+
+export type ScheduleField = (typeof SCHEDULE_FIELDS)[number] | `days.${number}.${DayField}`;
+
+/** The DOM id of a day's control — the summary's link target. */
+export function dayFieldId(index: number, field: DayField): string {
+  return `day-${index + 1}-${field}`;
+}
 
 /**
  * The round trip, plus what succeeded. `saved` and `published` are separate

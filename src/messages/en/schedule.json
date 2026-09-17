@@ -29,6 +29,38 @@
       "hint": "An end you set yourself stays put and stops following the duration.",
       "follow": "Work it out from the duration"
     },
+    "days": {
+      "switch": "A session over several days",
+      "switchHint": "Each day has its own check-in, its own materials and its own preparation tasks.",
+      "legend": "The session's days",
+      "intro": "{count, plural, one {one day} other {{value} days}}",
+      "add": "Add a day",
+      "remove": "Remove this day",
+      "locked": "Someone checked in on this day, so it cannot be removed.",
+      "changeTime": "Change the time",
+      "changePlace": "Change the place",
+      "samePlace": "Same place as the day before: {name}",
+      "ends": "Ends {time}",
+      "placeNote": "This is the first day's place, and every day after it inherits the place until you change that day.",
+      "field": {
+        "startsAt": "The day starts",
+        "startsAtOf": "{day} starts",
+        "endsAt": "The day ends",
+        "endsAtOf": "{day} ends",
+        "venueChoice": "The day's place",
+        "customVenueName": "Place name",
+        "customVenueAddress": "Address"
+      },
+      "confirm": {
+        "oneTitle": "Remove {day}?",
+        "allTitle": "Remove the extra days?",
+        "oneNote": "Nothing but the date itself is removed.",
+        "promotes": "{count, plural, one {This day's item moves to the whole session; it is not deleted.} other {This day's {value} items move to the whole session; they are not deleted.}}",
+        "allNote": "{count, plural, one {One day is removed, and its materials move to the whole session.} other {{value} days are removed, and their materials move to the whole session.}}",
+        "remove": "Remove",
+        "keep": "Keep it"
+      }
+    },
     "venue": {
       "label": "Venue",
       "placeholder": "Choose a venue",
@@ -70,6 +102,10 @@
       "automatic": "Issued automatically to everyone who checked in",
       "review": "Reviewed, then issued",
       "reviewHint": "Certificates wait for your approval on the session's certificates page."
+    },
+    "requireAllDays": {
+      "label": "Points and the certificate after every day",
+      "hint": "Awarded once, for the whole session. Turn it off and attending one day is enough."
     },
     "language": {
       "legend": "Session language",
@@ -115,7 +151,9 @@
       "cutoffAfterStart": "Cancellation cannot close after the session starts.",
       "deadlineRequired": "Choose the time, or one of the options above.",
       "failed": "Couldn't save — try again.",
-      "publishFailed": "The schedule is saved, but publishing failed — check what is missing, then try again."
+      "publishFailed": "The schedule is saved, but publishing failed — check what is missing, then try again.",
+      "dayEndBeforeStart": "The day ends before it starts.",
+      "daysOverlap": "This day overlaps another day of the session."
     },
     "content": {
       "title": "Content — as the proposer wrote it",

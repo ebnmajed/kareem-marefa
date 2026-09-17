@@ -4,6 +4,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { photoPath } from "@/lib/storage/paths";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Photos — REQ-EVT-009 … REQ-EVT-014, 02 §4.7, 03 §5.6c, 07 §9.
 //
@@ -108,6 +110,12 @@ export interface PhotoSummary {
   url: string;
   /** Present only when the viewer is staff (`photos_read`, 03 §6) — a plain member never sees a hidden photo at all. */
   hiddenAt: string | null;
+  /** REQ-SES-018/DEC-121: never chosen by the uploader — `record_photo_upload()` resolves it from
+   *  the upload's own moment, and leaves it null while the session has one day. Absent or null
+   *  both read as the whole session (`item.sessionDayId ?? null`); OPTIONAL, not required, so an
+   *  existing fixture literal that predates this field still type-checks without editing a file
+   *  rule 4 asks to stay untouched. */
+  sessionDayId?: string | null;
 }
 
 export interface PhotosPageData {
@@ -121,9 +129,18 @@ export interface PhotosPageData {
    *  `materials.ts`'s `MaterialUploadLimits`. Advisory only; `record_photo_upload`'s own check
    *  (`0050_photo_pipeline.sql`) against the real byte size is the control. */
   imageLimitMb: number;
+  /** Contract 3 — every day of the session, in order; `[]`/absent at one day or none scheduled.
+   *  Display-only for photos (DEC-121: "photos never ask") — no per-group upload control reads
+   *  this the way materials/tasks' groups do. OPTIONAL, not required — same reasoning as
+   *  `PhotoSummary.sessionDayId` (rule 4). */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's — `dayLabel()`'s weekday reads the room's clock.
+   *  OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 const DEFAULT_IMAGE_LIMIT_MB = 20;
+const DEFAULT_TIME_ZONE = "Asia/Riyadh";
 
 /** The event page's `Photos` slot — REQ-EVT-010: `photos_read`'s own `hidden_at is null or
  *  is_staff()` clause (03 §6) is the entire visibility rule; this never adds a second filter
@@ -133,22 +150,36 @@ const DEFAULT_IMAGE_LIMIT_MB = 20;
  *  `<section>` on `photosSummary()` (below), which needs this same read. */
 export const getPhotosPageData = cache(async (locale: string, sessionId: string): Promise<PhotosPageData> => {
   if (!z.uuid().safeParse(sessionId).success) {
-    return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB };
+    return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB, days: [], timeZone: DEFAULT_TIME_ZONE };
   }
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }] = await Promise.all([
-    supabase.from("photos").select("id, uploader_id, storage_path, created_at, hidden_at").eq("session_id", sessionId).is("removed_at", null).order("created_at", { ascending: false }),
+  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading] = await Promise.all([
+    supabase
+      .from("photos")
+      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id")
+      .eq("session_id", sessionId)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false }),
     supabase.rpc("has_checked_in", { p_session: sessionId }),
     supabase.rpc("is_presenter_of", { p_session: sessionId }),
     supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
   const photos = await Promise.all(
     (rows ?? []).map(async (p): Promise<PhotoSummary> => {
       const { data: signed } = await supabase.storage.from("photos").createSignedUrl(p.storage_path as string, 3600);
-      return { id: p.id as string, uploaderId: p.uploader_id as string, createdAt: p.created_at as string, url: signed?.signedUrl ?? "", hiddenAt: (p.hidden_at as string | null) ?? null };
+      return {
+        id: p.id as string,
+        uploaderId: p.uploader_id as string,
+        createdAt: p.created_at as string,
+        url: signed?.signedUrl ?? "",
+        hiddenAt: (p.hidden_at as string | null) ?? null,
+        sessionDayId: (p.session_day_id as string | null) ?? null,
+      };
     }),
   );
 
@@ -159,6 +190,8 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     isStaff,
     myMemberId: session.memberId,
     imageLimitMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_IMAGE_LIMIT_MB,
+    days,
+    timeZone: heading?.timeZone ?? DEFAULT_TIME_ZONE,
   };
 });
 
@@ -197,4 +230,27 @@ export async function restorePhoto(locale: string, photoId: string): Promise<boo
     .is("resolved_at", null);
 
   return true;
+}
+
+const rescopePhotoInput = z.object({ photoId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — staff alone (a photo has no presenter-write concept: `photos_insert_
+ *  checked_in`, 03 §5.6c, never names `is_presenter_of` as an OWNER, only as one of three ways to
+ *  be allowed to upload). `session_day_id` is not in `p6_staff_update`'s column grant
+ *  (`hidden_at`/`hidden_reason`/`removed_at`/`removed_by`, 0037) — `rescope_photo()`
+ *  (proposed/content/0001) is the door, re-deriving `is_staff()` itself. No audit row (matching
+ *  `rescopeTask`'s reasoning — no visibility rule turns on a photo's scope). */
+export async function rescopePhoto(locale: string, input: z.infer<typeof rescopePhotoInput>): Promise<boolean> {
+  const parsed = rescopePhotoInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_photo", { p_photo_id: parsed.photoId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }

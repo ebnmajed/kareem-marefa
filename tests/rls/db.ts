@@ -10,7 +10,7 @@
 // RLS_DATABASE_URL: local Supabase (54322) by default via `npm run test:rls`;
 // CI's container in the `rls` job.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 
@@ -131,7 +131,21 @@ export const PERMISSION_DENIED = "42501";
  * test had before.
  */
 export async function applyProposed(tx: Tx, relativePath: string): Promise<void> {
-  const sql = readFileSync(join(process.cwd(), "supabase", "proposed", relativePath), "utf8");
+  const path = join(process.cwd(), "supabase", "proposed", relativePath);
+  // ★ A PROMOTED file is already in the chain. The lead promotes by moving the
+  // file into supabase/migrations/ (TEAM.md §3), and a test that proved it
+  // under proposed/ must keep passing the moment that happens — without five
+  // teammates each remembering an `existsSync` guard (wave 2 lost a CI run to
+  // exactly that, DEC-047). So a missing proposed file is a no-op HERE: the
+  // objects it created exist because `db:reset` applied the migration, and
+  // applying it a second time would fail on `create function` anyway.
+  // This cannot hide a typo: a test whose file never existed finds none of its
+  // objects and fails on the first statement that names one.
+  if (!existsSync(path)) {
+    await tx.asOwner();
+    return;
+  }
+  const sql = readFileSync(path, "utf8");
   await tx.asOwner();
   await tx.q(sql);
   // asOwner() reset the role; callers re-assume their identity with tx.as().

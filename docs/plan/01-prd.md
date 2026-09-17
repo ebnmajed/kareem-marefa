@@ -539,8 +539,10 @@ no second concept.
   check-in window and the `ends_at + 2h` ceiling (`REQ-CHK-016`) are **per day**.
 - One **حجز** covers every day, and **السعة stays on the session**: one registration, one seat
   count (`DEC-120`). A member registers for the workshop, not for Tuesday.
-- A task for the whole workshop is a task on day 1, exactly as a session-level file is a file on
-  day 1 — and `REQ-TSK-002` is untouched: tasks stay reminder-only and are never read by check-in.
+- Materials, pre-session tasks and photos belong either to the whole session or to one day
+  (`REQ-SES-018`, `DEC-121` — which superseded «a task for the whole workshop is a task on day 1»;
+  corrected here by `DEC-150`) — and `REQ-TSK-002` is untouched: tasks stay reminder-only and are
+  never read by check-in, at either scope.
 - One rating, one discussion, one certificate, one poster — those belong to the session.
 - A member's calendar gains one entry **per day**, and reminders fire per day.
 - ★ This is **not** the recurring series `A14` rules out: that is N independent sessions, each with

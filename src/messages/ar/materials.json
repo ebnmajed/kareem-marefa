@@ -6,7 +6,9 @@
       "addAction": "أضف مادة",
       "phase": {
         "before": "قبل الجلسة",
-        "after": "بعد الجلسة"
+        "after": "بعد الجلسة",
+        "beforeDay": "قبل اليوم",
+        "afterDay": "بعد اليوم"
       },
       "kind": {
         "pdf": "PDF",
@@ -30,7 +32,14 @@
       "openExternal": "فتح الرابط — يغادر المنصة",
       "removedByAdmin": "أُزيلت هذه المادة.",
       "allowDownloadLabel": "السماح بالتحميل",
-      "settingsFailed": "تعذّر حفظ هذا الإعداد. حاول مرة أخرى."
+      "settingsFailed": "تعذّر حفظ هذا الإعداد. حاول مرة أخرى.",
+      "group": {
+        "addAria": "أضف مادة — <bdi>{scope}</bdi>"
+      },
+      "rescope": {
+        "trigger": "تغيير نطاق المادة: <bdi>{label}</bdi>",
+        "failed": "تعذّر تغيير نطاق المادة. حاول مرة أخرى."
+      }
     },
     "upload": {
       "notice": "سيُتاح هذا الملف لجميع أعضاء المؤسسة وفق الجدول الزمني الذي تختاره.",

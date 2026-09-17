@@ -403,19 +403,34 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return [];
 
-  const [checkInRead, presenterRead, { data: certs }] = await Promise.all([
+  const [checkInRead, presenterRead, { data: certs }, completeRead] = await Promise.all([
     // The member's own embed, named: `check_ins` reaches `members` through
     // `marked_by` and `removed_by` too, and the unnamed embed is an ambiguity
     // error — which, swallowed, rendered as «لا أحد بعد» over a full room.
     supabase.from("check_ins").select("member_id, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null),
     supabase.from("session_presenters").select("member_id, members(display_name)").eq("session_id", sessionId).eq("accepted", true),
     supabase.from("certificates").select("id, member_id, kind, state").eq("session_id", sessionId),
+    // ★ REQ-SES-017 (wave 9, `0108`): «eligible» is the ONE definition the
+    // fan-out and `issue_certificate()` use — `scoring`'s
+    // `session_attendance_complete()`, read for staff through this RPC — never
+    // a second opinion formed here from `check_ins`. At one day it is everyone
+    // with an active check-in, which is what this list showed before.
+    supabase.rpc("session_complete_attendees", { p_session: sessionId }),
   ]);
   // A failed read is thrown, never shown as an empty list: «nobody is
   // eligible» is a claim, and the route's error boundary is the honest answer.
   if (checkInRead.error) throw checkInRead.error;
   if (presenterRead.error) throw presenterRead.error;
-  const checkIns = checkInRead.data;
+  if (completeRead.error) throw completeRead.error;
+  const complete = new Set(((completeRead.data ?? []) as unknown[]).map((v) => String(v)));
+  // A member who attended three days has three check-ins and is ONE recipient.
+  const seen = new Set<string>();
+  const checkIns = (checkInRead.data ?? []).filter((r) => {
+    const id = (r as { member_id: string }).member_id;
+    if (!complete.has(id) || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
   const presenters = presenterRead.data;
   type Joined = { member_id: string; members: { display_name: string } | { display_name: string }[] | null };
   const certsBy = (memberId: string, kind: string) => ((certs ?? []) as Array<{ member_id: string; kind: string; state: string }>).filter((c) => c.member_id === memberId && c.kind === kind);

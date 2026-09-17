@@ -10,6 +10,7 @@ import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
 import { AlertCircleIcon } from "@/components/ui/icons";
+import { phaseLabelKey } from "@/components/materials/phase-label";
 import type { MaterialKind, MaterialUploadLimits } from "@/lib/dal/materials";
 
 // STORY-MAT-001, 07 §1 — the browser uploads directly to Storage; bytes
@@ -45,7 +46,7 @@ function guessKindFromFilename(name: string): Exclude<UploadKind, "video_link" |
   return null;
 }
 
-type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits } & (
+type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits; sessionDayId?: string | null } & (
   | { sessionId: string; proposalId?: undefined }
   | { proposalId: string; sessionId?: undefined }
 );
@@ -53,8 +54,12 @@ type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits } & 
 /** REQ-PRO-004: the same form, for either a session's materials or a proposal's draft materials —
  *  exactly one of `sessionId`/`proposalId` is passed, matching `initiateMaterialUploadInput`'s own
  *  either/or (src/lib/dal/materials.ts). A proposal upload hides the phase selector: "before/after
- *  the session" has no meaning yet for a draft that carries no session at all. */
-export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: UploadFormProps) {
+ *  the session" has no meaning yet for a draft that carries no session at all.
+ *
+ *  REQ-SES-018/DEC-121: `sessionDayId` is never a field IN this form — it is the scope of
+ *  whichever group's own instance rendered it (`list.tsx` mounts one `UploadForm` per group at
+ *  `days.length > 1`), so "the place you pressed is the answer" and there is nothing here to ask. */
+export function UploadForm({ locale, sessionId, proposalId, uploadLimits, sessionDayId }: UploadFormProps) {
   const t = useTranslations("materials.upload");
   // Kind/phase option labels reuse the `materials.list` namespace's own
   // `kind.*`/`phase.*` keys (message keys are stable — CLAUDE.md, Naming —
@@ -130,6 +135,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
           headers: { "content-type": "application/json", "x-locale": locale },
           body: JSON.stringify({
             ...(sessionId ? { sessionId } : { proposalId }),
+            ...(sessionDayId ? { sessionDayId } : {}),
             kind,
             title: trimmedTitle,
             phase,
@@ -200,8 +206,8 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
         <label className="flex flex-col gap-1 text-body-sm text-fg-body">
           {t("phaseLabel")}
           <Select value={phase} onChange={(e) => setPhase(e.target.value as "before" | "after")}>
-            <option value="before">{tList("phase.before")}</option>
-            <option value="after">{tList("phase.after")}</option>
+            <option value="before">{tList(phaseLabelKey("before", sessionDayId))}</option>
+            <option value="after">{tList(phaseLabelKey("after", sessionDayId))}</option>
           </Select>
         </label>
       ) : null}

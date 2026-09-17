@@ -1,5 +1,11 @@
 // `/app/me/calendar` — SCR-025, REQ-CAL-003, REQ-CAL-007. Same mocked-DAL +
 // real-messages pattern as certificates-page.test.tsx.
+//
+// ★ Wave 9, untouched-suite ledger: `SyncedEventDTO` gained `id`,
+// `dayPosition` and `dayCount` (one row per DAY, REQ-SES-015), so the three
+// fixtures below name them as the one-day session they already described.
+// NO ASSERTION CHANGED — that is the point: a one-day calendar screen renders
+// exactly what it rendered on `main`, day label and all (there is none).
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -45,7 +51,7 @@ describe("CalendarPage", () => {
   it("shows the connected state and a synced session", async () => {
     await renderPage(
       { provider: "google", connectedAt: "2026-09-01T00:00:00Z", disconnectedAt: null },
-      [{ sessionId: "s1", sessionTitle: "جلسة متزامنة", startsAt: "2026-09-20T10:00:00Z", state: "synced", lastSyncedAt: "2026-09-15T00:00:00Z", error: null }],
+      [{ id: "ce1", sessionId: "s1", sessionTitle: "جلسة متزامنة", startsAt: "2026-09-20T10:00:00Z", dayPosition: 1, dayCount: 1, state: "synced", lastSyncedAt: "2026-09-15T00:00:00Z", error: null }],
     );
     expect(screen.getByRole("button", { name: "افصل التقويم" })).toBeInTheDocument();
     expect(screen.getByText("جلسة متزامنة")).toBeInTheDocument();
@@ -54,7 +60,7 @@ describe("CalendarPage", () => {
   it("surfaces a failed sync with REQ-CAL-008's promise beside it", async () => {
     await renderPage(
       { provider: "google", connectedAt: "2026-09-01T00:00:00Z", disconnectedAt: null },
-      [{ sessionId: "s1", sessionTitle: "جلسة", startsAt: null, state: "failed", lastSyncedAt: null, error: "تعذّر الوصول" }],
+      [{ id: "ce1", sessionId: "s1", sessionTitle: "جلسة", startsAt: null, dayPosition: 1, dayCount: 1, state: "failed", lastSyncedAt: null, error: "تعذّر الوصول" }],
     );
     expect(screen.getByText("تعذّرت المزامنة")).toBeInTheDocument();
   });
@@ -67,7 +73,7 @@ describe("CalendarPage", () => {
   it("is axe-clean when connected with events", async () => {
     const { container } = await renderPage(
       { provider: "google", connectedAt: "2026-09-01T00:00:00Z", disconnectedAt: null },
-      [{ sessionId: "s1", sessionTitle: "جلسة", startsAt: "2026-09-20T10:00:00Z", state: "synced", lastSyncedAt: null, error: null }],
+      [{ id: "ce1", sessionId: "s1", sessionTitle: "جلسة", startsAt: "2026-09-20T10:00:00Z", dayPosition: 1, dayCount: 1, state: "synced", lastSyncedAt: null, error: null }],
     );
     const results = await axe.run(container);
     expect(results.violations).toEqual([]);

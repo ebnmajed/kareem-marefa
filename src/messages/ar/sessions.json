@@ -1,5 +1,26 @@
 {
   "sessions": {
+    "days": {
+      "label": "اليوم {ordinal} · {weekday}",
+      "labelNumeric": "اليوم {value} · {weekday}",
+      "short": "اليوم {ordinal}",
+      "shortNumeric": "اليوم {value}",
+      "ordinal": {
+        "1": "الأول",
+        "2": "الثاني",
+        "3": "الثالث",
+        "4": "الرابع",
+        "5": "الخامس",
+        "6": "السادس",
+        "7": "السابع",
+        "8": "الثامن",
+        "9": "التاسع",
+        "10": "العاشر"
+      },
+      "count": "{count, plural, zero {لا أيام} one {يوم واحد} two {يومان} few {{value} أيام} many {{value} يومًا} other {{value} يوم}}",
+      "range": "{from} — {to}",
+      "sessionScope": "للورشة كاملة"
+    },
     "event": {
       "cancelledTitle": "جلسة ملغاة",
       "cancelledReason": "السبب الذي ذكره المشرف",
@@ -14,6 +35,7 @@
       "notScheduled": "لم يُحدَّد الموعد بعد",
       "noVenue": "لم يُحدَّد المكان بعد",
       "inPersonNote": "الحضور في القاعة فقط.",
+      "placeVaries": "يختلف المكان في بعض الأيام؛ انظر قائمة الأيام فوق.",
       "capacityLabel": "السعة",
       "seats": "{count, plural, zero {لا مقاعد} one {مقعد واحد} two {مقعدان} few {{value} مقاعد} many {{value} مقعدًا} other {{value} مقعد}}",
       "rsvpDeadlineLabel": "آخر موعد للحجز",

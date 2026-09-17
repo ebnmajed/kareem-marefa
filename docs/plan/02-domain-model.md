@@ -463,8 +463,17 @@ released when **that day** ends, not when the session completes. Without this, d
 three-day workshop would be withheld until Friday (`REQ-MAT-006` as amended).
 
 ★ The entity is therefore **when, where and which meeting** and nothing else: no free text, no
-second policy set. A task for the whole workshop is a task on day 1, exactly as a session-level
-file is a file on day 1.
+second policy set. (`DEC-120`'s «a task for the whole workshop is a task on day 1» was superseded by
+`DEC-121` — content is session-scoped **or** day-scoped, above; corrected here by `DEC-150`.)
+
+★ **Two values are derived and stored (`DEC-150`).** `position` is the day's chronological rank,
+renumbered by trigger — days of one session cannot overlap, so their order is total and a
+hand-written position could only disagree with it. And `sessions.starts_at` / `ends_at` /
+`venue_id` / the custom-venue trio are the **first day's start, the last day's end and the first
+day's venue**, kept in step by trigger in both directions (a writer of the session's own window is
+carried onto its one day while `n ≤ 1`) and checked at commit by a deferred constraint trigger.
+`sessions.require_all_days boolean not null default true` sits beside `certificate_mode`
+(`REQ-SES-017`).
 
 ★ **`REQ-TSK-002` is untouched and matters more here:** tasks stay **reminder-only and are never
 read by any check-in path**. Attaching them to a day puts them beside that day's attendance in the

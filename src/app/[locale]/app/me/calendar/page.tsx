@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getCalendarConnection, listSyncedEvents } from "@/lib/dal/calendar";
 import { formatDateTime } from "@/components/sessions/numerals";
+import { dayLabel } from "@/components/sessions/day-label";
 import { getPreferenceMatrix } from "@/lib/dal/notifications";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -30,8 +31,11 @@ export default async function CalendarPage({
   setRequestLocale(locale);
   const { connected, disconnected, error } = await searchParams;
 
-  const [t, connection, events, settings] = await Promise.all([
+  const [t, tDays, connection, events, settings] = await Promise.all([
     getTranslations("calendar"),
+    // Contract 7: one day label, in `sessions`' words, on every surface.
+    // Reading another track's namespace is a read, never a write.
+    getTranslations("sessions.days"),
     getCalendarConnection(locale),
     listSyncedEvents(locale),
     getPreferenceMatrix(locale),
@@ -104,11 +108,21 @@ export default async function CalendarPage({
         ) : (
           <ul className="mt-4 space-y-3">
             {events.map((event) => (
-              <li key={event.sessionId}>
+              /* ★ ONE ENTRY PER DAY (REQ-SES-015), so the key is the row and
+                 not the session — a three-day workshop is three entries. */
+              <li key={event.id}>
                 <Panel className="p-4">
                   <Link href={`/app/sessions/${event.sessionId}`} className="text-label text-fg-heading underline underline-offset-4">
                     <bdi>{event.sessionTitle}</bdi>
                   </Link>
+                  {/* REQ-SES-018's first rule, applied here: a session with one
+                      day has no day concept at all, so the label appears only
+                      when there is more than one meeting to tell apart. */}
+                  {event.dayCount > 1 && event.dayPosition !== null && event.startsAt ? (
+                    <p className="mt-1 text-body-sm text-fg-body">
+                      <bdi>{dayLabel({ position: event.dayPosition, startsAt: event.startsAt }, settings.timeZone, tDays, locale)}</bdi>
+                    </p>
+                  ) : null}
                   {event.startsAt ? (
                     <p className="mt-1 text-body-sm text-fg-muted">{formatDateTime(event.startsAt, settings.timeZone, locale)}</p>
                   ) : null}

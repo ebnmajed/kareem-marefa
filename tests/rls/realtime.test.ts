@@ -121,17 +121,37 @@ describe("POL-realtime.payload_shape", () => {
       );
       await tx.q(`update public.comments set body = 'بعد التعديل' where id = $1`, [c.id]);
       await tx.q(`insert into public.reactions (org_id, comment_id, member_id, kind) values ($1, $2, $3, 'like')`, [f.a.id, c.id, f.a.members[1].memberId]);
+
+      // ★ Which message the REMOVAL wrote is decided by id, never by
+      // `order by inserted_at`: that column defaults to now(), the
+      // TRANSACTION's start, so every row written inside withTx() carries the
+      // same value and the order is whatever the scan returns. Three
+      // `reaction_totals` messages share this topic by now — fixture-m2's
+      // seeded «like» on another comment, this test's insert, and then the
+      // removal — and `.at(-1)` over that unordered read returned a
+      // `{ like: 1 }` on main's CI run of PR #25's merge (2026-09-17) after
+      // passing on the PR itself.
+      await tx.asOwner();
+      const before = await tx.q<{ id: string }>(
+        `select id from realtime.messages where topic = $1 and event = 'reaction_totals'`,
+        [topic],
+      );
+      expect(before.length).toBeGreaterThan(0);   // the insert's own, plus any the fixture's reactions wrote
+
+      await tx.as(f.a.members[1].claims);
       await tx.q(`delete from public.reactions where comment_id = $1 and member_id = $2`, [c.id, f.a.members[1].memberId]);
 
       await tx.asOwner();
-      const rows = await tx.q<{ event: string; payload: { body?: string; totals?: Record<string, number> } }>(
-        `select event, payload from realtime.messages where topic = $1 order by inserted_at`,
+      const rows = await tx.q<{ id: string; event: string; payload: { body?: string; totals?: Record<string, number> } }>(
+        `select id, event, payload from realtime.messages where topic = $1`,
         [topic],
       );
       const editMsg = rows.find((r) => r.event === "UPDATE" && r.payload.body === "بعد التعديل");
       expect(editMsg).toBeTruthy();
-      const afterRemoval = rows.filter((r) => r.event === "reaction_totals").at(-1);
-      expect(afterRemoval!.payload.totals).toEqual({});
+      const seen = new Set(before.map((r) => r.id));
+      const afterRemoval = rows.filter((r) => r.event === "reaction_totals" && !seen.has(r.id));
+      expect(afterRemoval).toHaveLength(1);
+      expect(afterRemoval[0].payload.totals).toEqual({});
     });
   });
 });

@@ -9,6 +9,10 @@ interface CreateTaskFormProps {
   locale: string;
   sessionId: string;
   materials: { id: string; title: string }[];
+  /** REQ-SES-018/DEC-121 — never a field IN this form, the scope of whichever group's own
+   *  instance rendered it (`panel.tsx` mounts one `CreateTaskForm` per group at `days.length > 1`),
+   *  matching `materials/upload-form.tsx`'s identical `sessionDayId` prop. */
+  sessionDayId?: string | null;
 }
 
 const FORM_KIND: TaskKind[] = ["read_material", "form", "checklist", "external"];
@@ -17,7 +21,7 @@ const FORM_KIND: TaskKind[] = ["read_material", "form", "checklist", "external"]
  *  `p8_presenter_write`, 03 §5.5b, is still the real gate regardless). Kept deliberately simple:
  *  a `form` task's questions are one label per line, not an authored JSON schema — REQ-TSK-001's
  *  acceptance only asks for "a matching affordance," not a schema-authoring tool. */
-export function CreateTaskForm({ locale, sessionId, materials }: CreateTaskFormProps) {
+export function CreateTaskForm({ locale, sessionId, materials, sessionDayId }: CreateTaskFormProps) {
   const t = useTranslations("tasks.create");
   const tList = useTranslations("tasks.list"); // kind labels are authored once, under `list.kind.*`
   const [kind, setKind] = useState<TaskKind>("checklist");
@@ -52,6 +56,7 @@ export function CreateTaskForm({ locale, sessionId, materials }: CreateTaskFormP
     try {
       const result = await createTaskAction(locale, {
         sessionId,
+        sessionDayId: sessionDayId ?? undefined,
         kind,
         title,
         description: description || undefined,

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requestPhotoTakedown, restorePhoto } from "@/lib/dal/photos";
+import { requestPhotoTakedown, rescopePhoto, restorePhoto } from "@/lib/dal/photos";
 
 // REQ-EVT-012 — the two staff-facing/member-facing mutations the gallery
 // needs that aren't the upload flow (uploads are Route Handlers, never
@@ -25,6 +25,17 @@ export async function requestPhotoTakedownAction(locale: string, sessionId: stri
 export async function restorePhotoAction(locale: string, sessionId: string, photoId: string): Promise<{ error: string | null }> {
   try {
     await restorePhoto(locale, photoId);
+    revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "unknown_error" };
+  }
+}
+
+// REQ-SES-018/DEC-121 — the scope chip, staff alone.
+export async function rescopePhotoAction(locale: string, sessionId: string, photoId: string, sessionDayId: string | null): Promise<{ error: string | null }> {
+  try {
+    await rescopePhoto(locale, { photoId, sessionDayId });
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {

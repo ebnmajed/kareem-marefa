@@ -446,6 +446,26 @@ for every writer including the migration owner and `service_role`. An RPC that w
 diagram does not draw fails its own test. Rows are born with a state and no edge, so there is no
 insert guard: `create_session()` is the only door for people (no insert grant, no insert policy).
 
+**A session's days (`0100`, `DEC-119`, `DEC-150`).** `session_days` — when, where and which meeting,
+and nothing else — is visible exactly when its session is. The subquery runs as the caller, so
+`sessions_read` decides and this policy cannot drift from it:
+
+```sql
+create policy "session_days_read" on public.session_days for select to authenticated
+  using (org_id = public.auth_org_id()
+         and exists (select 1 from public.sessions s where s.id = session_days.session_id));
+```
+
+**There is no write policy and no write grant**, as for every scheduling column since `0010`: a day is
+written only by a definer RPC, and `service_role` holds nothing on the table (invariant 7).
+★ **`sessions.starts_at` / `ends_at` / `venue_id` / the custom-venue trio are DERIVED from the days and
+stay STORED** — the first day's start, the last day's end, the first day's venue — so every policy, index,
+sort and job that reads them is unchanged. Two triggers keep the pair in step (a day write re-derives the
+session, only where a value is distinct; a write to the session's own window is carried onto its one day
+while `n ≤ 1`, unless the writer set the transaction-local `kareem.days_writer`), and a **deferred
+constraint trigger** refuses at commit any session whose stored window is not its derived one. `position`
+is derived too — the chronological rank.
+
 ### 5.3 RSVP
 
 | Table | select | insert | update | delete | Notes |
@@ -1594,6 +1614,154 @@ generated suite is the highest-value test in the product.
 | `RPC-issue_certificate.no_check_in_when_removed` | Kept from 0088: a late job for a removed check-in raises `no_check_in`. |
 | `RPC-redesign_held_certificates.held_only` | Re-pins the HELD certificates of a kind to the current design and re-enqueues each render with 11 §2.5's key; issued and revoked ones are untouched; audited; a moderator is refused. |
 | `RPC-record_certificate_document.follows_the_pin` | The certificate's document follows its pinned version, so a redesigned held certificate is not refused by the locked-region guard. |
+| ★ **wave 9 (`DEC-150`), migration `0100`** — a session's days (`ENT-session_days`, `DEC-119`): the entity, the two-way derivation of `sessions.starts_at` / `ends_at` / venue, check-in per day, content scoped to a day |
+| `POL-session_days.read_follows_session` | A member reads a day exactly when they can read its session: a published session's days are visible to the org, a draft's only to staff and its presenters; another org's never; `anon` is refused. |
+| `POL-session_days.no_direct_write` | `authenticated` holds no insert, update or delete on `session_days` (42501), and `service_role` holds nothing at all (invariant 7); every write is a definer RPC, as for every scheduling column since `0010`. `resolve_session_day()` is executable by no client role. |
+| `POL-session_days.single_day_follows_session` | A write to a session's own window or venue creates, moves or removes its one day while it has at most one — the same day id throughout; with `kareem.days_writer` on, or with several days, it does not. |
+| `POL-session_days.session_follows_days` | A day write re-derives the session's window (first start, last end), its venue (the first day's) and every day's `position` (chronological rank). ★ An equal value writes nothing — the session's row version is unchanged, so no notice, re-render or reschedule fires on a no-op. |
+| `POL-session_days.consistent_at_commit` | At commit a session with days stores its derived window and venue (`session_window_not_derived`), and a session at `published` or beyond has a day (`session_without_days`); `23514`, whatever `kareem.days_writer` says. The last day of a published session cannot be removed. |
+| `POL-session_days.no_overlap` | Two days of one session cannot overlap (`23P01`) — back to back is allowed, the range is `[start, end)` — and a day ends after it starts (`23514`). |
+| `POL-check_ins.day_derived` | `check_ins.session_day_id` and `session_window` are derived on insert — the code's day first, else `resolve_session_day()`: the day whose window to `ends_at + 2 h` holds the instant (the later-started of two), else the latest day begun, else the first — and the window is THE DAY'S. No day: `session_not_scheduled`, `23514`, as before. |
+| `POL-check_ins.one_active_per_day` | One active check-in per member per DAY (`23505`, never `23P01` — `0087`'s creation order is kept); a second day of the same session is a second row. `REQ-CHK-013`'s exclusion compares DAY windows, so a talk on Tuesday does not collide with a workshop that meets Monday and Wednesday. A day that holds attendance cannot be deleted (`23503`). |
+| `POL-content.day_of_own_session` | `materials`, `session_tasks` and `photos` may name a day only of their own session (`23503`); existing content is session-scoped (null) and adding a day re-scopes nothing; deleting a day sets the column null — the content is promoted to the session, never deleted (`DEC-121`). |
+| `POL-tasks.never_read_by_check_in` | `REQ-TSK-002`, enforced: no function names both a task table and anything of check-in, attendance or the day; no policy on a check-in table or on `session_days` names a task table; no trigger joins the two. The TypeScript half walks the check-in import graph (`tests/unit/tasks-never-read-by-check-in.test.ts`). |
+| ★ **wave 9, sync 1 (`DEC-151`), migration `0101`** — the day's check-in switch, the ceiling capped by the next day, one calendar entry per day |
+| `POL-session_days.switch_born_with_session` | A day created for a legacy writer of the session's window carries the session's `check_in_open` — a session inserted closed never has a day born open; an existing day's switch is not touched by a later write to the session's window. |
+| `RPC-check_in_ceiling.capped_by_next_day` | A day's check-in ceiling is `least(ends_at + 2 h, the next day's starts_at)`; with no next day it is `ends_at + 2 h`, exactly a one-day session's ceiling. Executable by no client role (`service_role` holds it for the worker's `rotate_codes` query). |
+| `RPC-resolve_session_day.windows_never_overlap` | With the cap, at most one day of a session holds any instant: between a 9–12 and a 13–16 day on one date, 12:30 is the morning and 13:00 and 13:30 are the afternoon. |
+| `POL-calendar_events.legacy_insert_gets_first_day` | A row inserted with no day — `main`'s `record_calendar_sync()` — is given its session's first day, so a null day only ever means «the day was deleted» or «the session has none». |
+| `POL-calendar_events.day_of_own_session` | A calendar row may name a day only of its own session (`23503`); deleting the day sets the column null and KEEPS the row with its `provider_event_id`, so the provider event can still be removed. `unique (member_id, session_day_id)` holds beside `unique (member_id, session_id)`, which leaves in the same file as the function that names it in `on conflict`. |
+| ★ **wave 9 (`DEC-151`), migration `0102`** — contract 5: what a check-in earns is decided in two functions of `scoring`'s, with `main`'s exact behaviour |
+| `RPC-attendance_recorded.definer_only` | No client role can call it; only `service_role` and the function owner (so `check_in()` and `mark_checked_in_manually()`, both definer, can). |
+| `RPC-attendance_removed.definer_only` | The same. |
+| `RPC-attendance_recorded.enqueues_award` | A recorded attendance enqueues exactly one `award_points` job, task `award_points`, key `pts:check_in:<check_in id>`, payload `{rule:'check_in', member_id, source:'check_in', source_id:<check_in id>, session_id}` — byte for byte what `check_in()` enqueues on `main`. |
+| `RPC-attendance_removed.reversal` | One compensating `reversal` row per not-yet-reversed `check_in`/`attendee_bonus` award keyed to that check-in: `-amount`, reason «أُلغي تسجيل الحضور», key `reversal:<ledger id>:v1`. A second call writes no second row. |
+| `RPC-attendance_removed.no_show_symmetry` | A removed check-in whose member holds a confirmed RSVP awards the `no_show` rule under `evaluate_no_shows`' own key; a member with no confirmed RSVP earns no such row. |
+| `RPC-attendance_hooks.terminal_row` | Either function called with a check-in id that no longer exists returns silently — the terminal-row pattern (DEC-059), never an exception into an admin's transaction. |
+| ★ **wave 9 (`DEC-152`), migration `0103`** — a SECURITY fix: the private core that mints a live check-in code was executable by `anon` since M2 (`0015` never revoked it) |
+| `RPC-_issue_check_in_code.not_public` | The private core that mints a live check-in code is executable by NO client role — `anon`, `authenticated` and `service_role` are each refused 42501; its three definer callers still work. |
+| `RPC-definer.anon_allowlist` | The SECURITY DEFINER, non-trigger functions `anon` may execute are EXACTLY the documented six; a new one fails the suite until it is either revoked or added to the list with its reason. |
+| ★ **wave 9 (`DEC-151`), migration `0104`** — `sessions.check_in_open` is the shadow of its days' switches, and only a writer of the SESSION's column reaches the days |
+| `POL-check_in_open.shadow_is_bool_or` | `sessions.check_in_open` equals `bool_or` of its days: closing the only open day closes the session's shadow, reopening any day opens it. |
+| `POL-check_in_open.reopening_one_day_opens_only_that_day` | ★ Three closed days; reopening day 2 leaves days 1 and 3 closed, and flips the session's shadow to open. The defect this file exists to prevent. |
+| `POL-check_in_open.session_write_carries_to_every_day` | A writer of the session's own column — `transition_session()`'s early completion or cancellation, or a fixture's direct `update` — closes every day of the session. |
+| `POL-check_in_open.one_day_is_identical` | At one day the pair moves together in both directions, and `set_check_in_open()` returns a session row carrying the day's value. |
+| ★ **wave 9 (`DEC-151`), migration `0105`** — contract 4: check-in moves to the day — eight RPCs, each keeping `p_session` and gaining a trailing `p_day` |
+| `RPC-check_in.day_from_code` | A live code names the day it was minted for, and only while that day is taking attendance; a code of any other day of the same session — one not yet begun, or one whose ceiling has passed — is `invalid_code`, never a disclosure that it was real. |
+| `RPC-check_in.already_checked_in_per_day` | A member checked into day 1 checking into day 2 succeeds; a second attempt on day 2 returns `already_checked_in` for day 2's row. |
+| `RPC-check_in.rate_limit_per_day` | Ten attempts against day 1 do not consume day 2's stream (REQ-SES-015: «its own rate-limit stream»); at one day every attempt of the session is that day's. |
+| `RPC-check_in.day_window` | The floor is the day's start, the ceiling `check_in_ceiling()`; after day 2's ceiling with day 3 still ahead the answer is `session_ended`, and the envelope status is the one main returns. |
+| `RPC-check_in.day_switch` | Closing day 2's switch refuses day 2 with `check_in_closed` and leaves day 3 open. |
+| `RPC-check_in.overlap_compares_days` | Three check-ins across three days of one session are all accepted (their windows are disjoint); a check-in overlapping ANOTHER session's day is refused `overlap` naming it. |
+| `RPC-ensure_check_in_code.per_day` | The host view of day 2 gets day 2's code; issuance is refused `not_open` outside that day's floor/ceiling even while day 3 is ahead. |
+| `RPC-_issue_check_in_code.not_callable` | ★ The private core is executable by no client role — a member calling it directly is refused `42501` instead of being handed a live code. |
+| `RPC-revoke_check_in_code.per_day` | Revoking on day 2 revokes day 2's code and issues day 2's replacement; day 3 has none and is unaffected. |
+| `RPC-mark_checked_in_manually.day` | An admin marks a member present on day 1 while day 3 is running; a future day is refused `not_open`; a moderator is still bound by that day's floor and ceiling. |
+| `RPC-remove_check_in.day` | Removing day 2 leaves days 1 and 3 standing; removing a member with no active check-in on that day is `not_found`. |
+| `RPC-set_check_in_open.day` | The switch moves the day's column; the audit row still names the SESSION and carries the day in its payload; the returned session row carries the recomputed shadow. |
+| ★ **wave 9 (`DEC-151`), migration `0106`** — contract 3: `schedule_session()` writes a day set, matched by `id`; a null `p_days` is `main`'s call exactly; `publish_session()` names a gap per day |
+| `RPC-schedule_session.days_null_is_today` | `p_days => null` writes the session once and nothing else: one `session.scheduled` row, one notice, and `0100`'s trigger A carries the window onto its one day. Byte-identical to `0085`. |
+| `RPC-schedule_session.days_written` | `p_days` replaces the session's day set: entries with an `id` are updated, entries without one inserted, stored days left out deleted. `position` is never written by the caller — `0100` derives it. |
+| `RPC-schedule_session.days_derive_the_session` | With `p_days`, the session's stored window is the first day's start and the last day's end and its venue is the first day's, written ONCE — `sessions_notify` fires exactly once for the whole change. |
+| `RPC-schedule_session.days_required` | A `null` `p_days` on a session that already has more than one day is refused `days_required` (23514), by name, rather than left to `0100`'s commit check. |
+| `RPC-schedule_session.day_has_attendance` | A day left out of `p_days` that holds a check-in — removed or not — is refused `day_has_attendance: <position>` (23514) before anything is written. |
+| `RPC-schedule_session.days_refusals` | `days_empty`, `days_too_many`, `days_invalid`, `day_window_invalid`, `days_overlap`, `day_repeated` (23514) and `day_not_of_session` (42501) are each raised by name, before the first write. |
+| `RPC-schedule_session.day_venue_rules` | A day names the org's venue OR the inline trio, never both and never a name without an address, and never another org's or a deactivated venue. |
+| `RPC-schedule_session.require_all_days` | `p_require_all_days` sets `sessions.require_all_days`; `null` leaves it exactly as it was, as `p_allow_walk_ins` does (DEC-141 correction B). |
+| `RPC-publish_session.missing_days` | Publishing a session with no day names `days`; a day after the first with no place names `day:<position>:venue`. A one-day session's `missing[]` is unchanged. |
+| ★ **wave 9 (`DEC-151`), migration `0107`** — contract 6: the one definition of «attended the session» for points and certificates, and the per-day reader behind it |
+| `RPC-session_attendance_complete.definer_only` | No client role can call it; only `service_role` and the function owner. |
+| `RPC-session_attendance_complete.every_day` | With `require_all_days` (the default), an active check-in on EVERY day is required: one missing day, or one removed check-in, makes it false. |
+| `RPC-session_attendance_complete.any_day` | With `require_all_days = false`, an active check-in on ANY day makes it true. |
+| `RPC-session_attendance_complete.one_day_equals_has_checked_in` | On a one-day session the predicate agrees with `has_checked_in()` for that member, in both directions and under both settings. |
+| `RPC-session_attendance_complete.no_days` | A session with no days is false under both settings — never vacuously true. |
+| `POL-session_attendance.reader` | A member reads their own per-day rows; staff and the session's presenter read any member's; another ordinary member sees every day with `attended` false and learns nothing. |
+| ★ **wave 9 (`DEC-153`), migration `0108`** — certificates follow attendance: eligibility reads contract 6's predicate in all three places, and contract 5's third hook keeps a member's certificate in step |
+| `RPC-fan_out_certificates.complete_attendance` | At completion an attendance certificate is fanned out to each member contract 6's predicate holds for — once per member, never once per check-in; a member who attended two days of three gets none; with `require_all_days = false` one day is enough. At one day: every active check-in, as before. |
+| `RPC-issue_certificate.complete_attendance` | A late job for a member whose attendance is not complete raises `no_check_in` (42501), the error a member who never came raises; the certificate's `check_in_id` is the member's latest active check-in. |
+| `RPC-attendance_certificate_sync.revokes_whichever_day` | Removing ANY day's check-in from a member holding a live attendance certificate revokes it, with the fixed phrase, whichever check-in the certificate names. |
+| `RPC-attendance_certificate_sync.issues_when_completed_late` | A member whose attendance becomes complete after the session completed gets the issue job under `cert:<session>:<member>:attendance`; not while the session is still running, not with certificates off, and not when a certificate row already exists — a revoked one included (wave 7's carry). |
+| `RPC-attendance_certificate_sync.never_fails_a_check_in` | Called from a member's own check-in it raises nothing, whatever the state of the session or of their attendance. Executable by no client role. |
+| `RPC-session_complete_attendees.staff_only` | Staff of the session's org read the members whose attendance is complete; a member is refused 42501, another org's staff read nothing. |
+| ★ **wave 9 (`DEC-151`), migration `0109`** — contract 8: one calendar entry per day, under the reservation's existing job key; the old `unique (member_id, session_id)` leaves in the same file as the function that named it |
+| `RPC-record_calendar_sync.per_day` | One row per member per DAY: running it twice for one
+| `RPC-record_calendar_sync.legacy_call_gets_first_day` | `main`'s six-argument call resolves to
+| `RPC-calendar_sync_target.days_and_orphans` | The target carries one entry per day with that
+| `RPC-record_calendar_event_removed.worker_only` | Only the worker may mark an orphaned row
+| `RPC-resync_calendars.definer_only` | No client role may fan calendar jobs out across an org. |
+| ★ **wave 9 (`DEC-151`), migration `0110`** — contract 8: reminders fire per day — an offset for day `k` only when its moment falls after day `k − 1` ended — and a key set that can shrink |
+| `RPC-schedule_session_reminders.per_day` | A confirmed seat on a three-day session holds one
+| `RPC-schedule_session_reminders.offset_after_previous_day` | An offset fires for day `k` only
+| `RPC-cancel_unlisted_reminders.sweeps` | Every pending reminder of a session that the
+| `RPC-cancel_member_reminders.every_day` | Cancelling a seat removes that member's keys for
+| `RPC-send_reminder_notification.day_scoped` | The reminder names the DAY's moment and the
+| ★ **wave 9 (`DEC-151`), migration `0111`** — contract 11: `session_days_changed()` announces a changed day set once and names the day; under `kareem.days_writer` `sessions_notify()`'s change branch stands down for it |
+| `RPC-session_days_changed.names_the_day` | Moving day 2 of a three-day session — which moves
+| `RPC-session_days_changed.once_per_transaction` | However many statements a day-aware writer
+| `RPC-session_days_changed.day_added_or_removed` | A day added to or removed from a published
+| `RPC-session_days_changed.definer_only` | No client role may notify a session's members. |
+| `POL-sessions.change_notice.days_writer_stands_down` | `sessions_notify()` does not announce a
+| ★ **wave 9 (`DEC-151`), migration `0112`** — contract 11's call site: a day-aware `schedule_session()` calls `session_days_changed()` once, after its last day write — promoted WITH `0111`, because either alone announces nothing |
+| `RPC-schedule_session.announces_the_day_set` | A day-aware save calls `session_days_changed()` exactly once, after its last day write, with the whole day set before and after — so moving day 2 of a three-day workshop, which moves no column of `sessions`, still reaches every confirmed member. |
+| `RPC-schedule_session.days_null_announces_nothing` | A `null` `p_days` does not call it: main's path announces through `sessions_notify()` as it always has. |
+| ★ **wave 9 (`DEC-151`), migration `0113`** — `REQ-SES-017`: the attendance award moves to completion for a session with several days, decided from two facts under a lock; one day is unchanged |
+| `RPC-evaluate_member_attendance.awards_once` | Complete and nothing standing awards exactly one attendance row; run again it writes nothing, whatever the epoch has become. |
+| `RPC-evaluate_member_attendance.reverses_when_incomplete` | Not complete with one standing writes exactly one compensating `reversal`, with the caller's reason. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_new_epoch` | A new active check-in appearing while an award stands writes nothing — the `require_all_days = false` double-pay. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_replay` | Removing the epoch check-in while the predicate still holds, then replaying the completion pass, writes nothing. |
+| `RPC-attendance_recorded.one_day_pays_at_check_in` | On a one-day session the hook enqueues main's job, under main's key, with main's payload. |
+| `RPC-attendance_recorded.multi_day_waits` | On a multi-day session before completion the hook enqueues nothing, whatever days have been attended. |
+| `RPC-attendance_recorded.after_completion_evaluates` | A member marked present after completion is evaluated at once, which is what pays a re-added member. |
+| `RPC-evaluate_session_attendance.one_award_per_member` | A three-day workshop attended in full pays one attendance award, not three. |
+| `RPC-evaluate_session_attendance.reverses_added_day` | A one-day award, then a second day added and missed, is reversed at completion with «لم يكتمل حضور جميع الأيام». |
+| `RPC-award_points.requires_attendance_complete` | A late `award_points('check_in', …)` for a member who did not attend every day writes nothing. |
+| `RPC-award_points.skips_when_award_standing` | The same call with an attendance award already standing for that session writes nothing. |
+| `RPC-attendance_removed.no_show_only_when_none_left` | Removing one day of three records no `no_show`; removing the last active one does. |
+| `RPC-attendance_removed.reverses_presenter_bonus_by_member` | The presenter's `attendee_bonus` for an attendee who no longer qualifies is reversed even when it is keyed to a different day's check-in. |
+| `RPC-evaluate_streaks.counts_sessions_not_check_ins` | Three check-ins on one workshop count as one session toward a streak. |
+| `RPC-evaluate_badges.counts_sessions_not_check_ins` | The same for the `check_ins_count` badge metric. |
+| `RPC-evaluate_company_points.counts_members_not_check_ins` | A company's attendance share counts distinct members, and excludes a removed check-in (named difference 2). |
+| ★ **wave 9 (`DEC-151`), migration `0114`** — `REQ-SES-017`: the member can see which day was missed — a reader that answers only about its caller |
+| `RPC-missed_attendance_days.self_only` | The function takes no member and reads the caller's own claims; a member cannot ask about anyone else, and `anon` cannot call it at all. |
+| `RPC-missed_attendance_days.multi_day_only` | A one-day session never appears, whatever the member did or did not attend. |
+| `RPC-missed_attendance_days.names_the_missed_day` | A three-day workshop attended on days one and three returns exactly day two, with its position and its start. |
+| `RPC-missed_attendance_days.silent_when_complete` | A workshop attended in full returns nothing — there is nothing to explain. |
+| ★ **wave 9 (`DEC-151`), migration `0115`** — `DEC-121`: content is scoped by where it was added — three re-scope doors, and a photo takes the day its upload moment falls in (null while the session has one day) |
+| `RPC-rescope_material.authority` | Staff, or the session's own presenter, may move a material between the session and one of its own days; anyone else is refused `42501`. A proposal's own material (no session) is refused `not_found`. |
+| `RPC-rescope_material.day_of_own_session` | A day naming another session is refused `day_not_of_session` (`23503`) before the update is attempted. |
+| `RPC-rescope_material.audited` | Every successful call writes one `material.rescoped` audit row naming the old and new `session_day_id` — REQ-MAT-006's visibility fix (0052 already audits a phase change for the same reason). |
+| `RPC-rescope_task.authority` | Staff, or the session's own presenter, may move a task; anyone else is refused `42501`. No audit row — REQ-TSK-002 makes a task's scope carry no visibility rule for one to protect. |
+| `RPC-rescope_photo.authority` | Staff alone may move a photo; a presenter who is not staff is refused `42501` — a photo has no presenter-write concept (`photos_insert_checked_in`, 03 §5.6c). No audit row. |
+| `RPC-record_photo_upload.day_from_upload_moment` | With more than one day, the photo is scoped to the day whose window contains `p_uploaded_at`, falling back to the day whose nearer edge (start or end) is closest to it. With at most one day, `session_day_id` stays null (DEC-121: a one-day session's content is session-scoped, which is what makes "adding a second day re-scopes nothing" true). |
+| `RPC-initiate_photo_processing.enqueues_uploaded_at` | The enqueued `process_photo` payload carries `uploaded_at`, the instant of THIS call — not the worker's own, later clock. |
+| ★ **wave 9 (`DEC-151`), migration `0116`** — `REQ-MAT-006` as amended: `phase` is relative to the scope — in all FIVE policies that carry the rule, table and storage alike |
+| `POL-materials.day_scoped_after_release` | A day-scoped «بعد» material is visible once ITS OWN DAY has ended, even if the session as a whole has not yet completed. |
+| `POL-materials.day_scoped_after_release_on_early_completion` | A day-scoped «بعد» material is ALSO visible once the session reaches `completed`/`archived`, whether or not its own day has ended — an early completion never leaves it hidden forever. |
+| `POL-storage.materials.day_scoped_after_release` | The storage twin releases the same object at the same two moments. |
+| `POL-material_versions.day_scoped_after_release` | The version row a released day-scoped material's `current_version_id` points at is readable the same two moments — otherwise `getViewerData()` finds a material but no version. |
+| `POL-material_pages.day_scoped_after_release` | A released day-scoped material's rendered page rows are readable the same two moments. |
+| `POL-storage.material_pages.day_scoped_after_release` | The page-image objects in the `material-pages` bucket are readable the same two moments — otherwise the viewer shows a page count with no images. |
+| ★ **wave 9, sync 3, migration `0117`** — `session_day_place()` is the worker's, not a member's — `notify` closing the same class of hole it had copied a grant into |
+| `RPC-session_day_place.definer_only` | No client role may execute it; it exists for
+| ★ **wave 9, sync 3, migration `0118`** — the public card says how many days a session has — `anon` cannot read `session_days`, so the count travels in the card's own row |
+| `POL-sessions.public_card.day_count` | The public card's row carries the number of days of the session, for `anon` and `authenticated` alike. No policy changes and `session_days` gains no grant: the count comes from the definer function, never from the table. |
+| ★ **wave 9, sync 3, migration `0119`** — `DEC-152`'s low finding closed: `session_venue_label()` revoked from members, after every caller was verified to be a definer function |
+| `RPC-session_venue_label.not_for_members` | A member calling `session_venue_label()` with another org's venue uuid is refused 42501 rather than handed its name; every notice, reminder and calendar payload still carries the venue, because their definer callers run as the owner. |
+| ★ **wave 9, sync 3, migration `0120`** — contract 5's call sites: `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` call the three hooks and decide nothing about points or certificates |
+| `RPC-check_in.calls_attendance_recorded` | A code check-in enqueues exactly one `award_points` job under `pts:check_in:<check_in id>` — through the hook, and the source of all three functions names no points primitive. |
+| `RPC-mark_checked_in_manually.calls_attendance_recorded` | A manual mark enqueues the same one job under the same key, so REQ-CHK-008's «the same rights as a code check-in» is one call site each rather than two blocks kept in step. |
+| `RPC-remove_check_in.calls_attendance_removed` | A removal writes one compensating row per unreversed award and the no-show row, through the hook; a second removal of the same check-in is refused and writes no second row. |
+| `RPC-remove_check_in.certificate_revoked_through_the_hook` | An issued attendance certificate is still revoked when a removal makes attendance incomplete — now through `attendance_certificate_sync()` rather than a `check_in_id` lookup, and still with only the fixed phrase «أُلغي تسجيل الحضور» reaching it. |
+| `RPC-check_in.certificate_synced` | A check-in on a session that is already `completed` reaches the same hook, so a member recorded after the fact becomes eligible rather than being silently skipped (named difference 3). |
+| `RPC-checkin_functions.decide_nothing` | ★ The source of `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of `points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of `REQ-TSK-002`'s three task tables. |
+| ★ **wave 9, sync 3, migration `0121`** — the presenter's attendee bonus is decided in SQL (`DEC-157`), so `main`'s OLD worker — which runs on this schema between the merge and Railway's redeploy — cannot over-pay an append-only ledger |
+| `RPC-award_points.attendee_bonus_epoch_only` | An `attendee_bonus` call naming any active check-in other than that attendee's epoch writes nothing — so `main`'s old per-check-in loop pays a three-day workshop's presenter ONE bonus per attendee, not three. |
+| `RPC-award_points.attendee_bonus_requires_complete` | An `attendee_bonus` call for a partial attendee writes nothing, even when it names that attendee's own latest day. |
+| `RPC-award_points.attendee_bonus_one_day_unchanged` | On a one-day session every call that writes a row today still writes it, with the same amount and the same key. |
+| `RPC-award_points.attendee_bonus_skips_silently` | Every refusal above returns normally — `main`'s loop must never throw part-way through a session. |
+| ★ **wave 9, sync 4, migration `0122`** — the public card is given its day windows (`DEC-157`), so `sessionPhase()` stays the one implementation and the card stops saying «جارية الآن» between two days |
+| `POL-sessions.public_card.day_windows` | The public card's row carries one `{ starts_at, ends_at }` per day, ordered, for `anon` and `authenticated` alike — enough for `sessionPhase()` and nothing more. No day id, no position, no venue; `session_days` gains no grant. |
+| `POL-sessions.public_card.one_day_unchanged` | A one-day session returns a one-element array, which `betweenDays()` has no pair to walk — the card's phase is what it has always been. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

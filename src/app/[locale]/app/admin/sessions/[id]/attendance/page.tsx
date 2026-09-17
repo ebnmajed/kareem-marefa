@@ -4,7 +4,9 @@ import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { Panel } from "@/components/ui/panel";
-import { getAttendanceReport, listUncheckedForAdminManualMark } from "@/lib/dal/checkin";
+import { getAttendanceReport, listUncheckedForAdminManualMark, type AttendanceRow, type UncheckedAttendee } from "@/lib/dal/checkin";
+import { dayShortName, namesDays } from "@/components/checkin/day-name";
+import { resolveDay } from "@/lib/session-status";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { getRatingsForAdmin } from "@/lib/dal/ratings";
 import { requireSession } from "@/lib/dal/session";
@@ -37,14 +39,38 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [report, unchecked, prefs, session, t] = await Promise.all([
+  const [report, unchecked, prefs, session, t, tDays] = await Promise.all([
     getAttendanceReport(locale, id),
     listUncheckedForAdminManualMark(locale, id),
     getOrgPrefs(locale),
     requireSession(locale),
     getTranslations("checkin.attendance"),
+    getTranslations("sessions.days"),
   ]);
   if (report === null) notFound();
+
+  // ── the days (DEC-119) ──────────────────────────────────────────────────
+  //
+  // ★ EVERY LIST BELOW IS BUILT FROM THE MATRIX `getAttendanceReport()`
+  // already returns, not from a second query per day. `report.rows[].days` is
+  // one cell per day per member, so «who is missing day 2» and «whose day 2
+  // can be removed» are two filters over data already on the page.
+  //
+  // At one day `manyDays` is false: no column, no select, no extra stat — the
+  // table wave 7 shipped, with the day travelling in a hidden field so the
+  // RPC never has to resolve it from a clock that moved since this render.
+  const manyDays = namesDays(report.days.length);
+  const markableDays = report.days.map((d) => ({ id: d.id, label: dayShortName(d, Math.max(report.days.length, 2), tDays) ?? "" }));
+  const defaultDayId = resolveDay(report.days)?.id ?? report.days[0]?.id ?? null;
+  const asAttendee = (r: AttendanceRow): UncheckedAttendee => ({ memberId: r.memberId, displayName: r.displayName });
+  const byDay = (pick: (row: AttendanceRow, dayId: string) => boolean): Record<string, UncheckedAttendee[]> =>
+    Object.fromEntries(report.days.map((d) => [d.id, report.rows.filter((r) => pick(r, d.id)).map(asAttendee)]));
+
+  // Missing THIS day, and holding a seat of some kind — the same population
+  // `listUncheckedForAdminManualMark()` offers, evaluated per day.
+  const markCandidatesByDay = byDay((r, dayId) => (r.rsvpStatus === "confirmed" || r.rsvpStatus === "waitlisted") && !r.days.find((c) => c.dayId === dayId)?.checkedIn);
+  // An ACTIVE check-in on THIS day — the only thing `remove_check_in()` can act on.
+  const removeCandidatesByDay = byDay((r, dayId) => !!r.days.find((c) => c.dayId === dayId)?.checkedIn);
 
   const isAdmin = session.role === "admin";
   const ratings = isAdmin ? await getRatingsForAdmin(locale, id) : [];
@@ -52,7 +78,7 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
   // walk-in alike — `remove_check_in()` doesn't care which, only that one
   // exists (`report.rows`' own `checkedIn` already means exactly that,
   // post the removed_at fix).
-  const removeCandidates = report.rows.filter((r) => r.checkedIn).map((r) => ({ memberId: r.memberId, displayName: r.displayName }));
+  const removeCandidates = report.rows.filter((r) => r.checkedIn).map(asAttendee);
 
   const num = (n: number) => formatNumber(n);
   const ratePct = report.attendanceRate === null ? null : Math.round(report.attendanceRate * 100);
@@ -87,11 +113,22 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
               <dd className="text-label text-fg-heading">{num(value)}</dd>
             </div>
           ))}
+          {manyDays ? (
+            <div>
+              <dt className="text-body-sm text-fg-muted">{t("completedAllDays")}</dt>
+              {/* ★ NULL until `scoring` publishes `session_attendance_complete()`
+                  (contract 6). «Attended the session» has exactly one
+                  definition and it is not this page's to guess — an em dash
+                  is honest, a re-derived number would not be. */}
+              <dd className="text-label text-fg-heading">{report.counts.completedAllDays === null ? "—" : num(report.counts.completedAllDays)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-body-sm text-fg-muted">{t("attendanceRateLabel")}</dt>
             <dd className="text-label text-fg-heading">{ratePct === null ? <span className="font-normal text-fg-muted">{t("attendanceRateEmpty")}</span> : t("attendanceRateValue", { value: num(ratePct) })}</dd>
           </div>
         </dl>
+        {manyDays ? <p className="mt-3 text-body-sm text-fg-muted">{report.requireAllDays ? t("requireAllDaysOn") : t("requireAllDaysOff")}</p> : null}
         {isAdmin ? (
           <a href={`/api/admin/exports/attendance/${id}`} className="mt-4 inline-block text-body-sm text-fg-heading underline underline-offset-4">
             {t("exportCsv")}
@@ -111,7 +148,13 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
             </Panel>
           </div>
         ) : (
-          <ManualMarkForm action={markManually.bind(null, locale as Locale, id)} unchecked={unchecked} />
+          <ManualMarkForm
+            action={markManually.bind(null, locale as Locale, id)}
+            unchecked={manyDays ? report.rows.filter((r) => (r.rsvpStatus === "confirmed" || r.rsvpStatus === "waitlisted") && r.daysAttended < report.days.length).map(asAttendee) : unchecked}
+            days={markableDays}
+            defaultDayId={defaultDayId}
+            candidatesByDay={markCandidatesByDay}
+          />
         )}
       </section>
 
@@ -129,7 +172,14 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
             {t("removeTitle")}
           </h2>
           <p className="mt-2 text-body-sm text-fg-muted">{t("removeIntro")}</p>
-          <RemoveCheckInForm action={removeCheckInAction.bind(null, locale as Locale, id)} candidates={removeCandidates} sessionTitle={report.sessionTitle} />
+          <RemoveCheckInForm
+            action={removeCheckInAction.bind(null, locale as Locale, id)}
+            candidates={removeCandidates}
+            sessionTitle={report.sessionTitle}
+            days={markableDays}
+            defaultDayId={defaultDayId}
+            candidatesByDay={removeCandidatesByDay}
+          />
         </section>
       ) : null}
 
@@ -142,7 +192,11 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
         ) : (
           // REQ-NFR-007: a scrollable region is a keyboard stop (axe scrollable-region-focusable).
           <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-labelledby="list">
-            <table className="w-full min-w-[560px] text-start text-body-sm">
+            {/* ★ One column per day above one day; below it, the two columns
+                wave 7 shipped. `min-w` grows with the day count so a
+                three-day grid still scrolls rather than crushing at 390 px —
+                the region is already a keyboard stop (REQ-NFR-007). */}
+            <table className="w-full text-start text-body-sm" style={{ minWidth: manyDays ? `${420 + report.days.length * 140}px` : "560px" }}>
               <thead>
                 <tr className="border-b border-edge text-fg-muted">
                   <th scope="col" className="py-2 pe-4 text-start font-normal">
@@ -151,12 +205,27 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
                   <th scope="col" className="py-2 pe-4 text-start font-normal">
                     {t("colStatus")}
                   </th>
-                  <th scope="col" className="py-2 pe-4 text-start font-normal">
-                    {t("colArrival")}
-                  </th>
-                  <th scope="col" className="py-2 text-start font-normal">
-                    {t("colMethod")}
-                  </th>
+                  {manyDays ? (
+                    <>
+                      {report.days.map((d, i) => (
+                        <th key={d.id} scope="col" className="py-2 pe-4 text-start font-normal">
+                          {markableDays[i].label}
+                        </th>
+                      ))}
+                      <th scope="col" className="py-2 text-start font-normal">
+                        {t("colDays")}
+                      </th>
+                    </>
+                  ) : (
+                    <>
+                      <th scope="col" className="py-2 pe-4 text-start font-normal">
+                        {t("colArrival")}
+                      </th>
+                      <th scope="col" className="py-2 text-start font-normal">
+                        {t("colMethod")}
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -184,10 +253,49 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
                         t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")
                       )}
                     </td>
-                    <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</td>
-                    <td className="py-2 text-fg-body">
-                      {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}
-                    </td>
+                    {manyDays ? (
+                      <>
+                        {r.days.map((c) => (
+                          <td key={c.dayId} className="py-2 pe-4 text-fg-body">
+                            {c.checkedIn ? (
+                              <>
+                                <span className="text-fg-heading">{t("dayPresent")}</span>
+                                {c.arrivedAt ? (
+                                  <p className="mt-0.5 text-body-sm text-fg-muted">
+                                    <bdi>{formatDateTime(c.arrivedAt, prefs.timeZone, locale)}</bdi>
+                                  </p>
+                                ) : null}
+                              </>
+                            ) : c.removed ? (
+                              <>
+                                <span>{t("dayRemoved")}</span>
+                                {c.removalReason ? (
+                                  <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: c.removalReason, bdi: (x) => <bdi>{x}</bdi> })}</p>
+                                ) : null}
+                              </>
+                            ) : (
+                              <span className="text-fg-muted">{t("dayAbsent")}</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="py-2 text-fg-body">
+                          {t("daysAttended", { value: num(r.daysAttended), total: num(report.days.length) })}
+                          {/* ★ Not derivable from the count beside it: with
+                              `require_all_days` off, «1 من 3» IS complete.
+                              This reads contract 6's predicate through
+                              `session_complete_attendees()` and re-derives
+                              nothing. */}
+                          {r.attendanceComplete ? <span className="ms-2 text-fg-heading">{t("complete")}</span> : null}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</td>
+                        <td className="py-2 text-fg-body">
+                          {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>

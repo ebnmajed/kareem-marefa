@@ -989,3 +989,1100 @@ finding below came back from the lead's own sync builds, never from a run of min
 Final gates at `70bfb21`: every case in both specs passed on both projects, C1 and C3 closed
 alongside C2/C4/C5/C6 (already closed by sync 6). **All six rows (C1–C6) are closed.** Nothing
 queued; standing by for the PR.
+
+---
+
+## Wave 9 plan — the day carries check-in (`DEC-150`, contract 4)
+
+Planning only. Nothing below is built until the lead approves. Written against `DEC-150`'s
+description of `0100`, which is **not landed yet** — every ambiguity is a numbered question at the
+end, not an assumption.
+
+The whole track in one line: **eight definer functions stop keying on the session and key on a
+day, without a single caller on `main` noticing.**
+
+---
+
+### 1 · CONTRACT 4 — published
+
+#### 1.1 The signatures, verbatim
+
+Each keeps `p_session` and gains a **trailing `p_day uuid default null`**. The old signature is
+dropped **in the same file** so PostgREST never sees two overloads (`0085`'s lesson).
+
+```sql
+public.check_in                 (p_session uuid, p_code text, p_day uuid default null)                      returns jsonb
+public.ensure_check_in_code     (p_session uuid, p_day uuid default null)                                   returns public.check_in_codes
+public._issue_check_in_code     (p_session uuid, p_day uuid default null)                                   returns public.check_in_codes
+public.rotate_check_in_code     (p_session uuid, p_day uuid default null)                                   returns public.check_in_codes
+public.revoke_check_in_code     (p_session uuid, p_day uuid default null)                                   returns public.check_in_codes
+public.mark_checked_in_manually (p_session uuid, p_member uuid, p_reason text, p_day uuid default null)      returns public.check_ins
+public.remove_check_in          (p_session uuid, p_member uuid, p_reason text, p_day uuid default null)      returns public.check_ins
+public.set_check_in_open        (p_session uuid, p_open boolean, p_day uuid default null)                    returns public.sessions
+```
+
+**Every return type is unchanged**, `set_check_in_open()`'s included. That one is not cosmetic:
+`tests/rls/checkin-window.test.ts:152` reads `check_in_open` off the returned row
+(`select * from public.set_check_in_open($1, false)`), so the function must keep returning a
+`public.sessions` row whose `check_in_open` is true of the session. §3 is how that stays true.
+
+**`has_checked_in(p_session)` is not re-created.** Its text is already «an active check-in on this
+session, any row, `removed_at is null`» — which *is* «any day» the moment rows carry one. `03` §2's
+four rights keep the definition they have. One less function to get wrong.
+
+#### 1.2 The order inside the file, which is load-bearing
+
+`rotate_check_in_code()` is `language sql`, so it records a **hard catalogue dependency** on
+`_issue_check_in_code(uuid)`. Dropping the old private core while the old wrapper still exists fails
+outright. The file therefore runs:
+
+1. `create function public._issue_check_in_code(uuid, uuid)` — the new core.
+2. `create function` the four code wrappers + the three attendance RPCs, new signatures, all calling
+   the 2-argument core.
+3. `drop function public.rotate_check_in_code(uuid);` — releases the sql-body dependency.
+4. `drop function` the other six old signatures.
+5. `drop function public._issue_check_in_code(uuid);` **last**.
+6. `revoke execute … from public, anon` then `grant execute … to authenticated` (and
+   `to service_role` for `rotate_check_in_code`) **on every new signature**.
+
+Step 6 is not optional and is the easiest thing in this file to forget: a newly created function
+defaults to `execute` for `public`, so a missing revoke hands `anon` the check-in RPC. Invariant 6 in
+its function form.
+
+#### 1.3 How a null `p_day` resolves
+
+One rule, one implementation, for every function:
+
+```sql
+v_day := coalesce(
+  p_day,                                                       -- 1. the caller said which day
+  <the code's day>,                                            -- 2. check_in() only — see below
+  public.resolve_session_day(p_session, now())                 -- 3. 0100's own rule, called not copied
+);
+```
+
+**Step 2 exists only in `check_in()`**, and it is the requirement's own words — «the code belongs to
+a day, so the member never says which»:
+
+```sql
+select c.session_day_id from public.check_in_codes c
+ where c.session_id = p_session and c.code = v_code
+   and c.revoked_at is null and now() between c.valid_from and c.valid_until
+```
+
+A wrong code matches nothing and falls through to step 3, so a refusal still reveals nothing about
+the code — `check_in()`'s ordering rule (`0084`) survives intact: the day is *chosen* early, the code
+is still *validated* last, after the window, the switch and the walk-in door.
+
+**Step 3 is `0100`'s rule and must be `0100`'s function** (question 1). Restated so the plan is
+readable on its own: the day whose window, extended to its check-in ceiling, contains `now()` — the
+**later-started** if two do; else the **latest day already begun**; else null.
+
+**A null result maps to `not_started`.** If no day has begun, the session has not begun. Past the
+last day's ceiling, step 3 returns the last day, whose ceiling has passed, so the gate says
+`session_ended` — the same two answers `main` gives, reached the same way.
+
+**An explicit `p_day` that is not a day of `p_session`** (wrong session, wrong org, deleted) is
+`not_found` / `P0002`, raised at the same point the bad-session check already raises it — before any
+write, so nothing rolls back and `DEC-043` is untouched.
+
+#### 1.4 The test that pins the resolution to `0100`'s trigger
+
+`tests/rls/checkin-days.test.ts` (new file — rule 4). Both paths are exercised **at the same
+`now()`** and must land on the same `session_day_id`:
+
+| Case | The legacy path | My path | Must agree on |
+|---|---|---|---|
+| two days on one date, 9–12 and 13–16, clock at 13:30 | a direct `insert into check_ins` with no `session_day_id` → `0100`'s `before insert` trigger fills it | `check_in(p_session, <live code>, null)` and `ensure_check_in_code(p_session, null)` | day 2 (the later-started) |
+| the same, clock at 12:30, cap ruled **on** | the trigger | both RPCs | day 1 |
+| the same, clock at 12:30, cap ruled **off** | the trigger | both RPCs | day 1 (both windows contain 12:30 only if day 2 has started — it has not) |
+| a week after the last day | the trigger | `remove_check_in(…, null)` | the last day (latest begun) |
+| before day 1 | the trigger raises / returns null | `check_in()` → `not_started` | nothing resolves |
+
+If the lead puts the resolver in `0100` as one function, this test is proving *agreement of one
+function with itself* — which is the point: it fails loudly the day someone adds a second copy.
+
+#### 1.5 The `n = 1` statement, function by function
+
+At one day, `resolve_session_day()` returns that day for every `now()` at or after its start, and the
+day's window **is** the session's stored window (contract 1). So every gate compares the same two
+instants it compares today. What that guarantees, exhaustively:
+
+| Function | Envelope statuses / error codes | Audit action, entity | Job key |
+|---|---|---|---|
+| `check_in()` | `ok` · `already_checked_in` · `presenter_cannot_check_in` · `rate_limited` · `not_started` · `session_ended` · `check_in_closed` · `reservation_required` · `invalid_code` · `overlap` (+ `conflict_session_id`); raises `not_found` `P0002` | none | `award_points`, `pts:check_in:<check_in.id>` |
+| `ensure_check_in_code()` | raises `not_found` `P0002` · `not_authorized` `42501` · `not_open` `P0001` | none | none |
+| `_issue_check_in_code()` | raises `not_found` `P0002` | none | none |
+| `rotate_check_in_code()` | inherits the core's | none | none |
+| `revoke_check_in_code()` | raises `not_found` `P0002` · `not_authorized` `42501` · `no_active_code` `P0002` | `check_in_code.revoked`, `check_in_code` | none |
+| `mark_checked_in_manually()` | raises `reason_required` `23514` · `not_authorized` `42501` · `not_found` `P0002` · `not_open` `23514` · `member_not_found` `P0002` · `presenter_cannot_check_in` `23514` · `overlapping_session:%` `23P01`; returns the existing row on a repeat | `check_in.manual`, `check_in` | `award_points`, `pts:check_in:<check_in.id>` |
+| `remove_check_in()` | raises `reason_required` `23514` · `not_found` `P0002` · `assert_fresh_admin()`'s `not_a_member` / `stale_claims` / `not_an_admin` | `check_in.removed`, `check_in` | ledger `reversal:<ledger id>:v1`, reason «أُلغي تسجيل الحضور»; `revoke_certificate(cert, 'أُلغي تسجيل الحضور')`; `award_points('no_show', member, 'no_show', rsvp.id, session)` |
+| `set_check_in_open()` | raises `not_found` `P0002` · `not_authorized` `42501` · `not_open` `P0001` · `ceiling_passed` `P0001` | `session.check_in_open_changed`, `session`, subject = **the session id** | none |
+
+Two are worth saying out loud because they are the tempting things to change and must not be:
+
+- **`set_check_in_open()`'s audit row stays on the session.** `subject_type = 'session'`,
+  `subject_id = <session id>`, action `session.check_in_open_changed`. The day goes in the `after`
+  jsonb as an extra key (`{"check_in_open": false, "session_day_id": "…"}`), which
+  `checkin-window.test.ts:196` tolerates — it reads `after.check_in_open` by name. Re-pointing the
+  subject at `session_day` would move every audit-screen filter and every `03` §8.2 row for no gain.
+- **`check_in()`'s rate-limit count stays per `(session_id, member_id)`**, not per day. Ten attempts
+  in ten minutes is a ten-minute window; nobody is legitimately attempting two days inside it, and
+  making it per day would hand a member a fresh budget per day of the workshop. The attempt row is
+  *stamped* with `session_day_id` (nullable in `0100`) for forensics. `DEC-015`'s ordering — the
+  attempt row written **before** the limit is checked, every path after it returning rather than
+  raising — is untouched.
+
+#### 1.6 Is a day's ceiling capped by the next day's start? — **my recommendation: yes**
+
+The case: a 9–12 day and a 13–16 day on one date. Day 1's uncapped ceiling is 14:00; at 13:30 both
+days' windows are live.
+
+**Recommend `least(d.ends_at + interval '2 hours', <next day by position>.starts_at)`**, as one
+function `public.check_in_ceiling(p_day uuid) returns timestamptz`, used by every gate in §1.5 and by
+`resolve_session_day()` itself. Three reasons:
+
+1. **It closes a divergence between the two ways of naming a day.** The resolver already picks day 2
+   at 13:30 ("the later-started"). Uncapped, day 1's window is reachable *only* by passing `p_day`
+   explicitly — so the same clock produces two different answers depending on which door you came
+   through. That is the shape of bug that survives review and surfaces in a room.
+2. **Attendance is evidence.** Accepting a day-1 check-in at 13:30, while day 2 is running in the
+   same room, records a person as present at a meeting that ended ninety minutes ago.
+3. **It also closes the only window in which a live code can disagree with the clock.**
+   `ensure_check_in_code()` refuses to mint past the ceiling, so with the cap no day-1 code can still
+   be inside `valid_until` once day 2 has begun. Uncapped, a code minted at 13:55 outlives day 2's
+   start. With the cap, step 2 and step 3 of §1.3 can never name different days.
+
+**The cost, stated:** a room that finished at 12:00 and is still catching stragglers at 13:05 loses
+the grace it would have had — but only because another meeting of the same workshop has started.
+The repair path is untouched: the **admin's manual mark has no ceiling at all** (`REQ-CHK-017`,
+floor-only), which is exactly the release valve `DEC-116` designed for this.
+
+**At `n = 1` the expression is provably inert** — there is no next day, `least(x, null)` is `x` — so
+this cannot move a one-day session by construction, not by care. Lead rules at sync 1; if the ruling
+is «no cap», `check_in_ceiling()` becomes `d.ends_at + interval '2 hours'` and nothing else in this
+plan changes.
+
+---
+
+### 2 · Function by function — the live text, its migration, and what changes
+
+#### `check_in()` — live text `0087_attendance_removal.sql`
+
+Third re-creation (`0015` → `0028` → `0079` → `0084` → `0087`). Line by line:
+
+| Today | Wave 9 |
+|---|---|
+| `select * into s from public.sessions where id = p_session` | unchanged — the session is still read, for `org_id`, `state`, `allow_walk_ins` |
+| — | **new**: resolve `v_day` (§1.3), then `select * into d from public.session_days where id = v_day and session_id = p_session`; a non-null `p_day` that misses raises `not_found` |
+| `is_presenter_of(p_session)` → `presenter_cannot_check_in` | unchanged — a presenter is a presenter of the session, not of a day |
+| `select … from check_ins where session_id = p_session and member_id = m.id and removed_at is null` | `where session_day_id = v_day and member_id = m.id and removed_at is null` — **«already checked in» is per day** |
+| the attempt count over `(session_id, member_id)`, 10 minutes | unchanged (§1.5) |
+| the attempt insert | **gains `session_day_id => v_day`** (nullable column, so a null day is still insertable) |
+| `if v_recent >= 10 → rate_limited` | unchanged |
+| `s.state not in ('published','in_progress','completed') … → not_started` | the **state family stays on the session** — it is a lifecycle fact, not a meeting fact |
+| `s.starts_at is null or s.ends_at is null` | `v_day is null or d.starts_at is null or d.ends_at is null` → `not_started` |
+| `now() < s.starts_at → not_started` | `now() < d.starts_at` |
+| `now() >= s.ends_at + interval '2 hours' → session_ended` | `now() >= public.check_in_ceiling(d.id)` |
+| `if not s.check_in_open → check_in_closed` | `if not d.check_in_open` — **the day's switch** |
+| the walk-in door, reading `s.allow_walk_ins` and `rsvps` | unchanged — one registration covers every day (`DEC-120`), so the door is a session fact |
+| the code lookup `where session_id = p_session and code = v_code …` | **gains `and c.session_day_id = v_day`** — a code minted for another day is not a code for this one |
+| `insert into check_ins (… session_window) values (…, tstzrange(s.starts_at, s.ends_at, '[)'))` | `session_day_id => v_day`; `session_window` is left to `0100`'s own trigger, which derives it from the day (question 2) |
+| the `exclusion_violation` handler's conflict lookup on the session's range | the **day's** range |
+| `update check_in_attempts set succeeded = true where id = (…)` | the subselect gains `and session_day_id = v_day` |
+| the `enqueue_job('award_points', …, 'pts:check_in:' \|\| ci.id)` | **verbatim until contract 5 lands** (§5) |
+
+★ **`check_ins.session_window` being the day's is load-bearing, not cosmetic.** The exclusion
+constraint is `(member_id =, session_window &&)`. If the window stayed the session's, a member's three
+check-ins across a three-day workshop would carry three *identical* ranges and the second one would
+be refused `23P01` — the feature would not work at all. `0100` deriving it from the day is what makes
+attending every day possible, and `REQ-CHK-013` «not in two rooms at once» then compares day windows,
+which is what `DEC-119` asks for.
+
+#### `ensure_check_in_code()` — live text `0084_check_in_window.sql`
+
+`not_found` / `not_authorized` unchanged (authority is the **session's**: presenter of it, or staff —
+there is no per-day role). The state family stays on the session. The floor/ceiling become `d.starts_at`
+and `check_in_ceiling(d.id)`, and a null resolution raises `not_open` (today's answer for «outside the
+window»). Ends `return public._issue_check_in_code(p_session, v_day)`. The switch still does **not**
+gate issuance — the room may see what reopening would accept (`0084`'s own reasoning, unchanged).
+
+#### `_issue_check_in_code()` — live text `0015_check_in_rpcs.sql`, never re-created since
+
+- `select * into s from public.sessions where id = p_session for update` — **keep the session lock**.
+  Two days of one session rotating concurrently is not a real scenario, and a session-level lock is
+  the one that also serialises against a day write.
+- `org_settings` read: unchanged (rotation and grace are org settings, not per day).
+- «the most recently issued non-revoked code» gains `and session_day_id = v_day`.
+- the insert gains `session_day_id => v_day`.
+- the `unique (session_id, code)` collision retry is **unchanged** — uniqueness stays per session, so
+  two days of one workshop can never share a code. Narrowing it to the day would make yesterday's
+  code re-mintable today, which is a worse property than the retry loop costs.
+- a null `v_day` raises `not_found` `P0002` (the same code path a missing session takes).
+
+#### `rotate_check_in_code()` — live text `0015`
+
+Body becomes `select public._issue_check_in_code(p_session, p_day)`. Still `language sql`, still
+`service_role` only, still no identity check. §6 is the caller.
+
+#### `revoke_check_in_code()` — live text `0015`
+
+Role set unchanged (presenter of the session, or admin/moderator). The «current code» lookup gains
+`and session_day_id = v_day`; `no_active_code` is now «no active code **for this day**», which at one
+day is the same sentence. The audit row is unchanged, subject `check_in_code`, `cur.id`. The
+replacement it issues is for the same day.
+
+#### `mark_checked_in_manually()` — live text `0087`
+
+Second re-creation (`0015` → `0086` → `0087`). Changes:
+
+- `p_day` is **passed explicitly by SCR-044** — an admin corrects Tuesday's list on Thursday, so the
+  screen always sends it. Null resolves by §1.3, which at one day is the one day.
+- the per-role window (`0086`'s ruling) becomes the **day's**: admin → `now() >= d.starts_at`, no
+  ceiling, `archived` still allowed, `cancelled` still refused; moderator → the session's state
+  family plus `d.starts_at` … `check_in_ceiling(d.id)`.
+- `member_not_found`, `presenter_cannot_check_in` unchanged (both session facts).
+- the «already marked» read and the insert key on `session_day_id`.
+- the `overlapping_session:%` conflict lookup uses the day's range.
+- the audit row and the `award_points` enqueue are verbatim until contract 5.
+
+★ Consequence worth naming: an admin marking a **future** day is refused `not_open`, because that
+day's floor has not passed. That is today's behaviour applied to the meeting rather than the session,
+and it is the right answer — you cannot record attendance at a meeting that has not happened.
+
+#### `remove_check_in()` — live text `0087`
+
+`assert_fresh_admin()`, the mandatory reason, the `for update`, the soft-delete columns and the audit
+row are all unchanged. The target lookup becomes
+`where session_day_id = v_day and member_id = p_member and org_id = admin.org_id and removed_at is null`.
+`not_found` still covers «never checked in» **and** «already removed», now per day.
+
+The three consequences (ledger reversal, certificate revocation, no-show symmetry) stay verbatim
+until contract 5, then leave the function entirely (§5).
+
+I considered a special rule for this one — «if `p_day` is null and the member has exactly one active
+check-in, remove that» — and **rejected it**: it is identical at `n = 1`, so it buys nothing, and a
+per-function resolution rule is the thing contract 4 exists to prevent.
+
+#### `set_check_in_open()` — live text `0084`
+
+- the role check, the state family and the audit row are unchanged.
+- the ceiling guard becomes `if p_open and now() >= public.check_in_ceiling(v_day)`.
+- the write moves to `update public.session_days set check_in_open = p_open where id = v_day`, still
+  guarded by `is distinct from` so a no-op writes no audit row (`checkin-window.test.ts` asserts
+  exactly two rows for a close-then-open).
+- ★ **the returned row must be re-read.** `target` was `select … for update`-ed before the write; the
+  session's shadow (§3) is updated by a trigger *after* it. Returning the stale variable would hand
+  `checkin-window.test.ts:152` the old value. `select * into target from public.sessions where id = p_session`
+  again, after the day write, is the whole fix and is easy to miss.
+
+---
+
+### 3 · The column I need, and how `sessions.check_in_open` keeps its meaning
+
+#### The request to the lead
+
+```sql
+alter table public.session_days
+  add column check_in_open boolean not null default true;
+```
+
+- type `boolean`, `not null`, **default `true`** — `DEC-116`: nobody opens check-in, it is already
+  available.
+- **backfill**: `0100` creates every day from its session, so the backfill is
+  `check_in_open => sessions.check_in_open` at creation, not a second pass. A session whose switch is
+  closed today keeps it closed on its one day. (Question 4 — it has to happen inside `0100`'s own
+  backfill or the two disagree for one migration's width.)
+- I write no `alter table`, here or anywhere.
+
+#### The shadow, and why it is not a second switch
+
+`sessions.check_in_open` becomes **a derived stored shadow of the day set**, exactly as
+`sessions.starts_at`/`ends_at`/`venue_id` are under contract 1:
+
+> `sessions.check_in_open = bool_or(d.check_in_open)` over the session's days — «attendance is still
+> being taken **somewhere** in this session».
+
+`bool_or`, not `bool_and`: a presenter closing day 1's door at 21:00 on Wednesday has not closed the
+workshop, and a session-level reader must not be told they have. At `n = 1` `bool_or` of one value is
+that value, so the shadow **is** the switch, with no special case.
+
+Two triggers of mine keep the pair in step (behaviour is mine, the table is the lead's):
+
+1. **`session_days` → `sessions`** (`after insert or update of check_in_open or delete on session_days`):
+   recompute the shadow, `update … where check_in_open is distinct from <new value>`. The
+   `is distinct from` is what stops the recursion with trigger 2 and what keeps `sessions_notify`
+   firing exactly when it fires today.
+2. **`sessions` → `session_days`** (`after update of check_in_open on sessions`,
+   `when (old.check_in_open is distinct from new.check_in_open)`): carry the value onto **every** day,
+   again `where check_in_open is distinct from`. This is the shim that makes the shadow true for
+   writers that do not know days exist — `transition_session()` (§4), and every fixture or spec that
+   does `update sessions set check_in_open = …` directly.
+
+Carrying onto **all** days rather than «only while `n ≤ 1`» is deliberate and differs from the
+foundation's window shim. The only real `n > 1` writer is `transition_session()`'s early-complete and
+cancel, where «close every day» is exactly what completing or cancelling a workshop means. A
+session-level write is a blunt instrument by construction, and it should be.
+
+**No deferred commit check.** The window and venue get one because a drift there is a wrong *fact*
+about a session; a drift in the shadow is cosmetic and self-heals on the next day write. If the lead
+wants symmetry, it is three lines and I will add it.
+
+#### What still reads the session-level flag, and why each is fine
+
+| Reader | Owner | At `n = 1` | At `n > 1` |
+|---|---|---|---|
+| `main`'s deployed `dal/checkin.ts` and `dal/sessions.ts`, between push and merge | — | exact | **unreachable**: only the new app can create a second day, so every session in that window has one |
+| `src/lib/dal/sessions.ts:666`, `components/browse/timeline-session.ts:56` → `canOfferCheckInFor()` | `sessions` | exact | the shadow is the fallback; the day's value arrives on `PhaseInput.days` (§8) |
+| `tests/rls/checkin-window.test.ts`, `checkin-early-completion.test.ts` | mine | exact | no multi-day case in either |
+| `getHostView()` / `getCheckInScreenData()` | mine | exact | re-pointed at the resolved day (§7) |
+
+---
+
+### 4 · The early-completion close (`0089`) — **a trigger of mine, and `sessions` changes nothing**
+
+`transition_session()` (`0089`) and `clock_complete_sessions()` (`0022`) are `sessions`' functions.
+Two tracks never re-create one function, so the answer is trigger 2 of §3, and it means:
+
+- **`transition_session()` is not touched.** Its existing expression already writes
+  `sessions.check_in_open = false` on early completion (`v_to = 'completed' and now() < ends_at`) and
+  on cancel. Trigger 2 carries that onto every day. `sessions.ends_at` is the **last** day's end
+  under contract 1, so «early» means «before the workshop was due to finish» — the right reading.
+  `RPC-transition_session.check_in_open_early` / `_cancel` / `_reopenable` all keep their meaning, and
+  `tests/rls/checkin-early-completion.test.ts` needs no edit.
+- **`clock_complete_sessions()` is not touched.** It truncates `check_in_codes.valid_until` for
+  sessions it moves to `completed`. Under contract 1 that happens after the **last** day's end, when
+  every earlier day's codes are long dead, so truncating them all is a no-op. `0089`'s header already
+  records that the truncation does nothing under the clock-only window; that is still true.
+
+If the lead prefers an explicit seam, the alternative is a function of mine
+(`public.close_check_in_for_session(p_session uuid)`) that `sessions` calls — one more call site in
+someone else's function, for no behaviour the trigger does not already give. I recommend the trigger.
+
+---
+
+### 5 · Contract 5's call sites — before and after
+
+**Before** (`scoring` not yet promoted) my proposed files carry `main`'s text verbatim:
+
+| Function | What it does today, kept |
+|---|---|
+| `check_in()` | `perform public.enqueue_job('award_points', jsonb_build_object('rule','check_in','member_id',m.id,'source','check_in','source_id',ci.id,'session_id',s.id), 'pts:check_in:' \|\| ci.id)` |
+| `mark_checked_in_manually()` | the identical enqueue (`0086`'s fix) |
+| `remove_check_in()` | the `points_ledger` loop over `source in ('check_in','attendee_bonus')` writing `reversal:<ledger id>:v1`; the `revoke_certificate()` loop; the `no_show` award |
+
+**After** the lead says `attendance_recorded()` / `attendance_removed()` are promoted, those blocks
+are deleted and replaced by one line each:
+
+```sql
+perform public.attendance_recorded(ci.id);      -- check_in(), mark_checked_in_manually()
+perform public.attendance_removed(target.id);   -- remove_check_in()
+```
+
+After the switch, **no check-in function names `points_ledger`, `award_points`, `enqueue_job`,
+`certificates` or `revoke_certificate` at all.** That is the test I will write for it, and it is the
+same shape as contract 10's guard.
+
+★ **One boundary I need ruled, because `scoring` writes the function and I only call it** (question
+6): does `attendance_removed(p_check_in)` subsume all three consequences, or only the ledger? My
+reading is **all three** — the reversal, the `no_show` symmetry **and** `revoke_certificate()` —
+because at `n > 1` whether a certificate should be revoked is «is
+`session_attendance_complete()` still true», which is contract 6's predicate and nobody else's to
+evaluate. Removing day 2 of a three-day workshop must revoke; removing a day from a session with
+`require_all_days = false` may not. That judgement cannot live in my function.
+
+★ **Ordering hazard, stated:** between `0100` landing and contract 5 switching, a multi-day
+session's `check_in()` would enqueue an attendance award **at the first day's check-in**, against
+`REQ-SES-017`. That is why contract 5's order is `scoring` first. **I will not ship a day-aware
+`check_in()` to the demonstrable before `attendance_recorded()` exists**, and if the sequence slips,
+the honest interim is that multi-day sessions are not yet awardable — not a guess of mine in SQL
+`scoring` owns.
+
+`0088`'s six removed-check-in hooks (`award_points`, `fan_out_certificates`, `issue_certificate`,
+`send_rating_prompt`, `evaluate_streaks`, `evaluate_badges`, `build_data_export_payload`) are
+**other tracks' functions**. They filter `removed_at is null` and none of them keys on a day. Their
+day-awareness is contract 6's, and `tests/rls/checkin-late-job-hooks.test.ts` is evidence I do not
+edit.
+
+---
+
+### 6 · `rotate_codes` — not through the nights of a three-day workshop
+
+`worker/src/tasks/rotate_codes.ts` today:
+
+```sql
+select id from public.sessions where state = 'in_progress'
+```
+
+A three-day workshop is `in_progress` from day 1's start to day 3's end (contract 1's stored shadow),
+so this mints a fresh code every rotation through two nights. The task becomes day-shaped:
+
+```sql
+select d.id as day_id, d.session_id
+  from public.session_days d
+  join public.sessions s on s.id = d.session_id
+ where s.state = 'in_progress'
+   and now() >= d.starts_at
+   and now() <  public.check_in_ceiling(d.id)
+```
+
+then `select public.rotate_check_in_code($1, $2)` per row. The log line keeps its shape and counts
+days.
+
+★ **A named behaviour difference at `n = 1`, flagged not hidden.** Today a session left `in_progress`
+past its end — a lagging or stopped clock job — keeps minting codes forever, because
+`_issue_check_in_code()` has no window gate of its own (only `ensure_check_in_code()` does). With the
+window filter it stops at the ceiling. That is a **fix**, it serves `REQ-CHK-016`'s «absolutely», and
+it is the only difference I can find in this file at one day. I have checked the suites: nothing
+asserts it. `tests/rls/checkin.test.ts:150` and `tests/rls/award-points.test.ts:161,196` call
+`rotate_check_in_code()` the **RPC** directly on live sessions and are unaffected; there is no test of
+the task's query. Recorded here so the lead can rule it back if they disagree.
+
+`worker/src/tasks/promote_waitlist.ts` needs **no change**: `rsvps` and `capacity` stay on the
+session (`DEC-120`), one registration covers every day.
+
+---
+
+### 7 · The three screens, at three days and at one
+
+**The one pattern, used on all three:** the DTO carries `dayLabel: string | null` and, where a list is
+involved, `days: […]`. **`dayLabel` is null when the session has one day**, and every piece of
+day-shaped copy keys off `dayLabel` being non-null — never off a count, never off an `isMultiDay`
+flag. That is contract 7's «renders flat at `n ≤ 1`» applied to my screens, and it makes «at one day
+it renders as it does today» a property of the data rather than of a branch someone has to remember.
+The label itself is `sessions`' formatter (contract 7) — «اليوم الثاني · الخميس» — read through
+`getTranslations("sessions")`, never re-implemented.
+
+#### SCR-016, the host view
+
+- `getHostView()` resolves the day with `checkInDay(days, now)` (contract 9) and returns
+  `dayLabel`, plus `code`, `validFrom`, `validUntil`, `checkInOpen` and `checkInCount` **for that
+  day**.
+- **No day switcher.** The host needs the code for the room they are standing in; the floor forbids
+  opening tomorrow's door and the ceiling forbids reopening yesterday's. Between two days, the screen
+  names the **next** day and shows no code — the same «not started» panel it shows today, with the
+  day named.
+- `listUncheckedConfirmedRsvps()` becomes «confirmed, with no active check-in **for this day**».
+- At one day: `dayLabel` is null, nothing renders, the DOM is today's.
+- Captures: `wave9-checkin-host-day2-open.png`, `…-day2-closed.png`, and
+  `wave9-checkin-host-one-day.png` beside `wave7-checkin-host-open.png`.
+
+#### SCR-014, the check-in screen
+
+- `getCheckInScreenData()` returns `dayLabel` for the resolved day and computes
+  `ineligibleReason` against that day.
+- The member is never asked which day — §1.3 step 2 means the code answers it. The screen **says**
+  which day it is about to record, which is the honest half of not asking.
+- The refusal after a day's ceiling while day 3 is still ahead keeps the envelope status
+  `session_ended` (contract 4) and renders a **different string** when `dayLabel` is non-null:
+  «انتهى وقت تسجيل الحضور لليوم الثاني» rather than «انتهت الجلسة». Two keys
+  (`checkin.error.session_ended`, `checkin.error.session_ended_day`), selected on `dayLabel`, both in
+  `ar/` first. Same for `not_started` and `check_in_closed`.
+- At one day: `dayLabel` null, today's three strings, today's DOM.
+- Captures: `wave9-checkin-check-in-day2.png`, `wave9-checkin-check-in-day2-ended.png`,
+  `wave9-checkin-check-in-one-day.png`.
+
+#### SCR-044, the admin attendance screen — attendance **across** days
+
+This is the screen `REQ-SES-017` reads, and the only one whose shape really changes.
+
+- `AttendanceReport` gains `days: { id, label, startsAt }[]` (always, length 1 at one day) and
+  `AttendanceRow.days: { dayId, checkedIn, arrivedAt, method, removed, removedAt, removalReason,
+  removedByName }[]` — one entry per day, in `position` order. `checkInByMember` becomes keyed
+  `(member, day)`; the active-row-wins / most-recently-removed-wins rule is unchanged, applied per
+  cell.
+- **At one day the component renders the single entry inline**, with no day header and no extra
+  column — today's table, today's `admin-attendance.spec.ts` selectors.
+- At more than one day: a per-day column, so «who attended which» is readable in one look at 390 px.
+  A three-column table at 390 px is the layout risk; the phone shape is one card per member with a
+  row of day chips, the desktop shape a table. No new primitive — `ui/card`, `ui/badge`, `ui/panel`.
+- The manual mark form and the removal form each carry a `dayId` (hidden at one day, chosen at more).
+  `remove_check_in()` is per day, so the confirm names the day.
+- The five summary counts keep today's definitions widened to «an active check-in on **any** day»,
+  which is identical at one day. I propose **one extra stat, «أكمل كل الأيام»,
+  rendered only when `days.length > 1`**, reading contract 6's `session_attendance_complete()` — a
+  read of `scoring`'s function, not a re-derivation (question 7).
+- Captures: `wave9-checkin-attendance-3days.png`, `…-manual-mark-day.png`,
+  `…-remove-confirm-day.png`, `wave9-checkin-attendance-one-day.png`.
+
+---
+
+### 8 · The matrix and `session-status.ts`
+
+`checkInIneligibleReason()` and `checkInWindowAllowed()` (`src/components/checkin/session-matrix.ts`,
+mine) key on **the day**, through contract 9's `checkInDay(days, now)`:
+
+- `session.state` (the family, cancelled, archived) and `viewer.isPresenter` stay session-level.
+- the floor, the ceiling and the switch come from the resolved day; the ceiling applies the §1.6 cap
+  from the **next** day in the same array, so the cap lives in exactly two places — one SQL function
+  and one TS function — and nowhere else.
+- when `session.days` is absent or empty the functions fall back to `session.startsAt` / `endsAt` and
+  the `checkInOpen` parameter, so **every existing caller compiles and behaves unchanged**.
+- **`canOfferCheckInFor(session, viewer, allowWalkIns, checkInOpen, now)` keeps its exact five-argument
+  shape** (`src/lib/dal/checkin.ts`). `sessions` adds `days` to the `PhaseInput` it already builds and
+  changes no call site. That is contract 4's «the event page's link is unchanged in shape», delivered
+  literally.
+- **The 42-cell matrix does not change.** `AFFORDANCE_MATRIX` is keyed on phase × relation, and
+  contract 9 adds no phase — between two days a session is `open`. `tests/unit/session-matrix.test.ts`
+  keeps every assertion.
+
+**Request to the lead (contract 9's type):** `DayWindow` needs to carry `id` and **`checkInOpen`**
+alongside `startsAt` / `endsAt`. The matrix must answer «is *this* day's door open» from the same
+array it resolved the day out of; passing the switches beside the windows as a second structure is
+the version that goes stale. Question 5.
+
+---
+
+### 9 · `REQ-TSK-002` — confirmed
+
+Nothing on this track reads a task table. Grepped, not remembered:
+
+```
+src/lib/dal/{checkin,rsvp}.ts · src/components/checkin/** ·
+src/app/[locale]/app/sessions/[id]/{check-in,host}/** ·
+src/app/[locale]/app/admin/sessions/[id]/attendance/** ·
+worker/src/tasks/{rotate_codes,promote_waitlist}.ts
+→ zero occurrences of session_tasks, task_completions, task_form_responses
+```
+
+The one thing that reads like a counterexample and is not: `AffordanceCell.tasks` in
+`session-matrix.ts` is a **boolean affordance flag** in a 42-cell table — «may this viewer be offered
+the tasks section» — it names no table and reads no row. It will still be there after this wave, and
+contract 10's guard (which tests for the three table names) passes over it. Nothing I add changes
+that: the day resolution reads `session_days`, `check_in_codes`, `check_ins`, `check_in_attempts`,
+`sessions` and `rsvps`, and no other table.
+
+---
+
+### 10 · The untouched-suite ledger — what covers what, and what I change
+
+**Rule 4 answer: I plan to change none of these.** Every one is evidence for the one-day
+demonstrable, and each existing case must pass with its assertions untouched.
+
+| Existing file | Owner | Covers |
+|---|---|---|
+| `tests/rls/checkin.test.ts` | mine | `_issue` / `ensure` / `rotate` / `revoke`; `check_in()`'s rate limit, single use, overlap, presenter; the three table policies |
+| `tests/rls/checkin-window.test.ts` | mine | `RPC-check_in.floor/.ceiling/.switch_closed/.attendance_states`; `ensure_check_in_code.floor_ceiling`; `set_check_in_open.role_set/.ceiling/.audited` |
+| `tests/rls/checkin-manual-mark.test.ts` | mine | `mark_checked_in_manually.window`, `.award_points` |
+| `tests/rls/checkin-removal.test.ts` | mine | the eight `remove_check_in` rows + `has_checked_in.excludes_removed` + `ratings.write_self_excludes_removed` |
+| `tests/rls/checkin-early-completion.test.ts` | mine | `transition_session`'s three `check_in_open` rows (§4 — untouched by construction) |
+| `tests/rls/checkin-walk-ins-publishing.test.ts` | mine | `schedule_session()`'s `p_allow_walk_ins` |
+| `tests/rls/{rsvp,priority-rsvp}.test.ts` | mine | reservations, the waitlist |
+| `tests/rls/checkin-late-job-hooks.test.ts` | mine | `0088`'s six cross-track removed-check-in hooks |
+| `tests/rls/award-points.test.ts` | `scoring` | calls `rotate_check_in_code()` + `check_in()` — **a two-argument `check_in($1,$2)` call still resolves** against the defaulted third |
+| `tests/rls/{m2-schema,isolation,tenancy}.test.ts` | lead | the tables, the sweep |
+| `tests/unit/session-matrix.test.ts` | mine | the 42 cells + the grace-window predicates |
+| `tests/unit/{checkin,sessions,admin}-removed-check-in.test.ts` | mine / `sessions` / lead | removed rows across the readers |
+| `tests/components/checkin/{attendance-outcome,remove-check-in-form,rsvp-panel}.test.tsx` | mine | the three components |
+| `tests/e2e/{checkin,checkin-gating,admin-attendance}.spec.ts` | mine | the three screens end to end, wave 7's captures |
+
+**New files only**, per rule 4: `tests/rls/checkin-days.test.ts`, `tests/unit/checkin-days.test.ts`,
+`tests/components/checkin/attendance-days.test.tsx`, `tests/e2e/wave9-checkin-days.spec.ts`,
+`tests/e2e/wave9-checkin-one-day.spec.ts` (the side-by-side capture).
+
+★ **Two ownership overlaps `DEC-150` creates, for the lead to cut** (question 8): the schedule form
+moved to `sessions` this wave, but `tests/components/checkin/schedule-form.test.tsx` and
+`tests/e2e/checkin-schedule-walk-ins.spec.ts` both sit in paths my edit list still claims and both
+test *that form*. I will not touch either; if `sessions`' rebuild breaks them, the failing assertion
+goes in my note and the lead routes it. I would rather they move to `sessions` with the screen.
+
+---
+
+### 11 · Requests to other owners
+
+| To | What | Why |
+|---|---|---|
+| lead | `session_days.check_in_open boolean not null default true`, backfilled from `sessions.check_in_open` inside `0100` | §3 — I write no `alter table` |
+| lead | `public.resolve_session_day(p_session uuid, p_at timestamptz default now()) returns uuid` defined **in `0100`** and called by its own `before insert` trigger | §1.3 — one rule, one implementation, or the trigger and the RPCs drift silently |
+| lead | `DayWindow` in `src/lib/session-status.ts` carries `id` and `checkInOpen` | §8 |
+| lead | confirm `checkInDay(days, now)`'s tie-break is **later-started**, matching `0100` | §1.3 |
+| `sessions` | `PhaseInput.days` populated on the event page and the browse card, including each day's `check_in_open`, so `canOfferCheckInFor()` keeps its five-argument shape | §8 |
+| `sessions` | the day-label formatter of contract 7, read by all three of my screens | §7 |
+| `scoring` | `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` with `main`'s exact behaviour, promoted before I switch | §5 |
+| `scoring` | `session_attendance_complete(p_session, p_member)` readable from SCR-044 | §7 |
+
+**No `ui/` primitive request.** SCR-044's day view is `ui/card`, `ui/badge` and `ui/panel` — all
+`content`'s, all already carrying what I need. I do **not** need `ui/tabs` or `ui/menu`: the host view
+has no switcher (§7) and the attendance screen shows every day at once rather than one at a time. If
+the 390 px review says otherwise I will write the request rather than reach for the file.
+
+---
+
+### 12 · Questions for the lead, numbered
+
+1. **`resolve_session_day()` in `0100`, called by me?** Or does `0100`'s trigger keep inline SQL and I
+   mirror it? I want one function; mirroring is a drift waiting to happen, and §1.4's test can only
+   prove agreement, not enforce it.
+2. **Who owns `check_ins.session_window`'s derivation after `0100`?** If `0100` re-creates
+   `check_ins_window()` to read the day (and fills `session_day_id` in the same `before insert`
+   trigger), my inserts should set `session_day_id` and leave the window alone. Confirm the trigger's
+   name is unchanged so I do not propose a second one.
+3. **Is a day's ceiling capped by the next day's start?** My recommendation is **yes**, as
+   `least(ends_at + 2 h, next.starts_at)` in one SQL function and one TS function (§1.6). Inert at
+   `n = 1`. Your ruling also settles whether the cap goes inside `resolve_session_day()`.
+4. **Does `session_days.check_in_open` get its value inside `0100`'s day creation**, rather than as a
+   separate backfill? Otherwise a closed session's one day is born open for the width of a migration.
+5. **`DayWindow` carries `checkInOpen`?** (§8.) If contract 9 wants `DayWindow` to be purely a window,
+   tell me the shape you prefer and I will read the switches from whatever `sessions` publishes.
+6. **What does `attendance_removed()` subsume?** My reading: the ledger reversal, the `no_show`
+   symmetry **and** `revoke_certificate()`, because only contract 6's predicate can say whether a
+   certificate should survive losing one day (§5). `scoring` needs the same answer.
+7. **SCR-044's summary counts at `n > 1`:** five counts widened to «any day» plus one extra
+   «أكمل كل الأيام» stat, or should `attendanceRate` itself become completeness? I recommend the
+   former — it keeps the one-day DOM byte-identical.
+8. **`tests/components/checkin/schedule-form.test.tsx` and `tests/e2e/checkin-schedule-walk-ins.spec.ts`**
+   test a form that is `sessions`' this wave but live in paths my list claims. Move them, or leave
+   them with me as evidence I do not touch? (§10.)
+9. **`rotate_codes`' named difference at `n = 1`** — a stale `in_progress` session past its ceiling
+   stops minting codes (§6). I read that as a fix serving `REQ-CHK-016`; confirm, or tell me to keep
+   minting.
+10. **Sequencing.** Contract 5 says `scoring` publishes first. If `attendance_recorded()` is not
+    promoted by the time the day-aware `check_in()` is ready, do I hold the switch and ship the
+    verbatim enqueue (multi-day awards at first check-in, against `REQ-SES-017`), or hold the whole
+    file? I recommend holding the switch **and** not putting a multi-day session through the
+    demonstrable until the two functions exist.
+
+---
+
+## C1 built — the day's check-in, against `0100` + `0101` (sync 1 applied)
+
+`supabase/proposed/checkin/01_check_in_open_shadow.sql` and `02_check_in_day.sql`, proven by
+`tests/rls/checkin-days.test.ts` — **20 cases, green**; the full RLS suite **920 passed** with every
+pre-existing check-in file untouched and green.
+
+### ★ A live security finding, fixed in `02` and reported to the lead
+
+**`public._issue_check_in_code(uuid)` has no `revoke`, so it is `execute` to `PUBLIC` — on
+production, today.** `0015`'s own comment says «No grants: only called from the two public wrappers»;
+a function's *default* is the grant it forgot. Measured on the local database, which is `main`'s
+schema plus `0100`/`0101`:
+
+```
+proname               | acl
+_issue_check_in_code  | NULL = default: EXECUTE to PUBLIC
+ensure_check_in_code  | {postgres=X/postgres,authenticated=X/postgres}
+resolve_session_day   | {postgres=X/postgres}
+check_in_ceiling      | {postgres=X/postgres,service_role=X/postgres}
+
+has_function_privilege('authenticated', 'public._issue_check_in_code(uuid)', 'execute') → true
+has_function_privilege('anon',          'public._issue_check_in_code(uuid)', 'execute') → true
+```
+
+It is `security definer`, `public` is an exposed PostgREST schema (`supabase/config.toml` `[api]`),
+and it takes a bare session id — so `POST /rest/v1/rpc/_issue_check_in_code` mints and **returns the
+live six-character code** for any session id the caller knows, bypassing `ensure_check_in_code()`'s
+`REQ-CHK-014` check («a member never reads the live code», `03` §5.4a). Session ids are not secret:
+`/s/[id]` is the public card. With `allow_walk_ins` on, that is attendance — and attendance is points
+and a certificate.
+
+`02` revokes it from `public`, `anon`, `authenticated` **and** `service_role` in the same file that
+re-creates it, and `RPC-_issue_check_in_code.not_callable` asserts `42501` for a member, a moderator,
+an admin and the worker. Every legitimate caller is a definer function running as the owner.
+**Reported to the lead rather than only fixed here**: it is live on production now, and the owner's
+push-before-merge window is the lead's to sequence.
+
+### One design point the tests forced — the code names its day, *while that day is running*
+
+My plan said `check_in()` resolves a null day from the code, full stop. The first run of
+`RPC-check_in.day_from_code` said otherwise, and the case is real rather than contrived:
+
+> A code minted a minute before day N's capped ceiling stays inside `valid_until` for a rotation
+> window **after day N+1 has begun**. Unconstrained, a member standing in day N+1's room who types
+> that leftover code is told **`session_ended`** — wrong, because the session has not ended, and a
+> disclosure `REQ-CHK-004` forbids, because only a *real* code could produce that answer.
+
+So step 2 carries a second condition — the code's day must be the day taking attendance
+(`now() >= d.starts_at and now() < check_in_ceiling(d.id)`) — and the honest answer becomes
+`invalid_code`: the code is not valid now. Under `DEC-151`'s cap at most one day holds an instant,
+so the shortcut provably agrees with the resolver; it is kept because the requirement says the code
+names the day, and because it is what keeps `check_in()` correct if the cap is ever lifted. Two
+cases pin it: a leftover live code of a past day, and a code of a day not yet begun.
+
+### Applied from sync 1 (`DEC-151`), point by point
+
+| Ruling | Where it landed |
+|---|---|
+| the shadow defect — reopening one day must not open every day | `01`, and `POL-check_in_open.reopening_one_day_opens_only_that_day` asserts `[false, true, false]` |
+| the mark is `kareem.check_in_shadow`, set and **reset one statement later**, never `pg_trigger_depth()` | `session_days_check_in_open_shadow()` |
+| `check_in_ceiling()` is the lead's, called never copied | every gate in `02`, and `rotate_codes` next |
+| `resolve_session_day()` returns the **first** day when nothing has begun | the gates still answer `not_started` from `now() < d.starts_at`; asserted |
+| the attempt limit is **per day** | `session_day_id is not distinct from v_day` on both the count and the `succeeded` update; `RPC-check_in.rate_limit_per_day` shows 11 rows on day 1 and 1 on day 2 |
+| contract 5's three hooks are not switched yet | every points, certificate and no-show line in `02` is `main`'s verbatim, each marked; `checkin/03` switches all three at once |
+| `check_ins.session_window` is `0100`'s to derive | the inserts pass `session_day_id` and **never** `session_window` |
+
+### For the lead, at promotion
+
+1. **`tests/unit/admin-audit-labels.test.ts` needs `kareem.check_in_shadow`** in its `NOT_ACTIONS`
+   set, beside `kareem.days_writer` — a custom Postgres setting must contain a dot, so the literal
+   scan reads it as an audit action. That file is the lead's.
+2. **The one-day proof can only be run at promotion.** The five existing check-in files call the RPCs
+   through the *migrations*, and `applyProposed()` lives inside one rolled-back transaction, so they
+   cannot exercise these two beforehand. The strongest approximation is in my file — «a one-day
+   session, end to end, on the day-aware functions» walks issue → check in → repeat → rate limit →
+   manual mark → removal and asserts the reversal key shape.
+3. **Two things in the shared tree that are not mine**, so they are not silently repaired: 27 `tsc`
+   errors, all in `tests/components/{materials,photos,tasks}/**` where a `sessionDayId` became
+   required on three DTOs; and `tests/rls/materials-days.test.ts` fails on
+   `session_days_no_overlap` from its own test data. Both are `content`'s, mid-change.
+
+---
+
+## C2–C4 built — the matrix, the job, the DAL and the three screens
+
+`86b538a` (the gate and `rotate_codes`), `60f48c2` (contract 5), `4325240` (the screens).
+tsc clean tree-wide · lint 0 errors · vitest **197 files / 1840 tests** · the ten check-in and
+reservation RLS files **85/85** with their assertions untouched.
+
+### The one rule, in one function
+
+`src/components/checkin/day-name.ts` — `dayName()` returns a label when the session has more than
+one day and **null** otherwise. All three screens key off it, and that is the whole of «at one day
+each renders as it does today»: not a condition repeated three times, which would drift, but a value
+that is absent. The words are contract 7's `dayLabel()`; nothing here re-spells a day, it only
+withholds one.
+
+The same shape on the DTOs: every one carries `day`, `dayCount` and `timeZone`, and the *words* stay
+out of the DAL because `dayLabel()` needs a translator and a DAL module has none.
+
+### The gate, and why the cap is never written twice
+
+`checkInIneligibleReason()` asks `checkInDay()` first. If it returns a day, `now` is inside that
+day's start-to-capped-ceiling window by construction — floor and ceiling both cleared, **no ceiling
+value read here at all**. If it returns null, the answer comes from `resolveDay()`'s own fallback:
+before the day's start it is `not_started`, otherwise the ceiling has passed and it is
+`session_ended` — which is exactly what `check_in()` gates on. So the cap lives in
+`session-status.ts` and in `public.check_in_ceiling()`, and in no third place.
+
+`canOfferCheckInFor()` keeps its exact five-argument shape, because the days ride on `PhaseInput`.
+`sessions` changed no call site.
+
+### What the three screens do
+
+| | At three days | At one |
+|---|---|---|
+| host view | the day's code, the day's switch, «أنت الآن في اليوم الثاني · الخميس»; candidates are that day's; between days «التالي: …» | no line, no change |
+| check-in | names the day; `not_started` / `session_ended` / `check_in_closed` read in that day's words | today's three strings |
+| SCR-044 | a column per day, «حضر 2 من 3», the mark and the removal each per day, «أكمل كل الأيام» | today's four columns |
+
+★ **The refusal and the label can never be about different meetings**: both come from one
+`checkInDayFor()` call. That was the point of exporting it rather than resolving twice.
+
+★ **`session_ended` is still the envelope status** when day 2's ceiling has passed and day 3 is
+ahead (contract 4 — statuses do not move). Only the sentence is the day's.
+
+### Two things held open, deliberately
+
+1. **`completedAllDays` is null** and the stat renders an em dash until `scoring` publishes
+   `session_attendance_complete()`. «Attended the session» has exactly one definition (contract 6)
+   and re-deriving it on a report screen is what that contract exists to prevent. One line to wire.
+2. **The attendance CSV's flat fields did not move.** `AttendanceRow.checkedIn` is still «an active
+   check-in on any day» and the arrival and removal fields still describe the representative
+   check-in, so `lib/dal/admin-exports.ts` — the lead's — is correct at one day and untouched. The
+   day column row L5 wants is `row.days`, already on the DTO.
+
+### `rotate_codes` — named difference 1, and what it actually buys
+
+The job now selects **days inside their own window** rather than sessions that are `in_progress`. A
+three-day workshop is `in_progress` for two nights, and the old query minted a code every rotation
+through them, for a room nobody was in. The difference at one day is the stale case: a session the
+clock job failed to complete stops minting at its ceiling instead of minting forever, because
+`_issue_check_in_code()` has no window gate of its own — only `ensure_check_in_code()` does.
+`tests/unit/checkin-rotate-codes-days.test.ts` also asserts the query contains no `interval` at all,
+so nobody can re-introduce a hand-rolled `+ 2 hours` that would miss the cap.
+
+### Findings from the tests, not from review
+
+- **A default day not in the list** would have travelled to the RPC and returned `not_found` — an
+  error an admin can neither see the cause of nor act on. Both forms now validate `defaultDayId`
+  against the days they were given. Only reachable through a stale render (a day deleted between
+  render and submit), which is precisely the case nobody would have written a case for.
+- **`already_checked_in` returns before the attempt row is written**, so a checked-in member never
+  reaches the rate limit. That is `main`'s ordering and `DEC-015`'s, and it cost one wrong
+  assertion to re-learn; the one-day end-to-end case now says so in a comment.
+
+### Ledger line requested
+
+`tests/components/checkin/remove-check-in-form.test.tsx` — `RemoveCheckInForm` gained three required
+props, so the render helper passes **one** day. Every assertion unchanged; the day select does not
+render below two. **Expectation for one day changed: no.**
+
+### Request — contract 6 is published, but not callable from SCR-044
+
+`session_attendance_complete(p_session, p_member)` landed in `0107`, and its grants are
+`revoke … from public, anon, authenticated` / `grant … to service_role`. That is **right**: it is
+`security definer` over a bare `(session, member)` pair, so granting it to `authenticated` would let
+any member probe whether any other member attended anything. Its sibling `session_attendance()` is
+granted to `authenticated`, but it answers **one member at a time** — the right shape for
+`me/points`, and 30 round trips for a report of 30 attendees.
+
+So `AttendanceReport.counts.completedAllDays` stays **null** and the stat renders an em dash. It is
+not «not published yet» any more; it is «published and correctly out of reach».
+
+**The ask, to `scoring` through the lead:** a staff-scoped aggregate over one session —
+
+```sql
+public.session_attendance_summary(p_session uuid) returns table (completed int, total_days int)
+```
+
+`security definer`, `grant execute to authenticated`, gated inside on `public.is_staff()` (SCR-044
+is already staff-only, and `getAttendanceReport()` returns null for anyone else), computed with
+`session_attendance_complete()` so there is still **one** definition. One call per page, and my
+change is one line.
+
+★ **I am not re-deriving it in TypeScript**, and the reason is concrete rather than procedural:
+`REQ-SES-017` calls full attendance «a per-session setting an admin may relax», so the predicate is
+the part of this feature most likely to grow a clause. A second copy on a report screen would then
+disagree with the points the member actually received, and the screen is exactly where someone would
+go to find out why.
+
+### Correction — the request above is WITHDRAWN, and `0108` already had it
+
+`session_complete_attendees(p_session) returns setof uuid` (`0108`) is the staff-gated aggregate the
+section above asks for, and it is better than what I proposed: it returns the member **ids**, so
+SCR-044 marks completeness per row as well as counting it, still in one call and still with one
+definition. `getAttendanceReport()` calls it; `AttendanceRow.attendanceComplete` and
+`counts.completedAllDays` come from it and from nowhere else.
+
+★ Why the per-row marker is not redundant beside «2 من 3»: with `require_all_days` **off**,
+«1 من 3» **is** complete. The count cannot say that and the predicate can. This is exactly the drift
+contract 6 exists to prevent, met on the first screen that needed it.
+
+The fallback is an em dash, not a zero, when the call fails — «nobody completed» and «I could not
+ask» are different sentences, and a report that confuses them is worse than one that admits it.
+
+## Contract 5 finished — the certificate follows the predicate (`dd607c2`)
+
+All three functions re-created **once**, with the third hook in the same file rather than a second
+pass.
+
+★ **What actually changed, and it is not the `perform` line.** `remove_check_in()` used to find the
+certificate `where check_in_id = target.id`. That lookup was wrong the moment a session could have
+more than one day: **a certificate names the session, not a day**, so removing day 1 must be able to
+revoke one issued off day 3 — and `check_in_id` cannot reach it. `attendance_certificate_sync()`
+finds it by session, member and kind. The wave did not add a feature here; it exposed a lookup that
+had been load-bearing and narrow.
+
+The other direction closes too (named difference 3): `check_in()` and `mark_checked_in_manually()`
+call the hook as well, so a member marked present the morning after a completed session becomes
+eligible at that moment instead of being silently skipped.
+
+**Order, and why it is written down:** the soft-delete runs **first**, before either hook. Both read
+`removed_at is null`, so a hook called before the update would reverse nothing and revoke nothing —
+a silent no-op, the worst shape this class of bug can take.
+
+**The assertion the whole contract was for is now true**
+(`RPC-checkin_functions.decide_nothing`): the source of `check_in()`,
+`mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of
+`points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of
+`REQ-TSK-002`'s three task tables — and each names the hook it defers to. It is asserted over
+`pg_get_functiondef`, so it holds against whatever those functions become, not against what they say
+today.
+
+## The two e2e specs — `f103c69`, written and committed unrun
+
+The lead runs them in the verification build; the main checkout's `.next` predates the wave.
+
+**`wave9-checkin-days.spec.ts`** builds its own org, members and days — no shared fixture, on the
+lead's ruling, and it matters more than it reads: since `0100` a check-in carries a **real** day
+window, so two specs sharing a member would collide on
+`check_ins_member_id_session_window_excl` for a reason that has nothing to do with either test.
+
+The day placement is the design, not an arbitrary arrangement:
+
+```
+day 1   now − 30 h … now − 28 h    over, ceiling long past
+day 2   now −  1 h … now +  1 h    RUNNING
+day 3   now + 22 h … now + 24 h    ahead — which is what makes «انتهت الجلسة»
+                                   a visibly wrong thing to say about day 2
+```
+
+It asserts through the database as well as the screen: the code the host view shows has day 2's
+`session_day_id`; closing leaves days 1 and 3 open while `sessions.check_in_open` stays **true** as
+the `bool_or` shadow; the removal of day 1 leaves day 3 standing.
+
+**`wave9-checkin-one-day.spec.ts` asserts ABSENCE**, which is the half a capture cannot prove and
+the half no existing spec can: `checkin.spec.ts` and `admin-attendance.spec.ts` prove the one-day
+screens still **work** — they pass unmodified, which is the real evidence — but they can never prove
+that nothing NEW appeared, because they were written before days existed. So: no day label on either
+member screen, no day column, no day select, no completeness stat, and no «اليوم الأول/الثاني/…»
+anywhere in the body.
+
+### Two defects found while writing them, both in the specs
+
+1. **The attendance case proved nothing.** It leaned on the case above it for a member row, and
+   inserted **no reservations at all** — without a confirmed RSVP neither member is a manual-mark
+   candidate, so the form would have rendered its empty state and the case would have gone green
+   having exercised none of the day controls. It now provisions both members itself, inserts the
+   reservations, and guards its check-in inserts because the per-day unique index is partial.
+2. **Both day selects carry `name="dayId"` under the same label**, so an unscoped `getByLabel("اليوم")`
+   is a strict-mode violation waiting for the first person who reorders the page. Scoped by section
+   (`section[aria-labelledby="manual"]` / `"remove"`).
+
+### One correctness fix in the DAL, from the same reading
+
+`getCheckInScreenData()` resolved the day and evaluated the gate with **two** defaulted `new Date()`
+calls. Microseconds apart, they can straddle a day boundary — and the screen would then name one
+meeting and refuse about another, which is the exact class of bug `DEC-141`'s grace-window fix
+existed to remove. One instant now, passed to both.
+
+### The desktop failure was `DEC-145`, and the failure message proves it
+
+`wave9-checkin-days.spec.ts:286` went red on the desktop project only, with a strict-mode violation:
+the summary line resolved to **two** `<p>`. The page renders it **once**
+(`attendance/page.tsx:131`, one `manyDays ?` branch, one string in `checkin.json`, no responsive
+twin), so the second copy is not a second render.
+
+**What settles it is what PASSED in the same run.** `getByRole("heading", { level: 1 })` resolved to
+exactly one element, and so did all three `getByRole("columnheader", …)`. If a whole segment were
+duplicated in the accessibility tree those would have been strict violations too. They were not —
+and Playwright printed a role-anchored «aka» for the first copy and could print none for the second.
+`getByRole` skips what is not in the accessibility tree; `getByText` does not. **So the extra copy is
+hidden: `DEC-145`'s orphaned streaming segment**, carried to M13, and not this track's to fix.
+
+The fix is one line in the spec: anchor the assertion to `region «ملخّص الحضور»`. That is the
+stronger assertion anyway — «the summary section says what completeness means» is what the case is
+about, not «this sentence exists somewhere in the document».
+
+★ **The general lesson, worth more than the line:** on this app, an **absence** assertion written
+with `getByText` is the fragile shape, because a hidden orphan still matches it. Role-anchored
+locators are immune by construction. `wave9-checkin-one-day.spec.ts` leans on exactly that kind of
+absence, and survives only because the strings it forbids are never rendered on a one-day session at
+all — worth remembering if that file ever grows a case about a string the page does render.
+
+### `rsvp.ts` read the phase without the days — the two-readers defect
+
+`getRsvpPanelData()` built its `PhaseInput` from the session's stored window alone. `sessionPhase()`
+only reads the hours **between** two days as `open` when it is handed the day set, so a three-day
+workshop was `live` from day 1's start to day 3's end.
+
+★ **The consequence is not a wrong word on a screen; it is two readers of ONE screen disagreeing.**
+The event page computes its phase **with** days. On the night between day 1 and day 2 the page would
+say `open` and the panel `live`, in the same render — and `rsvp` and `cancel` are exactly the
+affordances the matrix withdraws at `live`. A confirmed member would have been shown a session they
+could neither join nor leave, with nothing on the page explaining why.
+
+Fixed by reading `listSessionDays()` in the existing `Promise.all` and passing `days`. It is not a
+second round trip: the function is `cache()`-wrapped and the page already reads it.
+
+`tests/unit/checkin-rsvp-days.test.ts` pins all three directions — the panel agrees with
+`sessionPhase({ …, days })`, it is **not** the day-less answer (which the test computes and asserts
+is `live`), and at one day the two are identical because no «between» exists. Unmodified and green
+beside it: `session-status`, `session-matrix`, `checkin-removed-check-in`,
+`sessions-removed-check-in`, `tests/components/checkin/**`, and the RLS files `rsvp`,
+`priority-rsvp`, `checkin`, `checkin-window`, `checkin-removal`.
+
+★ **Worth stating because it cost a red run:** the first version of that test seeded `session_days`
+rows with no `session_id`, so `listSessionDays()`'s own `eq` dropped them — which reads exactly like
+«this session has no days» and would have let the file pass while proving nothing. A stub row that
+omits the column the reader filters on is the quietest way to write a test that tests nothing.
+
+### The captures were 412 px, not 390
+
+Ten captures came out 1082 px wide: the phone project is `devices["Pixel 7"]`, 412 × 915 at DPR
+2.625. The row's rule is **390 × 844**, which at that DPR is the 1024 px every other track's files
+are.
+
+Set in a `beforeEach` **guarded on the project name**, not with a file-level `test.use()`. These two
+files run on both projects and their desktop cases are real — the `DEC-145` duplicate appears only
+there — so a file-level `use` would shrink desktop to a phone and quietly delete that coverage. In
+`beforeEach` rather than inside `shoot()` so every assertion runs at the width the capture was taken
+at, which is the whole point of reviewing one.
+
+### `manual-mark-form.tsx` leaves the ui-lint allowlist entirely
+
+CI's design-system gate went red because the day select I added was a **third** raw control in a
+file the allowlist permitted **two** of — and the allowlist may only shrink. Rather than the minimum
+(the new control on the system, the two old ones left), all three moved: the day and member selects
+onto `ui/field` + `ui/select`, the reason onto `ui/textarea`. **`npm run ui-lint` now reports zero
+violations for this file**, so its entry —
+`files/src/app/[locale]/app/admin/sessions/[id]/attendance/manual-mark-form.tsx: { field: 2,
+class-string: 2 }` — can be deleted. That file is the lead's to regenerate.
+
+★ **`Field` is NOT marked `required` on any of the three, and that is a decision rather than an
+oversight.** The marker «مطلوب» becomes part of the control's accessible name, and this form's
+labels are asserted verbatim — `getByLabelText("السبب")`, `getByLabelText("اليوم")`, both exact. The
+markup moves onto the system; the copy does not move at all. `aria-required` still reaches the
+textarea because a control spreads its own props **after** the context's, so an explicit value wins.
+
+★ **The `key` on the member select stays, for a reason `ui/select` cannot know.** The primitive
+already keeps an uncontrolled choice through React's post-submission reset — that is what its own
+header is about. The day in this key is a different problem: switching days replaces the option list
+entirely, and a selection made for Tuesday must not survive into Wednesday.
+
+`remove-check-in-form.tsx`'s day select was already on `Field`/`Select`, which is why ui-lint never
+flagged it; confirmed rather than assumed. The three remaining violations in the run are `content`'s
+rescope chips.
+
+### Scoping to `#main` — the rule that ends the class, not the symptom
+
+Two rounds were spent anchoring one assertion at a time against `DEC-145`'s orphaned streaming
+segment: a hidden second copy of the rendered markup under `body > div#S:…`, desktop only.
+`getByRole` skips it — it is not in the accessibility tree — but `page.locator()` and
+`page.getByText()` do not, so each CSS or text locator taken from `page` failed strict mode in turn.
+Fixing one left the next.
+
+`DEC-145` already states the rule: **locators under `/app` scope to `#main`.** Both wave-9 specs now
+take every page-level locator from `const main = page.locator("#main")`. Exactly one locator stays
+on `page` — the removal's confirm dialog, which Radix portals **outside** the landmark, so a
+scoped locator would find nothing.
+
+★ **It is also the more honest assertion**, which is the part worth keeping. The one-day spec's
+central claim is an absence — «no day word appears» — and `body` includes a hidden orphan the member
+never reads. Scoped to `#main`, the claim is «not in the page's own content», which is what the case
+actually means and what a reviewer opening the capture would check.
+
+The general lesson for this repo's e2e: **under `/app`, a locator taken from `page` is a latent
+strict-mode failure**, and the shape that hides it longest is a role locator — it passes while the
+CSS locator three lines below it fails, which is exactly how the first round read as «only this one
+line is wrong».
+
+---
+
+# ★ CLOSING — what is done, and what is carried
+
+**Nothing of this track is running and nothing is uncommitted** as of the freeze. Last commit
+`18e67a8`. No RLS or e2e run started from here after it.
+
+## Done, and where it lives
+
+| | Where |
+|---|---|
+| **Contract 4** — the eight RPCs keyed on the day, old signatures dropped in the same file, a null day resolved through `0100`'s own resolver | `0104`, `0105` (promoted) |
+| **The switch's shadow** — `sessions.check_in_open` = `bool_or` of its days, two triggers, the mark reset one statement later | `0104` |
+| **Contract 5** — all three hooks; the three functions decide nothing about points or certificates, asserted over `pg_get_functiondef` | `0120` |
+| **The gate and the job** — `checkInIneligibleReason()` on the day through `resolveDay()`; `rotate_codes` on days inside their window | `session-matrix.ts`, `worker/src/tasks/rotate_codes.ts` |
+| **The DAL** — the day on every DTO, the day's code, switch, count and attendance matrix; `completedAllDays` through `session_complete_attendees()` | `lib/dal/checkin.ts` |
+| **The three screens** — one rule (`day-name.ts`) decides whether a day is named; three refusals gain a day-named twin | the three routes, `messages/*/checkin.json` |
+| **The RSVP panel's phase** — reads the day set, so it and the event page cannot disagree | `lib/dal/rsvp.ts` |
+| **The manual-mark form onto the system** — all three controls; the file left the ui-lint allowlist | `manual-mark-form.tsx`, allowlist shrunk at `15d8908` |
+| **Tests** — `checkin-days`, `checkin-contract-5` (RLS); `checkin-day-window`, `checkin-rotate-codes-days`, `checkin-rsvp-days` (unit); `attendance-days` (component); `wave9-checkin-days`, `wave9-checkin-one-day` (e2e) | all new files |
+| **Captures** — ten at 390 × 844, opened and accepted beside their one-day twins | `.qa-shots/rtl/wave9-checkin-*` |
+
+**Every pre-existing check-in and reservation suite passes with its assertions untouched.** The one
+ledger line is `remove-check-in-form.test.tsx`, which gained three props and no changed expectation.
+
+## Carried — each with an owner, none blocking
+
+1. **`DEC-145`'s orphaned streaming segment** — *M13*. Desktop only, a hidden second copy of the
+   rendered markup. Both wave-9 specs work around it by scoping to `#main`, which is `DEC-145`'s own
+   rule; the artefact itself is untouched. ★ The general hazard, worth more than the workaround:
+   under `/app`, **a locator taken from `page` rather than `#main` is a latent strict-mode failure**,
+   and a role locator hides it — it passes while the CSS locator below it fails, which is why this
+   read as three separate one-line problems before it read as one.
+2. **The attendance CSV's day column** (`REQ-ADM-017`, row L5) — *the lead, as `console`'s custodian*.
+   Nothing is needed from this track: `AttendanceRow.days` is one cell per day on the DTO already,
+   and the flat fields it reads today did not move.
+3. **The «مطلوب» marker on the manual-mark form** — *the lead's call*. `Field` is deliberately not
+   marked `required` on its three controls, because the marker joins the accessible name and this
+   form's labels are asserted verbatim. Adding it is one word plus two test updates; I did not make
+   that copy change under a markup refactor.
+4. **`completedAllDays` falls back to an em dash** when `session_complete_attendees()` errors, rather
+   than to a zero — deliberate, and stated here so nobody "fixes" it into a number: «nobody
+   completed» and «I could not ask» are different sentences on a report.
+
+## What the captures do not prove
+
+They are ten screens at one instant. **The three-day workshop driven end to end on the real worker is
+the lead's demonstrable**, not this track's — my specs drive the database directly and move a day
+with an owner `update` to reach a ceiling. What they do prove is the pair the wave is measured on:
+each surface at three days, and the same surface at one carrying none of it.

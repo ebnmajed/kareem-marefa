@@ -4,19 +4,24 @@ import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { TaskSummary } from "@/lib/dal/tasks";
-import { submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
+import { rescopeTaskAction, submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
+import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 
 interface TaskItemProps {
   locale: string;
   sessionId: string;
   task: TaskSummary;
+  /** REQ-SES-018/DEC-121 — present only at `days.length > 1` AND for a manager (`panel.tsx`
+   *  decides both); a plain member or a one-day session gets no chip and this stays undefined,
+   *  which is what keeps this component's markup at `n <= 1` identical to before T2. */
+  scope?: { currentLabel: string; options: RescopeOption[] } | null;
 }
 
 /** REQ-TSK-001: one affordance per kind — a link for `read_material`, a form for `form`, a
  *  checkbox for `checklist`, a link + checkbox for `external`. REQ-TSK-004: completion is
  *  self-declared for checklist/external/read_material (a plain toggle); a `form` task is marked
  *  complete by submitting it, never by this toggle (submitTaskFormResponse writes both rows). */
-export function TaskItem({ locale, sessionId, task }: TaskItemProps) {
+export function TaskItem({ locale, sessionId, task, scope }: TaskItemProps) {
   const t = useTranslations("tasks");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +59,19 @@ export function TaskItem({ locale, sessionId, task }: TaskItemProps) {
         </div>
         {task.completed ? <span className="text-body-sm text-fg-heading">{t("list.completedBadge")}</span> : null}
       </div>
+
+      {/* The group heading already says which day/scope this card is under — only a manager
+          gets the chip that can move it. */}
+      {scope ? (
+        <RescopeChip
+          currentLabel={scope.currentLabel}
+          options={scope.options}
+          triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+          failedLabel={t("list.rescope.failed")}
+          rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
+          className="mt-2"
+        />
+      ) : null}
 
       {task.kind === "read_material" && task.materialId ? (
         <Link href={`/${locale}/app/sessions/${sessionId}/materials/${task.materialId}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">

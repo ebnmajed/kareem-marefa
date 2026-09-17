@@ -3,6 +3,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listMaterials } from "@/lib/dal/materials";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Pre-session tasks — REQ-TSK-001 … REQ-TSK-005, 02 §4.15, 03 §5.5b/§5.6b.
 //
@@ -36,6 +38,10 @@ export interface TaskSummary {
   completed: boolean;
   /** Present only for `kind = 'form'` and only this viewer's own prior answer, if any. */
   myFormResponse: Record<string, string> | null;
+  /** REQ-SES-018/DEC-121: absent or null is the whole session — both read the same way
+   *  (`item.sessionDayId ?? null`); OPTIONAL, not required, so an existing fixture literal that
+   *  predates this field still type-checks without editing a file rule 4 asks to stay untouched. */
+  sessionDayId?: string | null;
 }
 
 export interface TasksPageData {
@@ -44,6 +50,13 @@ export interface TasksPageData {
   canManage: boolean;
   /** For the `canManage` create-task form's `read_material` picker only — {id, title} pairs. */
   materials: { id: string; title: string }[];
+  /** Contract 3 — every day of the session, in order; `[]`/absent at one day or none scheduled.
+   *  OPTIONAL, not required — same reasoning as `TaskSummary.sessionDayId` (rule 4): an existing
+   *  test fixture that predates T2 has no opinion about days, and "absent" reads as "one day". */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's — `dayLabel()`'s weekday reads the room's clock.
+   *  OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 function toFormSchema(raw: unknown): FormField[] | null {
@@ -62,13 +75,19 @@ function toFormSchema(raw: unknown): FormField[] | null {
  *  ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page gates the tasks
  *  `<section>` on `tasksSummary()` (below), which needs this same read. */
 export const getTasksPageData = cache(async (locale: string, sessionId: string): Promise<TasksPageData> => {
-  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [] };
+  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [], days: [], timeZone: "Asia/Riyadh" };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: taskRows, error }, { data: presenterRow }, materialList] = await Promise.all([
-    supabase.from("session_tasks").select("id, kind, title, description, material_id, form_schema, external_url, sort_order").eq("session_id", sessionId).order("sort_order", { ascending: true }),
+  const [{ data: taskRows, error }, { data: presenterRow }, materialList, days, heading] = await Promise.all([
+    supabase
+      .from("session_tasks")
+      .select("id, kind, title, description, material_id, form_schema, external_url, sort_order, session_day_id")
+      .eq("session_id", sessionId)
+      .order("sort_order", { ascending: true }),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     listMaterials(locale, sessionId),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   if (error) throw new Error(`session_tasks: ${error.message}`);
 
@@ -95,18 +114,23 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
     sortOrder: t.sort_order as number,
     completed: completedTaskIds.has(t.id as string),
     myFormResponse: responseByTask.get(t.id as string) ?? null,
+    sessionDayId: (t.session_day_id as string | null) ?? null,
   }));
 
   return {
     tasks,
     canManage: session.role === "admin" || !!presenterRow,
     materials: materialList.map((m) => ({ id: m.id, title: m.title })),
+    days,
+    timeZone: heading?.timeZone ?? "Asia/Riyadh",
   };
 });
 
 const createTaskInput = z
   .object({
     sessionId: z.uuid(),
+    // REQ-SES-018/DEC-121: sent by the group's own «أضف» the member pressed, never a field.
+    sessionDayId: z.uuid().optional(),
     kind: taskKindSchema,
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(2000).optional(),
@@ -136,6 +160,7 @@ export async function createTask(locale: string, input: CreateTaskInput): Promis
     .insert({
       org_id: session.orgId,
       session_id: parsed.sessionId,
+      session_day_id: parsed.sessionDayId ?? null,
       kind: parsed.kind,
       title: parsed.title,
       description: parsed.description ?? null,
@@ -152,6 +177,30 @@ export async function createTask(locale: string, input: CreateTaskInput): Promis
 function mapTaskError(error: { code?: string; message: string }): string {
   if (error.code === "42501") return "not_authorized";
   return `session_tasks: ${error.message}`;
+}
+
+const rescopeTaskInput = z.object({ taskId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — one tap on the item's chip. `session_day_id` is not in
+ *  `session_tasks_update_presenter`'s column grant on purpose: staff (admin OR moderator) may
+ *  rescope, which is wider than that policy's own reach (`is_presenter_of() or is_org_admin()`),
+ *  so a dedicated RPC keeps that authority from leaking onto `title`/`form_schema`/etc. too.
+ *  `rescope_task()` (proposed/content/0001) re-derives authority itself. No audit row — unlike a
+ *  material's rescope (REQ-MAT-006's visibility fix), a task's scope carries no visibility change
+ *  for REQ-TSK-002 to protect. */
+export async function rescopeTask(locale: string, input: z.infer<typeof rescopeTaskInput>): Promise<boolean> {
+  const parsed = rescopeTaskInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_task", { p_task_id: parsed.taskId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }
 
 const toggleInput = z.object({ taskId: z.uuid(), completed: z.boolean() });

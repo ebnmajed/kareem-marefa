@@ -23,8 +23,8 @@
 // ★ RLS and the RPCs remain authoritative (REQ-NFR-001). A cell here is a
 // courtesy; the database refuses the write regardless.
 
-import type { PhaseInput, SessionPhase, SessionState, ViewerInput, ViewerRelation } from "@/lib/session-status";
-import { canGrantOn, parseInstant, scheduledEnd, sessionPhase } from "@/lib/session-status";
+import type { DayWindow, PhaseInput, SessionPhase, SessionState, ViewerInput, ViewerRelation } from "@/lib/session-status";
+import { canGrantOn, checkInDay, parseInstant, resolveDay, scheduledEnd, sessionPhase } from "@/lib/session-status";
 
 /** «قبل» · «أثناء» · «بعد» · مواد الجلسة الخاصة بمقدِّم أو مشرف قبل النشر. */
 export type MaterialsWindow = "none" | "pre" | "during" | "after" | "own";
@@ -210,6 +210,23 @@ export const CHECK_IN_ATTENDANCE_STATES: readonly SessionState[] = ["published",
 
 const TWO_HOURS_MS = 2 * 60 * 60_000;
 
+/**
+ * The day a check-in on this session is about, right now — `resolve_session_day()`'s
+ * three rules through contract 9's `resolveDay()`: the day taking attendance;
+ * else the latest day already begun; else the first. Null exactly when the
+ * caller passed no days, which is what a pre-wave-9 caller and a session with
+ * no schedule both look like.
+ *
+ * ★ This is what the three screens name — «اليوم الثاني» — and what
+ * `checkInIneligibleReason()` judges, so the screen's label and its refusal can
+ * never be about different days. The cap lives in `session-status.ts` alone
+ * (`checkInCeiling()`, the twin of `public.check_in_ceiling()`); nothing here
+ * recomputes it.
+ */
+export function checkInDayFor(session: PhaseInput, now: Date = new Date()): DayWindow | null {
+  return resolveDay(session.days, now);
+}
+
 /** Every reason the check-in screen or link can be refused — mirrors
  *  `check_in()`'s own envelope statuses one-for-one, plus the two states
  *  (`not_published`, `cancelled`) that mean there's no code to fail on yet. */
@@ -239,12 +256,37 @@ export function checkInIneligibleReason(session: PhaseInput, viewer: ViewerInput
     return session.state === "archived" ? "session_ended" : "not_published";
   }
 
-  const start = parseInstant(session.startsAt);
-  const end = scheduledEnd(session, start);
-  if (!start || !end) return "not_published"; // defensive; unreachable for these three states (0010's check constraint).
-  if (now.getTime() < start.getTime()) return "not_started"; // the floor.
-  if (now.getTime() >= end.getTime() + TWO_HOURS_MS) return "session_ended"; // the ceiling, REQ-CHK-016.
-  if (!checkInOpen) return "check_in_closed"; // the switch, REQ-CHK-015.
+  // ── the window: the DAY's, when the caller passed days ──────────────────
+  //
+  // ★ Not a branch on `n`. `checkInDayFor()` returns null only when the caller
+  // passed no days at all — every caller that existed before wave 9 — and that
+  // caller is asking about a session whose own window IS its one day's. With
+  // days, one day and three take the identical path.
+  const day = checkInDayFor(session, now);
+  if (day) {
+    // `checkInDay()` applies the capped ceiling itself (DEC-151), so a day it
+    // returns is one this instant is inside — floor and ceiling both cleared,
+    // with no second copy of the cap anywhere.
+    if (!checkInDay(session.days, now)) {
+      // No day is taking attendance. `day` is then `resolve_session_day()`'s
+      // own fallback — the latest day begun, else the first — exactly what
+      // `check_in()` gates on, so the two answer alike: before it, the floor;
+      // otherwise its ceiling has passed.
+      const dayStart = parseInstant(day.startsAt);
+      return dayStart && now.getTime() < dayStart.getTime() ? "not_started" : "session_ended";
+    }
+    // The day's own switch (DEC-116 per day). A caller that did not read it
+    // falls back to `sessions.check_in_open`, which is the `bool_or` shadow of
+    // the days and is exactly the day's value at one day (DEC-150 contract 2).
+    if (!(day.checkInOpen ?? checkInOpen)) return "check_in_closed";
+  } else {
+    const start = parseInstant(session.startsAt);
+    const end = scheduledEnd(session, start);
+    if (!start || !end) return "not_published"; // defensive; unreachable for these three states (0010's check constraint).
+    if (now.getTime() < start.getTime()) return "not_started"; // the floor.
+    if (now.getTime() >= end.getTime() + TWO_HOURS_MS) return "session_ended"; // the ceiling, REQ-CHK-016.
+    if (!checkInOpen) return "check_in_closed"; // the switch, REQ-CHK-015.
+  }
 
   if (viewer.rsvpStatus === "confirmed") return null; // always eligible, once the window's open.
   if (allowWalkIns) return null; // waitlisted / no seat / staff — only through the walk-in door.

@@ -41,9 +41,31 @@ export interface PointsHistoryFilters {
   month?: string;
 }
 
+/** One completed multi-day session whose attendance award did not happen, and
+ *  the days that explain why (`REQ-SES-017`: «the member can see why»).
+ *
+ *  ★ This is NOT a ledger row and never will be. The ledger records points, not
+ *  explanations, and no row is written for an award that did not happen — so an
+ *  absence would otherwise be invisible, which is the one thing `REQ-PTS-003`'s
+ *  promise cannot survive. `05` §8 set the precedent: a capped sixth comment
+ *  writes no row either, and the cap is explained in place. */
+export interface MissedAttendance {
+  sessionId: string;
+  sessionTitle: string;
+  /** When the session completed — where this sits among the ledger rows. */
+  completedAt: string;
+  /** How many days the session had, for «one of three». */
+  dayCount: number;
+  /** The days they did not attend, in day order. */
+  days: { position: number; startsAt: string }[];
+}
+
 export interface PointsHistory {
   totalPoints: number;
   rows: PointsLedgerRow[];
+  /** Empty for a one-day session, always — so a one-day history renders
+   *  exactly as it does today. */
+  missed: MissedAttendance[];
   /** Every session the member has at least one ledger row for, for the
    *  filter control — independent of any filter currently applied. */
   sessionOptions: SessionOption[];
@@ -80,7 +102,7 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
   const range = filters.month ? monthRange(filters.month) : null;
   if (range) query = query.gte("occurred_at", range.gte).lt("occurred_at", range.lt);
 
-  const [ledgerRes, balanceRes, allRes, settingsRes, rulesRes] = await Promise.all([
+  const [ledgerRes, balanceRes, allRes, settingsRes, rulesRes, missedRes] = await Promise.all([
     query,
     supabase.from("points_balances").select("total_points").eq("member_id", session.memberId).maybeSingle(),
     // Unfiltered pass, session id and title only — the filter control's own
@@ -92,10 +114,18 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
       .select("action_key, points, enabled, reason_ar, cap_per_session")
       .eq("org_id", session.orgId)
       .order("action_key"),
+    // REQ-SES-017's missed-day line. One call, never one per session: the
+    // function returns every missed day of every completed multi-day session
+    // the caller attended in part. It takes no member — it reads the caller's
+    // own claims, which is what lets it be `security definer` (it has to call
+    // the attendance predicate) without becoming a way to ask about anyone
+    // else. A one-day session never appears.
+    supabase.rpc("missed_attendance_days"),
   ]);
   if (ledgerRes.error) throw new Error(`points_ledger: ${ledgerRes.error.message}`);
   if (allRes.error) throw new Error(`points_ledger (sessions): ${allRes.error.message}`);
   if (rulesRes.error) throw new Error(`scoring_rules: ${rulesRes.error.message}`);
+  if (missedRes.error) throw new Error(`missed_attendance_days: ${missedRes.error.message}`);
 
   type LedgerJoinRow = {
     id: string;
@@ -131,9 +161,40 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     if (title) sessionOptions.push({ id: r.session_id, title });
   }
 
+  // Grouped by session, and held to the SAME filters as the ledger rows — a
+  // filtered view that still showed every other session's missed days would be
+  // a different screen from the one the member asked for.
+  type MissedRow = {
+    session_id: string;
+    session_title: string;
+    session_completed_at: string;
+    day_count: number;
+    day_position: number;
+    day_starts_at: string;
+  };
+  const missedBySession = new Map<string, MissedAttendance>();
+  for (const r of (missedRes.data ?? []) as MissedRow[]) {
+    if (filters.sessionId && r.session_id !== filters.sessionId) continue;
+    if (range && (r.session_completed_at < range.gte || r.session_completed_at >= range.lt)) continue;
+    const existing = missedBySession.get(r.session_id);
+    const day = { position: r.day_position, startsAt: r.day_starts_at };
+    if (existing) {
+      existing.days.push(day);
+    } else {
+      missedBySession.set(r.session_id, {
+        sessionId: r.session_id,
+        sessionTitle: r.session_title,
+        completedAt: r.session_completed_at,
+        dayCount: r.day_count,
+        days: [day],
+      });
+    }
+  }
+
   return {
     totalPoints: balanceRes.data?.total_points ?? 0,
     rows,
+    missed: [...missedBySession.values()],
     sessionOptions,
     catalogue: ((rulesRes.data ?? []) as Array<{ action_key: string; points: number; enabled: boolean; reason_ar: string; cap_per_session: number | null }>).map(
       (r) => ({ actionKey: r.action_key, points: r.points, enabled: r.enabled, reasonAr: r.reason_ar, capPerSession: r.cap_per_session }),

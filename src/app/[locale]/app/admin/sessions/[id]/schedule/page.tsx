@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { getScheduleContent, getSessionForSchedule, listVenues } from "@/lib/dal/sessions";
 import { storedPhase } from "@/lib/session-status";
 import { saveSchedule } from "./actions";
+import { followingEnd } from "./rules";
 import { ContentPanel } from "./content-panel";
 import { ScheduleForm } from "./schedule-form";
 
@@ -97,6 +98,29 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
               // The stored value, never a default: the action always sends the
               // switch as an explicit boolean (DEC-118, DEC-141).
               allowWalkIns: session.allowWalkIns,
+              requireAllDays: session.requireAllDays,
+              // ★ The day set (REQ-SES-015). Day one's window and place are the
+              // fields above — the form does not render them twice — but its
+              // `id` travels so a save MOVES the day rather than replacing the
+              // one every check-in and every day-scoped file hangs off. An end
+              // that is exactly start + duration is handed over as `""`, so the
+              // day keeps following the duration instead of freezing at the
+              // moment it was last saved (OQ-001, per day).
+              days: session.days.map((day) => {
+                const startsAt = localValue(day.startsAt, zone);
+                const endsAt = localValue(day.endsAt, zone);
+                return {
+                  id: day.id,
+                  startsAt,
+                  endsAt: endsAt === followingEnd(startsAt, session.durationMinutes?.toString() ?? "") ? "" : endsAt,
+                  venueId: day.venueId ?? "",
+                  customVenueName: day.customVenueName ?? "",
+                  customVenueAddress: day.customVenueAddress ?? "",
+                  customVenueMapUrl: day.customVenueMapUrl ?? "",
+                  hasAttendance: day.hasAttendance,
+                  contentCount: day.contentCount,
+                };
+              }),
             }}
           />
         </div>

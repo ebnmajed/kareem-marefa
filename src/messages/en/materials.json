@@ -6,7 +6,9 @@
       "addAction": "Add a material",
       "phase": {
         "before": "Before the session",
-        "after": "After the session"
+        "after": "After the session",
+        "beforeDay": "Before the day",
+        "afterDay": "After the day"
       },
       "kind": {
         "pdf": "PDF",
@@ -30,7 +32,14 @@
       "openExternal": "Open link — leaves the platform",
       "removedByAdmin": "This material was removed.",
       "allowDownloadLabel": "Allow download",
-      "settingsFailed": "Could not save that setting. Try again."
+      "settingsFailed": "Could not save that setting. Try again.",
+      "group": {
+        "addAria": "Add a material — <bdi>{scope}</bdi>"
+      },
+      "rescope": {
+        "trigger": "Change the material's scope: <bdi>{label}</bdi>",
+        "failed": "Could not change the material's scope. Try again."
+      }
     },
     "upload": {
       "notice": "This file will be available to every member of the organization on the schedule you choose.",

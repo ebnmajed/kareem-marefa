@@ -23,7 +23,12 @@
       "row": {
         "reversal": "Reversal of an earlier award",
         "manual": "Manual adjustment by an admin",
-        "openSession": "Open session"
+        "openSession": "Open session",
+        "missed": {
+          "title": "Attendance points were not awarded",
+          "days": "{count, plural, zero {You missed no days} one {You missed {days}} two {You missed {days}} few {You missed {days}} many {You missed {days}} other {You missed {days}}}",
+          "rule": "Attendance points are awarded once, for attending every day of the session."
+        }
       },
       "catalogue": {
         "heading": "What earns points?",

@@ -15,10 +15,19 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/scoring.json";
+import arSessions from "@/messages/ar/sessions.json";
 import type { PointsLedgerRow } from "@/lib/dal/points";
 
+// ★ HARNESS ONLY — wave 9, and the ONE line of this file that changed. The
+// component reads `sessions.days` unconditionally now, for REQ-SES-017's
+// missed-day notice, so the mock has to resolve that namespace whether or not
+// a notice is rendered. Not one assertion below changed. The notice's own
+// cases are in points-history-days.test.tsx — new behaviour, new file (rule 4),
+// so the ledger's `git diff` over this file stays readable at a glance.
+const messages = { ...ar, ...arSessions };
+
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "scoring.points" }),
+  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "scoring.points" }),
 }));
 
 const { PointsHistoryList } = await import("@/components/scoring/points-history-list");
@@ -41,7 +50,7 @@ function row(overrides: Partial<PointsLedgerRow> = {}): PointsLedgerRow {
 
 async function renderList(rows: PointsLedgerRow[]) {
   const element = await PointsHistoryList({ rows, timeZone: "Asia/Riyadh" });
-  return render(<NextIntlClientProvider locale="ar" messages={ar}>{element}</NextIntlClientProvider>);
+  return render(<NextIntlClientProvider locale="ar" messages={messages}>{element}</NextIntlClientProvider>);
 }
 
 describe("PointsHistoryList", () => {

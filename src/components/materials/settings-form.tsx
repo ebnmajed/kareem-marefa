@@ -6,18 +6,22 @@ import { saveMaterialSettings } from "@/components/materials/actions";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { phaseLabelKey } from "@/components/materials/phase-label";
 
 interface SettingsFormProps {
   locale: string;
   materialId: string;
   phase: "before" | "after";
   allowDownload: boolean;
+  /** REQ-MAT-006 as amended (DEC-121) — the phase select's own option labels read relative to
+   *  this item's scope, the same as the badge next to it (`list.tsx`'s own `phaseLabelKey`). */
+  sessionDayId?: string | null;
 }
 
 /** REQ-MAT-005/006 — shown only to a presenter/admin who may manage this
  *  material (Materials slot decides that; this component trusts it for
  *  display only — the write is still RLS-gated regardless). */
-export function SettingsForm({ locale, materialId, phase, allowDownload }: SettingsFormProps) {
+export function SettingsForm({ locale, materialId, phase, allowDownload, sessionDayId }: SettingsFormProps) {
   const t = useTranslations("materials.list");
   // The field's own label lives under "materials.upload" (shared with the
   // upload form's identical field) — a translator scoped to "materials.list"
@@ -66,8 +70,8 @@ export function SettingsForm({ locale, materialId, phase, allowDownload }: Setti
             });
           }}
         >
-          <option value="before">{t("phase.before")}</option>
-          <option value="after">{t("phase.after")}</option>
+          <option value="before">{t(phaseLabelKey("before", sessionDayId))}</option>
+          <option value="after">{t(phaseLabelKey("after", sessionDayId))}</option>
         </Select>
       </label>
 

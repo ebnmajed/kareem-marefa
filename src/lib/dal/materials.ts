@@ -5,6 +5,9 @@ import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { materialSourcePath, proposalMaterialSourcePath } from "@/lib/storage/paths";
 import { sniffContent, sniffedKindMatchesDeclared, type SniffedKind } from "@/lib/storage/sniff";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module; contract 7 —
+// `content` groups the three slots, `sessions` publishes the day set and its label.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Materials — REQ-MAT-001 … REQ-MAT-012, 02 §4.6, 03 §5.5a, 07 §1/§2.
 //
@@ -36,6 +39,11 @@ export const initiateMaterialUploadInput = z
     // REQ-PRO-004: a material belongs to a session XOR a proposal — never both.
     sessionId: z.uuid().optional(),
     proposalId: z.uuid().optional(),
+    // REQ-SES-018/DEC-121: sent by the group's own «أضف» the member pressed, never chosen from a
+    // field — omitted (or a proposal upload, which has no days) means the whole session. The
+    // composite FK (0100) is the authority that a day names a day of THIS session; this is shape
+    // only (CLAUDE.md, "Validation").
+    sessionDayId: z.uuid().optional(),
     kind: materialKindSchema,
     title: z.string().trim().min(1).max(200),
     phase: z.enum(["before", "after"]).default("after"),
@@ -97,6 +105,7 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
         org_id: session.orgId,
         session_id: input.sessionId ?? null,
         proposal_id: input.proposalId ?? null,
+        session_day_id: input.sessionDayId ?? null,
         kind: input.kind,
         title: input.title,
         phase: input.phase,
@@ -129,6 +138,7 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
       org_id: session.orgId,
       session_id: input.sessionId ?? null,
       proposal_id: input.proposalId ?? null,
+      session_day_id: input.sessionDayId ?? null,
       kind: input.kind,
       title: input.title,
       phase: input.phase,
@@ -223,6 +233,12 @@ export interface MaterialSummary {
   externalUrl: string | null;
   currentVersionId: string | null;
   createdAt: string;
+  /** REQ-SES-018/DEC-121: absent or null is the whole session — both read the same way
+   *  (`item.sessionDayId ?? null`); OPTIONAL, not required, so an existing fixture literal that
+   *  predates this field (every one of them, on `main`) still type-checks without editing files
+   *  rule 4 asks to stay untouched. A proposal's own material (no session) is always null —
+   *  `materials_day_needs_session` (0100) refuses it any other value. */
+  sessionDayId?: string | null;
 }
 
 function toMaterialSummary(row: Record<string, unknown>): MaterialSummary {
@@ -237,6 +253,7 @@ function toMaterialSummary(row: Record<string, unknown>): MaterialSummary {
     externalUrl: (row.external_url as string | null) ?? null,
     currentVersionId: (row.current_version_id as string | null) ?? null,
     createdAt: row.created_at as string,
+    sessionDayId: (row.session_day_id as string | null) ?? null,
   };
 }
 
@@ -247,7 +264,7 @@ export async function listMaterials(locale: string, sessionId: string): Promise<
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase
     .from("materials")
-    .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at")
+    .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at, session_day_id")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`materials: ${error.message}`);
@@ -274,9 +291,20 @@ export interface MaterialsPageData {
   canManageAll: boolean;
   presenterOfSession: boolean;
   uploadLimits: MaterialUploadLimits;
+  /** Contract 3 — every day of the session, in order. `[]` for a session with none (a draft never
+   *  scheduled) or a proposal (no `sessionId`, which never calls this). The slot renders flat at
+   *  `(days ?? []).length <= 1` (contract 7) — never at "every group happens to be empty right
+   *  now". OPTIONAL, not required — same reasoning as `MaterialSummary.sessionDayId` (rule 4): an
+   *  existing test fixture that predates T2 has no opinion about days, and "absent" reads the same
+   *  as "one day" (`materials-schema.test.ts`'s own suite is proof: it never needed to change). */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's (`getSessionHeading`) — `dayLabel()`'s weekday reads
+   *  the room's clock, not the viewer's (OQ-018). OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 const DEFAULT_UPLOAD_LIMITS: MaterialUploadLimits = { documentMb: 50, audioMb: 200, imageMb: 20 };
+const DEFAULT_TIME_ZONE = "Asia/Riyadh";
 
 /** The event page's `Materials` slot needs the list, whether this viewer may
  *  manage phase/allow_download at all (materials_update_presenter/admin,
@@ -289,18 +317,22 @@ const DEFAULT_UPLOAD_LIMITS: MaterialUploadLimits = { documentMb: 50, audioMb: 2
  *  needs this same read. */
 export const getMaterialsPageData = cache(async (locale: string, sessionId: string): Promise<MaterialsPageData> => {
   if (!z.uuid().safeParse(sessionId).success) {
-    return { materials: [], canManageAll: false, presenterOfSession: false, uploadLimits: DEFAULT_UPLOAD_LIMITS };
+    return { materials: [], canManageAll: false, presenterOfSession: false, uploadLimits: DEFAULT_UPLOAD_LIMITS, days: [], timeZone: DEFAULT_TIME_ZONE };
   }
   const { session, supabase } = await sessionClient(locale);
-  const [materials, { data: presenterRow }, { data: settings }] = await Promise.all([
+  const [materials, { data: presenterRow }, { data: settings }, days, heading] = await Promise.all([
     listMaterials(locale, sessionId),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("org_settings").select("limit_document_mb, limit_audio_mb, limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   return {
     materials,
     canManageAll: session.role === "admin",
     presenterOfSession: !!presenterRow,
+    days,
+    timeZone: heading?.timeZone ?? DEFAULT_TIME_ZONE,
     uploadLimits: {
       documentMb: (settings?.limit_document_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.documentMb,
       audioMb: (settings?.limit_audio_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.audioMb,
@@ -371,6 +403,30 @@ export async function updateMaterialSettings(locale: string, input: z.infer<type
   const { data, error } = await supabase.from("materials").update(patch).eq("id", parsed.materialId).select("id");
   if (error) throw new Error(`materials: ${error.message}`);
   return (data ?? []).length > 0;
+}
+
+const rescopeMaterialInput = z.object({ materialId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — one tap on the item's chip («اليوم الثاني ▾»). `session_day_id` is not in
+ *  `updateMaterialSettings`'s column grant on purpose (docs/plan/notes/content.md, wave-9 plan §1):
+ *  staff (admin OR moderator) may rescope, which is wider than `materials_update_admin`'s
+ *  admin-only reach, so a dedicated RPC keeps that authority from leaking onto `title`/`phase`/
+ *  `allow_download` too. `rescope_material()` (proposed/content/0001) re-derives authority itself
+ *  and audits the move (`material.rescoped`) — 0052 already audits a phase change for the same
+ *  reason: this moves WHEN the material is visible. */
+export async function rescopeMaterial(locale: string, input: z.infer<typeof rescopeMaterialInput>): Promise<boolean> {
+  const parsed = rescopeMaterialInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_material", { p_material_id: parsed.materialId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }
 
 export interface ViewerPage {

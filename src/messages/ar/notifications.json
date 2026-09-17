@@ -21,6 +21,16 @@
       "openSession": "فتح الجلسة",
       "count": "{count, plural, zero {لا إشعارات} one {إشعار واحد} two {إشعاران} few {{value} إشعارات} many {{value} إشعارًا} other {{value} إشعار}}"
     },
+    "change": {
+      "field": {
+        "starts_at": "الموعد",
+        "ends_at": "الانتهاء",
+        "venue": "المكان",
+        "days": "عدد الأيام"
+      },
+      "line": "<bdi>{label}</bdi>: من <bdi>{from}</bdi> إلى <bdi>{to}</bdi>",
+      "lineWithDay": "<bdi>{label}</bdi> · <bdi>{day}</bdi>: من <bdi>{from}</bdi> إلى <bdi>{to}</bdi>"
+    },
     "preferences": {
       "heading": "تفضيلات الإشعارات",
       "intro": "لديك قناتان فقط: داخل التطبيق والبريد الإلكتروني. اختر ما يصلك في كل منهما.",

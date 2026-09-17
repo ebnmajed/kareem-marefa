@@ -2393,3 +2393,697 @@ the RPC as themselves (the key present); the read-back carries the stored value.
   a static Chromium page without the app's CSS, a bare `<bdi>` put the sign before the digits with
   and without it. What produced content's «20-» is not established, and pinning the direction is
   right either way.
+
+---
+
+## Wave 9 plan — multi-day sessions (`DEC-119`, `DEC-120`, `DEC-121`, `DEC-150`)
+
+Written before any code, against `STATUS.md`'s wave-9 block, the ten contracts, and `0100` as
+`DEC-150` describes it — **the foundation is not on disk yet**, so everywhere its description is
+ambiguous for something I need there is a numbered question in W9.10 rather than an assumption.
+
+Rows S1–S4. My four: contract 3 · `REQ-SES-016`'s form · the pages that show days · the day label.
+
+### W9.1 ★ CONTRACT 3 — published, as signatures and types
+
+Every other track reads days through this. It is first in the order the seams force, and
+`listSessionDays()` lands **before** the RPC, because it works on `0100` alone for every one-day
+session in the database.
+
+#### W9.1a `schedule_session()` — the signature
+
+`supabase/proposed/sessions/0001_schedule_session_days.sql`. Two trailing, defaulted parameters;
+**the 14-parameter signature is dropped in the same file**, before the new one is created, so
+PostgREST never sees two overloads (`0085`'s lesson, rule 2).
+
+```sql
+drop function if exists public.schedule_session(
+  uuid, timestamptz, int, timestamptz, uuid, text, text, text, int,
+  timestamptz, timestamptz, public.certificate_mode, public.session_language, boolean);
+
+create function public.schedule_session(
+  p_session                 uuid,
+  p_starts_at               timestamptz,
+  p_duration_minutes        int,
+  p_ends_at                 timestamptz default null,
+  p_venue                   uuid        default null,
+  p_custom_venue_name       text        default null,
+  p_custom_venue_address    text        default null,
+  p_custom_venue_map_url    text        default null,
+  p_capacity                int         default null,
+  p_rsvp_deadline_at        timestamptz default null,
+  p_cancellation_cutoff_at  timestamptz default null,
+  p_certificate_mode        public.certificate_mode default 'off',
+  p_language                public.session_language default 'ar',
+  p_allow_walk_ins          boolean     default null,   -- null = unchanged (DEC-141 correction B)
+  p_days                    jsonb       default null,   -- ★ null = main's call, exactly
+  p_require_all_days        boolean     default null    -- ★ null = unchanged (REQ-SES-017)
+) returns public.sessions
+language plpgsql security definer set search_path = '' as $$ ... $$;
+```
+
+`returns public.sessions` is unchanged, and so is every existing parameter's name, type, order and
+default. Positional calls that pass 13 or 14 arguments — `tests/rls/sessions-scheduling.test.ts`,
+`tests/rls/checkin-walk-ins-publishing.test.ts`, and anything on `main` — resolve to the new
+function through the two new defaults, so they keep working **unmodified**.
+
+#### W9.1b `p_days` — the exact JSON
+
+A JSON **array** of day objects. It is the **whole day set**, day one included, never a tail.
+
+```jsonc
+[
+  {
+    "id": "0f2e…-uuid | null",                   // absent or null = insert a new day
+    "starts_at": "2026-10-01T18:00:00+03:00",    // required, timestamptz-parseable
+    "ends_at":   "2026-10-01T20:00:00+03:00",    // required, > starts_at
+    "venue_id":  "9ab1…-uuid | null",            // the org's venue …
+    "custom_venue_name":    "string | null",     // … or the inline trio, never both
+    "custom_venue_address": "string | null",
+    "custom_venue_map_url": "string | null"
+  }
+]
+```
+
+Three rules that belong to the shape and not to the algorithm:
+
+1. **Array order is not `position`.** `0100` derives `position` as the chronological rank and
+   renumbers by trigger. The RPC **never writes `position`** and never reads it from the payload; a
+   client that sends one is ignored. This is what removes reordering from the product entirely
+   (W9.2c).
+2. **`id` is the identity, not the index.** Matching by index would make «I deleted the second day»
+   and «I moved the second day earlier» the same request.
+3. **Every day carries a full window.** There is no per-day duration in the JSON: the form resolves
+   each end before it sends, with the same `rules.ts` arithmetic the server would use, so the
+   arithmetic has one home.
+
+#### W9.1c The algorithm — one body, `n` days, right at `n = 1`
+
+★ **There is no `if p_days is null then … else …` around the write.** The body derives three locals
+at the top and everything downstream reads them; at `p_days is null` they collapse to exactly
+today's expressions, which is why a one-day call is byte-identical rather than merely equivalent.
+
+```
+v_starts := coalesce( (select min(starts_at) from days), p_starts_at )
+v_ends   := coalesce( (select max(ends_at)   from days), coalesce(p_ends_at, p_starts_at + duration) )
+v_place  := the chronologically FIRST day's venue / custom trio, else the p_venue / p_custom_* triple
+```
+
+In order:
+
+1. `assert_fresh_admin()`; load the session by `(id, org_id)`; the same `session_not_found` (42501)
+   and `session_not_schedulable` (23514) refusals, unchanged.
+2. The session-level venue checks, unchanged (`venue_or_custom_venue_not_both`,
+   `custom_venue_needs_name_and_address`, `venue_not_found`).
+3. **When `p_days` is not null, every day is validated and every deletion is checked BEFORE the
+   first write.** This is `DEC-043` honoured by construction: no refusal ever rolls back a write, so
+   the function keeps `returns public.sessions` and needs no outcome envelope.
+4. `set_config('kareem.days_writer', 'on', true)` — only on the day-aware path.
+5. **One `update public.sessions`**, with `v_starts`, `v_ends`, `v_place`, `duration_minutes =
+   p_duration_minutes`, `rsvp_deadline_at = coalesce(p_rsvp_deadline_at, v_starts)`,
+   `cancellation_cutoff_at = coalesce(p_cancellation_cutoff_at, v_starts)`,
+   `allow_walk_ins = coalesce(p_allow_walk_ins, target.allow_walk_ins)` and
+   `require_all_days = coalesce(p_require_all_days, target.require_all_days)`.
+   ★ **The session is written first and the days second**, so `0100`'s day→session trigger finds
+   nothing distinct and `sessions_notify` fires **once** — the order is load-bearing, not stylistic.
+6. **The days, matched by `id`:** update the matched rows, insert the ones without an `id`, delete
+   the stored rows whose id is absent from the payload. A deleted day's day-scoped materials, tasks
+   and photos are promoted to the session by `0100`'s `on delete set null (session_day_id)` —
+   `DEC-121`'s default — and **the form asks before it sends that** (W9.2e).
+7. `write_audit(..., 'session.scheduled', ...)` — **one row, the same action and the same payload
+   shape as today**. `session.walk_ins_changed` still only when the value moves.
+8. `return target`.
+
+**The refusals, each by name** (new ones marked ★; all `23514` unless stated):
+
+| Name | When |
+|---|---|
+| `session_not_found` (42501) | unchanged |
+| `session_not_schedulable` | unchanged |
+| `venue_or_custom_venue_not_both` · `custom_venue_needs_name_and_address` · `venue_not_found` | unchanged |
+| ★ `days_empty` | `p_days` is an empty array — a session has at least one day (`DEC-119`, `0010`'s publish check as it restates it) |
+| ★ `days_too_many` | more than 30 entries; a bound on a definer function's input (Q7) |
+| ★ `day_window_invalid` | an entry with `ends_at <= starts_at` |
+| ★ `days_overlap` | two entries overlap; raised **before** `0100`'s exclusion constraint so the failure has a name rather than a `23P01` |
+| ★ `day_not_of_session` (42501) | an `id` that names a day of another session — an authority failure, so it reads like `session_not_found` |
+| ★ `day_venue_or_custom_not_both` · `day_custom_venue_needs_name_and_address` · `day_venue_not_found` | the session-level venue rules, per day |
+| ★ `day_has_attendance: <position>` | a day left out of `p_days` holds a check-in. The position travels in the message so the form can name the day without a second read |
+
+**`publish_session()` names what is missing per day.** Its `missing[]` gains `days` when the session
+has none, and `day:<position>:<field>` for a day without a window or a place — the same "name the
+gap rather than report a constraint" shape it has had since `0021`. At one day the array it produces
+is byte-identical to today's, because a session with one complete day has a complete window and a
+venue by derivation.
+
+#### W9.1d The DAL — `SessionDay` and `listSessionDays()`
+
+`src/lib/dal/sessions.ts`, published on day one, **before** the RPC.
+
+```ts
+export interface SessionDay {
+  id: string;
+  /** 1…n — the chronological rank `0100` derives. Never written by a client, never trusted from one. */
+  position: number;
+  startsAt: string;
+  endsAt: string;
+  /** The day's place: the org's venue, else the inline one-off. Null when the day has neither. */
+  venue: EventVenue | null;
+}
+
+/**
+ * Every day of one session, by `position`. ★ Request-scoped `cache()`: the event page's hero, its
+ * action card, the three slots and the sub-nav all want the same list, and without it that is five
+ * round trips for one fact.
+ */
+export const listSessionDays = cache(
+  async (locale: string, sessionId: string): Promise<SessionDay[]> => { … }
+);
+```
+
+`EventVenue` (`{ name, address, mapUrl, oneOff }`) is reused rather than copied — one type for a
+place, whatever it hangs off.
+
+★ **One divergence from the contract's shorthand, stated so nobody codes against the wrong shape:
+the signature is `(locale, sessionId)`, not `(sessionId)`.** Every DAL function in this repository
+gets its client from `sessionClient(locale)` and `getSessionForEvent(locale, id)` is the shape every
+consumer already calls; a `cache()` key that omitted the locale would also be wrong for the one
+request that changes it. **Ruling wanted (Q1); the default in force is the two-argument form.**
+
+And the Zod input, which is what a Server Action hands `scheduleSession()`:
+
+```ts
+export const scheduleDayInput = z.object({
+  id: z.uuid().nullable(),
+  startsAt: z.iso.datetime({ offset: true }),
+  endsAt: z.iso.datetime({ offset: true }),
+  venueId: z.uuid().nullable(),
+  customVenueName: z.string().trim().max(120).nullable(),
+  customVenueAddress: z.string().trim().max(300).nullable(),
+  customVenueMapUrl: z.url().startsWith("https://").nullable(),
+}).strict();
+
+// added to `scheduleInput`, which stays `.strict()`:
+days:           z.array(scheduleDayInput).min(1).max(30).nullable().default(null),
+requireAllDays: z.boolean().nullable().default(null),
+```
+
+★ `days` and `requireAllDays` both **default to `null`**, and `null` means «unchanged / today's
+call». That is deliberately the opposite of `allowWalkIns`'s treatment in `actions.ts`, where the
+form always states the setting and sends an explicit boolean (`DEC-118`, `DEC-141` B): the walk-in
+switch is always on the page, and `require_all_days` is only on the page inside the multi-day
+affordance. **An absent `requireAllDays` must never be coerced to `false`** — that would switch
+`REQ-SES-017`'s default off on every save of a one-day session.
+
+#### W9.1e What a consumer must not do
+
+- **Never compute a minimum or a maximum over days in TypeScript** (contract 1). The session's
+  window is stored on `sessions`; read it there.
+- **Never query `session_days` directly.** `listSessionDays()` is the one reader.
+- **Never read or write `position` as an input.** It is derived.
+- **Never branch on `days.length > 1` in a reader** (rule 1). A reader handles `n` and is right at
+  `n = 1`. The three writers that legitimately differ each cite their requirement in a comment.
+
+### W9.2 ★ `REQ-SES-016` — the form, and the proof the one-day path did not move
+
+#### W9.2a The rule that makes it provable
+
+> **The hidden `days` field is rendered only when the form's day list holds more than one entry, or
+> the session already has more than one day stored. Otherwise it is absent, `p_days` is `null`, and
+> the call is `main`'s.**
+
+Both halves are needed. Without the second, an admin who removes day two would send `null` and the
+stored day two would survive the save. With both, a session that has always had one day and an admin
+who never opens the affordance produce a `FormData` without the key, a `scheduleInput` whose `days`
+is `null`, and the same RPC arguments as wave 8 — one audit row, one notice, one day carried by
+`0100`'s `n ≤ 1` trigger.
+
+#### W9.2b The state, the field list and the transport
+
+`state.ts`'s `SCHEDULE_FIELDS` grows from 16 names to 18. **No existing name, string or relative
+order changes**; the two additions sit at their true page positions:
+
+- `days` — after `endsAt`, because the day list lives in «متى» right there.
+- `requireAllDays` — after `certificateMode`, because `REQ-SES-017` puts it beside it.
+
+```ts
+export type DayField = "startsAt" | "endsAt" | "venueChoice"
+                     | "customVenueName" | "customVenueAddress" | "customVenueMapUrl";
+
+export type ScheduleField =
+  | (typeof SCHEDULE_FIELDS)[number]
+  | `days.${number}.${DayField}`;    // per-day failures, outside the captured list
+```
+
+`FormState<F extends string>` already keys `errors` and `values` on `Partial<Record<F, string>>`, so
+a template-literal member costs nothing and `state.errors["days.1.startsAt"]` typechecks.
+
+**Transport.** One hidden `<input name="days">` carrying `JSON.stringify(days)`, built from the same
+controlled state the visible controls render from — so day one exists once in the component even
+though it travels twice (in the flat fields and inside `days`). `formStateFrom()` captures it like
+any other string, so `was(state, "days")` restores the whole list after a failed round trip, which
+is the module's entire purpose and costs no new mechanism.
+
+**The summary.** `schedule-form.tsx` already builds its own list from `SCHEDULE_FIELDS` in page
+order (`DEC-144`: the errors on the page, not the errors of the last submit). When it reaches
+`days` it expands into the per-day failures **in day order**, each with `fieldId` pointing at that
+day's control (`day-2-startsAt`) and a label that reads «اليوم الثاني · بداية اليوم». The summary's
+first link is still the first problem on the page.
+
+**The proof, as two tests in a NEW file** (`tests/unit/schedule-days.test.ts`, rule 4):
+
+1. `SCHEDULE_FIELDS` minus `days` and `requireAllDays` deep-equals wave 8's sixteen, **in order**,
+   against a frozen literal in the test. A rename or a reorder fails here.
+2. `saveSchedule()` driven with a `FormData` that carries no `days` and no `requireAllDays` calls
+   `scheduleSession()` with an argument object that deep-equals wave 8's — `days: null`,
+   `requireAllDays: null`, every other key identical. That is the one-day path pinned at the seam,
+   not by inspection.
+
+#### W9.2c The affordance and the day list at 390 px
+
+**The affordance** is a `ui/switch` labelled «جلسة متعدّدة الأيام», at the end of «متى», hint «لكل
+يوم تسجيل حضور خاص به، ومواده وتكاليفه». Off is the default and costs nothing: the section renders
+exactly what `wave8-lead-schedule-ready.png` shows. It is on from the server whenever the session
+already has more than one day.
+
+**On**, «متى» becomes a numbered list of day cards, day one included, so the list is homogeneous —
+and day one's controls keep the names `startsAt`, `durationMinutes`, `endMode`, `endsAt`,
+`venueChoice` and the custom trio, which is why the one-day DOM is reachable from the same code.
+
+Each card, at 390 px:
+
+- `<h3>` the day label («اليوم الثاني · الخميس»).
+- The start: `ui/date-time`. For day two and later it is `granularity="date"` by default, because
+  the time already defaults to the previous day's — **adding a third evening is one tap on a date**
+  — with «غيّر الوقت» revealing the minute picker.
+- The end: the sentence «تنتهي 8:00 م» with «عدّل وقت الانتهاء», exactly the pattern wave 8 built,
+  per day. The duration a day inherits is the previous day's length.
+- The place: collapsed to «نفس مكان اليوم السابق» with «غيّر المكان» revealing the same venue select
+  and custom-venue trio the session-level control uses.
+- «احذف هذا اليوم» on every card but the first (W9.2e).
+
+«أضف يومًا» closes the list: it appends a day at **the previous day's clock and place, on the next
+calendar date**, and focus lands on the new card's heading.
+
+★ **There is no reorder control, and that is a consequence of `0100`, not a simplification.**
+`position` is the chronological rank; a day is moved by changing its date, and the list re-sorts.
+A drag handle could only ever disagree with the derived order.
+
+#### W9.2d Validation — every rule, where it is said, and when
+
+Everything computed lives in `rules.ts` so the browser and the Server Action say the same thing, as
+it does today. One new pure function:
+
+```ts
+export type DayRelation = "dayEndBeforeStart" | "daysOverlap";
+export function checkDays(days: readonly { startsAt: string; endsAt: string }[]):
+  Partial<Record<number, DayRelation>>;   // keyed by the day's index in the list
+```
+
+| Rule | Said at | When | Message key |
+|---|---|---|---|
+| A day ends before it starts | that day's end control | the picker commits, and on submit | `errors.dayEndBeforeStart` |
+| Two days overlap | the **later** day's start control | any day's picker commits | `errors.daysOverlap` |
+| A deadline after the first day begins | the deadline's own control, **same words as today** | commit | `errors.rsvpAfterStart` · `cutoffAfterStart` |
+| A day with no place | that day's place select | **submit only** — empty is not an error while the form is being filled (`REQ-UIX-011`) | `errors.venueRequired` |
+| The end before the start (day one) | unchanged | unchanged | unchanged |
+
+★ `checkRelations()` is **unchanged**: at `n > 1` the first day's start is still the `startsAt`
+field, so «آخر موعد للحجز بعد بداية الجلسة» keeps its exact wording and its exact trigger.
+
+Every day's control is inside `ui/field`, so the error is adjacent, coloured and icon-marked, never
+colour alone (`REQ-UIX-010`), and the form keeps `noValidate`.
+
+#### W9.2e Removing a day — the confirm names it
+
+`ui/dialog` directly, the pattern `components/sessions/remove-presenter.tsx` already uses in this
+track. The confirm names the day and says what happens, and it is shown **before** anything is sent:
+
+- With day-scoped content: «احذف اليوم الثاني · الخميس؟ ستنتقل مواده وملفاته إلى الجلسة.»
+  (`DEC-121`'s default — the foreign key does the promotion; nothing is deleted as a side effect of
+  a scheduling change.)
+- Holding attendance: the control is **disabled** with «لا يمكن حذف يوم سُجّل فيه حضور»; the RPC's
+  `day_has_attendance` is the backstop, not the message.
+- Turning the affordance **off** with more than one day is «احذف الأيام الأخرى» — the same confirm,
+  listing every day it removes.
+
+So `getSessionForSchedule()` gains `days: ScheduleDay[]`, each with `hasAttendance: boolean` and
+`contentCount: number`, read in **one** query with embedded counts. ★ Naming `session_tasks` beside
+`check_ins` in one select is safe under `REQ-TSK-002` and contract 10 because this is a scheduling
+path: `sessions.ts` is in no check-in import graph, and nothing on a check-in path imports it. **I
+want the guard's definition confirmed as «reachable from a check-in function», not «names both»
+(Q6).**
+
+### W9.3 The pages that show days
+
+| Surface | At `n = 1` | At `n > 1` |
+|---|---|---|
+| Event page, `action-card.tsx`'s `Meta` | **the DOM as today**, unchanged | «الموعد» reads the range; its `<dd>` carries an `<ol>` of days, each «اليوم الأول · الأربعاء — 6:00 م · حتى 8:00 م». «المكان» keeps the first day's place and adds «يختلف المكان في بعض الأيام» when any day's differs |
+| Timeline and browse cards | unchanged | the range, and «3 أيام» as a chip |
+| Public card `/s/[id]` | unchanged | the range |
+| The «انتهت» ribbon | unchanged | ★ **already correct, no change** — it reads `sessions.ends_at`, which contract 1 makes the last day's end |
+| `worker/src/tasks/{start,complete}_session.ts` | unchanged | ★ **already correct, no change** — `clock_start_sessions()` and `clock_complete_sessions()` key off the stored window, so a workshop starts at day one and completes after the last day, which is what `REQ-SES-017` needs |
+
+★ The `<dl>`'s shape is preserved: a `<div>` holds its `<dt>`/`<dd>` pair **and nothing else** —
+axe's `definition-list` refused the old icon-beside-a-wrapper row at wave 6's sync 4b, and the day
+list therefore lives **inside** the `<dd>`, not beside it.
+
+`sessionPhase()` is passed `PhaseInput.days` (contract 9, the lead's) — **passed, never
+re-derived**. Which raises the two findings in W9.5.
+
+### W9.4 Contract 7 — the day label
+
+`src/components/sessions/day-label.ts`, pure, no next-intl import, so a server component, a client
+component and a unit test all use it and `content`'s slots, `checkin`'s screens and `notify`'s mail
+read the **same** words.
+
+```ts
+/** next-intl's `t`, taken STRUCTURALLY — the pattern `lib/form-state.ts` set for `zodErrors()`. */
+export type DayLabelT = (key: string, values?: Record<string, string | number>) => string;
+
+/** «اليوم الأول · الأربعاء» — one formatter, every surface. */
+export function dayLabel(day: { position: number; startsAt: string }, timeZone: string, t: DayLabelT, locale?: string): string;
+
+/** «اليوم الأول» alone, for a chip with no room for a weekday. */
+export function dayOrdinal(position: number, t: DayLabelT): string;
+
+/** «الأربعاء 1 أكتوبر — الجمعة 3 أكتوبر», for a card that says a range. */
+export function dayRange(firstIso: string, lastIso: string, timeZone: string, t: DayLabelT, locale?: string): string;
+```
+
+Callers pass `getTranslations("sessions.days")` or `useTranslations("sessions.days")`. Keys, in
+`messages/ar/sessions.json` first:
+
+```
+sessions.days.label          «اليوم {ordinal} · {weekday}»
+sessions.days.labelNumeric   «اليوم {value} · {weekday}»
+sessions.days.short          «اليوم {ordinal}»
+sessions.days.ordinal.1…10   «الأول» … «العاشر»
+sessions.days.count          six ICU plural forms — «{value} أيام»
+sessions.days.range          «{from} — {to}»
+sessions.days.sessionScope   «للورشة كاملة»   ← DEC-121's group heading, read by `content`
+```
+
+★ **Day eleven reads «اليوم 11 · الأحد».** Arabic ordinals are single words to ten («الأول» …
+«العاشر») and compound from eleven («الحادي عشر»), which is heavy in a card heading and would need
+eleven more keys to reach a number nobody will schedule. From eleven the formatter switches to
+`labelNumeric` and the Western digit `DEC-124` requires. The switch is in the formatter, so every
+surface makes it at the same number.
+
+### W9.5 What I need from the lead — columns, and two findings that need a ruling
+
+★ **Two findings first, because they are the part of this wave that would reach production
+unnoticed.**
+
+**F1 — a day-set change inside the session's window notifies nobody and schedules no reminders.**
+`sessions_notify` (`0036`) fires on `starts_at` and the venue label being *distinct*, and
+`0100`'s day→session trigger updates `sessions` **only where a value is distinct**. So adding a
+Thursday inside an existing Wednesday-to-Friday window, or moving day two within it, changes no
+session column — no `MSG-session_changed`, no `calendar_upsert`, and no
+`schedule_session_reminders()` re-run. A member holding a seat is never told, and the new day has no
+reminder stream. `REQ-SES-009` says a change to time propagates, and contract 8 says one reminder
+stream per day. **This is a seam that is not among the ten.** My recommendation: a trigger on
+`session_days`, owned by **`notify`**, rather than a call site in my RPC — «a function has one
+writer», and the decision about what to send is `notify`'s. What `schedule_session()` guarantees to
+it: every day write of one call happens **in one transaction, after the single `sessions` write,
+with `kareem.days_writer` set**. Q2.
+
+**F2 — a card cannot tell a multi-day session from a one-day one, and its phase is wrong between two
+days.** `browse/timeline-session.ts` builds every timeline and browse card from one list query over
+`sessions` and calls `sessionPhase()` with the session window alone. At `n > 1` that reads `live`
+between Wednesday and Thursday, where contract 9 says `open`; and the card cannot say a range
+because it does not know the count. **Default in force:** the list query embeds
+`session_days(starts_at, ends_at)` ordered by position — one query, no N+1, and it answers the
+count, the range and the phase together. It is the busiest query in the product, so
+`tests/e2e/budgets.spec.ts` (the lead's) is the thing to watch. The alternative is a stored
+`sessions.day_count`, which is cheaper to read and one more derived column to keep true. Q3.
+
+**F3 — the public card is anonymous, so it cannot read days at all.** `0100` grants `select` on
+`session_days` to `authenticated`; `/s/[id]` reads through `session_public_card()` as `anon`. The
+**range** is free (both ends are stored on `sessions`), so only the count is missing. `DEC-150`'s
+`session_public_card()` is mine (`0080`), and a `RETURN TABLE` cannot be changed by
+`create or replace` (`0082` records exactly this), so it is dropped and re-created with a trailing
+`day_count int`. `main`'s app reads the row by key and ignores an extra column, so it is additive.
+**No anon grant on `session_days` is requested.** Stated, not asked.
+
+**Columns I need from the lead** — I write no `alter table`, even under `supabase/proposed/`
+(rule 3). Everything I need is already in `0100` as `DEC-150` describes it:
+`session_days` with its eight columns, `sessions.require_all_days`, and the derived
+`sessions.starts_at`/`ends_at`/`venue_id`/custom trio. **I am asking for no new column** unless the
+ruling on Q3 chooses `sessions.day_count`.
+
+### W9.6 The untouched-suite ledger — every existing test I expect to touch
+
+Rule 4: an existing file changes only with a ledger line, and **never because an expectation moved
+for a one-day session**. My expectation is **no ledger lines at all**, and here is why for each file
+that could plausibly break.
+
+| File | Owner | Why it stays green, unmodified |
+|---|---|---|
+| `tests/e2e/wave8-lead-schedule.spec.ts` | mine (transferred) | the one-day walk is unchanged: same labels, same order, same strings, same gate. The affordance is one added switch at the end of «متى»; no selector it uses moves. Its captures are PNGs, not assertions |
+| `tests/unit/{schedule-rules,schedule-actions,sessions-schedule-walk-ins}.test.ts` | mine (transferred) | `checkRelations()`, `followingEnd()`, `presetOf()`, `missingForPublish()` and the action's existing paths are untouched. Every new rule goes in a **new** file |
+| `tests/components/checkin/schedule-form.test.tsx` | ★ `checkin`'s | it constructs `ScheduleInitial` from twelve literal keys. **So every field I add to `ScheduleInitial` is optional** — `days?`, `requireAllDays?`, `dayCount?` — or this file stops compiling. That is not a compromise: an absent `days` honestly means «one day, the flat fields» and an absent `requireAllDays` honestly means «unchanged», which are the safe defaults anyway. `allowWalkIns` stays **required**, because there an unticked default was the hazard |
+| `tests/e2e/checkin-schedule-walk-ins.spec.ts` | `checkin`'s | walks the walk-in switch on my form at one day; unchanged |
+| `tests/rls/{sessions-scheduling,checkin-walk-ins-publishing}.test.ts` | mine / `checkin`'s | positional calls of 13 and 14 arguments resolve to the 16-parameter function through the two new defaults |
+| `tests/e2e/{event-page,timeline,browse,sessions-public-card,sessions-screens}.spec.ts` · `tests/components/{sessions,browse}/**` | mine | at `n = 1` the DOM is what it is today — no group, no chip, no range |
+| `tests/unit/{session-status,session-matrix}.test.ts` | the lead's | contract 9's own `n = 1` proof; I only pass `days` |
+| `tests/e2e/budgets.spec.ts` | the lead's | ★ the one at risk, through F2's embed. Named here so the lead runs it deliberately rather than discovering it |
+
+New files only: `tests/unit/schedule-days.test.ts`, `tests/unit/sessions-day-label.test.ts`,
+`tests/rls/sessions-days.test.ts` (`applyProposed()`, transactional), `tests/components/sessions/day-list.test.tsx`,
+`tests/e2e/wave9-sessions-{schedule-days,event-days}.spec.ts`.
+
+### W9.7 Primitive requests — none
+
+`ui/date-time` already carries `label`, `granularity: "date" | "minute"`, `min` and `max`, which is
+everything a day row needs, so **I am asking `console`'s held files for nothing**. `ui/dialog`,
+`ui/switch`, `ui/field`, `ui/select` and `ui/form-summary` cover the rest, and six of those are
+mine. If the day card's 390 px build turns up a gap I will write the request here and tell the lead
+rather than touching a file I do not own.
+
+### W9.8 The two carried items — both still open, neither closed by this wave
+
+- **The filter sheet's English date mask** (§38.2). Still open, and still not a localisation
+  problem: the native `<input type="date">` mask follows the browser's locale, never the page. The
+  default in force remains `DEC-098`'s period chips replacing the free range. **Not wave 9** — it is
+  browse's filter, not a day, and nothing multi-day touches it.
+- **`ratings.edited_at` at millisecond precision** (§34.4, ruling 12). **Still open**: it was
+  recorded against `0085`, and `0085` shipped in wave 7 as the walk-ins migration without the
+  coarsening — `edited_at` is still `now()` at full precision from `0010`'s trigger. Harmless while
+  there is no survey; the survey is wave 10, which is where it should land with `submitted_at`.
+  **Not wave 9.**
+
+### W9.9 Order of work, and the captures
+
+1. `listSessionDays()` + `SessionDay` + `day-label.ts` and its strings — they work on `0100` alone,
+   for every one-day session, and four tracks are waiting on both. **Contract 3 published the day
+   the plan is approved; landed the day the foundation is promoted.**
+2. `schedule_session()` on the day set, under `supabase/proposed/sessions/`, proven with
+   `applyProposed()` in `tests/rls/sessions-days.test.ts`; `publish_session()`'s per-day gap.
+3. The form: the affordance, the day list, `checkDays()`, the remove confirm — with the two
+   one-day proofs of W9.2b written **first**.
+4. The pages that show days, and F2's list query.
+
+**Captures** at `.qa-shots/rtl/wave9-sessions-*.png`, phone project, 390 × 844, honouring
+`E2E_SHOTS_DIR`: `schedule-one-day` (beside `wave8-lead-schedule-ready.png` — the same fields in the
+same order) · `schedule-three-days` · `schedule-day-overlap` (refused at the field) ·
+`schedule-remove-day` (the confirm naming the day) · `event-three-days` (between day one and day
+two) · `card-range` (a timeline card and the public card).
+
+### W9.10 ★ Questions for the lead, numbered
+
+1. **`listSessionDays(locale, sessionId)`**, not `(sessionId)` — the house DAL shape and the right
+   `cache()` key. Confirm, so four tracks code against one signature.
+2. **F1 — who tells a member a day was added?** `sessions_notify` cannot see it, and no reminder
+   stream is scheduled for the new day. My recommendation: a `session_days` trigger owned by
+   **`notify`** (contract 8's territory), not a call site in my RPC. Needs a ruling at sync 1,
+   before `notify` builds its reminders.
+3. **F2 — how does a list query know a session has more than one day?** Default in force: embed
+   `session_days(starts_at, ends_at)` in the timeline and browse query, which also gives contract
+   9's phase. Alternative: a stored `sessions.day_count` (a column, so yours). Budgets are the cost.
+4. **`sessions.duration_minutes` at `n > 1`.** `DEC-150` derives the window and the venue and says
+   nothing about the duration. Default in force: it is **day one's** length, which is what the
+   column means today, and the event hero's «60 دقيقة» chip is replaced by «3 أيام» at `n > 1`.
+   Confirm, or say it should be the sum of the days.
+5. **Does a deleted day's refusal count a removed check-in?** Wave 7 soft-deletes check-ins
+   (`DEC-141`). Default in force: **any `check_ins` row refuses**, removed or not — a day someone
+   attended is evidence. A `check_in_codes` row alone does not refuse.
+6. **Contract 10's guard** — is it «a module reachable from a check-in function», or «any source
+   naming `session_tasks`»? `getSessionForSchedule()` counts a day's content in one query that names
+   `session_tasks` and `check_ins` together, on a scheduling path no check-in path imports. If the
+   guard is textual I will split it into two reads; I would rather not.
+7. **A cap on the day count.** Nothing in the specification bounds it, and `p_days` is a definer
+   function's input. Default in force: refuse `days_too_many` above **30**, and no cap in the form.
+8. **`PhaseInput.days`' element type.** I pass `SessionDay[]`. Confirm `DayWindow` is structural
+   (`{ startsAt: string; endsAt: string }`) so `readonly SessionDay[]` is assignable without a map.
+9. **`schedule.json` vs `sessions.json` for the day label.** The formatter's strings are
+   `sessions.days.*` because `content`, `checkin` and `notify` read them and `schedule.json` is one
+   screen's. The **form's** own day strings («جلسة متعدّدة الأيام», «أضف يومًا», the confirm) stay in
+   `schedule.json`. Confirm the split before four tracks import.
+
+
+### W9.11 As built — rows S1–S4, and where the build departed from the plan
+
+| Commit | What |
+|---|---|
+| `3cdc690` | contract 3's readers: `SessionDay`, `listSessionDays()`, `day-label.ts`, `sessions.days.*` |
+| `bb33db8` | `schedule_session()` on the day set; `publish_session()`'s per-day gap (promoted as `0106`) |
+| `97da9b2` | `REQ-SES-016` — the affordance, the day list, the confirm, `require_all_days` |
+| `4bc592c` | contract 11 — `0002`, the snapshot in `notify`'s words and the wired call (promoted as `0112`) |
+| `708f5d9` | the event page, the cards and the public card; `0003` for the public card's count |
+| `cfe0470` | the two e2e specs and their seven captures — **unrun** |
+
+**Four departures, each for a reason found in the building:**
+
+1. ★ **The day diff is ONE statement, not three.** The plan said «update, insert, delete». `0100`'s
+   trigger B re-derives the session after a day write, and three statements pass through day sets
+   that derive a window which was never the answer — B writes it to `sessions` and `sessions_notify`
+   mails a reschedule notice naming it. Postgres fires AFTER ROW triggers at the END of a statement
+   and data-modifying CTEs are one statement, so every firing of B sees the final set. **Measured:**
+   the «ONE reschedule notice» case passes against the shipped file and fails against a
+   three-statement control — and fails at `sessions_check1`, because B pulled `starts_at` back to the
+   doomed day's Thursday while `rsvp_deadline_at` already held Saturday. A shape that did not touch a
+   deadline would have failed silently, with the notice.
+2. ★ **Day one is composed from the flat fields, not from the payload.** The plan had `p_days` carry
+   day one in full. The form's custom-venue inputs are uncontrolled, so serialising them meant
+   mirroring a third value into state; and two copies of day one that can disagree is a bug waiting
+   for a race. The hidden field carries day one's **`id`**; the action builds the rest from the
+   controls that were already parsed and already validated.
+3. ★ **`0112`'s snapshot shape is `notify`'s, not mine.** `session_days_changed()` reads a day as
+   `{ id, position, starts_at, ends_at, venue_label }` and compares **labels**: a day that moves to a
+   one-off room of the same name has not moved as far as a member is concerned. `0106` snapshotted
+   raw rows. `session_day_notice()` shapes them through `session_venue_label()` (`0036`).
+4. **No primitive request was needed.** `ui/date-time` already carried `label`, `granularity`, `min`
+   and `max`, which is the whole of what a day row wants — including the date-only picker that makes
+   a third evening one tap.
+
+**The untouched-suite ledger — one line, and it is not an expectation.**
+
+| File | Commit | Why | Expectation for one day changed? |
+|---|---|---|---|
+| `tests/components/browse/fixtures.tsx` | `708f5d9` | the card DTO gained a required `days`; the base fixture gains `days: []`, a one-line harness addition. The card reads `days` for its LENGTH alone, so none and one render identically | no — 76 browse and sessions cases green, unmodified |
+
+Everything else is new: `tests/unit/{sessions-day-label,schedule-days}.test.ts`,
+`tests/components/sessions/schedule-days.test.tsx`, `tests/rls/sessions-schedule-days.test.ts`,
+`tests/e2e/wave9-sessions-{schedule-days,day-views}.spec.ts`. **Not touched, and green:**
+`wave8-lead-schedule.spec.ts`, `schedule-rules`, `schedule-actions`, `sessions-schedule-walk-ins`,
+`checkin-schedule-walk-ins.spec.ts`, and `tests/components/checkin/schedule-form.test.tsx` — the last
+of these is why every field added to `ScheduleInitial` is **optional**, which turned out to be the
+honest shape anyway.
+
+**Found on the way, each reported to the lead:**
+
+- ★ **`notify`'s `session_days_changed()` de-duplicates per TRANSACTION** (`kareem.days_notified`,
+  `0111`). Right in production, where every RPC is its own transaction; an RLS case is ONE
+  transaction, so a test that schedules twice sees only the first notice. Every track writing a
+  day-aware RLS case will hit this. Mine clears the setting and says why.
+- ★ **`resolveDay()` and `checkInDay()` throw away the element type**, so `checkin.ts` cannot read
+  `checkInOpen` off a `SessionDay` it passed in. Asked for `<T extends DayWindow>` on the lead's two
+  functions rather than widening `asCheckInDay`, which would lose exactly the guarantee `DEC-151`
+  ruling 8 asked for.
+- **`tests/rls/session-days-tasks-guard.test.ts` failed once in a full run and passed alone and in a
+  second full run.** It scans `pg_proc` from outside a transaction while other files are applying
+  proposed SQL inside one; an order-dependent scan is the class of defect that made `main`'s CI red
+  at the start of this wave (`ad43ddb`). The lead's file; recorded, not touched.
+
+**Gates at `cfe0470`:** `tsc` clean for every file of this track · `lint` 0 errors · `npm test`
+196 files / 1833 green · `npm run test:rls` **98 files / 1029 green**. **The e2e specs are unrun**:
+`.next` predates every wave-9 commit and `npm run build` is the lead's, so the seven captures do not
+exist yet and that is the one part of this track's definition of done still open.
+
+
+#### W9.11a What the captures found — three defects no assertion had
+
+The build-and-open loop earned its place: every one of these was green in the suites and wrong on a
+390 px screen.
+
+1. ★ **THREE SURFACES, ONE INSTANT, TWO ANSWERS** (`201d6aa`, SQL promoted as `0122`). Between two
+   days of a workshop the PUBLIC CARD said «جارية الآن» while the event page and the browse card
+   said «التسجيل مفتوح» for the same session at the same moment. Contract 9's `sessionPhase()` reads
+   the night between days as `open` only when it is **given** the days, and three of this track's
+   call sites passed the session's stored window alone — a start that has passed, an end that has
+   not. Fixed at all three: `getSessionForEvent()` computes **one** phase per request through the
+   `cache()`d read the page already makes; `listSessionsPresentedBy()` embeds its days (a list may
+   embed — `DEC-151` ruling 3); and `session_public_card()` returns one `{ starts_at, ends_at }` per
+   day.
+   - ★ **`relation` could not have differed**, and the reasoning is in the code so it is not
+     rediscovered: `viewerRelation()` branches on `phase === "ended"` alone, and the day set never
+     moves that boundary because `sessions.ends_at` IS the last day's end (contract 1). The day set
+     only splits `live` into `live` and `open`. The defect was latent for the relation and real for
+     every other reader.
+   - ★ **Why not a boolean.** «Is a day running now» would have disclosed nothing at all and put
+     `betweenDays()` in SQL beside the TypeScript one. **Two implementations of one rule is exactly
+     what produced this defect**, so the rule stays in `session-status.ts` and the SQL feeds it.
+     `DEC-157` records it. `session_days` gains no `anon` grant; a day object carries two instants
+     and no key.
+   - **Open, not blocking:** `DayWindow` requires `id` and `position`, which the public card has by
+     design (`0122` returns none), so the DTO assigns `public-card-day-N`. A request is with the lead
+     to make both optional — `chronological()` uses `id` only to break a tie between two days
+     starting at the same instant, which `0100`'s exclusion constraint makes impossible.
+2. ~~**A wrapped «الموعد» opened with its separator**~~ — ★ **WITHDRAWN, and wave 7's rule
+   stands. Nobody re-raises this.** The change (`201d6aa`) moved the «·» out of the public card's
+   `whitespace-nowrap` clause so a wrapped line would not open with it. **That broke the ONE-DAY
+   contract**, which is written down in two pre-existing specs and was decided deliberately at wave 7
+   (`58ab535`) with a capture behind it: `wave7-sessions-public-card.spec.ts:117` asserts the clause
+   READS `/^· حتى/`, and `sessions-public-card.spec.ts:170` asserts it occupies ONE line box.
+   «· حتى 8:27 م» is one unbreakable clause and the only break opportunity is the ordinary space
+   BEFORE the «·» — otherwise the line breaks inside the start time and leaves «م» alone, which is
+   what wave 7's capture actually showed. Both markups restored byte for byte (`s/[id]/page.tsx` and
+   `action-card.tsx`), and the multi-day count clause follows the SAME rule rather than a second one.
+   ★ **The lesson is the ledger's own**: a pre-existing spec is the contract, and a «nit» that
+   contradicts one is a decision being reversed without the entry that made it.
+3. **The hero's duration chip said the workshop lasted two hours** (`f960c17`). `duration_minutes`
+   is day one's length and must stay so — the clock jobs and the check-in window key off it — while
+   the chip answers «how much of my week is this». It reads the day count above one day now.
+
+**And two spec defects of my own**, both found by the first real run and neither in the product:
+a fixture that tried to `update` a session from `draft` to `published` (`0024` accepts only `02`
+§6.2's edges for every writer, the owner included — a row is BORN with its state), and a `pick()`
+helper that gave one regular expression to both the trigger and the dialog when `ui/date-time` names
+them differently («{label}: {value}» and «{label}»), which cost 90 s of waiting for a dialog that
+could never be found. ★ **No defect in `ui/switch`**: its `<label>` wraps the input, the track and
+the text at `min-h-11`, so a thumb meets a 44 px row; only `click()` on the role locator meets the
+`sr-only` pixel, which Playwright then scrolls minimally under the sticky bar. `tapSwitch()` clicks
+the label, scrolls to centre and **asserts what `elementFromPoint` returns at the row's centre** —
+never `force: true`, which would pass whether or not the bar covered the row.
+
+
+### W9.12 ★ At the freeze — what is done, and what is carried
+
+**Done.** Rows S1–S4, and every fix the captures and the demonstrable asked for.
+
+| | |
+|---|---|
+| Contract 3 | `SessionDay`, `listSessionDays(locale, sessionId)` — the one reader of `session_days`; `schedule_session(…, p_days, p_require_all_days)` (`0106`) |
+| Contract 7 | `day-label.ts`, one formatter for four tracks; `sessions.days.*` |
+| Contract 11 | `session_day_notice()` and the call to `notify`'s `session_days_changed()` (`0112`, promoted with `0111`) |
+| `REQ-SES-016` | the form: the affordance, the day list, the confirm, `require_all_days` |
+| `REQ-SES-015` | the event page, the timeline and browse cards, the public card (`0118`, `0122`) |
+| `REQ-CAL-001` | `calendar-menu.tsx`'s `groups`, flat below two |
+
+★ **`supabase/proposed/sessions/` is EMPTY**: all four files are promoted (`0106`, `0112`, `0118`,
+`0122`). Nothing of this track's is waiting on the lead.
+
+**Carried, with an owner — none of it wave 9's, and none of it blocking.**
+
+1. ★ **The multi-day poster's date — `designer`'s, WAVE 10.** `STATUS.md` row L6 held it as «assessed
+   at sync 1, not promised», and it was not promised. A poster still renders the session's single
+   start; `0098` made the library a migration, so a date-range binding is a new seed and a template
+   change, which is `designer`'s work and not a fix. **Nothing in this track renders a poster date**
+   — the event page and the cards read the day set, and `PosterPicker` is a slot.
+2. **`DayWindow`'s `id` and `position` could be optional** — a request with the lead
+   (`src/lib/session-status.ts`). `session_public_card()` returns no identifier by design (`0122`),
+   so `getPublicSessionCard()` assigns `public-card-day-N`; the fields exist for a tie-break between
+   two days starting at the same instant, which `0100`'s exclusion constraint makes impossible
+   within a session. Contained in one mapping and commented.
+3. **The filter sheet's native date mask** (§38.2) — still open, still not a localisation problem,
+   default in force is `DEC-098`'s period chips. Browse's filter, not a day.
+4. **`ratings.edited_at` at millisecond precision** (§34.4, ruling 12) — still open. It belongs with
+   `submitted_at` and the survey, which is wave 10's.
+
+**Wave 9's own subject is finished for this track.** Multi-day sessions read correctly on every
+surface this track owns, at one day and at several, and the one-day path is pinned at the seam
+(`tests/unit/schedule-days.test.ts`), in the DOM (`tests/components/sessions/schedule-days.test.tsx`)
+and in the database (`tests/rls/sessions-schedule-days.test.ts`). **The untouched-suite ledger has
+one line from this track** — `tests/components/browse/fixtures.tsx`, `days: []` on the base session —
+and no expectation of a one-day session changed anywhere.
+

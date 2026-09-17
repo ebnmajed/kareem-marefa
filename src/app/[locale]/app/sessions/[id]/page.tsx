@@ -30,7 +30,7 @@ import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { requireSession } from "@/lib/dal/session";
-import { getSessionForEvent, type EventSession } from "@/lib/dal/sessions";
+import { getSessionForEvent, listSessionDays, type EventSession } from "@/lib/dal/sessions";
 import { canGrantOn, closingSoon, sessionPhase, type ViewerRelation } from "@/lib/session-status";
 
 // SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 6 to
@@ -68,10 +68,14 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [me, session, rsvp, t] = await Promise.all([
+  const [me, session, rsvp, days, t] = await Promise.all([
     requireSession(locale, `/${locale}/app/sessions/${id}`),
     getSessionForEvent(locale, id),
     getRsvpPanelData(locale, id),
+    // ★ Contract 3. `cache()`d, so the action card's day list and anything else
+    // on this page that needs days share this one read. At one day it returns
+    // one day and nothing below branches on the count (rule 1).
+    listSessionDays(locale, id),
     getTranslations("sessions.event"),
   ]);
   if (!session) notFound();
@@ -81,7 +85,11 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   // §5.3, REQ-UIX-015, DEC-090). RLS and the RPCs remain authoritative
   // (REQ-NFR-001): a hidden control is a courtesy, and the database refuses the
   // write regardless. What these fix is offering an action it would refuse.
-  const phase = sessionPhase(session);
+  // ★ The days are PASSED, never re-derived (contract 9). Between two days of a
+  // workshop a session is `open`, not `live` — a member who reads «جارية» on
+  // Thursday morning for a Wednesday-and-Friday workshop has been told the
+  // wrong thing about a room they might walk to.
+  const phase = sessionPhase({ ...session, days });
   const relation = session.viewerRelation;
   const can = affordancesFor(phase, relation);
   // Contract 2: the room's switch and the `ends_at + 2 h` ceiling, from the raw
@@ -155,7 +163,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     <article>
       <Notices session={session} phase={phase} published={published} locale={locale} />
 
-      <EventHero session={session} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
+      <EventHero session={session} dayCount={days.length} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
 
       <div className="mx-auto max-w-6xl px-4 pb-12 md:px-8 md:pb-16">
         <div className="md:grid md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12">
@@ -164,6 +172,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               onto the band's bottom edge only, never over the poster. */}
           <div className="-mt-4 md:sticky md:top-[calc(var(--header-h)+1.5rem)] md:col-start-2 md:row-start-1 md:-mt-10">
             <ActionCard
+              days={days}
               session={session}
               phase={phase}
               can={can}

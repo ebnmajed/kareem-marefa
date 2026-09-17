@@ -52,7 +52,14 @@ const tones = {
   info: { cls: "border-edge-strong text-fg-heading", Icon: InfoIcon },
 } as const;
 
-export function ToastProvider({ children, closeLabel }: { children: ReactNode; closeLabel: string }) {
+/**
+ * `label` is what a screen reader says BEFORE every toast — Radix's default is
+ * the English word «Notification», so an Arabic toast was announced
+ * «Notification تتم معالجة الصورة الآن…» (found in wave 9 by a strict-mode
+ * locator that matched the live region). The shell passes the localised word.
+ * Optional, so a component test that mounts a bare provider keeps compiling.
+ */
+export function ToastProvider({ children, closeLabel, label }: { children: ReactNode; closeLabel: string; label?: string }) {
   const [live, setLive] = useState<Live[]>([]);
   const show = useCallback((options: ToastOptions) => {
     setLive((current) => [...current, { ...options, id: Date.now() + Math.random() }]);
@@ -61,7 +68,7 @@ export function ToastProvider({ children, closeLabel }: { children: ReactNode; c
 
   return (
     <ToastContext.Provider value={handle}>
-      <RadixToast.Provider swipeDirection="down">
+      <RadixToast.Provider swipeDirection="down" label={label}>
         {children}
         {live.map((toast) => {
           const tone = tones[toast.tone ?? "info"];
@@ -109,6 +116,9 @@ export function ToastProvider({ children, closeLabel }: { children: ReactNode; c
           );
         })}
         <RadixToast.Viewport
+          // The REGION's own name — Radix's default is «Notifications (F8)». `{hotkey}`
+          // is Radix's placeholder; it fills in the key that focuses the region.
+          label={label ? `${label} ({hotkey})` : undefined}
           // ★ `empty:hidden` and `pointer-events-none` (DEC-111, DEC-133): an EMPTY
           // viewport was still a fixed, padded box ~112 px tall at z-40 — over the
           // z-30 tab bar, catching taps meant for its middle tabs. Hidden while

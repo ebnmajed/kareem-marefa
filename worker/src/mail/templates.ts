@@ -73,24 +73,30 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
     subject: "حصلت على مقعد في {{title}}",
     body: `${greeting}\n\nتوفّر مقعد وانتقلت من قائمة الانتظار إلى الحجز المؤكد في جلسة «{{title}}».\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\nإن لم تعد تستطيع الحضور، ألغِ حجزك ليستفيد غيرك.\n\n{{url}}`,
   },
+  // ★ WAVE 9 (REQ-SES-015): `{{day}}` is «اليوم الثاني من 3» when the session
+  // has several meetings and the EMPTY STRING when it has one, which
+  // `toParagraphs()` then drops — so a one-day reminder is the mail M3
+  // shipped, paragraph for paragraph. Same mechanism as `{{tasks}}`: the
+  // templates have no conditionals, so a block that may be absent is a value
+  // that may be empty (`render.ts`'s `dayBlock`).
   "MSG-reminder_7d": {
     subject: "بعد أسبوع: {{title}}",
-    body: `${greeting}\n\nتذكير: جلسة «{{title}}» بعد أسبوع.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
+    body: `${greeting}\n\nتذكير: جلسة «{{title}}» بعد أسبوع.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
   },
   "MSG-reminder_1d": {
     subject: "غدًا: {{title}}",
-    body: `${greeting}\n\nجلسة «{{title}}» غدًا.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
+    body: `${greeting}\n\nجلسة «{{title}}» غدًا.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
   },
   "MSG-reminder_2h": {
     subject: "بعد ساعتين: {{title}}",
-    body: `${greeting}\n\nجلسة «{{title}}» بعد ساعتين.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{url}}`,
+    body: `${greeting}\n\nجلسة «{{title}}» بعد ساعتين.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{url}}`,
   },
   // 08 §1.2's fourth, offset-agnostic reminder (DEC-047, migration 0062): any
   // org offset outside ±20% of the three fixed ones. Names no distance, so it
   // is honest at every offset.
   "MSG-reminder_generic": {
     subject: "تذكير: {{title}}",
-    body: `${greeting}\n\nتذكير بجلسة «{{title}}» القادمة.\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
+    body: `${greeting}\n\nتذكير بجلسة «{{title}}» القادمة.\n\n{{day}}\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\n{{tasks}}\n\n{{url}}`,
   },
   "MSG-rating_prompt": {
     subject: "كيف كانت جلسة {{title}}؟",

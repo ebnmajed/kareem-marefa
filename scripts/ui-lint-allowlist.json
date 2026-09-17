@@ -14,16 +14,8 @@
       "field": 1,
       "class-string": 3
     },
-    "src/app/[locale]/app/admin/sessions/[id]/attendance/manual-mark-form.tsx": {
-      "field": 2,
-      "class-string": 2
-    },
     "src/app/[locale]/app/admin/sessions/[id]/attendance/page.tsx": {
       "class-string": 2
-    },
-    "src/app/[locale]/app/admin/sessions/[id]/certificates/page.tsx": {
-      "field": 2,
-      "class-string": 6
     },
     "src/app/[locale]/app/admin/sessions/direct-session-form.tsx": {
       "class-string": 1
@@ -79,9 +71,6 @@
     },
     "src/components/photos/gallery.tsx": {
       "class-string": 1
-    },
-    "src/components/posters/picker.tsx": {
-      "class-string": 4
     },
     "src/components/registration-form.tsx": {
       "field": 5

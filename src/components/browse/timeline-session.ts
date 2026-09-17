@@ -1,6 +1,6 @@
 import { checkInWindowAllowed } from "@/components/checkin/session-matrix";
 import type { SessionLanguage, SessionLevel, SessionState } from "@/lib/dal/sessions";
-import { closingSoon, seatState, sessionPhase, type SeatState, type SessionPhase } from "@/lib/session-status";
+import { closingSoon, seatState, sessionPhase, type DayWindow, type SeatState, type SessionPhase } from "@/lib/session-status";
 
 // One session card's DTO, and the two pure steps that build it — `16` §6.4,
 // REQ-UIX-003, REQ-UIX-021, REQ-DSC-006.
@@ -25,6 +25,13 @@ export interface TimelineSession {
   closingSoon: boolean;
   startsAt: string | null;
   endsAt: string | null;
+  /**
+   * ★ The session's days (`REQ-SES-015`). One entry for a one-day session, so
+   * `days.length` is a count and never a mode: the card says a range when there
+   * is more than one row to span, the way any list decides whether to show a
+   * second line.
+   */
+  days: readonly DayWindow[];
   /** The session's own zone — the card prints the time on the room's wall, as the event page does. */
   timeZone: string;
   categoryId: string | null;
@@ -52,8 +59,15 @@ export interface TimelineSession {
 export const TIMELINE_STATES: SessionState[] = ["published", "in_progress", "completed", "archived", "cancelled"];
 
 /** The `sessions` select every card reader uses, so the row shape below is one shape. */
+// ★ `session_days(…)` IS EMBEDDED, and that is the one place in the product a
+// reader gets days without `listSessionDays()` (DEC-151 ruling 3). A list over
+// many sessions cannot afford one call per card, and it needs the day windows
+// for two things the session row cannot answer: contract 9's phase — between
+// two days a session is `open`, and a card reading the stored window alone says
+// «جارية» on the Thursday of a Wednesday-and-Friday workshop — and whether to
+// say a range at all. A SINGLE session still goes through `listSessionDays()`.
 export const TIMELINE_SESSION_COLUMNS =
-  "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name)";
+  "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name), session_days(id, position, starts_at, ends_at, check_in_open)";
 
 export type PresenterEntry = { memberId: string; displayName: string | null; companyId: string | null };
 export type TagEntry = { label: string; normalised: string };
@@ -109,11 +123,23 @@ export function toTimelineCandidate(row: Record<string, unknown>, ctx: Candidate
   const endsAt = (row.ends_at as string | null) ?? null;
   const durationMinutes = (row.duration_minutes as number | null) ?? null;
   const presenters = ctx.presentersBySession.get(id) ?? [];
+  const days = ((row.session_days as Record<string, unknown>[] | null) ?? [])
+    .map((d) => ({
+      id: d.id as string,
+      position: d.position as number,
+      startsAt: d.starts_at as string,
+      endsAt: d.ends_at as string,
+      checkInOpen: d.check_in_open === true,
+    }))
+    .sort((a, b) => a.position - b.position);
   return {
     id,
     title: row.title as string,
     state,
-    phase: sessionPhase({ state, startsAt, endsAt, durationMinutes }, ctx.now),
+    // Contract 9: the days are PASSED, never re-derived. At one day every
+    // function returns exactly what it returned before they existed.
+    phase: sessionPhase({ state, startsAt, endsAt, durationMinutes, days }, ctx.now),
+    days,
     startsAt,
     endsAt,
     durationMinutes,
@@ -153,6 +179,7 @@ export function finishTimelineSession(c: TimelineCandidate, extras: CardExtras, 
     phase: c.phase,
     startsAt: c.startsAt,
     endsAt: c.endsAt,
+    days: c.days,
     timeZone: c.timeZone,
     categoryId: c.categoryId,
     categoryName: c.categoryName,

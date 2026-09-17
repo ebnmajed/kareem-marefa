@@ -31,8 +31,29 @@ function isPayload(p: unknown): p is EvaluateNoShowsPayload {
 export const evaluate_no_shows: Task = async (payload, helpers) => {
   if (!isPayload(payload)) throw new Error(`evaluate_no_shows: malformed payload ${JSON.stringify(payload)}`);
 
+  // ★ FIRST, the attendance award (REQ-SES-017, DEC-151 answer 4). For a
+  // multi-day session this is where the award happens at all — the full day
+  // set is not known until the session ends. For a ONE-DAY session it is a
+  // proven no-op: the award landed at check-in under the very key this pass
+  // recomputes, so evaluate_member_attendance() finds it standing and writes
+  // nothing.
+  //
+  // Folded in rather than given its own job, on 0081's precedent: the company
+  // rules are here for exactly the same reason, sessions_completion_fanout()
+  // already enqueues one evaluate_no_shows job per completed session, and its
+  // key `noshow:<session_id>` is one contract 2 requires not to change.
+  // Idempotent by construction, so a retry re-awards nothing.
+  await helpers.query(`select public.evaluate_session_attendance($1)`, [payload.session_id]);
+
   // A check-in an admin removed (REQ-CHK-017, 0087) is no attendance. remove_check_in()
   // already awards this same key at removal; the filter keeps the two answers identical.
+  //
+  // ★ At more than one day this reads «no active check-in on ANY day», which
+  // is already what the query says and is the right definition: a member who
+  // came on day one and missed days two and three is a PARTIAL ATTENDEE, not
+  // a no-show. REQ-SES-017 says partial attendance earns nothing; it does not
+  // say it is penalised, and recording it as an absence would make this row —
+  // which an admin reads before deciding to enable a penalty — a lie.
   const { rows } = await helpers.query<{ rsvp_id: string; member_id: string }>(
     `select r.id as rsvp_id, r.member_id
        from public.rsvps r
