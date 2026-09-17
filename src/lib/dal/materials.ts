@@ -36,6 +36,11 @@ export const initiateMaterialUploadInput = z
     // REQ-PRO-004: a material belongs to a session XOR a proposal — never both.
     sessionId: z.uuid().optional(),
     proposalId: z.uuid().optional(),
+    // REQ-SES-018/DEC-121: sent by the group's own «أضف» the member pressed, never chosen from a
+    // field — omitted (or a proposal upload, which has no days) means the whole session. The
+    // composite FK (0100) is the authority that a day names a day of THIS session; this is shape
+    // only (CLAUDE.md, "Validation").
+    sessionDayId: z.uuid().optional(),
     kind: materialKindSchema,
     title: z.string().trim().min(1).max(200),
     phase: z.enum(["before", "after"]).default("after"),
@@ -97,6 +102,7 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
         org_id: session.orgId,
         session_id: input.sessionId ?? null,
         proposal_id: input.proposalId ?? null,
+        session_day_id: input.sessionDayId ?? null,
         kind: input.kind,
         title: input.title,
         phase: input.phase,
@@ -129,6 +135,7 @@ export async function initiateMaterialUpload(locale: string, input: InitiateMate
       org_id: session.orgId,
       session_id: input.sessionId ?? null,
       proposal_id: input.proposalId ?? null,
+      session_day_id: input.sessionDayId ?? null,
       kind: input.kind,
       title: input.title,
       phase: input.phase,
@@ -223,6 +230,9 @@ export interface MaterialSummary {
   externalUrl: string | null;
   currentVersionId: string | null;
   createdAt: string;
+  /** REQ-SES-018/DEC-121: null is the whole session. A proposal's own material (no session) is
+   *  always null — `materials_day_needs_session` (0100) refuses it any other value. */
+  sessionDayId: string | null;
 }
 
 function toMaterialSummary(row: Record<string, unknown>): MaterialSummary {
@@ -237,6 +247,7 @@ function toMaterialSummary(row: Record<string, unknown>): MaterialSummary {
     externalUrl: (row.external_url as string | null) ?? null,
     currentVersionId: (row.current_version_id as string | null) ?? null,
     createdAt: row.created_at as string,
+    sessionDayId: (row.session_day_id as string | null) ?? null,
   };
 }
 
@@ -247,7 +258,7 @@ export async function listMaterials(locale: string, sessionId: string): Promise<
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase
     .from("materials")
-    .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at")
+    .select("id, kind, title, phase, allow_download, render_status, font_substitution_warning, external_url, current_version_id, created_at, session_day_id")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`materials: ${error.message}`);
@@ -371,6 +382,30 @@ export async function updateMaterialSettings(locale: string, input: z.infer<type
   const { data, error } = await supabase.from("materials").update(patch).eq("id", parsed.materialId).select("id");
   if (error) throw new Error(`materials: ${error.message}`);
   return (data ?? []).length > 0;
+}
+
+const rescopeMaterialInput = z.object({ materialId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — one tap on the item's chip («اليوم الثاني ▾»). `session_day_id` is not in
+ *  `updateMaterialSettings`'s column grant on purpose (docs/plan/notes/content.md, wave-9 plan §1):
+ *  staff (admin OR moderator) may rescope, which is wider than `materials_update_admin`'s
+ *  admin-only reach, so a dedicated RPC keeps that authority from leaking onto `title`/`phase`/
+ *  `allow_download` too. `rescope_material()` (proposed/content/0001) re-derives authority itself
+ *  and audits the move (`material.rescoped`) — 0052 already audits a phase change for the same
+ *  reason: this moves WHEN the material is visible. */
+export async function rescopeMaterial(locale: string, input: z.infer<typeof rescopeMaterialInput>): Promise<boolean> {
+  const parsed = rescopeMaterialInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_material", { p_material_id: parsed.materialId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }
 
 export interface ViewerPage {

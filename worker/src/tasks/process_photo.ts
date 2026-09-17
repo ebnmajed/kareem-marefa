@@ -31,6 +31,14 @@ interface Payload {
   uploader_id: string;
   storage_path: string;
   declared_kind: ImageKind;
+  // REQ-SES-018/DEC-121: the instant `initiate_photo_processing()` ran — right after the browser's
+  // own PUT succeeded, not this job's own clock, which can run minutes later.
+  // `record_photo_upload()` uses this, not now(), to pick the day a photo belongs to
+  // (proposed/content/0001). Optional, not required: a job enqueued by the OLD
+  // `initiate_photo_processing()` (pushed before this migration lands, additive per rule 2) has no
+  // such key, and is a malformed-payload rejection we can avoid — falling back to this task's own
+  // clock below is exactly the SQL function's own default for an omitted argument.
+  uploaded_at?: string;
 }
 
 function isPayload(p: unknown): p is Payload {
@@ -42,7 +50,8 @@ function isPayload(p: unknown): p is Payload {
     typeof v.session_id === "string" &&
     typeof v.uploader_id === "string" &&
     typeof v.storage_path === "string" &&
-    (v.declared_kind === "jpeg" || v.declared_kind === "png" || v.declared_kind === "webp")
+    (v.declared_kind === "jpeg" || v.declared_kind === "png" || v.declared_kind === "webp") &&
+    (v.uploaded_at === undefined || typeof v.uploaded_at === "string")
   );
 }
 
@@ -80,9 +89,23 @@ export const process_photo: Task = async (payload, helpers) => {
   // §1.4a); record_photo_upload has side effects, so a double call would be a double insert
   // attempt on its retry-safe `on conflict (id) do nothing`, not a correctness bug here, but the
   // safe form is used regardless, as everywhere else in this track.
+  //
+  // REQ-SES-018/DEC-121: the 10th argument — `uploaded_at ?? now()` mirrors the SQL function's own
+  // default for a caller that omits it (proposed/content/0001).
   const { rows: outcomeRows } = await helpers.query<{ envelope: { status: string; limit_mb?: number } }>(
-    `select public.record_photo_upload($1, $2, $3, $4, $5, $6, $7, $8, $9) as envelope`,
-    [payload.photo_id, payload.org_id, payload.session_id, payload.uploader_id, payload.storage_path, stripped.byteLength, sha256, width, height],
+    `select public.record_photo_upload($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as envelope`,
+    [
+      payload.photo_id,
+      payload.org_id,
+      payload.session_id,
+      payload.uploader_id,
+      payload.storage_path,
+      stripped.byteLength,
+      sha256,
+      width,
+      height,
+      payload.uploaded_at ?? new Date().toISOString(),
+    ],
   );
   const envelope = outcomeRows[0]?.envelope;
 

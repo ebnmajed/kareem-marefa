@@ -71,6 +71,7 @@ describe("Materials slot", () => {
           externalUrl: null,
           currentVersionId: "v1",
           createdAt: "2026-09-14T00:00:00Z",
+          sessionDayId: null,
         },
       ],
     });
@@ -95,6 +96,7 @@ describe("Materials slot", () => {
           externalUrl: null,
           currentVersionId: "v1",
           createdAt: "2026-09-14T00:00:00Z",
+          sessionDayId: null,
         },
       ],
     });
@@ -122,6 +124,7 @@ describe("Materials slot", () => {
           externalUrl: "https://youtube.com/watch?v=x",
           currentVersionId: null,
           createdAt: "2026-09-14T00:00:00Z",
+          sessionDayId: null,
         },
       ],
     });
@@ -145,6 +148,7 @@ describe("Materials slot", () => {
           externalUrl: null,
           currentVersionId: "v1",
           createdAt: "2026-09-14T00:00:00Z",
+          sessionDayId: null,
         },
       ],
     };
@@ -172,6 +176,7 @@ describe("Materials slot", () => {
           externalUrl: null,
           currentVersionId: "v1",
           createdAt: "2026-09-14T00:00:00Z",
+          sessionDayId: null,
         },
       ],
     });
@@ -184,7 +189,7 @@ describe("materialsSummary", () => {
   it("is visible with a count when materials exist", async () => {
     vi.mocked(getMaterialsPageData).mockResolvedValue({
       ...base,
-      materials: [{ id: "m1", kind: "pdf", title: "t", phase: "after", allowDownload: true, renderStatus: "ready", fontSubstitutionWarning: null, externalUrl: null, currentVersionId: "v1", createdAt: "now" }],
+      materials: [{ id: "m1", kind: "pdf", title: "t", phase: "after", allowDownload: true, renderStatus: "ready", fontSubstitutionWarning: null, externalUrl: null, currentVersionId: "v1", createdAt: "now", sessionDayId: null }],
     });
     await expect(materialsSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: true, count: 1, outstanding: null });
   });

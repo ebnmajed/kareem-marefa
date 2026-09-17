@@ -50,8 +50,8 @@ describe("Tasks slot", () => {
   it("★ REQ-TSK-004: shows the count and the completed-of-them progress line", async () => {
     await renderSlot({
       tasks: [
-        { id: "t1", kind: "checklist", title: "أحضر جهازك", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 0, completed: true, myFormResponse: null },
-        { id: "t2", kind: "checklist", title: "اقرأ الملخص", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null },
+        { id: "t1", kind: "checklist", title: "أحضر جهازك", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 0, completed: true, myFormResponse: null, sessionDayId: null },
+        { id: "t2", kind: "checklist", title: "اقرأ الملخص", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null, sessionDayId: null },
       ],
       canManage: false,
       materials: [],
@@ -69,8 +69,8 @@ describe("Tasks slot", () => {
   it("shows the matching affordance per kind, and bidi-isolates the task title", async () => {
     await renderSlot({
       tasks: [
-        { id: "t1", kind: "read_material", title: "اقرأ الشرائح", description: null, materialId: "mat1", formSchema: null, externalUrl: null, sortOrder: 0, completed: false, myFormResponse: null },
-        { id: "t2", kind: "external", title: "ثبّت التطبيق", description: null, materialId: null, formSchema: null, externalUrl: "https://example.com", sortOrder: 1, completed: false, myFormResponse: null },
+        { id: "t1", kind: "read_material", title: "اقرأ الشرائح", description: null, materialId: "mat1", formSchema: null, externalUrl: null, sortOrder: 0, completed: false, myFormResponse: null, sessionDayId: null },
+        { id: "t2", kind: "external", title: "ثبّت التطبيق", description: null, materialId: null, formSchema: null, externalUrl: "https://example.com", sortOrder: 1, completed: false, myFormResponse: null, sessionDayId: null },
       ],
       canManage: false,
       materials: [],
@@ -88,8 +88,8 @@ describe("tasksSummary", () => {
   it("carries this viewer's outstanding (not yet completed) count", async () => {
     vi.mocked(getTasksPageData).mockResolvedValue({
       tasks: [
-        { id: "t1", kind: "checklist", title: "أ", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 0, completed: true, myFormResponse: null },
-        { id: "t2", kind: "checklist", title: "ب", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null },
+        { id: "t1", kind: "checklist", title: "أ", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 0, completed: true, myFormResponse: null, sessionDayId: null },
+        { id: "t2", kind: "checklist", title: "ب", description: null, materialId: null, formSchema: null, externalUrl: null, sortOrder: 1, completed: false, myFormResponse: null, sessionDayId: null },
       ],
       canManage: false,
       materials: [],

@@ -80,8 +80,8 @@ describe("Photos slot", () => {
     await renderSlot({
       ...base,
       photos: [
-        { id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null },
-        { id: "p2", uploaderId: "u2", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p2.jpg", hiddenAt: null },
+        { id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null, sessionDayId: null },
+        { id: "p2", uploaderId: "u2", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p2.jpg", hiddenAt: null, sessionDayId: null },
       ],
     });
     expect(screen.getByText("صورتان")).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("Photos slot", () => {
   it("★ a hidden photo shows the pending-review badge, and a restore action to staff instead of a request-hide action", async () => {
     await renderSlot({
       ...base,
-      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: "2026-09-14T01:00:00Z" }],
+      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: "2026-09-14T01:00:00Z", sessionDayId: null }],
       isStaff: true,
     });
     expect(screen.getByText("مخفية — بانتظار المراجعة")).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("Photos slot", () => {
     const { container } = await renderSlot({
       ...base,
       canUpload: true,
-      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null }],
+      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null, sessionDayId: null }],
     });
     const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(violations.map((v) => v.id)).toEqual([]);
@@ -112,7 +112,7 @@ describe("Photos slot", () => {
   it("★ REQ-UIX-013: the request-hide action confirms in a dialog naming the object, then toasts success", async () => {
     await renderSlot({
       ...base,
-      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null }],
+      photos: [{ id: "p1", uploaderId: "u1", createdAt: "2026-09-14T00:00:00Z", url: "https://example.com/p1.jpg", hiddenAt: null, sessionDayId: null }],
     });
     fireEvent.click(screen.getByRole("button", { name: "احذف الصور التي أظهر فيها" }));
     const dialog = screen.getByRole("dialog");
@@ -126,7 +126,7 @@ describe("Photos slot", () => {
 
 describe("photosSummary", () => {
   it("is visible with a count when photos exist", async () => {
-    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base, photos: [{ id: "p1", uploaderId: "u1", createdAt: "now", url: "u", hiddenAt: null }] });
+    vi.mocked(getPhotosPageData).mockResolvedValue({ ...base, photos: [{ id: "p1", uploaderId: "u1", createdAt: "now", url: "u", hiddenAt: null, sessionDayId: null }] });
     await expect(photosSummary({ sessionId, memberId: "m1", locale: "ar" })).resolves.toEqual({ visible: true, count: 1, outstanding: null });
   });
 

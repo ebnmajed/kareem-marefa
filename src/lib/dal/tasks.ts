@@ -36,6 +36,8 @@ export interface TaskSummary {
   completed: boolean;
   /** Present only for `kind = 'form'` and only this viewer's own prior answer, if any. */
   myFormResponse: Record<string, string> | null;
+  /** REQ-SES-018/DEC-121: null is the whole session. */
+  sessionDayId: string | null;
 }
 
 export interface TasksPageData {
@@ -66,7 +68,11 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
   const { session, supabase } = await sessionClient(locale);
 
   const [{ data: taskRows, error }, { data: presenterRow }, materialList] = await Promise.all([
-    supabase.from("session_tasks").select("id, kind, title, description, material_id, form_schema, external_url, sort_order").eq("session_id", sessionId).order("sort_order", { ascending: true }),
+    supabase
+      .from("session_tasks")
+      .select("id, kind, title, description, material_id, form_schema, external_url, sort_order, session_day_id")
+      .eq("session_id", sessionId)
+      .order("sort_order", { ascending: true }),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     listMaterials(locale, sessionId),
   ]);
@@ -95,6 +101,7 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
     sortOrder: t.sort_order as number,
     completed: completedTaskIds.has(t.id as string),
     myFormResponse: responseByTask.get(t.id as string) ?? null,
+    sessionDayId: (t.session_day_id as string | null) ?? null,
   }));
 
   return {
@@ -107,6 +114,8 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
 const createTaskInput = z
   .object({
     sessionId: z.uuid(),
+    // REQ-SES-018/DEC-121: sent by the group's own «أضف» the member pressed, never a field.
+    sessionDayId: z.uuid().optional(),
     kind: taskKindSchema,
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(2000).optional(),
@@ -136,6 +145,7 @@ export async function createTask(locale: string, input: CreateTaskInput): Promis
     .insert({
       org_id: session.orgId,
       session_id: parsed.sessionId,
+      session_day_id: parsed.sessionDayId ?? null,
       kind: parsed.kind,
       title: parsed.title,
       description: parsed.description ?? null,
@@ -152,6 +162,30 @@ export async function createTask(locale: string, input: CreateTaskInput): Promis
 function mapTaskError(error: { code?: string; message: string }): string {
   if (error.code === "42501") return "not_authorized";
   return `session_tasks: ${error.message}`;
+}
+
+const rescopeTaskInput = z.object({ taskId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — one tap on the item's chip. `session_day_id` is not in
+ *  `session_tasks_update_presenter`'s column grant on purpose: staff (admin OR moderator) may
+ *  rescope, which is wider than that policy's own reach (`is_presenter_of() or is_org_admin()`),
+ *  so a dedicated RPC keeps that authority from leaking onto `title`/`form_schema`/etc. too.
+ *  `rescope_task()` (proposed/content/0001) re-derives authority itself. No audit row — unlike a
+ *  material's rescope (REQ-MAT-006's visibility fix), a task's scope carries no visibility change
+ *  for REQ-TSK-002 to protect. */
+export async function rescopeTask(locale: string, input: z.infer<typeof rescopeTaskInput>): Promise<boolean> {
+  const parsed = rescopeTaskInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_task", { p_task_id: parsed.taskId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }
 
 const toggleInput = z.object({ taskId: z.uuid(), completed: z.boolean() });

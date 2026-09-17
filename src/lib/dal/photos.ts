@@ -108,6 +108,9 @@ export interface PhotoSummary {
   url: string;
   /** Present only when the viewer is staff (`photos_read`, 03 §6) — a plain member never sees a hidden photo at all. */
   hiddenAt: string | null;
+  /** REQ-SES-018/DEC-121: never chosen by the uploader — `record_photo_upload()` resolves it from
+   *  the upload's own moment, and leaves it null while the session has one day. */
+  sessionDayId: string | null;
 }
 
 export interface PhotosPageData {
@@ -138,7 +141,12 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   const { session, supabase } = await sessionClient(locale);
 
   const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }] = await Promise.all([
-    supabase.from("photos").select("id, uploader_id, storage_path, created_at, hidden_at").eq("session_id", sessionId).is("removed_at", null).order("created_at", { ascending: false }),
+    supabase
+      .from("photos")
+      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id")
+      .eq("session_id", sessionId)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false }),
     supabase.rpc("has_checked_in", { p_session: sessionId }),
     supabase.rpc("is_presenter_of", { p_session: sessionId }),
     supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
@@ -148,7 +156,14 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   const photos = await Promise.all(
     (rows ?? []).map(async (p): Promise<PhotoSummary> => {
       const { data: signed } = await supabase.storage.from("photos").createSignedUrl(p.storage_path as string, 3600);
-      return { id: p.id as string, uploaderId: p.uploader_id as string, createdAt: p.created_at as string, url: signed?.signedUrl ?? "", hiddenAt: (p.hidden_at as string | null) ?? null };
+      return {
+        id: p.id as string,
+        uploaderId: p.uploader_id as string,
+        createdAt: p.created_at as string,
+        url: signed?.signedUrl ?? "",
+        hiddenAt: (p.hidden_at as string | null) ?? null,
+        sessionDayId: (p.session_day_id as string | null) ?? null,
+      };
     }),
   );
 
@@ -197,4 +212,27 @@ export async function restorePhoto(locale: string, photoId: string): Promise<boo
     .is("resolved_at", null);
 
   return true;
+}
+
+const rescopePhotoInput = z.object({ photoId: z.uuid(), sessionDayId: z.uuid().nullable() });
+
+/** REQ-SES-018/DEC-121 — staff alone (a photo has no presenter-write concept: `photos_insert_
+ *  checked_in`, 03 §5.6c, never names `is_presenter_of` as an OWNER, only as one of three ways to
+ *  be allowed to upload). `session_day_id` is not in `p6_staff_update`'s column grant
+ *  (`hidden_at`/`hidden_reason`/`removed_at`/`removed_by`, 0037) — `rescope_photo()`
+ *  (proposed/content/0001) is the door, re-deriving `is_staff()` itself. No audit row (matching
+ *  `rescopeTask`'s reasoning — no visibility rule turns on a photo's scope). */
+export async function rescopePhoto(locale: string, input: z.infer<typeof rescopePhotoInput>): Promise<boolean> {
+  const parsed = rescopePhotoInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("rescope_photo", { p_photo_id: parsed.photoId, p_day_id: parsed.sessionDayId });
+  if (error) throw new Error(mapRescopeError(error));
+  return true;
+}
+
+function mapRescopeError(error: { code?: string; message: string }): string {
+  if (error.code === "42501") return "not_authorized";
+  if (error.code === "P0002") return "not_found";
+  if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
+  return `rescope: ${error.message}`;
 }
