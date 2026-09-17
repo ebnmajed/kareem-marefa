@@ -3,7 +3,7 @@ import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 import { resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
-import { affordancesFor, checkInDayFor, checkInIneligibleReason, checkInWindowAllowed, type CheckInIneligibleReason } from "@/components/checkin/session-matrix";
+import { affordancesFor, checkInIneligibleReason, checkInWindowAllowed, type CheckInIneligibleReason } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
 // ── the day, on every DTO in this file (DEC-119, DEC-150 contract 4) ───────
@@ -113,8 +113,10 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   // The code's own day first — it is the one the RPC just minted for, so the
   // six characters on the wall and the day named beside them are the same
   // meeting. With no code (outside every window) the same rule the RPC uses.
-  const fallback = resolveDay(days, new Date());
-  const day = (c ? days.find((d) => d.id === c.session_day_id) : undefined) ?? days.find((d) => d.id === fallback?.id) ?? null;
+  // ★ `resolveDay()` is generic over the day type since `55d09a2`, so this
+  // keeps the `SessionDay` — and with it `checkInOpen`, on the same array the
+  // day was resolved out of.
+  const day = (c ? days.find((d) => d.id === c.session_day_id) : undefined) ?? resolveDay(days, new Date());
   // ★ The DAY's switch and the DAY's count. `sessions.check_in_open` is the
   // `bool_or` shadow of the days (DEC-150 contract 2) and is the right answer
   // only at one day — it is the fallback for a session with no days at all.
@@ -255,10 +257,12 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   const isStaff = session.role === "admin" || session.role === "moderator";
   const isPresenter = Boolean(presenterRes.data);
   const rsvpStatus = (rsvpRes.data?.status as RsvpStatus | undefined) ?? null;
-  // The day the gate is about, and the day the screen names — one call, so
-  // they cannot be two different meetings.
-  const resolved = checkInDayFor(phaseInput);
-  const day = resolved ? (days.find((d) => d.id === resolved.id) ?? null) : null;
+  // ★ ONE INSTANT for the day and for the gate. `checkInIneligibleReason()`
+  // resolves the day itself, so leaving both to default to `new Date()` would
+  // let two calls microseconds apart straddle a day boundary — and the screen
+  // would then name one meeting and refuse about another.
+  const now = new Date();
+  const day = resolveDay(days, now);
   // ★ PER DAY. A member who attended day 1 is not «already checked in» to day 2.
   const checkedIn = (checkInRes.data ?? []).some((r) => (day ? r.session_day_id === day.id : true));
   const relation = viewerRelation({ isStaff, isPresenter, rsvpStatus, checkedIn }, phase);
@@ -266,7 +270,7 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   // The session-level shadow is the fallback the matrix uses only when the day
   // carries no switch of its own (DEC-150 contract 2).
   const checkInOpen = s.check_in_open === true;
-  const ineligibleReason = checkInIneligibleReason(phaseInput, { isStaff, isPresenter, rsvpStatus, checkedIn }, allowWalkIns, checkInOpen);
+  const ineligibleReason = checkInIneligibleReason(phaseInput, { isStaff, isPresenter, rsvpStatus, checkedIn }, allowWalkIns, checkInOpen, now);
 
   return {
     sessionId,
