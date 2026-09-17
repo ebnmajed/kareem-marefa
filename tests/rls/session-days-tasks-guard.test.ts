@@ -16,11 +16,31 @@ import { pool } from "./db";
 afterAll(() => pool.end());
 
 const TASK_TABLES = "session_tasks|task_completions|task_form_responses";
-// Anything that records, gates, counts or rewards attendance.
-const CHECK_IN_PATH = "check_in|checked_in|attendance|session_day";
+// Anything that records, gates, counts or rewards ATTENDANCE.
+// ★ NOT «the day». The first draft of this guard had `session_day` in the
+// pattern and failed on `content`'s `rescope_task()` (0115) — a task naming ITS
+// DAY, which is DEC-121's whole design, not attendance. REQ-TSK-002 forbids a
+// check-in path reading a task; it does not forbid a task knowing which meeting
+// it prepares for. The day is what tasks and check-ins now SHARE, which is why
+// the coupling to watch is task ↔ attendance, one hop further on.
+const CHECK_IN_PATH = "check_in|checked_in|attendance";
 
 describe("REQ-TSK-002 — nothing on a check-in path reads a task", () => {
-  it("no function names both a task table and anything of check-in, attendance or the day", async () => {
+  it("a function that names a task table AND a day is a known, reviewed one — a new one fails here until someone looks at it", async () => {
+    const { rows } = await pool.query<{ proname: string }>(
+      `select p.proname
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.prokind in ('f', 'p')
+          and p.prosrc ~ $1 and p.prosrc ~ 'session_day'
+        order by 1`,
+      [TASK_TABLES],
+    );
+    // `rescope_task()` (0115): moves a task between the session and one of its days. It reads
+    // `session_tasks`, `sessions` and `session_days`, and no check-in table.
+    expect(rows.map((r) => r.proname)).toEqual(["rescope_task"]);
+  });
+
+  it("no function names both a task table and anything of check-in or attendance", async () => {
     const { rows } = await pool.query<{ proname: string }>(
       `select p.proname
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace

@@ -564,6 +564,7 @@
         "material": {
           "downloaded": "Material downloaded",
           "phase_changed": "Material availability changed",
+          "rescoped": "Material moved between the session and one of its days",
           "removed": "Material removed"
         },
         "member": {

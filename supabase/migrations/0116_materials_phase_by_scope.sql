@@ -3,6 +3,7 @@
 -- SESSION reaches `completed`/`archived` — on a three-day workshop, day 1's slides would stay
 -- withheld until Friday. This adds ONE new release condition beside the existing one, in all FIVE
 -- places it is duplicated; nothing already true is made false.
+-- Promoted by the lead from supabase/proposed/content/0002_materials_phase_by_scope.sql.
 --
 -- ★ THE RULING (DEC-151, sync 1): a day-scoped «بعد» material releases when EITHER its OWN day has
 -- ended OR the SESSION has completed/archived — not "OR" replaced by a scope-conditional branch.

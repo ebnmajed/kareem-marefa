@@ -2,6 +2,7 @@
 -- door for the three content types. Tables are the lead's (0100/0101 already added the nullable
 -- `session_day_id` columns, their composite FKs and `on delete set null`); this file is
 -- behaviour only — functions, and the grants that follow them.
+-- Promoted by the lead from supabase/proposed/content/0001_day_scope_writes.sql.
 --
 -- `initiateMaterialUpload`/`createTask` are PLAIN CLIENT INSERTS today (p8_presenter_write is the
 -- entire authority on both tables) — sending an optional `session_day_id` alongside everything

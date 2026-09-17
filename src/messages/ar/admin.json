@@ -564,6 +564,7 @@
         "material": {
           "downloaded": "تنزيل مادة",
           "phase_changed": "تغيير إتاحة مادة",
+          "rescoped": "نقل مادة بين الجلسة وأحد أيامها",
           "removed": "إزالة مادة"
         },
         "member": {

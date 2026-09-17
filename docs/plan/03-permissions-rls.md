@@ -1726,6 +1726,21 @@ generated suite is the highest-value test in the product.
 | `RPC-missed_attendance_days.multi_day_only` | A one-day session never appears, whatever the member did or did not attend. |
 | `RPC-missed_attendance_days.names_the_missed_day` | A three-day workshop attended on days one and three returns exactly day two, with its position and its start. |
 | `RPC-missed_attendance_days.silent_when_complete` | A workshop attended in full returns nothing — there is nothing to explain. |
+| ★ **wave 9 (`DEC-151`), migration `0115`** — `DEC-121`: content is scoped by where it was added — three re-scope doors, and a photo takes the day its upload moment falls in (null while the session has one day) |
+| `RPC-rescope_material.authority` | Staff, or the session's own presenter, may move a material between the session and one of its own days; anyone else is refused `42501`. A proposal's own material (no session) is refused `not_found`. |
+| `RPC-rescope_material.day_of_own_session` | A day naming another session is refused `day_not_of_session` (`23503`) before the update is attempted. |
+| `RPC-rescope_material.audited` | Every successful call writes one `material.rescoped` audit row naming the old and new `session_day_id` — REQ-MAT-006's visibility fix (0052 already audits a phase change for the same reason). |
+| `RPC-rescope_task.authority` | Staff, or the session's own presenter, may move a task; anyone else is refused `42501`. No audit row — REQ-TSK-002 makes a task's scope carry no visibility rule for one to protect. |
+| `RPC-rescope_photo.authority` | Staff alone may move a photo; a presenter who is not staff is refused `42501` — a photo has no presenter-write concept (`photos_insert_checked_in`, 03 §5.6c). No audit row. |
+| `RPC-record_photo_upload.day_from_upload_moment` | With more than one day, the photo is scoped to the day whose window contains `p_uploaded_at`, falling back to the day whose nearer edge (start or end) is closest to it. With at most one day, `session_day_id` stays null (DEC-121: a one-day session's content is session-scoped, which is what makes "adding a second day re-scopes nothing" true). |
+| `RPC-initiate_photo_processing.enqueues_uploaded_at` | The enqueued `process_photo` payload carries `uploaded_at`, the instant of THIS call — not the worker's own, later clock. |
+| ★ **wave 9 (`DEC-151`), migration `0116`** — `REQ-MAT-006` as amended: `phase` is relative to the scope — in all FIVE policies that carry the rule, table and storage alike |
+| `POL-materials.day_scoped_after_release` | A day-scoped «بعد» material is visible once ITS OWN DAY has ended, even if the session as a whole has not yet completed. |
+| `POL-materials.day_scoped_after_release_on_early_completion` | A day-scoped «بعد» material is ALSO visible once the session reaches `completed`/`archived`, whether or not its own day has ended — an early completion never leaves it hidden forever. |
+| `POL-storage.materials.day_scoped_after_release` | The storage twin releases the same object at the same two moments. |
+| `POL-material_versions.day_scoped_after_release` | The version row a released day-scoped material's `current_version_id` points at is readable the same two moments — otherwise `getViewerData()` finds a material but no version. |
+| `POL-material_pages.day_scoped_after_release` | A released day-scoped material's rendered page rows are readable the same two moments. |
+| `POL-storage.material_pages.day_scoped_after_release` | The page-image objects in the `material-pages` bucket are readable the same two moments — otherwise the viewer shows a page count with no images. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
