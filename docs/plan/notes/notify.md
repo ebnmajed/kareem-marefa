@@ -1525,6 +1525,39 @@ true · the same session with **no artifact yet** → false · **cancelled** →
 artifact · another org's → false · a stale id that is no session → false rather than an error, so a
 stale payload cannot dead-letter a send.
 
+### ★★ The forced-dark toggle must not invert images — or it cannot find what it is for
+
+`designer`, `0e7ddca`, before I built it, and it is the most useful thing said about this feature:
+**the natural implementation is the one that cannot find the defect it exists to find.**
+
+`filter: invert(1)` on the preview container inverts **everything painted inside, `<img>` included**.
+Gmail's dark mode is **not** that: it substitutes colours over CSS and attribute values and **leaves
+image pixels alone**. That asymmetry *is* F2 — an uninverted logo on an inverted ground. So a
+blanket filter takes a dark-ink logo, turns it **light**, puts it on a dark card, and shows it
+surviving beautifully. **A false pass, from the obvious implementation, on the one finding neither
+of us can close by argument** — and worse than not building the toggle, because afterwards there is
+*less* reason to look.
+
+**How it is built, therefore:**
+
+- ★ The simulation **substitutes colours and excludes images**. The base document is the production
+  renderer's bytes, unchanged; `mode=dark` **appends one clearly-marked `<style>` block** that
+  re-declares the ground and text colours the way an inverting client does and **transforms no
+  `img`**.
+- ★ **That appended block is the one place the preview is not byte-for-byte what ships, and it is
+  labelled as such** — in the response, in the UI («محاكاة»), and in a test. A simulation that
+  pretended to be the shipped bytes would be the second renderer `REQ-NTF-010` forbids; a simulation
+  that is *named* is a model of what the client does to those bytes, which is the only thing a
+  preview can honestly offer.
+- The assertion is `designer`'s, restated so it is testable: not «it looks right inverted», but that
+  the two pairs survive inversion **independently** — the page background against the card surface
+  (cosmetic if they diverge) and **the logo against whatever the card becomes** (not cosmetic). ★ A
+  simulation that inverts images can answer **neither**, because it moves both halves of both pairs
+  together.
+- ★ **And the prediction, written down before the capture exists**: for a transparent dark-ink logo
+  this should **fail**. `designer` agrees. **If it passes, suspect the simulation before believing
+  the result** — that is the check to apply to one's own instrument first.
+
 ### ★ A live defect F2 uncovered, one medium over — carried, not mine
 
 `designer` found the root cause while conceding F2, and it **predates this wave**: the product
