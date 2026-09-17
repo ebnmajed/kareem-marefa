@@ -2250,3 +2250,37 @@ own it does not get a picture.
 en dash between two `EN` runs resolves as `R` in the bidi algorithm and the whole range sits in the
 Arabic paragraph direction. First day first, read right to left, which is what a range should do and
 is not something `formatRange` had to be told.
+
+### D3 · F2 revisited — `notify` was right, and the root cause is not mail's
+
+`notify` implemented F2 as `bgcolor="${palette.surface}"` where I had asked for `bgcolor="#ffffff"`,
+and put it to me rather than let me find it. **Their version is correct and mine was wrong.**
+
+The argument that settles it is checkable rather than aesthetic: **`palette.surface` is the LIGHT
+palette's.** `compilePalette()` reads `brand.light` through `legacyBrand()` (`render.ts:295-300`,
+`:316`), and a light scheme's `surface` is by construction a light colour — it is the ground the
+app's own dark body text sits on, guaranteed by the same contrast relation that cleared the primary
+button. So `notify`'s stated worry — «the org's surface is a dark-ish tint, and dark ink on it is
+still invisible» — **cannot occur** without that org's app being broken by the same token. Where the
+two values differ, `surface` is right; where `surface` would be wrong, `#ffffff` is not available to
+help, because the client has inverted everything anyway.
+
+★ **And I overstated F2's mechanism.** I wrote that the `bgcolor` attribute is what Gmail's inverter
+«respects most consistently». True as a comparison with a CSS `background`, and not a guarantee: a
+client that inverts wholesale inverts the attribute too, and **Gmail does not invert images** — so
+dark ink on a now-dark ground is invisible whichever value we wrote. F2 improves the odds in the
+clients that honour explicit attributes and does nothing in the ones that do not. It is the best
+available lever, not a fix, which is exactly why item 4 stays open until somebody looks at an
+inverted render.
+
+★ **The root cause is ours, not mail's: this product has ONE logo asset for TWO schemes.** There is a
+single `brand.logoAssetId`; the poster template's logo layer binds it (`library.ts:121`) and **a
+poster renders at scheme `dark`** (`regenerate_poster.ts:121`, `designer.ts:110` — `DEC-125`). So an
+org whose logo is dark ink on transparency has an **invisible logo on every generated poster
+today** — the same failure as F2, one medium over, and it predates this wave entirely. A JPEG is
+safe by accident (no alpha, a white ground baked in); a transparent PNG is not.
+
+**Carried, not fixed here.** The brand kit is `branding`'s (held by the lead) and the real answer is
+either a per-scheme logo or a stated requirement that the asset must read on both grounds — a
+`branding` change with an upload-time check, not a mail change and not a poster change. Recorded so
+the next reader of F2 knows the mail was where it was noticed, not where it lives.
