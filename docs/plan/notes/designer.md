@@ -2284,3 +2284,23 @@ safe by accident (no alpha, a white ground baked in); a transparent PNG is not.
 either a per-scheme logo or a stated requirement that the asset must read on both grounds — a
 `branding` change with an upload-time check, not a mail change and not a poster change. Recorded so
 the next reader of F2 knows the mail was where it was noticed, not where it lives.
+
+### ★ D3 · item 4 — a forced-dark SIMULATION must not invert images, or it lies toward comfort
+
+Sent to `notify` before the preview's forced-dark toggle exists, because the obvious way to build it
+is the one that cannot detect the defect it is built to detect.
+
+**`filter: invert(1)` on a container inverts everything painted inside it, `<img>` included.** Gmail's
+dark mode is not that: it is a colour substitution over CSS and attribute colours, and it **leaves
+image pixels alone**. That asymmetry is the whole of F2 — a logo that is not inverted, on a ground
+that is.
+
+So a toggle built as a blanket CSS inversion turns a dark-ink logo into **light** ink on a dark
+ground and shows it surviving. A **false pass**, produced by the most natural implementation, on the
+one finding nobody can close by argument. The honest simulation inverts the shell's colours and
+**excludes images** — then the logo pair either holds or does not, which is the question.
+
+The assertion, restated so it is testable: not «it looks right inverted», but that the two pairs
+survive inversion **independently** — the page background against the card surface (cosmetic if they
+diverge), and the logo against whatever the card becomes (not cosmetic). A simulation that inverts
+images can answer neither.
