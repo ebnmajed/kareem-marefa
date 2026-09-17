@@ -56,6 +56,14 @@ interface Context {
   binding: "live" | "detached" | null;
   template_version_id: string | null;
   template_document: unknown;
+  /** ★ wave 10 (DEC-160): the session's days in `position` order, from
+   *  designer/0002. OPTIONAL in this type on purpose — a worker running
+   *  against a database that does not carry the column yet reads `undefined`
+   *  and falls back to `starts_at`, which is the first day's and is what this
+   *  task renders today. The database is the one that decides the order; this
+   *  file never sorts, never takes a minimum and never takes a maximum
+   *  (DEC-150). */
+  days?: Array<{ startsAt: string; endsAt: string | null }> | null;
 }
 
 /** Screen presets get a PNG and a WebP copy; print gets a PDF (A29). */
@@ -117,6 +125,12 @@ export const regenerate_poster: Task = async (payload, helpers) => {
         title: ctx.title,
         abstract: ctx.abstract,
         startsAt: ctx.starts_at,
+        // ★ The day set decides `{{session.startsAt}}`'s value; the session's
+        // own instant is its stored shadow and the fallback (DEC-150,
+        // DEC-160). At one day the two produce the same string by the same
+        // call, so a one-day poster's fingerprint does not move and its
+        // artifacts are not re-rendered (REQ-DSG-013).
+        days: ctx.days ?? null,
         timeZone: ctx.session_time_zone,
         venueName: ctx.venue_name,
         venueAddress: ctx.venue_address,

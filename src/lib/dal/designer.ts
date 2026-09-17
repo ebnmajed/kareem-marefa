@@ -21,6 +21,10 @@ import {
 import { listEditorFaces } from "@/lib/dal/fonts";
 import { signDesignAssetUrl } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
+// ★ `sessions`' own reader of `session_days`, request-scoped through React
+// `cache()` (wave 9 contract 3). Read, never edited, and never replaced by a
+// query of my own: two readers of one table is how two answers happen.
+import { listSessionDays } from "@/lib/dal/sessions";
 
 // The designer — REQ-DSG-004, REQ-DSG-005, REQ-DSG-006, SCR-057.
 //
@@ -119,6 +123,11 @@ type SessionRow = {
   custom_venue_address: string | null;
   time_zone: string | null;
   session_presenters?: { members: { display_name: string } | null; accepted: boolean }[] | null;
+  /** ★ wave 10: the session's days, read through `sessions`' own
+   *  `listSessionDays()` rather than queried here — one reader of
+   *  `session_days` in TypeScript, and `position` is the database's derived
+   *  rank (DEC-150, wave 9 contract 3). */
+  days?: readonly { startsAt: string; endsAt: string }[] | null;
 };
 
 type CertificateRow = {
@@ -141,6 +150,12 @@ function sessionBindings(row: SessionRow | null, options: BindingOptions): Recor
       title: row.title,
       abstract: row.abstract,
       startsAt: row.starts_at,
+      // ★ The day set decides `{{session.startsAt}}`'s value; the session's own
+      // instant is its stored shadow and the fallback (DEC-150, DEC-160). The
+      // editor and the worker must reach the same string or the preview is not
+      // the artifact (DEC-017), which is why the RESOLUTION is the runtime's
+      // and only the ROW is assembled here.
+      days: row.days ?? null,
       timeZone: row.time_zone,
       // A session names a venue from the list OR carries a one-off (0010's
       // own check); the listed venue wins only when there is one.
@@ -240,6 +255,15 @@ export async function getDesignerDocument(
 
   const bindingOptions: BindingOptions = { timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
 
+  // ★ The bound session's days, through `sessions`' `listSessionDays()` — read,
+  // never re-queried here (wave 9 contract 3). It is `cache()`-wrapped, so the
+  // editor page paying for it once is the whole cost. A reader handles n days
+  // and is right at n = 1 because 1 is a value of n: no `isMultiDay` branch.
+  const days = row.bound_session_id ? await listSessionDays(locale, row.bound_session_id) : [];
+  const boundSessionRow: SessionRow | null = sessionRow
+    ? { ...(sessionRow as unknown as SessionRow), days: days.map((d) => ({ startsAt: d.startsAt, endsAt: d.endsAt })) }
+    : null;
+
   const bindings: Record<string, string> = {
     // The org's brand override over the platform palette (wave 4, DEC-052,
     // 06 §8.3) — the same composition the worker's request path makes, so
@@ -247,7 +271,7 @@ export async function getDesignerDocument(
     // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021); no row is
     // the identity override.
     ...resolveBrand(await editorBrandOverrides(supabase, session.orgId), scheme),
-    ...sessionBindings(sessionRow as SessionRow | null, bindingOptions),
+    ...sessionBindings(boundSessionRow, bindingOptions),
     ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),
   };
 
