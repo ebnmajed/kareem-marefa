@@ -1676,6 +1676,13 @@ generated suite is the highest-value test in the product.
 | `RPC-session_attendance_complete.one_day_equals_has_checked_in` | On a one-day session the predicate agrees with `has_checked_in()` for that member, in both directions and under both settings. |
 | `RPC-session_attendance_complete.no_days` | A session with no days is false under both settings — never vacuously true. |
 | `POL-session_attendance.reader` | A member reads their own per-day rows; staff and the session's presenter read any member's; another ordinary member sees every day with `attended` false and learns nothing. |
+| ★ **wave 9 (`DEC-153`), migration `0108`** — certificates follow attendance: eligibility reads contract 6's predicate in all three places, and contract 5's third hook keeps a member's certificate in step |
+| `RPC-fan_out_certificates.complete_attendance` | At completion an attendance certificate is fanned out to each member contract 6's predicate holds for — once per member, never once per check-in; a member who attended two days of three gets none; with `require_all_days = false` one day is enough. At one day: every active check-in, as before. |
+| `RPC-issue_certificate.complete_attendance` | A late job for a member whose attendance is not complete raises `no_check_in` (42501), the error a member who never came raises; the certificate's `check_in_id` is the member's latest active check-in. |
+| `RPC-attendance_certificate_sync.revokes_whichever_day` | Removing ANY day's check-in from a member holding a live attendance certificate revokes it, with the fixed phrase, whichever check-in the certificate names. |
+| `RPC-attendance_certificate_sync.issues_when_completed_late` | A member whose attendance becomes complete after the session completed gets the issue job under `cert:<session>:<member>:attendance`; not while the session is still running, not with certificates off, and not when a certificate row already exists — a revoked one included (wave 7's carry). |
+| `RPC-attendance_certificate_sync.never_fails_a_check_in` | Called from a member's own check-in it raises nothing, whatever the state of the session or of their attendance. Executable by no client role. |
+| `RPC-session_complete_attendees.staff_only` | Staff of the session's org read the members whose attendance is complete; a member is refused 42501, another org's staff read nothing. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
