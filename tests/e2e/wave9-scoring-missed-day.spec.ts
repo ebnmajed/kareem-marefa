@@ -1,9 +1,11 @@
 // REQ-SES-017 on a real screen against REAL local Supabase — «partial
 // attendance earns nothing, and the member can see why».
 //
-// Three captures, and the third is the one that matters most: a ONE-DAY
-// session's history, to be read beside its wave-7 capture. Everything this
-// wave adds has to leave that page alone.
+// FOUR captures: three pages, plus the notice card on its own because a
+// full-page shot on the phone project composites the sticky tab bar over the
+// card's last line. The one that matters most is the ONE-DAY history, read
+// beside its wave-7 capture — everything this wave adds has to leave that page
+// alone.
 //
 // Same shape as tests/e2e/points.spec.ts — a user minted through the local
 // Auth admin API, provisioned through provision_member(), signed in with a
@@ -13,7 +15,7 @@
 // missed_attendance_days().
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import pg from "pg";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -174,6 +176,25 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `wave9-scoring-${name}.png`), fullPage: true });
 }
 
+/** One element, at the same 390 px width and in the same RTL document.
+ *
+ *  ★ Why this exists beside the page capture, and not instead of it: a
+ *  `fullPage` shot on the phone project composites the sticky tab bar over
+ *  whatever the page's last line happens to be, so the notice card's own
+ *  footer — the session title and «فتح الجلسة» — is underneath it in the file
+ *  even though the component renders it and the assertions above read it. The
+ *  page shot still proves the card's PLACE in the history; this one proves its
+ *  CONTENT. Same `E2E_SHOTS_DIR`, so a run in the verification worktree lands
+ *  both in the main checkout. */
+async function captureElement(page: Page, target: Locator, name: string) {
+  mkdirSync(SHOTS, { recursive: true });
+  expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE_R);
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(target).toBeVisible();
+  await target.scrollIntoViewIfNeeded();
+  await target.screenshot({ path: join(SHOTS, `wave9-scoring-${name}.png`) });
+}
+
 test("a three-day workshop attended in full pays ONE award, and the history says so", async ({ context, page }) => {
   await page.setViewportSize(PHONE_R);
   const memberId = await signIn(context, emails.full);
@@ -222,6 +243,9 @@ test("★ missing one day earns nothing, and the history NAMES the day rather th
   await expect(notice).not.toContainText(/[٠-٩]/);
 
   await capture(page, "three-day-missed-day-two");
+  // …and the card on its own, because the page shot's last line sits under the
+  // sticky tab bar (the lead's read of the first run).
+  await captureElement(page, notice, "three-day-missed-card");
 });
 
 test("★ a ONE-DAY session's history is what it was: an award at check-in, and no notion of a missed day", async ({ context, page }) => {

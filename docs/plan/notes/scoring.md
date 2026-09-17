@@ -1007,12 +1007,26 @@ and an edited test file is exactly what the untouched-suite ledger exists to mak
    24 hours out now participates in `REQ-CHK-013`'s overlap exclusion. A test that schedules a
    day «tomorrow» collides with it. Every day in these files is ten or more days out.
 
-## Still open when this was written
+## Closed — the e2e and the captures
 
-- **The e2e and the 390 px RTL captures** wait on the lead promoting `0001`–`0004`: the screen
-  reads `missed_attendance_days()`, which does not exist as a migration yet. `src/lib/dal/points.ts`
-  tolerates PostgREST's `PGRST202` for exactly that window and **that branch is deleted at
-  promotion**.
+`0102`, `0107`, `0113` and `0114` are migrations; the `PGRST202` tolerance in
+`src/lib/dal/points.ts` was deleted with the last of them. The lead ran
+`wave9-scoring-missed-day.spec.ts` with the untouched `points.spec.ts` on a production build in the
+verification worktree: **12 passed**, and all captures opened.
+
+| Capture | What it shows | State |
+|---|---|---|
+| `wave9-scoring-one-day-unchanged.png` | «نقاطي 20», one row, no notice, no day label — the same frame, filter and row shape as `wave7-content-points-reversal.png` | **accepted as the one-day proof** |
+| `wave9-scoring-three-day-full.png` | ONE `+20` row for a three-day workshop, not three | accepted |
+| `wave9-scoring-three-day-missed-day-two.png` | «نقاطي 0», the card, «فاتك اليوم الثاني», the rule line, no amount, Western numerals | accepted |
+| `wave9-scoring-three-day-missed-card.png` | the notice card alone | ★ added on the lead's request |
+
+★ **Why the fourth exists, and it is a harness fact worth keeping.** A `fullPage` screenshot on the
+phone project composites the **sticky tab bar** over whatever the page's last line happens to be, so
+the notice card's own footer — the session title and «فتح الجلسة» — is underneath it in the file
+although the component renders it and the spec asserts it. The page shot proves the card's PLACE in
+the history; an element shot (`locator.screenshot()`) proves its CONTENT. **A full-page capture is
+not evidence about the bottom of a page.**
 - **Row L4's written request** — pointing `fan_out_certificates()`, `issue_certificate()` and
   `listEligibleRecipients()` at `session_attendance_complete()` — is due after contract 6 is
   promoted and green (`DEC-151` answer 7). Contract 6 is green; the request goes the moment it
