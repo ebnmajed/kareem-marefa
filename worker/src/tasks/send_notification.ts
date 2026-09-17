@@ -38,10 +38,12 @@ interface SendContext {
   // wave 10 — and `renderEmail()` then takes the path whose bytes
   // `tests/unit/mail-pinned/` pins.
   template: { subject: string | null; body: string | null; locale: string; blocks?: unknown | null } | null;
-  // The session the payload names, scoped to this org by the function — a
-  // payload is not a capability. Null when the payload carries no session id,
-  // or when the id belongs to another org.
-  session?: { id: string; state: string } | null;
+  // ★ «May this mail carry the session card's image» — one boolean, derived by
+  // `notification_send_context` from `public.session_public_card()`, which is
+  // the function `/api/s/{id}/og` itself reads. NOT a state this task
+  // interprets: a second reading of that predicate here would be a second
+  // place free to drift from the SQL that decides.
+  session_card_image?: boolean;
   email_allowed: boolean;
   in_app_allowed: boolean;
 }
@@ -115,15 +117,13 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   }
 
   // ★ Contract 8, made concrete (D3 finding F3). `/api/s/{id}/og` is the ONE
-  // image URL a mail client can fetch with no session — and it 404s for a
-  // DRAFT or CANCELLED session, by `export_is_public_card()`'s own predicate.
-  // So the card's image is offered only when the route will actually serve it:
-  // a session of this org, in a state the predicate admits, and a known origin.
-  // A design that asks for the image gets none otherwise, which is a mail with
-  // one row fewer rather than a mail with a broken image in it.
-  const CARDED_STATES = new Set(["published", "in_progress", "completed"]);
-  const cardImageUrl =
-    appUrl && ctx.session && CARDED_STATES.has(ctx.session.state) ? `${appUrl}/api/s/${ctx.session.id}/og` : null;
+  // image URL a mail client can fetch with no session, and the context has
+  // already ASKED the function that route reads whether it will answer with
+  // bytes — an active org, a card-eligible session, and a poster that has
+  // finished rendering. This task copies none of that; it only needs an origin
+  // and the id it already has. A design that asks for the image and cannot have
+  // it renders one row fewer, never a broken image.
+  const cardImageUrl = appUrl && payloadSessionId && ctx.session_card_image ? `${appUrl}/api/s/${payloadSessionId}/og` : null;
 
   let rendered;
   try {

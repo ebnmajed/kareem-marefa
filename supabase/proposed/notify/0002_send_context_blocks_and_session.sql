@@ -11,9 +11,10 @@
 -- ── 03 §8.2 rows this migration needs ───────────────────────────────────────
 --   | `RPC-notification_send_context.blocks` | The `template` object carries `blocks` — null for a string
 --     template, the stored document otherwise — so the worker renders a design without a second read. |
---   | `RPC-notification_send_context.session_state` | Given a session id, the context carries that
---     session's state, and **only for a session of the SAME org**; another org's id yields null rather
---     than a state. |
+--   | `RPC-notification_send_context.card_image` | Given a session id, the context says whether
+--     `/api/s/{id}/og` will answer with BYTES — derived from `session_public_card()`, the function the
+--     route itself reads, never from a second copy of its predicate. False for a cancelled session,
+--     false for one whose poster has not finished rendering, false for another org's id. |
 --   | `RPC-notification_send_context.definer_only` | Unchanged: `anon`, `authenticated` and an org admin
 --     are all refused on the grant, because it returns another member's email address. |
 --
@@ -24,16 +25,26 @@
 -- than left beside the five-argument one, or PostgREST would see two
 -- overloads and refuse to choose.
 --
--- ★ WHY THE SESSION'S STATE IS RETURNED HERE rather than read by the task.
--- `/api/s/{id}/og` — the ONE image URL a mail client can fetch with no session
--- (contract 8, `0080`) — **404s for a draft or a cancelled session**, by
--- `export_is_public_card()`'s own predicate. So a mail about a cancellation
--- must not carry the session card's image, and the sender has to know the
--- state to decide. The worker reads org data through SECURITY DEFINER
--- functions and never through its own table queries (CLAUDE.md, data-access
--- rule 6), and this is the function that already assembles everything one send
--- needs in one round trip. A second query from the task would be a second
--- place that decides what a mail may point at.
+-- ★ WHY A BOOLEAN, AND WHY IT IS ASKED RATHER THAN RECOMPUTED.
+-- `/api/s/{id}/og` is the ONE image URL a mail client can fetch with no session
+-- (contract 8). A first draft of this gated the image on
+-- `state in ('published','in_progress','completed')` — which is **a second
+-- copy of `export_is_public_card()`'s predicate**, in a second place, free to
+-- drift from the SQL that actually decides. `designer` caught it and the lead
+-- ruled it: do not copy the rule, ASK it.
+--
+-- `public.session_public_card()` (`0080`, re-created through `0122`) is the
+-- function the route itself reads. It returns NO ROW unless the org is active
+-- and the session is card-eligible, and its `og_path` is non-null exactly when
+-- a `ready`, `png`, `og` artifact exists. So `og_path is not null` is the whole
+-- answer, including the case a state check would have missed: **a poster that
+-- has not finished rendering yet**, which would otherwise put a broken image in
+-- a member's inbox.
+--
+-- Tenancy stays in front of it, because `session_public_card()` is a PUBLIC
+-- card function and scopes to no org: a session id travels in a payload, and a
+-- payload is not a capability. A mail from one org must never carry another
+-- org's poster, public or not.
 
 drop function public.notification_send_context(uuid, uuid, text, text);
 
@@ -50,12 +61,11 @@ declare
   o   record;
   mem public.members;
   tpl public.notification_templates;
-  -- Two scalars and not a record, deliberately: a plpgsql RECORD that no
-  -- SELECT ever assigned raises «record "ses" is not assigned yet» the moment
-  -- a field of it is read, so the common call — no session id at all — would
-  -- fail rather than return null. Scalars start NULL, which is the answer.
-  v_session_id    uuid;
-  v_session_state text;
+  -- A scalar and not a record, deliberately: a plpgsql RECORD that no SELECT
+  -- ever assigned raises «record is not assigned yet» the moment a field of it
+  -- is read, so the common call — no session id at all — would fail rather
+  -- than return false. A boolean starts NULL and is coalesced.
+  v_card_image boolean := false;
 begin
   select * into m from public.notification_matrix() x where x.key = p_key;
   if not found then
@@ -80,13 +90,11 @@ begin
    order by (t.locale = p_locale) desc
    limit 1;
 
-  -- Scoped to the caller's org on purpose: a session id travels in a payload,
-  -- and a payload is not a capability. Another org's id yields no row, so the
-  -- mail carries no image rather than a fact about a session it cannot see.
-  if p_session is not null then
-    select s.id, s.state::text into v_session_id, v_session_state
-      from public.sessions s
-     where s.id = p_session and s.org_id = p_org;
+  if p_session is not null and exists (
+    select 1 from public.sessions s where s.id = p_session and s.org_id = p_org
+  ) then
+    select coalesce((select c.og_path is not null from public.session_public_card(p_session) c), false)
+      into v_card_image;
   end if;
 
   return jsonb_build_object(
@@ -113,9 +121,9 @@ begin
       -- ★ null is a STRING template — every row that existed before wave 10,
       -- and what an org that has not touched its templates still sends.
       'blocks',          tpl.blocks) end,
-    'session', case when v_session_id is null then null else jsonb_build_object(
-      'id',    v_session_id,
-      'state', v_session_state) end,
+    -- One boolean, not a state the caller would have to interpret: «may this
+    -- mail carry the session card's image».
+    'session_card_image', coalesce(v_card_image, false),
     -- The 08 §1.7 set bypasses the check on both channels; everything else is
     -- read fresh. `_notify_wants` holds the "absence means on" rule (0026).
     'email_allowed',  m.email  and (not m.optional or public._notify_wants(p_member, m.category, 'email')),
