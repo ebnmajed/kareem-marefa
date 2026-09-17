@@ -84,7 +84,8 @@
       "scalePoint": "{value}",
       "scalePointLabel": "{count, plural, =0 {none} one {{value} of 5} other {{value} of 5}}",
       "textPlaceholder": "Write your answer",
-      "sent": "Your rating and answers were sent"
+      "sent": "Your rating and answers were sent",
+      "errorSummaryTitle": "Your answers were not sent"
     },
     "errors": {
       "required": "Answer this question",
@@ -106,7 +107,8 @@
       "frozen": "Questions cannot be edited once someone has answered",
       "not_permitted": "You do not have permission for this action",
       "not_found": "Not found",
-      "generic": "Something went wrong. Please try again"
+      "generic": "Something went wrong. Please try again",
+      "rating_saved": "Your rating was saved. Answer the required questions to send your answers."
     }
   }
 }

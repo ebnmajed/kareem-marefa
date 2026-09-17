@@ -35,7 +35,7 @@ let orgId = "";
 let email = "";
 let userId = "";
 let memberId = "";
-const ids = { withSurvey: "", withoutSurvey: "", surveyId: "" };
+const ids = { withSurvey: "", withoutSurvey: "", second: "", surveyId: "", secondSurveyId: "" };
 
 test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
@@ -84,32 +84,39 @@ test.beforeAll(async ({}, testInfo) => {
   await checkIn(ids.withSurvey);
   ids.withoutSurvey = await session("جلسة بلا استبانة");
   await checkIn(ids.withoutSurvey);
+  ids.second = await session("مقدمة في قراءة الميزانية");
+  await checkIn(ids.second);
 
   // The survey, written the way SCR-064 writes it — rows, not an RPC, because
   // the RPC's caller has to be a signed-in staff member and this spec's member
   // is not one.
-  ids.surveyId = (
-    await db.query<{ id: string }>(
-      `insert into public.surveys (org_id, session_id, title) values ($1, $2, 'استبانة ما بعد الجلسة') returning id`,
-      [orgId, ids.withSurvey],
-    )
-  ).rows[0].id;
-  const q = async (position: number, kind: string, prompt: string, required: boolean, options: string[] = []) => {
-    const id = (
+  const attach = async (sessionId: string) => {
+    const surveyId = (
       await db.query<{ id: string }>(
-        `insert into public.survey_questions (org_id, survey_id, position, kind, prompt, required)
-         values ($1, $2, $3, $4::public.survey_question_kind, $5, $6) returning id`,
-        [orgId, ids.surveyId, position, kind, prompt, required],
+        `insert into public.surveys (org_id, session_id, title) values ($1, $2, 'استبانة ما بعد الجلسة') returning id`,
+        [orgId, sessionId],
       )
     ).rows[0].id;
-    for (const [index, label] of options.entries()) {
-      await db.query(`insert into public.survey_question_options (org_id, question_id, position, label) values ($1, $2, $3, $4)`, [orgId, id, index + 1, label]);
-    }
+    const q = async (position: number, kind: string, prompt: string, required: boolean, options: string[] = []) => {
+      const id = (
+        await db.query<{ id: string }>(
+          `insert into public.survey_questions (org_id, survey_id, position, kind, prompt, required)
+           values ($1, $2, $3, $4::public.survey_question_kind, $5, $6) returning id`,
+          [orgId, surveyId, position, kind, prompt, required],
+        )
+      ).rows[0].id;
+      for (const [index, label] of options.entries()) {
+        await db.query(`insert into public.survey_question_options (org_id, question_id, position, label) values ($1, $2, $3, $4)`, [orgId, id, index + 1, label]);
+      }
+    };
+    await q(1, "scale_1_5", "ما مدى وضوح المحتوى؟", true);
+    await q(2, "single_choice", "هل كانت مدة الجلسة مناسبة؟", false, ["قصيرة", "مناسبة", "طويلة"]);
+    await q(3, "multi_choice", "ما الذي أعجبك؟", false, ["الأمثلة", "الإيقاع", "النقاش"]);
+    await q(4, "free_text", "ماذا تقترح للجلسة القادمة؟", false);
+    return surveyId;
   };
-  await q(1, "scale_1_5", "ما مدى وضوح المحتوى؟", true);
-  await q(2, "single_choice", "هل كانت مدة الجلسة مناسبة؟", false, ["قصيرة", "مناسبة", "طويلة"]);
-  await q(3, "multi_choice", "ما الذي أعجبك؟", false, ["الأمثلة", "الإيقاع", "النقاش"]);
-  await q(4, "free_text", "ماذا تقترح للجلسة القادمة؟", false);
+  ids.surveyId = await attach(ids.withSurvey);
+  ids.secondSurveyId = await attach(ids.second);
 });
 
 test.afterAll(async () => {
@@ -173,7 +180,7 @@ test("empty: the rating, then the survey's four questions, nothing chosen", asyn
   await capture(page, "rate-survey-empty");
 });
 
-test("★ a required question blocks the submission at the field and in the summary — and the rating is not written", async ({ context, page }) => {
+test("★ a required question blocks the SURVEY and never the rating (DEC-164)", async ({ context, page }) => {
   await signIn(context);
   await open(page, `/ar/app/sessions/${ids.withSurvey}/rate`);
 
@@ -185,19 +192,43 @@ test("★ a required question blocks the submission at the field and in the summ
   await main(page).getByRole("button", { name: /إرسال التقييم والإجابات/ }).click();
 
   const summary = main(page).getByRole("alert").first();
-  await expect(summary).toContainText("لم نستطع إرسال تقييمك");
+  // ★ The summary says which half went through. It does NOT say «لم نستطع
+  // إرسال تقييمك», which would be untrue: the rating is stored.
+  await expect(summary).toContainText("لم نستطع إرسال إجاباتك");
+  await expect(summary).toContainText("حُفظ تقييمك");
   await expect(summary.getByRole("link", { name: /ما مدى وضوح المحتوى؟/ })).toBeVisible();
   await expect(main(page).getByText("أجب عن هذا السؤال").first()).toBeVisible();
-  // ★ What the member typed is still there, and the rating was not written.
+  // What the member typed is still in the form (React resets a form action).
   await expect(main(page).getByRole("textbox", { name: /ماذا تقترح للجلسة القادمة؟/ })).toHaveValue("مثال عملي أكثر");
-  const { rows } = await db.query(`select id from public.ratings where session_id = $1 and member_id = $2`, [ids.withSurvey, memberId]);
-  expect(rows).toHaveLength(0);
+
+  // ★ THE RATING IS WRITTEN — the org's required question does not withhold the
+  // member's own voice (DEC-164) — and the SURVEY is not: no participation, no
+  // job, so their one response is still theirs.
+  const rating = await db.query(`select id from public.ratings where session_id = $1 and member_id = $2`, [ids.withSurvey, memberId]);
+  expect(rating.rows).toHaveLength(1);
+  const participation = await db.query(`select member_id from public.survey_participations where survey_id = $1`, [ids.surveyId]);
+  expect(participation.rows).toHaveLength(0);
+  const queued = await db.query(
+    `select 1 from graphile_worker._private_jobs j join graphile_worker._private_tasks t on t.id = j.task_id
+      where t.identifier = 'record_survey_response' and j.payload ->> 'survey_id' = $1`,
+    [ids.surveyId],
+  );
+  expect(queued.rows).toHaveLength(0);
   await capture(page, "rate-survey-error");
+
+  // ★ The second press sends the survey alone and the screen shows the receipt.
+  await main(page).getByRole("radiogroup", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("radio").nth(2).click();
+  await main(page).getByRole("button", { name: /إرسال التقييم والإجابات/ }).click();
+  await expect(main(page).getByText("شكرًا، أجبت عن هذه الاستبانة")).toBeVisible();
+  const after = await db.query(`select member_id from public.survey_participations where survey_id = $1`, [ids.surveyId]);
+  expect(after.rows).toHaveLength(1);
 });
 
+// ★ Runs on its OWN session: the case above already spent this member's one
+// response on `ids.withSurvey`, and «one member, one response» is the point.
 test("submitted: one press writes the rating and enqueues the answers, and the screen says both", async ({ context, page }) => {
   await signIn(context);
-  await open(page, `/ar/app/sessions/${ids.withSurvey}/rate`);
+  await open(page, `/ar/app/sessions/${ids.second}/rate`);
 
   for (const legend of [/تقييم الجلسة/, /تقييم المُقدِّم/]) {
     await main(page).getByRole("radiogroup", { name: legend }).getByRole("radio").nth(4).locator("xpath=..").click();
@@ -216,14 +247,15 @@ test("submitted: one press writes the rating and enqueues the answers, and the s
   // ★ The two writes, in the database: a rating that names the member, a
   // participation that names them and says nothing else, and a queued job whose
   // payload names nobody at all.
-  const rating = await db.query<{ submitted_at: string }>(`select submitted_at from public.ratings where session_id = $1 and member_id = $2`, [ids.withSurvey, memberId]);
+  const rating = await db.query<{ submitted_at: string }>(`select submitted_at from public.ratings where session_id = $1 and member_id = $2`, [ids.second, memberId]);
   expect(rating.rows).toHaveLength(1);
-  const participation = await db.query(`select member_id from public.survey_participations where survey_id = $1`, [ids.surveyId]);
+  const participation = await db.query(`select member_id from public.survey_participations where survey_id = $1`, [ids.secondSurveyId]);
   expect(participation.rows).toHaveLength(1);
   const job = await db.query<{ key: string | null; payload: Record<string, unknown> }>(
     `select j.key, j.payload from graphile_worker._private_jobs j
        join graphile_worker._private_tasks t on t.id = j.task_id
-      where t.identifier = 'record_survey_response'`,
+      where t.identifier = 'record_survey_response' and j.payload ->> 'survey_id' = $1`,
+    [ids.secondSurveyId],
   );
   expect(job.rows).toHaveLength(1);
   expect(job.rows[0].key).toBeNull();

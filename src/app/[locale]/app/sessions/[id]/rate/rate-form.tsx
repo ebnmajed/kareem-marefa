@@ -16,6 +16,7 @@ import type { MemberSurveyDTO } from "@/lib/dal/surveys";
 import { submitRatingAction, updateRatingAction } from "./actions";
 import {
   RATE_FIELDS,
+  RATING_SAVED,
   SURVEY_KEY,
   emptyRateFormState,
   isSurveyField,
@@ -103,6 +104,9 @@ export function RateForm({
   // rating's, exactly as it was.
   const message = (key: string) => (key.startsWith(SURVEY_KEY) ? tSurveyErrors(key.slice(SURVEY_KEY.length)) : tErrors(key));
   const err = (field: RateField) => (state.errors[field] ? message(state.errors[field]!) : undefined);
+  /** The rating is stored and the survey is not (`DEC-164`) — the one whole-form
+   *  key that is news rather than a failure. */
+  const ratingSaved = state.formError === RATING_SAVED;
 
   const askable = survey && !survey.answered ? survey.questions : [];
   const summary = summaryErrors(state, {
@@ -116,10 +120,20 @@ export function RateForm({
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-7">
-      {state.formError ? (
+      {/* ★ «حُفظ تقييمك…» is not a failed write, so it is not the red alert —
+          it is the summary's DESCRIPTION, above the questions still to answer,
+          and the title stops claiming the rating did not go through, which
+          would be untrue (`DEC-164`). Any other whole-form key is still the
+          alert: those are writes that did not happen. */}
+      {state.formError && !ratingSaved ? (
         <FormError key={state.attempt} message={message(state.formError)} />
       ) : (
-        <FormSummary key={state.attempt} title={t("errorSummaryTitle")} description={t("errorSummaryDescription")} errors={summary} />
+        <FormSummary
+          key={state.attempt}
+          title={ratingSaved ? tSurvey("errorSummaryTitle") : t("errorSummaryTitle")}
+          description={ratingSaved ? tSurveyErrors("rating_saved") : t("errorSummaryDescription")}
+          errors={summary}
+        />
       )}
 
       {/* `key` on each row: a round trip that changes the default must remount

@@ -84,7 +84,8 @@
       "scalePoint": "{value}",
       "scalePointLabel": "{count, plural, zero {لا شيء} one {واحد من 5} two {اثنان من 5} few {{value} من 5} many {{value} من 5} other {{value} من 5}}",
       "textPlaceholder": "اكتب إجابتك",
-      "sent": "تم إرسال تقييمك وإجاباتك"
+      "sent": "تم إرسال تقييمك وإجاباتك",
+      "errorSummaryTitle": "لم نستطع إرسال إجاباتك"
     },
     "errors": {
       "required": "أجب عن هذا السؤال",
@@ -106,7 +107,8 @@
       "frozen": "لا يمكن تعديل الأسئلة بعد أول إجابة",
       "not_permitted": "لا تملك صلاحية لهذا الإجراء",
       "not_found": "غير موجود",
-      "generic": "حدث خطأ. حاول مرة أخرى"
+      "generic": "حدث خطأ. حاول مرة أخرى",
+      "rating_saved": "حُفظ تقييمك. أكمل الأسئلة المطلوبة لإرسال إجاباتك."
     }
   }
 }

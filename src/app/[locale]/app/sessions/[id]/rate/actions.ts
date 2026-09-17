@@ -5,7 +5,7 @@ import type { Locale } from "@/i18n/routing";
 import { submitRating, submitRatingInput, updateRating, updateRatingInput } from "@/lib/dal/ratings";
 import { submitSurveyResponse, type AnswerInput } from "@/lib/dal/surveys";
 import { formStateFrom, was, wasList, withErrors, withFormError } from "@/lib/form-state";
-import { RATE_FIELDS, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
+import { RATE_FIELDS, RATING_SAVED, isRatingField, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
 
 // SCR-015's Server Actions. Zod first (REQ-NFR-002), then the DAL — the
 // `with check` on `ratings_write_self` (0010, 0087) is the real authority
@@ -26,13 +26,26 @@ import { RATE_FIELDS, surveyField, surveyKey, type RateField, type RateFormState
 // and puts the ANSWERS on the queue with a jittered delay. Nothing in this file
 // carries an answer into a log, an error message or a redirect.
 //
-// The order is what makes the screen honest:
-//   1. validate everything, the survey's required questions included, so a
-//      missing answer never costs the member their rating;
-//   2. write the rating;
-//   3. submit the survey.
-// A session with NO survey runs exactly step 1 and 2, exactly as it did before
-// this wave — `survey` is `null` and nothing below it executes.
+// ★★ A REQUIRED SURVEY QUESTION BLOCKS THE SURVEY, NEVER THE RATING
+// (`DEC-164`). The rating has exactly two gates — an active check-in and the
+// window (`REQ-RAT-001` … `007`) — and `REQ-SUR-002`'s «blocks submission» does
+// not say whose. A third gate, imposed by staff on the member's own act, would
+// silently suppress the presenter's aggregate, the rating's points and the
+// recognition evaluators, and `REQ-SUR-001` makes the survey additive.
+//
+// The order, and every branch of it:
+//   1. the RATING's own validation fails  → nothing is written, as before this
+//      wave; the survey's failures are listed beside it, because the member
+//      should see everything at once;
+//   2. the rating is valid                → THE RATING IS WRITTEN;
+//   3. the survey is incomplete or invalid → the survey alone is refused, at
+//      the field and in the summary, and the summary says «حُفظ تقييمك…» so the
+//      member is never left guessing which half went through. A second press
+//      then sends the survey alone;
+//   4. the survey is whole (or empty with nothing required) → it is submitted,
+//      and the screen shows the receipt.
+// A session with NO survey runs steps 1 and 2 and nothing else, exactly as it
+// did before this wave — `survey` is `null`.
 //
 // No type is exported from here — see `state.ts`.
 
@@ -96,6 +109,24 @@ function capture(prev: RateFormState, formData: FormData, survey: SurveyFormShap
   return { state, errors, sessionStars: stars("sessionStars"), presenterStars: stars("presenterStars"), comment: comment.trim() || null, answers };
 }
 
+/** The rating's failures and the survey's, told apart — they now have different
+ *  consequences (`DEC-164`). */
+function split(errors: Partial<Record<RateField, string>>) {
+  const rating: Partial<Record<RateField, string>> = {};
+  const survey: Partial<Record<RateField, string>> = {};
+  for (const [field, key] of Object.entries(errors) as [RateField, string][]) {
+    if (isRatingField(field)) rating[field] = key;
+    else survey[field] = key;
+  }
+  return { rating, survey, ratingFailed: Object.keys(rating).length > 0, surveyFailed: Object.keys(survey).length > 0 };
+}
+
+/** The rating is stored and the survey is not: the fields to fix, and one
+ *  sentence saying which half went through. */
+function ratingSaved(state: RateFormState, errors: Partial<Record<RateField, string>>): RateFormState {
+  return withFormError(withErrors(state, errors), RATING_SAVED);
+}
+
 /** A DAL refusal the member can act on is a whole-form message; anything else is the generic one. */
 function refusal(state: RateFormState, e: unknown): RateFormState {
   const message = e instanceof Error ? e.message : "";
@@ -131,10 +162,13 @@ async function sendSurvey(locale: Locale, sessionId: string, survey: SurveyFormS
       // saw a retry: the register refused it by name and nothing was written.
       return null;
     case "invalid": {
+      // The database found what the form did not — a question that became
+      // required, an option that was removed. The rating is already written, so
+      // this reads exactly like the client-side refusal (`DEC-164`).
       const errors: Partial<Record<RateField, string>> = {};
       for (const id of outcome.missing) errors[surveyField(id)] = surveyKey("required");
       for (const id of outcome.invalid) errors[surveyField(id)] = surveyKey("invalid");
-      return withErrors(captured.state, errors);
+      return ratingSaved(captured.state, errors);
     }
     case "not_eligible":
       return withFormError(captured.state, surveyKey(outcome.reason));
@@ -153,19 +187,31 @@ export async function submitRatingAction(
 ): Promise<RateFormState> {
   const captured = capture(prev, formData, survey);
   const { state, errors, sessionStars, presenterStars, comment } = captured;
-  if (Object.keys(errors).length > 0) return withErrors(state, errors);
+  const { rating: ratingErrors, survey: surveyErrors, ratingFailed, surveyFailed } = split(errors);
+
+  // 1. The rating's own validation. Unchanged, and it still writes nothing —
+  //    the survey's failures are shown beside it rather than hidden.
+  if (ratingFailed) return withErrors(state, errors);
+
   const parsed = submitRatingInput.safeParse({ sessionId, checkInId, sessionStars, presenterStars, comment });
   if (!parsed.success) return withFormError(state, "generic");
+
+  // 2. The rating is written, whatever the survey says.
   try {
     await submitRating(locale, parsed.data);
   } catch (e) {
     // ★ With a survey on the screen, a rating that is already there is not a
-    // refusal: the member pressed one button for two things, and the first was
-    // already done — a retry after a failed survey must not stop here. Without
-    // a survey the behaviour is exactly what it was.
+    // refusal: the member pressed one button for two things and the first was
+    // already done — the second press sends the survey alone (`DEC-164`).
+    // Without a survey the behaviour is exactly what it was.
     const already = e instanceof Error && e.message === "already_rated";
     if (!survey || !already) return refusal(state, e);
   }
+
+  // 3. The survey alone is refused.
+  if (surveyFailed) return ratingSaved(state, surveyErrors);
+
+  // 4. …or submitted.
   const refused = await sendSurvey(locale, sessionId, survey, captured);
   if (refused) return refused;
   return redirect({ href: { pathname: `/app/sessions/${sessionId}/rate`, query: { rated: "1" } }, locale });
@@ -181,7 +227,9 @@ export async function updateRatingAction(
 ): Promise<RateFormState> {
   const captured = capture(prev, formData, survey);
   const { state, errors, sessionStars, presenterStars, comment } = captured;
-  if (Object.keys(errors).length > 0) return withErrors(state, errors);
+  const { survey: surveyErrors, ratingFailed, surveyFailed } = split(errors);
+  if (ratingFailed) return withErrors(state, errors);
+
   const parsed = updateRatingInput.safeParse({ ratingId, sessionStars, presenterStars, comment });
   if (!parsed.success) return withFormError(state, "generic");
   try {
@@ -189,6 +237,10 @@ export async function updateRatingAction(
   } catch (e) {
     return refusal(state, e);
   }
+  // The same split on the edit path: the rating's update stands and the survey
+  // is refused on its own (`DEC-164`).
+  if (surveyFailed) return ratingSaved(state, surveyErrors);
+
   const refused = await sendSurvey(locale, sessionId, survey, captured);
   if (refused) return refused;
   return redirect({ href: { pathname: `/app/sessions/${sessionId}/rate`, query: { rated: "1" } }, locale });

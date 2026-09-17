@@ -600,7 +600,14 @@ below). Call it `min`, and let `n` be the number of **stored responses** for the
   «إرسال التقييم والإجابات» (or «تحديث التقييم وإرسال الإجابات» when a rating exists).
 - **The action validates the whole form before it writes anything**, exactly as `capture()` already does for
   the two star rows: a missing required question is a field error **and** a summary line linking to it
-  (`REQ-UIX-009`, `010`), and the rating is not written on a round trip the survey would have failed. Every
+  (`REQ-UIX-009`, `010`), and the rating is not written on a round trip the survey would have failed. ★★
+  **SUPERSEDED BY `DEC-164`, and the lead was right to ask.** That last clause was my reading of
+  `REQ-SUR-002`'s «blocks submission» — which does not say whose — and its consequence is a THIRD gate on
+  the rating that no requirement states: the org's required question would withhold the member's own voice,
+  and with it the presenter's aggregate, the rating's points and the recognition evaluators. The rule now:
+  the rating's own validation fails → nothing is written, as before; the rating is valid → **it is written**,
+  and the survey alone is refused, at the field and in the summary, which says «حُفظ تقييمك. أكمل الأسئلة
+  المطلوبة لإرسال إجاباتك.». A second press sends the survey alone. Every
   answered value survives the round trip through `lib/form-state.ts` — the survey's fields are
   `` `q:${questionId}` ``, which `FormState<F extends string>` already supports, with `lists` for
   `multi_choice`.

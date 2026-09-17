@@ -48,3 +48,21 @@ export interface SurveyFormShape {
 /** A message key that came from the SURVEY's namespace rather than the rating's. */
 export const SURVEY_KEY = "survey:";
 export const surveyKey = (key: string) => `${SURVEY_KEY}${key}`;
+
+/**
+ * ★ «The rating was saved; the survey was not» (`DEC-164`).
+ *
+ * A required survey question blocks the SURVEY, never the rating: the rating
+ * has exactly two gates (an active check-in and the window, `REQ-RAT-001` …
+ * `007`), and a third that no requirement states would silently suppress the
+ * presenter's aggregate, the rating's points and the recognition evaluators.
+ *
+ * It is a whole-form key rather than a field error because it names what
+ * HAPPENED, not what to fix — the questions to fix are the field errors beside
+ * it — and the form reads it to change the summary's title from «لم نستطع
+ * إرسال تقييمك» (untrue: the rating is stored) to the survey's own.
+ */
+export const RATING_SAVED = surveyKey("rating_saved");
+
+/** The rating's own three fields, so the two halves can be told apart. */
+export const isRatingField = (field: string): field is RatingField => (RATE_FIELDS as readonly string[]).includes(field);
