@@ -1039,3 +1039,44 @@ one line that currently drops it. Nothing is needed from `ui/menu`.
 4. **`{{tasks}}` is still unfilled**, exactly as on `main`. Nothing in this track names
    `session_tasks`, `task_completions` or `task_form_responses`, so contract 10's guard is untouched
    by it.
+
+### W11.4 ★ The promotion order, and a seam defect found by reading `0106`
+
+**`03_day_change_notice.sql` must not land before `sessions` uncomments its call.**
+`0106`'s day-aware `schedule_session()` sets `kareem.days_writer` and the contract-11 call is still
+commented out (`0106:388`). My `03` makes `sessions_notify()` stand down for exactly that flag. So
+promoting `03` alone means a day-aware `schedule_session()`:
+
+- sends **no** `MSG-session_changed`, at one day as well as at three, and
+- does **not** reschedule the reminders or enqueue the calendar jobs, because those moved into
+  `session_days_changed()` with the announcement.
+
+One line fixes it, in `sessions`' file: `perform public.session_days_changed(target.id, v_before, v_after);`.
+**The two land together or `03` waits.** `0106`'s own `03` §8.2 row — «`sessions_notify` fires
+exactly once for the whole change» — becomes «`sessions_notify` stands down and
+`session_days_changed()` announces» on the day both are in.
+
+**The seam defect, fixed in `a79f83b`.** `0106` builds its snapshots as `jsonb_agg(to_jsonb(d))` —
+the whole `session_days` row, carrying `venue_id` and the custom-venue trio and **no**
+`venue_label`, which is what §W10.2 published. The venue comparison would have read null against
+null, so a day moving room would have reached nobody — the half of `REQ-SES-009` that actually sends
+someone to the wrong room. `public.session_day_place(jsonb)` now reads the label when the caller
+computed one and the columns when it did not. **`sessions` does not have to change its snapshot**;
+both shapes name the same day and the seam should not care which arrives.
+
+### W11.5 The promotion rehearsal — 95 cases, before the reset
+
+The seven pre-existing notify and calendar RLS files were temporarily made to apply all three
+proposed migrations in their own `setup()`, run, and restored — no edit committed, and `git status`
+clean of them afterwards. **95 cases across the seven pass with the migrations applied**, every
+assertion untouched: `notify-reminders`, `notify-session-notices`, `notify-schedule-change`,
+`notify-send`, `notify-m2-notices`, `notify-contract`, `calendar-sync`. That is the `n = 1` proof
+for this track, taken before promotion rather than after it.
+
+### W11.6 The one path not yet proven against real PostgREST
+
+`listSyncedEvents()`'s nested embed —
+`sessions(title, starts_at, session_days(id)), session_days(position, starts_at)` on
+`calendar_events`. The component tests mock the DAL and the embed needs the promoted column to
+exist, so `tests/e2e/wave9-notify-days.spec.ts` is what proves it. It is the first thing to run
+after promotion.
