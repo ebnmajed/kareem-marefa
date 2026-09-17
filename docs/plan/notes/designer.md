@@ -2093,3 +2093,129 @@ are evidence of `main`'s behaviour, not of mine. That they still pass **under** 
 `session-days-certificates.test.ts:151` («not over an existing row») holds because the row that case
 creates is `issued`, i.e. live; `checkin-removal.test.ts:156` holds because its session is
 `in_progress`, so the sync returns before either row guard.
+
+---
+
+## D3 — the review of `notify`'s block-to-table compiler (`3cf1e6b`, `16` §11.6)
+
+Read: `packages/mail-runtime/src/{compile,primitives,render,blocks}.ts`, `worker/src/tasks/send_notification.ts`,
+`supabase/migrations/0126_public_org_logo.sql`, `src/app/api/brand/[orgId]/logo/route.ts`. **Read-only** — I
+edit nothing under `packages/mail-runtime/` or `worker/src/mail/`; each finding is a request and the lead routes it.
+
+The compiler was written **against** D3a rather than audited by it, and it shows: `dir="rtl"` and
+`align="right"` are on every text-bearing cell through one `cell()` helper, there is one declared stack reused
+rather than redeclared, the VML button is there, there is no `<svg>` anywhere, and every image carries `alt`
+and an explicit `width`. Four of my five items are answered in the code. The findings below are what is left,
+and the two that matter are both in item 4.
+
+### Cleared — each said because each LOOKS like a hazard
+
+- ★ **Bidi isolation is complete on BOTH parts.** I traced all nine block types and the composed footer. Bound
+  values reach the HTML through `interpolateIsolated()` (`heading`, `paragraph`, `button`'s label,
+  `detail_list`, `image`'s `alt`) or through an explicit `isolate()` (`session_card`'s four lines, the
+  `button`'s href in the text part, the preferences URL). **Every `text.push()` carries the isolated value,
+  not a second rendering of it** — which is the half that usually gets forgotten, because the text part is
+  the one nobody looks at. Keeping it out of `interpolate()` is right: that function is the string path's, and
+  isolating there would move all 116 pinned files for an org that has touched nothing.
+- **`#ffffff` on the primary button is not a contrast risk**, and it looks like one. `accent` is `fgHeading`
+  (`render.ts:320`), not a tenth token, and **contrast is symmetric** — white on `fgHeading` is the same ratio
+  as `fgHeading` on a white surface, which is the pairing the brand kit already guarantees. It stops being
+  exactly symmetric only where `surface` is tinted rather than white, and there it moves in the safe direction.
+- ★ **No SVG can reach a mail through the logo door**, which is invariant 11 holding in a medium that is not
+  ours. `org_public_logo()` gates on **`a.sniffed_mime in ('image/png','image/jpeg')`** — the sniffed type,
+  not the extension (`0126:65`, `:83`) — and the route sets that content type with `nosniff`. A WebP or an SVG
+  logo yields no row, `logoUrl` is null, and the design falls back to the org's name.
+- **`escapeHtml` not escaping `'` is safe**: every attribute in both files is `"`-quoted.
+
+### F1 · ★ HIGH — the mail declares no colour scheme, so forced dark is unmanaged (item 4)
+
+`render.ts:352`'s head is `<meta charset>` and `<meta name="viewport">` and nothing else. There is no
+`color-scheme`, no `supported-color-schemes`, and no `<style>` at all.
+
+Apple Mail on macOS and iOS, and Outlook.com, **auto-invert a message that does not declare its scheme**. The
+shell hard-codes `background:#f5f5f5` on `<body>` and on the outer table and puts `surface` (default
+`#ffffff`) on the card, while every text colour is set explicitly. An inverter that darkens a background it
+judges light while leaving an explicitly-set text colour alone produces **dark text on a dark card** — the
+classic failure, and the one a light-mode-only reviewer never sees.
+
+**Request:** add to `<head>` —
+`<meta name="color-scheme" content="light" />`, `<meta name="supported-color-schemes" content="light" />`,
+and `<style>:root{color-scheme:light;supported-color-schemes:light;}</style>`. That is the documented opt-out
+for Apple Mail and Outlook.com. **Gmail's Android app inverts anyway**, which is what F2 is about.
+★ This moves every pinned file, so it is a reviewed change to `tests/unit/mail-pinned/` — which is the pin
+doing its job, not an argument against the fix.
+
+### F2 · ★ HIGH — a transparent logo disappears in the one client that inverts regardless (item 4)
+
+`0126` serves a PNG, and a brand logo is very often **dark ink on transparency**. The `image` block renders it
+with `display:block` and **no background of its own** (`compile.ts:242`), so it sits on whatever the card's
+`surface` has become. Gmail on Android darkens that surface and the logo's ink goes with it: a transparent
+PNG has nothing to stand on, and the header of every designed mail goes blank for a large share of readers.
+
+**Request:** put the logo cell on an explicit **`bgcolor` attribute** — `<td bgcolor="#ffffff">` around the
+`org_logo` image, not a CSS background. The attribute is what Outlook's Word engine reads and what Gmail's
+inverter respects most consistently; a CSS `background` is the first thing it overrides. The logo then keeps
+the background it was drawn for in every client. This is the mail-shaped version of `DEC-125`'s argument that
+a scheme is chosen, never defaulted at render time.
+
+### F3 · MEDIUM — contract 8's one permitted URL is never used: the session-card image is dead at both ends
+
+`compile.ts:183` reads `block.withImage`, and `imageUrl()` resolves a `session_card_image` from
+`payload.session_card_image_url` (`:252`).
+
+- **Nothing in the repository sets `session_card_image_url`.** `grep` across `src`, `worker`, `packages` and
+  `supabase` finds the string only inside `compile.ts`. `lookup()` returns `undefined`, `formatValue()` makes
+  it `""`, and `imageUrl()` returns `null` — so the image is dropped **always**.
+- **Nothing sets `withImage` either.** It is declared in `blocks.ts:53`, read in `compile.ts:183`, and set by
+  no design — so the first branch is false before the second one can fail.
+
+Not a live defect, because no design opts in; but the code and its comment describe a feature that does not
+exist — the comment reasons about «the إلغاء design asks for no image», implying the others ask for one, and
+none does. ★ **This is the same shape as the `{{url}}` defect `notify` itself found this wave**: a binding
+supplied by nothing, discovered only by tracing the value rather than reading the code that consumes it.
+
+**Request, and it is contract 8's answer made concrete:** `send_notification.ts` sets
+`session_card_image_url = ${appUrl}/api/s/${sessionId}/og` — **that URL and no other** — and only when the
+payload carries a session id **and** that session is `published`, `in_progress` or `completed`. The state
+condition is not defensive: `/api/s/{id}/og` **404s** for a draft or a cancelled session by
+`export_is_public_card()`'s own predicate, which is exactly why a cancellation must not carry the card.
+
+### F4 · MEDIUM — iOS and Android have no DECLARED Arabic face (item 1)
+
+`FALLBACK_STACK` is `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif` (`primitives.ts:19`).
+
+`IBM Plex Sans Arabic` is ours and is never installed on a reader's machine, which is correct and effectively
+never used. `Segoe UI` and `Tahoma` are Windows; `Tahoma`'s Arabic is solid. But **iOS ships none of the
+three, and Android ships none of the three** — so on both, every Arabic run falls through to `sans-serif` and
+then to the OS's glyph-level fallback: Geeza Pro on iOS, Noto Naskh Arabic on Android.
+
+It *works* — a fallback face shapes its own run, so lam-alef survives — but it is **discovered, not
+declared**, and this repository's standard is the opposite: `06` §5.1's «what does not survive a crop is
+DECLARED, not discovered» is the same argument. A platform changing its fallback order changes our Arabic
+silently, on the majority of readers, and nothing would tell us.
+
+**Request:** `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic', Arial, sans-serif`.
+★ **It is not free:** `FALLBACK_STACK` is in every cell of **both** paths, so this moves all 116 pinned files.
+That makes it the lead's call rather than a nit — and if it is taken, it should be taken **with F1**, in one
+reviewed pin diff rather than two.
+
+### F5 · LOW — `session_card`'s inner `<div>`s carry no `dir` (item 2)
+
+`compile.ts:190-191` builds the card's lines as bare `<div style=…>` inside a `<td dir="rtl">`. Every other
+text-bearing element in the file goes through `cell()` and gets `dir` and `align` explicitly. The file's own
+stated reason for that — «Outlook's Word engine does not inherit direction reliably through nested tables» —
+applies less to a `div` in a `td` than to a table in a table, which is why this is low. But the card is the
+one block whose lines are **bound values** carrying names, venues and dates, so it is the worst place to rely
+on inheritance. **Request:** `dir="rtl"` on those two `<div>`s.
+
+### F6 · LOW — `white-space:nowrap` on a `detail_list` label
+
+`compile.ts:212` keeps the label cell from wrapping. Fine for «الموعد» or «المكان»; a longer authored label at
+320 px pushes the value column off the card, and a mail has no overflow affordance. **Request:** drop it, or
+cap the label column's width instead.
+
+### What I did not review
+
+The 21 compiler cases and the 116 pinned files are `notify`'s evidence and I did not re-run them; the **preview
+plumbing** (the sandboxed iframe, the form target) is `notify`'s and outside `16` §11.6's «`designer` reviews
+the compiler». F1 and F4 both move the pin, so whoever takes them takes the reviewed diff with them.
