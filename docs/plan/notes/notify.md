@@ -2760,3 +2760,56 @@ templates at once. `{{tasks}}` I recommend **leaving empty and carried** — it 
 **Q8 — the eight design names.** `DEC-082` fixes them in Arabic and X4 maps all 25 keys onto them,
 with three stretches named. Confirm the names stay as the owner wrote them; I am not proposing to
 rename any.
+
+---
+
+## X99. STAND-DOWN STATE — 2026-09-17, last hash `72cb2eb`
+
+The tree is **clean**: nothing of mine is uncommitted, `npx tsc --noEmit` is green, `npm run lint`
+is 0 errors, and the last full runs were `npm test` **2161 passed / 1 skipped** and the whole RLS
+suite **113 files, 1151 passed** (the one red in that run was the lead's `0135`, since closed).
+
+### Done
+
+| | Unit | Where |
+|---|---|---|
+| **N1** | today's output pinned — 29 cases over the 25 keys, 116 files, seen to catch a changed byte **and** an orphan | `38a6f46` |
+| **L3's proof** | the package move held: 116 files byte-identical from the new home | `1a46fde` + my imports |
+| **N2** | the nine-block compiler, the generated text part, bidi isolation in the compiler only | `3cf1e6b` |
+| **N3** | bindings declared per key and refused by the database | `38ccd25`, promoted `0133` |
+| **D3** | `designer`'s six findings, block path only, pin unmoved | `5d8a7eb`, `07a1af7` |
+| **D3-inject** | the injection read's F1, F2, F3 and the palette invariant | `159cd6e` |
+| **N4 (part)** | the preview route + `compileEmailPreview()`, over the pinned samples | `48abbbb`, `65745c8` |
+| **N7** | `08` §3.2's corrected table | in this note, pasted by the lead |
+| guards | the visibility guard; `0125`'s hole closed by `0134`; the `org_id` update defect | `0404c71`, `244d213`, `3e83f59` |
+
+### Open, in the order I would take them
+
+1. **The editor's three panes** — blocks on `ui/reorderable-list` (call written at `Q6`), properties,
+   preview. `src/app/[locale]/app/admin/emails/**` and new `src/components/email/**`.
+2. **The checks panel**, with **three BLOCKING states**, all of which have their mechanism already:
+   a **parse failure** (the lead's note 1 — an admin must not approve a string mail believing it is
+   the design), a **dropped block** (`CompiledBlocks.dropped` carries id, type and reason), and an
+   **unknown binding** (the database's refusal, with the binding named).
+3. ★ **The forced-dark three-cell capture** — designed in full above and **not yet built**. It must
+   **substitute colours and not invert images**, the three cells must differ **only in the alpha
+   channel**, and **the prediction is already committed**: the transparent dark-ink cell should FAIL,
+   and if it passes, suspect the instrument.
+4. **N5** — `send_test_email()`; the audit action is `notify.test_email_sent` and its label is the
+   lead's at promotion.
+5. **N6** — the eight designed platform templates, every one of the 25 keys resolving to one.
+6. **Named difference 1** — `{{url}}` supplied from `RenderInput.appUrl`; needs `APP_URL` on Railway,
+   an owner's step.
+7. **N8** — the bounce webhook, with the HMAC verified **in the database** (`R6`).
+
+### Two things a later reader should not have to rediscover
+
+- ★ **Invisible characters are produced, never typed.** Four times this wave a `\uXXXX` escape
+  reached disk as the character. The guard is `tests/unit/mail-source-visible.test.ts` — **and it
+  reads the WORKING TREE, so it cannot see what is in git**: `72cb2eb` fixed a NUL that was still in
+  `HEAD` while the checkout was clean. A guard over the checkout answers a different question from a
+  guard over the commit.
+- ★ **Write the assertion against the OUTCOME, not the mechanism.** The palette invariant was ruled as
+  «assert hex in `compilePalette()`»; asserting that would have passed while a planted `"><script>`
+  still reached the shell through `legacyBrand()`. The test that says «no script tag in the HTML»
+  found it. Same lesson as the pin: the 116 files catch what a fragment assertion cannot.
