@@ -14,6 +14,7 @@ import { LinkIcon } from "@/components/ui/icons";
 import { SettingsForm } from "@/components/materials/settings-form";
 import { UploadForm } from "@/components/materials/upload-form";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { phaseLabelKey } from "@/components/materials/phase-label";
 
 // The `Materials` slot — `id="materials"`, «المواد» (`sessions.md` §22.2) —
 // the session's materials list, phase-gated entirely by `materials_read`
@@ -178,9 +179,13 @@ function MaterialCard({ m, sessionId, locale, canManage, t, scope }: MaterialCar
             <p className="text-body-sm text-fg-muted">{t(`kind.${m.kind}`)}</p>
           </div>
           {/* قبل/بعد — never colour alone: the two phases keep
-              distinct Arabic text on top of the distinct tone. */}
+              distinct Arabic text on top of the distinct tone. REQ-MAT-006 as amended (DEC-121):
+              phase is relative to the item's own SCOPE, never to the session, so a day-scoped
+              material reads «قبل اليوم»/«بعد اليوم», never «…الجلسة» — the lead's own finding
+              against the real build (the day-scoped chip still said «بعد الجلسة» while the
+              workshop had two more days to run). */}
           <Badge tone={m.phase === "before" ? "info" : "neutral"} outline size="sm" className="shrink-0">
-            {t(`phase.${m.phase}`)}
+            {t(phaseLabelKey(m.phase, m.sessionDayId))}
           </Badge>
         </div>
 
@@ -239,7 +244,7 @@ function MaterialCard({ m, sessionId, locale, canManage, t, scope }: MaterialCar
           </a>
         ) : null}
 
-        {canManage ? <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} /> : null}
+        {canManage ? <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} sessionDayId={m.sessionDayId} /> : null}
       </CardBody>
     </Card>
   );

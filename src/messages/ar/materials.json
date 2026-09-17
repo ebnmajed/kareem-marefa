@@ -6,7 +6,9 @@
       "addAction": "أضف مادة",
       "phase": {
         "before": "قبل الجلسة",
-        "after": "بعد الجلسة"
+        "after": "بعد الجلسة",
+        "beforeDay": "قبل اليوم",
+        "afterDay": "بعد اليوم"
       },
       "kind": {
         "pdf": "PDF",

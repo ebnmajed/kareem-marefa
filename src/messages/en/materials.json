@@ -6,7 +6,9 @@
       "addAction": "Add a material",
       "phase": {
         "before": "Before the session",
-        "after": "After the session"
+        "after": "After the session",
+        "beforeDay": "Before the day",
+        "afterDay": "After the day"
       },
       "kind": {
         "pdf": "PDF",

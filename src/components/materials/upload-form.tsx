@@ -10,6 +10,7 @@ import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
 import { AlertCircleIcon } from "@/components/ui/icons";
+import { phaseLabelKey } from "@/components/materials/phase-label";
 import type { MaterialKind, MaterialUploadLimits } from "@/lib/dal/materials";
 
 // STORY-MAT-001, 07 §1 — the browser uploads directly to Storage; bytes
@@ -205,8 +206,8 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits, sessio
         <label className="flex flex-col gap-1 text-body-sm text-fg-body">
           {t("phaseLabel")}
           <Select value={phase} onChange={(e) => setPhase(e.target.value as "before" | "after")}>
-            <option value="before">{tList("phase.before")}</option>
-            <option value="after">{tList("phase.after")}</option>
+            <option value="before">{tList(phaseLabelKey("before", sessionDayId))}</option>
+            <option value="after">{tList(phaseLabelKey("after", sessionDayId))}</option>
           </Select>
         </label>
       ) : null}

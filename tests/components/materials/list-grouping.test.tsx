@@ -113,3 +113,20 @@ describe("Materials slot, grouped (days.length > 1)", () => {
     expect(violations.map((v) => v.id)).toEqual([]);
   });
 });
+
+// ★ REQ-MAT-006 as amended (DEC-121): the phase badge reads relative to the item's own scope,
+// never the session — the lead's finding against a real build (a day-scoped material's chip
+// still said «بعد الجلسة» while the workshop had days left to run).
+describe("REQ-MAT-006 — the phase badge is relative to the item's own scope", () => {
+  it("a day-scoped «بعد» material reads «بعد اليوم», never «بعد الجلسة»", async () => {
+    await renderSlot({ materials: [day1Material], canManageAll: false, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    expect(screen.getByText("بعد اليوم")).toBeInTheDocument();
+    expect(screen.queryByText("بعد الجلسة")).not.toBeInTheDocument();
+  });
+
+  it("a session-scoped «بعد» material reads «بعد الجلسة», exactly as before REQ-SES-018", async () => {
+    await renderSlot({ materials: [sessionMaterial], canManageAll: false, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    expect(screen.getByText("بعد الجلسة")).toBeInTheDocument();
+    expect(screen.queryByText("بعد اليوم")).not.toBeInTheDocument();
+  });
+});
