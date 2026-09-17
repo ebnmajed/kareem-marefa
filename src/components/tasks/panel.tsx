@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TaskItem } from "@/components/tasks/task-item";
 import { CreateTaskForm } from "@/components/tasks/create-form";
 import type { RescopeOption } from "@/components/tasks/rescope-chip";
+import { GroupDisclosure } from "@/components/tasks/group-disclosure";
 
 // The `Tasks` slot — `id="tasks"`, «مهام ما قبل الجلسة» (`sessions.md`
 // §22.2) — REQ-TSK-001 … REQ-TSK-005. No <section>/<h2> of its own (the
@@ -88,12 +89,15 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
         .filter((g) => g.items.length > 0 || canManage)
         .map((g) => (
           <div key={g.dayId ?? "session"} className="mt-6 first:mt-0">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <h3 className="text-body font-medium text-fg-heading">{g.heading}</h3>
+              {/* ★ The lead's finding against the real build: every group's form mounting OPEN
+                  made a three-day presenter page 9,000 CSS px tall. Behind a native disclosure,
+                  closed by default — `GroupDisclosure`'s own header explains the mechanics. */}
               {canManage ? (
-                <a href={`#tasks-create-form-${g.dayId ?? "session"}`} aria-label={t.markup("group.addAria", { scope: g.shortLabel, bdi: (chunks) => chunks })} className="shrink-0 text-body-sm text-fg-body hover:text-fg-heading">
-                  {tCreate("submit")}
-                </a>
+                <GroupDisclosure summary={tCreate("submit")} summaryAriaLabel={t.markup("group.addAria", { scope: g.shortLabel, bdi: (chunks) => chunks })}>
+                  <CreateTaskForm locale={locale} sessionId={sessionId} materials={materials} sessionDayId={g.dayId} />
+                </GroupDisclosure>
               ) : null}
             </div>
             {g.items.length > 0 ? (
@@ -102,11 +106,6 @@ export async function Tasks({ sessionId, locale }: SlotProps) {
                   <TaskItem key={task.id} locale={locale} sessionId={sessionId} task={task} scope={canManage ? { currentLabel: g.shortLabel, options } : null} />
                 ))}
               </ul>
-            ) : null}
-            {canManage ? (
-              <div id={`tasks-create-form-${g.dayId ?? "session"}`} className="mt-3 scroll-mt-4">
-                <CreateTaskForm locale={locale} sessionId={sessionId} materials={materials} sessionDayId={g.dayId} />
-              </div>
             ) : null}
           </div>
         ))}

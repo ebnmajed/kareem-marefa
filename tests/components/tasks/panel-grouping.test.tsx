@@ -1,7 +1,7 @@
 // REQ-SES-018/DEC-121, contract 7 — the grouped view at `days.length > 1`. New behaviour, new
 // file (rule 4) — panel.test.tsx (the byte-identical proof at n <= 1) is untouched.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/tasks.json";
 import sessionsAr from "@/messages/ar/sessions.json";
@@ -83,5 +83,56 @@ describe("Tasks slot, grouped (days.length > 1)", () => {
     await renderSlot({ tasks: [day1Task], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
     const trigger = screen.getByText("▾").closest("summary")!;
     expect(trigger.closest("details")!.querySelectorAll("button")).toHaveLength(3);
+  });
+});
+
+// ★ The lead's finding against the real build: mounting every group's own create-task form OPEN
+// made a three-day presenter page 9,000 CSS px tall. `GroupDisclosure` (native
+// <details>/<summary>, no client state machine) keeps each group's form closed until its own
+// header control opens it — see `tests/components/materials/list-grouping.test.tsx`'s identical
+// suite for the twin.
+describe("REQ-SES-018/DEC-121 — a group's own form sits behind its header control, closed by default", () => {
+  // ★ `tasks.create.submit` ("إضافة") is both this trigger's visible label AND
+  // `CreateTaskForm`'s own submit button — the lead's wording keeps the header control's label
+  // ("«إضافة»/«أضف مادة» in the header"), so the two elements share text once a group is open.
+  // jsdom does not hide a closed `<details>`'s non-summary children the way a real browser does,
+  // so `getAllByText` alone would match both the 3 triggers and the 3 forms' own submit buttons.
+  // Scoping to `<summary>` picks out exactly the header controls this suite is about.
+  function summaryTriggers() {
+    return screen.getAllByText("إضافة").filter((el) => el.tagName === "SUMMARY");
+  }
+
+  it("no group's form is open when the grouped view first renders", async () => {
+    await renderSlot({ tasks: [day1Task], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
+    const triggers = summaryTriggers(); // session + day1 + day2, one per group
+    expect(triggers).toHaveLength(3);
+    for (const trigger of triggers) {
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+  });
+
+  it("the header control opens exactly its own group's form and leaves the others closed", async () => {
+    await renderSlot({ tasks: [day1Task], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
+    const triggers = summaryTriggers();
+    const day1Trigger = triggers[1]; // session, then days in order
+    fireEvent.click(day1Trigger);
+
+    const opened = day1Trigger.closest("details")!;
+    expect(opened.open).toBe(true);
+    for (const trigger of triggers) {
+      if (trigger === day1Trigger) continue;
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+  });
+
+  it("opening moves focus to the form's first field", async () => {
+    await renderSlot({ tasks: [day1Task], canManage: true, materials: [], days, timeZone: "Asia/Riyadh" });
+    const trigger = summaryTriggers()[0];
+    fireEvent.click(trigger);
+    // ★ jsdom toggles `<details>.open` correctly on a real click (proven above) but does not
+    // reliably dispatch the accompanying native `toggle` event a real browser fires per spec —
+    // dispatched by hand, exactly as materials' own twin test does, and for the same reason.
+    fireEvent(trigger.closest("details")!, new Event("toggle"));
+    expect(document.activeElement).toHaveAccessibleName("نوع المهمة");
   });
 });

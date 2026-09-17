@@ -15,6 +15,7 @@ import { SettingsForm } from "@/components/materials/settings-form";
 import { UploadForm } from "@/components/materials/upload-form";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 import { phaseLabelKey } from "@/components/materials/phase-label";
+import { GroupDisclosure } from "@/components/materials/group-disclosure";
 
 // The `Materials` slot — `id="materials"`, «المواد» (`sessions.md` §22.2) —
 // the session's materials list, phase-gated entirely by `materials_read`
@@ -104,12 +105,16 @@ export async function Materials({ sessionId, locale }: SlotProps) {
         .filter((g) => g.items.length > 0 || canManage)
         .map((g) => (
           <div key={g.dayId ?? "session"} className="mt-6 first:mt-0">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <h3 className="text-body font-medium text-fg-heading">{g.heading}</h3>
+              {/* ★ The lead's finding against the real build: mounting every group's form OPEN
+                  made a three-day presenter page 9,000 CSS px tall. The form now sits behind
+                  this native disclosure, closed by default — `GroupDisclosure`'s own header
+                  explains the mechanics. */}
               {canManage ? (
-                <Link href={`#materials-upload-form-${g.dayId ?? "session"}`} aria-label={t.markup("group.addAria", { scope: g.shortLabel, bdi: (chunks) => chunks })} className="shrink-0 text-body-sm text-fg-body hover:text-fg-heading">
-                  {t("addAction")}
-                </Link>
+                <GroupDisclosure summary={t("addAction")} summaryAriaLabel={t.markup("group.addAria", { scope: g.shortLabel, bdi: (chunks) => chunks })}>
+                  <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} sessionDayId={g.dayId} />
+                </GroupDisclosure>
               ) : null}
             </div>
             {g.items.length > 0 ? (
@@ -120,11 +125,6 @@ export async function Materials({ sessionId, locale }: SlotProps) {
                   </li>
                 ))}
               </ul>
-            ) : null}
-            {canManage ? (
-              <div id={`materials-upload-form-${g.dayId ?? "session"}`} className="mt-3 scroll-mt-4">
-                <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} sessionDayId={g.dayId} />
-              </div>
             ) : null}
           </div>
         ))}

@@ -1,7 +1,7 @@
 // REQ-SES-018/DEC-121, contract 7 — the grouped view at `days.length > 1`. New behaviour, new
 // file (rule 4) — list.test.tsx (the byte-identical proof at n <= 1) is untouched.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/materials.json";
@@ -128,5 +128,50 @@ describe("REQ-MAT-006 — the phase badge is relative to the item's own scope", 
     await renderSlot({ materials: [sessionMaterial], canManageAll: false, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
     expect(screen.getByText("بعد الجلسة")).toBeInTheDocument();
     expect(screen.queryByText("بعد اليوم")).not.toBeInTheDocument();
+  });
+});
+
+// ★ The lead's finding against the real build: mounting every group's own upload form OPEN made a
+// three-day presenter page 9,000 CSS px tall (four forms all on screen at once); a ten-day
+// workshop (allowed) would be worse. `GroupDisclosure` (native <details>/<summary>, no client
+// state machine) keeps each group's form closed until its own header control opens it.
+describe("REQ-SES-018/DEC-121 — a group's own form sits behind its header control, closed by default", () => {
+  it("no group's form is open when the grouped view first renders", async () => {
+    await renderSlot({ materials: [day1Material], canManageAll: true, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    const triggers = screen.getAllByText("أضف مادة"); // session + day1 + day2, one per group
+    expect(triggers).toHaveLength(3);
+    for (const trigger of triggers) {
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+  });
+
+  it("the header control opens exactly its own group's form and leaves the others closed", async () => {
+    await renderSlot({ materials: [day1Material], canManageAll: true, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    const triggers = screen.getAllByText("أضف مادة");
+    // Groups render session first, then days in order — the second trigger is day 1's own.
+    const day1Trigger = triggers[1];
+    fireEvent.click(day1Trigger);
+
+    const opened = day1Trigger.closest("details")!;
+    expect(opened.open).toBe(true);
+    for (const trigger of triggers) {
+      if (trigger === day1Trigger) continue;
+      expect(trigger.closest("details")!.open).toBe(false);
+    }
+  });
+
+  it("opening moves focus to the form's first field", async () => {
+    await renderSlot({ materials: [day1Material], canManageAll: true, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
+    const trigger = screen.getAllByText("أضف مادة")[0];
+    fireEvent.click(trigger);
+    // ★ jsdom toggles `<details>.open` correctly on a real click (proven by the two tests
+    // above) but does not reliably dispatch the accompanying native `toggle` event a real
+    // browser fires per spec — a documented jsdom gap, not a bug here. Dispatched by hand so
+    // this test exercises GroupDisclosure's own listener logic directly, which is the part
+    // this track owns; the click→open step above already proves the native part.
+    fireEvent(trigger.closest("details")!, new Event("toggle"));
+    // GroupDisclosure's own `toggle` listener focuses the first field inside the revealed
+    // content — UploadForm's own first control is the material-kind select.
+    expect(document.activeElement).toHaveAccessibleName("نوع المادة");
   });
 });
