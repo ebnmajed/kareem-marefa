@@ -140,8 +140,22 @@ function rpcError(error: { message: string }, what: string): Error {
 
 // ── SCR-065 — the templates ────────────────────────────────────────────────
 
-export async function listSurveyTemplates(locale: string): Promise<SurveyTemplateSummary[]> {
-  const { session, supabase } = await sessionClient(locale);
+/**
+ * The survey's audience is `admin` AND `moderator` (REQ-SUR-005) — the reverse
+ * of the rating's, where per-rater rows are admin-only. `null` is the page's
+ * `notFound()`: a member who guesses the URL learns nothing from a 404 that an
+ * empty list would not have told them anyway, and the database refuses the read
+ * whatever this returns.
+ */
+async function requireStaff(locale: string) {
+  const client = await sessionClient(locale);
+  return client.session.role === "admin" || client.session.role === "moderator" ? client : null;
+}
+
+export async function listSurveyTemplates(locale: string): Promise<SurveyTemplateSummary[] | null> {
+  const staff = await requireStaff(locale);
+  if (!staff) return null;
+  const { session, supabase } = staff;
   const { data, error } = await supabase
     .from("survey_templates")
     .select("id, title, updated_at, survey_template_questions(count), surveys(count)")
@@ -161,7 +175,9 @@ export async function listSurveyTemplates(locale: string): Promise<SurveyTemplat
 
 export async function getSurveyTemplate(locale: string, templateId: string): Promise<SurveyTemplateDTO | null> {
   if (!z.uuid().safeParse(templateId).success) return null;
-  const { session, supabase } = await sessionClient(locale);
+  const staff = await requireStaff(locale);
+  if (!staff) return null;
+  const { session, supabase } = staff;
   const { data, error } = await supabase
     .from("survey_templates")
     .select("id, title, survey_template_questions(id, kind, prompt, required, position, survey_template_options(id, label, position))")
@@ -252,8 +268,10 @@ type ResultsRow = {
  * the export exactly as it does to the screen» is true by construction. This
  * function shapes; it never decides what may be shown.
  */
-export async function getSurveyResults(locale: string, sessionId: string): Promise<SurveyResultsDTO> {
-  const { supabase } = await sessionClient(locale);
+export async function getSurveyResults(locale: string, sessionId: string): Promise<SurveyResultsDTO | null> {
+  const staff = await requireStaff(locale);
+  if (!staff) return null;
+  const { supabase } = staff;
   const { data, error } = await supabase.rpc("survey_results", { p_session: sessionId });
   if (error) throw rpcError(error, "survey_results");
   const row = (data ?? { status: "no_survey" }) as ResultsRow;
@@ -346,7 +364,7 @@ export async function getSurveyExportRows(locale: string, sessionId: string): Pr
     getSurveyResults(locale, sessionId),
     supabase.from("sessions").select("title").eq("id", sessionId).maybeSingle(),
   ]);
-  if (results.status === "no_survey") return null;
+  if (!results || results.status === "no_survey") return null;
 
   const sessionTitle = (sessionRow?.title as string | undefined) ?? "";
   const headers = ["السؤال", "النوع", "عدد المجيبين", "القيمة", "العدد", "المتوسط"];
