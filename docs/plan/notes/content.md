@@ -2890,3 +2890,19 @@ by hand rather than executed — I did not attempt `test:e2e:local` myself (need
 lead-only) and did not touch the lead's verification worktree.
 
 Ready for sync — spec names above; capture names are the `.png` filenames listed.
+
+## §25 — `wave9-content-days.spec.ts` fixed: the fixture, not a defect (`e22af5b`)
+
+The lead's real-build run found the tasks capture failing — no tasks section at all, not a
+locator problem — and gave three named possibilities from the `error-context.md` evidence, asking
+which. It was (a): my fixture never gave the plain member an RSVP. `session-matrix.ts`'s
+`AFFORDANCE_MATRIX` (§5.3 row 1, `DEC-090` — pre-existing, has nothing to do with days) withholds
+`tasks` from an UNregistered viewer at the session's own `open` phase, which is exactly the phase
+my session is in at test time (`in_progress`, between day 1 having ended and day 2 not yet begun —
+`betweenDays()` correctly says so). `confirmed`'s cell has `tasks: true`; `none`'s does not.
+Materials and photos never hit this because neither `materials_read` nor `photos_read` reads RSVP
+status at all — only tasks' own affordance gate does, which is why only that one capture failed
+and the other four (materials ×4, photos ×1) were already green on the real build. Added one
+`rsvps` row for the member (`confirmed`); `session-matrix.ts` untouched, as asked.
+
+Ready for sync — the lead re-runs.
