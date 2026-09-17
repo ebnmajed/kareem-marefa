@@ -3881,3 +3881,24 @@ The rail follows the requirement: «الاستبانات» is a leaf visible to 
 This changes the bytes of an existing export only for a value that would have been executed. It is a **named difference** of wave 10 on those terms, and it ships to `main`'s seven exports with this wave rather than waiting for the survey to make it urgent.
 
 - **Documents changed:** `01-prd.md` (`REQ-ADM-020`), `STATUS.md` (row L4, the ledger)
+
+## DEC-164 — A required survey question blocks the survey, never the rating
+
+- **Date:** 2026-09-17 · **Decided by:** lead (wave 10), on `event`'s recommendation, asked by the lead while reading `0137` for promotion. **Put to the owner in PR #27** as a named product choice, because it is one.
+- **Amends:** `REQ-SUR-002` (one acceptance line narrowed, one added). Supersedes `docs/plan/notes/event.md` «Wave 10 plan» §9's second bullet, which the lead approved at sync 1 without seeing its consequence.
+
+`REQ-SUR-004` puts the rating and the survey on one screen behind one button, and `REQ-SUR-002` says «a required question blocks submission». With one form and one action, the literal reading is the form's submission — and that is what was planned, approved and built: the action validated everything before writing anything, so **an org's required question could withhold a member's rating**. Nobody decided that; it fell out of a sentence that does not say *whose* submission.
+
+**Ruling: it blocks the survey's.** Three reasons, in the order they weigh:
+
+1. **The rating's gates are stated, and there are two.** `REQ-RAT-001` … `007` admit a rating on an active check-in inside the window. A third gate that no requirement names would silently lower the count every downstream reader depends on — the presenter's aggregate and its three-rating withhold (`REQ-RAT-006`), the points a rating earns, the recognition evaluators — for every session that carries a survey with a required question, and only for those. A presenter would see fewer ratings on exactly the sessions the org cared enough about to survey.
+2. **The survey is additive** (`REQ-SUR-001`: a session with none shows nothing about one). A feature that is additive when absent should not be subtractive when present.
+3. **The rating is the member's voice; the survey is the org's instrument.** A member who wants to press five stars and leave may.
+
+**The rule, as built under this entry:** an invalid rating writes nothing, as before. A valid rating beside an incomplete or invalid survey **is written**; the survey is refused at the field and in the summary; the screen says both halves — «حُفظ تقييمك. أكمل الأسئلة المطلوبة لإرسال إجاباتك.» — and keeps the answers already given (React resets a `<form action>` on every submission, `DEC-149` §1, so that is a thing to build and not to assume). A second press submits the survey alone: with a survey on screen, «already rated» is not a refusal. A valid rating beside an **untouched** survey that has a required question is the same case — the member learns the org asked something, and may still leave with their rating standing; beside an untouched survey with **no** required question the submit answers `empty` and the screen says nothing about the survey at all.
+
+**What does not change:** the two writes stay decorrelated exactly as `DEC-160` §3 has them — the rating at once, the register row at once, the response by the jittered job; `0137` is untouched by this entry. The change is in the action's order of operations, its message, and one spec assertion that flips: after a required-question failure the rating **was** written and the participation and the job were **not**.
+
+**The cost, stated:** a member can rate and never answer, so a required question is «required in order to answer», not «required in order to take part». An org that wanted the second has no way to get it, on purpose.
+
+- **Documents changed:** `01-prd.md` (`REQ-SUR-002`), `STATUS.md`

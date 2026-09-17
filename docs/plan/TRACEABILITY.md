@@ -124,7 +124,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-014` | — | — | `SCR-016` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +1 | — | — | `STORY-CHK-006` | M9 |
 | `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-006` | M9 |
-| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-007` | M9 |
+| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` +1 | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-007` | M9 |
 
 ### CRT
 
@@ -163,7 +163,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-DSG-001` | `ENT-session_posters` | `POL-session_posters.publish` | `SCR-043` | — | — | `STORY-DSG-001` | M6 |
-| `REQ-DSG-002` | `ENT-session_posters` | `POL-design_documents.write` | `SCR-043` `SCR-057` | — | — | `STORY-DSG-001` | M6 |
+| `REQ-DSG-002` | `ENT-session_posters` | `POL-design_documents.write` | `SCR-043` `SCR-045` `SCR-057` | — | — | `STORY-DSG-001` | M6 |
 | `REQ-DSG-003` | `ENT-session_posters` | `POL-session_posters.detach` | `SCR-043` `SCR-057` `SCR-085` | `JOB-regenerate_poster` `JOB-render_variant` | — | `STORY-DSG-002` | M6 |
 | `REQ-DSG-004` | — | — | `SCR-055` | — | — | `STORY-DSG-003` | M6 |
 | `REQ-DSG-005` | `ENT-design_documents` | `POL-design_template_versions.guard` | `SCR-057` | — | — | `STORY-DSG-003` | M6 |
@@ -428,7 +428,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SUR-004` | `ENT-session_days` `ENT-survey_answers` `ENT-survey_responses` | — | `SCR-015` `SCR-064` | `JOB-record_survey_response` | — | `STORY-SUR-002` | M11 |
 | `REQ-SUR-005` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
 | `REQ-SUR-006` | `ENT-notification_templates` `ENT-session_days` `ENT-survey_answers` +1 | — | `SCR-064` `SCR-065` | `JOB-record_survey_response` | — | `STORY-SUR-003` | M11 |
-| `REQ-SUR-007` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
+| `REQ-SUR-007` | — | — | `SCR-061` `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
 | `REQ-SUR-008` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
 | `REQ-SUR-009` | `ENT-session_days` `ENT-survey_answers` `ENT-survey_participations` +1 | — | `SCR-015` `SCR-064` | `JOB-record_survey_response` | — | `STORY-SUR-002` | M11 |
 

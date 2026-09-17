@@ -2771,8 +2771,12 @@ Each is required or optional.
 **Acceptance:**
 - Question order is authored and preserved, and is reorderable **without dragging**
   (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
-- A required question blocks submission with an inline error and a summary entry
+- A required question blocks submission **of the survey** with an inline error and a summary entry
   (`REQ-UIX-009`, `REQ-UIX-010`).
+- ★ It never blocks **the rating** (`DEC-164`). The rating's gates are the two `REQ-RAT-003` names and
+  no others: on the one screen (`REQ-SUR-004`) a valid rating is written even when the survey is refused,
+  the screen says both halves — «حُفظ تقييمك. أكمل الأسئلة المطلوبة لإرسال إجاباتك.» — keeps what the
+  member had answered, and a second press submits the survey alone.
 
 #### REQ-SUR-003 — Eligibility to answer is check-in, in the rating window, once
 **Serves:** `REQ-RAT-003` · DEC-074
