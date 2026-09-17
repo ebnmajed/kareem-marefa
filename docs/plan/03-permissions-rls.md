@@ -179,6 +179,8 @@ apart, and a change to what counts as a check-in changes all four at the same in
 | `photo_takedowns` | insert self | — | resolve | resolve | — | — |
 | `reports` | insert self | — | ✅ | ✅ | — | — |
 | `ratings` | insert/update self **if `has_checked_in`** | **agg only** | — | ✅ full | — | — |
+| `survey_templates`, `surveys` and their questions and options | — | — | read | read | — | — |
+| `survey_participations`, `survey_responses`, `survey_answers` | **no `select` for anyone** — answer through `submit_survey_response()` **if `has_checked_in`** | — | results through `survey_results()` only, withheld | the same; and the CSV | — | — |
 | `points_ledger` | self read, `S` insert | self read | — | read + `S` adjust | — | — |
 | `points_balances` | read | read | read | read | — | — |
 | `scoring_rules` | read | read | read | ✅ | — | — |
@@ -657,6 +659,46 @@ moderation material (`REQ-ADM-020`).
 | `photo_takedowns` | staff + requester | P3 | P6 | — | Insert hides instantly, by trigger. |
 | `reports` | staff + reporter | P3 | P6 | — | |
 | `ratings` | §5.6d | §5.6e | §5.6e | — | **The D36 boundary.** |
+| `survey_templates` | §5.6f | — | — | — | Staff read; every write is a definer RPC (a write renumbers a whole ordered set). |
+| `survey_template_questions` | §5.6f | — | — | — | Same. |
+| `survey_template_options` | §5.6f | — | — | — | Same. |
+| `surveys` | §5.6f | — | — | — | One per session. Staff read; attach and detach are definer RPCs. **A presenter is not staff.** |
+| `survey_questions` | §5.6f | — | — | — | The copy made at attach — editing a template never rewrites it. |
+| `survey_question_options` | §5.6f | — | — | — | Same. |
+| `survey_participations` | — | — | — | — | **No policy at all.** The REGISTER: who answered, with no answer, no time and no surrogate id (`DEC-160` §3). Written by `submit_survey_response()` alone. |
+| `survey_responses` | — | — | — | — | **No policy at all.** The BOX: a random id, an org and a survey, **and nothing else, ever** — no member, no timestamp. Written by the jittered job alone; read by `survey_results()` alone. |
+| `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
+
+#### §5.6f — the survey (`0124`, `DEC-074`, `DEC-160` §3, `DEC-161`)
+```sql
+create policy "survey_templates_read_staff" on survey_templates for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_template_questions_read_staff" on survey_template_questions for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_template_options_read_staff" on survey_template_options for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "surveys_read_staff" on surveys for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_questions_read_staff" on survey_questions for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_question_options_read_staff" on survey_question_options for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+```
+`REQ-SUR-005`: the survey is the organisation's instrument. **Its audience is the reverse of the
+rating's** — `admin` **and** `moderator`, never the presenter, and `is_staff()` says exactly that: a
+presenter is not staff by presenting. ★ **A staff member who presents the session is refused the
+results as well** (`survey_results()`, `DEC-161`): the ask exists so a presenter never reads their own
+session's survey, and an admin who presents is that person — deliberately unlike `ratings`, where an
+admin reads per-rater rows for a session they present.
+
+★ **The three tables that hold who answered and what was answered have no policy and no grant — for
+every client role and for `service_role`.** A stored response names **no member** and carries **no
+timestamp of any kind**; «one member, one response» lives in `survey_participations`, which carries no
+answer and no time. The response is written by a jittered job whose payload and key name no member.
+Results leave through **one** definer function that applies the minimum-count withhold to **every**
+question type — and to the response count itself — for the screen and the CSV alike, so `xmin` and
+`ctid` are never readable. `tests/rls/survey-structure.test.ts` asserts the shape over the catalogue.
+`org_settings.survey_min_responses` has a floor of 3: an org cannot switch the withhold off.
 
 #### §5.6a — `comments`, insert
 ```sql
@@ -1768,6 +1810,17 @@ generated suite is the highest-value test in the product.
 | `POL-perks.history` | An admin's edit of a perk appends one row per changed column (`scope = 'perks'`). |
 | `POL-streak_rules.history` | An admin's edit of a streak rule appends one row per changed column (`scope = 'streaks'`). |
 | `POL-recognition.history.no_forgery` | A moderator's refused edit appends nothing; another org's history is untouched; no client role — the admin included — can insert a history row directly (`42501`). |
+| ★ **wave 10, migration `0124`** — the survey's tables (`DEC-160` §3, `DEC-161`): six authoring tables staff read, and a register and a box no client role reads. Tables only; each row below is proven by `event`'s suites at the promotion of its functions |
+| `POL-survey_templates.staff_read` | Staff of the org read its templates, questions and options; a plain member and the other org's staff read none; no client role writes any of the three directly. |
+| `POL-surveys.staff_read` | Staff of the org read a session's survey, its questions and options; a plain member, the session's presenter as such, and the other org's staff read none; no client role writes directly. |
+| `POL-survey_participations.no_client_select` | RLS enabled, no policy, no grant: `anon`, a member, the presenter, a moderator, an admin and `service_role` are each refused `42501`. |
+| `POL-survey_responses.no_client_select` | The same, for the box. |
+| `POL-survey_answers.no_client_select` | The same, for the answers. |
+| `POL-survey.structure` | Generated over the catalogue: no member, check-in, rating or timestamp column on `survey_responses` or `survey_answers`; no timestamp column on `survey_participations`; no foreign key from a response or an answer to `members`. |
+| `POL-org_settings.survey_min_responses.floor` | The minimum cannot be set below 3 by any role. |
+| ★ **wave 10, migration `0125`** — a notification template may carry blocks, on its own row (`DEC-161`): no table of shared designs, so one trigger polices one key's bindings and `body` cannot go stale |
+| `POL-notification_templates.blocks.shape` | `blocks` is null or an object carrying `schemaVersion` and an array `blocks`; anything else is refused `23514`, for every writer. `source_family` without `blocks` is refused. |
+| `POL-notification_templates.blocks.admin_only` | An admin of the org writes `blocks` and `source_family` on its own rows through the existing policies; a moderator, a member and the other org's admin cannot. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
