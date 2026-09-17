@@ -11,6 +11,7 @@ import { run } from "graphile-worker";
 import { poolerWarning, probeListenNotify, ProbeError } from "./probe.js";
 import { ping } from "./tasks/ping.js";
 import { promote_waitlist } from "./tasks/promote_waitlist.js";
+import { record_survey_response } from "./tasks/record_survey_response.js";
 import { rotate_codes } from "./tasks/rotate_codes.js";
 import { start_session } from "./tasks/start_session.js";
 import { complete_session } from "./tasks/complete_session.js";
@@ -100,7 +101,7 @@ const runner = await run({
   // minute. Concurrency stays 1 (DEC-051) — this is the cheaper knob, and
   // it is the one the measurement pointed at.
   pollInterval: POLL_INTERVAL_MS,
-  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts },
+  taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts, record_survey_response },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
   // tick is harmless. Inline rather than a crontab file so the image carries

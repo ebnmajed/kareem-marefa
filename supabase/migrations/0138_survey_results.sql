@@ -1,3 +1,4 @@
+-- 0138_survey_results.sql — proposed by `event`, read line by line and promoted by the lead (wave 10, sync 3).
 -- event (wave 10, E1 — the read half) — the one function that releases results.
 --
 -- Serves:  REQ-SUR-005, REQ-SUR-006, REQ-SUR-007, REQ-SUR-008

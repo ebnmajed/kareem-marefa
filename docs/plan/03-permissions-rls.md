@@ -1899,6 +1899,29 @@ generated suite is the highest-value test in the product.
 | `RPC-notification_send_context.blocks` | The `template` object carries `blocks` — null for a string template, the stored document otherwise — so the worker renders a design without a second read. |
 | `RPC-notification_send_context.card_image` | Given a session id, the context says whether `/api/s/{id}/og` will answer with BYTES — derived from `session_public_card()`, the function the route itself reads, never from a second copy of its predicate. False for a cancelled session, false for one whose poster has not finished rendering, false for another org's id however eligible, false — not an error — for an id that is no session. |
 | `RPC-notification_send_context.definer_only` | Unchanged after the drop and re-create: `anon`, `authenticated` and an org admin are all refused on the grant, because it returns another member's email address. |
+| ★ **wave 10, migration `0137`** — `event` — the one function that accepts an answer, the one that stores it, and what a member may read of a survey (`REQ-SUR-003`, `REQ-SUR-004`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-submit_survey_response.eligibility` | Exactly the members who may rate may answer: no check-in, a removed check-in, a session that has not completed and one past the window are each refused `not_eligible` with the reason. |
+| `RPC-submit_survey_response.agrees_with_rating_policy` | Across those situations the answer is `not_eligible` exactly when a rating insert is refused — the survey never admits someone the rating turns away. |
+| `RPC-submit_survey_response.second_submission` | A second submission is refused `already_answered`, read from the register by name, and enqueues nothing. |
+| `RPC-submit_survey_response.validates_before_writing` | A missing required question, an option of another question, a scale out of range and an unknown question are each refused naming the question ids — and no participation and no job are left behind. |
+| `RPC-submit_survey_response.enqueues_decorrelated` | One job, task `record_survey_response`, key NULL, `run_at` between 10 minutes and 4 hours ahead, payload `{response_id, survey_id, answers}` and nothing else. |
+| `RPC-submit_survey_response.no_audit` | The submit writes no `audit_log` row. |
+| `RPC-submit_survey_response.duplicate_option` | The same option sent twice on one question is stored once: the answer is normalised to one id at the door, so the partial unique index can never raise inside the job and lose the response. |
+| `RPC-submit_survey_response.empty_submission` | A submission with no answer at all writes NOTHING — no participation, no job — and the member who returns inside the window still finds the survey. |
+| `RPC-record_survey_response.service_role_only` | `anon`, a member, a moderator and an admin are all refused; the worker's role succeeds. |
+| `RPC-record_survey_response.replay` | Running the same job twice writes one response — the id is in the payload and the insert is `on conflict do nothing`. |
+| `RPC-survey_for_member.no_survey` | A session with no survey answers `null` — nothing about a survey reaches a member who has none (REQ-SUR-001). |
+| `RPC-survey_for_member.audience` | It answers a member with an active check-in (or one who has already answered) and nobody else: a member who never attended cannot read a session's questions by its id. |
+| ★ **wave 10, migration `0138`** — `event` — the one function that releases results, under the withhold (`REQ-SUR-005` … `008`, `DEC-160` §3.3) |
+| `RPC-survey_results.staff_only` | An admin and a moderator read; a member is refused `not_authorized`; a stale admin is refused `stale_claims`; another org's session is `not_found`. |
+| `RPC-survey_results.presenter_refused` | ★ The session's presenter is refused — whatever their role. An admin who presented their own session is refused too (REQ-SUR-005 is about presenting, not about rank). |
+| `RPC-survey_results.withheld_below_minimum` | Below `survey_min_responses` nothing leaves: no mean, no distribution, no free text — and no response count either, because in a survey one person answered the register says who. |
+| `RPC-survey_results.withheld_per_question` | At or above the minimum, a question that FEWER than the minimum answered is withheld on its own while the rest are drawn — and its own answered count is withheld with it. |
+| `RPC-survey_results.withheld_hides_n` | In the withheld branch the eligible count is the ACTIVE ATTENDEE count alone: `greatest(attendees, responses)` would publish `n` itself whenever a check-in was removed after its member answered. |
+| `RPC-survey_results.drawn` | At the minimum: a scale question's count, mean and 1…5 distribution; a choice question's per-option counts in the authored order; free text as a list. |
+| `RPC-survey_results.free_text_order` | Free text comes back ordered by the answer's random id — never by insertion, which would be the order people answered in. |
+| `RPC-survey_results.response_rate` | The numerator is the stored responses and the denominator the session's active attendees; with no eligible attendee the count is zero and the caller says so rather than dividing. |
+| `RPC-survey_results.rate_never_exceeds_one` | A member whose check-in is removed AFTER they answered cannot be taken out of the box, so the denominator is `greatest(attendees, responses)` and the rate is never above 100 %. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

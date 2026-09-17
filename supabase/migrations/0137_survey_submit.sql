@@ -1,3 +1,4 @@
+-- 0137_survey_submit.sql — proposed by `event`, read line by line and promoted by the lead (wave 10, sync 3).
 -- event (wave 10, E1 — the answer half) — the one function that accepts an
 -- answer, and the one that stores it.
 --
