@@ -283,7 +283,17 @@ test("the attendance report shows a column per day, one member missing day 2, an
   for (const label of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
     await expect(page.getByRole("columnheader", { name: label })).toBeVisible();
   }
-  await expect(page.getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
+  // ★ SCOPED TO THE REGION, and not because the page renders this twice — it
+  // renders it once (`attendance/page.tsx`). On the desktop project a SECOND,
+  // hidden copy is in the DOM: `DEC-145`'s orphaned streaming segment, carried
+  // to M13. The evidence is in the failure itself — the `h1` and all three
+  // column headers resolved to exactly ONE element each by role, while this
+  // line resolved to two by text, and Playwright could derive a role path for
+  // the first copy and none for the second. `getByRole` skips what is not in
+  // the accessibility tree; `getByText` does not. So the extra copy is hidden,
+  // and a role-anchored locator is both the correct assertion and the one that
+  // does not go red on an artefact this spec is not about.
+  await expect(page.getByRole("region", { name: "ملخّص الحضور" }).getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
   // خالد: two of three. سارة: one of three.
   await expect(page.getByRole("cell", { name: "2 من 3" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "1 من 3" })).toBeVisible();

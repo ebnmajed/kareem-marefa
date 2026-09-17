@@ -1924,3 +1924,27 @@ anywhere in the body.
 calls. Microseconds apart, they can straddle a day boundary — and the screen would then name one
 meeting and refuse about another, which is the exact class of bug `DEC-141`'s grace-window fix
 existed to remove. One instant now, passed to both.
+
+### The desktop failure was `DEC-145`, and the failure message proves it
+
+`wave9-checkin-days.spec.ts:286` went red on the desktop project only, with a strict-mode violation:
+the summary line resolved to **two** `<p>`. The page renders it **once**
+(`attendance/page.tsx:131`, one `manyDays ?` branch, one string in `checkin.json`, no responsive
+twin), so the second copy is not a second render.
+
+**What settles it is what PASSED in the same run.** `getByRole("heading", { level: 1 })` resolved to
+exactly one element, and so did all three `getByRole("columnheader", …)`. If a whole segment were
+duplicated in the accessibility tree those would have been strict violations too. They were not —
+and Playwright printed a role-anchored «aka» for the first copy and could print none for the second.
+`getByRole` skips what is not in the accessibility tree; `getByText` does not. **So the extra copy is
+hidden: `DEC-145`'s orphaned streaming segment**, carried to M13, and not this track's to fix.
+
+The fix is one line in the spec: anchor the assertion to `region «ملخّص الحضور»`. That is the
+stronger assertion anyway — «the summary section says what completeness means» is what the case is
+about, not «this sentence exists somewhere in the document».
+
+★ **The general lesson, worth more than the line:** on this app, an **absence** assertion written
+with `getByText` is the fragile shape, because a hidden orphan still matches it. Role-anchored
+locators are immune by construction. `wave9-checkin-one-day.spec.ts` leans on exactly that kind of
+absence, and survives only because the strings it forbids are never rendered on a one-day session at
+all — worth remembering if that file ever grows a case about a string the page does render.
