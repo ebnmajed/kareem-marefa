@@ -2304,3 +2304,21 @@ The assertion, restated so it is testable: not «it looks right inverted», but 
 survive inversion **independently** — the page background against the card surface (cosmetic if they
 diverge), and the logo against whatever the card becomes (not cosmetic). A simulation that inverts
 images can answer neither.
+
+★ **`notify` then added the control, and it is the better half of the measurement.** The capture set
+carries the **same design with a JPEG logo beside the transparent PNG**. That turns one observation
+into a comparison: if the PNG pair fails and the JPEG pair holds, the variable is isolated to
+**alpha**, and the carried poster defect stops being my reasoning and becomes a measurement. It is
+also a second check on the instrument — my «if the PNG passes, suspect the simulation» has one
+signal; **two logos have three outcomes**, and «both pass» is far more likely a blanket inversion
+than two safe logos, because a white-grounded JPEG on a darkened card should stay visible as a light
+box whatever the client does.
+
+**The one thing that makes it valid: the JPEG must be the SAME ARTWORK as the PNG** — same ink, same
+dimensions, differing only in the alpha channel. Two different logos would be two observations
+rather than a controlled comparison, which is the whole value.
+
+This is the same discipline as Q7's measurement: there, «everything fits» meant nothing until a
+ladder of growing strings proved the probe could report «does not fit». A control is what separates
+a measurement from a reassurance, and it is worth saying that the reviewer asked for the finding and
+the author supplied the control.
