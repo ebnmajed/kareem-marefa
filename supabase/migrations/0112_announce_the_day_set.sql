@@ -1,5 +1,6 @@
 -- wave 9, contract 11 (DEC-151) — `schedule_session()` announces a day set that
 -- changed, in the words `notify` publishes for it.
+-- Promoted by the lead from supabase/proposed/sessions/0002_announce_the_day_set.sql.
 --
 -- ★ PROMOTE THIS IN THE SAME RESET AS `notify`'s day-change migration, OR
 -- AFTER IT — NEVER BEFORE. That migration makes `sessions_notify()` (0036)

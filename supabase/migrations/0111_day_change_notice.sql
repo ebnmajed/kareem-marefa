@@ -1,5 +1,6 @@
 -- notify (wave 9) — CONTRACT 11: a day set that changed is announced ONCE, by
 -- the writer that knows the whole of it.
+-- Promoted by the lead from supabase/proposed/notify/03_day_change_notice.sql.
 --
 -- Serves:  REQ-SES-009 / REQ-NTF-005 (a change tells the member the OLD value
 --          and the NEW one) · REQ-SES-015 · REQ-NTF-004 · REQ-CAL-005
@@ -72,19 +73,33 @@ declare
   v_n_after  int;
   v_changes  jsonb := '[]'::jsonb;
   v_seen     text;
+  v_mark     text;
   a          jsonb;
   b          jsonb;
   v_day      jsonb;
   r          record;
 begin
-  -- ONE notice per session per transaction. A day-aware writer calls this once
-  -- by contract; the guard is what makes a retry, or a second call site added
-  -- later, unable to mail the same room twice.
+  -- ONE notice per session per RESULTING DAY SET per transaction. A day-aware
+  -- writer calls this once by contract; the guard is what makes a retry, or a
+  -- second call site added later, unable to mail the same room twice.
+  -- ★ Changed by the lead at promotion (DEC-154), and the two halves matter:
+  --   · the mark is keyed on the session AND the after-snapshot, not on the
+  --     session alone — a SECOND, DIFFERENT change to the same session in one
+  --     transaction is a second fact and must be announced;
+  --   · it is SET only where a notice is actually sent (below), never here.
+  --     As first written it was set before the state guard, so a call that
+  --     returned early — scheduling a session that is not published yet —
+  --     consumed it, and the real change later in the same transaction was
+  --     silenced. `tests/rls/sessions-schedule-days.test.ts` («ONE reschedule
+  --     notice») caught exactly that at promotion: 0 notices, not 1. In
+  --     production each RPC is its own transaction, so no member was ever
+  --     affected — but a guard whose failure mode is a member never told their
+  --     room moved is the wrong way round.
   v_seen := coalesce(current_setting('kareem.days_notified', true), '');
-  if position(p_session::text in v_seen) > 0 then
+  v_mark := p_session::text || ':' || md5(v_after::text);
+  if position(v_mark in v_seen) > 0 then
     return;
   end if;
-  perform set_config('kareem.days_notified', v_seen || p_session::text || ',', true);
 
   select * into s from public.sessions where id = p_session;
   -- Editing a draft misleads nobody, and a cancelled session has already said
@@ -139,6 +154,7 @@ begin
   end if;
 
   if jsonb_array_length(v_changes) > 0 then
+    perform set_config('kareem.days_notified', v_seen || v_mark || ',', true);
     for r in
       select rs.member_id, rs.id as rsvp_id, rs.status from public.rsvps rs
        where rs.session_id = p_session and rs.status in ('confirmed', 'waitlisted')

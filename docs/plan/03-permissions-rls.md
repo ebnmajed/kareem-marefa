@@ -1695,6 +1695,15 @@ generated suite is the highest-value test in the product.
 | `RPC-cancel_unlisted_reminders.sweeps` | Every pending reminder of a session that the
 | `RPC-cancel_member_reminders.every_day` | Cancelling a seat removes that member's keys for
 | `RPC-send_reminder_notification.day_scoped` | The reminder names the DAY's moment and the
+| ★ **wave 9 (`DEC-151`), migration `0111`** — contract 11: `session_days_changed()` announces a changed day set once and names the day; under `kareem.days_writer` `sessions_notify()`'s change branch stands down for it |
+| `RPC-session_days_changed.names_the_day` | Moving day 2 of a three-day session — which moves
+| `RPC-session_days_changed.once_per_transaction` | However many statements a day-aware writer
+| `RPC-session_days_changed.day_added_or_removed` | A day added to or removed from a published
+| `RPC-session_days_changed.definer_only` | No client role may notify a session's members. |
+| `POL-sessions.change_notice.days_writer_stands_down` | `sessions_notify()` does not announce a
+| ★ **wave 9 (`DEC-151`), migration `0112`** — contract 11's call site: a day-aware `schedule_session()` calls `session_days_changed()` once, after its last day write — promoted WITH `0111`, because either alone announces nothing |
+| `RPC-schedule_session.announces_the_day_set` | A day-aware save calls `session_days_changed()` exactly once, after its last day write, with the whole day set before and after — so moving day 2 of a three-day workshop, which moves no column of `sessions`, still reaches every confirmed member. |
+| `RPC-schedule_session.days_null_announces_nothing` | A `null` `p_days` does not call it: main's path announces through `sessions_notify()` as it always has. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
