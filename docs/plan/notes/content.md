@@ -2678,3 +2678,80 @@ byte-identical diff (§4) harder to read, not easier. Deferred, stated so it isn
    surprise mid-wave.
 
 Ready for sync.
+
+## §21 — T1 and T3 built and green (`3830191`)
+
+Applied the two sync-1 defect fixes from the regenerated agent file before writing anything: T2's
+grouping will key the flat/grouped choice on `days.length`, never on how many buckets happen to be
+non-empty (that was my own draft's bug, caught before code — noted here so the reasoning survives
+into T2); `record_photo_upload()` is `drop function` then `create function`, never `create or
+replace`, because a different argument list makes a second overload instead of replacing the first.
+
+**T1** — `supabase/proposed/content/0001_day_scope_writes.sql`: `rescope_material`/`rescope_task`/
+`rescope_photo`, each a door rather than a wider grant (staff is broader than the existing
+admin-only/presenter-only update policies already grant on other columns, and widening those would
+leak write on `title`/`form_schema`/etc. too); a named `day_not_of_session` refusal ahead of the
+composite FK's bare `23503`; a material's rescope audited (`material.rescoped`). Photos: the upload
+moment is captured in `initiate_photo_processing()` — not `record_photo_upload()`'s own, later
+clock, which runs after the worker's download/sniff/strip and could cross a day boundary the real
+upload didn't — threaded through the job payload as `uploaded_at`, optional on the worker's `Payload`
+type so an already-enqueued job from the OLD `initiate_photo_processing()` (additive: pushed before
+this migration lands) is never rejected as malformed, just falls back to this task's own clock,
+exactly the SQL function's own default. `resolve_photo_day()`: one `order by` does both the
+"in-window" and "nearest edge" steps at once — a day whose window contains the moment sorts first
+(only one can, days never overlap); failing that, `least(|start diff|, |end diff|)` per day picks
+the nearest. `MaterialSummary`/`TaskSummary`/`PhotoSummary` gained `sessionDayId` — mechanical fixture
+updates to five EXISTING component test files (`list`, `proposal-list`, `gallery`, `panel`,
+`task-item`) followed, each adding `sessionDayId: null` to a fixture literal with **no assertion
+touched** — flagging these for the ledger, since rule 4 asks every edit to an existing test file to
+be logged even when nothing it asserts changes.
+
+**T3** — `supabase/proposed/content/0002_materials_phase_by_scope.sql`, and the reason it is five
+policies, not two. Built `materials_read` and its storage twin exactly as planned, wrote
+`tests/rls/storage-content-days.test.ts` against them, and the FIRST assertion after a day ended
+still failed — `0` rows, no exception. Dumped the exists() body as both owner and member before
+guessing: `materials_read` let the member see the material's ROW; `material_versions_read` (0037)
+did not let them see its VERSION, because it carries its own, completely separate copy of the old
+phase check — `join sessions s … and (m.phase = 'before' or s.state in (...) or is_presenter_of(...)
+or is_staff())` — never touched since 0037, not even by 0053's proposal branch. Grepping confirmed
+`material_pages_read` and `material_pages_storage_read` (the `material-pages` bucket, the actual
+page-image bytes the viewer displays) duplicate the identical text a second and third time. Fixed
+all three the same way `materials_read`/its twin were fixed — one added OR-branch, the session-state
+clause left untouched, `d.ends_at <= now()` joined in via `left join session_days d on d.id =
+m.session_day_id`. **A day-scoped «بعد» releases on EITHER its own day ending OR the session
+completing/archiving early** (DEC-151's ruling) — the session-state clause was never conditioned on
+scope, so this needed no new branch beyond the day-ended one; a session-scoped material needed no
+change at all, since `sessions.ends_at` is already the last day's end (0100).
+
+★ **A separate, pre-existing, day-unrelated bug found on the way, deliberately NOT fixed**: those
+same three policies `INNER JOIN sessions` unconditionally, so a proposal's own material
+(`session_id is null`) can never satisfy any of them — a proposal owner can see their draft
+material's row (`materials_read` has had the proposal branch since 0053) but never its version or
+its rendered pages. Predates `DEC-121` by two migrations, is about proposals not days, and widening
+into it uninvited felt like exactly the kind of quiet scope creep `CLAUDE.md` asks against. Left
+the `join` exactly as it reads today in all three; said so in the file's own header comment; saying
+it again here for the lead.
+
+Also stale, flagged not touched (lead-only, `docs/plan/**`): `03-permissions-rls.md` §5.5a was never
+updated for 0053's proposal branch and doesn't mention `material_versions_read`/`material_pages_read`/
+`material_pages_storage_read` at all — worth fixing at promotion, alongside this wave's own change.
+
+**Proven together**: `tests/rls/{materials,tasks,photos}-schema.test.ts`, `photos-broadcast.test.ts`,
+`storage-content.test.ts` and `proposal-materials.test.ts` (the untouched evidence) plus the four new
+`*-days.test.ts` files — 9 files, 94 tests, green in one run. `npx tsc --noEmit` and `npm run lint`
+clean on my files (two unrelated red spots seen mid-run — `tests/components/me/calendar-page.test.tsx`
+against `notify`'s in-flight `calendar.ts`, and `src/lib/dal/checkin.ts` against `checkin`'s own
+WIP — neither mine, neither touched). `npm test` 196/196 files, 1827/1827 tests.
+
+★ **A concurrency finding worth naming**: an early full `npm run test:rls` run showed ~20 failures
+across files I have never touched (`isolation.test.ts`, `designer-schema.test.ts`,
+`award-presenter-points.test.ts`, `scoring-schema.test.ts`, `notify-reminders.test.ts`,
+`scoring-days-award.test.ts`) that vanished on a second run once `pgrep` showed no other vitest
+process — almost certainly another teammate's concurrent `npm run test:rls` (or the schema settling
+mid-run), not a real defect; I did not chase it, and it is not evidence against any of those tracks'
+own work. Isolated my four new files (plus the untouched evidence suite) and confirmed green with
+nothing else running before trusting the result.
+
+T2 is next, waiting on `sessions'` `listSessionDays()`/`SessionDay` and the day-label formatter (§6).
+
+Ready for sync.
