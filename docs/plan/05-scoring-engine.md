@@ -90,6 +90,17 @@ streak_month:streak:2026-09:9a7b…:v1
 `unique (idempotency_key)` plus `on conflict do nothing` — **the only conflict action compatible
 with an append-only table**, since `do update` would be a rewrite.
 
+★ **For the `check_in` rule the epoch is mechanical since wave 9 (`DEC-155`, `0113`).** Attendance
+is awarded **once per member per session** (`REQ-SES-017`), so its key is
+`check_in:check_in:<the check-in on the last day attended>:<member>:v<N>`, where **`N` is one more
+than the member's reversed attendance awards for that session**. The first award is `v1` — the key
+this section has always shown — and an award after an admin's removal and re-add (`REQ-CHK-017`) is
+`v2`, with no dependence on a timestamp. It is the **second** line of defence: the award is first
+guarded by «no attendance award for this session and member still stands», under a lock
+(`DEC-151`). **For every other rule the epoch is exactly what the next paragraph says**, and §4.3's
+deliberate re-award of `check_in`, should one ever be needed, takes a prefix of its own rather than
+this suffix.
+
 **The epoch suffix is the important part.** Every accidental replay — a retried job, a duplicated
 webhook, a double-click — collides and writes nothing. A **deliberate** recompute is a different
 act: bump the epoch to `v2` and the same events produce new rows. So the system can tell the
