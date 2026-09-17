@@ -3071,3 +3071,58 @@ flat-branch byte-identical proofs) untouched.
 none active).
 
 Ready for sync — the lead rebuilds and runs the demonstrable end to end.
+
+## §30 — freeze: what is done, what is carried, capture paths (`15d8908`)
+
+The lead's freeze message confirmed `15d8908` carries all three of this session's fixes — the
+chip on `ui/menu` as one shared component (ui-lint green, allowlist pruned, 11 lines gone), the
+group disclosure closed by default, and the empty-grouped-state fix — and is the build the
+demonstrable now runs against. No RLS or e2e run started or in flight at the freeze; none needed
+starting after it either. This section is the wrap-up the freeze asked for.
+
+**Done, this wave (`DEC-121`, contract 7):**
+- T1 — day-scoped write paths: `sessionDayId` threaded through create/update on all three kinds,
+  `rescope_material()`/`rescope_task()`/`rescope_photo()` RPCs, `resolve_photo_day()` (photos never
+  ask — nearest-window auto-scope at upload time).
+- T3 — phase-by-scope release: `materials_read` and, once found, its four less-obvious twins
+  (`materials_storage_read`, `material_versions_read`, `material_pages_read`,
+  `material_pages_storage_read`) all gated the same way — a day-scoped «بعد» releases on its own day
+  ending OR the session completing/archiving early.
+- T2 — the grouped views: one list per content type, session content first then each day in order,
+  no groups/headings at `n ≤ 1`, the re-scope chip, `materials.phase` read relative to scope
+  (`phaseLabelKey()`), each group's own add control behind a closed-by-default disclosure
+  (`GroupDisclosure`), and — the freeze-adjacent fix — a brand-new workshop with nothing yet still
+  renders the grouped layout for a manager rather than falling back to a scope-less flat form.
+- T4 — one photo driven end to end on the real worker (`DEC-139`'s last gap), proven by
+  `wave9-content-photo-worker.spec.ts`.
+- The rescope chip is one shared component (`materials/rescope-chip.tsx`) on `ui/menu`, not three
+  hand-rolled floating panels — `ui-lint`'s own finding, fixed the same day.
+- Every DTO addition (`sessionDayId`, `days`, `timeZone`) landed optional, so all five pre-existing
+  component test files this track does not own the assertions of
+  (`list.test.tsx`/`panel.test.tsx`/`gallery.test.tsx`/`task-item.test.tsx`/`proposal-list.test.tsx`)
+  needed only mechanical fixture additions, logged in the ledger, no assertion touched.
+
+**Carried — not this wave, named for wave 10:** the pre-existing, day-unrelated bug in
+`material_versions_read`/`material_pages_read`/`material_pages_storage_read` — all three
+unconditionally `INNER JOIN sessions`, so a proposal's own draft material (`session_id is null`) can
+never show its version or its rendered pages to its own owner, only its row. Predates `DEC-121` by
+two migrations (`0037`), is about proposals not days, found while building T3 and deliberately left
+alone rather than widened into uninvited — said so in the SQL file's own header comment and in §21
+at the time, said again here per the freeze's instruction. `03-permissions-rls.md` §5.5a is also
+stale against it (never updated for `0053`'s own proposal branch) — worth fixing at promotion
+alongside whatever wave 10 does with the policy itself.
+
+**Capture paths** — all in `E2E_SHOTS_DIR` (default `.qa-shots/rtl`), phone project, 390×844:
+
+| File | Spec |
+|---|---|
+| `wave9-content-materials-member-grouped.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-materials-presenter-grouped.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-materials-scope-chip-open.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-materials-day-scoped-after-hidden.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-materials-day-scoped-after-visible.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-tasks-grouped.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-photos-grouped.png` | `wave9-content-days.spec.ts` |
+| `wave9-content-photo-worker-visible.png` | `wave9-content-photo-worker.spec.ts` |
+
+Nothing further to send until the lead's next word — standing by through the freeze.
