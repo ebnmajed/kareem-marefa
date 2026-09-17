@@ -53,6 +53,22 @@ const DAY_3 = "2026-11-19T15:00:00Z";
 
 test.describe.configure({ mode: "serial" });
 
+// ★ 390 × 844, the row's rule — SET for the phone project, not merely asserted
+// in `capture()`. The `phone` project is `devices["Pixel 7"]`, whose default is
+// 412 × 839, so every capture here would have been 412 px wide and every
+// assertion would have run at a width nobody reviews. `checkin` met exactly
+// this in wave 9 and its ten captures came out 1,082 px.
+//
+// In `beforeEach` rather than inside `capture()`, so the whole case — the
+// navigation, the layout it produces and the assertions on it — runs at the
+// width the picture is taken at, which is the only reason to look at one. And
+// per-project rather than a file-level `test.use()`, because the desktop cases
+// are real coverage: `ui/data-table`'s twin hides the OTHER half there, and
+// shrinking desktop to a phone would quietly delete that.
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
+});
+
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
 let orgId = "";
