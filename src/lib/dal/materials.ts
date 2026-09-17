@@ -5,6 +5,9 @@ import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { materialSourcePath, proposalMaterialSourcePath } from "@/lib/storage/paths";
 import { sniffContent, sniffedKindMatchesDeclared, type SniffedKind } from "@/lib/storage/sniff";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module; contract 7 —
+// `content` groups the three slots, `sessions` publishes the day set and its label.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Materials — REQ-MAT-001 … REQ-MAT-012, 02 §4.6, 03 §5.5a, 07 §1/§2.
 //
@@ -288,9 +291,20 @@ export interface MaterialsPageData {
   canManageAll: boolean;
   presenterOfSession: boolean;
   uploadLimits: MaterialUploadLimits;
+  /** Contract 3 — every day of the session, in order. `[]` for a session with none (a draft never
+   *  scheduled) or a proposal (no `sessionId`, which never calls this). The slot renders flat at
+   *  `(days ?? []).length <= 1` (contract 7) — never at "every group happens to be empty right
+   *  now". OPTIONAL, not required — same reasoning as `MaterialSummary.sessionDayId` (rule 4): an
+   *  existing test fixture that predates T2 has no opinion about days, and "absent" reads the same
+   *  as "one day" (`materials-schema.test.ts`'s own suite is proof: it never needed to change). */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's (`getSessionHeading`) — `dayLabel()`'s weekday reads
+   *  the room's clock, not the viewer's (OQ-018). OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 const DEFAULT_UPLOAD_LIMITS: MaterialUploadLimits = { documentMb: 50, audioMb: 200, imageMb: 20 };
+const DEFAULT_TIME_ZONE = "Asia/Riyadh";
 
 /** The event page's `Materials` slot needs the list, whether this viewer may
  *  manage phase/allow_download at all (materials_update_presenter/admin,
@@ -303,18 +317,22 @@ const DEFAULT_UPLOAD_LIMITS: MaterialUploadLimits = { documentMb: 50, audioMb: 2
  *  needs this same read. */
 export const getMaterialsPageData = cache(async (locale: string, sessionId: string): Promise<MaterialsPageData> => {
   if (!z.uuid().safeParse(sessionId).success) {
-    return { materials: [], canManageAll: false, presenterOfSession: false, uploadLimits: DEFAULT_UPLOAD_LIMITS };
+    return { materials: [], canManageAll: false, presenterOfSession: false, uploadLimits: DEFAULT_UPLOAD_LIMITS, days: [], timeZone: DEFAULT_TIME_ZONE };
   }
   const { session, supabase } = await sessionClient(locale);
-  const [materials, { data: presenterRow }, { data: settings }] = await Promise.all([
+  const [materials, { data: presenterRow }, { data: settings }, days, heading] = await Promise.all([
     listMaterials(locale, sessionId),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("org_settings").select("limit_document_mb, limit_audio_mb, limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   return {
     materials,
     canManageAll: session.role === "admin",
     presenterOfSession: !!presenterRow,
+    days,
+    timeZone: heading?.timeZone ?? DEFAULT_TIME_ZONE,
     uploadLimits: {
       documentMb: (settings?.limit_document_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.documentMb,
       audioMb: (settings?.limit_audio_mb as number | undefined) ?? DEFAULT_UPLOAD_LIMITS.audioMb,

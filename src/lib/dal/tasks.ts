@@ -3,6 +3,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listMaterials } from "@/lib/dal/materials";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Pre-session tasks — REQ-TSK-001 … REQ-TSK-005, 02 §4.15, 03 §5.5b/§5.6b.
 //
@@ -48,6 +50,13 @@ export interface TasksPageData {
   canManage: boolean;
   /** For the `canManage` create-task form's `read_material` picker only — {id, title} pairs. */
   materials: { id: string; title: string }[];
+  /** Contract 3 — every day of the session, in order; `[]`/absent at one day or none scheduled.
+   *  OPTIONAL, not required — same reasoning as `TaskSummary.sessionDayId` (rule 4): an existing
+   *  test fixture that predates T2 has no opinion about days, and "absent" reads as "one day". */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's — `dayLabel()`'s weekday reads the room's clock.
+   *  OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 function toFormSchema(raw: unknown): FormField[] | null {
@@ -66,10 +75,10 @@ function toFormSchema(raw: unknown): FormField[] | null {
  *  ★ Wrapped in React `cache()` (wave 6, `sessions.md` §22.4 R-C3): the page gates the tasks
  *  `<section>` on `tasksSummary()` (below), which needs this same read. */
 export const getTasksPageData = cache(async (locale: string, sessionId: string): Promise<TasksPageData> => {
-  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [] };
+  if (!z.uuid().safeParse(sessionId).success) return { tasks: [], canManage: false, materials: [], days: [], timeZone: "Asia/Riyadh" };
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: taskRows, error }, { data: presenterRow }, materialList] = await Promise.all([
+  const [{ data: taskRows, error }, { data: presenterRow }, materialList, days, heading] = await Promise.all([
     supabase
       .from("session_tasks")
       .select("id, kind, title, description, material_id, form_schema, external_url, sort_order, session_day_id")
@@ -77,6 +86,8 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
       .order("sort_order", { ascending: true }),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     listMaterials(locale, sessionId),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   if (error) throw new Error(`session_tasks: ${error.message}`);
 
@@ -110,6 +121,8 @@ export const getTasksPageData = cache(async (locale: string, sessionId: string):
     tasks,
     canManage: session.role === "admin" || !!presenterRow,
     materials: materialList.map((m) => ({ id: m.id, title: m.title })),
+    days,
+    timeZone: heading?.timeZone ?? "Asia/Riyadh",
   };
 });
 

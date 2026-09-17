@@ -4,6 +4,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { photoPath } from "@/lib/storage/paths";
+// Contract 3 (DEC-150) — the day set, read only through `sessions'` own module.
+import { getSessionHeading, listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 
 // Photos — REQ-EVT-009 … REQ-EVT-014, 02 §4.7, 03 §5.6c, 07 §9.
 //
@@ -127,9 +129,18 @@ export interface PhotosPageData {
    *  `materials.ts`'s `MaterialUploadLimits`. Advisory only; `record_photo_upload`'s own check
    *  (`0050_photo_pipeline.sql`) against the real byte size is the control. */
   imageLimitMb: number;
+  /** Contract 3 — every day of the session, in order; `[]`/absent at one day or none scheduled.
+   *  Display-only for photos (DEC-121: "photos never ask") — no per-group upload control reads
+   *  this the way materials/tasks' groups do. OPTIONAL, not required — same reasoning as
+   *  `PhotoSummary.sessionDayId` (rule 4). */
+  days?: SessionDay[];
+  /** The session's own zone, else the org's — `dayLabel()`'s weekday reads the room's clock.
+   *  OPTIONAL for the same reason as `days`. */
+  timeZone?: string;
 }
 
 const DEFAULT_IMAGE_LIMIT_MB = 20;
+const DEFAULT_TIME_ZONE = "Asia/Riyadh";
 
 /** The event page's `Photos` slot — REQ-EVT-010: `photos_read`'s own `hidden_at is null or
  *  is_staff()` clause (03 §6) is the entire visibility rule; this never adds a second filter
@@ -139,11 +150,11 @@ const DEFAULT_IMAGE_LIMIT_MB = 20;
  *  `<section>` on `photosSummary()` (below), which needs this same read. */
 export const getPhotosPageData = cache(async (locale: string, sessionId: string): Promise<PhotosPageData> => {
   if (!z.uuid().safeParse(sessionId).success) {
-    return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB };
+    return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB, days: [], timeZone: DEFAULT_TIME_ZONE };
   }
   const { session, supabase } = await sessionClient(locale);
 
-  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }] = await Promise.all([
+  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading] = await Promise.all([
     supabase
       .from("photos")
       .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id")
@@ -153,6 +164,8 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     supabase.rpc("has_checked_in", { p_session: sessionId }),
     supabase.rpc("is_presenter_of", { p_session: sessionId }),
     supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
+    listSessionDays(locale, sessionId),
+    getSessionHeading(locale, sessionId),
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
@@ -177,6 +190,8 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     isStaff,
     myMemberId: session.memberId,
     imageLimitMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_IMAGE_LIMIT_MB,
+    days,
+    timeZone: heading?.timeZone ?? DEFAULT_TIME_ZONE,
   };
 });
 

@@ -15,7 +15,14 @@
       "markDone": "أنجزتها",
       "markUndone": "التراجع عن الإنجاز",
       "completedBadge": "أُنجزت",
-      "toggleFailed": "تعذّر تسجيل ذلك. حاول مرة أخرى."
+      "toggleFailed": "تعذّر تسجيل ذلك. حاول مرة أخرى.",
+      "group": {
+        "addAria": "إضافة مهمة — <bdi>{scope}</bdi>"
+      },
+      "rescope": {
+        "trigger": "تغيير نطاق المهمة: <bdi>{label}</bdi>",
+        "failed": "تعذّر تغيير نطاق المهمة. حاول مرة أخرى."
+      }
     },
     "form": {
       "submit": "إرسال",

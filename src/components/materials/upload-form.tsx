@@ -45,7 +45,7 @@ function guessKindFromFilename(name: string): Exclude<UploadKind, "video_link" |
   return null;
 }
 
-type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits } & (
+type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits; sessionDayId?: string | null } & (
   | { sessionId: string; proposalId?: undefined }
   | { proposalId: string; sessionId?: undefined }
 );
@@ -53,8 +53,12 @@ type UploadFormProps = { locale: string; uploadLimits: MaterialUploadLimits } & 
 /** REQ-PRO-004: the same form, for either a session's materials or a proposal's draft materials —
  *  exactly one of `sessionId`/`proposalId` is passed, matching `initiateMaterialUploadInput`'s own
  *  either/or (src/lib/dal/materials.ts). A proposal upload hides the phase selector: "before/after
- *  the session" has no meaning yet for a draft that carries no session at all. */
-export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: UploadFormProps) {
+ *  the session" has no meaning yet for a draft that carries no session at all.
+ *
+ *  REQ-SES-018/DEC-121: `sessionDayId` is never a field IN this form — it is the scope of
+ *  whichever group's own instance rendered it (`list.tsx` mounts one `UploadForm` per group at
+ *  `days.length > 1`), so "the place you pressed is the answer" and there is nothing here to ask. */
+export function UploadForm({ locale, sessionId, proposalId, uploadLimits, sessionDayId }: UploadFormProps) {
   const t = useTranslations("materials.upload");
   // Kind/phase option labels reuse the `materials.list` namespace's own
   // `kind.*`/`phase.*` keys (message keys are stable — CLAUDE.md, Naming —
@@ -130,6 +134,7 @@ export function UploadForm({ locale, sessionId, proposalId, uploadLimits }: Uplo
           headers: { "content-type": "application/json", "x-locale": locale },
           body: JSON.stringify({
             ...(sessionId ? { sessionId } : { proposalId }),
+            ...(sessionDayId ? { sessionDayId } : {}),
             kind,
             title: trimmedTitle,
             phase,
