@@ -1826,6 +1826,48 @@ generated suite is the highest-value test in the product.
 | `POL-storage.design_assets.public_logo` | `anon` reads exactly the object an ACTIVE org's `brand_kits.logo_asset_id` names, while it is PNG or JPEG. Refused: any other design asset of the same org; the same org's logo while it is WebP (Outlook draws none); a suspended org's logo; a logo the org has since replaced or cleared. A signed-in member of ANOTHER org sees what a stranger sees. `anon` writes and deletes nothing. |
 | `RPC-org_public_logo.path_only` | Returns the storage path and the SNIFFED content type of that one object, or no row — for `anon`, `authenticated` and the worker. It reveals nothing a caller could not learn by fetching the object. |
 | `RPC-definer.anon_allowlist` (amended) | The `anon`-executable definer functions are exactly the documented eight: `0080`'s two, `verify_certificate`, the three that answer about the caller, and `0126`'s two. |
+| ★ **wave 10, migration `0127`** — `designer` — certificates re-issued (`DEC-160` §6, `DEC-161`): a removal's revocation may be replaced under the next serial, an admin's revocation for cause never is; the lead's DDL inside it (contract 10) |
+| `POL-certificates.live_once` | A second LIVE certificate for one (org, session, member, kind) is refused 23505 by `certificates_live_once`; a second REVOKED row is accepted, which is what lets a re-issue keep the first one on the register. |
+| `RPC-issue_certificate.replacement_after_removal` | A member whose certificate was revoked BY A REMOVAL, then re-added, is issued a second certificate under the NEXT serial; its `check_in_id` is the new check-in; the first keeps its serial and still verifies as revoked, without its reason. |
+| `RPC-issue_certificate.no_replacement_after_for_cause` | A certificate revoked FOR CAUSE is never replaced — not by the sync hook, not by a re-run fan-out, not by a late job. `issue_certificate()` raises `revoked_for_cause` (42501) BEFORE `allocate_serial()`, so the org's serial counter does not move. |
+| `RPC-revoke_certificate.records_its_cause` | Every revocation records why it happened: the removal path passes `attendance_removed`, every other caller takes `for_cause`. A revocation written before this file reads as `for_cause` — final — through `coalesce`. |
+| `RPC-attendance_certificate_sync.reissues_after_removal` | Attendance complete again on a completed session with certificates on, holding only a removal-revoked certificate, enqueues the issue job under 11 §2.5's key; holding a for-cause-revoked one enqueues nothing; holding a LIVE one still enqueues nothing. |
+| ★ **wave 10, migration `0128`** — `designer` — `poster_render_context()` hands the worker a session's days, by `position`; no new binding, so any document version renders on any runtime (`DEC-161`, defect 1) |
+| `RPC-poster_render_context.days` | The render context carries the session's days in `position` order — the database's derived rank, never a minimum or a maximum computed by a caller. At one day it is that one day, and every other column is `0082`'s, in `0082`'s order. Executable by `service_role` alone. |
+| ★ **wave 10, migration `0129`** — `content` — a proposal's own material (`DEC-155`'s carry): the three policies that `inner join sessions` admit it for its owner and for staff |
+| `POL-material_versions.proposal` | The version row of a proposal's own material is readable by its proposer, an accepted co-presenter, and staff — never a plain member — the same audience `materials_read`'s proposal branch already admits at the row. |
+| `POL-material_pages.proposal` | Same audience, for a proposal-owned material's page rows — in practice always empty, since no page is ever rendered before carry-over. |
+| `POL-storage.material_pages.proposal` | The page-image bucket's own copy of the same rule. |
+| ★ **wave 10, migration `0130`** — `event` — `ratings` holds no instant finer than a day (`DEC-160` §3.4): a coarsening trigger pinned to UTC, the backfill, the presenter's comments no longer in submission order |
+| `POL-ratings.day_precision.insert` | A rating written by a member is stored at midnight UTC — the instant it was written is not recoverable from the row. |
+| `POL-ratings.day_precision.update` | An edit coarsens `edited_at` too: `main`'s app writes it from JavaScript at millisecond precision, and the trigger covers `update` for exactly that reason. |
+| `POL-ratings.day_precision.backfill` | The rows that existed before this file are coarsened by it, and coarsening an already-coarsened row changes nothing. |
+| `POL-ratings.day_precision.no_award` | The backfill enqueues no `award_points` job: `ratings_award_points` is `after insert`, and this is an `update`. |
+| `POL-ratings.aggregate.comment_order` | The presenter's comment list is ordered by the rating's random id, never by submission: submission order is itself a disclosure to a presenter who watched people leave. |
+| ★ **wave 10, migration `0131`** — `event` — `rating_window_open()`: the one SQL definition of «completed, and inside the window», called by both rating policies and by the survey's submit |
+| `RPC-rating_window_open.completed_and_inside` | True for a completed session inside `rating_window_days`; false before completion and false the day after the window closes. |
+| `RPC-rating_window_open.other_org` | False for a session of another org, whatever its state — the function answers about the CALLER's org only. |
+| `RPC-rating_window_open.not_public` | `anon` cannot execute it; `authenticated` can. |
+| `POL-ratings.insert.window` | The re-created insert policy still accepts a rating inside the window and refuses one past it — the rule moved into a function, not out of the policy. |
+| `POL-ratings.update.window` | The re-created update policy still refuses an edit past the window. |
+| ★ **wave 10, migration `0132`** — `event` — the survey's authoring half: templates saved whole, attach copies, detach refused once anyone has answered; attach and detach audited |
+| `RPC-survey_template_save.staff_only` | A member is refused `not_authorized`; an admin and a moderator both succeed; a stale admin is refused `stale_claims`. |
+| `RPC-survey_template_save.whole_set` | Saving replaces the whole question set in the array's order: positions are 1…n and are never read from the client. |
+| `RPC-survey_template_save.shapes` | A choice question with fewer than two options, an empty prompt, an unknown kind and options on a non-choice question are each refused by name, with the question's index — and nothing is written. |
+| `RPC-survey_template_save.title_taken` | Two templates of one org cannot share a title; the refusal is an envelope, not a constraint error. |
+| `RPC-survey_template_save.other_org` | A template of another org is `not_found`, never edited. |
+| `RPC-survey_attach.copies` | Attaching copies the template's questions and options into the session's own rows: editing the template afterwards changes nothing that was attached. |
+| `RPC-survey_attach.one_per_session` | A second attach to the same session is refused by name; an empty template is refused before anything is written. |
+| `RPC-survey_attach.audited` | Attach and detach each write one `audit_log` row naming the session and the survey. |
+| `RPC-survey_detach.has_responses` | Once one member has answered, detaching is refused and the survey stands. |
+| ★ **wave 10, migration `0133`** — `notify` — bindings declared per message key and refused by the database for every writer (`REQ-NTF-012`), inside blocks too; `0026`'s three rules verbatim |
+| `RPC-notification_bindings.total` | Every message with an email channel offers at least the three the renderer injects; no key offers a binding twice. |
+| `RPC-notification_bindings.defaults_are_legal` | Every binding the built-in Arabic templates interpolate is offered by the key that uses it — the platform's own text cannot be refused by the rule the platform ships. |
+| `POL-notification_templates.unknown_binding` | A template whose subject, body or blocks reference a binding the key does not offer is refused `22023`, as the org admin — the writer the screen uses — and as the owner. |
+| `POL-notification_templates.blocks_bindings` | The scan reaches INSIDE `blocks`: a paragraph's `{{…}}`, a button's `urlBinding` (a bare name, not a placeholder), a detail row's label and value, an image's `alt`. |
+| `POL-notification_templates.in_app_unchecked` | An `in_app` row is not subject to the binding rule: nothing reads one (`notification_send_context` filters `channel = 'email'`), and its key may have no email channel and so no declared bindings at all. |
+| ★ **wave 10, migration `0134`** — lead — corrects `0125`: an object with no `blocks` key is refused (a CHECK rejects only on FALSE) |
+| `POL-notification_templates.blocks.shape` | … an object with `schemaVersion` and NO `blocks` key is refused `23514` too. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

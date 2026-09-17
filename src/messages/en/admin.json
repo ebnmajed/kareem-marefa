@@ -614,6 +614,10 @@
           "promoted": "Template added to the platform library",
           "retired": "Template retired",
           "unretired": "Template restored"
+        },
+        "survey": {
+          "attached": "Survey attached to a session",
+          "detached": "Survey detached from a session"
         }
       },
       "domains": {

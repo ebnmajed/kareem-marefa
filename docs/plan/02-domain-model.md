@@ -695,6 +695,14 @@ Presenter-facing reads go through a view that exposes aggregates only, and only 
 `org_settings.rating_min_aggregate` or above (`REQ-RAT-004`, `REQ-RAT-006`). Org admins read the
 base table (`REQ-RAT-005`); moderators do not (`REQ-ADM-020`).
 
+**Amended under `DEC-160` §3.4 and `DEC-161` (wave 10, migrations `0130`, `0131`):** `submitted_at` and
+`edited_at` hold **no instant finer than a day** — a `before insert or update` trigger truncates both,
+pinned to UTC (`date_trunc` on a `timestamptz` otherwise follows the connection's zone), and existing
+rows were truncated in the same file. The aggregate view's comment list is ordered by the rating's
+random id, never by submission: order is itself a disclosure to a presenter who watched people leave.
+«Completed, and inside `rating_window_days`» has one SQL definition, `rating_window_open()`, which
+both rating policies and the survey's submit call.
+
 ### 4.8a The survey
 
 *Added under `DEC-160` and `DEC-161` (wave 10, migration `0124`). `DEC-074` lists this document among
@@ -938,6 +946,16 @@ certified plus which sessions they attended (`REQ-CRT-009`).
 
 `recipient_name_snapshot` exists because a certificate is a record of what was printed. A member
 later changing their display name must not retroactively change a document someone is holding.
+
+**Amended under `DEC-160` §6 and `DEC-161` (wave 10, migration `0127`):** `unique (org_id, session_id,
+member_id, kind)` is now the **partial** unique index `certificates_live_once … where state <>
+'revoked'` — one **live** certificate per member, session and kind, and any number of revoked ones
+beside it, so a register can say what became of each document. `revocation_cause
+certificate_revocation_cause` (`for_cause` · `attendance_removed`, nullable, read through
+`coalesce(…, 'for_cause')`) tells a revocation made by removing a check-in — which may be replaced,
+under the **next** serial, when attendance is complete again — from an admin's revocation for cause,
+which nothing ever replaces. It is a column and not the reason's wording: `revocation_reason` is
+display copy an admin can type. A row revoked before `0127` has no cause and reads as final.
 
 #### `ENT-certificate_serial_counters`
 **Serves:** `REQ-CRT-008`, DEC-010
