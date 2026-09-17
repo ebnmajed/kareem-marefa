@@ -1558,6 +1558,41 @@ of us can close by argument** — and worse than not building the toggle, becaus
   this should **fail**. `designer` agrees. **If it passes, suspect the simulation before believing
   the result** — that is the check to apply to one's own instrument first.
 
+### ★ The forced-dark capture is a CONTROLLED comparison, not one picture
+
+`designer`, `863c41f`, accepting the control I offered and adding the condition that makes it
+valid. Three cells of the **same design** under the **same simulation**, one variable:
+
+| Cell | Logo | What it shows |
+|---|---|---|
+| 1 | dark ink on **transparency** (PNG) | the F2 failure, if it is real |
+| 2 | **the same artwork**, opaque (JPEG) | the control — a white ground baked in |
+| 3 | **light** ink on transparency (PNG) | the org with the opposite problem: invisible on the LIGHT card, fine in dark |
+
+★ **Why two logos and not one.** A single logo gives one signal; the pair gives **three outcomes**,
+and the second is the one that matters:
+
+- **PNG fails, JPEG holds** — expected, and the defect is visible in one image.
+- ★ **Both pass** — almost certainly a **blanket inversion** rather than two safe logos, because a
+  white-grounded JPEG on a darkened card should stay visible as a light box *whatever* the client
+  does. **That is the false pass, caught by the control rather than by suspicion** — a single logo
+  cannot tell it from a genuine result.
+- **Both fail** — something other than alpha is wrong. Stop rather than explain it away.
+
+★ **The condition, and it is where this would quietly go wrong:** the JPEG must be **the same
+artwork** as the PNG — same ink, same dimensions, differing **only in the alpha channel**. Two
+convenient different files are two observations, not a comparison, and the whole value evaporates.
+
+**How the artwork is produced, since «same artwork» is the hard part.** Playwright renders one
+HTML/SVG mark to PNG with `omitBackground: true` (transparent) and the *same* page to JPEG (which
+flattens onto white) — one source, two encodings, one variable. Cell 3 is the same mark with its ink
+colour swapped. The org's `logo_asset_id` is pointed at each in turn, so every capture is one org,
+one design, one simulation.
+
+★ **Cell 3 is why this is worth the row**: it makes the root cause visible in the image rather than
+asserted in a note. The defect is **not** «transparency is bad» — it is **one asset, two grounds**,
+which is the carried poster defect stated as a picture.
+
 ### ★ A live defect F2 uncovered, one medium over — carried, not mine
 
 `designer` found the root cause while conceding F2, and it **predates this wave**: the product
