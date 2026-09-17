@@ -1383,6 +1383,57 @@ but sees zero rows of. Under D1 I add no table.
 
 §X13's ledger lines are accepted as written, as are the three import-line edits after L3.
 
+## X0.2 ★ N3's blocking finding — rule 4 refuses three fixtures, one of them the lead's
+
+`38ccd25` landed `notification_bindings()` and rule 4. **Before it can be promoted, one line of
+`tests/rls/fixture-m3.ts` has to change**, and that file is lead-only. Measured, not read: the
+proposed file applied in a rolled-back transaction, then each existing template insert attempted
+against it.
+
+| Where | The insert | Under rule 4 |
+|---|---|---|
+| ★ `tests/rls/fixture-m3.ts:53` | `MSG-session_published`, body and subject use **`{{session.title}}`** | **REFUSED** — `unknown_binding: session.title` |
+| `tests/rls/notify-contract.test.ts:283` | `MSG-rsvp_promoted`, body uses **`{{name}}`** | **REFUSED** — `unknown_binding: name` |
+| `tests/rls/notify-contract.test.ts:304` | `MSG-session_changed`, body uses **`{{new.startsAt}}`** | **REFUSED** — `unknown_binding: new.startsAt` |
+| `tests/rls/notify-contract.test.ts:320` | `MSG-photo_hidden`, channel `in_app` | passes — rule 4 is email-only |
+| `tests/rls/notify-send.test.ts:105` | `MSG-badge_earned`, `{{badge}}` and `{{member.name}}` | passes |
+| `tests/e2e/wave8-console-emails.spec.ts:166` | `MSG-reminder_1d`, `{{title}}` | passes, **unchanged** |
+
+★ **None of the three is a case the rule breaks; each is a binding that does not exist.**
+`{{session.title}}`, `{{name}}` and `{{new.startsAt}}` are supplied by no caller and have rendered
+**blank** in every mail they were in since M3. Rule 4 found three more instances of finding 1's
+family, in the fixtures rather than in the templates.
+
+**The two in `notify-contract.test.ts` are mine and are fixed** (`38ccd25`), with the corrected text
+re-measured as passing. Ledger lines, as proposed for `STATUS.md`:
+
+> `tests/rls/notify-contract.test.ts` · `38ccd25` · *two fixture texts, not two expectations:
+> `MSG-rsvp_promoted` never carried `{{name}}` and `MSG-session_changed` never carried
+> `{{new.startsAt}}` — both rendered blank in every mail they were in, and `REQ-NTF-012`'s binding
+> rule refuses a placeholder the key does not offer. The `select.admin` case still asserts who may
+> read a template; the `required_fields` case still asserts `23514` on a missing declared field, a
+> save when present, and `23514` on an update that removes it.* · **Expectation changed: no**
+
+**The request to the lead — one line of `tests/rls/fixture-m3.ts`**, measured as passing before it is
+asked for:
+
+```
+-               'جلسة جديدة: {{session.title}}',
+-               'مرحبًا {{member.name}}، نُشرت جلسة {{session.title}}.', '{member.name,session.title}')
++               'جلسة جديدة: {{title}}',
++               'مرحبًا {{member.name}}، نُشرت جلسة {{title}}.', '{member.name,title}')
+```
+
+`MSG-session_published`'s payload carries `title`, `startsAt`, `venue` and `session_id` (`0036`,
+`0111`) and has never carried `session.title`. **This is a promotion blocker, not a nicety**: most of
+the RLS suite seeds M3, so promoting rule 4 before this line changes turns far more red than one
+file. Until it lands, `tests/rls/notify-bindings.test.ts` calls `applyProposed()` **after**
+`seed()` — the ordering stops mattering the moment the fixture is corrected, and the file says so at
+its head.
+
+**Gates on `38ccd25`:** `tsc` clean · lint 0 errors · the new file 9 green · **the whole RLS suite,
+104 files, 1079 passed** with the proposed file applied in the one test that applies it.
+
 ## X1. N1 — pinning today's output, before anything else changes
 
 ### X1.1 The files
