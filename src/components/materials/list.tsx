@@ -14,6 +14,7 @@ import { LinkIcon } from "@/components/ui/icons";
 import { SettingsForm } from "@/components/materials/settings-form";
 import { UploadForm } from "@/components/materials/upload-form";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { rescopeMaterialAction } from "@/components/materials/actions";
 import { phaseLabelKey } from "@/components/materials/phase-label";
 import { GroupDisclosure } from "@/components/materials/group-disclosure";
 
@@ -193,13 +194,12 @@ function MaterialCard({ m, sessionId, locale, canManage, t, scope }: MaterialCar
             gets no repeated label here, only a manager gets the chip that can move it. */}
         {scope && canManage ? (
           <RescopeChip
-            locale={locale}
-            sessionId={sessionId}
-            materialId={m.id}
             currentLabel={scope.currentLabel}
             options={scope.options}
             triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
             failedLabel={t("rescope.failed")}
+            onRescope={(dayId) => rescopeMaterialAction(locale, sessionId, m.id, dayId)}
+            className="mt-2"
           />
         ) : null}
 

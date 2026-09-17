@@ -7,7 +7,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TaskItem } from "@/components/tasks/task-item";
 import { CreateTaskForm } from "@/components/tasks/create-form";
-import type { RescopeOption } from "@/components/tasks/rescope-chip";
+import type { RescopeOption } from "@/components/materials/rescope-chip";
 import { GroupDisclosure } from "@/components/tasks/group-disclosure";
 
 // The `Tasks` slot — `id="tasks"`, «مهام ما قبل الجلسة» (`sessions.md`

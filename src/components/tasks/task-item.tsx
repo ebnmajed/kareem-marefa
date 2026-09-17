@@ -4,8 +4,8 @@ import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { TaskSummary } from "@/lib/dal/tasks";
-import { submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
-import { RescopeChip, type RescopeOption } from "@/components/tasks/rescope-chip";
+import { rescopeTaskAction, submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
+import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 
 interface TaskItemProps {
   locale: string;
@@ -64,13 +64,12 @@ export function TaskItem({ locale, sessionId, task, scope }: TaskItemProps) {
           gets the chip that can move it. */}
       {scope ? (
         <RescopeChip
-          locale={locale}
-          sessionId={sessionId}
-          taskId={task.id}
           currentLabel={scope.currentLabel}
           options={scope.options}
           triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
           failedLabel={t("list.rescope.failed")}
+          onRescope={(dayId) => rescopeTaskAction(locale, sessionId, task.id, dayId)}
+          className="mt-2"
         />
       ) : null}
 

@@ -9,7 +9,8 @@ import { Panel } from "@/components/ui/panel";
 import { InfoIcon } from "@/components/ui/icons";
 import { UploadWidget } from "@/components/photos/upload-widget";
 import { TakedownButton } from "@/components/photos/takedown-button";
-import { RescopeChip, type RescopeOption } from "@/components/photos/rescope-chip";
+import { rescopePhotoAction } from "@/components/photos/actions";
+import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 
 // The `Photos` slot — `id="photos"`, «الصور» (`sessions.md` §22.2) —
 // REQ-EVT-009 … REQ-EVT-013. No <section>/<h2> of its own (the event page
@@ -156,13 +157,11 @@ function PhotoGrid({ photos, sessionId, locale, isStaff, t, scope }: PhotoGridPr
               says the scope; only staff gets the chip that can move it. */}
           {scope && isStaff ? (
             <RescopeChip
-              locale={locale}
-              sessionId={sessionId}
-              photoId={p.id}
               currentLabel={scope.currentLabel}
               options={scope.options}
               triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
               failedLabel={t("rescope.failed")}
+              onRescope={(dayId) => rescopePhotoAction(locale, sessionId, p.id, dayId)}
             />
           ) : null}
           <TakedownButton locale={locale} sessionId={sessionId} photoId={p.id} mode={p.hiddenAt && isStaff ? "restore" : "request"} />

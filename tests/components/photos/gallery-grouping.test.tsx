@@ -2,6 +2,7 @@
 // file (rule 4) — gallery.test.tsx (the byte-identical proof at n <= 1) is untouched.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/photos.json";
 import sessionsAr from "@/messages/ar/sessions.json";
@@ -67,7 +68,11 @@ describe("Photos slot, grouped (days.length > 1)", () => {
     expect(screen.queryByText("▾")).not.toBeInTheDocument();
 
     await renderSlot({ photos: [day1Photo], canUpload: false, isStaff: true, myMemberId: "m1", imageLimitMb: 20, days, timeZone: "Asia/Riyadh" });
-    const trigger = screen.getByText("▾").closest("summary")!;
-    expect(trigger.closest("details")!.querySelectorAll("button")).toHaveLength(3);
+    // ★ `RescopeChip` (shared, `src/components/materials/rescope-chip.tsx`) moved onto `ui/menu`
+    // (Radix) after `ui-lint` flagged the chip's hand-rolled floating panel — see materials' own
+    // twin test for the reasoning.
+    const trigger = screen.getByText("▾").closest("button")!;
+    await userEvent.click(trigger);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
   });
 });

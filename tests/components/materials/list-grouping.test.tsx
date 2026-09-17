@@ -2,6 +2,7 @@
 // file (rule 4) — list.test.tsx (the byte-identical proof at n <= 1) is untouched.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/materials.json";
@@ -93,11 +94,15 @@ describe("Materials slot, grouped (days.length > 1)", () => {
     expect(screen.queryByText("▾")).not.toBeInTheDocument();
 
     await renderSlot({ materials: [day1Material], canManageAll: true, presenterOfSession: false, uploadLimits, days, timeZone: "Asia/Riyadh" });
-    const trigger = screen.getByText("▾").closest("summary")!;
+    // ★ `RescopeChip` (shared, `src/components/materials/rescope-chip.tsx`) moved onto `ui/menu`
+    // (Radix) after `ui-lint` flagged the chip's hand-rolled floating panel — the trigger is now a
+    // real `<button>`, and the menu of days opens through it, the same shape `ui/menu.test.tsx`
+    // already proves.
+    const trigger = screen.getByText("▾").closest("button")!;
     expect(trigger).toBeInTheDocument();
+    await userEvent.click(trigger);
     // The menu offers the session and both days.
-    const details = trigger.closest("details")!;
-    expect(details.querySelectorAll("button")).toHaveLength(3);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
   });
 
   it("is accessible with two populated groups and the manager's chip and add controls all showing", async () => {

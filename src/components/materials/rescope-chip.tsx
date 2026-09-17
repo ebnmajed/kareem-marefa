@@ -2,15 +2,23 @@
 
 import { useTransition } from "react";
 import { useToast } from "@/components/ui/toast";
-import { rescopeMaterialAction } from "@/components/materials/actions";
+import { Menu } from "@/components/ui/menu";
 
-// REQ-SES-018/DEC-121 — "afterwards the item carries a scope chip («اليوم الثاني ▾») which can
-// be changed in one tap." A native `<details>`/`<summary>` disclosure, approved for the first
-// capture at sync 1: keyboard-operable and screen-reader exposed (expanded/collapsed) with no
-// client-side menu primitive (`ui/menu` is `console`'s, held by the lead as custodian — this
-// needed no request). After a successful move `revalidatePath()` inside the server action
-// (materials/actions.ts) re-renders the slot, which re-groups the item into its new bucket —
-// there is no local "which group am I in" state to keep in sync by hand.
+// REQ-SES-018/DEC-121 — "afterwards the item carries a scope chip («اليوم الثاني ▾») which can be
+// changed in one tap." ONE shared component for materials/photos/tasks (`ui-lint`'s own finding,
+// DEC-087/REQ-UIX-001: three near-identical files were each hand-rolling the floating-panel
+// control class string `ui/menu` already owns) — `onRescope` is the one thing that differs per
+// item kind, so it is the only thing each caller supplies; the trigger, the option list and the
+// pending/error handling live here once. `tasks/rescope-chip.tsx` and `photos/rescope-chip.tsx`
+// are gone; `task-item.tsx` and `gallery.tsx` import this file directly — all three directories
+// are this track's own, so the cross-directory import is not a boundary crossing.
+//
+// `ui/menu` (`console`'s, held by the lead as custodian this wave) replaces the native
+// `<details>`/`<div>` this first shipped with at sync 1 — Radix owns focus trapping, typeahead and
+// closing, and its floating panel is the system's own rather than a hand-rolled one carrying the
+// same control-class string a second time. After a successful move `revalidatePath()` inside the
+// server action re-renders the slot, which re-groups the item into its new bucket — there is no
+// local "which group am I in" state to keep in sync by hand.
 
 export interface RescopeOption {
   /** `null` is the session itself — the chip's other direction. */
@@ -19,49 +27,48 @@ export interface RescopeOption {
 }
 
 interface RescopeChipProps {
-  locale: string;
-  sessionId: string;
-  materialId: string;
   currentLabel: string;
   options: RescopeOption[];
   triggerAriaLabel: string;
   failedLabel: string;
+  /** Bound by the caller to its own item kind and id — `rescopeMaterialAction`/`rescopeTaskAction`/
+   *  `rescopePhotoAction`, each already `(locale, sessionId, itemId, sessionDayId)`. */
+  onRescope: (dayId: string | null) => Promise<{ error: string | null }>;
+  /** Spacing above the trigger. Materials'/tasks' own containers have no `gap` of their own and
+   *  pass `"mt-2"`; photos' grid item already spaces its children with `gap-2` and passes nothing
+   *  — folding a margin in here unconditionally would double that spacing for photos alone. */
+  className?: string;
 }
 
-export function RescopeChip({ locale, sessionId, materialId, currentLabel, options, triggerAriaLabel, failedLabel }: RescopeChipProps) {
+export function RescopeChip({ currentLabel, options, triggerAriaLabel, failedLabel, onRescope, className }: RescopeChipProps) {
   const toast = useToast();
   const [pending, startTransition] = useTransition();
 
   function choose(dayId: string | null) {
     startTransition(async () => {
-      const result = await rescopeMaterialAction(locale, sessionId, materialId, dayId);
+      const result = await onRescope(dayId);
       if (result.error) toast.show({ tone: "error", title: failedLabel });
     });
   }
 
   return (
-    <details className="relative mt-2 inline-block">
-      <summary
-        aria-label={triggerAriaLabel}
-        aria-disabled={pending || undefined}
-        className="inline-flex cursor-pointer list-none items-center gap-1 text-body-sm text-fg-body marker:content-none hover:text-fg-heading"
-      >
-        <bdi>{currentLabel}</bdi>
-        <span aria-hidden="true">▾</span>
-      </summary>
-      <div className="absolute z-10 mt-1 flex min-w-40 flex-col gap-0.5 rounded-field border border-edge bg-canvas p-1 shadow-md">
-        {options.map((opt) => (
-          <button
-            key={opt.id ?? "session"}
-            type="button"
-            disabled={pending}
-            onClick={() => choose(opt.id)}
-            className="rounded-field px-2 py-1.5 text-start text-body-sm text-fg-body hover:bg-surface disabled:opacity-50"
-          >
-            <bdi>{opt.label}</bdi>
-          </button>
-        ))}
-      </div>
-    </details>
+    <Menu
+      trigger={
+        <button
+          type="button"
+          aria-label={triggerAriaLabel}
+          disabled={pending}
+          className={`inline-flex items-center gap-1 self-start text-body-sm text-fg-body hover:text-fg-heading disabled:opacity-50 ${className ?? ""}`}
+        >
+          <bdi>{currentLabel}</bdi>
+          <span aria-hidden="true">▾</span>
+        </button>
+      }
+      items={options.map((opt) => ({
+        label: opt.label,
+        onSelect: () => choose(opt.id),
+        disabled: pending,
+      }))}
+    />
   );
 }
