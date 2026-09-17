@@ -299,6 +299,33 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 | `0133` | `notify` | `notification_bindings()`, two scanners, `notification_templates_validate()` re-created with `0026`'s three rules verbatim and a fourth | none | ★ **read first: `notification_templates` rows and their text** — an existing row with an unknown binding is refused on its NEXT update, not at the push |
 | `0134` | lead | `notification_templates_blocks_shape` dropped and re-added with `blocks ? 'blocks'` | none — validates over a column nothing has written yet | — |
 
+#### What the lead has proved so far — run mid-wave on the chain through `0134`, re-run at the freeze
+
+**1 · The caller audit, mechanical.** Every `.rpc()` in `main`'s `src/` at `f2ead54` — **80 functions** — parsed
+with the argument names it sends and resolved against the catalogue at `0134` by PostgREST's own rule (the
+names sent are a subset of the function's, and every name not sent has a default): **80 of 80 resolve.** All
+**60** functions `main`'s worker names in SQL exist. (Wave 9's parser read two words of a comment inside
+`schedule_session`'s argument object as keys; it strips comment lines now.)
+
+**2 · ★ The data-shaped rehearsal.** A bare `postgres:17` with `scripts/ci/roles.sql`, `main`'s chain
+`0001`–`0122` and graphile-worker's schema; then `main`'s own full RLS fixture **committed**, plus the shapes
+this wave's data statements touch and the fixture lacks: a rating **edited** at millisecond precision and one
+submitted a microsecond before a UTC midnight; an attendance certificate revoked **with the removal hook's
+fixed phrase** and one revoked in an admin's own words; a **proposal's** material with a version; and — already
+in `main`'s fixture — a template interpolating a binding its key never carried. 360 rows across 73 tables and
+the job queue snapshotted; **`0123`–`0134` applied in order, each in one transaction, `ON_ERROR_STOP=1` — 12 of
+12 clean.** Then, row by row:
+
+| Check | Result |
+|---|---|
+| every pre-existing column of every pre-existing row, 73 tables and the queue | **identical**, except the one intended delta below |
+| ★ the intended delta — `0130`'s backfill | both `ratings` rows: `submitted_at` truncated to its UTC day (`…21:59:59.999999` → `…00:00:00` of the **same** day); the edited row's `edited_at` likewise. Nothing else on either row |
+| new columns on old rows | `certificates.revocation_cause` **null** on all four — so both revoked rows read as **final**, the removal-phrased one included, which is `DEC-161`'s conservative direction · `notification_templates.blocks` / `source_family` null — string templates, as before · `org_settings.survey_min_responses` = 3 |
+| `0127`'s index over existing rows | built — two revoked rows and a live one for the same member do not collide |
+| ★ a template with an unknown binding | **survives the push untouched**; its **next write is refused** `unknown_binding` — so the production read of `notification_templates` matters: an org with such a row could not save it again until the text is corrected |
+
+The container holds fixtures only. `0135`+ — `event`'s submit and results, `notify`'s test send — join it at the freeze.
+
 **Added at sync 2:** `select name from public.orgs` — `notify`'s F7: the string path's sign-off is «{org} · كريم معرفة · …», so an org literally named «كريم معرفة» signs twice; one read says whether that is live · a count of live certificates sharing (org, session, member, kind), which must be 0 for `0127`'s index to build.
 
 **The production reads the order will carry, known at sync 1:** the `ratings` rows E5's backfill will coarsen
