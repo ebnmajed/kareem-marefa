@@ -1834,3 +1834,46 @@ change is one line.
 the part of this feature most likely to grow a clause. A second copy on a report screen would then
 disagree with the points the member actually received, and the screen is exactly where someone would
 go to find out why.
+
+### Correction — the request above is WITHDRAWN, and `0108` already had it
+
+`session_complete_attendees(p_session) returns setof uuid` (`0108`) is the staff-gated aggregate the
+section above asks for, and it is better than what I proposed: it returns the member **ids**, so
+SCR-044 marks completeness per row as well as counting it, still in one call and still with one
+definition. `getAttendanceReport()` calls it; `AttendanceRow.attendanceComplete` and
+`counts.completedAllDays` come from it and from nowhere else.
+
+★ Why the per-row marker is not redundant beside «2 من 3»: with `require_all_days` **off**,
+«1 من 3» **is** complete. The count cannot say that and the predicate can. This is exactly the drift
+contract 6 exists to prevent, met on the first screen that needed it.
+
+The fallback is an em dash, not a zero, when the call fails — «nobody completed» and «I could not
+ask» are different sentences, and a report that confuses them is worse than one that admits it.
+
+## Contract 5 finished — the certificate follows the predicate (`dd607c2`)
+
+All three functions re-created **once**, with the third hook in the same file rather than a second
+pass.
+
+★ **What actually changed, and it is not the `perform` line.** `remove_check_in()` used to find the
+certificate `where check_in_id = target.id`. That lookup was wrong the moment a session could have
+more than one day: **a certificate names the session, not a day**, so removing day 1 must be able to
+revoke one issued off day 3 — and `check_in_id` cannot reach it. `attendance_certificate_sync()`
+finds it by session, member and kind. The wave did not add a feature here; it exposed a lookup that
+had been load-bearing and narrow.
+
+The other direction closes too (named difference 3): `check_in()` and `mark_checked_in_manually()`
+call the hook as well, so a member marked present the morning after a completed session becomes
+eligible at that moment instead of being silently skipped.
+
+**Order, and why it is written down:** the soft-delete runs **first**, before either hook. Both read
+`removed_at is null`, so a hook called before the update would reverse nothing and revoke nothing —
+a silent no-op, the worst shape this class of bug can take.
+
+**The assertion the whole contract was for is now true**
+(`RPC-checkin_functions.decide_nothing`): the source of `check_in()`,
+`mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of
+`points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of
+`REQ-TSK-002`'s three task tables — and each names the hook it defers to. It is asserted over
+`pg_get_functiondef`, so it holds against whatever those functions become, not against what they say
+today.
