@@ -1,4 +1,5 @@
 -- notify (wave 9) — `session_day_place()` is the worker's, not a member's.
+-- Promoted by the lead from supabase/proposed/notify/04_narrow_day_place_grant.sql.
 --
 -- Serves:  REQ-NFR-001 (isolation is not application-dependent) · REQ-TEN-001
 -- Cites:   DEC-152's sweep — `session_venue_label(uuid, text)` (`0036`) is

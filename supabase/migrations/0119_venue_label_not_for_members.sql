@@ -1,0 +1,28 @@
+-- wave 9 (DEC-152's low finding, closed at sync 3) — `session_venue_label()` is
+-- not a member's to call.
+--
+-- `public.session_venue_label(p_venue uuid, p_custom text)` (0036, `notify`'s) is
+-- SECURITY DEFINER, reads `venues` with RLS bypassed, checks no caller, and was
+-- granted to `authenticated`. So a member who already held ANOTHER org's venue
+-- uuid could read that venue's name. Low — a venue uuid is on no public surface
+-- and is not guessable — which is why DEC-152 recorded it rather than fixing it
+-- in the same breath as the check-in code.
+--
+-- `notify` then audited every caller (its note §W11.8) and the lead verified it
+-- against the catalogue: SEVEN call sites, every one inside a SECURITY DEFINER
+-- function — calendar_sync_target, send_reminder_notification,
+-- session_day_notice, session_day_place, session_days_changed,
+-- session_presenters_notify, sessions_notify — which run as the owner and need
+-- no grant; NO application or worker code calls it; no policy and no view names
+-- it. So the plain revoke costs nothing, and is preferred to a guarded body
+-- because a grant nobody uses is a door, not a feature. `service_role` keeps
+-- it. Idempotent.
+--
+-- Serves:  REQ-NFR-001, REQ-TEN-003
+-- Cites:   0036 (the function and its grant), 0103 and 0117 (the same class)
+-- Docs:    DEC-152; docs/plan/notes/notify.md §W11.8
+--
+-- 03 §8.2 rows this adds:
+--   | `RPC-session_venue_label.not_for_members` | A member calling `session_venue_label()` with another org's venue uuid is refused 42501 rather than handed its name; every notice, reminder and calendar payload still carries the venue, because their definer callers run as the owner. |
+
+revoke execute on function public.session_venue_label(uuid, text) from public, anon, authenticated;

@@ -1,5 +1,6 @@
 -- wave 9 (`REQ-SES-015`, `REQ-DSC-*`) — the public card says whether a session
 -- spans several days.
+-- Promoted by the lead from supabase/proposed/sessions/0003_public_card_day_count.sql.
 --
 -- ★ WHY THIS IS A DROP AND A RE-CREATE. A `RETURN TABLE` cannot change under
 -- `create or replace`, which `0082` recorded when it added and removed a column

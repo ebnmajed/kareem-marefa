@@ -86,3 +86,17 @@ describe("RPC-_issue_check_in_code.not_public (0103)", () => {
     });
   });
 });
+
+describe("RPC-session_venue_label.not_for_members (0119) and RPC-session_day_place (0117)", () => {
+  it("a member holding ANOTHER org's venue uuid is refused, not handed its name; the owner's definer callers still read it", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.as(f.a.members[0].claims);
+      expect(await errorCode(() => tx.q(`select public.session_venue_label($1, null)`, [f.b.venueId]))).toBe(PERMISSION_DENIED);
+      expect(await errorCode(() => tx.q(`select public.session_day_place($1::jsonb)`, [JSON.stringify({ venue_id: f.b.venueId })]))).toBe(PERMISSION_DENIED);
+      await tx.asOwner();
+      const [own] = await tx.q<{ label: string | null }>(`select public.session_venue_label($1, null) as label`, [f.a.venueId]);
+      expect(own.label).toBeTruthy(); // a notice, a reminder and a calendar payload still carry the venue
+    });
+  });
+});

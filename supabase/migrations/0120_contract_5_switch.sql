@@ -1,6 +1,7 @@
 -- wave 9 (DEC-150 contract 5, DEC-151) — the switch. `check_in()`,
 -- `mark_checked_in_manually()` and `remove_check_in()` stop deciding what a
 -- check-in earns and call the hooks `0102` published.
+-- Promoted by the lead from supabase/proposed/checkin/03_contract_5.sql.
 --
 -- ★ THREE LINES OF BEHAVIOUR CHANGE, AND EVERY ONE OF THEM IS «CALL THIS
 -- INSTEAD». `0102` lifted the blocks out of these bodies verbatim, so this

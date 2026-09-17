@@ -73,7 +73,7 @@ async function sessionIn(tx: Tx, from: string, state: string, title: string): Pr
 const card = (tx: Tx, id: string) => tx.q<Record<string, unknown>>(`select * from public.session_public_card($1)`, [id]);
 
 describe("POL-sessions.public_card.anon", () => {
-  it("a published session answers `anon` with exactly the six public fields", async () => {
+  it("a published session answers `anon` with exactly the seven public fields", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.q(`update public.sessions set venue_id = (select id from public.venues where org_id = $1 limit 1) where id = $2`, [
@@ -90,9 +90,18 @@ describe("POL-sessions.public_card.anon", () => {
       // ★ The allowlist IS the return type. Not «these keys are present» —
       // «these keys are ALL there is», so a column added to `sessions` next
       // year cannot arrive here by being selected accidentally.
+      // ★ wave 9 (`0118`, DEC-156): `day_count` is the ONE field this guard has been
+      // asked to admit since it was written, and it was admitted the way the guard
+      // intends — by an edit here, reviewed by the lead at promotion, where the
+      // failure first appeared. `anon` cannot read `session_days`, and a session
+      // that crosses midnight is indistinguishable from a two-day one by its two
+      // ends alone, so the card's own row carries the count. It is a number of
+      // meetings: no member, no venue beyond the one already public, nothing per
+      // day. At one day it is 1 and the rendered card is unchanged.
       expect(Object.keys(row).sort()).toEqual(
-        ["ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
+        ["day_count", "ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
       );
+      expect(row.day_count).toBe(1);
       expect(row.title).toContain("جلسة منشورة");
       expect(row.starts_at).toBeTruthy();
       expect(row.time_zone).toBe("Asia/Riyadh");

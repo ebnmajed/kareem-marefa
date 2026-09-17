@@ -1741,6 +1741,19 @@ generated suite is the highest-value test in the product.
 | `POL-material_versions.day_scoped_after_release` | The version row a released day-scoped material's `current_version_id` points at is readable the same two moments — otherwise `getViewerData()` finds a material but no version. |
 | `POL-material_pages.day_scoped_after_release` | A released day-scoped material's rendered page rows are readable the same two moments. |
 | `POL-storage.material_pages.day_scoped_after_release` | The page-image objects in the `material-pages` bucket are readable the same two moments — otherwise the viewer shows a page count with no images. |
+| ★ **wave 9, sync 3, migration `0117`** — `session_day_place()` is the worker's, not a member's — `notify` closing the same class of hole it had copied a grant into |
+| `RPC-session_day_place.definer_only` | No client role may execute it; it exists for
+| ★ **wave 9, sync 3, migration `0118`** — the public card says how many days a session has — `anon` cannot read `session_days`, so the count travels in the card's own row |
+| `POL-sessions.public_card.day_count` | The public card's row carries the number of days of the session, for `anon` and `authenticated` alike. No policy changes and `session_days` gains no grant: the count comes from the definer function, never from the table. |
+| ★ **wave 9, sync 3, migration `0119`** — `DEC-152`'s low finding closed: `session_venue_label()` revoked from members, after every caller was verified to be a definer function |
+| `RPC-session_venue_label.not_for_members` | A member calling `session_venue_label()` with another org's venue uuid is refused 42501 rather than handed its name; every notice, reminder and calendar payload still carries the venue, because their definer callers run as the owner. |
+| ★ **wave 9, sync 3, migration `0120`** — contract 5's call sites: `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` call the three hooks and decide nothing about points or certificates |
+| `RPC-check_in.calls_attendance_recorded` | A code check-in enqueues exactly one `award_points` job under `pts:check_in:<check_in id>` — through the hook, and the source of all three functions names no points primitive. |
+| `RPC-mark_checked_in_manually.calls_attendance_recorded` | A manual mark enqueues the same one job under the same key, so REQ-CHK-008's «the same rights as a code check-in» is one call site each rather than two blocks kept in step. |
+| `RPC-remove_check_in.calls_attendance_removed` | A removal writes one compensating row per unreversed award and the no-show row, through the hook; a second removal of the same check-in is refused and writes no second row. |
+| `RPC-remove_check_in.certificate_revoked_through_the_hook` | An issued attendance certificate is still revoked when a removal makes attendance incomplete — now through `attendance_certificate_sync()` rather than a `check_in_id` lookup, and still with only the fixed phrase «أُلغي تسجيل الحضور» reaching it. |
+| `RPC-check_in.certificate_synced` | A check-in on a session that is already `completed` reaches the same hook, so a member recorded after the fact becomes eligible rather than being silently skipped (named difference 3). |
+| `RPC-checkin_functions.decide_nothing` | ★ The source of `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of `points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of `REQ-TSK-002`'s three task tables. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
