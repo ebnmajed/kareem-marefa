@@ -967,3 +967,75 @@ per day. **The prop I need:** a list of groups,
 **rendered flat when there is one group** so a one-day session's menu is exactly today's DOM.
 `AddToCalendar` supplies the labels through `sessions`' day formatter and the links through
 `calendarLinks()` per day. Nothing else about the component changes.
+
+---
+
+## W11. What landed, and what is open
+
+**Five commits on `wave-9/multi-day`.** Every gate below was run on the last of them.
+
+| Commit | Unit |
+|---|---|
+| `5444501` | N1 SQL and the two calendar worker tasks |
+| `be12c0f` | N1's ICS, DAL and screen |
+| `91c3734` | N2 — reminders per day and the sweep |
+| `ee53f76` | the renderer: the day block, the day-qualified change label, named difference 4 |
+| `1ff4732` | N3 — contract 11's `session_days_changed()` and `sessions_notify()`'s stand-down |
+
+**To promote, in this order:** `supabase/proposed/notify/01_calendar_per_day.sql` (the lead's
+`drop constraint` is carried at its top), `02_reminders_per_day.sql`, `03_day_change_notice.sql`.
+Fifteen `03` §8.2 rows are in the three headers. Tests: `tests/rls/{calendar-days,notify-days,notify-day-notice}.test.ts`,
+`tests/unit/{ics-days,notify-jobs-days,mail-day-words,mail-instants}.test.ts`,
+`tests/components/calendar/synced-days.test.tsx`.
+
+### W11.1 The untouched-suite ledger — one line, and it is not an expectation
+
+`tests/components/me/calendar-page.test.tsx`. `SyncedEventDTO` gained `id`, `dayPosition` and
+`dayCount` (one row per day, `REQ-SES-015`), so three fixture literals name them as the **one-day**
+session they already described. **No assertion changed**, and none could have: a one-day calendar
+screen renders no day label at all, which is the second case of the new
+`tests/components/calendar/synced-days.test.tsx`.
+
+**Nothing else that existed on `main` is edited.** The ten pre-existing notify and calendar RLS
+files, `tests/unit/{ics,ics-links,mail-render,mail-mime,mail-transport,notify-jobs,notify-calendar-api,notify-channels,notify-i18n}.test.ts`
+and `tests/components/notifications/notification-list.test.tsx` are all green as they stand — 125
+RLS cases across the ten files in one run.
+
+### W11.2 The request to `sessions` — `calendar-menu.tsx`
+
+`src/components/sessions/calendar-menu.tsx` renders exactly three items, so only the first day's
+Google and Outlook links reach it. **The prop:**
+
+```ts
+groups?: { label: string; links: { google: string; outlook: string } }[];
+```
+
+rendered **flat when there is one group**, so a one-day menu keeps today's DOM exactly; the single
+ICS item is unchanged, because one file already carries every day. `AddToCalendar` already builds
+the per-day list and labels it with `dayShortLabel()`; there is a `TODO(sessions, wave 9)` on the
+one line that currently drops it. Nothing is needed from `ui/menu`.
+
+### W11.3 Findings
+
+1. ★ **Named difference 4 is real, and here is the measurement.**
+   `select jsonb_build_object('startsAt', s.starts_at)` against the local database gives
+   `"2026-09-19T06:37:03.319767+00:00"`. Fed through `renderEmail()` on the code as it stood, the
+   reminder body read **`الموعد: 2026-09-19T06:37:03.319767+00:00`**. `interpolate()` is
+   deliberately logic-free and calls `String(value)`; `tests/unit/mail-render.test.ts` never caught
+   it because its fixture passes «الأحد 6:00 م», a value the product does not produce. Fixed in
+   `render.ts` by applying `formatChangeValue()`'s existing rule — the org's zone, Western digits —
+   to every top-level ISO instant. `tests/unit/mail-instants.test.ts` uses the database's own
+   string as its input. **A Mailpit hop cannot change a rendered body; say the word and I will run
+   one anyway.**
+2. ★ **A candidate named difference 5, for the lead to rule on.** `08` §3.2's four reminder
+   templates print «المكان: {{venue}}», and `send_reminder_notification()` has never put a `venue`
+   in the payload — so every reminder mail since M3 has read «المكان: » and nothing. At several
+   days it cannot stay missing, because the room can differ per meeting, so the payload now carries
+   the **day's** venue. At one day that changes the mail from an empty line to the room's name. It
+   is a fix by the same argument as difference 4; it needs a line in `STATUS.md`.
+3. **`sessions_notify()` still does not announce an end-only change at one day** — carried out of
+   the wave by `DEC-151` and preserved on purpose. At two days and more, `session_days_changed()`
+   announces every day's end, including day 1's.
+4. **`{{tasks}}` is still unfilled**, exactly as on `main`. Nothing in this track names
+   `session_tasks`, `task_completions` or `task_form_responses`, so contract 10's guard is untouched
+   by it.
