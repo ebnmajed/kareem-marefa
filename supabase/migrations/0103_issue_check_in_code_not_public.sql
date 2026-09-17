@@ -1,0 +1,51 @@
+-- wave 9 (DEC-152) — a SECURITY fix, found by `checkin` while re-creating the
+-- check-in RPCs, and LIVE IN PRODUCTION SINCE M2. It is its own file, first in
+-- the wave's behaviour, so it can be closed on its own and so every
+-- environment converges on it whatever else happens to the wave.
+--
+-- `public._issue_check_in_code(uuid)` (0015) is SECURITY DEFINER, reads the
+-- session with RLS bypassed, checks NO caller, and mints — or returns — the
+-- LIVE check-in code. 0015 created it and never revoked it, and a new function
+-- is `execute`-to-PUBLIC by default. So PostgREST served it to `anon`:
+--
+--   POST /rest/v1/rpc/_issue_check_in_code  {"p_session": "<uuid>"}
+--   → { "code": "QH…", "valid_until": … }      with the publishable key alone
+--
+-- proven against local Supabase on 2026-09-17, while its guarded sibling
+-- `ensure_check_in_code()` — which checks «presenter of the session, or staff»,
+-- and is the only door a screen uses — answered 42501 to the same call. A
+-- session's id is in its public share link (`/s/<id>`, REQ-SES-013), so the id
+-- is not a secret.
+--
+-- What it allowed: (1) a member of the org reads the rotating code without
+-- being in the room and checks in from anywhere — attendance points and a
+-- certificate for a session they did not attend, which is the one thing the
+-- read-aloud code exists to prevent (REQ-CHK-001, REQ-CHK-009, D24); (2)
+-- anyone at all writes `check_in_codes` rows into any org's session.
+-- What it did NOT allow: checking in without being an active member of that
+-- org with a seat (or walk-ins on) — `check_in()` still decides that.
+--
+-- The fix is the revoke 0015 forgot. Its three callers are all SECURITY
+-- DEFINER and run as the owner — `ensure_check_in_code()`,
+-- `rotate_check_in_code()`, `revoke_check_in_code()` — so no client role and
+-- not even `service_role` needs it: the worker calls `rotate_check_in_code()`.
+-- ★ IDEMPOTENT, so the owner may run this one statement against production
+-- BEFORE the wave is pushed, and the migration then changes nothing.
+--
+-- `checkin`'s per-day file later drops this signature for `(uuid, uuid)` and
+-- revokes that one too; this file closes the hole for the signature that is
+-- live today.
+--
+-- Serves:  REQ-CHK-001, REQ-CHK-002, REQ-CHK-009, REQ-CHK-014, REQ-NFR-001,
+--          invariant 6 in its function form (a privilege nobody granted on purpose)
+-- Cites:   0015 (the function, and the revoke it lacks), 0078
+-- Docs:    DEC-152; docs/plan/notes/checkin.md «Wave 9», finding 1
+--
+-- 03 §8.2 rows this adds:
+--   | `RPC-_issue_check_in_code.not_public` | The private core that mints a live check-in code is executable by NO client role — `anon`, `authenticated` and `service_role` are each refused 42501; its three definer callers still work. |
+--   | `RPC-definer.anon_allowlist` | The SECURITY DEFINER, non-trigger functions `anon` may execute are EXACTLY the documented six; a new one fails the suite until it is either revoked or added to the list with its reason. |
+
+revoke execute on function public._issue_check_in_code(uuid) from public, anon, authenticated, service_role;
+
+comment on function public._issue_check_in_code(uuid) is
+  'PRIVATE core of the rotating code (REQ-CHK-002). Executable by NO client role (0103, DEC-152): it is definer and checks no caller. Reach it only through ensure_check_in_code(), rotate_check_in_code() or revoke_check_in_code().';

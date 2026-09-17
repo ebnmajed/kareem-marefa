@@ -1638,6 +1638,9 @@ generated suite is the highest-value test in the product.
 | `RPC-attendance_removed.reversal` | One compensating `reversal` row per not-yet-reversed `check_in`/`attendee_bonus` award keyed to that check-in: `-amount`, reason «أُلغي تسجيل الحضور», key `reversal:<ledger id>:v1`. A second call writes no second row. |
 | `RPC-attendance_removed.no_show_symmetry` | A removed check-in whose member holds a confirmed RSVP awards the `no_show` rule under `evaluate_no_shows`' own key; a member with no confirmed RSVP earns no such row. |
 | `RPC-attendance_hooks.terminal_row` | Either function called with a check-in id that no longer exists returns silently — the terminal-row pattern (DEC-059), never an exception into an admin's transaction. |
+| ★ **wave 9 (`DEC-152`), migration `0103`** — a SECURITY fix: the private core that mints a live check-in code was executable by `anon` since M2 (`0015` never revoked it) |
+| `RPC-_issue_check_in_code.not_public` | The private core that mints a live check-in code is executable by NO client role — `anon`, `authenticated` and `service_role` are each refused 42501; its three definer callers still work. |
+| `RPC-definer.anon_allowlist` | The SECURITY DEFINER, non-trigger functions `anon` may execute are EXACTLY the documented six; a new one fails the suite until it is either revoked or added to the list with its reason. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

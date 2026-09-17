@@ -94,6 +94,34 @@ M1, on a live database with real members.
    (514), `qa` 44/44, `visual` 0.000 %, `parity`. It is proven **twice**: on `0100` alone, before any feature
    exists, and on the final commit.
 
+### ★★ FOR THE OWNER, NOW — a live security hole on production, and the one statement that closes it (`DEC-152`)
+
+**`public._issue_check_in_code(uuid)` has been executable by `anon` since M2.** It is `SECURITY DEFINER`,
+checks no caller, and returns the **live check-in code** for any session id — and a session's id is in its
+public share link `/s/<id>`. **Proven locally through the API with the publishable key alone**; its guarded
+sibling refused the same call. It lets **a member read the code without being in the room and check in from
+anywhere** (points and a certificate for a session they did not attend), and lets anyone write
+`check_in_codes` rows into any org. It does **not** let anyone check in who is not an active member of that
+org with a seat. `checkin` found it while re-creating the function; the lead verified it, and it is closed on
+this branch by `0103`.
+
+**You can close it on production today, without waiting for this wave** — the statement is idempotent, so
+`0103` later changes nothing. It removes a privilege nobody granted on purpose; its three callers are
+definer functions and keep working. No session runs it for you (`DEC-051`, and production writes are yours):
+
+```sql
+-- Read first: expect `t` for anon today.
+select has_function_privilege('anon', 'public._issue_check_in_code(uuid)', 'execute');
+
+-- The fix.
+revoke execute on function public._issue_check_in_code(uuid) from public, anon, authenticated, service_role;
+
+-- Read again: expect `f`. Then open a live session's host view and confirm the code still shows and rotates.
+select has_function_privilege('anon', 'public._issue_check_in_code(uuid)', 'execute');
+```
+
+`supabase db query --linked "<statement>"` runs each (`CLAUDE.md` § *Running SQL against production*).
+
 ### The untouched-suite ledger
 
 Every test file that existed on `main` at `e1d8596` and is modified on this branch is named here, with why.
