@@ -2906,3 +2906,33 @@ and the other four (materials ×4, photos ×1) were already green on the real bu
 `rsvps` row for the member (`confirmed`); `session-matrix.ts` untouched, as asked.
 
 Ready for sync — the lead re-runs.
+
+## §26 — the lead's capture review: one real product bug, one test-timing bug (`dd1edb8`, `5c2be34`)
+
+**Real bug, ruling 4** — `phaseLabelKey()` (new, `src/components/materials/phase-label.ts`): a
+day-scoped material's badge still said «بعد الجلسة» while the workshop had days left to run —
+`0116` enforces day-scoped release, but nothing had ever made the WORDING scope-relative. Applied
+everywhere a material's phase is shown or chosen — the badge (`list.tsx`), the settings form's
+select for an existing material (`settings-form.tsx`, which didn't know its own item's scope at
+all until now), and the upload form's select when the add control sits in a day's header
+(`upload-form.tsx`, already had `sessionDayId` from T1). A standalone module, not exported from
+`list.tsx` — that file already imports both forms, so the reverse import would be circular. Driven
+from `sessionDayId` alone, never `days.length`, so a one-day session structurally cannot reach the
+new strings. Two new messages (`phase.beforeDay`/`afterDay`), Arabic first; one component test per
+branch in `list-grouping.test.tsx`; `list.test.tsx` untouched.
+
+**Test bug, not product** — `wave9-content-materials-day-scoped-after-hidden.png` was two Suspense
+skeletons, not content: the test's only assertion before that screenshot was `toHaveCount(0)` on
+the day-2 material's own text, which is exactly as true before the section has rendered anything
+as it is once the item is correctly withheld — a vacuous pass. `waitForStreamsToSettle()` doesn't
+cover this; it clears a different artefact (a hidden duplicate React's reveal script leaves
+behind), not "has this slot's data arrived". Added two positive waits before each screenshot in
+that test — the «المواد» h2, and the always-visible whole-workshop material (seeded «قبل»
+specifically so it never depends on day 2's own state). Checked every other `toHaveCount(0)` in the
+file as asked: the other two are each already preceded by three `toBeVisible()` checks that prove
+the section rendered, so nothing else needed the fix.
+
+`npx tsc --noEmit`/`npm run lint` clean, `npm test` 208/208 files 1887/1887 tests (the earlier
+`notify` flake from §24/§25 is gone — not mine, not touched).
+
+Ready for sync — the lead re-runs.
