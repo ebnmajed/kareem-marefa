@@ -178,7 +178,7 @@ closes at *held*.
 | L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | ☐ |
 | L7 | lead | ★ **the owner's migration order, DRAFTED AT SYNC 1** and finished at the freeze: what each file adds, the two windows, what `main`'s worker does job by job, the reads to run first · the mechanical caller audit · the data-shaped rehearsal | invariant 3 | ☐ |
 | L8 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | ☐ |
-| L9 | lead (custodian) | recognition edits write an audit row — **if the wave has room after sync 2; otherwise carried again with this sentence** | `REQ-REC-*`, `REQ-ADM-018` | ☐ |
+| L9 | lead (custodian) | recognition edits are recorded — carried since wave 8 | `REQ-REC-001` … `005`, `REQ-PTS-005`, `REQ-ADM-018` | **closed** — `0123`, taken while the four planned. `scoring_config_history` has admitted the scopes `badges`, `levels`, `perks` and `streaks` since M1 and nothing ever wrote one; the four tables now carry the trigger every other configuration table has. **SQL only**: the admin screen writes all four straight through RLS, so a trigger sees every writer and no screen changes. An admin's edit is one row per changed column; a custom badge's creation is one `created` row; **the org's seed appends nothing** — a seed is not a change anybody made. 9 new cases; ★ **the whole RLS suite on the chain through `0123`: 100 files · 1,048 passed · 4 todo · 0 failed, no existing file modified**; `policy-diff` ✓ |
 | E1–E5 | `event` | the behaviour on the lead's tables · SCR-015 as one screen and two writes · SCR-065 · SCR-064 and the CSV's rows · `ratings` to the day and the comment order | `REQ-SUR-001` … `009`, `REQ-RAT-004` | ☐ planning |
 | N1–N8 | `notify` | today's output pinned · the block compiler and the generated text part · bindings per key in the database · the editor and its four preview modes · the live test · the eight designs behind 25 keys · `08` §3.2 · the bounce webhook, last | `REQ-NTF-007` … `014` | ☐ planning |
 | D1–D3 | `designer` | certificates re-issued · a multi-day poster's date · the compiler review | `REQ-CRT-003`, `REQ-CHK-017`, `REQ-DSG-002`, `REQ-SES-015` | ☐ planning |
@@ -208,6 +208,12 @@ multi-day sessions · **(c)** a second certificate row must not break `main`'s `
 SCR-045 · **(d)** the bounce webhook needs `RESEND_WEBHOOK_SECRET` on Vercel — an owner's step. The table of
 files, the caller audit and the data-shaped rehearsal land here **before the PR is marked ready**.
 
+**The files so far:**
+
+| # | Author | What it adds | Data statement? | `main` on it |
+|---|---|---|---|---|
+| `0123` | lead | one trigger function and four `after insert or update` triggers — recognition edits write `scoring_config_history` | none | `main`'s admin screen writes the four tables exactly as today and gains a history row it never reads |
+
 **Read on day one, from `main`'s worker as it stands — so each plan is reviewed against a fact, not a hope:**
 
 | `main`'s code | What the wave does under it | What happens |
@@ -231,7 +237,7 @@ deployed commit in Railway and reconnects the source if it has not moved.** The 
 | owner | the two canvas contrast questions (`DEC-123`: browse tag counts at 1.96 : 1, a 13 px caption at 3.30 : 1) — asked in waves 8 and 9; **asked next in this wave's PR, not in a brief**. The app ships the passing tokens | wave 6 |
 | owner | **`bookmarks:237` «never updates» on Next 16.3.5** — a timing race, not load; the trace is wave 8's | wave 8 |
 | owner | break-glass opens no org screen (`DEC-055` C; option A is the owner's to schedule) | wave 8 |
-| lead (L9) | recognition edits write no audit or history row | wave 8 |
+| ~~lead (L9)~~ | ~~recognition edits write no audit or history row~~ — **closed** by `0123` | wave 8 |
 | lead (M13) | the «مطلوب» marker on the manual-mark form's three controls; `DayWindow.id` / `position` could be optional | wave 9 |
 | `console` (M13) | the attendance table scrolls sideways inside its container at 390 px from two days up | wave 9 |
 | lead (custodian) | the filter sheet's native date mask | waves 6–7 |

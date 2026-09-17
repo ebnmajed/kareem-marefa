@@ -1762,6 +1762,12 @@ generated suite is the highest-value test in the product.
 | ★ **wave 9, sync 4, migration `0122`** — the public card is given its day windows (`DEC-157`), so `sessionPhase()` stays the one implementation and the card stops saying «جارية الآن» between two days |
 | `POL-sessions.public_card.day_windows` | The public card's row carries one `{ starts_at, ends_at }` per day, ordered, for `anon` and `authenticated` alike — enough for `sessionPhase()` and nothing more. No day id, no position, no venue; `session_days` gains no grant. |
 | `POL-sessions.public_card.one_day_unchanged` | A one-day session returns a one-element array, which `betweenDays()` has no pair to walk — the card's phase is what it has always been. |
+| ★ **wave 10, migration `0123`** — recognition edits are recorded (`DEC-160`, row L9): the four recognition tables get the history trigger every other configuration table has carried since `0004` and `0027` |
+| `POL-badges.history` | An admin's edit of a badge appends one `scoring_config_history` row per changed column (`scope = 'badges'`), retiring included; a custom badge's creation appends one `created` row; a save that changes nothing appends none; the org's seed appends none. |
+| `POL-levels.history` | An admin's edit of a level appends one row per changed column (`scope = 'levels'`), with the old and the new threshold. |
+| `POL-perks.history` | An admin's edit of a perk appends one row per changed column (`scope = 'perks'`). |
+| `POL-streak_rules.history` | An admin's edit of a streak rule appends one row per changed column (`scope = 'streaks'`). |
+| `POL-recognition.history.no_forgery` | A moderator's refused edit appends nothing; another org's history is untouched; no client role — the admin included — can insert a history row directly (`42501`). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
