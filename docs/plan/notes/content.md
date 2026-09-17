@@ -3024,3 +3024,50 @@ left alone). `npx tsc --noEmit`/`npm run lint` clean, `npm test` 208/208 files 1
 
 Ready for sync — told the lead ui-lint is green; the same rebuild that re-captures §27's two shots
 covers this.
+
+## §29 — a brand-new workshop can take a day's material or task (`a11d071`)
+
+The lead's three-day demonstrable ran the way a person actually does — starting from an empty
+session — and found a real defect neither of my grouping suites met, because both always seeded
+content: `materials/list.tsx` and `tasks/panel.tsx` checked `items.length === 0` and returned the
+flat empty state BEFORE the `days.length` branch that would have shown the grouped layout ever ran.
+On a three-day workshop with nothing added yet — every workshop, on the day it is scheduled — the
+presenter got the flat state: one sentence, one anchor, one form with no scope, and no group header
+anywhere to press. Ruling 3's "pressing the control in the group's header is the choice" does not
+exist as an affordance until something has already landed the other way — a chicken-and-egg the
+demonstrable was the first thing to actually walk into.
+
+Fix is entirely in what no longer returns early: the empty check in both files gained `&&
+days.length <= 1`, matching the flat/grouped split every other branch already makes. A manager with
+nothing yet at `days.length > 1` now falls through to the grouped branch unchanged — its own group
+filter (`g.items.length > 0 || canManage`) already kept every group, empty or not, for a manager, so
+the grouped branch needed exactly one addition: the same empty sentence the flat state uses, shown
+once above the (closed, empty) group headers. Not `ui/empty-state` — its `action` is required by the
+type on purpose (REQ-UIX-012: no "empty, full stop" rendering path), and there is no longer one
+action to name, only each group's own. A plain member with nothing yet is unaffected either way —
+the `!canManage` guard above both branches still returns `null` first.
+
+Two Playwright locators the demonstrable's own screenshots also caught, both in
+`wave9-content-days.spec.ts`: a `<summary>` does not resolve to `getByRole("button", ...)` — it is
+announced to assistive tech as a disclosure/"button, collapsed" natively, which is right and stays —
+located by `aria-label` instead (`summary[aria-label^='أضف مادة']`). The scope-chip-open test needed
+a real rewrite, not a selector tweak: `RescopeChip` moved off `<details>` entirely in §28 (`ui/menu`,
+committed separately, same day) — the old `page.locator("#materials details").filter({ hasText:
+"اليوم الأول" })` matched the chip's own `<summary>{currentLabel} ▾</summary>` text, which no longer
+exists; the trigger is now a real `<button>` found on its own distinct `aria-label`
+("تغيير نطاق المادة: اليوم الأول"), and the open menu is asserted unscoped from `#materials` because
+`ui/menu`'s content portals to the end of `<body>`.
+
+Four new component tests (two per directory — empty + `days.length > 1` + manager shows every
+group's closed control and no open form; the same for a plain member shows nothing, matching the
+`!canManage` guard). Both files' own two-day fixture gives three groups (session + day 1 + day 2)
+rather than a third day added only for these tests — the property under test (every group renders,
+all closed) does not depend on the count; told the lead this substitutes for their literal "three
+days → four disclosures" so it is not a silent deviation. `list.test.tsx`/`panel.test.tsx` (the
+flat-branch byte-identical proofs) untouched.
+
+`npx tsc --noEmit`/`npm run lint`/`npm run ui-lint` clean, `npm test` 208/208 files 1906/1906 tests
+(+4 from the new tests), `npm run test:rls` 99/99 files 1039/1039 tests (single-runner checked first,
+none active).
+
+Ready for sync — the lead rebuilds and runs the demonstrable end to end.
