@@ -1489,10 +1489,41 @@ unverified claim is what `REQ-NTF-009` forbids this wave. The string path leaves
 |---|---|---|
 | **F1** HIGH | The mail declares no colour scheme, so Apple Mail and Outlook.com auto-invert — and an inverter that darkens a background while leaving explicit text colours alone gives **dark text on a dark card**, which a light-mode reviewer never sees | `<meta name="color-scheme">`, `<meta name="supported-color-schemes">` and the `:root` style, **on the block path only**. A test asserts the design has them and the string path has **no `color-scheme` and no `<style>` at all** |
 | **F2** HIGH | A brand logo is often **dark ink on transparency**, and Gmail on Android darkens the card whatever the mail declares (F1's opt-out does not reach it) — so the header of every designed mail goes blank | An explicit **`bgcolor` attribute** on the logo cell and the session card, never a CSS background: the attribute is what the Word engine reads and what the inverter respects. ★ I used the palette's **`surface`** rather than `designer`'s literal `#ffffff` — it is the colour the logo sits on today, so light mode is unchanged, where `#ffffff` would put a white patch on a tinted card. Flagged for confirmation |
-| **F3** MEDIUM | ★ **`session_card_image_url` and `withImage` are set by nothing** — the image branch can never run. The same shape as the `{{url}}` defect, found the same way: by tracing the value rather than reading the code that consumes it | `send_notification.ts` sets `${appUrl}/api/s/${sessionId}/og` **and no other URL**, only when the payload names a session, **that session is `published`, `in_progress` or `completed`**, and `appUrl` is set. The state comes from `notification_send_context()` (proposed `0002`), scoped to the org — a payload is not a capability |
+| **F3** MEDIUM | ★ **`session_card_image_url` and `withImage` are set by nothing** — the image branch can never run. The same shape as the `{{url}}` defect, found the same way: by tracing the value rather than reading the code that consumes it | ★ **Asked, not copied** — see below |
 | **F4** MEDIUM | iOS and Android ship **none** of Plex, Segoe UI or Tahoma, so their Arabic is **discovered, not declared** — a platform reordering its fallbacks would change our Arabic silently on most readers | `DESIGN_STACK` adds `'Geeza Pro', 'Noto Naskh Arabic'` before `Arial`, **block path only**. A test asserts the design declares them and the string path still ends at `Tahoma` |
 | **F5** LOW | The session card's lines are bare `<div>`s — and they are the **bound values**, the worst place to rely on inheritance | `dir="rtl"` and `text-align:right` on both, like every other element |
 | **F6** LOW | `white-space:nowrap` on a `detail_list` label pushes the value column off a 320 px card | Dropped, and the label column capped at `width="35%"` instead |
+
+### ★ F3, and the correction that made it right — ask the predicate, never copy it
+
+My first fix gated the card's image on `state in ('published','in_progress','completed')`. That is
+**a second copy of `export_is_public_card()`'s predicate**, in a second language, free to drift from
+the SQL that actually decides. `designer` said so and the lead ruled it, and both are right: the 404
+is not a property of the mail, it is that function's rule.
+
+So `notification_send_context()` **asks** `public.session_public_card()` — the function
+`/api/s/{id}/og` itself reads — and returns **one boolean**:
+
+```sql
+select coalesce((select c.og_path is not null from public.session_public_card(p_session) c), false)
+```
+
+It returns no row unless the org is active and the session is card-eligible, and `og_path` is
+non-null exactly when a **`ready`, `png`, `og`** artifact exists. So the boolean covers a case the
+state check would have **missed**: a poster that has not finished rendering, which would have put a
+broken image in a member's inbox. The task copies nothing; it has the id already and needs only an
+origin.
+
+★ **Tenancy stays in front of it**, and this is mine rather than the ruling's: `session_public_card()`
+is a *public card* function and scopes to **no org**, so a payload carrying another org's session id
+would otherwise put that org's poster in this org's mail. The gate is `exists (… where s.id =
+p_session and s.org_id = p_org)`. A payload is not a capability. The RLS file proves it with an
+**eligible, rendered** session of the other org still refused.
+
+Five cases, three of them the lead's: no session id → false · published **with** a ready artifact →
+true · the same session with **no artifact yet** → false · **cancelled** → false even with a ready
+artifact · another org's → false · a stale id that is no session → false rather than an error, so a
+stale payload cannot dead-letter a send.
 
 **Two things `designer` cleared, kept because each still looks like a hazard:** white on `fgHeading`
 is not a contrast risk — **contrast is symmetric**, so it is the pairing the brand kit already
