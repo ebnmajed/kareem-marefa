@@ -116,16 +116,26 @@ async function capture(page: Page, name: string) {
 }
 
 /**
- * Pick a day number in the picker whose accessible name matches `name`.
+ * Pick a day number in the picker labelled `label`.
  *
- * The trigger and its dialog carry the SAME name — `ui/date-time` names each by
- * its own field («آخر موعد للحجز: …», «اليوم الثاني · الخميس: بداية اليوم»),
- * which is what stops four pickers on one form being four «التاريخ والوقت»s to
- * a screen reader.
+ * ★ THE TRIGGER AND THE DIALOG HAVE DIFFERENT NAMES, and getting that wrong is
+ * what made the first run of this spec hang for 90 s on the phone.
+ * `ui/date-time` names its TRIGGER «{label}: {value}» — so four date fields on
+ * one form are four distinguishable controls, which is the whole point of the
+ * `label` prop — and names its DIALOG «{label}» alone. One regular expression
+ * cannot match both; `wave8-lead-schedule.spec.ts` has always passed the label
+ * to the dialog and the prefixed form to the trigger, and so does this.
+ *
+ * The 10th and the 12th: day numbers no padding cell of an adjacent month can
+ * share, so `first()` cannot pick the wrong one.
  */
-async function pick(page: Page, name: RegExp, day: string, opts: { hour?: string; nextMonth?: boolean } = {}) {
-  await page.getByRole("button", { name }).click();
-  const picker = page.getByRole("dialog", { name });
+async function pick(page: Page, label: RegExp, day: string, opts: { hour?: string; nextMonth?: boolean } = {}) {
+  // A trailing `$` is dropped before the value's separator is appended: the
+  // dialog's name ENDS at the label, the trigger's does not.
+  const trigger = new RegExp(`${label.source.replace(/\$$/, "")}.*: `);
+  await page.getByRole("button", { name: trigger }).click();
+  const picker = page.getByRole("dialog", { name: label });
+  await expect(picker).toBeVisible();
   if (opts.nextMonth) await picker.getByRole("button", { name: "الشهر التالي" }).click();
   await picker.getByRole("button", { name: new RegExp(`^${day} `) }).and(page.locator(":enabled")).first().click();
   if (opts.hour) {
@@ -133,6 +143,7 @@ async function pick(page: Page, name: RegExp, day: string, opts: { hour?: string
     await picker.getByLabel("الدقيقة").selectOption("0");
   }
   await picker.getByRole("button", { name: "تم", exact: true }).click();
+  await expect(picker).toBeHidden();
 }
 
 test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps", async ({ context, page }) => {
@@ -153,7 +164,7 @@ test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps"
   await expect(page.getByRole("button", { name: "أضف يومًا" })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 3, name: /^اليوم/ })).toHaveCount(0);
 
-  await pick(page, /^التاريخ والوقت: /, "10", { hour: "18", nextMonth: true });
+  await pick(page, /^التاريخ والوقت$/, "10", { hour: "18", nextMonth: true });
   const venue = page.getByLabel("المكان", { exact: true });
   await venue.selectOption((await venue.locator("option", { hasText: "القاعة الكبرى" }).getAttribute("value"))!);
   await expect(page.getByLabel("السعة")).toHaveValue("40");
@@ -176,10 +187,10 @@ test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps"
 
   // ── An overlap, said at the field on the picker's commit ─────────────────
   // Day three back onto day one's date: the two windows are the same evening.
-  await pick(page, /^اليوم الثالث · .*: بداية اليوم$/, "10");
+  await pick(page, /^بداية اليوم الثالث · /, "10");
   await expect(page.getByText("يتداخل هذا اليوم مع يوم آخر من الجلسة.")).toBeVisible();
   await capture(page, "schedule-overlap");
-  await pick(page, /^اليوم الثالث · .*: بداية اليوم$/, "12");
+  await pick(page, /^بداية اليوم الثالث · /, "12");
   await expect(page.getByText("يتداخل هذا اليوم مع يوم آخر من الجلسة.")).toHaveCount(0);
 
   // ── Removing a day asks, and NAMES it (DEC-121) ──────────────────────────

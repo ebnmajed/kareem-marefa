@@ -910,7 +910,12 @@ function DayCard({
             // travels in the hidden `days` field, and `SCHEDULE_FIELDS` does
             // not list these, so `formStateFrom()` never reads them.
             name={`day-${position}-startsAt`}
-            label={`${heading}: ${t("days.field.startsAt")}`}
+            // ★ ONE PHRASE, ONE COLON. `ui/date-time` names its trigger
+            // «{label}: {value}» and its dialog «{label}», so a label that
+            // already contains a colon gives «… : بداية اليوم: 12 أكتوبر» to a
+            // screen reader and two different names to a test. «بداية اليوم
+            // الثالث · السبت» reads as what it is.
+            label={t("days.field.startsAtOf", { day: heading })}
             granularity={timeShown ? "minute" : "date"}
             value={day.startsAt}
             onChange={(value) => set({ startsAt: value ?? "" })}
@@ -928,7 +933,7 @@ function DayCard({
           </p>
           {day.endsAt ? (
             <Field id={dayFieldId(index, "endsAt")} label={t("days.field.endsAt")} error={error(index, "endsAt")} className="mt-2">
-              <DateTime name={`day-${position}-endsAt`} label={`${heading}: ${t("days.field.endsAt")}`} value={day.endsAt} onChange={(value) => set({ endsAt: value ?? "" })} />
+              <DateTime name={`day-${position}-endsAt`} label={t("days.field.endsAtOf", { day: heading })} value={day.endsAt} onChange={(value) => set({ endsAt: value ?? "" })} />
             </Field>
           ) : null}
           <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => set({ endsAt: day.endsAt ? "" : end })}>

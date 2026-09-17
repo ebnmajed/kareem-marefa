@@ -81,36 +81,51 @@ test.beforeAll(async ({}, testInfo) => {
   }
   await db.query(`update public.members set org_role = 'admin' where id = $1`, [ids[adminEmail]]);
 
-  const { rows: session } = await db.query<{ id: string }>(
-    `insert into public.sessions (org_id, title, abstract, category_id, level)
-     values ($1, 'ورشة تحليل البيانات على ثلاث أمسيات', 'ثلاث جلسات عملية متتابعة.', $2, 'introductory')
-     returning id`,
-    [orgId, cat[0].id],
-  );
-  sessionId = session[0].id;
-
   // ★ ONE DAY BEHIND, TWO AHEAD. A reader of the session's stored window alone
   // sees a start that has passed and an end that has not, and says «جارية».
   const now = Date.now();
   const days = [
-    { starts_at: new Date(now - DAY - 2 * HOUR).toISOString(), ends_at: new Date(now - DAY).toISOString(), venue_id: venue[0].id },
-    { starts_at: new Date(now + DAY).toISOString(), ends_at: new Date(now + DAY + 2 * HOUR).toISOString(), venue_id: venue[0].id },
-    { starts_at: new Date(now + 2 * DAY).toISOString(), ends_at: new Date(now + 2 * DAY + 2 * HOUR).toISOString(), venue_id: venue[0].id },
+    { starts_at: new Date(now - DAY - 2 * HOUR).toISOString(), ends_at: new Date(now - DAY).toISOString() },
+    { starts_at: new Date(now + DAY).toISOString(), ends_at: new Date(now + DAY + 2 * HOUR).toISOString() },
+    { starts_at: new Date(now + 2 * DAY).toISOString(), ends_at: new Date(now + 2 * DAY + 2 * HOUR).toISOString() },
   ];
-  // Inserted as the owner, which is what an e2e fixture is: `session_days` has
-  // no write policy at all (0100), and `schedule_session()` needs a real admin
-  // session this harness has no way to assume from SQL. `0100`'s trigger B then
-  // derives the session's window and venue from the days, exactly as it does
-  // for the form — so the row under test is the row the product produces.
-  for (const day of days) {
+
+  // ★ BORN PUBLISHED, CARRYING DAY ONE'S WINDOW — not updated into it.
+  // `sessions_guard_transition` (0024) accepts only `02` §6.2's edges for EVERY
+  // writer, the owner included, so `draft → published` is refused with
+  // `illegal_session_transition`; a row is born with its state instead (the
+  // pattern `checkin.spec.ts` uses). `0100`'s trigger A then creates day ONE
+  // from this window, which is why the window here is day one's and not the
+  // span: the two days below extend it, and trigger B re-derives `ends_at`.
+  const { rows: session } = await db.query<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level,
+                                  starts_at, ends_at, duration_minutes, venue_id, capacity, state, published_at)
+     values ($1, 'ورشة تحليل البيانات على ثلاث أمسيات', 'ثلاث جلسات عملية متتابعة.', $2, 'introductory',
+             $3, $4, 120, $5, 40, 'published', now() - interval '1 hour')
+     returning id`,
+    [orgId, cat[0].id, days[0].starts_at, days[0].ends_at, venue[0].id],
+  );
+  sessionId = session[0].id;
+
+  for (const day of days.slice(1)) {
     await db.query(
       `insert into public.session_days (org_id, session_id, starts_at, ends_at, venue_id)
        values ($1, $2, $3, $4, $5)`,
-      [orgId, sessionId, day.starts_at, day.ends_at, day.venue_id],
+      [orgId, sessionId, day.starts_at, day.ends_at, venue[0].id],
     );
   }
-  await db.query(`update public.sessions set capacity = 40, duration_minutes = 120 where id = $1`, [sessionId]);
-  await db.query(`update public.sessions set state = 'published', published_at = now() where id = $1`, [sessionId]);
+
+  // The fixture asserts its own premise: three days, and a session window that
+  // is their stored shadow (contract 1). A capture of the wrong row proves
+  // nothing, and this is the one place the shape could silently drift.
+  const { rows: check } = await db.query<{ n: string; starts_at: Date; ends_at: Date }>(
+    `select (select count(*) from public.session_days d where d.session_id = s.id) as n, s.starts_at, s.ends_at
+       from public.sessions s where s.id = $1`,
+    [sessionId],
+  );
+  if (Number(check[0].n) !== 3) throw new Error(`fixture: expected 3 days, got ${check[0].n}`);
+  if (check[0].starts_at.toISOString() !== days[0].starts_at) throw new Error("fixture: the session's start is not day one's");
+  if (check[0].ends_at.toISOString() !== days[2].ends_at) throw new Error("fixture: the session's end is not the last day's");
 });
 
 test.afterAll(async () => {

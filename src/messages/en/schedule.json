@@ -44,7 +44,9 @@
       "placeNote": "This is the first day's place, and every day after it inherits the place until you change that day.",
       "field": {
         "startsAt": "The day starts",
+        "startsAtOf": "{day} starts",
         "endsAt": "The day ends",
+        "endsAtOf": "{day} ends",
         "venueChoice": "The day's place",
         "customVenueName": "Place name",
         "customVenueAddress": "Address"

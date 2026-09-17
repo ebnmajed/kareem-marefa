@@ -44,7 +44,9 @@
       "placeNote": "هذا مكان اليوم الأول، وبقية الأيام ترثه ما لم تُغيّرها.",
       "field": {
         "startsAt": "بداية اليوم",
+        "startsAtOf": "بداية {day}",
         "endsAt": "نهاية اليوم",
+        "endsAtOf": "نهاية {day}",
         "venueChoice": "مكان اليوم",
         "customVenueName": "اسم المكان",
         "customVenueAddress": "عنوان المكان"
