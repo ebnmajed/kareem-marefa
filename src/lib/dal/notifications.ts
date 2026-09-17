@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { DEFAULT_TEMPLATES, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
 import { sessionClient } from "@/lib/dal/session";
+import { getOrgPrefs } from "@/lib/dal/proposals";
 
 // Notifications — the inbox and the preference matrix of SCR-026
 // (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006), plus the unread count the shell's
@@ -340,6 +342,92 @@ export interface TemplateCatalogue {
 async function assertAdmin(locale: string) {
   const client = await sessionClient(locale);
   return client.session.role === "admin" ? client : null;
+}
+
+export interface EmailPreviewInput {
+  key: string;
+  subject?: string;
+  body?: string;
+  /** The editor's unsaved block document, as JSON text. */
+  blocks?: string;
+  appUrl: string;
+}
+
+/**
+ * The live preview (`REQ-NTF-010`). Null for a caller who may not edit
+ * templates, and null for a key `08` §1 does not list — one answer, because a
+ * preview must not tell a non-admin which message keys exist.
+ *
+ * ★ It renders through `renderEmail()` — THE mail renderer — over the sample
+ * payload `tests/unit/mail-pinned/` pins for that key. There is no second
+ * renderer and no second sample set, which is the whole of `REQ-NTF-010`.
+ *
+ * ★ It reads NOTHING the admin is editing from the database. The draft comes
+ * in with the request, because the preview's purpose is to show an admin what
+ * they have not saved yet.
+ */
+export async function compileEmailPreview(
+  locale: string,
+  input: EmailPreviewInput,
+): Promise<{ html: string; text: string; subject: string } | null> {
+  if (!(await canEditEmailTemplates(locale))) return null;
+
+  const sample = sampleFor(input.key);
+  if (!sample) return null;
+
+  const fallback = DEFAULT_TEMPLATES[input.key];
+  // A draft with no subject or body yet falls back to the built-in Arabic
+  // default, so the frame is never empty while an admin is still typing.
+  const subject = input.subject?.trim() || fallback?.subject || "";
+  const body = input.body?.trim() || fallback?.body || "";
+  if (!subject || !body) return null;
+
+  let blocks: unknown = null;
+  if (input.blocks) {
+    try {
+      blocks = JSON.parse(input.blocks);
+    } catch {
+      // Malformed JSON previews the STRING path rather than failing: an admin
+      // mid-edit should see the message, not an error page in the frame.
+      blocks = null;
+    }
+  }
+
+  const client = await sessionClient(locale);
+  // The org's OWN name, palette and zone — a preview of a branded mail that
+  // showed the sample org's would be a picture of somebody else's message.
+  const [{ data: kit }, { data: org }, prefs] = await Promise.all([
+    client.supabase.rpc("brand_kit", { p_org: client.session.orgId }),
+    client.supabase.from("orgs").select("name").eq("id", client.session.orgId).maybeSingle(),
+    getOrgPrefs(locale),
+  ]);
+  const light = (kit as { light?: Record<string, string> } | null)?.light;
+  const dark = (kit as { dark?: Record<string, string> } | null)?.dark;
+
+  const rendered = renderEmail({
+    key: input.key,
+    override: { subject, body, blocks },
+    payload: sample.payload,
+    member: sample.member ?? SAMPLE_MEMBER,
+    org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
+    brand: light ? { light, dark } : null,
+    appUrl: input.appUrl,
+  });
+  return { html: rendered.html, text: rendered.text, subject: rendered.subject };
+}
+
+/**
+ * Whether the caller may edit this org's email templates — the one predicate
+ * `/api/admin/emails/preview` needs.
+ *
+ * A thin export over `assertAdmin()` rather than a second rule: the preview
+ * renders an admin's UNSAVED draft, so it never touches a row and has no RLS
+ * boundary of its own to stand behind. Authorisation therefore has to be
+ * explicit at the door, and it is the same `role === "admin"` every other
+ * surface of SCR-058 applies.
+ */
+export async function canEditEmailTemplates(locale: string): Promise<boolean> {
+  return (await assertAdmin(locale)) !== null;
 }
 
 export async function getTemplateCatalogue(locale: string): Promise<TemplateCatalogue | null> {
