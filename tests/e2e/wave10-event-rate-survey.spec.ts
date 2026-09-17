@@ -62,30 +62,37 @@ test.beforeAll(async ({}, testInfo) => {
   await client.auth.signInWithPassword({ email, password: PASSWORD });
   memberId = ((await client.rpc("provision_member")).data as { member_id: string }).member_id;
 
-  const session = async (title: string) =>
+  // ★ EACH SESSION GETS ITS OWN HOUR, and so does each check-in's
+  // `session_window`. One member cannot hold two check-ins whose windows
+  // overlap — `check_ins_member_id_session_window_excl` (0087) is the
+  // one-body-one-room rule (REQ-CHK-013), and it is right. The RLS suite dodges
+  // it with an EMPTY range; a browser going through real rows cannot.
+  const session = async (title: string, hoursAgo: number) =>
     (
       await db.query<{ id: string }>(
         `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                       venue_id, capacity, state, published_at, completed_at)
-         values ($1, $2, 'ملخص الجلسة', $3, 'introductory', now() - interval '2 days', 60, now() - interval '2 days' + interval '1 hour',
-                 $4, 30, 'completed', now() - interval '3 days', now() - interval '2 days')
+         values ($1, $2, 'ملخص الجلسة', $3, 'introductory',
+                 now() - make_interval(hours => $5), 60, now() - make_interval(hours => $5) + interval '1 hour',
+                 $4, 30, 'completed', now() - interval '1 day', now() - make_interval(hours => $5) + interval '1 hour')
          returning id`,
-        [orgId, title, category, venue],
+        [orgId, title, category, venue, hoursAgo],
       )
     ).rows[0].id;
-  const checkIn = (sessionId: string) =>
+  const checkIn = (sessionId: string, hoursAgo: number) =>
     db.query(
       `insert into public.check_ins (org_id, session_id, member_id, method, manual_reason, marked_by, session_window)
-       values ($1, $2, $3, 'manual', 'اختبار آلي', $3, tstzrange(now() - interval '3 days', now() - interval '2 days'))`,
-      [orgId, sessionId, memberId],
+       values ($1, $2, $3, 'manual', 'اختبار آلي', $3,
+               tstzrange(now() - make_interval(hours => $4), now() - make_interval(hours => $4) + interval '1 hour'))`,
+      [orgId, sessionId, memberId, hoursAgo],
     );
 
-  ids.withSurvey = await session("كيف اختصرنا وقت التقارير الشهرية");
-  await checkIn(ids.withSurvey);
-  ids.withoutSurvey = await session("جلسة بلا استبانة");
-  await checkIn(ids.withoutSurvey);
-  ids.second = await session("مقدمة في قراءة الميزانية");
-  await checkIn(ids.second);
+  ids.withSurvey = await session("كيف اختصرنا وقت التقارير الشهرية", 6);
+  await checkIn(ids.withSurvey, 6);
+  ids.withoutSurvey = await session("جلسة بلا استبانة", 4);
+  await checkIn(ids.withoutSurvey, 4);
+  ids.second = await session("مقدمة في قراءة الميزانية", 2);
+  await checkIn(ids.second, 2);
 
   // The survey, written the way SCR-064 writes it — rows, not an RPC, because
   // the RPC's caller has to be a signed-in staff member and this spec's member

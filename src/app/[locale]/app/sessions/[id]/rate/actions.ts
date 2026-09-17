@@ -2,10 +2,10 @@
 
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { submitRating, submitRatingInput, updateRating, updateRatingInput } from "@/lib/dal/ratings";
+import { getRatingEligibility, submitRating, submitRatingInput, updateRating, updateRatingInput } from "@/lib/dal/ratings";
 import { submitSurveyResponse, type AnswerInput } from "@/lib/dal/surveys";
 import { formStateFrom, was, wasList, withErrors, withFormError } from "@/lib/form-state";
-import { RATE_FIELDS, RATING_SAVED, isRatingField, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
+import { RATE_FIELDS, RATING_SAVED, isRatingField, ratingChanged, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
 
 // SCR-015's Server Actions. Zod first (REQ-NFR-002), then the DAL — the
 // `with check` on `ratings_write_self` (0010, 0087) is the real authority
@@ -206,6 +206,19 @@ export async function submitRatingAction(
     // Without a survey the behaviour is exactly what it was.
     const already = e instanceof Error && e.message === "already_rated";
     if (!survey || !already) return refusal(state, e);
+
+    // …and if they ALSO edited their stars or comment before pressing again,
+    // that edit is theirs and is applied. Nothing is written when nothing
+    // changed. A refused edit never stops the survey: the survey is what this
+    // press is for, and the rating already stands.
+    try {
+      const { existing } = await getRatingEligibility(locale, sessionId);
+      if (existing && ratingChanged(existing, { sessionStars, presenterStars, comment })) {
+        await updateRating(locale, { ratingId: existing.id, sessionStars, presenterStars, comment });
+      }
+    } catch {
+      // the rating stands as first written; the survey continues
+    }
   }
 
   // 3. The survey alone is refused.

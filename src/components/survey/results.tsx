@@ -40,8 +40,13 @@ export async function SurveyResults({ results }: { results: SurveyResultsDTO }) 
           {results.eligibleCount === 0 ? (
             <p className="text-body text-fg-muted">{t("noAttendees")}</p>
           ) : (
+            // ★ The label is not the heading repeated. «نسبة الاستجابة» is the
+            // section; this says what the numerator COUNTS, and the hint says
+            // what the denominator is — «من 12 حاضرًا مؤهلًا», which is the one
+            // thing the ratio does not say for itself (eligible attendees, not
+            // invitees — REQ-SUR-008).
             <Stat
-              label={t("responseRate")}
+              label={t("respondents")}
               value={`${formatNumber(results.responseCount ?? 0)} / ${formatNumber(results.eligibleCount)}`}
               hint={t("outOfEligible", { count: results.eligibleCount, value: formatNumber(results.eligibleCount) })}
             />

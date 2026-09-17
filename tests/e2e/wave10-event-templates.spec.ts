@@ -127,8 +127,11 @@ test("★ a moderator writes a template, moves a question with ONE CLICK, and sa
   await rows.nth(1).locator("> div").last().getByRole("button", { name: "انقل لأسفل" }).click();
   await expect(main(page).getByLabel(/نص السؤال/).nth(1)).toHaveValue("هل كانت المدة مناسبة؟");
   await expect(main(page).getByLabel(/نص السؤال/).nth(2)).toHaveValue("ماذا تقترح للجلسة القادمة؟");
-  // The move is announced, naming the row and its new position in Western digits.
-  await expect(main(page).getByRole("status")).toContainText("إلى الموضع 3 من 3");
+  // The move is announced, naming the row and its new position in Western
+  // digits. ★ Filtered, not `getByRole("status")` alone: a choice question
+  // nests a second reorderable list, so there are two polite regions in the
+  // page and the empty one is as real as this one.
+  await expect(main(page).getByRole("status").filter({ hasText: "إلى الموضع" })).toContainText("إلى الموضع 3 من 3");
   await capture(page, "templates-editor-moved");
 
   await main(page).getByRole("button", { name: "حفظ القالب" }).click();

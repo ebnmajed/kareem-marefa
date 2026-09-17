@@ -64,5 +64,28 @@ export const surveyKey = (key: string) => `${SURVEY_KEY}${key}`;
  */
 export const RATING_SAVED = surveyKey("rating_saved");
 
+/**
+ * ★ Did the member change their rating between the two presses (`DEC-164`)?
+ *
+ * The second press sends the survey alone — for a member who changed nothing.
+ * One who edited their stars on the way back meant that edit, and dropping it
+ * silently would be the quiet kind of data loss. When nothing changed, nothing
+ * is written: an `edited_at` for an identical value is churn that says a member
+ * revised a rating they did not.
+ *
+ * `comment` is `string | null` by the time it gets here — the action trims and
+ * maps «» to null — so the two spellings of «nothing» must compare equal.
+ */
+export function ratingChanged(
+  stored: { sessionStars: number; presenterStars: number; comment: string | null },
+  next: { sessionStars: number; presenterStars: number; comment: string | null },
+): boolean {
+  return (
+    stored.sessionStars !== next.sessionStars ||
+    stored.presenterStars !== next.presenterStars ||
+    (stored.comment ?? "") !== (next.comment ?? "")
+  );
+}
+
 /** The rating's own three fields, so the two halves can be told apart. */
 export const isRatingField = (field: string): field is RatingField => (RATE_FIELDS as readonly string[]).includes(field);

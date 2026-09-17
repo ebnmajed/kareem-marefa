@@ -175,7 +175,7 @@ test("★ the third response draws it — the rate, the scale's bars, the writte
   await signIn(context, people.admin.email);
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
 
-  await expect(main(page).getByText("نسبة الاستجابة")).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "نسبة الاستجابة" })).toBeVisible();
   await expect(main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("progressbar")).toHaveCount(5);
   await expect(main(page).getByText("اقتراح 1")).toBeVisible();
   await expect(main(page).getByRole("link", { name: "تصدير CSV" })).toBeVisible();
@@ -188,7 +188,7 @@ test("★ the session's presenter is refused by the DATABASE, not by a missing l
   await signIn(context, people.presenter.email);
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
 
-  await expect(main(page).getByText("نسبة الاستجابة")).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "نسبة الاستجابة" })).toHaveCount(0);
   await expect(main(page).getByText("النتائج محجوبة")).toHaveCount(0);
   await expect(main(page)).not.toContainText("اقتراح 1");
   await capture(page, "survey-presenter-refused");

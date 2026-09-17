@@ -68,7 +68,8 @@
       "texts": "Written answers",
       "export": "Export CSV",
       "exportAdminOnly": "Exporting is for organisation admins",
-      "countLabel": "{value}"
+      "countLabel": "{value}",
+      "respondents": "Respondents"
     },
     "rate": {
       "heading": "Session survey",

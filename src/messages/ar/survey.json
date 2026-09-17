@@ -68,7 +68,8 @@
       "texts": "الإجابات المكتوبة",
       "export": "تصدير CSV",
       "exportAdminOnly": "التصدير لمشرفي المؤسسة",
-      "countLabel": "{value}"
+      "countLabel": "{value}",
+      "respondents": "المجيبون"
     },
     "rate": {
       "heading": "استبانة الجلسة",
