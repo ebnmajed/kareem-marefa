@@ -223,8 +223,8 @@ export function dayPhase(day: DayWindow, now: Date = new Date()): DayPhase {
 }
 
 /** The days in the order they happen. Sorted by instant, never by a `position` someone typed. */
-function chronological(days: readonly DayWindow[] | null | undefined): DayWindow[] {
-  const at = (d: DayWindow) => parseInstant(d.startsAt)?.getTime() ?? 0;
+function chronological<T extends DayWindow>(days: readonly T[] | null | undefined): T[] {
+  const at = (d: T) => parseInstant(d.startsAt)?.getTime() ?? 0;
   // The same order as the database's `order by starts_at, id`.
   return [...(days ?? [])].sort((a, b) => at(a) - at(b) || a.id.localeCompare(b.id));
 }
@@ -270,8 +270,12 @@ export function checkInCeiling(ordered: readonly DayWindow[], index: number): nu
  *
  * ★ PRESENTATION, NEVER AUTHORITY — `check_in()` decides, and resolves the day
  * from the CODE, which belongs to exactly one day.
+ *
+ * Generic on purpose (`sessions`' request, sync 3): a `SessionDay[]` in is a
+ * `SessionDay` out, so the day's own `checkInOpen` — required there, optional on
+ * `DayWindow` — is read off the very element that was resolved, never re-found.
  */
-export function checkInDay(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): DayWindow | null {
+export function checkInDay<T extends DayWindow>(days: readonly T[] | null | undefined, now: Date = new Date()): T | null {
   const t = now.getTime();
   const ordered = chronological(days);
   const open = ordered.filter((d, i) => {
@@ -289,7 +293,7 @@ export function checkInDay(days: readonly DayWindow[] | null | undefined, now: D
  * the day taking attendance; else the latest day already begun; else, nothing
  * having begun, the first. Null only when there are no days.
  */
-export function resolveDay(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): DayWindow | null {
+export function resolveDay<T extends DayWindow>(days: readonly T[] | null | undefined, now: Date = new Date()): T | null {
   const taking = checkInDay(days, now);
   if (taking) return taking;
   const ordered = chronological(days);
