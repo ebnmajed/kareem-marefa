@@ -8,6 +8,7 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { UncheckedAttendee } from "@/lib/dal/checkin";
+import type { MarkableDay } from "./manual-mark-form";
 import type { RemoveState } from "./actions";
 import { emptyRemoveState } from "./state";
 
@@ -29,9 +30,18 @@ export function RemoveCheckInForm({
   action,
   candidates,
   sessionTitle,
+  days,
+  defaultDayId,
+  candidatesByDay,
 }: {
   action: (prev: RemoveState, formData: FormData) => Promise<RemoveState>;
+  /** Everyone with an active check-in on ANY day — the union, for the empty check. */
   candidates: UncheckedAttendee[];
+  /** Every day of the session. Length 1 for nearly every session. */
+  days: MarkableDay[];
+  defaultDayId: string | null;
+  /** Who is checked in on WHICH day — a removal is always of ONE day's record. */
+  candidatesByDay: Record<string, UncheckedAttendee[]>;
   /** REQ-UIX-013: the confirm dialog names the session too, not just the
    *  member (the lead's own restated constraint for this control) — this
    *  page already reads it for its own `<h1>`, passed straight through. */
@@ -43,6 +53,15 @@ export function RemoveCheckInForm({
   const [open, setOpen] = useState(false);
   const [memberId, setMemberId] = useState("");
   const [reason, setReason] = useState("");
+  // ★ A removal is of ONE day's attendance record (REQ-CHK-017 per DEC-119):
+  // removing Tuesday must leave Wednesday standing. At one day there is no
+  // select and this never moves.
+  // ★ The default is VALIDATED against the list, not trusted. A `defaultDayId`
+  // that is not one of these days — a page rendered before a day was deleted,
+  // a hand-edited field — would otherwise travel to the RPC, which refuses it
+  // `not_found`: an error the admin can neither see the cause of nor act on.
+  const [dayId, setDayId] = useState(days.some((d) => d.id === defaultDayId) ? (defaultDayId as string) : (days[0]?.id ?? ""));
+  const manyDays = days.length > 1;
 
   // Resetting the fields on success is DERIVED from `state`, adjusted DURING
   // RENDER (react.dev's own pattern, `members-table.tsx`'s own precedent for
@@ -59,7 +78,8 @@ export function RemoveCheckInForm({
 
   if (candidates.length === 0) return <p className="mt-3 text-body-sm text-fg-muted">{t("removeEmpty")}</p>;
 
-  const selected = candidates.find((c) => c.memberId === memberId);
+  const forDay = candidatesByDay[dayId] ?? candidates;
+  const selected = forDay.find((c) => c.memberId === memberId);
   const canConfirm = memberId !== "" && reason.trim().length > 0;
 
   return (
@@ -70,12 +90,32 @@ export function RemoveCheckInForm({
     // reason_required` nor `remove_check_in()`'s own refusal is ever
     // reached, because the click never becomes a request.
     <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
+      {manyDays ? (
+        <Field id="remove-day" label={t("dayLabel")} hint={t("removeDayHint")}>
+          <Select
+            name="dayId"
+            value={dayId}
+            onChange={(e) => {
+              setDayId(e.target.value);
+              setMemberId("");
+            }}
+          >
+            {days.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ) : (
+        <input type="hidden" name="dayId" value={dayId} />
+      )}
       <Field id="remove-member" label={t("removeMemberLabel")} required>
         <Select name="memberId" required value={memberId} onChange={(e) => setMemberId(e.target.value)}>
           <option value="" disabled>
             {t("removeMemberPlaceholder")}
           </option>
-          {candidates.map((c) => (
+          {forDay.map((c) => (
             <option key={c.memberId} value={c.memberId}>
               {c.displayName ?? c.memberId}
             </option>

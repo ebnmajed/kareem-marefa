@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getCheckInScreenData } from "@/lib/dal/checkin";
 import { CodeInput } from "@/components/checkin/code-input";
+import { dayName } from "@/components/checkin/day-name";
 import { Panel } from "@/components/ui/panel";
 import { submitCheckInForm } from "./actions";
 
@@ -30,11 +31,24 @@ export default async function CheckInPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   await requireSession(locale, `/${locale}/app/sessions/${id}/check-in`);
-  const [data, t] = await Promise.all([getCheckInScreenData(locale, id), getTranslations("checkin")]);
+  const [data, t, tDays] = await Promise.all([getCheckInScreenData(locale, id), getTranslations("checkin"), getTranslations("sessions.days")]);
   if (!data) notFound();
 
   const { success, already, error, code } = await searchParams;
   const errorKey = error && KNOWN_ERRORS.has(error) ? error : error ? "unknown" : null;
+
+  // ★ THE DAY (DEC-119), null at one — so a talk reads exactly as it did.
+  // The member is never ASKED which day: the code belongs to one, and
+  // `check_in()` resolves it from the code. The screen only SAYS which, which
+  // is the honest half of not asking.
+  const label = dayName({ day: data.day, dayCount: data.dayCount, timeZone: data.timeZone }, tDays, locale);
+
+  // Three refusals read differently inside a workshop: «انتهت الجلسة» is wrong
+  // when day 3 is still ahead. The envelope status the RPC returns is
+  // unchanged (contract 4) — only the words are the day's, and only when
+  // there is a day to name.
+  const DAY_AWARE = new Set(["not_started", "session_ended", "check_in_closed"]);
+  const say = (key: string) => (label && DAY_AWARE.has(key) ? t(`error.${key}_day`, { day: label }) : t(`error.${key}`));
 
   return (
     <>
@@ -42,11 +56,12 @@ export default async function CheckInPage({
       <p className="mt-1 text-body-sm text-fg-muted">
         <bdi>{data.title}</bdi>
       </p>
+      {label ? <p className="mt-1 text-body-sm text-fg-heading">{t("dayLine", { day: label })}</p> : null}
 
       {data.ineligibleReason ? (
         <div role="status">
           <Panel tone="info" className="mt-4 max-w-prose text-body text-fg-heading">
-            {t(`error.${data.ineligibleReason}`)}
+            {say(data.ineligibleReason)}
           </Panel>
         </div>
       ) : (
@@ -70,7 +85,7 @@ export default async function CheckInPage({
           {errorKey ? (
             <div role="alert">
               <Panel tone="error" className="mt-4 text-body text-fg-heading">
-                {t(`error.${errorKey}`)}
+                {say(errorKey)}
               </Panel>
             </div>
           ) : null}

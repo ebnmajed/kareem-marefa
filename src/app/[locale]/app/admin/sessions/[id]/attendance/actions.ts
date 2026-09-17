@@ -1,8 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { markCheckedInManually, manualCheckInInput, removeCheckIn, removeCheckInInput } from "@/lib/dal/checkin";
 import type { Locale } from "@/i18n/routing";
+
+// ★ The day both forms send (DEC-119). An admin corrects Tuesday's list on
+// Thursday, so the day is the FORM's answer and never the clock's — a null
+// here would let `resolve_session_day()` pick Thursday for a Tuesday
+// correction. Anything that is not a uuid becomes null rather than an error:
+// the RPC then resolves it exactly as `main`'s call does, which at one day is
+// the one day, and a hand-forged id of another session is refused there
+// (`not_found`) rather than trusted here.
+function dayOf(formData: FormData): string | null {
+  const raw = formData.get("dayId")?.toString() ?? "";
+  return z.uuid().safeParse(raw).success ? raw : null;
+}
 
 // SCR-044's manual-mark form (REQ-CHK-008). `mark_checked_in_manually`
 // (0015) is the whole gate: admin or moderator, session `in_progress`, a
@@ -23,7 +36,7 @@ export async function markManually(locale: Locale, sessionId: string, _prev: Man
   const typed = { memberId: formData.get("memberId")?.toString() ?? "", reason: formData.get("reason")?.toString() ?? "" };
   if (!parsed.success) return { error: typed.reason.trim().length === 0 ? "reason_required" : "unknown", done: false, ...typed };
 
-  const result = await markCheckedInManually(locale, sessionId, parsed.data.memberId, parsed.data.reason);
+  const result = await markCheckedInManually(locale, sessionId, parsed.data.memberId, parsed.data.reason, dayOf(formData));
   if (!result.ok) return { error: result.error, done: false, ...typed };
 
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
@@ -44,7 +57,7 @@ export async function removeCheckInAction(locale: Locale, sessionId: string, _pr
     return { error: reason.trim().length === 0 ? "reason_required" : "unknown", done: false };
   }
 
-  const result = await removeCheckIn(locale, sessionId, parsed.data.memberId, parsed.data.reason);
+  const result = await removeCheckIn(locale, sessionId, parsed.data.memberId, parsed.data.reason, dayOf(formData));
   if (!result.ok) return { error: result.error, done: false };
 
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);

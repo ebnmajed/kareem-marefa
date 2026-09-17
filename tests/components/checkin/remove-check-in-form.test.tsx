@@ -37,10 +37,23 @@ const CANDIDATES: UncheckedAttendee[] = [
 
 type RemoveAction = (prev: RemoveState, formData: FormData) => Promise<RemoveState>;
 
+// ★ Wave 9 (DEC-119): the form takes a day. ONE day here, which is what
+// every case in this file was already about — the day select does not render
+// below two, so every assertion below is unchanged. The multi-day form is
+// `tests/components/checkin/attendance-days.test.tsx`'s.
+const ONE_DAY = [{ id: "d1", label: "اليوم الأول" }];
+
 function renderForm(action: RemoveAction, candidates: UncheckedAttendee[] = CANDIDATES) {
   return render(
     <NextIntlClientProvider locale="ar" messages={ar}>
-      <RemoveCheckInForm action={action} candidates={candidates} sessionTitle="جلسة اختبار" />
+      <RemoveCheckInForm
+        action={action}
+        candidates={candidates}
+        sessionTitle="جلسة اختبار"
+        days={ONE_DAY}
+        defaultDayId="d1"
+        candidatesByDay={{ d1: candidates }}
+      />
     </NextIntlClientProvider>,
   );
 }

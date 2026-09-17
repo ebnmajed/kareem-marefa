@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getHostView, listUncheckedConfirmedRsvps } from "@/lib/dal/checkin";
 import { formatNumber } from "@/components/sessions/numerals";
+import { dayName } from "@/components/checkin/day-name";
 import type { SessionPhase } from "@/lib/session-status";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -58,15 +59,19 @@ export default async function HostPage({
   const { revoked, manualSuccess, manualError, memberId: submittedMemberId, reason: submittedReason, switch: switchResult, switchError } = await searchParams;
   const isStaff = session.role === "admin" || session.role === "moderator";
 
-  const [view, candidates, t] = await Promise.all([
-    getHostView(locale, id),
-    isStaff ? listUncheckedConfirmedRsvps(locale, id) : Promise.resolve([]),
-    getTranslations("checkin"),
-  ]);
+  const [view, t, tDays] = await Promise.all([getHostView(locale, id), getTranslations("checkin"), getTranslations("sessions.days")]);
 
   if (!view) {
     return <h1 className="text-h1 text-fg-heading">{t("host.notAuthorized")}</h1>;
   }
+
+  // ★ THE DAY, and only when the session has more than one (DEC-119). At one
+  // day `label` is null and nothing below renders — the screen wave 7 shipped.
+  // The candidates are THIS day's: a member marked present yesterday is still
+  // a candidate today.
+  const label = dayName({ day: view.day, dayCount: view.dayCount, timeZone: view.timeZone }, tDays, locale);
+  const dayId = view.day?.id ?? null;
+  const candidates = isStaff ? await listUncheckedConfirmedRsvps(locale, id, dayId) : [];
 
   const manualErrorKey = manualError && KNOWN_MANUAL_ERRORS.has(manualError) ? manualError : manualError ? "unknown" : null;
   const switchErrorKey = switchError && KNOWN_SWITCH_ERRORS.has(switchError) ? switchError : switchError ? "unknown" : null;
@@ -78,6 +83,11 @@ export default async function HostPage({
   return (
     <>
       <h1 className="text-h1 text-fg-heading">{t("host.title")}</h1>
+      {label ? (
+        <p className="mt-1 text-body-sm text-fg-muted">
+          {view.code || view.phase === "live" ? t("host.dayLine", { day: label }) : t("host.nextDay", { day: label })}
+        </p>
+      ) : null}
       {revoked ? (
         <div role="status" className="mt-4">
           <Panel tone="info">{t("host.revoked")}</Panel>
@@ -132,7 +142,7 @@ export default async function HostPage({
           <p className="text-body text-fg-heading">{view.checkInOpen ? t("host.checkInSwitch.statusOpen") : t("host.checkInSwitch.statusClosed")}</p>
           {!view.checkInOpen ? <p className="max-w-sm text-center text-body-sm text-fg-muted">{t("host.checkInSwitch.closedHint")}</p> : null}
 
-          <form action={setCheckInOpenAction.bind(null, locale, id, !view.checkInOpen)} className="mt-1">
+          <form action={setCheckInOpenAction.bind(null, locale, id, !view.checkInOpen, dayId)} className="mt-1">
             <Button type="submit" variant={view.checkInOpen ? "secondary" : "primary"}>
               {view.checkInOpen ? t("host.checkInSwitch.close") : t("host.checkInSwitch.open")}
             </Button>
@@ -141,7 +151,7 @@ export default async function HostPage({
       ) : null}
 
       {view.code ? (
-        <form action={revokeCodeAction.bind(null, locale, id)} className="mt-8 flex justify-center">
+        <form action={revokeCodeAction.bind(null, locale, id, dayId)} className="mt-8 flex justify-center">
           <Button type="submit" variant="secondary">
             {t("host.revoke")}
           </Button>
@@ -171,7 +181,7 @@ export default async function HostPage({
           {candidates.length === 0 ? (
             <p className="mt-3 text-body text-fg-muted">{t("host.manualNoCandidates")}</p>
           ) : (
-            <form action={markManuallyAction.bind(null, locale, id)} noValidate className="mt-4 space-y-4">
+            <form action={markManuallyAction.bind(null, locale, id, dayId)} noValidate className="mt-4 space-y-4">
               <Field id="memberId" label={t("host.manualMember")}>
                 <Select name="memberId" required defaultValue={submittedMemberId ?? ""}>
                   {candidates.map((c) => (
