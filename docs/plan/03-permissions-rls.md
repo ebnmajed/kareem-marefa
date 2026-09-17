@@ -1754,6 +1754,11 @@ generated suite is the highest-value test in the product.
 | `RPC-remove_check_in.certificate_revoked_through_the_hook` | An issued attendance certificate is still revoked when a removal makes attendance incomplete — now through `attendance_certificate_sync()` rather than a `check_in_id` lookup, and still with only the fixed phrase «أُلغي تسجيل الحضور» reaching it. |
 | `RPC-check_in.certificate_synced` | A check-in on a session that is already `completed` reaches the same hook, so a member recorded after the fact becomes eligible rather than being silently skipped (named difference 3). |
 | `RPC-checkin_functions.decide_nothing` | ★ The source of `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of `points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of `REQ-TSK-002`'s three task tables. |
+| ★ **wave 9, sync 3, migration `0121`** — the presenter's attendee bonus is decided in SQL (`DEC-157`), so `main`'s OLD worker — which runs on this schema between the merge and Railway's redeploy — cannot over-pay an append-only ledger |
+| `RPC-award_points.attendee_bonus_epoch_only` | An `attendee_bonus` call naming any active check-in other than that attendee's epoch writes nothing — so `main`'s old per-check-in loop pays a three-day workshop's presenter ONE bonus per attendee, not three. |
+| `RPC-award_points.attendee_bonus_requires_complete` | An `attendee_bonus` call for a partial attendee writes nothing, even when it names that attendee's own latest day. |
+| `RPC-award_points.attendee_bonus_one_day_unchanged` | On a one-day session every call that writes a row today still writes it, with the same amount and the same key. |
+| `RPC-award_points.attendee_bonus_skips_silently` | Every refusal above returns normally — `main`'s loop must never throw part-way through a session. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

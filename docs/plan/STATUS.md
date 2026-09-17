@@ -267,6 +267,118 @@ one-second lock timeout and looks exactly like a regression.
 | P1–P4 | `scoring` | contract 5's two functions · contract 6's predicate and the key · the award at completion · the missed day in the points history | `REQ-SES-017`, `REQ-PTS-012` | ☐ |
 | N1–N3 | `notify` | the calendar per day (SQL, worker, ICS) · reminders per day · the reschedule notice naming the day | `REQ-SES-015`, `REQ-CAL-*`, `REQ-NTF-*` | ☐ |
 
+### ★ `0100`–`0121` — what the owner does, in order, and why the push precedes the merge (row L9)
+
+**Production is at `0099`.** This wave adds twenty-two migrations, **all additive**: no table, column, policy
+name, job name or idempotency key that `main` reads is removed, and every function `main` calls keeps the
+argument list `main` sends — a changed function is dropped and re-created **in the same file** with its new
+arguments trailing and defaulted (`0085`'s lesson: two overloads are an ambiguous PostgREST call).
+
+| # | Author | What it adds |
+|---|---|---|
+| `0100` | lead | `ENT-session_days`, its three triggers (the one-day shim, the derivation, the deferred check at commit), ★ **the backfill — every session with a window becomes exactly one day**; `session_day_id` on the three check-in tables (backfilled, then `not null` on two) and nullable on `materials`, `session_tasks`, `photos`; `sessions.require_all_days` (default true). **Stops with a named exception** if a check-in or a code exists on a session with no window |
+| `0101` | lead | `session_days.check_in_open` (backfilled from the session); `check_in_ceiling()`; `calendar_events.session_day_id` (backfilled) beside the old unique key |
+| `0102` | `scoring` | contract 5's two hooks, `main`'s text verbatim |
+| `0103` | lead | ★ **the security revoke** (`DEC-152`) — the same statement as «FOR THE OWNER, NOW» above; a no-op if that was already run |
+| `0104`, `0105` | `checkin` | the session's switch as the shadow of its days; the eight check-in RPCs with a trailing `p_day` |
+| `0106` | `sessions` | `schedule_session(…, p_days, p_require_all_days)` and `publish_session()` — `main`'s fourteen arguments still schedule one day |
+| `0107` | `scoring` | `session_attendance_complete()`, `session_attendance()` — executable by no client role |
+| `0108` | lead | certificates follow the predicate: the fan-out, `issue_certificate()`, `attendance_certificate_sync()`, `session_complete_attendees()` |
+| `0109`, `0110` | `notify` | one calendar row per day — the old unique key leaves **in the same file** as `record_calendar_sync()`'s new body; `resync_calendars()`; reminders per day with every one-day key unchanged |
+| `0111` + `0112` | `notify` + `sessions` | the day-change notice and its one call site |
+| `0113`, `0114` | `scoring` | the attendance award at completion for a session of more than one day; `missed_attendance_days()` |
+| `0115`, `0116` | `content` | the three re-scope RPCs, the photo's day from its upload instant, `materials.phase` relative to the scope in five policies |
+| `0117`, `0119` | `notify`, lead | two grants narrowed (`session_day_place`, `session_venue_label`) |
+| `0118` | `sessions` | `session_public_card()` gains `day_count` |
+| `0120` | `checkin` | contract 5's call sites: the three check-in functions call the hooks and decide nothing about points or certificates |
+| `0121` | `scoring` | `award_points()` with one branch added: the presenter's attendee bonus is decided in SQL, whichever worker calls |
+
+#### What the lead proved, so the owner's rehearsal confirms rather than discovers
+
+**1 · The caller audit, mechanical.** Every `.rpc()` in `main`'s `src/` at `b7f2f3a` — **75 functions** — was parsed
+with the argument names it sends and resolved against the catalogue at `0120` by PostgREST's own rule (the names
+sent are a subset of the function's, and every name not sent has a default): **75 of 75 resolve.** All **55**
+functions `main`'s worker names in SQL exist, and the four it calls whose signatures grew
+(`rotate_check_in_code`, `record_calendar_sync`, `send_reminder_notification`, `record_photo_upload`) take
+`main`'s argument count through trailing defaults. No return shape `main` reads is parsed strictly — every
+`.strict()` in `main` is on a form's input — so `session_public_card()`'s new `day_count` is an ignored key.
+
+**2 · ★ The data-shaped rehearsal — what a schema-only dump cannot show** (invariant 3). A bare `postgres:17`
+with `scripts/ci/roles.sql`, the chain `0001`–`0099` and graphile-worker's schema; then `main`'s own full RLS
+fixture (`seed()`, unchanged since `main`) **committed**, plus the shapes it lacks: a draft with no window, an
+approved session with a start and no end, a cancelled one with a window, a published one **with its door closed
+by hand and a custom venue**, an in-progress one with a live code, a failed attempt, a code check-in and an
+**admin-removed** check-in, an archived one, a synced calendar row, and reminder jobs queued by `main`'s own
+`schedule_session_reminders()`. 107 rows across 17 tables and the 30-job queue were snapshotted; **`0100`–`0120`
+applied in order, each in one transaction, `ON_ERROR_STOP=1` — all twenty-one clean.** Then, row by row:
+
+| Check | Result |
+|---|---|
+| every pre-existing column of every pre-existing row | **identical** — `sessions.updated_at` included, so the derivation trigger wrote no session; the 30 queued jobs identical in key, `run_at`, payload and revision |
+| ★ the one expected delta | `calendar_events.updated_at` moves to the push instant on every row — `0101`'s backfill fires the table's `updated_at` trigger. **Nothing reads that column** (no reader in `src/`, `worker/` or any migration); `last_synced_at`, which the sync does read, is untouched |
+| sessions with a window | 10 of 10 have **exactly one day**, equal to the stored window, venue and switch, at position 1; the 2 without a full window have none |
+| check-ins, codes, attempts | 6, 3, 3 — each names the day **of its own session**; each check-in's stored window is its day's |
+| calendar rows · content rows | 3 of 3 on their session's one day · none names a day (null = the whole session) |
+| the closed door | carried to its day (`false`) — a session closed today never gets a day born open |
+| `anon` on `_issue_check_in_code` | refused |
+| ★ `main`'s call shapes **over backfilled rows** | `rotate_check_in_code(session)` names the backfilled day · a legacy write of the session's own window moves its day and passes the commit check · `record_calendar_sync()` with six arguments updates the backfilled row in place and adds none |
+
+The container held fixtures only and is removed. (`0121` was promoted after this run; it is one function body with no data statement, applied over the local database with the ten suites that touch `award_points()` green.)
+
+#### The two windows
+
+**Push → merge: `main`'s app and `main`'s worker on `0120`.** Nothing a member sees changes except the two
+SQL-side named differences above (2 and 3). ★ **No multi-day session can exist in this window** — only this
+branch's form makes one. Unlike wave 8 there is no action that fails between the push and the merge, so they
+need not be back to back; there is no reason to separate them either.
+
+**Merge → the worker's redeploy: the new app and `main`'s OLD worker.** ★ **This is the window that matters, and
+Railway's trigger has never fired on its own.** At one day the old worker is correct job by job (contract 2;
+`notify`'s table W6 and each track's note). At more than one day it is not:
+
+| Old worker's job | What it does to a multi-day session | Recoverable? |
+|---|---|---|
+| `evaluate_no_shows` | never calls `evaluate_session_attendance()` — **no attendance points at completion** | yes — idempotent; the repair statement is below |
+| `award_presenter_points` | loops over **check-in rows**, not qualifying attendees — it would have paid three bonuses per attendee for three days, partial attendees included, onto an append-only ledger | ★ **closed in SQL by `0121`** (`DEC-157`): `award_points()` writes an `attendee_bonus` only for the attendee's epoch check-in and only when that attendee completed the session, so the old loop's extra calls are no-ops — proven with cases written **as the old worker's loop**; inert at one day, `award-presenter-points` and `award-points` unmodified and green |
+| `calendar_upsert`, `calendar_delete` | one event spanning the whole session, on day 1's row | yes — `resync_calendars(<session>)` after the redeploy |
+| `send_reminder` | ignores the job's day and words every reminder as day 1's | transient — wording only |
+| `rotate_codes` | mints codes overnight between days; none is usable (`check_in()` gates on the day's window) | harmless |
+| `process_photo` | scopes the photo by the job's clock, not the upload's | harmless — minutes |
+
+#### The owner's order
+
+1. **Run the security statement now if it has not been run** — top of this block; it does not wait for anything.
+2. **Rehearse `0100`–`0121` against a production schema dump** (schema only — check it has no `COPY`/`INSERT`
+   before use, and delete it after), each file in one transaction with `ON_ERROR_STOP=1`. Expect twenty-two
+   clean files and the rehearsal table above.
+3. **Three production reads first** (read only; `supabase db query --linked`):
+   ```sql
+   -- (a) must be 0, or 0100 stops by design with a named exception
+   select count(*) from public.check_ins c join public.sessions s on s.id = c.session_id
+    where s.starts_at is null or s.ends_at is null;
+   select count(*) from public.check_in_codes c join public.sessions s on s.id = c.session_id
+    where s.starts_at is null or s.ends_at is null;
+   -- (b) informational: how many sessions become one day, how many have none
+   select (starts_at is not null and ends_at is not null) as gets_a_day, count(*) from public.sessions group by 1;
+   -- (c) must be false after step 1
+   select has_function_privilege('anon', 'public._issue_check_in_code(uuid)', 'execute');
+   ```
+4. **Outside a scheduled session** (Server Action IDs rotate on deploy): `supabase db push` (`0100`–`0121`) →
+   **merge PR #26** → ★ **check the worker's deployed commit in Railway and reconnect the source if it has not
+   moved** (the standing step below). ★★ **Nobody schedules a session of more than one day until the worker is
+   on the merge commit.**
+5. **Only if step 4's rule was broken** — a multi-day session existed while the old worker ran — the repair,
+   scoped to that session (`DEC-023`: read first, never a migration). Both statements are idempotent:
+   ```sql
+   select s.id, s.title, s.state from public.sessions s
+    where (select count(*) from public.session_days d where d.session_id = s.id) > 1;
+   -- its calendar entries become one per day (the keys are the jobs' own, so nothing is queued twice)
+   select public.resync_calendars('<that session id>');
+   -- and, if it had already COMPLETED on the old worker: awards what is missing, nothing twice
+   select public.evaluate_session_attendance('<that session id>');
+   ```
+   If the rule held, neither is needed: at one day per session the old worker's rows are already right.
+
 ### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
 
 **Railway's push trigger has never been armed.** Three merges in a row (PRs #23, #24, #25) deployed the app
