@@ -12,6 +12,7 @@
 // `schedule-rules.test.ts` and `sessions-schedule-walk-ins.test.ts` are
 // untouched, and stay the evidence they were.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { checkDays, dateOf, dayEnd, withSameClock } from "@/app/[locale]/app/admin/sessions/[id]/schedule/rules";
 import type { ScheduleInput } from "@/lib/dal/sessions";
 
 const scheduleSession = vi.fn<(locale: string, sessionId: string, input: ScheduleInput) => Promise<void>>(async () => undefined);
@@ -141,5 +142,40 @@ describe("★ the field list grows without the one-day form moving", () => {
   it("adds nothing but the day set and its flag", () => {
     const added = SCHEDULE_FIELDS.filter((f) => !WAVE_8_FIELDS.includes(f as (typeof WAVE_8_FIELDS)[number]));
     expect(added.every((f) => ["days", "requireAllDays"].includes(f))).toBe(true);
+  });
+});
+
+describe("★ a day's clock survives a date-only pick", () => {
+  it("shows the picker a DATE, because that is the shape it parses and returns", () => {
+    expect(dateOf("2026-10-11T18:00")).toBe("2026-10-11");
+    // Not a wall clock: the picker would have shown «لم يُحدَّد بعد» for this.
+    expect(dateOf("2026-10-11")).toBe("");
+    expect(dateOf("")).toBe("");
+  });
+
+  it("★ re-attaches the day's own clock, so an inherited 6 p.m. is not silently midnight", () => {
+    expect(withSameClock("2026-10-13", "2026-10-11T18:00")).toBe("2026-10-13T18:00");
+    expect(withSameClock("2026-10-13", "2026-10-11T06:30")).toBe("2026-10-13T06:30");
+  });
+
+  it("passes a whole wall clock through, which is what minute mode returns", () => {
+    expect(withSameClock("2026-10-13T20:15", "2026-10-11T18:00")).toBe("2026-10-13T20:15");
+  });
+
+  it("clears on an empty value, and falls back to midnight with no clock to keep", () => {
+    expect(withSameClock("", "2026-10-11T18:00")).toBe("");
+    expect(withSameClock("2026-10-13", "")).toBe("2026-10-13T00:00");
+  });
+
+  it("★ a clockless day breaks three things downstream — the reason this is not «tolerated»", () => {
+    // What `set({ startsAt: value })` used to store after a date-only pick, and
+    // what every reader then did with it. None of these failed loudly.
+    expect(dayEnd({ startsAt: "2026-10-13", endsAt: "" }, "120")).toBe("");        // the end sentence empties
+    expect(checkDays([{ startsAt: "2026-10-13", endsAt: "" }, { startsAt: "2026-10-13T18:00", endsAt: "2026-10-13T20:00" }])).toEqual({});  // an overlap goes unseen
+    // …and `atZone()` refuses it at submit, so the save is refused on a day
+    // that visibly carries a date. With the clock re-attached, all three work.
+    const whole = withSameClock("2026-10-13", "2026-10-11T18:00");
+    expect(dayEnd({ startsAt: whole, endsAt: "" }, "120")).toBe("2026-10-13T20:00");
+    expect(checkDays([{ startsAt: whole, endsAt: "2026-10-13T20:00" }, { startsAt: "2026-10-13T19:00", endsAt: "2026-10-13T21:00" }])).toEqual({ 1: "daysOverlap" });
   });
 });

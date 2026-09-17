@@ -212,9 +212,24 @@ test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps"
   // on the next date, so nothing is typed for the second or the third.
   await page.getByRole("button", { name: "أضف يومًا" }).click();
   await expect(page.getByRole("heading", { level: 3, name: /^اليوم الثاني · / })).toBeVisible();
+  // ★ AND THE TRIGGER READS THE DATE IT INHERITED. Nothing asserted this, and
+  // the demonstrable's first capture showed «لم يُحدَّد بعد» on a day whose
+  // heading named its weekday and whose end line named its hour: `ui/date-time`
+  // is symmetric about its granularity, and the form was handing a date-only
+  // picker a wall clock.
+  const dayTwo = page.getByRole("button", { name: /^بداية اليوم الثاني · / });
+  await expect(dayTwo).not.toHaveAccessibleName(/لم يُحدَّد بعد/);
+  await expect(dayTwo).toHaveAccessibleName(/2026/);
+
   await page.getByRole("button", { name: "أضف يومًا" }).click();
   await expect(page.getByRole("heading", { level: 3, name: /^اليوم الثالث · / })).toBeVisible();
   await expect(page.getByText(/^نفس مكان اليوم السابق: القاعة الكبرى/).first()).toBeVisible();
+  // «غيّر الوقت» — minute mode shows the date AND the clock the day
+  // inherited, which is 6 p.m. and not midnight.
+  await page.getByRole("button", { name: "غيّر الوقت" }).first().click();
+  await expect(dayTwo).not.toHaveAccessibleName(/لم يُحدَّد بعد/);
+  await expect(dayTwo).toHaveAccessibleName(/6:00/);
+
   await capture(page, "schedule-three-days");
 
   // ── An overlap, said at the field on the picker's commit ─────────────────

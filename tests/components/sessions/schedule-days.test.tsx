@@ -13,13 +13,18 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
+import adminAr from "@/messages/ar/admin.json";
 import scheduleAr from "@/messages/ar/schedule.json";
 import sessionsAr from "@/messages/ar/sessions.json";
 import uiAr from "@/messages/ar/ui.json";
 import { ScheduleForm, type SavedDay, type ScheduleInitial, type ScheduleVenue } from "@/app/[locale]/app/admin/sessions/[id]/schedule/schedule-form";
 import type { ScheduleState } from "@/app/[locale]/app/admin/sessions/[id]/schedule/state";
 
-const MESSAGES = { ...scheduleAr, ...sessionsAr, ...uiAr };
+// `admin.json` because `ui/date-time` reads `admin.dateTime` for the picker's
+// own words — «لم يُحدَّد بعد» among them, which is what this file now asserts
+// a day's trigger never says.
+const MESSAGES = { ...adminAr, ...scheduleAr, ...sessionsAr, ...uiAr };
+const EMPTY = adminAr.admin.dateTime.empty;
 const DAYS = scheduleAr.schedule.days;
 
 const HALL = "00000000-0000-4000-8000-0000000000a1";
@@ -199,5 +204,66 @@ describe("★ REQ-SES-017's switch", () => {
     // ★ "false", not absent: a rendered switch that is off is a DECISION, and
     // only an absent field means «the form never asked».
     expect(container.querySelector<HTMLInputElement>('input[name="requireAllDays"]')?.value).toBe("false");
+  });
+});
+
+describe("★ an added day's start reads as a date, not «لم يُحدَّد بعد»", () => {
+  it("★ shows the inherited date on the trigger — the defect the demonstrable's capture found", async () => {
+    const user = userEvent.setup();
+    mount({ ...BASE, days: [savedDay("d1", WED)] });
+    await user.click(screen.getByRole("switch", { name: DAYS.switch }));
+    await user.click(screen.getByRole("button", { name: DAYS.add }));
+
+    // `ui/date-time` names its trigger «{label}: {value}». The value must be
+    // the date the new day inherited — the next one after day one — and never
+    // the picker's empty label on a day whose heading already names its weekday.
+    const trigger = screen.getByRole("button", { name: /^بداية اليوم الثاني · / });
+    const name = trigger.getAttribute("aria-label") ?? trigger.textContent ?? "";
+    expect(name).not.toContain(EMPTY);
+    expect(name).toMatch(/2026/);
+  });
+
+  it("★ «غيّر الوقت» shows the date AND the clock it inherited, not midnight", async () => {
+    const user = userEvent.setup();
+    mount({ ...BASE, days: [savedDay("d1", WED)] });
+    await user.click(screen.getByRole("switch", { name: DAYS.switch }));
+    await user.click(screen.getByRole("button", { name: DAYS.add }));
+    await user.click(screen.getByRole("button", { name: DAYS.changeTime }));
+
+    const trigger = screen.getByRole("button", { name: /^بداية اليوم الثاني · / });
+    const name = trigger.getAttribute("aria-label") ?? trigger.textContent ?? "";
+    expect(name).not.toContain(EMPTY);
+    // Day one is 6 p.m.; the day after it inherits 6 p.m., not 12:00 ص.
+    expect(name).toMatch(/6:00/);
+  });
+
+  it("the day set it posts carries a whole wall clock, which is what the RPC needs", async () => {
+    const user = userEvent.setup();
+    const { container } = mount({ ...BASE, days: [savedDay("d1", WED)] });
+    await user.click(screen.getByRole("switch", { name: DAYS.switch }));
+    await user.click(screen.getByRole("button", { name: DAYS.add }));
+
+    const posted = JSON.parse(daysField(container)!.value) as { startsAt: string }[];
+    expect(posted[1].startsAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(posted[1].startsAt.endsWith("T18:00")).toBe(true);
+  });
+
+  it("★ and KEEPS the clock through a date-only pick — the half that failed silently", async () => {
+    const user = userEvent.setup();
+    const { container } = mount({ ...BASE, days: [savedDay("d1", WED)] });
+    await user.click(screen.getByRole("switch", { name: DAYS.switch }));
+    await user.click(screen.getByRole("button", { name: DAYS.add }));
+
+    // Drive the real picker in DATE mode, which is what an admin meets: open
+    // it, take a day of the month, confirm. It returns «YYYY-MM-DD», and
+    // before the fix that went straight into the state — where the end
+    // sentence, the overlap check and the save all quietly stopped working.
+    await user.click(screen.getByRole("button", { name: /^بداية اليوم الثاني · / }));
+    const picker = screen.getByRole("dialog", { name: /^بداية اليوم الثاني · / });
+    await user.click(within(picker).getByRole("button", { name: /^20 / }));
+    await user.click(within(picker).getByRole("button", { name: adminAr.admin.dateTime.done }));
+
+    const posted = JSON.parse(daysField(container)!.value) as { startsAt: string; endsAt: string }[];
+    expect(posted[1].startsAt).toMatch(/^\d{4}-\d{2}-20T18:00$/);
   });
 });

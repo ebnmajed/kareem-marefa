@@ -209,6 +209,38 @@ export function nextDayAfter(previous: { startsAt: string; endsAt: string } & Da
   };
 }
 
+/** The calendar date of a wall clock — «2026-10-11» — or `""` when it is not one. */
+export function dateOf(local: string): string {
+  return LOCAL.test(local) ? local.slice(0, 10) : "";
+}
+
+/**
+ * ★ THE BOUNDARY BETWEEN A DAY'S STATE AND A DATE-ONLY PICKER.
+ *
+ * A day is held as a wall clock, «YYYY-MM-DDTHH:mm», because that is what it
+ * is: a meeting at a time. `ui/date-time` at `granularity="date"` is symmetric
+ * about a DATE — its `parse()` accepts «YYYY-MM-DD» and its `serialize()`
+ * returns one — so the card shows the date part and gets a date part back, and
+ * this re-attaches the clock the day already had.
+ *
+ * ★ WHY NOT WIDEN THE PICKER. Teaching `parse()` to accept a wall clock in date
+ * mode would break its own symmetry: it would read «…T18:00» and `serialize()`
+ * would hand back a bare date, DISCARDING the clock on the first tap — so a
+ * third evening inherited at 6 p.m. would silently become midnight, which is
+ * the opposite of what «one tap» is for (`REQ-SES-016`). The picker is right
+ * about its contract; the form adapts at the edge, which is where a shape
+ * mismatch belongs.
+ *
+ * A value already carrying a clock (minute mode) passes through whole; an empty
+ * one clears; anything else keeps `previous`'s clock, or midnight if it had
+ * none to keep.
+ */
+export function withSameClock(next: string, previous: string): string {
+  if (LOCAL.test(next)) return next;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(next)) return "";
+  return `${next}T${LOCAL.test(previous) ? previous.slice(11, 16) : "00:00"}`;
+}
+
 export type DayRelation = "dayEndBeforeStart" | "daysOverlap";
 
 /**

@@ -22,6 +22,7 @@ import {
   atZone,
   checkDays,
   checkRelations,
+  dateOf,
   dayEnd,
   deadlineFor,
   endFollows,
@@ -29,6 +30,7 @@ import {
   missingForPublish,
   nextDayAfter,
   presetOf,
+  withSameClock,
   type DayDraft,
   type DeadlinePreset,
   type RelationField,
@@ -916,9 +918,15 @@ function DayCard({
             // screen reader and two different names to a test. «بداية اليوم
             // الثالث · السبت» reads as what it is.
             label={t("days.field.startsAtOf", { day: heading })}
+            // ★ THE PICKER IS SYMMETRIC ABOUT ITS GRANULARITY: in date mode it
+            // parses and returns «YYYY-MM-DD». Handing it the day's wall clock
+            // made `parse()` return null and the trigger read «لم يُحدَّد بعد»
+            // on a day whose heading and end line both said otherwise — and a
+            // date picked in that mode came back CLOCKLESS, which broke the
+            // end sentence, the overlap check and the save, each silently.
             granularity={timeShown ? "minute" : "date"}
-            value={day.startsAt}
-            onChange={(value) => set({ startsAt: value ?? "" })}
+            value={timeShown ? day.startsAt : dateOf(day.startsAt)}
+            onChange={(value) => set({ startsAt: withSameClock(value ?? "", day.startsAt) })}
           />
         </Field>
         {timeShown ? null : (
