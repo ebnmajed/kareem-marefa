@@ -1759,6 +1759,9 @@ generated suite is the highest-value test in the product.
 | `RPC-award_points.attendee_bonus_requires_complete` | An `attendee_bonus` call for a partial attendee writes nothing, even when it names that attendee's own latest day. |
 | `RPC-award_points.attendee_bonus_one_day_unchanged` | On a one-day session every call that writes a row today still writes it, with the same amount and the same key. |
 | `RPC-award_points.attendee_bonus_skips_silently` | Every refusal above returns normally — `main`'s loop must never throw part-way through a session. |
+| ★ **wave 9, sync 4, migration `0122`** — the public card is given its day windows (`DEC-157`), so `sessionPhase()` stays the one implementation and the card stops saying «جارية الآن» between two days |
+| `POL-sessions.public_card.day_windows` | The public card's row carries one `{ starts_at, ends_at }` per day, ordered, for `anon` and `authenticated` alike — enough for `sessionPhase()` and nothing more. No day id, no position, no venue; `session_days` gains no grant. |
+| `POL-sessions.public_card.one_day_unchanged` | A one-day session returns a one-element array, which `betweenDays()` has no pair to walk — the card's phase is what it has always been. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

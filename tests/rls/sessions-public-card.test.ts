@@ -98,10 +98,23 @@ describe("POL-sessions.public_card.anon", () => {
       // ends alone, so the card's own row carries the count. It is a number of
       // meetings: no member, no venue beyond the one already public, nothing per
       // day. At one day it is 1 and the rendered card is unchanged.
+      // ★ wave 9 (`0122`, DEC-157): `days` is the second, admitted the same way and
+      // for a defect a capture found — the card said «جارية الآن» through the night
+      // between two days, because `sessionPhase()` was given the stored window
+      // alone. Two instants per day, ordered; NO id, position or venue (asserted
+      // below, key by key), so a link-holder learns meeting times of a session whose
+      // span this row already gives, and no key to join to anything. A boolean
+      // «running now» would disclose less and put `betweenDays()` in SQL as well —
+      // two implementations of one rule is how the defect happened.
       expect(Object.keys(row).sort()).toEqual(
-        ["day_count", "ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
+        ["day_count", "days", "ends_at", "og_height", "og_path", "og_width", "org_name", "starts_at", "time_zone", "title", "venue_name"].sort(),
       );
       expect(row.day_count).toBe(1);
+      const days = row.days as Record<string, unknown>[];
+      expect(days).toHaveLength(1);
+      expect(Object.keys(days[0]).sort()).toEqual(["ends_at", "starts_at"]);
+      expect(new Date(days[0].starts_at as string).getTime()).toBe(new Date(row.starts_at as string).getTime());
+      expect(new Date(days[0].ends_at as string).getTime()).toBe(new Date(row.ends_at as string).getTime());
       expect(row.title).toContain("جلسة منشورة");
       expect(row.starts_at).toBeTruthy();
       expect(row.time_zone).toBe("Asia/Riyadh");

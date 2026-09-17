@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-9/multi-day` (**draft PR #26**) · **`main`:** **LAUNCHED 2026-09-15; wave 8 merged 2026-09-17** (PR #25, `b7f2f3a`; `0092`–`0099` live on production) · **Phase:** ★★ **WAVE 9 — multi-day sessions (`DEC-150` … `DEC-155`) — SYNC 2 DONE: every track's SQL is promoted, `0100`–`0116`, each against the existing suites UNMODIFIED; the screens are being built.** ★★ **FOR THE OWNER NOW: a live security hole on production, closable today with one idempotent statement — the first section of the wave-9 block (`DEC-152`).** Seven pre-existing test files are modified on the branch and **no expectation changed in any** (the ledger). **Migrations are additive**; the owner pushes, then merges, **then checks Railway by hand**. **Do not start wave 10.**
+**Last updated:** 2026-09-17 · **Branch:** `wave-9/multi-day` (**draft PR #26**) · **`main`:** **LAUNCHED 2026-09-15; wave 8 merged 2026-09-17** (PR #25, `b7f2f3a`; `0092`–`0099` live on production) · **Phase:** ★★ **WAVE 9 — multi-day sessions (`DEC-150` … `DEC-157`) — SYNC 4 DONE: all SQL promoted, `0100`–`0122`, each against the existing suites UNMODIFIED; every capture opened and its findings routed; ★ the owner's migration order is written (row L9), with a caller audit of `main` and a data-shaped rehearsal. Left: the last capture fixes, the three-day demonstrable on the real worker, the final gates.** ★★ **FOR THE OWNER NOW: a live security hole on production, closable today with one idempotent statement — the first section of the wave-9 block (`DEC-152`).** Eight pre-existing test files are modified on the branch; **one expectation changed, on purpose, in one file** — the public card's return-type allowlist gained `day_count` and `days` (the ledger, `DEC-156`, `DEC-157`). No existing e2e spec is modified. **Migrations are additive**; the owner pushes, then merges, **then checks Railway by hand**. **Do not start wave 10.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -136,7 +136,8 @@ sync with `git diff --stat e1d8596 -- tests/ | grep -v wave9 | grep -v days`.
 | `tests/components/me/calendar-page.test.tsx` | `notify`, `be12c0f` | `SyncedEventDTO` gained `id`, `dayPosition`, `dayCount`; three fixture literals name them for the one-day session they already described | no |
 | `tests/components/browse/fixtures.tsx` | `sessions` | the shared card fixture gains `days: []` — the card reads `days` for its length alone | no — a fixture, no assertion |
 | `tests/components/checkin/remove-check-in-form.test.tsx` | `checkin` | the form takes a day; the render call passes the one day every case in the file was already about (the day select does not render below two) | no |
-| `tests/components/scoring/points-history-list.test.tsx` | `scoring`, `cd582b0` | a harness line (the component now reads `sessions.days` for the day label, and `missed` defaults to `[]`). ★ It also gained six **new** cases, which belong in a new file — being moved | no |
+| `tests/components/scoring/points-history-list.test.tsx` | `scoring`, `cd582b0` | a harness line (the component now reads `sessions.days` for the day label, and `missed` defaults to `[]`). The six new cases it briefly held were moved to a new file at `47ac71a` | no |
+| `tests/rls/sessions-public-card.test.ts` | lead, `0118` and `0122` promotions | the file asserts the public card's return type **as an allowlist** — «these keys are ALL there is». `day_count` (`DEC-156`) and `days` (`DEC-157`: two instants per day, no id, position or venue — asserted key by key) were each admitted by a lead-reviewed edit at the promotion where the failure first appeared | ★ **yes — the wave's only two, both on purpose**: the row gained two keys; at one day `day_count` is 1, `days` has one element equal to the session's own window, and the rendered card is unchanged |
 | — | `content` | ★ **none**: its five component tests (`materials/{list,proposal-list}`, `photos/gallery`, `tasks/{panel,task-item}`) are untouched against the wave's base, because it made the new DTO field optional rather than edit five fixtures | — |
 
 ### Before anyone spawns
@@ -248,6 +249,36 @@ check-in path and failed on a task legitimately naming its day.
 suite; and the RLS suite is single-runner with six of us — a collision fails unrelated files at the
 one-second lock timeout and looks exactly like a regression.
 
+### Sync 3 — 2026-09-17 — the last of the planned SQL, `0117`–`0120` (`DEC-156`)
+
+`0117` (`notify`) and `0119` (lead) narrow two grants — `DEC-152`'s low finding on `session_venue_label()` is
+**closed, not carried**: seven call sites, every one inside a definer function. `0118` (`sessions`) gives the
+public card its `day_count`. `0120` (`checkin`) wires contract 5's call sites: `check_in()`,
+`mark_checked_in_manually()` and `remove_check_in()` end in the hooks and name no points or certificate
+primitive — **contract 5 is whole**. `checkInDay()` and `resolveDay()` became generic at `sessions`' request.
+
+### Sync 4 — 2026-09-17 — every capture opened, the owner's order written, and what both found (`DEC-157`)
+
+**Built and run:** the verification worktree at `fb2184c` — seven `wave9-*` specs on both projects, 36 passed,
+4 failed, each failure routed with its evidence and fixed by its owner. **Every capture below was opened by the
+lead at readable size** (a full-page file is cropped into bands first; a downscaled 9,000 px page reads as
+nothing).
+
+| Found by | What | Owner | State |
+|---|---|---|---|
+| the public card's capture | ★ «جارية الآن» to the public **between two days**, while the event page said «التسجيل مفتوح» — `sessionPhase()` given the stored window alone. Reading every call site found **four** day-less readers | `sessions` ×3, `checkin` ×1 | **fixed** `201d6aa`, `4e49fa9`; `0122` gives the card its day windows; the guard `session-phase-reads-days.test.ts` makes it impossible to repeat (`9fecda9`), its open list empty at `f1a8fe0` |
+| writing row L9 | ★ `main`'s old worker would pay a presenter **three bonuses per attendee** on a three-day workshop, onto an append-only ledger | `scoring` | **closed in SQL** by `0121` (`6ad2fc8`) |
+| the presenter's captures (23,780 px tall) | every group mounted an **open add form** — eight on a three-day workshop | `content` | being fixed: the form sits behind its header control, closed on load; one-day untouched |
+| the member's materials capture | the phase chip read «بعد الجلسة» on day 1's slides with two days to run — ruling 4's wording half | `content` | being fixed: «قبل اليوم» / «بعد اليوم» for a material that names a day |
+| `…-day-scoped-after-hidden.png` | the capture was of a **skeleton** — taken while the sections were still streaming, so it proved nothing | `content` | being re-captured after the streams settle |
+| `checkin`'s ten captures | 1,082 px wide — a 412 px viewport, not the row's 390 × 844 | `checkin` | **fixed** `4e49fa9` |
+| `wave9-checkin-days` on desktop | one sentence resolved twice — `DEC-145`'s orphaned streaming segment, carried to M13 | `checkin` | locator scoped to its region, `cd6ca62` |
+| `wave9-content-days` tasks case | no tasks section for the member — the fixture's member had no seat, so `can.tasks` was false | `content` | **fixed** `e22af5b` |
+| `wave9-sessions-schedule-days` on phone | the switch's 1 px input scrolled under the sticky bar | `sessions` | **fixed** `8902d4a` — taps the label where a thumb does, and **asserts the row is not covered** |
+| reading `worker/src/index.ts` for L8 | `rotate_codes` is registered and has **no crontab entry** — it has never run in production | carried | see *Carried* |
+
+**Accepted captures so far** (390 × 844, phone project, RTL): `wave9-scoring-{one-day-unchanged,three-day-full,three-day-missed-day-two,three-day-missed-card}` — the one-day history beside its wave-7 twin is the same page; one +20 for three days; the missed-day card names the session · `wave9-notify-{calendar-one-day,calendar-three-days,notice-day-2,add-to-calendar}` — one card per day, the one-day card unlabelled, the notice names «اليوم الثاني», the menu offers each day · `wave9-sessions-{event-three-days,card-range,public-card-range}` — «3 أيام» in the hero, the three days in the action card, the range on both cards · `wave9-content-materials-{member-grouped,day-scoped-after-visible}`. **Still to open after the next build:** `checkin`'s ten at 390 px, `content`'s re-captures and its tasks and photos groups, `sessions`' schedule captures, and the demonstrable's.
+
 ### The rows — per track, closed against a contract held and a capture opened
 
 | # | Owner | Work | Serves | State |
@@ -256,20 +287,20 @@ one-second lock timeout and looks exactly like a regression.
 | L2 | lead | contract 9 | `REQ-UIX-003`, `REQ-SES-015` | **closed** `8850b03` |
 | L3 | lead | contract 10 | `REQ-TSK-002` | **closed** `d213552` |
 | L4 | lead (custodian) | certificate eligibility reads contract 6 — `fan_out_certificates()`, `issue_certificate()`, `listEligibleRecipients()` — **and `attendance_certificate_sync()`, contract 5's third hook** | `REQ-SES-017`, `REQ-CRT-001`, `REQ-CHK-017` | **closed** `0022828` (`0108`, `DEC-153`) — eligibility has one definition in all three places; removing **day 1** revokes a certificate that names **day 3**; a member marked present after completion gets the issue job. **Re-issue after a revocation stays carried**, its cause now known |
-| L5 | lead (custodian) | the attendance CSV's day column, present only when a session has more than one day | `REQ-ADM-017` | ☐ |
+| L5 | lead (custodian) | the attendance CSV's day column, present only when a session has more than one day | `REQ-ADM-017` | **closed** `a3e9872` — one-day file byte-identical (pinned by a test); from two days one line per member per day, contract 7's label, «أكمل الحضور» last (`DEC-157`) |
 | L6 | lead (custodian) | a multi-day poster's date | `REQ-DSG-002` | **not this wave** (sync 1) — a new binding is a new library seed (`DEC-149` §3); the first day's date is true, if incomplete. Wave 10 |
 | L7 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | ☐ |
 | L8 | lead | the three-day demonstrable, real worker | `REQ-SES-015` … `018` | ☐ |
-| L9 | lead | the owner's order for `0100`+: what each adds, the windows between push and merge, the reads to run first | invariant 3 | ☐ |
+| L9 | lead | the owner's order for `0100`+: what each adds, the windows between push and merge, the reads to run first | invariant 3 | **closed** `6ad2fc8` — below, with the caller audit and the data-shaped rehearsal |
 | S1–S4 | `sessions` | contract 3 · the form (`REQ-SES-016`) · the event page, cards and public card showing days · the day label (contract 7) | `REQ-SES-015`, `016` | ☐ |
 | C1–C4 | `checkin` | contract 4's RPCs · the host view and check-in screen by day · the attendance screen across days · `rotate_codes` by day and contract 5's call sites | `REQ-CHK-002`, `009`, `013`, `015`, `016` | ☐ |
 | T1–T4 | `content` | scope on the three write paths and the re-scope chip · the grouped lists · `phase` relative to the scope · one photo end to end on the real worker | `REQ-SES-018`, `REQ-MAT-006`, `REQ-EVT-010` | ☐ |
 | P1–P4 | `scoring` | contract 5's two functions · contract 6's predicate and the key · the award at completion · the missed day in the points history | `REQ-SES-017`, `REQ-PTS-012` | ☐ |
 | N1–N3 | `notify` | the calendar per day (SQL, worker, ICS) · reminders per day · the reschedule notice naming the day | `REQ-SES-015`, `REQ-CAL-*`, `REQ-NTF-*` | ☐ |
 
-### ★ `0100`–`0121` — what the owner does, in order, and why the push precedes the merge (row L9)
+### ★ `0100`–`0122` — what the owner does, in order, and why the push precedes the merge (row L9)
 
-**Production is at `0099`.** This wave adds twenty-two migrations, **all additive**: no table, column, policy
+**Production is at `0099`.** This wave adds twenty-three migrations, **all additive**: no table, column, policy
 name, job name or idempotency key that `main` reads is removed, and every function `main` calls keeps the
 argument list `main` sends — a changed function is dropped and re-created **in the same file** with its new
 arguments trailing and defaulted (`0085`'s lesson: two overloads are an ambiguous PostgREST call).
@@ -292,6 +323,7 @@ arguments trailing and defaulted (`0085`'s lesson: two overloads are an ambiguou
 | `0118` | `sessions` | `session_public_card()` gains `day_count` |
 | `0120` | `checkin` | contract 5's call sites: the three check-in functions call the hooks and decide nothing about points or certificates |
 | `0121` | `scoring` | `award_points()` with one branch added: the presenter's attendee bonus is decided in SQL, whichever worker calls |
+| `0122` | `sessions` | `session_public_card()` gains `days` — two instants per day, nothing that identifies one — so the card's phase is right between days; dropped and re-created with both grants restated, `main` reads the row by key |
 
 #### What the lead proved, so the owner's rehearsal confirms rather than discovers
 
@@ -323,7 +355,7 @@ applied in order, each in one transaction, `ON_ERROR_STOP=1` — all twenty-one 
 | `anon` on `_issue_check_in_code` | refused |
 | ★ `main`'s call shapes **over backfilled rows** | `rotate_check_in_code(session)` names the backfilled day · a legacy write of the session's own window moves its day and passes the commit check · `record_calendar_sync()` with six arguments updates the backfilled row in place and adds none |
 
-The container held fixtures only and is removed. (`0121` was promoted after this run; it is one function body with no data statement, applied over the local database with the ten suites that touch `award_points()` green.)
+The container held fixtures only and is removed. (`0121` and `0122` were promoted after this run; each is one function with no data statement, applied over the local database with its suites green.)
 
 #### The two windows
 
@@ -348,8 +380,8 @@ Railway's trigger has never fired on its own.** At one day the old worker is cor
 #### The owner's order
 
 1. **Run the security statement now if it has not been run** — top of this block; it does not wait for anything.
-2. **Rehearse `0100`–`0121` against a production schema dump** (schema only — check it has no `COPY`/`INSERT`
-   before use, and delete it after), each file in one transaction with `ON_ERROR_STOP=1`. Expect twenty-two
+2. **Rehearse `0100`–`0122` against a production schema dump** (schema only — check it has no `COPY`/`INSERT`
+   before use, and delete it after), each file in one transaction with `ON_ERROR_STOP=1`. Expect twenty-three
    clean files and the rehearsal table above.
 3. **Three production reads first** (read only; `supabase db query --linked`):
    ```sql
@@ -363,7 +395,7 @@ Railway's trigger has never fired on its own.** At one day the old worker is cor
    -- (c) must be false after step 1
    select has_function_privilege('anon', 'public._issue_check_in_code(uuid)', 'execute');
    ```
-4. **Outside a scheduled session** (Server Action IDs rotate on deploy): `supabase db push` (`0100`–`0121`) →
+4. **Outside a scheduled session** (Server Action IDs rotate on deploy): `supabase db push` (`0100`–`0122`) →
    **merge PR #26** → ★ **check the worker's deployed commit in Railway and reconnect the source if it has not
    moved** (the standing step below). ★★ **Nobody schedules a session of more than one day until the worker is
    on the merge commit.**
@@ -403,7 +435,8 @@ otherwise.
 | ~~lead~~ | ~~`REQ-EVT-010` says a photo appears at once; the pipeline processes, then shows~~ — **not carried: reconciled in wave 7** (`DEC-139` amended the requirement; `0091` delivers the no-reload clause). The one honest gap — never driven end to end — is `content`'s row T4 | wave 6 |
 | `designer` (wave 10) | ★ **re-issuing a certificate after a revocation** — a member removed and re-added keeps a revoked certificate and gets no new one. Cause known (`DEC-153`): `certificates` is unique per session, member and kind, and `issue_certificate()` returns the existing row **even when revoked**. The fix is a partial unique index and a second serial — and two rows per member on SCR-045 and `/app/me/certificates` | wave 7, sized in wave 9 |
 | `content` (wave 10) | a **proposal's own material shows its row and never its version or pages**: `material_versions_read`, `material_pages_read` and the page-image bucket's policy `inner join sessions`, which a proposal's material has none of. Predates `DEC-121`; found by `content` and deliberately not fixed | wave 9 |
-| `notify` | `session_venue_label(uuid, text)` is executable by `authenticated` with no caller check — a member holding another org's venue uuid could read that venue's name. Low: a venue uuid is on no public surface (`DEC-152`) | wave 9 |
+| ~~`notify`~~ | ~~`session_venue_label(uuid, text)` executable by `authenticated` with no caller check~~ — **closed** by `0119` (`DEC-156`): every caller is a definer function | wave 9 |
+| lead · `checkin` | ★ **`rotate_codes` is registered in the worker and has no crontab entry** — it has never run in production; codes are minted on demand by the host view's `ensure_check_in_code()`. Schedule it or delete it; named difference 1 describes the task, not production today (`DEC-157`) | wave 9 |
 | owner | **`bookmarks:237` «never updates» on Next 16.3.5** — a removed bookmark stays listed until a reload; a timing race, not load; the trace is wave 8's | wave 8 |
 | owner | break-glass opens no org screen (`DEC-055` C; option A is the owner's to schedule) | wave 8 |
 | owner · `notify`/wave 10 | `REQ-NTF-007`'s admin-editable required fields; `REQ-NTF-008`'s bounce webhook never written | wave 8 |
