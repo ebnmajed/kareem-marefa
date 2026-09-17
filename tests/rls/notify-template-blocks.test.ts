@@ -98,16 +98,29 @@ describe("POL-notification_templates.blocks.shape — what a row may hold", () =
     });
   });
 
-  // ★ FOUND BY THIS FILE, and not asserted here because asserting today's
-  // behaviour would PIN a defect. `{"schemaVersion":1}` — no `blocks` key at
-  // all — is ACCEPTED by `0125`'s constraint: `blocks -> 'blocks'` is SQL NULL,
-  // so `jsonb_typeof(NULL)` is NULL, the conjunction is NULL, the disjunction
-  // is NULL, and **a CHECK constraint fails only on FALSE**. Measured against
-  // the live predicate, not reasoned about. The constraint is the lead's
-  // (`supabase/migrations/**`); the one-line fix — `blocks ? 'blocks' and …` —
-  // is in `docs/plan/notes/notify.md` §X0.3, and this becomes an `it` in the
-  // commit that lands it.
-  it.todo("refuses an object with no `blocks` key at all (0125's check evaluates to NULL — see §X0.3)");
+  // ★ FOUND BY THIS FILE, and closed by `0134`.
+  //
+  // `{"schemaVersion":1}` — an object with no `blocks` key at all — was
+  // ACCEPTED by `0125`'s constraint: `blocks -> 'blocks'` on an object without
+  // that key is SQL NULL, so `jsonb_typeof(NULL)` is NULL, the conjunction is
+  // NULL, the disjunction is NULL — and **a CHECK constraint rejects only on
+  // FALSE**. `0134` adds `and blocks ? 'blocks'`, which turns that one verdict
+  // from NULL to FALSE and leaves every other shape's verdict identical.
+  //
+  // It was an `it.todo` until the conjunct landed, on purpose: asserting the
+  // old behaviour would have PINNED the defect, and a red test under
+  // `tests/rls/` runs in everyone's suite.
+  it("refuses an object with no `blocks` key at all — 0134's conjunct, which a NULL-valued CHECK let through", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      expect(await errorCode(() => insert(tx, f.a.id, { schemaVersion: 1 }))).toBe("23514");
+      // And the shape it was guarding is still accepted, so the conjunct
+      // narrowed exactly one verdict.
+      await insert(tx, f.a.id, { schemaVersion: 1, blocks: [] });
+      expect(await tx.q(`select id from public.notification_templates`)).toHaveLength(1);
+    });
+  });
 
   it("a document beyond 200,000 characters is refused 23514", async () => {
     await withTx(async (tx) => {
