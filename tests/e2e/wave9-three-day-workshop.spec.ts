@@ -348,6 +348,10 @@ test("3 · the presenter adds one material to the workshop and one to day 2 — 
     await form.getByLabel("نوع المادة").selectOption({ label: "رابط خارجي" });
     await form.getByLabel("عنوان المادة").fill(title);
     await form.getByLabel("الرابط").fill(url);
+    // «قبل»: readable before its scope begins. The form's default is «بعد», which
+    // REQ-MAT-006 withholds from a member until the scope ends — the right default
+    // for slides, and the wrong one for a list a member must be able to read today.
+    await form.getByLabel("التوقيت").selectOption("before");
     await form.getByRole("button", { name: "رفع" }).click();
     await expect(materials.getByText(title)).toBeVisible({ timeout: 20_000 });
   };
