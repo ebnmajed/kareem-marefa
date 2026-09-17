@@ -119,8 +119,14 @@ test.beforeAll(async ({}, testInfo) => {
   userIds.push(memberData.user.id);
 
   const presenterMemberId = await provisionMemberId(presenterEmail);
-  await provisionMemberId(memberEmail);
+  const memberMemberId = await provisionMemberId(memberEmail);
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterMemberId]);
+  // ★ The tasks affordance withholds `tasks` from an UNregistered viewer at every phase but
+  // `live`/`ended` (`session-matrix.ts` §5.3 row 1, DEC-090 — pre-existing, unrelated to days):
+  // `open.none` has no `tasks: true` at all. The plain member needs a real seat to see the tasks
+  // section — the gap this file's first run against a real build found (materials/photos have no
+  // such gate; only tasks does), not a multi-day defect.
+  await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, sessionId, memberMemberId]);
 
   // Materials: one session-scoped, one on day 1 (already released — day ended), one on day 2
   // («بعد», day 2 not yet ended — the before/after capture's own subject). `external_link` kind's
