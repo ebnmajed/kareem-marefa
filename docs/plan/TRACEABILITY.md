@@ -72,10 +72,10 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-014` | — | — | `SCR-058` | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-015` | `ENT-brand_kits` `ENT-fonts` `ENT-scoring_config_history` | — | `SCR-011` `SCR-043` `SCR-044` +4 | — | — | `STORY-ADM-007` | M7 |
 | `REQ-ADM-016` | — | — | `SCR-060` | — | — | `STORY-ADM-007` | M7 |
-| `REQ-ADM-017` | — | `POL-write_admin_export_audit.execute.admin` | `SCR-043` `SCR-059` `SCR-061` +1 | — | — | `STORY-ADM-008` | M7 |
+| `REQ-ADM-017` | — | `POL-write_admin_export_audit.execute.admin` | `SCR-043` `SCR-059` `SCR-061` +3 | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-018` | `ENT-audit_log` | `POL-comments.removal_audit` | `SCR-043` `SCR-059` `SCR-061` +1 | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-085` | — | — | `STORY-ADM-002` | M8 |
-| `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-050` `SCR-062` | — | — | `STORY-ADM-005` | M7 |
+| `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-050` `SCR-061` +3 | — | — | `STORY-ADM-005` | M7 |
 | `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11 |
 
 ### AUT
@@ -422,7 +422,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-SUR-001` | `ENT-survey_question_options` `ENT-survey_questions` `ENT-survey_template_options` +3 | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
+| `REQ-SUR-001` | `ENT-survey_question_options` `ENT-survey_questions` `ENT-survey_template_options` +3 | — | `SCR-015` `SCR-061` `SCR-064` +1 | — | — | `STORY-SUR-001` | M11 |
 | `REQ-SUR-002` | `ENT-survey_template_options` `ENT-survey_template_questions` `ENT-survey_templates` | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
 | `REQ-SUR-003` | `ENT-survey_participations` | — | `SCR-015` `SCR-064` | — | — | `STORY-SUR-002` | M11 |
 | `REQ-SUR-004` | `ENT-session_days` `ENT-survey_answers` `ENT-survey_responses` | — | `SCR-015` `SCR-064` | `JOB-record_survey_response` | — | `STORY-SUR-002` | M11 |
