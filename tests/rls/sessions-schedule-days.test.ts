@@ -15,17 +15,23 @@
 // .days_refusals, .day_venue_rules, .require_all_days,
 // RPC-publish_session.missing_days.
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, errorMessage, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
+// Applied while it is proposed; a no-op once the lead has promoted it (it went
+// in as `0106_schedule_session_days.sql`). The same guard
+// `tests/rls/admin-export-audit.test.ts` uses, and the reason this file did not
+// start failing for five other teammates the moment it was promoted.
 const FILE = "sessions/0001_schedule_session_days.sql";
 
 async function setup(tx: Tx) {
   const f = await seed(tx);
-  await applyProposed(tx, FILE);
+  if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
   return f;
 }
 
@@ -531,6 +537,41 @@ describe("RPC-publish_session.missing_days", () => {
       await tx.q(CALL_16, [sessionId, STARTS, f.a.venueId, JSON.stringify(evenings(3, f.a.venueId)), null]);
       const [row] = await tx.q<{ state: string }>(`select state from public.publish_session($1)`, [sessionId]);
       expect(row.state).toBe("published");
+    });
+  });
+});
+
+// ── Contract 11, waiting on `notify` ────────────────────────────────────────
+//
+// `supabase/proposed/sessions/0002_announce_the_day_set.sql` shapes the day
+// snapshots into `notify`'s published words and wires
+// `session_days_changed()`. It cannot be exercised until that function is
+// promoted — a day-aware save would raise `undefined_function` — so what is
+// asserted here is what CAN be: the file is valid SQL, it replaces
+// `schedule_session()` without adding an overload, and it leaves main's path
+// exactly where `0106` left it. The announcing case joins this file in the same
+// commit that promotes both halves.
+describe("0002 — the day-set announcement, before notify's half is promoted", () => {
+  it("applies, replaces the function rather than overloading it, and leaves a one-day save untouched", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "sessions/0002_announce_the_day_set.sql");
+
+      await tx.asOwner();
+      const [overloads] = await tx.q<{ n: string }>(
+        `select count(*) as n from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and p.proname = 'schedule_session'`,
+      );
+      expect(Number(overloads.n)).toBe(1);
+
+      const sessionId = await approvedSession(tx, f.a);
+      await tx.as(f.a.admin.claims);
+      const [row] = await tx.q<{ starts_at: Date; venue_id: string }>(CALL_14, [sessionId, STARTS, f.a.venueId]);
+      expect(new Date(row.starts_at).toISOString()).toBe(STARTS);
+      expect(row.venue_id).toBe(f.a.venueId);
+
+      await tx.asOwner();
+      expect(await daysOf(tx, sessionId)).toHaveLength(1);
     });
   });
 });
