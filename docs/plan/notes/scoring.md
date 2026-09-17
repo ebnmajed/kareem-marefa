@@ -975,7 +975,14 @@ attendance any more**, and the lead approved the key as built:
 
 | File | Commit | Why | Expectation for one day changed? |
 |---|---|---|---|
-| `tests/components/scoring/points-history-list.test.tsx` | `cd582b0` | the component now reads `sessions.days` for contract 7's one day-label formatter, so the test's `getTranslations` mock merges that namespace; six cases added for the notice | **no** — not one existing assertion touched, and a case asserts a one-day history renders no notice |
+| `tests/components/scoring/points-history-list.test.tsx` | `cd582b0`, narrowed at the commit below | **harness only**: the component reads `sessions.days` unconditionally now, so the mock must resolve that namespace whether or not a notice renders. **Three lines and a comment; no `it` block touched.** | **no** |
+
+★ **The six new cases were in that file until the lead asked for them out** (rule 4: new behaviour,
+new file). They are now `tests/components/scoring/points-history-days.test.tsx`, including «a
+one-day history is unchanged». The reason is worth keeping: the ledger check is
+`git diff e1d8596 -- tests/`, and **an 82-line diff in a pre-existing file has to be read line by
+line to know nothing moved**, while a 15-line harness diff reads at a glance. Correct in substance
+was not the same as auditable.
 
 Every other suite on the award path is untouched and green: `award-points`,
 `award-presenter-points`, `audit-balances`, `manual-adjustment-reversal`, `scoring-schema`,
