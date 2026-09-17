@@ -1877,3 +1877,50 @@ a silent no-op, the worst shape this class of bug can take.
 `REQ-TSK-002`'s three task tables — and each names the hook it defers to. It is asserted over
 `pg_get_functiondef`, so it holds against whatever those functions become, not against what they say
 today.
+
+## The two e2e specs — `f103c69`, written and committed unrun
+
+The lead runs them in the verification build; the main checkout's `.next` predates the wave.
+
+**`wave9-checkin-days.spec.ts`** builds its own org, members and days — no shared fixture, on the
+lead's ruling, and it matters more than it reads: since `0100` a check-in carries a **real** day
+window, so two specs sharing a member would collide on
+`check_ins_member_id_session_window_excl` for a reason that has nothing to do with either test.
+
+The day placement is the design, not an arbitrary arrangement:
+
+```
+day 1   now − 30 h … now − 28 h    over, ceiling long past
+day 2   now −  1 h … now +  1 h    RUNNING
+day 3   now + 22 h … now + 24 h    ahead — which is what makes «انتهت الجلسة»
+                                   a visibly wrong thing to say about day 2
+```
+
+It asserts through the database as well as the screen: the code the host view shows has day 2's
+`session_day_id`; closing leaves days 1 and 3 open while `sessions.check_in_open` stays **true** as
+the `bool_or` shadow; the removal of day 1 leaves day 3 standing.
+
+**`wave9-checkin-one-day.spec.ts` asserts ABSENCE**, which is the half a capture cannot prove and
+the half no existing spec can: `checkin.spec.ts` and `admin-attendance.spec.ts` prove the one-day
+screens still **work** — they pass unmodified, which is the real evidence — but they can never prove
+that nothing NEW appeared, because they were written before days existed. So: no day label on either
+member screen, no day column, no day select, no completeness stat, and no «اليوم الأول/الثاني/…»
+anywhere in the body.
+
+### Two defects found while writing them, both in the specs
+
+1. **The attendance case proved nothing.** It leaned on the case above it for a member row, and
+   inserted **no reservations at all** — without a confirmed RSVP neither member is a manual-mark
+   candidate, so the form would have rendered its empty state and the case would have gone green
+   having exercised none of the day controls. It now provisions both members itself, inserts the
+   reservations, and guards its check-in inserts because the per-day unique index is partial.
+2. **Both day selects carry `name="dayId"` under the same label**, so an unscoped `getByLabel("اليوم")`
+   is a strict-mode violation waiting for the first person who reorders the page. Scoped by section
+   (`section[aria-labelledby="manual"]` / `"remove"`).
+
+### One correctness fix in the DAL, from the same reading
+
+`getCheckInScreenData()` resolved the day and evaluated the gate with **two** defaulted `new Date()`
+calls. Microseconds apart, they can straddle a day boundary — and the screen would then name one
+meeting and refuse about another, which is the exact class of bug `DEC-141`'s grace-window fix
+existed to remove. One instant now, passed to both.
