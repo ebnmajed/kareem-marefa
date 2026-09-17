@@ -2755,3 +2755,28 @@ nothing else running before trusting the result.
 T2 is next, waiting on `sessions'` `listSessionDays()`/`SessionDay` and the day-label formatter (§6).
 
 Ready for sync.
+
+## §22 — two fixes from the lead's review (`0d1ecc2`)
+
+`sessionDayId` on `MaterialSummary`/`TaskSummary`/`PhotoSummary` is now **optional**
+(`sessionDayId?: string | null`), not required — absent and `null` both mean the whole session, and
+the five existing component test files (`materials/{list,proposal-list}`, `photos/gallery`,
+`tasks/{panel,task-item}`) are back to their exact pre-wave-9 content (`git checkout 3830191~1 --
+<paths>`, confirmed empty against `HEAD` and against each file's own prior commit). "New behaviour
+gets new test files" now holds with nothing to explain in the ledger.
+
+Also fixed: two `session_days_no_overlap` collisions the lead's promotion run caught that my own
+run had not (the fixture states involved happened to differ by a few minutes of wall-clock
+placement — `now()`-relative arithmetic is fragile that way). Rebuilt every day in all four
+`*-days.test.ts` files on `tests/rls/session-days.test.ts`'s own `addDay(fromH, toH)` — wide,
+separated integer hour offsets, the same convention the foundation's own suite uses. Re-verified:
+`materials/tasks/photos-schema`, `photos-broadcast`, `storage-content`, `proposal-materials`,
+`session-days` (the foundation's own) plus the four `*-days` files — 10 files, 122 tests, green
+together, `pgrep` clear before and during. `npx tsc --noEmit`/`npm run lint` clean on my files
+(unrelated red elsewhere from `checkin`/`sessions` WIP, not touched). `npm test` 196/196, 1833/1833.
+
+Starting T2 now — contract 3's readers landed (`3cdc690`): `listSessionDays(locale, sessionId)` and
+`SessionDay` from `lib/dal/sessions.ts`; `dayLabel`/`dayShortLabel`/`dayOrdinal`/`dayRange`/
+`dayCountLabel` from `components/sessions/day-label.ts`.
+
+Ready for sync.
