@@ -163,7 +163,11 @@ test("★ T4 — a real upload through the real worker: exif stripped, the galle
   await page.locator('input[name="file"]').setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: jpegWithExif() });
   await page.getByRole("button", { name: "إضافة صورة" }).click();
   // REQ-EVT-010: told AT ONCE that it is processing, never that it was posted.
-  await expect(page.getByText("تتم معالجة الصورة الآن…")).toBeVisible();
+  // ★ Exact match only — Radix's own live region duplicates the toast's text prefixed with the
+  // shell's "إشعار"/"Notification" announcement word (`<span role="status">`), and a substring
+  // match is a strict-mode violation against two elements for the one toast (the lead's own
+  // real-worker finding, `content.md` §31).
+  await expect(page.getByText("تتم معالجة الصورة الآن…", { exact: true })).toBeVisible();
 
   // ★ THE POINT OF THIS TEST: no page.reload() anywhere below. The gallery must take its place
   // on its own — the private Realtime broadcast (or the UploadWidget's own bounded fallback
