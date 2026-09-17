@@ -843,3 +843,94 @@ Captures, all at `390 × 844` on the phone project, honouring `E2E_SHOTS_DIR`:
 `-survey-none` · `-survey-withheld` · `-survey-results` · `-survey-presenter-refused`.
 
 **Nothing in §1 or §2 is built until the lead approves this plan at sync 1.**
+
+---
+
+# Wave 10 — what was built, and what the building changed
+
+**The plan above was approved at sync 1 with one defect and ten rulings (`DEC-161`).** Everything in it is
+built except the e2e RUN and the captures, which wait on promotion and a production build. This section is
+the record: what exists, what the build changed about the plan, and what it found.
+
+## A. What exists, file by file
+
+| Commit | What |
+|---|---|
+| `675f6a9` | **E5** — `01_ratings_day_precision.sql`: the coarsening trigger, the backfill, the aggregates view re-ordered · `tests/rls/ratings-day-precision.test.ts` (5) |
+| `da59594` | **§6** — `02_rating_eligibility.sql`: `rating_window_open()` and both ratings policies re-created to call it · `tests/rls/ratings-eligibility.test.ts` (4) |
+| `9a2832f` | **E1 authoring** — `03_survey_authoring.sql`: `assert_survey_staff()`, `survey_template_save/delete()`, `survey_attach/detach()` · `tests/rls/survey-authoring.test.ts` (9) |
+| `2b54733` | **E1 answers** — `04_survey_submit.sql`: `survey_for_member()`, `submit_survey_response()`, `record_survey_response()` · `worker/src/tasks/record_survey_response.ts` · `tests/rls/{survey-submit,survey-structure}.test.ts` (8 + 5) · `tests/unit/survey-record-task.test.ts` (5) |
+| `f54f442` | **E1 results** — `05_survey_results.sql`: the one function that releases results · `tests/rls/survey-results.test.ts` (8) |
+| `ff53191` | `src/lib/dal/surveys.ts` · `messages/{ar,en}/survey.json` · the appended namespace |
+| `101b102` | **E2** — SCR-015 carrying both · `components/survey/question-field.tsx` · `tests/components/survey/question-field.test.tsx` (8) |
+| `59bd5cb` | **E3** — SCR-065, the list and the editor · `tests/components/survey/template-editor.test.tsx` (9) |
+| `97a9caa` | **E4** — SCR-064 and `components/survey/results.tsx` · `tests/components/survey/results.test.tsx` (5) |
+| `e6b38fb` | the three e2e specs and their eleven captures — written, not yet run |
+
+## B. What the building changed about the plan
+
+1. ★ **`rating_eligibility()` is gone** (sync 1, R1). `rating_window_open()` is the one definition the two
+   policies and `submit_survey_response()` share; `getRatingEligibility()` keeps deriving the SCREEN's reason
+   in TypeScript, and `tests/unit/sessions-removed-check-in.test.ts` stays untouched.
+2. **`assert_survey_staff()` is new**, because `0005` has an `assert_fresh_admin()` and no staff twin, and
+   five functions of mine need «admin or moderator, re-read from the row».
+3. **A template is saved WHOLE**, and the cost is stated in the file: a re-save re-creates the question rows,
+   so an already-attached survey loses `source_question_id` (`on delete set null`). Nothing renders
+   provenance; SCR-065 counts `surveys.source_template_id`, which survives.
+4. ★ **The freeze is structural, not a disabled control.** There is no RPC anywhere that edits an attached
+   survey's questions, so SCR-064 renders no question editing at all and `survey_detach()` refuses once
+   `survey_participations` has a row.
+5. ★ **SCR-065's editor is not a `<form action>`.** Two reasons and both are load-bearing:
+   `ui/reorderable-list` takes `renderItem`, so a Server Component holding it is `DEC-159`'s production-only
+   crash; and **`ui/input` carries no controlled-reset repair** (`select`, `switch`, `checkbox` and
+   `radio-group` do), so React's reset after a refused save would empty every prompt and every option label
+   (`DEC-149` §1). The save runs in a transition.
+6. ★ **`components/survey/question-field.tsx` is written rather than composed from `ui/radio-group`** —
+   that primitive's `legend` is a `string`, so the «مطلوب» marker cannot be its own span, and it has **no
+   `error` prop**, while a question that blocks submission must say so at the field (`REQ-UIX-010`).
+   `star-rating.tsx` hand-rolls for the same reason. **The request, which I am NOT making this wave:**
+   `RadioGroupProps` gains `error?: ReactNode` and a `ReactNode` legend, and three files simplify. The rows
+   already use the primitive's own classes to the character.
+7. **A scale shows the digit and is announced as the sentence** — «واحد من 5» — which is `star-rating.tsx`'s
+   split. The plural spells one and two out, which is right in Arabic prose and wrong as a visible label.
+8. **With a survey on screen, `already_rated` stops being a refusal.** The member pressed one button for two
+   things; if the rating is already there a retry must not stall on the half that succeeded. Without a survey
+   the behaviour is exactly what it was, which is what keeps the two untouched specs untouched.
+9. **SCR-064's outcomes travel in the URL** — `?attached=1`, `?error=has_responses`, `?confirm=1` — the shape
+   `?rated=1` already uses. No island for a form with one control, and a reload keeps the sentence.
+10. **The CSV's columns** are `السؤال · النوع · عدد المجيبين · القيمة · العدد · المتوسط`, with the response
+    rate as the first row in the same columns so both its numbers parse. A withheld result is **one row
+    saying so**, never an empty file, and a question nobody answered keeps its row — a missing row would read
+    as «nobody asked it».
+
+## C. What the building found
+
+- ★ **A plural may not use `#`.** `tests/unit/messages-numerals.test.ts` refuses it: `#` renders in the
+  locale's own digits, so a number goes through `formatNumber` as `{value}` (`DEC-124`). My Arabic was right
+  and the English twin was not, in all seven plurals.
+- ★ **Three sessions share one database, so a full `test:rls` run is worthless unless it is alone.** Every
+  failure I saw in a shared run today — six fixture-seed failures, ten in `certificates-reissue`, then
+  `unknown_binding: session.title` across two admin files — passed alone minutes later. I now wait on
+  `until ! pgrep -f "[n]ode_modules/.bin/vitest"` before every run, and I said so to the lead rather than
+  reporting the failures as defects. **One of them was real and is `designer`'s:**
+  `unrecognized GET DIAGNOSTICS item at or near "pg_exception_constraint_name"` — the item is plain
+  `CONSTRAINT_NAME` and only through `GET STACKED DIAGNOSTICS`.
+- **A mutation check is worth its minute.** Three of my cases could have been vacuous and I would not have
+  known: unpinning the UTC truncation, restoring `order by r.submitted_at`, and dropping the org clause from
+  `rating_window_open()` each turn exactly one case red. All three reverted and re-run green.
+- **`getTranslations` throws in the components project**, and an async child component cannot be rendered by
+  RTL at all — so a Server Component that wants a test keeps its async at the TOP and passes the translator
+  down, the `day-label` idiom.
+
+## D. What is left, and what it waits on
+
+| | Waits on |
+|---|---|
+| `npm run test:e2e:local` for the three new specs **and the two untouched rate specs** | the lead promoting `01`–`05` and applying them locally — until then `/app/sessions/[id]/rate` calls a function that does not exist, for every session |
+| the eleven captures, opened in bands | a production build (lead-only) |
+| `admin.json`'s `survey.attached` / `survey.detached` labels | the lead, in the promotion commit, or `admin-audit-labels` goes red |
+| `record_survey_response` in `worker/src/index.ts` | the lead (contract 7) |
+
+**Already done by the lead and wired to, not guessed:** `/api/admin/exports/survey/[sessionId]`, whose
+`exportSurveyCsv()` consumes `getSurveyExportRows()` exactly as contract 6 specified, and the rail's
+«الاستبانات» leaf.
