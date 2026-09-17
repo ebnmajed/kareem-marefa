@@ -40,11 +40,7 @@ const SELF = "src/lib/session-status.ts";
  * below fails the moment an entry is fixed and still listed, so the list can
  * only get shorter. It ends the wave EMPTY.
  */
-const OPEN: Record<string, string> = {
-  "src/app/[locale]/s/[id]/page.tsx": "sessions — the public card; needs the day windows from session_public_card()",
-  "src/lib/dal/sessions.ts": "sessions — the event DTO's phase and relation",
-  "src/app/[locale]/app/members/[id]/page.tsx": "sessions — the profile's session list",
-};
+const OPEN: Record<string, string> = {};
 
 function walk(dir: string): string[] {
   if (!existsSync(dir)) return [];
