@@ -283,6 +283,13 @@ function toParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+
+/** A hex colour, or the default. See `compilePalette()` for why. */
+function hex(value: string | undefined, fallback: string): string {
+  return value !== undefined && HEX.test(value) ? value : fallback;
+}
+
 /**
  * The three values the shell has always used, from either brand shape.
  *
@@ -294,9 +301,15 @@ function toParagraphs(text: string): string[] {
  */
 function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefined {
   if (!brand) return brand;
-  if ("fgBody" in brand) return brand;
-  const light = brand.light ?? {};
-  return light.fgBody && light.fgMuted && light.surface ? { fgBody: light.fgBody, fgMuted: light.fgMuted, surface: light.surface } : null;
+  // ★ Asserted HERE and not only in `compilePalette()`, because these three
+  // reach the shell's own `style=` unescaped by BOTH paths — a test planting a
+  // `"><script>` in `fgBody` found the compiler guarded and the shell not.
+  // Every real value is an anchored-hex column of the brand kit, so this
+  // changes nothing that exists and closes what the type does not promise.
+  const three = "fgBody" in brand ? brand : brand.light ?? {};
+  return three.fgBody && three.fgMuted && three.surface
+    ? { fgBody: hex(three.fgBody, "#1a1a1a"), fgMuted: hex(three.fgMuted, "#6b6b6b"), surface: hex(three.surface, "#ffffff") }
+    : null;
 }
 
 /**
@@ -307,16 +320,30 @@ function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefine
  * kit can already describe, and inventing a tenth token would be a brand-kit
  * change (`branding`'s) for a contrast pair the kit already guarantees.
  */
+/**
+ * ★ EVERY PALETTE VALUE IS ASSERTED TO BE A HEX COLOUR, and falls back to the
+ * default when it is not.
+ *
+ * `CompilePalette`'s fields reach fourteen `style=` and `bgcolor=` sites in
+ * `compile.ts` **unescaped** — which is safe today only because every source is
+ * an anchored-hex column of the brand kit or a literal in this file. That is a
+ * property of the callers, not of the type, and the day someone widens
+ * `CompilePalette` with a font name or a URL the hole opens silently.
+ *
+ * So it is checked here rather than trusted: a value that is not a hex colour
+ * is replaced by the default, and `tests/unit/mail-blocks.test.ts` asserts a
+ * planted non-hex never reaches the HTML.
+ */
 function compilePalette(brand: RenderInput["brand"]): CompilePalette {
   const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
   const legacy = legacyBrand(brand);
-  const fgHeading = light.fgHeading ?? "#0b1220";
+  const fgHeading = hex(light.fgHeading, "#0b1220");
   return {
-    fgBody: legacy?.fgBody ?? "#1a1a1a",
-    fgMuted: legacy?.fgMuted ?? "#6b6b6b",
-    surface: legacy?.surface ?? "#ffffff",
+    fgBody: hex(legacy?.fgBody, "#1a1a1a"),
+    fgMuted: hex(legacy?.fgMuted, "#6b6b6b"),
+    surface: hex(legacy?.surface, "#ffffff"),
     fgHeading,
-    edge: light.edge ?? "#e6eaf0",
+    edge: hex(light.edge, "#e6eaf0"),
     accent: fgHeading,
   };
 }
@@ -429,6 +456,7 @@ export function renderEmail(input: RenderInput): RenderedEmail {
       payload,
       palette: compilePalette(input.brand),
       logoUrl: input.logoUrl ?? null,
+      appOrigin: input.appUrl ?? null,
       preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
       org: input.org.name,
     });

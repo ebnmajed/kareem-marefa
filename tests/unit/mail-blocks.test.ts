@@ -18,6 +18,7 @@ const ctx = (over: Partial<CompileContext> = {}): CompileContext => ({
   palette: PALETTE,
   logoUrl: "https://kareem.pp.sa/api/brand/org-1/logo",
   preferencesUrl: "https://kareem.pp.sa/ar/app/me/notifications",
+  appOrigin: "https://kareem.pp.sa",
   org: "كريم معرفة",
   ...over,
 });
@@ -324,5 +325,113 @@ describe("D3's findings — on the block path, and not on the string path", () =
     const out = designed({ type: "detail_list", id: "d1", items: [{ label: "اسم القاعة ورقم الدور والمبنى", value: "{{venue}}" }] });
     expect(out.html).not.toContain("white-space:nowrap");
     expect(out.html).toContain('width="35%"');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// designer's adversarial read of the injection surface — the three findings
+// and the invariant, all on the block path.
+//
+// The editor is about to make malformed documents easy to produce, which is
+// why these land before its panes rather than after.
+// ═══════════════════════════════════════════════════════════════════════════
+describe("★ F1 — a recognised block with a missing field is DROPPED, never fatal", () => {
+  // `readBlocks()` promised «the mail arrives missing a row rather than not
+  // arriving at all» and delivered it only for an unknown TYPE. A known type
+  // missing its field reached the compiler and threw, so renderEmail() raised,
+  // send_notification failed, and the mail never arrived — the opposite of the
+  // promise. The database admits every one of these: `0134` checks the
+  // envelope, not the contents.
+  const malformed: Array<[string, object]> = [
+    ["a heading with no text", { type: "heading", id: "h1", level: 1 }],
+    ["a paragraph with no text", { type: "paragraph", id: "p1" }],
+    ["a button with no urlBinding", { type: "button", id: "b1", label: "افتح", style: "primary" }],
+    ["a detail list with no items", { type: "detail_list", id: "d1" }],
+    ["an image with no src", { type: "image", id: "i1", alt: "شعار", width: 160 }],
+    ["a spacer with no height", { type: "spacer", id: "s1" }],
+    ["a heading at an impossible level", { type: "heading", id: "h2", text: "عنوان", level: 7 }],
+  ];
+
+  for (const [name, block] of malformed) {
+    it(`${name}: the REST of the mail renders`, () => {
+      const out = compileBlocks(
+        { schemaVersion: 1, blocks: [block, { type: "paragraph", id: "keep", text: "هذه الفقرة تصل." }] },
+        ctx(),
+      );
+      expect(lines(out)).toEqual(["هذه الفقرة تصل."]);
+      expect(out.dropped.map((d) => d.type)).toEqual([(block as { type: string }).type]);
+    });
+  }
+
+  it("a dropped block is NAMED, so the checks panel can point at it", () => {
+    const out = compileBlocks({ schemaVersion: 1, blocks: [{ type: "paragraph", id: "p1" }] }, ctx());
+    expect(out.dropped).toEqual([{ id: "p1", type: "paragraph", reason: "malformed" }]);
+  });
+
+  it("an unknown type is still dropped, and told apart from a malformed known one", () => {
+    const out = compileBlocks({ schemaVersion: 2, blocks: [{ type: "carousel", id: "x1" }] }, ctx());
+    expect(out.dropped).toEqual([{ id: "x1", type: "carousel", reason: "unknown_type" }]);
+  });
+});
+
+describe("★ F2 — a prototype key is not a spacer height", () => {
+  it("`constructor` is refused rather than emitted as a function body", () => {
+    // `SPACER_PX["constructor"]` returned `Object`, and `??` does not catch a
+    // truthy inherited value — the row emitted `height="function Object() …"`.
+    const out = compileBlocks({ schemaVersion: 1, blocks: [{ type: "spacer", id: "s1", height: "constructor" }] }, ctx());
+    expect(out.rows.join("")).not.toContain("function");
+    expect(out.dropped[0]).toMatchObject({ type: "spacer", reason: "malformed" });
+  });
+});
+
+describe("★ F3 — a button's href is allowlisted by scheme, AFTER interpolation", () => {
+  const button = { type: "button" as const, id: "b1", label: "افتح", urlBinding: "url", style: "primary" as const };
+  const withUrl = (url: unknown) => compileBlocks({ schemaVersion: 1, blocks: [button] }, ctx({ payload: { url } }));
+
+  it("https and mailto are sent", () => {
+    expect(withUrl("https://kareem.pp.sa/x").rows.join("")).toContain("https://kareem.pp.sa/x");
+    expect(withUrl("mailto:hello@kareem.pp.sa").rows.join("")).toContain("mailto:hello@kareem.pp.sa");
+  });
+
+  it("the app's OWN origin is sent — which is what lets localhost through in development and nothing else", () => {
+    const dev = compileBlocks({ schemaVersion: 1, blocks: [button] }, ctx({ payload: { url: "http://localhost:3000/ar/app" }, appOrigin: "http://localhost:3000" }));
+    expect(dev.rows.join("")).toContain("http://localhost:3000/ar/app");
+    // The same URL with no app origin configured is refused.
+    expect(withUrl("http://localhost:3000/ar/app").rows.join("")).not.toContain("localhost");
+  });
+
+  it("★ javascript:, data: and another origin are DROPPED, and named", () => {
+    for (const hostile of ["javascript:alert(1)", "data:text/html,<script>alert(1)</script>", "http://evil.example/x", "//evil.example/x"]) {
+      const out = withUrl(hostile);
+      expect(out.rows.join(""), hostile).not.toContain("evil.example");
+      expect(out.rows.join(""), hostile).not.toContain("javascript:");
+      expect(out.rows.join(""), hostile).not.toContain("data:text/html");
+      expect(out.dropped[0], hostile).toMatchObject({ id: "b1", type: "button" });
+    }
+  });
+
+  it("the TEXT part loses the link too — a stripped client must not be the way round the rule", () => {
+    const out = withUrl("javascript:alert(1)");
+    expect(lines(out)).toEqual([]);
+  });
+});
+
+describe("★ the palette invariant — every value reaching an unescaped style= is a hex colour", () => {
+  it("a planted non-hex never reaches the HTML; the default does", () => {
+    // CompilePalette's fields reach fourteen `style=`/`bgcolor=` sites
+    // unescaped, safe only because every source is an anchored-hex column
+    // today. That is a property of the callers, not of the type.
+    const out = renderEmail({
+      key: "MSG-reminder_1d",
+      override: { subject: "غدًا", body: "نص", blocks: doc({ type: "paragraph", id: "p1", text: "نص" }) },
+      payload: {},
+      member: { name: "سارة", email: "s@k.example" },
+      org: { name: "كريم معرفة", timeZone: "Asia/Riyadh" },
+      brand: { light: { fgBody: 'red;"><script>alert(1)</script>', fgMuted: "#6f7d93", surface: "#fffdf7", fgHeading: "#0b1220", edge: "#e6eaf0" } },
+    });
+    expect(out.html).not.toContain("<script>");
+    expect(out.html).not.toContain("alert(1)");
+    // It fell back to the default rather than to nothing.
+    expect(out.html).toContain("#1a1a1a");
   });
 });

@@ -25,7 +25,7 @@
 // `tests/unit/mail-blocks.test.ts` asserts that they do.
 
 import { DESIGN_STACK, escapeHtml, formatValue, lookup } from "./primitives.js";
-import { readBlocks, type EmailBlock, type ImageSource } from "./blocks.js";
+import { readDocument, type DroppedBlock, type EmailBlock, type ImageSource } from "./blocks.js";
 
 /** U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. Written as
  *  escapes, never as the characters: an invisible control character in source
@@ -69,6 +69,9 @@ export interface CompileContext {
   logoUrl: string | null;
   /** `REQ-NTF-005`. The composed footer carries it, always. */
   preferencesUrl: string | null;
+  /** The app's own origin, and the third thing a button's href may be. Null in
+   *  a unit test, where only `https:` and `mailto:` are then allowed. */
+  appOrigin: string | null;
   org: string;
 }
 
@@ -77,6 +80,44 @@ export interface CompiledBlocks {
   rows: string[];
   /** The paragraphs of the plain-text alternative, in the same order. */
   text: string[];
+  /** What the reader refused, and what this compiler refused after it — so the
+   *  editor's checks panel can NAME every row the mail lost. A mail that
+   *  silently drops a block is one an admin approves believing it is whole. */
+  dropped: DroppedBlock[];
+}
+
+/**
+ * ★ A BUTTON'S HREF IS ALLOWLISTED BY SCHEME, AFTER INTERPOLATION.
+ *
+ * `urlBinding` names an arbitrary payload path, and the value reaches the HTML
+ * through `escapeHtml`, which has nothing whatever to say about
+ * `javascript:`, `data:` or `//evil.com` — escaping quotes does not make a
+ * scheme safe. It is not live today, because mail clients strip such hrefs and
+ * the preview's iframe is sandboxed without `allow-scripts` — but **both of
+ * those defences belong to somebody else**, and a rule that depends on a third
+ * party's behaviour is not a rule.
+ *
+ * Applied AFTER interpolation, because the binding is what decides the value
+ * and the template author never sees it. `https:` and `mailto:` always; the
+ * app's own origin as well, which is what lets `http://localhost:3000` through
+ * in development and nothing else.
+ */
+function isSendableHref(href: string, appOrigin: string | null): boolean {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    // Not absolute: a relative href in a mail resolves against the CLIENT, so
+    // it is never right.
+    return false;
+  }
+  if (url.protocol === "https:" || url.protocol === "mailto:") return true;
+  if (!appOrigin) return false;
+  try {
+    return url.origin === new URL(appOrigin).origin;
+  } catch {
+    return false;
+  }
 }
 
 const SPACER_PX: Record<string, number> = { sm: 8, md: 16, lg: 32 };
@@ -101,9 +142,10 @@ export function compileBlocks(document: unknown, ctx: CompileContext): CompiledB
   const rows: string[] = [];
   const text: string[] = [];
   const say = (template: string) => interpolateIsolated(template, ctx.payload);
+  const { blocks, dropped } = readDocument(document);
 
-  for (const block of readBlocks(document)) {
-    compileOne(block, ctx, say, rows, text);
+  for (const block of blocks) {
+    compileOne(block, ctx, say, rows, text, dropped);
   }
 
   // ★ THE FOOTER IS COMPOSED, NOT TYPED (REQ-NTF-009). It is appended here,
@@ -120,7 +162,7 @@ export function compileBlocks(document: unknown, ctx: CompileContext): CompiledB
     text.push(`تفضيلات الإشعارات: ${isolate(ctx.preferencesUrl)}`);
   }
 
-  return { rows, text };
+  return { rows, text, dropped };
 }
 
 function compileOne(
@@ -129,6 +171,7 @@ function compileOne(
   say: (template: string) => string,
   rows: string[],
   text: string[],
+  dropped: DroppedBlock[],
 ): void {
   switch (block.type) {
     case "heading": {
@@ -166,6 +209,13 @@ function compileOne(
       // A button with no URL is a CHECK, not a refusal — the draft saves — but
       // a link to nowhere is not sent: it renders as nothing.
       if (href === "" || label === "") return;
+      // ★ And a link to somewhere we would not send is dropped LOUDLY, so the
+      // checks panel names it rather than an admin wondering where the button
+      // went.
+      if (!isSendableHref(href, ctx.appOrigin)) {
+        dropped.push({ id: block.id, type: "button", reason: "malformed" });
+        return;
+      }
       rows.push(row(`<td ${cell(`padding:4px 0 20px 0;text-align:right;`)}>${bulletproofButton(href, label, block.style, ctx.palette)}</td>`));
       // REQ-NTF-013: «a button becomes `label: url`».
       text.push(`${label}: ${isolate(href)}`);

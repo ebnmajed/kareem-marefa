@@ -89,17 +89,104 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * merge → Railway window turned around: a worker running an OLDER build must
  * not throw on a document written by a NEWER one. An unrecognised block is
  * skipped by the compiler, never fatal — the mail arrives missing a row rather
- * than not arriving at all. `0125`'s check constraint is the structural
- * authority; this is the reader's guard.
+ * than not arriving at all. `0134`'s check constraint is the structural
+ * authority for the ENVELOPE; this is the reader's guard for the contents.
  */
 export function isBlockDocument(value: unknown): value is EmailBlockDocument {
   return isRecord(value) && typeof value.schemaVersion === "number" && Array.isArray(value.blocks);
 }
 
-/** The blocks of a document, with anything unrecognisable dropped. */
+const str = (value: unknown): value is string => typeof value === "string";
+const SPACER_HEIGHTS = new Set(["sm", "md", "lg"]);
+const BUTTON_STYLES = new Set(["primary", "secondary"]);
+const IMAGE_KINDS = new Set(["org_logo", "session_card_image"]);
+
+/**
+ * ★ A RECOGNISED BLOCK WITH A MISSING FIELD IS DROPPED, NOT FATAL.
+ *
+ * `readBlocks()` used to validate only `type`, which made the tolerance above a
+ * half-promise: an unknown TYPE was skipped, but a known type missing its
+ * `text` reached the compiler and threw on `undefined.replace` — so
+ * `renderEmail()` raised, `send_notification` failed, and **the mail never
+ * arrived**, which is the opposite of what the comment promises. `0134` admits
+ * every one of those documents, because it checks the envelope and not the
+ * contents, so this function is the only validator there is.
+ *
+ * It matters most in the window the tolerance was written for: a future
+ * `schemaVersion: 2` that renames a field would otherwise make every OLD worker
+ * throw on every mail of that template. Dropping the row degrades; throwing
+ * does not.
+ *
+ * Every check is a shape check, and `height`/`style`/`kind` are enum checks —
+ * which also closes the prototype lookup (`SPACER_PX["constructor"]` returned
+ * `Object`, and `??` does not catch a truthy inherited value).
+ */
+function isRenderable(block: Record<string, unknown>): block is EmailBlock & Record<string, unknown> {
+  if (!str(block.id) || !str(block.type)) return false;
+  switch (block.type) {
+    case "heading":
+      return str(block.text) && (block.level === 1 || block.level === 2);
+    case "paragraph":
+      return str(block.text);
+    case "button":
+      return str(block.label) && str(block.urlBinding) && str(block.style) && BUTTON_STYLES.has(block.style);
+    case "session_card":
+      return block.withImage === undefined || typeof block.withImage === "boolean";
+    case "detail_list":
+      return (
+        Array.isArray(block.items) &&
+        block.items.every((item) => isRecord(item) && str(item.label) && str(item.value))
+      );
+    case "divider":
+      return true;
+    case "spacer":
+      return str(block.height) && SPACER_HEIGHTS.has(block.height);
+    case "image":
+      return (
+        isRecord(block.src) && str(block.src.kind) && IMAGE_KINDS.has(block.src.kind) &&
+        str(block.alt) && typeof block.width === "number" && Number.isFinite(block.width)
+      );
+    default:
+      // An unrecognised type: a NEWER build wrote it, and this one skips it.
+      return false;
+  }
+}
+
+/** One block a reader refused, so the editor's checks panel can NAME it — an
+ *  admin must not approve a mail that silently lost a row. */
+export interface DroppedBlock {
+  /** The `id` when the block had one; the empty string when it did not. */
+  id: string;
+  /** The `type` when it was a string, else `"unknown"`. */
+  type: string;
+  reason: "unknown_type" | "malformed";
+}
+
+/** The blocks of a document, with anything unrenderable dropped. */
 export function readBlocks(value: unknown): EmailBlock[] {
-  if (!isBlockDocument(value)) return [];
-  return value.blocks.filter(
-    (block): block is EmailBlock => isRecord(block) && typeof block.type === "string" && (BLOCK_TYPES as readonly string[]).includes(block.type),
-  );
+  return readDocument(value).blocks;
+}
+
+/** `readBlocks()`, and what it refused. */
+export function readDocument(value: unknown): { blocks: EmailBlock[]; dropped: DroppedBlock[] } {
+  if (!isBlockDocument(value)) return { blocks: [], dropped: [] };
+  const blocks: EmailBlock[] = [];
+  const dropped: DroppedBlock[] = [];
+  for (const raw of value.blocks) {
+    if (!isRecord(raw)) {
+      dropped.push({ id: "", type: "unknown", reason: "unknown_type" });
+      continue;
+    }
+    if (isRenderable(raw)) {
+      blocks.push(raw as EmailBlock);
+      continue;
+    }
+    const type = str(raw.type) ? raw.type : "unknown";
+    dropped.push({
+      id: str(raw.id) ? raw.id : "",
+      type,
+      reason: (BLOCK_TYPES as readonly string[]).includes(type) ? "malformed" : "unknown_type",
+    });
+  }
+  return { blocks, dropped };
 }
