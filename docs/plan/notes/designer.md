@@ -1966,3 +1966,130 @@ poster beside its wave-8 capture**.
 | Q6 | The binding's name | **`session.when`**. `session.dates` misnames a value that carries a time; `session.startsAtRange` is a lie at one day |
 | Q7 | Does `l_when`'s frame grow in v3 before or after the measurement? | **After.** The measure is the ink guard and the «reached its minimum size» export reason; a frame changed without it is a guess, and `0098` already records that guess being wrong once |
 | Q8 | Does L7's owner-order need a rule for the certificate window (D1.7)? | **No rule, one line in the table.** The only observable difference is a mislabelled «صدرت بـ» that self-corrects on deploy. Nothing is paid, deleted or double-sent |
+
+---
+
+## Wave 10 — what was built, and where the plan above was wrong
+
+The plan above is kept as written. Sync 1 approved D1 unchanged and **changed D2's centre**; this
+section is the record of both, so nobody reads the plan as the design.
+
+### ★ D2's defect, caught on paper by the lead — the window, on a public artefact
+
+The plan proposed a **new binding**, `session.when`, and a new seed (poster v3 × 5). That is wrong,
+and the reason is this wave's own migration order. `poster_render_context()` picks the automatic
+template with `order by … version desc limit 1` — **the latest version** (`0082:131-138`). The owner
+pushes migrations **before** merging, so from the push until Railway redeploys, **`main`'s worker
+renders every newly published or edited session's poster from the v3 document** — whose `l_when`
+would have bound a name `main`'s `resolveSessionBindings()` has never heard of. An absent binding
+draws the **marked placeholder** «التاريخ والوقت» where the date belongs, and `/api/s/{id}/og` serves
+that as the **public share image**. My D2.10 proved the old worker's *bindings* were today's and
+missed that its *document* was not.
+
+**The ruling: the binding's NAME does not change; its VALUE does.** Three consequences, each better
+than the plan's:
+
+1. **Every document gets the range at its next regeneration** — v1 and v2 versions, every pinned
+   poster, and ★ **every org's own copy of a template**, which no seed migration can reach
+   (`REQ-DSG-008`). Under the plan an org copy would have bound a first-day date for ever and never
+   been fixed.
+2. **The old worker and the old app render the first day from any version** — late, never wrong.
+3. **No new binding, no new template version, no seed migration** — so
+   `tests/unit/designer-library.test.ts` is not touched and **D2 contributes no line to the
+   untouched-suite ledger**. The eleven-row assertion, the family list and `REQ-DSG-026`'s counted
+   roster are all untouched because nothing was added to the library.
+
+The name is slightly untrue at three days and is **entirely internal**; that is the cheaper of the two
+untruths, and it is said in one comment beside `formatBindingWhen`.
+
+### ★ Q7, measured — and the answer was «there is nothing to generate»
+
+Not by eye. `measureTextBatch` — the runtime's own probe, the function `worker/src/render/variant.ts:117`
+runs on every production export — in headless Chrome against the pinned `packages/fonts` bytes inlined
+as `scripts/parity/harness.mjs` inlines them, over `derive(talkPoster, preset)` for **all seven poster
+presets** in **both locales**. Throwaway script; nothing added to the repo.
+
+★ **With a control first**, because «everything fits» is unfalsifiable otherwise: a ladder of growing
+strings breaks from one line to two between 41 and 63 characters at `master`, at `og` and at `a3`
+alike. The probe is sensitive, and the fit is **preset-invariant** — `derive()` scales the frame and
+the font size by one factor, which is also why `l_when` has no `autoFit`.
+
+| Shape | ar | en |
+|---|---|---|
+| one day, today's value (the baseline) | 1 line | 1 line |
+| consecutive, same month — «19 – 21 سبتمبر 2026 · 6:00 م» | 1 line | 1 line |
+| across a month boundary — «30 سبتمبر – 2 أكتوبر 2026 · 6:00 م» | 1 line | 1 line |
+| non-consecutive — «19 و21 و26 سبتمبر 2026» | 1 line | 1 line |
+| non-consecutive with a shared time | 1 line | 1 line |
+
+**`l_when` at 920 × 70 / 40 px holds every shape this product can produce**, so a v3 has nothing to
+change. Two further findings:
+
+- **The list form scales**, because only the last entry carries the month and the year: eight days is
+  still one line («1 و3 و5 و7 و9 و11 و13 و15 سبتمبر 2026 · 6:00 م»). So the plan's «N لقاءات» collapse
+  form is **dropped entirely** — a count noun in the runtime would have meant Arabic plural forms in a
+  package with no ICU and no message catalogue. **The fallback past the budget is the first day's full
+  date, today's value**: never wrong, never worse than what the poster says now.
+- **Both scripts break in the same place** — 46 characters fits, 54 wraps — which is the only reason a
+  single 48-character budget is defensible as a proxy for a rendered width. Both data points are in the
+  comment, so the next person need not re-derive them.
+
+Confirmed while measuring: **a poster is always Arabic.** `locale: "ar"` is hard-coded at
+`src/lib/dal/designer.ts:241` and `worker/src/tasks/regenerate_poster.ts:125`, so the `en` column is a
+guard-rail rather than a constraint.
+
+### D1 as built
+
+`supabase/proposed/designer/0001_certificates_reissue.sql` — the lead's four DDL statements carried
+verbatim under `-- LEAD DDL (DEC-160)` (contract 10), then `revoke_certificate()` (dropped and
+re-created for the trailing `p_cause`, grants restated verbatim), `issue_certificate()` and
+`attendance_certificate_sync()`.
+
+Two things the plan did not have:
+
+- **A `unique_violation` handler on the insert**, guarded by `get stacked diagnostics v = CONSTRAINT_NAME`
+  so it can only ever swallow `certificates_live_once` and never a `certificates_org_id_serial_key`
+  collision, which would be a real defect. ★ The item is **`CONSTRAINT_NAME`**, not
+  `PG_EXCEPTION_CONSTRAINT_NAME` — the wrong spelling raises `unrecognized GET DIAGNOSTICS item` at
+  **apply** time, so every case in the file failed at once and the real error was one line up from ten
+  cascading failures. Postgres does fill it with the **index's** name for a bare unique index, which is
+  what the new case asserts rather than assumes.
+- **The audit row carries the cause** beside the serial, so a log read later says which kind of
+  revocation it was — the column exists for the same reason.
+
+`tests/rls/certificates-reissue.test.ts`, 10 cases, green. The sharp one is
+`no_replacement_after_for_cause`: it reads `certificate_serial_counters` **before and after** the
+refused issue and asserts it did not move, which is what proves the raise happens before
+`allocate_serial()`.
+
+### Two traps this unit met
+
+1. ★ **A proposed file containing `alter table` deadlocks concurrent RLS runs.** `applyProposed()`
+   runs inside each test's transaction, so `alter table public.certificates add column` takes
+   **`access exclusive`** on `certificates` for the whole of each of my ten cases. `fileParallelism`
+   is `false`, so my own run is safe — but another track running `npm run test:rls` at the same time
+   deadlocks against it, and **so do I**. Three of my first ten failures were `deadlock detected` in
+   `seed`, not defects in anything. Teammates' proposed files are normally functions, which take no
+   table lock; contract 10 is the first time a teammate's file carries DDL. **The cure is promotion**:
+   once `0001` is in `supabase/migrations/`, `applyProposed()` is a no-op and the lock disappears.
+   Until then, `pgrep` before every run and re-run a deadlock rather than reading it as a finding.
+2. **A test that fakes a duplicate row must keep every OTHER constraint satisfied.** Appending a
+   letter to `serial` to dodge `certificates_org_id_serial_key` broke
+   `certificates_serial_shape` instead, and `23514` arrived where the case asserted `23505` — a
+   passing-looking constraint test that was testing the wrong constraint. The serial's **counter part**
+   is replaced now, so the shape holds and only the intended rule can fire.
+
+### Gates on `8607d07` (D1) and `333486c` (D2)
+
+`npx tsc --noEmit` clean, app and worker · `npm run lint` **0 errors** (25 pre-existing warnings) ·
+`npm test` **2055 passed, 1 skipped, 212 files** · `npm run test:rls` **1128 passed, 109 files**, the
+one failure being `notify`'s own in-flight `notify-template-blocks.test.ts` · `npm run parity`
+**holds, 21 of 28 with the harness's loud cwebp skip, background 3 of 3, no golden moved**.
+
+★ **What I cannot prove alone, stated rather than implied:** the existing certificate suites ran
+against the database **without** `0001` applied — only my own file calls `applyProposed()` — so they
+are evidence of `main`'s behaviour, not of mine. That they still pass **under** the change is proven at
+**promotion**, and the cases to watch are named in D1.8 above:
+`session-days-certificates.test.ts:151` («not over an existing row») holds because the row that case
+creates is `issued`, i.e. live; `checkin-removal.test.ts:156` holds because its session is
+`in_progress`, so the sync returns before either row guard.
