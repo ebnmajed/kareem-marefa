@@ -1080,3 +1080,24 @@ for this track, taken before promotion rather than after it.
 `calendar_events`. The component tests mock the DAL and the embed needs the promoted column to
 exist, so `tests/e2e/wave9-notify-days.spec.ts` is what proves it. It is the first thing to run
 after promotion.
+
+### W11.7 The embed is proven, without the build
+
+`0109`–`0112` are promoted, and all **126** cases across the ten notify and calendar RLS files pass
+against the promoted schema — the six pre-existing ones with their assertions untouched. That
+supersedes §W11.5's rehearsal: it is the real thing rather than a stand-in.
+
+`listSyncedEvents()`'s nested embed (§W11.6) is proven too, without a build. Asked of local
+PostgREST as `service_role`:
+
+| select | answer |
+|---|---|
+| `id,not_a_table(x)` | `PGRST200` — «could not find a relationship … in the schema cache» |
+| `id,sessions(title,starts_at,session_days(id)),session_days(position,starts_at)` | `42501` — permission denied on `calendar_events` |
+
+An unresolvable embed is refused at schema-cache time, **before** privileges. Mine gets past that
+stage and fails only on the grant — which is `service_role`'s by design (`0026` revokes it; the DAL
+runs as `authenticated`). So both relationships resolve, including the nested one.
+
+**What still needs the lead's build:** `tests/e2e/wave9-notify-days.spec.ts` and its four captures.
+`.next` predates the whole wave, so a run now would serve yesterday's server components.
