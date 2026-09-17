@@ -912,6 +912,7 @@ wave 10, where the admin screens that write those rows are.
 | P1 | **contract 5** — `attendance_recorded()`, `attendance_removed()`, with `main`'s exact behaviour | `supabase/proposed/scoring/0001_attendance_hooks.sql`, `tests/rls/scoring-days-award.test.ts` | ready for sync at `b0f1a49` |
 | P2 | **contract 6** — `session_attendance_complete()`, `session_attendance()` | `.../0002_attendance_predicate.sql`, `tests/rls/scoring-days-predicate.test.ts` | `2134295` |
 | P3 | the award at completion; the two-fact routine; the counting fixes | `.../0003_award_at_completion.sql`, `worker/src/tasks/{evaluate_no_shows,award_presenter_points}.ts`, `tests/rls/scoring-days-{award,counting,recompute}.test.ts` | `11b7735` |
+| P5 | ★ **`0121`** — the presenter's bonus decided in SQL, so `main`'s OLD worker is safe in the deploy window (the lead's row L9) | `.../0005_attendee_bonus_guard.sql`, `tests/rls/scoring-days-presenter-bonus.test.ts` | promoted as `0121` (`6ad2fc8`) |
 | P4 | the missed-day line | `.../0004_missed_attendance.sql`, `src/lib/dal/points.ts`, `src/components/scoring/points-history-list.tsx`, `src/messages/*/scoring.json`, `tests/rls/scoring-days-missed.test.ts`, `tests/components/scoring/points-history-list.test.tsx` | `7087550`, `cd582b0` |
 
 ## ★ The correction that matters: the epoch is not «the latest-created check-in»
@@ -1056,3 +1057,51 @@ because leaving it out is exactly the mistake that was made. Fixed at `b23fab1`.
 **A general lesson for anyone writing against a proposed file:** a case written against the
 FIRST version of a seam is not automatically a case against its final body. When the behaviour
 lands, re-read every case that calls it and ask what precondition the real body now requires.
+
+
+---
+
+# ★ `attendance_epoch_check_in()` — what it returns, and the one way to misread it
+
+**Written for the next lead, not for this wave.** Wave 10's certificate re-issue needs this exact
+fact, and it is the kind of thing that is obvious while you hold it and invisible a month later.
+
+```sql
+public.attendance_epoch_check_in(p_session uuid, p_member uuid) returns uuid
+```
+
+**It returns the member's highest-position ACTIVE check-in for that session — whether or not the
+member attended every day.** It is `security definer`, `service_role` only, and it is defined in
+`0113`.
+
+| The member | What it returns |
+|---|---|
+| attended all three days of three | day three's check-in |
+| attended days one and three of three | **day three's check-in** — not null |
+| attended day one only | day one's check-in |
+| never checked in, or every check-in retracted | **null** |
+
+★ **The misreading to avoid: `epoch is null` means «did not attend at all», NOT «attended
+partially».** A partial attendee has an epoch, because the function answers «which day did they last
+attend?» and not «did they attend the session?». Anything that needs the second question asks
+`session_attendance_complete(p_session, p_member)`, which is the only definition of «attended the
+session» for points and certificates (contract 6). A detection read written against null would
+silently skip exactly the partial attendees it was looking for.
+
+**Why the two are separate on purpose.** The predicate decides *whether* something is owed; the
+epoch decides *which row* names it. `0121`'s guard needs BOTH — a partial attendee keyed to their own
+last day would otherwise still have paid the presenter — and that pairing is the shape any later
+consumer will want too:
+
+- **the attendee's own award** is keyed to the epoch, so `attendance_removed()` finds it;
+- **the presenter's `attendee_bonus`** is keyed to the SAME row, so the two reverse together;
+- **a certificate** names the session, never a day — which is why `0108` looks it up by session,
+  member and kind rather than by `check_in_id`, and why removing day one can revoke a certificate
+  issued off day three.
+
+**And the trap underneath all of it**, because it has now been met four times in this wave (the
+realtime case, the lead's `0108`, this function's first draft, and `award_presenter_points.ts`):
+`check_ins.created_at` and `arrived_at` **both default to `now()`, the TRANSACTION's timestamp**, so
+every row one transaction writes carries the same instant. «The latest check-in» is not a thing you
+can order by; the epoch is defined by **day position** for that reason. **Never write a second
+ordering when a function already owns the answer.**
