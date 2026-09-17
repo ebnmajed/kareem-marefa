@@ -163,7 +163,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     <article>
       <Notices session={session} phase={phase} published={published} locale={locale} />
 
-      <EventHero session={session} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
+      <EventHero session={session} dayCount={days.length} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
 
       <div className="mx-auto max-w-6xl px-4 pb-12 md:px-8 md:pb-16">
         <div className="md:grid md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12">

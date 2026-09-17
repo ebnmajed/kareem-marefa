@@ -172,6 +172,14 @@ test("★ the event page lists the days, and reads `open` between two of them", 
   await expect(page.getByText(/^اليوم الأول · /)).toBeVisible();
   await expect(page.getByText(/^اليوم الثاني · /)).toBeVisible();
   await expect(page.getByText(/^اليوم الثالث · /)).toBeVisible();
+
+  // ★ THE HERO CHIP SAYS THE COMMITMENT, NOT DAY ONE'S LENGTH. The column
+  // `duration_minutes` is 120 and rightly stays day one's; a chip reading «120
+  // دقيقة» beside a three-evening range says the workshop takes two hours
+  // (DEC-151 ruling 4). Found in a capture, not in an assertion — so here is
+  // the assertion.
+  await expect(page.getByText("3 أيام")).toBeVisible();
+  await expect(page.getByText("120 دقيقة")).toHaveCount(0);
   await capture(page, "event-three-days");
 });
 

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { TagChip } from "@/components/ui/tag-chip";
 import { AvatarStack } from "@/components/ui/avatar";
+import { dayCountLabel } from "@/components/sessions/day-label";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { EventSession } from "@/lib/dal/sessions";
 import type { SeatState, SessionPhase } from "@/lib/session-status";
@@ -32,6 +33,14 @@ import type { SeatState, SessionPhase } from "@/lib/session-status";
 
 export interface EventHeroProps {
   session: EventSession;
+  /**
+   * ★ How many days the session has (`REQ-SES-015`). The duration chip is the
+   * one place on this page where `sessions.duration_minutes` is shown as the
+   * WHOLE of what a member is committing to — and at several days it is not:
+   * it is day one's length (`DEC-151` ruling 4), so «120 دقيقة» on a
+   * three-evening workshop reads as «this takes two hours».
+   */
+  dayCount: number;
   phase: SessionPhase;
   seat: SeatState | undefined;
   closingSoon: boolean;
@@ -40,8 +49,8 @@ export interface EventHeroProps {
   locale: string;
 }
 
-export async function EventHero({ session, phase, seat, closingSoon, poster, locale }: EventHeroProps) {
-  const [t, tUi] = await Promise.all([getTranslations("sessions.event"), getTranslations("ui.pageHeader")]);
+export async function EventHero({ session, dayCount, phase, seat, closingSoon, poster, locale }: EventHeroProps) {
+  const [t, tUi, tDays] = await Promise.all([getTranslations("sessions.event"), getTranslations("ui.pageHeader"), getTranslations("sessions.days")]);
 
   const breadcrumb = [{ href: "/app/sessions", label: t("breadcrumbRoot") }];
   if (session.categoryId && session.categoryName) {
@@ -52,7 +61,16 @@ export async function EventHero({ session, phase, seat, closingSoon, poster, loc
     ...(session.categoryName ? [session.categoryName] : []),
     t(`level.${session.level}`),
     session.language === "ar" ? t("languageAr") : t("languageEn"),
-    ...(session.durationMinutes ? [t("duration", { count: session.durationMinutes, value: formatNumber(session.durationMinutes) })] : []),
+    // ★ «3 أيام» in place of «120 دقيقة» once there is more than one day. The
+    // COLUMN keeps meaning day one's length, which is what every clock job and
+    // every check-in window needs; this chip is what a member reads as «how
+    // much of my week is this», and the honest answer is the day count. At one
+    // day it is the minutes, exactly as today.
+    ...(dayCount > 1
+      ? [dayCountLabel(dayCount, tDays)]
+      : session.durationMinutes
+        ? [t("duration", { count: session.durationMinutes, value: formatNumber(session.durationMinutes) })]
+        : []),
   ];
 
   return (
