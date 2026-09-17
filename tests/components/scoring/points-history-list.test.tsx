@@ -15,10 +15,18 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import ar from "@/messages/ar/scoring.json";
-import type { PointsLedgerRow } from "@/lib/dal/points";
+import arSessions from "@/messages/ar/sessions.json";
+import type { MissedAttendance, PointsLedgerRow } from "@/lib/dal/points";
+
+// ★ HARNESS ONLY — wave 9. The component now also reads `sessions.days`, for
+// REQ-SES-017's missed-day notice: contract 7 says there is ONE day-label
+// formatter and every track calls it, so this renders «اليوم الثاني» through
+// `sessions`' own strings rather than growing a second set. Not one assertion
+// below changed, and nothing about a one-day history changed with it.
+const messages = { ...ar, ...arSessions };
 
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "scoring.points" }),
+  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "scoring.points" }),
 }));
 
 const { PointsHistoryList } = await import("@/components/scoring/points-history-list");
@@ -39,9 +47,20 @@ function row(overrides: Partial<PointsLedgerRow> = {}): PointsLedgerRow {
   };
 }
 
-async function renderList(rows: PointsLedgerRow[]) {
-  const element = await PointsHistoryList({ rows, timeZone: "Asia/Riyadh" });
-  return render(<NextIntlClientProvider locale="ar" messages={ar}>{element}</NextIntlClientProvider>);
+async function renderList(rows: PointsLedgerRow[], missed: MissedAttendance[] = []) {
+  const element = await PointsHistoryList({ rows, missed, timeZone: "Asia/Riyadh" });
+  return render(<NextIntlClientProvider locale="ar" messages={messages}>{element}</NextIntlClientProvider>);
+}
+
+function notice(overrides: Partial<MissedAttendance> = {}): MissedAttendance {
+  return {
+    sessionId: "w1",
+    sessionTitle: "ورشة ثلاثة أيام",
+    completedAt: "2026-09-12T18:00:00Z",
+    dayCount: 3,
+    days: [{ position: 2, startsAt: "2026-09-11T15:00:00Z" }],
+    ...overrides,
+  };
 }
 
 describe("PointsHistoryList", () => {
@@ -137,6 +156,59 @@ describe("PointsHistoryList", () => {
 
   it("is axe-clean with a mixed history", async () => {
     const { container } = await renderList([row(), row({ id: "r2", isReversal: true, source: "reversal", reason: "أُلغي تسجيل الحضور" })]);
+    const results = await axe.run(container);
+    expect(results.violations).toEqual([]);
+  });
+
+  // ★ REQ-SES-017 — wave 9. No ledger row is written for an award that did not
+  // happen, so the only way a member can explain the gap is a notice that is
+  // not a ledger row. It carries NO amount: the absence of a number is the
+  // fact, and an amount would read as points that moved.
+  it("names the missed day, states the rule, and shows no amount", async () => {
+    await renderList([], [notice()]);
+    expect(screen.getByText("لم تُحتسب نقاط الحضور")).toBeInTheDocument();
+    expect(screen.getByText("فاتك اليوم الثاني")).toBeInTheDocument();
+    expect(screen.getByText("نقاط الحضور تُمنح مرة واحدة عند حضور جميع أيام الجلسة.")).toBeInTheDocument();
+    expect(screen.queryByText(/^[+-]/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", "/ar/app/sessions/w1");
+  });
+
+  it("joins several missed days in the locale's own conjunction, with Western numerals only", async () => {
+    await renderList([], [notice({ days: [{ position: 2, startsAt: "2026-09-11T15:00:00Z" }, { position: 3, startsAt: "2026-09-12T15:00:00Z" }] })]);
+    // Two days take Arabic's DUAL form («فاتك»), three take the plural
+    // («فاتتك») — which is exactly why the string carries all six ICU forms
+    // and why this matcher does not assume one of them.
+    const line = screen.getByText(/فات/);
+    expect(line.textContent).toContain("اليوم الثاني");
+    expect(line.textContent).toContain("اليوم الثالث");
+    expect(line.textContent).not.toMatch(/[٠-٩]/); // DEC-124
+  });
+
+  it("★ a one-day history is unchanged: no notice is ever rendered, and the empty state still wins when there is nothing at all", async () => {
+    await renderList([row()]);
+    expect(screen.queryByText("لم تُحتسب نقاط الحضور")).not.toBeInTheDocument();
+    screen.getByText("تسجيل حضور");
+  });
+
+  it("shows the notice rather than the empty state when a member has no points but does have something to explain", async () => {
+    await renderList([], [notice()]);
+    expect(screen.queryByText("لا نقاط بعد", { exact: false })).not.toBeInTheDocument();
+  });
+
+  it("interleaves the notice by the session's completion time, newest first", async () => {
+    const { container } = await renderList(
+      [row({ id: "r1", occurredAt: "2026-09-14T10:00:00Z", reason: "أحدث" }), row({ id: "r2", occurredAt: "2026-09-01T10:00:00Z", reason: "أقدم" })],
+      [notice()], // 2026-09-12, between the two
+    );
+    const items = [...container.querySelectorAll("li")].map((li) => li.textContent ?? "");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toContain("أحدث");
+    expect(items[1]).toContain("لم تُحتسب نقاط الحضور");
+    expect(items[2]).toContain("أقدم");
+  });
+
+  it("is axe-clean with a notice in the list", async () => {
+    const { container } = await renderList([row()], [notice()]);
     const results = await axe.run(container);
     expect(results.violations).toEqual([]);
   });

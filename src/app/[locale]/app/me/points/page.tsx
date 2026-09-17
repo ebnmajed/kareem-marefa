@@ -97,7 +97,7 @@ export default async function PointsPage({
           scope a test locator to (the catalogue below repeats a rule's own
           reasonAr, which can equal a specific award's reason here). */}
       <div id="history">
-        <PointsHistoryList rows={history.rows} timeZone={history.timeZone} />
+        <PointsHistoryList rows={history.rows} missed={history.missed} timeZone={history.timeZone} locale={locale} />
       </div>
 
       <PointsCatalogue entries={history.catalogue} />

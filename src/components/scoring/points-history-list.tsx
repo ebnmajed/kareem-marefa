@@ -4,7 +4,8 @@ import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Panel } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { PointsLedgerRow } from "@/lib/dal/points";
+import { dayShortLabel } from "@/components/sessions/day-label";
+import type { MissedAttendance, PointsLedgerRow } from "@/lib/dal/points";
 
 // SCR-022's list half. Every row shows its own reason — never a hard-coded
 // label standing in for it — because REQ-PTS-003's promise is that a member
@@ -13,10 +14,44 @@ import type { PointsLedgerRow } from "@/lib/dal/points";
 // tag alongside its own reason, not instead of it — including `checkin`'s
 // REQ-CHK-017 removal, which is `isReversal` off the same `source` column
 // as every other reversal (`lib/dal/points.ts`'s own header).
-export async function PointsHistoryList({ rows, timeZone }: { rows: PointsLedgerRow[]; timeZone: string }) {
+// ★ REQ-SES-017 — «the member can see why». A multi-day session whose days
+// were not all attended pays nothing, and NOTHING IS WRITTEN: the ledger
+// records points, not explanations. So the history interleaves a notice, by
+// the session's completion time, saying which day was missed. It is not a
+// ledger row and carries no amount, which is also how it reads.
+//
+// `missed` is empty for every one-day session, so a one-day history renders
+// exactly as it did before this existed.
+export async function PointsHistoryList({
+  rows,
+  missed = [],
+  timeZone,
+  locale = "ar",
+}: {
+  rows: PointsLedgerRow[];
+  missed?: MissedAttendance[];
+  timeZone: string;
+  locale?: string;
+}) {
   const t = await getTranslations("scoring.points");
+  const td = await getTranslations("sessions.days");
 
-  if (rows.length === 0) {
+  // One entry stream, newest first. A ledger row sits at its own instant; a
+  // notice sits at the session's completion, which is when the award it is
+  // explaining would have arrived.
+  type Entry =
+    | { at: string; kind: "ledger"; row: PointsLedgerRow }
+    | { at: string; kind: "missed"; notice: MissedAttendance };
+  const entries: Entry[] = [
+    ...rows.map((row): Entry => ({ at: row.occurredAt, kind: "ledger", row })),
+    ...missed.map((notice): Entry => ({ at: notice.completedAt, kind: "missed", notice })),
+  ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+  // «اليوم الثاني واليوم الثالث» — the locale's own conjunction, not a glued
+  // separator string, so «and» never has to be translated by hand.
+  const joiner = new Intl.ListFormat(locale, { style: "long", type: "conjunction" });
+
+  if (entries.length === 0) {
     // ★ REQ-UIX-012 — every empty state names the next action. A member
     // with no points yet earns their first one by attending, so the
     // action is the same "browse sessions" the certificates and calendar
@@ -26,7 +61,36 @@ export async function PointsHistoryList({ rows, timeZone }: { rows: PointsLedger
 
   return (
     <ul className="mt-6 space-y-3">
-      {rows.map((row) => {
+      {entries.map((entry) => {
+        if (entry.kind === "missed") {
+          const { notice } = entry;
+          const days = joiner.format(notice.days.map((day) => dayShortLabel(day, td)));
+          return (
+            <li key={`missed-${notice.sessionId}`}>
+              {/* `ended`, not `error`: the member did nothing wrong, and an
+                  error tone would say they did. No amount, because no points
+                  moved — the absence of a number IS the fact. */}
+              <Panel tone="ended" className="p-4">
+                <p className="text-label text-fg-heading">{t("row.missed.title")}</p>
+                <div className="mt-2">
+                  <Badge tone="ended" size="sm">
+                    {t("row.missed.days", { count: notice.days.length, days })}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-body-sm text-fg-muted">{t("row.missed.rule")}</p>
+                <p className="mt-2 text-body-sm text-fg-muted">{formatDateTime(notice.completedAt, timeZone)}</p>
+                <p className="mt-1 text-body-sm text-fg-muted">
+                  <bdi>{notice.sessionTitle}</bdi>
+                  {" · "}
+                  <Link href={`/app/sessions/${notice.sessionId}`} className="underline underline-offset-4 hover:text-fg-heading">
+                    {t("row.openSession")}
+                  </Link>
+                </p>
+              </Panel>
+            </li>
+          );
+        }
+        const { row } = entry;
         const sign = row.amount > 0 ? "+" : "";
         return (
           <li key={row.id}>

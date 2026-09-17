@@ -23,7 +23,12 @@
       "row": {
         "reversal": "إلغاء نقاط سابقة",
         "manual": "تعديل يدوي من الإدارة",
-        "openSession": "فتح الجلسة"
+        "openSession": "فتح الجلسة",
+        "missed": {
+          "title": "لم تُحتسب نقاط الحضور",
+          "days": "{count, plural, zero {لم يفتك أي يوم} one {فاتك {days}} two {فاتك {days}} few {فاتتك {days}} many {فاتتك {days}} other {فاتتك {days}}}",
+          "rule": "نقاط الحضور تُمنح مرة واحدة عند حضور جميع أيام الجلسة."
+        }
       },
       "catalogue": {
         "heading": "ماذا يمنحك نقاطًا؟",
