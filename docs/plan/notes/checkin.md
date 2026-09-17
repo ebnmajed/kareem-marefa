@@ -2035,3 +2035,54 @@ The general lesson for this repo's e2e: **under `/app`, a locator taken from `pa
 strict-mode failure**, and the shape that hides it longest is a role locator — it passes while the
 CSS locator three lines below it fails, which is exactly how the first round read as «only this one
 line is wrong».
+
+---
+
+# ★ CLOSING — what is done, and what is carried
+
+**Nothing of this track is running and nothing is uncommitted** as of the freeze. Last commit
+`18e67a8`. No RLS or e2e run started from here after it.
+
+## Done, and where it lives
+
+| | Where |
+|---|---|
+| **Contract 4** — the eight RPCs keyed on the day, old signatures dropped in the same file, a null day resolved through `0100`'s own resolver | `0104`, `0105` (promoted) |
+| **The switch's shadow** — `sessions.check_in_open` = `bool_or` of its days, two triggers, the mark reset one statement later | `0104` |
+| **Contract 5** — all three hooks; the three functions decide nothing about points or certificates, asserted over `pg_get_functiondef` | `0120` |
+| **The gate and the job** — `checkInIneligibleReason()` on the day through `resolveDay()`; `rotate_codes` on days inside their window | `session-matrix.ts`, `worker/src/tasks/rotate_codes.ts` |
+| **The DAL** — the day on every DTO, the day's code, switch, count and attendance matrix; `completedAllDays` through `session_complete_attendees()` | `lib/dal/checkin.ts` |
+| **The three screens** — one rule (`day-name.ts`) decides whether a day is named; three refusals gain a day-named twin | the three routes, `messages/*/checkin.json` |
+| **The RSVP panel's phase** — reads the day set, so it and the event page cannot disagree | `lib/dal/rsvp.ts` |
+| **The manual-mark form onto the system** — all three controls; the file left the ui-lint allowlist | `manual-mark-form.tsx`, allowlist shrunk at `15d8908` |
+| **Tests** — `checkin-days`, `checkin-contract-5` (RLS); `checkin-day-window`, `checkin-rotate-codes-days`, `checkin-rsvp-days` (unit); `attendance-days` (component); `wave9-checkin-days`, `wave9-checkin-one-day` (e2e) | all new files |
+| **Captures** — ten at 390 × 844, opened and accepted beside their one-day twins | `.qa-shots/rtl/wave9-checkin-*` |
+
+**Every pre-existing check-in and reservation suite passes with its assertions untouched.** The one
+ledger line is `remove-check-in-form.test.tsx`, which gained three props and no changed expectation.
+
+## Carried — each with an owner, none blocking
+
+1. **`DEC-145`'s orphaned streaming segment** — *M13*. Desktop only, a hidden second copy of the
+   rendered markup. Both wave-9 specs work around it by scoping to `#main`, which is `DEC-145`'s own
+   rule; the artefact itself is untouched. ★ The general hazard, worth more than the workaround:
+   under `/app`, **a locator taken from `page` rather than `#main` is a latent strict-mode failure**,
+   and a role locator hides it — it passes while the CSS locator below it fails, which is why this
+   read as three separate one-line problems before it read as one.
+2. **The attendance CSV's day column** (`REQ-ADM-017`, row L5) — *the lead, as `console`'s custodian*.
+   Nothing is needed from this track: `AttendanceRow.days` is one cell per day on the DTO already,
+   and the flat fields it reads today did not move.
+3. **The «مطلوب» marker on the manual-mark form** — *the lead's call*. `Field` is deliberately not
+   marked `required` on its three controls, because the marker joins the accessible name and this
+   form's labels are asserted verbatim. Adding it is one word plus two test updates; I did not make
+   that copy change under a markup refactor.
+4. **`completedAllDays` falls back to an em dash** when `session_complete_attendees()` errors, rather
+   than to a zero — deliberate, and stated here so nobody "fixes" it into a number: «nobody
+   completed» and «I could not ask» are different sentences on a report.
+
+## What the captures do not prove
+
+They are ten screens at one instant. **The three-day workshop driven end to end on the real worker is
+the lead's demonstrable**, not this track's — my specs drive the database directly and move a day
+with an owner `update` to reach a ceiling. What they do prove is the pair the wave is measured on:
+each surface at three days, and the same surface at one carrying none of it.
