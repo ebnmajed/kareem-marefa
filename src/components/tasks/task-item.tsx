@@ -68,7 +68,7 @@ export function TaskItem({ locale, sessionId, task, scope }: TaskItemProps) {
           options={scope.options}
           triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
           failedLabel={t("list.rescope.failed")}
-          onRescope={(dayId) => rescopeTaskAction(locale, sessionId, task.id, dayId)}
+          rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
           className="mt-2"
         />
       ) : null}

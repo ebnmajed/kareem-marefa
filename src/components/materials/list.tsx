@@ -213,7 +213,7 @@ function MaterialCard({ m, sessionId, locale, canManage, t, scope }: MaterialCar
             options={scope.options}
             triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
             failedLabel={t("rescope.failed")}
-            onRescope={(dayId) => rescopeMaterialAction(locale, sessionId, m.id, dayId)}
+            rescopeAction={rescopeMaterialAction.bind(null, locale, sessionId, m.id)}
             className="mt-2"
           />
         ) : null}

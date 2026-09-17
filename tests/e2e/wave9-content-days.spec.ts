@@ -45,6 +45,7 @@ let day1Id = "";
 let day2Id = "";
 let presenterEmail = "";
 let memberEmail = "";
+let staffEmail = "";
 const userIds: string[] = [];
 
 async function uploadObject(bucket: string, path: string, bytes: Buffer, contentType: string) {
@@ -84,6 +85,7 @@ test.beforeAll(async ({}, testInfo) => {
   domain = `content-days-e2e-${tag}.example`;
   presenterEmail = `presenter@${domain}`;
   memberEmail = `member@${domain}`;
+  staffEmail = `staff@${domain}`;
 
   const { rows: orgRows } = await db.query<{ id: string }>(
     `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة ورشة الأيام', $1, 'WD', gen_random_uuid()) returning id`,
@@ -117,9 +119,18 @@ test.beforeAll(async ({}, testInfo) => {
   const { data: memberData, error: memberError } = await admin.auth.admin.createUser({ email: memberEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "عضو" } });
   if (memberError) throw memberError;
   userIds.push(memberData.user.id);
+  // ★ Photos' own rescope chip is staff-only (REQ-EVT-009: no presenter-write concept for a
+  // photo) — `isStaff` (`lib/dal/photos.ts`) reads the org role, never session presenting, so the
+  // presenter fixture above cannot open it. `photos.spec.ts`'s own established pattern: provision
+  // then elevate.
+  const { data: staffData, error: staffError } = await admin.auth.admin.createUser({ email: staffEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "المشرف" } });
+  if (staffError) throw staffError;
+  userIds.push(staffData.user.id);
 
   const presenterMemberId = await provisionMemberId(presenterEmail);
   const memberMemberId = await provisionMemberId(memberEmail);
+  const staffMemberId = await provisionMemberId(staffEmail);
+  await db.query(`update public.members set org_role = 'moderator' where id = $1`, [staffMemberId]);
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterMemberId]);
   // ★ The tasks affordance withholds `tasks` from an UNregistered viewer at every phase but
   // `live`/`ended` (`session-matrix.ts` §5.3 row 1, DEC-090 — pre-existing, unrelated to days):
@@ -236,18 +247,84 @@ test("wave9-content-materials-presenter-grouped: the presenter sees every group,
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-presenter-grouped.png`, fullPage: true });
 });
 
-test("wave9-content-materials-scope-chip-open: the presenter opens a material's scope chip", async ({ context, page }) => {
+test("wave9-content-materials-scope-chip-open: the presenter opens a material's scope chip and moves it", async ({ context, page }) => {
   await goToEvent(context, page, presenterEmail);
+  const materials = page.locator("#materials");
   // ★ `RescopeChip` moved onto `ui/menu` (Radix) after `ui-lint` flagged its hand-rolled floating
   // panel (`content.md` §28) — no longer a `<details>` at all, and its open menu portals to the end
-  // of `<body>`, not inside `#materials`. The trigger is a real `<button>`, found on its own
-  // `aria-label` (day 1's material's chip reads "تغيير نطاق المادة: اليوم الأول"); the open menu is
-  // found by role, unscoped from `#materials` because of the portal.
-  const chipTrigger = page.locator("#materials").getByRole("button", { name: "تغيير نطاق المادة: اليوم الأول" });
-  await chipTrigger.click();
+  // of `<body>`, not inside `#materials`. Scoped to the material's own card (by its distinctive
+  // title), not by its current-scope aria-label — the label is exactly what this test changes, so
+  // a label-based locator would go stale after the first move.
+  const card = materials.locator("li").filter({ hasText: "شرائح اليوم الأول" });
+  await card.getByRole("button", { name: /^تغيير نطاق المادة/ }).click();
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveCount(4); // session + three days
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-scope-chip-open.png`, fullPage: true });
+
+  // ★ The lead's real-build crash: every rescope chip's Server Component caller used to build an
+  // inline closure and pass it as a prop — React cannot serialise that across the Server→Client
+  // boundary, and jsdom renders everything client-side, so no component test could ever meet it.
+  // Fixed by binding the Server Action itself (`content.md` §32); proven here, the only place it
+  // can be — pressing an option is the actual rescope, not a preview. Round-tripped (moved, then
+  // moved back) so this test leaves the shared serial fixture exactly as later tests expect it.
+  const sessionGroup = materials.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..").locator("..");
+  const day1Group = materials.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..").locator("..");
+  await menu.getByRole("menuitem", { name: "للورشة كاملة" }).click();
+  await expect(sessionGroup.getByText("شرائح اليوم الأول")).toBeVisible();
+  await expect(day1Group.getByText("شرائح اليوم الأول")).toHaveCount(0);
+
+  await card.getByRole("button", { name: /^تغيير نطاق المادة/ }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name: /اليوم الأول/ }).click();
+  await expect(day1Group.getByText("شرائح اليوم الأول")).toBeVisible();
+  await expect(sessionGroup.getByText("شرائح اليوم الأول")).toHaveCount(0);
+});
+
+test("wave9-content-tasks-scope-chip-open: the presenter moves a task between groups", async ({ context, page }) => {
+  await goToEvent(context, page, presenterEmail);
+  const tasks = page.locator("#tasks");
+  const card = tasks.locator("li").filter({ hasText: "اقرأ الملف قبل اليوم الأول" });
+  await card.getByRole("button", { name: /^تغيير نطاق المهمة/ }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveCount(4); // session + three days
+
+  // Same proof as materials' own twin above — round-tripped for the same reason.
+  const sessionGroup = tasks.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..").locator("..");
+  const day1Group = tasks.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..").locator("..");
+  await menu.getByRole("menuitem", { name: "للورشة كاملة" }).click();
+  await expect(sessionGroup.getByText("اقرأ الملف قبل اليوم الأول")).toBeVisible();
+  await expect(day1Group.getByText("اقرأ الملف قبل اليوم الأول")).toHaveCount(0);
+
+  await card.getByRole("button", { name: /^تغيير نطاق المهمة/ }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name: /اليوم الأول/ }).click();
+  await expect(day1Group.getByText("اقرأ الملف قبل اليوم الأول")).toBeVisible();
+  await expect(sessionGroup.getByText("اقرأ الملف قبل اليوم الأول")).toHaveCount(0);
+});
+
+test("wave9-content-photos-scope-chip-open: staff moves a photo between groups", async ({ context, page }) => {
+  await goToEvent(context, page, staffEmail);
+  const photos = page.locator("#photos");
+  // Photos have no title text — identified by the photo's own `src` instead, which survives the
+  // move regardless of DOM order (unlike materials/tasks, photos filter an EMPTY group out
+  // entirely — REQ-EVT-009, never ask, no manager exception — so day 1's own heading disappears
+  // once its one photo moves, not just the photo; there is no stable "day 1's group" container to
+  // keep querying against after that).
+  const day1Group = photos.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..").locator("..");
+  const day1Li = day1Group.locator("li").first();
+  const day1Src = await day1Li.locator("img").getAttribute("src");
+  await day1Li.getByRole("button", { name: /^تغيير نطاق الصورة/ }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveCount(4); // session + three days
+  await menu.getByRole("menuitem", { name: "للورشة كاملة" }).click();
+
+  await expect(photos.getByRole("heading", { name: /اليوم الأول/, level: 3 })).toHaveCount(0);
+  const movedLi = photos.locator("li").filter({ has: page.locator(`img[src="${day1Src}"]`) });
+  const sessionGroup = photos.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..").locator("..");
+  await expect(sessionGroup.locator("li")).toHaveCount(2); // the original session-scoped photo + the moved one
+
+  // Move it back — round-tripped so this test leaves the shared serial fixture exactly as it found it.
+  await movedLi.getByRole("button", { name: /^تغيير نطاق الصورة/ }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name: /اليوم الأول/ }).click();
+  await expect(photos.getByRole("heading", { name: /اليوم الأول/, level: 3 })).toBeVisible();
 });
 
 test("wave9-content-materials-day-scoped-after-{hidden,visible}: day 2's «بعد» material follows ITS OWN day, not the session", async ({ context, page }) => {

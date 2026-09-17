@@ -161,7 +161,7 @@ function PhotoGrid({ photos, sessionId, locale, isStaff, t, scope }: PhotoGridPr
               options={scope.options}
               triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
               failedLabel={t("rescope.failed")}
-              onRescope={(dayId) => rescopePhotoAction(locale, sessionId, p.id, dayId)}
+              rescopeAction={rescopePhotoAction.bind(null, locale, sessionId, p.id)}
             />
           ) : null}
           <TakedownButton locale={locale} sessionId={sessionId} photoId={p.id} mode={p.hiddenAt && isStaff ? "restore" : "request"} />
