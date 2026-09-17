@@ -411,6 +411,31 @@ export async function getScheduleContent(locale: string, sessionId: string): Pro
  * edit are not its business. The mirror of `proposalInput`, which refuses
  * exactly the opposite set.
  */
+/**
+ * One entry of `schedule_session()`'s `p_days` (contract 3).
+ *
+ * `id` present means «move this day», absent means «add one». It is never an
+ * index: matching by position would make «I deleted the second day» and «I
+ * moved the second day earlier» the same request.
+ *
+ * ★ NO `position` AND NO DURATION. `position` is the chronological rank the
+ * database derives (`0100`), so a client's would only ever be able to disagree
+ * with it; and a day carries a resolved window, because the start-plus-duration
+ * arithmetic has one home in `schedule/rules.ts` and this is not it.
+ */
+export const scheduleDayInput = z
+  .object({
+    id: z.uuid().nullable(),
+    startsAt: z.iso.datetime({ offset: true }),
+    endsAt: z.iso.datetime({ offset: true }),
+    venueId: z.uuid().nullable(),
+    customVenueName: z.string().trim().max(120).nullable(),
+    customVenueAddress: z.string().trim().max(300).nullable(),
+    customVenueMapUrl: z.url().startsWith("https://").nullable(),
+  })
+  .strict();
+export type ScheduleDayInput = z.infer<typeof scheduleDayInput>;
+
 export const scheduleInput = z
   .object({
     startsAt: z.iso.datetime({ offset: true }),
@@ -434,6 +459,32 @@ export const scheduleInput = z
      * form without the control saves exactly as before.
      */
     allowWalkIns: z.boolean().nullable().default(null),
+    /**
+     * ★ The session's WHOLE day set, day one included — or `null`, which is
+     * `main`'s call and must stay it (contract 3, `REQ-SES-015`).
+     *
+     * `null` is not «no days»: it is «this caller does not speak days», and
+     * `schedule_session()` then writes the session exactly as `0085` did and
+     * lets `0100`'s trigger carry the window onto its one day. The RPC refuses
+     * it by name — `days_required` — on a session that already has several, so
+     * a caller cannot silently strip a workshop down to its first evening.
+     *
+     * At most 30, which the RPC also enforces: this is a definer function's
+     * input, and a bound belongs on both sides of it.
+     */
+    days: z.array(scheduleDayInput).min(1).max(30).nullable().default(null),
+    /**
+     * `sessions.require_all_days` (`REQ-SES-017`). ★ `null` means UNCHANGED,
+     * exactly as `allowWalkIns` does — and for the opposite reason, which is
+     * worth stating because the two look alike and are not.
+     *
+     * The walk-in switch is always on the schedule form, so the form always
+     * sends an explicit boolean. This control lives INSIDE the multi-day
+     * affordance, so a one-day form never renders it and never sends it — and
+     * coercing that absence to `false` would switch `REQ-SES-017`'s default off
+     * on every save of the sessions that never asked about days at all.
+     */
+    requireAllDays: z.boolean().nullable().default(null),
   })
   .strict();
 export type ScheduleInput = z.infer<typeof scheduleInput>;
@@ -456,6 +507,23 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_language: input.language,
     // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».
     p_allow_walk_ins: input.allowWalkIns,
+    // ★ snake_case on the way out, because `p_days` is read by SQL —
+    // `jsonb_to_recordset(…) as x(starts_at timestamptz, …)` names the keys,
+    // and `02`'s column convention is the one that wins at the boundary.
+    // `null` stays `null`, which is main's call.
+    p_days:
+      input.days === null
+        ? null
+        : input.days.map((day) => ({
+            id: day.id,
+            starts_at: day.startsAt,
+            ends_at: day.endsAt,
+            venue_id: day.venueId,
+            custom_venue_name: day.customVenueName,
+            custom_venue_address: day.customVenueAddress,
+            custom_venue_map_url: day.customVenueMapUrl,
+          })),
+    p_require_all_days: input.requireAllDays,
   });
   if (error) throw new Error(`schedule_session: ${error.message}`);
 }
