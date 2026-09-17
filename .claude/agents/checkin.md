@@ -75,9 +75,9 @@ none of them**; and any primitive request (`ui/tabs` and `ui/menu` are `console`
 - `worker/src/tasks/{promote_waitlist,rotate_codes}.ts`
 - `src/messages/*/{rsvp,checkin}.json`
 - `supabase/proposed/checkin/**`
-- `tests/unit/session-matrix.test.ts`, `tests/unit/checkin-*`, `tests/components/checkin/**`,
-  `tests/rls/{rsvp,checkin,priority-rsvp}*.test.ts`,
-  `tests/e2e/{checkin,checkin-gating,admin-attendance,checkin-schedule-walk-ins}.spec.ts`,
+- `tests/unit/session-matrix.test.ts`, `tests/unit/checkin-*`, `tests/components/checkin/**` **except**
+  `schedule-form.test.tsx`, `tests/rls/{rsvp,checkin,priority-rsvp}*.test.ts`,
+  `tests/e2e/{checkin,checkin-gating,admin-attendance}.spec.ts`,
   `tests/e2e/wave7-checkin-*.spec.ts`, new `tests/e2e/wave9-checkin-*.spec.ts` — **under rule 4: existing
   files are evidence**
 - `docs/plan/notes/checkin.md`
@@ -87,6 +87,22 @@ the schedule form (`sessions'` — read days through `listSessionDays()`) · `aw
 `worker/src/tasks/award_*` (`scoring`'s) · `fan_out_certificates()`, `issue_certificate()`,
 `revoke_certificate()` (`designer`'s, held by the lead) · `src/components/{materials,tasks,photos}/**` ·
 `src/app/api/admin/exports/**` (the attendance CSV is `console`'s, held by the lead — row L5).
+
+★ **Sync 1 (`DEC-151`) — what changed for you.** (1) **The ceiling is capped by the next day's start, and
+it is the lead's function**: `public.check_in_ceiling(p_day)` (`0101`) — call it in every gate, never copy
+it; `resolve_session_day()` already uses it, and nothing having begun it returns the **first** day, so your
+gates still answer `not_started`. (2) **Your shadow had a bug**: reopening one day flips
+`sessions.check_in_open` false → true, and your session → days trigger would then open **every** day. That
+direction acts only for a writer of the **session's** column; the shadow's own recompute marks itself with a
+transaction-local setting, **reset after its update**, and the second trigger stands down for it — not
+`pg_trigger_depth()`. `0101` already makes a day born with its session's switch. (3) **The attempt rate
+limit is per day** (`REQ-SES-015`: «its own rate-limit stream»), a null day counting by session. (4)
+**Contract 5 has three hooks**: `attendance_recorded()` / `attendance_removed()` are `scoring`'s and are
+**points only**; certificates go through the lead's `attendance_certificate_sync(p_session, p_member)`, and
+`remove_check_in()` stops choosing a certificate by `check_in_id`. Until each is promoted your files keep
+`main`'s text for it verbatim. (5) `DayWindow.checkInOpen` exists (optional); `SessionDay` carries it.
+(6) `rotate_codes` stopping at the ceiling is **named difference 1** — approved, with its own new test.
+(7) The two schedule-form tests went to `sessions`.
 
 ## Definition of done
 
@@ -182,16 +198,20 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
   sets `set_config('kareem.days_writer', 'on', true)`**, writes `sessions` **once** and then its days; a
   deferred constraint trigger checks the pair at commit whatever the flag says.
 - **`session_day_id`** — `not null` on `check_ins` and `check_in_codes` (filled for a legacy inserter by the
-  `before insert` trigger: the code's day; else the day whose window to `ends_at + 2 h` contains `now()`, the
-  later-started of two; else the latest day begun), nullable on `check_in_attempts`; **nullable with no
+  `before insert` trigger: the code's day; else `resolve_session_day()` — the day whose window to its
+  **capped** ceiling contains `now()`; else the latest day begun; else, nothing having begun, the first),
+  nullable on `check_in_attempts`; on `calendar_events` too (`0101`), where a legacy insert gets the first
+  day and **null means only «the day was deleted»**; **nullable with no
   backfill** on `materials`, `session_tasks` and `photos`, where **null is the whole session**. Each is a
   composite foreign key `(session_id, session_day_id)`, so a row can only name a day of its own session; on
   the three content tables it is `on delete set null (session_day_id)` — **deleting a day promotes its
   content to the session**, which is `DEC-121`'s default. `check_ins.session_window` is **the day's** window,
   and one active check-in per member **per day** is the unique rule.
 - **`sessions.require_all_days boolean not null default true`**, beside `certificate_mode` (`REQ-SES-017`).
+- **`session_days.check_in_open boolean not null default true`** (`0101`) — `DEC-116`'s switch, per day, born
+  with its session's value. `sessions.check_in_open` stays for `main` and keeps its meaning at one day.
 
-### The ten contracts — `STATUS.md` has them in full; publish yours in your note on day one
+### The eleven contracts — `STATUS.md` has them in full; publish yours in your note on day one
 
 1. **lead → all:** the day set is the truth; the session window is its stored shadow.
 2. **lead → all:** additive; `main` and `main`'s worker are correct on the new schema.
@@ -199,10 +219,15 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
    null)` and `SessionDay` + a `cache()`-wrapped `listSessionDays(sessionId)` from `lib/dal/sessions.ts` —
    **every track reads days through it**, never its own query.
 4. **`checkin` → `sessions`, `scoring`, `content`:** each check-in RPC keeps `p_session` and gains a trailing
-   `p_day uuid default null`; the switch and the `ends_at + 2 h` ceiling are the day's.
-5. **`checkin` ⇄ `scoring`:** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` call
-   `scoring`'s `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` and decide nothing about
-   points. `scoring` publishes both with `main`'s behaviour first; then `checkin` switches.
+   `p_day uuid default null`; the switch and the ceiling are the day's. ★ **The ceiling is
+   `public.check_in_ceiling(p_day)` — the lead's, `0101`: `least(ends_at + 2 h, the next day's start)`
+   (`DEC-151`).** Gates call it; nobody copies it. Its twin is `checkInCeiling()` in `session-status.ts`.
+5. **`checkin` ⇄ `scoring` ⇄ lead:** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`
+   decide nothing about points or certificates. They call **three hooks** (`DEC-151`): `scoring`'s
+   `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` — **points only** — and the lead's
+   `attendance_certificate_sync(p_session, p_member)` — revoke when contract 6's predicate is false, enqueue
+   the issue job when it is true, the session is completed and no live certificate exists. `scoring`
+   publishes its two with `main`'s behaviour first; then `checkin` switches.
 6. **`scoring` → lead, `content`:** `session_attendance_complete(p_session, p_member)` is the only definition
    of «attended the session» for points and certificates; `has_checked_in()` (any day) stays the definition
    for rating, photos and a session-scoped «بعد» material.
@@ -214,6 +239,10 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
 9. **lead → all:** `src/lib/session-status.ts` — `PhaseInput.days`, `dayPhase()`, `checkInDay()`; between two
    days a session is `open`, never a seventh phase.
 10. **lead:** `REQ-TSK-002` enforced by a test.
+11. ★ **`sessions` → `notify` (`DEC-151`):** a day-aware `schedule_session()` calls
+    `notify`'s `session_days_changed(p_session, p_before jsonb, p_after jsonb)` **once, after its last day
+    write**. There is **no trigger on `session_days` that notifies**: a row trigger fires mid-write and would
+    announce the first row's partial truth. At one day the legacy path never calls it — one notice, as today.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 

@@ -323,8 +323,8 @@ org from creation (`0061`, DEC-052); promotion adds, it never supplies the basel
 **One feature on a new entity — `ENT-session_days` (`DEC-119` … `DEC-121`) — and not a routes wave.** A
 session has one or more days; each day carries its own check-in; materials, tasks and photos belong to the
 session **or** to a day; points and the certificate need every day by default. **The checklist is
-`STATUS.md`'s wave-9 block, and its unit is the CONTRACT, not the route** — ten seams between tracks, each
-with an owner and a state. **The measure is two demonstrables**: a three-day workshop end to end at 390 px
+`STATUS.md`'s wave-9 block, and its unit is the CONTRACT, not the route** — eleven seams between tracks
+(ten at Step 0; `DEC-151` added the eleventh at sync 1), each with an owner and a state. **The measure is two demonstrables**: a three-day workshop end to end at 390 px
 in Arabic, and **a one-day session byte-identical in behaviour to `main`** — proven by the existing suites
 passing with their assertions untouched, and tracked by `STATUS.md`'s *untouched-suite ledger*.
 
@@ -366,6 +366,14 @@ passing with their assertions untouched, and tracked by `STATUS.md`'s *untouched
 - ★ **This is not `A14`'s recurring series.** One session, N meetings, one registration, one certificate,
   one rating, one discussion, one poster. `rsvps` and `capacity` stay on the session (`DEC-120`); nothing
   this wave creates, copies or repeats a session.
+- ★ **Sync 1's rulings (`DEC-151`) are part of this map**: a day's check-in ceiling is capped by the next
+  day's start and is **one function of the lead's** (`check_in_ceiling()`, `0101`); contract 5 has **three**
+  hooks — `scoring`'s two are points only, certificates go through the lead's
+  `attendance_certificate_sync()`; **no trigger on `session_days` notifies** — `sessions'` day-aware
+  `schedule_session()` calls `notify`'s `session_days_changed()` once (contract 11); an attendance award is
+  guarded by a **standing-award check under a lock**, its key being the second line of defence; with at most
+  one day the three content slots render **every** item flat. The two schedule-form tests follow the screen
+  to `sessions`. **Four named differences at one day** are approved fixes, listed in `STATUS.md`.
 - **One writer per file, JSON and specs included.** `schedule.json` is `sessions'` now; `scoring.json`,
   `notifications.json` and `calendar.json` return to their tracks, and the `/app/me` and `/app/admin`
   screens that read them keep every key they read.

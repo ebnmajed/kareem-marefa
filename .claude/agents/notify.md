@@ -48,6 +48,27 @@ only.** `REQ-SES-015`: «a member's calendar gains one entry per day, and remind
    `{{startsAt}}` in the seven mail templates reads well for a range; the day label is `sessions'` formatter
    (contract 7).
 
+★ **Sync 1 (`DEC-151`) — what changed for you.** (1) **N3 is a function `sessions` calls, not a trigger**
+— contract 11: `session_days_changed(p_session uuid, p_before jsonb, p_after jsonb)`, called once after a
+day-aware `schedule_session()`'s last day write. A row trigger fires mid-write: de-duplicate a multi-row
+change and you announce the first row's partial truth — move days 2 and 3 and the member hears about day 2.
+It announces what `sessions_notify()` cannot see (a day ≥ 2 moved, a day added or removed, the last end),
+reschedules reminders and enqueues the calendar jobs. At one day the legacy path never calls it. (2)
+**`0101` landed your columns** — `calendar_events.session_day_id`, the composite key with
+`on delete set null (session_day_id)`, the backfill, `unique (member_id, session_day_id)` **beside** the old
+one, and a `before insert` default so `main`'s `record_calendar_sync()` rows get the first day (left null
+they would read as «the day is gone»). **The old constraint leaves in YOUR file**, with the function that
+names it: carry this one lead-authored line verbatim, above your `create or replace`, marked
+`-- LEAD DDL (DEC-151)`:
+`alter table public.calendar_events drop constraint calendar_events_member_id_session_id_key;`
+(3) Your reminder rule is approved — an offset fires for day `k` only when its moment falls after day
+`k − 1` ended; identities by **position**; `MSG-session_changed` with a `days` entry, no new key. (4) The
+sweep is approved through `public.cancel_job()`. (5) A small ordinal table in `worker/src/mail/render.ts`
+**with a unit test that it equals `sessions.days.ordinal.*`**. (6) `calendar-menu.tsx` is `sessions'`: write
+the request — groups of `{ label, links }`, flat at one group. (7) `listSyncedEvents()` may embed
+`session_days(…)`. (8) `resync_calendars()` is approved and goes in the owner's order. (9) `{{startsAt}}`
+printed raw is **named difference 4 — conditional on a real Mailpit capture showing it first**.
+
 ## Carried into your wave
 
 - ★ **Not yours this wave, and recorded so it is not mistaken for scope**: `REQ-NTF-007`'s admin-editable
@@ -181,16 +202,20 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
   sets `set_config('kareem.days_writer', 'on', true)`**, writes `sessions` **once** and then its days; a
   deferred constraint trigger checks the pair at commit whatever the flag says.
 - **`session_day_id`** — `not null` on `check_ins` and `check_in_codes` (filled for a legacy inserter by the
-  `before insert` trigger: the code's day; else the day whose window to `ends_at + 2 h` contains `now()`, the
-  later-started of two; else the latest day begun), nullable on `check_in_attempts`; **nullable with no
+  `before insert` trigger: the code's day; else `resolve_session_day()` — the day whose window to its
+  **capped** ceiling contains `now()`; else the latest day begun; else, nothing having begun, the first),
+  nullable on `check_in_attempts`; on `calendar_events` too (`0101`), where a legacy insert gets the first
+  day and **null means only «the day was deleted»**; **nullable with no
   backfill** on `materials`, `session_tasks` and `photos`, where **null is the whole session**. Each is a
   composite foreign key `(session_id, session_day_id)`, so a row can only name a day of its own session; on
   the three content tables it is `on delete set null (session_day_id)` — **deleting a day promotes its
   content to the session**, which is `DEC-121`'s default. `check_ins.session_window` is **the day's** window,
   and one active check-in per member **per day** is the unique rule.
 - **`sessions.require_all_days boolean not null default true`**, beside `certificate_mode` (`REQ-SES-017`).
+- **`session_days.check_in_open boolean not null default true`** (`0101`) — `DEC-116`'s switch, per day, born
+  with its session's value. `sessions.check_in_open` stays for `main` and keeps its meaning at one day.
 
-### The ten contracts — `STATUS.md` has them in full; publish yours in your note on day one
+### The eleven contracts — `STATUS.md` has them in full; publish yours in your note on day one
 
 1. **lead → all:** the day set is the truth; the session window is its stored shadow.
 2. **lead → all:** additive; `main` and `main`'s worker are correct on the new schema.
@@ -198,10 +223,15 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
    null)` and `SessionDay` + a `cache()`-wrapped `listSessionDays(sessionId)` from `lib/dal/sessions.ts` —
    **every track reads days through it**, never its own query.
 4. **`checkin` → `sessions`, `scoring`, `content`:** each check-in RPC keeps `p_session` and gains a trailing
-   `p_day uuid default null`; the switch and the `ends_at + 2 h` ceiling are the day's.
-5. **`checkin` ⇄ `scoring`:** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` call
-   `scoring`'s `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` and decide nothing about
-   points. `scoring` publishes both with `main`'s behaviour first; then `checkin` switches.
+   `p_day uuid default null`; the switch and the ceiling are the day's. ★ **The ceiling is
+   `public.check_in_ceiling(p_day)` — the lead's, `0101`: `least(ends_at + 2 h, the next day's start)`
+   (`DEC-151`).** Gates call it; nobody copies it. Its twin is `checkInCeiling()` in `session-status.ts`.
+5. **`checkin` ⇄ `scoring` ⇄ lead:** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`
+   decide nothing about points or certificates. They call **three hooks** (`DEC-151`): `scoring`'s
+   `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` — **points only** — and the lead's
+   `attendance_certificate_sync(p_session, p_member)` — revoke when contract 6's predicate is false, enqueue
+   the issue job when it is true, the session is completed and no live certificate exists. `scoring`
+   publishes its two with `main`'s behaviour first; then `checkin` switches.
 6. **`scoring` → lead, `content`:** `session_attendance_complete(p_session, p_member)` is the only definition
    of «attended the session» for points and certificates; `has_checked_in()` (any day) stays the definition
    for rating, photos and a session-scoped «بعد» material.
@@ -213,6 +243,10 @@ certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` st
 9. **lead → all:** `src/lib/session-status.ts` — `PhaseInput.days`, `dayPhase()`, `checkInDay()`; between two
    days a session is `open`, never a seventh phase.
 10. **lead:** `REQ-TSK-002` enforced by a test.
+11. ★ **`sessions` → `notify` (`DEC-151`):** a day-aware `schedule_session()` calls
+    `notify`'s `session_days_changed(p_session, p_before jsonb, p_after jsonb)` **once, after its last day
+    write**. There is **no trigger on `session_days` that notifies**: a row trigger fires mid-write and would
+    announce the first row's partial truth. At one day the legacy path never calls it — one notice, as today.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
