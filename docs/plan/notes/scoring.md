@@ -480,3 +480,422 @@ returning zero rows with no error before this was fixed.
    presenting 2 pts/1%, capped 150) are placeholders sized to be roughly comparable to the
    existing catalogue's scale (`session_delivered` is 50, `attendee_bonus` caps at 60) — every
    one is admin-editable from day one, so getting the exact numbers "right" was not the goal.
+
+---
+
+# Wave 9 plan — multi-day sessions (`REQ-SES-017`, `DEC-119`, `DEC-150`)
+
+Written 2026-09-17, planning-only first task. Nothing below is built yet. The two contracts other
+tracks wait on lead the section, because `checkin` cannot switch a call site until contract 5 is
+promoted.
+
+**The one sentence the whole plan turns on.** The award's idempotency key already carries the
+member's check-in id, and at `n = 1` *the member's only active check-in is also the last one they
+created*. So the epoch the key needs for `REQ-SES-017` is not a new concept — it is **the latest
+active check-in of `(session, member)`**, which at `n = 1` is the same row `main` keys on today.
+That single definition gives per-member-per-session idempotency, survives wave 7's remove → re-add,
+and makes the one-day row byte-identical without a branch.
+
+---
+
+## CONTRACT 5 — `attendance_recorded` / `attendance_removed` (P1, first, `checkin` waits on it)
+
+```sql
+create function public.attendance_recorded(p_check_in uuid) returns void
+  language plpgsql security definer set search_path = '';
+create function public.attendance_removed(p_check_in uuid) returns void
+  language plpgsql security definer set search_path = '';
+
+revoke execute on function public.attendance_recorded(uuid) from public, anon, authenticated;
+revoke execute on function public.attendance_removed(uuid)  from public, anon, authenticated;
+grant  execute on function public.attendance_recorded(uuid) to service_role;
+grant  execute on function public.attendance_removed(uuid)  to service_role;
+```
+
+Definer, owner-executable, so `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`
+(all definer, all owned by the same owner) can call them with no new grant to `authenticated`.
+`service_role` so a worker task can call them directly.
+
+★ **The first promoted version does exactly what `main` does today, and nothing else.** That is the
+whole point of publishing them before `checkin` switches:
+
+- `attendance_recorded(ci)` reads the check-in row, and **enqueues the same job `main` enqueues**:
+  task `award_points`, job key `pts:check_in:<ci.id>`, payload
+  `{ rule: 'check_in', member_id, source: 'check_in', source_id: <ci.id>, session_id }`. Nothing
+  else. It does not award inline; `11` §2.3's rule that the member's action never waits is
+  unchanged.
+- `attendance_removed(ci)` does what `remove_check_in()`'s three inline blocks do today: the
+  compensating `reversal` rows for the `check_in` and `attendee_bonus` awards keyed to that
+  check-in, key `reversal:<ledger id>:v1`, reason «أُلغي تسجيل الحضور»; and the `no_show` award for
+  a confirmed RSVP. **It does not revoke the certificate** — `revoke_certificate()` is `designer`'s
+  and stays in `remove_check_in()` where it is, because contract 5 is about *points*.
+
+So after promotion, `checkin` replaces three blocks with three calls and **every assertion in
+`tests/rls/{checkin-removal,checkin-manual-mark,award-points}.test.ts` reads the same result**. The
+behaviour change is P3's, landed in a second proposed file, in the body of these two functions —
+never at the call site.
+
+**The call sites, for `checkin`:**
+
+| Function | Where | Replaces |
+|---|---|---|
+| `check_in()` | after the `check_ins` insert commits, before the return | the `enqueue_job('award_points', …, 'pts:check_in:' \|\| ci.id)` block |
+| `mark_checked_in_manually()` | after `write_audit` | the same `enqueue_job` block |
+| `remove_check_in()` | after the `update … set removed_at`, before `write_audit` | the `for ledger in … loop` (reversals) and the `no_show` block |
+
+---
+
+## CONTRACT 6 — the attendance predicate (P2)
+
+```sql
+create function public.session_attendance_complete(p_session uuid, p_member uuid)
+  returns boolean
+  language sql stable security definer set search_path = '';
+
+create function public.session_attendance(p_session uuid, p_member uuid)
+  returns table (session_day_id uuid, position int, starts_at timestamptz,
+                 ends_at timestamptz, attended boolean, check_in_id uuid)
+  language sql stable security invoker set search_path = '';
+```
+
+**`session_attendance_complete`** — an **active** (`removed_at is null`) check-in on **every** day
+of the session when `sessions.require_all_days`, on **any** day otherwise. It is the only definition
+of «attended the session» for points and certificates.
+
+- `security definer`, `execute` revoked from `public, anon, authenticated`, granted to
+  `service_role`. Its callers are jobs (`service_role`) and other definer functions
+  (`fan_out_certificates()`, `issue_certificate()`, `listEligibleRecipients()`'s RPC), which run as
+  the owner and so need no grant. A member never calls it, and a member-invoked copy would silently
+  return `false` for anyone else's attendance — a wrong answer dressed as a policy decision.
+
+**`session_attendance`** — one row per day, attended or not, ordered by `position`. This is the
+*read*, so it is `security invoker` and `grant execute to authenticated`: `checkins_read`
+(`0010:511`) already says «self, staff, or the session's presenter», which is exactly the audience.
+No new policy, no new grant on a table.
+
+★ **`n = 1`:** `session_attendance_complete(S, M)` is true exactly when `M` has an active check-in
+on `S`'s single day — which is `has_checked_in()` for that member, and is what «attended» means on
+`main`. `session_attendance(S, M)` returns one row. **`has_checked_in()` is not mine and does not
+change**; it stays the definition for rating, photos and a session-scoped «بعد» material
+(contract 6's own split).
+
+---
+
+## The award key — exact shape, and the epoch
+
+**The shape is unchanged** (`05` §2.1): `<rule_key>:<source>:<source_id>:<member_id>:<epoch>`. For
+attendance:
+
+```
+check_in:check_in:<EPOCH CHECK-IN id>:<member_id>:v1
+```
+
+★ **`EPOCH CHECK-IN` = the member's latest-created active check-in for that session** —
+`order by created_at desc, id desc limit 1` over
+`check_ins where session_id = S and member_id = M and removed_at is null`.
+
+Why this and not `<session_id>`:
+
+- **At `n = 1` it is literally today's key.** One day, one active check-in, so the latest active
+  check-in is the only check-in — the row, the key, the job key and the payload are `main`'s.
+- **It is per member per session in substance**, which is what `REQ-SES-017` asks for: three
+  check-ins on a three-day workshop produce **one** award, and re-running the completion job
+  produces zero rows.
+- **It survives remove → re-add**, which a literal `<session_id>` key does not. Every re-add
+  necessarily creates a new `check_ins` row whose `created_at` is later than every existing one, so
+  the key advances **exactly when, and only when, attendance was retracted and re-established** —
+  the one case where a second award is correct. A `<session_id>` key would collide on the re-add,
+  award nothing, and leave the reversal standing: net zero for a member who attended every day.
+- **It is deterministic from the data**, so two concurrent runs compute the same key and
+  `on conflict do nothing` decides.
+
+The presenter's `attendee_bonus` uses the **same epoch row** —
+`attendee_bonus:attendee_bonus:<EPOCH CHECK-IN id>:<presenter_id>:v1` — so the attendee's award and
+the presenter's bonus for that attendee are keyed to one row and reverse together, as they do today.
+
+⚠ **`REQ-SES-017` says «the idempotency key is per member per session».** This key is per member per
+session *per attendance epoch*. The requirement's own purpose clause — «so re-running the job cannot
+double-pay» — is satisfied exactly; the literal shape is not, and the literal shape is the one
+`DEC-150` contract 6 already calls «a naive per-session key [that] turns [remove → re-add] into a
+net zero». **Question 1 below asks the lead to rule.**
+
+### Trace (a) — remove → re-add on a three-day session
+
+`S` has days `D1 D2 D3`; `require_all_days = true`; member `M`; `check_in` rule = 20 points, no cap,
+no cooldown (`0083:25`).
+
+| # | Event | Ledger written | Balance |
+|---|---|---|---|
+| 1 | `M` checks into `D1` → `CI1`. `attendance_recorded(CI1)`: `n = 3`, `S` not completed → nothing | — | 0 |
+| 2 | `D2` → `CI2`, `D3` → `CI3`. Same | — | 0 |
+| 3 | `S` → `completed`. `sessions_completion_fanout()` enqueues `evaluate_no_shows`, key `noshow:<S>` | — | 0 |
+| 4 | The job calls `evaluate_session_attendance(S)`. `M` active on all three; predicate true; epoch = `CI3` → `award_points('check_in', M, 'check_in', CI3, S)` | **L1** `+20`, `source check_in`, `source_id CI3`, key `check_in:check_in:CI3:M:v1` | **+20** |
+| 5 | Admin removes `CI1`. `attendance_removed(CI1)`: predicate now false, standing award `L1` not yet reversed | **L2** `-20`, `source reversal`, `source_id L1`, `rule_key check_in`, «أُلغي تسجيل الحضور», key `reversal:L1:v1` | **0** |
+| 6 | Admin re-adds `M` on `D1` → `CI4`. `attendance_recorded(CI4)`: `S` is completed, predicate true again, epoch = `CI4` (latest created) | **L3** `+20`, key `check_in:check_in:CI4:M:v1` — **a new key, no conflict** | **+20** |
+| 7 | `noshow:<S>` replayed | predicate true, epoch still `CI4`, same key as `L3` → `on conflict do nothing`, **zero rows** | **+20** |
+
+Three rows, every movement explained to the member, net `+20`. **No `no_show` is recorded at step 5**
+— `CI2` and `CI3` are still active, so `M` is not a no-show (see the five cases below).
+
+### Trace (b) — the completion job run twice
+
+Steps 3–4 above, then the job runs again: the same active set → the same epoch `CI3` → the same key
+→ `on conflict do nothing`, **zero rows**. The reversal branch does not fire, because a standing
+award exists *and* the predicate holds. `evaluate_company_points()` and the no-show loop are already
+idempotent on their own keys. Two runs, one row.
+
+### Trace (c) — a one-day session, before and after this change
+
+| | `main` today | After |
+|---|---|---|
+| The call | `check_in()` runs `enqueue_job('award_points', {...}, 'pts:check_in:' \|\| CI1)` inline | `check_in()` calls `attendance_recorded(CI1)`, which runs **the same `enqueue_job`** |
+| Job key | `pts:check_in:<CI1>` | `pts:check_in:<CI1>` |
+| Payload | `{rule:'check_in', member_id:M, source:'check_in', source_id:CI1, session_id:S}` | identical |
+| Ledger row | `+20`, `source check_in`, `source_id CI1`, `rule_key check_in`, `rule_version`, reason «تسجيل حضور مؤكَّد», key `check_in:check_in:CI1:M:v1` | **identical, the same row** |
+| At completion | `evaluate_no_shows` runs the no-show loop and company points | plus `evaluate_session_attendance(S)`: epoch = `CI1`, the same key → **conflict → zero rows** |
+
+**One extra proven no-op, and not one byte of difference in the row.** That is the `n = 1` proof for
+P3, and `tests/rls/award-points.test.ts`'s job-key, payload and end-to-end cases assert it without
+being edited.
+
+### Where the guard lives
+
+`award_points()` keeps `0088`'s late-job clause and gains **one more, for `source = 'check_in'`
+only**:
+
+```
+if p_source = 'check_in' and (the named check-in is removed)                 then return; end if;  -- 0088, unchanged
+if p_source = 'check_in' and not session_attendance_complete(p_session, p_member) then return; end if;  -- new
+```
+
+★ **The second clause provably never fires at `n = 1`**: with one day, a *named check-in that is not
+removed* means an active check-in on the only day, which makes the predicate true. So the new clause
+can only change an outcome when `n > 1`. It follows `0065`'s and `0088`'s stated principle — re-derive
+from `check_ins` at run time rather than trusting the payload.
+
+⚠ **No predicate guard is added for `source = 'attendee_bonus'.** `tests/rls/award-presenter-points.test.ts:188`
+calls `award_points('attendee_bonus', …)` directly over hand-inserted `check_ins` rows; the filtering
+for the presenter's bonus belongs in `worker/src/tasks/award_presenter_points.ts`, where wave 7
+already put the `removed_at` filter, and that test stays untouched.
+
+---
+
+## The five cases of P3, each answered
+
+**1. `award_presenter_points` pays `attendee_bonus` per active check-in.** At three days that is
+three bonuses per attendee, and the rule's `cap_per_session = 30` occurrences (60 points) would be
+exhausted by ten attendees instead of thirty. **Fix, in the task, not in `award_points()`:** loop
+over **distinct members** with an active check-in on the session where
+`session_attendance_complete(session, member)` is true, and award once per such member with
+`source_id = <that member's epoch check-in>`. At `n = 1` that is exactly today's loop — one active
+check-in per member, so the same set, the same `source_id`, the same key, the same rows, and
+`award-presenter-points.test.ts:188` passes unedited.
+
+**2. Who is a no-show at three days.** **No active check-in on *any* day.** A member who came on day
+one and missed days two and three is a **partial attendee**, not a no-show. Reasons: `REQ-SES-017`
+says partial attendance **earns nothing** and pointedly does not say it is penalised; `no_show` is
+`enabled = true, points = 0` by default (D40), a *record* an admin reads before deciding to enable a
+penalty, and recording a partial attendee as a no-show would make that record a lie; and the key
+stays `no_show:no_show:<rsvp.id>:<member_id>:v1`, one row per RSVP, which contract 2 requires. The
+existing query in `evaluate_no_shows.ts` — «a confirmed RSVP with no active check-in for this
+session» — is **already correct at any `n`** and needs no change. **`attendance_removed()` does
+change**: it records `no_show` only when **no active check-in remains on any day**, so removing one
+day's check-in from a member who attended the other two records nothing. At `n = 1` removing the
+only check-in leaves none, so the behaviour and the key are today's.
+
+**3. Streaks, badges, company points and leaderboards must count three check-ins as one session.**
+
+| Reader | Today | Change | `n = 1` |
+|---|---|---|---|
+| `evaluate_streaks()` (`0088`) | `count(*)` of active check-ins in the org-month | `count(distinct c.session_id)` | identical — one active check-in per session per member |
+| `evaluate_badges()`, metric `check_ins_count` (`0088`) | `count(*)` of active check-ins | `count(distinct session_id)` | identical |
+| `evaluate_company_points()` rule 2 (`0081:384`) | `count(*)` over `check_ins` of the session | `count(distinct ci.member_id)` **and** `removed_at is null` — see the finding below | `count(distinct member_id)` equals `count(*)`; the `removed_at` clause is a real one-day change, question 3 |
+| leaderboards — `snapshot_leaderboard()` (`0042`), all-time, company | sum the ledger | **nothing** — no reader counts check-ins | identical |
+
+A workshop that spans a month boundary counts once in each month for the streak, because the bucket
+is `arrived_at`'s month and the two check-ins are distinct sessions only by `session_id`. That is the
+existing per-attendance semantics and I am not changing it; noted so nobody reads it as an oversight.
+
+**4. A day added after the award was paid.** A one-day session paid `+20` at check-in, then
+rescheduled to two days, and the member misses the second. The ledger cannot be edited. **My
+recommendation: the completion pass writes a compensating reversal**, reason
+«لم يكتمل حضور جميع الأيام», key `reversal:<the original ledger id>:v1` — the same mechanism as
+`attendance_removed()`, one code path, honest and visible, and `05` §2.4's established way of
+correcting an award. It is **provably a no-op at `n = 1`** (a standing award at `n = 1` implies an
+active check-in on the one day, so the predicate holds). The case it does not cover is a day added
+to a session that is **already completed**, where no completion event fires again; my recommendation
+there is that `schedule_session()` refuse it — `sessions`' function, so a written request, not my
+change. The alternative the lead may prefer is to leave the award standing as earned under the rule
+then in force and let only the certificate follow the predicate. **Question 2.**
+
+**5. remove → re-add.** Answered in full by trace (a): the key carries an epoch, and the epoch is the
+latest active check-in, so the re-add produces a new key and a fresh award. It needs no counter, no
+`v2`, and no `DECISIONS.md`-logged re-award (`05` §4.3 stays for what it is for).
+
+---
+
+## The completion evaluation — which job, its key, what enqueues it
+
+**No new job, no new task file, no `worker/src/index.ts` registration.**
+
+- **What enqueues it:** `sessions_completion_fanout()` (`0031`, mine) — unchanged. It already
+  enqueues exactly one `evaluate_no_shows` job per completed session.
+- **The job:** `evaluate_no_shows`, **key `noshow:<session_id>`, unchanged** (contract 2: a one-day
+  session's job keys do not change).
+- **What runs inside, in order:** `evaluate_session_attendance(p_session)` first, then the existing
+  no-show loop, then `evaluate_company_points(p_session)`.
+
+This is `0081`'s exact precedent, recorded in this note's «Company points rules» section: the
+owner's company rules are «evaluated once, at completion», which is this job's existing contract, so
+they were folded in rather than given a second job type. Attendance at completion is the same
+contract. The alternative — a new `award_attendance` job, key `pts:attendance:<session_id>` — needs
+a new task file **and** a `worker/src/index.ts` registration, both outside my edit list, for no
+behavioural difference. **Question 4** if the lead wants the separate job anyway.
+
+`evaluate_session_attendance(p_session)` is a definer SQL function that loops members with at least
+one active check-in on the session and calls a single per-member routine — the same routine
+`attendance_recorded()` and `attendance_removed()` call, so there is one implementation of «decide
+what this member's attendance is worth now», not three.
+
+★ **A member marked present after completion still gets paid**, because `attendance_recorded()`
+evaluates immediately when the session is already `completed` (`REQ-CHK-017` lets an admin mark at
+any time after the scheduled start). Without that, trace (a) step 6 would pay nothing.
+
+---
+
+## How `audit_balances` still recomputes every balance exactly
+
+Nothing about the audit changes, and that is the point.
+
+- `points_balances` is a trigger-maintained left fold, `after insert` on `points_ledger` only
+  (`0027:387`). There is no update or delete path to hook, because `points_ledger_append_only()`
+  raises for **every** writer including the owner and `service_role` (invariant 9).
+- This wave **adds rows and removes none**: one award per member per session instead of one per
+  check-in, plus compensating reversals. Every movement is an insert. The fold is unchanged, so
+  `rebuild_points_balances()` (`0033:44` — `truncate` then `sum(amount) group by`) reproduces every
+  balance exactly, and `audit_balances()` compares `sum(amount)` and `last_entry_id` as it does now.
+- **The DoD's recompute test**: a three-day workshop attended in full, one day removed, then
+  re-added, gives `L1 +20`, `L2 -20`, `L3 +20`; `points_balances.total_points = 20` and
+  `last_entry_id = L3`; `truncate` + rebuild reproduces both. New file,
+  `tests/rls/scoring-days-recompute.test.ts` — the existing `tests/rls/audit-balances.test.ts` is
+  not touched.
+- **`occurred_at` stays `clock_timestamp()`** (`DEC-046`), so `L1`, `L2`, `L3` order correctly inside
+  one transaction and `last_entry_id`'s `order by occurred_at desc` is deterministic.
+
+---
+
+## The missed-day line on `/app/me/points` (P4)
+
+**No ledger row is written for an award that did not happen**, and none should be — the ledger
+records points, not explanations. The screen already has the precedent: `05` §8's «zero-point rows»
+says a capped sixth comment writes no row and **the cap is explained in place**.
+
+- **The source** is contract 6's per-day reader. A new `src/lib/dal/points.ts` function
+  (`getMissedAttendance(locale)`) does **one** query — never one per session — returning, for every
+  **completed** session of the member with more than one day where they have at least one active
+  check-in and `session_attendance_complete` is false: the session id and title, the session's
+  completion time, and the **positions and dates of the missed days**.
+- **The render** is an explanation row in `PointsHistoryList`, placed by the session's completion
+  time among the ledger rows, visually distinct from an award (no amount, no sign): «لم تُحتسب نقاط
+  الحضور — فاتك <bdi>اليوم الثاني</bdi>». It is skipped entirely when the session has one day, so a
+  one-day history is unchanged and `tests/e2e/points.spec.ts` passes unedited.
+- **Authorisation** is `session_attendance`'s `security invoker` plus `checkins_read` — the member
+  reads their own days and nobody else's.
+- All six ICU plural forms where a count appears (missed days are a count), `<bdi>` on the day label
+  and the session title, Western numerals, logical properties. The day label itself comes from
+  `sessions`' one formatter (contract 7), read out of the `sessions` namespace — reading another
+  track's namespace is allowed, writing it is not.
+
+---
+
+## Rule 4 — the existing suites that cover the award path, and which I change
+
+**I change none of these.** They are the `n = 1` evidence, and if one goes red that is a finding for
+this note, not a test to repair.
+
+| File | Owner | What it pins |
+|---|---|---|
+| `tests/rls/award-points.test.ts` | mine | the definer-only grant; silent skip on a disabled rule, an exhausted cap, a live cooldown; `on conflict do nothing`; the Arabic reason and `rule_version`; **`check_in()` enqueues exactly one job keyed `pts:check_in:<id>` with that exact payload**; the end-to-end award |
+| `tests/rls/award-presenter-points.test.ts` | mine | the proposal hook; **the completion fan-out's exact job set and keys**; the no-show query; `session_delivered` + `attendee_bonus` per check-in + `rating_bonus`'s threshold |
+| `tests/rls/manual-adjustment-reversal.test.ts` | mine | the admin RPC's gates and audit row; the comment reversal's shape |
+| `tests/rls/audit-balances.test.ts` | mine | the nightly oracle and that it never self-heals |
+| `tests/rls/scoring-schema.test.ts` | mine | the append-only trigger for every role; `rsvp` absent from the catalogue |
+| `tests/rls/recognition-evaluators.test.ts` | mine | streaks, badges, levels, perks |
+| `tests/rls/snapshot-leaderboards.test.ts`, `tests/rls/all-time-leaderboard.test.ts` | mine | the frozen `active_member_count`, the immutable final snapshot |
+| `tests/rls/checkin-removal.test.ts` | **`checkin`'s** | the reversal's single compensating row and its reason; the late `award_points` skip; the re-add producing a brand new row; the no-show symmetry |
+| `tests/rls/checkin-late-job-hooks.test.ts` | **`checkin`'s** | `award_points`, `issue_certificate`, `fan_out_certificates`, `send_rating_prompt`, `evaluate_streaks`, `evaluate_badges` all excluding a removed check-in |
+| `tests/rls/checkin-manual-mark.test.ts` | **`checkin`'s** | the manual mark enqueues the same `pts:check_in:<id>` key |
+| `tests/rls/scoring-company-points.test.ts` | **`console`'s** | the three company rules and their keys |
+| `tests/e2e/points.spec.ts` | mine | the `Stat`, the filters, the history and the catalogue |
+
+**New files only**, per rule 4: `tests/rls/scoring-days-award.test.ts` (contract 5, contract 6, the
+key, traces a/b/c), `tests/rls/scoring-days-recompute.test.ts`, `tests/unit/scoring-days-*.test.ts`,
+`tests/e2e/wave9-scoring-missed-day.spec.ts`.
+
+---
+
+## Two findings in live code, both mine, neither caused by this wave
+
+1. ⚠ **`evaluate_company_points()` rule 2 does not exclude removed check-ins** (`0081:384`:
+   `from public.check_ins ci … where ci.session_id = p_session`). `0088` corrected seven readers for
+   `DEC-141` and missed this one — a check-in an admin removed still counts toward its company's
+   attendance percentage. It is in a function I own. Fixing it is **a one-day behaviour change**
+   against `main`, so it is question 3 rather than something I fold in quietly.
+2. **This note's own key table is stale for `attendee_bonus`.** It says «one row per session per
+   presenter, `amount = 2 × attendee_count`»; what shipped (`0031`'s header and
+   `worker/src/tasks/award_presenter_points.ts`) is **one `award_points()` call per check-in**, key
+   `attendee_bonus:attendee_bonus:<check_in.id>:<presenter_id>:v1`, which is what `0087`'s reversal
+   loop depends on. I will correct the table in the same commit as the P3 work rather than leave two
+   answers in one file.
+
+---
+
+## The carried item — recognition edits write no audit or history row
+
+**Not this wave.** `scoring_config_history` already exists with `badges`, `levels`, `perks` and
+`streaks` in its scope check (`0004`, recorded above in «Correction found while building
+`0001_m4_schema.sql`»), so the missing piece is a history trigger per table plus the writes in
+`src/lib/dal/scoring-admin.ts` — **`console`'s module, and `console` is not spawned**. Landing it
+here would put a change with no multi-day coupling into two files I do not own, inside a wave whose
+second demonstrable is «a one-day session is byte-identical». Recommend it travels with `console` in
+wave 10, where the admin screens that write those rows are.
+
+---
+
+## Questions for the lead, numbered
+
+1. **The key's epoch.** `REQ-SES-017` says «per member per session»; I propose per member per session
+   **per attendance epoch**, the epoch being the latest active check-in, because a literal
+   per-session key makes remove → re-add a net zero (which `DEC-150` contract 6 itself names). Confirm,
+   or name the shape you want.
+2. **A day added after a one-day award was paid.** Reverse at completion with reason
+   «لم يكتمل حضور جميع الأيام» (my recommendation, one code path, provably a no-op at `n = 1`), or
+   leave the award standing as earned under the rule then in force and let only the certificate
+   follow the predicate? And: should `schedule_session()` refuse to add a day to an already
+   `completed` session? That is `sessions`' function and would be a written request.
+3. **`evaluate_company_points()` rule 2's missing `removed_at is null`** (finding 1). Fix it this
+   wave — a one-day behaviour change against `main`, in a function I own, with no existing test
+   asserting the buggy answer — or carry it as a separate finding for wave 10?
+4. **The completion job.** Fold `evaluate_session_attendance()` into `evaluate_no_shows` (key
+   `noshow:<session_id>`, unchanged, `0081`'s precedent, zero new registrations — my recommendation),
+   or a separate `award_attendance` job, which needs a new task file and a `worker/src/index.ts`
+   registration, both the lead's?
+5. **`sessions.require_all_days` when it is `false`.** The predicate is «an active check-in on **any**
+   day», so the award fires on the **first** day's check-in — for a multi-day session, should it still
+   wait for completion (consistent with `REQ-SES-017`'s «evaluated at completion»), or pay at the
+   first check-in (consistent with «attending any day is enough»)? I recommend **waiting for
+   completion**, so the timing rule is «`n = 1` pays at check-in, `n > 1` pays at completion» with no
+   second axis.
+6. **`0100`'s exact column and its default.** I plan against `sessions.require_all_days boolean not
+   null default true`. Confirm the name, and confirm that a session with **zero** days (a draft that
+   has never been scheduled) cannot reach `completed`, so `session_attendance_complete` is never asked
+   about an empty day set. If it can, «every day of an empty set» is vacuously true and would pay a
+   member who never checked in — I will guard on `n >= 1` regardless, but I need to know whether the
+   guard is defence in depth or load-bearing.
+7. **Contract 6's consumers.** The lead points `fan_out_certificates()`, `issue_certificate()` and
+   `listEligibleRecipients()` at `session_attendance_complete()` on my written request (row L4). Is
+   that request due at sync 1, or after contract 6 is promoted and its own test is green? I would
+   rather it be after, so the certificate path moves against a proven predicate.
+8. **The `me/points` missed-day row and `sessions`' day-label formatter** (contract 7). I read
+   `sessions`' namespace for «اليوم الثاني»; confirm that the formatter is exported for a non-slot
+   caller, or I write the label from `session_attendance`'s `position` in my own namespace.
