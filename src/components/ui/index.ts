@@ -28,7 +28,8 @@
 //
 //   lead      index · button · icon-button · link · skeleton · route-progress
 //             toast · page-header · section-header · prose
-//             route-error · icons · dialog
+//             route-error · icons · dialog · submit-button
+//             reorderable-list (wave 10, DEC-160)
 //   sessions  field · input · textarea · select · checkbox · radio-group
 //             switch · form-summary
 //   console   data-table · combobox · menu · tabs · sheet · date-time
@@ -417,6 +418,58 @@ export interface UiLinkProps extends Omit<ComponentProps<"a">, "href"> {
   /** Suppress the inline pending affordance where it would be noise. */
   quiet?: boolean;
   children: ReactNode;
+}
+
+/**
+ * lead · `reorderable-list.tsx` — order by taps alone (`16` §10.2.1,
+ * `REQ-DSG-028`, `SC 2.5.7`, `DEC-160` §5).
+ *
+ * «Three lists, one primitive»: a survey's questions, a choice question's
+ * options and an email's blocks all reorder through this. ▲▼ on every row,
+ * named «move up» / «move down» and DESCRIBED BY THE ROW THEY MOVE — a list of
+ * twelve identical «up» buttons with no object is not a list anyone can use by
+ * ear. A press-and-release is the whole gesture; there is no drag in it, and a
+ * drag layered on later is an enhancement nobody needs in order to conform.
+ *
+ * ★ CONTROLLED. It never reorders itself: it hands back the whole new order
+ * and the caller decides — an editor's state, a Server Action, an autosave.
+ *
+ * ★ A CLIENT COMPONENT WHOSE PROPS ARE FUNCTIONS, so it is composed inside a
+ * client component. A Server Component cannot hand it `renderItem`
+ * («Event handlers cannot be passed to Client Component props» — a crash only a
+ * production build produces, `DEC-159`).
+ */
+export interface ReorderableListProps<Item> extends Styleable {
+  items: readonly Item[];
+  /** Stable across reorders — React keeps the row's DOM, and with it the focus. */
+  getKey: (item: Item) => string;
+  /**
+   * The row's accessible name: what ▲▼ are described by, and what is announced
+   * after a move. A question's text, a block's type and first words.
+   */
+  getName: (item: Item) => string;
+  renderItem: (item: Item, context: ReorderableRowContext) => ReactNode;
+  /** Controls beside ▲▼ at the row's end — remove, duplicate. */
+  renderActions?: (item: Item, context: ReorderableRowContext) => ReactNode;
+  /** The whole new order, by key, and what moved. */
+  onReorder: (nextKeys: string[], moved: ReorderableMove) => void;
+  /** The list's own accessible name — «أسئلة الاستبانة». */
+  label: string;
+  /** Every ▲▼ inert — a save in flight, a viewer who may not edit. */
+  disabled?: boolean;
+  /** `sm` (36 px) for a dense pane beside a canvas; `md` (44 px) is the house target. */
+  size?: Extract<Size, "sm" | "md">;
+}
+
+export interface ReorderableRowContext {
+  index: number;
+  total: number;
+}
+
+export interface ReorderableMove {
+  key: string;
+  from: number;
+  to: number;
 }
 
 /** `console` · `menu.tsx` — Radix dropdown. Radix owns the accessibility. */

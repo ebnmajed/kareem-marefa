@@ -13,6 +13,7 @@ import { Panel } from "@/components/ui/panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SESSION_PHASES, type SeatState } from "@/lib/session-status";
+import { ReorderableDemo } from "./reorderable-demo";
 
 // The component gallery — `16` §4.3, DEC-083, REQ-UIX-001.
 //
@@ -229,6 +230,12 @@ export default async function GalleryPage({
           <Skeleton variant="card" className="mt-4" />
           <Skeleton variant="row" count={2} className="mt-3" />
         </div>
+      </Row>
+
+      {/* `ui/reorderable-list` (wave 10, DEC-160 §5) — order by taps alone. The
+          one client island here: its props are functions. */}
+      <Row title="قائمة تُرتَّب بالنقر">
+        <ReorderableDemo />
       </Row>
 
       <section className="mt-10">
