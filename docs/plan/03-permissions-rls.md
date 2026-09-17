@@ -1892,6 +1892,9 @@ generated suite is the highest-value test in the product.
 | `POL-notification_templates.in_app_unchecked` | An `in_app` row is not subject to the binding rule: nothing reads one (`notification_send_context` filters `channel = 'email'`), and its key may have no email channel and so no declared bindings at all. |
 | ★ **wave 10, migration `0134`** — lead — corrects `0125`: an object with no `blocks` key is refused (a CHECK rejects only on FALSE) |
 | `POL-notification_templates.blocks.shape` | … an object with `schemaVersion` and NO `blocks` key is refused `23514` too. |
+| ★ **wave 10, migration `0135`** — lead, as `platform`'s custodian — the PDPL self-export lists the surveys a member answered (`REQ-PRF-006`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-build_data_export_payload.surveys_answered` | `surveys_answered` lists, for the member alone, the sessions whose survey they took part in — by title, each entry carrying that one key and so no instant, ordered by title and never by insertion. |
+| `RPC-build_data_export_payload.surveys_no_answers` | No answer text and no question prompt appears anywhere in the archive: there is no path from a member to a stored response. Every key `0088` returned is still returned, and `surveys_answered` is the only addition. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
