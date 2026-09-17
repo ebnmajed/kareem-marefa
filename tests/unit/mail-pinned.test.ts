@@ -28,8 +28,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderEmail } from "../../worker/src/mail/render";
-import { DEFAULT_TEMPLATES } from "../../worker/src/mail/templates";
+import { DEFAULT_TEMPLATES, renderEmail } from "@kareem/mail-runtime";
 import { BRAND, CASES, MEMBER, ORG, PART_SUFFIXES } from "./mail-pinned.fixtures";
 
 const DIR = join(process.cwd(), "tests", "unit", "mail-pinned");

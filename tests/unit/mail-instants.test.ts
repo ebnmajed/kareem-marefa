@@ -14,7 +14,7 @@
 // DEC-151 approved the fix conditionally, on the raw string being shown first.
 // It is shown here, as the input, and the assertion is the repaired output.
 import { describe, expect, it } from "vitest";
-import { renderEmail } from "../../worker/src/mail/render";
+import { renderEmail } from "@kareem/mail-runtime";
 
 /** Verbatim from `select jsonb_build_object('startsAt', s.starts_at)` against
  *  the local database — microseconds, offset and all. */

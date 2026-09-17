@@ -24,7 +24,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "vitest";
-import { renderEmail } from "../../worker/src/mail/render";
+import { renderEmail } from "@kareem/mail-runtime";
 import { BRAND, CASES, MEMBER, ORG, PART_SUFFIXES } from "./mail-pinned.fixtures";
 
 const DIR = join(process.cwd(), "tests", "unit", "mail-pinned");

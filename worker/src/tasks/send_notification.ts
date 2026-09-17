@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
-import { renderEmail, TemplateMissingError } from "../mail/render.js";
+import { renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
 // Key: `notify:{message_id}`, enqueued by `public.notify()` inside the
