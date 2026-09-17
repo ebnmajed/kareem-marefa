@@ -46,7 +46,12 @@ const MATRIX: MatrixRow[] = [
   { key: "MSG-comment_reply", category: "social", inApp: true, email: false, optional: true },
 ];
 const CATALOGUE: TemplateCatalogue = {
-  templates: [{ id: "t1", key: "MSG-session_cancelled", channel: "email", locale: "ar", subject: "أُلغيت الجلسة", body: "نأسف", requiredFields: ["title"], updatedAt: "2026-09-10T09:00:00Z" }],
+  // `blocks: null` is a STRING template — what this org has, and what every row
+  // that existed before wave 10 is (`REQ-NTF-009`). The cases below are the
+  // string editor's and are unchanged by the two fields.
+  templates: [
+    { id: "t1", key: "MSG-session_cancelled", channel: "email", locale: "ar", subject: "أُلغيت الجلسة", body: "نأسف", requiredFields: ["title"], blocks: null, sourceFamily: null, updatedAt: "2026-09-10T09:00:00Z" },
+  ],
   emailMessages: ["MSG-reminder_1d", "MSG-session_cancelled"],
 };
 const failed: DeliveryDTO = {
