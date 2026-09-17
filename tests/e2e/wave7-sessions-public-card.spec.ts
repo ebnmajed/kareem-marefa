@@ -108,8 +108,11 @@ test("an open session's card shows no status badge, one primary action, and the 
 
   // ★ A time never breaks from its «م» (numerals.ts, U+00A0), and the range's
   // only break opportunity is before its «·» — wave 7's capture had «6:57» / «م».
+  // The session starts relative to now, so the meridiem is «ص» before noon:
+  // the assertion is the no-break space, not the hour (the wave-8 final run
+  // went red at 3 AM).
   const when = page.locator("dd").first();
-  expect(await when.textContent()).toMatch(/\d:\d\d\u00A0م/);
+  expect(await when.textContent()).toMatch(/\d:\d\d\u00A0[صم]/);
   const clause = when.locator("span.whitespace-nowrap");
   expect(await clause.textContent()).toMatch(/^·\u00A0حتى/);
   expect(await clause.evaluate((el) => new Set([...el.getClientRects()].map((r) => Math.round(r.top))).size)).toBe(1);
