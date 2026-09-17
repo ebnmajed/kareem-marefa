@@ -42,7 +42,7 @@ const OK = {
       ],
       texts: null,
     },
-    { id: "q2", kind: "single_choice", prompt: "هل كانت المدة مناسبة؟", required: false, answered_count: 2, withheld: true, mean: null, distribution: null, texts: null },
+    { id: "q2", kind: "single_choice", prompt: "هل كانت المدة مناسبة؟", required: false, answered_count: null, withheld: true, mean: null, distribution: null, texts: null },
     { id: "q3", kind: "free_text", prompt: "ماذا تقترح؟", required: false, answered_count: 4, withheld: false, mean: null, distribution: null, texts: ["مثال عملي أكثر", "وقت أطول"] },
   ],
 };
@@ -89,7 +89,9 @@ describe("getSurveyExportRows", () => {
     // ★ The withheld question keeps its row and says «محجوبة» — the file must
     // not silently lose a question, which would read as «nobody asked it».
     const withheld = sheet.rows.filter((r) => r[0] === "هل كانت المدة مناسبة؟");
-    expect(withheld).toEqual([["هل كانت المدة مناسبة؟", "اختيار واحد", "2", "محجوبة", "", ""]]);
+    // ★ An EMPTY cell where its count would be: a withheld question releases no
+    // number at all (DEC-163), and a zero would be a number it did not release.
+    expect(withheld).toEqual([["هل كانت المدة مناسبة؟", "اختيار واحد", "", "محجوبة", "", ""]]);
 
     // Free text: one row per answer, the text in the value column.
     const texts = sheet.rows.filter((r) => r[0] === "ماذا تقترح؟");
@@ -103,6 +105,19 @@ describe("getSurveyExportRows", () => {
         if (cell !== "") expect(cell).toMatch(/^\d+(\.\d+)?$/);
       }
     }
+  });
+
+  it("★ a formula-looking answer is handed over RAW — `buildCsv()` neutralises it, and twice would be wrong", async () => {
+    // A member can write «=SUM(A1:A9)» in a free-text answer, and Excel would
+    // run it in an admin's spreadsheet. `buildCsv()` prefixes an apostrophe
+    // (the lead's, `DEC-163`); this file must NOT do it too, or the admin reads
+    // «''=SUM…» and the escape becomes the bug it was written to prevent.
+    rpc.mockResolvedValue({
+      data: { ...OK, questions: [{ id: "q3", kind: "free_text", prompt: "ماذا تقترح؟", required: false, answered_count: 4, withheld: false, mean: null, distribution: null, texts: ["=SUM(A1:A9)", "+1 أفضل"] }] },
+      error: null,
+    });
+    const sheet = (await getSurveyExportRows("ar", "11111111-1111-4111-8111-111111111111"))!;
+    expect(sheet.rows.filter((r) => r[0] === "ماذا تقترح؟").map((r) => r[3])).toEqual(["=SUM(A1:A9)", "+1 أفضل"]);
   });
 
   it("a question nobody answered still has a row, so the file lists every question asked", async () => {

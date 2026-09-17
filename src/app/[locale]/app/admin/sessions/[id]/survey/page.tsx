@@ -66,10 +66,21 @@ export default async function SessionSurveyPage({
         breadcrumbLabel={tUi("breadcrumb")}
         title={t("title")}
         actions={
+          // ★ A PLAIN DOWNLOAD ANCHOR, not `ButtonLink`: a Route Handler that
+          // answers `text/csv` is not a route to navigate to, and `next/link`
+          // would prefetch it — an audited bulk read of personal data, taken
+          // because a pointer passed over the button (`REQ-ADM-017`).
+          // Admin-only, because `exportSurveyCsv()` refuses a moderator
+          // (`write_admin_export_audit()` asserts a fresh admin, `DEC-161`) and
+          // a link that 404s is worse than none.
           results.status !== "no_survey" && isAdmin ? (
-            <ButtonLink href={`/api/admin/exports/survey/${id}`} variant="secondary" size="md">
+            <a
+              href={`/api/admin/exports/survey/${id}`}
+              download
+              className="inline-flex h-11 items-center rounded-field px-5 text-label text-fg-heading underline underline-offset-4 hover:bg-[var(--btn2-bg-hover)]"
+            >
               {t("export")}
-            </ButtonLink>
+            </a>
           ) : undefined
         }
       />

@@ -121,6 +121,11 @@ async function sendSurvey(locale: Locale, sessionId: string, survey: SurveyFormS
   }
   switch (outcome.status) {
     case "ok":
+    case "empty":
+      // ★ The member answered nothing, so the database wrote nothing — not even
+      // the participation (`DEC-163`). Their rating stands, the survey is still
+      // unanswered, and returning inside the window still offers it. There is
+      // nothing to tell them: they did what they chose to do.
     case "already_answered":
       // A second submission is not an error to a member who pressed once and
       // saw a retry: the register refused it by name and nothing was written.

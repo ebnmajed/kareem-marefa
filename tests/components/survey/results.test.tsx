@@ -41,7 +41,7 @@ const RESULTS: SurveyResultsDTO = {
     },
     {
       id: "q2", kind: "single_choice", prompt: "هل كانت المدة مناسبة؟", required: false,
-      answeredCount: 2, withheld: true, mean: null, distribution: null, texts: null,
+      answeredCount: null, withheld: true, mean: null, distribution: null, texts: null,
     },
     {
       id: "q3", kind: "free_text", prompt: "ماذا تقترح؟", required: false,
@@ -74,11 +74,15 @@ describe("SurveyResults", () => {
     expect(bars[4]).toHaveAttribute("aria-valuenow", "2");
   });
 
-  it("★ a withheld question SAYS SO and draws no chart at all", async () => {
+  it("★ a withheld question SAYS SO, draws no chart — and publishes no count either", async () => {
     await renderResults();
     const withheld = screen.getByRole("article", { name: /هل كانت المدة مناسبة؟/ });
     expect(withheld.textContent).toContain("محجوبة");
     expect(within(withheld).queryAllByRole("progressbar")).toHaveLength(0);
+    // `answeredCount` is null (DEC-163), so there is no «أجاب عنها …» line at
+    // all: two reads a response apart would otherwise name the question the
+    // newest respondent answered.
+    expect(withheld.textContent).not.toMatch(/أجاب عنها/);
   });
 
   it("free text is a list, each answer bidi-isolated", async () => {

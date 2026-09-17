@@ -57,7 +57,10 @@ export interface MemberSurveyDTO {
 }
 
 export interface SurveyResultQuestion extends Omit<SurveyQuestionDTO, "options"> {
-  answeredCount: number;
+  /** ★ `null` while the question is withheld: its count is part of the withhold
+   *  (`DEC-163`), because two reads a response apart would otherwise say which
+   *  question the newest respondent answered. */
+  answeredCount: number | null;
   withheld: boolean;
   mean: number | null;
   /** A scale's five values, or a choice's options in their authored order. */
@@ -124,6 +127,9 @@ export type DetachOutcome = { status: "ok" } | { status: "no_survey" } | { statu
 export type SubmitOutcome =
   | { status: "ok" }
   | { status: "no_survey" }
+  /** ★ Nothing was answered, so nothing was written — not even the
+   *  participation. The member keeps their one response for a later visit. */
+  | { status: "empty" }
   | { status: "already_answered" }
   | { status: "not_eligible"; reason: "not_checked_in" | "window_closed" }
   | { status: "invalid"; missing: string[]; invalid: string[] };
@@ -254,7 +260,7 @@ type ResultsRow = {
   eligible_count?: number;
   questions?: {
     id: string; kind: SurveyQuestionKind; prompt: string; required: boolean;
-    answered_count: number; withheld: boolean; mean: number | string | null;
+    answered_count: number | null; withheld: boolean; mean: number | string | null;
     distribution: { id?: string; value?: number; label?: string; count: number }[] | null;
     texts: string[] | null;
   }[];
@@ -289,7 +295,7 @@ export async function getSurveyResults(locale: string, sessionId: string): Promi
       kind: q.kind,
       prompt: q.prompt,
       required: q.required,
-      answeredCount: q.answered_count,
+      answeredCount: q.answered_count ?? null,
       withheld: q.withheld,
       mean: q.mean === null || q.mean === undefined ? null : Number(q.mean),
       distribution: q.distribution,
@@ -384,7 +390,9 @@ export async function getSurveyExportRows(locale: string, sessionId: string): Pr
   ];
 
   for (const q of results.questions) {
-    const head = [q.prompt, KIND_LABEL[q.kind], String(q.answeredCount)];
+    // A withheld question has no count to print — the cell is empty rather than
+    // a zero, which would be a number the withhold did not release.
+    const head = [q.prompt, KIND_LABEL[q.kind], q.answeredCount === null ? "" : String(q.answeredCount)];
     if (q.withheld) {
       rows.push([...head, "محجوبة", "", ""]);
       continue;

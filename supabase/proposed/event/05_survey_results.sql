@@ -12,7 +12,8 @@
 --   | `RPC-survey_results.staff_only` | An admin and a moderator read; a member is refused `not_authorized`; a stale admin is refused `stale_claims`; another org's session is `not_found`. |
 --   | `RPC-survey_results.presenter_refused` | ★ The session's presenter is refused — whatever their role. An admin who presented their own session is refused too (REQ-SUR-005 is about presenting, not about rank). |
 --   | `RPC-survey_results.withheld_below_minimum` | Below `survey_min_responses` nothing leaves: no mean, no distribution, no free text — and no response count either, because in a survey one person answered the register says who. |
---   | `RPC-survey_results.withheld_per_question` | At or above the minimum, a question that FEWER than the minimum answered is withheld on its own while the rest are drawn. |
+--   | `RPC-survey_results.withheld_per_question` | At or above the minimum, a question that FEWER than the minimum answered is withheld on its own while the rest are drawn — and its own answered count is withheld with it. |
+--   | `RPC-survey_results.withheld_hides_n` | In the withheld branch the eligible count is the ACTIVE ATTENDEE count alone: `greatest(attendees, responses)` would publish `n` itself whenever a check-in was removed after its member answered. |
 --   | `RPC-survey_results.drawn` | At the minimum: a scale question's count, mean and 1…5 distribution; a choice question's per-option counts in the authored order; free text as a list. |
 --   | `RPC-survey_results.free_text_order` | Free text comes back ordered by the answer's random id — never by insertion, which would be the order people answered in. |
 --   | `RPC-survey_results.response_rate` | The numerator is the stored responses and the denominator the session's active attendees; with no eligible attendee the count is zero and the caller says so rather than dividing. |
@@ -48,6 +49,11 @@ declare
   sv         public.surveys;
   v_min      int;
   v_n        int;
+  -- ★ R6: the released set is ONE expression. The day the owner asks for batch
+  -- release (`12` §9's differencing residue), this array's query is the single
+  -- line that changes — not five copies of a subselect, four of which someone
+  -- would find later.
+  v_released uuid[];
   v_attend   int;
   v_eligible int;
   v_questions jsonb;
@@ -68,26 +74,34 @@ begin
   end if;
 
   select os.survey_min_responses into v_min from public.org_settings os where os.org_id = m.org_id;
-  select count(*)::int into v_n from public.survey_responses r where r.survey_id = sv.id;
+  v_released := array(select r.id from public.survey_responses r where r.survey_id = sv.id);
+  -- `cardinality` of `{}` is 0 and of NULL is NULL; `array(select …)` over no
+  -- rows gives `{}`, so the coalesce is belt and braces.
+  v_n := coalesce(cardinality(v_released), 0);
 
   -- REQ-SUR-008: eligible attendees — distinct members with an ACTIVE check-in
   -- on any day of the session (wave 9: one check-in per member per day).
   select count(distinct c.member_id)::int into v_attend
     from public.check_ins c where c.session_id = p_session and c.removed_at is null;
-  -- ★ R5: an admin may remove a check-in AFTER that member answered, and the
-  -- response cannot be found to remove — by design. The denominator is the
-  -- larger of the two, so the rate is never above 100 % and never an error.
+  -- ★ R5, and ONLY in the drawn branch: an admin may remove a check-in AFTER
+  -- that member answered, and the response cannot be found to remove — by
+  -- design. There the denominator is the larger of the two, so the rate is
+  -- never above 100 % and never an error, and `n` is published anyway.
   v_eligible := greatest(v_attend, v_n);
 
   if v_n < v_min then
-    -- Nothing at all: not a mean, not a distribution, not the count.
+    -- Nothing at all: not a mean, not a distribution, not the count — and ★ NOT
+    -- `greatest(v_attend, v_n)` either. Staff can count the active attendees
+    -- themselves on the attendance screen, so whenever removals put `v_n` above
+    -- `v_attend` that number IS `n` — the one number this branch exists to
+    -- hide. The attendee count alone tells them nothing they did not have.
     return jsonb_build_object(
       'status', 'withheld',
       'survey_id', sv.id,
       'title', sv.title,
       'attached_at', sv.attached_at,
       'min', v_min,
-      'eligible_count', v_eligible
+      'eligible_count', v_attend
     );
   end if;
 
@@ -99,7 +113,11 @@ begin
                'kind', sq.kind,
                'prompt', sq.prompt,
                'required', sq.required,
-               'answered_count', a.answered,
+               -- ★ NULL while withheld, for the reason one level up: between a
+               -- read at 3 responses and a read at 4, an optional question's
+               -- count going 1 → 2 says the newest respondent answered it.
+               -- «Withheld» already tells staff it is below the minimum.
+               'answered_count', case when a.answered >= v_min then a.answered end,
                'withheld', a.answered < v_min,
                'mean', case when a.answered >= v_min and sq.kind = 'scale_1_5'
                             then round(a.mean, 2) end,
@@ -111,7 +129,7 @@ begin
                      left join (
                        select sa.scale_value as value, count(*)::int as n
                          from public.survey_answers sa
-                        where sa.question_id = sq.id and sa.response_id in (select id from public.survey_responses where survey_id = sv.id)
+                        where sa.question_id = sq.id and sa.response_id = any(v_released)
                         group by sa.scale_value
                      ) c on c.value = v.value
                  ), '[]'::jsonb)
@@ -121,7 +139,7 @@ begin
                      left join (
                        select sa.option_id, count(*)::int as n
                          from public.survey_answers sa
-                        where sa.question_id = sq.id and sa.response_id in (select id from public.survey_responses where survey_id = sv.id)
+                        where sa.question_id = sq.id and sa.response_id = any(v_released)
                         group by sa.option_id
                      ) c on c.option_id = o.id
                     where o.question_id = sq.id
@@ -135,7 +153,7 @@ begin
                  else coalesce((
                    select jsonb_agg(sa.text_value order by sa.id)
                      from public.survey_answers sa
-                    where sa.question_id = sq.id and sa.response_id in (select id from public.survey_responses where survey_id = sv.id)
+                    where sa.question_id = sq.id and sa.response_id = any(v_released)
                  ), '[]'::jsonb)
                end
              ) as result
@@ -147,7 +165,7 @@ begin
                  avg(sa.scale_value)::numeric as mean
             from public.survey_answers sa
            where sa.question_id = sq.id
-             and sa.response_id in (select id from public.survey_responses where survey_id = sv.id)
+             and sa.response_id = any(v_released)
         ) a
        where sq.survey_id = sv.id
     ) q;

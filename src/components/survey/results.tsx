@@ -73,10 +73,15 @@ function QuestionResult({ question, t }: { question: SurveyResultQuestion; t: Re
       <h3 id={`q-${question.id}`} className="text-label text-fg-heading">
         <bdi>{question.prompt}</bdi>
       </h3>
-      <p className="mt-1 text-caption text-fg-muted">
-        {t("answeredCount", { count: question.answeredCount, value: formatNumber(question.answeredCount) })}
-        {question.mean !== null ? ` · ${t("mean", { value: formatNumber(question.mean) })}` : null}
-      </p>
+      {/* ★ A withheld question publishes NO count either (`DEC-163`): two reads
+          a response apart would otherwise say which question the newest
+          respondent answered. «محجوبة» below is the whole of what staff get. */}
+      {question.answeredCount !== null ? (
+        <p className="mt-1 text-caption text-fg-muted">
+          {t("answeredCount", { count: question.answeredCount, value: formatNumber(question.answeredCount) })}
+          {question.mean !== null ? ` · ${t("mean", { value: formatNumber(question.mean) })}` : null}
+        </p>
+      ) : null}
 
       {question.withheld ? (
         // Never an empty chart: the screen says results are withheld and why

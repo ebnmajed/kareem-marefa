@@ -16,6 +16,8 @@
 --   | `RPC-submit_survey_response.validates_before_writing` | A missing required question, an option of another question, a scale out of range and an unknown question are each refused naming the question ids — and no participation and no job are left behind. |
 --   | `RPC-submit_survey_response.enqueues_decorrelated` | One job, task `record_survey_response`, key NULL, `run_at` between 10 minutes and 4 hours ahead, payload `{response_id, survey_id, answers}` and nothing else. |
 --   | `RPC-submit_survey_response.no_audit` | The submit writes no `audit_log` row. |
+--   | `RPC-submit_survey_response.duplicate_option` | The same option sent twice on one question is stored once: the answer is normalised to one id at the door, so the partial unique index can never raise inside the job and lose the response. |
+--   | `RPC-submit_survey_response.empty_submission` | A submission with no answer at all writes NOTHING — no participation, no job — and the member who returns inside the window still finds the survey. |
 --   | `RPC-record_survey_response.service_role_only` | `anon`, a member, a moderator and an admin are all refused; the worker's role succeeds. |
 --   | `RPC-record_survey_response.replay` | Running the same job twice writes one response — the id is in the payload and the insert is `on conflict do nothing`. |
 --   | `RPC-survey_for_member.no_survey` | A session with no survey answers `null` — nothing about a survey reaches a member who has none (REQ-SUR-001). |
@@ -30,6 +32,11 @@
 -- writes them. `survey_responses` and `survey_answers` are unreachable from
 -- every client role, so the only way out is `survey_results()` (file 05) under
 -- the withhold.
+--
+-- ★ AN EMPTY RESPONSE IS NOT A RESPONSE (`{status: 'empty'}`), and a
+-- duplicated option is one answer. Both are the same lesson: the one
+-- participation a member has must be spent on something, and nothing the
+-- browser can send may make the job that stores it fail forever.
 --
 -- ★ VALIDATE, THEN WRITE. Everything that can refuse is read-only and happens
 -- before the register row, so a refusal leaves NOTHING behind and the member
@@ -164,7 +171,15 @@ begin
       v_answers := v_answers || jsonb_build_array(jsonb_build_object('question_id', q.id, 'scale_value', v_scale));
 
     elsif q.kind in ('single_choice', 'multi_choice') then
-      select coalesce(array_agg(value::uuid), '{}') into v_opts
+      -- ★ DISTINCT, AND IT IS NOT TIDINESS. `[x, x]` — a double tap, a form
+      -- bug — would pass every check below (each id does belong to the
+      -- question) and reach the queue, where the second insert hits
+      -- `survey_answers_option_key` and rolls back the WHOLE response. The job
+      -- then retries five times and fails for good, while the register says
+      -- the member has answered: their answers are lost and nobody is told.
+      -- De-duplicating here also makes `[x, x]` on a `single_choice` the one
+      -- answer the member meant, rather than a refusal.
+      select coalesce(array_agg(distinct value::uuid), '{}') into v_opts
         from jsonb_array_elements_text(case when jsonb_typeof(a -> 'option_ids') = 'array' then a -> 'option_ids' else '[]'::jsonb end);
       if array_length(v_opts, 1) is null then
         if q.required then v_missing := v_missing || q.id; end if;
@@ -210,6 +225,16 @@ begin
     return jsonb_build_object('status', 'invalid',
                               'missing', to_jsonb(coalesce(v_missing, '{}')),
                               'invalid', to_jsonb(coalesce(v_invalid, '{}')));
+  end if;
+
+  -- ★ AN EMPTY RESPONSE IS NOT A RESPONSE. With no required question, a
+  -- member who sends the rating and leaves the survey alone would otherwise
+  -- consume their one participation on nothing: an empty row counted in `n`,
+  -- inflating the number the withhold is measured against, and a member who
+  -- can never answer although the window is still open. Nothing is written,
+  -- and the action treats this as «the rating only».
+  if jsonb_array_length(v_answers) = 0 then
+    return jsonb_build_object('status', 'empty');
   end if;
 
   -- ── The register: who answered, with no answer and no time beside it ─────
@@ -275,11 +300,15 @@ begin
       continue;                    -- the question is gone: skip it rather than fail this job forever
     end if;
 
-    if (a -> 'scale_value') is not null then
+    -- ★ `->>`, not `->`: a JSON `null` is a non-null JSONB value, so `->`
+    -- would take this branch for `{"scale_value": null}` and insert a NULL
+    -- scale, tripping `survey_answers_one_shape`. The function the worker
+    -- calls must be total over any payload, whatever wrote it.
+    if a ->> 'scale_value' is not null then
       insert into public.survey_answers (org_id, survey_id, response_id, question_id, scale_value)
       values (v_org, p_survey, p_response, q.id, (a ->> 'scale_value')::smallint);
       v_written := v_written + 1;
-    elsif (a -> 'text_value') is not null then
+    elsif a ->> 'text_value' is not null then
       insert into public.survey_answers (org_id, survey_id, response_id, question_id, text_value)
       values (v_org, p_survey, p_response, q.id, a ->> 'text_value');
       v_written := v_written + 1;
@@ -287,8 +316,9 @@ begin
       for o in select value from jsonb_array_elements_text(coalesce(a -> 'option_ids', '[]'::jsonb)) loop
         if exists (select 1 from public.survey_question_options so where so.id = o::uuid and so.question_id = q.id) then
           insert into public.survey_answers (org_id, survey_id, response_id, question_id, option_id)
-          values (v_org, p_survey, p_response, q.id, o::uuid);
-          v_written := v_written + 1;
+          values (v_org, p_survey, p_response, q.id, o::uuid)
+          on conflict do nothing;   -- ★ a duplicated option must never fail this job forever
+          if found then v_written := v_written + 1; end if;   -- the count is rows STORED
         end if;
       end loop;
     end if;

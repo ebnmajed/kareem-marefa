@@ -365,3 +365,94 @@ describe("RPC-survey_for_member", () => {
     });
   });
 });
+
+describe("RPC-submit_survey_response.duplicate_option / .empty_submission", () => {
+  it("★ the same option sent twice is ONE answer — the index can never raise inside the job and lose the response", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      await tx.asOwner();
+      const s = await completedSession(tx, f.a, f.a.members[0].memberId);
+      const { questions } = await surveyOn(tx, f.a, f.a.mod, s.sessionId);
+      const [q1, single, multi] = questions;
+
+      await tx.as(f.a.members[0].claims);
+      // A double tap on one option of each choice question. `[x, x]` on a
+      // SINGLE choice is the one answer the member meant, not a refusal.
+      const [out] = await submit(tx, s.sessionId, [
+        { question_id: q1.id, scale_value: 4 },
+        { question_id: single.id, option_ids: [single.options[0].id, single.options[0].id] },
+        { question_id: multi.id, option_ids: [multi.options[1].id, multi.options[1].id, multi.options[0].id] },
+      ]);
+      expect(out.out.status).toBe("ok");
+
+      await tx.asOwner();
+      const [job] = await jobs(tx);
+      const answers = (job.payload as { answers: { question_id: string; option_ids?: string[] }[] }).answers;
+      expect(answers.find((a) => a.question_id === single.id)!.option_ids).toEqual([single.options[0].id]);
+      expect(answers.find((a) => a.question_id === multi.id)!.option_ids!.sort()).toEqual([multi.options[0].id, multi.options[1].id].sort());
+
+      // …and the job stores it without raising, which is the half that would
+      // otherwise retry five times and lose the member's answers for good.
+      const payload = job.payload as { response_id: string; survey_id: string; answers: unknown[] };
+      await tx.asServiceRole();
+      const [stored] = await tx.q<{ record_survey_response: number }>(
+        `select public.record_survey_response($1, $2, $3::jsonb)`,
+        [payload.response_id, payload.survey_id, JSON.stringify(payload.answers)],
+      );
+      expect(stored.record_survey_response).toBe(4);   // 1 scale + 1 single + 2 multi
+    });
+  });
+
+  it("★ the worker's function survives ANY payload: a duplicated option stores one row, a JSON null stores nothing, and neither raises", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      await tx.asOwner();
+      const s = await completedSession(tx, f.a, f.a.members[0].memberId);
+      const { surveyId, questions } = await surveyOn(tx, f.a, f.a.mod, s.sessionId);
+      const [scale, single] = questions;
+      const response = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+      // Written by hand rather than by the submit: the point is that the
+      // function is total over what a payload COULD hold, whoever wrote it.
+      await tx.asServiceRole();
+      const [out] = await tx.q<{ record_survey_response: number }>(
+        `select public.record_survey_response($1, $2, $3::jsonb)`,
+        [response, surveyId, JSON.stringify([
+          { question_id: single.id, option_ids: [single.options[0].id, single.options[0].id] },
+          { question_id: scale.id, scale_value: null },
+        ])],
+      );
+      expect(out.record_survey_response).toBe(1);      // the option once; the null scale not at all
+
+      await tx.asOwner();
+      const rows = await tx.q<{ n: string }>(`select count(*)::text as n from public.survey_answers where response_id = $1`, [response]);
+      expect(rows[0].n).toBe("1");
+    });
+  });
+
+  it("★ a submission with no answer at all writes NOTHING, and the member can still answer later", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      await tx.asOwner();
+      const s = await completedSession(tx, f.a, f.a.members[0].memberId);
+      const { surveyId, questions } = await surveyOn(tx, f.a, f.a.mod, s.sessionId);
+      // Every question optional: the case only exists when nothing is required.
+      await tx.q(`update public.survey_questions set required = false where survey_id = $1`, [surveyId]);
+
+      await tx.as(f.a.members[0].claims);
+      expect((await submit(tx, s.sessionId, []))[0].out.status).toBe("empty");
+      // An empty answer is the same nothing: a blank text and an empty choice.
+      expect((await submit(tx, s.sessionId, [{ question_id: questions[3].id, text_value: "   " }, { question_id: questions[2].id, option_ids: [] }]))[0].out.status).toBe("empty");
+
+      await tx.asOwner();
+      expect((await tx.q<{ n: string }>(`select count(*)::text as n from public.survey_participations where survey_id = $1`, [surveyId]))[0].n).toBe("0");
+      expect(await jobs(tx)).toHaveLength(0);
+
+      // ★ The one response they have is still theirs.
+      await tx.as(f.a.members[0].claims);
+      expect((await submit(tx, s.sessionId, [{ question_id: questions[0].id, scale_value: 5 }]))[0].out.status).toBe("ok");
+      await tx.asOwner();
+      expect((await tx.q<{ n: string }>(`select count(*)::text as n from public.survey_participations where survey_id = $1`, [surveyId]))[0].n).toBe("1");
+    });
+  });
+});

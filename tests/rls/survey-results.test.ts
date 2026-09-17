@@ -205,7 +205,7 @@ describe("RPC-survey_results.withheld_below_minimum / .withheld_per_question / .
       await tx.as(f.a.mod.claims);
       const out = await results(tx, s.sessionId) as {
         status: string; response_count: number; eligible_count: number;
-        questions: { id: string; withheld: boolean; answered_count: number; mean: string | null; distribution: { value?: number; label?: string; count: number }[] | null; texts: string[] | null }[];
+        questions: { id: string; withheld: boolean; answered_count: number | null; mean: string | null; distribution: { value?: number; label?: string; count: number }[] | null; texts: string[] | null }[];
       };
       expect(out.status).toBe("ok");
       expect(out.response_count).toBe(3);
@@ -222,8 +222,10 @@ describe("RPC-survey_results.withheld_below_minimum / .withheld_per_question / .
       ]);
 
       // ★ Two responses answered the single-choice question, so it is withheld
-      // ON ITS OWN while the survey around it is drawn.
-      expect(qSingle).toMatchObject({ id: single.id, withheld: true, answered_count: 2 });
+      // ON ITS OWN while the survey around it is drawn — and its count is
+      // withheld with it (`DEC-163`): «2» here, read again at four responses,
+      // would say whether the newest respondent answered this question.
+      expect(qSingle).toMatchObject({ id: single.id, withheld: true, answered_count: null });
       expect(qSingle.distribution).toBeNull();
       expect(qSingle.mean ?? null).toBeNull();
 
@@ -306,6 +308,50 @@ describe("RPC-survey_results.response_rate / .rate_never_exceeds_one", () => {
       const out = await results(tx, s.sessionId) as { status: string; eligible_count: number };
       expect(out.status).toBe("withheld");     // no responses either
       expect(out.eligible_count).toBe(0);
+    });
+  });
+});
+
+describe("RPC-survey_results.withheld_hides_n / .withheld_per_question hides its count", () => {
+  it("★ the withheld branch publishes the ATTENDEE count, never `greatest(attendees, responses)` — which would BE n", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      const s = await surveyed(tx, f, [f.a.members[0].memberId, f.a.members[1].memberId]);
+      const [scale] = s.questions;
+      await storeResponse(tx, s.surveyId, [{ questionId: scale.id, scale: 5 }]);
+      await storeResponse(tx, s.surveyId, [{ questionId: scale.id, scale: 4 }]);
+
+      // Both check-ins removed after the fact (REQ-CHK-017). `greatest()` would
+      // now return 2 — and 2 is exactly the response count the withhold exists
+      // to hide, next to an attendance screen that says zero.
+      await tx.asOwner();
+      await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where session_id = $1`, [s.sessionId, f.a.admin.memberId]);
+
+      await tx.as(f.a.admin.claims);
+      const out = await results(tx, s.sessionId) as { status: string; eligible_count: number };
+      expect(out.status).toBe("withheld");
+      expect(out.eligible_count).toBe(0);
+    });
+  });
+
+  it("★ a withheld question returns NO answered count — two reads a response apart would otherwise name the question the newest respondent answered", async () => {
+    await withTx(async (tx) => {
+      const f = await ready(tx);
+      const s = await surveyed(tx, f, [f.a.members[0].memberId, f.a.members[1].memberId, f.a.mod.memberId]);
+      const [scale, single, , text] = s.questions;
+
+      // Three responses; the single-choice answered by one of them.
+      await storeResponse(tx, s.surveyId, [{ questionId: scale.id, scale: 5 }, { questionId: single.id, optionIds: [single.options[0].id] }, { questionId: text.id, text: "أ" }]);
+      await storeResponse(tx, s.surveyId, [{ questionId: scale.id, scale: 4 }, { questionId: text.id, text: "ب" }]);
+      await storeResponse(tx, s.surveyId, [{ questionId: scale.id, scale: 3 }, { questionId: text.id, text: "ج" }]);
+
+      await tx.as(f.a.mod.claims);
+      const out = await results(tx, s.sessionId) as { questions: { id: string; withheld: boolean; answered_count: number | null }[] };
+      const drawn = out.questions.find((q) => q.id === scale.id)!;
+      const hidden = out.questions.find((q) => q.id === single.id)!;
+      expect(drawn).toMatchObject({ withheld: false, answered_count: 3 });
+      expect(hidden.withheld).toBe(true);
+      expect(hidden.answered_count).toBeNull();
     });
   });
 });

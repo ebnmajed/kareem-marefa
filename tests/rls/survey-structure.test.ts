@@ -44,7 +44,15 @@ describe("REQ-SUR-009 — a stored response has no member and no instant", () =>
     expect(timestamps).toEqual([]);
   });
 
-  it("every foreign key out of the box leads to a survey or to the org — never to `members`", async () => {
+  it("★ every foreign key out of the box lands on one of five tables, and NONE of those five names a member", async () => {
+    // ★ The assertion is the PATH SET, not «`members` is unreachable» — which
+    // is false for a reason that does not matter: `surveys` reaches `sessions`,
+    // and a session names its presenters and its proposer. Those are a
+    // session's STAFF, never a respondent. What must hold is that the two
+    // tables of the box reference exactly these five, and that none of the five
+    // itself carries a column pointing at a person.
+    const ALLOWED = ["orgs", "survey_question_options", "survey_questions", "survey_responses", "surveys"];
+
     const { rows } = await pool.query<{ child: string; parent: string }>(
       `select c.conrelid::regclass::text as child, c.confrelid::regclass::text as parent
          from pg_constraint c
@@ -52,9 +60,15 @@ describe("REQ-SUR-009 — a stored response has no member and no instant", () =>
       [BOX],
     );
     expect(rows.length).toBeGreaterThan(0);
-    const parents = Array.from(new Set(rows.map((r) => r.parent))).sort();
-    expect(parents).toEqual(["orgs", "survey_question_options", "survey_questions", "survey_responses", "surveys"]);
-    expect(parents).not.toContain("members");
+    expect(Array.from(new Set(rows.map((r) => r.parent))).sort()).toEqual(ALLOWED);
+
+    const { rows: onward } = await pool.query<{ child: string; parent: string }>(
+      `select c.conrelid::regclass::text as child, c.confrelid::regclass::text as parent
+         from pg_constraint c
+        where c.contype = 'f' and c.conrelid::regclass::text = any($1) and c.confrelid::regclass::text = 'members'`,
+      [ALLOWED],
+    );
+    expect(onward).toEqual([]);
   });
 
   it("★ nothing joins the register to the box: no key leads from one to the other, and the only columns they share are the org and the survey", async () => {
