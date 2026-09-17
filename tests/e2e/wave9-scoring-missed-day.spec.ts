@@ -81,7 +81,10 @@ test.beforeAll(async ({}, testInfo) => {
   domain = `wave9-scoring-${tag}.example`;
 
   const { rows: orgRows } = await db.query<{ id: string }>(
-    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة الورشة', $1, 'W9', gen_random_uuid()) returning id`,
+    // `certificate_prefix` is two to five CAPITAL LETTERS and nothing else
+    // (0004) — the serial's own shape is `^[A-Z]{2,5}-[0-9]{4}-[0-9]{6}$`, so a
+    // digit in the prefix would make a certificate number ambiguous to read.
+    `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة الورشة', $1, 'WS', gen_random_uuid()) returning id`,
     [`wave9-scoring-${tag}`],
   );
   orgId = orgRows[0].id;
