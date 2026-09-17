@@ -108,7 +108,7 @@ lead to wire onto the app home.
 | `streak_month` | `streak_month:streak:<period_start date>:<member_id>:v1` |
 | `proposal_accepted` | `proposal_accepted:proposal_accepted:<proposal.id>:<member_id>:v1` |
 | `session_delivered` | `session_delivered:session_delivered:<session.id>:<member_id>:v1` (per presenter) |
-| `attendee_bonus` | `attendee_bonus:session_delivered:<session.id>:<presenter_id>:v1` — **one row per session per presenter**, `amount = 2 × attendee_count` capped at 30 occurrences (60 pts); not one row per attendee, because the cap is per-session-per-presenter and a single row is simpler to reverse/audit than 30 rows racing a cap check. (`05` §3.2's cap is stated in *occurrences* of `attendee_bonus`; collapsing to one row changes the cap's unit from "30 awards of 2" to "1 award of up to 60", which is the same ceiling — recorded here because `05` warns getting the unit backwards is silent. Comment in the SQL cross-references this note.) |
+| `attendee_bonus` | `attendee_bonus:attendee_bonus:<check_in.id>:<presenter_id>:v1` — **one row per qualifying attendee**, keyed to that attendee's own check-in, which is what `0087`'s reversal loop depends on. ⚠ **This row said something else until wave 9** — «one row per session per presenter, `amount = 2 × attendee_count`» — which is not what shipped: `0031`'s header and `worker/src/tasks/award_presenter_points.ts` have always called `award_points()` once per check-in. The plan was written, the SQL was built differently, and the table was never corrected. From wave 9 the set is distinct MEMBERS satisfying `session_attendance_complete()`, each keyed to their epoch check-in; at one day that is the same set, the same ids and the same rows as before. |
 | `rating_bonus` | `rating_bonus:session_delivered:<session.id>:<presenter_id>:v1`, awarded by the +48h delayed job |
 | `materials_uploaded` | `materials_uploaded:material:<material.id>:<presenter_id>:v1` (M5, deferred) |
 | `no_show` | `no_show:no_show:<rsvp.id>:<member_id>:v1` — recorded at 0 pts always (`enabled=true, points=0` default) |
@@ -899,3 +899,105 @@ wave 10, where the admin screens that write those rows are.
 8. **The `me/points` missed-day row and `sessions`' day-label formatter** (contract 7). I read
    `sessions`' namespace for «اليوم الثاني»; confirm that the formatter is exported for a non-slot
    caller, or I write the label from `session_attendance`'s `position` in my own namespace.
+
+
+---
+
+# Wave 9 — what landed, and the one thing the plan got wrong
+
+## The record
+
+| # | Unit | Files | State |
+|---|---|---|---|
+| P1 | **contract 5** — `attendance_recorded()`, `attendance_removed()`, with `main`'s exact behaviour | `supabase/proposed/scoring/0001_attendance_hooks.sql`, `tests/rls/scoring-days-award.test.ts` | ready for sync at `b0f1a49` |
+| P2 | **contract 6** — `session_attendance_complete()`, `session_attendance()` | `.../0002_attendance_predicate.sql`, `tests/rls/scoring-days-predicate.test.ts` | `2134295` |
+| P3 | the award at completion; the two-fact routine; the counting fixes | `.../0003_award_at_completion.sql`, `worker/src/tasks/{evaluate_no_shows,award_presenter_points}.ts`, `tests/rls/scoring-days-{award,counting,recompute}.test.ts` | `11b7735` |
+| P4 | the missed-day line | `.../0004_missed_attendance.sql`, `src/lib/dal/points.ts`, `src/components/scoring/points-history-list.tsx`, `src/messages/*/scoring.json`, `tests/rls/scoring-days-missed.test.ts`, `tests/components/scoring/points-history-list.test.tsx` | `7087550`, `cd582b0` |
+
+## ★ The correction that matters: the epoch is not «the latest-created check-in»
+
+The plan above says the award's key carries an epoch, and that the epoch is **the
+member's latest-created active check-in**. **That is wrong, and the RLS suite proved it in
+about ten minutes.**
+
+`check_ins.created_at` and `check_ins.arrived_at` **both default to `now()`** (`0010`), which
+in Postgres is the **transaction's** timestamp. Every row a single transaction writes carries
+the same instant, so `order by created_at desc` degrades to `order by id desc` — a random
+uuid. It is the same defect `DEC-046` fixed on `points_ledger` by choosing `clock_timestamp()`,
+and the same one `ad43ddb` fixed in `tests/rls/realtime.test.ts` at the top of this wave.
+
+★ **In production it would usually have worked** — three days are three transactions — which
+is the worst property a rule about points can have: correct because the machine is slow, and
+unprovable in the suite that is supposed to guard it.
+
+**What replaced it, in two parts:**
+
+1. **The award NAMES the check-in on the highest-position day the member attended** —
+   «the check-in that completed the attendance». A function of the data, not of write order,
+   and at `n = 1` it is the member's only check-in, so the row and the key are `main`'s.
+2. **A second award after a reversal is made possible by the key's own epoch segment.** No
+   choice of check-in can carry that alone: remove day one of three and re-add it and the
+   highest-position day has not moved, while `max(id)`/`min(id)` fail the mirror case. So
+   `award_points()` counts the compensating rows already written against this member's
+   attendance at this session and awards under `v1`, `v2`, … With no reversal it is `v1`:
+   `main`'s key, byte for byte.
+
+⚠ **`05` §2.1 says the epoch segment is bumped «only by a `DECISIONS.md`-logged re-award».**
+This reads it as covering a deliberate, audited re-establishment of attendance — an admin
+retracted a check-in and the member checked in again — rather than only a bulk recompute.
+**Flagged for the lead rather than assumed**: if the ruling is that the segment must stay
+reserved for `05` §4.3's procedure, the alternative is a separate generation segment in the
+key, and the same test proves it.
+
+## Two findings in live code, one fixed here
+
+1. ✅ **`evaluate_company_points()` rule 2 counted `check_ins` rows and never excluded removed
+   ones** (`0081:384`). `0088` corrected seven readers for `DEC-141` and missed this one. Both
+   halves fixed in `0003` — `count(distinct ci.member_id)` and `removed_at is null` — with
+   `tests/rls/scoring-days-counting.test.ts` covering each. The removal half is **named
+   difference 2** (`DEC-151` answer 3): a one-day behaviour change against `main`, and a
+   regression fix rather than a feature.
+2. ✅ **This note's own key table was wrong about `attendee_bonus`** since wave 2. Corrected
+   above.
+
+## The untouched-suite ledger — one line
+
+| File | Commit | Why | Expectation for one day changed? |
+|---|---|---|---|
+| `tests/components/scoring/points-history-list.test.tsx` | `cd582b0` | the component now reads `sessions.days` for contract 7's one day-label formatter, so the test's `getTranslations` mock merges that namespace; six cases added for the notice | **no** — not one existing assertion touched, and a case asserts a one-day history renders no notice |
+
+Every other suite on the award path is untouched and green: `award-points`,
+`award-presenter-points`, `audit-balances`, `manual-adjustment-reversal`, `scoring-schema`,
+`recognition-evaluators`, `snapshot-leaderboards`, `all-time-leaderboard`,
+`scoring-company-points`, and `checkin`'s own `checkin-removal`, `checkin-late-job-hooks` and
+`checkin-manual-mark` — 135 cases over 16 files at `11b7735`.
+
+## A harness detail worth stealing
+
+**Every wave-9 RLS file of mine applies its proposed SQL only if it is not already there**, by
+probing `to_regprocedure('public.<fn>(<args>)')`. A `create function` file applied twice fails,
+so without this every one of these files would have to be edited the day the lead promotes it —
+and an edited test file is exactly what the untouched-suite ledger exists to make visible.
+
+## Two traps for whoever is next in these files
+
+1. **`fixture-m2` gives `members[1]` check-ins on two other sessions**, both with `arrived_at`
+   defaulting to `now()` and so both in the current month. A streak or badge case counting
+   sessions starts two thirds of the way to a three-session threshold. Use `f.a.mod`.
+2. **Since `0100`, a fixture check-in no longer carries `'empty'::tstzrange`.**
+   `check_ins_window()` overwrites it with the day's real window, so the fixture's session
+   24 hours out now participates in `REQ-CHK-013`'s overlap exclusion. A test that schedules a
+   day «tomorrow» collides with it. Every day in these files is ten or more days out.
+
+## Still open when this was written
+
+- **The e2e and the 390 px RTL captures** wait on the lead promoting `0001`–`0004`: the screen
+  reads `missed_attendance_days()`, which does not exist as a migration yet. `src/lib/dal/points.ts`
+  tolerates PostgREST's `PGRST202` for exactly that window and **that branch is deleted at
+  promotion**.
+- **Row L4's written request** — pointing `fan_out_certificates()`, `issue_certificate()` and
+  `listEligibleRecipients()` at `session_attendance_complete()` — is due after contract 6 is
+  promoted and green (`DEC-151` answer 7). Contract 6 is green; the request goes the moment it
+  is promoted.
+- **Recognition edits still write no audit or history row.** Wave 10, with `console`
+  (`DEC-151` answer 9).
