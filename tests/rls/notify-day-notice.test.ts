@@ -20,7 +20,7 @@ import type { Tx } from "./db";
 afterAll(() => pool.end());
 
 // In dependency order: `03`'s `sessions_notify` leans on `02`'s sweep.
-const PROPOSED = ["notify/02_reminders_per_day.sql", "notify/03_day_change_notice.sql"];
+const PROPOSED = ["notify/02_reminders_per_day.sql", "notify/03_day_change_notice.sql", "notify/04_narrow_day_place_grant.sql"];
 
 async function setup(tx: Tx) {
   const f = await seed(tx);
@@ -432,6 +432,27 @@ describe("POL-sessions.change_notice.days_writer_stands_down", () => {
         row.id,
       ]);
       expect(published.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe("RPC-session_day_place.definer_only", () => {
+  it("no client role may read a venue's name through it — DEC-152's sweep, on the function this track added", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const day = { venue_id: f.b.venueId, custom_venue_name: null };
+
+      // Before the revoke this answered with ANOTHER ORG's venue name to any
+      // signed-in member holding its uuid. It has no client caller: its
+      // argument is a `session_days` snapshot only a day-aware writer builds.
+      for (const who of [f.a.members[0].claims, f.a.admin.claims]) {
+        await tx.as(who);
+        expect(await errorCode(() => tx.q(`select public.session_day_place($1::jsonb)`, [JSON.stringify(day)]))).toBe(PERMISSION_DENIED);
+      }
+
+      // The one caller that needs it still has it.
+      await tx.asServiceRole();
+      await tx.q(`select public.session_day_place($1::jsonb)`, [JSON.stringify(day)]);
     });
   });
 });

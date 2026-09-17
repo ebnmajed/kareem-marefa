@@ -1101,3 +1101,38 @@ runs as `authenticated`). So both relationships resolve, including the nested on
 
 **What still needs the lead's build:** `tests/e2e/wave9-notify-days.spec.ts` and its four captures.
 `.next` predates the whole wave, so a run now would serve yesterday's server components.
+
+### W11.8 `DEC-152`'s venue-label finding — what I closed, and the one-liner I did not
+
+**Closed:** `0111` granted `session_day_place(jsonb)` to `authenticated`, copying the grant on
+`session_venue_label()` beside it — and so inherited the same hazard: it reads `venue_id` out of a
+snapshot and returns the venue's name with no check that the caller may see that venue. It has no
+client caller and cannot acquire one by accident, because its argument is a `session_days` snapshot
+only a day-aware writer builds. `supabase/proposed/notify/04_narrow_day_place_grant.sql` revokes it,
+with a `RPC-session_day_place.definer_only` case in `tests/rls/notify-day-notice.test.ts` that reads
+**another org's** venue uuid and expects `42501`.
+
+**Not closed, and ready to take.** `session_venue_label(uuid, text)` (`0036`, mine) has the finding
+proper. The caller audit: **seven call sites, every one inside a `SECURITY DEFINER` function**
+(`0036`, `0038`, `0039`, `0109`, `0110`, `0111`, `0112`), which execute as the owner — **no
+application code calls it at all**, and the three test call sites run as the owner or as the
+superuser. So both fixes are available:
+
+```sql
+-- the narrow one: nothing loses anything, because no client caller exists
+revoke execute on function public.session_venue_label(uuid, text) from authenticated;
+
+-- or the guarded one, which keeps the grant for a future client caller:
+create or replace function public.session_venue_label(p_venue uuid, p_custom text) returns text
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select v.name from public.venues v
+                    where v.id = p_venue
+                      and (public.auth_org_id() is null or v.org_id = public.auth_org_id())), p_custom)
+$$;
+```
+
+The guard is null-safe for the worker (`service_role` carries no JWT, so `auth_org_id()` is null and
+the read is unfiltered, as every definer caller needs) and exact for a member (the session's venue is
+always in their own org). **Neither is shipped.** `0036` is promoted and read by `sessions`' `0112`
+as well as by this track, so narrowing it is a change whose blast radius the lead should schedule —
+not one a teammate slips in beside a feature.
