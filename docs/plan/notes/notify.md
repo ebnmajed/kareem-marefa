@@ -1178,3 +1178,76 @@ already there still passes, which is the half the guard has to keep.
 
 **The lesson for the next seam**: a guard whose failure mode is «a member is never told» must be set
 where the telling happens, not where the function starts.
+
+---
+
+# W12. THE CLOSING SECTION — what is done, and what is carried
+
+**Written at the wave-9 freeze.** Everything below the line is the state of this track for whoever
+reads it next. Nothing here is a plan.
+
+## W12.1 Done, and where the evidence is
+
+| Contract 8's half | Where it lives | What proves it |
+|---|---|---|
+| One calendar entry per **day** | `0109`; `worker/src/tasks/calendar_{upsert,delete}.ts`; `src/lib/dal/calendar.ts`; `/app/me/calendar` | `tests/rls/calendar-days.test.ts` (8) · `tests/unit/notify-jobs-days.test.ts` · `tests/components/calendar/synced-days.test.tsx` · the capture `wave9-notify-calendar-three-days.png` |
+| One `VEVENT` per day, folded at 75 **octets** | `src/components/calendar/ics.ts`, `src/app/api/sessions/[id]/ics/route.ts` | `tests/unit/ics-days.test.ts`, with `tests/unit/ics.test.ts` unmodified as the one-day byte-identity |
+| A link set per day in the add-to-calendar menu | `src/components/calendar/add-to-calendar.tsx` + `sessions`' `groups` prop | the spec asserts a Google and an Outlook item per day and exactly one ICS · `wave9-notify-add-to-calendar.png` |
+| One reminder stream per day, with the offset rule | `0110` | `tests/rls/notify-days.test.ts` (12) |
+| A reschedule notice that names the day, in the inbox and in the mail | `0111`, `0112`'s call site; `src/components/notifications/notification-list.tsx`; `worker/src/mail/render.ts` | `tests/rls/notify-day-notice.test.ts` (15) · `tests/components/notifications/change-lines.test.tsx` (8) · `tests/unit/mail-day-words.test.ts` · `wave9-notify-notice-day-2.png` |
+| A one-day session's identities unchanged | everywhere | the ten pre-existing notify and calendar RLS files green **unmodified** (130 cases) · `wave9-notify-calendar-one-day.png` |
+
+**The `03` §8.2 rows** are in the headers of `0109`, `0110`, `0111` and `0117`. **The four named
+differences** this track owns are `DEC-151`'s 4 (`{{startsAt}}` formatted rather than printed raw)
+and `DEC-154`'s 5 (a reminder mail names its venue); both are approved and in `STATUS.md`.
+
+**The one ledger line** is `tests/components/me/calendar-page.test.tsx` — `SyncedEventDTO` gained
+`id`, `dayPosition` and `dayCount`, so three fixture literals name them as the one-day session they
+already described. **No assertion changed**, and none could: a one-day card renders no day label,
+which `tests/components/calendar/synced-days.test.tsx` asserts as an absence.
+
+## W12.2 ★ Carried out of the wave — each with where it goes
+
+1. **`REQ-NTF-007` — admin-editable required fields.** `notification_templates` is org-editable and
+   `renderEmail()` already prefers an org row over the built-in default, but **nothing validates that
+   an edited template still carries the fields its message needs**. The comment in `render.ts` above
+   `interpolate()` says «`REQ-NTF-007`'s validation already refuses to SAVE a template whose body
+   omits a declared required field» — **that validation does not exist**. Until it does, an admin can
+   save a `MSG-session_changed` body with no `{{changes}}` and the notice goes out with the diff
+   missing. **Wave 10, with the email studio** (`16` §11), because the studio is where a template is
+   edited and the check belongs beside the editor. Raised at wave 8's sync 1 and carried again here.
+2. **`REQ-NTF-008` — the bounce webhook.** `email_deliveries` is written on every send and
+   `/api/webhooks/` exists, but **the Resend webhook handler was never written**, so a bounce or a
+   deferral never reaches the row and `/app/admin/emails`' delivery log shows `sent` forever. The
+   spike alert in `0075` counts `bounced` and `failed` rows that nothing currently produces.
+   **Wave 10**, with the studio and the same `admin/emails` route (`DEC-085` returns it to this
+   track then).
+3. **`sessions_notify()` stays silent on an END-ONLY change at one day.** It diffs `starts_at` and
+   the venue label and has never diffed `ends_at`, so a one-day session whose end time alone moves
+   tells nobody — **on `main` today and on this branch, deliberately**. Contract 2 requires that
+   silence to be preserved, and `DEC-151` carried it out of the wave rather than fixing it. At two
+   days and more it **is** covered: `session_days_changed()` announces every day's end, including
+   day 1's, which is the only place a middle day's end could ever be mentioned. **Whoever fixes it
+   makes it a named difference first** — it changes a one-day mail, which is exactly the class of
+   change this wave measured.
+4. **`{{tasks}}` is still unfilled** in the four reminder templates, exactly as on `main`.
+   `REQ-TSK-005` says a reminder carries outstanding preparatory tasks; the placeholder renders
+   empty because no payload has ever carried one. Nothing in this track names `session_tasks`, so
+   contract 10's guard is untouched by it — and whoever fills it must stay off the check-in path.
+5. **`session_venue_label(uuid, text)`'s guarded body**, if a client caller is ever wanted.
+   `0119` took the plain revoke, which is right while no application code calls it. §W11.8 keeps the
+   guarded alternative and the caller audit that made the choice cheap.
+
+## W12.3 What the next reader should not have to rediscover
+
+- **The identity scheme is positional** (§W1): position 1 carries the key, `UID` and job a one-day
+  session has had since M3; later days are suffixed by **position**, never by day id, so the key set
+  depends on nothing but the day count and a reorder rewrites in place.
+- **`cal:{rsvp_id}` and `caldel:{rsvp_id}` are per RESERVATION at every `n`** — one job that fans out
+  over the days. A per-day key would have left production's pending jobs unreplaced.
+- **A `calendar_events` row outlives its day on purpose** (`0101`'s `on delete set null`): it is the
+  only record of the provider event id, and a null day means exactly «remove it».
+- **A guard whose failure mode is «a member is never told» is set where the telling happens**
+  (§W11.10, `DEC-154`).
+- **`session_days_changed()` reads either snapshot shape** (§W11.4): the five published keys or a
+  whole `session_days` row. `0112` sends the latter.
