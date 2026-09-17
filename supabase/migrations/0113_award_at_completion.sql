@@ -1,5 +1,6 @@
 -- wave 9 (REQ-SES-017, DEC-119's «POINTS AND CERTIFICATES», DEC-151) — the
 -- award moves to session completion for a multi-day session, and only there.
+-- Promoted by the lead from supabase/proposed/scoring/0003_award_at_completion.sql.
 --
 -- ★ THE DECISION IS TWO FACTS UNDER A LOCK, NOT A KEY (DEC-151). The epoch
 -- key — `check_in:check_in:<the member's latest active check-in>:<member>:v1` —

@@ -1704,6 +1704,28 @@ generated suite is the highest-value test in the product.
 | ★ **wave 9 (`DEC-151`), migration `0112`** — contract 11's call site: a day-aware `schedule_session()` calls `session_days_changed()` once, after its last day write — promoted WITH `0111`, because either alone announces nothing |
 | `RPC-schedule_session.announces_the_day_set` | A day-aware save calls `session_days_changed()` exactly once, after its last day write, with the whole day set before and after — so moving day 2 of a three-day workshop, which moves no column of `sessions`, still reaches every confirmed member. |
 | `RPC-schedule_session.days_null_announces_nothing` | A `null` `p_days` does not call it: main's path announces through `sessions_notify()` as it always has. |
+| ★ **wave 9 (`DEC-151`), migration `0113`** — `REQ-SES-017`: the attendance award moves to completion for a session with several days, decided from two facts under a lock; one day is unchanged |
+| `RPC-evaluate_member_attendance.awards_once` | Complete and nothing standing awards exactly one attendance row; run again it writes nothing, whatever the epoch has become. |
+| `RPC-evaluate_member_attendance.reverses_when_incomplete` | Not complete with one standing writes exactly one compensating `reversal`, with the caller's reason. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_new_epoch` | A new active check-in appearing while an award stands writes nothing — the `require_all_days = false` double-pay. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_replay` | Removing the epoch check-in while the predicate still holds, then replaying the completion pass, writes nothing. |
+| `RPC-attendance_recorded.one_day_pays_at_check_in` | On a one-day session the hook enqueues main's job, under main's key, with main's payload. |
+| `RPC-attendance_recorded.multi_day_waits` | On a multi-day session before completion the hook enqueues nothing, whatever days have been attended. |
+| `RPC-attendance_recorded.after_completion_evaluates` | A member marked present after completion is evaluated at once, which is what pays a re-added member. |
+| `RPC-evaluate_session_attendance.one_award_per_member` | A three-day workshop attended in full pays one attendance award, not three. |
+| `RPC-evaluate_session_attendance.reverses_added_day` | A one-day award, then a second day added and missed, is reversed at completion with «لم يكتمل حضور جميع الأيام». |
+| `RPC-award_points.requires_attendance_complete` | A late `award_points('check_in', …)` for a member who did not attend every day writes nothing. |
+| `RPC-award_points.skips_when_award_standing` | The same call with an attendance award already standing for that session writes nothing. |
+| `RPC-attendance_removed.no_show_only_when_none_left` | Removing one day of three records no `no_show`; removing the last active one does. |
+| `RPC-attendance_removed.reverses_presenter_bonus_by_member` | The presenter's `attendee_bonus` for an attendee who no longer qualifies is reversed even when it is keyed to a different day's check-in. |
+| `RPC-evaluate_streaks.counts_sessions_not_check_ins` | Three check-ins on one workshop count as one session toward a streak. |
+| `RPC-evaluate_badges.counts_sessions_not_check_ins` | The same for the `check_ins_count` badge metric. |
+| `RPC-evaluate_company_points.counts_members_not_check_ins` | A company's attendance share counts distinct members, and excludes a removed check-in (named difference 2). |
+| ★ **wave 9 (`DEC-151`), migration `0114`** — `REQ-SES-017`: the member can see which day was missed — a reader that answers only about its caller |
+| `RPC-missed_attendance_days.self_only` | The function takes no member and reads the caller's own claims; a member cannot ask about anyone else, and `anon` cannot call it at all. |
+| `RPC-missed_attendance_days.multi_day_only` | A one-day session never appears, whatever the member did or did not attend. |
+| `RPC-missed_attendance_days.names_the_missed_day` | A three-day workshop attended on days one and three returns exactly day two, with its position and its start. |
+| `RPC-missed_attendance_days.silent_when_complete` | A workshop attended in full returns nothing — there is nothing to explain. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

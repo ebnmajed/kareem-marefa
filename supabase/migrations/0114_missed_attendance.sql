@@ -1,4 +1,5 @@
 -- wave 9 (REQ-SES-017, P4) — «the member can see why».
+-- Promoted by the lead from supabase/proposed/scoring/0004_missed_attendance.sql.
 --
 -- ★ NO LEDGER ROW IS WRITTEN FOR AN AWARD THAT DID NOT HAPPEN. The ledger
 -- records points, not explanations (invariant 9), so the missed-day line on
