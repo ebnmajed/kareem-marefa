@@ -813,3 +813,157 @@ three `VEVENT`s folded at 75 **octets**), `tests/unit/notify-jobs-days.test.ts`,
 7. The captures: `/app/me/calendar` with three entries, the add-to-calendar menu on a three-day
    session, the notice naming day 2 in the inbox and in Mailpit, and `/app/me/calendar` for a
    one-day session beside its wave-7 capture.
+
+---
+
+## W10. ★ CONTRACT 11 — `session_days_changed()`, published for `sessions`
+
+**`DEC-151` supersedes W4's trigger.** A row trigger on `session_days` fires mid-write, so a guard
+that de-duplicates a multi-row change announces the first row's partial truth and suppresses the
+rest. The one day-aware writer holds the whole before and after, so it calls one function of mine.
+**There is no trigger on `session_days` that notifies.** W4's positional rule is withdrawn with it;
+what survives from W4 is the payload shape (`W10.4`) and the `MSG-session_changed` reuse.
+
+### W10.1 The signature
+
+```sql
+public.session_days_changed(
+  p_session uuid,     -- the session whose day set was written
+  p_before  jsonb,    -- the day set as it was, BEFORE the first day write
+  p_after   jsonb     -- the day set as it is, AFTER the last day write
+) returns void
+```
+
+`security definer`, `set search_path = ''`, `revoke execute from public, anon, authenticated`,
+`grant execute to service_role`. A `security definer` caller — `schedule_session()` — executes it as
+the owner, the same way every M2 hook calls `public.notify()`.
+
+### W10.2 The exact jsonb — an array, ordered by `position` ascending
+
+```jsonc
+[
+  { "id":          "3f1a…",                       // uuid, session_days.id — the match key
+    "position":    1,                             // int, the stored rank at the time of the snapshot
+    "starts_at":   "2026-10-01T15:00:00+00:00",   // timestamptz, as to_jsonb renders it
+    "ends_at":     "2026-10-01T17:00:00+00:00",
+    "venue_label": "قاعة الابتكار" },             // text or null — session_venue_label()'s answer
+  { "id": "9c04…", "position": 2, "…": "…" }
+]
+```
+
+- **Exactly five keys, `snake_case`**, matching every other payload this track builds. An extra key
+  is ignored; a missing one is read as null.
+- **`[]` is the empty set** — a session that had no days, or has none left. **A null argument is
+  tolerated and read as `[]`**, so a caller never has to special-case a first schedule.
+- **`id` is the match key.** A day in both arrays under one `id` moved; in `p_after` only it was
+  added; in `p_before` only it was removed. Position is never the match key: it is a derived rank
+  and two different days can hold rank 2 before and after.
+- **`venue_label`, not `venue_id` and the custom trio.** It is what the member reads and what the
+  notice prints, and `sessions_notify()` already diffs the label rather than the columns, so the two
+  announcements say the same thing in the same words.
+
+**The one query that builds either snapshot** — run it before the first day write and again after
+the last, and nothing else has to agree on anything:
+
+```sql
+select coalesce(
+         jsonb_agg(
+           jsonb_build_object(
+             'id',          d.id,
+             'position',    d.position,
+             'starts_at',   d.starts_at,
+             'ends_at',     d.ends_at,
+             'venue_label', public.session_venue_label(d.venue_id, d.custom_venue_name))
+           order by d.position),
+         '[]'::jsonb)
+  from public.session_days d
+ where d.session_id = p_session
+```
+
+`session_venue_label(uuid, text)` is `0036`'s, `stable security definer`, granted to `authenticated`
+and `service_role`. `0100`'s `session_days_derive()` renumbers in an `after` row trigger, so by the
+time `schedule_session()` has finished its last day write the positions in `p_after` are final.
+
+### W10.3 When `sessions` calls it, and what it may assume
+
+- **Once**, at the end of the day-aware path, after the last day write and after `write_audit()`,
+  inside the same transaction, with `kareem.days_writer` still `'on'`.
+- **Always on that path, even when nothing changed.** The function diffs; equal snapshots send
+  nothing, schedule nothing and enqueue nothing. `sessions` never has to decide whether a change is
+  worth announcing.
+- **Never on the legacy `p_days is null` path** — `sessions_notify()` covers that one, unchanged.
+- **A second call in one transaction is a no-op**, guarded by a transaction-local marker, so a retry
+  or a future second call site cannot double-send.
+- It **writes no table of `sessions`'**: no `sessions` row, no `session_days` row, no audit row. It
+  reads `sessions`, `session_days`, `rsvps` and `org_settings`, and it writes only `notifications`
+  and the queue, through `public.notify()` and `public.enqueue_job()`.
+- It raises nothing on a session that is `draft`, `cancelled` or `completed`; it returns.
+
+### W10.4 What it does
+
+1. **Guards.** Session missing, or `state not in ('published', 'in_progress')` → return. Nobody holds
+   a seat in a draft to mislead, which is `0036`'s rule and stays it.
+2. **Diffs `p_before` against `p_after` by `id`** and builds the `changes` array of
+   `MSG-session_changed`, in `08` §3.3's shape with two optional fields added:
+
+   | entry | when |
+   |---|---|
+   | `{"field":"starts_at","from":…,"to":…,"day":k,"days":n}` | a matched day's start moved |
+   | `{"field":"ends_at","from":…,"to":…,"day":k,"days":n}` | a matched day's end moved |
+   | `{"field":"venue","from":…,"to":…,"day":k,"days":n}` | a matched day's venue label moved |
+   | `{"field":"days","from":n_before,"to":n_after}` | the count changed — a day added or removed |
+
+   `day` is the day's position in `p_after` (its `p_before` position for a removed day) and `days` is
+   `n_after`. **Both are omitted when `n_before` and `n_after` are both 1**, so a one-day session's
+   payload is the one `0036` sends today, key for key.
+   ★ **`ends_at` is emitted for day 1 as well**, because at `n >= 2` day 1's end is not the session's
+   end and nothing else would ever mention it. That is `named difference`-shaped but it is not one:
+   at one day `sessions_notify()` is the announcer and its silence on an end-only change is
+   preserved (`DEC-151`, «carried out of the wave»).
+3. **Sends** `MSG-session_changed` — the existing key, non-optional, both channels — to every
+   `confirmed` and `waitlisted` member, with `session_id`, `title`, `startsAt` (the session's stored
+   start), `venue` (the session's stored label) and `changes`. No notice when `changes` is empty.
+4. **`schedule_session_reminders(p_session)`** — the per-day rule of `W3`, which re-enqueues by key
+   and sweeps what it did not enqueue.
+5. **`enqueue_job('calendar_upsert', …, 'cal:' || rsvp_id, …)` for every `confirmed` reservation** —
+   one job per reservation at every `n`, which fans out over the days (`W1`).
+
+Steps 4 and 5 are exactly what `sessions_notify()`'s change branch does today, moved to the one
+place that can see a day-level change.
+
+### W10.5 ★ One notice, at every `n` — `sessions_notify()` stands down for a day-aware writer
+
+`sessions` writes the session **first** and its days second, so `0100`'s day→session trigger finds
+nothing distinct and `sessions_notify()` fires exactly once, on that first write — **before** this
+function is called. Left alone, a day-aware call that moves day 1 and day 2 sends two mails, and a
+day-aware call on a **one-day** session sends two where `main` sends one.
+
+So `sessions_notify()` gains one guard in its change branch — and only there:
+
+```sql
+if current_setting('kareem.days_writer', true) is not distinct from 'on' then
+  return new;   -- a day-aware writer announces the whole change itself (contract 11)
+end if;
+```
+
+Publish, cancel and complete are untouched and still fire under the flag. The flag is
+transaction-local and set by one writer, so the rule it creates is exact and statable:
+
+★ **A writer that sets `kareem.days_writer` must call `session_days_changed()` before it returns.**
+
+This is why the byte-identity at one day does not depend on the form choosing to send a null
+`p_days`. Either path sends **one** notice, and the day-aware path's payload at `n = 1` is the
+legacy path's key for key, because `day` and `days` are omitted. **Lead: this is the only change to
+`sessions_notify()` beyond the two optional fields you confirmed in question 11 — tell me if you
+would rather rely on the null-`p_days` route alone, and I will drop the guard.**
+
+### W10.6 The request to `sessions` (question 7, approved as a request)
+
+`src/components/sessions/calendar-menu.tsx` — `CalendarMenu` takes
+`links: { google, outlook, ics }` and renders three items. For a session with several days the ICS
+stays **one** download carrying every day, while Google and Outlook are per-event and need one link
+per day. **The prop I need:** a list of groups,
+`groups: { label: string; links: { google: string; outlook: string } }[]`, plus the single `ics`,
+**rendered flat when there is one group** so a one-day session's menu is exactly today's DOM.
+`AddToCalendar` supplies the labels through `sessions`' day formatter and the links through
+`calendarLinks()` per day. Nothing else about the component changes.
