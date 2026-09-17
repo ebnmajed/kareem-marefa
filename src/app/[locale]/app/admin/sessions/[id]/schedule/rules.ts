@@ -144,3 +144,109 @@ export function missingForPublish(v: {
 
 /** The venue select's value for «مكان آخر، لمرة واحدة». Never a uuid. */
 export const CUSTOM_VENUE = "custom";
+
+// ══ REQ-SES-016 · the day set ══════════════════════════════════════════════
+//
+// ★ ONE DAY IS THE DEFAULT AND COSTS NOTHING. Everything below runs only once
+// «جلسة متعدّدة الأيام» has been opened; a form that never opens it posts no
+// `days` field at all, and `schedule_session()` then takes `main`'s path
+// (`tests/unit/schedule-days.test.ts` pins the argument object).
+//
+// ★ NO REORDERING ANYWHERE, and that is `0100` rather than a simplification:
+// `position` is the day's CHRONOLOGICAL rank, derived by trigger. A day is
+// moved by changing its date, and the list re-sorts. A drag handle could only
+// ever disagree with the ranking the database will apply.
+
+/**
+ * A day as the form holds it. ★ WALL CLOCK, like every other field on this
+ * form: the browser posts what the picker shows and the Server Action turns it
+ * into an instant with `atZone()`, so the zone is consulted in exactly one
+ * place (REQ-INT-003, OQ-018).
+ */
+export interface DayDraft {
+  /** The stored day's id, `null` for one that has not been saved yet. */
+  id: string | null;
+  /** A stable React key. A stored id, else a value generated when the row was added. */
+  key: string;
+  startsAt: string;
+  /** ★ `""` means «follow the duration» — the same rule day one's `endMode` states. */
+  endsAt: string;
+  /** `""`, a venue id, or `CUSTOM_VENUE`. */
+  venueChoice: string;
+  customVenueName: string;
+  customVenueAddress: string;
+  customVenueMapUrl: string;
+}
+
+/** Everything a day needs from the form to know where it is. */
+export type DayPlace = Pick<DayDraft, "venueChoice" | "customVenueName" | "customVenueAddress" | "customVenueMapUrl">;
+
+/** A day's end: the one it was given, else the one the duration implies. */
+export function dayEnd(day: { startsAt: string; endsAt: string }, durationMinutes: string): string {
+  return day.endsAt || followingEnd(day.startsAt, durationMinutes);
+}
+
+/**
+ * The next day, defaulted from the one before it (`REQ-SES-016`): **the same
+ * clock, the same place, the next date**. Adding a third evening to a workshop
+ * that meets 6–8 p.m. in القاعة الكبرى is then one tap on a date.
+ */
+export function nextDayAfter(previous: { startsAt: string; endsAt: string } & DayPlace, durationMinutes: string, key: string): DayDraft {
+  const startsAt = previous.startsAt ? addMinutes(previous.startsAt, 24 * 60) : "";
+  // An end carried forward stays explicit only if it WAS explicit; otherwise
+  // the new day follows the duration exactly as the previous one does.
+  const explicit = previous.endsAt !== "";
+  const length = explicit ? minutesBetween(previous.startsAt, previous.endsAt) : null;
+  return {
+    id: null,
+    key,
+    startsAt,
+    endsAt: explicit && length !== null && startsAt ? addMinutes(startsAt, length) : "",
+    venueChoice: previous.venueChoice,
+    customVenueName: previous.customVenueName,
+    customVenueAddress: previous.customVenueAddress,
+    customVenueMapUrl: previous.customVenueMapUrl,
+  };
+}
+
+export type DayRelation = "dayEndBeforeStart" | "daysOverlap";
+
+/**
+ * The two relations a DAY can fail on, said at the field the moment a picker
+ * commits (`REQ-SES-016`, `REQ-UIX-010`) — before `0100`'s exclusion constraint
+ * says `23P01` and before `schedule_session()` says `days_overlap`.
+ *
+ * Keyed by the day's INDEX in the list, which is the order the form renders
+ * them in, so the summary's first link is the first problem on the page
+ * (`DEC-144`). An overlap is reported on the LATER of the two days: the one
+ * whose start is the thing to move.
+ *
+ * ★ A day that is merely EMPTY is not a failure here. Nobody is told they are
+ * wrong while they are still filling the form in (`REQ-UIX-011`); the action
+ * catches an empty day on submit.
+ */
+export function checkDays(days: readonly { startsAt: string; endsAt: string }[]): Partial<Record<number, DayRelation>> {
+  const out: Partial<Record<number, DayRelation>> = {};
+  const spans = days.map((day) => {
+    const from = toCalendar(day.startsAt);
+    const to = toCalendar(day.endsAt);
+    return from === null || to === null ? null : { from, to };
+  });
+
+  for (const [i, span] of spans.entries()) {
+    if (span && span.to <= span.from) out[i] = "dayEndBeforeStart";
+  }
+  for (let i = 0; i < spans.length; i += 1) {
+    for (let j = i + 1; j < spans.length; j += 1) {
+      const a = spans[i];
+      const b = spans[j];
+      if (!a || !b || a.to <= a.from || b.to <= b.from) continue;
+      if (a.from < b.to && b.from < a.to) {
+        // The later-starting day carries the message; ties go to the second.
+        const later = b.from >= a.from ? j : i;
+        out[later] ??= "daysOverlap";
+      }
+    }
+  }
+  return out;
+}

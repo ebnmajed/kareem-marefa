@@ -287,9 +287,39 @@ export interface SchedulableSession {
   certificateMode: "off" | "automatic" | "review";
   /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
   allowWalkIns: boolean;
+  /** `sessions.require_all_days` (`REQ-SES-017`), for the control beside `certificate_mode`. */
+  requireAllDays: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
   missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
+  /**
+   * ★ The session's days, in order, with what REMOVING one would cost
+   * (`REQ-SES-015`, `REQ-SES-016`, `DEC-121`).
+   *
+   * The form asks before it sends a removal, so it has to know two things the
+   * day row does not carry: whether the day holds attendance — in which case
+   * `schedule_session()` refuses `day_has_attendance` and the control is
+   * disabled — and how much content would be PROMOTED to the session by
+   * `0100`'s `on delete set null`, so the dialog can say so rather than let an
+   * admin guess.
+   */
+  days: ScheduleDay[];
+}
+
+/** One day, for the schedule form's list. */
+export interface ScheduleDay {
+  id: string;
+  position: number;
+  startsAt: string;
+  endsAt: string;
+  venueId: string | null;
+  customVenueName: string | null;
+  customVenueAddress: string | null;
+  customVenueMapUrl: string | null;
+  /** Any `check_ins` row, REMOVED OR NOT: a day someone attended is evidence (DEC-151). */
+  hasAttendance: boolean;
+  /** Materials, tasks and photos filed under this day. Promoted on delete, never deleted. */
+  contentCount: number;
 }
 
 export async function listVenues(locale: string): Promise<Venue[]> {
@@ -308,12 +338,33 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, time_zone",
+      // ★ ONE QUERY, counts embedded. `REQ-TSK-002` says nothing on a CHECK-IN
+      // path may read a task; this is a scheduling path — `sessions.ts` is in
+      // no check-in import graph — and the form needs both numbers to ask
+      // before it removes a day (DEC-151 ruling 6).
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
     )
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(`sessions.select: ${error.message}`);
   if (!data) return null;
+
+  type Counted = { count: number }[];
+  const total = (rows: Counted | null | undefined) => rows?.[0]?.count ?? 0;
+  const days: ScheduleDay[] = ((data as unknown as Record<string, unknown>).session_days as Record<string, unknown>[] | null ?? [])
+    .map((row) => ({
+      id: row.id as string,
+      position: row.position as number,
+      startsAt: row.starts_at as string,
+      endsAt: row.ends_at as string,
+      venueId: (row.venue_id as string | null) ?? null,
+      customVenueName: (row.custom_venue_name as string | null) ?? null,
+      customVenueAddress: (row.custom_venue_address as string | null) ?? null,
+      customVenueMapUrl: (row.custom_venue_map_url as string | null) ?? null,
+      hasAttendance: total(row.check_ins as Counted) > 0,
+      contentCount: total(row.materials as Counted) + total(row.session_tasks as Counted) + total(row.photos as Counted),
+    }))
+    .sort((a, b) => a.position - b.position);
 
   const missing: SchedulableSession["missing"] = [];
   if (!data.starts_at) missing.push("startsAt");
@@ -338,8 +389,10 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     cancellationCutoffAt: data.cancellation_cutoff_at,
     certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
     allowWalkIns: data.allow_walk_ins === true,
+    requireAllDays: data.require_all_days !== false,
     timeZone: data.time_zone,
     missing,
+    days,
   };
 }
 
