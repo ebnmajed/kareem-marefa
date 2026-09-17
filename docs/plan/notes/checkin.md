@@ -1805,3 +1805,32 @@ so nobody can re-introduce a hand-rolled `+ 2 hours` that would miss the cap.
 `tests/components/checkin/remove-check-in-form.test.tsx` — `RemoveCheckInForm` gained three required
 props, so the render helper passes **one** day. Every assertion unchanged; the day select does not
 render below two. **Expectation for one day changed: no.**
+
+### Request — contract 6 is published, but not callable from SCR-044
+
+`session_attendance_complete(p_session, p_member)` landed in `0107`, and its grants are
+`revoke … from public, anon, authenticated` / `grant … to service_role`. That is **right**: it is
+`security definer` over a bare `(session, member)` pair, so granting it to `authenticated` would let
+any member probe whether any other member attended anything. Its sibling `session_attendance()` is
+granted to `authenticated`, but it answers **one member at a time** — the right shape for
+`me/points`, and 30 round trips for a report of 30 attendees.
+
+So `AttendanceReport.counts.completedAllDays` stays **null** and the stat renders an em dash. It is
+not «not published yet» any more; it is «published and correctly out of reach».
+
+**The ask, to `scoring` through the lead:** a staff-scoped aggregate over one session —
+
+```sql
+public.session_attendance_summary(p_session uuid) returns table (completed int, total_days int)
+```
+
+`security definer`, `grant execute to authenticated`, gated inside on `public.is_staff()` (SCR-044
+is already staff-only, and `getAttendanceReport()` returns null for anyone else), computed with
+`session_attendance_complete()` so there is still **one** definition. One call per page, and my
+change is one line.
+
+★ **I am not re-deriving it in TypeScript**, and the reason is concrete rather than procedural:
+`REQ-SES-017` calls full attendance «a per-session setting an admin may relax», so the predicate is
+the part of this feature most likely to grow a clause. A second copy on a report screen would then
+disagree with the points the member actually received, and the screen is exactly where someone would
+go to find out why.
