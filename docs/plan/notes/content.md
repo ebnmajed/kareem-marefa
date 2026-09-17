@@ -2780,3 +2780,59 @@ Starting T2 now — contract 3's readers landed (`3cdc690`): `listSessionDays(lo
 `dayCountLabel` from `components/sessions/day-label.ts`.
 
 Ready for sync.
+
+## §23 — T2 built and green (`a2b40ec`)
+
+All three slots (`materials/list.tsx`, `tasks/panel.tsx`, `photos/gallery.tsx`) now read
+`listSessionDays()` and group. The `days.length <= 1` branch calls the exact same card/grid
+render function the grouped branch calls, with no scope passed — the flat branch is not a second
+implementation, it is the shared one called with a `null`. That is what let
+`materials/tasks/photos-schema` and `list/panel/gallery.test.tsx` stay unmodified: confirmed by an
+empty `git diff` against each and a green run of all three together with the new grouping tests.
+
+**Two real defects the new tests caught, not guessed at:**
+1. **`content-i18n.test.ts`** (mine, the numeral/bidi gate) failed on my first draft of five new
+   message keys — a bare `{scope}`/`{label}` placeholder with no `<bdi>`. Fixed in the JSON source
+   (`<bdi>{scope}</bdi>`) and read at the call site with `t.markup(key, {..., bdi: (c) => c})` —
+   the plain-text form `aria-label` needs, matching `viewer/page-viewer.tsx`'s own established
+   pattern for the identical reason.
+2. **`panel.tsx` was passing `scope` to every `TaskItem` unconditionally**, not gated on
+   `canManage` — unlike `materials`/`photos`, where the gate lives INSIDE the shared card/grid
+   component (`MaterialCard`'s own `canManage` prop, `PhotoGrid`'s own `isStaff` prop) so it could
+   not be forgotten at the call site. `panel-grouping.test.tsx`'s "a plain member sees no chip"
+   case failed against the real bug, not a broken test — a plain member would have seen an
+   interactive-looking control the server always refuses (`rescope_task`'s own authority check),
+   confusing rather than dangerous, but wrong. Fixed by gating the prop at the call site instead;
+   noted here because the asymmetry (two slots gate inside the shared component, one gated at the
+   call site until this fix) is exactly the kind of drift a later reader would not expect.
+
+**Design decisions made while building, not pre-planned in §1-§20:**
+- The re-scope chip's menu never needs a separate "current scope, unchanged" no-op guard — picking
+  the option already shown as current just re-sends the same day/null, and `rescope_*`'s own
+  early-return (`p_day_id is not distinct from v_old_day` for materials; a plain update for
+  tasks/photos, idempotent either way) makes that a no-op audit-free write, not a bug to prevent
+  client-side.
+- A per-item scope LABEL is shown only via the interactive chip (staff/presenter), never as inert
+  text for a plain member — the group heading already says it, and repeating it under every card
+  read as clutter once built and looked at.
+- `getSessionHeading()` (`sessions.ts`, unmodified, already published) is what each of the three
+  DAL functions calls for `timeZone` — one more small read alongside the existing
+  `session_presenters`/`org_settings` `Promise.all`, not a new duplicated org-settings-fallback
+  helper written three times.
+
+**New component tests** (`list-grouping`, `panel-grouping`, `gallery-grouping`) prove: session
+content first then days in order, each its own `<h3>`; an empty group omitted for a plain member,
+kept for a manager with «أضف» in every header including the empty one; no chip for a plain member,
+a chip listing every day (+ the session) for whoever may use it; axe-clean.
+
+`npx tsc --noEmit` and `npm run lint` clean on my files. `npm test` 201/201 files, 1851/1851 tests
+(up from 196/1833 — other teammates' concurrent commits, unrelated).
+
+**Not yet done, and why:** the 390 px RTL captures (need a production build, the lead's) and T4's
+real-worker photo spec (needs T1's SQL promoted first — `resolve_photo_day()`/`record_photo_upload()`
+don't exist in `supabase/migrations/` yet). Both are next once told the SQL landed and a build is
+available; the re-scope RLS assertions (`rescope_material` etc. actually moving a row visible
+end-to-end through the promoted policies, not just the mocked component tests here) are the same
+dependency.
+
+Ready for sync.
