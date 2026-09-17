@@ -160,37 +160,33 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
                 {when ? (
                   <>
                     <bdi>{when}</bdi>
-                    {/* ★ Where the line may break, and nowhere else — two rules,
-                        each with a capture behind it.
-
-                        A time is joined to its «م» at the source
-                        (`numerals.ts`, U+00A0) and «حتى 8:27 م» is one
-                        unbreakable clause, so a line never breaks inside the
-                        time — wave 7's capture showed «… في 6:57» / «م · حتى
-                        8:27 م» when the clause held its own leading space.
-
-                        ★ And the SEPARATOR BELONGS TO THE LINE IT ENDS: glued
-                        to what precedes it with a no-break space, followed by
-                        an ordinary one. So the only break opportunity is AFTER
-                        the «·» and a wrapped line opens «حتى …» rather than
-                        «· حتى …», which reads as a fragment of the line
-                        above. Wave 9's three-day range is long enough to wrap
-                        and is where that showed. */}
+                    {/* ★ Where the line may break, and nowhere else. A time is
+                        joined to its «م» at the source (`numerals.ts`, U+00A0);
+                        «· حتى 8:27 م» is one unbreakable clause; and the ONLY
+                        break opportunity is the ordinary space BEFORE the «·»,
+                        which sits outside the clause. Wave 7's capture showed
+                        «… في 6:57» / «م · حتى 8:27 م» — the clause had its
+                        leading space inside it, so the line broke inside the
+                        start time instead. */}
                     {until ? (
-                      <span className="text-fg-muted">
-                        {"\u00A0· "}
-                        <span className="whitespace-nowrap">{t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}</span>
-                      </span>
+                      <>
+                        {" "}
+                        <span className="whitespace-nowrap text-fg-muted">
+                          {"·\u00A0"}
+                          {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
+                        </span>
+                      </>
                     ) : null}
-                    {/* The count rides on the same rule: the «·» ends the line
-                        before it, and the count travels whole to the next. */}
+                    {/* The count rides on the same break rule as «· حتى …»: an
+                        ordinary space before the «·», nothing breakable after. */}
                     {dayCount ? (
-                      <span className="text-fg-muted">
-                        {"\u00A0· "}
-                        <span className="whitespace-nowrap">
+                      <>
+                        {" "}
+                        <span className="whitespace-nowrap text-fg-muted">
+                          {"·\u00A0"}
                           <bdi>{dayCount}</bdi>
                         </span>
-                      </span>
+                      </>
                     ) : null}
                   </>
                 ) : (

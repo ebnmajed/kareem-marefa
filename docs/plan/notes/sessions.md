@@ -3019,11 +3019,18 @@ The build-and-open loop earned its place: every one of these was green in the su
      design (`0122` returns none), so the DTO assigns `public-card-day-N`. A request is with the lead
      to make both optional — `chronological()` uses `id` only to break a tie between two days
      starting at the same instant, which `0100`'s exclusion constraint makes impossible.
-2. **A wrapped «الموعد» opened with its separator** — «· حتى السبت، 19 سبتمبر …». The rule is now
-   that **the separator belongs to the line it ENDS**: glued to what precedes it with U+00A0 and
-   followed by an ordinary space, so the only break opportunity is after it. Fixed on the event page
-   **and** on the public card, which had the same latent nit and keeps wave 7's rule that a time
-   never breaks from its «م».
+2. ~~**A wrapped «الموعد» opened with its separator**~~ — ★ **WITHDRAWN, and wave 7's rule
+   stands. Nobody re-raises this.** The change (`201d6aa`) moved the «·» out of the public card's
+   `whitespace-nowrap` clause so a wrapped line would not open with it. **That broke the ONE-DAY
+   contract**, which is written down in two pre-existing specs and was decided deliberately at wave 7
+   (`58ab535`) with a capture behind it: `wave7-sessions-public-card.spec.ts:117` asserts the clause
+   READS `/^· حتى/`, and `sessions-public-card.spec.ts:170` asserts it occupies ONE line box.
+   «· حتى 8:27 م» is one unbreakable clause and the only break opportunity is the ordinary space
+   BEFORE the «·» — otherwise the line breaks inside the start time and leaves «م» alone, which is
+   what wave 7's capture actually showed. Both markups restored byte for byte (`s/[id]/page.tsx` and
+   `action-card.tsx`), and the multi-day count clause follows the SAME rule rather than a second one.
+   ★ **The lesson is the ledger's own**: a pre-existing spec is the contract, and a «nit» that
+   contradicts one is a decision being reversed without the entry that made it.
 3. **The hero's duration chip said the workshop lasted two hours** (`f960c17`). `duration_minutes`
    is day one's length and must stay so — the clock jobs and the check-in window key off it — while
    the chip answers «how much of my week is this». It reads the day count above one day now.
