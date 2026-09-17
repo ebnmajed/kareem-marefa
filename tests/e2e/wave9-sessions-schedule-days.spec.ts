@@ -146,6 +146,38 @@ async function pick(page: Page, label: RegExp, day: string, opts: { hour?: strin
   await expect(picker).toBeHidden();
 }
 
+/**
+ * Toggle a `ui/switch` THE WAY A PERSON DOES — and prove the row was reachable
+ * while doing it.
+ *
+ * ★ The hit target is the `<label>`, not the input. `ui/switch` draws a real
+ * `<input type="checkbox" role="switch">` that is `sr-only` — one pixel, for
+ * the accessibility tree and the keyboard — inside a `<label>` that wraps the
+ * drawn track and the text at `min-h-11`. A thumb meets the 44 px row; only an
+ * automated `click()` on the role locator meets the pixel, and Playwright then
+ * scrolls that pixel MINIMALLY into view, which puts it at the very bottom edge
+ * of the viewport, under the form's sticky action bar.
+ *
+ * ★ SO THE SCROLL IS CENTRED AND THE COVERAGE IS ASSERTED, not worked around.
+ * `force: true` would make this pass whether or not the bar permanently covers
+ * the row — and «can a person reach it at 390 px» is the question worth
+ * answering. `elementFromPoint` at the row's centre is what a thumb would hit.
+ */
+async function tapSwitch(page: Page, name: string) {
+  const control = page.getByRole("switch", { name });
+  const row = page.locator("label").filter({ has: control });
+  await row.evaluate((el) => el.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior }));
+
+  const hit = await row.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return { reachable: el.contains(top), covering: top ? `${top.tagName}.${(top as HTMLElement).className}` : "nothing" };
+  });
+  expect(hit.reachable, `«${name}» is covered at its own centre by ${hit.covering} — the sticky bar hides a row a person cannot scroll clear of`).toBe(true);
+
+  await row.click();
+}
+
 test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps", async ({ context, page }) => {
   test.slow();
   await page.setViewportSize(PHONE);
@@ -171,7 +203,7 @@ test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps"
   await capture(page, "schedule-one-day");
 
   // ── «جلسة متعدّدة الأيام» ─────────────────────────────────────────────────
-  await affordance.click();
+  await tapSwitch(page, "جلسة متعدّدة الأيام");
   await expect(affordance).toBeChecked();
   // ★ REQ-SES-017's control appears WITH the affordance and not before.
   await expect(page.getByRole("switch", { name: "النقاط والشهادة بعد حضور كل الأيام" })).toBeChecked();
