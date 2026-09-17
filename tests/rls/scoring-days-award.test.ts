@@ -807,3 +807,49 @@ describe("RPC-attendance_removed.reverses_presenter_bonus_by_member", () => {
     });
   });
 });
+
+describe("RPC-award_points.multi_day_waits_for_completion", () => {
+  it("★ an inline enqueue for a running multi-day session pays nothing — the rule does not depend on who called", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 2, state: "published" });
+
+      // Both days attended, so the PREDICATE holds — but the session is still
+      // running and a third day could still be added. This is exactly the call
+      // `check_in()` makes today, before `checkin` switches its three call
+      // sites to attendance_recorded(): the guard has to hold for it too, or
+      // the award's timing would be true only while one caller is in use.
+      const first = await attend(tx, f.a, sessionId, dayIds[0], member);
+      const second = await attend(tx, f.a, sessionId, dayIds[1], member);
+      await tx.asServiceRole();
+      await tx.q(`select public.session_attendance_complete($1, $2)`, [sessionId, member]);
+      await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, second, sessionId]);
+      expect(await ledger(tx, member, sessionId)).toEqual([]);
+
+      // Completed: the same call now pays, once.
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'in_progress' where id = $1`, [sessionId]);
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.asServiceRole();
+      await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, second, sessionId]);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(1);
+      expect(first).not.toBe(second);
+    });
+  });
+
+  it("★ a ONE-DAY session is untouched by that guard: it still pays while the session is running", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 1, state: "published" });
+      const checkInId = await attend(tx, f.a, sessionId, dayIds[0], member);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, checkInId, sessionId]);
+      const rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${checkInId}:${member}:v1`);
+    });
+  });
+});

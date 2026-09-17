@@ -372,6 +372,23 @@ begin
       if not public.session_attendance_complete(v_sess, p_member) then
         return;
       end if;
+
+      -- ★ REQ-SES-017's TIMING, re-derived here and not only in
+      -- attendance_recorded(). A multi-day session's award is evaluated at
+      -- COMPLETION, where the day set is final — a fourth day can still be
+      -- added while the session is running, and a member paid for attending
+      -- «every day» of a three-day workshop that became four was never paid
+      -- correctly. Without this clause the rule would hold only while
+      -- `check_in()` routes through attendance_recorded(): between this file
+      -- and `checkin`'s switch of its three call sites, an inline enqueue
+      -- would still pay at the last day's check-in. 0088's own principle —
+      -- re-derive from the tables at run time, never trust the payload.
+      -- ★ Inert at n = 1: one day is never more than one day.
+      if (select count(*) from public.session_days d where d.session_id = v_sess) > 1
+         and (select s.state from public.sessions s where s.id = v_sess)
+             not in ('completed', 'archived') then
+        return;
+      end if;
       -- DEC-151: the key is the second line of defence, not the first. An
       -- award already standing for this session means nothing is owed, even
       -- under a key this call has never written.
