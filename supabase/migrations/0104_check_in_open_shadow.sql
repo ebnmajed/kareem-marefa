@@ -1,6 +1,7 @@
 -- wave 9 (DEC-150 contract 2, DEC-151) — `sessions.check_in_open` becomes the
 -- stored shadow of the day set, so `main` keeps reading a true value while the
 -- switch itself lives on the day (`0101`).
+-- Promoted by the lead from supabase/proposed/checkin/01_check_in_open_shadow.sql.
 --
 -- THE RULE: `sessions.check_in_open = bool_or(d.check_in_open)` over the
 -- session's days — «attendance is still being taken SOMEWHERE in this session».
@@ -30,7 +31,7 @@
 --
 -- ★ `kareem.check_in_shadow` is a custom Postgres setting, so it must contain a
 -- dot and cannot be spelt any other way. `tests/unit/admin-audit-labels.test.ts`
--- reads every `'word.word'` literal in `supabase/migrations/` as an audit
+-- reads every single-quoted dotted literal in `supabase/migrations/` as an audit
 -- action; it needs this name in its `NOT_ACTIONS` set beside `kareem.days_writer`
 -- when this file is promoted. That file is the lead's.
 --

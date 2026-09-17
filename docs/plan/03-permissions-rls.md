@@ -1641,6 +1641,24 @@ generated suite is the highest-value test in the product.
 | ★ **wave 9 (`DEC-152`), migration `0103`** — a SECURITY fix: the private core that mints a live check-in code was executable by `anon` since M2 (`0015` never revoked it) |
 | `RPC-_issue_check_in_code.not_public` | The private core that mints a live check-in code is executable by NO client role — `anon`, `authenticated` and `service_role` are each refused 42501; its three definer callers still work. |
 | `RPC-definer.anon_allowlist` | The SECURITY DEFINER, non-trigger functions `anon` may execute are EXACTLY the documented six; a new one fails the suite until it is either revoked or added to the list with its reason. |
+| ★ **wave 9 (`DEC-151`), migration `0104`** — `sessions.check_in_open` is the shadow of its days' switches, and only a writer of the SESSION's column reaches the days |
+| `POL-check_in_open.shadow_is_bool_or` | `sessions.check_in_open` equals `bool_or` of its days: closing the only open day closes the session's shadow, reopening any day opens it. |
+| `POL-check_in_open.reopening_one_day_opens_only_that_day` | ★ Three closed days; reopening day 2 leaves days 1 and 3 closed, and flips the session's shadow to open. The defect this file exists to prevent. |
+| `POL-check_in_open.session_write_carries_to_every_day` | A writer of the session's own column — `transition_session()`'s early completion or cancellation, or a fixture's direct `update` — closes every day of the session. |
+| `POL-check_in_open.one_day_is_identical` | At one day the pair moves together in both directions, and `set_check_in_open()` returns a session row carrying the day's value. |
+| ★ **wave 9 (`DEC-151`), migration `0105`** — contract 4: check-in moves to the day — eight RPCs, each keeping `p_session` and gaining a trailing `p_day` |
+| `RPC-check_in.day_from_code` | A live code names the day it was minted for, and only while that day is taking attendance; a code of any other day of the same session — one not yet begun, or one whose ceiling has passed — is `invalid_code`, never a disclosure that it was real. |
+| `RPC-check_in.already_checked_in_per_day` | A member checked into day 1 checking into day 2 succeeds; a second attempt on day 2 returns `already_checked_in` for day 2's row. |
+| `RPC-check_in.rate_limit_per_day` | Ten attempts against day 1 do not consume day 2's stream (REQ-SES-015: «its own rate-limit stream»); at one day every attempt of the session is that day's. |
+| `RPC-check_in.day_window` | The floor is the day's start, the ceiling `check_in_ceiling()`; after day 2's ceiling with day 3 still ahead the answer is `session_ended`, and the envelope status is the one main returns. |
+| `RPC-check_in.day_switch` | Closing day 2's switch refuses day 2 with `check_in_closed` and leaves day 3 open. |
+| `RPC-check_in.overlap_compares_days` | Three check-ins across three days of one session are all accepted (their windows are disjoint); a check-in overlapping ANOTHER session's day is refused `overlap` naming it. |
+| `RPC-ensure_check_in_code.per_day` | The host view of day 2 gets day 2's code; issuance is refused `not_open` outside that day's floor/ceiling even while day 3 is ahead. |
+| `RPC-_issue_check_in_code.not_callable` | ★ The private core is executable by no client role — a member calling it directly is refused `42501` instead of being handed a live code. |
+| `RPC-revoke_check_in_code.per_day` | Revoking on day 2 revokes day 2's code and issues day 2's replacement; day 3 has none and is unaffected. |
+| `RPC-mark_checked_in_manually.day` | An admin marks a member present on day 1 while day 3 is running; a future day is refused `not_open`; a moderator is still bound by that day's floor and ceiling. |
+| `RPC-remove_check_in.day` | Removing day 2 leaves days 1 and 3 standing; removing a member with no active check-in on that day is `not_found`. |
+| `RPC-set_check_in_open.day` | The switch moves the day's column; the audit row still names the SESSION and carries the day in its payload; the returned session row carries the recomputed shadow. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

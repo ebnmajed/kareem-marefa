@@ -26,7 +26,9 @@ const sql = readdirSync(dir)
 // `kareem.days_writer` is the transaction-local setting a day-aware writer
 // sets so `0100`'s single-day shim stands down (DEC-150) — a custom Postgres
 // setting must contain a dot, so it cannot be spelt any other way.
-const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer"]);
+// `kareem.check_in_shadow` is its sibling in `0104`: the mark the day→session
+// switch recompute puts on its own update (DEC-151).
+const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow"]);
 const actions = Array.from(
   new Set(Array.from(sql.matchAll(/'([a-z_]+\.[a-z_]+)'/g), (m) => m[1]).filter((a) => !a.startsWith("public.") && !NOT_ACTIONS.has(a))),
 ).sort();

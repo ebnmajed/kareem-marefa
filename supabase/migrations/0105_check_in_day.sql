@@ -2,6 +2,7 @@
 -- definer functions stop keying on the session and key on a day, and no caller
 -- on `main` notices: each keeps `p_session` and gains a trailing
 -- `p_day uuid default null`.
+-- Promoted by the lead from supabase/proposed/checkin/02_check_in_day.sql.
 --
 -- ★★ THE OLD SIGNATURE IS DROPPED IN THIS FILE, for each of the eight. Not
 -- tidiness: while `f(uuid)` and `f(uuid, uuid default null)` both exist, a
