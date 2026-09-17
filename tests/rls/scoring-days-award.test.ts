@@ -91,6 +91,21 @@ async function checkInAsMember(tx: Tx, f: Awaited<ReturnType<typeof seed>>, sess
   return row.r.check_in!.id;
 }
 
+/** ★ THE HOOK'S PRECONDITION, and the order `remove_check_in()` uses: the row
+ *  is soft-deleted FIRST, then the hook is called. It matters since `0113`:
+ *  contract 5's first body reversed unconditionally, so a case could call the
+ *  hook on a still-active check-in and see a reversal. The real body asks the
+ *  predicate, and a member whose check-in is still active has not stopped
+ *  attending — so the same call correctly writes nothing. Calling the hook
+ *  without this is asking «what changed?» before anything did. */
+async function softDelete(tx: Tx, org: Org, checkInId: string): Promise<void> {
+  await tx.asOwner();
+  await tx.q(
+    `update public.check_ins set removed_at = now(), removed_by = $2, removal_reason = 'خطأ في تسجيل الحضور' where id = $1`,
+    [checkInId, org.admin.memberId],
+  );
+}
+
 type Job = { task_identifier: string; payload: Record<string, unknown> };
 async function jobsUnderKey(tx: Tx, key: string): Promise<Job[]> {
   return tx.q<Job>(
@@ -238,6 +253,7 @@ describe("RPC-attendance_removed.reversal", () => {
       );
       expect(originals).toHaveLength(2);
 
+      await softDelete(tx, f.a, checkInId);
       await tx.q(`select public.attendance_removed($1)`, [checkInId]);
 
       for (const original of originals) {
@@ -269,7 +285,7 @@ describe("RPC-attendance_removed.reversal", () => {
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const checkInId = await checkInAsMember(tx, f, sessionId);
 
-      await tx.asOwner();
+      await softDelete(tx, f.a, checkInId);
       await tx.q(`select public.attendance_removed($1)`, [checkInId]);
       const rows = await tx.q(`select id from public.points_ledger where source = 'reversal' and source_id = $1`, [checkInId]);
       expect(rows).toEqual([]);
@@ -295,6 +311,7 @@ describe("RPC-attendance_removed.no_show_symmetry", () => {
         [f.a.id, sessionId, member, f.a.admin.memberId],
       );
 
+      await softDelete(tx, f.a, ci.id);
       await tx.q(`select public.attendance_removed($1)`, [ci.id]);
 
       const rows = await tx.q<{ idempotency_key: string; amount: number }>(
@@ -320,6 +337,7 @@ describe("RPC-attendance_removed.no_show_symmetry", () => {
          values ($1, $2, $3, 'manual', 'حضر', $4) returning id`,
         [f.a.id, sessionId, member, f.a.admin.memberId],
       );
+      await softDelete(tx, f.a, ci.id);
       await tx.q(`select public.attendance_removed($1)`, [ci.id]);
       const rows = await tx.q(`select id from public.points_ledger where source = 'no_show' and member_id = $1`, [member]);
       expect(rows).toEqual([]);
