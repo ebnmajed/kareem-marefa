@@ -3694,3 +3694,13 @@ reads — is a later wave's, never this one's.
 - **Found and carried, not changed:** `rotate_codes` is registered in the worker and has **no crontab entry** — it has never run in production, and codes are minted on demand by the host view's `ensure_check_in_code()`. Named difference 1 is therefore a property of the task, not of production today. Whether to schedule it or delete it is not this wave's subject.
 - **The untouched-suite ledger:** one more «expectation changed: yes» — `rls/sessions-public-card.test.ts`, the same file as `DEC-156`'s, for `days`. Every other line stands as recorded.
 - **Documents changed:** `STATUS.md` (sync 4, row L5, row L9 and the owner's order, the ledger, carried), `03-permissions-rls.md` §8.2 (`0121`'s four rows, `0122`'s two), two migrations (`0121`, `0122`)
+
+---
+
+## DEC-158 — A correction to `DEC-157`: `rotate_codes` is not unscheduled
+
+- **Date:** 2026-09-17 · **Decided by:** lead, an hour after writing the claim
+- **What `DEC-157` said, and it was wrong:** «`rotate_codes` is registered in the worker and has no crontab entry — it has never run in production.» The lead read the crontab and stopped reading. `start_session` — which **is** in the crontab, every minute — enqueues `rotate_codes` once for every session it moves to `in_progress`, under the key `code:<session>:first`. So the task runs **once per started session**; it has no *periodic* schedule, and every later code is minted on demand by the host view's `ensure_check_in_code()`, which is how a multi-day session's second and third days get theirs.
+- **What follows.** Named difference 1 (`DEC-151`) **does** describe production, at that one run. Nothing is carried: there is no missing schedule to add and no dead task to delete. `DEC-157`'s other paragraphs stand.
+- **Why an entry and not an edit:** this log is append-only (rule 3 of the handoff protocol), and a wrong sentence with its correction beneath it is what that rule is for.
+- **Documents changed:** `STATUS.md` (sync 4's table and *Carried* — the row removed)
