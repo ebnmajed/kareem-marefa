@@ -1,8 +1,9 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { createServerClient } from "@/lib/supabase/server";
-import { sessionPhase, viewerRelation as deriveRelation, type ViewerRelation } from "@/lib/session-status";
+import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
 // Sessions — REQ-SES-001 … REQ-SES-013, REQ-PRO-007, 02 §4.3, §6.2, 03 §5.2c/d.
 //
@@ -561,6 +562,108 @@ export interface EventVenue {
   oneOff: boolean;
 }
 
+/** The listed venue, else the inline one-off, else nowhere. One rule, two callers. */
+function venueFrom(row: {
+  venues?: { name: string; address: string | null; map_url: string | null } | null;
+  custom_venue_name?: string | null;
+  custom_venue_address?: string | null;
+  custom_venue_map_url?: string | null;
+}): EventVenue | null {
+  if (row.venues) return { name: row.venues.name, address: row.venues.address, mapUrl: row.venues.map_url, oneOff: false };
+  if (!row.custom_venue_name) return null;
+  return {
+    name: row.custom_venue_name,
+    address: row.custom_venue_address ?? null,
+    mapUrl: row.custom_venue_map_url ?? null,
+    oneOff: true,
+  };
+}
+
+// ══ CONTRACT 3 — the day set, and the one way every track reads it ══════════
+//
+// `ENT-session_days` (DEC-119, DEC-120, DEC-150). A session has one or more
+// days; a one-day session is a session with ONE day, and `0100` backfilled one
+// for every session that had a window, so this returns a list of length 1 for
+// nearly every session in the database and a reader that handles `n` is right.
+//
+// ★ NOBODY ELSE QUERIES `session_days`. `checkin`, `content`, `scoring` and
+// `notify` all read days through here, so the day a column moves there is one
+// file to change — and so the `cache()` below is shared rather than defeated by
+// four private copies of the same select.
+//
+// ★ NOBODY COMPUTES A MINIMUM OR A MAXIMUM OVER THIS LIST (contract 1). The
+// session's own window is DERIVED AND STORED — `sessions.starts_at` is the
+// first day's start, `ends_at` the last day's end — so a reader that needs the
+// span reads `sessions`, and a reader that needs the meetings reads this.
+
+/**
+ * One day of a session, as every track sees it.
+ *
+ * Structurally a `DayWindow` (`lib/session-status.ts`, contract 9) plus the
+ * day's place, so `listSessionDays()`'s result goes straight into
+ * `sessionPhase({ …, days })`, `checkInDay()` and the affordance matrix with
+ * no mapping step — and the switch can never go stale beside the window it was
+ * resolved with (DEC-151).
+ */
+export interface SessionDay extends DayWindow {
+  /** DERIVED IN THE DATABASE (DEC-150): the chronological rank, 1…n. Never written by a caller. */
+  position: number;
+  startsAt: string;
+  endsAt: string;
+  /** `session_days.check_in_open` — the day's own switch (DEC-116 per day, `0101`). */
+  checkInOpen: boolean;
+  /** The day's place: the org's venue, else its inline one-off (`REQ-SES-007` per day). */
+  venue: EventVenue | null;
+}
+
+/**
+ * Every day of one session, in the order they happen.
+ *
+ * ★ Request-scoped React `cache()`. On the event page alone the hero, the
+ * action card, the sub-nav and `content`'s three slots all want this list;
+ * without it that is six round trips for one fact on the product's most
+ * important page (the reason `getRsvpPanelData` and `getSessionPoster` are
+ * wrapped too, wave 6).
+ *
+ * No role filter of its own: `POL-session_days.read_follows_session` defers to
+ * `sessions_read`, so a day is visible exactly when its session is and
+ * re-stating that here could only get it wrong. An unreadable or unknown
+ * session returns `[]`, which every caller renders as «no days» — the same
+ * thing a session that has never been scheduled returns.
+ *
+ * Ordered by `position`, which the database derives as the chronological rank;
+ * the `starts_at` tie-break matches `session_days_derive()`'s own ordering, so
+ * a list read mid-transaction cannot disagree with the ranking that produced it.
+ */
+export const listSessionDays = cache(async (locale: string, sessionId: string): Promise<SessionDay[]> => {
+  if (!z.uuid().safeParse(sessionId).success) return [];
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("session_days")
+    .select("id, position, starts_at, ends_at, check_in_open, custom_venue_name, custom_venue_address, custom_venue_map_url, venues(name, address, map_url)")
+    .eq("session_id", sessionId)
+    .order("position", { ascending: true })
+    .order("starts_at", { ascending: true });
+  if (error) throw new Error(`session_days.select: ${error.message}`);
+
+  return (data ?? []).map((raw) => {
+    const row = raw as unknown as Record<string, unknown>;
+    return {
+      id: row.id as string,
+      position: row.position as number,
+      startsAt: row.starts_at as string,
+      endsAt: row.ends_at as string,
+      checkInOpen: row.check_in_open as boolean,
+      venue: venueFrom({
+        venues: row.venues as { name: string; address: string | null; map_url: string | null } | null,
+        custom_venue_name: row.custom_venue_name as string | null,
+        custom_venue_address: row.custom_venue_address as string | null,
+        custom_venue_map_url: row.custom_venue_map_url as string | null,
+      }),
+    };
+  });
+});
+
 /**
  * A presenter as the event page's «المُقدِّمون» section draws them (`16` §6.3).
  *
@@ -671,17 +774,14 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   if (!data) return null;
   const row = data as unknown as Record<string, unknown>;
 
-  const listed = row.venues as { name: string; address: string | null; map_url: string | null } | null;
-  const venue: EventVenue | null = listed
-    ? { name: listed.name, address: listed.address, mapUrl: listed.map_url, oneOff: false }
-    : row.custom_venue_name
-      ? {
-          name: row.custom_venue_name as string,
-          address: (row.custom_venue_address as string) ?? null,
-          mapUrl: (row.custom_venue_map_url as string) ?? null,
-          oneOff: true,
-        }
-      : null;
+  // The same rule a DAY's place follows — `venueFrom()`, one expression, so the
+  // event page and its day list can never disagree about what «المكان» means.
+  const venue: EventVenue | null = venueFrom({
+    venues: row.venues as { name: string; address: string | null; map_url: string | null } | null,
+    custom_venue_name: row.custom_venue_name as string | null,
+    custom_venue_address: row.custom_venue_address as string | null,
+    custom_venue_map_url: row.custom_venue_map_url as string | null,
+  });
 
   // ★ The two reads DEC-092 buys: the viewer's own seat and their own
   // check-in. In parallel with the presenters, and once — the alternative was

@@ -93,6 +93,19 @@ export function formatDate(iso: string, timeZone: string, locale = "ar"): string
   }).format(new Date(iso));
 }
 
+/**
+ * The weekday alone — «الأربعاء» — in the given zone.
+ *
+ * For `day-label.ts`'s «اليوم الأول · الأربعاء» (contract 7, DEC-119): a day of
+ * a workshop is remembered by which day of the week it is, and the date is
+ * already beside it wherever the label is used. No digits, so `latn` is moot
+ * here — it is named anyway, because every formatter in this module names it
+ * and the one that does not is the one that will be copied wrong.
+ */
+export function formatWeekday(iso: string, timeZone: string, locale = "ar"): string {
+  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { weekday: "long", timeZone }).format(new Date(iso));
+}
+
 export function sameDay(a: string, b: string, timeZone: string): boolean {
   const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(iso));
   return day(a) === day(b);

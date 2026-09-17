@@ -1,5 +1,26 @@
 {
   "sessions": {
+    "days": {
+      "label": "Day {ordinal} · {weekday}",
+      "labelNumeric": "Day {value} · {weekday}",
+      "short": "Day {ordinal}",
+      "shortNumeric": "Day {value}",
+      "ordinal": {
+        "1": "1",
+        "2": "2",
+        "3": "3",
+        "4": "4",
+        "5": "5",
+        "6": "6",
+        "7": "7",
+        "8": "8",
+        "9": "9",
+        "10": "10"
+      },
+      "count": "{count, plural, one {one day} other {{value} days}}",
+      "range": "{from} — {to}",
+      "sessionScope": "The whole workshop"
+    },
     "event": {
       "cancelledTitle": "This session is cancelled",
       "cancelledReason": "The reason the admin gave",
