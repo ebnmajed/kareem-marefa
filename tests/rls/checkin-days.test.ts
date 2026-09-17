@@ -1,5 +1,5 @@
-// Check-in moves to the day — supabase/proposed/checkin/01_check_in_open_shadow.sql
-// and 02_check_in_day.sql (DEC-150 contract 4, DEC-151).
+// Check-in moves to the day — migrations 0104_check_in_open_shadow.sql and
+// 0105_check_in_day.sql (DEC-150 contract 4, DEC-151), promoted at sync 1.
 //
 // ★ What this file is NOT: the proof that a one-day session behaves as it did.
 // That proof is `checkin.test.ts`, `checkin-window.test.ts`,
@@ -15,16 +15,10 @@
 // POL-check_in_open.shadow_is_bool_or, .reopening_one_day_opens_only_that_day,
 // .session_write_carries_to_every_day, .one_day_is_identical.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
-
-/** Both proposed files, in the order the lead would number them. */
-async function apply(tx: Tx) {
-  await applyProposed(tx, "checkin/01_check_in_open_shadow.sql");
-  await applyProposed(tx, "checkin/02_check_in_day.sql");
-}
 
 interface DaySession {
   id: string;
@@ -96,7 +90,6 @@ describe("contract 4 — a null day resolves exactly as 0100's trigger does", ()
   it("two meetings on one date: at 13:30 both the trigger and the RPCs name the AFTERNOON", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       // day 1 ran -4h … -1h; day 2 runs -0.5h … +2.5h. Uncapped, day 1's
       // ceiling would still be +1h — the exact overlap DEC-151 capped.
@@ -121,7 +114,6 @@ describe("contract 4 — a null day resolves exactly as 0100's trigger does", ()
   it("the morning of the same date, before the afternoon begins, names the MORNING", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -137,7 +129,6 @@ describe("contract 4 — a null day resolves exactly as 0100's trigger does", ()
   it("after the last day: the latest day begun; before the first: the first, and check-in answers not_started", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const past = await makeDaySession(tx, f.a, "completed", [
         [-10, -8],
@@ -167,7 +158,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("the CODE names the day it is taking attendance for", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -185,7 +175,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("★ a LEFTOVER live code of another day is invalid_code — never a refusal that says it was real (REQ-CHK-004)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       // Two meetings on one date. Day 1's code was minted inside day 1 and is
       // still within `valid_until` now that day 2 has begun — the case that
@@ -212,7 +201,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("a code minted for a day that has not begun is invalid_code too", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -228,7 +216,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("«already checked in» is per day: three days of one session are three check-ins, and the second attempt on one of them is the no-op", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -262,7 +249,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("the attempt stream is the day's: ten wrong codes against day 1 leave day 2 unlimited", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -290,7 +276,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("day 2's ceiling refuses session_ended while day 3 is still ahead; day 2's switch refuses check_in_closed and leaves day 3 open", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -320,7 +305,6 @@ describe("RPC-check_in — the day's check-in", () => {
   it("REQ-CHK-013 compares DAY windows: another session overlapping day 2 is named as the conflict", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const workshop = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -349,7 +333,6 @@ describe("the day's code", () => {
   it("★ _issue_check_in_code is callable by no client role — the private core no longer defaults to `execute` for public", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [[-1, 1]]);
 
@@ -365,7 +348,6 @@ describe("the day's code", () => {
   it("issuance is the day's, and refused outside that day's floor and ceiling even while a later day is ahead", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -381,7 +363,6 @@ describe("the day's code", () => {
   it("revoking is the day's: day 2's code is replaced and day 1's is untouched", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -409,7 +390,6 @@ describe("an admin corrects Tuesday's list on Thursday", () => {
   it("marks a past day present, is refused not_open on a FUTURE day, and a moderator is still bound by that day's ceiling", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -444,7 +424,6 @@ describe("an admin corrects Tuesday's list on Thursday", () => {
   it("removing day 2 leaves days 1 and 3 standing, and a second removal of the same day is not_found", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -473,20 +452,19 @@ describe("an admin corrects Tuesday's list on Thursday", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// n = 1 — the approximation available before promotion
+// n = 1 — the whole path in one case
 // ═══════════════════════════════════════════════════════════════════════════
-// ★ This is NOT the one-day proof. That proof is the five existing check-in
-// files passing unmodified once the lead has promoted these two, and it can
-// only be run there: those files call the RPCs through the MIGRATIONS, and
-// `applyProposed()` lives inside one rolled-back transaction. What follows is
-// the strongest thing available beforehand — the whole one-day path walked on
-// the new functions, so a defect that would fail the suite at promotion fails
-// here first.
+// ★ This is not THE one-day proof: that is `checkin.test.ts`,
+// `checkin-window.test.ts`, `checkin-manual-mark.test.ts`,
+// `checkin-removal.test.ts` and `checkin-early-completion.test.ts` passing
+// with their assertions untouched, which they do. This walks the same path in
+// one place — issue, check in, repeat, rate limit, manual mark, removal — so
+// a regression in the day-aware bodies reads as one failure with a name,
+// rather than as a scatter across five files.
 describe("a one-day session, end to end, on the day-aware functions", () => {
   it("issues, checks in, repeats as already_checked_in, rate-limits, marks manually, and removes — every envelope and error as main's", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [[-1, 1]]);
       expect(s.days).toHaveLength(1);
@@ -541,7 +519,6 @@ describe("RPC-set_check_in_open — the day's switch, and sessions.check_in_open
   it("moves the day's column, names the session in the audit row with the day in the payload, and returns the recomputed shadow", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -574,7 +551,6 @@ describe("RPC-set_check_in_open — the day's switch, and sessions.check_in_open
   it("★ reopening ONE day of three opens only that day — the defect two mutually-triggering directions would have had", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-30, -28],
@@ -597,7 +573,6 @@ describe("RPC-set_check_in_open — the day's switch, and sessions.check_in_open
   it("a writer of the SESSION's own column closes every day — which is how transition_session()'s early completion still works, untouched", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [
         [-1, 1],
@@ -618,7 +593,6 @@ describe("RPC-set_check_in_open — the day's switch, and sessions.check_in_open
   it("at one day the pair moves together in both directions, and the ceiling still refuses an open past it", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await apply(tx);
       await tx.asOwner();
       const s = await makeDaySession(tx, f.a, "in_progress", [[-1, 1]]);
 
