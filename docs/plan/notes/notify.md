@@ -1136,3 +1136,45 @@ the read is unfiltered, as every definer caller needs) and exact for a member (t
 always in their own org). **Neither is shipped.** `0036` is promoted and read by `sessions`' `0112`
 as well as by this track, so narrowing it is a change whose blast radius the lead should schedule —
 not one a teammate slips in beside a feature.
+
+### W11.9 §W11.6 is closed — the embed, as a real member, on the promoted schema
+
+Not the schema-cache contrast of §W11.7 but the query itself: `listSyncedEvents()`'s select string,
+character for character, run with a **member's own JWT** through PostgREST against `0109`–`0112`.
+A member with a confirmed seat on a three-day workshop and one `calendar_events` row per day:
+
+```
+rows: 3
+  position=1 dayStart=2026-10-17T07:28:08+00:00 title=ورشة ثلاثة أيام dayCount=3
+  position=2 dayStart=2026-10-18T07:28:08+00:00 title=ورشة ثلاثة أيام dayCount=3
+  position=3 dayStart=2026-10-19T07:28:08+00:00 title=ورشة ثلاثة أيام dayCount=3
+```
+
+Three rows, the day's own window on each, and the nested
+`sessions(title, starts_at, session_days(id))` giving the session's true day count — through RLS,
+which lets the member read their own sync rows and the days of a session they can see. The probe
+builds and tears down its own org; it is in the scratchpad, not the repo, because it duplicates the
+e2e's fixture and the e2e is where it belongs once there is a build.
+
+**What still needs the lead's build:** only the rendered screen and the four captures. Every
+assertion in `tests/e2e/wave9-notify-days.spec.ts` below the browser — the day-2 payload, the
+session window not moving, the per-day rows — is now proven by `tests/rls/notify-day-notice.test.ts`
+and by this probe.
+
+### W11.10 `DEC-154` — the guard I got wrong, and where it is pinned
+
+The lead corrected `session_days_changed()`'s transaction mark inside the promotion: it was keyed on
+the session alone and **set on entry**, before the state guard, so a call that returned early —
+scheduling a session not yet published — consumed the session's one mark and silenced the real
+change later in the same transaction. `sessions`' «ONE reschedule notice» case caught it at the
+seam; neither track's suite could see it alone, and mine was green because every case I wrote
+announced something.
+
+Three cases now pin both halves in `tests/rls/notify-day-notice.test.ts`, because the behaviour is
+this function's and a future edit of mine is what would reintroduce it: a call that announces
+nothing consumes nothing; a draft's early return consumes nothing and the change after publication
+is still told; two different changes in one transaction are two notices. The retry case that was
+already there still passes, which is the half the guard has to keep.
+
+**The lesson for the next seam**: a guard whose failure mode is «a member is never told» must be set
+where the telling happens, not where the function starts.
