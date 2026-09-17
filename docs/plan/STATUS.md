@@ -106,7 +106,7 @@ definition trap, memory `m9-wave10-lead`); `designer` is needed only for two rea
 3. **Run the survey demonstrable** — `tests/e2e/wave10-demo-survey.spec.ts` (`7a697f3`) is **written, type-checked
    and linted, and has NEVER been run**. `E2E_WORKER=1`, production build, the real worker beside it from the
    worktree (`worker/dist`, local Supabase only). Expect locator fixes. Eight captures, opened in bands.
-4. **`notify`, in this order:** `designer`'s three injection findings (F1 `readBlocks()` validates each block's
+4. **`notify`, in this order** (★ **the three injection findings and the palette assertion LANDED at `159cd6e` before stand-down** — `designer`'s re-read of that diff is still owed; the hex assertion sits where the colours ENTER, because a planted `"><script>` still reached the shell through `legacyBrand()` when only `compilePalette()` asserted; `72cb2eb` committed a repair of two NUL bytes in `tests/rls/notify-bindings.test.ts` that had sat uncommitted for hours — so start at the editor's panes)**:** ~~`designer`'s three injection findings~~ (F1 `readBlocks()` validates each block's
    FIELDS and drops a malformed block as it drops an unrecognised one — today a missing field THROWS and the mail
    never arrives; F2 the spacer's prototype lookup; F3 a button's href is `https:`, `mailto:` or the SAME ORIGIN as
    the configured app origin, checked AFTER interpolation, else the button is dropped; plus a runtime hex assertion in
