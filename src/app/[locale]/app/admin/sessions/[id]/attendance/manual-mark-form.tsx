@@ -3,6 +3,9 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { UncheckedAttendee } from "@/lib/dal/checkin";
 import type { ManualMarkState } from "./actions";
 import { emptyManualMarkState } from "./state";
@@ -63,48 +66,27 @@ export function ManualMarkForm({
     // this form's Arabic error, never has a chance to render.
     <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
       {manyDays ? (
-        <div>
-          <label htmlFor="manual-day" className="text-label text-fg-heading">
-            {t("dayLabel")}
-          </label>
-          <select
-            id="manual-day"
-            name="dayId"
-            value={dayId}
-            onChange={(e) => setDayId(e.target.value)}
-            className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"
-          >
+        <Field id="manual-day" label={t("dayLabel")} hint={t("markDayHint")}>
+          <Select name="dayId" value={dayId} onChange={(e) => setDayId(e.target.value)}>
             {days.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.label}
               </option>
             ))}
-          </select>
-          <p className="mt-1 text-body-sm text-fg-muted">{t("markDayHint")}</p>
-        </div>
+          </Select>
+        </Field>
       ) : (
         /* At one day the day is not a question. It still travels, so the RPC
            is never left to resolve it from a clock that may have crossed a
            boundary since this page rendered. */
         <input type="hidden" name="dayId" value={dayId} />
       )}
-      <div>
-        <label htmlFor="manual-member" className="text-label text-fg-heading">
-          {t("memberLabel")}
-        </label>
-        {/* `key`: React's form reset restores a <select> to its options' original
-            `selected` state, so a new defaultValue alone does not re-select the
-            member the admin chose; remounting with the echoed value does. The
-            day is in the key too — switching days replaces the option list, and
-            a stale selection must not survive it. */}
-        <select
-          key={`member-${dayId}-${state.memberId ?? ""}-${state.error ?? ""}`}
-          id="manual-member"
-          name="memberId"
-          required
-          defaultValue={state.memberId ?? ""}
-          className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"
-        >
+      {/* `key`: `ui/select` already keeps an uncontrolled choice through React's
+          post-submission form reset, but the DAY is in this key for a second
+          reason it cannot know about — switching days replaces the option list
+          entirely, and a selection from the previous day must not survive it. */}
+      <Field id="manual-member" label={t("memberLabel")}>
+        <Select key={`member-${dayId}-${state.memberId ?? ""}-${state.error ?? ""}`} name="memberId" required defaultValue={state.memberId ?? ""}>
           <option value="" disabled>
             {t("memberPlaceholder")}
           </option>
@@ -113,22 +95,17 @@ export function ManualMarkForm({
               {m.displayName ?? m.memberId}
             </option>
           ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="manual-reason" className="text-label text-fg-heading">
-          {t("reasonLabel")}
-        </label>
-        <textarea
-          id="manual-reason"
-          name="reason"
-          aria-required="true"
-          defaultValue={state.reason ?? ""}
-          rows={2}
-          maxLength={300}
-          className="mt-2 block w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading"
-        />
-      </div>
+        </Select>
+      </Field>
+      {/* ★ `Field` is NOT marked `required` on any of the three, and that is
+          deliberate rather than an oversight: the marker «مطلوب» becomes part of
+          the control's accessible name, and this form's labels are asserted
+          verbatim by its e2e and component tests. The markup moves onto the
+          system; the copy does not move at all. `aria-required` below still
+          wins over the context, because the control spreads its own props last. */}
+      <Field id="manual-reason" label={t("reasonLabel")}>
+        <Textarea name="reason" aria-required="true" defaultValue={state.reason ?? ""} rows={2} maxLength={300} />
+      </Field>
       <Button type="submit" disabled={pending}>
         {t("mark")}
       </Button>

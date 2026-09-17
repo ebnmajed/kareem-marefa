@@ -1987,3 +1987,28 @@ files run on both projects and their desktop cases are real — the `DEC-145` du
 there — so a file-level `use` would shrink desktop to a phone and quietly delete that coverage. In
 `beforeEach` rather than inside `shoot()` so every assertion runs at the width the capture was taken
 at, which is the whole point of reviewing one.
+
+### `manual-mark-form.tsx` leaves the ui-lint allowlist entirely
+
+CI's design-system gate went red because the day select I added was a **third** raw control in a
+file the allowlist permitted **two** of — and the allowlist may only shrink. Rather than the minimum
+(the new control on the system, the two old ones left), all three moved: the day and member selects
+onto `ui/field` + `ui/select`, the reason onto `ui/textarea`. **`npm run ui-lint` now reports zero
+violations for this file**, so its entry —
+`files/src/app/[locale]/app/admin/sessions/[id]/attendance/manual-mark-form.tsx: { field: 2,
+class-string: 2 }` — can be deleted. That file is the lead's to regenerate.
+
+★ **`Field` is NOT marked `required` on any of the three, and that is a decision rather than an
+oversight.** The marker «مطلوب» becomes part of the control's accessible name, and this form's
+labels are asserted verbatim — `getByLabelText("السبب")`, `getByLabelText("اليوم")`, both exact. The
+markup moves onto the system; the copy does not move at all. `aria-required` still reaches the
+textarea because a control spreads its own props **after** the context's, so an explicit value wins.
+
+★ **The `key` on the member select stays, for a reason `ui/select` cannot know.** The primitive
+already keeps an uncontrolled choice through React's post-submission reset — that is what its own
+header is about. The day in this key is a different problem: switching days replaces the option list
+entirely, and a selection made for Tuesday must not survive into Wednesday.
+
+`remove-check-in-form.tsx`'s day select was already on `Field`/`Select`, which is why ui-lint never
+flagged it; confirmed rather than assumed. The three remaining violations in the run are `content`'s
+rescope chips.
