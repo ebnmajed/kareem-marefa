@@ -753,10 +753,7 @@ no collision — no namespace has a top-level `survey` key today) · `supabase/p
 
 **What I need from the lead:**
 
-- **Contract 2 — `ui/reorderable-list`: nothing.** I read the file and `ReorderableListProps` in `ui/index.ts`:
-  `items` / `getKey` / `getName` / `renderItem` / `renderActions` / `onReorder` / `label` / `disabled` /
-  `size` is exactly what a question list and an option list need, `aria-disabled` at the ends is the right
-  call, and the announcement is already `<bdi>`-wrapped. **No prop request.** My spec will use `click()` only.
+- **Contract 2 — `ui/reorderable-list`: nothing.** See §13a — read as committed, no prop request.
 - **Contract 6 — the results' two exits.** `lib/dal/surveys.ts` will export
   `getSurveyExportRows(locale, sessionId): Promise<{ headers: string[]; rows: string[][]; sessionTitle: string;
   withheld: boolean } | null>` — **already withheld**, Western digits, Arabic headers, ready for
@@ -773,6 +770,48 @@ no collision — no namespace has a top-level `survey` key today) · `supabase/p
   `"survey"`), none to `session-matrix.ts`, none to the event page or its action card, and none to any `ui/`
   primitive — the survey form uses `field`, `radio-group`, `checkbox`, `textarea`, `form-summary`,
   `submit-button`, `panel`, `empty-state`, `card`, `badge` and `progress` **as they are**, imported by path.
+
+## 13a. Contract 2 as landed (`d260144`) — what SCR-065 is built against
+
+Read from disk after the commit, not from the copy I saw while it was in flight:
+`src/components/ui/reorderable-list.tsx`, `ReorderableListProps<Item>` / `ReorderableRowContext` /
+`ReorderableMove` in `src/components/ui/index.ts`, `messages/ar/ui.json`'s `ui.reorderableList`, the
+gallery island `(dev)/ui/reorderable-demo.tsx`, and `tests/components/ui/reorderable-list.test.tsx`
+(fourteen cases, including «SC 2.5.7 — a click alone moves a row down», focus kept on the button that
+moved the row, and axe-clean). ★ **No prop request. Nothing to add, nothing to work around.** What the
+props mean for my two lists, so the editor is designed against them rather than around them:
+
+1. ★ **It is controlled, so the editor is a `"use client"` island holding the question array in state.**
+   `onReorder(nextKeys, { key, from, to })` hands back the whole new order **by key**; the editor maps it
+   back to its own array and re-renders. `renderItem` is a function prop, so a Server Component cannot hold
+   it — «Event handlers cannot be passed to Client Component props», the crash only a production build
+   produces (`DEC-159`). The page stays a Server Component: it reads the template through
+   `lib/dal/surveys.ts` and renders `<TemplateEditor template={…}>` with plain data, and the bound
+   `"use server"` action is bound **inside** the island. The gallery's demo is exactly this shape and is the
+   pattern I follow.
+2. ★ **`getKey` must be stable across a reorder, and a new question has no database id yet.** Each row
+   carries a client-side key from `crypto.randomUUID()`, held in the editor's state from the moment «أضف
+   سؤالًا» is pressed — never the array index, which changes under the row the moment it moves, and never
+   the position. The key is editor state only: `survey_template_save()` reads **the array order** and
+   assigns `position` `1…n` itself, so no client-generated identifier reaches the database.
+3. ★ **`getName` is never empty.** It is what every ▲▼ is described by and what the status region announces,
+   so an untitled question falls back to «سؤال {position}» and an empty option to «خيار {position}», in
+   Western digits (`DEC-124`) — matching `ui.reorderableList.moved`, «نُقل <t>{name}</t> إلى الموضع
+   {position} من {total}», which already bidi-isolates the name. Once the prompt is typed, the prompt is the
+   name.
+4. **`renderActions`** carries the row's own «حذف السؤال» (and «حذف الخيار» in the nested list) as an
+   `IconButton`, beside ▲▼ and not inside `renderItem`, so the row's controls are one group.
+5. **`size`**: `md` for the question list (the house target), **`sm` for a choice question's options**, which
+   is a list nested inside a question card — the dense case the prop documents.
+6. **`disabled`** covers two states I already need: a save in flight (`useActionState`'s pending — **never a
+   timer, an interval or a nudge**, `DEC-146`), and a list that may not be reordered at all. The second is
+   §8 case 2's freeze: on an **attached** survey there is no question-level editing, so SCR-064 never renders
+   a reorderable list — the freeze is structural and `disabled` is only the courtesy.
+7. **A reorder does not save by itself.** The editor holds the order and «حفظ» submits the whole set through
+   `survey_template_save()`, which is a whole-set replace — a controlled list and a whole-set write are the
+   same shape, which is why the RPC is specified that way in §2 A.
+8. **My spec uses `click()` only** (`tests/e2e/wave10-event-templates.spec.ts`), the way the primitive's own
+   SC 2.5.7 case does, and the capture `wave10-event-templates-editor-moved.png` is taken after a move.
 
 ## 14. Open questions — each with my recommendation
 
