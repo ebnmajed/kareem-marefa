@@ -38,15 +38,33 @@ export const award_presenter_points: Task = async (payload, helpers) => {
 
   await helpers.query(`select public.award_points('session_delivered', $1, 'session_delivered', $2, $2)`, [member_id, session_id]);
 
-  // REQ-CHK-017 (DEC-141): a check-in an admin removed earns its presenter nothing.
-  // award_points() skips a removed check-in only for source = 'check_in', and this
-  // award's source is 'attendee_bonus' keyed to the same row — so the filter is here.
-  const { rows: checkIns } = await helpers.query<{ id: string }>(
-    `select id from public.check_ins where session_id = $1 and removed_at is null`,
+  // ★ ONE BONUS PER QUALIFYING ATTENDEE, not one per check-in row (REQ-SES-017).
+  // A three-day workshop has three check-ins per attendee, which would pay the
+  // presenter three bonuses each and exhaust the rule's 30-occurrence cap at
+  // ten attendees instead of thirty. So the set is distinct MEMBERS who
+  // satisfy the attendance predicate, and each one's bonus is keyed to their
+  // epoch check-in — the same row their own attendance award is keyed to, so
+  // attendance_removed() reverses the pair together.
+  //
+  // At n = 1 this is exactly the old loop: one active check-in per member, so
+  // the same members, the same source_ids, the same keys, the same rows.
+  //
+  // REQ-CHK-017 (DEC-141): a check-in an admin removed earns its presenter
+  // nothing. award_points() skips a removed check-in only for
+  // source = 'check_in', and this award's source is 'attendee_bonus' — so the
+  // filter stays here, now inside the predicate.
+  const { rows: attendees } = await helpers.query<{ member_id: string; epoch_check_in: string }>(
+    `select c.member_id,
+            (array_agg(c.id order by c.created_at desc, c.id desc))[1] as epoch_check_in
+       from public.check_ins c
+      where c.session_id = $1
+        and c.removed_at is null
+        and public.session_attendance_complete($1, c.member_id)
+      group by c.member_id`,
     [session_id],
   );
-  for (const { id } of checkIns) {
-    await helpers.query(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [member_id, id, session_id]);
+  for (const { epoch_check_in } of attendees) {
+    await helpers.query(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [member_id, epoch_check_in, session_id]);
   }
 
   const { rows: agg } = await helpers.query<{ avg_stars: string | null; n: string }>(
@@ -60,6 +78,6 @@ export const award_presenter_points: Task = async (payload, helpers) => {
   }
 
   helpers.logger.info(
-    `award_presenter_points: session ${session_id}, presenter ${member_id} — ${checkIns.length} attendee(s), avg ${avgStars ?? "n/a"} over ${count} rating(s)`,
+    `award_presenter_points: session ${session_id}, presenter ${member_id} — ${attendees.length} qualifying attendee(s), avg ${avgStars ?? "n/a"} over ${count} rating(s)`,
   );
 };

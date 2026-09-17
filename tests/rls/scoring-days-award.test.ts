@@ -25,13 +25,38 @@ import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const HOOKS = "scoring/0001_attendance_hooks.sql";
+/** Each proposed file, with the function whose existence means it has already
+ *  been promoted to a migration. Applying a `create function` file twice fails,
+ *  so the probe is what lets this suite survive promotion WITHOUT being edited
+ *  — and an edited test file is exactly what wave 9's untouched-suite ledger
+ *  exists to make visible (rule 4). */
+const FILES: ReadonlyArray<readonly [string, string]> = [
+  ["scoring/0001_attendance_hooks.sql", "public.attendance_recorded(uuid)"],
+  ["scoring/0002_attendance_predicate.sql", "public.session_attendance_complete(uuid,uuid)"],
+  ["scoring/0003_award_at_completion.sql", "public.evaluate_member_attendance(uuid,uuid,text)"],
+];
 
-/** Seed, then apply the proposed file inside this test's own rolled-back
- *  transaction (DEC-040). Leaves the session as the owner, like applyProposed. */
+async function apply(tx: Tx, upTo: number) {
+  for (const [path, probe] of FILES.slice(0, upTo)) {
+    await tx.asOwner();
+    const [row] = await tx.q<{ present: boolean }>(`select to_regprocedure($1) is not null as present`, [probe]);
+    if (!row.present) await applyProposed(tx, path);
+  }
+  await tx.asOwner();
+}
+
+/** Contract 5 alone — the seam as it is first promoted, before any behaviour
+ *  change. Leaves the session as the owner, like applyProposed. */
 async function ready(tx: Tx) {
   const f = await seed(tx);
-  await applyProposed(tx, HOOKS);
+  await apply(tx, 1);
+  return f;
+}
+
+/** All three: the seam, the predicate, and REQ-SES-017's real change. */
+async function readyP3(tx: Tx) {
+  const f = await seed(tx);
+  await apply(tx, 3);
   return f;
 }
 
@@ -324,6 +349,461 @@ describe("RPC-attendance_removed.no_show_symmetry", () => {
 
       const after = await tx.q<{ id: string }>(`select id from public.points_ledger where member_id = $1 order by occurred_at, id`, [member]);
       expect(after.map((r) => r.id)).toEqual(before.map((r) => r.id));
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// P3 — supabase/proposed/scoring/0003_award_at_completion.sql
+//
+// REQ-SES-017's real change, and DEC-151's ruling that the epoch key is the
+// SECOND line of defence. The two cases that would have caught the defect in
+// the first design are marked ★ DEC-151.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** A session with `days` consecutive days, ten days out — clear of the
+ *  fixture's own session 24 hours from now, whose check-in for members[1]
+ *  carries a real window since 0100 and would otherwise trip REQ-CHK-013's
+ *  overlap exclusion. */
+async function makeDays(tx: Tx, org: Org, opts: { days: number; state: string }): Promise<{ sessionId: string; dayIds: string[] }> {
+  await tx.asOwner();
+  const [row] = await tx.q<{ id: string }>(
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
+                                   venue_id, capacity, state, published_at, completed_at, allow_walk_ins)
+     values ($1, 'ورشة ثلاثة أيام', 'ملخص', $2, 'introductory',
+             now() + interval '10 days', 60, now() + interval '10 days' + interval '1 hour',
+             $3, 40, $4::public.session_state,
+             now() - interval '1 day',
+             case when $4 = 'completed' then now() - interval '1 hour' end,
+             true)
+     returning id`,
+    [org.id, org.categoryId, org.venueId, opts.state],
+  );
+  for (let i = 1; i < opts.days; i += 1) {
+    await tx.q(
+      `insert into public.session_days (session_id, starts_at, ends_at, venue_id)
+       values ($1, now() + interval '10 days' + ($2 || ' days')::interval,
+                   now() + interval '10 days' + interval '1 hour' + ($2 || ' days')::interval, $3)`,
+      [row.id, String(i), org.venueId],
+    );
+  }
+  const days = await tx.q<{ id: string }>(`select id from public.session_days where session_id = $1 order by position`, [row.id]);
+  expect(days).toHaveLength(opts.days);
+  return { sessionId: row.id, dayIds: days.map((d) => d.id) };
+}
+
+/** A check-in on one named day, through the hook — the two calls `checkin`'s
+ *  RPCs will make. Returns the new row's id. */
+async function attend(tx: Tx, org: Org, sessionId: string, dayId: string, memberId: string): Promise<string> {
+  await tx.asOwner();
+  const [row] = await tx.q<{ id: string }>(
+    `insert into public.check_ins (org_id, session_id, session_day_id, member_id, method, manual_reason, marked_by)
+     values ($1, $2, $3, $4, 'manual', 'حضر', $5) returning id`,
+    [org.id, sessionId, dayId, memberId, org.admin.memberId],
+  );
+  await tx.q(`select public.attendance_recorded($1)`, [row.id]);
+  return row.id;
+}
+
+/** The attendance award jobs enqueued for this member on this session.
+ *
+ *  ★ Scoped to `source = 'check_in'` and to the session on purpose: fixture-m2
+ *  seeds a comment and a rating for members[1], and 0029's triggers enqueue a
+ *  real award_points job for each. Running those too would add 7 points to
+ *  every assertion in this file and make the numbers look like a scoring bug. */
+async function attendanceJobs(tx: Tx, memberId: string, sessionId: string) {
+  await tx.asOwner();
+  return tx.q<{ payload: { rule: string; member_id: string; source: string; source_id: string; session_id: string | null } }>(
+    `select j.payload from graphile_worker._private_jobs j
+       join graphile_worker._private_tasks t on t.id = j.task_id
+      where t.identifier = 'award_points'
+        and j.payload ->> 'member_id' = $1
+        and j.payload ->> 'source' = 'check_in'
+        and j.payload ->> 'session_id' = $2`,
+    [memberId, sessionId],
+  );
+}
+
+/** Run them — what the worker does with the payload
+ *  (worker/src/tasks/award_points.ts). */
+async function runAwardJobs(tx: Tx, memberId: string, sessionId: string): Promise<void> {
+  const jobs = await attendanceJobs(tx, memberId, sessionId);
+  await tx.asServiceRole();
+  for (const { payload } of jobs) {
+    await tx.q(`select public.award_points($1, $2, $3, $4, $5)`, [payload.rule, payload.member_id, payload.source, payload.source_id, payload.session_id]);
+  }
+  await tx.asOwner();
+}
+
+async function ledger(tx: Tx, memberId: string, sessionId: string) {
+  await tx.asOwner();
+  return tx.q<{ amount: number; source: string; source_id: string | null; reason: string; idempotency_key: string }>(
+    `select amount, source, source_id, reason, idempotency_key from public.points_ledger
+      where member_id = $1 and session_id = $2 order by occurred_at, id`,
+    [memberId, sessionId],
+  );
+}
+
+/** What this session is worth to this member — the literals in this file.
+ *  NOT points_balances, which is the member's whole history and carries the
+ *  fixture's own seeded rows. */
+async function sessionTotal(tx: Tx, memberId: string, sessionId: string): Promise<number> {
+  await tx.asOwner();
+  const [row] = await tx.q<{ total: string | null }>(
+    `select sum(amount)::text as total from public.points_ledger where member_id = $1 and session_id = $2`,
+    [memberId, sessionId],
+  );
+  return Number(row?.total ?? 0);
+}
+
+/** REQ-PTS-011, checked in place: the rollup equals the ledger, always. */
+async function expectRollupMatchesLedger(tx: Tx, memberId: string): Promise<void> {
+  await tx.asOwner();
+  const [row] = await tx.q<{ rolled: number | null; summed: string | null }>(
+    `select (select total_points from public.points_balances where member_id = $1) as rolled,
+            (select sum(amount)::text from public.points_ledger where member_id = $1) as summed`,
+    [memberId],
+  );
+  expect(Number(row.rolled ?? 0)).toBe(Number(row.summed ?? 0));
+}
+
+describe("RPC-attendance_recorded.one_day_pays_at_check_in", () => {
+  it("★ a one-day session still pays at check-in, under main's key, with main's payload", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 1, state: "in_progress" });
+
+      const checkInId = await attend(tx, f.a, sessionId, dayIds[0], member);
+
+      const jobs = await jobsUnderKey(tx, `pts:check_in:${checkInId}`);
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].task_identifier).toBe("award_points");
+      expect(jobs[0].payload).toEqual({
+        rule: "check_in",
+        member_id: member,
+        source: "check_in",
+        source_id: checkInId,
+        session_id: sessionId,
+      });
+
+      await runAwardJobs(tx, member, sessionId);
+      const rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].amount).toBe(20);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${checkInId}:${member}:v1`);
+
+      // …and the completion pass then writes nothing: the same epoch, the same
+      // key, an award already standing. One proven no-op.
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      await runAwardJobs(tx, member, sessionId);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(1);
+    });
+  });
+});
+
+describe("RPC-attendance_recorded.multi_day_waits", () => {
+  it("a multi-day session before completion enqueues nothing, whatever days have been attended", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "published" });
+
+      for (const dayId of dayIds) await attend(tx, f.a, sessionId, dayId, member);
+
+      expect(await attendanceJobs(tx, member, sessionId)).toEqual([]);
+      expect(await ledger(tx, member, sessionId)).toEqual([]);
+    });
+  });
+});
+
+describe("RPC-evaluate_session_attendance.one_award_per_member", () => {
+  it("★ a three-day workshop attended in full pays ONE attendance award, and the pass run twice writes nothing more", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+
+      // Three check-ins, on a session already completed: each is evaluated at
+      // once, and only the third makes the predicate true.
+      const ids: string[] = [];
+      for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, member));
+      await runAwardJobs(tx, member, sessionId);
+
+      let rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].amount).toBe(20); // not 60
+      // Keyed to the epoch: the latest-created active check-in, which is day 3's.
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${ids[2]}:${member}:v1`);
+
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      await runAwardJobs(tx, member, sessionId);
+      rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+    });
+  });
+
+  it("★ trace (a): remove one day, then re-add it — +20, −20, +20, and the balance is right at every step", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+
+      const ids: string[] = [];
+      for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, member));
+      await runAwardJobs(tx, member, sessionId);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+
+      // Day 1's check-in is retracted: the predicate fails, the award comes off.
+      await tx.asOwner();
+      await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [ids[0], f.a.admin.memberId]);
+      await tx.q(`select public.attendance_removed($1)`, [ids[0]]);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(0);
+
+      // Re-added on day 1. The award still NAMES day three's check-in — the
+      // highest-position day is unchanged by re-adding day one — so what makes
+      // the key new is the epoch segment: one reversal has been written, so
+      // this award is `v2`. A key that carried the epoch only in its source_id
+      // would have collided here and paid nothing.
+      const readded = await attend(tx, f.a, sessionId, dayIds[0], member);
+      await runAwardJobs(tx, member, sessionId);
+
+      const rows = await ledger(tx, member, sessionId);
+      expect(rows.map((r) => r.amount)).toEqual([20, -20, 20]);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${ids[2]}:${member}:v1`);
+      expect(rows[1].source).toBe("reversal");
+      expect(rows[1].reason).toBe("أُلغي تسجيل الحضور");
+      expect(rows[2].idempotency_key).toBe(`check_in:check_in:${ids[2]}:${member}:v2`);
+      expect(rows[2].idempotency_key).not.toBe(rows[0].idempotency_key);
+      expect(readded).not.toBe(ids[0]);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+      await expectRollupMatchesLedger(tx, member);
+
+      // Replaying the completion pass changes nothing.
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      await runAwardJobs(tx, member, sessionId);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(3);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+    });
+  });
+});
+
+describe("RPC-evaluate_member_attendance.no_double_pay_on_new_epoch", () => {
+  it("★ DEC-151: with require_all_days = false, a later manual mark advances the epoch while the award STANDS — and writes nothing", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+      await tx.asOwner();
+      await tx.q(`update public.sessions set require_all_days = false where id = $1`, [sessionId]);
+
+      // Day 1 only: the predicate holds at once, and the award is keyed to CI1.
+      const first = await attend(tx, f.a, sessionId, dayIds[0], member);
+      await runAwardJobs(tx, member, sessionId);
+      let rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${first}:${member}:v1`);
+
+      // The next morning an admin corrects day 2's list. A NEW active check-in,
+      // so a new epoch and a new key — and under the first design a second
+      // +20, because nothing had reversed the first.
+      await attend(tx, f.a, sessionId, dayIds[1], member);
+      await runAwardJobs(tx, member, sessionId);
+
+      rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+    });
+  });
+});
+
+describe("RPC-evaluate_member_attendance.no_double_pay_on_replay", () => {
+  it("★ DEC-151: removing the epoch check-in while the predicate still holds, then replaying the pass, writes nothing", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      // PUBLISHED while the days are attended — a multi-day session waits, so
+      // nothing is awarded yet and day 3's row gets to be the epoch while day
+      // 1's is still active. That ordering is the whole point of the case.
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "published" });
+      await tx.asOwner();
+      await tx.q(`update public.sessions set require_all_days = false where id = $1`, [sessionId]);
+
+      const first = await attend(tx, f.a, sessionId, dayIds[0], member);
+      const third = await attend(tx, f.a, sessionId, dayIds[2], member);
+      expect(await ledger(tx, member, sessionId)).toEqual([]);
+
+      await tx.asOwner();
+      // 0010's state machine has no published -> completed edge.
+      await tx.q(`update public.sessions set state = 'in_progress' where id = $1`, [sessionId]);
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      await runAwardJobs(tx, member, sessionId);
+      let rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${third}:${member}:v1`);
+
+      // Day 3's check-in goes. The member still attended day 1, so the
+      // predicate STILL HOLDS and nothing is reversed — which is correct, and
+      // is exactly what makes the replay dangerous: the epoch is now CI1.
+      await tx.asOwner();
+      await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [third, f.a.admin.memberId]);
+      await tx.q(`select public.attendance_removed($1)`, [third]);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      await runAwardJobs(tx, member, sessionId);
+
+      rows = await ledger(tx, member, sessionId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${third}:${member}:v1`);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+      // The epoch really did move — day 1's row is now the latest active one,
+      // and a key-only defence would have written a second award under it.
+      await tx.asOwner();
+      const [epoch] = await tx.q<{ id: string }>(`select public.attendance_epoch_check_in($1, $2) as id`, [sessionId, member]);
+      expect(epoch.id).toBe(first);
+      await expectRollupMatchesLedger(tx, member);
+    });
+  });
+});
+
+describe("RPC-evaluate_session_attendance.reverses_added_day", () => {
+  it("★ DEC-151 answer 2: a one-day award, then a second day added and missed, is reversed at completion with its own reason", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 1, state: "published" });
+
+      await attend(tx, f.a, sessionId, dayIds[0], member);
+      await runAwardJobs(tx, member, sessionId);
+      expect(await sessionTotal(tx, member, sessionId)).toBe(20);
+
+      // Rescheduled to two days. The member does not attend the second.
+      await tx.asOwner();
+      await tx.q(
+        `insert into public.session_days (session_id, starts_at, ends_at, venue_id)
+         values ($1, now() + interval '11 days', now() + interval '11 days' + interval '1 hour', $2)`,
+        [sessionId, f.a.venueId],
+      );
+      // 0010's state machine has no published -> completed edge.
+      await tx.q(`update public.sessions set state = 'in_progress' where id = $1`, [sessionId]);
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+
+      const rows = await ledger(tx, member, sessionId);
+      expect(rows.map((r) => r.amount)).toEqual([20, -20]);
+      expect(rows[1].source).toBe("reversal");
+      expect(rows[1].reason).toBe("لم يكتمل حضور جميع الأيام");
+      expect(rows[1].source_id).toBe(rows[0].source_id === null ? null : rows[1].source_id); // the reversal points at the award row
+      expect(await sessionTotal(tx, member, sessionId)).toBe(0);
+
+      // Idempotent: the pass again writes nothing.
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(2);
+    });
+  });
+});
+
+describe("RPC-award_points.requires_attendance_complete / .skips_when_award_standing", () => {
+  it("a late award_points('check_in', …) for a member who missed a day writes nothing", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+      const first = await attend(tx, f.a, sessionId, dayIds[0], member);
+
+      await tx.asServiceRole();
+      await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, first, sessionId]);
+      expect(await ledger(tx, member, sessionId)).toEqual([]);
+    });
+  });
+
+  it("the same call with an award already standing for that session writes nothing, even under a key it has never written", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 2, state: "completed" });
+      const first = await attend(tx, f.a, sessionId, dayIds[0], member);
+      const second = await attend(tx, f.a, sessionId, dayIds[1], member);
+      await runAwardJobs(tx, member, sessionId);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(1);
+
+      // A different source_id — a key this session has never seen — and still
+      // nothing, because the decision is the standing award, not the key.
+      await tx.asServiceRole();
+      await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, first, sessionId]);
+      expect(await ledger(tx, member, sessionId)).toHaveLength(1);
+      expect(first).not.toBe(second);
+    });
+  });
+});
+
+describe("RPC-attendance_removed.no_show_only_when_none_left", () => {
+  it("removing one day of three records no no_show; removing the last active one does", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const member = f.a.members[1].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+      await tx.asOwner();
+      await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [f.a.id, sessionId, member]);
+
+      const ids: string[] = [];
+      for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, member));
+
+      const noShows = async () => {
+        await tx.asOwner();
+        return tx.q(`select id from public.points_ledger where source = 'no_show' and member_id = $1 and session_id = $2`, [member, sessionId]);
+      };
+
+      await tx.asOwner();
+      await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [ids[0], f.a.admin.memberId]);
+      await tx.q(`select public.attendance_removed($1)`, [ids[0]]);
+      expect(await noShows()).toEqual([]); // a partial attendee is not a no-show
+
+      for (const id of [ids[1], ids[2]]) {
+        await tx.asOwner();
+        await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [id, f.a.admin.memberId]);
+        await tx.q(`select public.attendance_removed($1)`, [id]);
+      }
+      expect(await noShows()).toHaveLength(1);
+    });
+  });
+});
+
+describe("RPC-attendance_removed.reverses_presenter_bonus_by_member", () => {
+  it("the presenter's attendee_bonus is reversed even when it is keyed to a different day's check-in", async () => {
+    await withTx(async (tx) => {
+      const f = await readyP3(tx);
+      const attendee = f.a.members[1].memberId;
+      const presenter = f.a.members[0].memberId;
+      const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 3, state: "completed" });
+
+      const ids: string[] = [];
+      for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, attendee));
+
+      // The bonus is keyed to the attendee's EPOCH check-in — day 3's — which
+      // is what worker/src/tasks/award_presenter_points.ts now computes.
+      await tx.asServiceRole();
+      await tx.q(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [presenter, ids[2], sessionId]);
+      await tx.asOwner();
+      const [bonus] = await tx.q<{ id: string; amount: number }>(
+        `select id, amount from public.points_ledger where source = 'attendee_bonus' and source_id = $1`,
+        [ids[2]],
+      );
+      expect(bonus.amount).toBeGreaterThan(0);
+
+      // DAY ONE's check-in is removed — not the row the bonus is keyed to.
+      await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [ids[0], f.a.admin.memberId]);
+      await tx.q(`select public.attendance_removed($1)`, [ids[0]]);
+
+      const reversal = await tx.q<{ amount: number }>(
+        `select amount from public.points_ledger where source = 'reversal' and source_id = $1`,
+        [bonus.id],
+      );
+      expect(reversal).toHaveLength(1);
+      expect(reversal[0].amount).toBe(-bonus.amount);
     });
   });
 });
