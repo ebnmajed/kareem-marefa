@@ -507,3 +507,113 @@ export async function setReminderSchedule(locale: string, input: ReminderSchedul
     .eq("org_id", session.orgId);
   if (error) throw new Error(error.code === "42501" ? "not_permitted" : `org_settings: ${error.message}`);
 }
+
+// ── Wave 8 (`DEC-147`, K6) — add-only, for SCR-058 on the M9 system ─────────
+//
+// `console` holds this module add-only for the wave: nothing above changed.
+
+export interface DeliveryLogPage {
+  rows: DeliveryDTO[];
+  /** The cursor for the next (older) page — `created_at~id` — or null. */
+  nextBefore: string | null;
+}
+
+/**
+ * `REQ-NTF-008`, the half an admin opens on a bad morning. `listDeliveries()`
+ * is the newest 100 of everything — after one reminder batch, the morning's
+ * failures are off the list. This filters at the database, `failed` meaning
+ * `failed` or `bounced`, and pages on a keyset cursor.
+ */
+export async function listDeliveryLog(
+  locale: string,
+  opts: { status: "failed" | "all"; before?: string; limit?: number },
+): Promise<DeliveryLogPage | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const limit = Math.min(opts.limit ?? 50, 200);
+
+  let query = supabase
+    .from("email_deliveries")
+    .select("id, key, status, error, created_at, sent_at, member_id")
+    .eq("org_id", session.orgId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+  if (opts.status === "failed") query = query.in("status", ["failed", "bounced"]);
+  const cursor = opts.before && /^[0-9T:.+\-]+~[0-9a-f-]{36}$/.test(opts.before) ? opts.before.split("~") : null;
+  if (cursor) query = query.or(`created_at.lt."${cursor[0]}",and(created_at.eq."${cursor[0]}",id.lt.${cursor[1]})`);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`email_deliveries: ${error.message}`);
+  const all = (data ?? []) as Array<{ id: string; key: string; status: DeliveryDTO["status"]; error: string | null; created_at: string; sent_at: string | null; member_id: string }>;
+  const rows = all.slice(0, limit);
+  const last = rows.at(-1);
+
+  const ids = Array.from(new Set(rows.map((r) => r.member_id)));
+  const byId = new Map<string, string | null>();
+  if (ids.length > 0) {
+    const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name").in("id", ids);
+    if (memberError) throw new Error(`members_member_view: ${memberError.message}`);
+    for (const m of members ?? []) byId.set(m.id as string, m.display_name as string | null);
+  }
+
+  return {
+    rows: rows.map((r) => ({
+      id: r.id,
+      key: r.key,
+      status: r.status,
+      error: r.error,
+      createdAt: r.created_at,
+      sentAt: r.sent_at,
+      member: byId.has(r.member_id) ? { id: r.member_id, displayName: byId.get(r.member_id) ?? null } : null,
+    })),
+    nextBefore: all.length > limit && last ? `${last.created_at}~${last.id}` : null,
+  };
+}
+
+/** How many sends failed or bounced in the last `days` days — the screen's «a send failed» signal. */
+export async function countDeliveryFailures(locale: string, opts: { days: number }): Promise<number | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const since = new Date(Date.now() - opts.days * 86_400_000).toISOString();
+  const { count, error } = await supabase
+    .from("email_deliveries")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", session.orgId)
+    .in("status", ["failed", "bounced"])
+    .gte("created_at", since);
+  if (error) throw new Error(`email_deliveries: ${error.message}`);
+  return count ?? 0;
+}
+
+export type TemplateSaveResult =
+  | { ok: true }
+  | { ok: false; error: "missing_required_field"; field: string }
+  | { ok: false; error: "unknown_message_key" | "not_permitted" };
+
+/**
+ * `saveTemplate()`, with the trigger's refusal kept whole. The
+ * `notification_templates_validate` trigger names the field it refused —
+ * `missing_required_field: <field>` — and `saveTemplate()` throws that name
+ * away, so the screen could only say «a required field is missing». This
+ * returns it, so the refusal lands at the body with the field named.
+ * `saveTemplate()` is left exactly as it was.
+ */
+export async function saveTemplateChecked(locale: string, input: TemplateInput): Promise<TemplateSaveResult> {
+  try {
+    await saveTemplate(locale, input);
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "unknown_message_key" || message === "not_permitted") return { ok: false, error: message };
+    if (message !== "missing_required_field") throw error;
+  }
+  // The name is in the trigger's message, which `mapTemplateError()` dropped:
+  // find which declared field neither the subject nor the body carries, the
+  // same test the trigger makes.
+  const text = `${input.subject}${input.body}`;
+  const field = input.requiredFields.find((f) => !text.includes(`{{${f}}}`)) ?? input.requiredFields[0] ?? "";
+  return { ok: false, error: "missing_required_field", field };
+}

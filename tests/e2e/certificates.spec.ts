@@ -39,32 +39,9 @@ let adminEmail = "";
 let memberEmail = "";
 let memberId = "";
 let sessionId = "";
-let templateId = "";
 const userIds: string[] = [];
 
 const RECIPIENT = "سارة بنت عبدالله العتيبي";
-
-/** A one-layer certificate document. The screens under test never render
- *  it — they render the ROW — so it only has to be valid. */
-const CERT_DOC = {
-  schemaVersion: 1,
-  purpose: "certificate",
-  master: { width: 3508, height: 2480, unit: "px" },
-  direction: "rtl",
-  background: { type: "solid", color: "{{brand.canvas}}" },
-  layers: [
-    {
-      id: "l_name",
-      kind: "dynamic_field",
-      name: "اسم المستفيد",
-      frame: { x: 400, y: 1000, w: 2708, h: 300 },
-      field: { binding: "recipient.name" },
-      font: { family: "IBM Plex Sans Arabic", size: 160, lineHeight: 1.4, weight: 600 },
-      color: "{{brand.fgHeading}}",
-      align: "center",
-    },
-  ],
-};
 
 test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
@@ -90,18 +67,11 @@ test.beforeAll(async ({}, testInfo) => {
     userIds.push(data.user.id);
   }
 
-  // The platform certificate template `issue_certificate()` falls back to.
-  const { rows: tpl } = await db.query<{ id: string }>(
-    `insert into public.design_templates (org_id, scope, purpose, family, name)
-     values (null, 'platform', 'certificate', 'attendance', $1) returning id`,
-    [`قالب شهادة ${tag}`],
-  );
-  templateId = tpl[0].id;
-  await db.query(`insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now())`, [
-    templateId,
-    JSON.stringify(CERT_DOC),
-  ]);
-
+  // No certificate template of its own: `issue_certificate()` falls back to
+  // the platform's seeded default (`0098`). One this spec inserted was
+  // platform-wide, so the phone and desktop projects — two workers, one
+  // database — saw each other's, and a template deleted in one afterAll was
+  // still pinned by the other's certificates (the lead's run at bb3e290).
   // ★ `provision_member` has to run before there is a `members` row, and
   // the arrangement below needs one. Done here through the API rather than
   // through a browser sign-in, because the FIRST case deliberately never
@@ -118,11 +88,7 @@ test.beforeAll(async ({}, testInfo) => {
 
 test.afterAll(async () => {
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
-  // The ORG first: a certificate pins its template version with ON DELETE
-  // RESTRICT, so the template cannot be removed while the org's rows
-  // reference it (REQ-CRT-014).
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
-  if (templateId) await db.query(`delete from public.design_templates where id = $1`, [templateId]);
   await db.end();
 });
 
@@ -276,18 +242,22 @@ test("★ REQ-CRT-011: a revoked certificate still resolves — as ملغاة, a
   const reason = "صدرت لشخص لم يحضر الورشة فعليًا";
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  // ★ NOT `getByRole("button", { name: "ألغِ" })`. The control is a
-  // `<summary>`, and Chromium exposes a disclosure triangle rather than a
-  // button role — so a role-based locator here waits thirty seconds and
-  // then says the element does not exist, which is true and unhelpful. The
-  // row is found by its serial and the summary by its tag.
-  const row = page.locator("li").filter({ hasText: cert.serial });
-  await row.locator("summary").click();
-  await page.getByLabel("سبب الإلغاء").fill(reason);
-  await page.getByRole("button", { name: "أكِّد الإلغاء" }).click();
-  await expect(page.getByRole("status")).toContainText("أُلغيت الشهادة");
-  // The org's own screen DOES show it.
-  await expect(page.getByText(reason)).toBeVisible();
+  // Locators under `/app` scope to `#main` (DEC-145): a page can stream a
+  // second, hidden copy of itself outside it.
+  // Wave 8 (D4): the revoke is a button on the issued table's row, and the
+  // reason is written inside the confirm that names the member.
+  const row = page
+    .locator("#main")
+    .getByRole("table", { name: "الشهادات الصادرة" })
+    .getByRole("row", { name: new RegExp(cert.serial) });
+  await row.getByRole("button", { name: "ألغِ" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/سبب الإلغاء/).fill(reason);
+  await dialog.getByRole("button", { name: "ألغِ الشهادة" }).click();
+  await expect(page.getByText("أُلغيت الشهادة.", { exact: true })).toBeVisible();
+  // The org's own screen DOES show it — on the revoked table (the phone's
+  // card list carries the same text, hidden at this width).
+  await expect(page.locator("#main").getByRole("table", { name: "الشهادات الملغاة" }).getByText(reason)).toBeVisible();
 
   // The public page does not, and is not signed in.
   const anon = await context.browser()!.newContext();
@@ -326,10 +296,15 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await expect(page.getByText("الوضع مراجعة", { exact: false })).toBeVisible();
-  await page.getByRole("checkbox").first().check();
-  await page.getByRole("button", { name: "أطلِق المحدَّدة" }).click();
-  await expect(page.getByRole("status")).toContainText("أُطلقت");
+  await expect(page.locator("#main").getByText("الوضع مراجعة", { exact: false })).toBeVisible();
+  await page
+    .locator("#main")
+    .getByRole("checkbox", { name: new RegExp(`تحديد الصف ${RECIPIENT}`) })
+    .check();
+  await page.locator("#main").getByRole("button", { name: "أطلِق المحدَّدة" }).click();
+  // Wave 8 (D4): release confirms with the count and the session (REQ-UIX-013).
+  await page.getByRole("dialog").getByRole("button", { name: "أطلِق", exact: true }).click();
+  await expect(page.getByText("أُطلقت شهادة واحدة", { exact: true })).toBeVisible();
 
   // ★ And now the recipient sees it. Two real requests with a real policy
   // between them: `certs_read_self_or_admin` refuses `held` and allows
@@ -346,6 +321,6 @@ test("SCR-045 at 390 px, and a moderator sees the lists with no controls", async
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await expect(page.getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(page.locator("#main").getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
   await review(page, "scr-045-certificates");
 });

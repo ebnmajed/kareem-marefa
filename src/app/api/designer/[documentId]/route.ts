@@ -59,6 +59,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ docu
       // silently discarding someone's layout is not recoverable.
       return NextResponse.json(result, { status: 409 });
     case "locked_region":
+    case "live_poster":
       return NextResponse.json(result, { status: 409 });
     case "not_authorized":
       return NextResponse.json(result, { status: 403 });

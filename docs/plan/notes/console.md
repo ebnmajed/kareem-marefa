@@ -1762,3 +1762,475 @@ three table files to `HEAD`, ran (all three cases failed, empty string where a B
 restored from a scratchpad copy, ran green again — before committing. `npx tsc --noEmit` clean, lint
 zero errors, `npx vitest run` 146/146 files, 1444/1444 tests green. Committed alone: `7f452d6`. Still
 holding the sync-6 e2e/RLS constraint.
+
+## Wave 8 plan (DEC-147) — 2026-09-17 — audit, exports, reminders, recognition, scoring, emails
+
+Written before any code, per the spawn brief; this note is the only file touched. Six routes
+(K1–K6 in `STATUS.md`'s wave-8 checklist), plus the carried items and three defects found in my own
+wave-6/7 routes while reading for this plan (§4). Every claim below was read off the tree at
+`caf414c`, not carried from an older note — and §3 corrects one of wave 7's own closures that turned
+out to be wrong.
+
+### 0. What the six screens are today
+
+None of the six imports an M9 primitive except scoring, and scoring only through `MemberPicker` →
+`ui/combobox` (`ui-reach --wave8`: 1 of 6, incidental). Every form on the four editing screens (reminders,
+recognition, scoring, emails) is a `redirect("?saved=1" |
+"?error=1")` round trip: a refusal re-renders from the database, so **every typed value is lost**
+(`REQ-UIX-011`), and the one error is a banner, never at a field (`REQ-UIX-009`, `010`). All six carry
+copied control class strings (`ui-lint` allowlist rows for five pages, `audit/filter-form.tsx` and
+`held-achievements.tsx`). Four redirect to a hard-coded `/ar/`.
+
+### 1. The one list pattern — and what it reuses
+
+**Every list on the six screens is `ui/data-table`**, with the stacked card list below `md` — audit
+entries, exports, the scoring catalogue, company rules, the configuration history, badges, levels,
+streaks, perks, held achievements (its `selection` bulk bar is exactly the release), the email
+template catalogue and the delivery log. **Every column that carries an action is `onCard`** — §4 F1
+is what happens when it is not. What is shared, all under `src/components/admin/**`:
+
+| Component | New / reused | What it is | Callers this wave |
+|---|---|---|---|
+| `ui/data-table` | reused (mine) | the list | all six |
+| `row-edit-dialog.tsx` | **new** | «عدّل» (accessible name carries the row: «عدّل: تعليق») opening `ui/dialog` titled with the object; hosts one form on `lib/form-state`; closes and toasts **from the action's result**, stays open with field errors and `FormSummary` on refusal | scoring rules, company rules, badges, levels, streaks, perks |
+| `confirm-dialog.tsx` | **extracted** from `deactivate-toggle.tsx` | names the object, states the consequence before the click (`REQ-UIX-013`), `danger` or `primary`, pending on the confirm, toast from the action. `DeactivateToggle` composes it and keeps its external props, so venues/categories/companies do not move | badge retire, template «استعد الافتراضي», manual points adjustment, held-achievement release |
+| `use-action-toast.ts` | **new** | wraps a Server Action for `useActionState` and fires `ui/toast` from the resolved result — the wave-6 rule (never an effect in something that unmounts in the same commit), written once instead of per card | every form above |
+| `duration-input.tsx` | **new** | a number `ui/input` + a unit `ui/select` (دقائق · ساعات · أيام) posting minutes or seconds; the unit select carries its own accessible name | reminders (offsets, rating prompt), scoring (cooldown) |
+| `keyset-pager.tsx` | **new** | «أقدم» / «الأحدث» links over a `before=<occurred_at>~<id>` cursor; never an offset | audit, delivery log |
+| `member-picker.tsx` | **reworked** (mine) | drops its own `<label>` and asterisk and renders inside `<Field>` — `ui/combobox` already wires `useFieldWiring()` (R2, wave 7) | scoring adjustment, recognition award |
+| `moderation-tabs.tsx` shape | pattern reused | `ui/tabs` in `href` mode as a view switch | emails («القوالب» · «سجل الإرسال») |
+
+The page frame is the wave-6/7 one: `PageHeader`, `SectionHeader` per section, `Panel` for notes,
+`EmptyState` in every table's `empty` (a filtered-empty state offers `clearFilter`), `Badge` for
+every status, `SubmitButton`. **No `?saved=1`**: `settings/saved-toast.tsx` stays where it is, and
+none of the six uses the query-string convention again.
+
+### 2. Per route
+
+#### K1 — `/app/admin/audit` (SCR-062, `REQ-ADM-018`, `03` §5.10a)
+
+- **Primitives.** `PageHeader` · `Panel` (filters, `md` and up) · `ui/sheet` behind «تصفية» on the
+  phone, with the same form · `Field` + `Select` (actor — admin only; action, with `<optgroup>` per
+  domain and Arabic labels; subject type) · a period `Select` (آخر 7 أيام · آخر 30 يومًا · هذا الشهر ·
+  مدة مخصّصة) and, for مدة مخصّصة, two `ui/date-time granularity="date"` (§5.4) · active filters as
+  `TagChip removeHref` + «امسح الكل» · `DataTable` (الوقت · الفاعل + role `Badge` · الإجراء: Arabic label
+  with the key as a caption · العنصر, with «كل ما جرى على هذا العنصر» linking `?subjectId=` · السبب) ·
+  `keyset-pager` · `EmptyState` (unfiltered, and filtered with `clearFilter`). **Nothing on the
+  screen edits a row**; there is no action column.
+- **DAL** (`admin-audit.ts`, mine). `listAuditLog` gains `subjectId` and the cursor, pages at 50 and
+  returns `nextBefore`; the date bounds become **the org's day** — from = start of the day in
+  `org_settings.time_zone`, to = start of the NEXT day, `lt` — through a small helper with its own test.
+  `listAuditFilterOptions()` replaces `listAuditActions()`: distinct actions and subject types from the
+  log, and actors including **former** staff who appear in it. Reads `getOrgPrefs()` (`proposals.ts`).
+  The action labels live in `admin.audit.actions.<domain>.<verb>` for all 55 dotted action literals the
+  migrations write today, with a test that fails when a migration adds one without a label (§5.5).
+- **Moderator.** Sees their own actions only — RLS already scopes the query (`audit_read_moderator_own`);
+  the actor filter is not rendered; the intro says so.
+- **Captures.** `wave8-console-audit-filtered-admin.png` · `wave8-console-audit-filtered-moderator.png`
+  (both filtered by action, chips visible) · `wave8-console-audit-filters-sheet.png`.
+- **Where the screen contradicts a requirement.**
+  - **A1** «إلى تاريخ» excludes the day it names: `lte("occurred_at", "2026-09-17")` compares against
+    midnight, and both bounds are UTC midnight, not the org's day.
+  - **A2** the action and subject render as machine keys (`member.role_changed`, `dir="ltr"`) — an
+    Arabic-first screen with no Arabic for what happened.
+  - **A3** «searchable by … subject» is a free-text `subject_type` input; there is no way to follow one
+    subject.
+  - **A4** a silent 200-row cap, no pager and nothing saying so.
+  - **A5** a `min-w-[640px]` table in `overflow-x-auto` — the horizontally scrolling table on a phone
+    `16` §6.7 bans; native `<select>`s and `type="date"` with the browser's English mask (`sessions`'
+    carried finding, the same control).
+  - **A6** the actor filter lists current staff only, so a demoted moderator's actions cannot be
+    filtered to, and «النظام» cannot be chosen.
+  - **A7 — a gap in the requirement, not the screen:** `REQ-ADM-018` lists «scoring configuration
+    changes», and those are written to `scoring_config_history`, never `audit_log`. The audit screen
+    links to K5's history rather than union two tables; the lead decides whether `01` says so (§5.3).
+
+#### K2 — `/app/admin/exports` (SCR-061, `REQ-ADM-017`, `REQ-INT-006`)
+
+- **Primitives.** `PageHeader` · `Panel tone="info"` — «كل تنزيل يُسجَّل في سجل التدقيق باسمك» with a
+  link to K1 filtered to `export.created` · `DataTable` of the seven exports (name + what it holds ·
+  آخر تصدير: `<bdi>` name · time, or «لم يُصدَّر بعد» · the download) · a new
+  `components/admin/export-download-button.tsx`: `fetch` → blob → `download`, `pending` on the
+  button (`REQ-UIX-007`), an error toast that stays on failure (`16` §7.3), filename read from
+  `filename*`. The Route Handlers keep their URLs and contract (`checkin`'s attendance screen links
+  `attendance/[sessionId]`).
+- **DAL** (`admin-exports.ts`, mine). `listRecentExports()` — the latest `export.created` row per
+  `after.export_type` with the actor's name. Arabic value maps for the enums the CSVs print raw today
+  (sessions' state, level, language; points' source; certificates' kind). The header comment that
+  says numbers follow «the org's own numeral system» is corrected (`DEC-124`); the copy already is.
+- **Moderator.** Not-found (`requireAdminSession()`, `DEC-134`'s streamed contract); the Route
+  Handlers 404.
+- **Captures.** `wave8-console-exports-audit-note.png` (populated «آخر تصدير» after one download) ·
+  `wave8-console-exports-download-failed.png` only if the failure toast can be forced without a
+  product change — otherwise covered by a component test.
+- **Contradictions.** **E1** `REQ-ADM-017` acceptance 3 («the numeral system follows the org setting
+  (A30)») and SCR-061's «org numeral system» still say what `DEC-124` withdrew — the lead's documents
+  (§5.3). **E2** Arabic headers over English enum values (`published`, `introductory`, `check_in`,
+  `achievement`). **E3** a styled `<a>` with no pending state and a raw error page on failure. **E4**
+  «every export is audited» is asserted and never visible. **E5 — a question, §5.1 Q5:** every date in
+  every CSV is Arabic long-form prose («الخميس، 17 سبتمبر 2026 في 3:00 م») — Western digits, but a
+  column Excel cannot sort or filter as a date.
+
+#### K3 — `/app/admin/reminders` (SCR-060, `REQ-ADM-016`, `REQ-NTF-004`)
+
+- **Primitives.** `PageHeader` · one form on `lib/form-state` · a `fieldset` of offset rows, each a
+  `duration-input` in its own `Field` with «أزل» (`IconButton`), «أضف تذكيرًا» up to six · the rating
+  prompt as one `duration-input` · `Panel` for the generic-message note · «الجدول الحالي» as a sentence
+  («قبل 7 أيام، ثم قبل يوم، ثم قبل ساعتين») · `FormSummary` · `SubmitButton` · toast from the action
+  («حُفظ الجدول وحُرّكت التذكيرات المعلّقة»).
+- **DAL.** `getReminderSchedule()` / `setReminderSchedule()` in `notifications.ts`, **unchanged** —
+  minutes in, the trigger moves the pending jobs. No add-only function.
+- **Moderator.** Not-found.
+- **Captures.** `wave8-console-reminders-field-error.png` — an offset of 2 minutes and a duplicate, both
+  at their rows, the summary linking to each.
+- **Contradictions.** **R1** offsets are typed as a comma-separated list of minutes («10080, 1440,
+  120»). **R2** a refusal loses the typed list and says only «تأكد من أن كل مدة بين خمس دقائق وثلاثين
+  يومًا», not which. **R3** duplicates are merged silently by the DAL. **R4** native `required` without
+  `noValidate` (carried). **R5** the generic-message note sits in `admin.json` while the rest of the
+  screen is `notifications.admin.reminders` — moved into the latter (both mine).
+
+#### K4 — `/app/admin/recognition` (SCR-054, `REQ-ADM-012`, `REQ-REC-001` … `008`, `REQ-CRT-012`)
+
+- **Primitives.** `PageHeader` · **held achievements first, and only when there are any** — the page
+  gates the section (`16` §5.4.1a(b)): `DataTable` with `selection` (المستفيد · الإنجاز · الرقم
+  التسلسلي) and «أطلِق المحدَّدة» opening `confirm-dialog` — «إطلاق 3 شهادات؟ تظهر لأصحابها ويصل كلًّا
+  منهم إشعار، ولا تُسحب بعد ذلك إلا بإلغاء كل شهادة» (six plural forms) · badges `DataTable` (name +
+  description · rule as a sentence, «10 تسجيلات حضور» / «تُمنح يدويًا» · certificate · state) with
+  `row-edit-dialog` and «أوقف الشارة» on `confirm-dialog` («من يحملها يحتفظ بها»), «أعِد تفعيلها»
+  instant · «منح شارة يدويًا»: `Field`+`MemberPicker`, `Field`+`Select` (active badges), `Field`+`Textarea`
+  · levels `DataTable` + dialog · streaks `DataTable` + dialog (`Switch`) · perks `DataTable` + dialog
+  (`Switch`, and the qualifier: `RadioGroup` level or badge + `Select`), the can-host warning kept.
+- **`held-achievements.tsx`, presentation only.** It becomes a presentational component the page feeds:
+  the page calls `listHeldAchievements()` (`designer`'s DAL, read, one query) to gate its section, and
+  the table, the selection and the confirm live in a client child under `components/admin/`.
+  `releaseAchievements` stays `designer`'s and is called unchanged — **but see §5.2 R-D1**: today it
+  returns nothing, so neither success nor failure can be said.
+- **DAL** (`scoring-admin.ts`, mine). `updateBadge` gains `name` and `rule` (metric from the six the
+  evaluator reads — `check_ins_count`, `sessions_delivered_count`, `ratings_submitted_count`,
+  `streak_awards_count`, `presenter_rating_avg` with `min_sessions`, `manual` — and `gte`);
+  `updateLevel` gains `name` and maps `23505` to «حدّ مستخدم في مستوى آخر»; `updatePerk` gains the
+  qualifier; `submitManualBadgeAward` pre-reads `member_badges` and returns `{ alreadyHeld }`.
+  **`createBadge` only on Q1.** Every one of these is within grants that already exist (`0027`: badges,
+  levels, perks, streak_rules have table-level insert/update for an `is_org_admin()` caller) — **no SQL,
+  no add-only function in `recognition.ts`.** An RLS test proves a moderator is refused each write
+  (`REQ-ADM-020`, §5.5).
+- **Moderator.** Not-found.
+- **Captures.** `wave8-console-recognition-held.png` · `wave8-console-recognition-release-confirm.png`
+  · `wave8-console-recognition-award-already-held.png`.
+- **Contradictions.** **G1** `REQ-REC-001`: an admin cannot create a badge, rename one or change its
+  award rule — description, certificate flag and retire only. **G2** `REQ-REC-003`: level titles are
+  not editable; a threshold equal to another level's fails as a generic error. **G3** `REQ-REC-006` and
+  `008`: the qualifying level or badge of a perk is read-only. **G4** the manual award takes a **typed
+  member UUID** — `DEC-050`'s amendment gave SCR-053 a picker and SCR-054 never got one. **G5** awarding
+  a badge the member already holds is a silent no-op reported as «حُفظ التعديل» — and still writes a
+  `badge.manual_award` audit row. **G6** retire is a checkbox whose label flips to «إعادة تفعيل الشارة»
+  while *checked* means still retired, and retiring is not confirmed. **G7** held achievements: the
+  page's h2 «… بانتظار الإصدار» renders over a slot that returns nothing on most days, the slot repeats
+  it as an h3 «… بانتظار الإطلاق», release has no confirmation (`REQ-UIX-013` names issuing
+  certificates), and a leaderboard certificate's «achievement» is a raw ISO date. **G8 — flag only:**
+  badges, levels, perks and streak edits write no history and no audit row.
+
+#### K5 — `/app/admin/scoring` (SCR-053, `REQ-PTS-004` … `010`, `REQ-ADM-011`)
+
+- **Primitives.** `PageHeader` · `SectionHeader` «كتالوج النقاط» over **three** `DataTable`s —
+  «للحاضرين», «للمُقدِّمين», and **«الخصومات» with «مغلقة افتراضيًا»** (`no_show`, `late_cancellation`,
+  `comment_removed`, `photo_removed`) — columns: الإجراء (a fixed Arabic label per `action_key` from
+  `scoring.admin.actions.*`, with `reason_ar` beneath as «ما يراه العضو») · النقاط · الحد لكل جلسة ·
+  فترة الانتظار in words · الحالة `Badge`; a penalty at 0 reads «لا خصم» · `row-edit-dialog` per rule
+  (`Input` points — a penalty is entered as a **positive cost** and stored negative; `Input` cap;
+  `duration-input` cooldown; `Switch`; `Input` reason) · «نقاط الشركات» `DataTable` + dialog · the
+  host company for a session: `Field`+`Combobox` over the org's sessions and `Field`+`Select` company
+  (Q3) · «تعديل يدوي»: `Field`+`MemberPicker`, `RadioGroup` أضف / اخصم, `Input` amount (positive),
+  `Textarea` reason, `FormSummary`, then `confirm-dialog` «خصم 50 نقطة من «ريم»؟ يُسجَّل في سجلها
+  وسجل التدقيق ولا يُحذف» · «سجل التعديلات» `DataTable`: متى · من · القاعدة · الحقل · من → إلى, both
+  scopes, 50 latest.
+- **The catalogue is fixed.** No add control; `action_key` and `actor` are outside the update grant
+  (`0027`), and `الحجز`/`التفاعل` cannot appear because the check constraint does not admit them
+  (`REQ-PTS-010`) — the section says so in one line.
+- **DAL** (`scoring-admin.ts`, mine). `updateScoringRule` gains `reasonAr` and a **sign guard by group**
+  (a rewarding action ≥ 0, a penalty ≤ 0) in zod; the cooldown read-back parses every interval
+  PostgREST returns, including a `1 day …` part (latent today — this screen writes `N seconds`, which
+  Postgres prints as `24:00:00`, measured locally; a `'1 day'` from any other writer reads back as «no
+  cooldown» and the next save would erase it); history rows gain the actor's name and the rule's
+  action, drop the `version` column's own rows, and format in the org's zone rather than a hard-coded
+  `Asia/Riyadh`; `submitManualAdjustment` maps `reason_required` / `amount_required` / `not_found` to
+  fields. Reads `listMembersForAdmin()` (`admin-members.ts`) and, on Q3, `listSessionsForAdmin()`
+  (`sessions.ts`, read only).
+- **Moderator.** Not-found.
+- **Captures.** `wave8-console-scoring-catalogue.png` (the three groups, «مغلقة افتراضيًا» visible) ·
+  `wave8-console-scoring-member-picker-open.png` · `wave8-console-scoring-rule-dialog-error.png`.
+- **Contradictions.** **S1** negative actions are not grouped and nothing says «مغلق افتراضيًا» (SCR-053);
+  they are seeded `enabled = true` at 0, so their enable switch means nothing. **S2** rules are named by
+  the editable `reason_ar` plus the raw `(action_key)`. **S3** cooldown in seconds, and the latent
+  interval parse above. **S4** no sign guard: a reward can be saved negative and a penalty positive.
+  **S5** `REQ-PTS-005` («who, when, old value and new value … readable»): the history shows no actor,
+  no rule, raw JSON, and a `version` «change» on every save. **S6** the host company takes a typed
+  session UUID. **S7** the manual adjustment: «عدد النقاط (سالب للخصم)» (a minus sign in an RTL field),
+  «معرّف العضو» over a picker, an asterisk, and an irreversible ledger write with no confirmation.
+  **S8** fourteen forms, fourteen primary buttons (`16` §3 principle 2).
+
+#### K6 — `/app/admin/emails` (SCR-058, `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-008`) — what it does today, not the studio
+
+- **Primitives.** `PageHeader` «البريد» · a `Panel tone="error"` at the top **only when** a send failed
+  in the last 7 days — «تعذّر إرسال 3 رسائل خلال آخر 7 أيام» → the log, filtered · `ui/tabs` (href)
+  «القوالب» · «سجل الإرسال».
+  - **Templates** — `DataTable` of every email-channel `MSG-*` (the Arabic name with the key as a
+    caption · النوع · **the matrix**: in-app and email `Badge`s, «يصل دائمًا» or «يمكن للعضو إيقافه» from
+    `notification_matrix()`'s `optional` · «قالب المؤسسة» / «الافتراضي» · آخر تعديل), `rowHref` →
+    `?key=`. The editor: breadcrumb back, `Field`+`Input` subject, `Field`+`Textarea` body (line-height
+    1.7, no clipping), the required fields, `FormSummary`, `SubmitButton`, toast from the action;
+    **the trigger's refusal rendered at the field it names** — «النص لا يحتوي على `{{title}}`» under the
+    body; «استعد القالب الافتراضي» on `confirm-dialog` naming the message.
+  - **Delivery log** — «الإخفاقات» (default when the Panel links here) · «الكل»; `DataTable`: الوقت · الرسالة ·
+    المستلم · الحالة `Badge` (`error` for failed/bounced) · **السبب**: an Arabic summary («رفض مزوّد البريد
+    الرسالة», «تجاوز حد الإرسال», «تعذّر الوصول إلى مزوّد البريد») with the provider's own text beneath in
+    `<bdi dir="ltr">`; `keyset-pager`; the retention line with all six plural forms.
+- **DAL — add-only in `notifications.ts`**, each behind `sessionClient()` and the existing `assertAdmin`:
+  `listDeliveryLog(locale, { status: "failed" | "all", before?, limit? })`,
+  `countDeliveryFailures(locale, { days })`, and `saveTemplateChecked(locale, input)` returning
+  `{ ok: true } | { ok: false; error: "missing_required_field"; field: string } | { ok: false; error:
+  "unknown_message_key" | "not_permitted" }` — the trigger already names the field in its message
+  (`missing_required_field: %`), and the existing `saveTemplate()` throws the name away; it is left as
+  it is. Reads `getTemplateCatalogue()`, `getNotificationMatrix()`, `deleteTemplate()` as they are, and
+  `getOrgPrefs()` for the zone instead of `getPreferenceMatrix()`. On Q2, one more add-only reader for
+  the default text.
+- **Moderator.** Not-found.
+- **Captures.** `wave8-console-emails-catalogue.png` · `wave8-console-emails-refused-save.png` ·
+  `wave8-console-emails-delivery-failure.png` (a seeded `failed` row with a provider reason).
+- **Contradictions.** **M1** a refused save loses the subject and body, and the refusal is a banner.
+  **M2** `REQ-NTF-007` — «a template missing a required dynamic field fails validation» — can be
+  defeated from this screen: the required fields are whatever the admin types into the same form, so an
+  empty list saves a body with no `{{title}}` (Q2). **M3** overriding starts from an empty form; the
+  default text is nowhere on the screen. **M4** «احذف القالب واستخدم الافتراضي» deletes with no
+  confirmation (`REQ-UIX-013`). **M5** the log is the newest 100 of everything, «failures first» only in
+  a comment — after one reminder batch a morning's failures are off the list — and the reason is the raw
+  `resend 422: {…}`. **M6 — a gap outside this screen:** nothing writes `bounced` or `delivered`; there
+  is no webhook route (`src/app/api/webhooks` does not exist), so `REQ-NTF-008`'s «a bounce … is visible»
+  cannot be true yet — only a send the provider refused is (§5.3). **M7** «يُحفظ السجل {days} يومًا» is a
+  count without its plural forms. **M8** no preference matrix renders at all; `getPreferenceMatrix()` —
+  the admin's *own* member preferences — is fetched only for its time zone.
+- **Not built, stated so the line holds:** blocks, the three-pane editor, a preview, «أرسل اختبارًا»,
+  the designed library (`16` §11, M12, `notify`'s).
+
+### 3. The carried items — each closed or not, with the evidence
+
+- **`console.spec`'s untouched-route capture at 412 px — CLOSED in wave 7.** `console.spec.ts:246` sets
+  `390 × 844` on the phone project (`3683f76`, `b75afeb`) and `wave7-console-layout-untouched-390.png`
+  exists. **But it targets `/app/admin/exports`, which K2 rebuilds** — so in K2's commit it moves to
+  `/app/admin/proposals` (untouched by anyone this wave) and writes `wave8-console-layout-untouched-390.png`.
+- **The dashboard's «أكثر …» cards — NOT closed, and wave 7's closure was a misreading.** My wave-7 note
+  says the capture shows the count at the edge. It does not: `app/admin/page.tsx:22-27` renders label and
+  count inside **one** child (`<span class="ms-2">`), so the `li`'s `justify-between` has nothing to
+  distribute, and `scr-040-admin-dashboard-390-rtl-phone.png` (cropped and reopened today) shows «المُقدِّم
+  الأول 1» with the count beside the name while «مسار المقترحات» sets it at the edge. **Pick: the edge**
+  — the pipeline's convention, and a column of counts scans. Fix in `page.tsx`, one test, one capture
+  `wave8-console-dashboard-top-lists.png`.
+- **The populated photo-report capture — it exists and was never cited.**
+  `admin-moderation.spec.ts:237` wrote `wave7-console-moderation-reports-populated-390-rtl-phone.png`
+  (2026-09-16 23:47): a populated photo-report card — the photo placeholder, «رفعها · الجلسة · المُبلِّغ»,
+  «سبب البلاغ: محتوى غير مناسب», the three tabs each counting 1. No wave-7 K row cites it, so it was never
+  opened by the lead. Two things in it: the full-page capture paints the tab bar over the card's action
+  row, and the third tab's count is clipped at the strip's edge (it scrolls; nothing says so). **Ask:** the
+  lead opens it; if a viewport capture scrolled to the actions is wanted, it is one test and no code.
+- **`noValidate` on emails, scoring, recognition, reminders** — folded into the rebuilds.
+- **`admin.schedule.*`** — 50 keys, deleted from both `admin.json`s when the lead routes it, not before.
+- **The lead's schedule request** — `DateTimeProps` gains `label`; I wire it in `ui/date-time.tsx` the day
+  the type lands (§5.4).
+
+### 4. Found in my own wave-6/7 routes — fixes only
+
+- **F1 — on a phone, members, venues, categories and companies have no row actions at all.** Their
+  `actions` column is not `onCard`, and `DataTable`'s card list drops every column that is not.
+  `wave7-console-venues-populated-390-rtl-phone.png` shows it: a venue card with السعة, الجلسات القادمة,
+  الحالة — and no «عطِّل». A member's role change and deactivation are unreachable at 390 px. The
+  sessions table had the same defect and fixed it in wave 6 (`sessions-table.tsx:138-146`); the other four
+  never got it. It hid because every row-scoped e2e case in `admin-members.spec` and
+  `admin-managed-lists.spec` is `desktop`-only. **Fix:** `onCard: true` on the four actions columns, a
+  component test per table asserting the action inside the phone `<ul>`, and one phone e2e case per spec
+  driving it from the card.
+- **F2 — the «أكثر …» cards**, §3.
+- **F3 — rail labels that name a different thing than the page.** «التسجيل» for scoring — a word this
+  product uses for check-in and registration; «التكريم» for recognition; «البريد الإلكتروني» over «قوالب
+  البريد». Proposed: «النقاط» · «الشارات والمستويات» · «البريد». And `admin.shell.moderatorEmpty` («… قيد
+  الإنشاء. سنضيف … تباعًا») is an unreachable fallback whose copy stops being true this wave — reworded.
+
+### 5. Requests and questions
+
+**5.1 — For the lead to rule at sync 1**
+
+1. **Q1 — `REQ-REC-001`'s «create».** Renaming a badge and editing its rule are in (no SQL, grants exist).
+   Is **creating** a badge in? It costs one dialog, a generated `key` (`custom_<8 hex>`), the six-metric
+   rule editor already built for editing, and one RLS case. My recommendation: in.
+2. **Q2 — the email defaults and the required fields.** (a) May `notifications.ts` gain an add-only
+   reader that imports `DEFAULT_TEMPLATES` from `worker/src/mail/templates.ts` (a data-only module,
+   read, never edited) so the editor can show and start from the default? (b) Should the required fields
+   be **the `{{tokens}}` the default uses, shown read-only**, rather than a list the admin types? That is
+   what makes `REQ-NTF-007`'s acceptance true from this screen; the trigger is unchanged. My
+   recommendation: yes to both; without (a), (b) cannot be done.
+3. **Q3 — the host company for a session.** It is a session field typed on the scoring screen as a UUID.
+   Either it becomes a session `Combobox` here (my file, no dependency), or it moves to your schedule form
+   (L2) and leaves this screen. Recommendation: the combobox now; if L2 takes the field, I remove it.
+4. **Q4 — «the preference matrix» on SCR-058** read as `08` §1's matrix, per message, read-only in the
+   catalogue (which emails a member can switch off, which always arrive) — not an admin's own preferences,
+   which are `/app/me/notifications`. Confirm.
+5. **Q5 — dates in CSV.** Keep the Arabic prose, or `2026-09-17 15:00` in the org's zone with the zone in
+   the header («التاريخ (Asia/Riyadh)») so Excel sorts and filters it? Recommendation: the latter; it
+   changes what `admin-exports.spec` asserts and nothing else.
+6. **Q6 — rail labels (F3).** The three proposed labels, or keep.
+
+**5.2 — For `designer`, through the lead**
+
+- **R-D1** `components/certificates/actions.ts`: `releaseAchievements` returns `WriteResult` (it has one
+  from `releaseCertificates()` and discards it) and answers an empty or invalid selection with a result
+  instead of a bare `return`. Without it the release confirm can close on nothing and say nothing.
+- **R-D2** `lib/dal/certificates.ts`, add-only: `listHeldAchievements()`'s rows gain optional
+  `badgeName` and `period: { kind, start, end }`, so a leaderboard certificate reads «المتصدّرون · أغسطس
+  2026» rather than `achievementName: "2026-08-01"`.
+
+**5.3 — For the lead's documents** — `REQ-ADM-017` acceptance 3 and SCR-061's «org numeral system»
+(`DEC-124`); `REQ-ADM-018`'s «scoring configuration changes» live in `scoring_config_history`, not
+`audit_log` (A7); `REQ-NTF-008`'s bounce is never written — no webhook (M6), `notify`'s whenever it
+next runs; recognition edits are unaudited (G8).
+
+**5.4 — Primitives.** **None** requested of `sessions`' eight or `content`'s nine: `Field`, `Input`,
+`Select`, `Textarea`, `RadioGroup`, `Switch`, `FormSummary`, `Badge`, `Panel`, `EmptyState`, `TagChip`
+(`removeHref`) cover every screen as they are; if one surfaces while building, it comes to the lead by
+file and prop. **Mine, announced:** `ui/date-time.tsx` wires `label` when `DateTimeProps` gains it, and
+builds `granularity="date"` on the RTL picker instead of a native `type="date"` — which means
+`rtl-datetime-picker.tsx` gains an optional `dateOnly` (serialises `YYYY-MM-DD`, hides the hour and
+minute). **Your schedule form is its only consumer; its default path does not change**, and I will not
+land it without telling you first. Its stale `numerals` comment goes in the same change.
+
+**5.5 — Test paths.** (a) `tests/unit/admin-*.test.ts` for the pure helpers — the org-day bounds, the
+interval parser, the delivery-reason mapping, and the audit-label coverage test that reads every action
+literal in `supabase/migrations/` — as the lead granted `admin-removed-check-in.test.ts` in wave 7.
+(b) New `tests/rls/admin-recognition-writes.test.ts` (in my list): a moderator refused on badge insert
+and update, level update and perk qualifier update; an admin allowed.
+
+### 6. Order of work
+
+Smallest first, so the shared components are built by real callers and the route with the most open
+questions comes last:
+
+1. **F1 + F2 + F3** — small, in files no other row touches, and F1 is a live defect.
+2. **K3 reminders** — builds `duration-input`, `use-action-toast` and the form-state round trip on one
+   short form.
+3. **K1 audit** — read-only; builds `keyset-pager`, the org-day helper, the action labels, and
+   `granularity="date"` (after telling the lead).
+4. **K2 exports** — the download button, recent exports, the enum maps; moves `console.spec`'s untouched
+   capture (§3).
+5. **K5 scoring** — builds `row-edit-dialog` and `confirm-dialog`, reworks `MemberPicker`; rewrites
+   `scoring-company-points.spec` and the admin half of `scoring-screens.spec`, leaving their `/app/me`
+   and leaderboards half exactly as it is.
+6. **K4 recognition** — reuses K5's dialogs; the held achievements wait on R-D1 (built against the current
+   void return first, then wired to the result).
+7. **K6 emails** — after Q2 and Q4; rewrites the admin half of `notify-screens.spec`, leaving the
+   `/app/me/notifications` and calendar cases untouched.
+
+Each route: its own commits, `tsc`, lint, `npm test` with axe on every new `components/admin` piece and on
+`ui/date-time`, RLS where a write changed, one `wave8-console-<route>.spec.ts` honouring `E2E_SHOTS_DIR`
+— phone project, `390 × 844`, a viewport capture scrolled to the state wherever the full-page artefact
+would paint the tab bar over it — then **«ready for sync»**.
+
+### 7. The three risks I would watch
+
+1. **K6 sliding into the studio, or stalling on its questions.** Q2 decides whether `REQ-NTF-007` can be
+   made true from this screen at all, and the defaults live across a package boundary. Mitigation: it
+   is last; §2 K6 lists what is not built; without Q2 it ships the catalogue, the field-level refusal and
+   the log, and says the required-fields gap plainly.
+2. **Specs I now own that cover screens I must not change.** `scoring-screens` captures `/app/me/points`
+   and the leaderboards, `notify-screens` drives `/app/me/notifications` and the calendar; both assert my
+   screens by selectors (`getByLabel("معرّف الجلسة")`, `toHaveURL(/saved=1/)`, `li` locators) that the
+   rebuild removes. The admin halves get rewritten; the member halves must stay byte-for-byte, and a key
+   those screens read in `scoring.json`/`notifications.json` is never renamed.
+3. **Fixtures for the states the captures need.** A held achievement needs a `certificates` row with a
+   `template_version_id` — the table `designer` re-seeds this wave (`DEC-128`) — and a delivery failure
+   needs an `email_deliveries` row with a provider reason. Both seed by `pg` in the spec, borrowing
+   `designer-achievements.test.ts`'s shape; if `designer`'s seed moves under them, the fixture reads the
+   template version by query, never by a pinned id.
+
+## Wave 8 — as built (sync 1 rulings, `DEC-148`) — 2026-09-17
+
+All six routes are ✓ under `node scripts/ui-reach.mjs --wave8`. The e2e specs below are written and
+lint-clean and have NOT run: the local `.next` predates every commit here and the build is the
+lead's. Captures land at the named paths when the lead's build runs them.
+
+| Row | Commits | Review spec(s) | Captures (`wave8-console-*.png`) |
+|---|---|---|---|
+| F1 | `6df9dfb` | `admin-members`, `admin-managed-lists` (new phone cases) | — |
+| F2 | `20c06da` | `admin-dashboard` | `dashboard-top-lists` |
+| F3 | `b886186` | — | — |
+| tabs | `48cd13d` | `admin-moderation` | `moderation-tabs-390` |
+| F4 | `9a2dd0f` | component test only | — |
+| picker | `18672c8` (the lead's three requests) | component tests only | — |
+| `admin.schedule` | `1554d75` (deleted on request) | — | — |
+| K3 reminders | `49798f0` | `wave8-console-reminders` | `reminders-field-error`, `reminders-saved` |
+| K1 audit | `266b0d1`, `1d42251` | `admin-audit` (rewritten) | `audit-filters-sheet`, `audit-filtered-admin`, `audit-filtered-moderator` |
+| K2 exports | `a6d8e12`, `1d42251` | `admin-exports`, `console` (untouched capture → proposals) | `exports-audit-note`, `layout-untouched-{390,desktop}` |
+| K5 scoring | `544ac58` | `wave8-console-scoring`, `scoring-company-points` (admin half) | `scoring-catalogue`, `scoring-penalties`, `scoring-rule-dialog-error`, `scoring-member-picker-open` |
+| K4 recognition | `a4d2886`, `4133578` | `wave8-console-recognition` | `recognition-held`, `recognition-release-confirm`, `recognition-award-already-held` |
+| K6 emails | `ac22709`, `4133578` | `wave8-console-emails` | `emails-catalogue`, `emails-refused-save`, `emails-delivery-failure` |
+
+**Shared, under `components/admin/`:** `duration.ts` + `duration-input.tsx` (a number and a unit, one base
+unit stored), `use-action-toast.ts` (the toast from the action's result, never an effect),
+`saved-form-state.ts`, `row-edit-dialog.tsx` (a list row edited in a dialog, closing from the action),
+`confirm-dialog.tsx` (`DeactivateToggle` composes it, props unchanged), `keyset-pager.tsx`,
+`export-download-button.tsx`, `delivery-reason.ts`, `held-achievements-table.tsx`; `member-picker.tsx` is a
+Field control. `ui/date-time` sits inside `<Field>` and has a date-only mode on the RTL picker; `ui/tabs`
+fades the side that hides tabs and keeps the active one in view.
+
+**Found while building, fixed here:** F4 — the error summary's links focused nothing on five wave-6/7 forms
+(prefixed Field ids, unmapped). CSV certificate state printed «issued» raw (the map named a state the enum
+never had). `intervalToSeconds` read a `1 day …` interval as «no cooldown» (latent). A manual badge award of a
+badge already held reported «saved» and wrote an audit row.
+
+**Tests added:** unit `admin-{duration,reminders-action,audit-filters,audit-labels,exports-csv,scoring-actions,recognition-actions,emails}`;
+component `phone-card-actions`, `form-summary-links`, `reminders-form`, `audit-page`, `exports-page`,
+`scoring-page`, `confirm-dialog`, `recognition-page`, `emails-page`, and rewritten `member-picker`, `date-time`,
+extended `rtl-datetime-picker`, `tabs`, `admin-dashboard-page`; RLS `admin-recognition-writes` (3/3).
+`npm run test:rls` 74 files / 805 green after K1; unit + components 181 files / 1682 green before K6's last fix.
+
+**Open, and whose:**
+- ~~**R-D1 (`designer`):** `releaseAchievements` returns nothing~~ **closed** — `designer` shipped the result
+  (`246cfbf`); the table reads it (`bc17ae5`): the toast counts what was released, a refusal keeps the selection.
+- **`REQ-NTF-007` (`notify`, M12):** the default template text is not shown and the required fields are the
+  admin's to declare — said on the screen, per the lead's Q2 ruling.
+- **`REQ-NTF-008` (`notify`):** nothing writes `bounced`/`delivered` (no webhook) — said on the log.
+- **Recognition edits are unaudited** (badges, levels, perks, streaks write no history or audit row) —
+  flagged, not built.
+
+### Sync-2 fixes (2026-09-17)
+
+| Finding | Commit | Spec | Captures to regenerate |
+|---|---|---|---|
+| reminders:123 strict mode (summary link and field error share the text) | `bc17ae5` | `wave8-console-reminders` (reads each error through its control's description; asserts the units survive) | `reminders-field-error` |
+| scoring:121 — **a product defect**: the «يظهر للعضو» caption repeated the name on 12 of 14 seeded rules | `344a921` | `wave8-console-scoring` | `scoring-catalogue`, `scoring-penalties` |
+| K4 — the award refusal reset the badge select, and did not name the badge | `bc17ae5` | `wave8-console-recognition` (the option still checked; the badge named at the field and in the summary) | `recognition-award-already-held` |
+| K2 — «UTF-8 مع BOM» in the description; «آخر تصدير» wrapping on the card | `deafa87`, `9bc3673` | `admin-exports` | `exports-audit-note` |
+| K1 — the raw action key on every audit card: **dropped** | `9bc3673` | `admin-audit` | `audit-filtered-admin`, `audit-filtered-moderator` |
+| `0099`'s two audit actions unlabelled (`admin-audit-labels` red on `fa93a98`) | `deafa87` | — | — |
+| the rail's `current` went stale after a client-side navigation (`platform`) | `0594594` | `console`, `admin-*` (aria-current unchanged on load) | — |
+
+**The select reset is a class, not the award's bug.** React resets a `<form action>` after every submission;
+a reset restores each control's *default*; React keeps that default in step for inputs, textareas and
+uncontrolled checkboxes/radios, and never for a `<select>` or a controlled radio/checkbox. `KeptSelect`
+(`components/admin/kept-select.tsx`) marks the option on show as the default; every action form `console`
+holds uses it — including the member role select, where a *successful* role change snapped back on screen.
+
+**Requests to the lead — all three landed at `dcd5f05`:** the reset repaired in `ui/select`, `ui/switch`,
+`ui/radio-group` and `ui/checkbox` (so `KeptSelect` is deleted, `b12a7b6`), the schedule form's controlled
+switch with it, and `MenuItem.current` (rendered in `ui/menu` and passed from the collapsed rail, `c2c5f06`).
+
+**The rerun at `5a8f5bc`:** 104 passed, 3 failed. `scoring:124` on both projects — two deductions word the
+member's text differently from the name by design (`حُذف تعليق`, `حُذفت صورة`), the spec now asserts per card
+(`2cc8471`). `emails:128` on the phone — the editor's label never appeared and the artefacts say nothing more
+(no page snapshot, no trace); desktop's identical fill passed. No phone-only path found in the page, the
+editor, `ui/tabs`, `ui/textarea` or the DAL reads. The spec now asserts the page and editor headings before
+typing and refuses a failed session refresh, so a repeat names what rendered (`8d3a5a0`), which also names
+the three timed reminders for the admin («تذكير قبل الجلسة بيوم», not «غدًا»).
+
+**Closed — all six rows, 2026-09-17.** K1–K4 on the `5a8f5bc` captures; K6 at `52005ba` (no `MSG-*` ids, the
+provider's text from its left edge, the reminders one row each); K5 at `79d22c0` (the penalties captured with
+motion reduced, and `ui/combobox` scrolling its open list clear of the phone tab bar — the member picker had
+opened under it). Carried by the lead to M13, not changed this wave: `controlClass`' `w-full` beats a caller's
+`w-*`, so every narrow `Input`/`Select` renders full width; `DurationInput` sizes wrappers meanwhile.

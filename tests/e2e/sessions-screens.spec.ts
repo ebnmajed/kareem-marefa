@@ -241,12 +241,17 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   const sessionId = rows[0].id;
 
   // ── SCR-043 · schedule and publish ────────────────────────────────────────
+  // Wave 8 (`DEC-147`, the lead's row L2): one form, and «انشر الجلسة» saves
+  // and publishes in one press. The gate reads the form as it stands, so it
+  // opens as soon as the fields are filled, not after a save.
   await boss.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   await streamed(boss);
   // Incomplete first: REQ-SES-001's gate, naming what is missing.
   await expect(boss.getByText("لا يمكن النشر بعد — ينقص:")).toBeVisible();
   await expect(boss.getByRole("button", { name: "انشر الجلسة" })).toBeDisabled();
-  await review(boss, "scr-043-schedule", "احفظ الجدولة");
+  // REQ-PRO-009: the proposal's 45 minutes pre-fill the duration.
+  await expect(boss.getByLabel("المدة بالدقائق")).toHaveValue("45");
+  await review(boss, "scr-043-schedule", "احفظ فقط");
 
   const when = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
   // SCR-043's field is console's RTL date-time picker since wave 3 (DEC-045's
@@ -258,12 +263,17 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await picker.getByLabel("الساعة").selectOption("18");
   await picker.getByLabel("الدقيقة").selectOption("0");
   await picker.getByRole("button", { name: "تم", exact: true }).click();
-  await boss.getByLabel("المدة").fill("60");
-  await boss.getByLabel("المكان", { exact: true }).selectOption({ label: "قاعة الابتكار" });
-  await boss.getByRole("button", { name: "احفظ الجدولة" }).click();
-  await expect(boss.getByRole("status")).toContainText("حُفظت الجدولة");
+  await boss.getByLabel("المدة بالدقائق").fill("60");
+  // The end follows: a sentence, not a second field (REQ-SES-016).
+  await expect(boss.getByText(/^تنتهي الجلسة /)).toBeVisible();
+  // Each venue option carries its capacity; pick by the venue's own name.
+  const venue = boss.getByLabel("المكان", { exact: true });
+  const option = venue.locator("option", { hasText: "قاعة الابتكار" });
+  await venue.selectOption((await option.getAttribute("value"))!);
+  // The capacity follows the venue until someone types one.
+  await expect(boss.getByLabel("السعة")).toHaveValue("30");
 
-  // The gate is satisfied now, so the control is live.
+  // The gate is satisfied now, so the control is live — one press.
   await expect(boss.getByText("لا يمكن النشر بعد — ينقص:")).toHaveCount(0);
   await boss.getByRole("button", { name: "انشر الجلسة" }).click();
   await expect(boss.getByRole("status").filter({ hasText: "نُشرت الجلسة" })).toBeVisible();

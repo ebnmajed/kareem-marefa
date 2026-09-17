@@ -249,3 +249,31 @@ test("SCR-046 at 390 px RTL: venues reads down the page as a stacked card list t
   await goto(page, "/ar/app/admin/venues");
   await review(page, "wave7-console-venues-populated");
 });
+
+// ★ Wave 8, F1: on a phone the three managed lists had no «عطّل» at all — the
+// actions column was not `onCard`, so `DataTable`'s card list dropped it, and
+// both add-then-deactivate cases above are desktop-only, which is how it hid.
+// Runs after the captures, and leaves each row active again.
+test("F1 at 390 px: each managed list deactivates and reactivates from its phone card", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the phone card list is the phone treatment");
+  await page.setViewportSize(PHONE);
+  await signIn(context, adminEmail);
+  for (const [path, name, deactivated, table] of [
+    ["venues", "قاعة قائمة", "معطّل", "venues"],
+    ["categories", "تصنيف قائم", "معطّل", "categories"],
+    ["companies", "شركة قائمة", "معطّلة", "companies"],
+  ] as const) {
+    await goto(page, `/ar/app/admin/${path}`);
+    const card = page.getByRole("listitem").filter({ hasText: name });
+    await card.getByRole("button", { name: "عطّل" }).click();
+    await page.getByRole("dialog", { name: `تعطيل «${name}»؟` }).getByRole("button", { name: "تأكيد التعطيل" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "تم التعطيل." }), path).toBeVisible();
+    await expect(card.getByText(deactivated, { exact: true }), path).toBeVisible();
+
+    await card.getByRole("button", { name: "أعد التفعيل" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "تمت إعادة التفعيل." }), path).toBeVisible();
+    await expect(card.getByText(deactivated, { exact: true }), path).toHaveCount(0);
+    const { rows } = await db.query(`select deactivated_at from public.${table} where org_id = $1 and name = $2`, [orgId, name]);
+    expect(rows[0].deactivated_at, path).toBeNull();
+  }
+});

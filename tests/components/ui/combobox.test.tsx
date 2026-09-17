@@ -6,7 +6,7 @@ import type React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
@@ -138,6 +138,29 @@ describe("Combobox — single select", () => {
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("★ the open list is scrolled into view — clear of a phone's tab bar — on opening and as its rows change", async () => {
+    const scrolled: Element[] = [];
+    const spy = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    Element.prototype.scrollIntoView = spy;
+    try {
+      render(
+        <Wrap>
+          <Combobox name="presenterId" options={PRESENTERS} placeholder="ابحث" />
+        </Wrap>,
+      );
+      await userEvent.click(screen.getByRole("combobox"));
+      expect(spy).toHaveBeenLastCalledWith({ block: "nearest" });
+      expect(scrolled.at(-1)).toBe(screen.getByRole("listbox"));
+      fireEvent.change(screen.getByRole("combobox"), { target: { value: "zzznotfound" } });
+      // The «no match» line is what shows now, and it is what comes into view.
+      expect(scrolled.at(-1)).toBe(screen.getByRole("status"));
+    } finally {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
   });
 
   it("an unmatched query shows an announced, visible zero-results state (no duplicate text)", async () => {

@@ -141,7 +141,21 @@ export interface DesignDocument {
   /** RTL is the source composition (D5). LTR is the mirror, never the other
    *  way round. */
   direction: Direction
-  background?: { type: 'solid'; color: string }
+  /**
+   * A solid fill, or a gradient (DEC-127 — the poster background is a
+   * gradient, not a flat fill). `angle` is degrees, measured for the RTL
+   * source composition; a gradient does not follow `dir`, so the LTR mirror
+   * is `360 − angle` and that mirror lives in the renderer alone — nothing
+   * ever stores a mirrored angle. Each stop is a `{{brand.*}}` token or a
+   * literal, exactly like `color` above; a gradient stop is not allowed to
+   * be a hex literal in a TEMPLATE either (`0055`'s guard). A stop's `at` is
+   * a FRACTION, 0…1 — the same unit as the model's other normalised
+   * positions (`image.focal`), not a percentage; `render.ts`'s
+   * `backgroundCss()` is what turns it into CSS.
+   */
+  background?:
+    | { type: 'solid'; color: string }
+    | { type: 'gradient'; angle: number; stops: { color: string; at?: number }[] }
   layers: Layer[]
 }
 

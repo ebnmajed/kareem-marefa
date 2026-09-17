@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-16 · **Branch:** `wave-7/screens` · **`main`:** **LAUNCHED 2026-09-15; wave 6 merged 2026-09-16** (PR #23, `5ef56ae`) · **Phase:** ★★ **WAVE 7 COMPLETE — PR #24 ready, the owner merges.** All 27 checklist rows closed; the final gates at `70bfb21` (RLS 791/791 · vitest 1444/1444 · `qa` 44/44 · `visual` 0.000 % · reserve probe 16/16) and an e2e confirmation at `fb13d0a` (439/440, the one a load-sensitive budget that passes alone). Migrations `0083`–`0091`. ★ **`0082`–`0091` rehearsed on production's schema: all ten clean, RLS 791/791.** **The owner, in this order: (1) `supabase db push` `0082`–`0091` to production, (2) runs `DEC-143`'s scoped data fix, (3) merges PR #24 — the push precedes the merge (below) — and schedules the Next 16.3.x upgrade that retires the patch (`DEC-140`).** **Do not start wave 8.** The wave-7 block is directly under START HERE.
+**Last updated:** 2026-09-17 · **Branch:** `wave-8/screens` (PR #25, **ready**) · **`main`:** **LAUNCHED 2026-09-15; wave 7 merged 2026-09-16** (PR #24, `4f19cd6`; `0082`–`0091` live on production) · **Phase:** ★★ **WAVE 8 — COMPLETE, awaiting the owner.** All four tracks closed (`designer` D1–D6, `console` K1–K6, `platform` P0–P7, `branding` B0–B3) and the lead's L1–L7; `ui-reach --wave8` **20/20**. Final gates at `5bf0327`/`04fa967` (below): RLS 833, vitest 1715, qa 44/44, visual 0.000 %, parity 21/28 + 3/3 locally and **28/28 + 3/3 in the Linux image**, the real worker green, e2e 514 with every failure explained, CI 13/13. ★ **`0092`–`0099` REHEARSED 2026-09-17 on the owner's dump** (all eight clean, grants identical, catalog ≡ chain, RLS 832/833 with the one explained; dump deleted). **Next, the owner: the two production reads, then push, then merge** — «`0092`–`0099` — what the owner does». ★ **Server Action IDs rotate when this wave deploys — deploy outside a scheduled session.** **Do not start wave 9** until the owner says so.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,16 +13,16 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-137`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-7 map is the map in force** (`DEC-137`); wave 6's and wave 5's are the record |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-149`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-8 map is the map in force** (`DEC-147`); waves 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
 
 **The state of the tree.** M9's system work is **built, green and merged into `main`** — 34 `ui/`
 primitives, the shell, the status vocabulary, the loading and failure models, the form model, and
-the five live affordance fixes. `trace` is at **313 requirements · 72 entities · 146 stories · no
-gaps**; `qa` 44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
+the five live affordance fixes. `trace` is at **313 requirements · 73 entities · 147 stories · no
+gaps**; `qa` 44/44; `visual` 0.000%. ★ **Since wave 8, every route in the brief's scope is on the M9 system** (`ui-reach --wave8` 20/20); `verify/[code]` and `legal/**` are the named exceptions. The plan set carries M9–M13 in full.
 
 ### ★ Seven owner directives from 2026-09-16, all recorded
 
@@ -54,7 +54,7 @@ gaps**; `qa` 44/44; `visual` 0.000%. The plan set carries M9–M13 in full.
    no template rows are seeded and `worker/src/mail/render.ts` still renders plain paragraphs
    against three brand tokens with hard-coded fallbacks.
 
-**The screens are wave 6, in progress below.** The owner reviewed M9 running and reordered the
+**The screens were waves 6, 7 and 8; wave 8 is complete below, awaiting the owner's rehearsal, push and merge. Wave 9 is multi-day sessions (`DEC-119` … `121`) — not started.** The owner reviewed M9 running and reordered the
 milestone — the screens come first, the admin console is in scope from the start, `/app` becomes the
 sessions timeline, and `16` §6.6's separate home page is withdrawn (`DEC-110` … `DEC-114`, `DEC-130`).
 
@@ -69,13 +69,395 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 7's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-137`). A
-wave-8 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 8's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-147`). A
+wave-9 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 7 — COMPLETE on `wave-7/screens` (PR #24, the owner merges) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
+## ★★ WAVE 8 — COMPLETE on `wave-8/screens` (PR #25, ready; the owner merges) — the last nineteen routes onto the M9 system, gradient posters and the certificate library (`DEC-147`)
+
+**The owner's goal, in substance** (`docs/plan/notes/wave-8-lead.md`): **finish the redesign's route coverage**
+— nineteen routes, and the whole app is on the M9 system — and build `DEC-127` (the gradient poster background,
+the `canvasRaise` token) and `DEC-128` (the certificate library) in the files they live in, so no screen is
+rebuilt twice. **Multi-day sessions are wave 9's whole subject. Do not start wave 9.**
+
+**The measure** (`DEC-147`, as `DEC-137`'s). A row closes only when **(1)** `node scripts/ui-reach.mjs --wave8`
+shows the page reaching an **M9** primitive (strict), **and (2)** a 390 px RTL capture exists **at the path the
+row cites** — `.qa-shots/rtl/wave8-<track>-<route>-<state>.png` in the **main checkout**, phone project,
+`390 × 844` — from a production build the row names by commit, **opened by the lead**, with the spec that
+regenerates it named in the row. `.qa-shots/` is gitignored: the row text is the only artefact anyone
+downstream can trust.
+
+**Baseline at Step 0 (`e7d0657`):** `--wave8` **2/20 strict** (8/20 loose) — the schedule reaches `ui/date-time`
+and scoring reaches `ui/combobox` through the member picker; neither is on the system. By group: `(auth)` 3/3 ·
+`/app` 1/1 · `app/sessions` 6/6 · `app/me` 7/7 · `app/admin` 14/24 · `app/platform` 0/7. ★ **Outside those
+groups and outside the brief's nineteen**, `verify/[code]` and `legal/{privacy,terms}` do not reach the system
+either; they are named here so «the whole app» is not over-claimed, and they are not this wave.
+
+### Before anyone spawns — task one and Step 0
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **Task one — `DEC-146`**: `next` 16.2.10 → 16.3.5; the patch, `react-dom-ping-patch.test.ts`, `patch-package` and `postinstall` out together; the lock through Docker | `e7d0657` | the probe below; the gates in `DEC-147` |
+| ✅ | **Step 0**: the wave-8 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated (`designer`, `platform`, `branding` four waves stale); this checklist; `DEC-147`; `scripts/ui-reach.mjs --wave8` | `e3df1d3` | — |
+
+**The reserve probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, production builds, back to back):
+
+| Build | Result |
+|---|---|
+| 16.3.5 as shipped, run 1 | **16/16** — 105–211 ms (load average 32: the build had just finished) |
+| 16.3.5 **with React's fix undone** in the vendored `react-dom` (the control, `$scratchpad/wt-verify`) | `104 STUCK 107 STUCK STUCK 105 105 STUCK 108 105 STUCK 106 106 109 STUCK STUCK` — **7 of 16 hung** |
+| 16.3.5 as shipped, run 2 | **16/16** — 105–108 ms |
+
+**Gates on task one's tree (`e7d0657`):** `tsc` clean (app, worker) · lint **0 errors** (`✖ 24 problems (0 errors,
+24 warnings)`) · vitest **145 files, 1440/1440** · build green · `qa` **44 passed, 0 failed** · `visual`
+`wave-6-final → wave-8-task-one` **0.000 % on all eight pairs** · `db:reset` clean + RLS **72 files, 791 passed, 4
+todo** · `parity` **21 of 28 pass** (path 4 skips loudly without `cwebp`; CI runs 28 in the image) · e2e **426
+passed, 7 failed, 11 did not run** — every failure green alone or explained in `DEC-147`, including an interleaved
+`budgets` A/B against 16.2.10 that found **no LCP regression and 13 KB less JS** on 16.3.5.
+
+### The checklist — every route named
+
+| # | Owner | Route / work | Serves | (1) `--wave8` | (2) capture — path · spec · build | State |
+|---|---|---|---|---|---|---|
+| L1 | lead | **task one** — Next 16.3.5, the patch retired | `DEC-146` | — | the probe above | **closed** `e7d0657` |
+| L2 | lead | ★ `/app/admin/sessions/[id]/schedule` — «more user friendly … intuitive to fill and quick» | SCR-043 · `REQ-SES-001`, `002`, `009`, `016`, `REQ-PRO-009`, `REQ-CHK-010`, `REQ-DSG-002`, `REQ-UIX-009`, `010` | ✓ (`ui/field`, `ui/date-time`, `ui/select`, `ui/switch`, `ui/radio-group`, `ui/page-header`, `ui/panel`) | `wave8-lead-schedule-from-proposal.png` · `-field-error.png` · `-ready.png` · `-published-edit.png` · `wave8-lead-schedule.spec.ts` · `d18cc9a`, regenerated at `bb3e290` after `dcd5f05` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: the duration «45» from the proposal with «من المقترح: 45 دقيقة»; the content panel below the form with «من يُعدّ تقارير دورية»; «لا يمكن النشر بعد — ينقص: …» on one line and «انشر الجلسة» disabled; the end as «تنتهي الجلسة 7:00 م»; an explicit end at 17:00 refused at once with «نهاية الجلسة بعد بدايتها.»; «القاعة الكبرى · 40 مقعدًا» and the capacity following at 40; «قبل البدء بيوم» with «يُغلق الإلغاء الجمعة، 9 أكتوبر 2026 في 6:00 م»; after one press «التسجيل مفتوح» and «احفظ التعديلات» with the edited note; the stored row `published`, 60 minutes, capacity 40, walk-ins off. **Found by looking and fixed before closing:** two four-row radio lists made the phone form ~270 CSS px longer (`d18cc9a`). Full-page captures paint the sticky action bar, the header and the skip link mid-page — the known artefact. `sessions-screens` and `checkin-schedule-walk-ins` (custodian) green on the same build. ★ **Sync 2:** React resets a `<form action>` after every submission, and this form's six controlled selects, radios and switch fell back to their mount values on screen and in the next post — a second «احفظ التعديلات» would have undone the first; repaired in the primitives (`dcd5f05`), the spec now reads the venue and the cancel deadline after the publish, and `published-edit` was reopened at `bb3e290` |
+| L3 | lead | ★ `org_domains`' check converged across environments — a migration, **rehearsed against a production schema dump** | invariant 3, `REQ-TEN-*`, `DEC-147` | — | — | **closed** — promoted `e5d5b56` as `0092`; ★ **rehearsed 2026-09-17** on the owner's production dump with `0093`–`0099`: clean, and the catalog comparison no longer shows wave 7's drift — production and the chain now hold one case-sensitive check |
+| L4 | lead | the worker's startup line says «polling every 60 s»; it is 15 s (`DEC-057`) | `REQ-NFR-016` | — | — | **closed** `41f8807` — one constant feeds the setting and the line |
+| L5 | lead | `REQ-EVT-010` reconciled with the pipeline | `DEC-139` | — | — | **closed** — already amended in wave 7 (`01-prd.md`, «Photos publish without moderation, the moment their metadata is stripped»); `0091` carries the no-reload clause |
+| L6 | lead | ★ **the parity goldens move** — every before and after reviewed by eye, then committed | `REQ-DSG-015`, `DEC-127` | — | the harness's diff images | **closed** `c7fffb1` — the only golden that moved is a NEW one, `goldens/backgrounds/gradient-rtl.png`, reviewed by eye and by pixel by the lead (top-left #111a2c, bottom-right #1d2a42); every existing golden unchanged since `150a166`; `npm run parity` 21 of 28 locally (cwebp absent, as before) · background block 3 of 3 |
+| L7 | lead | promotion — `designer`'s roster seed, `branding`'s brand-kit columns, anything proposed — with `db:reset`, RLS, `policy-diff`, the `03` §8.2 rows | invariants 3, 5, 6 | — | — | **closed** — `0093` `e5d5b56`; `0094`, `0095` `7daff7f`; `0096`, `0097` `58ce261`; `0098`, `0099` `fa93a98` — every promotion's live definitions diffed before and after; the sweep lists `session_certificate_designs` among the staff-read tables; final `db:reset` + RLS **79 files, 833 passed**; `policy-diff` agrees; trace no gaps; `supabase/proposed/` empty |
+| D1 | `designer` | `/app/admin/designer/[documentId]` — mobile view and approve | SCR-057 · `REQ-DSG-005`, `010`, `022`, `DEC-093`, `DEC-096` | ✓ | `wave8-designer-editor-{review,readonly,rendering,failed,desktop}.png` · `wave8-designer-posters-{picker-live,detach-confirm,upload-rejected,picker-stale,studio-live-gate}.png` · `wave8-designer-{editor,posters}.spec.ts` · `fcc91cf` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead at `fcc91cf`: the phone review (fields in Arabic, «590 بكسل»), read-only, rendering, a failed export saying why in Arabic with the worker's text beneath, the 1440 editor; `08d94ad`. ★ Found on the way: **`detach_poster()` had no caller** — a live poster's edit was saved live and regenerated away; a save to a live poster is refused and the detach is a confirm naming the session (`134c563`, `REQ-DSG-003`). With the real worker (`E2E_WORKER=1`) green at `5bf0327` |
+| D2 | `designer` | `/app/admin/templates/posters` | SCR-055 · `REQ-ADM-013`, `REQ-DSG-004`, `007`, `008`, `024`, `026` | ✓ | `wave8-designer-templates-{posters-populated,posters-duplicate-dialog,posters-empty-org,posters-moderator}.png` · `wave8-designer-templates.spec.ts` · `fcc91cf` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead at `fcc91cf`: the platform and org libraries as a card grid drawn by the renderer, the posters on the gradient, media contained on a phone and marked rendered before capture, «الافتراضي» in the card body; the copy dialog; the empty org; the moderator offered no write |
+| D3 | `designer` | `/app/admin/templates/certificates` | SCR-056 · same | ✓ | `wave8-designer-templates-{certificates-populated,certificates-dark}.png` · `wave8-designer-templates.spec.ts` · `fcc91cf` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead at `fcc91cf`: six platform certificate rows in both orientations, the light/dark preview choice, every card rendered in the dark capture |
+| D4 | `designer` | `/app/admin/sessions/[id]/certificates` — review, release, revoke, **and the template chosen at issue time** | SCR-045 · `REQ-CRT-004`, `011`, `DEC-128` | ✓ | `wave8-designer-certificates-{held,release-confirm,design-landscape,design-portrait,revoked,revoke-dialog,design-locked,mode-off,moderator}.png` · `wave8-designer-certificates.spec.ts`, `certificates.spec.ts` · `fcc91cf` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead at `fcc91cf`: «الإصدار» first once certificates exist, each kind's design folded to what it was issued with; release and revoke confirms name their object; the locked design; mode off; the moderator's lists without controls. Found by the spec: the eligible list was empty (an ambiguous `check_ins → members` embed swallowed by the DAL) |
+| D5 | `designer` | ★ **`DEC-128`** — the certificate library and the completed poster roster, seeded by a new migration; **the roster counted in CI** | `REQ-DSG-026`, `DEC-125`, `DEC-128` | — | — | **closed** — library `7a84b94`/`195ec2f`, promoted as `0098` `fa93a98`; the roster counted in CI by `templates-roster.test.ts` (11 rows, 22 variants, idempotent) and the drift test (27 cases). ★ `0098` is a migration now: a later library change is a new seed, never a regenerate (`DEC-149` §3) |
+| D6 | `designer` | the scheme passed at every call site; gradient parity cases **in both directions** | `REQ-DSG-014`, `015`, `DEC-125`, `DEC-127` | — | — | **closed** `a19bffd` — the parity background block, reported apart from the 28: **gradient-rtl** (the declared 140deg, the palette's colours, the first stop at its start corner, 0.000% vs the golden — blocking on darwin-arm64 only, `DEC-028`), **gradient-ltr** (220deg, and the LTR page is pixel-identical to the RTL page mirrored — blocking everywhere; unmirrored they differ 71.7%), **ink-on-dark** (a blank dark page 0.000% ink, one line 1.634%; the pre-wave-8 rule called the blank page 100% inked). The scheme is passed at every call site (posters `'dark'`, certificates the pinned one). ★ Headless Chrome paints a clip or element screenshot of a gradient page flat `rgb(18,18,18)`; a viewport capture is correct, and the worker already captures the viewport |
+| K1 | `console` | `/app/admin/audit` | SCR-062 · `REQ-ADM-018` | ✓ | `wave8-console-audit-{filters-sheet,filtered-admin,filtered-moderator}.png` · `admin-audit.spec.ts` · `5a8f5bc` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: filters sheet, filtered admin, filtered moderator (only the moderator's own actions); the raw action key dropped from every card (`9bc3673`); a date range is the org's own day (`266b0d1`) |
+| K2 | `console` | `/app/admin/exports` | SCR-061 · `REQ-ADM-017`, `REQ-INT-006` | ✓ | `wave8-console-exports-audit-note.png` · `admin-exports.spec.ts` · `5a8f5bc` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: the description in plain Arabic (`deafa87`), card labels on one line (`9bc3673`), who took each file last; CSV dates `YYYY-MM-DD HH:mm` with the zone in the header, enums in Arabic (REQ-ADM-017) |
+| K3 | `console` | `/app/admin/reminders` | SCR-060 · `REQ-NTF-*` | ✓ | `wave8-console-reminders-{field-error,saved}.png` · `wave8-console-reminders.spec.ts` · `52005ba` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: each refused offset said at its own row and in the summary, the units kept; the saved schedule with its toast (`49798f0`); a number beside its unit on one row (`2d9302d`, after `controlClass`'s `w-full` was found to beat any caller width — carried to M13, `DEC-149`) |
+| K4 | `console` | `/app/admin/recognition` — with the held achievement certificates | SCR-054 · `REQ-REC-*`, `REQ-CRT-012` | ✓ | `wave8-console-recognition-{held,release-confirm,award-already-held}.png` · `wave8-console-recognition.spec.ts` · `5a8f5bc` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: held achievements first, the release confirmed with a count and its result (R-D1, `246cfbf`); the refused award keeps «حاضر دائم» selected and names the badge at the field and in the summary. ★ The badge reset was React's form reset on every controlled select, switch, radio and checkbox — repaired in the four primitives by the lead (`dcd5f05`), which the schedule form needed too |
+| K5 | `console` | `/app/admin/scoring` — the fixed catalogue and the company rules | SCR-053 · `REQ-PTS-004` … `010`, `REQ-ADM-011` | ✓ (incidental: `ui/combobox`) | `wave8-console-scoring-{catalogue,penalties,rule-dialog-error,member-picker-open}.png` · `wave8-console-scoring.spec.ts` · `79d22c0` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: three fixed groups, deductions closed at 0 with the member-facing caption only where it differs (`344a921`, `2cc8471`), a rule refused inside its dialog, and the member picker's list clear of the tab bar (`79d22c0` — every `ui/combobox` scrolls its open list into view; `html`'s `scroll-padding-block-end` already clears the bar) |
+| K6 | `console` | `/app/admin/emails` — around what it does today, **not** the email studio | SCR-058 · `REQ-ADM-014`, `REQ-NTF-007`, `008` | ✓ | `wave8-console-emails-{catalogue,refused-save,delivery-failure}.png` · `wave8-console-emails.spec.ts` · `52005ba` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead: the catalogue with its matrix and the failure banner, the refused save said at the body naming «title», the delivery log's reason in words with the provider's text beneath; the plan's `MSG-*` ids and the member-inbox reminder names gone from the admin screen (`8d3a5a0`, `2d9302d`). Carried: `REQ-NTF-007`'s required fields and `REQ-NTF-008`'s bounce webhook (`notify`/M12) |
+| P0 | `platform` | the console's layout and navigation, with `ImpersonationBanner` | SCR-080 … 085 · `REQ-ADM-001`, `REQ-UIX-017` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — the menu switcher open, the banner under the header on `/no-access` |
+| P1 | `platform` | `/app/platform` | `REQ-ADM-001` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — «لوحة المنصة», the attention card, the totals |
+| P2 | `platform` | `/app/platform/orgs` — create, suspend, the first admin | SCR-080 · `REQ-ADM-001`, `REQ-TEN-*` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — cards, suspend-confirm (the grip on the RTL side), delete-mismatch |
+| P3 | `platform` | `/app/platform/orgs/new` | SCR-081 | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — the summary with four field errors, what was typed kept |
+| P4 | `platform` | `/app/platform/orgs/[id]/domains` — contract 4 | SCR-082 · `REQ-TEN-*` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — a mixed-case domain listed lowercased, the toast isolating it |
+| P5 | `platform` | `/app/platform/templates` — the platform library, with `DEC-128`'s roster | SCR-083 · `REQ-DSG-008`, `026` | ✓ | `wave8-platform-templates-baseline.png` · `platform-console.spec.ts` · `fa93a98` (verification worktree) | **closed** — opened by the lead at `fa93a98` after `0098`: `platform-console.spec` in full, the roster case green on both projects; 5 posters, the certificates as «أفقية»/«عمودية» rows, one default per family |
+| P6 | `platform` | `/app/platform/metrics` — aggregate only | SCR-084 · `REQ-ADM-003` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — eight alerts and job health as cards |
+| P7 | `platform` | `/app/platform/impersonate` — and the banner on an org screen | SCR-085 · `REQ-ADM-002`, `019`, `DEC-014` | ✓ | `wave8-platform-*.png` (13) · `platform-console.spec.ts` · `381a05f` (verification worktree, `E2E_SHOTS_DIR` → main checkout) | **closed** — opened by the lead; `platform-console.spec` 30/30 minus SCR-083's roster case (waits on the seed). Sync-2 findings fixed at `d82c7a1` and re-opened: the console stopped promising that break-glass opens an org (`DEC-055` C — home, SCR-085, the banner; the lead's `/no-access` body the same, `1f1ced9`), the banner's stop control under the text on a phone, a pending-deletion card says «لا إجراء — الحذف قيد التنفيذ.», the delete dialog's slug on its own line — empty, active (stacked on a phone), the banner on an org route, expired |
+| B0 | `branding` | ★ **contract 1, as types** — the `background` union and `canvasRaise` | `DEC-127` | — | — | **closed** `391150e`, with `6b3ac7f` (`getBrandKit()` fills a missing token — without it every `/app` page would have failed once the runtime rebuilt, `DEC-148` finding 4) |
+| B1 | `branding` | ★ the gradient rendered and collected — **both silent traps red first** — and the LTR mirror `360 − angle` in the renderer | `REQ-DSG-021`, `DEC-127` | — | — | **closed** `6879ab5`, `0d76a17`, `4b1e1e7` (`backgroundCss()` exported, `at` a fraction) — proven in pixels by `designer`'s D6 block: the LTR page identical to the RTL page mirrored, locally and in the Linux image |
+| B2 | `branding` | `canvasRaise` in the brand kit — columns, `brand_kit()`, `save_brand_kit()`, `getBrandKit()`, the schema | `REQ-DSG-021`, `REQ-ADM-015` | — | — | **closed** `f30944e`, promoted as `0093` at `e5d5b56` |
+| B3 | `branding` | `/app/admin/branding` — the preview carries a gradient surface | SCR-059 · `REQ-ADM-015`, `REQ-DSG-019`, `021` | ✓ | `wave8-branding-defaults.png` · `-override-saved.png` · `-field-error.png` · `-reset-confirm.png` · `wave8-branding-review.spec.ts` · `381a05f` (at `f00a253`) | **closed** — opened by the lead: the gradient swatch on the dark palette whatever tab is open (`4bbfffd`), the light `canvasRaise` hint honest, «#rrggbb» and the logo's format names isolated (`f00a253`, after the lead widened `FieldProps.error` and `FileDropProps.requirements` to nodes, `886260a`), the reset dialog naming «مؤسسة الهوية الثانية». `branding.spec` green on the same build |
+
+★ Every capture path above is the **prefix** the row will cite in full; a row closes on the exact file names, the
+spec and the build.
+
+### Sync 1 — 2026-09-17 — four plans approved, contract 3 ruled (`DEC-148`)
+
+All four planned before building: `branding` `574f556`, `designer` `85deba7`, `console` `61cecd4`, `platform`
+`943f0d2`. Each was read in full and answered with rulings; the record is `DEC-148`. **What the plans found
+that the brief did not know:**
+
+- ★ **A dark poster voids the blank-capture guard** — every pixel of `#111a2c → #1d2a42` counts as ink, so a
+  poster whose text never painted would ship (`designer`; ink now measured against the page's own background,
+  before any `'dark'` call site).
+- ★ **`getBrandKit()` would have taken down every `/app` page** the moment the runtime rebuilt with
+  `canvasRaise` — the layout reads the kit for every member (`branding`'s contract 1 plus the lead; `6b3ac7f`).
+- ★ **A break-glass stop from SCR-085's own page left org access on the token for up to 900 s**, and a start may
+  never have refreshed it (`platform`'s F1/F2 — fixed in the submit path, proven on the decoded token).
+- ★ **Four admin lists had no row actions on a phone** — `members`, `venues`, `categories`, `companies` — live in
+  production since waves 6 and 7 (`console`'s F1, fixed `6df9dfb`).
+- **The portrait certificate `derive()`d from the landscape master is not a composition** — a 157 mm empty
+  band on every portrait certificate issued so far; contract 3 makes it a row.
+- `validate.ts` refused a gradient; `0055`'s guard never walked gradient stops; `set_first_admin()` refused a
+  mixed-case address; the «أكثر …» cards were never actually fixed in wave 7; `/app/platform` was a bare redirect
+  no `ui-reach` could count; «من حضر وقيّم» in `Certificate.dc.html` would disclose who rated.
+
+**Contract changes the lead made:** `CardMediaProps.aspect` gains `297/210`/`210/297` and `children`;
+`DateTimeProps.label` (`df01876`). **The lead's requests landed by `console`:** the picker's `onValueChange`,
+controlled value and `Field` wiring (`18672c8`), `admin.schedule` deleted (`1554d75`). **`platform`'s F6 in the
+lead's file:** `/no-access` offers a platform admin «لوحة المنصة» (`b8d511d`).
+
+**Carried for the owner, from sync 1:** ★ **a live `REQ-NTF-007` weakness** — an email template's required
+fields are admin-editable, so a template can be saved without `{{title}}` (`console`; `notify`/M12's email
+studio); **`REQ-NTF-008`'s bounce and delivery states are never written** — no webhook route exists (`notify`);
+after deploy, **a scoped `regenerate_poster` enqueue for live posters of upcoming sessions** (a data fix,
+`DEC-023`), which `designer` hands over with its seed.
+
+**Carried for the owner, from sync 2:** ★ **break-glass opens nothing** — `DEC-055` option C is still what is built: an
+impersonation session carries no member id, so every org route lands on `/no-access`. The session is created,
+time-limited, recorded in the org's own audit log and expires — but it shows the operator none of the org. Sync 2
+made every sentence in the console say so (`1f1ced9`, `d82c7a1`); **option A (a browsable, read-only
+`impersonating` state in `session.ts`) is unscheduled and is the owner's to schedule** — it is not wave 8's.
+
+### L2 — the lead's plan for SCR-043, written before any code
+
+**What «more user friendly … intuitive to fill and quick» means here**, read against what exists:
+`REQ-SES-016` already states it for the one-day session every org schedules today — *the end follows the
+duration; validation at the field, on blur; filled without scrolling back to check* — and `REQ-PRO-009`
+says the proposal's `expected_duration_minutes` pre-fills the duration. `Schedule.dc.html` draws the
+screen as settings beside a read-only «المحتوى — كما كتبه المُقترِح» panel, with «انشر الجلسة» and
+«احفظ فقط» together at the end.
+
+**In:**
+1. **One form, grouped** — متى · أين · الحضور · الشهادة واللغة — on `ui/field` and its family,
+   `ui/radio-group` for the certificate mode and the room's language (three and two choices read faster
+   than a closed select), `ui/switch` for walk-ins, `FormSummary`, `form-state.ts` so a failed round trip
+   hands back what was typed.
+2. **Defaults that remove typing:** the duration pre-fills from the proposal when the session has none,
+   marked «من المقترح»; **the end is computed from start + duration and shown as a sentence**, and
+   «عدّل وقت الانتهاء» reveals the picker — **an explicit end wins and stops following** (`OQ-001`); the
+   capacity pre-fills from the chosen venue's capacity while the field is still empty; the two deadlines
+   offer presets relative to the start (at the start · a day before · …) with «تاريخ آخر» for the picker.
+3. **Validation at the field on blur**: an end before the start, a deadline after the start — the
+   rules `REQ-SES-002` already enforces as constraints, said before the database says them.
+4. **One press to publish**: «انشر الجلسة» saves and publishes in one action, disabled while anything
+   `REQ-SES-001` requires is missing — **naming what is missing** — with «احفظ فقط» beside it and the
+   note «النشر يُرسل إشعارًا لكل الأعضاء ويفتح الحجز.»; on a published session the primary is «احفظ
+   التعديلات» with `REQ-SES-009`'s warning that attendees are told what changed.
+5. **The proposal's content, read-only, beside the form** (desktop) and below it (phone): title,
+   proposer, when it was accepted, level, language, target audience, expected duration — read from
+   `proposals` through `sessions.ts` as custodian, **no migration**. The poster section keeps
+   `designer`'s `PosterPicker` slot.
+6. **Phone: one scroll, not a stepper.** `SCR-043`'s mobile note asks for «a stepper, one section per
+   step»; four steps are four more presses on the form an admin fills most, against the owner's
+   «quick». The groups carry headers, and the actions sit in a sticky bar in reach. **Recorded as a
+   decision at sync 1**, because `09`'s note says otherwise.
+
+**Not in, and why:** `DEC-075`'s audited **content edit** («تعديل المحتوى» — an audit row per field and a
+notification to the proposer) and copying `target_audience`/`expected_duration_minutes` onto
+`sessions` (`REQ-PRO-009`) — a migration, SQL and a notification each, and nothing in «quick to fill»
+needs them; **the survey** row the artboard draws (not this wave); **multi-day** (`REQ-SES-015`, wave 9).
+
+**Requests this makes:** `console` — `DateTimeProps` gains an accessible `label` (the lead adds the
+field to `ui/index.ts`, `console` wires it in `date-time.tsx`), because four date fields named alike are
+indistinguishable to a screen reader; until then the form keeps `RtlDateTimePicker` with its labels.
+`console` — delete `admin.schedule.*` once `schedule.json` lands.
+
+**Captures:** `wave8-lead-schedule-{from-proposal,end-edited,field-error,ready,published-edit}.png`, from
+a new `tests/e2e/wave8-lead-schedule.spec.ts`; `checkin-schedule-walk-ins.spec.ts` and
+`sessions-screens.spec.ts`'s schedule cases stay green (custodian).
+
+### The final gates — 2026-09-17 — `5bf0327` (app), `04fa967` (spec)
+
+Run on committed HEAD by the lead; builds, e2e, `qa` and `visual` in the verification worktree
+(`$scratchpad/wt-verify`), captures into the main checkout.
+
+| Gate | Result |
+|---|---|
+| `db:reset` + `test:rls` | clean · **79 files, 833 passed, 4 todo** |
+| `policy-diff` · `trace` | agree · **313 requirements · 73 entities · 147 stories · no gaps** |
+| `tsc` · `lint` · `npm test` | clean · **0 errors** (24 warnings, none new in kind) · **183 files, 1707 passed** |
+| `ui-reach --wave8` · `ui-lint` · `fonts:check` | **20/20 strict** (from 2/20 at Step 0) · passes, 69 held (allowlist pruned 229 → 81 at `6de7eb2`) · OK, 21 faces |
+| `npm run build` | green |
+| `npm run qa` | **44 passed, 0 failed** |
+| `npm run visual` `wave-8-task-one → wave-8-final` | **0.000% on all six frozen pairs**; the `(dev)` gallery pair grew 106 px on a phone (0.425% on desktop) — looked at: one new glyph, «مؤشرات» (`ff4341c`, 39 → 40), reflowing the icon grid |
+| `npm run parity` | **21 of 28** (path 4 skips without `cwebp`, as every local run) · **background block 3 of 3** · the one new golden reviewed and committed by the lead (`c7fffb1`); no existing golden moved |
+| e2e, full suite | at `5bf0327`: **514 passed, 2 failed, 2 did not run, 80 skipped by project** (3.4 min). The two: `admin-proposals:90` (phone) — `DEC-145`'s hidden `S:` segment doubling «مقترح واحد», spec-side, fixed by `console` at `04fa967` and green alone (6 passed); and `budgets` under suite contention (below). The earlier full run at `40fbbb4` failed 10, every one green alone except `bookmarks:237` (carried below) and the public card's «م» assertion, which assumed an afternoon run (fixed `e9f6b04`). **CI on PR #25 at `5bf0327`: all 13 checks green** |
+| `budgets` alone | **noise, not a regression**: at `e9f6b04` it passed; at `5bf0327`, three solo runs each flagged one screen's LCP at ~3,670 ms — the session list and leaderboard once, the event page twice — while every other reading of the same screens sat at 3,000–3,160 ms. The step is Lantern's, it moves between screens, JS (159 KB) and TBT (7–13 ms) are unchanged, and the event page was not touched this wave. The frozen landing: TBT 231–239 ms vs a 243 ms baseline |
+| ★ the real worker, `E2E_WORKER=1` | **green** at `5bf0327` — `wave8-designer-editor` with the host worker rendering for real: 7 passed, every variant rendered, no Tier A refusal. The first run at `40fbbb4` found Tier A's «face loaded» check refusing real renders — it compared an advance against the **platform's** fallback font and was wrong both ways (refused «جلسة» at 92.09 vs 92.59; passed a page with no faces). `designer` replaced it with `faceResolved()` (`5bf0327`): a loaded, non-errored face of the family, and an identical advance over two different generic fallbacks. `npm run parity` 21 of 28 + background 3 of 3 locally, `--break-font` still fails all 28, and **inside the Linux worker image in CI: 28 of 28 + background 3 of 3** |
+
+#### ✅ The rehearsal — 2026-09-17, on the owner's dump
+
+**The dump** (15,818 lines) was checked before use: **schema only, zero `COPY`/`INSERT`**, exactly at **`0091`** —
+`0091`'s objects present (`photos_broadcast`, `check_in_open`, `admin_member_profile`), none of the objects `0092`–`0099`
+introduce (`canvas_raise`, `platform_alerts`, `session_certificate_designs`, `brand_scheme`, `deletion_pending`,
+`is_baseline`), and `org_domains_domain_check` in production's case-sensitive text form. **Deleted once the rehearsal had
+run**, with its vault-stripped copy and both containers.
+
+| Step | Result |
+|---|---|
+| A: `postgres:17` + `scripts/ci/roles.sql` + the `supabase_realtime` publication + the dump minus its `supabase_vault` line | **0 errors** |
+| The eight baseline platform templates production holds (from `0061`), copied from a second container built with the chain `0001`–`0097` — a schema-only dump has no rows, and `0098` rewrites exactly these | 8 rows and 8 versions; column sets identical to production's |
+| **`0092`–`0099` applied in order, each in one transaction, `ON_ERROR_STOP=1`** | **all eight clean** — the platform library at **11 rows** (5 posters at v2, 3 «أفقية» at v2, 3 «عمودية» at v1, one default per family); `org_domains_domain_check` `CHECK ((domain)::text ~ '…'::text)`; `brand_kits.{light,dark}_canvas_raise` and `certificates.scheme` `not null` (default `light`); RLS on `session_certificate_designs` |
+| Grants and `SECURITY DEFINER` on the **eleven functions the eight re-create** | **identical before and after**; the only changes are the intended ones — `certificate_render_context()` and `platform_template_library()` return added columns, five new functions (`platform_alerts`, `certificate_template_latest_version`, `set_certificate_design`, `redesign_held_certificates`, the re-created `platform_template_library`) carry their files' grants, and `platform_org_metrics`' owner-only ACL is written out by `0097`'s `revoke` (the same privilege) |
+| ★ **Production + `0092`–`0099` against the chain `0001`–`0099`** in the same bare-Postgres environment, catalog by catalog (columns, enums, function bodies by hash with grants and settings, policies, RLS flags, triggers, constraints, indexes, table and column grants, views) | **identical except three pre-existing, environmental classes, none from these migrations**: `rls_auto_enable()`, production's platform event trigger (known since wave 7); four owner-only tables and views whose default ACL a dump restore leaves implicit; and `registrations`' Supabase default privileges, which local Supabase carries identically. ★ **Wave 7's `org_domains` drift is gone — `0092` converged it** |
+| RLS suite on the rehearsal database, as dumped | 28 failures in 8 files, the same environmental class as wave 7's: bucket rows (`objects_bucket_id_fkey`), retention periods, the `storage`/`realtime` policies a `public`-only dump leaves out |
+| ★ **The same suite after restoring exactly those** — 6 buckets, 7 retention periods, 13 `storage`/`realtime` policies, from the local chain (platform configuration, no member data) | **79 files: 832 passed, 1 failed, 4 todo.** The one: `m2-schema` expects a duplicate check-in refused `23505` and got `23P01`. Both constraints refuse the row; Postgres checks them in creation order, and **the dump restore reversed it** — the exclusion constraint's OID precedes `check_ins_session_member_active_uq` on the rehearsal database, while `0087` creates the unique index first and then re-creates the exclusion constraint, which is production's order and the chain's. Not from these migrations (none touches `check_ins`); it did not appear in wave 7's rehearsal because that dump predated `0087` |
+
+### ★ `0092`–`0099` — what the owner does, in order, and why the push precedes the merge
+
+**Production is at `0091`** (wave 7's push). This wave adds eight migrations, **all additive**:
+
+| # | What it adds | What the new app calls that only it creates |
+|---|---|---|
+| `0092` | `org_domains`' CHECK re-stated as `domain::text ~ '…'` — one case-sensitive meaning everywhere (the chain's citext form converges on production's) | nothing — safe in either order |
+| `0093` | `brand_kits.{light,dark}_canvas_raise` (backfilled, then `not null`); `brand_kit()`, `save_brand_kit()`, `export_render_context()` re-created with the token | `canvasRaise` in the kit and the render context |
+| `0094` | the template guard walks every colour, gradient stops included | nothing — but see the read below |
+| `0095` | `platform_alerts()` | `/app/platform` and SCR-084 |
+| `0096` | `platform_template_library()` dropped and re-created with `orientation`, `is_baseline`, `retirable` | SCR-083 |
+| `0097` | `reinstate_org()` refuses a pending deletion; `platform_org_metrics.deletion_pending`; `platform_org()`'s `deletionPending` | SCR-080 |
+| `0098` | **data**: the five posters' v2 (the gradient), the three landscape certificates' v2 and «أفقية» names, three portrait certificates — eleven platform rows | the certificate library's six rows |
+| `0099` | `brand_scheme`, `certificates.scheme` (default `light`), `ENT-session_certificate_designs`, `set_certificate_design()`, `redesign_held_certificates()`, `issue_certificate()` from `0088`'s text, `certificate_render_context()` with `scheme` | SCR-045 end to end, and the worker's certificate render |
+
+**Merging deploys the app on Vercel and the worker on Railway, both from `main`.** The deployed code calls
+`platform_alerts()`, the new `platform_template_library()` columns, `set_certificate_design()` and
+`certificates.scheme`, so merging first would put it on a schema without them. Pushed first, the old app keeps
+working: none of the eight removes anything it reads, and `platform_template_library()`'s new signature only adds
+columns. **Two windows to know.** ★ **Saving a brand kit fails between the push and the merge**: `0093`'s
+`save_brand_kit()` requires `canvasRaise` in both schemes (`POL-save_brand_kit.canvas_raise_required`, `23502`), and
+`main`'s form does not send it — so push and merge back to back. And between the push and the worker's redeploy, the old worker renders `0098`'s v2
+posters with its pre-`DEC-127` renderer, which reads only `background.color` — they come out on the old white
+background, as posters look today. Nothing breaks; the data fix below re-renders them.
+
+**The owner's order:**
+1. ~~**Rehearse `0092`–`0099` against a production schema dump**~~ — ✅ **done 2026-09-17 by the lead on the owner's dump**, recorded directly below; the dump is deleted.
+2. **Two production reads first** (read only):
+   `select count(*) from public.org_domains where domain <> lower(domain);` — expect 0 (`0092`'s check must
+   validate); and a read that **no platform or org template version carries a non-token colour**
+   (`0094`'s guard refuses one on its next update, not on existing rows — but an org would meet the refusal
+   the first time it edits such a template).
+3. **Outside a scheduled session** — ★ **Server Action IDs rotate when this wave deploys**; an open tab's next
+   action fails until it reloads. `supabase db push` (`0092`–`0099`) → **merge PR #25** → confirm the Railway
+   worker redeployed (its log line now reads «polling every 15 s», `41f8807`).
+4. **The scoped data fix** (`DEC-023`, never a migration), after the worker is on the new code — the exact SQL below.
+
+#### The owner's SQL — each statement tested against the local database on 2026-09-17
+
+**Step 2, the template colours** (read-only; **good = 0 rows**). The same walk and the same allowlist as `0094`'s guard. Tested by planting `#1d2a42` in a gradient stop, `navy` on a layer and `rgb(1,2,3)` on a fill inside a rolled-back transaction: all three reported, `{{ brand.edge }}` accepted.
+
+```sql
+-- Read-only. Every colour a template version carries, judged by 0094's own rule.
+-- Good: 0 rows.
+with colour as (
+  select v.id as version_id, v.template_id, v.version, v.published_at, c.path, c.value
+    from public.design_template_versions v
+    cross join lateral (
+      select 'background.color' as path, v.document #>> '{background,color}' as value
+      union all
+      select 'background.stops[' || (s.ord - 1) || '].color', s.stop ->> 'color'
+        from jsonb_array_elements(case when jsonb_typeof(v.document #> '{background,stops}') = 'array'
+                                       then v.document #> '{background,stops}' else '[]'::jsonb end)
+             with ordinality as s(stop, ord)
+      union all
+      select 'layer ' || (l.layer ->> 'id') || ' ' || f.field,
+             case f.field when 'color' then l.layer ->> 'color'
+                          when 'shape.fill' then l.layer #>> '{shape,fill}'
+                          else l.layer #>> '{shape,stroke}' end
+        from jsonb_array_elements(case when jsonb_typeof(v.document -> 'layers') = 'array'
+                                       then v.document -> 'layers' else '[]'::jsonb end) as l(layer)
+        cross join (values ('color'), ('shape.fill'), ('shape.stroke')) as f(field)
+    ) as c
+   where c.value is not null
+)
+select t.scope, t.org_id, o.name as org_name, t.purpose, t.name as template_name, colour.version,
+       colour.published_at is not null as published, colour.path, colour.value
+  from colour
+  join public.design_templates t on t.id = colour.template_id
+  left join public.orgs o on o.id = t.org_id
+ where colour.value !~ '^\{\{\s*brand\.[A-Za-z]+\s*\}\}$'
+ order by t.scope, o.name, t.name, colour.version, colour.path;
+```
+
+**Step 4, the re-render.** One `regenerate_poster` job per live poster; each requests **12** `render_variant` jobs (5 screen presets × PNG and WebP, plus A4 and A3 PDF) — at most, because a variant whose fingerprint is unchanged is a cache hit. The `render` queue runs **one job at a time**. ★ **About 3 minutes per poster, not per variant**: wave 3 measured all twelve to `ready` in about three minutes on the worker image (`designer.md` line 860's «three minutes each» is a misstatement); the lead's host worker took 0.2–1.1 s per variant. Plan for **up to 3 × posters minutes**.
+
+Count first (read-only):
+
+```sql
+-- Read-only. What the re-render will touch — run this first and keep the numbers.
+select count(*)                      as posters,
+       count(*)                      as regenerate_poster_jobs,
+       count(*) * 12                 as render_variant_jobs_at_most,
+       count(distinct s.org_id)      as orgs,
+       min(s.starts_at)              as first_session_starts,
+       max(s.starts_at)              as last_session_starts,
+       count(*) * 3                  as minutes_at_most
+  from public.session_posters p
+  join public.sessions s on s.id = p.session_id
+ where p.binding = 'live'
+   and s.state = 'published'
+   and s.starts_at > now();
+```
+
+Look at the rows (read-only):
+
+```sql
+-- Read-only. The same predicate, one row per poster, to look at before writing.
+select s.id as session_id, o.name as org_name, s.title, s.starts_at, p.mode, p.binding
+  from public.session_posters p
+  join public.sessions s on s.id = p.session_id
+  join public.orgs o on o.id = s.org_id
+ where p.binding = 'live'
+   and s.state = 'published'
+   and s.starts_at > now()
+ order by s.starts_at;
+```
+
+Then the write — tested in a rolled-back transaction on 4 local posters: 4 jobs on queue `render`, 3 attempts; run twice it still left 4 (the key replaces):
+
+```sql
+-- The write (DEC-023): the same predicate as the read, nothing wider.
+with enqueued as (
+  select s.id as session_id,
+         public.enqueue_job('regenerate_poster',
+                            jsonb_build_object('session_id', s.id),
+                            'poster:' || s.id::text,   -- 0063's key: re-running replaces, never duplicates
+                            null, 'render', 3) as job_id
+    from public.session_posters p
+    join public.sessions s on s.id = p.session_id
+   where p.binding = 'live'
+     and s.state = 'published'
+     and s.starts_at > now()
+)
+select count(*) as regenerate_poster_jobs_enqueued, now() as enqueued_at from enqueued;
+```
+
+Progress (read-only; paste the `enqueued_at` the write returned). **Done** when nothing is `queued` or `rendering`; **good** = every row `ready`; a `failed` row says why in `error` and retries from the studio's export list:
+
+```sql
+select a.status, count(*)
+  from public.export_artifacts a
+ where a.created_at >= '<enqueued_at>'
+ group by a.status
+ order by a.status;
+```
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| ~~`console`~~ | ~~the populated photo-report card has no 390 px capture~~ **closed**: `wave7-console-moderation-reports-populated-390-rtl-phone.png` (`admin-moderation.spec:237`, taken 2026-09-16 23:47) opened by the lead at sync 1 — the card, the reason, «تجاهل البلاغ» and «أزل» (the tab bar over the action row is the full-page artefact). It showed a real defect, routed: the moderation tab strip clips «بلاغات الصور»'s count at 390 with no scroll cue | wave 6 row 14, wave 7 |
+| `console` | `console.spec`'s untouched-route capture at Pixel 7's 412 px; the dashboard's «أكثر …» cards — **closed or not, stated in its plan** | wave 6 |
+| `designer` | a member re-added after a removal gets no new attendance certificate (`fan_out_certificates()` fires only into `completed`) — **this wave or not, stated in its plan** | wave 7, sync 1 |
+| `designer` · `console` · `platform` | `noValidate` on the eleven forms wave 7 found with a native `required` — every one is in this wave's routes except `me/privacy` (deliberate) | wave 7, sync 5 |
+| lead (custodian) | `content`: the photo tile's takedown label wraps under a half-width tile; a save pressed before hydration on `/app/me`. `sessions`: the filter sheet's native date mask; `0085`'s `ratings.edited_at` at millisecond precision | wave 6, wave 7 |
+| lead | CSP report-only; the one nonce-less inline script is the frozen marketing intro — M13 | wave 6 |
+| lead | watch, not open: `bookmarks:237` and `notify-screens:108` under full-suite load (post-action refetch) — if either recurs as «never updates», read `DEC-135` first, then remember `DEC-146` retired its cause | wave 7 |
+| ★ owner / wave 9 | **`bookmarks:237` recurs as «never updates» on Next 16.3.5**: the un-bookmark Server Action returns 200 with `x-action-revalidated: 1`, the button flips, and the card is still listed 10 s later. On the final build it failed in 2 of 3 runs of the spec alone (both projects in parallel) and in the full suite, and passed 4 of 4 with tracing on — a timing race, not load. `DEC-146`'s upgrade did **not** retire it. An A/B against `e7d0657` is not possible on a `0099` database (that build's `getBrandKit()` fails, `DEC-148` finding 4). User impact: a removed bookmark stays on `/app/me/bookmarks` until a reload; nothing is lost. The trace is kept at `$scratchpad/bm-fail-results` | wave 8, final gates |
+| ★ owner | **break-glass opens no org screen** (`DEC-055` option C). The copy now says so; option A — a read-only browsable `impersonating` state in `session.ts` — is yours to schedule (`DEC-149` §2) | wave 8, sync 2 |
+| ★ owner · `notify`/M12 | a live `REQ-NTF-007` weakness — an email template's required fields are admin-editable, so one can be saved without `{{title}}`; `REQ-NTF-008`'s bounce and delivery states are never written (no webhook route) | wave 8, sync 1 |
+| M13 | `controlClass`'s `w-full` beats a caller's `w-*` (`.w-full` is emitted after the fixed widths), so every `<Input className="w-32">` is full width (`DEC-149` §4) | wave 8, sync 2 |
+| M13 | `DEC-145`'s orphaned streaming segment — a hidden duplicate of a page's content under `div[hidden][id^="S:"]` on several `/app` routes; locators scope to `#main` | wave 7, again in wave 8 |
+| `scoring` | recognition edits (badges, levels, perks, streaks) write no audit or history row | wave 8, sync 2 |
+| `designer` | a member re-added after a removal gets no new attendance certificate — out this wave (`DEC-148`) | wave 7 |
+
+### Order inside the wave
+
+1. **Task one and Step 0** — done, before anyone spawns. Push; the draft PR is #25.
+2. **Spawn** `designer`, `console`, `platform`, `branding` with a **planning-first** task: each writes its plan
+   into `docs/plan/notes/<name>.md` and edits nothing else until the lead approves it. **`branding`'s contract 1
+   (types only) may land before its plan is approved**, because it unblocks `designer`.
+3. **Sync 1** — the four plans read in full and answered; **contract 3 ruled** (what a baseline row is) before
+   anyone seeds; the studio's M12 mechanics in or out; the lead's own schedule plan written beside them.
+4. The tracks build. At each sync (`TEAM.md` §3) the lead promotes SQL, builds **committed HEAD** in the
+   verification worktree (`$scratchpad/wt-verify`, own `npm ci`, a two-line `.env.local`), runs e2e there with
+   `E2E_SHOTS_DIR` set to the main checkout's `.qa-shots/rtl` and `STUBBED_SERVER_LOG`, opens every capture at
+   full resolution where a glyph or sign order matters, and ticks rows here only against `ui-reach --wave8` and a
+   capture actually opened.
+5. The lead's own rows (L2–L4) between syncs; L3 when the owner's schema dump is in hand; L6 after `designer`'s
+   `--update`.
+6. Freeze, the final build and the full gate set on the final commits — `parity` included — this file, the PR
+   ready; **the owner merges.** ★ **The migration order for this wave is written here before the PR is marked
+   ready**, from what its migrations add or remove, as wave 7's was.
+
+
+---
+
+## ★★ WAVE 7 — COMPLETE and MERGED (PR #24, `4f19cd6`; `0082`–`0091` pushed) — the remaining routes onto the M9 system, and the check-in switch (`DEC-137`)
 
 **The owner's goal, in substance:** put the remaining member and staff routes onto the M9 design system —
 about eighteen routes in the brief, **twenty-two pages and the admin IA** once every route is named — with

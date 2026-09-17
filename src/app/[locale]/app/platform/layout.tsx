@@ -1,31 +1,29 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
+import { PlatformNav } from "@/components/platform/platform-nav";
 import { requirePlatformAdmin } from "@/lib/dal/platform";
 
-// The platform console's shell — `app/platform/**`'s one shared layout.
-// SCR-080 … 085, REQ-ADM-001.
+// The platform console's shell — `app/platform/**`'s one shared layout, onto
+// the system for wave 8 (SCR-080 … 085, REQ-ADM-001, REQ-UIX-017, DEC-147;
+// `docs/plan/notes/platform.md` W8.1).
 //
 // The gate lives in the DAL (`requirePlatformAdmin`), which is called here AND
-// again in every page: a layout does not re-render on navigation under Partial
-// Rendering [v16], so this is the boundary for "reaches the console at all"
-// and never the boundary for a given screen. `requirePlatformAdmin` is
-// `cache()`d, so the pair costs one round trip per request, not two.
+// again at the data in every page: a layout does not re-render on navigation
+// under Partial Rendering [v16], so this is the boundary for "reaches the
+// console's chrome at all" and never the boundary for a given screen.
 //
 // It answers **not found**, not forbidden, for an org admin who guesses the
-// URL. A 403 confirms the console exists and that this account is not on it;
-// a 404 says nothing at all, and there is nothing here an org admin should
-// learn the shape of.
+// URL — streamed, so a 200 with `noindex` and the not-found page (DEC-134). A
+// 403 would confirm the console exists and that this account is not on it.
 //
-// The nav carries no org-scoped link. A super admin has no org, so there is
-// nothing under `/app/admin` for them to reach and no reason to show it.
-
-const NAV = [
-  { key: "orgs", href: "/app/platform/orgs" },
-  { key: "templates", href: "/app/platform/templates" },
-  { key: "metrics", href: "/app/platform/metrics" },
-  { key: "impersonate", href: "/app/platform/impersonate" },
-] as const;
+// The nav carries no org-scoped link: a super admin has no org.
+//
+// ★ Order, top to bottom: the break-glass banner (in flow, never sticky — a
+// second sticky layer is `16` §3.1's focus hazard), the console's own skip
+// link past the rail (the shell's skip link lands on `main`, which is above
+// the rail), then the rail beside the content. Nothing in this file knows
+// which screen is current; `PlatformNav` reads that on the client, because a
+// layout that decides it is wrong from the second screen on.
 
 export default async function PlatformLayout({
   children,
@@ -36,41 +34,23 @@ export default async function PlatformLayout({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await requirePlatformAdmin(locale, `/${locale}/app/platform/orgs`);
+  await requirePlatformAdmin(locale, `/${locale}/app/platform`);
   const t = await getTranslations("platform.shell");
 
   return (
     <div>
-      {/* SCR-085's persistent banner, on the console's own shell. It renders
-          nothing unless this operator is inside a live break-glass session,
-          and it is the lead's to wire into `/no-access` — the other screen an
-          impersonating super admin actually lands on under DEC-055. A layout
-          does not re-render on navigation [v16], so the remaining-time figure
-          is as of the last full request; the session expires on its own
-          either way, which is what REQ-ADM-002 relies on. */}
       <ImpersonationBanner locale={locale} />
-      <nav aria-label={t("brand")} className="border-b border-edge pb-3">
-        {/* Wrapping, never an internally-scrollable strip: an item scrolled
-            out of a horizontal scroller reads as "off the page" at 390 px,
-            which is the same reasoning `admin/layout.tsx` records. */}
-        <ul className="flex flex-wrap items-center gap-1">
-          {NAV.map((item) => (
-            <li key={item.key}>
-              <Link
-                href={item.href}
-                className="inline-flex h-10 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3"
-              >
-                {t(`nav.${item.key}`)}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      {/* Said once, at the top of the console, and not repeated on every
-          screen: this is the property the whole design rests on, and a reader
-          who sees it four times stops reading it. */}
-      <p className="mt-4 max-w-3xl text-body-sm text-fg-muted">{t("note")}</p>
-      <div className="mt-8">{children}</div>
+      <a href="#platform-content" className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white">
+        {t("skipToContent")}
+      </a>
+      <div className="md:grid md:grid-cols-[auto_1fr] md:items-start md:gap-10">
+        <PlatformNav />
+        {/* `tabIndex={-1}` so the skip link MOVES focus rather than only the
+            scroll position (the admin console's own reasoning). */}
+        <div id="platform-content" tabIndex={-1} className="mt-6 min-w-0 outline-none md:mt-0">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

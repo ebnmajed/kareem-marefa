@@ -1,12 +1,15 @@
 import { getTranslations } from "next-intl/server";
-import { formatNumber } from "@/components/sessions/numerals";
+import { Badge } from "@/components/ui/badge";
+import { LockIcon } from "@/components/ui/icons";
+import { Panel } from "@/components/ui/panel";
+import { formatTime } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { getMyActiveImpersonation } from "@/lib/dal/platform";
 import { stopImpersonationAction } from "./actions";
 import { StopImpersonationControl } from "./stop-control";
 
 // The `ImpersonationBanner` slot — REQ-ADM-002, REQ-ADM-019, SCR-085,
-// DEC-052, DEC-055.
+// DEC-052, DEC-055, DEC-147.
 //
 // ★ IT RENDERS NOTHING FOR ALMOST EVERYONE, ALMOST ALWAYS. `my_impersonation()`
 // is keyed on `auth.uid()` and needs no org claim, so this is safe to render on
@@ -15,20 +18,38 @@ import { StopImpersonationControl } from "./stop-control";
 // break-glass session gets a banner. It never redirects and never throws, which
 // matters because a slot in a layout takes the whole page down with it.
 //
-// ★ WHERE IT APPEARS, under DEC-055. This wave accepts that an impersonating
-// super admin has no `member_id` and therefore lands on `/no-access` rather
-// than inside the org's screens. So the banner belongs in two places — the
-// platform console's shell and `/no-access` — and the second is the more
-// important of the two: it is the screen the operator is actually looking at,
-// and without the banner there it says only «لا يمكن الدخول», which is true and
-// useless. Both slots are the lead's to wire.
+// ★ WHERE IT APPEARS, under DEC-055 option C (still what is built). An
+// impersonating super admin has no `member_id`, so an org route sends them to
+// `/no-access`; the banner therefore lives in the platform console's shell and
+// on `/no-access`, which is everywhere such a session can be.
 //
-// It says three things and stops: which org, how long is left, and that the
-// org's audit log already has the record. The third is not decoration — SCR-085
-// states the consequence before the session starts, and a banner that dropped
-// it would let an operator forget it the moment the screen changed.
+// ★ AN END TIME, NOT A COUNTDOWN (wave 8, notes W8.0 F7). This renders in a
+// layout, and a layout is not re-rendered on a client-side navigation: «تنتهي
+// خلال 42 دقيقة» was true on the first screen and false on every screen after.
+// «تنتهي عند 14:32» stays true — including after the session has ended, until
+// the next full request drops the banner.
+//
+// ★ ONE SURFACE IN TWO CONTEXTS. The console is light and `/no-access` is dark
+// (`(auth)/layout.tsx`'s `.theme-dark`). `Panel`'s `live` tone paints a light
+// background, and under `.theme-dark` the semantic text tokens turn light — so
+// the dark context drops the fill and keeps the live border, the way
+// `ui/badge` already treats `live` there. The status itself is the badge: seen
+// before it is read (`16` §3 principle 3).
+//
+// ★ WHAT IT SAYS IS WHAT THE SESSION DOES. Under DEC-055 option C a break-glass
+// session opens none of the org's screens, so the banner does not say «you are
+// browsing» the org: it names the org the session is open on, says it is in that
+// org's own audit log, and says plainly that the org's screens do not open —
+// the same sentence `/no-access` says (the lead's copy there, sync 4).
+//
+// ★ On a phone the stop control sits UNDER the text, full width: beside it, it
+// squeezed the sentences into a five-line column at 390 px (sync 4's capture).
+// From `sm` up it returns beside the text.
 //
 // No heading of its own: the host page owns the landmark (TEAM.md §2).
+
+/** The platform's own zone: a super admin has no org to take one from. */
+const PLATFORM_TIME_ZONE = "Asia/Riyadh";
 
 export interface ImpersonationBannerProps {
   locale: string;
@@ -41,31 +62,34 @@ export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) 
   const t = await getTranslations("platform.banner");
 
   return (
-    // `role="status"` rather than `alert`: it is a standing condition, not an
-    // interruption, and an assertive live region re-announced on every
-    // navigation is how a screen-reader user learns to tune a banner out.
-    <div
-      role="status"
-      className="border-b border-edge-strong bg-silver-100 px-4 py-3 md:px-8"
-    >
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="min-w-0 text-body-sm text-fg-heading">
-          {t.rich("viewingAs", { org: active.orgName, bdi: (c) => <bdi>{c}</bdi> })}
-        </p>
-        <p className="text-body-sm text-fg-body">
-          {t("remaining", {
-            minutes: t("minutes", {
-              count: active.minutesRemaining,
-              value: formatNumber(active.minutesRemaining),
-            }),
-          })}
-        </p>
-        <p className="text-body-sm text-fg-muted">{t("readOnly")}</p>
-        <StopImpersonationControl
-          sessionId={active.id}
-          stop={stopImpersonationAction.bind(null, locale as Locale)}
-        />
-      </div>
+    // `role="status"` rather than `alert`: a standing condition, not an
+    // interruption — an assertive region re-announced on every navigation is
+    // how a screen-reader user learns to tune a banner out.
+    <div role="status" className="mb-6">
+      <Panel tone="live" className="[.theme-dark_&]:border-live-on-dark/50 [.theme-dark_&]:bg-transparent">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="min-w-0 space-y-1.5 sm:flex-1">
+            <Badge tone="live" icon={<LockIcon aria-hidden />}>
+              {t("badge")}
+            </Badge>
+            <p className="text-label text-fg-heading">
+              {t.rich("viewingAs", { org: active.orgName, bdi: (c) => <bdi>{c}</bdi> })}
+            </p>
+            <p className="text-body-sm text-fg-body">
+              {t.rich("endsAt", {
+                time: formatTime(active.expiresAt, PLATFORM_TIME_ZONE, locale),
+                bdi: (c) => <bdi>{c}</bdi>,
+              })}
+            </p>
+            <p className="text-body-sm text-fg-muted">{t("readOnly")}</p>
+          </div>
+          <StopImpersonationControl
+            sessionId={active.id}
+            stop={stopImpersonationAction.bind(null, locale as Locale)}
+            className="w-full sm:w-auto sm:shrink-0"
+          />
+        </div>
+      </Panel>
     </div>
   );
 }

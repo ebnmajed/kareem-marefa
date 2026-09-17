@@ -97,7 +97,8 @@ describe("REQ-DSG-014 — Tier A fails the export, and says why", () => {
     fontSize: "64px",
     letterSpacing: "normal",
     fallbackAdvance: 500,
-    distinctFromFallback: true,
+    faceLoaded: true,
+    coverageAdvances: [720, 720],
     ...over,
   });
   const expectation = [{ layerId: "l_title", fittedSize: 64, lines: 2 }];
@@ -108,9 +109,9 @@ describe("REQ-DSG-014 — Tier A fails the export, and says why", () => {
 
   it("★ catches a face that never loaded — the D66 nightmare in one number", () => {
     // A font fetch that fails does not error; it substitutes, and the poster
-    // looks fine. The advance against a face that certainly does not exist
-    // is what notices.
-    const failures = checkTierA({ l_title: sig({ distinctFromFallback: false, totalAdvance: 500 }) }, expectation);
+    // looks fine. No loaded face of the family is what notices
+    // (`designer-tier-a-face.test.ts` has the cases that broke the old rule).
+    const failures = checkTierA({ l_title: sig({ faceLoaded: false, totalAdvance: 500 }) }, expectation);
     expect(failures.map((f) => f.code)).toEqual(["font_never_loaded"]);
     // One cause, one failure: the rest would be measurements of the fallback.
     expect(failures).toHaveLength(1);

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
-import { type DesignDocument, SCHEMA_VERSION, validateDocument } from "@kareem/designer-runtime";
+import { type BrandScheme, type DesignDocument, orientationOf, SCHEMA_VERSION, validateDocument } from "@kareem/designer-runtime";
+import { previewBrandBindings } from "@/lib/dal/designer";
 import { sessionClient } from "@/lib/dal/session";
 
 // The two template libraries — REQ-DSG-007, REQ-DSG-008, REQ-DSG-024,
@@ -56,6 +57,15 @@ export interface TemplateSummary {
   /** Always false for a platform template: 03 §5.9a's write clauses say so,
    *  and the screen reads it from here rather than re-deriving the rule. */
   canEdit: boolean;
+  /** A certificate's composition, from its latest version's master (DEC-148:
+   *  a row is a composition, and the document says which). Null for a poster. */
+  orientation: "landscape" | "portrait" | null;
+  /** The latest version's document, for the card's live preview. */
+  previewDocument: DesignDocument | null;
+  /** How many of this org's sessions use the template — a poster bound to any
+   *  of its versions, or a certificate pinned to one (`16` §10.3). Counted
+   *  under RLS, so it is the caller's own org only. */
+  usageCount: number;
 }
 
 export interface TemplateLibraryData {
@@ -63,6 +73,12 @@ export interface TemplateLibraryData {
   platform: TemplateSummary[];
   org: TemplateSummary[];
   canManage: boolean;
+  /** The palette the cards preview in: posters are dark (DEC-125); a
+   *  certificate library offers both, because a scheme is chosen per session
+   *  and is never a row (DEC-148). */
+  scheme: BrandScheme;
+  /** This org's brand over the platform palette, in that scheme. */
+  previewBindings: Record<string, string>;
 }
 
 type TemplateRow = {
@@ -84,9 +100,14 @@ function lockedRegions(document: unknown): number {
 }
 
 /** SCR-055 / SCR-056. `null` when the caller is not staff — the page 404s. */
-export async function getTemplateLibrary(locale: string, purpose: TemplatePurpose): Promise<TemplateLibraryData | null> {
+export async function getTemplateLibrary(
+  locale: string,
+  purpose: TemplatePurpose,
+  options: { scheme?: string | null } = {},
+): Promise<TemplateLibraryData | null> {
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return null;
+  const scheme: BrandScheme = purpose === "poster" ? "dark" : options.scheme === "dark" ? "dark" : "light";
 
   const { data: templates, error } = await supabase
     .from("design_templates")
@@ -113,6 +134,26 @@ export async function getTemplateLibrary(locale: string, purpose: TemplatePurpos
   const draftFor = new Map<string, string>();
   for (const d of (drafts ?? []) as { id: string; draft_for_template_id: string }[]) draftFor.set(d.draft_for_template_id, d.id);
 
+  // Usage: the sessions of THIS org using any version of each template. RLS
+  // scopes both reads to the caller's org, so a platform template's count is
+  // this org's use of it and nobody else's.
+  const versionToTemplate = new Map<string, string>();
+  for (const v of (versions ?? []) as VersionRow[]) versionToTemplate.set(v.id, v.template_id);
+  const versionIds = [...versionToTemplate.keys()];
+  const sessionsByTemplate = new Map<string, Set<string>>();
+  if (versionIds.length) {
+    const { data: uses } =
+      purpose === "poster"
+        ? await supabase.from("design_documents").select("template_version_id, bound_session_id").in("template_version_id", versionIds).not("bound_session_id", "is", null)
+        : await supabase.from("certificates").select("template_version_id, session_id").in("template_version_id", versionIds).not("session_id", "is", null);
+    for (const use of (uses ?? []) as Array<{ template_version_id: string; bound_session_id?: string; session_id?: string }>) {
+      const template = versionToTemplate.get(use.template_version_id);
+      const sessionId = use.bound_session_id ?? use.session_id;
+      if (!template || !sessionId) continue;
+      sessionsByTemplate.set(template, (sessionsByTemplate.get(template) ?? new Set()).add(sessionId));
+    }
+  }
+
   const summarise = (t: TemplateRow): TemplateSummary => {
     const list = byTemplate.get(t.id) ?? [];
     const latest = list[list.length - 1];
@@ -130,15 +171,22 @@ export async function getTemplateLibrary(locale: string, purpose: TemplatePurpos
       lockedRegionCount: latest ? lockedRegions(latest.document) : 0,
       draftDocumentId: draftFor.get(t.id) ?? null,
       canEdit: t.scope === "org" && session.role === "admin",
+      orientation: t.purpose === "certificate" && latest ? orientationOf(latest.document as DesignDocument) : null,
+      previewDocument: latest ? (validateDocument(latest.document).ok ? (latest.document as DesignDocument) : null) : null,
+      usageCount: sessionsByTemplate.get(t.id)?.size ?? 0,
     };
   };
 
   const rows = (templates ?? []) as TemplateRow[];
+  // Retired platform rows are the platform's business, not an org's choice.
+  const byOrientation = (a: TemplateSummary, b: TemplateSummary) => Number(b.isDefault) - Number(a.isDefault) || (a.orientation ?? "").localeCompare(b.orientation ?? "");
   return {
     purpose,
-    platform: rows.filter((t) => t.scope === "platform").map(summarise),
-    org: rows.filter((t) => t.scope === "org").map(summarise),
+    platform: rows.filter((t) => t.scope === "platform" && t.retired_at === null).map(summarise),
+    org: rows.filter((t) => t.scope === "org").map(summarise).sort(byOrientation),
     canManage: session.role === "admin",
+    scheme,
+    previewBindings: await previewBrandBindings(locale, scheme),
   };
 }
 
@@ -151,6 +199,9 @@ export const createBlankInput = z.object({
   purpose: z.enum(["poster", "certificate"]),
   family: z.string().min(1).max(40),
   name: templateNameSchema,
+  /** A certificate is a landscape or a portrait COMPOSITION (DEC-148); a
+   *  blank one starts on the page it will be exported at. */
+  orientation: z.enum(["landscape", "portrait"]).optional(),
 });
 
 export type TemplateWriteFailure = { status: "not_authorized" } | { status: "invalid"; message: string };
@@ -160,8 +211,9 @@ export type PublishResult = { status: "ok"; version: number } | TemplateWriteFai
 /** A blank document: RTL, brand-token background, no layers. Never a hex
  *  literal — the template guard (0055) refuses one, and the requirement is
  *  that a colour lives in the brand kit (REQ-DSG-021). */
-function blankDocument(purpose: TemplatePurpose): DesignDocument {
-  const master = purpose === "poster" ? { width: 1080, height: 1350 } : { width: 3508, height: 2480 };
+function blankDocument(purpose: TemplatePurpose, orientation: "landscape" | "portrait" = "landscape"): DesignDocument {
+  const master =
+    purpose === "poster" ? { width: 1080, height: 1350 } : orientation === "portrait" ? { width: 2480, height: 3508 } : { width: 3508, height: 2480 };
   return {
     schemaVersion: SCHEMA_VERSION,
     purpose,
@@ -252,7 +304,7 @@ export async function createBlankTemplate(locale: string, input: z.infer<typeof 
   const { error: versionError } = await supabase.from("design_template_versions").insert({
     template_id: created.id,
     version: 1,
-    document: blankDocument(input.purpose),
+    document: blankDocument(input.purpose, input.orientation),
     published_at: new Date().toISOString(),
     published_by: session.memberId,
   });

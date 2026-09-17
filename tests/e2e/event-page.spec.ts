@@ -223,8 +223,8 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   //
   // ★ NO LONG TIMEOUT ON THE CONFIRMATION. A 45 s allowance here once hid
   // React 19.2's lost ping (DEC-135): about one press in three never committed
-  // until something else updated the page. `patches/next+16.2.10.patch`
-  // fixes it in `react-dom` (`DEC-136`), so a regression must fail here loudly
+  // until something else updated the page. React fixed it upstream
+  // (facebook/react#36134, vendored by `next@16.3.5` — `DEC-146`), so a regression must fail here loudly
   // rather than wait it out — and `reserve-probe.spec.ts` presses sixteen times.
   test.slow();
   memberId = await signIn(context);

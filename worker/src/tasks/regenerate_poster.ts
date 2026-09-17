@@ -105,7 +105,12 @@ export const regenerate_poster: Task = async (payload, helpers) => {
     // The org's brand override over the platform palette, composed HERE so
     // the fingerprint below sees it: a changed colour is a new artifact
     // (06 §8.3, DEC-052, REQ-DSG-013). No row is the identity override.
-    ...(await brandBindings(helpers, ctx.org_id, "light")),
+    // ★ A generated poster is DARK (DEC-125, DEC-148 contract 2) — every
+    // poster in the canvas is, and the editor previews it the same way
+    // (`previewScheme()` in src/lib/dal/designer.ts), so the preview an admin
+    // approves is the artifact. The blank-capture guard is measured against
+    // the page's own background since d6e9ecf, which is what made this safe.
+    ...(await brandBindings(helpers, ctx.org_id, "dark")),
     ...resolveSessionBindings(
       {
         id: ctx.session_id,

@@ -18,10 +18,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
 import { seed, seedBase } from "./fixture";
 
-const FILE = "platform/0001_m8_schema.sql";
+const FILES = ["platform/0001_m8_schema.sql", "platform/0010_reinstate_refuses_pending_deletion.sql"];
 
 async function apply(tx: Tx) {
-  if (existsSync(join(process.cwd(), "supabase", "proposed", FILE))) await applyProposed(tx, FILE);
+  for (const file of FILES) {
+    if (existsSync(join(process.cwd(), "supabase", "proposed", file))) await applyProposed(tx, file);
+  }
 }
 
 /** A super admin's token: platform_admin and nothing else. No org_id, ever. */
@@ -412,7 +414,7 @@ describe("platform — the org write paths (REQ-TEN-002, REQ-TEN-007)", () => {
     });
   });
 
-  it("DEC-052 — a freshly created org reads all eight A27 baseline templates, defaults set, before publishing anything", async () => {
+  it("DEC-052 · DEC-148 — a freshly created org reads the whole A27 baseline, one default per family, before publishing anything", async () => {
     await withTx(async (tx) => {
       const f = await seedBase(tx);
       await apply(tx);
@@ -450,22 +452,20 @@ describe("platform — the org write paths (REQ-TEN-002, REQ-TEN-007)", () => {
         `select purpose, family, is_default from public.design_templates
           where scope = 'platform' and retired_at is null order by purpose, family`,
       );
-      expect(platform).toHaveLength(8);
-      expect(platform.filter((t) => t.purpose === "poster").map((t) => t.family)).toEqual([
-        "announcement",
-        "meetup",
-        "panel",
-        "talk",
-        "workshop",
-      ]);
-      expect(platform.filter((t) => t.purpose === "certificate").map((t) => t.family)).toEqual([
-        "achievement",
-        "attendance",
-        "presenter",
-      ]);
-      // One default per purpose, at minimum — the floor DEC-052 names.
-      expect(platform.filter((t) => t.purpose === "poster" && t.is_default).length).toBeGreaterThanOrEqual(1);
-      expect(platform.filter((t) => t.purpose === "certificate" && t.is_default).length).toBeGreaterThanOrEqual(1);
+      // ★ The roster's SIZE is REQ-DSG-026's CI count (`designer`'s), and it moves
+      // from `0061`'s eight to DEC-148's eleven (certificates × landscape and
+      // portrait) when that seed is promoted. What this case owns is DEC-052's
+      // property, which holds on either side: every family is there for an org
+      // that has published nothing, and each family has exactly one default.
+      expect(platform.length).toBeGreaterThanOrEqual(8);
+      const families = (purpose: string) => [...new Set(platform.filter((t) => t.purpose === purpose).map((t) => t.family))];
+      expect(families("poster")).toEqual(["announcement", "meetup", "panel", "talk", "workshop"]);
+      expect(families("certificate")).toEqual(["achievement", "attendance", "presenter"]);
+      for (const purpose of ["poster", "certificate"]) {
+        for (const family of families(purpose)) {
+          expect(platform.filter((t) => t.purpose === purpose && t.family === family && t.is_default), `${purpose}/${family}`).toHaveLength(1);
+        }
+      }
       // And every one has a published version to render from.
       const versions = await tx.q<{ n: string }>(
         `select count(*) as n from public.design_template_versions v
@@ -579,7 +579,8 @@ describe("platform — the template library (REQ-DSG-008, SCR-083)", () => {
       const library = await tx.q<{ id: string; purpose: string; family: string; is_default: boolean }>(
         `select * from public.platform_template_library()`,
       );
-      expect(library).toHaveLength(8);
+      // Eight before DEC-148's seed, eleven after — the floor below holds on both.
+      expect(library.length).toBeGreaterThanOrEqual(8);
 
       const certs = library.filter((t) => t.purpose === "certificate" && t.is_default);
       // Retire every certificate default but the last; the last is refused.
@@ -621,6 +622,8 @@ describe("platform — metrics (REQ-ADM-003, SCR-084)", () => {
     "completed_sessions",
     "certificates",
     "org_templates",
+    // `0010` (wave 8): a requested deletion, so SCR-080 offers no reinstatement. Org metadata, not content.
+    "deletion_pending",
   ];
 
   it("RPC-platform_metrics.aggregate_only — the view exposes counts and org metadata, nothing else", async () => {

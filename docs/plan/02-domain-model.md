@@ -833,6 +833,11 @@ denominator problem.
 
 ### 4.12 Certificates
 
+**Amended under DEC-148 (wave 8):** `certificates.scheme brand_scheme not null default 'light'` pins the
+scheme a certificate was rendered in, beside `template_version_id` (a new `brand_scheme` enum, `light` |
+`dark`); and the issue-time choice `DEC-128` asks for is stored before issuance in
+`ENT-session_certificate_designs` (below, after `ENT-certificates`).
+
 #### `ENT-certificates`
 **Serves:** `REQ-CRT-001` … `REQ-CRT-014`, DEC-010
 
@@ -874,6 +879,17 @@ rolled-back issuance consumes a number and leaves a hole. In a certificate regis
 as a lost or hidden certificate. So the number is allocated by
 `select … for update` on this row **inside the issuing transaction**, and a rollback returns it.
 Volume is hundreds per month (A24), so the row-lock contention this introduces is irrelevant.
+
+#### `ENT-session_certificate_designs`
+**Serves:** `REQ-DSG-026`, `REQ-DSG-031`, `REQ-CRT-001`, `REQ-CRT-014` · **Added under DEC-148.**
+One row per `(session_id, kind)`: `org_id`, `session_id uuid references sessions(id) on delete cascade`,
+`kind` (`attendance` | `presenter`), `template_id uuid references design_templates(id)` (a certificate
+template of the kind's family, org or platform), `scheme brand_scheme not null`, `updated_by uuid
+references members(id)`, `updated_at`. No row means the family's default template in `light` — today's
+behaviour. Staff read; **no write grant** — written only through `set_certificate_design()`
+(`assert_fresh_admin()`, audited), which refuses once a certificate of that kind for that session is
+issued or revoked. `issue_certificate()` pins the row's template version and scheme onto the
+certificate.
 
 ### 4.13 The designer
 

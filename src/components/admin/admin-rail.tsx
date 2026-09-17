@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type ComponentType } from "react";
 import { IconButton } from "@/components/ui/icon-button";
 import {
@@ -70,11 +71,14 @@ export type AdminRailIconKey = keyof typeof ICONS;
 // The admin console's left rail — `16` §6.7, `REQ-UIX-017`'s second skip
 // link, wave 6 (`DEC-130`), regrouped into the fourteen-group IA for wave 7
 // (`DEC-137`, `docs/plan/notes/console.md`'s "Wave 7 plan" §1 is the plan
-// this implements). `admin/layout.tsx` (server) computes `current` from the
-// `x-pathname` header — the same mechanism `shell/tab-bar.tsx` already
-// uses — and passes it down, so this component never calls `usePathname()`
-// itself and there is no hydration-time flash on the active item (the reason
-// `tab-bar.tsx`'s own comment gives for doing the same).
+// this implements).
+//
+// ★ The current item is decided HERE, from `usePathname()` — as
+// `shell/tab-bar.tsx` decides its tab since wave 7. It was decided in
+// `admin/layout.tsx` from the `x-pathname` header, and a layout is not
+// re-rendered on a client-side navigation: moving from «النقاط» to «السجل»
+// left «النقاط» marked (`platform` found it planning its own console). The
+// pathname is known during the server render too, so there is no flash.
 //
 // Desktop: a persistent, collapsible `<aside>`. Collapse state is a
 // per-viewer `localStorage` convenience only — never read by the server,
@@ -125,7 +129,6 @@ export interface AdminRailChild {
   key: string;
   href: string;
   label: string;
-  current: boolean;
 }
 
 export interface AdminRailItem {
@@ -135,14 +138,25 @@ export interface AdminRailItem {
   icon: AdminRailIconKey;
   /** Leaf only. */
   href?: string;
-  /** Leaf only. */
-  current?: boolean;
+  /** Leaf only: current on its own path alone, never on a route below it —
+   *  the dashboard, whose `/app/admin` prefixes every other. */
+  exact?: boolean;
   /** Group only — always at least one entry when present. */
   children?: AdminRailChild[];
 }
 
-function itemContainsCurrent(item: AdminRailItem): boolean {
-  return item.current === true || (item.children?.some((c) => c.current) ?? false);
+/** The path without its locale prefix, as the rail's hrefs are written. */
+function useRailPath(): string {
+  return (usePathname() ?? "").replace(/^\/(ar|en)(?=\/|$)/, "");
+}
+
+function isCurrent(href: string, path: string, exact = false): boolean {
+  return exact ? path === href : path === href || path.startsWith(`${href}/`);
+}
+
+function itemContainsCurrent(item: AdminRailItem, path: string): boolean {
+  if (item.children) return item.children.some((c) => isCurrent(c.href, path));
+  return item.href !== undefined && isCurrent(item.href, path, item.exact);
 }
 
 const STORAGE_KEY = "kareem:admin-rail-collapsed";
@@ -285,8 +299,8 @@ function itemClassName(current: boolean) {
 /** The inline disclosure a group renders as, on the phone sheet and on the
  *  desktop rail when it is EXPANDED. Never rendered on the collapsed rail —
  *  see `CollapsedGroupMenu` for that surface. */
-function GroupDisclosure({ item, onNavigate }: { item: AdminRailItem; onNavigate?: () => void }) {
-  const [expanded, toggle] = useGroupExpanded(item.key, itemContainsCurrent(item));
+function GroupDisclosure({ item, path, onNavigate }: { item: AdminRailItem; path: string; onNavigate?: () => void }) {
+  const [expanded, toggle] = useGroupExpanded(item.key, itemContainsCurrent(item, path));
   const listId = useId();
   const Icon = ICONS[item.icon];
 
@@ -301,13 +315,16 @@ function GroupDisclosure({ item, onNavigate }: { item: AdminRailItem; onNavigate
       </button>
       {expanded ? (
         <ul id={listId} className="mt-1 space-y-1 ps-8">
-          {item.children?.map((child) => (
-            <li key={child.key}>
-              <Link href={child.href} quiet aria-current={child.current ? "page" : undefined} className={itemClassName(child.current)} onClick={onNavigate}>
-                <bdi>{child.label}</bdi>
-              </Link>
-            </li>
-          ))}
+          {item.children?.map((child) => {
+            const current = isCurrent(child.href, path);
+            return (
+              <li key={child.key}>
+                <Link href={child.href} quiet aria-current={current ? "page" : undefined} className={itemClassName(current)} onClick={onNavigate}>
+                  <bdi>{child.label}</bdi>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </li>
@@ -317,7 +334,7 @@ function GroupDisclosure({ item, onNavigate }: { item: AdminRailItem; onNavigate
 /** A collapsed (icon-only) rail's rendering of a group — a `ui/menu` flyout
  *  from the group's own icon, since a collapsed column has no room for a
  *  label or a nested list. */
-function CollapsedGroupMenu({ item }: { item: AdminRailItem }) {
+function CollapsedGroupMenu({ item, path }: { item: AdminRailItem; path: string }) {
   const Icon = ICONS[item.icon];
   return (
     <Menu
@@ -327,7 +344,7 @@ function CollapsedGroupMenu({ item }: { item: AdminRailItem }) {
           <Icon className="shrink-0 text-[1.25rem]" />
         </IconButton>
       }
-      items={(item.children ?? []).map((child) => ({ label: child.label, href: child.href }))}
+      items={(item.children ?? []).map((child) => ({ label: child.label, href: child.href, current: isCurrent(child.href, path) }))}
     />
   );
 }
@@ -347,6 +364,7 @@ export function AdminRail({
 }) {
   const collapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const path = useRailPath();
 
   function toggle() {
     setCollapsedPreference(!collapsed);
@@ -367,14 +385,14 @@ export function AdminRail({
         <ul className="space-y-1">
           {items.map((item) =>
             item.children ? (
-              <GroupDisclosure key={item.key} item={item} onNavigate={() => setSheetOpen(false)} />
+              <GroupDisclosure key={item.key} item={item} path={path} onNavigate={() => setSheetOpen(false)} />
             ) : (
               <li key={item.key}>
                 <Link
                   href={item.href ?? "#"}
                   quiet
-                  aria-current={item.current ? "page" : undefined}
-                  className={itemClassName(item.current ?? false)}
+                  aria-current={itemContainsCurrent(item, path) ? "page" : undefined}
+                  className={itemClassName(itemContainsCurrent(item, path))}
                   onClick={() => setSheetOpen(false)}
                 >
                   {(() => {
@@ -407,17 +425,18 @@ export function AdminRail({
         <ul className={`mt-4 space-y-1 ${collapsed ? "w-14" : "w-56"}`}>
           {items.map((item) => {
             if (item.children) {
-              return collapsed ? <CollapsedGroupMenu key={item.key} item={item} /> : <GroupDisclosure key={item.key} item={item} />;
+              return collapsed ? <CollapsedGroupMenu key={item.key} item={item} path={path} /> : <GroupDisclosure key={item.key} item={item} path={path} />;
             }
             const Icon = ICONS[item.icon];
+            const current = itemContainsCurrent(item, path);
             return (
               <li key={item.key}>
                 <Link
                   href={item.href ?? "#"}
                   quiet
-                  aria-current={item.current ? "page" : undefined}
+                  aria-current={current ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
-                  className={`${itemClassName(item.current ?? false)} ${collapsed ? "justify-center px-0" : ""}`}
+                  className={`${itemClassName(current)} ${collapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon className="shrink-0 text-[1.25rem]" />
                   {collapsed ? (

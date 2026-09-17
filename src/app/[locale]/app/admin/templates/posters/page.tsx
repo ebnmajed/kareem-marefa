@@ -1,33 +1,13 @@
-import { notFound } from "next/navigation";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getTemplateLibrary } from "@/lib/dal/templates";
-import { TemplateLibrary } from "@/components/designer/template-library";
-import { TemplateResult } from "@/components/designer/template-result";
+import { setRequestLocale } from "next-intl/server";
+import { TemplateLibraryPage } from "@/components/designer/template-library-page";
 
-// SCR-055 · /app/admin/templates/posters — REQ-ADM-013, REQ-DSG-007,
-// REQ-DSG-008, REQ-DSG-024, REQ-DSG-026, D67.
+// SCR-055 · /app/admin/templates/posters — REQ-ADM-013, REQ-DSG-004, REQ-DSG-007,
+// REQ-DSG-008, REQ-DSG-024, REQ-DSG-026, D67, DEC-148. The screen is shared
+// with its twin; see `components/designer/template-library-page.tsx`. A poster
+// previews dark and offers no scheme (DEC-125).
 
-export default async function PosterTemplatesPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ done?: string; error?: string; version?: string }>;
-}) {
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const query = await searchParams;
-
-  const [t, data] = await Promise.all([getTranslations("templates.library"), getTemplateLibrary(locale, "poster")]);
-  if (!data) notFound();
-
-  return (
-    <>
-      <h1 className="text-h1 text-fg-heading">{t("titlePoster")}</h1>
-      <TemplateResult done={query.done} error={query.error} version={query.version} />
-      <div className="mt-8">
-        <TemplateLibrary data={data} />
-      </div>
-    </>
-  );
+  return <TemplateLibraryPage locale={locale} purpose="poster" />;
 }

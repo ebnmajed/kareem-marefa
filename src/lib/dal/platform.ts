@@ -76,6 +76,12 @@ export interface OrgSummary {
   publishedSessions: number;
   completedSessions: number;
   certificates: number;
+  /**
+   * A deletion has been requested and the org still exists (`0010`): SCR-080
+   * offers it nothing more — `reinstate_org()` refuses it, and a second deletion
+   * or a suspension would change nothing (principle 7).
+   */
+  deletionPending: boolean;
 }
 
 type OrgMetricRow = {
@@ -90,6 +96,8 @@ type OrgMetricRow = {
   published_sessions: number | string;
   completed_sessions: number | string;
   certificates: number | string;
+  /** Absent before `0010`. */
+  deletion_pending?: boolean;
 };
 
 // Postgres `count(*)` is bigint, which supabase-js hands back as a string once
@@ -113,6 +121,7 @@ export async function listOrgs(locale: string): Promise<OrgSummary[]> {
     publishedSessions: count(r.published_sessions),
     completedSessions: count(r.completed_sessions),
     certificates: count(r.certificates),
+    deletionPending: r.deletion_pending === true,
   }));
 }
 
@@ -128,6 +137,8 @@ export interface OrgDetail {
   suspendedAt: string | null;
   suspendedReason: string | null;
   createdAt: string;
+  /** See `OrgSummary.deletionPending`. Absent (false) before `0010`. */
+  deletionPending: boolean;
   domains: string[];
   counts: Record<string, number>;
 }
@@ -138,8 +149,12 @@ export async function getOrgDetail(locale: string, orgId: string): Promise<OrgDe
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("platform_org", { p_org: orgId });
   if (error || !data) return null;
-  const row = data as Omit<OrgDetail, "counts"> & { counts: Record<string, number | string> };
-  return { ...row, counts: Object.fromEntries(Object.entries(row.counts ?? {}).map(([k, v]) => [k, count(v)])) };
+  const row = data as Omit<OrgDetail, "counts" | "deletionPending"> & { counts: Record<string, number | string>; deletionPending?: boolean };
+  return {
+    ...row,
+    deletionPending: row.deletionPending === true,
+    counts: Object.fromEntries(Object.entries(row.counts ?? {}).map(([k, v]) => [k, count(v)])),
+  };
 }
 
 // ── SCR-081 · create an org ───────────────────────────────────────────────
@@ -171,10 +186,14 @@ function failure(error: { message?: string } | null): PlatformWriteResult {
   // The RPCs raise stable identifiers, never prose (0005's convention); the
   // screen maps them to Arabic copy and falls back to a generic line.
   const raw = error?.message ?? "";
+  // Longest first where one identifier contains another: `org_not_found`
+  // would otherwise swallow `org_not_found_or_active`.
   const known = [
     "not_platform_admin",
     "domains_required",
     "reason_required",
+    "org_deletion_pending",
+    "org_not_found_or_active",
     "org_not_found",
     "invalid_email",
     "slug_mismatch",
@@ -186,7 +205,8 @@ function failure(error: { message?: string } | null): PlatformWriteResult {
     "template_retired",
   ].find((k) => raw.includes(k));
   if (known) return { status: "failed", message: known };
-  if (raw.includes("orgs_slug_key") || raw.includes("duplicate key")) return { status: "failed", message: "slug_taken" };
+  // Only the slug's own constraint is «slug taken»; any other duplicate is not.
+  if (raw.includes("orgs_slug_key")) return { status: "failed", message: "slug_taken" };
   return { status: "failed", message: "failed" };
 }
 
@@ -238,12 +258,21 @@ export async function deleteOrg(locale: string, orgId: string, typedSlug: string
 
 // ── SCR-082 · the first admin and the allowed domains ─────────────────────
 
+/**
+ * ★ Lowercased HERE, before the RPC (wave 8, notes W8.0 F3). `set_first_admin()`
+ * checks `\.[a-z]{2,}$` against the address as sent, and Postgres regexes are
+ * case-sensitive, so `Boss@Example.COM` was refused as «بريد غير صالح» — while
+ * `create_org()` lowercases first and stores the same address happily. The two
+ * doors now agree; the column is `citext` and stores lowercase either way.
+ * (A `create or replace` of the RPC is recorded as optional hardening, DEC-148.)
+ */
 export async function setFirstAdmin(locale: string, orgId: string, email: string): Promise<PlatformWriteResult> {
   if (!z.uuid().safeParse(orgId).success) return { status: "failed", message: "failed" };
-  if (!z.email().safeParse(email).success) return { status: "failed", message: "invalid_email" };
+  const normalised = email.trim().toLowerCase();
+  if (!z.email().safeParse(normalised).success) return { status: "failed", message: "invalid_email" };
   await requirePlatformAdmin(locale);
   const supabase = await createServerClient();
-  const { error } = await supabase.rpc("set_first_admin", { p_org: orgId, p_email: email });
+  const { error } = await supabase.rpc("set_first_admin", { p_org: orgId, p_email: normalised });
   return error ? failure(error) : { status: "ok" };
 }
 
@@ -260,8 +289,12 @@ export async function addDomain(locale: string, orgId: string, domain: string): 
   if (!parsed.success) return { status: "failed", message: "invalid_domain" };
   await requirePlatformAdmin(locale);
   const supabase = await createServerClient();
-  const { error } = await supabase.rpc("add_org_domain", { p_org: orgId, p_domain: parsed.data });
-  return error ? failure(error) : { status: "ok" };
+  const { data, error } = await supabase.rpc("add_org_domain", { p_org: orgId, p_domain: parsed.data });
+  if (error) return failure(error);
+  // `add_org_domain()` answers the new row's id, or null when the domain was
+  // already on the list (`on conflict do nothing`) — which the screen says,
+  // rather than «saved».
+  return { status: "ok", id: (data as string | null) ?? undefined };
 }
 
 /**
@@ -339,6 +372,51 @@ export async function getJobHealth(locale: string): Promise<JobHealthRow[]> {
   );
 }
 
+// ── SCR-084 and the console's home · the eight alerts of `11` §3.2 ─────────
+
+/** `11` §3.2's alerts, in the document's order — the order both screens list them in. */
+export const PLATFORM_ALERTS = [
+  "queue_stalled",
+  "ledger_divergence",
+  "parity_failure",
+  "calendar_backlog",
+  "email_bounce_spike",
+  "render_failures",
+  "storage_prefix_violation",
+  "impersonation_active",
+] as const;
+export type PlatformAlertKey = (typeof PLATFORM_ALERTS)[number];
+
+export interface PlatformAlert {
+  alert: PlatformAlertKey;
+  fired: boolean;
+  /**
+   * Counts, ages, rates and thresholds only — `0075` writes nothing else, and
+   * `tests/rls/platform-alerts.test.ts` pins the key set (REQ-ADM-003).
+   */
+  detail: Record<string, number | string>;
+}
+
+/**
+ * The worker's own readings, through `platform_alerts()` — the thresholds live
+ * once, in `evaluate_alerts()`, and are never re-derived here.
+ *
+ * ★ `null` when the read FAILED, never `[]`: a console that answered «nothing
+ * needs attention» because the function was missing would be the one lie this
+ * screen must not tell.
+ */
+export async function listPlatformAlerts(locale: string): Promise<PlatformAlert[] | null> {
+  await requirePlatformAdmin(locale);
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("platform_alerts");
+  if (error || !data) return null;
+  const rows = data as { alert: string; fired: boolean; detail: Record<string, number | string> | null }[];
+  return PLATFORM_ALERTS.flatMap((key) => {
+    const row = rows.find((r) => r.alert === key);
+    return row ? [{ alert: key, fired: row.fired, detail: row.detail ?? {} }] : [];
+  });
+}
+
 // ── SCR-085 · break-glass ─────────────────────────────────────────────────
 
 export interface ImpersonationSession {
@@ -357,6 +435,25 @@ export interface ImpersonationSession {
    * this reading, which matches what `my_impersonation()` and the hook do.
    */
   isActive: boolean;
+  /**
+   * How it ended — SCR-085's «expired» state (wave 8). `expire_impersonation_sessions()`
+   * writes `ended_at = expires_at`, and `end_impersonation()` writes
+   * `least(now(), expires_at)`, so a stop is an `ended_at` BEFORE the expiry and
+   * anything at or past it ended on its own — including a session the job has
+   * not swept yet. `null` while it is live.
+   */
+  endedBy: "stopped" | "expired" | null;
+  /** Ended, either way, within the last hour — the page says so at the top. */
+  endedRecently: boolean;
+}
+
+const RECENT_MS = 60 * 60 * 1000;
+
+function endOf(endedAt: string | null, expiresAt: string, now: number): Pick<ImpersonationSession, "isActive" | "endedBy" | "endedRecently"> {
+  const expires = Date.parse(expiresAt);
+  if (endedAt === null && expires > now) return { isActive: true, endedBy: null, endedRecently: false };
+  const ended = endedAt === null ? expires : Date.parse(endedAt);
+  return { isActive: false, endedBy: ended < expires ? "stopped" : "expired", endedRecently: now - ended <= RECENT_MS };
 }
 
 export const startImpersonationInput = z.object({
@@ -390,6 +487,7 @@ export async function listMyImpersonations(locale: string, limit = 20): Promise<
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("platform_impersonations", { p_limit: limit });
   if (error || !data) return [];
+  const now = Date.now();
   return (data as { id: string; org_id: string; org_name: string; org_slug: string; reason: string; started_at: string; expires_at: string; ended_at: string | null }[]).map(
     (r) => ({
       id: r.id,
@@ -400,7 +498,7 @@ export async function listMyImpersonations(locale: string, limit = 20): Promise<
       startedAt: r.started_at,
       expiresAt: r.expires_at,
       endedAt: r.ended_at,
-      isActive: r.ended_at === null && Date.parse(r.expires_at) > Date.now(),
+      ...endOf(r.ended_at, r.expires_at, now),
     }),
   );
 }

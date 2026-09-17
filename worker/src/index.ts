@@ -69,6 +69,10 @@ try {
 
 if (probeOnly) process.exit(0);
 
+// One constant for the setting and the startup line that reports it: the line
+// said «60 s» for two waves after DEC-057 moved the interval to 15 s.
+const POLL_INTERVAL_MS = 15_000;
+
 const runner = await run({
   connectionString: DATABASE_URL,
   // 11 §1.4 sizes queues separately; graphile-worker's concurrency is per
@@ -95,7 +99,7 @@ const runner = await run({
   // as a 15 s stall in the queue-age alert) and brings a publish under a
   // minute. Concurrency stays 1 (DEC-051) — this is the cheaper knob, and
   // it is the one the measurement pointed at.
-  pollInterval: 15_000,
+  pollInterval: POLL_INTERVAL_MS,
   taskList: { ping, promote_waitlist, rotate_codes, start_session, complete_session, award_points, send_notification, award_presenter_points, evaluate_no_shows, audit_balances, send_reminder, rsvp_nudge, rating_prompt, schedule_reminders, calendar_upsert, calendar_delete, refresh_calendar_tokens, convert_document, render_pages, process_photo, evaluate_streaks, evaluate_badges, evaluate_levels_perks, snapshot_leaderboards, render_variant, regenerate_poster, materialise_font, issue_certificates, enforce_retention, anonymise_members, assert_storage_prefixes, expire_impersonation, build_data_export, delete_org, evaluate_alerts },
   // 11 §2.1: the clock runs every minute. Both functions are idempotent and
   // only move forward along 02 §6.2 (migration 0022), so a missed or doubled
@@ -107,5 +111,5 @@ const runner = await run({
   crontab: ["* * * * * start_session", "* * * * * complete_session", "0 * * * * refresh_calendar_tokens", "0 0 * * * audit_balances", "0 1 * * * evaluate_streaks", "0 1 * * * evaluate_badges", "0 1 * * * evaluate_levels_perks", "0 2 * * * snapshot_leaderboards", "0 3 * * * enforce_retention", "0 3 * * * anonymise_members", "30 3 * * * assert_storage_prefixes", "* * * * * evaluate_alerts"].join("\n") + "\n",
 });
 
-console.log("worker: running — queues dispatch over LISTEN/NOTIFY; polling every 60 s as a fallback");
+console.log(`worker: running — queues dispatch over LISTEN/NOTIFY; polling every ${POLL_INTERVAL_MS / 1000} s as a fallback`);
 await runner.promise;

@@ -4,7 +4,7 @@ import { renderFaces } from "../render/fonts.js";
 import { brandBindings } from "../render/brand.js";
 import {
   fingerprintSource,
-  presetsFor,
+  presetsForDocument,
   resolveCertificateBindings,
   validateDocument,
   type DesignDocument,
@@ -70,16 +70,26 @@ interface Context {
   template_version_id: string;
   template_document: unknown;
   document_id: string | null;
+  /** The scheme pinned on the certificate at issue (DEC-148). Absent only
+   *  against a database without designer/0003, where every certificate is
+   *  light. */
+  scheme?: "light" | "dark" | null;
 }
 
-/** A certificate is paper first. Both orientations get a PDF; the landscape
- *  also gets a PNG, which is what the member's own list shows as a preview
- *  and what a share sheet can carry (A29, REQ-CRT-006). */
-function certificateTargets(): Array<{ preset: string; format: string }> {
-  const targets: Array<{ preset: string; format: string }> = [];
-  for (const preset of presetsFor("certificate")) targets.push({ preset, format: "pdf" });
-  targets.push({ preset: "cert_landscape", format: "png" });
-  return targets;
+/** A certificate is paper first: its ONE composed page as a PDF, plus a PNG
+ *  of the same page, which is what the member's own list shows as a preview
+ *  and what a share sheet can carry (A29, REQ-CRT-006).
+ *
+ *  ★ One page, not both orientations (DEC-148). The portrait PDF used to be
+ *  `derive()`d from the landscape master and put every line into the top
+ *  29% of the page; a portrait certificate is now its own template, chosen
+ *  at issue time. A certificate issued before this re-renders its landscape
+ *  files only — its old portrait objects stay in storage, untouched. */
+function certificateTargets(document: DesignDocument): Array<{ preset: string; format: string }> {
+  return presetsForDocument(document).flatMap((preset) => [
+    { preset, format: "pdf" },
+    { preset, format: "png" },
+  ]);
 }
 
 export const issue_certificates: Task = async (payload, helpers) => {
@@ -149,7 +159,10 @@ export const issue_certificates: Task = async (payload, helpers) => {
     // The org's brand override over the platform palette, composed HERE so
     // the fingerprint below sees it: a changed colour is a new artifact
     // (06 §8.3, DEC-052, REQ-DSG-013). No row is the identity override.
-    ...(await brandBindings(helpers, ctx.org_id, "light")),
+    // ★ The scheme PINNED on the certificate (DEC-148 contract 2): chosen for
+    // its session, and what a reissue in 2031 must render again
+    // (REQ-CRT-014) — never a default at render time.
+    ...(await brandBindings(helpers, ctx.org_id, ctx.scheme ?? "light")),
     ...resolveCertificateBindings(
       {
         serial: ctx.serial,
@@ -174,7 +187,7 @@ export const issue_certificates: Task = async (payload, helpers) => {
     documentId,
     fingerprint,
     JSON.stringify({ bindings, faces }),
-    JSON.stringify(certificateTargets()),
+    JSON.stringify(certificateTargets(document)),
   ]);
 
   // D50: `automatic` issued it outright, so announce it now. `review` left
@@ -185,5 +198,5 @@ export const issue_certificates: Task = async (payload, helpers) => {
     await helpers.query(`select public.announce_certificate($1)`, [certificateId]);
   }
 
-  helpers.logger.info(`issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}) → ${certificateTargets().length} export(s) requested`);
+  helpers.logger.info(`issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}) → ${certificateTargets(document).length} export(s) requested`);
 };

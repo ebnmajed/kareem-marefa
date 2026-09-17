@@ -42,6 +42,15 @@ const LABEL_KEY: Record<SessionField, string> = {
   presenterIds: "presentersLabel",
 };
 
+const FIELD_ID: Record<SessionField, string> = {
+  title: "direct-title",
+  abstract: "direct-abstract",
+  categoryId: "direct-category",
+  level: "direct-level",
+  language: "direct-language",
+  presenterIds: "direct-presenters",
+};
+
 export function DirectSessionForm({
   action,
   categories,
@@ -64,6 +73,10 @@ export function DirectSessionForm({
     fields: SESSION_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
+    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
+    // below — not the field's name. Without this map every link pointed at an
+    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
+    fieldId: (field) => FIELD_ID[field],
   });
 
   const memberOptions = members.map((m) => ({ value: m.id, label: m.displayName ?? "" }));

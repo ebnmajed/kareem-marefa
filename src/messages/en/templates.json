@@ -10,7 +10,16 @@
       "orgHeading": "Your org's templates",
       "orgIntro": "Built by duplicating a platform template or starting blank.",
       "orgEmpty": "Your org has not created a template yet.",
-      "moderatorNotice": "You can read the templates. Creating and editing them is an org admin's act."
+      "moderatorNotice": "You can read the templates. Creating and editing them is an org admin's act.",
+      "schemeLegend": "Preview colours",
+      "schemeLight": "Light",
+      "schemeDark": "Dark",
+      "schemeHint": "A template carries no colour scheme: a certificate is issued light or dark by what is chosen for its session, and the cards show your organisation's brand.",
+      "posterScheme": "Posters are generated dark, on your brand's gradient.",
+      "orgEmptyTitle": "Your organisation has no templates yet",
+      "orgEmptyDescription": "Copy a platform template to adjust it in the studio, or start from blank.",
+      "orgEmptyAction": "Go to platform templates",
+      "phoneEditNote": "Editing in the studio needs a wider screen; on a phone templates are reviewed, not edited."
     },
     "card": {
       "family": "Family",
@@ -28,14 +37,34 @@
       "publish": "Publish a new version",
       "setDefault": "Make it the default",
       "retire": "Retire",
-      "restore": "Restore"
+      "restore": "Restore",
+      "platformBadge": "Platform template",
+      "orientation": {
+        "landscape": "Landscape",
+        "portrait": "Portrait"
+      },
+      "draft": "Unpublished draft",
+      "usage": "{count, plural, zero {Not used by any session} one {Used by one session} two {Used by two sessions} few {Used by {value} sessions} many {Used by {value} sessions} other {Used by {value} sessions}}",
+      "more": "More actions",
+      "rename": "Rename",
+      "previewLabel": "Template preview"
     },
     "create": {
       "heading": "New blank template",
       "name": "Name",
       "family": "Family",
       "submit": "Create",
-      "duplicateName": "Name for the copy"
+      "duplicateName": "Name for the copy",
+      "open": "Blank template",
+      "orientation": "Orientation",
+      "cancel": "Cancel",
+      "save": "Save",
+      "duplicateTitle": "Copy «<bdi>{name}</bdi>» to your organisation",
+      "duplicateDescription": "The copy is independent: no later platform change reaches it, and you adjust it in the studio as you like.",
+      "renameTitle": "Rename «<bdi>{name}</bdi>»",
+      "createDescription": "The template starts as a blank page on your brand's background, and you build it in the studio.",
+      "nameRequired": "Name the template.",
+      "nameTooLong": "The name is longer than allowed."
     },
     "family": {
       "talk": "Talk",
@@ -51,13 +80,19 @@
     "result": {
       "duplicated": "The template was copied into your org.",
       "created": "The template was created.",
-      "published": "Version <bdi>{value}</bdi> is published. Certificates and posters issued before it stay on their own version.",
       "defaultSet": "This template is now the default for its family.",
       "renamed": "The name was updated.",
       "retired": "The template was retired.",
       "restored": "The template is back in service.",
       "notAuthorized": "This is an org admin's act, and platform templates are not edited here.",
-      "invalid": "The save failed: <bdi>{message}</bdi>"
+      "publishedToast": "A new version is published. What was issued before keeps its version.",
+      "invalidToast": "Could not save. Check the document in the studio and try again."
+    },
+    "retire": {
+      "title": "Retire «<bdi>{name}</bdi>»?",
+      "body": "It will no longer be offered, and the posters and certificates made with it stay as they are. It can be restored at any time.",
+      "confirm": "Retire",
+      "cancel": "Cancel"
     }
   }
 }

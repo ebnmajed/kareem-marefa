@@ -1,0 +1,132 @@
+{
+  "schedule": {
+    "title": "Schedule and publish",
+    "breadcrumb": "Sessions",
+    "breadcrumbLabel": "Breadcrumb",
+    "intro": "Set the time and the place, then publish. What the proposer wrote carries over as it is — there is nothing to retype.",
+    "fromProposal": "From <bdi>{name}</bdi>'s proposal",
+    "withoutProposal": "Created without a proposal",
+    "sections": {
+      "when": "When",
+      "where": "Where",
+      "attendance": "Attendance",
+      "certificate": "Certificate and language"
+    },
+    "startsAt": {
+      "label": "Date and time",
+      "hint": "In the venue's time zone, not your device's."
+    },
+    "duration": {
+      "label": "Duration in minutes",
+      "hint": "From 15 to 480 minutes.",
+      "fromProposal": "From the proposal: {count, plural, one {{value} minute} other {{value} minutes}}"
+    },
+    "ends": {
+      "follows": "The session ends {time}",
+      "followsEmpty": "The end is worked out from the start and the duration.",
+      "edit": "Change the end time",
+      "label": "End of the session",
+      "hint": "An end you set yourself stays put and stops following the duration.",
+      "follow": "Work it out from the duration"
+    },
+    "venue": {
+      "label": "Venue",
+      "placeholder": "Choose a venue",
+      "option": "{name} · {count, plural, =0 {no set capacity} one {{value} seat} other {{value} seats}}",
+      "other": "Another place, just this once",
+      "customHint": "A one-off place is not added to your organisation's list.",
+      "customName": "Place name",
+      "customAddress": "Address",
+      "customMap": "Map link",
+      "customMapHint": "Optional, and starts with https://"
+    },
+    "capacity": {
+      "label": "Capacity",
+      "hint": "The number of seats open to booking.",
+      "fromVenue": "From the venue's capacity: {count, plural, one {{value} seat} other {{value} seats}}"
+    },
+    "walkIns": {
+      "label": "Allow walk-in attendance",
+      "hint": "Off by default: the check-in code is accepted only from a confirmed reservation. Decided here only, when the session is scheduled or edited."
+    },
+    "rsvpDeadline": {
+      "legend": "Booking closes",
+      "closes": "Booking closes {when}"
+    },
+    "cutoff": {
+      "legend": "Cancellation closes",
+      "closes": "Cancellation closes {when}"
+    },
+    "preset": {
+      "atStart": "When the session starts",
+      "hourBefore": "An hour before the start",
+      "dayBefore": "A day before the start",
+      "custom": "Another time",
+      "customLabel": "Time"
+    },
+    "certificate": {
+      "legend": "Certificates",
+      "off": "No certificates for this session",
+      "automatic": "Issued automatically to everyone who checked in",
+      "review": "Reviewed, then issued",
+      "reviewHint": "Certificates wait for your approval on the session's certificates page."
+    },
+    "language": {
+      "legend": "Session language",
+      "hint": "The language of the room, not of the interface.",
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "poster": "Poster",
+    "actions": {
+      "publish": "Publish the session",
+      "saveOnly": "Save only",
+      "saveChanges": "Save changes",
+      "pending": "Saving…",
+      "publishNote": "Publishing notifies every member and opens booking.",
+      "editedNote": "Everyone booked or waitlisted is told what changed in the time or the place, and their calendars update."
+    },
+    "missing": {
+      "title": "Not ready to publish — missing:",
+      "startsAt": "Date and time",
+      "duration": "Duration",
+      "venue": "Venue",
+      "capacity": "Capacity"
+    },
+    "status": {
+      "saved": "Schedule saved.",
+      "published": "Published — the session is now visible to members."
+    },
+    "summary": {
+      "title": "{count, plural, one {Couldn't save — one field needs fixing} other {Couldn't save — {value} fields need fixing}}",
+      "description": "What you entered is kept as it was."
+    },
+    "errors": {
+      "startsAtRequired": "Choose the session's date and time.",
+      "durationRange": "The duration is between 15 and 480 minutes.",
+      "endBeforeStart": "The end comes after the start.",
+      "endRequired": "Set the end of the session, or work it out from the duration.",
+      "venueRequired": "Choose a venue from the list, or a one-off place.",
+      "customNameRequired": "Enter the place's name.",
+      "customAddressRequired": "Enter the place's address.",
+      "mapUrl": "The map link starts with https://",
+      "capacityRange": "Capacity is between 1 and 10000 seats.",
+      "rsvpAfterStart": "Booking cannot close after the session starts.",
+      "cutoffAfterStart": "Cancellation cannot close after the session starts.",
+      "deadlineRequired": "Choose the time, or one of the options above.",
+      "failed": "Couldn't save — try again.",
+      "publishFailed": "The schedule is saved, but publishing failed — check what is missing, then try again."
+    },
+    "content": {
+      "title": "Content — as the proposer wrote it",
+      "abstract": "Abstract",
+      "category": "Category",
+      "level": "Level",
+      "audience": "Audience",
+      "expectedDuration": "Expected duration",
+      "minutes": "{count, plural, one {{value} minute} other {{value} minutes}}",
+      "none": "Not set",
+      "note": "The content stays as it was approved; this page is for the time, the place and the settings."
+    }
+  }
+}

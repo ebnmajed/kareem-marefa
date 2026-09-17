@@ -1,41 +1,42 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { AlertCircleIcon } from "@/components/ui/icons";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Stat } from "@/components/ui/stat";
 import { formatNumber } from "@/components/sessions/numerals";
-import { getJobHealth, getPlatformTotals, listOrgs } from "@/lib/dal/platform";
+import { getJobHealth, getPlatformTotals, listOrgs, listPlatformAlerts } from "@/lib/dal/platform";
+import { AlertsTable, JobsTable, OrgMetricsTable } from "./metrics-tables";
 
 // SCR-084 · /app/platform/metrics — REQ-ADM-003, REQ-NFR-016 (the numbers; the
-// dashboards and the alerting are the lead's infra).
+// transport is the lead's), onto the system for wave 8
+// (`docs/plan/notes/platform.md` W8.7).
 //
-// ★ AGGREGATE ONLY, and that is enforced upstream of this file. Every number
-// here comes from `platform_totals` / `platform_org_metrics`, two views whose
-// select lists are counts plus an org's own name, slug and status — and
-// `tests/rls/platform-schema.test.ts` pins those column lists against an
-// allow-list, so a later session that adds a session title to the metrics
-// breaks a test rather than a requirement.
+// ★ AGGREGATE ONLY, and that is enforced upstream of this file: the totals and
+// the per-org rows come from two views whose select lists a test pins, and the
+// alerts come from `platform_alerts()`, whose `detail` keys another test pins.
+// No query behind this screen can name a member, a session or a piece of content.
 //
-// The one number worth reading is `oldest pending`: the LISTEN/NOTIFY
-// degradation of `11` §1.2 leaves a queue that looks busy and healthy on
-// every other metric while nothing moves (CLAUDE.md's fifth likely failure).
+// ★ «Error rates» (`REQ-ADM-003`) were missing until wave 8 (DEC-148, C2): the
+// alerts section shows `11` §3.2's eight readings — the bounce rate, the
+// consecutive render failures, the stalled queue and the rest — as the worker
+// measures them, never re-derived here.
+//
+// When the alert read fails the page says so; it never shows eight quiet rows
+// it did not read.
 
 export default async function PlatformMetricsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [totals, jobs, orgs, t] = await Promise.all([
+  const [alerts, totals, jobs, orgs, t] = await Promise.all([
+    listPlatformAlerts(locale),
     getPlatformTotals(locale),
     getJobHealth(locale),
     listOrgs(locale),
-    getTranslations("platform.metrics"),
+    getTranslations("platform"),
   ]);
-  const num = (n: number) => formatNumber(n);
-  // Seconds below a minute, minutes above: a queue age of «4,320 ثانية» is a
-  // number nobody converts in their head. And ICU's `#` formats with the
-  // LOCALE's numbering system, which for `ar` is Arabic-Indic and would
-  // contradict this console's Western digits — so every plural in this
-  // namespace selects on `count` and prints a pre-formatted `value`.
-  const age = (seconds: number) => {
-    const n = seconds < 60 ? Math.round(seconds) : Math.round(seconds / 60);
-    return t(seconds < 60 ? "seconds" : "minutes", { count: n, value: num(n) });
-  };
+  const fired = alerts?.filter((a) => a.fired).length ?? 0;
 
   const TOTALS = [
     ["orgs", totals?.orgs ?? 0],
@@ -50,101 +51,47 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-3xl text-body text-fg-muted">{t("intro")}</p>
+      <PageHeader title={t("metrics.title")} description={t("metrics.intro")} />
 
-      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-        {TOTALS.map(([key, value]) => (
-          <div key={key}>
-            <dt className="text-body-sm text-fg-muted">{t(key)}</dt>
-            <dd className="mt-1 text-h2 text-fg-heading">{num(value)}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <section aria-labelledby="jobs" className="mt-12 border-t border-edge pt-8">
-        <h2 id="jobs" className="text-h2 text-fg-heading">
-          {t("jobsTitle")}
-        </h2>
-        <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("jobsIntro")}</p>
-
-        {jobs.length === 0 ? (
-          <p className="mt-4 text-body text-fg-body">{t("jobsEmpty")}</p>
-        ) : (
-          // A table needs its own scroller and nothing else on the page does
-          // (CLAUDE.md § i18n and RTL): four columns of numbers do not fit at
-          // 390 px, and this is the one shape where a horizontal scroll is
-          // the honest answer rather than a discovery problem.
-          //
-          // ★ `tabIndex={0}` + `role="region"` + a label, or axe's
-          // `scrollable-region-focusable` fails it as SERIOUS (WCAG 2.2 AA):
-          // a region that scrolls with a mouse and not with a keyboard is
-          // content a keyboard user cannot reach at all. Every scroller in
-          // this track carries the same three attributes.
-          <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label={t("jobsTitle")}>
-            <table className="w-full min-w-md border-collapse text-body">
-              <thead>
-                <tr className="border-b border-edge text-start">
-                  <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
-                    {t("jobTask")}
-                  </th>
-                  {/* ★ `oldest pending` sits SECOND, not last. It is the only
-                      number that catches the LISTEN/NOTIFY degradation, and
-                      the 390 px capture showed it scrolled off the edge while
-                      two columns that look healthy either way stayed in view.
-                      A scroller is fine; putting the answer inside it is not. */}
-                  <th scope="col" className="py-2 pe-4 whitespace-nowrap text-start text-label text-fg-muted">
-                    {t("jobOldest")}
-                  </th>
-                  <th scope="col" className="py-2 pe-4 text-start text-label text-fg-muted">
-                    {t("jobPending")}
-                  </th>
-                  <th scope="col" className="py-2 text-start text-label text-fg-muted">
-                    {t("jobFailed")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.task} className="border-b border-edge">
-                    {/* A task identifier is snake_case Latin in an Arabic
-                        table: isolated so the underscores do not reorder. */}
-                    <td className="py-3 pe-4 font-mono text-body-sm text-fg-heading">
-                      <bdi dir="ltr">{job.task}</bdi>
-                    </td>
-                    <td className="py-3 pe-4 whitespace-nowrap text-fg-body">{age(job.oldestPendingSeconds)}</td>
-                    <td className="py-3 pe-4 text-fg-body">{num(job.pending)}</td>
-                    <td className="py-3 text-fg-body">{num(job.failed)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <section aria-labelledby="alerts" className="mt-10">
+        <SectionHeader as="h2" id="alerts" title={t("metrics.alertsTitle")} description={t("metrics.alertsIntro")} count={fired > 0 ? fired : undefined} />
+        <div className="mt-4">
+          {alerts === null ? (
+            <Panel tone="error">
+              <p className="flex items-start gap-2 text-body text-fg-heading">
+                <AlertCircleIcon className="mt-1 text-error" />
+                <span>{t("home.alertsUnavailable")}</span>
+              </p>
+            </Panel>
+          ) : (
+            <AlertsTable alerts={alerts} />
+          )}
+        </div>
       </section>
 
-      <section aria-labelledby="per-org" className="mt-12 border-t border-edge pt-8">
-        <h2 id="per-org" className="text-h2 text-fg-heading">
-          {t("perOrgTitle")}
-        </h2>
-        <ul className="mt-4 space-y-3">
-          {orgs.map((org) => (
-            <li key={org.id} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-field border border-edge px-4 py-3">
-              <span className="text-label text-fg-heading">
-                <bdi>{org.name}</bdi>
-              </span>
-              <span className="text-body-sm text-fg-muted">
-                {t("activeMembers")} {num(org.activeMembers)}
-              </span>
-              <span className="text-body-sm text-fg-muted">
-                {t("sessions")} {num(org.sessions)}
-              </span>
-              <span className="text-body-sm text-fg-muted">
-                {t("certificates")} {num(org.certificates)}
-              </span>
+      <section aria-labelledby="totals" className="mt-12">
+        <SectionHeader as="h2" id="totals" title={t("metrics.totalsTitle")} />
+        <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {TOTALS.map(([key, value]) => (
+            <li key={key}>
+              <Stat label={t(`metrics.${key}`)} value={formatNumber(value)} className="h-full" />
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="jobs" className="mt-12 border-t border-edge pt-8">
+        <SectionHeader as="h2" id="jobs" title={t("metrics.jobsTitle")} description={t("metrics.jobsIntro")} />
+        <div className="mt-4">
+          <JobsTable jobs={jobs} />
+        </div>
+      </section>
+
+      <section aria-labelledby="per-org" className="mt-12 border-t border-edge pt-8">
+        <SectionHeader as="h2" id="per-org" title={t("metrics.perOrgTitle")} count={orgs.length} />
+        <div className="mt-4">
+          <OrgMetricsTable orgs={orgs} />
+        </div>
       </section>
     </>
   );

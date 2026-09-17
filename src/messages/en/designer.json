@@ -14,7 +14,46 @@
       "previewHeading": "Preview",
       "realDataNote": "The preview uses real data, never lorem ipsum: Arabic runs longer than Latin and carries marks above the line, so a layout that fits fake text overflows with real text.",
       "undo": "Undo",
-      "redo": "Redo"
+      "redo": "Redo",
+      "eyebrow": {
+        "poster": "Studio · Poster",
+        "certificate": "Studio · Certificate"
+      },
+      "untitled": {
+        "poster": "Unbound poster",
+        "certificate": "Unbound certificate"
+      },
+      "breadcrumbLabel": "Breadcrumb",
+      "back": {
+        "sessionPoster": "Session schedule",
+        "templatesPoster": "Poster templates",
+        "templatesCertificate": "Certificate templates",
+        "certificates": "Session certificates",
+        "recognition": "Recognition"
+      },
+      "badge": {
+        "live": "Following the template",
+        "detached": "Detached from the template",
+        "templateDraft": "Template draft",
+        "certificate": "Certificate",
+        "readOnly": "View only"
+      },
+      "phoneNotice": "On a phone you review rather than edit: the preview, every size and the checks, then «Request export». Editing needs a screen wider than <bdi>{width}</bdi> points.",
+      "rail": {
+        "label": "Editor panels",
+        "layers": "Layers",
+        "checks": "Checks"
+      },
+      "scheme": {
+        "legend": "Preview colours",
+        "light": "Light",
+        "dark": "Dark",
+        "hint": "A template carries no colour scheme: a certificate is issued light or dark by what is chosen for its session."
+      },
+      "liveGate": {
+        "title": "This poster is linked to its template",
+        "body": "It is generated from the template and the session's data and rebuilt on every change, so it cannot be edited here while it stays linked. Detach it first to edit it; detaching is one way."
+      }
     },
     "save": {
       "saving": "Saving…",
@@ -23,7 +62,8 @@
       "conflict": "Another admin saved a newer version of this document. Reload before you continue, so neither of you loses work.",
       "lockedRegion": "This region is locked in the template: <bdi>{layer}</bdi>",
       "invalid": "Something in the document prevents saving: <bdi>{issue}</bdi>",
-      "forbidden": "Designing is an org admin's act."
+      "forbidden": "Designing is an org admin's act.",
+      "failedBadge": "Not saved"
     },
     "canvas": {
       "label": "Design canvas",
@@ -45,7 +85,8 @@
         "shape": "Shape",
         "qr": "Verification QR",
         "dynamic_field": "Dynamic field"
-      }
+      },
+      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer."
     },
     "properties": {
       "heading": "Properties",
@@ -79,7 +120,32 @@
       "unbound": "Unbound",
       "unboundHint": "An unbound field draws a marked box on the canvas, never a blank — a blank exports as white space nobody notices until it is printed.",
       "empty": "This document carries no dynamic fields.",
-      "unboundWithFallback": "Unbound — the fallback will print: <bdi>{fallback}</bdi>"
+      "unboundWithFallback": "Unbound — the fallback will print: <bdi>{fallback}</bdi>",
+      "field": {
+        "session": {
+          "title": "Session title",
+          "abstract": "Session abstract",
+          "startsAt": "Date and time",
+          "venueName": "Venue",
+          "venueAddress": "Venue address",
+          "presenters": "Presenters",
+          "eventUrl": "Session link"
+        },
+        "org": {
+          "name": "Organisation name"
+        },
+        "recipient": {
+          "name": "Recipient name"
+        },
+        "certificate": {
+          "serial": "Serial number",
+          "verificationCode": "Verification code",
+          "verifyUrl": "Verification link",
+          "issuedAt": "Issue date",
+          "achievementName": "Achievement"
+        },
+        "unknown": "Dynamic field"
+      }
     },
     "presets": {
       "heading": "Sizes",
@@ -96,23 +162,25 @@
         "cert_portrait": "Certificate, portrait"
       },
       "size": "<bdi>{width}</bdi> × <bdi>{height}</bdi>",
-      "overlaysShow": "Show the safe area",
-      "overlaysHide": "Hide the safe area",
       "safeAreaLabel": "Safe area",
       "bleedLabel": "Bleed",
-      "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands."
+      "bleedHint": "Print sizes carry a bleed that is trimmed after printing, and a safe area whose contents survive however the blade lands.",
+      "stripLabel": "Sizes",
+      "hasFinding": "needs a look"
     },
     "checks": {
       "heading": "Before export",
       "clean": "Nothing crosses the safe area on any size.",
       "intro": "Anything crossing the safe area appears here before export, not after: after printing there is no fix.",
-      "safeArea": "The layer <bdi>{layer}</bdi> crosses the safe area on <bdi>{preset}</bdi> by <bdi>{px}</bdi>.",
+      "safeArea": "The layer <bdi>{layer}</bdi> crosses the safe area on <bdi>{preset}</bdi> by <bdi>{px}</bdi> px.",
       "minSize": "The layer <bdi>{layer}</bdi> reached the smallest size the template allows on <bdi>{preset}</bdi> and is still taller than its frame. The template will not shrink it further.",
       "maxLines": "The layer <bdi>{layer}</bdi> wrapped past the line limit on <bdi>{preset}</bdi>.",
       "measuring": "Measuring the text…",
       "ppiWarn": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below what print wants. It will look soft.",
       "ppiBlock": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below the print minimum. Export for that size is blocked until a higher-resolution image is uploaded.",
-      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes."
+      "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes.",
+      "badge": "{count, plural, zero {No open checks} one {One check} two {Two checks} few {{value} checks} many {{value} checks} other {{value} checks}}",
+      "goToLayer": "Go to layer"
     },
     "exports": {
       "heading": "Export queue",
@@ -133,7 +201,24 @@
       "cacheNote": "Nothing re-renders while the source is unchanged: the same key means the same file. Any edit to the design, to the session's data, or to the template version produces a new key, and only that is rendered again.",
       "queuedNotice": "The sizes were added to the export queue.",
       "retriedNotice": "Retried.",
-      "notAuthorized": "Exporting is an org admin's act."
+      "notAuthorized": "Exporting is an org admin's act.",
+      "approve": "Request export",
+      "approvePending": "Requesting export…",
+      "retryPending": "Retrying…",
+      "variantsHeading": "Exported sizes",
+      "emptyTitle": "Nothing exported yet",
+      "emptyDescription": "The preview you approve is the very file that goes to print. Request the export to see it.",
+      "reasons": {
+        "textDidNotFit": "The text did not fit at the size designed for it in this format, so the export stopped rather than print something different from what you approved.",
+        "fontNeverLoaded": "The font did not load while rendering, so the export stopped rather than print in a fallback font.",
+        "layoutMismatch": "What was drawn in this format does not match what was measured for it, so the export stopped.",
+        "blank": "The file came out blank, so the export stopped.",
+        "fonts": "The approved fonts were not available for this render.",
+        "invalidDocument": "The saved document is not valid. Open the designer and save it again.",
+        "documentChanged": "The design changed after the export was requested. Request the export again.",
+        "jpegDisabled": "JPEG export is not enabled for your organisation.",
+        "unknown": "This format could not be rendered."
+      }
     },
     "poster": {
       "alt": "Poster for <bdi>{title}</bdi>",
@@ -143,13 +228,13 @@
       "staleWhy": "This poster is customised, so it is not regenerated automatically: an edit that erases someone's work is worse than a prompt asking them to look.",
       "picker": {
         "heading": "Poster",
-        "intro": "Every published session has a poster. The automatic path produces every size with no design work at all.",
+        "intro": "Every published session has a poster, three ways. The automatic one produces every size with no design work at all.",
         "auto": "Automatic",
         "autoHint": "Built from the template and the session's data, and rebuilt whenever the title, time, venue or presenters change.",
         "customise": "Customise",
-        "customiseHint": "Opens the designer. The first edit detaches the poster from its template, one way: after that it is never regenerated automatically, only flagged when details change.",
+        "customiseHint": "Opens the designer once the poster is detached from its template, one way: it is never regenerated automatically again, only flagged when details change.",
         "upload": "Upload a finished poster",
-        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start: there is no template to regenerate it from.",
+        "uploadHint": "At least <bdi>{minimum}</bdi> px on the short side, checked on content rather than extension. An uploaded poster is detached from the start, and every size is cropped from it.",
         "openDesigner": "Open the designer",
         "state": {
           "auto": "Automatic",
@@ -157,7 +242,96 @@
           "uploaded": "Uploaded"
         },
         "live": "Linked to its template",
-        "detached": "Detached"
+        "detached": "Detached",
+        "current": "Current",
+        "customiseAction": "Customise",
+        "readOnly": "Choosing how the poster is made is an admin's.",
+        "autoDetached": "There is no way back to automatic after detaching: a detached poster is never replaced from the template.",
+        "staleAction": "Review the poster",
+        "detach": {
+          "title": "Customise the poster for «<bdi>{title}</bdi>»?",
+          "body": "The poster is detached from its template before the designer opens, one way: it is never regenerated automatically, and if the title, time, venue or presenters change you are told to review it yourself.",
+          "brand": "Your organisation's brand colours still apply to it, so a change to them shows at its next export.",
+          "confirm": "Detach and open the designer",
+          "cancel": "Cancel",
+          "failed": "The poster could not be detached. Try again."
+        },
+        "uploadAction": "Upload poster",
+        "uploadFormats": "<bdi>PNG</bdi>, <bdi>JPEG</bdi> or <bdi>WebP</bdi>. <bdi>SVG</bdi> is not accepted.",
+        "replace": {
+          "title": "Replace the poster for «<bdi>{title}</bdi>»?",
+          "auto": "The uploaded poster replaces the automatic one, one way: it is never regenerated from the template afterwards.",
+          "customised": "The uploaded poster replaces the customised one, and its edits are not kept.",
+          "uploaded": "The new poster replaces the one uploaded before.",
+          "confirm": "Upload and replace",
+          "cancel": "Cancel"
+        },
+        "uploaded": "Poster uploaded; its sizes are being prepared.",
+        "uploadErrors": {
+          "file_too_large": "The file is larger than the limit (<bdi>{limit}</bdi> MB).",
+          "rejected_content": "The file's content is not a <bdi>PNG</bdi>, <bdi>JPEG</bdi> or <bdi>WebP</bdi> image, whatever its extension.",
+          "too_small": "The image's short side is <bdi>{shortSide}</bdi> px; the minimum is <bdi>{minimum}</bdi>.",
+          "unreadable": "The image could not be read. Try another file.",
+          "not_authorized": "Uploading a poster is an admin's.",
+          "unknown": "The poster could not be uploaded. Try again."
+        }
+      }
+    },
+    "inspector": {
+      "documentHeading": "Document",
+      "documentHint": "Select a layer to see its properties. With nothing selected, the document's own properties show.",
+      "sections": {
+        "position": "Position and size",
+        "arrange": "Align",
+        "order": "Order",
+        "type": "Text and type",
+        "binding": "Data binding",
+        "background": "Background"
+      },
+      "positionNote": "Collapsed by default and never removed: the numbers are the path that needs no dragging, and the most exact one.",
+      "align": {
+        "target": "Align to",
+        "safe": "Safe area",
+        "page": "Page",
+        "inline": "Horizontally",
+        "block": "Vertically",
+        "start": "Start",
+        "center": "Centre",
+        "end": "End",
+        "top": "Top",
+        "middle": "Middle",
+        "bottom": "Bottom",
+        "fit": "Fit to safe area",
+        "note": "Alignment follows the document's own axis: «start» on an Arabic poster is its right edge, whatever the interface language."
+      },
+      "order": {
+        "front": "To front",
+        "back": "To back",
+        "forward": "One layer forward",
+        "backward": "One layer back"
+      },
+      "background": {
+        "type": "Background type",
+        "solid": "Solid",
+        "gradient": "Gradient",
+        "colour": "Colour",
+        "from": "Start colour",
+        "to": "End colour",
+        "angle": "Angle in degrees",
+        "angleHint": "The angle is the Arabic source's; the English variant mirrors by itself.",
+        "tokenNote": "Brand colours only — no colour typed by hand, so a brand change reaches every template.",
+        "tokens": {
+          "canvas": "Canvas",
+          "surface": "Surface",
+          "canvasRaise": "Raised surface",
+          "fgHeading": "Heading colour",
+          "fgBody": "Body colour",
+          "fgMuted": "Muted colour",
+          "edge": "Edge colour",
+          "edgeStrong": "Strong edge colour",
+          "spine": "Spine colour",
+          "node": "Node colour"
+        }
       }
     }
   }

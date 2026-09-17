@@ -110,3 +110,59 @@ describe("validateDocument", () => {
     }
   });
 });
+
+describe("validateDocument — the gradient background (DEC-127)", () => {
+  const gradient = (over: Record<string, unknown> = {}) => ({
+    type: "gradient",
+    angle: 140,
+    stops: [{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }],
+    ...over,
+  });
+
+  it("★ accepts DEC-127's poster background exactly as the seed will carry it", () => {
+    // While this said «a background is solid», every poster seeded with the
+    // gradient would have been refused by regenerate_poster and the autosave
+    // Route Handler alike — no automatic poster would have rendered.
+    const result = validateDocument(doc(undefined, { background: gradient() }));
+    expect(result.ok ? [] : result.issues.map((i) => i.code)).toEqual([]);
+  });
+
+  it("accepts positioned stops as fractions of the line, in order", () => {
+    expect(codes(doc(undefined, { background: gradient({ stops: [{ color: "{{brand.surface}}", at: 0 }, { color: "{{brand.canvasRaise}}", at: 1 }] }) }))).toEqual([]);
+  });
+
+  it("accepts both ends of the angle range — 0 and 360 are the same line, and neither is refused", () => {
+    expect(codes(doc(undefined, { background: gradient({ angle: 0 }) }))).toEqual([]);
+    expect(codes(doc(undefined, { background: gradient({ angle: 360 }) }))).toEqual([]);
+  });
+
+  it("refuses an angle outside 0…360 — the source angle is stored once and mirrored only by the renderer", () => {
+    expect(codes(doc(undefined, { background: gradient({ angle: -40 }) }))).toContain("gradient_angle");
+    expect(codes(doc(undefined, { background: gradient({ angle: 400 }) }))).toContain("gradient_angle");
+    expect(codes(doc(undefined, { background: gradient({ angle: "140deg" }) }))).toContain("gradient_angle");
+  });
+
+  it("refuses fewer than two stops or more than eight — CSS has no one-stop gradient", () => {
+    expect(codes(doc(undefined, { background: gradient({ stops: [] }) }))).toContain("gradient_stops");
+    expect(codes(doc(undefined, { background: gradient({ stops: [{ color: "{{brand.surface}}" }] }) }))).toContain("gradient_stops");
+    const nine = Array.from({ length: 9 }, () => ({ color: "{{brand.surface}}" }));
+    expect(codes(doc(undefined, { background: gradient({ stops: nine }) }))).toContain("gradient_stops");
+    expect(codes(doc(undefined, { background: gradient({ stops: undefined }) }))).toContain("gradient_stops");
+  });
+
+  it("refuses a stop with no colour, a position outside 0…1, and positions that run backwards", () => {
+    expect(codes(doc(undefined, { background: gradient({ stops: [{ color: "" }, { color: "{{brand.canvasRaise}}" }] }) }))).toContain("gradient_stop_color");
+    expect(codes(doc(undefined, { background: gradient({ stops: [{ color: "{{brand.surface}}", at: 50 }, { color: "{{brand.canvasRaise}}" }] }) }))).toContain(
+      "gradient_stop_at",
+    );
+    expect(
+      codes(doc(undefined, { background: gradient({ stops: [{ color: "{{brand.surface}}", at: 0.8 }, { color: "{{brand.canvasRaise}}", at: 0.2 }] }) })),
+    ).toContain("gradient_stop_order");
+  });
+
+  it("still refuses a background that is neither — and a solid one with no colour", () => {
+    expect(codes(doc(undefined, { background: { type: "pattern" } }))).toContain("background_type");
+    expect(codes(doc(undefined, { background: { type: "solid" } }))).toContain("background_color");
+    expect(codes(doc(undefined, { background: "navy" }))).toContain("background");
+  });
+});

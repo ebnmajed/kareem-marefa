@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 
 // The shared deactivate/reactivate control for `venues`, `categories` and
@@ -86,24 +86,24 @@ export function DeactivateToggle({
     );
   }
 
+  // The dialog is `confirm-dialog.tsx` since wave 8 — one confirmation shape for
+  // the whole console; this component's props did not change.
   return (
-    <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+    <>
       <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => setConfirmOpen(true)}>
         {deactivateLabel}
       </Button>
-      <DialogContent title={confirmTitle} closeLabel={closeLabel}>
-        <p className="text-body text-fg-body">{confirmBody}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button type="button" variant="danger" disabled={pending} onClick={handleDeactivate}>
-            {confirmAction}
-          </Button>
-          <DialogClose asChild>
-            <Button type="button" variant="secondary">
-              {cancelLabel}
-            </Button>
-          </DialogClose>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={confirmTitle}
+        body={<p>{confirmBody}</p>}
+        confirmLabel={confirmAction}
+        cancelLabel={cancelLabel}
+        closeLabel={closeLabel}
+        pending={pending}
+        onConfirm={handleDeactivate}
+      />
+    </>
   );
 }

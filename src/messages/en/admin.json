@@ -3,7 +3,7 @@
     "shell": {
       "brand": "Organisation console",
       "skipToContent": "Skip the admin menu to the content",
-      "moderatorEmpty": "The moderation console is still being built. Comment, photo and report queues and the audit log are coming.",
+      "moderatorEmpty": "No section of the admin console is available to your role.",
       "collapseRail": "Collapse the admin menu",
       "expandRail": "Expand the admin menu",
       "openRail": "Open the admin menu",
@@ -18,11 +18,11 @@
         "moderationComments": "Comments",
         "moderationPhotos": "Photos",
         "moderationReports": "Reports",
-        "scoring": "Scoring",
-        "recognition": "Recognition",
+        "scoring": "Points",
+        "recognition": "Badges and levels",
         "templatesPosters": "Poster templates",
         "templatesCertificates": "Certificate templates",
-        "emails": "Emails",
+        "emails": "Email",
         "reminders": "Reminders",
         "exports": "Exports",
         "audit": "Audit log",
@@ -203,63 +203,6 @@
       "createFromProposalLabel": "Create the session from <t>{title}</t>",
       "certificates": "Certificates",
       "attendance": "Attendance"
-    },
-    "schedule": {
-      "title": "Schedule and publish",
-      "intro": "Set the time, the place and the capacity, then publish. Publishing makes the session visible to members and opens booking.",
-      "back": "All sessions",
-      "whenLabel": "Date and time",
-      "whenHint": "In the venue's own time zone, not your device's.",
-      "pickerToday": "Today",
-      "pickerClear": "Clear",
-      "pickerDone": "Done",
-      "pickerHour": "Hour",
-      "pickerMinute": "Minute",
-      "pickerEmpty": "Choose a date and time",
-      "durationLabel": "Duration",
-      "durationUnit": "minutes",
-      "durationHint": "The end time is worked out from this, and you can override it below.",
-      "endsLabel": "Ends at",
-      "endsHint": "Leave empty to derive it from the duration.",
-      "venueLabel": "Venue",
-      "venuePlaceholder": "Choose one of your organisation's venues",
-      "venueCustom": "A one-off venue",
-      "customNameLabel": "Venue name",
-      "customAddressLabel": "Address",
-      "customMapLabel": "Map link",
-      "customHint": "A one-off venue is not added to your organisation's list.",
-      "capacityLabel": "Capacity",
-      "capacityHint": "Filled in from the venue's capacity; you can change it.",
-      "rsvpDeadlineLabel": "Booking closes",
-      "cutoffLabel": "Cancellation closes",
-      "deadlineHint": "Leave empty to use the session's start time.",
-      "certificateLabel": "Certificates",
-      "certificateOff": "Off",
-      "certificateAutomatic": "Automatic",
-      "certificateReview": "After an admin reviews them",
-      "languageLabel": "Spoken language",
-      "languageAr": "Arabic",
-      "languageEn": "English",
-      "languageHint": "The language of the room, not of the interface.",
-      "save": "Save the schedule",
-      "saved": "The schedule is saved.",
-      "publish": "Publish the session",
-      "published": "Published. Members can see it now.",
-      "publishNote": "Once published, members can see the session and book a seat.",
-      "incompleteTitle": "Not ready to publish — still missing:",
-      "missing": {
-        "startsAt": "date and time",
-        "endsAt": "end time",
-        "capacity": "capacity",
-        "venue": "venue"
-      },
-      "posterPending": "The poster arrives with the designer in a later milestone and does not block publishing today.",
-      "stateLabel": "Session status",
-      "failed": "That could not be saved — try again.",
-      "invalid": "Check the fields: a date, a time and a duration are required, plus a venue from the list or a one-off venue with a name and an address.",
-      "poster": "Poster",
-      "pickerPrevMonth": "Previous month",
-      "pickerNextMonth": "Next month"
     },
     "venues": {
       "title": "Venues",
@@ -467,7 +410,7 @@
     },
     "exports": {
       "title": "Exports",
-      "intro": "Every export is a bulk read of personal data, and is recorded in the audit log under your name. Files are UTF-8 with a BOM and Arabic headers.",
+      "intro": "Each file is a spreadsheet that Excel opens with the Arabic intact: its column headings in Arabic, and its dates on your organisation's clock, sorting correctly.",
       "download": "Download CSV",
       "sessions": {
         "title": "Sessions",
@@ -496,29 +439,224 @@
       "members": {
         "title": "Members",
         "note": "Name, email, role and status for every member."
-      }
+      },
+      "auditNote": "Every download is a bulk read of personal data, and is recorded in the audit log under your name.",
+      "auditLink": "Exports in the audit log",
+      "listLabel": "Export files",
+      "colExport": "File",
+      "colLast": "Last export",
+      "colDownload": "Download",
+      "lastExport": "<t>{name}</t> · <bdi>{when}</bdi>",
+      "unknownActor": "Unknown member",
+      "neverExported": "Not exported yet",
+      "downloadLabel": "Download <t>{name}</t> as CSV",
+      "downloading": "Downloading…",
+      "downloaded": "<t>{name}</t> downloaded",
+      "downloadFailed": "<t>{name}</t> could not be downloaded. Try again.",
+      "empty": "No export files."
     },
     "audit": {
       "title": "Audit log",
       "introAdmin": "Every admin and moderator action in your organisation. The log cannot be edited or deleted.",
       "introModerator": "Your own actions only. You cannot see other moderators' actions.",
+      "scoringNote": "Changes to the points settings are kept in the change history on the points screen, not here.",
+      "scoringNoteLink": "Points change history",
+      "filtersTitle": "Filter the log",
+      "openFilters": "Filter",
+      "openFiltersCount": "Filter (<bdi>{value}</bdi>)",
       "actorLabel": "Actor",
       "actionLabel": "Action",
       "subjectTypeLabel": "Subject type",
+      "periodLabel": "Period",
+      "periods": {
+        "all": "All time",
+        "7d": "Last seven days",
+        "30d": "Last thirty days",
+        "month": "This month",
+        "custom": "Custom range"
+      },
       "dateFromLabel": "From date",
       "dateToLabel": "To date",
+      "dateToHint": "The day itself is included.",
       "any": "Any",
       "apply": "Apply",
       "clearAll": "Clear filters",
-      "empty": "No entries match your search.",
-      "colDate": "Date",
-      "colActor": "Actor",
+      "rangeInverted": "The start date is after the end date, so the range was not applied.",
+      "activeFilters": "Active filters",
+      "chip": "<t>{name}</t>: <bdi>{value}</bdi>",
+      "removeFilter": "Remove filter: <bdi>{label}</bdi>",
+      "oneSubject": "One subject",
+      "listLabel": "Actions",
+      "pageCaption": "{count, plural, one {<bdi>{value}</bdi> action, newest first} other {<bdi>{value}</bdi> actions, newest first}}",
+      "pagerLabel": "Log pages",
+      "older": "Older actions",
+      "newest": "Back to the newest",
       "colAction": "Action",
+      "colDate": "When",
+      "colActor": "Actor",
       "colSubject": "Subject",
       "colReason": "Reason",
       "systemActor": "System",
+      "unknownActor": "Unknown member",
       "noSubject": "—",
-      "noReason": "—"
+      "noReason": "—",
+      "followSubject": "Everything that happened to this subject",
+      "roles": {
+        "admin": "Org admin",
+        "moderator": "Moderator",
+        "member": "Member",
+        "platform_admin": "Platform support",
+        "system": "System"
+      },
+      "emptyFilteredTitle": "No actions match these filters",
+      "emptyFilteredDescription": "Try a longer period, or remove a filter.",
+      "emptyTitle": "No actions recorded yet",
+      "emptyDescription": "Every admin action is recorded here as it happens.",
+      "emptyModeratorTitle": "No actions of yours yet",
+      "emptyModeratorDescription": "Every removal or restore you make in the moderation queues appears here.",
+      "toDashboard": "To the dashboard",
+      "toModeration": "To the moderation queues",
+      "actions": {
+        "badge": {
+          "manual_award": "Badge awarded by hand"
+        },
+        "branding": {
+          "kit_reset": "Brand kit reset to default",
+          "kit_saved": "Brand kit saved"
+        },
+        "certificate": {
+          "design_set": "Certificate design chosen",
+          "issued": "Certificate issued",
+          "redesigned": "Held certificates redesigned",
+          "released": "Certificate released",
+          "revoked": "Certificate revoked"
+        },
+        "check_in": {
+          "manual": "Attendance marked by hand",
+          "removed": "Attendance removed"
+        },
+        "check_in_code": {
+          "revoked": "Check-in code revoked"
+        },
+        "comment": {
+          "removed": "Comment removed",
+          "restored": "Comment restored"
+        },
+        "design": {
+          "export_requested": "Design export requested",
+          "export_retried": "Design export retried",
+          "font_requested": "Font requested",
+          "poster_detached": "Poster detached from its template"
+        },
+        "domain": {
+          "added": "Domain added",
+          "changed": "Domain changed",
+          "removed": "Domain removed"
+        },
+        "export": {
+          "created": "Data exported"
+        },
+        "impersonation": {
+          "started": "Break-glass access started",
+          "ended": "Break-glass access ended",
+          "expired": "Break-glass access expired"
+        },
+        "material": {
+          "downloaded": "Material downloaded",
+          "phase_changed": "Material availability changed",
+          "removed": "Material removed"
+        },
+        "member": {
+          "anonymised": "Member anonymised",
+          "deactivated": "Membership deactivated",
+          "deactivation_requested": "Deactivation requested",
+          "provisioned": "Member joined",
+          "reactivated": "Membership reactivated",
+          "role_changed": "Member's role changed"
+        },
+        "org": {
+          "created": "Organisation created",
+          "deleted": "Organisation deleted",
+          "deletion_requested": "Organisation deletion requested",
+          "first_admin_set": "First admin set",
+          "reinstated": "Organisation reinstated",
+          "suspended": "Organisation suspended"
+        },
+        "photo": {
+          "removed": "Photo removed",
+          "restored": "Photo restored"
+        },
+        "points": {
+          "balance_divergence": "Points balance divergence",
+          "manual_adjustment": "Points adjusted by hand"
+        },
+        "privacy": {
+          "export_ready": "Personal data export ready",
+          "export_requested": "Personal data export requested"
+        },
+        "ratings": {
+          "read_admin": "Individual ratings viewed"
+        },
+        "session": {
+          "check_in_open_changed": "Check-in opened or closed",
+          "created_direct": "Session created directly",
+          "created_from_proposal": "Session created from a proposal",
+          "published": "Session published",
+          "scheduled": "Session scheduled",
+          "walk_ins_changed": "Walk-ins changed"
+        },
+        "storage": {
+          "prefix_violation": "Storage path violation"
+        },
+        "template": {
+          "default_set": "Default template set",
+          "promoted": "Template added to the platform library",
+          "retired": "Template retired",
+          "unretired": "Template restored"
+        }
+      },
+      "domains": {
+        "badge": "Badges",
+        "branding": "Branding",
+        "certificate": "Certificates",
+        "check_in": "Attendance",
+        "comment": "Comments",
+        "design": "Designs",
+        "domain": "Domains",
+        "export": "Exports",
+        "impersonation": "Break-glass access",
+        "material": "Materials",
+        "member": "Members",
+        "org": "Organisation",
+        "photo": "Photos",
+        "points": "Points",
+        "privacy": "Privacy",
+        "ratings": "Ratings",
+        "session": "Sessions",
+        "storage": "Storage",
+        "template": "Templates",
+        "other": "Other"
+      },
+      "subjects": {
+        "brand_kit": "Brand kit",
+        "certificate": "Certificate",
+        "check_in": "Attendance record",
+        "check_in_code": "Check-in code",
+        "comment": "Comment",
+        "design_document": "Design",
+        "export_artifact": "Exported file",
+        "font": "Font",
+        "impersonation_session": "Break-glass session",
+        "material": "Material",
+        "member": "Member",
+        "member_badges": "Member's badge",
+        "org": "Organisation",
+        "org_domain": "Domain",
+        "photo": "Photo",
+        "points_ledger": "Points entry",
+        "session": "Session",
+        "template": "Template"
+      }
     },
     "settings": {
       "title": "Organisation settings",
@@ -576,6 +714,7 @@
     },
     "dateTime": {
       "triggerLabel": "Date and time",
+      "triggerLabelDate": "Date",
       "clear": "Clear",
       "today": "Today",
       "done": "Done",
@@ -592,14 +731,20 @@
       "sortDescending": "sorted descending",
       "sortNone": "not sorted"
     },
-    "reminders": {
-      "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day."
-    },
     "error": {
       "title": "This page could not be shown",
       "description": "Something went wrong in the admin console. Try again, or go back to the dashboard.",
       "retry": "Try again",
       "back": "Back to the dashboard"
+    },
+    "duration": {
+      "unitLabel": "<bdi>{field}</bdi> — unit",
+      "units": {
+        "seconds": "seconds",
+        "minutes": "minutes",
+        "hours": "hours",
+        "days": "days"
+      }
     }
   }
 }

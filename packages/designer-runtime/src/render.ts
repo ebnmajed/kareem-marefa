@@ -193,12 +193,52 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
   )
 }
 
+/**
+ * The root's `background` CSS value — a resolved solid colour, or a
+ * `linear-gradient(...)` string built from every stop (DEC-127). Used by
+ * both `renderDocumentToFragment` and `renderDocumentToHtml`, so the two
+ * cannot drift the way their two near-identical `resolveColour(...)` calls
+ * already almost did before this function existed.
+ *
+ * ★ Exported (lead's sync-1 ruling): `designer`'s parity harness asserts the
+ * computed gradient against this same function, and its editor swatch
+ * previews with it — one source for the string, not a second copy of the
+ * angle mirror or the stop formatting living in a test or a preview
+ * component.
+ *
+ * The LTR mirror lives HERE, and only here: `angle` is degrees for the RTL
+ * source composition (`model.ts`), a gradient does not follow `dir`, and an
+ * LTR document renders `360 − angle` — nothing upstream (the document, a
+ * template, the seed) ever stores a mirrored angle.
+ */
+export function backgroundCss(doc: DesignDocument, ctx: BindingContext): string {
+  const bg = doc.background
+  if (!bg || bg.type === 'solid') return resolveColour(ctx, bg?.color, '#ffffff')
+
+  const angle = doc.direction === 'ltr' ? (360 - bg.angle) % 360 : bg.angle
+  const stops = bg.stops
+    .map((s) => {
+      const colour = resolveColour(ctx, s.color, '#ffffff')
+      // `at` is a FRACTION, 0…1 — the same unit as the model's other
+      // normalised positions (`image.focal`, `design_assets.focal_x/y`),
+      // `validate.ts`'s own enforcement (`designer`, `50942d3`). Rounded to
+      // at most two decimals so the CSS string — and therefore the
+      // fingerprint (REQ-DSG-013) — is stable rather than carrying whatever
+      // binary floating-point noise the multiplication produced.
+      if (s.at === undefined) return colour
+      const pct = Math.round(s.at * 10000) / 100
+      return `${colour} ${pct}%`
+    })
+    .join(', ')
+  return `linear-gradient(${angle}deg, ${stops})`
+}
+
 /** The canvas alone — no `<html>`, no `<head>`. The editor mounts this; the
  *  exporter wraps it. One function, so they cannot diverge. */
 export function renderDocumentToFragment(doc: DesignDocument, opts: RenderOptions): { css: string; html: string } {
   const ctx = opts.bindings ?? EMPTY_BINDINGS
   const { width, height } = doc.master
-  const bg = resolveColour(ctx, doc.background?.color, '#ffffff')
+  const bg = backgroundCss(doc, ctx)
 
   const html =
     `<div class="dr-root" dir="${doc.direction}" style="width:${width}px;height:${height}px;background:${bg}">\n` +
@@ -218,7 +258,7 @@ export function renderDocumentToFragment(doc: DesignDocument, opts: RenderOption
 /** Renders a document to a standalone HTML string. */
 export function renderDocumentToHtml(doc: DesignDocument, opts: RenderOptions): string {
   const { css, html } = renderDocumentToFragment(doc, opts)
-  const bg = resolveColour(opts.bindings ?? EMPTY_BINDINGS, doc.background?.color, '#ffffff')
+  const bg = backgroundCss(doc, opts.bindings ?? EMPTY_BINDINGS)
 
   return `<!doctype html><html dir="${doc.direction}" lang="${doc.direction === 'rtl' ? 'ar' : 'en'}">
 <head><meta charset="utf-8"><style>

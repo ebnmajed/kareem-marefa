@@ -18,6 +18,7 @@ const FILES = [
   "platform/0002_platform_console_reads.sql",
   "platform/0003_platform_library.sql",
   "platform/0007_job_health_due.sql",
+  "platform/0010_reinstate_refuses_pending_deletion.sql",
 ];
 
 async function apply(tx: Tx) {
@@ -66,6 +67,8 @@ describe("platform — the console's reads (0002)", () => {
           "certificatePrefix",
           "counts",
           "createdAt",
+          // `0010` (wave 8): whether a deletion is on its way — platform metadata, not a count.
+          "deletionPending",
           "domains",
           "firstAdminEmail",
           "id",
@@ -98,6 +101,41 @@ describe("platform — the console's reads (0002)", () => {
         [f.a.id],
       );
       expect(org.domains.sort()).toEqual([f.a.domain, "second.example"].sort());
+    });
+  });
+
+  it("★ contract 4 — a mixed-case domain with a leading «@» is STORED lowercase and bare, which is what SCR-082 lists", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      await tx.q(`select public.add_org_domain($1, '@Mixed-Case.EXAMPLE')`, [f.a.id]);
+      // The same domain in another case is the same row: `on conflict do nothing` answers null.
+      const [{ id }] = await tx.q<{ id: string | null }>(`select public.add_org_domain($1, 'mixed-case.example') as id`, [f.a.id]);
+      expect(id).toBeNull();
+
+      const [{ platform_org: org }] = await tx.q<{ platform_org: { domains: string[] } }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.domains).toContain("mixed-case.example");
+      expect(org.domains.filter((d) => d.toLowerCase() === "mixed-case.example")).toHaveLength(1);
+    });
+  });
+
+  it("★ F3 — set_first_admin() refuses a mixed-case address AS SENT, which is why the DAL lowercases before calling it", async () => {
+    await withTx(async (tx) => {
+      const f = await seedBase(tx);
+      await apply(tx);
+      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
+      // Pinned so a later hardening of the RPC (DEC-148) shows up here as a change, not a surprise.
+      expect(await errorMessage(() => tx.q(`select public.set_first_admin($1, 'Boss@Example.COM')`, [f.a.id]))).toMatch(/invalid_email/);
+      await tx.q(`select public.set_first_admin($1, 'boss@example.com')`, [f.a.id]);
+      const [{ platform_org: org }] = await tx.q<{ platform_org: { firstAdminEmail: string } }>(
+        `select public.platform_org($1) as platform_org`,
+        [f.a.id],
+      );
+      expect(org.firstAdminEmail).toBe("boss@example.com");
     });
   });
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
+import { formatNumber } from "@/components/sessions/numerals";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getAttendanceReport } from "@/lib/dal/checkin";
 import { getOrgPrefs } from "@/lib/dal/proposals";
@@ -15,10 +15,23 @@ import { listSessionsForAdmin } from "@/lib/dal/sessions";
 // caller that turns the result into a `text/csv` response.
 //
 // UTF-8 **with a BOM** so Excel opens Arabic without a manual import step,
-// Arabic column headers, the org's own numeral system wherever a number
-// appears (dates and times already carry it through `formatDateTime`) —
-// REQ-ADM-017's three acceptance criteria, restated here because every
-// export this track ships has to satisfy all three, not just this one.
+// Arabic column headers, every export audited — REQ-ADM-017's acceptance,
+// restated here because every export this track ships has to satisfy it.
+//
+// ★ Wave 8 (`DEC-148`, the lead's sync-1 ruling on K2), two things a
+// spreadsheet needs that the CSVs did not give it:
+//
+//  · DATES A SPREADSHEET CAN SORT. Every date was Arabic prose — «الخميس، 17
+//    سبتمبر 2026 في 3:00 م» — which Excel reads as text. Each is now
+//    `YYYY-MM-DD HH:mm` in the org's zone, and the column header names the
+//    zone, so a reader in another city knows which clock it is.
+//  · ARABIC VALUES UNDER ARABIC HEADERS. A session's state, level and
+//    language, a ledger row's source and a certificate's kind printed their
+//    English enum values. And an issued certificate printed `issued` raw: the
+//    map said `released`, a state the enum never had.
+//
+// Digits are Western everywhere, always (`DEC-124`, `REQ-INT-006`); there is
+// no setting for them to follow.
 
 const BOM = "﻿";
 
@@ -52,7 +65,58 @@ async function auditExport(locale: string, exportType: string, subjectType?: str
   if (error) throw new Error(`write_admin_export_audit: ${error.message}`);
 }
 
-const ATTENDANCE_HEADERS_AR = ["الاسم", "حالة الحجز", "سجَّل حضوره", "وقت الوصول", "طريقة التسجيل", "علامة يدوية"];
+/** A spreadsheet's date: `YYYY-MM-DD HH:mm` on the org's clock. */
+export function csvDateTime(iso: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+}
+
+/** A date column's header, naming the clock its values are on. */
+const whenHeader = (label: string, timeZone: string) => `${label} (${timeZone})`;
+
+const SESSION_STATE_AR: Record<string, string> = {
+  draft: "مسودة",
+  submitted: "مُقدَّمة",
+  in_review: "قيد المراجعة",
+  changes_requested: "بانتظار تعديل",
+  approved: "معتمدة",
+  published: "منشورة",
+  in_progress: "جارية",
+  completed: "انتهت",
+  archived: "مؤرشفة",
+  cancelled: "أُلغيت",
+};
+const SESSION_LEVEL_AR: Record<string, string> = { introductory: "تمهيدي", intermediate: "متوسط", advanced: "متقدم" };
+const SESSION_LANGUAGE_AR: Record<string, string> = { ar: "العربية", en: "الإنجليزية" };
+const LEDGER_SOURCE_AR: Record<string, string> = {
+  check_in: "تسجيل حضور",
+  rating: "تقييم جلسة",
+  comment: "تعليق",
+  photo: "صورة",
+  streak: "سلسلة حضور",
+  proposal_accepted: "قبول مقترح",
+  session_delivered: "تقديم جلسة",
+  attendee_bonus: "مكافأة الحضور",
+  rating_bonus: "تقييم عالٍ للجلسة",
+  materials_uploaded: "رفع مواد الجلسة",
+  no_show: "تغيّب بعد الحجز",
+  late_cancellation: "إلغاء متأخر",
+  content_removed: "حُذف المحتوى",
+  manual_adjustment: "تعديل يدوي",
+  reversal: "عكس قيد",
+};
+const CERT_KIND_AR: Record<string, string> = { attendance: "حضور", presenter: "تقديم", achievement: "إنجاز" };
+
+const ATTENDANCE_HEADERS_AR = (timeZone: string) => ["الاسم", "حالة الحجز", "سجَّل حضوره", whenHeader("وقت الوصول", timeZone), "طريقة التسجيل", "علامة يدوية"];
 
 const RSVP_STATUS_AR: Record<string, string> = {
   confirmed: "مؤكَّد",
@@ -79,13 +143,13 @@ export async function exportAttendanceCsv(locale: string, sessionId: string): Pr
     r.displayName ?? "",
     r.rsvpStatus ? (RSVP_STATUS_AR[r.rsvpStatus] ?? r.rsvpStatus) : r.isWalkIn ? "بلا حجز (حضور مباشر)" : "",
     r.checkedIn ? "نعم" : "لا",
-    r.arrivedAt ? formatDateTime(r.arrivedAt, prefs.timeZone, locale) : "",
+    r.arrivedAt ? csvDateTime(r.arrivedAt, prefs.timeZone) : "",
     r.method === "code" ? "رمز الحضور" : r.method === "manual" ? "تسجيل يدوي" : "",
     r.method === "manual" ? "نعم" : "لا",
   ]);
 
   await auditExport(locale, "attendance", "session", sessionId);
-  return { csv: buildCsv(ATTENDANCE_HEADERS_AR, rows), sessionTitle: report.sessionTitle };
+  return { csv: buildCsv(ATTENDANCE_HEADERS_AR(prefs.timeZone), rows), sessionTitle: report.sessionTitle };
 }
 
 // ── SCR-061 — org-wide exports (REQ-ADM-017) ─────────────────────────────
@@ -107,17 +171,17 @@ export async function exportSessionsCsv(locale: string): Promise<string | null> 
 
   const rows = sessions.map((s) => [
     s.title,
-    s.state,
-    s.level,
-    s.language,
-    s.startsAt ? formatDateTime(s.startsAt, prefs.timeZone, locale) : "",
+    SESSION_STATE_AR[s.state] ?? s.state,
+    SESSION_LEVEL_AR[s.level] ?? s.level,
+    SESSION_LANGUAGE_AR[s.language] ?? s.language,
+    s.startsAt ? csvDateTime(s.startsAt, prefs.timeZone) : "",
     s.presenters
       .filter((p) => p.accepted)
       .map((p) => p.displayName ?? "")
       .join("، "),
   ]);
   await auditExport(locale, "sessions");
-  return buildCsv(["العنوان", "الحالة", "المستوى", "اللغة", "التاريخ والوقت", "المُقدِّمون"], rows);
+  return buildCsv(["العنوان", "الحالة", "المستوى", "اللغة", whenHeader("التاريخ والوقت", prefs.timeZone), "المُقدِّمون"], rows);
 }
 
 export async function exportRsvpsCsv(locale: string): Promise<string | null> {
@@ -141,11 +205,11 @@ export async function exportRsvpsCsv(locale: string): Promise<string | null> {
       m?.display_name ?? "",
       RSVP_STATUS_AR[r.status as string] ?? (r.status as string),
       r.waitlist_position !== null ? formatNumber(r.waitlist_position as number) : "",
-      formatDateTime(r.reserved_at as string, prefs.timeZone, locale),
+      csvDateTime(r.reserved_at as string, prefs.timeZone),
     ];
   });
   await auditExport(locale, "rsvps");
-  return buildCsv(["الجلسة", "العضو", "الحالة", "ترتيب الانتظار", "وقت الحجز"], rows);
+  return buildCsv(["الجلسة", "العضو", "الحالة", "ترتيب الانتظار", whenHeader("وقت الحجز", prefs.timeZone)], rows);
 }
 
 export async function exportAllAttendanceCsv(locale: string): Promise<string | null> {
@@ -176,13 +240,13 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
     return [
       s?.title ?? "",
       m?.display_name ?? "",
-      formatDateTime(r.arrived_at as string, prefs.timeZone, locale),
+      csvDateTime(r.arrived_at as string, prefs.timeZone),
       r.method === "code" ? "رمز الحضور" : "تسجيل يدوي",
       r.method === "manual" ? "نعم" : "لا",
     ];
   });
   await auditExport(locale, "attendance");
-  return buildCsv(["الجلسة", "العضو", "وقت الوصول", "طريقة التسجيل", "علامة يدوية"], rows);
+  return buildCsv(["الجلسة", "العضو", whenHeader("وقت الوصول", prefs.timeZone), "طريقة التسجيل", "علامة يدوية"], rows);
 }
 
 /**
@@ -234,13 +298,19 @@ export async function exportPointsCsv(locale: string): Promise<string | null> {
 
   const rows = (data ?? []).map((r) => {
     const m = (r as unknown as { members: { display_name: string | null } | null }).members;
-    return [m?.display_name ?? "", formatNumber(r.amount as number), r.source as string, r.reason as string, formatDateTime(r.occurred_at as string, prefs.timeZone, locale)];
+    return [
+      m?.display_name ?? "",
+      formatNumber(r.amount as number),
+      LEDGER_SOURCE_AR[r.source as string] ?? (r.source as string),
+      r.reason as string,
+      csvDateTime(r.occurred_at as string, prefs.timeZone),
+    ];
   });
   await auditExport(locale, "points");
-  return buildCsv(["العضو", "القيمة", "المصدر", "السبب", "التاريخ"], rows);
+  return buildCsv(["العضو", "القيمة", "المصدر", "السبب", whenHeader("التاريخ", prefs.timeZone)], rows);
 }
 
-const CERT_STATE_AR: Record<string, string> = { held: "محجوزة", released: "صادرة", revoked: "مُلغاة" };
+const CERT_STATE_AR: Record<string, string> = { held: "محجوزة", issued: "صادرة", revoked: "مُلغاة" };
 
 export async function exportCertificatesCsv(locale: string): Promise<string | null> {
   const client = await requireAdmin(locale);
@@ -260,14 +330,14 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
     return [
       c.serial as string,
       c.recipient_name_snapshot as string,
-      c.kind as string,
+      CERT_KIND_AR[c.kind as string] ?? (c.kind as string),
       s?.title ?? "",
       CERT_STATE_AR[c.state as string] ?? (c.state as string),
-      c.issued_at ? formatDateTime(c.issued_at as string, prefs.timeZone, locale) : "",
+      c.issued_at ? csvDateTime(c.issued_at as string, prefs.timeZone) : "",
     ];
   });
   await auditExport(locale, "certificates");
-  return buildCsv(["الرقم التسلسلي", "العضو", "النوع", "الجلسة", "الحالة", "تاريخ الإصدار"], rows);
+  return buildCsv(["الرقم التسلسلي", "العضو", "النوع", "الجلسة", "الحالة", whenHeader("تاريخ الإصدار", prefs.timeZone)], rows);
 }
 
 const MEMBER_ROLE_AR: Record<string, string> = { admin: "مشرف المؤسسة", moderator: "مُنظِّم", member: "عضو" };
@@ -282,8 +352,58 @@ export async function exportMembersCsv(locale: string): Promise<string | null> {
     m.email,
     MEMBER_ROLE_AR[m.role],
     MEMBER_STATUS_AR[m.status],
-    formatDateTime(m.createdAt, prefs.timeZone, locale),
+    csvDateTime(m.createdAt, prefs.timeZone),
   ]);
   await auditExport(locale, "members");
-  return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", "تاريخ الانضمام"], rows);
+  return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", whenHeader("تاريخ الانضمام", prefs.timeZone)], rows);
+}
+
+// ── SCR-061's «آخر تصدير» ─────────────────────────────────────────────────
+
+export const EXPORT_TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members"] as const;
+export type ExportType = (typeof EXPORT_TYPES)[number];
+
+export interface RecentExport {
+  actorName: string | null;
+  occurredAt: string;
+}
+
+/**
+ * The newest `export.created` row per export type — who took the file, and
+ * when. «Every export is audited» stops being a sentence the screen asserts
+ * and becomes something it shows. A per-session attendance export counts as
+ * an attendance export. Admin only: exports sit outside a moderator's scope.
+ */
+export async function listRecentExports(locale: string): Promise<Partial<Record<ExportType, RecentExport>> | null> {
+  const client = await requireAdmin(locale);
+  if (!client) return null;
+  const { supabase } = client;
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("actor_id, after, occurred_at")
+    .eq("action", "export.created")
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`audit_log: ${error.message}`);
+
+  const latest: Partial<Record<ExportType, { actorId: string | null; occurredAt: string }>> = {};
+  for (const row of data ?? []) {
+    const type = (row.after as { export_type?: string } | null)?.export_type;
+    if (!type || !(EXPORT_TYPES as readonly string[]).includes(type) || latest[type as ExportType]) continue;
+    latest[type as ExportType] = { actorId: row.actor_id as string | null, occurredAt: row.occurred_at as string };
+  }
+
+  const ids = Array.from(new Set(Object.values(latest).map((l) => l?.actorId).filter((id): id is string => !!id)));
+  const names = new Map<string, string | null>();
+  if (ids.length > 0) {
+    const { data: members, error: mErr } = await supabase.from("members").select("id, display_name").in("id", ids);
+    if (mErr) throw new Error(`members: ${mErr.message}`);
+    for (const m of members ?? []) names.set(m.id as string, m.display_name as string | null);
+  }
+
+  const result: Partial<Record<ExportType, RecentExport>> = {};
+  for (const [type, entry] of Object.entries(latest) as [ExportType, { actorId: string | null; occurredAt: string }][]) {
+    result[type] = { actorName: entry.actorId ? (names.get(entry.actorId) ?? null) : null, occurredAt: entry.occurredAt };
+  }
+  return result;
 }

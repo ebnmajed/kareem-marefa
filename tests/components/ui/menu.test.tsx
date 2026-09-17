@@ -61,6 +61,32 @@ describe("Menu", () => {
     expect(disabled).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("marks the page on show with aria-current and a check, and no other item", async () => {
+    render(
+      <NextIntlClientProvider locale="ar" messages={{}}>
+        <Direction.Provider dir="rtl">
+          <Menu
+            trigger={<button type="button">النقاط والتقدير</button>}
+            items={[
+              { label: "النقاط", href: "/app/admin/scoring", current: true },
+              { label: "الشارات والمستويات", href: "/app/admin/recognition" },
+            ]}
+          />
+        </Direction.Provider>
+      </NextIntlClientProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "النقاط والتقدير" }));
+    const current = screen.getByRole("menuitem", { name: "النقاط" });
+    expect(current).toHaveAttribute("aria-current", "page");
+    expect(current.querySelector("svg")).not.toBeNull();
+    const other = screen.getByRole("menuitem", { name: "الشارات والمستويات" });
+    expect(other).not.toHaveAttribute("aria-current");
+    expect(other.querySelector("svg")).toBeNull();
+    // The open menu is portaled to `body`, so that is what axe reads; `region`
+    // is a page-landmark rule a bare test document cannot satisfy.
+    expect((await axe.run(document.body, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } })).violations).toEqual([]);
+  }, 20000);
+
   it("closes on Escape", async () => {
     render(<Example />);
     await userEvent.click(screen.getByRole("button", { name: "القائمة" }));

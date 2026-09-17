@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { AdminRail, type AdminRailChild, type AdminRailIconKey, type AdminRailItem } from "@/components/admin/admin-rail";
@@ -135,11 +134,10 @@ const NAV_ENTRIES: NavEntryDef[] = [
   { kind: "leaf", key: "settings", href: "/app/admin/settings", adminOnly: true, built: true, icon: "gear" },
 ];
 
-function isCurrent(href: string, withoutLocale: string, exact: boolean): boolean {
-  return exact ? withoutLocale === href : withoutLocale === href || withoutLocale.startsWith(`${href}/`);
-}
-
-function buildRailItems(isAdmin: boolean, t: Awaited<ReturnType<typeof getTranslations>>, withoutLocale: string): AdminRailItem[] {
+// Which item is current is the rail's own decision, from `usePathname()`
+// (`admin-rail.tsx`): this layout is not re-rendered on a client-side
+// navigation, so a `current` computed here went stale on the first click.
+function buildRailItems(isAdmin: boolean, t: Awaited<ReturnType<typeof getTranslations>>): AdminRailItem[] {
   const items: AdminRailItem[] = [];
   for (const entry of NAV_ENTRIES) {
     if (entry.kind === "leaf") {
@@ -149,7 +147,7 @@ function buildRailItems(isAdmin: boolean, t: Awaited<ReturnType<typeof getTransl
         href: entry.href,
         label: t(`nav.${entry.key}`),
         icon: entry.icon,
-        current: isCurrent(entry.href, withoutLocale, entry.key === "dashboard"),
+        exact: entry.key === "dashboard",
       });
       continue;
     }
@@ -159,7 +157,6 @@ function buildRailItems(isAdmin: boolean, t: Awaited<ReturnType<typeof getTransl
         key: child.key,
         href: child.href,
         label: t(`nav.${child.key}`),
-        current: isCurrent(child.href, withoutLocale, false),
       }));
     if (children.length === 0) continue;
     items.push({ key: entry.key, label: t(`groups.${entry.key}`), icon: entry.icon, children });
@@ -173,17 +170,11 @@ export default async function AdminLayout({ children, params }: { children: Reac
 
   const session = await requireSession(locale);
   const t = await getTranslations("admin.shell");
-  // ★ Computed on the SERVER from the `x-pathname` header `proxy.ts` forwards
-  // — the same mechanism `shell/tab-bar.tsx` uses, and for the same reason:
-  // a client `usePathname()` would make the active rail item a hydration
-  // result, a visible flash on every console page load.
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const withoutLocale = pathname.replace(/^\/(ar|en)(?=\/|$)/, "");
 
   // A plain member gets no rail at all — the page underneath still 404s on
   // its own gate, which is the real boundary (see the header comment).
   const isMember = session.role === "member";
-  const items: AdminRailItem[] = isMember ? [] : buildRailItems(session.role === "admin", t, withoutLocale);
+  const items: AdminRailItem[] = isMember ? [] : buildRailItems(session.role === "admin", t);
 
   return (
     <div>

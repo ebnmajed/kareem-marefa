@@ -103,6 +103,20 @@ export function presetsFor(purpose: Purpose): PresetName[] {
   return purpose === 'poster' ? POSTER_PRESETS : CERTIFICATE_PRESETS
 }
 
+/**
+ * The presets THIS document is exported at.
+ *
+ * A poster derives all seven from its 4:5 master. A certificate is exported
+ * at the ONE page its own master is composed for (DEC-148): a landscape
+ * certificate derived into portrait put every line into the top 29% of the
+ * page over a 157 mm empty band (measured), so a portrait certificate is a
+ * portrait composition, chosen at issue time, and never a derivation.
+ */
+export function presetsForDocument(doc: Pick<DesignDocument, 'purpose' | 'master'>): PresetName[] {
+  if (doc.purpose === 'poster') return POSTER_PRESETS
+  return [doc.master.width >= doc.master.height ? 'cert_landscape' : 'cert_portrait']
+}
+
 /** The area a composition may occupy. Content is constrained to it (A12) and
  *  anything still crossing it is flagged before export (REQ-DSG-010). */
 export function safeBox(preset: Preset): Box {
@@ -300,7 +314,7 @@ export function safeAreaViolations(doc: DesignDocument, target: PresetName): Saf
 /** Every preset a document will be exported at, checked at once — the list
  *  SCR-057 shows before an admin approves anything. */
 export function allSafeAreaViolations(doc: DesignDocument): SafeAreaViolation[] {
-  return presetsFor(doc.purpose).flatMap((preset) => safeAreaViolations(doc, preset))
+  return presetsForDocument(doc).flatMap((preset) => safeAreaViolations(doc, preset))
 }
 
 /* ── alignment guides and snapping (06 §10, REQ-DSG-022) ────────────────── */

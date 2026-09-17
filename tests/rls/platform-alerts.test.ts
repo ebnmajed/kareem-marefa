@@ -21,7 +21,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, withTx, type Tx } from "./db";
+import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 const FILES = ["platform/0005_enum_types.sql", "platform/0006_alerts.sql"];
@@ -353,6 +353,78 @@ describe("platform — the alert drill (11 §3.2)", () => {
 
       // ★ The demonstrable: every alert in `11` §3.2 fires.
       expect(await firing(tx)).toEqual([...ALERTS].sort());
+    });
+  });
+});
+
+// ── The console's door — `platform_alerts()` (wave 8, proposed as platform/0008) ──
+//
+// SCR-084 and the console's home read the same eight rows the worker reads,
+// through `assert_platform_admin()`. REQ-ADM-003: aggregate only — so the
+// second case pins every `detail` key to the counts, ages, rates and
+// thresholds `0075` writes, and a later identifier breaks this file first.
+
+const READ_FILE = "platform/0008_platform_alerts_read.sql";
+
+async function applyRead(tx: Tx) {
+  await apply(tx);
+  if (existsSync(join(process.cwd(), "supabase", "proposed", READ_FILE))) await applyProposed(tx, READ_FILE);
+}
+
+/** Every `detail` key `0075` writes. Nothing here can name an org, a member, a session or content. */
+const AGGREGATE_KEYS = new Set([
+  "status",
+  "oldest_pending_seconds",
+  "threshold_seconds",
+  "divergences_24h",
+  "failed_fonts_24h",
+  "pending",
+  "oldest_seconds",
+  "sent_1h",
+  "bounced_1h",
+  "rate",
+  "consecutive_failures",
+  "threshold",
+  "violations_24h",
+  "open_over_hours",
+  "sessions",
+]);
+
+describe("platform — the console reads the alerts (0008)", () => {
+  it("RPC-platform_alerts.platform_only — every org role is refused; anon is refused", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyRead(tx);
+      for (const claims of [f.a.admin.claims, f.a.mod.claims, f.a.members[0].claims]) {
+        await tx.as(claims);
+        expect(await errorMessage(() => tx.q(`select * from public.platform_alerts()`))).toMatch(/not_platform_admin/);
+      }
+      await tx.asAnon();
+      expect(await errorCode(() => tx.q(`select * from public.platform_alerts()`))).toBe(PERMISSION_DENIED);
+    });
+  });
+
+  it("RPC-platform_alerts.aggregate — all eight, a fired one among them, and every detail key aggregate", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyRead(tx);
+      await quiesce(tx);
+      // One condition, so the door is shown carrying a FIRED reading, not only quiet ones.
+      await tx.q(
+        `insert into public.audit_log (org_id, actor_role, action, subject_type)
+         values ($1, 'system', 'points.balance_divergence', 'points_balances')`,
+        [f.a.id],
+      );
+
+      await tx.as({ sub: f.platformAdmin.authUserId, email: f.platformAdmin.email, platform_admin: true });
+      const readings = await tx.q<Reading>(`select alert, fired, detail from public.platform_alerts()`);
+      expect(readings.map((r) => r.alert).sort()).toEqual([...ALERTS].sort());
+      expect(readings.filter((r) => r.fired).map((r) => r.alert)).toEqual(["ledger_divergence"]);
+      for (const r of readings) {
+        for (const key of Object.keys(r.detail)) expect(AGGREGATE_KEYS.has(key), `${r.alert}.${key}`).toBe(true);
+        // No value is an identifier either: a uuid in a detail would be a row reference.
+        expect(JSON.stringify(r.detail), r.alert).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+      }
     });
   });
 });

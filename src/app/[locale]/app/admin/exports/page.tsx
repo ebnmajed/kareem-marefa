@@ -1,43 +1,45 @@
+import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { requireAdminSession } from "@/lib/dal/admin-dashboard";
+import { Link } from "@/components/ui/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { EXPORT_TYPES, listRecentExports } from "@/lib/dal/admin-exports";
+import { getOrgPrefs } from "@/lib/dal/proposals";
+import { ExportsTable } from "./exports-table";
 
-// SCR-061 · /app/admin/exports (REQ-ADM-017). Admin only — exports sit
-// outside a moderator's scope (09 §5's coverage table).
-// `requireAdminSession()` itself calls `notFound()` for anyone else — the
-// same 404-not-message pattern every other admin screen uses. Every
-// download link is a plain GET to a Route Handler
-// (`src/app/api/admin/exports/[type]/route.ts`); the audit write happens
-// there, not on this page render, so opening this screen itself is not
-// what gets logged — only an actual download is.
-
-const TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members"] as const;
+// SCR-061 · /app/admin/exports (REQ-ADM-017), on the M9 system for wave 8
+// (K2). Admin only — exports sit outside a moderator's scope (09 §5's
+// coverage table): `listRecentExports()` answers null for anyone else and the
+// page answers with the streamed not-found (`DEC-134`); the Route Handlers
+// answer 404 on their own.
+//
+// «Every export is audited» is shown, not only said: each file carries who took
+// it last and when, read from the `export.created` rows its own downloads
+// write, and the note links to those rows in the audit log. The download stays
+// a Route Handler (`src/app/api/admin/exports/[type]`); the audit write happens
+// there, on the download, never on opening this screen.
 
 export default async function ExportsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  await requireAdminSession(locale);
-  const t = await getTranslations("admin.exports");
+  const [recent, prefs, t] = await Promise.all([listRecentExports(locale), getOrgPrefs(locale), getTranslations("admin.exports")]);
+  if (recent === null) notFound();
 
   return (
     <>
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-3 max-w-2xl text-body text-fg-muted">{t("intro")}</p>
-
-      <ul className="mt-8 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
-        {TYPES.map((type) => (
-          <li key={type} className="rounded-field border border-edge p-5">
-            <h2 className="text-label text-fg-heading">{t(`${type}.title`)}</h2>
-            <p className="mt-2 text-body-sm text-fg-muted">{t(`${type}.note`)}</p>
-            <a
-              href={`/api/admin/exports/${type}`}
-              className="mt-4 inline-flex h-11 items-center rounded-field border border-edge-strong px-4 text-body-sm text-fg-heading hover:bg-silver-100"
-            >
-              {t("download")}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <PageHeader title={t("title")} description={t("intro")} />
+      <Panel tone="info" className="mt-6 max-w-3xl">
+        <p className="text-body-sm text-fg-body">
+          {t("auditNote")}{" "}
+          <Link href="/app/admin/audit?action=export.created" className="text-fg-heading underline underline-offset-4">
+            {t("auditLink")}
+          </Link>
+        </p>
+      </Panel>
+      <div className="mt-6">
+        <ExportsTable rows={EXPORT_TYPES.map((type) => ({ type, last: recent[type] ?? null }))} timeZone={prefs.timeZone} locale={locale} />
+      </div>
     </>
   );
 }

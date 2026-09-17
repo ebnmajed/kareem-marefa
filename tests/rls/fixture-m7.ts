@@ -1,6 +1,6 @@
 // Wave-4 rows on both orgs, so the isolation sweep is never vacuous for a
 // wave-4 table. Built as the owner inside the caller's transaction, after
-// the M2–M6 rows. Today: one `brand_kits` row per org (migration 0068) —
+// the M2–M6 rows. Today: one `brand_kits` row per org (migration 0068, `canvasRaise` since 0093) —
 // org A's palette and org B's differ so a cross-org leak would be visible
 // in the values, not only in the count. And one `data_export_requests` row
 // for members[0] (0069) so the P3 self read is non-vacuous; `impersonation_sessions`
@@ -22,14 +22,14 @@ export interface M7Org {
 
 export type M7Fixture = Omit<M6Fixture, "a" | "b"> & { a: M6Fixture["a"] & M7Org; b: M6Fixture["b"] & M7Org };
 
-const LIGHT_A = ["#fffdf7", "#ffffff", "#1a1206", "#3d3320", "#6b5f45", "#eee7d6", "#8a7b5c", "#e2d9c2", "#1a1206"];
-const DARK_A = ["#14110a", "#1e1a10", "#ffffff", "#d9d2c2", "#b3ab98", "#3a3324", "#6b6250", "#4a4231", "#d9d2c2"];
-const LIGHT_B = ["#f6fbff", "#ffffff", "#06121f", "#213448", "#4b6278", "#d9e6f2", "#5f7f9c", "#c2d5e6", "#06121f"];
-const DARK_B = ["#0a1420", "#101c2b", "#ffffff", "#c6d3e0", "#9fb0c2", "#243447", "#4e6480", "#31445a", "#c6d3e0"];
+const LIGHT_A = ["#fffdf7", "#ffffff", "#1a1206", "#3d3320", "#6b5f45", "#eee7d6", "#8a7b5c", "#e2d9c2", "#1a1206", "#f4eedf"];
+const DARK_A = ["#14110a", "#1e1a10", "#ffffff", "#d9d2c2", "#b3ab98", "#3a3324", "#6b6250", "#4a4231", "#d9d2c2", "#2a2416"];
+const LIGHT_B = ["#f6fbff", "#ffffff", "#06121f", "#213448", "#4b6278", "#d9e6f2", "#5f7f9c", "#c2d5e6", "#06121f", "#eaf2fa"];
+const DARK_B = ["#0a1420", "#101c2b", "#ffffff", "#c6d3e0", "#9fb0c2", "#243447", "#4e6480", "#31445a", "#c6d3e0", "#17263a"];
 
 const COLUMNS = [
-  "light_canvas", "light_surface", "light_fg_heading", "light_fg_body", "light_fg_muted", "light_edge", "light_edge_strong", "light_spine", "light_node",
-  "dark_canvas", "dark_surface", "dark_fg_heading", "dark_fg_body", "dark_fg_muted", "dark_edge", "dark_edge_strong", "dark_spine", "dark_node",
+  "light_canvas", "light_surface", "light_fg_heading", "light_fg_body", "light_fg_muted", "light_edge", "light_edge_strong", "light_spine", "light_node", "light_canvas_raise",
+  "dark_canvas", "dark_surface", "dark_fg_heading", "dark_fg_body", "dark_fg_muted", "dark_edge", "dark_edge_strong", "dark_spine", "dark_node", "dark_canvas_raise",
 ];
 
 async function seedOrg(tx: Tx, orgId: string, memberId: string, light: string[], dark: string[]): Promise<M7Org> {

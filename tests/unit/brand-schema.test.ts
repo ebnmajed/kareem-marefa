@@ -13,6 +13,8 @@ const FULL_LIGHT = {
   edgeStrong: "#767f8c",
   spine: "#d7dce3",
   node: "#0b1220",
+  // DEC-127, contract 1 — canvasRaise is now required by BrandColourSet.
+  canvasRaise: "#f1f3f7",
 };
 
 describe("hexColour", () => {

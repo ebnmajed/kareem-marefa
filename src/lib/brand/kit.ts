@@ -1,10 +1,12 @@
 import "server-only";
 import { sessionClient } from "@/lib/dal/session";
 import { brandKit, type BrandKit, type SaveBrandKitInput } from "./schema";
+import { fillBrandDefaults } from "./defaults";
 
 export type { BrandKit, BrandColourSet, BrandFontRef, BrandLogo, SaveBrandKitInput } from "./schema";
 export { brandColourSet, brandKit, brandFontRef, brandLogo, hexColour, saveBrandKitInput } from "./schema";
 export { checkContrast, contrastRatio, AA_THRESHOLD, type ContrastCheck, type ContrastUse } from "./contrast";
+export { fillBrandDefaults } from "./defaults";
 
 // The org brand kit, read side — DEC-008, REQ-DSG-021, 06 §8.3, 02 §4.13.
 //
@@ -48,11 +50,18 @@ export async function getBrandKit(locale: string, orgId: string): Promise<BrandK
   // (it is not needed by the CSS/render/mail consumers), so it is left
   // null here rather than adding a fourth query for a value SCR-059 shows
   // once, if at all.
+  //
+  // `fillBrandDefaults` fills any BRAND_COLOUR_TOKENS key `brand_kit()` did
+  // not return (the per-token identity override, applied here as defence
+  // in depth — wave-8 sync, the lead): `canvasRaise` reaching
+  // `BrandColourSet` before its SQL migration is promoted, or any future
+  // token added the same way, must not turn a routine page view into a
+  // ZodError.
   return brandKit.parse({
     orgId: raw.orgId,
     isOverridden: raw.isOverridden,
-    light: raw.light,
-    dark: raw.dark,
+    light: fillBrandDefaults(raw.light, "light"),
+    dark: fillBrandDefaults(raw.dark, "dark"),
     logo,
     headingFont,
     bodyFont,
@@ -104,4 +113,30 @@ export async function resetBrandKit(locale: string): Promise<void> {
   const { supabase } = await sessionClient(locale);
   const { error } = await supabase.rpc("reset_brand_kit");
   if (error) throw error;
+}
+
+/**
+ * `org_settings.limit_image_mb` — the same org-configurable ceiling
+ * `photos`/`materials` already read before their own uploader — so
+ * `ui/file-drop`'s advisory `maxBytes` on SCR-059's logo picker matches what
+ * `initiateAssetUpload()` (`designer`'s `lib/dal/posters.ts`) will actually
+ * enforce, rather than a number guessed into this screen. `20` is the same
+ * fallback `posters.ts` itself falls back to when the org has never set one.
+ */
+export async function getImageLimitMb(locale: string): Promise<number> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle();
+  return (data?.limit_image_mb as number | undefined) ?? 20;
+}
+
+/**
+ * The org's own name — REQ-UIX-013: the reset dialog confirms by naming
+ * the object, not "your organisation" generically. Kept separate from
+ * `getBrandKit()`, whose shape is a published, four-consumer contract
+ * (06 §8.3) that a screen-only display value has no reason to widen.
+ */
+export async function getOrgName(locale: string): Promise<string> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle();
+  return (data?.name as string | undefined) ?? "";
 }

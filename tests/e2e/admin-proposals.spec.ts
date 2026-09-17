@@ -87,10 +87,16 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ DEC-145: every locator on the page itself scopes to `#main`. A streamed
+// segment React has not yet swapped in is a hidden `<div id="S:…">` at the end
+// of `<body>` holding a second copy of the same text, and a page-wide
+// `getByText` matched both (the final gate at 5bf0327, phone). Dialogs and
+// toasts are portalled outside `#main` and stay page-wide.
 test("the page header carries the title and intro, and the queue count reads correctly", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
-  await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
+  const main = page.locator("#main");
+  await expect(main.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
   // ★ Two separate strings, not one combined sentence: the queue count under
   // the intro is a plain number ("admin.proposals.count", every ICU form),
   // deliberately not "N awaiting review" — the queue mixes submitted and
@@ -98,15 +104,16 @@ test("the page header carries the title and intro, and the queue count reads cor
   // "age") names a specific proposal's own state. This test's old combined
   // string never existed after the wave-6 rebuild; checking both separately
   // is what the page actually renders.
-  await expect(page.getByText("مقترح واحد")).toBeVisible();
-  const card = page.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
+  await expect(main.getByText("مقترح واحد")).toBeVisible();
+  const card = main.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
   await expect(card.getByText("بانتظار المراجعة", { exact: false })).toBeVisible();
 });
 
 test("★ rejecting confirms in a dialog naming the proposal — cancel changes nothing, confirm submits", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
-  const card = page.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
+  const main = page.locator("#main");
+  const card = main.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
   await card.getByText("ارفض المقترح").click();
   // ★ A real build's own run found this a strict-mode violation: both the
   // reject AND request-changes boxes shared one label. Each now names its
@@ -121,7 +128,7 @@ test("★ rejecting confirms in a dialog naming the proposal — cancel changes 
   // Cancel: the dialog closes, nothing was submitted, the proposal is still in the queue.
   await dialog.getByRole("button", { name: "تراجع" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "مقترح للمراجعة" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "مقترح للمراجعة" })).toBeVisible();
   expect((await db.query<{ state: string }>(`select state from public.proposals where org_id = $1`, [orgId])).rows[0].state).toBe("submitted");
 
   // Confirm: submits the SAME form (the dialog's button is portalled outside
@@ -131,7 +138,7 @@ test("★ rejecting confirms in a dialog naming the proposal — cancel changes 
   // does NOT re-click the summary (that would toggle it closed).
   await card.getByRole("button", { name: "أرسل" }).last().click();
   await page.getByRole("dialog").getByRole("button", { name: "تأكيد الرفض" }).click();
-  await expect(page.getByRole("heading", { name: "مقترح للمراجعة" })).toHaveCount(0);
+  await expect(main.getByRole("heading", { name: "مقترح للمراجعة" })).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("سُجّل قرارك ووصل صاحب المقترح");
   expect((await db.query<{ state: string }>(`select state from public.proposals where org_id = $1`, [orgId])).rows[0].state).toBe("rejected");
 });
@@ -139,7 +146,8 @@ test("★ rejecting confirms in a dialog naming the proposal — cancel changes 
 test("the empty state names the next action once every proposal has a decision", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
-  await expect(page.getByText("لا مقترحات تنتظر المراجعة الآن.")).toBeVisible();
-  await page.getByRole("link", { name: "العودة إلى اللوحة" }).click();
-  await expect(page.getByRole("heading", { name: "لوحة المؤسسة", level: 1 })).toBeVisible();
+  const main = page.locator("#main");
+  await expect(main.getByText("لا مقترحات تنتظر المراجعة الآن.")).toBeVisible();
+  await main.getByRole("link", { name: "العودة إلى اللوحة" }).click();
+  await expect(main.getByRole("heading", { name: "لوحة المؤسسة", level: 1 })).toBeVisible();
 });

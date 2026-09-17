@@ -21,6 +21,9 @@ const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
 test.describe.configure({ mode: "serial" });
+// Viewport captures with motion reduced: `globals.css` scrolls smoothly
+// otherwise, and a capture after a scroll fires mid-animation (sync 2).
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -324,4 +327,24 @@ test("SCR-040 at 390 px RTL: the dashboard reads down the page, never sideways",
   // `.qa-shots/rtl/` was wave 7's own sync-3 finding.
   const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
   await page.screenshot({ path: `${dir}/scr-040-admin-dashboard-390-rtl-${test.info().project.name}.png`, fullPage: true });
+});
+
+// Wave 8, F2: the three «أكثر …» cards set each count at the row's edge, as
+// «مسار المقترحات» does. A viewport capture scrolled to the cards — a
+// full-page one paints the fixed tab bar across them — and the measurement
+// the capture is for: the count's inline-end edge meets the name's row edge.
+test("F2 at 390 px: the «أكثر …» cards set the count at the edge, like the pipeline", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project");
+  await page.setViewportSize(PHONE);
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin");
+  const section = page.locator("section", { has: page.getByRole("heading", { name: "أكثر المُقدِّمين مشاركة" }) });
+  const row = section.locator("li").first();
+  // Centred, so neither the sticky header nor the fixed tab bar covers the cards.
+  await section.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const [rowBox, countBox] = await Promise.all([row.boundingBox(), row.locator("span").last().boundingBox()]);
+  // RTL: the row's inline end is its LEFT edge.
+  expect(Math.abs((countBox?.x ?? 0) - (rowBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/wave8-console-dashboard-top-lists.png` });
 });

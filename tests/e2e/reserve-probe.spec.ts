@@ -8,8 +8,9 @@
 // probe: sixteen fresh sessions, one press each, and every press must commit.
 //
 // At a one-in-three hang rate, sixteen clean presses by chance is (2/3)^16 —
-// about 0.15 %. A single STUCK is a regression of `patches/next+16.2.10.patch`
-// (DEC-136) or of whatever replaces it.
+// about 0.15 %. A single STUCK is a regression of React's own fix,
+// facebook/react#36134, which `next@16.3.5` vendors (DEC-140, DEC-146) — it
+// replaced `patches/next+16.2.10.patch` (DEC-136), and the probe outlives both.
 //
 // Phone project only: one touch-input run is the measure; the desktop project
 // would double the seats for no information. Run it on a production build on

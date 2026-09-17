@@ -160,6 +160,9 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   // the instant `selectOption` runs regardless of whether the action ever
   // completed.
   await expect(page.getByRole("status")).toContainText("غُيِّر الدور.");
+  // React resets the form after the action; the select must still show the
+  // role just saved, not the one the row mounted with (`ui/select`, `dcd5f05`).
+  await expect(row.getByLabel("الدور")).toHaveValue("moderator");
 
   const { rows: memberRow } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [memberId]);
   expect(memberRow[0].org_role).toBe("moderator");
@@ -268,3 +271,28 @@ test("SCR-049 at 390 px RTL: the members list reads down the page, never sideway
   await page.screenshot({ path: `.qa-shots/rtl/scr-049-members-390-rtl-${test.info().project.name}.png`, fullPage: true });
 });
 
+
+// ★ Wave 8, F1: the phone card list had no row actions at all — the actions
+// column was not `onCard`, so `DataTable` dropped it below `md`, and every
+// row-scoped case above is desktop-only, which is how it hid. This drives the
+// same deactivate-and-reactivate from the CARD, at 390 px.
+test("F1 at 390 px: a member is deactivated and reactivated from their phone card", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the phone card list is the phone treatment");
+  await page.setViewportSize(PHONE);
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/members");
+  const card = page.getByRole("listitem").filter({ hasText: "عضو تحت الاختبار" });
+
+  await card.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "عطّل العضوية" }).click();
+  const dialog = page.getByRole("dialog", { name: "تعطيل عضوية «عضو تحت الاختبار»؟" });
+  await dialog.getByLabel("سبب التعطيل الذي يُسجَّل في سجل التدقيق", { exact: false }).fill("انتقل إلى فرع آخر");
+  await dialog.getByRole("button", { name: "أرسل" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(card.getByText("معطَّل", { exact: true })).toBeVisible();
+
+  await card.getByRole("button", { name: /أعد تفعيل العضوية/ }).click();
+  await expect(card.getByText("معطَّل", { exact: true })).toHaveCount(0);
+  const { rows } = await db.query<{ status: string }>(`select status from public.members where id = $1`, [memberId]);
+  expect(rows[0].status).toBe("active");
+});

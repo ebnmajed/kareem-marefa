@@ -81,3 +81,32 @@ describe("AdminDashboardPage — attendance-rate Stat", () => {
     expect(results.violations).toEqual([]);
   });
 });
+
+// Wave 6 row 10, carried twice and closed in wave 7 on a misread capture: the
+// three «أكثر …» cards set each count beside the name while «مسار المقترحات»
+// sets it at the row's edge. The count is now the row's own second child, so
+// `justify-between` puts it at the edge in all four cards.
+describe("AdminDashboardPage — the «أكثر …» cards set the count at the edge, like the pipeline", () => {
+  it("each row holds the name and the count as two separate children, the count never inside the name's link", async () => {
+    await renderPage(
+      dashboardData({
+        topPresenters: [{ id: "p1", label: "ريم القحطاني", count: 7 }],
+        topCategories: [{ id: "c1", label: "تقارير", count: 12 }],
+        topCompanies: [{ id: "co1", label: "شركة المعرفة", count: 3 }],
+      }),
+    );
+    for (const [title, name, count] of [
+      ["أكثر المُقدِّمين مشاركة", "ريم القحطاني", "7"],
+      ["أكثر التصنيفات جلسات", "تقارير", "12"],
+      ["أكثر الشركات مشاركة", "شركة المعرفة", "3"],
+    ] as const) {
+      const section = screen.getByRole("heading", { name: title }).closest("section")!;
+      const row = section.querySelector("li")!;
+      expect(row).toHaveClass("justify-between");
+      expect(row.children).toHaveLength(2);
+      expect(row.children[0].textContent).toBe(name);
+      expect(row.children[1].textContent).toBe(count);
+    }
+    expect(screen.getByRole("link", { name: "ريم القحطاني" })).toHaveAttribute("href", expect.stringContaining("/app/members/p1"));
+  });
+});

@@ -10,8 +10,13 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { NextIntlClientProvider } from "next-intl";
 import { Direction } from "radix-ui";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AdminRail, type AdminRailItem } from "@/components/admin/admin-rail";
+
+// The rail reads the path itself (a layout is not re-rendered on a client-side
+// navigation, so a `current` passed down from it went stale).
+const nav = vi.hoisted(() => ({ pathname: "/ar/app/admin" }));
+vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), usePathname: () => nav.pathname }));
 
 // ★ `icon` is a STRING KEY into `admin-rail.tsx`'s own icon map, not a
 // component reference — passing a component here would be exactly the real
@@ -19,8 +24,8 @@ import { AdminRail, type AdminRailItem } from "@/components/admin/admin-rail";
 // (a `ComponentType` crossing the server/client boundary, which React
 // Flight refuses at a real request even though `tsc` sees nothing wrong).
 const ITEMS: AdminRailItem[] = [
-  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", icon: "home", current: true },
-  { key: "sessions", href: "/app/admin/sessions", label: "الجلسات", icon: "calendar", current: false },
+  { key: "dashboard", href: "/app/admin", label: "لوحة التحكم", icon: "home", exact: true },
+  { key: "sessions", href: "/app/admin/sessions", label: "الجلسات", icon: "calendar" },
 ];
 
 function renderRail() {
@@ -35,10 +40,27 @@ function renderRail() {
 
 describe("AdminRail", () => {
   it("lists every item once in the desktop nav and once in the phone sheet, each with the current one marked", () => {
+    nav.pathname = "/ar/app/admin";
     renderRail();
-    const nav = screen.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
-    expect(within(nav).getByRole("link", { name: "لوحة التحكم" })).toHaveAttribute("aria-current", "page");
-    expect(within(nav).getByRole("link", { name: "الجلسات" })).not.toHaveAttribute("aria-current");
+    const rail = screen.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
+    expect(within(rail).getByRole("link", { name: "لوحة التحكم" })).toHaveAttribute("aria-current", "page");
+    expect(within(rail).getByRole("link", { name: "الجلسات" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("★ the mark follows a client-side navigation — the dashboard's prefix never claims a route below it", () => {
+    nav.pathname = "/ar/app/admin";
+    const { rerender } = renderRail();
+    nav.pathname = "/ar/app/admin/sessions/abc";
+    rerender(
+      <NextIntlClientProvider locale="ar" messages={{}}>
+        <Direction.Provider dir="rtl">
+          <AdminRail items={ITEMS} brand="لوحة إدارة المؤسسة" collapseLabel="طيّ قائمة الإدارة" expandLabel="توسيع قائمة الإدارة" openLabel="فتح قائمة الإدارة" />
+        </Direction.Provider>
+      </NextIntlClientProvider>,
+    );
+    const rail = screen.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
+    expect(within(rail).getByRole("link", { name: "الجلسات" })).toHaveAttribute("aria-current", "page");
+    expect(within(rail).getByRole("link", { name: "لوحة التحكم" })).not.toHaveAttribute("aria-current");
   });
 
   it("the collapse toggle's accessible name follows its own state, not a fixed label", async () => {

@@ -1,10 +1,14 @@
 import type { StatProps, Tone } from "@/components/ui";
-import { Link } from "@/i18n/navigation";
+import { Link } from "@/components/ui/link";
 
 // content's file — `16` §4.2 Type. One number and what it means.
 //
-// `value` arrives pre-formatted ("numerals follow the ORG setting,
-// REQ-INT-006") — this file never formats a number itself, only lays it out.
+// `value` arrives pre-formatted — Western digits, always (`DEC-124`,
+// REQ-INT-006) — and this file never formats a number itself, only lays it out.
+//
+// ★ A linked Stat goes through `ui/link` (wave 8, `platform`'s L4, the lead as
+// custodian): the locale-aware link alone showed no pending affordance and never
+// fed `RouteProgress`, so a dashboard of linked counts felt dead on a slow tap.
 
 const TONE_TEXT: Partial<Record<Tone, string>> = {
   success: "text-success",

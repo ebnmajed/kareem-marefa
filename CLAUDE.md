@@ -51,7 +51,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 
 ## Stack
 
-**Next.js 16.2.10** · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
+**Next.js 16.3.5** (vendors `react-dom` 19.3.0-canary — DEC-146) · React 19.2.4 · next-intl 4.13.2 · Tailwind 4 · TypeScript 5.9.3 ·
 Zod 4.4.3 · supabase-js 2.110.2 · Vitest 4.1.10
 **Infra:** Vercel · Supabase cloud · graphile-worker (host TBD by M3 — DEC-034, OQ-027) · Resend · Sentry
 **CLI:** `supabase` 2.109.1, linked to project `qnwbgzsgkftqaixzuhdo`
@@ -152,10 +152,11 @@ npm run lockfile     # regenerates package-lock.json with CI's npm, in a contain
 ```
 
 The lock is **npm-version-sensitive**. `next-intl` bundles `@swc/core`, which declares an optional
-peer `@swc/helpers >=0.5.17` while the root has `0.5.15` for Next. **npm 10 adds a nested
-`next-intl/node_modules/@swc/helpers`; npm 11 does not.** A lock written by npm 11 is missing an
-entry npm 10 insists on, so `npm ci` — strict, unlike `npm install` — fails in CI while everything
-looks fine locally. It has broken CI twice.
+peer `@swc/helpers >=0.5.17` while the root had `0.5.15` for Next 16.2. **npm 10 added a nested
+`next-intl/node_modules/@swc/helpers`; npm 11 did not.** A lock written by npm 11 was missing an
+entry npm 10 insisted on, so `npm ci` — strict, unlike `npm install` — failed in CI while everything
+looked fine locally. It broke CI twice. Next 16.3.5 ships `@swc/helpers 0.5.23`, so that one nested
+entry is gone from the lock (DEC-146) — **the rule is not**: the next optional peer will do the same.
 
 So: if you add or change a dependency, run `npm run lockfile` before committing. CI is the backstop
 if you forget.
@@ -317,7 +318,60 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 7 — the remainder, DEC-137) — ★ THE MAP IN FORCE
+### Ownership map (wave 8 — the last nineteen routes, DEC-147) — ★ THE MAP IN FORCE
+
+**The last nineteen routes onto the M9 system — and the whole app is on it — plus the two features
+that live in those files: gradient posters with `canvasRaise` (`DEC-127`) and the certificate library
+(`DEC-128`).** The checklist is `STATUS.md`'s wave-8 block, every route named; the measure is
+`node scripts/ui-reach.mjs --wave8` (strict) **plus** a 390 px RTL capture at
+`.qa-shots/rtl/wave8-<track>-<route>-<state>.png` in the main checkout, from the build the row names,
+opened by the lead. **Baseline at Step 0: 2 of 20 strict.**
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ **task one, done before Step 0** — Next 16.3.5, the patch, its guard, `patch-package` and `postinstall` out together (`DEC-146`, `e7d0657`, 16/16 twice against a 7/16 control) · `/app/admin/sessions/[id]/schedule` rebuilt «more user friendly … intuitive to fill and quick» ★ · the `org_domains` check converged across environments, with its rehearsal · the worker's polling log line · promotion, the parity goldens' review, gates, the PR | the lead-only paths below, `src/app/[locale]/app/admin/sessions/[id]/schedule/**` ★, a new `messages/*/schedule.json` ★, the lead's fourteen `ui/` files, `src/app/globals.css`, `src/lib/session-status.ts`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `messages/*/{ui,app,auth}.json`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `content`, `event`, `notify`, `scoring` — **including `sessions`' eight and `content`'s nine `ui/` primitives**, edited only for its own rows or on a teammate's written request |
+| `designer` | opus | `/app/admin/designer/[documentId]` · `/app/admin/templates/posters` · `/app/admin/templates/certificates` · `/app/admin/sessions/[id]/certificates` — **and `DEC-128`**: three certificate families in both orientations and both schemes, chosen at issue time, the poster roster completed, `REQ-DSG-026`'s roster counted in CI; the scheme passed at every call site; gradient parity cases in both directions, goldens through the lead | `src/app/[locale]/app/admin/{designer,templates}/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`, `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `src/components/{designer,posters}/**`, `src/components/certificates/**` except `held-achievements.tsx`, `packages/designer-runtime/**` **except** `src/{brand,model,render,bindings}.ts`, `packages/storage-paths/src/designer.ts`, `worker/src/render/**` except `brand.ts`, its four worker tasks, `scripts/parity/**` minus `goldens/`, `messages/*/{designer,templates,certificates}.json` ★, `supabase/proposed/designer/**`, its tests, its note |
+| `console` | opus | `/app/admin/audit` · `/app/admin/exports` · `/app/admin/reminders` · `/app/admin/recognition` · `/app/admin/scoring` · `/app/admin/emails` (around what it does today — **not** the email studio) | `src/app/[locale]/app/admin/{layout,page,loading,error}.tsx`, `src/app/[locale]/app/admin/{audit,exports,reminders,recognition,scoring,emails}/**`, fixes only on its wave-6/7 admin routes, `src/app/api/admin/exports/**` ★, `src/lib/dal/{admin-audit,admin-dashboard,admin-exports,admin-lists,admin-members,admin-moderation,admin-settings,scoring-admin}.ts`, add-only `src/lib/dal/{notifications,recognition}.ts` ★, `src/components/admin/**`, presentation-only `src/components/certificates/held-achievements.tsx` ★, its six `ui/` primitives, `messages/*/{admin,recognition,scoring,notifications}.json` ★, `supabase/proposed/console/**`, its tests (with `scoring-screens`, `scoring-company-points`, `notify-screens` ★), its note |
+| `platform` | opus | **all seven `/app/platform` routes** and the console's shell — `/app/platform` · `orgs` · `orgs/new` · `orgs/[id]/domains` · `templates` · `metrics` · `impersonate`, with the banner | `src/app/[locale]/app/platform/**`, `src/app/api/platform/**`, `src/lib/dal/{platform,platform-templates}.ts`, `src/components/platform/**`, `worker/src/platform/**` and five of its tasks (fixes only), `messages/*/platform.json`, `supabase/proposed/platform/**`, its tests, its note |
+| `branding` | sonnet | `/app/admin/branding` — **and `DEC-127`**: `model.ts`'s gradient fill, the renderer and the binding collector walking it, the LTR mirror of the angle (`360 − angle`), `canvasRaise` in `BRAND_COLOUR_TOKENS` and in the brand kit's SQL | `src/app/[locale]/app/admin/branding/**`, `src/app/api/admin/branding/**`, `src/lib/brand/**`, `src/components/branding/**`, `packages/designer-runtime/src/{brand,model,render,bindings}.ts` ★, `worker/src/render/brand.ts` ★, `packages/storage-paths/src/brand.ts`, `messages/*/branding.json`, `supabase/proposed/branding/**`, its tests, its note |
+
+★ = transferred for this wave by `DEC-147`.
+
+**Wave-8 rules.**
+
+- ★ **Task one landed before Step 0, and Step 0 before anyone spawns.** Next 16.3.5 retires the patch;
+  the reserve probe is the measure of any hang, and nobody re-adds a nudge.
+- ★ **Four day-one contracts, published in the owner's note:** (1) `branding` → `designer` — `DEC-127`'s
+  `background` union and the `canvasRaise` token, **as types**, before any rendering; (2) `branding` →
+  `designer` — `scheme` is passed explicitly at every call site (posters `'dark'`, certificates the chosen
+  template's); (3) `designer` → `platform` — **what a baseline row is**, ruled by the lead at sync 1 before
+  anyone seeds (`DEC-125` calls the scheme a mechanism, `DEC-128`'s table counts it as rows); (4) lead →
+  `platform` — `org_domains` stores lowercase through its trigger, whatever the form sends.
+- ★ **The runtime has two writers this wave, split by file**: `branding` holds `brand.ts`, `model.ts`,
+  `render.ts`, `bindings.ts` and `worker/src/render/brand.ts`; `designer` holds everything else in the
+  package and in `worker/src/render/`, the parity harness and the call sites. **The goldens move for the
+  first time since M6**, and only through a lead-reviewed diff: `designer` runs `--update`, the lead looks
+  at every before and after and commits `scripts/parity/goldens/**`.
+- ★ **Two of three primitive owners are not spawned.** A request for one of `sessions`' eight or
+  `content`'s nine `ui/` files goes to the lead, who changes it as custodian with a test.
+- **One writer per file, JSON and specs included.** The schedule's strings move from `admin.json` and
+  `checkin.json` into the lead's new `schedule.json`; `console` deletes `admin.schedule.*` on request.
+  `console` writes `scoring.json` and `notifications.json` this wave; the `/app/me` screens that read them
+  keep every key they read.
+- **Captures land where the row says** — `.qa-shots/rtl/wave8-<track>-<route>-<state>.png` in the main
+  checkout, phone project, `390 × 844`, from a production build the row names by commit; a run in a
+  verification worktree sets `E2E_SHOTS_DIR` to the main checkout's `.qa-shots/rtl`.
+- **Not this wave, and never-touch for every teammate:** **multi-day sessions** (`DEC-119` … `121` — wave
+  9's whole subject), **the survey**, **the email studio** (`16` §11, M12), the studio's M12 mechanics
+  unless approved at sync 1, status-colour contrast enforcement (M13), `app/me/**`, `verify/**`,
+  `legal/**`, `s/[id]`, objectives, tags, avatar storage, downloads (`DEC-076`), and everything under
+  `(marketing)/**` with the components it renders.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 7 — the remainder, DEC-137) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 7 merged as PR #24 (`4f19cd6`). Its map is kept as the record; **wave 8's map is directly above** (`DEC-147`).
 
 **Twenty-two named pages and one admin IA onto the M9 system, plus the manual check-in switch.**
 The checklist is `STATUS.md`'s wave-7 block, every route named; the measure is
@@ -455,7 +509,7 @@ to hard-fail in M13.
 `.claude/**` · `.github/**` · `package.json`, `package-lock.json` · `src/app/[locale]/layout.tsx` ·
 `src/app/[locale]/(marketing)/**` · `public/**` · `src/proxy.ts` · `src/lib/supabase/**` ·
 `src/lib/dal/session.ts` · `src/i18n/**` · `src/messages/*/marketing.json` · `scripts/**` ·
-`vitest.config.ts` · `playwright.config.ts` · ★ `patches/**` (`DEC-136`).
+`vitest.config.ts` · `playwright.config.ts` · `patches/**` (`DEC-136` — empty since `DEC-146` retired the one patch; a new one is the lead's).
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:

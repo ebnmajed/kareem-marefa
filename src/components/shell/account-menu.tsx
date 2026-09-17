@@ -3,7 +3,7 @@
 import { useId } from "react";
 import type { MenuItem } from "@/components/ui";
 import { Avatar } from "@/components/ui/avatar";
-import { ChevronIcon } from "@/components/ui/icons";
+import { ChevronIcon, UserIcon } from "@/components/ui/icons";
 import { Menu } from "@/components/ui/menu";
 
 // The account menu — `16` §6.1 note 3, DEC-072, DEC-111, REQ-UIX-002, REQ-UIX-023.
@@ -81,7 +81,17 @@ export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatf
             aria-label={labels.account}
             className="inline-flex h-11 items-center gap-1.5 rounded-field px-2 text-fg-heading hover:bg-silver-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
-            {memberId ? <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative /> : null}
+            {/* An account with no member row — a platform admin with no org — has no
+                avatar to draw; a lone chevron read as a stray glyph (wave 8, the
+                lead's review of the platform console captures). The person glyph
+                keeps the control recognisable as the account. */}
+            {memberId ? (
+              <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative />
+            ) : (
+              <span aria-hidden className="inline-flex size-[34px] items-center justify-center rounded-field bg-silver-100 text-fg-muted">
+                <UserIcon />
+              </span>
+            )}
             <ChevronIcon direction="down" className="text-fg-muted" />
           </button>
         }

@@ -1,16 +1,24 @@
-// SCR-062 · /app/admin/audit — against REAL local Supabase (REQ-ADM-018).
-// Proves the real page renders entries, an admin sees the whole org's log
-// while a moderator sees only their own actions, and the action filter
-// narrows the list.
+// SCR-062 · /app/admin/audit — against REAL local Supabase (REQ-ADM-018),
+// rebuilt for wave 8 (K1) onto the M9 system. Proves: an admin sees the
+// whole org's log and a moderator only their own actions (03 §5.10a); every
+// action reads in Arabic; the filters narrow by action and by the org's own
+// days — a range INCLUDES the day it ends on, which it did not before; the
+// log pages fifty at a time; a member gets the streamed not-found (DEC-134).
+//
+// Captures (phone project, 390 × 844, `E2E_SHOTS_DIR`):
+//   wave8-console-audit-filters-sheet.png
+//   wave8-console-audit-filtered-admin.png
+//   wave8-console-audit-filtered-moderator.png
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+const SHOTS = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 
@@ -18,6 +26,11 @@ const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
 test.describe.configure({ mode: "serial" });
+// `globals.css` scrolls smoothly unless motion is reduced, so a viewport
+// capture taken after a scroll — ours or Playwright's own before a fill —
+// fired mid-animation and showed the top of the page (the lead's sync-2
+// finding on the scoring captures). Reduced motion makes every scroll instant.
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -25,6 +38,9 @@ let orgId = "";
 let domain = "";
 let adminEmail = "";
 let modEmail = "";
+let memberEmail = "";
+let adminMemberId = "";
+let modMemberId = "";
 const userIds: string[] = [];
 
 async function provisionMemberId(email: string): Promise<string> {
@@ -44,6 +60,7 @@ test.beforeAll(async ({}, testInfo) => {
   domain = `admin-audit-${tag}.example`;
   adminEmail = `boss@${domain}`;
   modEmail = `mod@${domain}`;
+  memberEmail = `member@${domain}`;
 
   const { rows: orgRows } = await db.query<{ id: string }>(
     `insert into public.orgs (name, slug, certificate_prefix, created_by, first_admin_email)
@@ -57,25 +74,40 @@ test.beforeAll(async ({}, testInfo) => {
   for (const [email, name] of [
     [adminEmail, "مشرفة السجل"],
     [modEmail, "منظّم السجل"],
+    [memberEmail, "عضو السجل"],
   ]) {
     const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: name } });
     if (error) throw error;
     userIds.push(data.user.id);
   }
-  const adminMemberId = await provisionMemberId(adminEmail);
-  const modMemberId = await provisionMemberId(modEmail);
+  adminMemberId = await provisionMemberId(adminEmail);
+  modMemberId = await provisionMemberId(modEmail);
+  const memberId = await provisionMemberId(memberEmail);
   await db.query(`update public.members set org_role = 'moderator' where id = $1`, [modMemberId]);
 
-  // One admin-attributed action, one moderator-attributed action — arranged
-  // directly (this track's own DAL only reads `audit_log`; every write
-  // path is proven elsewhere, in the RLS suite and the bundle-3/4/5 e2e).
+  // Arranged directly — this track's DAL only READS `audit_log`; every write
+  // path is proven where it is written. The provisioning above wrote its own
+  // `member.provisioned` rows too, as the system.
   await db.query(
-    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason) values ($1, $2, 'admin', 'member.role_changed', 'member', 'ترقية عضو')`,
-    [orgId, adminMemberId],
+    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, subject_id, reason) values ($1, $2, 'admin', 'member.role_changed', 'member', $3, 'ترقية عضو')`,
+    [orgId, adminMemberId, memberId],
   );
+  await db.query(`insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason) values ($1, $2, 'moderator', 'comment.removed', 'comment', 'محتوى مسيء')`, [
+    orgId,
+    modMemberId,
+  ]);
+  // Forty days old: outside «آخر سبعة أيام» and outside a range ending today.
   await db.query(
-    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason) values ($1, $2, 'moderator', 'comment.removed', 'comment', 'محتوى مسيء')`,
+    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason, occurred_at) values ($1, $2, 'moderator', 'photo.removed', 'photo', 'صورة قديمة', now() - interval '40 days')`,
     [orgId, modMemberId],
+  );
+  // Fifty-five old publishes, a hundred days back — enough for two pages of one
+  // action, and too old to push the rows above off the first page.
+  await db.query(
+    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason, occurred_at)
+     select $1, $2, 'admin', 'session.published', 'session', 'نشر رقم ' || n, now() - interval '100 days' - n * interval '1 minute'
+       from generate_series(1, 55) as n`,
+    [orgId, adminMemberId],
   );
 });
 
@@ -99,61 +131,119 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("REQ-ADM-018: an admin sees the whole org's log, including the moderator's own action", async ({ context, page }) => {
-  await signIn(context, adminEmail);
+/** Waits out React's streamed Suspense boundaries before strict locators. */
+async function goto(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+}
+
+/** The log renders a table from `md` and a card list below it; read whichever is on screen. */
+const shown = (page: Page, text: string) => page.getByText(text, { exact: true }).filter({ visible: true });
+
+function todayInRiyadh(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+test("a member gets the streamed not-found page, not the log (DEC-134)", async ({ context, page }) => {
+  await signIn(context, memberEmail);
   await page.goto("/ar/app/admin/audit");
+  await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "سجل التدقيق" })).toHaveCount(0);
+});
+
+test("REQ-ADM-018: an admin sees the whole org's log, each action in Arabic", async ({ context, page }) => {
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/audit");
   await expect(page.getByRole("heading", { name: "سجل التدقيق", level: 1 })).toBeVisible();
-  await expect(page.getByText("ترقية عضو")).toBeVisible();
-  await expect(page.getByText("محتوى مسيء")).toBeVisible();
+  await expect(shown(page, "ترقية عضو")).toBeVisible();
+  await expect(shown(page, "تغيير دور عضو")).toBeVisible();
+  await expect(shown(page, "محتوى مسيء")).toBeVisible();
+  await expect(shown(page, "إزالة تعليق")).toBeVisible();
 });
 
-test("03 §5.10a: a moderator sees only their own action, never the admin's", async ({ context, page }) => {
+test("03 §5.10a: a moderator sees only their own actions, never the admin's, and no actor filter", async ({ context, page }) => {
   await signIn(context, modEmail);
-  await page.goto("/ar/app/admin/audit");
-  await expect(page.getByText("محتوى مسيء")).toBeVisible();
-  await expect(page.getByText("ترقية عضو")).toHaveCount(0);
+  await goto(page, "/ar/app/admin/audit?period=30d");
+  await expect(shown(page, "محتوى مسيء")).toBeVisible();
+  await expect(page.getByText("ترقية عضو", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("الفاعل", { exact: true })).toHaveCount(0);
 });
 
-test("the action filter narrows the list", async ({ context, page }) => {
+test("the action filter narrows the list, and its chip removes it", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the panel form is the desktop treatment; the sheet is captured on the phone");
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/audit");
-  await page.getByLabel("الإجراء").selectOption("comment.removed");
+  await goto(page, "/ar/app/admin/audit");
+  await page.getByLabel("الإجراء", { exact: true }).selectOption("comment.removed");
   await page.getByRole("button", { name: "طبّق" }).click();
   await expect(page).toHaveURL(/action=comment\.removed/);
-  await expect(page.getByText("محتوى مسيء")).toBeVisible();
-  await expect(page.getByText("ترقية عضو")).toHaveCount(0);
+  await expect(shown(page, "محتوى مسيء")).toBeVisible();
+  await expect(page.getByText("ترقية عضو", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("group", { name: "الفلاتر المطبّقة" }).getByRole("link", { name: /أزل الفلتر/ }).click();
+  await expect(page).not.toHaveURL(/action=/);
+  await expect(shown(page, "ترقية عضو")).toBeVisible();
 });
 
-test("SCR-062 at 390 px RTL: the audit log reads down the page, never sideways", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+test("★ a custom range includes the day it ends on, in the org's own days; «آخر سبعة أيام» leaves out older rows", async ({ context, page }) => {
+  await signIn(context, adminEmail);
+  const today = todayInRiyadh();
+  await goto(page, `/ar/app/admin/audit?period=custom&from=${today}&to=${today}`);
+  await expect(shown(page, "ترقية عضو")).toBeVisible();
+  await expect(page.getByText("صورة قديمة", { exact: true })).toHaveCount(0);
+
+  await goto(page, "/ar/app/admin/audit?period=7d");
+  await expect(shown(page, "ترقية عضو")).toBeVisible();
+  await expect(page.getByText("صورة قديمة", { exact: true })).toHaveCount(0);
+
+  await goto(page, "/ar/app/admin/audit?period=30d");
+  await expect(page.getByText("صورة قديمة", { exact: true })).toHaveCount(0);
+  await goto(page, "/ar/app/admin/audit?action=photo.removed");
+  await expect(shown(page, "صورة قديمة")).toBeVisible();
+});
+
+test("the log pages fifty at a time, and the older page holds the rest", async ({ context, page }) => {
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/audit?action=session.published");
+  // Fifty is Arabic's «many» form: «50 إجراءً».
+  await expect(page.getByText(/50 إجراءً، الأحدث أولًا/)).toBeVisible();
+  await expect(shown(page, "نشر رقم 1")).toBeVisible();
+  await expect(page.getByText("نشر رقم 55", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("navigation", { name: "صفحات السجل" }).getByRole("link", { name: /إجراءات أقدم/ }).click();
+  await expect(page).toHaveURL(/before=/);
+  await expect(shown(page, "نشر رقم 55")).toBeVisible();
+  await expect(page.getByText("نشر رقم 1", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "صفحات السجل" }).getByRole("link", { name: "عُد إلى الأحدث" })).toBeVisible();
+});
+
+test("SCR-062 at 390 px RTL: the filters in a sheet, the log as cards, never sideways — as an admin", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await page.goto("/ar/app/admin/audit");
+  await goto(page, "/ar/app/admin/audit");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
-    // phone project innerWidth already includes no classic scrollbar.)
-    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
-    // Second: which element is responsible. An element inside an
-    // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
-    // tables), and a `position: fixed` overlay spans the visual viewport by
-    // design; neither makes the page scroll, so neither is named.
-    const limit = window.innerWidth;
-    const offenders: string[] = [];
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
-      if (el.tagName === "NEXT-ROUTE-ANNOUNCER") continue;
-      const box = el.getBoundingClientRect();
-      if (box.width === 0) continue;
-      if (box.right <= limit + 1 && box.left >= -1) continue;
-      let contained = false;
-      for (let n: HTMLElement | null = el; n; n = n.parentElement) {
-        const cs = getComputedStyle(n);
-        if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
-      }
-      if (contained) continue;
-      offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
-    }
-    return offenders.slice(0, 6);
-  });
-  expect(overflow, "the audit log must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-062-audit-390-rtl-${test.info().project.name}.png`, fullPage: true });
+
+  await page.getByRole("button", { name: "تصفية", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "تصفية السجل" });
+  await sheet.getByLabel("الإجراء", { exact: true }).selectOption("member.role_changed");
+  await sheet.getByLabel("المدة", { exact: true }).selectOption("7d");
+  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filters-sheet.png` });
+  await sheet.getByRole("button", { name: "طبّق" }).click();
+
+  await expect(page).toHaveURL(/action=member\.role_changed/);
+  await expect(page.getByRole("button", { name: "تصفية (2)" })).toBeVisible();
+  await expect(shown(page, "ترقية عضو")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "the log must not scroll sideways at 390 px").toBe(true);
+  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filtered-admin.png` });
+});
+
+test("SCR-062 at 390 px RTL: filtered, as a moderator", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
+  await page.setViewportSize(PHONE);
+  await signIn(context, modEmail);
+  await goto(page, "/ar/app/admin/audit?action=comment.removed&period=30d");
+  await expect(shown(page, "محتوى مسيء")).toBeVisible();
+  await expect(page.getByText("إجراءاتك أنت وحدها", { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filtered-moderator.png` });
 });

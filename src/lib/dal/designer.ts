@@ -10,8 +10,9 @@ import {
   fingerprintSource,
   resolveBrand,
   type BrandOverrides,
+  type BrandScheme,
   PRESETS,
-  presetsFor,
+  presetsForDocument,
   resolveCertificateBindings,
   resolveSessionBindings,
   validateDocument,
@@ -77,6 +78,33 @@ export interface DesignerDocumentData {
   fonts: DesignerFont[];
   canEdit: boolean;
   timeZone: string;
+  /** What the document belongs to — the header's title, its badge and the
+   *  way back. There is no designer landing page (DEC-141): «back» is the
+   *  screen that owns the document. */
+  context: DesignerContext;
+  /** The palette the preview resolved, and the one an export from this
+   *  screen pins (DEC-125, DEC-148 contract 2). */
+  scheme: BrandScheme;
+}
+
+export type DesignerContext =
+  | { kind: "session_poster"; sessionId: string; title: string; binding: "live" | "detached" | null }
+  | { kind: "template_draft"; templateId: string; purpose: DesignerPurpose; title: string }
+  | { kind: "certificate"; sessionId: string | null; title: string; serial: string }
+  | { kind: "unbound"; purpose: DesignerPurpose };
+
+/**
+ * The scheme a document previews and exports in (DEC-148, contract 2).
+ *
+ * A poster is always `dark` (DEC-125). A certificate bound to a certificate row
+ * renders the scheme that row pins — `light` until `0003` adds the column,
+ * which is true of every certificate issued so far. A certificate template
+ * being edited has no scheme of its own (a scheme is never a row), so the
+ * editor previews whichever the admin asks for, `light` by default.
+ */
+export function previewScheme(purpose: DesignerPurpose, requested?: string | null): BrandScheme {
+  if (purpose === "poster") return "dark";
+  return requested === "dark" ? "dark" : "light";
 }
 
 /* ── binding resolution ─────────────────────────────────────────────────── */
@@ -151,13 +179,18 @@ export function bindingContext(values: Record<string, string>, placeholderLabel?
 /* ── reads ──────────────────────────────────────────────────────────────── */
 
 /** SCR-057. `null` when the policy returns no row: the page calls `notFound()`. */
-export async function getDesignerDocument(locale: string, documentId: string, origin: string): Promise<DesignerDocumentData | null> {
+export async function getDesignerDocument(
+  locale: string,
+  documentId: string,
+  origin: string,
+  options: { scheme?: string | null } = {},
+): Promise<DesignerDocumentData | null> {
   const { session, supabase } = await sessionClient(locale);
 
   const [{ data: row }, { data: settings }, { data: org }] = await Promise.all([
     supabase
       .from("design_documents")
-      .select("id, purpose, document, template_version_id, bound_session_id, bound_certificate_id, updated_at")
+      .select("id, purpose, document, template_version_id, bound_session_id, bound_certificate_id, draft_for_template_id, updated_at")
       .eq("id", documentId)
       .maybeSingle(),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
@@ -175,14 +208,16 @@ export async function getDesignerDocument(locale: string, documentId: string, or
   const document = parsed.document;
   const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
 
-  const [{ data: sessionRow }, { data: certificateRow }, { data: fontRows }, { data: version }] = await Promise.all([
+  const [{ data: sessionRow }, { data: certificateRow }, { data: fontRows }, { data: version }, { data: poster }, { data: draftTemplate }] = await Promise.all([
     row.bound_session_id
       ? supabase.from("sessions").select("id, title, abstract, starts_at, time_zone, custom_venue_name, custom_venue_address, venues(name, address)").eq("id", row.bound_session_id).maybeSingle()
       : Promise.resolve({ data: null }),
     row.bound_certificate_id
       ? supabase
           .from("certificates")
-          .select("id, serial, verification_code, issued_at, recipient_name_snapshot")
+          // `*`, so the pinned `scheme` (designer/0003) is read where the column
+          // exists without failing the whole read where it does not yet.
+          .select("*")
           .eq("id", row.bound_certificate_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -190,7 +225,18 @@ export async function getDesignerDocument(locale: string, documentId: string, or
     row.template_version_id
       ? supabase.from("design_template_versions").select("document").eq("id", row.template_version_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    row.bound_session_id
+      ? supabase.from("session_posters").select("binding").eq("session_id", row.bound_session_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    row.draft_for_template_id
+      ? supabase.from("design_templates").select("id, name, purpose").eq("id", row.draft_for_template_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
+  const purpose = row.purpose as DesignerPurpose;
+  // A certificate renders the scheme PINNED on it (DEC-148); a template or an
+  // unbound certificate document previews what is asked for; a poster, dark.
+  const pinned = (certificateRow as { scheme?: string } | null)?.scheme;
+  const scheme = previewScheme(purpose, pinned ?? options.scheme);
 
   const bindingOptions: BindingOptions = { timeZone, origin, locale: "ar", orgName: (org?.name as string | undefined) ?? null };
 
@@ -200,7 +246,7 @@ export async function getDesignerDocument(locale: string, documentId: string, or
     // the preview an admin approves is what the export renders. A template
     // binds `{{brand.*}}` and never a hex literal (REQ-DSG-021); no row is
     // the identity override.
-    ...resolveBrand(await editorBrandOverrides(supabase, session.orgId), "light"),
+    ...resolveBrand(await editorBrandOverrides(supabase, session.orgId), scheme),
     ...sessionBindings(sessionRow as SessionRow | null, bindingOptions),
     ...certificateBindings(certificateRow as CertificateRow | null, bindingOptions),
   };
@@ -220,9 +266,28 @@ export async function getDesignerDocument(locale: string, documentId: string, or
   const templateLayers = (version?.document as { layers?: { id?: string; locked?: boolean }[] } | null)?.layers ?? [];
   const lockedLayerIds = templateLayers.filter((l) => l.locked === true && typeof l.id === "string").map((l) => l.id as string);
 
+  const boundSession = sessionRow as unknown as SessionRow | null;
+  const context: DesignerContext = boundSession
+    ? {
+        kind: "session_poster",
+        sessionId: boundSession.id,
+        title: boundSession.title,
+        binding: ((poster?.binding as "live" | "detached" | undefined) ?? null),
+      }
+    : draftTemplate
+      ? { kind: "template_draft", templateId: draftTemplate.id as string, purpose: draftTemplate.purpose as DesignerPurpose, title: draftTemplate.name as string }
+      : certificateRow
+        ? {
+            kind: "certificate",
+            sessionId: ((certificateRow as { session_id: string | null }).session_id ?? null),
+            title: (certificateRow as CertificateRow).recipient_name_snapshot,
+            serial: (certificateRow as CertificateRow).serial,
+          }
+        : { kind: "unbound", purpose };
+
   return {
     id: row.id as string,
-    purpose: row.purpose as DesignerPurpose,
+    purpose,
     document,
     templateVersionId: (row.template_version_id as string | null) ?? null,
     boundSessionId: (row.bound_session_id as string | null) ?? null,
@@ -240,6 +305,8 @@ export async function getDesignerDocument(locale: string, documentId: string, or
     })),
     canEdit: session.role === "admin",
     timeZone,
+    context,
+    scheme,
   };
 }
 
@@ -261,7 +328,11 @@ export type AutosaveResult =
   | { status: "invalid"; issues: ValidationIssue[] }
   | { status: "conflict"; updatedAt: string }
   | { status: "not_authorized" }
-  | { status: "locked_region"; layerId: string };
+  | { status: "locked_region"; layerId: string }
+  /** The document is a session's LIVE poster: it is the template's, and an
+   *  edit would be discarded by the next regeneration. Detach first, through
+   *  the confirm (REQ-DSG-003, REQ-UIX-013). */
+  | { status: "live_poster" };
 
 /**
  * SCR-057's autosave. A Route Handler calls this, never a Server Action:
@@ -274,8 +345,16 @@ export async function saveDesignDocument(locale: string, documentId: string, inp
 
   const { session, supabase } = await sessionClient(locale);
 
-  const { data: current } = await supabase.from("design_documents").select("updated_at").eq("id", documentId).maybeSingle();
+  const [{ data: current }, { data: livePoster }] = await Promise.all([
+    supabase.from("design_documents").select("updated_at").eq("id", documentId).maybeSingle(),
+    supabase.from("session_posters").select("id").eq("document_id", documentId).eq("binding", "live").maybeSingle(),
+  ]);
   if (!current) return { status: "not_authorized" };
+  // ★ A live poster is a pure function of template and data; a save to it
+  // would stay `live` and be regenerated away on the next title change — the
+  // admin's work silently gone. Refused, never detached on the side: detaching
+  // is confirmed by name (REQ-UIX-013), in the picker or the studio's gate.
+  if (livePoster) return { status: "live_poster" };
   if (new Date(current.updated_at as string).getTime() !== new Date(input.baseUpdatedAt).getTime()) {
     return { status: "conflict", updatedAt: current.updated_at as string };
   }
@@ -331,12 +410,19 @@ export function exportFingerprint(source: FingerprintSource): string {
   return createHash("sha256").update(fingerprintSource(source)).digest("hex");
 }
 
-/** Every screen and print target for a document's purpose, in A29's order.
- *  WebP accompanies every screen PNG for in-app display; JPEG is offered
- *  only where the org enabled it, and that check is the worker's. */
-export function exportTargets(purpose: DesignerPurpose): Array<{ preset: string; format: ExportArtifact["format"] }> {
+/** Every screen and print target for a document, in A29's order. WebP
+ *  accompanies every screen PNG for in-app display; JPEG is offered only
+ *  where the org enabled it, and that check is the worker's. A certificate
+ *  is its one composed page as a PDF, plus the PNG preview (A29) — the same
+ *  targets `issue_certificates` requests, so an export from the studio and
+ *  an issued certificate are the same files. */
+export function exportTargets(document: DesignDocument): Array<{ preset: string; format: ExportArtifact["format"] }> {
   const targets: Array<{ preset: string; format: ExportArtifact["format"] }> = [];
-  for (const preset of presetsFor(purpose)) {
+  if (document.purpose === "certificate") {
+    for (const preset of presetsForDocument(document)) targets.push({ preset, format: "pdf" }, { preset, format: "png" });
+    return targets;
+  }
+  for (const preset of presetsForDocument(document)) {
     // A29: print is PDF at 300 dpi with the bleed the geometry already
     // carries; screen is PNG at the exact preset size plus a WebP copy for
     // in-app display. JPEG is offered only where the org enabled it, and
@@ -390,8 +476,14 @@ export async function getExportQueue(locale: string, documentId: string, fingerp
  * that can disagree with what the admin previewed, and for a certificate it
  * would break REQ-CRT-014 outright.
  */
-export async function requestExports(locale: string, documentId: string, origin: string): Promise<ExportQueueData | { status: "not_authorized" }> {
-  const data = await getDesignerDocument(locale, documentId, origin);
+export async function requestExports(
+  locale: string,
+  documentId: string,
+  origin: string,
+  options: { scheme?: string | null } = {},
+): Promise<ExportQueueData | { status: "not_authorized" }> {
+  // The same scheme the preview resolved, so the export is what was approved.
+  const data = await getDesignerDocument(locale, documentId, origin, options);
   if (!data) return { status: "not_authorized" };
 
   const { supabase } = await sessionClient(locale);
@@ -407,7 +499,7 @@ export async function requestExports(locale: string, documentId: string, origin:
     p_document: documentId,
     p_fingerprint: fingerprint,
     p_context: { bindings: data.bindings, faces },
-    p_targets: exportTargets(data.purpose),
+    p_targets: exportTargets(data.document),
   });
   if (error) {
     if (error.code === "42501") return { status: "not_authorized" };
@@ -435,6 +527,24 @@ export async function signExportUrl(locale: string, storagePath: string): Promis
 }
 
 /* ── the org brand override for the editor's preview (wave 4, DEC-052) ──── */
+
+/**
+ * The `brand.*` bindings a PREVIEW renders with — the org's override over the
+ * platform palette in the given scheme, and the logo as a short-lived signed
+ * URL. The template libraries (SCR-055/056) draw each card with it, so a card
+ * shows the template as this org's posters and certificates will look.
+ */
+export async function previewBrandBindings(locale: string, scheme: BrandScheme): Promise<Record<string, string>> {
+  const { session, supabase } = await sessionClient(locale);
+  const bindings = resolveBrand(await editorBrandOverrides(supabase, session.orgId), scheme);
+  const logoAssetId = bindings["brand.logoAssetId"];
+  if (logoAssetId) {
+    const url = await signDesignAssetUrl(locale, logoAssetId);
+    if (url) bindings["brand.logoAssetId"] = url;
+    else delete bindings["brand.logoAssetId"];
+  }
+  return bindings;
+}
 
 /** `public.brand_kit()` already merges the platform defaults, so its output
  *  is a complete override; `resolveBrand` over it is exact. RLS scopes the

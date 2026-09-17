@@ -10,9 +10,9 @@
       "upload": "Upload a logo",
       "uploading": "Uploading…",
       "remove": "Remove logo",
-      "minResolutionHint": "For crisp printing up to A3, upload an image at least {width} × {height} px (300 PPI).",
-      "formatHint": "PNG, JPG or WebP only — SVG is not accepted.",
-      "ppiResult": "Used at full A3 size, this logo would print at {ppi} PPI.",
+      "minResolutionHint": "For crisp printing up to <bdi>A3</bdi>, upload an image at least {width} × {height} px (300 PPI).",
+      "formatHint": "<bdi>PNG</bdi>, <bdi>JPG</bdi> or <bdi>WebP</bdi> only — <bdi>SVG</bdi> is not accepted.",
+      "ppiResult": "Used at full <bdi>A3</bdi> size, this logo would print at {ppi} PPI.",
       "ppiSufficient": "Sufficient for printing up to A3.",
       "ppiWarning": "Below the recommended 300 PPI — large exports may warn.",
       "ppiInsufficient": "Below 200 PPI — an A3 export with this logo will be refused.",
@@ -37,8 +37,11 @@
         "edge": "Edge colour",
         "edgeStrong": "Strong edge colour",
         "spine": "Spine colour",
-        "node": "Node colour"
-      }
+        "node": "Node colour",
+        "canvasRaise": "Gradient background"
+      },
+      "invalidHex": "Enter a valid colour in <bdi>#rrggbb</bdi> form.",
+      "canvasRaiseLightHint": "This colour reaches no generated poster today — posters always render in dark mode."
     },
     "preview": {
       "title": "Live preview",
@@ -46,7 +49,8 @@
       "bodySample": "This is how body text looks in the app, in designer templates, and in email.",
       "buttonSample": "Action button",
       "cardTitle": "Card title",
-      "cardBody": "Explanatory text inside a card, in the colours chosen above."
+      "cardBody": "Explanatory text inside a card, in the colours chosen above.",
+      "posterGradientLabel": "This is how a generated poster's background looks — always in dark mode, whichever tab is shown here."
     },
     "contrast": {
       "title": "Contrast (WCAG 2.2 AA)",
@@ -70,7 +74,9 @@
       "saving": "Saving…",
       "saved": "The brand kit was saved.",
       "reset": "Reset to platform default",
+      "resetTitle": "Reset <bdi>{orgName}</bdi>'s brand kit?",
       "cancel": "Cancel",
+      "closeDialog": "Close",
       "resetConfirm": "This will delete the org's customisation, and every screen will return to the platform's default identity. Continue?",
       "resetting": "Resetting…",
       "resetDone": "The brand kit was reset to the platform default."

@@ -3134,3 +3134,317 @@ both are given (`f9fa70e`).
 - **Related, recorded for M13.** The same streaming can leave an **orphaned hidden segment** in a fully working page: an event page at desktop width carried a second hidden copy of the tasks and materials forms under `body > div#S:…`, duplicating `id="tasks"` and `id="tasks-create-form"` (`05f023b`). It is invisible and outside the accessibility tree, but duplicate ids are invalid HTML. Locators under `/app` scope to `#main`.
 - **Supersedes:** nothing.
 - **Documents changed:** `DECISIONS.md`, `STATUS.md`, `tests/e2e/wave7-content-me.spec.ts`
+
+---
+
+## DEC-146 — The owner takes the Next 16.3.5 upgrade: wave 8 opens by retiring the patch, `patch-package` and the guard test together
+
+- **Date:** 2026-09-16 · **Decided by:** owner («yes take the Next 16.3.5 upgrade»), on the choice `DEC-140` left open
+- **Decision.** `next` moves from **`16.2.10` to `16.3.5`**, which vendors a `react-dom` carrying React's own fix for the lost ping (`facebook/react#36134`, `DEC-140`). It is **wave 8's task one**, done by the lead alone before any teammate spawns.
+
+### What comes out, and it is more than the patch
+
+Measured on `main` at `4f19cd6`: `patches/` holds **one** file, and `patch-package` exists for it alone.
+
+| Artefact | Why it goes |
+|---|---|
+| `patches/next+16.2.10.patch` | the fix is upstream; the filename is version-pinned and would not apply to `16.3.5` anyway |
+| `tests/unit/react-dom-ping-patch.test.ts` | it asserts the patch is present in the bundled `react-dom`. Leave it and it fails on a patch that no longer exists |
+| **`patch-package`** (devDependency) and the **`postinstall` script** | `package.json:41` and `:72` — nothing else in the repo is patched |
+
+★ **All four come out in one change**, so no state exists where the guard test outlives the thing it guards, or `postinstall` runs a tool that is gone.
+
+### The order, and step 3 is the one that matters
+
+1. **Read `node_modules/next/dist/docs/` for `16.3`'s changes before writing anything** — `AGENTS.md`'s standing rule, and a minor is exactly where it earns its keep. This repo leans on `proxy.ts`, Server Actions, Partial Rendering and streaming SSR; `DEC-134` and `DEC-145` both turn on streaming behaviour that a minor can move.
+2. The four removals above, then **`npm run lockfile`** — through Docker, never a plain `npm install` (the npm-version trap has broken CI twice).
+3. ★ **Verify with `tests/e2e/reserve-probe.spec.ts` at its own standard: 16/16 presses on a production build.** The bug is **probabilistic** — one press in three — so a single green run proves nothing. Wave 7 also ran the **negative control** (unpatched, unnudged: 9 of 16 hung) and that is the shape to reproduce: the upgrade must be shown to fix it, not merely to pass.
+4. The full gate set: `build`, `qa` 44/44, `visual` 0.000 %, `db:reset` + `test:rls`, `parity`, e2e.
+
+★ **If the probe does not reach 16/16 on `16.3.5`, stop and report.** Reverting to `16.2.10` with the patch restored is the known-good state; shipping a Next minor that reintroduces a silent hang on «احجز مقعدك» is not an acceptable outcome of a tidying change.
+
+★ **Server Action IDs rotate on deploy** (`04` §9.2). This upgrade reaches production with wave 8's merge, so the owner deploys it outside a scheduled session, as with wave 7's push.
+
+- **Supersedes:** `DEC-140`'s open choice, and `DEC-136`'s step 5 — nothing is reported upstream, because React fixed it in March.
+- **Documents changed:** `docs/plan/notes/wave-8-lead.md`, `STATUS.md`
+
+---
+
+## DEC-147 — Wave 8 is the last nineteen routes on the M9 system, with gradient posters and the certificate library built in the files they live in; `designer`, `console`, `platform` and `branding` run, and the runtime is split by file
+
+- **Date:** 2026-09-17 · **Decided by:** owner (the wave-8 brief, `docs/plan/notes/wave-8-lead.md`: nineteen routes, the four tracks and their models, `DEC-127` and `DEC-128` folded in, multi-day sessions kept for wave 9), the file-level map by the lead
+- **Supersedes:** `DEC-137`'s wave-7 map as the map in force (kept in `CLAUDE.md` as the record); `DEC-137`'s feature-only transfer of `admin/sessions/[id]/schedule/{schedule-form.tsx,actions.ts,state.ts}` to `checkin`; `DEC-137`'s placement of `messages/*/{scoring,notifications,certificates}.json` and `src/lib/dal/certificates.ts` (add-only) with `content`; `16` §16.5's wave-8 table (already superseded on sequencing by `DEC-110`) — `notify` and the email studio are not this wave, so `DEC-085`'s return of `admin/emails` to `notify` waits for M12; `DEC-048`'s whole-package ownership of `packages/designer-runtime/**` by `designer`, **for this wave only**.
+
+### Task one came first, and it held (`DEC-146`)
+
+`e7d0657`: `next` 16.2.10 → 16.3.5 (and `eslint-config-next`); `patches/next+16.2.10.patch`,
+`tests/unit/react-dom-ping-patch.test.ts`, `patch-package` and `postinstall` out in the same commit; the
+lock through Docker. **16.3.5's vendored `react-dom` (19.3.0-canary-cbb046ab) carries the patch's branch
+byte for byte** in all four client builds — read before the upgrade, from the packed tarball.
+
+**The probe** (`tests/e2e/reserve-probe.spec.ts`, phone, 16 fresh sessions, production builds, back to back):
+
+| Build | Result |
+|---|---|
+| 16.3.5 as shipped, run 1 | **16/16** — 105–211 ms |
+| 16.3.5 **with the fix undone** in the vendored `react-dom` (the control, verification worktree) | `104 STUCK 107 STUCK STUCK 105 105 STUCK 108 105 STUCK 106 106 109 STUCK STUCK` — **7 of 16 hung** |
+| 16.3.5 as shipped, run 2 | **16/16** — 105–108 ms |
+
+**16.3's own docs were diffed against 16.2's before the change**, on the surfaces this repo leans on
+(streaming, `loading`, `not-found`, `error`, `proxy`, Server Actions, `redirect`, `revalidateTag`, `Link`,
+prefetching, i18n). Nothing moves: `DEC-134`'s streamed 200 + `noindex` is now documented verbatim in
+`notFound()`'s own page; `unstable_retry` became `retry` (this repo uses `reset`); `runtime: 'edge'` and
+`preferredRegion` are deprecated (every Route Handler here is `nodejs`); partial prefetching and
+`next/root-params` are opt-in and unused.
+
+**Gates on that tree:** `tsc` clean (app, worker) · lint **0 errors** · vitest **145 files, 1440/1440** ·
+build green · `qa` **44/44** · `visual` `wave-6-final → wave-8-task-one` **0.000 % on all eight pairs** ·
+`db:reset` + RLS **72 files, 791 passed** · `parity` **21 of 28** (path 4 needs `cwebp`; CI runs 28) · e2e
+**426 passed, 7 failed** — four the local gateway's «invalid response from the upstream server» and green
+alone, `admin-managed-lists:206` and `admin-members:141` green alone, `admin-reports` 6/6 twice alone, and
+`budgets`: the frozen landing's TBT 873 ms under contention and **233 ms alone** (baseline 243). ★ **One
+reading looked like a regression and was not**: alone, check-in's LCP read 3521 ms against a 2712 ms
+baseline. Interleaved A/B against a 16.2.10 build of the same app code (`fb13d0a`), four runs: check-in
+**3162 · 3163** on 16.2.10 and **3010 · 3014** on 16.3.5; every screen on both arms moves in Lantern's
+~150–450 ms steps and neither arm is consistently worse. **16.3.5 ships 13 KB less JS** on every screen
+(172 → 159 KB on `/app`, 175 → 162 KB on the landing). The orphaned wave-6 `next-server` (PID 98585,
+100 % of a core for 9½ hours) ignored `SIGTERM` and was stopped with `SIGKILL` first.
+
+### The map
+
+| Owner | Routes / work |
+|---|---|
+| **lead** | task one (above) · `/app/admin/sessions/[id]/schedule` (SCR-043) ★ · the `org_domains` check converged, rehearsed · the worker's polling log line · promotion, the goldens' review, gates, the PR |
+| **`designer`** (opus) | `/app/admin/designer/[documentId]` · `/app/admin/templates/posters` · `/app/admin/templates/certificates` · `/app/admin/sessions/[id]/certificates` — and `DEC-128` |
+| **`console`** (opus) | `/app/admin/{audit,exports,reminders,recognition,scoring,emails}` |
+| **`platform`** (opus) | `/app/platform` · `orgs` · `orgs/new` · `orgs/[id]/domains` · `templates` · `metrics` · `impersonate`, and the console's layout |
+| **`branding`** (sonnet) | `/app/admin/branding` — and `DEC-127` |
+
+**Not spawned:** `sessions`, `checkin`, `content`, `event`, `notify`, `scoring` — the lead is custodian,
+**including `sessions`' eight and `content`'s nine `ui/` primitives**, which four spawned tracks will ask
+for; a request reaches the lead, who changes the file in its owner's style with a test.
+
+### Why the runtime is split by file, and not left whole with `designer`
+
+The brief gives `DEC-127` to `branding` and `DEC-128` to `designer`, and both land in
+`packages/designer-runtime/`. One writer per file forces a split, and it falls cleanly along the two
+decisions: **`branding` takes the five files the gradient and the token change** — `brand.ts`
+(`canvasRaise`), `model.ts` (the union), `render.ts` (both `background?.color` reads, and the angle's
+mirror), `bindings.ts` (every stop collected), `worker/src/render/brand.ts` (`brandBindings`) — and
+**`designer` keeps everything that consumes them**: `library.ts` and the seed, the editor's background
+control, the call sites that choose a scheme, and the parity harness. The seam is a type, so it is
+published first as types alone (contract 1). **The goldens are `designer`'s to regenerate and the lead's to
+review**, because `scripts/parity/paths.mjs` renders its cases on a solid `#ffffff` and only a new gradient
+case — in both directions — turns `DEC-127`'s mirror into an assertion.
+
+### What "on the M9 system" means for the three routes that have an M12 design
+
+- **`/app/admin/emails`** is rebuilt around what it does today — the string-template catalogue, the delivery
+  log with its reasons, the preference matrix. **The email studio** (`16` §11: blocks, the three-pane editor,
+  «أرسل اختبارًا», the designed library, `REQ-NTF-009` … `014`) **is not this wave**; `Email.dc.html` and
+  `EmailLibrary.dc.html` draw it.
+- **`/app/admin/designer/[documentId]`** keeps its engine; its chrome, panels and states move onto the
+  primitives. **`16` §10.2's M12 mechanics** — direct manipulation, snapping, rotate, marquee,
+  align/distribute, focal-point cropping — are in only if the lead approves one from `designer`'s plan at
+  sync 1, with its cost stated.
+- **`/app/admin/sessions/[id]/certificates`** gains the template choice `DEC-128` puts at issue time; the
+  rest of `16` §15 M12's «three-step flow with preflight» is `designer`'s plan to scope, not a given.
+
+### Four contracts, published on day one
+
+1. **`branding` → `designer`:** `DEC-127`'s `background` union and `canvasRaise`, as types, before any
+   rendering. `angle` is the RTL source composition's; the renderer alone mirrors it for LTR.
+2. **`branding` → `designer`:** `scheme` is passed explicitly at every call site — a poster `'dark'`
+   (`DEC-125`), a certificate its chosen template's.
+3. **`designer` → `platform`:** what a baseline row is. `DEC-125` says the scheme is the variant, «not a second
+   template row»; `DEC-128`'s table counts light and dark as rows, and `REQ-DSG-026`'s new acceptance counts
+   «5 poster families × 2 schemes and 3 certificate families × 2 orientations» while `DEC-128`'s decision
+   asks for certificates in both orientations **and** both schemes. **Those three readings do not agree, so
+   nobody seeds before the lead rules at sync 1** from `designer`'s plan.
+4. **lead → `platform`:** `org_domains` — below.
+
+### ★ `org_domains`, measured before it was written down — the brief's diagnosis does not hold
+
+The brief carried: «a member whose email domain carries a capital letter cannot be provisioned on
+production». **Reproduced on the local database in a rolled-back transaction**, with production's check
+(`CHECK ((domain)::text ~ '…'::text)`, case-sensitive) swapped in for the chain's (`CHECK (domain ~ '…'::citext)`):
+
+| Insert | Result |
+|---|---|
+| `'@Example-Upper.COM'` through the table, trigger enabled | **accepted, stored `example-upper.com`** |
+| `'Example-Upper.COM'` with `org_domains_normalise` disabled | refused by the check |
+
+`org_domains_normalise` (`0004`) is a `BEFORE INSERT OR UPDATE` trigger, and a `BEFORE` trigger rewrites the
+row **before** a `CHECK` is evaluated, so every domain reaches production's check lowercase. Provisioning
+never writes `org_domains` at all: `0005` and `0007` compare `lower()` of the email's domain with
+`lower(d.domain::text)`. **So no member is refused today.** What is real is a constraint whose meaning differs
+between environments, and that the trigger alone keeps harmless — a drift of exactly the kind invariant 3's
+rehearsals exist to catch. **The fix stays in this wave, as the lead's migration**, rehearsed against a
+production schema dump like `0082`–`0091`, and it is described in `STATUS.md` as a convergence, not as a
+lock-out.
+
+### `REQ-EVT-010`, carried in the brief, is already reconciled
+
+`DEC-139` rewrote it in wave 7 (`01-prd.md` §`REQ-EVT-010`, «Photos publish without moderation, the
+moment their metadata is stripped»), and `0091` delivers its no-reload clause at the component and RLS
+layers. Nothing is open.
+
+- **Documents changed:** `CLAUDE.md` (the wave-8 map; the stack line; the lockfile note), `.claude/agents/*.md` (all ten), `STATUS.md` (the checklist), `scripts/ui-reach.mjs` (`--wave8`), `04-architecture.md` (the Next version, `DEC-146`)
+
+---
+
+## DEC-148 — Wave 8, sync 1: the four plans approved; a baseline row is a composition, certificates carry a pinned design, and the ink guard is measured against the page
+
+- **Date:** 2026-09-17 · **Decided by:** lead, on the four planning-first tasks (`docs/plan/notes/{branding,designer,console,platform}.md` at `574f556`, `85deba7`, `61cecd4`, `943f0d2`) and its own SCR-043 plan (`caf414c`)
+- **Supersedes:** `REQ-DSG-026`'s roster count as `DEC-128` wrote it; `REQ-DSG-031`'s «serial range reserved»; `REQ-ADM-017`'s numeral clause (already withdrawn by `DEC-124`); `REQ-ADM-018`'s placement of scoring configuration changes; `09` SCR-043's mobile stepper; `16` §15 M12's and §16.5's migration numbers `0087`/`0088` (both now `checkin`'s — the studio's focal point needs no migration: `design_assets.focal_x/y` exist since `0055`).
+
+### Contract 3 — what a baseline row is: a composition (`designer`'s option B)
+
+`DEC-125` («the variant is the scheme, not a second template row»), `DEC-128`'s table (light and dark as
+rows) and `REQ-DSG-026`'s acceptance («5 × 2 schemes and 3 × 2 orientations») disagreed. What actually
+differs settles it. **A scheme is a palette**: every colour in a template is a `{{brand.*}}` token, so a
+light row and a dark row would be byte-identical documents, and nothing in either could say which it is.
+**An orientation is a composition**: measured on `attendance`, the portrait certificate `derive()`s from
+the landscape master put every text layer in the top third of a 3508 px page, left a 1860 px empty band
+and set the issue date at about 8 pt — and `safeAreaViolations()` reported nothing, because a safe-area
+check cannot see a bad composition. Every portrait certificate issued so far ships that way.
+
+**So:** 11 platform rows — the five poster families, and the three certificate families each landscape
+and portrait (read from the master, no column) — each renderable in both schemes: 22 variants, counted
+by literals in CI. One platform default per (purpose, family), the landscape row. `REQ-DSG-026`'s
+acceptance is amended to this. `DEC-128`'s «both schemes, chosen at issue time» is honoured by the next
+section, not by rows.
+
+### Certificates carry a pinned design — `ENT-session_certificate_designs` and `certificates.scheme`
+
+Automatic issuance has no human at issue time — it is the edge into `completed` — so a choice made «at
+issue time» must be stored before it. **`ENT-session_certificate_designs`** is added, an amendment to the
+frozen `02` §4.12 made under this entry: `org_id`, `session_id`, `kind` (`attendance` | `presenter`),
+`template_id` (a certificate template of the kind's family, org or platform), `scheme` (a new
+`brand_scheme` enum), `updated_by`, `updated_at`; `unique (session_id, kind)`; RLS enabled, staff read,
+no write grant — written only through `set_certificate_design()` (`assert_fresh_admin()`, audited), which
+refuses once a certificate of that kind for that session is issued or revoked. No row is today's
+behaviour: the family default, `light`. **`certificates.scheme brand_scheme not null default 'light'`**
+pins the scheme beside `template_version_id`, because a reissue years later must know it and nothing
+else records it (`REQ-CRT-014`); the default is true of every existing row. `issue_certificate()` is
+re-created **from `0088`'s text**, so `DEC-141`'s removed-check-in filter survives. Invariant 5 in full.
+
+### Four findings that change the work, each accepted
+
+1. ★ **A dark poster voids the blank-capture guard.** `inkedRatio()` and the harness's `inkOf()` count a
+   pixel as ink when any channel is below 240; on a `#111a2c → #1d2a42` background every pixel is ink,
+   so a poster whose text never painted (`DEC-024`'s blank goldens) would read 100 % inked and ship.
+   **Ink is now measured against the page's own background** (a second capture with the layers hidden),
+   landed before any call site passes `'dark'`.
+2. ★ **`validate.ts` refused a gradient**, and both worker tasks call it: a gradient template promoted
+   before the fix would make every automatic poster throw. **The promotion order is a hard dependency:**
+   `branding`'s types (`391150e`) → the guard and `validate.ts` → `branding`'s renderer paints the
+   gradient → `designer`'s seed. Promoted before the renderer, every regenerated poster renders silently
+   on the `#ffffff` fallback.
+3. ★ **`0055`'s no-hex guard does not walk gradient stops** (nor `rgb()`, `hsl()` or named colours on
+   any field). `designer`'s first proposed file re-creates it as an **allowlist of the
+   `{{brand.<identifier>}}` shape** over every colour-bearing value; token membership stays in TypeScript.
+4. ★ **`getBrandKit()` would have taken down every `/app` page.** `canvasRaise` became a required key
+   when the runtime's `dist` was rebuilt, while `brand_kit()` returned nine keys; the app layout reads the
+   kit for every member. `6b3ac7f` fills a missing token from the platform default before parsing —
+   which is also what keeps a merge-before-push deploy safe.
+
+### The rest of the rulings
+
+- **`designer`:** the M12 subset in — the editor's top bar, tabbed rail and inspector (`DEC-093`'s
+  demotion), checks that select their layer, the variant strip from ready artifacts, align on the
+  **document's** axis (`DEC-096`), layer order; **out** — drag, resize, rotate, snapping, marquee,
+  distribute, nudge, focal point. The `PosterPicker` three-card chooser with a detach confirm naming the
+  session is in (props unchanged). The certificate **mode stays on SCR-043**; SCR-045 carries the design,
+  eligibility and the release. «من حضر وقيّم» (eligibility by having rated) is refused — a certificate's
+  existence would disclose who rated (`REQ-RAT-004`). Phone «approve» is «اطلب التصدير». **No existing
+  parity golden moves**; a separate background block adds `gradient-rtl`/`gradient-ltr` goldens and
+  asserts the LTR capture equals the flipped RTL one. **The v2 posters bind the Knowledge Network rule to
+  `{{brand.edgeStrong}}`**: `spine` is 1.05:1 on `canvasRaise`, so the motif vanished at the gradient's lit
+  end (decorative, no WCAG failure; the owner may reverse it). A poster's scheme is not choosable this
+  wave. A re-added member's missing certificate is not this wave (`unique (org_id, session_id,
+  member_id, kind)` would need a product ruling on a new serial); SCR-045 shows the state instead.
+- **`branding`:** the `'light'` default leaves all three signatures (every caller already passes one);
+  `backgroundCss()` is exported so the harness and the swatch use the renderer's own string; the mirror
+  lives in `render.ts` alone; contrast is displayed, not enforced, this wave (enforcement is M13's).
+- **`console`:** badge **creation** is in (`REQ-REC-001` asks for it); the app never imports
+  `worker/src/**`; the email templates' required fields stay admin-editable this wave — **a live
+  `REQ-NTF-007` weakness carried for `notify`/M12**; the scoring screen's typed session UUID becomes a
+  session combobox; CSV dates become sortable. The four managed lists lost their row actions on a phone
+  (their action column was never `onCard`) — fixed first.
+- **`platform`:** break-glass **refreshes the token in the submit path** on start and on stop, proven on
+  the decoded token — a stop from SCR-085's own page left org access on the token for up to 900 s;
+  `setFirstAdmin()` lowercases before the RPC (`set_first_admin()` refused `Boss@Example.COM` while
+  `create_org()` accepted it); `/app/platform` renders a home instead of redirecting; `platform_alerts()`
+  exposes `evaluate_alerts()` aggregates to SCR-084 (`REQ-ADM-003`'s error rates); SCR-085 says in one
+  line that access can outlast a session by up to 15 minutes (`DEC-054`); «set first admin» stays on
+  SCR-082. The lead's `no-access` gives a platform admin with no org «لوحة المنصة» as its primary action.
+- **The lead's SCR-043:** one scroll in four groups on a phone rather than `09`'s stepper; relational
+  errors said at once (`REQ-SES-016`), an empty field only after a submit (`REQ-UIX-011`); «انشر الجلسة»
+  saves and publishes in one action. `DEC-075`'s audited content edit is not this wave.
+
+### For the owner, after this wave deploys
+
+A scoped one-off `regenerate_poster` enqueue for **live** posters of sessions with `starts_at > now()`,
+under `DEC-023`'s rules — a data fix, never a migration — so upcoming sessions do not show a mix of old
+light and new dark posters. `designer` hands over the read and the write when its seed is ready.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-026`, `REQ-DSG-031`, `REQ-ADM-017`, `REQ-ADM-018`), `09-sitemap-screens.md` (SCR-043, SCR-061), `02-domain-model.md` §4.12 (by this entry), `STATUS.md`
+
+---
+
+## DEC-149 — Wave 8, sync 2: what a form control shows survives React's reset; break-glass says it opens nothing; the library seed is a migration now
+
+- **Date:** 2026-09-17 · **Decided by:** lead, from the builds at `a4d2886`, `381a05f`, `fa93a98`, `5a8f5bc` and `bb3e290` and the captures opened on each
+
+### 1 · Every `<form action>` submission resets the form, and the primitives carry the repair
+
+React calls the native `form.reset()` at the end of the commit's mutation phase after **every** `<form
+action>` submission, a refusal and a success alike (verified in the vendored `react-dom`:
+`startHostTransition` → `requestFormReset` → `recursivelyResetForms`). A reset returns each control to its
+default. React keeps an input's and a textarea's default in step with its props, but **not a select's**
+(`defaultValue` marks an option at mount only; a controlled `value` marks none) **and not a controlled
+checkbox's or radio's**. So a refused form showed the value a control mounted with while its state held
+another, and the next submission posted what was on show. `console` found it on the manual award; the
+lead's schedule form had six such controls, so a second «احفظ التعديلات» after a publish would have put
+the page's first values back.
+
+- **Decision.** The repair lives in `ui/select`, `ui/switch`, `ui/radio-group` and `ui/checkbox` (the
+  lead, as custodian of `sessions`' primitives, `dcd5f05`): a controlled control is put back to its value in
+  a layout effect, which runs after the reset in the same commit; an uncontrolled select makes the
+  member's own change its default. A form that must come back empty after a success remounts with a `key`.
+  No wrapper per call site — `console`'s `KeptSelect` was deleted (`b12a7b6`).
+- `tests/components/ui/form-reset.test.tsx` pins the defect on the raw elements beside each repair.
+
+### 2 · Break-glass opens no org screen, and every sentence now says so
+
+Under `DEC-055` option C an impersonation session carries no member id, so every org route lands on
+`/no-access`. The console's home, SCR-085, the banner and the lead's `/no-access` body all said or implied
+that a session opens the org. **Decision:** the copy says what is true — time-limited, recorded in the
+org's own audit log, the org's screens do not open (`1f1ced9`, `d82c7a1`). **Option A — a browsable,
+read-only `impersonating` state in `session.ts` — is the owner's to schedule**; it is not wave 8's.
+
+### 3 · `0098` is the library seed, and a migration is forward-only
+
+`designer`'s generated seed became `0098_certificate_library.sql`. **Decision:** a later change to
+`library.ts` ships as a **new** seed migration; `0098` is never regenerated. The drift test reads the latest
+version of each composition across every seed, so a new seed passes it and an edited `0098` would too —
+the rule is a review rule, recorded here so nobody "regenerates the seed".
+
+### 4 · Smaller rulings
+
+- **`DEC-145`'s orphaned streaming segment is not fixed this wave.** `wave8-designer-*` specs found a second
+  hidden copy of a page's content under `div[hidden][id^="S:"]`; the rule stands — **locators under `/app`
+  scope to `#main`** — and the defect stays M13's.
+- **Viewport captures run with `reducedMotion: "reduce"`.** `globals.css` smooth-scrolls under
+  `prefers-reduced-motion: no-preference`, so a capture taken right after a scroll showed the top of the
+  page.
+- **Lazily mounted card media must be scrolled into view and marked rendered before a capture**, or a blank
+  render cannot be told from an unmounted one — the ink guard's whole point.
+- **`controlClass`'s `w-full` beats a caller's `w-*`** (Tailwind emits `.w-full` after the fixed widths), so
+  every `<Input className="w-32">` is full width. **Carried to M13**: dropping `w-full` when an unprefixed
+  width is passed would narrow fields on screens whose captures are closed.
+- **An org admin never reads a plan identifier.** The audit log's raw action key and the email studio's
+  `MSG-*` ids are dropped from cards; rows still link by key.
+- **Recognition edits write no audit or history row** — recorded, not built this wave.
+- **Documents changed:** `STATUS.md`, `03-permissions-rls.md` §8.2 (`0099`'s ten rows, by the promotion)

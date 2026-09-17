@@ -111,7 +111,14 @@ export function resolveRef(ctx: BindingContext, value: string | undefined): stri
  */
 export function declaredBindingsOf(doc: {
   layers: ReadonlyArray<unknown>
-  background?: { color?: string } | undefined
+  // Duck-typed rather than imported from `model.ts` (as the three callers
+  // above already required before this file existed). Kept in the shape of
+  // DEC-127's `background` union so a gradient document type-checks here
+  // too.
+  background?:
+    | { type: 'solid'; color?: string }
+    | { type: 'gradient'; angle?: number; stops?: { color?: string; at?: number }[] }
+    | undefined
 }): string[] {
   const found: string[] = []
   const add = (raw: unknown) => {
@@ -134,6 +141,13 @@ export function declaredBindingsOf(doc: {
     add(shape?.fill)
     add(shape?.stroke)
   }
-  add(doc.background?.color)
+  // DEC-127: a solid background contributes its one colour; a gradient
+  // contributes every stop, in array order, so a rebrand reaches all of
+  // them rather than only the first.
+  if (doc.background?.type === 'solid') {
+    add(doc.background.color)
+  } else if (doc.background?.type === 'gradient') {
+    for (const stop of doc.background.stops ?? []) add(stop.color)
+  }
   return found
 }

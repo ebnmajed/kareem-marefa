@@ -19,6 +19,9 @@ const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 
 test.describe.configure({ mode: "serial" });
+// Viewport captures with motion reduced: `globals.css` scrolls smoothly
+// otherwise, and a capture after a scroll fires mid-animation (sync 2).
+test.use({ reducedMotion: "reduce" });
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -269,6 +272,27 @@ test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sidew
     expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
     await page.screenshot({ path: `${dir}/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
   }
+});
+
+// Wave 8, the lead's sync-1 finding on `wave7-console-moderation-reports-populated`:
+// at 390 px the strip cut «بلاغات الصور»'s count at the edge, with nothing to
+// say it scrolls — on the page where that tab is the ACTIVE one. Read-only, so
+// it sits with the captures, before any queue is resolved.
+test("the moderation tab strip at 390 px: the active tab is whole, and the strip says it scrolls", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project");
+  await page.setViewportSize(PHONE);
+  await signIn(context, modEmail);
+  await goto(page, "/ar/app/admin/moderation/reports");
+  const strip = page.getByRole("tablist", { name: "قوائم الإشراف" });
+  const active = strip.getByRole("tab", { selected: true });
+  await expect(active).toContainText("بلاغات الصور");
+  const [stripBox, activeBox] = await Promise.all([strip.boundingBox(), active.boundingBox()]);
+  expect(activeBox!.x).toBeGreaterThanOrEqual(stripBox!.x - 1);
+  expect(activeBox!.x + activeBox!.width).toBeLessThanOrEqual(stripBox!.x + stripBox!.width + 1);
+  // Scrolled to its end, the strip hides more at its START, and fades that side.
+  await expect(strip).toHaveAttribute("data-overflow", /start|both/);
+  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
+  await page.screenshot({ path: `${dir}/wave8-console-moderation-tabs-390.png` });
 });
 
 test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {

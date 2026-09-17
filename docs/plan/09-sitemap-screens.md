@@ -408,7 +408,7 @@ reason** the proposer receives.
 **تخصيص** (opens SCR-057) · **رفع ملصق جاهز**
 **States:** incomplete (publish disabled, **naming what is missing**) · ready · published · edited
 (warns that attendees will be notified and calendars updated — `REQ-SES-009`)
-**Mobile:** a stepper, one section per step.
+**Mobile:** ~~a stepper, one section per step~~ — **one scroll in four headed groups, the actions sticky above the tab bar** (`DEC-148`: four steps are four more presses on the form an admin fills most).
 **Desktop:** a form with a live poster preview beside it.
 **RTL:** the date-time picker runs right-to-left — **not in M2**: a native `datetime-local` renders in the browser's locale; a custom picker is an M7-console backlog item (DEC-045); the duration field pairs its numeral with a unit
 label in the correct order.
@@ -476,7 +476,7 @@ produces templates that are LTR-first with an RTL toggle (`06` §10).
 logo resolution** up front, because DEC-009 made logos raster and the PPI guard will otherwise
 block A3 at export time.
 **Exports** (`REQ-ADM-017`): UTF-8 **with BOM** so Excel opens Arabic without a manual import step;
-Arabic column headers; org numeral system; **every export audited** — it is a bulk read of personal
+Arabic column headers; **Western numerals and sortable dates** (`DEC-124`, `DEC-148`); **every export audited** — it is a bulk read of personal
 data.
 **Audit** (`REQ-ADM-018`): searchable by actor, subject, action, date range. A moderator sees
 **their own** actions only (`03` §5.10a).

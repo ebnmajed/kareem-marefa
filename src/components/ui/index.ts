@@ -90,7 +90,16 @@ export interface CardMediaProps extends Styleable {
    * never an empty grey box (`16` §6.4).
    */
   placeholderFrom: string;
-  aspect?: "4/5" | "16/9" | "1/1";
+  /** `297/210` and `210/297` are A4 landscape and portrait — a certificate template's card
+   *  (wave 8, `designer`'s W8.h, added by the lead as custodian). */
+  aspect?: "4/5" | "16/9" | "1/1" | "297/210" | "210/297";
+  /**
+   * Rendered IN PLACE OF the image or the generated placeholder — a template card's media is a
+   * live runtime render, not a URL, because a template has no artifact. `overlay` and `dimmed`
+   * apply to it exactly as they do to an image. `placeholderFrom` is still required: it names
+   * the card for the fallback when `children` is absent.
+   */
+  children?: ReactNode;
   /** Rendered over the media, top-start in the reading direction. */
   overlay?: ReactNode;
   priority?: boolean;
@@ -197,8 +206,11 @@ export interface FieldProps extends Styleable {
   id?: string;
   label: string;
   hint?: string;
-  /** Adjacent, red, icon-marked — and colour is never the only channel. */
-  error?: string;
+  /**
+   * Adjacent, red, icon-marked — and colour is never the only channel. A
+   * node, so an error that quotes what was typed can isolate it in `<bdi>`.
+   */
+  error?: ReactNode;
   required?: boolean;
   children: ReactNode;
 }
@@ -289,6 +301,9 @@ export interface ComboboxProps extends Styleable {
 export interface DateTimeProps extends Styleable {
   id?: string;
   name: string;
+  /** The field's own name for the trigger's accessible name — «آخر موعد للحجز: …» rather than a
+   *  generic «التاريخ والوقت» on every picker of a form (wave 8, the lead's request to `console`). */
+  label?: string;
   defaultValue?: string | null;
   value?: string | null;
   onChange?: (value: string | null) => void;
@@ -310,8 +325,8 @@ export interface FileDropProps extends Styleable {
   accept: string[];
   maxBytes: number;
   multiple?: boolean;
-  /** Stated up front — «الحد الأدنى 1200×1500 بكسل» and so on. */
-  requirements?: string[];
+  /** Stated up front — «الحد الأدنى 1200×1500 بكسل» and so on; nodes, so a format name or size can sit in `<bdi>`. */
+  requirements?: ReactNode[];
   onFiles?: (files: File[]) => void;
   disabled?: boolean;
   invalid?: boolean;
@@ -414,6 +429,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** A ruled group above this item — the staff section of the account menu. */
   startsGroup?: boolean;
+  /** The page this item leads to is the one on show — `aria-current="page"` and the marker (`console`, wave 8). */
+  current?: boolean;
 }
 
 export interface MenuProps {

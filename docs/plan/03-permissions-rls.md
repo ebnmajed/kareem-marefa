@@ -1565,6 +1565,35 @@ generated suite is the highest-value test in the product.
 | `RPC-admin_member_profile.removed_excluded` | A removed check-in is neither counted nor listed as attended, and turns a confirmed reservation on an ended session into a no-show. |
 | ★ **wave 7 (`DEC-139`), migration `0091`** — a processing photo takes its place without a reload | |
 | `TRG-photos_broadcast.session_topic` | An insert on `photos` sends `{id, sessionId, uploaderId}` on `session:{session_id}` (event `INSERT`), the topic and `realtime.messages` policy `0016` already authorise. It carries no photo bytes and no path, and another org's subscriber receives nothing (`POL-realtime.messages.select`). |
+| ★ **wave 8 (`DEC-147`), migration `0092`** — one domain check in every environment | |
+| `CHK-org_domains.domain_lowercase_everywhere` | The check is text's case-sensitive `~`, stated with an explicit cast, so it reads the same on production and locally; a mixed-case domain written through the table is stored lowercase by `org_domains_normalise` and accepted; one that bypasses the trigger is refused (`23514`). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0093`** — `canvasRaise` joins the brand kit | |
+| `POL-brand_kit.canvas_raise_identity_default` | For an org with no row, or a row saved before `0093`, `brand_kit()`'s `canvasRaise` matches `platformBrand()`'s — the per-token identity override. |
+| `POL-brand_kit.canvas_raise_override` | With a row whose `canvasRaise` was explicitly saved, `brand_kit()` returns that value, not the platform default. |
+| `POL-save_brand_kit.canvas_raise_required` | A save whose `p_light`/`p_dark` omits `canvasRaise` fails `23502`, as any other missing token does. |
+| `POL-export_render_context.canvas_raise_override` | With a row, the `brand` column's `light`/`dark` objects carry the saved `canvasRaise`; with none, the key is absent (the raw override, `{}` semantics unchanged). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0094`** — the template guard walks every colour | |
+| `POL-design_template_versions.guard_gradient_stop_hex` | A template version whose gradient background carries a hex literal in ANY stop is refused (`22023`); the same gradient on `{{brand.*}}` tokens is accepted. |
+| `POL-design_template_versions.guard_non_hex_literal` | A colour that is not a `{{brand.<token>}}` binding — `rgb(…)`, `navy` — is refused on the background, a stop, a layer `color`, `shape.fill` and `shape.stroke` alike (`22023`). |
+| `POL-design_template_versions.guard_structure_kept` | `0055`'s checks still hold: a missing `schemaVersion`, a non-array `layers`, a missing or duplicated layer id and an unknown layer kind are refused (`22023`). |
+| ★ **wave 8 (`DEC-148`), migration `0095`** — the platform console reads the alert states | |
+| `RPC-platform_alerts.platform_only` | An org admin, a moderator and a member are refused `not_platform_admin`; `anon` is refused `42501` on the grant. |
+| `RPC-platform_alerts.aggregate` | A platform admin reads all eight alerts of `11` §3.2, firing or not, and every `detail` key is a count, an age, a rate or a threshold — no org, member, session or content. |
+| ★ **wave 8 (`DEC-148`), migration `0096`** — the platform library reads the roster | |
+| `RPC-platform_template_library.roster` | A platform admin reads every platform row with its `orientation` (certificates only, from the latest version's master: wider than tall is landscape), `is_baseline` (false once a `template.promoted` row names it) and `retirable` (false exactly for the last non-retired default of a purpose, true again once a second default exists). |
+| ★ **wave 8 (`DEC-148`), migration `0097`** — a reinstate cannot undo a requested deletion | |
+| `RPC-reinstate_org.pending_deletion` | After `delete_org()`, `reinstate_org()` is refused `org_deletion_pending` (`42501`), the org stays suspended and no `org.reinstated` is written; a suspended org with no deletion requested still reinstates. `platform_metrics_by_org()` reports `deletion_pending` for the first and not the second, and `platform_org()` returns `deletionPending` outside its counts. |
+| ★ **wave 8 (`DEC-148`), migration `0099`** — a session's certificate design, and the scheme pinned on a certificate (`0098`, the library seed, adds no policy) | |
+| `POL-session_certificate_designs.select_staff` | An admin and a moderator of the org read a session's certificate design; a member does not; another org's staff do not. |
+| `POL-session_certificate_designs.no_write_grant` | An authenticated insert, update or delete is refused (42501) — the only writer is `set_certificate_design()`. |
+| `RPC-set_certificate_design.admin` | An admin sets (and resets) the design, audited as `certificate.design_set`; a moderator is refused (42501). |
+| `RPC-set_certificate_design.family_matches_kind` | A template of another family, a poster template, a retired one or another org's is refused (22023). |
+| `RPC-set_certificate_design.locked_after_issue` | Once a certificate of that kind for that session is `issued` or `revoked`, the design is refused (55000); while they are `held` it may change. |
+| `RPC-issue_certificate.pins_design` | A certificate issued for a session with a design pins that template's latest PUBLISHED version and its scheme. |
+| `RPC-issue_certificate.no_design_is_default_light` | With no design, the org's default of the family, else the platform's, and `light` — every certificate before this file. |
+| `RPC-issue_certificate.no_check_in_when_removed` | Kept from 0088: a late job for a removed check-in raises `no_check_in`. |
+| `RPC-redesign_held_certificates.held_only` | Re-pins the HELD certificates of a kind to the current design and re-enqueues each render with 11 §2.5's key; issued and revoked ones are untouched; audited; a moderator is refused. |
+| `RPC-record_certificate_document.follows_the_pin` | The certificate's document follows its pinned version, so a redesigned held certificate is not refused by the locked-region guard. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
