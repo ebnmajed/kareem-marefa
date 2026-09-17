@@ -2836,3 +2836,57 @@ end-to-end through the promoted policies, not just the mocked component tests he
 dependency.
 
 Ready for sync.
+
+## §24 — T4's spec, and T2's own captures (`9c01579`, `82e5f8f`)
+
+Two new real-Supabase Playwright specs, neither run by me — both need `npm run test:e2e:local`,
+which needs a production build, lead-only.
+
+**`tests/e2e/wave9-content-photo-worker.spec.ts`** — T4. Gated `E2E_WORKER=1`
+(`wave8-designer-editor.spec.ts`'s own convention); skips itself otherwise, since there is nothing
+to prove about the real worker without one running. Drives a real upload through `UploadWidget`
+with a hand-built JPEG carrying a real APP1/EXIF marker (the same construction
+`storage-exif.test.ts`'s own `jpegFixture()` uses, ported to a real file Playwright can `setInput
+Files` with), then asserts — with **no `page.reload()` anywhere in the test** — that the gallery's
+image appears on its own (REQ-EVT-010's own no-reload clause, reconciled in wave 7 but never
+actually driven through a real worker until this), `exif_stripped = true`, `session_day_id` resolves
+to `null` at one day, and the re-uploaded object itself carries no `0xFFE1` marker — read back from
+Storage, not trusted from the flag alone. One day, deliberately: T4 proves the pipeline runs for
+real, not the day-resolution logic (`photos-days.test.ts` already covers in-window/nearest-edge/
+n<=1 exhaustively against `applyProposed()`).
+
+**`tests/e2e/wave9-content-days.spec.ts`** — T2's own captures, a real three-day session seeded
+directly (the same `addDay()` shape `session-days.test.ts` uses). Six states:
+
+- `wave9-content-materials-member-grouped.png` — a plain member: session group + two day groups
+  with content, day 3 (empty) omitted
+- `wave9-content-materials-presenter-grouped.png` — the presenter: every group including the
+  empty third day, each with its own «أضف مادة»
+- `wave9-content-materials-scope-chip-open.png` — the chip open, listing the session and all
+  three days
+- `wave9-content-materials-day-scoped-after-hidden.png` / `…-visible.png` — day 2's «بعد»
+  material, before and after its own day's `ends_at` (moved mid-test)
+- `wave9-content-tasks-grouped.png`
+- `wave9-content-photos-grouped.png` — no per-group add control (photos never ask)
+
+The one-day comparison baseline is NOT re-captured: `materials/tasks/photos-event-page-390-rtl-
+phone.png` already exist from wave 6/7's own specs, proven byte-identical this wave by the
+untouched schema/component suites.
+
+★ **A real bug found writing this spec, before it ever ran**: materials, tasks and photos all
+group on the same session, so an unscoped `page.getByRole("heading", { name: "للورشة كاملة" })`
+resolves to three elements (one per slot) and Playwright's strict mode would refuse every locator
+in the file. Scoped every query to its own slot's `#materials`/`#tasks`/`#photos` — verified against
+`gated-section.tsx` itself (`<section id={id}>`, the page's own landmark), not assumed. Also caught
+before running: an `UPDATE` that only moved `ends_at` into the past while leaving `starts_at` at
+its original future value would have violated `check (ends_at > starts_at)` outright; and the day
+2 «بعد» material would have been invisible during the earlier "member-grouped" capture (test order
+within one `serial` file matters — its own group would have been empty and the heading omitted) had
+I not given day 2 a second, always-visible «قبل» item first.
+
+`npx tsc --noEmit`/`npm run lint` clean on both new files. Ran everything else I could without a
+build: `npm test` green on my own scope (13 files, 69 tests) with the two new specs' logic checked
+by hand rather than executed — I did not attempt `test:e2e:local` myself (needs `npm run build`,
+lead-only) and did not touch the lead's verification worktree.
+
+Ready for sync — spec names above; capture names are the `.png` filenames listed.
