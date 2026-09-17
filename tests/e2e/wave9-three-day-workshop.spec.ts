@@ -332,17 +332,27 @@ test("3 · the presenter adds one material to the workshop and one to day 2 — 
   await settled(page);
   const materials = page.locator("#materials");
 
-  const add = async (scope: RegExp, title: string, url: string) => {
-    await materials.getByRole("button", { name: scope }).or(materials.getByRole("link", { name: scope })).first().click();
-    const form = materials.locator("form").filter({ has: page.getByLabel("عنوان المادة") }).filter({ visible: true }).first();
+  // ★ Ruling 3, as built after sync 4: each group's header carries ONE control, a
+  // native disclosure closed on load, and opening it IS the scope choice — there
+  // is no picker inside the form. Nothing is open until it is asked for.
+  await expect(materials.locator("details[open]")).toHaveCount(0);
+  const add = async (scope: string, title: string, url: string) => {
+    const group = materials.locator("details").filter({ has: page.locator(`summary[aria-label^="أضف مادة — ${scope}"]`) });
+    await expect(group).toHaveCount(1);
+    await group.locator("summary").click();
+    await expect(group).toHaveAttribute("open", "");
+    // The uploader is not a <form>: a file goes to a Route Handler (Server Actions
+    // cap a body at 1 MB), so its fields live in the disclosure itself.
+    const form = group;
+    await expect(form.getByLabel("عنوان المادة")).toBeVisible();
     await form.getByLabel("نوع المادة").selectOption({ label: "رابط خارجي" });
     await form.getByLabel("عنوان المادة").fill(title);
     await form.getByLabel("الرابط").fill(url);
     await form.getByRole("button", { name: "رفع" }).click();
     await expect(materials.getByText(title)).toBeVisible({ timeout: 20_000 });
   };
-  await add(/^أضف مادة — للورشة كاملة$/, "دليل الورشة", "https://example.com/guide");
-  await add(/^أضف مادة — اليوم الثاني/, "قوالب رسم الرحلة", "https://example.com/day-2");
+  await add("للورشة كاملة", "دليل الورشة", "https://example.com/guide");
+  await add("اليوم الثاني", "قوالب رسم الرحلة", "https://example.com/day-2");
 
   const { rows } = await db.query<{ title: string; session_day_id: string | null }>(`select title, session_day_id from public.materials where session_id = $1 order by title`, [sessionId]);
   expect(rows).toEqual([
