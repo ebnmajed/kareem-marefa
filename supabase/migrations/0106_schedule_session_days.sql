@@ -1,5 +1,6 @@
 -- wave 9 (DEC-119, DEC-150 contract 3, DEC-151) — `schedule_session()` writes a
 -- SESSION'S DAY SET, and `publish_session()` names a gap per day.
+-- Promoted by the lead from supabase/proposed/sessions/0001_schedule_session_days.sql.
 --
 -- ★ NULL `p_days` IS MAIN'S CALL AND MUST DO EXACTLY WHAT IT DOES TODAY: one
 -- `update public.sessions`, one `session.scheduled` audit row, one

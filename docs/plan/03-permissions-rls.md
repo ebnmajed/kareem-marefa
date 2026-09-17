@@ -1659,6 +1659,16 @@ generated suite is the highest-value test in the product.
 | `RPC-mark_checked_in_manually.day` | An admin marks a member present on day 1 while day 3 is running; a future day is refused `not_open`; a moderator is still bound by that day's floor and ceiling. |
 | `RPC-remove_check_in.day` | Removing day 2 leaves days 1 and 3 standing; removing a member with no active check-in on that day is `not_found`. |
 | `RPC-set_check_in_open.day` | The switch moves the day's column; the audit row still names the SESSION and carries the day in its payload; the returned session row carries the recomputed shadow. |
+| ★ **wave 9 (`DEC-151`), migration `0106`** — contract 3: `schedule_session()` writes a day set, matched by `id`; a null `p_days` is `main`'s call exactly; `publish_session()` names a gap per day |
+| `RPC-schedule_session.days_null_is_today` | `p_days => null` writes the session once and nothing else: one `session.scheduled` row, one notice, and `0100`'s trigger A carries the window onto its one day. Byte-identical to `0085`. |
+| `RPC-schedule_session.days_written` | `p_days` replaces the session's day set: entries with an `id` are updated, entries without one inserted, stored days left out deleted. `position` is never written by the caller — `0100` derives it. |
+| `RPC-schedule_session.days_derive_the_session` | With `p_days`, the session's stored window is the first day's start and the last day's end and its venue is the first day's, written ONCE — `sessions_notify` fires exactly once for the whole change. |
+| `RPC-schedule_session.days_required` | A `null` `p_days` on a session that already has more than one day is refused `days_required` (23514), by name, rather than left to `0100`'s commit check. |
+| `RPC-schedule_session.day_has_attendance` | A day left out of `p_days` that holds a check-in — removed or not — is refused `day_has_attendance: <position>` (23514) before anything is written. |
+| `RPC-schedule_session.days_refusals` | `days_empty`, `days_too_many`, `days_invalid`, `day_window_invalid`, `days_overlap`, `day_repeated` (23514) and `day_not_of_session` (42501) are each raised by name, before the first write. |
+| `RPC-schedule_session.day_venue_rules` | A day names the org's venue OR the inline trio, never both and never a name without an address, and never another org's or a deactivated venue. |
+| `RPC-schedule_session.require_all_days` | `p_require_all_days` sets `sessions.require_all_days`; `null` leaves it exactly as it was, as `p_allow_walk_ins` does (DEC-141 correction B). |
+| `RPC-publish_session.missing_days` | Publishing a session with no day names `days`; a day after the first with no place names `day:<position>:venue`. A one-day session's `missing[]` is unchanged. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
