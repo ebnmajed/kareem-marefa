@@ -30,6 +30,15 @@ export {
   DAY_ORDINALS,
   TemplateMissingError,
 } from "./render.js";
-export type { RenderInput, RenderedEmail, ChangedField } from "./render.js";
+export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, BrandPalette } from "./render.js";
+
+// The block model and its compiler (wave 10, N2 — REQ-NTF-009, REQ-NTF-013).
+// The editor and the preview build documents with these types; the worker and
+// the preview render them with the same compiler, which is the whole of
+// REQ-NTF-010's «there is exactly one mail renderer».
+export { SCHEMA_VERSION, BLOCK_TYPES, isBlockDocument, readBlocks } from "./blocks.js";
+export type { EmailBlock, EmailBlockDocument, BlockId, BlockType, ImageSource } from "./blocks.js";
+export { compileBlocks, interpolateIsolated, isolate } from "./compile.js";
+export type { CompileContext, CompiledBlocks, CompilePalette } from "./compile.js";
 export { DEFAULT_TEMPLATES, SIGNATURE, defaultTemplate } from "./templates.js";
 export type { EmailTemplate } from "./templates.js";

@@ -19,18 +19,68 @@
 // 1.7 on body text.
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
+import { escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
+import { isBlockDocument } from "./blocks.js";
+import { compileBlocks, type CompilePalette } from "./compile.js";
 
 export interface RenderInput {
   key: string;
-  /** The org admin's template, when one exists (REQ-NTF-007). */
-  override?: { subject: string | null; body: string | null } | null;
+  /** The org admin's template, when one exists (REQ-NTF-007).
+   *
+   *  ★ `blocks` is `notification_templates.blocks` (`0125`): **null is a STRING
+   *  template** — every row that existed before wave 10 — and the string path
+   *  below renders it byte for byte. A document takes the block path instead
+   *  (`REQ-NTF-009`). Additive and optional, so `renderEmail()`'s signature is
+   *  the one `main`'s worker calls (contract 4). */
+  override?: { subject: string | null; body: string | null; blocks?: unknown | null } | null;
   payload: Record<string, unknown>;
   member: { name: string | null; email: string };
   org: { name: string; timeZone: string };
   /** The org brand kit's light palette (06 §8.3's email-template leg, DEC-052),
    *  read from `public.brand_kit()` by the sender. Absent in a unit test, the
-   *  renderer keeps its neutral defaults — the identity override again. */
-  brand?: { fgBody: string; fgMuted: string; surface: string } | null;
+   *  renderer keeps its neutral defaults — the identity override again.
+   *
+   *  ★ The three-key shape is the one `main`'s worker sends and it keeps
+   *  working unchanged, which is why the pinned files do not move. The wider
+   *  shape carries what a DESIGN needs and `brand_kit()` has returned since
+   *  `0068`/`0093`: the nine tokens, and the logo's public URL (`0126`). */
+  brand?: LegacyBrand | FullBrand | null;
+  /** `0126` / contract 9: the public logo URL, when an ACTIVE org has one that
+   *  is PNG or JPEG. **Null renders the org's NAME as a heading** — a WebP logo
+   *  and an org with none both land here, and every design is correct with no
+   *  image. Ignored by the string path. */
+  logoUrl?: string | null;
+  /** The app's public origin, for the links a DESIGN carries — the footer's
+   *  preference link above all (`REQ-NTF-005`). The worker reads `APP_URL`; the
+   *  preview passes its own origin. ★ The string path does not read it, so its
+   *  bytes are unchanged (named difference 1 is a separate change). */
+  appUrl?: string | null;
+}
+
+/** What `main`'s worker sends, and what `render.ts` has taken since M3. */
+export interface LegacyBrand {
+  fgBody: string;
+  fgMuted: string;
+  surface: string;
+}
+
+/** One scheme of `public.brand_kit()`. */
+export interface BrandPalette {
+  canvas?: string;
+  surface?: string;
+  fgHeading?: string;
+  fgBody?: string;
+  fgMuted?: string;
+  edge?: string;
+  edgeStrong?: string;
+  spine?: string;
+  node?: string;
+  canvasRaise?: string;
+}
+
+export interface FullBrand {
+  light: BrandPalette;
+  dark?: BrandPalette;
 }
 
 export interface RenderedEmail {
@@ -41,27 +91,6 @@ export interface RenderedEmail {
 
 export class TemplateMissingError extends Error {}
 
-const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif`;
-
-// `latn` named explicitly: `ar`'s CLDR default is `arab`, the digits the owner
-// forbade everywhere (DEC-124).
-const numberFormat = new Intl.NumberFormat("ar-u-nu-latn");
-
-function formatNumber(value: number): string {
-  return numberFormat.format(value);
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-/** Resolve `a.b.c` against the payload. */
-function lookup(payload: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((node, part) => {
-    if (node && typeof node === "object" && part in (node as Record<string, unknown>)) return (node as Record<string, unknown>)[part];
-    return undefined;
-  }, payload);
-}
 
 /**
  * `{{path}}` substitution, and nothing else — no conditionals, no loops.
@@ -73,13 +102,7 @@ function lookup(payload: Record<string, unknown>, path: string): unknown {
  * blank reads better than a leaked template variable.
  */
 export function interpolate(template: string, payload: Record<string, unknown>): string {
-  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path: string) => {
-    const value = lookup(payload, path);
-    if (value === null || value === undefined) return "";
-    if (typeof value === "number") return formatNumber(value);
-    if (typeof value === "boolean") return value ? "نعم" : "لا";
-    return String(value);
-  });
+  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path: string) => formatValue(lookup(payload, path)));
 }
 
 export interface ChangedField {
@@ -260,15 +283,68 @@ function toParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * The three values the shell has always used, from either brand shape.
+ *
+ * ★ For the three-key object — what `main`'s worker sends — this is the
+ * identity, which is why the pinned files do not move. For the wide one it
+ * takes the LIGHT scheme, and only when all three are present: the same guard
+ * `send_notification.ts` has applied since wave 4, so a half-filled kit falls
+ * to the neutral defaults rather than to a half-branded mail.
+ */
+function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefined {
+  if (!brand) return brand;
+  if ("fgBody" in brand) return brand;
+  const light = brand.light ?? {};
+  return light.fgBody && light.fgMuted && light.surface ? { fgBody: light.fgBody, fgMuted: light.fgMuted, surface: light.surface } : null;
+}
+
+/**
+ * The palette a DESIGN needs, which is wider than the shell's three.
+ *
+ * ★ `accent` is `fgHeading`, not a new token. `public.brand_kit()` has nine and
+ * none of them is a "primary": a dark fill with white text is the button the
+ * kit can already describe, and inventing a tenth token would be a brand-kit
+ * change (`branding`'s) for a contrast pair the kit already guarantees.
+ */
+function compilePalette(brand: RenderInput["brand"]): CompilePalette {
+  const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
+  const legacy = legacyBrand(brand);
+  const fgHeading = light.fgHeading ?? "#0b1220";
+  return {
+    fgBody: legacy?.fgBody ?? "#1a1a1a",
+    fgMuted: legacy?.fgMuted ?? "#6b6b6b",
+    surface: legacy?.surface ?? "#ffffff",
+    fgHeading,
+    edge: light.edge ?? "#e6eaf0",
+    accent: fgHeading,
+  };
+}
+
 /** Tables for layout, `dir="rtl"` on every cell, inline CSS only. */
-function toHtml(paragraphs: string[], org: string, brand?: RenderInput["brand"]): string {
+function toHtml(paragraphs: string[], org: string, brand?: LegacyBrand | null): string {
   const fgBody = brand?.fgBody ?? "#1a1a1a";
-  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
-  const surface = brand?.surface ?? "#ffffff";
   const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
   const rows = paragraphs
     .map((p) => `      <tr><td ${cell}>${escapeHtml(p).replace(/\n/g, "<br />")}</td></tr>`)
     .join("\n");
+  return shell(rows, org, brand);
+}
+
+/**
+ * The document both paths fill — the string path's paragraphs and the block
+ * compiler's rows land in the SAME shell, so a change to the frame reaches
+ * both and neither can drift.
+ *
+ * It is extracted rather than duplicated, and the 116 files under
+ * `tests/unit/mail-pinned/` are what proves the extraction moved not one byte
+ * of the string path's output.
+ */
+function shell(rows: string, org: string, brand?: LegacyBrand | null): string {
+  const fgBody = brand?.fgBody ?? "#1a1a1a";
+  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
+  const surface = brand?.surface ?? "#ffffff";
+  const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
 
   return [
     `<!doctype html>`,
@@ -322,12 +398,35 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   };
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
+
+  // ★ THE BRANCH, AND IT IS THE ONLY ONE (REQ-NTF-009, DEC-081). A row whose
+  // `blocks` is null — every row that existed before wave 10, and every org
+  // that has not touched its templates — falls through to the string path
+  // below, which is unchanged and which `tests/unit/mail-pinned/` pins byte for
+  // byte. The string path is removed only when every key has a design, in M13.
+  if (isBlockDocument(input.override?.blocks)) {
+    const compiled = compileBlocks(input.override.blocks, {
+      payload,
+      palette: compilePalette(input.brand),
+      logoUrl: input.logoUrl ?? null,
+      preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
+      org: input.org.name,
+    });
+    return {
+      subject,
+      // The same tail the string path writes, so a design and a default sign
+      // off identically.
+      text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
+      html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand)),
+    };
+  }
+
   const body = interpolate(bodySource, payload);
   const paragraphs = toParagraphs(body);
 
   return {
     subject,
     text: `${paragraphs.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: toHtml(paragraphs, input.org.name, input.brand),
+    html: toHtml(paragraphs, input.org.name, legacyBrand(input.brand)),
   };
 }
