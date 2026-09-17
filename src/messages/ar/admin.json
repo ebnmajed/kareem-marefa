@@ -203,6 +203,8 @@
       "completeNote": "الإنهاء المبكر يغلق تسجيل الحضور فورًا.",
       "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>",
       "certificates": "الشهادات",
+      "survey": "الاستبانة",
+      "openSurvey": "الاستبانة<hidden> — {title}</hidden>",
       "attendance": "الحضور"
     },
     "venues": {

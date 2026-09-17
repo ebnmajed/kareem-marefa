@@ -203,6 +203,8 @@
       "completeNote": "Ending early closes check-in immediately.",
       "createFromProposalLabel": "Create the session from <t>{title}</t>",
       "certificates": "Certificates",
+      "survey": "Survey",
+      "openSurvey": "Survey<hidden> — {title}</hidden>",
       "attendance": "Attendance"
     },
     "venues": {
