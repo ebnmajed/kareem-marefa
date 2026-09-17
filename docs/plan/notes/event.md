@@ -941,3 +941,50 @@ the record: what exists, what the build changed about the plan, and what it foun
 **Already done by the lead and wired to, not guessed:** `/api/admin/exports/survey/[sessionId]`, whose
 `exportSurveyCsv()` consumes `getSurveyExportRows()` exactly as contract 6 specified, and the rail's
 «الاستبانات» leaf.
+
+---
+
+# ★ STAND-DOWN, 2026-09-17 — where the survey is, and the one thing left
+
+**My last hash: `e662de3`. Nothing of mine is uncommitted** — `git status` at stand-down shows only
+`notify`'s `packages/mail-runtime/**` and its two test files. No file of mine is half-edited on disk.
+
+## What is DONE — the whole survey, E1 … E5
+
+Promoted and applied: `0130` (ratings to the day), `0131` (`rating_window_open`), `0132` (authoring),
+`0137` (submit + store), `0138` (results, with the lead's fail-closed correction). The DAL, the messages, the
+three screens, the worker task, and 39 RLS cases + 41 unit/component cases across nine files.
+
+★ **The «no survey» proof is established on a real build**, which is the half I could not establish myself:
+the lead ran `event-rate.spec.ts` and `wave7-sessions-rate.spec.ts` **untouched** on a production build, both
+projects, and both passed. `REQ-SUR-001` holds.
+
+## ★ The lead's «next action» list is ALREADY IN `e662de3` — do not redo it
+
+The stand-down crossed with my last message. All four items it names are committed:
+
+| The item | Where |
+|---|---|
+| windows that do not overlap (`check_ins_member_id_session_window_excl`) | `wave10-event-rate-survey.spec.ts` — each session and check-in at 6 / 4 / 2 hours back |
+| the status scoped to the outer list | `wave10-event-templates.spec.ts` — `.filter({ hasText: "إلى الموضع" })` |
+| the heading role for «نسبة الاستجابة» | `wave10-event-survey-results.spec.ts`, **and** the screen: the Stat's label is «المجيبون» now, because the stutter was the page's fault and not the spec's |
+| the six-line second-press update | `actions.ts` + `ratingChanged()` in `state.ts` + `tests/unit/ratings-second-press.test.ts` (5 cases) |
+
+## THE ONE THING OPEN
+
+**A production build at `e662de3` and a re-run of the five specs** — `wave10-event-{rate-survey,templates,
+survey-results}.spec.ts` plus the two untouched rate specs — then the **eleven captures** at
+`.qa-shots/rtl/wave10-event-*.png`, opened in bands. The previous run was at `a185ccb+`, before the three
+spec fixes and before `results.tsx` moved, so a copy of the specs is not enough: **it needs a rebuild.**
+
+Nothing else of mine is unfinished. Not started, and not mine to start: the build (lead-only).
+
+## Two things for whoever picks this up
+
+- ★ **The browser found what the RLS harness structurally cannot**, twice this wave. The window-overlap
+  failure is the clearest case: my RLS file writes `'empty'::tstzrange` for a check-in's window, which no
+  constraint can object to, so the suite would never have found that one member cannot hold two overlapping
+  check-ins. Keep both harnesses; they are not redundant.
+- ★ **`tests/e2e/wave10-demo-survey.spec.ts:63` fails `tsc`** — `test.skip()` has no overload taking a
+  function plus `testInfo`. It is the lead's file, untouched by me, and it will fail the typecheck gate on the
+  final commits.
