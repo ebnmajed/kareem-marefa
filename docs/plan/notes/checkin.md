@@ -1641,3 +1641,86 @@ the 390 px review says otherwise I will write the request rather than reach for 
     verbatim enqueue (multi-day awards at first check-in, against `REQ-SES-017`), or hold the whole
     file? I recommend holding the switch **and** not putting a multi-day session through the
     demonstrable until the two functions exist.
+
+---
+
+## C1 built — the day's check-in, against `0100` + `0101` (sync 1 applied)
+
+`supabase/proposed/checkin/01_check_in_open_shadow.sql` and `02_check_in_day.sql`, proven by
+`tests/rls/checkin-days.test.ts` — **20 cases, green**; the full RLS suite **920 passed** with every
+pre-existing check-in file untouched and green.
+
+### ★ A live security finding, fixed in `02` and reported to the lead
+
+**`public._issue_check_in_code(uuid)` has no `revoke`, so it is `execute` to `PUBLIC` — on
+production, today.** `0015`'s own comment says «No grants: only called from the two public wrappers»;
+a function's *default* is the grant it forgot. Measured on the local database, which is `main`'s
+schema plus `0100`/`0101`:
+
+```
+proname               | acl
+_issue_check_in_code  | NULL = default: EXECUTE to PUBLIC
+ensure_check_in_code  | {postgres=X/postgres,authenticated=X/postgres}
+resolve_session_day   | {postgres=X/postgres}
+check_in_ceiling      | {postgres=X/postgres,service_role=X/postgres}
+
+has_function_privilege('authenticated', 'public._issue_check_in_code(uuid)', 'execute') → true
+has_function_privilege('anon',          'public._issue_check_in_code(uuid)', 'execute') → true
+```
+
+It is `security definer`, `public` is an exposed PostgREST schema (`supabase/config.toml` `[api]`),
+and it takes a bare session id — so `POST /rest/v1/rpc/_issue_check_in_code` mints and **returns the
+live six-character code** for any session id the caller knows, bypassing `ensure_check_in_code()`'s
+`REQ-CHK-014` check («a member never reads the live code», `03` §5.4a). Session ids are not secret:
+`/s/[id]` is the public card. With `allow_walk_ins` on, that is attendance — and attendance is points
+and a certificate.
+
+`02` revokes it from `public`, `anon`, `authenticated` **and** `service_role` in the same file that
+re-creates it, and `RPC-_issue_check_in_code.not_callable` asserts `42501` for a member, a moderator,
+an admin and the worker. Every legitimate caller is a definer function running as the owner.
+**Reported to the lead rather than only fixed here**: it is live on production now, and the owner's
+push-before-merge window is the lead's to sequence.
+
+### One design point the tests forced — the code names its day, *while that day is running*
+
+My plan said `check_in()` resolves a null day from the code, full stop. The first run of
+`RPC-check_in.day_from_code` said otherwise, and the case is real rather than contrived:
+
+> A code minted a minute before day N's capped ceiling stays inside `valid_until` for a rotation
+> window **after day N+1 has begun**. Unconstrained, a member standing in day N+1's room who types
+> that leftover code is told **`session_ended`** — wrong, because the session has not ended, and a
+> disclosure `REQ-CHK-004` forbids, because only a *real* code could produce that answer.
+
+So step 2 carries a second condition — the code's day must be the day taking attendance
+(`now() >= d.starts_at and now() < check_in_ceiling(d.id)`) — and the honest answer becomes
+`invalid_code`: the code is not valid now. Under `DEC-151`'s cap at most one day holds an instant,
+so the shortcut provably agrees with the resolver; it is kept because the requirement says the code
+names the day, and because it is what keeps `check_in()` correct if the cap is ever lifted. Two
+cases pin it: a leftover live code of a past day, and a code of a day not yet begun.
+
+### Applied from sync 1 (`DEC-151`), point by point
+
+| Ruling | Where it landed |
+|---|---|
+| the shadow defect — reopening one day must not open every day | `01`, and `POL-check_in_open.reopening_one_day_opens_only_that_day` asserts `[false, true, false]` |
+| the mark is `kareem.check_in_shadow`, set and **reset one statement later**, never `pg_trigger_depth()` | `session_days_check_in_open_shadow()` |
+| `check_in_ceiling()` is the lead's, called never copied | every gate in `02`, and `rotate_codes` next |
+| `resolve_session_day()` returns the **first** day when nothing has begun | the gates still answer `not_started` from `now() < d.starts_at`; asserted |
+| the attempt limit is **per day** | `session_day_id is not distinct from v_day` on both the count and the `succeeded` update; `RPC-check_in.rate_limit_per_day` shows 11 rows on day 1 and 1 on day 2 |
+| contract 5's three hooks are not switched yet | every points, certificate and no-show line in `02` is `main`'s verbatim, each marked; `checkin/03` switches all three at once |
+| `check_ins.session_window` is `0100`'s to derive | the inserts pass `session_day_id` and **never** `session_window` |
+
+### For the lead, at promotion
+
+1. **`tests/unit/admin-audit-labels.test.ts` needs `kareem.check_in_shadow`** in its `NOT_ACTIONS`
+   set, beside `kareem.days_writer` — a custom Postgres setting must contain a dot, so the literal
+   scan reads it as an audit action. That file is the lead's.
+2. **The one-day proof can only be run at promotion.** The five existing check-in files call the RPCs
+   through the *migrations*, and `applyProposed()` lives inside one rolled-back transaction, so they
+   cannot exercise these two beforehand. The strongest approximation is in my file — «a one-day
+   session, end to end, on the day-aware functions» walks issue → check in → repeat → rate limit →
+   manual mark → removal and asserts the reversal key shape.
+3. **Two things in the shared tree that are not mine**, so they are not silently repaired: 27 `tsc`
+   errors, all in `tests/components/{materials,photos,tasks}/**` where a `sessionDayId` became
+   required on three DTOs; and `tests/rls/materials-days.test.ts` fails on
+   `session_days_no_overlap` from its own test data. Both are `content`'s, mid-change.
