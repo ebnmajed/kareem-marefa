@@ -1047,6 +1047,7 @@ create policy "design_assets_storage_read"   on storage.objects for select to au
 create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
 create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
+create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
 
@@ -1821,6 +1822,10 @@ generated suite is the highest-value test in the product.
 | ★ **wave 10, migration `0125`** — a notification template may carry blocks, on its own row (`DEC-161`): no table of shared designs, so one trigger polices one key's bindings and `body` cannot go stale |
 | `POL-notification_templates.blocks.shape` | `blocks` is null or an object carrying `schemaVersion` and an array `blocks`; anything else is refused `23514`, for every writer. `source_family` without `blocks` is refused. |
 | `POL-notification_templates.blocks.admin_only` | An admin of the org writes `blocks` and `source_family` on its own rows through the existing policies; a moderator, a member and the other org's admin cannot. |
+| ★ **wave 10, migration `0126`** — an active org's logo, readable with no session (`DEC-161`, contract 9): a mail client fetches months later with no cookie, and every app-minted URL for `design-assets` is a five-minute signature. `0080`'s shape, for one more object |
+| `POL-storage.design_assets.public_logo` | `anon` reads exactly the object an ACTIVE org's `brand_kits.logo_asset_id` names, while it is PNG or JPEG. Refused: any other design asset of the same org; the same org's logo while it is WebP (Outlook draws none); a suspended org's logo; a logo the org has since replaced or cleared. A signed-in member of ANOTHER org sees what a stranger sees. `anon` writes and deletes nothing. |
+| `RPC-org_public_logo.path_only` | Returns the storage path and the SNIFFED content type of that one object, or no row — for `anon`, `authenticated` and the worker. It reveals nothing a caller could not learn by fetching the object. |
+| `RPC-definer.anon_allowlist` (amended) | The `anon`-executable definer functions are exactly the documented eight: `0080`'s two, `verify_certificate`, the three that answer about the caller, and `0126`'s two. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

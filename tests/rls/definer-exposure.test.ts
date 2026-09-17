@@ -27,10 +27,12 @@ const ANON_MAY_EXECUTE: Record<string, string> = {
   "has_checked_in(p_session uuid)": "answers about the CALLER only (auth_member_id()); false for anon",
   "is_presenter_of(p_session uuid)": "answers about the CALLER only; false for anon",
   "is_proposal_owner_of(p_proposal uuid)": "answers about the CALLER only; false for anon",
+  "brand_logo_is_public(p_name text)": "a storage-policy helper for an ACTIVE org's PNG/JPEG logo, so a mail client can fetch it (0126, DEC-161); reads a path, returns a boolean",
+  "org_public_logo(p_org uuid)": "REQ-NTF-014 — the path and type of that one object, or no row (0126); reveals nothing a caller could not learn by fetching it",
 };
 
 describe("RPC-definer.anon_allowlist — every definer function has a deliberate grant", () => {
-  it("the SECURITY DEFINER, non-trigger functions `anon` may execute are exactly the documented six", async () => {
+  it("the SECURITY DEFINER, non-trigger functions `anon` may execute are exactly the documented list", async () => {
     const { rows } = await pool.query<{ sig: string }>(
       `select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as sig
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
