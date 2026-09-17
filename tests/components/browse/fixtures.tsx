@@ -36,6 +36,11 @@ export function session(over: Partial<TimelineSession> = {}): TimelineSession {
     closingSoon: false,
     startsAt: "2026-09-17T15:00:00Z",
     endsAt: "2026-09-17T16:00:00Z",
+    // A one-day session as far as every case in this directory is concerned:
+    // the card reads `days` for its LENGTH alone, to decide whether to say a
+    // range, so none and one behave identically and an empty list cannot drift
+    // out of step with an overridden `startsAt` (wave 9, REQ-SES-015).
+    days: [],
     timeZone: "Asia/Riyadh",
     categoryId: CAT,
     categoryName: "إداري",

@@ -166,6 +166,14 @@ describe("RPC-schedule_session.days_written / .days_derive_the_session", () => {
       // Publishing announced the session; only `MSG-session_changed` from here
       // on is this case's subject.
       await tx.q(`delete from public.notifications where session_id = $1`, [sessionId]);
+      // ★ AND `session_days_changed()` DE-DUPLICATES PER TRANSACTION
+      // (`kareem.days_notified`, 0111) — one notice per session however many
+      // times it is called, which is right in production, where every RPC is
+      // its own transaction. An RLS case is ONE transaction, so the scheduling
+      // call above already spent this session's notice on a draft that
+      // notified nobody. Cleared here so the act below is the first, exactly as
+      // it is for a real admin pressing «احفظ التعديلات».
+      await tx.q(`select set_config('kareem.days_notified', '', true)`);
 
       // ★ THE SHAPE THAT BREAKS A THREE-STATEMENT DIFF. Day 1 moves PAST day 2
       // and day 2 is dropped, so the final window is Saturday alone. Run as
@@ -572,6 +580,55 @@ describe("0002 — the day-set announcement, before notify's half is promoted", 
 
       await tx.asOwner();
       expect(await daysOf(tx, sessionId)).toHaveLength(1);
+    });
+  });
+});
+
+// ── The public card (F3), in this file because it shares the seed and the
+// migration set: `supabase/proposed/sessions/0003_public_card_day_count.sql`.
+//
+// `03` §8.2 row: POL-sessions.public_card.day_count.
+describe("POL-sessions.public_card.day_count — a shared link says how many days", () => {
+  it("★ carries the count for anon, WITHOUT granting anon a single row of session_days", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "sessions/0003_public_card_day_count.sql");
+      const sessionId = await approvedSession(tx, f.a);
+
+      await tx.as(f.a.admin.claims);
+      const three = evenings(3, f.a.venueId);
+      await tx.q(CALL_16, [sessionId, STARTS, f.a.venueId, JSON.stringify(three), null]);
+      await tx.q(`select * from public.publish_session($1)`, [sessionId]);
+
+      await tx.asAnon();
+      const [card] = await tx.q<{ day_count: number; starts_at: Date; ends_at: Date }>(
+        `select day_count, starts_at, ends_at from public.session_public_card($1)`,
+        [sessionId],
+      );
+      expect(card.day_count).toBe(3);
+      // ★ The SPAN needs no days at all: contract 1 stored it on the session.
+      expect(new Date(card.starts_at).toISOString()).toBe(three[0].starts_at);
+      expect(new Date(card.ends_at).toISOString()).toBe(three[2].ends_at);
+
+      // …and the table itself stays shut to a link-holding stranger.
+      const code = await errorCode(() => tx.q(`select id from public.session_days where session_id = $1`, [sessionId]));
+      expect(code).not.toBeNull();
+    });
+  });
+
+  it("says one for a one-day session, which is every session on main", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await applyProposed(tx, "sessions/0003_public_card_day_count.sql");
+      const sessionId = await approvedSession(tx, f.a);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(CALL_14, [sessionId, STARTS, f.a.venueId]);
+      await tx.q(`select * from public.publish_session($1)`, [sessionId]);
+
+      await tx.asAnon();
+      const [card] = await tx.q<{ day_count: number }>(`select day_count from public.session_public_card($1)`, [sessionId]);
+      expect(card.day_count).toBe(1);
     });
   });
 });

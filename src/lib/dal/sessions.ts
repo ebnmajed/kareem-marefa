@@ -1123,6 +1123,17 @@ export interface PublicSessionCard {
    *  the owner's decision did not move it. */
   venueName: string | null;
   orgName: string;
+  /**
+   * ★ How many days the session has (`REQ-SES-015`). The card says a RANGE at
+   * more than one, and the range itself is `startsAt`–`endsAt` above, which
+   * contract 1 already makes the first day's start and the last day's end.
+   *
+   * It arrives from `session_public_card()` rather than from `session_days`,
+   * because this page is read by `anon` and that table is granted to
+   * `authenticated` alone — the definer function answers the one question
+   * without widening the one public read of `sessions` in the product.
+   */
+  dayCount: number;
   /** Whether a poster `og` render exists. The PATH never leaves this module:
    *  the page asks for `/api/s/{id}/og`, which asks again. */
   hasImage: boolean;
@@ -1137,6 +1148,7 @@ interface PublicCardRow {
   time_zone: string;
   venue_name: string | null;
   org_name: string;
+  day_count: number | null;
   og_path: string | null;
   og_width: number | null;
   og_height: number | null;
@@ -1165,6 +1177,10 @@ export async function getPublicSessionCard(id: string): Promise<PublicSessionCar
     timeZone: row.time_zone,
     venueName: row.venue_name,
     orgName: row.org_name,
+    // `?? 1` is for a session whose days have not landed yet, never for a
+    // count of none: a card-eligible session is published, and `0100`'s
+    // commit check refuses a published session without a day.
+    dayCount: row.day_count ?? 1,
     hasImage: Boolean(row.og_path),
     imageWidth: row.og_width,
     imageHeight: row.og_height,

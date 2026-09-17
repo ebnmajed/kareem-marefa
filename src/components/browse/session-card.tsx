@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { BookmarkButton } from "@/components/search/bookmark-button";
+import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
 import { formatDate, formatNumber, formatTime } from "@/components/sessions/numerals";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Badge, SessionStatusBadge } from "@/components/ui/badge";
@@ -30,17 +31,25 @@ import type { TimelineSession } from "@/lib/dal/search";
 // anchors. They are links on the event page.
 
 export async function SessionCard({ session, locale, pinned = false }: { session: TimelineSession; locale: string; pinned?: boolean }) {
-  const t = await getTranslations("browse");
+  const [t, tDays] = await Promise.all([getTranslations("browse"), getTranslations("sessions.days")]);
   const ended = session.phase === "ended" || session.phase === "cancelled";
   const lead = session.presenters[0];
 
-  const when = session.startsAt
-    ? session.phase === "ended"
-      ? formatDate(session.startsAt, session.timeZone, locale)
-      : // A no-break space AFTER the dot, so a break can come before it and never
-        // leave «·» alone at the end of a line.
-        `${formatDate(session.startsAt, session.timeZone, locale)} ·\u00A0${formatTime(session.startsAt, session.timeZone, locale)}`
-    : null;
+  // ★ A RANGE WHEN THERE IS MORE THAN ONE DAY TO SPAN, and the session's own
+  // STORED window is what spans it (contract 1): `starts_at` is already the
+  // first day's start and `ends_at` the last day's end, so nothing here folds
+  // over `days` — it is read for its LENGTH alone. At one day every branch
+  // below is the one wave 6 shipped, character for character.
+  const spans = session.days.length > 1;
+  const when = !session.startsAt
+    ? null
+    : spans && session.endsAt
+      ? dayRange(session.startsAt, session.endsAt, session.timeZone, tDays, locale)
+      : session.phase === "ended"
+        ? formatDate(session.startsAt, session.timeZone, locale)
+        : // A no-break space AFTER the dot, so a break can come before it and never
+          // leave «·» alone at the end of a line.
+          `${formatDate(session.startsAt, session.timeZone, locale)} ·\u00A0${formatTime(session.startsAt, session.timeZone, locale)}`;
 
   const footer = (() => {
     if (session.mine === "confirmed" && !ended) return <Badge tone="success" size="sm">{t("card.mine.confirmed")}</Badge>;
@@ -85,6 +94,11 @@ export async function SessionCard({ session, locale, pinned = false }: { session
         {when ? (
           <p className="text-body-sm text-fg-body">
             <bdi>{when}</bdi>
+            {/* ★ «3 أيام» beside the range, because a range alone does not say
+                whether a member is committing to two evenings or to a whole
+                week. Rendered on the same length test as the range itself, so a
+                one-day card has no extra node at all. */}
+            {spans ? <span className="text-fg-muted">{" · "}<bdi>{dayCountLabel(session.days.length, tDays)}</bdi></span> : null}
           </p>
         ) : null}
         {session.venueName ? (

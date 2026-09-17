@@ -35,6 +35,7 @@
       "notScheduled": "No date set yet",
       "noVenue": "No venue set yet",
       "inPersonNote": "In the room only.",
+      "placeVaries": "The place is not the same on every day; the list above names where.",
       "capacityLabel": "Capacity",
       "seats": "{count, plural, =0 {no seats} one {one seat} other {{value} seats}}",
       "rsvpDeadlineLabel": "Booking closes",
