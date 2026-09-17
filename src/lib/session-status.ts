@@ -96,6 +96,13 @@ export interface DayWindow {
   position: number;
   startsAt: string;
   endsAt: string;
+  /**
+   * The day's own check-in switch (`session_days.check_in_open`, DEC-116 per
+   * day). Optional so a caller that only needs windows need not read it; the
+   * matrix reads it off the SAME array it resolved the day out of, so the
+   * switch can never go stale beside the window (DEC-151).
+   */
+  checkInOpen?: boolean;
 }
 
 export interface PhaseInput {
@@ -239,10 +246,25 @@ export function betweenDays(days: readonly DayWindow[] | null | undefined, now: 
 }
 
 /**
+ * The instant a day stops taking attendance: its end + 2 h, ★ CAPPED BY THE
+ * NEXT DAY'S START (DEC-151). A 9–12 day and a 13–16 day on one date would
+ * otherwise both hold 13:30; capped, the windows of one session's days never
+ * overlap and «which day?» has one answer. With no next day there is no cap,
+ * so a one-day session's ceiling is its end + 2 h, as it always was.
+ * The twin of `public.check_in_ceiling()` (0101). `ordered` must be chronological.
+ */
+export function checkInCeiling(ordered: readonly DayWindow[], index: number): number | null {
+  const end = parseInstant(ordered[index]?.endsAt);
+  if (!end) return null;
+  const next = parseInstant(ordered[index + 1]?.startsAt);
+  const grace = end.getTime() + CHECK_IN_CEILING_MS;
+  return next ? Math.min(grace, next.getTime()) : grace;
+}
+
+/**
  * The day a check-in made `now` would belong to: the day whose window — its
- * start to its end + 2 h — contains `now`; the LATER-started when two do (a
- * 9–12 day and a 13–16 day on one date both hold 13:30). Null when no day is
- * taking attendance. This is rule 1 of `public.resolve_session_day()` (0100),
+ * start to its capped ceiling — contains `now`. Null when no day is taking
+ * attendance. This is rule 1 of `public.resolve_session_day()` (0100, 0101),
  * and ONLY rule 1: the SQL function's fallbacks exist for inserters that must
  * land somewhere; a screen asking «is check-in open?» must be told no.
  *
@@ -251,11 +273,13 @@ export function betweenDays(days: readonly DayWindow[] | null | undefined, now: 
  */
 export function checkInDay(days: readonly DayWindow[] | null | undefined, now: Date = new Date()): DayWindow | null {
   const t = now.getTime();
-  const open = chronological(days).filter((d) => {
+  const ordered = chronological(days);
+  const open = ordered.filter((d, i) => {
     const start = parseInstant(d.startsAt);
-    const end = parseInstant(d.endsAt);
-    return !!start && !!end && t >= start.getTime() && t < end.getTime() + CHECK_IN_CEILING_MS;
+    const ceiling = checkInCeiling(ordered, i);
+    return !!start && ceiling !== null && t >= start.getTime() && t < ceiling;
   });
+  // With the cap at most one day qualifies; the later-started is kept as defence.
   return open.at(-1) ?? null;
 }
 

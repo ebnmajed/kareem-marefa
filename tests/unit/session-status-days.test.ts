@@ -10,6 +10,7 @@ import {
   betweenDays,
   canGrantOn,
   CHECK_IN_CEILING_MS,
+  checkInCeiling,
   checkInDay,
   dayPhase,
   neverGrantsMoreThanStored,
@@ -139,11 +140,20 @@ describe("checkInDay — rule 1 of public.resolve_session_day(), and only rule 1
     expect(checkInDay([WED, THU, FRI], at(52))).toBeNull();
   });
 
-  it("two days on one date whose windows overlap: the later-started", () => {
-    const morning = day("am", 1, 0, 3); //    9–12, open to 14
+  it("★ a day's ceiling is capped by the next day's start (DEC-151): a 9–12 and a 13–16 day never both hold an instant", () => {
+    const morning = day("am", 1, 0, 3); //    9–12 — uncapped it would stay open to 14:00
     const afternoon = day("pm", 2, 4, 7); //  13–16
-    expect(checkInDay([morning, afternoon], at(3.5))?.id).toBe("am");
-    expect(checkInDay([morning, afternoon], at(4.5))?.id).toBe("pm"); // 13:30 — both windows hold it
+    expect(checkInDay([morning, afternoon], at(3.5))?.id).toBe("am"); //  12:30 — the morning's grace
+    expect(checkInDay([morning, afternoon], at(3.99))?.id).toBe("am");
+    expect(checkInDay([morning, afternoon], at(4))?.id).toBe("pm"); //    13:00 — the cap: the next meeting has begun
+    expect(checkInDay([morning, afternoon], at(4.5))?.id).toBe("pm"); //  13:30 — one answer, not two
+    expect(checkInCeiling([morning, afternoon], 0)).toBe(at(4).getTime()); //  capped at 13:00, not 14:00
+    expect(checkInCeiling([morning, afternoon], 1)).toBe(at(9).getTime()); //  the last day: end + 2 h, uncapped
+  });
+
+  it("the cap is inert when the next day is far enough away, and at one day by arithmetic", () => {
+    expect(checkInCeiling([WED, THU, FRI], 0)).toBe(at(4).getTime()); // 20:00 + 2 h; Thursday is a day away
+    expect(checkInCeiling([WED], 0)).toBe(at(4).getTime()); //           one day: no next day, no cap
   });
 
   it("one day: exactly the window a one-day session has today", () => {

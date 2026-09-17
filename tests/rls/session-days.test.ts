@@ -368,16 +368,38 @@ describe("resolve_session_day() — contract 4's one rule for «which day?»", (
     });
   });
 
-  it("two days whose check-in windows overlap on one date: the later-started wins", async () => {
+  it("★ RPC-resolve_session_day.windows_never_overlap — a day's ceiling is capped by the next day's start (0101, DEC-151)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       const id = f.m2.a.draft;
       await tx.q(`update public.sessions set rsvp_deadline_at = null, cancellation_cutoff_at = null where id = $1`, [id]);
       await tx.q(`delete from public.session_days where session_id = $1`, [id]);
-      await addDay(tx, f.a.id, id, 9, 12); //                 morning; its window runs to 14
+      const morning = await addDay(tx, f.a.id, id, 9, 12); //   uncapped its window would run to 14
       const afternoon = await addDay(tx, f.a.id, id, 13, 16);
-      const [r] = await tx.q<{ d: string }>(`select public.resolve_session_day($1, now() + interval '13 hours 30 minutes') as d`, [id]);
-      expect(r.d).toBe(afternoon);
+      const at = async (interval: string) =>
+        (await tx.q<{ d: string }>(`select public.resolve_session_day($1, now() + $2::interval) as d`, [id, interval]))[0].d;
+      expect(await at("12 hours 30 minutes")).toBe(morning); //   the morning's grace
+      expect(await at("13 hours")).toBe(afternoon); //            the cap: the next meeting has begun
+      expect(await at("13 hours 30 minutes")).toBe(afternoon); // one answer, not two
+
+      const ceiling = async (day: string) =>
+        (await tx.q<{ h: string }>(`select extract(epoch from public.check_in_ceiling($1) - now()) / 3600 as h`, [day]))[0].h;
+      expect(Number(await ceiling(morning))).toBeCloseTo(13, 6); //   capped at the afternoon's start, not 14
+      expect(Number(await ceiling(afternoon))).toBeCloseTo(18, 6); // the last day: end + 2 h, uncapped
+    });
+  });
+
+  it("RPC-check_in_ceiling.capped_by_next_day — at one day it is ends_at + 2 h, exactly today's ceiling; callable by no client role", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const [d] = await daysOf(tx, f.m2.a.published);
+      const [r] = await tx.q<{ same: boolean }>(
+        `select public.check_in_ceiling($1) = (select ends_at + interval '2 hours' from public.sessions where id = $2) as same`,
+        [d.id, f.m2.a.published],
+      );
+      expect(r.same).toBe(true);
+      await tx.as(f.a.members[0].claims);
+      expect(await errorCode(() => tx.q(`select public.check_in_ceiling($1)`, [d.id]))).toBe(PERMISSION_DENIED);
     });
   });
 });
@@ -533,6 +555,75 @@ describe("POL-content.day_of_own_session — DEC-121's one nullable column", () 
         [t.id],
       );
       expect(after).toEqual({ session_day_id: null, session_id: id }); // promoted, and still the session's
+    });
+  });
+});
+
+describe("POL-session_days.switch_born_with_session (0101)", () => {
+  it("a day created for a legacy writer carries its session's switch; moving the window later does not touch the day's switch", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const [closed] = await tx.q<{ id: string }>(
+        `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, ends_at, venue_id, capacity, state, published_at, check_in_open)
+         values ($1, 'بابها مغلق', 'ملخص', $2, 'introductory', now() + interval '9 days', now() + interval '9 days 1 hour', $3, 10, 'published', now(), false)
+         returning id`,
+        [f.a.id, f.a.categoryId, f.a.venueId],
+      );
+      const open = async (session: string) =>
+        (await tx.q<{ check_in_open: boolean }>(`select check_in_open from public.session_days where session_id = $1`, [session]))[0].check_in_open;
+      expect(await open(closed.id)).toBe(false); // born closed, like its session
+      expect(await open(f.m2.a.published)).toBe(true); // DEC-116: open by default
+
+      await tx.q(`update public.session_days set check_in_open = true where session_id = $1`, [closed.id]);
+      await tx.q(`update public.sessions set ends_at = ends_at + interval '30 minutes' where id = $1`, [closed.id]);
+      expect(await open(closed.id)).toBe(true); // moving a window is not a statement about its door
+    });
+  });
+});
+
+describe("POL-calendar_events.* (0101) — one calendar entry per day", () => {
+  it("legacy_insert_gets_first_day — every fixture row, written the way main's record_calendar_sync() writes it, has its session's first day", async () => {
+    await withTx(async (tx) => {
+      await seed(tx);
+      const orphans = await tx.q(
+        `select ce.id from public.calendar_events ce
+          where ce.session_day_id is distinct from
+                (select d.id from public.session_days d where d.session_id = ce.session_id order by d.starts_at, d.id limit 1)`,
+      );
+      expect(orphans).toEqual([]);
+      expect((await tx.q(`select id from public.calendar_events`)).length).toBeGreaterThan(0); // not vacuous
+    });
+  });
+
+  it("day_of_own_session — another session's day is refused; deleting a day KEEPS the row with a null day; one row per member per day", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const id = f.m2.a.draft;
+      const member = f.a.members[1].memberId;
+      const day2 = await addDay(tx, f.a.id, id, 96, 97);
+      const [foreign] = await daysOf(tx, f.m2.a.published);
+      const insert = (day: string) =>
+        tx.q<{ id: string }>(
+          `insert into public.calendar_events (org_id, member_id, session_id, session_day_id, provider_event_id, state)
+           values ($1, $2, $3, $4::uuid, 'evt-' || $4::text, 'synced') returning id`,
+          [f.a.id, member, id, day],
+        );
+      expect(await errorCode(() => insert(foreign.id))).toBe(FK_VIOLATION);
+
+      // ★ Today's `unique (member_id, session_id)` is still in force (0101's header): a SECOND day's
+      // row for the same member is refused until `notify`'s file drops it with the function that names it.
+      const [day1] = await daysOf(tx, id);
+      await tx.q(`delete from public.calendar_events where member_id = $1 and session_id = $2`, [member, id]);
+      const [row] = await insert(day2);
+      expect(await errorCode(() => insert(day1.id))).toBe(UNIQUE_VIOLATION);
+
+      await tx.q(`delete from public.session_days where id = $1`, [day2]);
+      const [after] = await tx.q<{ session_day_id: string | null; provider_event_id: string }>(
+        `select session_day_id, provider_event_id from public.calendar_events where id = $1`,
+        [row.id],
+      );
+      expect(after.session_day_id).toBeNull(); //                 «this event's day is gone — remove it»
+      expect(after.provider_event_id).toBe(`evt-${day2}`); //     and the row still knows WHICH event to remove
     });
   });
 });
