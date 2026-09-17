@@ -204,7 +204,7 @@
       "createFromProposalLabel": "Create the session from <t>{title}</t>",
       "certificates": "Certificates",
       "survey": "Survey",
-      "openSurvey": "Survey<hidden> — {title}</hidden>",
+      "openSurvey": "Survey<hidden> — <t>{title}</t></hidden>",
       "attendance": "Attendance"
     },
     "venues": {

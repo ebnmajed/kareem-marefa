@@ -251,7 +251,11 @@ export function ModeratorSessionsTable({ sessions, timeZone, locale }: { session
       onCard: true,
       cell: (s) => (
         <Link href={`/app/admin/sessions/${s.id}/survey`} className="underline underline-offset-4">
-          {t.rich("openSurvey", { title: s.title, hidden: (chunks) => <span className="sr-only">{chunks}</span> })}
+          {t.rich("openSurvey", {
+            title: s.title,
+            hidden: (chunks) => <span className="sr-only">{chunks}</span>,
+            t: (chunks) => <bdi>{chunks}</bdi>,
+          })}
         </Link>
       ),
     },
