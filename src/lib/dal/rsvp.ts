@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { listSessionDays } from "@/lib/dal/sessions";
 import { seatState, sessionPhase, viewerRelation, type PhaseInput, type SeatState, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
 import { affordancesFor } from "@/components/checkin/session-matrix";
 
@@ -42,12 +43,22 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
-  const [sessionRes, countsRes, mineRes, presenterRes, checkInRes] = await Promise.all([
+  const [sessionRes, countsRes, mineRes, presenterRes, checkInRes, days] = await Promise.all([
     supabase.from("sessions").select("id, state, starts_at, ends_at, duration_minutes, capacity, rsvp_deadline_at, cancellation_cutoff_at").eq("id", sessionId).maybeSingle(),
     supabase.rpc("session_seat_counts", { p_session: sessionId }).single(),
     supabase.from("rsvps").select("status, waitlist_position").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
+    // ★ THE DAYS, and this panel is wrong without them (DEC-119, contract 9).
+    // `sessionPhase()` only reads the NIGHT between two days as `open` when it
+    // is given the day set; handed the session's stored window alone, a
+    // three-day workshop is `live` from day 1's start to day 3's end. The
+    // event page already computes its phase WITH days, so a day-less read here
+    // makes the page and this panel disagree about the phase on ONE screen —
+    // and `rsvp`/`cancel` are exactly the affordances the difference removes.
+    // `listSessionDays()` is `cache()`-wrapped and the page reads it too, so
+    // this is not a second round trip.
+    listSessionDays(locale, sessionId),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -59,7 +70,7 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   const mine = mineRes.data;
   const now = new Date();
 
-  const phaseInput: PhaseInput = { state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes };
+  const phaseInput: PhaseInput = { state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes, days };
   const phase = sessionPhase(phaseInput, now);
   const isStaff = session.role === "admin" || session.role === "moderator";
   const rsvpStatus = (mine?.status as RsvpStatus | undefined) ?? null;

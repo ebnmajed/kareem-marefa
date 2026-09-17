@@ -1948,3 +1948,42 @@ with `getByText` is the fragile shape, because a hidden orphan still matches it.
 locators are immune by construction. `wave9-checkin-one-day.spec.ts` leans on exactly that kind of
 absence, and survives only because the strings it forbids are never rendered on a one-day session at
 all — worth remembering if that file ever grows a case about a string the page does render.
+
+### `rsvp.ts` read the phase without the days — the two-readers defect
+
+`getRsvpPanelData()` built its `PhaseInput` from the session's stored window alone. `sessionPhase()`
+only reads the hours **between** two days as `open` when it is handed the day set, so a three-day
+workshop was `live` from day 1's start to day 3's end.
+
+★ **The consequence is not a wrong word on a screen; it is two readers of ONE screen disagreeing.**
+The event page computes its phase **with** days. On the night between day 1 and day 2 the page would
+say `open` and the panel `live`, in the same render — and `rsvp` and `cancel` are exactly the
+affordances the matrix withdraws at `live`. A confirmed member would have been shown a session they
+could neither join nor leave, with nothing on the page explaining why.
+
+Fixed by reading `listSessionDays()` in the existing `Promise.all` and passing `days`. It is not a
+second round trip: the function is `cache()`-wrapped and the page already reads it.
+
+`tests/unit/checkin-rsvp-days.test.ts` pins all three directions — the panel agrees with
+`sessionPhase({ …, days })`, it is **not** the day-less answer (which the test computes and asserts
+is `live`), and at one day the two are identical because no «between» exists. Unmodified and green
+beside it: `session-status`, `session-matrix`, `checkin-removed-check-in`,
+`sessions-removed-check-in`, `tests/components/checkin/**`, and the RLS files `rsvp`,
+`priority-rsvp`, `checkin`, `checkin-window`, `checkin-removal`.
+
+★ **Worth stating because it cost a red run:** the first version of that test seeded `session_days`
+rows with no `session_id`, so `listSessionDays()`'s own `eq` dropped them — which reads exactly like
+«this session has no days» and would have let the file pass while proving nothing. A stub row that
+omits the column the reader filters on is the quietest way to write a test that tests nothing.
+
+### The captures were 412 px, not 390
+
+Ten captures came out 1082 px wide: the phone project is `devices["Pixel 7"]`, 412 × 915 at DPR
+2.625. The row's rule is **390 × 844**, which at that DPR is the 1024 px every other track's files
+are.
+
+Set in a `beforeEach` **guarded on the project name**, not with a file-level `test.use()`. These two
+files run on both projects and their desktop cases are real — the `DEC-145` duplicate appears only
+there — so a file-level `use` would shrink desktop to a phone and quietly delete that coverage. In
+`beforeEach` rather than inside `shoot()` so every assertion runs at the width the capture was taken
+at, which is the whole point of reviewing one.

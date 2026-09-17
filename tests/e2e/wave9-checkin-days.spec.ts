@@ -59,6 +59,19 @@ async function shoot(page: Page, name: string, isPhone: boolean) {
   await page.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: true });
 }
 
+// ★ 390 × 844, the row's rule — set for the PHONE project only, not with a
+// file-level `test.use()`. These two files run on BOTH projects and the desktop
+// cases are real (the DEC-145 duplicate only appears there), so a file-level
+// `use` would shrink desktop to a phone and quietly delete that coverage.
+// The phone project is `devices["Pixel 7"]`, whose default is 412 × 915 at
+// DPR 2.625 — which is what produced 1082 px captures instead of the 1024 px
+// every other track's files are. Setting it in `beforeEach` rather than inside
+// `shoot()` means every assertion runs at the width the capture was taken at,
+// which is the point of reviewing one.
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
+});
+
 test.beforeAll(async ({}, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
