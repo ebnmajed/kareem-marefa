@@ -1434,6 +1434,199 @@ its head.
 **Gates on `38ccd25`:** `tsc` clean · lint 0 errors · the new file 9 green · **the whole RLS suite,
 104 files, 1079 passed** with the proposed file applied in the one test that applies it.
 
+## X0.3 ★ A hole in `0125`'s block-shape constraint — a CHECK fails only on FALSE
+
+Writing the two `03` §8.2 rows the lead reserved for me
+(`tests/rls/notify-template-blocks.test.ts`) turned one up. **`{"schemaVersion": 1}` — an object with
+no `blocks` key at all — is stored**, although `0125`'s own `03` row says «`blocks` is null or an
+object carrying `schemaVersion` and **an array `blocks`**; anything else is refused `23514`».
+
+Why, exactly: `blocks -> 'blocks'` on an object without that key is **SQL NULL**, so
+`jsonb_typeof(NULL)` is NULL, the conjunction is NULL, the disjunction is NULL — and **a CHECK
+constraint rejects only on FALSE**, never on NULL. Measured against the live predicate rather than
+reasoned about:
+
+```
+=== 0125 as written                              === with `and blocks ? 'blocks'`
+  null                          TRUE   stored      null                          TRUE   stored
+  {"schemaVersion":1}           NULL   PASSES ←    {"schemaVersion":1}           FALSE  refused ←
+  {"schemaVersion":1,"blocks":[]}  TRUE   stored    {"schemaVersion":1,"blocks":[]}  TRUE   stored
+  {"blocks":[]}                 FALSE  refused     {"blocks":[]}                 FALSE  refused
+  [{"type":"divider"}]          FALSE  refused     [{"type":"divider"}]          FALSE  refused
+  7                             FALSE  refused     7                             FALSE  refused
+  {"schemaVersion":1,"blocks":{…}} FALSE refused    {"schemaVersion":1,"blocks":{…}} FALSE refused
+```
+
+**One row changes verdict; every other is identical.** The request to the lead — one conjunct, in
+`0125` if it has not been pushed, or in a new file if it has:
+
+```sql
+      and blocks ? 'schemaVersion'
++     and blocks ? 'blocks'
+      and jsonb_typeof(blocks -> 'blocks') = 'array'
+```
+
+Same class as `0026`'s `notification_templates_validate()` catching a missing required field: the
+value that slips through is the one nobody typed on purpose. It is **not** urgent — `bindings_in_blocks`
+already treats a missing array as empty, and the compiler will read `blocks -> 'blocks'` through the
+same guard, so nothing crashes; what is wrong is that the column can hold a document the constraint
+promises it cannot, and the promise is in `03`.
+
+**The assertion is not in the file, deliberately.** Asserting today's behaviour would **pin a defect**,
+and a red test under `tests/rls/` runs in everyone's suite. It is an `it.todo` naming this section, and
+it becomes an `it` in the commit that lands the conjunct.
+
+## X0.4 N2's design rules — contracts 8 and 9, and `designer`'s D3a
+
+Ruled before sync 2 because `designer` published contract 8 on day one. These shape the compiler
+rather than audit it, which is what D3a was published for.
+
+### ★ The trap: bidi isolation must live in the COMPILER, never in `interpolate()`
+
+D3a item 3: **`<bdi>` is not supported by Outlook's Word engine**, so a bound value that can carry a
+name, a title, a venue or a code is isolated with the Unicode isolates — **`U+2068` FSI … `U+2069`
+PDI** — or `dir="auto"`, **and the generated text part must isolate too**, or the text reorders. This
+is the one thing the DOM gives us free and a mail does not; it is `10` §2's «bidi-isolate every
+interpolated value», one medium over.
+
+★ **And it is exactly where the pinned bytes could be lost.** `interpolate()` is **shared** by the
+string path and the block path. Adding FSI/PDI there would isolate every value in every default
+template and **move all 116 pinned files** — for an org that has touched nothing, which is the one
+thing this wave promises not to do. So:
+
+- `interpolate()` is **not touched**. The string path keeps producing the pinned bytes forever (it
+  leaves in M13, `DEC-081`).
+- The **compiler** isolates, at the point it substitutes into a block's text — a function of its own,
+  applied per bound value, in the HTML and in the generated text alike.
+- A unit test asserts both: a compiled block isolates, and **the same payload down the string path
+  does not** — the two paths diverging here is the design, not a defect.
+
+### What an `image` and a `session_card` may point at (contract 8)
+
+`designer` published exactly one URL that works with no session:
+**`{PUBLIC_ORIGIN}/api/s/{sessionId}/og`** — the 1200 × 630 card of a session's poster, served to
+`anon` by `POL-storage.exports.public_card`. Every other preset, every certificate and every design
+asset needs a session or a five-minute signature and is a broken image in a mail **by design**.
+
+Two properties to design around, and one of them is a rule about a whole family:
+
+1. ★ **It 404s for a DRAFT or CANCELLED session.** `MSG-session_cancelled` sits in the **إلغاء**
+   family (§X4) — so **that family's design must not carry the session card's image.** A mail about a
+   cancellation would otherwise arrive with a broken image in the one message a member is most likely
+   to read carefully. The إلغاء design already has the right shape for it: a heading, a reason
+   detail, no primary button — and now, no image. A unit test asserts the إلغاء design contains no
+   `session_card` image and no `image` block.
+2. **It caches for five minutes**, so a re-rendered poster reaches an inbox quickly and a crawler's
+   copy does not. Nothing to do; recorded so nobody adds a cache-buster and defeats it.
+
+### The logo (contract 9, ruled)
+
+The lead builds `GET /api/brand/{orgId}/logo` as `branding`'s custodian, in
+`export_is_public_card()`'s shape — **a proxied public URL, not a CID attachment**, because an
+attachment on every mail costs size and deliverability and needs `multipart/related` in two
+transports. For me: `ImageSource` keeps its two kinds; `org_logo` resolves to that URL; the renderer
+receives it as **`brand.logoUrl: string | null`**; and ★ **null renders the org's NAME as a heading**
+— every design correct with no image, which is the common case at launch. My `RenderInput.brand`
+widening is approved as written, so the three-key object keeps working and the pinned files do not
+move.
+
+### D3a's other four, as compiler rules
+
+1. **Arabic shaping in a fallback stack.** A mail renders in the **reader's** fonts — invariant 12
+   does not reach an inbox and `@font-face` is stripped. The stack is declared per text-bearing cell
+   and ends in a generic that exists on Windows, macOS, iOS, Android and Gmail's web client;
+   `render.ts`'s `FALLBACK_STACK` already ends `Tahoma, Arial, sans-serif` and the compiler reuses it
+   rather than declaring a second one. No letter-spacing on Arabic, and never `overflow: hidden` on a
+   text line (it clips tashkeel).
+2. **`dir` on every cell**: `dir="rtl"` on the `<table>` **and** on each text-bearing `<td>`, with
+   `align="right"` **beside** `text-align`, because the Word engine reads the attribute and does not
+   inherit `dir` reliably through nested tables. A right-aligned cell is not an RTL cell.
+4. **Forced dark**: `color-scheme` and `supported-color-schemes` declared; no text colour depending on
+   a background a client may repaint; contrast holding **both** ways; the logo not
+   dark-on-transparent. This is why the widened `brand` carries the **dark** palette and
+   `canvasRaise` — `brand_kit()` has returned both since `0068`/`0093`, so it costs a read, not a
+   migration.
+5. **No `<svg>` anywhere** (clients strip it; Outlook draws nothing) — invariant 11's reasoning one
+   medium over; every image with `alt` and explicit `width`/`height`; a fixed max-width so the shell
+   does not scroll sideways on a phone.
+
+### The logo, resolved — and the lead answered the question before I asked it
+
+`0126` (`7e4eebd`) opens **exactly one object**: the one an **active** org's `brand_kits.logo_asset_id`
+names, while it is **PNG or JPEG**. ★ **A WebP logo stays closed on purpose** — Outlook's Word engine
+draws no WebP, so a mail would carry a broken image for exactly the client «أرسل اختبارًا» exists to
+test.
+
+And `public.org_public_logo(p_org uuid)` is **granted to `service_role`**, with the reason written in
+the migration: «the mail renderer decides between a logo band and the org's name by whether this
+returns a row». So `send_notification.ts` asks it, and there is no request to make:
+
+```
+logoUrl = org_public_logo(org) returns a row ? `${APP_URL}/api/brand/${org}/logo` : null
+null → the org's NAME as a heading (contract 9, and the common case at launch)
+```
+
+## X0.5 The DAL half of N3/N4 — and a live defect in `saveTemplate()`
+
+Unblocked by L3, so it was written while the package move ran. `src/lib/dal/notifications.ts` gains
+`getMessageBindings()` — reading `public.notification_bindings()`, **never a second copy in
+TypeScript**, for the reason the matrix is not duplicated and one sharper: here the other copy is the
+trigger that **refuses** the save, and a screen listing a binding the database would reject is worse
+than no list at all. `TemplateDTO` gains `blocks` and `sourceFamily`; `templateInput` takes them as
+optional, where **omitted leaves an existing design alone** (so the string editor, and every writer
+before wave 10, cannot silently clear one) and **`null` clears it**, which is §X9's convert-and-clear.
+`TemplateSaveResult` gains `unknown_binding` **with the binding named**, carried on the error rather
+than re-derived — `saveTemplateChecked()` re-derives the missing required field by repeating the
+trigger's one `includes()`, but a binding can be refused from inside a **block**, and re-deriving that
+would mean re-implementing the compiler's scan in TypeScript: a second authority on what the database
+refused, which is the drift this wave exists to end.
+
+### ★ Editing an existing email template has never worked
+
+`saveTemplate()` built **one** payload object carrying `org_id` and used it for **both** the insert
+and the update:
+
+```ts
+const row = { org_id: session.orgId, key, channel, locale, subject, body, required_fields };
+… existing ? supabase.from("notification_templates").update(row).eq("id", existing.id)
+           : supabase.from("notification_templates").insert(row);
+```
+
+`0026` grants `update (key, channel, locale, subject, body, required_fields)` and **not `org_id`** —
+and **Postgres checks an UPDATE privilege on the COLUMN, not on the value**, so naming `org_id` in the
+SET list is `42501` even when the value written is the row's own. PostgREST puts every key of the
+payload into the SET list. Read from the catalogue, which settles it without a transaction:
+
+```
+  refused org_id          UPDATE  subject
+  UPDATE  key             UPDATE  body
+  UPDATE  channel         UPDATE  required_fields
+  UPDATE  locale          UPDATE  blocks · source_family
+  refused id · created_at
+```
+
+So the **first** save of a template inserts and succeeds; the **second** returns `42501` →
+`mapTemplateError` → `not_permitted` → the screen says «لا تملك صلاحية» to an admin who has every
+permission. **`wave8-console-emails.spec.ts` could not have caught it**: its save case saves once into
+an org with no row, then restores by **delete** — the update path is exercised nowhere.
+
+The fix is one line of shape — `org_id` in the insert, never in the update — and it is right whether
+or not the old code was broken. The regression guard is a case in
+`tests/rls/notify-template-blocks.test.ts` that asserts the **old payload's shape** is refused and the
+new one saves, so nobody puts it back.
+
+This is a **live SCR-058 defect on production**, not a wave-10 one. It is reported to the lead as
+such.
+
+### The lesson about the shared database, since I caused one collision
+
+`npm run test:rls` takes **no lock** — `gate-lock.mjs` guards `qa`, `visual`, Playwright and the hook,
+and nothing guards this. I ran `pgrep -fl "…vitest"` **in the same command line** as the suite, so I
+never read its output before launching, and raced another teammate's run for ninety seconds: 207 s and
+11 failures, against 114 s and zero twenty minutes earlier. **I do not believe those 11 and did not
+report them as findings.** The rule that works is the lead's: **iterate on your own files, and run the
+whole suite once per unit** — and `pgrep` is its own call whose result is read before anything starts.
+
 ## X1. N1 — pinning today's output, before anything else changes
 
 ### X1.1 The files
