@@ -1337,3 +1337,632 @@ coverage half cannot see a missing glyph — `faceLoaded` still sees a subset th
 
 Also: the editor spec's worker branch sets its own 12-minute timeout and waits for every variant to
 SETTLE, then fails at once with the worker's reasons rather than polling ten minutes for «12 ready».
+
+---
+
+## Wave 10 plan — 2026-09-17 (planning only; nothing built until the lead approves at sync 1)
+
+Rows D1, D2, D3 of `STATUS.md`'s wave-10 block. Serves `REQ-CRT-003`, `REQ-CRT-008`, `REQ-CRT-011`,
+`REQ-CHK-017`, `REQ-DSG-002`, `REQ-DSG-013`, `REQ-SES-015`; `DEC-010`, `DEC-149` §3, `DEC-150`,
+`DEC-151`, `DEC-153`, `DEC-160` §6, contracts 3, 8 and 10.
+
+**Read for this plan, from disk:** `0055` (the table, its two uniques, `allocate_serial()`), `0065`
+(release, revoke, announce, the render context), `0066`, `0082` (`poster_render_context()`), `0099`
+(the live `issue_certificate()` text before `0108`), `0107`, **`0108` in full**, `0120`;
+`src/lib/dal/certificates.ts` whole, `templates.ts`, `admin-exports.ts`, `platform.ts`,
+`designer.ts`'s `sessionBindings()`; `packages/designer-runtime/src/{session-bindings,library}.ts`,
+`packages/designer-runtime/scripts/seed-sql.mjs` (the agent file calls it `scripts/seed-sql.mjs`; it
+lives in the package); `worker/src/tasks/{issue_certificates,regenerate_poster}.ts`;
+`tests/unit/designer-library.test.ts`, `tests/rls/{designer-certificates,session-days-certificates,
+checkin-removal,checkin-late-job-hooks}.test.ts`; `0080_public_session_card.sql` and
+`src/app/api/s/[id]/og/route.ts` for contract 8.
+
+---
+
+### D1 — certificates, re-issued
+
+#### D1.1 · The DDL I need from the lead (contract 10)
+
+Three statements, in this order, carried verbatim at the top of
+`supabase/proposed/designer/0001_certificates_reissue.sql` under `-- LEAD DDL (DEC-160)` so the
+constraint and the functions that depend on it move in one file (`DEC-151`'s pattern):
+
+```sql
+-- LEAD DDL (DEC-160) — contract 10.
+create type public.certificate_revocation_cause as enum ('for_cause', 'attendance_removed');
+
+alter table public.certificates
+  add column revocation_cause public.certificate_revocation_cause;
+
+-- The live-row rule, which the table constraint used to be. Created BEFORE the
+-- constraint is dropped, so there is never an instant with no uniqueness at all.
+create unique index certificates_live_once
+  on public.certificates (org_id, session_id, member_id, kind)
+  where state <> 'revoked';
+
+alter table public.certificates
+  drop constraint certificates_org_id_session_id_member_id_kind_key;
+```
+
+- **The existing rule is a TABLE CONSTRAINT, not an index** (`0055:318`: `unique (org_id, session_id,
+  member_id, kind)`, unnamed). Postgres names it `<table>_<col>…_key`, so in the catalogue it is
+  **`certificates_org_id_session_id_member_id_kind_key`** (49 characters, under the 63-byte
+  truncation). The lead confirms before writing the drop with
+  `select conname from pg_constraint where conrelid = 'public.certificates'::regclass and contype = 'u';`
+  — which also returns `certificates_org_id_serial_key`, and **that one stays**.
+- `state` is `not null default 'held'` (`0055:286`), so the partial predicate is total. `<> 'revoked'`
+  rather than `in ('held','issued')` to match the phrase already used at `0087:354`, `0105:576` and
+  `0108:247`.
+- Name `certificates_live_once` follows the two partial indexes beside it — `certificates_badge_once`,
+  `certificates_snapshot_once` (`0055:325-328`).
+- A plain `create unique index` takes a `share` lock for its duration. Volume is hundreds a month
+  (A24), so the table is tiny and this is not worth `concurrently` (which cannot run in a migration's
+  transaction anyway).
+- `revocation_cause` is **nullable, with no check constraint**, and every reader takes it through
+  `coalesce(c.revocation_cause, 'for_cause')`. Why: the column is meaningless on a live row, so
+  `not null default 'for_cause'` would state a cause for every certificate that has none; and adding
+  `(state = 'revoked') = (revocation_cause is not null)` to `certificates_revocation` would validate
+  existing rows, which requires backfilling a cause onto rows revoked before this migration — a cause
+  we cannot honestly know. `coalesce` reads those rows as **final**, which is the conservative
+  direction. If the lead prefers the not-null form, the same conservative value is its default and
+  nothing else in this plan changes.
+- **No backfill of historical revoked rows.** A row revoked before this file stays final.
+
+#### D1.2 · The new text
+
+**`issue_certificate()`** — `0108:130-136` becomes two guards. Everything else of `0108`'s body is
+unchanged, and the signature is unchanged, so `create or replace` keeps its grants (`service_role`
+only, `0065:173-174`).
+
+```sql
+  -- REQ-CRT-003: idempotent over a LIVE row. Re-running the job returns what
+  -- exists rather than allocating a second serial for the same person.
+  -- ★ wave 10 (DEC-160 §6): a REVOKED row is no longer «exists». A member
+  -- removed and re-added earns a second certificate under the NEXT serial;
+  -- the first keeps its serial and keeps verifying as revoked (DEC-153's carry,
+  -- lifted here).
+  select * into v_row from public.certificates c
+   where c.org_id = v_org and c.session_id = p_session
+     and c.member_id = p_member and c.kind = p_kind
+     and c.state <> 'revoked';
+  if v_row.id is not null then
+    return v_row;
+  end if;
+
+  -- ★ NOT EVERY REVOCATION IS A REMOVAL'S. An admin may revoke a certificate
+  -- FOR CAUSE while attendance is still complete, and no hook, re-run fan-out
+  -- or late job may quietly put a replacement in that member's hands.
+  if exists (select 1 from public.certificates c
+              where c.org_id = v_org and c.session_id = p_session
+                and c.member_id = p_member and c.kind = p_kind
+                and c.state = 'revoked'
+                and coalesce(c.revocation_cause, 'for_cause') = 'for_cause') then
+    -- 42501, which the worker already reads as «no longer eligible — nothing
+    -- issued» and returns from without retrying: the ABSENCE of a certificate
+    -- is the correct outcome, and no retry changes it.
+    raise exception 'revoked_for_cause' using errcode = '42501';
+  end if;
+```
+
+★ The refusal is raised **before** `allocate_serial()`, which is in the insert's value list — so a
+blocked re-issue consumes no number. That is the assertion the new RLS case makes, not a comment.
+
+The insert also gains a `unique_violation` handler, because two jobs for one member can pass the
+select above concurrently and the index is the authority:
+
+```sql
+  begin
+    insert into public.certificates (…) values (…) returning * into v_row;
+  exception when unique_violation then
+    get stacked diagnostics v_constraint = pg_exception_constraint_name;
+    if v_constraint <> 'certificates_live_once' then raise; end if;
+    -- The loser re-reads and returns the winner's row. DEC-010 survives because
+    -- the counter is a ROW, not a SEQUENCE: the subtransaction's rollback
+    -- RETURNS the serial a SEQUENCE would have burned.
+    select * into v_row from public.certificates c
+     where c.org_id = v_org and c.session_id = p_session
+       and c.member_id = p_member and c.kind = p_kind and c.state <> 'revoked';
+    if v_row.id is null then raise; end if;
+    return v_row;
+  end;
+```
+
+Honest about its weight: this race exists today with the table constraint and is already survivable —
+a `23505` makes the worker throw, graphile retries, and the retry returns the existing row. The
+handler is noise reduction, not a correctness fix, and it is six lines; the `get stacked diagnostics`
+guard is what keeps it from swallowing a `certificates_org_id_serial_key` collision, which would be a
+real defect. The `write_audit` below the insert is skipped for the loser because the handler returns.
+
+**`attendance_certificate_sync()`** — `0108:260-265`'s «ANY row» becomes:
+
+```sql
+  -- ★ wave 10 (DEC-160 §6). A LIVE row means there is nothing to do — a job
+  -- would be a no-op that looks like work. A row revoked BY A REMOVAL no
+  -- longer stops the issue: that is DEC-153's carry, and this is where it is
+  -- lifted. A row revoked FOR CAUSE still stops it, and always will.
+  if exists (select 1 from public.certificates c
+              where c.session_id = p_session and c.member_id = p_member
+                and c.kind = 'attendance'
+                and (c.state <> 'revoked'
+                     or coalesce(c.revocation_cause, 'for_cause') = 'for_cause')) then
+    return;
+  end if;
+```
+
+**`revoke_certificate()`** gains a trailing defaulted parameter, and the old signature is **dropped in
+the same file** so PostgREST never sees two overloads (`0085`'s lesson, rule 4):
+
+```sql
+drop function public.revoke_certificate(uuid, text);
+create function public.revoke_certificate(
+  p_certificate uuid, p_reason text,
+  p_cause public.certificate_revocation_cause default 'for_cause'
+) returns public.certificates …
+  -- sets revocation_cause = p_cause beside the four columns it already writes
+revoke execute on function public.revoke_certificate(uuid, text, public.certificate_revocation_cause) from public, anon;
+grant  execute on function public.revoke_certificate(uuid, text, public.certificate_revocation_cause) to authenticated;
+```
+
+Grants **restated verbatim**: a re-created function starts with `public` execute, which is the `0002`
+trap `0082`'s own header names. The sync's loop passes `'attendance_removed'`; every other caller
+takes the default. `designer-certificates.test.ts:311` and `:330` call it positionally with two
+arguments and are unaffected.
+
+`fan_out_certificates()` needs **no change**: it fans out by eligibility, never by existing rows, and
+`issue_certificate()` answers for each. A re-completion after a for-cause revocation therefore
+enqueues a job that refuses — one info line in the worker log, no row, no serial.
+
+#### D1.3 · ★ How a removal's revocation is told from an admin's, for cause
+
+**The fixed phrase is not a safe discriminator**, for four reasons:
+
+1. **It is display copy.** `revocation_reason` is what the member reads on SCR-023 and the admin reads
+   on SCR-045 (`certificates.ts:37-38`). Keying behaviour on a sentence means a wording fix silently
+   re-arms automatic re-issue for every revocation ever written with the old words.
+2. **It is forgeable by an ordinary admin.** `revokeInput.reason` is free text, `min(3).max(500)`
+   (`certificates.ts:487-492`). An admin who types «أُلغي تسجيل الحضور» while revoking for cause would
+   get a silent replacement for a revocation they meant to be final. A discriminator a user can type
+   is not a discriminator.
+3. **It is a rendering of a fact, not the fact.** `CLAUDE.md`'s naming rule — enums are Postgres enum
+   types, never `text` + check — is the same argument one level up: a category is a column.
+4. **An existing test pins the phrase**: `checkin-removal.test.ts:179`,
+   `expect(revoked.revocation_reason).toBe("أُلغي تسجيل الحضور")`, and `0120`'s §8.2 row repeats it.
+   The phrase must stay exactly as it is, which is one more reason not to overload it with meaning.
+
+**So: a column** — `certificates.revocation_cause`, the enum in D1.1, written by
+`revoke_certificate()` on every revocation. Two alternatives, rejected and why:
+
+- **`revoked_by`** cannot tell them apart: `remove_check_in()` runs as the admin and the sync calls
+  `revoke_certificate()` inside that transaction, so `auth_member_id()` is the same person on both
+  paths.
+- **The audit log** (`certificate.revoked`, with its reason) cannot be the source: `audit_log` is
+  append-only **evidence** (invariant 9). Making behaviour depend on reading it turns evidence into
+  state — a retention pass or an export would then change what the product does — and `after` is
+  unindexed jsonb.
+
+**The RLS case that proves no replacement is issued** — new file
+`tests/rls/certificates-reissue.test.ts`, `03` §8.2 row
+`RPC-issue_certificate.no_replacement_after_for_cause`:
+
+> attend every day → complete → `issue_certificate()` (serial N, state `issued`) → an admin revokes
+> with **their own reason** (cause defaults to `for_cause`). Then, each asserted separately:
+> (a) a further attendance change → `attendance_certificate_sync()` enqueues **nothing**;
+> (b) `fan_out_certificates()` on a re-completion enqueues the job, and `issue_certificate()` raises
+> **42501** with `revoked_for_cause`; (c) the member still holds **exactly one** certificate row and
+> it is still `revoked`; (d) ★ `certificate_serial_counters` is **byte-identical before and after** —
+> the refusal happened before `allocate_serial()`, so no number was taken and none was returned.
+
+Its twin, `RPC-issue_certificate.replacement_after_removal`: attend → complete → issue (serial N) →
+`remove_check_in()` (the sync revokes, cause `attendance_removed`, the fixed phrase) → re-add (the
+sync enqueues) → `issue_certificate()` → a **second** row, serial **N+1**, state `issued`, its
+`check_in_id` the **new** check-in; the first row still `revoked`, still serial N, and
+`verify_certificate(first.code)` still answers `revoked` **without the reason**.
+
+And `POL-certificates.live_once`: as owner, a second **live** row for the same
+`(org_id, session_id, member_id, kind)` is refused `23505` naming `certificates_live_once`; a second
+**revoked** row is accepted.
+
+#### D1.4 · The job key after a revocation
+
+`cert:{session_id}:{member_id}:{kind}` — `11` §2.5's, **unchanged**, which contract 3 and two existing
+assertions require (`designer-certificates.test.ts:85`; `session-days-certificates.test.ts:179`).
+
+- **Why it is enough for the second issuance.** A completed graphile job is **deleted**, so the key is
+  free again once the first issuance ran. The sync can enqueue under the same key months later and get
+  a fresh job. No new key shape is needed, and inventing one would break both assertions above for no
+  gain.
+- **Why it is not, on its own, the guarantee — and does not need to be.** `enqueue_job()` with a live
+  key **moves** a pending job, so two enqueues before either runs collapse to one; that is
+  de-duplication of *pending work*, not of *outcomes*. Two sequential jobs are legitimate here — that
+  is the feature. What guarantees a member never holds two live certificates is the **partial unique
+  index**, with `issue_certificate()`'s early return as the first line of defence and the index as the
+  authority. This is `DEC-151`'s shape for the attendance award, one table over: a standing-state check
+  first, the constraint as the authority, the key second.
+- The fan-out and the sync build the **same** key deliberately, so a completion racing a late
+  correction produces one job rather than two. Unchanged.
+
+#### D1.5 · The serial
+
+- The second certificate calls `allocate_serial(v_org)` in the insert's value list, inside the issuing
+  transaction, and takes the **next** number. Gapless holds because the counter is a **row** under
+  `select … for update`, not a `SEQUENCE`: a rollback — including the `unique_violation` handler's
+  subtransaction rollback — **returns** the number (`DEC-010`, `REQ-CRT-008`).
+  `designer-certificates.test.ts:443` («serials are consecutive, per org, and a ROLLBACK RETURNS THE
+  NUMBER») is unmodified and still passes; it never revokes.
+- The revoked one **keeps its serial**, its code, its PDF and its audit row. Two serials for one member
+  and one session is correct in a register: two documents existed and the register says what became of
+  each. A gap would be the defect `DEC-010` exists to prevent; a second number is not a gap.
+- `estimateNextSerial()` (`certificates.ts:636-662`) reads the year's highest serial and adds one — it
+  is right with two rows, and it is documented as an estimate.
+- `/verify/<code-1>` answers «ملغاة», reason withheld (`designer-certificates.test.ts:412`);
+  `/verify/<code-2>` answers «صادرة». Two rows, two random codes, no collision.
+- Nothing is deleted (`REQ-CRT-011`): an old printed copy keeps resolving, to «ملغاة».
+
+#### D1.6 · Every reader that assumed one row, and what each shows with two
+
+Swept over `src/lib`, `src/app`, `src/components`, `worker/src`, `packages` and
+`supabase/migrations`. **Exactly two readers need a change.**
+
+| Reader | Where | With two rows (one revoked, one issued) | Change |
+|---|---|---|---|
+| `getCertificateDesign()` — `mine[0]` | `src/lib/dal/certificates.ts:362` | `certs` is ordered by `serial`, so `mine[0]` is the **old, revoked** row: «صدرت بـ» names the template the revoked certificate was pinned to, not the one the member holds | ★ **yes** |
+| `listEligibleRecipients()` — `revokedButPresent` | `certificates.ts:449` | `mine.every(revoked)` goes false once the replacement exists, so the warning correctly disappears. ★ But after a **for-cause** revocation it is `true` and the copy now means the opposite of what it says — it promises a gap that will be filled, and this one never will | ★ **yes** |
+| `listMyCertificates()` | `certificates.ts:139-152` | `.neq('state','held')`, ordered `issued_at desc` → the new card first, the revoked one under it, each with its own serial, code and reason | no |
+| SCR-045's three tables | `getSessionCertificates()` `:190-192`, `issuance.tsx` | split by `state`, keyed by id: one row under «الملغاة», one under «المصدَرة» | no |
+| `getSessionCertificatesWithRender()` | `:225-271` | `extra` is a Map by **certificate id**; artifacts by document id; `record_certificate_document()` keys on the certificate, so each row has its own `design_documents` row | no |
+| `attachPdfs()` | `:106-124` | by document id | no |
+| `estimateNextSerial()` | `:636` | highest serial + 1 | no |
+| `verifyCertificate()` / `verify_certificate()` | `:572`, `0065` | by code, one row each | no |
+| `/verify/[code]` | `src/app/[locale]/verify/[code]/page.tsx` | one certificate | no |
+| `/app/me/certificates` | `page.tsx:53-54` | `key={c.id}`, two `<li>` | no code change |
+| the certificates CSV | `admin-exports.ts:380-406` | **one line per certificate row**: the member appears twice, «مُلغاة» and «صادرة», each with its own serial and date — which is what a register owes | ★ **none** — no request to the lead |
+| `templates.ts` usage count | `src/lib/dal/templates.ts:147-153` | `sessionsByTemplate` is a `Set` of session ids, so two certificates of one session count once; two rows on different versions count that session once for each template, which is still «sessions of this org using it» | no |
+| `platform.ts` aggregates | `:123`, `:341`; SQL `0069:822`, `0069:834`, `0097:87` | `count(*) from certificates` — a revoked row already counts today, so a second row adds one to a raw total that has never meant «live certificates» | no; named for L7 |
+| `set_certificate_design()`'s lock | `0099:130-131` | `state in ('issued','revoked')` — still locked | no |
+| `redesign_held_certificates()` | `0099:287` | held rows only | no |
+| `certificate_render_context()` | `0065` | by certificate id | no |
+| `issue_certificates` worker task | `worker/src/tasks/issue_certificates.ts:132` | renders the id the RPC returned | no |
+| `mode-badge`, `getCertificateMode()` | `:512` | reads `sessions.certificate_mode` | no |
+| `listHeldAchievements()` | `:675` | achievements — out of scope, see Q4 | no |
+
+**The two fixes.**
+
+- `getCertificateDesign()`: `const live = mine.filter((c) => c.state !== "revoked"); const pinned =
+  live[0] ?? mine[0] ?? null;` — the smallest possible diff, **identical to today whenever no row is
+  revoked**, and it preserves the existing «first in serial order» rule among live rows (which is what
+  makes held-versus-issued behave as its comment says).
+- `listEligibleRecipients()`: the select gains `revocation_cause`, and `EligibleRecipient` gains
+  `revocationIsFinal: boolean` beside `revokedButPresent`. `eligible-list.tsx:37-44` then prints one
+  of **two** sentences — «مُلغاة، وسيصدر بديل عند إعادة التسجيل» and «مُلغاة نهائيًا — لن يصدر بديل» —
+  two new keys in `messages/ar/certificates.json` (mine) with their `en/` twins, Arabic first.
+
+#### D1.7 · ★ Contract 3 — `main`'s worker and `main`'s app, between the push and the redeploy
+
+`main` is `f2ead54`. In the window the database has the index, the enum, the column and the three new
+functions, while Vercel and Railway still run `main`.
+
+- **`main`'s worker** (`worker/src/tasks/issue_certificates.ts`) calls
+  `select id from public.issue_certificate($1,$2,$3::public.certificate_kind,null,$4)` — five
+  positional arguments against an **unchanged signature**. It gets either a new row, which it renders
+  exactly as it renders any other, or `42501`, which it already maps to
+  «is no longer eligible — nothing issued» and returns from **without retrying** (`:140-143`).
+  **Nothing to change and nothing to break.** It never asks how many certificates a member has.
+- **`main`'s app** calls `rpc("revoke_certificate", { p_certificate, p_reason })`
+  (`certificates.ts:505`) → resolves to the one three-argument function and takes
+  `p_cause = 'for_cause'`. ★ **This is why the default is `for_cause` and not the other way round**:
+  every application caller of `revoke_certificate()` is an admin's deliberate revocation. `main`'s
+  `attendance_certificate_sync()` is the function my file replaces, so from the push onward the
+  removal path passes `'attendance_removed'` explicitly. There is no path that writes a null cause
+  after the push.
+- **Can a second row even appear in the window?** Only if, after the push, an admin removes and re-adds
+  a check-in on a **completed** session with certificates on. Possible, rare.
+- **What it would look like on `main`'s screens:** SCR-045's three tables, `/app/me/certificates`,
+  `/verify`, the CSV and the platform counts are all correct. The only wrong pixel is
+  `getCertificateDesign()`'s «صدرت بـ» naming the revoked row's template on SCR-045's design panel —
+  **cosmetic, one line, and self-correcting the moment Vercel deploys the merge**. It is also the
+  branch's own behaviour until D1.6's fix ships in the same PR, so the window adds nothing new.
+- ★ **No rule is needed in the owner's order** for this, unlike wave 9's `award_presenter_points`:
+  nothing is paid, deleted, double-sent or unrecoverable. One line in L7's table naming the cosmetic
+  is enough, and I would rather the lead record it than discover it.
+
+#### D1.8 · The evidence — what covers issue, revoke and verify, and that I change none of it
+
+| File | Covers |
+|---|---|
+| `tests/rls/designer-certificates.test.ts` | issue (`:85` the key verbatim, `:157`, `:173` idempotency and one serial, `:191` review holds, `:207`, `:220`, `:233` the pinned version and frozen name) · release (`:257`, `:285`) · revoke (`:311`, `:330`, `:351`) · verify (`:372`, `:387`, `:398`, `:412`, `:432`) · the serial (`:443`, `:476`) · the document (`:488`) · the render jobs (`:557`, `:607`) |
+| `tests/rls/certificates-designs.test.ts` | the design lock at `issued`/`revoked`, `redesign_held_certificates` |
+| `tests/rls/session-days-certificates.test.ts` (**the lead's**) | the day-aware fan-out, the predicate, the sync's four `03` §8.2 rows |
+| `tests/rls/checkin-removal.test.ts` | `:156` the revocation through the audited path with the fixed phrase; `:207` the re-add |
+| `tests/rls/checkin-contract-5.test.ts`, `checkin-late-job-hooks.test.ts` | the three hooks; `:90` a late `issue_certificate()` for a removed check-in raises `no_check_in` |
+| `tests/unit/certificates-verify.test.ts` | the code's shape, the rate limit, `REQ-CRT-009` |
+| `tests/e2e/certificates.spec.ts`, `wave8-designer-certificates.spec.ts`, `wave7-content-certificates.spec.ts`; `tests/components/me/certificates-page.test.tsx` | SCR-045, `/app/me/certificates`, `/verify` |
+
+**I change none of them.** New files only: `tests/rls/certificates-reissue.test.ts`,
+`tests/e2e/wave10-designer-certificates.spec.ts`.
+
+★ **Does `session-days-certificates.test.ts:151` («issues_when_completed_late — … not over an existing
+row») still hold? Yes.** Its last three lines set `certificate_mode = 'automatic'`, call
+`issue_certificate()` and then sync: the row that case creates is **`issued`** — a live row — and the
+new guard returns early on a live row exactly as the old guard returned early on any row. The case is
+green unmodified. The only input the old and new code disagree about is a **revoked** row, and that
+case does not exist in that file — which is precisely why lifting the carry does not touch it. Its
+earlier legs are unaffected too: day 3 removed then re-added with **no certificate ever issued**
+(`:168-179`) enqueues under the same key, as before.
+
+I swept every other case that revokes: `checkin-removal.test.ts:156` revokes on an **`in_progress`**
+session, so the sync's state guard returns before either row guard;
+`session-days-certificates.test.ts:133` (`require_all_days = false`) leaves the certificate
+**issued**. **No existing case anywhere re-issues over a revoked row**, and none asserts wave 7's carry
+as an expectation. If that sweep is wrong, the finding goes in this note and to the lead — I do not
+repair the lead's file.
+
+---
+
+### D2 — a multi-day poster's date
+
+#### D2.9 · The binding, its formatter, and the one-day equality proof
+
+**Name: `session.when`.** Not `session.dates` (the value carries a time, and at one day there is one
+date); not `session.startsAtRange` (a lie at one day). ★ **`session.startsAt` stays exactly as it is**
+— that is what makes this additive: every document pinned to poster v1 or v2, and every org's own copy
+of a template, keeps rendering the instant it renders today.
+
+**Formatter**, beside the two already exported from
+`packages/designer-runtime/src/session-bindings.ts`:
+
+```ts
+export function formatBindingWhen(
+  days: readonly { startsAt: string; endsAt?: string | null }[],
+  timeZone: string, locale = 'ar',
+): string
+```
+
+- **At `n <= 1` it `return`s `formatBindingDateTime(days[0].startsAt, timeZone, locale)`** — the same
+  function call, not a re-implementation. That is the strongest available form of «renders the same
+  characters»: there is no second code path to drift.
+- `SessionBindingRow` gains `days?: readonly {…}[] | null`; `resolveSessionBindings()` sets
+  `out['session.when']` from `row.days ?? (row.startsAt ? [{ startsAt: row.startsAt }] : [])`, and
+  leaves `session.startsAt` untouched. A key is still **absent** rather than empty when there is
+  nothing to bind, so an unbound `l_when` still draws the marked placeholder (`REQ-DSG-006`).
+
+**★ The proof — `tests/unit/poster-when-binding.test.ts`** (new):
+
+1. **String equality across dates and time zones.** A grid of instants × zones × locales, asserting
+   `formatBindingWhen([{ startsAt: iso }], tz, loc) === formatBindingDateTime(iso, tz, loc)`.
+   Zones: `Asia/Riyadh` (no DST), `UTC`, `Europe/London` (a DST boundary), `Pacific/Kiritimati` (+14,
+   whose local date differs from UTC's). Instants: 00:30 local on 1 January, a spring-forward hour, a
+   month boundary, a leap day, and noon on an ordinary day. Locales: `ar` and `en`.
+2. **The binding object does not drift.** `Object.keys(resolveSessionBindings(row, opts))` for a row
+   with **no** `days` differs from today's output by exactly `['session.when']` — asserted as a set
+   difference, so a future edit cannot quietly drop `session.startsAt` or add a third key.
+3. **Digits.** A character class over the Arabic-Indic range — built in the test from `String.raw` code
+   escapes for U+0660 to U+0669, never from the glyphs themselves, because `DEC-124` forbids typing
+   them anywhere, this note included — matches no produced value, for every case in the grid.
+4. **The pinned document.** Poster **v2** rendered through the runtime with the new binding present
+   produces, for `l_when`, exactly `formatBindingDateTime(...)` — because v2 binds `session.startsAt`,
+   which this change does not touch.
+
+**What a multi-day value reads like.** Western digits throughout; no letter-spacing; each value is a
+single run safe to sit in a `<bdi>` in the editor's preview panel. Three real examples:
+
+| Case | Arabic | English |
+|---|---|---|
+| Consecutive, same month | «19 – 21 سبتمبر 2026 · 6:00 م» | «19 – 21 September 2026 · 6:00 PM» |
+| Across a month boundary | «30 سبتمبر – 2 أكتوبر 2026 · 6:00 م» | «30 September – 2 October 2026 · 6:00 PM» |
+| Non-consecutive | «19 و 21 و 26 سبتمبر 2026» | «19, 21 and 26 September 2026» |
+
+Built from **`Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day:'numeric', month:'long',
+year:'numeric', timeZone }).formatRange(first, last)`** for the consecutive case, so the range pattern
+and the month-boundary elision are **CLDR's**, not ours — the same discipline as `formatBindingDateTime`
+naming `nu-latn` rather than inheriting `ar`'s `arab` default. Rules, each stated because each is a
+decision:
+
+- **Consecutive** means every day starts on the calendar day after the previous one **in the session's
+  zone**. Read in `position` order — the database's derived rank (`DEC-150`) — never sorted here, and
+  **never a `min` or a `max` computed in TypeScript**.
+- **The time is printed only when every day shares the same local start time.** Days may differ
+  (`session_days.starts_at` is per day); a single time over differing days would be a false statement
+  on a printed sheet. Otherwise the dates stand alone and the event page carries the detail.
+- **Four or more non-consecutive days** collapse to «4 لقاءات · من 19 سبتمبر إلى 26 أكتوبر 2026», so
+  the line stays one line.
+- ★ **The frame.** `l_when` is `{ x: 80, y: 870, w: 920, h: 70 }` at BODY 40 px / 1.7 with **no
+  `autoFit`** (`library.ts:193-203`), and `0098`'s own header records that a 60 px frame reported
+  «reached its minimum size» on every preset. So before v3 is committed I **measure** the longest of
+  the three shapes at every preset; if it does not fit, v3 gives `l_when` two lines and moves `l_where`
+  down — a v3 change either way. Measured through the ink guard and the export reason, **not eyeballed**.
+
+#### D2.10 · `poster_render_context()`, dropped and re-created in the same file
+
+Its latest text is `0082:96-140` (dropped and re-created there because a `returns table` type cannot
+change under `create or replace`). Mine does the same, in **one file**, with `main`'s **sixteen columns
+in `main`'s order** and one new column **trailing**:
+
+```sql
+drop function public.poster_render_context(uuid);
+create function public.poster_render_context(p_session uuid)
+returns table ( …0082's sixteen, verbatim, in order…, days jsonb )
+…
+         coalesce((select jsonb_agg(jsonb_build_object('startsAt', d.starts_at, 'endsAt', d.ends_at)
+                                    order by d.position)
+                     from public.session_days d where d.session_id = s.id), '[]'::jsonb)
+…
+revoke execute on function public.poster_render_context(uuid) from public, anon, authenticated;
+grant  execute on function public.poster_render_context(uuid) to service_role;
+```
+
+- **By `position`**, the database's derived rank. No `min`, no `max`, no ordering by `created_at` —
+  which is the transaction's start and identical for rows written together, the trap wave 9 met three
+  times.
+- **Grants restated verbatim.** A re-created function starts with `public` execute; that is the `0002`
+  trap `0082`'s header names, and `definer-exposure.test.ts` fails on it.
+- No parameter is added, so there is no overload and PostgREST sees one signature. The function is
+  `service_role`-only, so PostgREST never exposes it at all.
+- ★ **What `main`'s `regenerate_poster.ts` does with the extra column:** it runs
+  `select * from public.poster_render_context($1)` into a typed `Context` and reads **named** fields
+  (`ctx.starts_at`, `ctx.title`, `ctx.presenters`, …). The extra key arrives on the row object and is
+  **never read**; `main`'s `resolveSessionBindings` has no `days` parameter, so it produces exactly
+  today's bindings, the fingerprint is today's, and **the artifact cache does not churn**
+  (`REQ-DSG-013`). A one-day poster re-rendered in the window is byte-identical; a three-day poster
+  shows its first day, which is what it shows today. The feature simply is not live until Railway
+  redeploys — late, not wrong.
+
+#### D2.11 · The new seed migration
+
+`supabase/proposed/designer/0002_poster_when.sql`, **generated** by
+`packages/designer-runtime/scripts/seed-sql.mjs` from `library.ts`. `0098` is **never regenerated**
+(`DEC-149` §3); this is a new, additive seed.
+
+- **Which versions: poster v3 × 5** — `talk`, `workshop`, `panel`, `meetup`, `announcement`. The only
+  change in each is `l_when`'s `field.binding`, `session.startsAt` → `session.when` (fallback stays
+  «التاريخ والوقت»), plus the frame if D2.9's measurement requires it. **The three landscape
+  certificates stay at v2 and the three portraits at v1** — no certificate binds a session date. So
+  `BASELINE_LIBRARY`'s `version` becomes 3 for the five posters and is untouched for the six
+  certificates.
+- **`REQ-DSG-026`'s counted roster is unchanged**: 5 posters + 6 certificates = 11 **templates**. The
+  CI count counts templates, not versions.
+- **Posters pinned to the old versions.** `session_posters.document_id` names a `design_documents` row
+  whose `template_version_id` is v2. Nothing re-renders on the seed. `0098`'s own header states the
+  rule and it is unchanged here: **a live poster takes the new version at its next regeneration, and an
+  org's own copy never receives it** (`REQ-DSG-008`).
+- ★ **A session that is ALREADY PUBLISHED** (sync 1's named question). Its poster keeps showing its
+  first day until something regenerates it. On the **automatic** binding that happens at the next
+  regeneration, because `poster_render_context()`'s lateral join takes the latest published version
+  (`order by … v2.version desc limit 1`) — so editing a published multi-day session's details picks up
+  v3 by itself. On the **detached** binding it never happens, and must not: **a detached poster is
+  never auto-regenerated** (`REQ-DSG-003`). The admin's «أعد التوليد» on SCR-043 is the path, and it is
+  audited.
+  **I do not propose a bulk re-enqueue** of `poster:{session_id}` for existing multi-day sessions: a
+  data fix is never a migration (`DEC-023`, `DEC-027`), multi-day sessions on production are days old
+  and few, and the existing button is the audited path. Q5 if the lead disagrees.
+- **`tests/unit/designer-library.test.ts:292-332` learns a third file.** `bodies` becomes
+  `[seedFile("0004_baseline_library.sql"), seedFile("0002_certificate_library.sql"),
+  seedFile("0002_poster_when.sql")]`. ★ `seedFile()` resolves a proposed name to a promoted one by
+  matching the `_<suffix>` tail, so **my file's suffix must be unique across `supabase/migrations/`**;
+  `_poster_when.sql` is. Nothing else in the test changes: the «latest version wins» reducer already
+  handles a third file, the eleven-row assertion (`[...latest.keys()].sort()` against
+  `BASELINE_LIBRARY.map(keyOf).sort()`) stays true **because the new file adds versions of existing
+  compositions, not new keys**, and the family list is unchanged. **This is a ledger line** — a
+  pre-existing test modified for a literal file name, **no expectation changed** — and I hand it to the
+  lead for `STATUS.md`'s untouched-suite ledger rather than writing it myself.
+
+#### D2.12 · No parity golden moves, and why
+
+`scripts/parity/`'s 28 cases are **synthetic documents with literal text**: they do not resolve
+`session.*` bindings from a session row, so a new binding name, a new template version and a new
+`poster_render_context()` column change nothing any case renders. The goldens are keyed by each case's
+own document. I run `npm run parity` and report «28/28, no golden moved». If one moves, that is a
+**finding for this note**, not a `--update` (`REQ-DSG-015`) — `scripts/parity/goldens/**` is the lead's
+and I never write there.
+
+#### D2.13 · How days reach the editor's preview
+
+Through **`sessions`' `listSessionDays(locale, sessionId)`** (`src/lib/dal/sessions.ts:774`) — wave 9's
+contract 3, `cache()`-wrapped, returning `SessionDay[]` with `position`, `startsAt`, `endsAt`. I
+**read it and never edit that file**. `src/lib/dal/designer.ts`'s `sessionBindings()` (`:136-153`)
+maps `days.map((d) => ({ startsAt: d.startsAt, endsAt: d.endsAt }))` into the row — no `min`, no
+`max`, no sort. The three callers that must agree then still agree: the editor's preview, the worker's
+`regenerate_poster` (from `poster_render_context()`'s `days`), and the fingerprint, which hashes the
+resolved bindings — so a session that gains a day produces a different fingerprint and a new artifact,
+which is `REQ-DSG-013` working exactly as designed.
+
+---
+
+### D3 — the compiler review, and contract 8
+
+#### D3a · What I will look for in `notify`'s block-to-table compiler (`16` §11.6)
+
+Written properly in this note when `notify` says the compiler is ready. What I will be looking for,
+published now so it can shape the compiler rather than audit it:
+
+1. **Arabic shaping in a fallback stack.** A mail renders in the **reader's** fonts — invariant 12 does
+   not reach an inbox, and `@font-face` is stripped by Gmail and Outlook. The failure mode is ours
+   exactly: a stack whose first Arabic-capable face is absent falls **silently** to one that breaks
+   lam-alef or drops `rlig`/`mark`. I will check the declared stack per block, that it ends in a
+   generic that exists on Windows, macOS, iOS, Android and Gmail's web client, and that no rule
+   letter-spaces Arabic or sets `overflow: hidden` on a text line (it clips tashkeel).
+2. **`dir` on every cell.** `dir="rtl"` on the `<table>` **and** on each text-bearing `<td>`: Outlook's
+   Word engine does not inherit `dir` reliably through nested tables, and a right-aligned cell is not
+   an RTL cell. `align="right"` beside `text-align`, because the Word engine reads the attribute.
+3. **Bidi isolation of bound values.** Every `{{binding}}` that can carry a name, a title, a venue or a
+   code is a mixed-direction run inside an Arabic sentence. **`<bdi>` is not supported by
+   Outlook/Word**, so the compiler must emit the Unicode isolates (`U+2068` FSI … `U+2069` PDI) or
+   `dir="auto"` — **and the generated plain-text alternative must isolate too**, or the text part
+   reorders. This is the one thing the DOM gives us for free and a mail does not.
+4. **Forced dark.** Gmail on Android and Outlook.com repaint a mail: a light background goes dark and
+   `{{brand.*}}` is inverted by an algorithm that does not know the palette. I will check
+   `color-scheme` / `supported-color-schemes`, that no text colour depends on a background the client
+   may repaint, that contrast holds **both** ways, and that the logo is not dark-on-transparent. This
+   is `DEC-125`'s argument one layer down, and `public.brand_kit()`'s three tokens cannot state it —
+   the dark palette and `canvasRaise` are contract 9's written request to the lead.
+5. **And:** no `<svg>` anywhere (clients strip it; Outlook draws nothing) — the same reasoning as
+   invariant 11, one medium over; every image with `alt` and explicit `width`/`height`; a fixed
+   max-width so a 600 px shell does not scroll sideways on a phone.
+
+#### D3b · ★ Contract 8 — which of my assets a mail may point at
+
+A mail client fetches with **no session**. Read: `0080_public_session_card.sql:116-160` and
+`src/app/api/s/[id]/og/route.ts`. **There is exactly one URL of mine that works there:**
+
+> **`{PUBLIC_ORIGIN}/api/s/{sessionId}/og`** — the `og` preset (1200 × 630 PNG) of a session's poster.
+> Served to **`anon`** by `POL-storage.exports.public_card` through `export_is_public_card()`, which
+> permits exactly `%/exports/%/og.png` for a `ready` artifact of a session in `published`,
+> `in_progress` or `completed` belonging to an **active** org. The authorisation is a policy evaluated
+> by Postgres, not an `if` in the handler.
+
+The `image` and `session_card` blocks use that and nothing else of mine. Everything else needs a
+session or a signature:
+
+- **Every other poster preset** (`master`, `square`, `story`, `landscape`, `a4`, `a3`) and **every
+  certificate PDF and PNG**: `exports_storage_read` is `to authenticated` and org-prefixed, and a DAL
+  signature is **five minutes** (`signCertificateUrl`, `signDesignAssetUrl`). A signed URL in a mail is
+  a broken image by design — a mail is opened hours later — and it is exactly the trap the `og` route's
+  own header refuses (its reason 2). Certificates are somebody's name; they are not in this door and
+  will not be.
+- ★ **The org's logo has no such URL today.** It is a design asset behind `signDesignAssetUrl()`, five
+  minutes. **So the email studio cannot put the org's logo in a mail through anything I own.** That
+  needs either a narrow public policy in the shape of `export_is_public_card()` or a CID attachment
+  from the worker — a decision for `notify` and the lead (contract 9), and I am saying it now rather
+  than at the studio's first preview.
+- Two properties `notify` must design around: `/api/s/{id}/og` **404s** for a draft or cancelled
+  session (so a mail about a cancelled session must not carry the card), and it caches for five
+  minutes, so a re-rendered poster reaches an inbox quickly but a crawler's own copy does not.
+
+Any other asset is a request, and I will answer it with a **policy**, not a signature.
+
+---
+
+### The order of my work
+
+1. **Contract 8 is published above, on day one** — `notify` needs it before its blocks exist, and the
+   logo finding needs the lead before the studio's first preview.
+2. **D1's SQL**, once the lead lands D1.1's DDL at sync 1: `supabase/proposed/designer/0001_certificates_reissue.sql`
+   (the lead's DDL carried at the top), proven with `applyProposed()` inside the new
+   `tests/rls/certificates-reissue.test.ts`; then `designer-certificates`, `certificates-designs`,
+   `session-days-certificates` and every `checkin-*` re-run **unmodified**.
+3. **D1's two readers** + the two `certificates.json` sentences; then SCR-045 and `/app/me/certificates`
+   at 390 px.
+4. **D2's runtime first** — `formatBindingWhen`, `session.when`, the equality proof — **before** the
+   seed, so v3 is generated from a library whose binding is already proven.
+5. **D2's `poster_render_context()`**, `regenerate_poster.ts`, `sessionBindings()`.
+6. **D2's seed migration** and `designer-library.test.ts`'s third file (the ledger line).
+7. `npm run parity` — 28/28, **no golden moved**.
+8. **D3a's review**, when `notify` says the compiler is ready.
+
+Captures at `.qa-shots/rtl/wave10-designer-*.png`, 390 × 844, phone project, from a build the lead
+names: SCR-045 for a member removed and re-added (one row under «الملغاة», one under «المصدَرة», two
+serials) · `/app/me/certificates` with both cards · `/verify/<code>` for each · a certificate revoked
+**for cause** with no replacement and the final sentence · a three-day workshop's poster · **a one-day
+poster beside its wave-8 capture**.
+
+### Open questions for the lead — each with my recommendation
+
+| # | Question | My recommendation |
+|---|---|---|
+| Q1 | The DDL of D1.1 — the enum, the nullable column, the partial index, the constraint's catalogue name | As written. The lead confirms `certificates_org_id_session_id_member_id_kind_key` from `pg_constraint` before writing the drop; `certificates_org_id_serial_key` stays |
+| Q2 | `revocation_cause` nullable, or `not null default 'for_cause'`? Extend `certificates_revocation`? | **Nullable, no new check**, read through `coalesce(…, 'for_cause')`. The column is meaningless on a live row, and a check would demand a backfill asserting a cause for historical rows that we cannot know. Either form has the same conservative default |
+| Q3 | Should a **for-cause** revocation ever be re-issuable by hand? SCR-045 has **no** manual issue action (`actions.ts` has save-design, apply-to-held, release, revoke, retry-render) | **Not this wave.** The change is **monotone** — nothing issuable today becomes blocked; only the removal case is unblocked. An «أصدر شهادة» button is a new affordance with its own eligibility and audit rules. Carry it |
+| Q4 | Achievements: `certificates_badge_once` / `certificates_snapshot_once` keep «one ever, a revoked one included» | **Out of scope.** `DEC-160` §6 names only the session constraint, and nothing un-awards a badge, so there is no re-add to serve |
+| Q5 | A one-off re-enqueue of `regenerate_poster` for existing multi-day sessions when the seed lands | **No.** A data fix is never a migration (`DEC-023`, `DEC-027`); SCR-043's «أعد التوليد» is the audited path, and an automatic poster takes v3 at its next regeneration anyway |
+| Q6 | The binding's name | **`session.when`**. `session.dates` misnames a value that carries a time; `session.startsAtRange` is a lie at one day |
+| Q7 | Does `l_when`'s frame grow in v3 before or after the measurement? | **After.** The measure is the ink guard and the «reached its minimum size» export reason; a frame changed without it is a guess, and `0098` already records that guess being wrong once |
+| Q8 | Does L7's owner-order need a rule for the certificate window (D1.7)? | **No rule, one line in the table.** The only observable difference is a mislabelled «صدرت بـ» that self-corrects on deploy. Nothing is paid, deleted or double-sent |
