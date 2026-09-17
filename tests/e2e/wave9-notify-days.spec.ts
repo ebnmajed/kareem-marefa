@@ -235,17 +235,35 @@ test("★ REQ-SES-009 — moving DAY 2 tells the member, and the notice names th
   // Exactly what a day-aware writer does (contract 11): the flag, the day
   // write, then the one call — and `sessions.starts_at` never moves, which is
   // why nothing else in the product would have said a word.
-  const before = await snapshot();
+  //
+  // ★ ONE EXPLICIT TRANSACTION, and it is not decoration. `kareem.days_writer`
+  // is set with `set_config(…, true)` — transaction-LOCAL — and `pg`'s
+  // `db.query` is autocommit, so each statement would be its own transaction
+  // and the flag would be discarded before the next one. The RLS suite never
+  // meets this because `withTx` wraps every case. Without the BEGIN this reads
+  // as a day-aware save and is not one, and the day it is extended to move day
+  // ONE it would send the double notice the flag exists to prevent.
   const { rows: sessBefore } = await db.query<{ starts_at: Date }>(`select starts_at from public.sessions where id = $1`, [workshopId]);
-  await db.query(`select set_config('kareem.days_writer', 'on', true)`);
-  await db.query(
-    `update public.session_days set starts_at = starts_at + interval '3 hours', ends_at = ends_at + interval '3 hours'
-      where session_id = $1 and position = 2`,
-    [workshopId],
-  );
-  const after = await snapshot();
-  await db.query(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [workshopId, JSON.stringify(before), JSON.stringify(after)]);
-  await db.query(`select set_config('kareem.days_writer', '', true)`);
+  await db.query("begin");
+  try {
+    await db.query(`select set_config('kareem.days_writer', 'on', true)`);
+    const before = await snapshot();
+    await db.query(
+      `update public.session_days set starts_at = starts_at + interval '3 hours', ends_at = ends_at + interval '3 hours'
+        where session_id = $1 and position = 2`,
+      [workshopId],
+    );
+    const after = await snapshot();
+    await db.query(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [
+      workshopId,
+      JSON.stringify(before),
+      JSON.stringify(after),
+    ]);
+    await db.query("commit");
+  } catch (error) {
+    await db.query("rollback");
+    throw error;
+  }
 
   const { rows: sessAfter } = await db.query<{ starts_at: Date }>(`select starts_at from public.sessions where id = $1`, [workshopId]);
   expect(new Date(sessAfter[0].starts_at).getTime()).toBe(new Date(sessBefore[0].starts_at).getTime());
