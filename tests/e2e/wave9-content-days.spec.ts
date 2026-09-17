@@ -240,6 +240,17 @@ test("wave9-content-materials-scope-chip-open: the presenter opens a material's 
 test("wave9-content-materials-day-scoped-after-{hidden,visible}: day 2's «بعد» material follows ITS OWN day, not the session", async ({ context, page }) => {
   await goToEvent(context, page, memberEmail);
   const materials = page.locator("#materials");
+
+  // ★ The lead's real-build finding: `toHaveCount(0)` alone never PROVES the section rendered —
+  // it also passes vacuously while the section is still a Suspense skeleton (nothing has
+  // rendered, so the count of anything is trivially 0), and `waitForStreamsToSettle()` only
+  // clears the OTHER streaming artefact (a hidden duplicate copy left behind once revealed), not
+  // "has this slot's own data arrived yet" at all. Positive waits first, on an item that is
+  // ALWAYS visible regardless of day 2's own state (the whole-workshop «قبل» material, seeded
+  // above) — only once that is on screen has the section genuinely settled, and only then does
+  // `تسجيل اليوم الثاني`'s own absence mean "correctly withheld" rather than "not loaded yet".
+  await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
+  await expect(materials.getByText("الخطة الدراسية الكاملة")).toBeVisible();
   await expect(materials.getByText("تسجيل اليوم الثاني")).toHaveCount(0);
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-day-scoped-after-hidden.png`, fullPage: true });
 
@@ -249,6 +260,8 @@ test("wave9-content-materials-day-scoped-after-{hidden,visible}: day 2's «بع�
   await db.query(`update public.session_days set starts_at = now() - interval '2 hours', ends_at = now() - interval '1 minute' where id = $1`, [day2Id]);
   await page.reload();
   await waitForStreamsToSettle(page);
+  await expect(page.getByRole("heading", { name: "المواد", exact: true, level: 2 })).toBeVisible();
+  await expect(materials.getByText("الخطة الدراسية الكاملة")).toBeVisible();
   await expect(materials.getByText("تسجيل اليوم الثاني")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/wave9-content-materials-day-scoped-after-visible.png`, fullPage: true });
 });
