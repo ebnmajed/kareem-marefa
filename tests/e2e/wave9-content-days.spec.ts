@@ -43,6 +43,7 @@ let domain = "";
 let sessionId = "";
 let day1Id = "";
 let day2Id = "";
+let day1PhotoId = "";
 let presenterEmail = "";
 let memberEmail = "";
 let staffEmail = "";
@@ -170,6 +171,7 @@ test.beforeAll(async ({}, testInfo) => {
   // Photos: session-scoped and day 1 — seeded directly (T4 already proves the real worker path).
   for (const dayId of [null, day1Id]) {
     const photoId = randomUUID();
+    if (dayId === day1Id) day1PhotoId = photoId;
     const photoPath = `${orgId}/sessions/${sessionId}/photos/${photoId}.jpg`;
     await uploadObject("photos", photoPath, TINY_JPEG, "image/jpeg");
     await db.query(
@@ -303,11 +305,14 @@ test("wave9-content-tasks-scope-chip-open: the presenter moves a task between gr
 test("wave9-content-photos-scope-chip-open: staff moves a photo between groups", async ({ context, page }) => {
   await goToEvent(context, page, staffEmail);
   const photos = page.locator("#photos");
-  // Photos have no title text — identified by the photo's own `src` instead, which survives the
-  // move regardless of DOM order (unlike materials/tasks, photos filter an EMPTY group out
-  // entirely — REQ-EVT-009, never ask, no manager exception — so day 1's own heading disappears
-  // once its one photo moves, not just the photo; there is no stable "day 1's group" container to
-  // keep querying against after that).
+  // Photos have no title text — identified by the photo's own object path instead, which is
+  // STABLE, unlike its `src`: every server render signs a fresh URL (the token carries `iat`), so
+  // the same photo's `src` differs across a render before and after `revalidatePath` — an exact
+  // `src` match is a real flake (the lead's own desktop finding), not a locator that happened to
+  // survive on phone only because both renders landed in the same second. `storage_path` always
+  // ends `/photos/<photoId>.jpg` (the fixture's own seeding above), so a substring match on the
+  // known id is stable across any number of re-signs.
+  //
   // ★ ONE `..` hop here, not two. `gallery.tsx`'s grouped branch has no header-row wrapper around
   // its <h3> (no per-group add control, unlike materials/tasks — "photos never ask"), so the
   // heading is a DIRECT child of the group <div>, not a grandchild. The two-hop version (copied
@@ -320,15 +325,14 @@ test("wave9-content-photos-scope-chip-open: staff moves a photo between groups",
   // above it either, and did not need to: day 1's heading never moving was real evidence of a
   // click landing on the wrong element, not of the write or the revalidation failing.
   const day1Group = photos.getByRole("heading", { name: /اليوم الأول/, level: 3 }).locator("..");
-  const day1Li = day1Group.locator("li").first();
-  const day1Src = await day1Li.locator("img").getAttribute("src");
+  const day1Li = day1Group.locator("li").filter({ has: page.locator(`img[src*="/photos/${day1PhotoId}.jpg"]`) });
   await day1Li.getByRole("button", { name: /^تغيير نطاق الصورة/ }).click();
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveCount(4); // session + three days
   await menu.getByRole("menuitem", { name: "للورشة كاملة" }).click();
 
   await expect(photos.getByRole("heading", { name: /اليوم الأول/, level: 3 })).toHaveCount(0);
-  const movedLi = photos.locator("li").filter({ has: page.locator(`img[src="${day1Src}"]`) });
+  const movedLi = photos.locator("li").filter({ has: page.locator(`img[src*="/photos/${day1PhotoId}.jpg"]`) });
   const sessionGroup = photos.getByRole("heading", { name: "للورشة كاملة", level: 3 }).locator("..");
   await expect(sessionGroup.locator("li")).toHaveCount(2); // the original session-scoped photo + the moved one
 
