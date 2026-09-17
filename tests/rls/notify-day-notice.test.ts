@@ -66,15 +66,15 @@ const snapshot = async (tx: Tx, session: string) =>
  *  what the two paths say. */
 const START = "2026-12-01T15:00:00Z";
 
-async function workshop(tx: Tx, org: { id: string; categoryId: string; venueId: string }, days = 1) {
+async function workshop(tx: Tx, org: { id: string; categoryId: string; venueId: string }, days = 1, state = "published") {
   const [row] = await tx.q<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                   venue_id, capacity, state, published_at)
      values ($1, 'ورشة', 'ملخص', $2, 'introductory',
              $4::timestamptz, 120, $4::timestamptz + interval '2 hours',
-             $3, 30, 'published', now())
+             $3, 30, $5::public.session_state, case when $5 = 'published' then now() end)
      returning id`,
-    [org.id, org.categoryId, org.venueId, START],
+    [org.id, org.categoryId, org.venueId, START, state],
   );
   for (let n = 2; n <= days; n += 1) {
     await tx.q(
@@ -453,6 +453,113 @@ describe("RPC-session_day_place.definer_only", () => {
       // The one caller that needs it still has it.
       await tx.asServiceRole();
       await tx.q(`select public.session_day_place($1::jsonb)`, [JSON.stringify(day)]);
+    });
+  });
+});
+
+// ★ THE GUARD, AND THE TWO WAYS IT WAS WRONG (DEC-154).
+//
+// As I first wrote it the mark was `<session>` and it was set ON ENTRY, before
+// the state guard. Both halves were defects and the lead corrected them inside
+// the promotion, so they are pinned here — in THIS file, because the behaviour
+// is `session_days_changed()`'s and a future edit of mine is what would
+// reintroduce it. `sessions`' own «ONE reschedule notice» case found it at the
+// seam, where neither track's suite could see it alone.
+describe("RPC-session_days_changed — the mark is per RESULTING DAY SET, and only a notice sets it", () => {
+  it("★ a call that announces nothing consumes nothing — the real change after it is still told", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const session = await workshop(tx, f.a, 2);
+      await reserve(tx, f.a.id, session, f.a.members[0].memberId);
+      await tx.q(`delete from public.notifications`);
+      const days = await dayRows(tx, session);
+
+      await tx.q(`select set_config('kareem.days_writer', 'on', true)`);
+      // Nothing moved: no notice, and — this is the point — no mark either.
+      const same = await snapshot(tx, session);
+      await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [session, JSON.stringify(same), JSON.stringify(same)]);
+      expect(await notices(tx, session)).toHaveLength(0);
+
+      const before = await snapshot(tx, session);
+      await tx.q(`update public.session_days set starts_at = starts_at + interval '2 hours', ends_at = ends_at + interval '2 hours' where id = $1`, [
+        days[1].id,
+      ]);
+      const after = await snapshot(tx, session);
+      await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [session, JSON.stringify(before), JSON.stringify(after)]);
+      await tx.q(`select set_config('kareem.days_writer', '', true)`);
+
+      expect(await notices(tx, session)).toHaveLength(1);
+    });
+  });
+
+  it("★ a DRAFT's call returns early and consumes nothing — the change after it is published is still told", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      // Exactly the shape `schedule_session()` produces: a session scheduled
+      // before it is published, then published, then changed.
+      const session = await workshop(tx, f.a, 2, "draft");
+      await reserve(tx, f.a.id, session, f.a.members[0].memberId);
+      const days = await dayRows(tx, session);
+
+      await tx.q(`select set_config('kareem.days_writer', 'on', true)`);
+      const draftBefore = await snapshot(tx, session);
+      await tx.q(`update public.session_days set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour' where id = $1`, [
+        days[1].id,
+      ]);
+      const draftAfter = await snapshot(tx, session);
+      await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [
+        session,
+        JSON.stringify(draftBefore),
+        JSON.stringify(draftAfter),
+      ]);
+      await tx.q(`select set_config('kareem.days_writer', '', true)`);
+      expect(await notices(tx, session)).toHaveLength(0);
+
+      await tx.as(f.a.admin.claims);
+      await tx.q(`select id from public.publish_session($1::uuid)`, [session]);
+      await tx.asOwner();
+      await tx.q(`delete from public.notifications`);
+
+      await tx.q(`select set_config('kareem.days_writer', 'on', true)`);
+      const before = await snapshot(tx, session);
+      await tx.q(`update public.session_days set starts_at = starts_at + interval '3 hours', ends_at = ends_at + interval '3 hours' where id = $1`, [
+        days[1].id,
+      ]);
+      const after = await snapshot(tx, session);
+      await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [session, JSON.stringify(before), JSON.stringify(after)]);
+      await tx.q(`select set_config('kareem.days_writer', '', true)`);
+
+      // The failure this pins: 0 notices, because the draft's early return had
+      // eaten the session's one mark.
+      expect(await notices(tx, session)).toHaveLength(1);
+    });
+  });
+
+  it("two DIFFERENT changes in one transaction are two facts, and both are announced", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const session = await workshop(tx, f.a, 2);
+      await reserve(tx, f.a.id, session, f.a.members[0].memberId);
+      await tx.q(`delete from public.notifications`);
+      const days = await dayRows(tx, session);
+
+      await tx.q(`select set_config('kareem.days_writer', 'on', true)`);
+      for (const hours of ["1", "2"]) {
+        const before = await snapshot(tx, session);
+        await tx.q(
+          `update public.session_days set starts_at = starts_at + ($2 || ' hours')::interval, ends_at = ends_at + ($2 || ' hours')::interval
+            where id = $1`,
+          [days[1].id, hours],
+        );
+        const after = await snapshot(tx, session);
+        await tx.q(`select public.session_days_changed($1::uuid, $2::jsonb, $3::jsonb)`, [session, JSON.stringify(before), JSON.stringify(after)]);
+      }
+      await tx.q(`select set_config('kareem.days_writer', '', true)`);
+
+      expect(await notices(tx, session)).toHaveLength(2);
     });
   });
 });
