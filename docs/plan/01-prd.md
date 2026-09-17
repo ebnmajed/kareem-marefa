@@ -1937,8 +1937,11 @@ a session card becomes four lines — never authored twice.
 platform-owned and seeded for every org, in light and dark, Arabic and English, driven by the brand
 kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is never mutated.
 **Acceptance:**
-- **Every** message key resolves to a designed template; no key falls back to unstyled text.
-- Changing the org logo restyles every message.
+- **Every** message key has a designed platform template an org can adopt in one action.
+  ★ **Adoption is explicit until M13** (`DEC-161`): `REQ-NTF-009` requires an org that has not touched
+  its templates to send byte-identical mail, and `DEC-081` removes the string path in M13 — which is
+  when «no key falls back to unstyled text» becomes true of an untouched org as well.
+- Changing the org logo restyles every message an org has adopted a design for.
 - Promotion adds to the library; it never supplies the baseline.
 
 ---
@@ -2809,6 +2812,9 @@ choice distributions and free text alike**.
 **Acceptance:**
 - A distribution over fewer than the minimum number of responses is withheld, not drawn.
 - The screen says results are withheld and why, rather than rendering an empty chart.
+- ★ **The response count is withheld below the minimum too**, and the minimum is a setting of its own
+  with **a floor of 3** that an org cannot lower (`org_settings.survey_min_responses`, `DEC-161`): in a
+  survey one person answered, publishing «1» is the other half of saying who.
 
 #### REQ-SUR-007 — Results export as audited UTF-8-BOM CSV, in Western digits
 **Serves:** `REQ-ADM-017` · DEC-095

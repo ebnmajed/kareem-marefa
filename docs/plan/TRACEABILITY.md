@@ -9,10 +9,10 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **313** |
-| Entities (`ENT-*`) | **73** |
+| Entities (`ENT-*`) | **82** |
 | Stories (`STORY-*`) | **147** |
 | Screens cited (`SCR-*`) | 57 |
-| Jobs cited (`JOB-*`) | 37 |
+| Jobs cited (`JOB-*`) | 39 |
 | Messages cited (`MSG-*`) | 22 |
 
 ## Cross-cutting requirements
@@ -295,13 +295,13 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NTF-005` | — | — | `SCR-026` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-003` | M3 |
 | `REQ-NTF-006` | `ENT-notifications` | — | `SCR-026` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
 | `REQ-NTF-007` | `ENT-notification_templates` | `POL-notification_templates.required_fields` | `SCR-043` `SCR-045` `SCR-058` +3 | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
-| `REQ-NTF-008` | `ENT-email_deliveries` | — | `SCR-058` `SCR-085` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | — | `STORY-NTF-004` | M3 |
-| `REQ-NTF-009` | — | — | `SCR-058` `SCR-064` | — | — | `STORY-NTF-005` | M12 |
+| `REQ-NTF-008` | `ENT-email_deliveries` | — | `SCR-058` `SCR-085` | `JOB-rating_prompt` `JOB-rsvp_nudge` +3 | `MSG-rsvp_promoted` | `STORY-NTF-004` | M3 |
+| `REQ-NTF-009` | `ENT-notification_templates` | — | `SCR-058` `SCR-064` | — | — | `STORY-NTF-005` | M12 |
 | `REQ-NTF-010` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
-| `REQ-NTF-011` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
-| `REQ-NTF-012` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
-| `REQ-NTF-013` | — | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
-| `REQ-NTF-014` | — | — | `SCR-058` | — | — | `STORY-NTF-006` | M12 |
+| `REQ-NTF-011` | — | — | `SCR-058` | `JOB-send_test_email` | — | `STORY-NTF-005` | M12 |
+| `REQ-NTF-012` | — | — | `SCR-058` | — | `MSG-rsvp_promoted` | `STORY-NTF-005` | M12 |
+| `REQ-NTF-013` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
+| `REQ-NTF-014` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-006` | M12 |
 
 ### PRF
 
@@ -422,15 +422,15 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-SUR-001` | — | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
-| `REQ-SUR-002` | — | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
-| `REQ-SUR-003` | — | — | `SCR-015` `SCR-064` | — | — | `STORY-SUR-002` | M11 |
-| `REQ-SUR-004` | — | — | `SCR-015` `SCR-064` | — | — | `STORY-SUR-002` | M11 |
+| `REQ-SUR-001` | `ENT-survey_question_options` `ENT-survey_questions` `ENT-survey_template_options` +3 | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
+| `REQ-SUR-002` | `ENT-survey_template_options` `ENT-survey_template_questions` `ENT-survey_templates` | — | `SCR-015` `SCR-064` `SCR-065` | — | — | `STORY-SUR-001` | M11 |
+| `REQ-SUR-003` | `ENT-survey_participations` | — | `SCR-015` `SCR-064` | — | — | `STORY-SUR-002` | M11 |
+| `REQ-SUR-004` | `ENT-session_days` `ENT-survey_answers` `ENT-survey_responses` | — | `SCR-015` `SCR-064` | `JOB-record_survey_response` | — | `STORY-SUR-002` | M11 |
 | `REQ-SUR-005` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
-| `REQ-SUR-006` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
+| `REQ-SUR-006` | `ENT-notification_templates` `ENT-session_days` `ENT-survey_answers` +1 | — | `SCR-064` `SCR-065` | `JOB-record_survey_response` | — | `STORY-SUR-003` | M11 |
 | `REQ-SUR-007` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
 | `REQ-SUR-008` | — | — | `SCR-064` `SCR-065` | — | — | `STORY-SUR-003` | M11 |
-| `REQ-SUR-009` | — | — | `SCR-015` `SCR-064` | — | — | `STORY-SUR-002` | M11 |
+| `REQ-SUR-009` | `ENT-session_days` `ENT-survey_answers` `ENT-survey_participations` +1 | — | `SCR-015` `SCR-064` | `JOB-record_survey_response` | — | `STORY-SUR-002` | M11 |
 
 ### TEN
 

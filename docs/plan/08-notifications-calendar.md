@@ -149,20 +149,22 @@ export that does.
   often than it honours it.
 - **Web fonts do not load in most clients** — so email falls back to a declared stack, and the
   templates are designed to look right in the fallback rather than to depend on the brand face.
-- **Numerals follow the org setting** (A30, `REQ-INT-006`), like every other surface.
+- **Western digits, always** — `REQ-INT-006`, `DEC-124`. (This line read «numerals follow the org setting» until `DEC-161`; the setting was abolished by `DEC-124` and its column dropped by `0082`.)
 - **A plain-text alternative** for every message. Some corporate clients strip HTML entirely.
 
 ### 3.2 The templates
 
-> **Corrected under DEC-047:** §1 gives 24 messages an email channel; this list had 22. `MSG-proposal_submitted` and `MSG-presenter_assigned` have templates since wave 2 (`worker/src/mail/`), and `tests/unit/mail-render.test.ts` diffs the template file against the matrix in migration `0026` so the gap cannot reopen quietly.
+> **Corrected under `DEC-160` §4 and `DEC-161`.** The matrix in force (`0062`) gives **25** messages an email channel and the mail renderer carries **25** templates; this list carried 23 until wave 10. `MSG-proposal_submitted` and `MSG-presenter_assigned` have had templates since wave 2. `tests/unit/mail-render.test.ts` diffs the template file against the matrix read out of the promoted migration, and `tests/unit/mail-pinned.test.ts` pins all 25 rendered messages, so the gap cannot reopen quietly in either direction.
 
 | `MSG-*` | Arabic subject |
 |---|---|
+| `MSG-proposal_submitted` | «مقترح جديد بانتظار المراجعة — {{title}}» |
 | `MSG-proposal_approved` | «تم قبول مقترحك — {{title}}» |
 | `MSG-proposal_rejected` | «بخصوص مقترحك — {{title}}» |
 | `MSG-proposal_changes` | «نحتاج بعض التعديلات على مقترحك» |
 | `MSG-copresenter_invited` | «دعوة للمشاركة في تقديم جلسة» |
 | `MSG-session_published` | «جلسة جديدة: {{title}}» |
+| `MSG-presenter_assigned` | «أُسندت إليك جلسة — {{title}}» |
 | `MSG-session_changed` | «تغيّرت تفاصيل جلسة {{title}}» |
 | `MSG-session_cancelled` | «أُلغيت جلسة {{title}}» |
 | `MSG-rsvp_promoted` | «حصلت على مقعد في {{title}}» |
@@ -275,7 +277,7 @@ time, not at schedule time, because most ratings arrive in that first hour.
 
 ### 5.1 All mail is sent from the worker
 
-Never from a request handler. This is why `RESEND_API_KEY` lives on Fly and **not on Vercel**
+Never from a request handler. This is why `RESEND_API_KEY` lives on the worker's host (Railway since Launch; this line said «Fly» until `DEC-161`) and **not on Vercel**
 (`04` §10) — and it means a mail outage cannot slow down a request a member is waiting on.
 
 ### 5.2 Logging — `REQ-NTF-008`

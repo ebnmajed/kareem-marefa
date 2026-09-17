@@ -695,6 +695,66 @@ Presenter-facing reads go through a view that exposes aggregates only, and only 
 `org_settings.rating_min_aggregate` or above (`REQ-RAT-004`, `REQ-RAT-006`). Org admins read the
 base table (`REQ-RAT-005`); moderators do not (`REQ-ADM-020`).
 
+### 4.8a The survey
+
+*Added under `DEC-160` and `DEC-161` (wave 10, migration `0124`). `DEC-074` lists this document among
+those it changed; it never was — the entities were written when the tables were. The document is
+frozen, and changes here only through those entries.*
+
+**The survey is the organisation's instrument, and its audience is the reverse of the rating's**:
+`admin` and `moderator` read its results, the presenter never does (`REQ-SUR-005`). Three groups of
+tables, and the third is the one the design turns on.
+
+#### `ENT-survey_templates` · `ENT-survey_template_questions` · `ENT-survey_template_options`
+**Serves:** `REQ-SUR-001`, `REQ-SUR-002`
+A template an org reuses: `title` (`unique (org_id, title)`), `created_at`, `updated_at`; its
+questions — `template_id`, `position` (`unique (template_id, position)`, deferred, so one statement
+renumbers a whole set), `kind survey_question_kind not null` (`scale_1_5` · `single_choice` ·
+`multi_choice` · `free_text` — a Postgres enum), `prompt`, `required boolean not null default false`;
+and a choice question's options — `question_id`, `position`, `label`. Staff of the org read them; every
+write is a definer RPC, because a write renumbers an ordered set, which a policy cannot do atomically.
+
+#### `ENT-surveys` · `ENT-survey_questions` · `ENT-survey_question_options`
+**Serves:** `REQ-SUR-001`, SCR-064
+**The copy attached to a session.** `surveys.session_id` is `unique` — one survey per session, as a
+constraint. `source_template_id` and `survey_questions.source_question_id` are **provenance only**,
+`on delete set null`, and are never read to render a question: the rows *are* the survey, so editing a
+template never rewrites what members were asked. `attached_at` is a staff action's time and the table
+names no member. `unique (survey_id, id)` on a question and `unique (question_id, id)` on an option are
+the targets of the composite keys below. **A survey's question set freezes at its first
+participation** — there is no question-level write on an attached survey at all. «A session with no
+survey» is the absence of a `surveys` row: `sessions` does not change.
+
+#### `ENT-survey_participations`
+**Serves:** `REQ-SUR-003`, `REQ-SUR-009`
+★ **The register: who has answered.** `org_id`, `survey_id`, `member_id`, `primary key (survey_id,
+member_id)` — and nothing else. **No timestamp**, the one table in the product without `created_at`,
+because the register must not say *when*. **No surrogate id**, so there is no participation id that a
+later mistake could ever write onto a response. «One member, one response» lives here and only here; a
+second submission is refused by name from it, never from the box.
+
+#### `ENT-survey_responses` · `ENT-survey_answers`
+**Serves:** `REQ-SUR-004`, `REQ-SUR-006`, `REQ-SUR-009`
+★ **The box: what was answered.** A response is `id`, `org_id`, `survey_id` — **and nothing else,
+ever**. An answer is `id`, `org_id`, `survey_id`, `response_id`, `question_id` and exactly one of
+`scale_value smallint (1–5)`, `option_id` (one row per chosen option, so a `multi_choice` answer is N
+rows) or `text_value` (1–2,000 characters). **Neither table carries a member, a check-in, a rating or
+a timestamp of any kind, and no foreign key of either leads to `members`.** An answer can only name a
+question **of its own survey** and an option **of its own question** — composite foreign keys, as
+`ENT-session_days`' dependants name a day of their own session.
+
+**Written only by `JOB-record_survey_response`**, 10 minutes to 4 hours after the submit, from a payload
+that names no member, under no key. **Selectable by no client role** — RLS enabled, no policy, no
+grant, `service_role` included: results leave through one definer function that applies the
+minimum-count withhold to every question type and to the count itself, so `xmin` and `ctid` are never
+readable. `tests/rls/survey-structure.test.ts` asserts all of it over the catalogue, so a column added
+next year fails the suite. **Do not add `created_at`.**
+
+`org_settings` gains `survey_min_responses int not null default 3 check (between 3 and 50)`. It is a
+setting of its own — the rating's minimum hides a session from its presenter, this one hides
+respondents from staff — and it has a **floor**: a minimum an org can set to 1 is `REQ-SUR-006`
+switched off.
+
 ### 4.9 Scoring and the ledger
 
 #### `ENT-scoring_rules`
@@ -1010,6 +1070,16 @@ someone to remember to clear something.
 `unique (org_id, key, channel, locale)`.
 A template missing a `required_field` fails validation **before it can be saved**
 (`REQ-NTF-007`).
+
+**Amended under `DEC-161` (wave 10, migration `0125`):** `blocks jsonb` — null is a string template,
+every row that existed before; otherwise `{ schemaVersion, blocks: [...] }`, the ordered typed blocks
+of `REQ-NTF-009` (the footer is composed by the renderer and is never stored) — and `source_family
+email_design_family`, provenance for one of `DEC-082`'s eight platform designs. ★ **This narrows
+`DEC-081`'s and `16` §11.6's `notification_template_blocks` table to a column on the template's own
+row**: a design shared across keys cannot have its bindings policed per key by one trigger, leaves a
+stale generated `body` on every bound row, and cannot carry copy that differs per key. For a block
+template `body` holds the generated text alternative in template form (`REQ-NTF-013`). The platform
+library is constants in `@kareem/mail-runtime`, so `org_id` stays `not null` and §7's seven stay seven.
 
 #### `ENT-notifications`
 **Serves:** `REQ-NTF-006`

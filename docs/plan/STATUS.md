@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-10/survey-email` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 9 merged 2026-09-17** (PR #26, `f2ead54`; `0100`–`0122` live on production; ★ **the Railway worker is RUNNING on the merge commit `f2ead54`**, read 2026-09-17; the `DEC-152` statement was run by the owner) · **Phase:** ★★ **WAVE 10 — the survey and the email studio, with three carried fixes (`DEC-160`) — STEP 0 DONE: the map is in `CLAUDE.md` and all ten `.claude/agents/*.md`, the checklist is the wave-10 block below. `event` builds the survey end to end on opus; `notify` the email studio; `designer` the re-issued certificate and the multi-day poster's date; `content` a proposal's own material. ★ The survey's storage contract is the lead's and precedes any table: a stored response names no member (`DEC-160` §3). ★ There are no mail goldens today, so `notify` pins today's 25 messages before it changes a line (`DEC-160` §4).** Migrations start at **`0123`** and are additive; the owner pushes, then merges, **then checks Railway by hand**.
+**Last updated:** 2026-09-17 · **Branch:** `wave-10/survey-email` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 9 merged 2026-09-17** (PR #26, `f2ead54`; `0100`–`0122` live on production; ★ **the Railway worker is RUNNING on the merge commit `f2ead54`**, read 2026-09-17; the `DEC-152` statement was run by the owner) · **Phase:** ★★ **WAVE 10 — the survey and the email studio, with three carried fixes (`DEC-160`) — ★ SYNC 1 DONE (`DEC-161`): four plans approved, FIVE defects caught on paper — one of them a public poster with no date in the push → redeploy window; the tables are landed (`0124`, `0125`); all four tracks are building. ★ FOUND: every mail since Launch has been missing its link — `{{url}}` is supplied by nothing (named difference 1; the fix needs `APP_URL` on Railway, an owner's step). Step 0: the map is in `CLAUDE.md` and all ten `.claude/agents/*.md`, the checklist is the wave-10 block below. `event` builds the survey end to end on opus; `notify` the email studio; `designer` the re-issued certificate and the multi-day poster's date; `content` a proposal's own material. ★ The survey's storage contract is the lead's and precedes any table: a stored response names no member (`DEC-160` §3). ★ There are no mail goldens today, so `notify` pins today's 25 messages before it changes a line (`DEC-160` §4).** Migrations start at **`0123`** and are additive; the owner pushes, then merges, **then checks Railway by hand**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -122,7 +122,9 @@ ledger line.** Checked by the lead at every sync with `git diff --stat f2ead54 -
 
 | File | Commit | Why | Expectation changed? |
 |---|---|---|---|
-| — | — | nothing yet | — |
+| `tests/rls/isolation.test.ts` | lead, `951962e` | the sweep's non-vacuity assertion skips tables a plain member may select but sees no row of; the survey's six staff-only authoring tables join `notification_templates` and `session_certificate_designs` in that list | no — the wall is asserted for all nine new tables; only the «sees its own org's rows» half is skipped for six, as it is for every admin-only table |
+| *(accepted at sync 1, not yet made)* | `notify`, after L3 | three import lines — `mail-render`, `mail-day-words`, `mail-instants` — follow the module into `@kareem/mail-runtime` | no |
+| *(accepted at sync 1, not yet made)* | `notify`, N3 | `wave8-console-emails.spec.ts` (3 of 5 cases), `emails-page.test.tsx` (2 of 8), `admin-emails.test.ts` (2 of 3): «الحقول المطلوبة» becomes a checkbox list of the key's offered bindings (`REQ-NTF-012`); the refusals, the fields they land at, the kept values and **every delivery-log case** are unchanged | no |
 
 ★ `tests/e2e/wave8-console-emails.spec.ts` is the one spec whose screen this wave replaces content under: the
 string-template editor's cases change **each with its own line here**; its moderator case, its failure banner
@@ -154,16 +156,16 @@ closes at *held*.
 
 | # | From → to | The seam | What must not change | State |
 |---|---|---|---|---|
-| 1 | lead → `event` | **The survey's storage contract (`DEC-160` §3).** `survey_responses` and `survey_answers` carry no member, check-in, rating or timestamp column and no foreign-key path to a member; «one member, one response» is `survey_participations (survey_id, member_id)`, no timestamp; the response is written by a jittered job whose payload is the survey and the answers and whose key is never derived from the member; no client role selects a response or an answer; one definer function releases results under the withhold, for the screen and the CSV; `ratings` holds no instant finer than a day | a session with no survey: the rate screen, the rating's insert, its points job and its audit — all as today | **published** — `DEC-160` §3, `01` `REQ-SUR-003`, `004`, `009` |
+| 1 | lead → `event` | **The survey's storage contract (`DEC-160` §3).** `survey_responses` and `survey_answers` carry no member, check-in, rating or timestamp column and no foreign-key path to a member; «one member, one response» is `survey_participations (survey_id, member_id)`, no timestamp; the response is written by a jittered job whose payload is the survey and the answers and whose key is never derived from the member; no client role selects a response or an answer; one definer function releases results under the withhold, for the screen and the CSV; `ratings` holds no instant finer than a day | a session with no survey: the rate screen, the rating's insert, its points job and its audit — all as today | **landed** as tables — `0124`; `event`'s plan approved against it (`DEC-161`). Held when `survey-structure.test.ts` passes on the promoted functions |
 | 2 | lead → `event`, `notify` | **`src/components/ui/reorderable-list.tsx`** — ▲▼ on every row, named by the row they move, taps alone, a live announcement; controlled (`onReorder(nextKeys, { key, from, to })`); `getName` is the row's accessible name and is never empty; `renderActions` for a row's own controls; `size="sm"` for a nested or dense list. Its props are functions, so it lives inside a client component (`DEC-159`). No drag | — | **landed** `d260144` — both consumers told; held when SCR-065's and the editor's own specs reorder with `click()` alone |
-| 3 | lead → all | **Additive; `main`'s app and worker are correct on the new schema.** Three named hazards, each answered in its owner's plan: a block template's row on the old worker's string path; a coarsened rating under `main`'s app, which writes both instants; a second certificate for one member | every screen and job of `main` on the wave's migrations | ☐ drafted at sync 1 (row L7) |
-| 4 | `notify` → lead → `notify` | **Pin, then move, then build.** The 25 rendered messages committed from `main`'s renderer; then the lead scaffolds `packages/mail-runtime` and moves `render.ts` + `templates.ts` mechanically; then the blocks. `renderEmail(input)` keeps its signature | the pinned files, byte for byte, on every later commit | ☐ N1 → L3 → N2 |
+| 3 | lead → all | **Additive; `main`'s app and worker are correct on the new schema.** Three named hazards, each answered in its owner's plan: a block template's row on the old worker's string path; a coarsened rating under `main`'s app, which writes both instants; a second certificate for one member | every screen and job of `main` on the wave's migrations | **drafted** at sync 1 (row L7, below) — and the drafting found defect 1: `main`'s worker on `designer`'s planned seed |
+| 4 | `notify` → lead → `notify` | **Pin, then move, then build.** The 25 rendered messages committed from `main`'s renderer; then the lead scaffolds `packages/mail-runtime` and moves `render.ts` + `templates.ts` mechanically; then the blocks. `renderEmail(input)` keeps its signature | the pinned files, byte for byte, on every later commit | plan approved; **N1 in progress** → L3 → N2 |
 | 5 | `notify` → all | `public.notify()` and every `MSG-*` key unchanged; an org with no block template renders the pinned bytes | the ten existing notify and mail suites unmodified | ☐ |
 | 6 | `event` → lead (custodian of `console`) | **The results' two exits.** `event` publishes the rows, **already withheld**, from `lib/dal/surveys.ts`; the lead registers the export type in the audited path, adds the rail's «الاستبانات» and the per-session link to SCR-064 | the audited export's existing types and the rail's existing groups | ☐ |
 | 7 | `event`, `notify` → lead | The two task registrations in `worker/src/index.ts` — `record_survey_response`, `send_test_email`. Each logs a count, never a payload | the worker's existing task list | ☐ |
-| 8 | `designer` → `notify` | The review of the block-to-table compiler (`16` §11.6), **and what an image in a mail may point at** — a mail client fetches with no session | — | ☐ |
-| 9 | `branding` (held by the lead) → `notify` | `public.brand_kit()` gives mail three tokens today; the logo and the dark palette are a written request to the lead | the platform default stays the identity override; no parity golden moves | ☐ |
-| 10 | lead → `designer` | `certificates`' unique constraint becomes a partial unique index; the lead's DDL is carried at the top of the file that changes `issue_certificate()` (`DEC-151`'s pattern) | `designer-certificates`, `certificates-designs`, `session-days-certificates`, `checkin-removal`, `checkin-contract-5` unmodified | ☐ |
+| 8 | `designer` → `notify` | The review of the block-to-table compiler (`16` §11.6), **and what an image in a mail may point at** — a mail client fetches with no session | — | **published** day one (`designer`'s note §D3b): exactly one asset works — `/api/s/{sessionId}/og` — and it 404s for a draft or cancelled session. The review's five checks are published too (§D3a), `<bdi>` not reaching Outlook among them |
+| 9 | `branding` (held by the lead) → `notify` | `public.brand_kit()` gives mail three tokens today; the logo and the dark palette are a written request to the lead | the platform default stays the identity override; no parity golden moves | **ruled** (`DEC-161`): `brand_kit()` already returns both palettes and needs no SQL; ★ **the logo gets a proxied public URL** in `export_is_public_card()`'s shape — row L10, the lead's |
+| 10 | lead → `designer` | `certificates`' unique constraint becomes a partial unique index — **and gains `revocation_cause`** (an enum: a removal's revocation is told from an admin's revocation for cause by a column, never by a phrase); the lead's DDL is carried at the top of the file that changes `issue_certificate()` (`DEC-151`'s pattern) | `designer-certificates`, `certificates-designs`, `session-days-certificates`, `checkin-removal`, `checkin-contract-5` unmodified | ☐ |
 | 11 | `content` → lead | `03` §5.5a's corrected text, from `content`'s note | — | ☐ |
 
 ### The rows — per track, closed against a contract held and a capture opened
@@ -171,31 +173,63 @@ closes at *held*.
 | # | Owner | Work | Serves | State |
 |---|---|---|---|---|
 | L1 | lead | `ui/reorderable-list`, its types in `ui/index.ts`, its test, its gallery entry | `REQ-DSG-028`, `REQ-SUR-002`, `REQ-NTF-009`, `SC 2.5.7` | **closed** `d260144` |
-| L2 | lead | every `create table` / `alter table` of the wave, landed at sync 1 from the plans — the survey's tables, the template blocks, the certificates index — each with its `02` entity, `03` §8.2 rows, fixture rows and sweep coverage; **and the `02`, `03`, `11`, `12` text `DEC-074` / `DEC-094` never wrote** | `REQ-NFR-001`, invariants 3, 5, 6 | ☐ |
+| L2 | lead | every `create table` / `alter table` of the wave, landed at sync 1 from the plans — the survey's tables, the template blocks, the certificates index — each with its `02` entity, `03` §8.2 rows, fixture rows and sweep coverage; **and the `02`, `03`, `11`, `12` text `DEC-074` / `DEC-094` never wrote** | `REQ-NFR-001`, invariants 3, 5, 6 | **landed** `951962e` — `0124` (nine survey tables, one enum, `survey_min_responses` with its floor) and `0125` (`blocks`, `source_family`); `02` §4.8a, `03` §5.6f and §8.2, `11`'s two jobs, `12` §5.2 item 5 and §9 item 8 written. ★ **The whole RLS suite on the chain through `0125`, run alone: 102 files · 1,066 passed · 0 failed**; `policy-diff` ✓ (the three no-policy tables read «by design»); `trace` 313 · **82 entities** · 147 · no gaps. The certificates DDL travels in `designer`'s file (contract 10) |
 | L3 | lead | `packages/mail-runtime` scaffolded (manifest, build order, the worker image, the lock through `npm run lockfile`) and `render.ts` + `templates.ts` moved mechanically — **after N1, with N1 as the proof** | `REQ-NTF-010` | ☐ blocked on N1 |
 | L4 | lead (custodian of `console`) | the rail's entry, the per-session link, the survey export's registration | `REQ-SUR-007`, `REQ-ADM-017` | ☐ on `event`'s request |
 | L5 | lead | the two task registrations; the worker image if the package needs it | `11` | ☐ |
 | L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | ☐ |
 | L7 | lead | ★ **the owner's migration order, DRAFTED AT SYNC 1** and finished at the freeze: what each file adds, the two windows, what `main`'s worker does job by job, the reads to run first · the mechanical caller audit · the data-shaped rehearsal | invariant 3 | ☐ |
 | L8 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | ☐ |
+| L10 | lead (custodian of `branding`) | ★ **new at sync 1 (`DEC-161`): the org's logo, reachable by a mail client** — a storage policy admitting `anon` to exactly the object an active org's `brand_kits.logo_asset_id` names, and `GET /api/brand/[orgId]/logo` proxying it; 404 with no logo. Due before `notify`'s N6 | `REQ-NTF-014`, `REQ-DSG-021` | ☐ |
 | L9 | lead (custodian) | recognition edits are recorded — carried since wave 8 | `REQ-REC-001` … `005`, `REQ-PTS-005`, `REQ-ADM-018` | **closed** — `0123`, taken while the four planned. `scoring_config_history` has admitted the scopes `badges`, `levels`, `perks` and `streaks` since M1 and nothing ever wrote one; the four tables now carry the trigger every other configuration table has. **SQL only**: the admin screen writes all four straight through RLS, so a trigger sees every writer and no screen changes. An admin's edit is one row per changed column; a custom badge's creation is one `created` row; **the org's seed appends nothing** — a seed is not a change anybody made. 9 new cases; ★ **the whole RLS suite on the chain through `0123`: 100 files · 1,048 passed · 4 todo · 0 failed, no existing file modified**; `policy-diff` ✓ |
-| E1–E5 | `event` | the behaviour on the lead's tables · SCR-015 as one screen and two writes · SCR-065 · SCR-064 and the CSV's rows · `ratings` to the day and the comment order | `REQ-SUR-001` … `009`, `REQ-RAT-004` | ☐ planning |
-| N1–N8 | `notify` | today's output pinned · the block compiler and the generated text part · bindings per key in the database · the editor and its four preview modes · the live test · the eight designs behind 25 keys · `08` §3.2 · the bounce webhook, last | `REQ-NTF-007` … `014` | ☐ planning |
-| D1–D3 | `designer` | certificates re-issued · a multi-day poster's date · the compiler review | `REQ-CRT-003`, `REQ-CHK-017`, `REQ-DSG-002`, `REQ-SES-015` | ☐ planning |
-| T1–T3 | `content` | a proposal's own material · two carried fixes · `03` §5.5a's text | `REQ-PRO-004`, `REQ-MAT-*` | ☐ planning |
+| E1–E5 | `event` | the behaviour on the lead's tables · SCR-015 as one screen and two writes · SCR-065 · SCR-064 and the CSV's rows · `ratings` to the day and the comment order | `REQ-SUR-001` … `009`, `REQ-RAT-004` | plan approved (`29041c8`, `f4e27b1`) — **building**, E5 first |
+| N1–N8 | `notify` | today's output pinned · the block compiler and the generated text part · bindings per key in the database · the editor and its four preview modes · the live test · the eight designs behind 25 keys · `08` §3.2 · the bounce webhook, last | `REQ-NTF-007` … `014` | plan approved (`3b0674a`) — **building**, N1 (the pin) first |
+| D1–D3 | `designer` | certificates re-issued · a multi-day poster's date · the compiler review | `REQ-CRT-003`, `REQ-CHK-017`, `REQ-DSG-002`, `REQ-SES-015` | plan approved (`34b4eab`), D2's centre changed — **building**, D1 first; D2 measures the frame before anything is generated |
+| T1–T3 | `content` | a proposal's own material · two carried fixes · `03` §5.5a's text | `REQ-PRO-004`, `REQ-MAT-*` | plan approved (`d706cb0`) — **building** |
 
-### Ruled at sync 1 — named now, so each plan answers its own
+### Sync 1 — 2026-09-17 — four plans approved, five defects caught on paper (`DEC-161`)
+
+All four plans were committed inside the time it took to build `ui/reorderable-list` and close L9, and each
+was read **in full** — 553, 915, 629 and 282 lines. They are strong: `event` made the job key **null**
+because `enqueue_job()` always replaces on a key (any key would collapse two members' responses, and one
+derived from the member would be the leak in a string), pinned the coarsening trigger to UTC because
+`date_trunc` on a `timestamptz` follows the connection's zone, and withheld the **count** with the answers;
+`notify` designed a pin that no script, workflow or `package.json` entry can refresh, and checked rather
+than assumed that the preview needs no `proxy.ts` change; `designer` refused to key behaviour on a phrase an
+admin can type and proved a refusal takes no serial by asserting the counter row; `content` found that
+`is_staff()` sits **inside** the joined branch. **Five defects were in the plans themselves** and are in
+`DEC-161` in full:
+
+| # | Whose | The defect, found on paper | Ruling |
+|---|---|---|---|
+| 1 | `designer` | ★ **a public poster with no date.** A new binding in a new seed (poster v3): `poster_render_context()` takes the **latest** version and migrations are pushed before the merge, so `main`'s worker would render every new poster from the v3 document with a runtime that cannot resolve it — «التاريخ والوقت» where the date should be, on the public share image | the binding's **name** does not change, its **value** does; no seed unless the measured frame demands one. Every org's own copy of a template is fixed too, which the plan would never have reached |
+| 2 | `notify` | a design shared across keys — bindings that one trigger cannot police per key, a generated `body` that goes stale on every bound row, and copy that differs per key | blocks on the template's **own row** (`0125`); the platform library is constants; no eighth exception to invariant 5 |
+| 3 | `notify` | the preview is a POST framed by a GET | a `<form method="post" target>` into the named sandboxed iframe; never `blob:` or `srcdoc`, which inherit the parent's CSP |
+| 4 | `event` | moving `getRatingEligibility()` onto an RPC turns an **untouched** unit suite red — it runs that function against an in-memory client to pin the DAL's own `removed_at` filter | the function stays byte for byte; SQL gets its one definition (`rating_window_open()`) |
+| 5 | `notify` | a mail signed twice by `main`'s worker in the window; and a webhook function granted to `anon` that trusts a caller it does not control | `body` is the blocks' text in **template form** without the composed signature; the webhook's signature is verified **in the database** |
+
+★ **Found by `notify`, verified by the lead: every mail since Launch has been missing its link.** `{{url}}` is
+the last line of 20 of the 25 default templates and nothing anywhere supplies it; the rating prompt has
+carried no link to rate. **Named difference 1** — the pin records the broken bytes first, the fix is a
+reviewed diff, and it needs `APP_URL` on Railway (the owner's step, in the order). Unset, the renderer
+behaves exactly as today.
+
+**Named and not closed — differencing** (`12` §9 item 8): results at three responses and at four differ by one
+person's answers. Batch release closes it at the cost of a lag and of up to two responses per session never
+shown; that is the owner's decision and is asked in the PR.
+
+### The eight questions named at Step 0 — each answered at sync 1
 
 | Question | Whose plan | Why it cannot wait for the build |
 |---|---|---|
-| Where the email platform library lives — rows or code. `notification_templates.org_id` is `not null`; an eighth exception to invariant 5 needs a reason constants in the package do not already give | `notify` | it decides the tables |
-| What a block template's row gives `main`'s worker in the merge → Railway window (`body` is `not null`; the generated text alternative is the obvious value) | `notify` | contract 3 |
-| How a verified Resend webhook reaches a `service_role`-only function when `service_role` is never on Vercel (invariant 7) | `notify` | it may need an `anon`-executable definer function, which `definer-exposure.test.ts` must list with its reason |
-| What an org's existing string override becomes in the editor | `notify` | the untouched rule's edge |
-| The survey's minimum: `rating_min_aggregate`, or a setting of its own; and the withhold rule per question type, the rate's numerator included | `event` | it is in the results function's signature |
-| The jitter's bounds, and what the demonstrable does instead of waiting | `event` | the spec's clock |
-| How a removal's revocation is told from an admin's revocation **for cause** — nothing may quietly replace the second | `designer` | it is the difference between a fix and a new defect |
-| What happens to the poster of a session already published when the new seed lands | `designer` | pinned template versions |
+| Where the email platform library lives — rows or code. `notification_templates.org_id` is `not null`; an eighth exception to invariant 5 needs a reason constants in the package do not already give | `notify` | ✅ **constants** in `@kareem/mail-runtime`; no exception |
+| What a block template's row gives `main`'s worker in the merge → Railway window (`body` is `not null`; the generated text alternative is the obvious value) | `notify` | ✅ the blocks' text in **template form**, without the composed signature (defect 5a) |
+| How a verified Resend webhook reaches a `service_role`-only function when `service_role` is never on Vercel (invariant 7) | `notify` | ✅ an `anon`-executable wrapper that **verifies the signature itself**, the secret in the database (defect 5b); carried with this design if N8 does not fit |
+| What an org's existing string override becomes in the editor | `notify` | ✅ it stays a string and renders byte-identically; «حوّله إلى تصميم» is one reversible action |
+| The survey's minimum: `rating_min_aggregate`, or a setting of its own; and the withhold rule per question type, the rate's numerator included | `event` | ✅ its own, **with a floor of 3**; per question, every type, the count included |
+| The jitter's bounds, and what the demonstrable does instead of waiting | `event` | ✅ uniform 10 min … 4 h, in SQL; a spec pulls `run_at` forward and the real worker runs |
+| How a removal's revocation is told from an admin's revocation **for cause** — nothing may quietly replace the second | `designer` | ✅ a column, `revocation_cause`; never the phrase; the refusal precedes `allocate_serial()` |
+| What happens to the poster of a session already published when the new seed lands | `designer` | ✅ moot — no new binding (defect 1); a poster takes the range at its next regeneration, a detached one never auto-regenerates |
 
 ### ★ The owner's order for `0123`+ — a DRAFT from day one, because writing it is an audit
 
@@ -213,6 +247,16 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 | # | Author | What it adds | Data statement? | `main` on it |
 |---|---|---|---|---|
 | `0123` | lead | one trigger function and four `after insert or update` triggers — recognition edits write `scoring_config_history` | none | `main`'s admin screen writes the four tables exactly as today and gains a history row it never reads |
+| `0124` | lead | nine survey tables, one enum, `org_settings.survey_min_responses` (default 3, floor 3) | none — a new column with a default | nothing of `main` reads any of it |
+| `0125` | lead | `notification_templates.blocks`, `source_family`, one enum, a column grant | none | `main`'s app writes the six columns it always has; `main`'s worker reads `{subject, body}` |
+
+**The production reads the order will carry, known at sync 1:** the `ratings` rows E5's backfill will coarsen
+(count first) · `select count(*) from public.notification_templates`, and their text if not zero — the new
+binding rule refuses an existing row with an unknown binding on its next update · `select count(*) from
+public.certificates where state = 'revoked'` — historical revocations read as final, and what to do with
+any is a scoped, owner-run statement, never a migration · the two `storage` policies `content`'s file
+replaces, present. **The owner's steps, known at sync 1:** `APP_URL` on Railway (named difference 1) · the
+webhook's signing secret **in the database**, one statement, and the endpoint in Resend (N8, if it ships).
 
 **Read on day one, from `main`'s worker as it stands — so each plan is reviewed against a fact, not a hope:**
 
@@ -220,7 +264,8 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 |---|---|---|
 | `send_notification.ts` reads `ctx.template` as `{subject, body}` and renders it on the string path | an org saves a **block** template before the worker redeploys | correct and undesigned — **provided the row's `body` is the generated text alternative in TEMPLATE form, its `{{bindings}}` intact**; a rendered text would send one member's name to everyone. `notify`'s plan must say which |
 | `rate/actions.ts` writes `edited_at` from JavaScript; the insert takes `submitted_at default now()` | a `before insert or update` trigger coarsens both | the trigger wins for `main`'s app too; nothing in `main`'s `src/` renders either instant (`ratings.ts:39` only maps it) |
-| `issue_certificates.ts` selects the one row `issue_certificate()` returns, then renders by id | a second certificate row for one member | unaffected — it never lists rows |
+| `issue_certificates.ts` selects the one row `issue_certificate()` returns, then renders by id | a second certificate row for one member | unaffected — it never lists rows; a for-cause refusal is a `42501` it already reads as «no longer eligible» and does not retry. One cosmetic on `main`'s SCR-045 («صدرت بـ» naming the revoked row's design), self-correcting on deploy |
+| ★ `regenerate_poster.ts` renders the document `poster_render_context()` hands it — the **latest** template version — with `main`'s runtime | `designer`'s plan seeded poster v3 binding a new name | **a public poster saying «التاريخ والوقت»** — defect 1 of sync 1. Closed on paper: no new binding, so any document version renders on `main`'s runtime |
 | ★ graphile-worker `0.18` fetches `task_id = any(<the tasks this worker registers>)` (`dist/sql/getJobs.js:176`) | the new app enqueues `record_survey_response` and `send_test_email`, which `main`'s worker has never heard of | **the jobs wait, unfailed, for a worker that knows them.** A survey response is stored late — which is the point of it anyway; a test mail arrives when the worker redeploys. No job is lost and none is retried to death |
 
 ### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
