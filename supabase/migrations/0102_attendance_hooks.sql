@@ -1,6 +1,7 @@
 -- wave 9 (DEC-150 contract 5, DEC-151) — attendance_recorded() and
 -- attendance_removed(): the two functions that own EVERY decision about what
 -- a check-in earns.
+-- Promoted by the lead from supabase/proposed/scoring/0001_attendance_hooks.sql.
 --
 -- ★ THIS FILE CHANGES NO BEHAVIOUR. It is a seam, published so `checkin` can
 -- switch its three call sites (`check_in()`, `mark_checked_in_manually()`,

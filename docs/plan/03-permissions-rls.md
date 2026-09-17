@@ -1631,6 +1631,13 @@ generated suite is the highest-value test in the product.
 | `RPC-resolve_session_day.windows_never_overlap` | With the cap, at most one day of a session holds any instant: between a 9–12 and a 13–16 day on one date, 12:30 is the morning and 13:00 and 13:30 are the afternoon. |
 | `POL-calendar_events.legacy_insert_gets_first_day` | A row inserted with no day — `main`'s `record_calendar_sync()` — is given its session's first day, so a null day only ever means «the day was deleted» or «the session has none». |
 | `POL-calendar_events.day_of_own_session` | A calendar row may name a day only of its own session (`23503`); deleting the day sets the column null and KEEPS the row with its `provider_event_id`, so the provider event can still be removed. `unique (member_id, session_day_id)` holds beside `unique (member_id, session_id)`, which leaves in the same file as the function that names it in `on conflict`. |
+| ★ **wave 9 (`DEC-151`), migration `0102`** — contract 5: what a check-in earns is decided in two functions of `scoring`'s, with `main`'s exact behaviour |
+| `RPC-attendance_recorded.definer_only` | No client role can call it; only `service_role` and the function owner (so `check_in()` and `mark_checked_in_manually()`, both definer, can). |
+| `RPC-attendance_removed.definer_only` | The same. |
+| `RPC-attendance_recorded.enqueues_award` | A recorded attendance enqueues exactly one `award_points` job, task `award_points`, key `pts:check_in:<check_in id>`, payload `{rule:'check_in', member_id, source:'check_in', source_id:<check_in id>, session_id}` — byte for byte what `check_in()` enqueues on `main`. |
+| `RPC-attendance_removed.reversal` | One compensating `reversal` row per not-yet-reversed `check_in`/`attendee_bonus` award keyed to that check-in: `-amount`, reason «أُلغي تسجيل الحضور», key `reversal:<ledger id>:v1`. A second call writes no second row. |
+| `RPC-attendance_removed.no_show_symmetry` | A removed check-in whose member holds a confirmed RSVP awards the `no_show` rule under `evaluate_no_shows`' own key; a member with no confirmed RSVP earns no such row. |
+| `RPC-attendance_hooks.terminal_row` | Either function called with a check-in id that no longer exists returns silently — the terminal-row pattern (DEC-059), never an exception into an admin's transaction. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
