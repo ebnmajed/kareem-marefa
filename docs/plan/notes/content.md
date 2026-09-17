@@ -3143,3 +3143,52 @@ not a toast, and have no live-region duplicate to collide with.
 
 No RLS/e2e run started for this (freeze in force) — `tsc`/`lint` only, both clean. Ready for the
 lead's next real-worker run.
+
+## §32 — the closure crash, and two locator flakes it took to clear it (`8b8e995`, `aac7e89`, `19cb0b2`)
+
+The freeze's one real product defect: any multi-day session with a material, task or photo sent a
+manager straight to the route error boundary. `materials/list.tsx`, `tasks/task-item.tsx` and
+`photos/gallery.tsx` are Server Components, and each built an inline arrow function —
+`(dayId) => rescopeXAction(locale, sessionId, id, dayId)` — and passed it to the shared, `"use
+client"` `RescopeChip` as a prop. React cannot serialise an ordinary closure across the
+Server→Client boundary ("Event handlers cannot be passed to Client Component props"); jsdom renders
+everything client-side, so no component test could ever meet it — only a real build crashes, and the
+demonstrable met it the moment a manager added the workshop's first material. Fixed at all three call
+sites: `rescopeXAction.bind(null, locale, sessionId, id)` in place of the closure — a `.bind()` of an
+actual `"use server"` export crosses as a REFERENCE (Next's own documented "passing additional
+arguments" pattern), never as a closure — and the prop renamed `onRescope` → `rescopeAction`: Next's
+own TypeScript plugin only allows a function-typed Client Component prop across the boundary when it
+is named `action` or ends in `Action`; confirmed against `node_modules/next/dist/docs` before writing
+it, not from memory. Proven where it can only be proven: extended the materials scope-chip-open case
+to press an option and assert the row moved groups (round-tripped, so the fixture is left as later
+tests expect it), with the same proof added for one task and one photo — photos' own chip is
+staff-only, so the fixture gained a moderator user, `photos.spec.ts`'s own established
+provision-then-elevate pattern.
+
+Went idle mid-fix waiting on a slow local `npm test` run (resource contention with the lead's own
+concurrent build) instead of committing what was ready and reporting status — the lead's own message
+caught it. Lesson recorded here plainly rather than only in the reply: report status instead of
+silently waiting on a long-running check, even under time pressure, and especially when the whole
+wave is blocked on one commit.
+
+Two more rounds, both proof-side, no further product code touched:
+
+- **Photos moved but the test claimed it hadn't.** `materials`'/`tasks`' own grouped `<h3>` sits two
+  levels below its group `<div>` (a header-row wrapper holds the heading alongside the per-group add
+  control's disclosure); photos has no add control at all ("never ask"), so its `<h3>` is a DIRECT
+  child of the group — one level, not two. The two-hop locator, copied onto photos unchanged, silently
+  resolved to the outer `<div>` wrapping every group, so `.locator("li").first()` picked the SESSION
+  group's own (already-session-scoped) photo instead of day 1's — a real, harmless no-op, which is
+  exactly why day 1's own heading never moved. Found by re-reading `gallery.tsx`'s JSX against the
+  locator, not by running it (the freeze forbade that) — told the lead the reasoning in full rather
+  than just the diff, since I could not verify it myself; the lead's rebuild confirmed it live.
+- **A photo matched by exact `src` flaked on desktop only.** Every server render signs a fresh URL
+  (the token carries `iat`), so the same photo's `src` differs across the render before and after
+  `revalidatePath` — phone had only passed because both renders landed in the same second.
+  `storage_path` always ends `/photos/<photoId>.jpg`, stable across any number of re-signs, so the
+  fixture now captures the seeded id to `day1PhotoId` (the same way `day1Id`/`day2Id` already are) and
+  the test matches on that substring instead of a captured-then-compared `src`.
+
+`npx tsc --noEmit`/`npm run lint` clean at every step; no RLS or e2e run started at any point (freeze
+in force throughout). The lead's own real-build runs are the only verification any of this got —
+T4 passing on the real worker on both projects, and the demonstrable 7 of 7, are the actual proof.
