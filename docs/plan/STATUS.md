@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-9/multi-day` (**PR #26, ready**) · **`main`:** **LAUNCHED 2026-09-15; wave 8 merged 2026-09-17** (PR #25, `b7f2f3a`; `0092`–`0099` live on production) · **Phase:** ★★ **WAVE 9 — multi-day sessions (`DEC-150` … `DEC-159`) — ★ COMPLETE — PR #26 READY, THE OWNER MERGES: `0100`–`0122` promoted, each against the existing suites UNMODIFIED; ★ the three-day demonstrable passes end to end on the real worker (7 of 7); the final gates are green; ★ the owner's migration order is written (row L9), with a caller audit of `main` and a data-shaped rehearsal. The next lead's brief is `docs/plan/notes/wave-10-lead.md`.** ★★ **FOR THE OWNER NOW: a live security hole on production, closable today with one idempotent statement — the first section of the wave-9 block (`DEC-152`).** Eight pre-existing test files are modified on the branch; **one expectation changed, on purpose, in one file** — the public card's return-type allowlist gained `day_count` and `days` (the ledger, `DEC-156`, `DEC-157`). No existing e2e spec is modified. **Migrations are additive**; the owner pushes, then merges, **then checks Railway by hand**. **Do not start wave 10.**
+**Last updated:** 2026-09-17 · **Branch:** `wave-10/survey-email` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 9 merged 2026-09-17** (PR #26, `f2ead54`; `0100`–`0122` live on production; ★ **the Railway worker is RUNNING on the merge commit `f2ead54`**, read 2026-09-17; the `DEC-152` statement was run by the owner) · **Phase:** ★★ **WAVE 10 — the survey and the email studio, with three carried fixes (`DEC-160`) — STEP 0 DONE: the map is in `CLAUDE.md` and all ten `.claude/agents/*.md`, the checklist is the wave-10 block below. `event` builds the survey end to end on opus; `notify` the email studio; `designer` the re-issued certificate and the multi-day poster's date; `content` a proposal's own material. ★ The survey's storage contract is the lead's and precedes any table: a stored response names no member (`DEC-160` §3). ★ There are no mail goldens today, so `notify` pins today's 25 messages before it changes a line (`DEC-160` §4).** Migrations start at **`0123`** and are additive; the owner pushes, then merges, **then checks Railway by hand**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-159`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-9 map is the map in force** (`DEC-150`); waves 8, 7, 6 and 5 are the record |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-160`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-10 map is the map in force** (`DEC-160`); waves 9, 8, 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -54,7 +54,7 @@ gaps**; `qa` 44/44; `visual` 0.000%. ★ **Since wave 8, every route in the brie
    no template rows are seeded and `worker/src/mail/render.ts` still renders plain paragraphs
    against three brand tokens with hard-coded fallbacks.
 
-**The screens were waves 6, 7 and 8, all merged. Wave 9 is multi-day sessions (`DEC-119` … `121`, `DEC-150`) — in progress, directly below.** The owner reviewed M9 running and reordered the
+**The screens were waves 6, 7 and 8; wave 9 was multi-day sessions (`DEC-119` … `121`, `DEC-150`) — all merged. Wave 10 is the survey and the email studio (`DEC-160`) — in progress, directly below.** The owner reviewed M9 running and reordered the
 milestone — the screens come first, the admin console is in scope from the start, `/app` becomes the
 sessions timeline, and `16` §6.6's separate home page is withdrawn (`DEC-110` … `DEC-114`, `DEC-130`).
 
@@ -69,13 +69,190 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 9's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-150`). A
-wave-10 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 10's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-160`). A
+wave-11 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 9 — IN PROGRESS on `wave-9/multi-day` — multi-day sessions: a day entity under seven live tables (`DEC-119` … `121`, `DEC-150`)
+## ★★ WAVE 10 — IN PROGRESS on `wave-10/survey-email` — the survey and the email studio, with three carried fixes (`DEC-160`)
+
+**The owner's goal, in substance** (`docs/plan/notes/wave-10-lead.md`): two features that were deferred twice.
+**The survey** — staff write a reusable template, attach it to a session, a checked-in member answers it on the
+rate screen beside the rating, and **only `admin` and `moderator` ever read the results**, withheld below a
+minimum count on every question type. **The email studio** — a template is an ordered list of typed blocks
+compiled by the one mail renderer, previewed by that same renderer, tested by a real send, with eight designed
+platform templates behind all 25 message keys. And three things wave 9 sized and left: **a certificate
+re-issued** after a removal and a re-add, **a multi-day poster's date**, **a proposal's own material**.
+
+**The measure — two demonstrables, and two things that must not change.**
+
+1. ★ **The survey, end to end, as one run from EMPTY** — production build, real worker (`E2E_WORKER=1`), 390 px,
+   Arabic: a moderator writes a template and reorders its questions **with taps alone**; attaches it to a
+   session on SCR-064; three members attend, and each rates and answers on **one screen**; the real worker
+   stores each response after its delay; **the presenter is refused the results by the database**; the screen
+   says «withheld» at two responses and draws at three; the CSV is audited, UTF-8 BOM, Western digits, and
+   withholds what the screen withholds — and ★ **no table, payload or log line of that run can say which member
+   gave which answer**. The spec is the lead's: `tests/e2e/wave10-demo-survey.spec.ts`.
+2. ★ **The email studio, end to end, as one run from EMPTY** — an admin duplicates a designed platform template,
+   reorders its blocks with taps, sees it in phone, desktop, plain-text and forced-dark **through the production
+   renderer**, sends a test **to their own address** (Mailpit), and a real reminder then arrives **designed**;
+   changing the org's logo restyles it; an unknown binding is refused by the **database**. The lead's:
+   `tests/e2e/wave10-demo-email-studio.spec.ts`.
+3. ★ **A session with no survey shows nothing about one, anywhere** (`REQ-SUR-001`) — the rate screen's existing
+   specs pass **with their assertions untouched**.
+4. ★ **An org that has not touched its templates sends byte-identical mail** (`REQ-NTF-009`) — proven against
+   **`notify`'s pinned output, which does not exist yet and is its first task** (`DEC-160` §4): there are no
+   mail goldens today, so until those 25 messages are committed from `main`'s renderer, «byte-identical» is a
+   sentence and not a test.
+
+### Confirmed before anything else — read, not asked (`DEC-160` §1)
+
+| What the owner was asked to do after PR #26 | State | How it is known |
+|---|---|---|
+| The Railway worker on the merge commit | ✅ **RUNNING on `f2ead54`**, deployed 2026-09-17 10:47 UTC | `railway status --json` — a read; `meta.commitHash` equals `git log -1 main` |
+| `DEC-152`'s security statement run | ✅ run and verified by the owner, `f / f / f` | wave 9's production reads, row c; `0103` carries it regardless |
+| `main`'s CI | ✅ green on `f2ead54` | `gh run list --branch main` |
+
+### The untouched-suite ledger
+
+Every test file that existed on `main` at **`f2ead54`** and is modified on this branch is named here, with why.
+**A changed expectation for a session with no survey, or for an org with no block template, is a defect, not a
+ledger line.** Checked by the lead at every sync with `git diff --stat f2ead54 -- tests/ | grep -v wave10`.
+
+| File | Commit | Why | Expectation changed? |
+|---|---|---|---|
+| — | — | nothing yet | — |
+
+★ `tests/e2e/wave8-console-emails.spec.ts` is the one spec whose screen this wave replaces content under: the
+string-template editor's cases change **each with its own line here**; its moderator case, its failure banner
+and its delivery-log cases do not change at all.
+
+### Before anyone spawns
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **The two post-merge confirmations** | — | the table above |
+| ✅ | **Who builds the survey — decided before the map**: `event`, end to end, on opus (`DEC-160` §2) | Step 0 | the alternatives weighed against the code: a split puts a seam through `REQ-SUR-009`'s invariant |
+| ✅ | **Step 0**: the wave-10 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated from one generator, the shared block identical in all ten (`event`'s was nine waves stale); `DEC-160`; this block; `01` corrected for `DEC-124` and for §3's storage contract; SCR-065 and its two routes in `04` and `09` | Step 0 | `trace` — `313 requirements · 73 entities · 147 stories · no gaps` |
+| ☐ | **`ui/reorderable-list`** (row L1) — built while the four plan | | |
+
+★ **Found while reading for Step 0, each now someone's row:** `02`, `03` §8.2, `11` and `12` contain **no trace
+of the survey** although `DEC-074` and `DEC-094` list them as changed (L2) · **there are no mail goldens**,
+although `DEC-081` promises they will not move (N1) · `ui/reorderable-list`, which two requirements name, does
+not exist (L1) · `08` §3.2 lists 23 templates against 25 in the matrix and in code (N7) · a rating's
+`edited_at` is written from JavaScript at millisecond precision and the presenter's comment list is ordered by
+`submitted_at` (E5) · a proposal's material is unreadable at the version **for staff too**, and the visible
+defect is that an admin cannot open it (T1) · `/api/webhooks/resend` has never existed, and the function it
+would call is `service_role`-only while `service_role` is never on Vercel (N8, ruled at sync 1).
+
+### The contracts — the wave's checklist
+
+**Published** when its owner has written the signature, the types and the untouched behaviour in its note;
+**landed** when the code is promoted or committed; **held** when the consumer's own test exercises it. A row
+closes at *held*.
+
+| # | From → to | The seam | What must not change | State |
+|---|---|---|---|---|
+| 1 | lead → `event` | **The survey's storage contract (`DEC-160` §3).** `survey_responses` and `survey_answers` carry no member, check-in, rating or timestamp column and no foreign-key path to a member; «one member, one response» is `survey_participations (survey_id, member_id)`, no timestamp; the response is written by a jittered job whose payload is the survey and the answers and whose key is never derived from the member; no client role selects a response or an answer; one definer function releases results under the withhold, for the screen and the CSV; `ratings` holds no instant finer than a day | a session with no survey: the rate screen, the rating's insert, its points job and its audit — all as today | **published** — `DEC-160` §3, `01` `REQ-SUR-003`, `004`, `009` |
+| 2 | lead → `event`, `notify` | **`src/components/ui/reorderable-list.tsx`** — ▲▼ on every row, named by the row they move, taps alone, a live announcement; controlled. Props in `ui/index.ts` on day one. No drag | — | ☐ L1 |
+| 3 | lead → all | **Additive; `main`'s app and worker are correct on the new schema.** Three named hazards, each answered in its owner's plan: a block template's row on the old worker's string path; a coarsened rating under `main`'s app, which writes both instants; a second certificate for one member | every screen and job of `main` on the wave's migrations | ☐ drafted at sync 1 (row L7) |
+| 4 | `notify` → lead → `notify` | **Pin, then move, then build.** The 25 rendered messages committed from `main`'s renderer; then the lead scaffolds `packages/mail-runtime` and moves `render.ts` + `templates.ts` mechanically; then the blocks. `renderEmail(input)` keeps its signature | the pinned files, byte for byte, on every later commit | ☐ N1 → L3 → N2 |
+| 5 | `notify` → all | `public.notify()` and every `MSG-*` key unchanged; an org with no block template renders the pinned bytes | the ten existing notify and mail suites unmodified | ☐ |
+| 6 | `event` → lead (custodian of `console`) | **The results' two exits.** `event` publishes the rows, **already withheld**, from `lib/dal/surveys.ts`; the lead registers the export type in the audited path, adds the rail's «الاستبانات» and the per-session link to SCR-064 | the audited export's existing types and the rail's existing groups | ☐ |
+| 7 | `event`, `notify` → lead | The two task registrations in `worker/src/index.ts` — `record_survey_response`, `send_test_email`. Each logs a count, never a payload | the worker's existing task list | ☐ |
+| 8 | `designer` → `notify` | The review of the block-to-table compiler (`16` §11.6), **and what an image in a mail may point at** — a mail client fetches with no session | — | ☐ |
+| 9 | `branding` (held by the lead) → `notify` | `public.brand_kit()` gives mail three tokens today; the logo and the dark palette are a written request to the lead | the platform default stays the identity override; no parity golden moves | ☐ |
+| 10 | lead → `designer` | `certificates`' unique constraint becomes a partial unique index; the lead's DDL is carried at the top of the file that changes `issue_certificate()` (`DEC-151`'s pattern) | `designer-certificates`, `certificates-designs`, `session-days-certificates`, `checkin-removal`, `checkin-contract-5` unmodified | ☐ |
+| 11 | `content` → lead | `03` §5.5a's corrected text, from `content`'s note | — | ☐ |
+
+### The rows — per track, closed against a contract held and a capture opened
+
+| # | Owner | Work | Serves | State |
+|---|---|---|---|---|
+| L1 | lead | `ui/reorderable-list`, its types in `ui/index.ts`, its test, its gallery entry | `REQ-DSG-028`, `REQ-SUR-002`, `REQ-NTF-009`, `SC 2.5.7` | ☐ |
+| L2 | lead | every `create table` / `alter table` of the wave, landed at sync 1 from the plans — the survey's tables, the template blocks, the certificates index — each with its `02` entity, `03` §8.2 rows, fixture rows and sweep coverage; **and the `02`, `03`, `11`, `12` text `DEC-074` / `DEC-094` never wrote** | `REQ-NFR-001`, invariants 3, 5, 6 | ☐ |
+| L3 | lead | `packages/mail-runtime` scaffolded (manifest, build order, the worker image, the lock through `npm run lockfile`) and `render.ts` + `templates.ts` moved mechanically — **after N1, with N1 as the proof** | `REQ-NTF-010` | ☐ blocked on N1 |
+| L4 | lead (custodian of `console`) | the rail's entry, the per-session link, the survey export's registration | `REQ-SUR-007`, `REQ-ADM-017` | ☐ on `event`'s request |
+| L5 | lead | the two task registrations; the worker image if the package needs it | `11` | ☐ |
+| L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | ☐ |
+| L7 | lead | ★ **the owner's migration order, DRAFTED AT SYNC 1** and finished at the freeze: what each file adds, the two windows, what `main`'s worker does job by job, the reads to run first · the mechanical caller audit · the data-shaped rehearsal | invariant 3 | ☐ |
+| L8 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | ☐ |
+| L9 | lead (custodian) | recognition edits write an audit row — **if the wave has room after sync 2; otherwise carried again with this sentence** | `REQ-REC-*`, `REQ-ADM-018` | ☐ |
+| E1–E5 | `event` | the behaviour on the lead's tables · SCR-015 as one screen and two writes · SCR-065 · SCR-064 and the CSV's rows · `ratings` to the day and the comment order | `REQ-SUR-001` … `009`, `REQ-RAT-004` | ☐ planning |
+| N1–N8 | `notify` | today's output pinned · the block compiler and the generated text part · bindings per key in the database · the editor and its four preview modes · the live test · the eight designs behind 25 keys · `08` §3.2 · the bounce webhook, last | `REQ-NTF-007` … `014` | ☐ planning |
+| D1–D3 | `designer` | certificates re-issued · a multi-day poster's date · the compiler review | `REQ-CRT-003`, `REQ-CHK-017`, `REQ-DSG-002`, `REQ-SES-015` | ☐ planning |
+| T1–T3 | `content` | a proposal's own material · two carried fixes · `03` §5.5a's text | `REQ-PRO-004`, `REQ-MAT-*` | ☐ planning |
+
+### Ruled at sync 1 — named now, so each plan answers its own
+
+| Question | Whose plan | Why it cannot wait for the build |
+|---|---|---|
+| Where the email platform library lives — rows or code. `notification_templates.org_id` is `not null`; an eighth exception to invariant 5 needs a reason constants in the package do not already give | `notify` | it decides the tables |
+| What a block template's row gives `main`'s worker in the merge → Railway window (`body` is `not null`; the generated text alternative is the obvious value) | `notify` | contract 3 |
+| How a verified Resend webhook reaches a `service_role`-only function when `service_role` is never on Vercel (invariant 7) | `notify` | it may need an `anon`-executable definer function, which `definer-exposure.test.ts` must list with its reason |
+| What an org's existing string override becomes in the editor | `notify` | the untouched rule's edge |
+| The survey's minimum: `rating_min_aggregate`, or a setting of its own; and the withhold rule per question type, the rate's numerator included | `event` | it is in the results function's signature |
+| The jitter's bounds, and what the demonstrable does instead of waiting | `event` | the spec's clock |
+| How a removal's revocation is told from an admin's revocation **for cause** — nothing may quietly replace the second | `designer` | it is the difference between a fix and a new defect |
+| What happens to the poster of a session already published when the new seed lands | `designer` | pinned template versions |
+
+### ★ The owner's order for `0123`+ — a DRAFT from day one, because writing it is an audit
+
+Production is at **`0122`**. Known today, before any SQL exists: **(a)** the survey adds tables and touches one
+live table's **data** — `ratings`' two instants coarsened by a backfill; the production read will count the
+rows first · **(b)** the merge → Railway window matters for **mail**: `main`'s worker reads a template as
+`{subject, body}` and must still send something correct for an org that saves a block template in that window
+— or the order says nobody edits a template until the worker is on the merge commit, as wave 9 said of
+multi-day sessions · **(c)** a second certificate row must not break `main`'s `issue_certificates` task or
+SCR-045 · **(d)** the bounce webhook needs `RESEND_WEBHOOK_SECRET` on Vercel — an owner's step. The table of
+files, the caller audit and the data-shaped rehearsal land here **before the PR is marked ready**.
+
+### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
+
+**Railway's push trigger has never been armed** — four merges in a row now (PRs #23 … #26) the worker moved
+only when someone reconnected the source by hand. **After every merge to `main`, the owner checks the worker's
+deployed commit in Railway and reconnects the source if it has not moved.** The fix is a dashboard setting
+(Service → Settings → Source → the branch's deploy trigger); it is the owner's, and no session changes it.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| owner | the two canvas contrast questions (`DEC-123`: browse tag counts at 1.96 : 1, a 13 px caption at 3.30 : 1) — asked in waves 8 and 9; **asked next in this wave's PR, not in a brief**. The app ships the passing tokens | wave 6 |
+| owner | **`bookmarks:237` «never updates» on Next 16.3.5** — a timing race, not load; the trace is wave 8's | wave 8 |
+| owner | break-glass opens no org screen (`DEC-055` C; option A is the owner's to schedule) | wave 8 |
+| lead (L9) | recognition edits write no audit or history row | wave 8 |
+| lead (M13) | the «مطلوب» marker on the manual-mark form's three controls; `DayWindow.id` / `position` could be optional | wave 9 |
+| `console` (M13) | the attendance table scrolls sideways inside its container at 390 px from two days up | wave 9 |
+| lead (custodian) | the filter sheet's native date mask | waves 6–7 |
+| M13 | `controlClass`'s `w-full` beats a caller's `w-*`; `DEC-145`'s orphaned streaming segment; CSP report-only; status-colour contrast enforcement; `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven glyphs | waves 6–8 |
+| ~~`designer`~~ · ~~`content`~~ · ~~`notify`~~ | ~~re-issuing a certificate after a revocation~~ · ~~a proposal's own material~~ · ~~`REQ-NTF-007`'s editable required fields and `REQ-NTF-008`'s bounce webhook~~ · ~~`ratings.edited_at` at millisecond precision~~ · ~~the photo tile's takedown label; a save pressed before hydration on `/app/me`~~ — **each is a row of this wave** (D1, T1, N3 and N8, E5, T2) | waves 6–9 |
+
+### Order inside the wave
+
+1. **Step 0** — done. Push; the draft PR opens at the first push.
+2. **Spawn** `event`, `notify`, `designer`, `content`, each **planning-only**: a plan in
+   `docs/plan/notes/<name>.md` against the contracts it owns and consumes, the columns it needs from the lead,
+   its untouched proof, and nothing else edited until the lead approves.
+3. **The lead builds `ui/reorderable-list` while they plan** (L1).
+4. **Sync 1** — four plans read **in full** and answered; the eight questions above ruled; the tables landed
+   (L2) with their `02` and `03` text; ★ **the owner's order drafted** (L7) — `main`'s worker read job by job
+   against the planned schema **now**, not on the last afternoon.
+5. **The order the seams force**: N1 (the pin) → L3 (the package) → N2; E1's functions on L2's tables before
+   E2–E4; contract 10's DDL with D1's file; T1 alongside, touching nobody.
+6. At each sync (`TEAM.md` §3) the lead promotes SQL with `supabase migration up --local` (never a reset
+   mid-build), builds **committed HEAD** in the verification worktree, runs e2e there with `E2E_SHOTS_DIR` set
+   to the main checkout's `.qa-shots/rtl`, **opens every capture in bands**, reads the ledger's `git diff`, and
+   moves contract states here.
+7. Freeze; both demonstrables on the real worker; the full gate set on the final commits — a full e2e run's
+   failures re-run **alone** before they are read, a failure on **both** projects being real; the owner's
+   order, the caller audit and the data-shaped rehearsal finished here **before the PR is marked ready**. The
+   owner pushes, merges, **then checks Railway by hand**. **Do not start wave 11.**
+
+---
+
+## ★★ WAVE 9 — COMPLETE and MERGED (PR #26, `f2ead54`; `0100`–`0122` pushed; the worker on the merge commit) — multi-day sessions: a day entity under seven live tables (`DEC-119` … `121`, `DEC-150`)
 
 **The owner's goal, in substance** (`docs/plan/notes/wave-9-lead.md`): a session can span several days, each
 day with its own check-in and its own content, one registration and one certificate for the whole — and **a
@@ -94,7 +271,7 @@ M1, on a live database with real members.
    (514), `qa` 44/44, `visual` 0.000 %, `parity`. It is proven **twice**: on `0100` alone, before any feature
    exists, and on the final commit.
 
-### ★★ FOR THE OWNER, NOW — a live security hole on production, and the one statement that closes it (`DEC-152`)
+### ✅ CLOSED 2026-09-17 — the security hole on production, and the one statement that closed it (`DEC-152`) — run and verified by the owner (`f / f / f`); `0103` carries it; kept as the record
 
 **`public._issue_check_in_code(uuid)` has been executable by `anon` since M2.** It is `SECURITY DEFINER`,
 checks no caller, and returns the **live check-in code** for any session id — and a session's id is in its

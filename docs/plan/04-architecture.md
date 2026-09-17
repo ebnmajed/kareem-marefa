@@ -169,6 +169,7 @@ src/
 │   │       │   ├── proposals/
 │   │       │   ├── sessions/[id]/schedule/
 │   │       │   ├── sessions/[id]/survey/     # SCR-064, survey results  [DEC-074, DEC-083]
+│   │       │   ├── surveys/ · surveys/[templateId]/  # SCR-065, survey templates [DEC-160]
 │   │       │   ├── venues/ · categories/ · companies/ · members/
 │   │       │   ├── moderation/{comments,photos,reports}/
 │   │       │   ├── scoring/ · recognition/
