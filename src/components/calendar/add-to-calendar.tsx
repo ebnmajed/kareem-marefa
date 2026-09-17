@@ -77,18 +77,16 @@ export async function AddToCalendar({
     }),
   }));
 
-  // TODO(sessions, wave 9 — request in docs/plan/notes/notify.md §W10.6):
-  // `CalendarMenu` renders exactly three items, so only the first day's Google
-  // and Outlook links reach it. The prop it needs is
-  // `groups?: { label, links: { google, outlook } }[]`, rendered flat at one
-  // group so a one-day menu keeps today's DOM. Until it lands, the ICS is the
-  // complete answer for a multi-day session and the two compose links open the
-  // first meeting.
+  // `groups` is `sessions`' prop (`cf87fe1`, my request in §W11.2): rendered
+  // flat unless there are at least two, so a one-day menu keeps today's DOM
+  // exactly — three items, no rule, no prefix. `links` stays the first day's,
+  // which is what that flat rendering reads.
   return (
     <CalendarMenu
       label={t("add.heading")}
       links={{ google: groups[0].links.google, outlook: groups[0].links.outlook, ics: icsUrl }}
       labels={{ google: t("add.google"), outlook: t("add.outlook"), apple: t("add.apple") }}
+      groups={groups.map((group) => ({ label: group.label, links: { google: group.links.google, outlook: group.links.outlook } }))}
       placement={placement}
       variant={variant}
     />

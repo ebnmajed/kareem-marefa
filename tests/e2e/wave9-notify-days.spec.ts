@@ -150,6 +150,26 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `wave9-notify-${name}.png`), fullPage: true });
 }
 
+/**
+ * ★ AN ELEMENT CAPTURE, and the reason it is not a full page.
+ *
+ * The first cut of this file took `fullPage` twice on the SAME screen under two
+ * names, so `calendar-one-day.png` and `calendar-three-days.png` came out
+ * byte-identical — and the one-day card, the whole point of the second one, sat
+ * exactly where a full-page capture paints the phone's tab bar. A reviewer
+ * could not see the thing the file was named after. An element capture is
+ * narrower, never crossed by the bar, and cannot silently be the same image as
+ * its neighbour.
+ */
+async function captureOf(page: Page, locator: ReturnType<Page["locator"]>, name: string) {
+  mkdirSync(SHOTS, { recursive: true });
+  expect(page.viewportSize(), `${name} must be reviewed at 390 px`).toEqual(PHONE);
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(locator).toBeVisible();
+  await locator.scrollIntoViewIfNeeded();
+  await locator.screenshot({ path: join(SHOTS, `wave9-notify-${name}.png`) });
+}
+
 /** A confirmed seat, and a synced calendar entry for every day of the session.
  *  The Google call itself is the worker's and is stubbed, so the rows stand in
  *  for what `calendar_upsert` writes. */
@@ -187,7 +207,7 @@ test("SCR-025 — a three-day workshop is THREE entries, each naming its own day
   for (const label of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
     await expect(page.getByText(label, { exact: false }).first()).toBeVisible();
   }
-  await capture(page, "calendar-three-days");
+  await captureOf(page, page.locator('section[aria-labelledby="synced-heading"] ul'), "calendar-three-days");
 });
 
 test("★ SCR-025 — the ONE-day session beside it shows no day concept at all", async ({ context, page }) => {
@@ -198,8 +218,10 @@ test("★ SCR-025 — the ONE-day session beside it shows no day concept at all"
   // One entry, one title, and nothing that says «اليوم …» anywhere near it.
   const row = page.locator("li", { hasText: oneDayTitle });
   await expect(row).toHaveCount(1);
-  await expect(row).not.toContainText("اليوم الأول");
-  await capture(page, "calendar-one-day");
+  await expect(row).not.toContainText("اليوم");
+  // The card ALONE, so the claim in the file's name is the thing a reviewer
+  // sees — and so it can never again be the same image as its neighbour.
+  await captureOf(page, row, "calendar-one-day");
 });
 
 test("SCR-012 — the add-to-calendar action on a three-day workshop", async ({ context, page }) => {
@@ -210,9 +232,18 @@ test("SCR-012 — the add-to-calendar action on a three-day workshop", async ({ 
   const add = page.getByRole("button", { name: "أضِف إلى تقويمك" }).first();
   await expect(add).toBeVisible();
   await add.click();
-  // The ICS download is the complete answer for a workshop: one file, one
-  // VEVENT per day, folded at 75 octets (REQ-CAL-001).
-  await expect(page.getByRole("menuitem", { name: /Apple|ICS|تقويم/ }).first()).toBeVisible();
+
+  // ★ ONE PAIR PER DAY. Google and Outlook take one date each, so a three-day
+  // workshop has three pairs — a flat menu of three items would add day 1 and
+  // silently drop the rest, which is what the first capture of this showed.
+  for (const day of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
+    await expect(page.getByRole("menuitem", { name: `${day} · تقويم Google` })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: `${day} · تقويم Outlook` })).toBeVisible();
+  }
+  // And ONE ICS item at every number of days: the file already carries a
+  // VEVENT per day, so splitting it would hand the member three overlapping
+  // downloads (REQ-CAL-001).
+  await expect(page.getByRole("menuitem", { name: "تقويم Apple" })).toHaveCount(1);
   await capture(page, "add-to-calendar");
 });
 
@@ -271,7 +302,14 @@ test("★ REQ-SES-009 — moving DAY 2 tells the member, and the notice names th
   await page.goto("/ar/app/me/notifications");
   const notice = page.locator("li", { hasText: workshopTitle }).first();
   await expect(notice).toBeVisible();
-  await capture(page, "notice-day-2");
+
+  // ★ THE CARD ITSELF SAYS WHICH DAY AND WHAT MOVED. Asserting only the
+  // payload is how the first run of this case went green over a card that read
+  // «تغيّرت تفاصيل جلسة حجزت فيها» and nothing else — true, and useless to a
+  // member of a three-day workshop (REQ-SES-009, 08 §3.3).
+  await expect(notice).toContainText("اليوم الثاني");
+  await expect(notice).toContainText("الموعد");
+  await captureOf(page, notice, "notice-day-2");
 
   // And the payload says WHICH day, which is the whole of REQ-SES-009 here.
   const { rows } = await db.query<{ payload: { changes: Array<{ field: string; day?: number; days?: number }> } }>(
