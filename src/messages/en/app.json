@@ -28,6 +28,7 @@
       "staffSection": "Administration",
       "proposeShort": "Propose",
       "toastClose": "Dismiss notification",
+      "toastLabel": "Notification",
       "primaryNav": "Primary navigation"
     },
     "home": {
