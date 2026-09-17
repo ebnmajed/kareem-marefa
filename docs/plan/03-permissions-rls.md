@@ -617,20 +617,44 @@ Manual marking is a separate `assert_fresh_admin()`- or moderator-gated RPC requ
 | `task_completions` | P7 + presenter | P3 | P3 | P3 | |
 | `task_form_responses` | §5.5b | P3 | P3 | — | |
 
-#### §5.5a — `materials`, read — the phase gate
+#### §5.5a — `materials`, read — the phase gate, the day scope, and the proposal branch
 ```sql
 create policy "materials_read" on materials for select to authenticated
   using (org_id = auth_org_id()
          and removed_at is null
-         and (phase = 'before'
-              or exists (select 1 from sessions s
-                          where s.id = materials.session_id
-                            and s.state in ('completed','archived'))
-              or is_presenter_of(session_id)
-              or is_staff()));
+         and (
+           (session_id is not null and (
+             phase = 'before'
+             or exists (select 1 from sessions s where s.id = materials.session_id
+                         and s.state in ('completed','archived'))
+             or (session_day_id is not null
+                 and exists (select 1 from session_days d where d.id = materials.session_day_id
+                             and d.ends_at <= now()))
+             or is_presenter_of(session_id)
+           ))
+           or (proposal_id is not null and is_proposal_owner_of(proposal_id))
+           or is_staff()
+         ));
 ```
-`REQ-MAT-006` in the database: a `بعد الجلسة` material is invisible to members until the session
-completes. Doing this in the DAL alone would leave the row reachable through any other read path.
+*Corrected under `DEC-161` (wave 10), from `content`'s note: this section described the pre-`0053`,
+pre-`0116` policy until then.* `REQ-MAT-006` in the database, as amended by `DEC-121`: a `بعد الجلسة`
+material releases when **its own scope** ends — the session's `completed` / `archived` state for a
+session-scoped material, or its own day's `ends_at` for a day-scoped one, whichever comes first.
+`REQ-PRO-004`: a proposal's own material (`session_id` null) is visible to its proposer, an accepted
+co-presenter, or staff — never to a plain member — until `0053`'s carry-over reassigns it on
+publication. Doing this in the DAL alone would leave the row reachable through any other read path.
+
+**The same gate, three more times.** `material_versions_read`, `material_pages_read` and the
+`material-pages` bucket's `material_pages_storage_read` each carry an **independent copy** of this
+predicate (`0037`; the day-scope clause by `0116`; the proposal branch and `is_staff()` at the top
+level by `0129`). A viewer's read reaches `materials` **and** one of these, so a row readable whose
+dependant is not is the defect this section exists to prevent (`0054`) — and was, until `0129`, exactly
+what happened to a proposal's material: all three `inner join`ed `sessions`, so for a row whose
+`session_id` is null **no branch was reached, `is_staff()` included**, and an admin reviewing a
+proposal could not open the file the proposer attached. The proposal branch on the two
+`material_pages*` policies is unreachable by construction (carry-over clears `proposal_id` before any
+render job can write a page row) and is written anyway, so the three read as one gate; a test proves
+it dead against a synthetic page row rather than an empty table.
 
 **`allow_download` is not enforced here** — RLS gates the *row*, not the *file*. The file lives in
 Storage, and download control is a bucket policy plus a signed-URL decision (§6), because that is
