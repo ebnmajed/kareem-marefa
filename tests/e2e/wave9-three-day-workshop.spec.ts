@@ -203,6 +203,20 @@ async function setClock(running: number) {
       const start = running >= dayIds.length ? `now() - interval '${(dayIds.length - i) * 24 + 3} hours'` : `now() + interval '${offsetDays} days' - interval '10 minutes'`;
       await db.query(`update public.session_days set starts_at = ${start}, ends_at = ${start} + interval '1 hour' where id = $1`, [id]);
     }
+    // ★ What is already RECORDED ages with its day. A check-in stores the window
+    // it was made in (REQ-CHK-013's overlap rule compares those windows), and a
+    // real day 1 is a whole day older by the time day 2 runs. Moving the days
+    // and leaving yesterday's check-ins stamped «today» makes day 2's window
+    // overlap the member's own day-1 attendance — the first run of this spec was
+    // refused `overlap` with its own session for exactly that. Time passing
+    // moves both, so the clock moves both.
+    await db.query(
+      `update public.check_ins c
+          set session_window = tstzrange(d.starts_at, d.ends_at, '[)'), arrived_at = d.starts_at + interval '5 minutes'
+         from public.session_days d
+        where d.id = c.session_day_id and c.session_id = $1`,
+      [sessionId],
+    );
     await db.query("commit");
   } catch (e) {
     await db.query("rollback");
@@ -461,12 +475,16 @@ test("7 · after the last day the real worker completes the session — and only
   await page.goto("/ar/app/me/points");
   await settled(page);
   await expect(page.getByText("لم تُحتسب نقاط الحضور")).toHaveCount(0);
-  await expect(page.getByText(TITLE).first()).toBeVisible();
+  // Scoped to the history's rows: the page's session FILTER holds the same title
+  // in a hidden <option>, which is what an unscoped getByText finds first.
+  const award = page.locator("li").filter({ hasText: TITLE }).filter({ hasText: "تسجيل حضور مؤكَّد" });
+  await expect(award).toHaveCount(1); // three days attended, ONE award
+  await expect(award).toContainText("+20");
   await capture(page, "6-points-all-three");
 
   await page.goto("/ar/app/me/certificates");
   await settled(page);
-  await expect(page.getByText(TITLE).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator("main").getByText(TITLE).first()).toBeVisible({ timeout: 60_000 });
   await capture(page, "8-certificate");
 
   await signIn(context, email.khalid);
@@ -478,5 +496,5 @@ test("7 · after the last day the real worker completes the session — and only
 
   await page.goto("/ar/app/me/certificates");
   await settled(page);
-  await expect(page.getByText(TITLE)).toHaveCount(0);
+  await expect(page.locator("main").getByText(TITLE)).toHaveCount(0);
 });
