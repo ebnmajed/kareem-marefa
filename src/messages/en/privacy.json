@@ -5,7 +5,7 @@
       "intro": "Export everything the platform holds about you, and request that your account be deactivated. The privacy policy says what is collected, why, and for how long.",
       "policyLink": "Read the privacy policy",
       "exportTitle": "Export my data",
-      "exportIntro": "One machine-readable file with your profile, RSVPs, check-ins, comments, photos, the ratings you wrote, your points ledger and your certificates.",
+      "exportIntro": "One machine-readable file with your profile, RSVPs, check-ins, comments, photos, the ratings you wrote, your points ledger and your certificates. It also lists the sessions whose survey you answered — not your answers, since those are never stored under your name.",
       "exportNote": "The file carries no other member's personal data. A comment you replied to appears by its author's display name alone, with no address and no id.",
       "exportRequest": "Request the export",
       "exportDownload": "Download the file",
