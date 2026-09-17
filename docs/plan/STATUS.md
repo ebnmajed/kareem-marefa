@@ -135,7 +135,7 @@ and its delivery-log cases do not change at all.
 | ✅ | **The two post-merge confirmations** | — | the table above |
 | ✅ | **Who builds the survey — decided before the map**: `event`, end to end, on opus (`DEC-160` §2) | Step 0 | the alternatives weighed against the code: a split puts a seam through `REQ-SUR-009`'s invariant |
 | ✅ | **Step 0**: the wave-10 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated from one generator, the shared block identical in all ten (`event`'s was nine waves stale); `DEC-160`; this block; `01` corrected for `DEC-124` and for §3's storage contract; SCR-065 and its two routes in `04` and `09` | Step 0 | `trace` — `313 requirements · 73 entities · 147 stories · no gaps` |
-| ☐ | **`ui/reorderable-list`** (row L1) — built while the four plan | | |
+| ✅ | **`ui/reorderable-list`** (row L1) — built while the four plan | `d260144` | 13 cases: taps alone; every ▲▼ named and **described by the row it moves**; the ends inert by `aria-disabled`, never `disabled`, so a row moved to the top by keyboard keeps its focus; one polite sentence naming the new position in Western digits, the name in `<bdi>`; axe-clean. tsc clean · lint 0 errors · `ui-lint` held · 321 `ui/` cases · 1,052 unit cases. ★ The gallery gained its one client island for it, so **the `/ar/ui` visual pair moves by exactly that section** — the three frozen pairs must still read 0.000 % |
 
 ★ **Found while reading for Step 0, each now someone's row:** `02`, `03` §8.2, `11` and `12` contain **no trace
 of the survey** although `DEC-074` and `DEC-094` list them as changed (L2) · **there are no mail goldens**,
@@ -155,7 +155,7 @@ closes at *held*.
 | # | From → to | The seam | What must not change | State |
 |---|---|---|---|---|
 | 1 | lead → `event` | **The survey's storage contract (`DEC-160` §3).** `survey_responses` and `survey_answers` carry no member, check-in, rating or timestamp column and no foreign-key path to a member; «one member, one response» is `survey_participations (survey_id, member_id)`, no timestamp; the response is written by a jittered job whose payload is the survey and the answers and whose key is never derived from the member; no client role selects a response or an answer; one definer function releases results under the withhold, for the screen and the CSV; `ratings` holds no instant finer than a day | a session with no survey: the rate screen, the rating's insert, its points job and its audit — all as today | **published** — `DEC-160` §3, `01` `REQ-SUR-003`, `004`, `009` |
-| 2 | lead → `event`, `notify` | **`src/components/ui/reorderable-list.tsx`** — ▲▼ on every row, named by the row they move, taps alone, a live announcement; controlled. Props in `ui/index.ts` on day one. No drag | — | ☐ L1 |
+| 2 | lead → `event`, `notify` | **`src/components/ui/reorderable-list.tsx`** — ▲▼ on every row, named by the row they move, taps alone, a live announcement; controlled (`onReorder(nextKeys, { key, from, to })`); `getName` is the row's accessible name and is never empty; `renderActions` for a row's own controls; `size="sm"` for a nested or dense list. Its props are functions, so it lives inside a client component (`DEC-159`). No drag | — | **landed** `d260144` — both consumers told; held when SCR-065's and the editor's own specs reorder with `click()` alone |
 | 3 | lead → all | **Additive; `main`'s app and worker are correct on the new schema.** Three named hazards, each answered in its owner's plan: a block template's row on the old worker's string path; a coarsened rating under `main`'s app, which writes both instants; a second certificate for one member | every screen and job of `main` on the wave's migrations | ☐ drafted at sync 1 (row L7) |
 | 4 | `notify` → lead → `notify` | **Pin, then move, then build.** The 25 rendered messages committed from `main`'s renderer; then the lead scaffolds `packages/mail-runtime` and moves `render.ts` + `templates.ts` mechanically; then the blocks. `renderEmail(input)` keeps its signature | the pinned files, byte for byte, on every later commit | ☐ N1 → L3 → N2 |
 | 5 | `notify` → all | `public.notify()` and every `MSG-*` key unchanged; an org with no block template renders the pinned bytes | the ten existing notify and mail suites unmodified | ☐ |
@@ -170,7 +170,7 @@ closes at *held*.
 
 | # | Owner | Work | Serves | State |
 |---|---|---|---|---|
-| L1 | lead | `ui/reorderable-list`, its types in `ui/index.ts`, its test, its gallery entry | `REQ-DSG-028`, `REQ-SUR-002`, `REQ-NTF-009`, `SC 2.5.7` | ☐ |
+| L1 | lead | `ui/reorderable-list`, its types in `ui/index.ts`, its test, its gallery entry | `REQ-DSG-028`, `REQ-SUR-002`, `REQ-NTF-009`, `SC 2.5.7` | **closed** `d260144` |
 | L2 | lead | every `create table` / `alter table` of the wave, landed at sync 1 from the plans — the survey's tables, the template blocks, the certificates index — each with its `02` entity, `03` §8.2 rows, fixture rows and sweep coverage; **and the `02`, `03`, `11`, `12` text `DEC-074` / `DEC-094` never wrote** | `REQ-NFR-001`, invariants 3, 5, 6 | ☐ |
 | L3 | lead | `packages/mail-runtime` scaffolded (manifest, build order, the worker image, the lock through `npm run lockfile`) and `render.ts` + `templates.ts` moved mechanically — **after N1, with N1 as the proof** | `REQ-NTF-010` | ☐ blocked on N1 |
 | L4 | lead (custodian of `console`) | the rail's entry, the per-session link, the survey export's registration | `REQ-SUR-007`, `REQ-ADM-017` | ☐ on `event`'s request |
@@ -207,6 +207,15 @@ rows first · **(b)** the merge → Railway window matters for **mail**: `main`'
 multi-day sessions · **(c)** a second certificate row must not break `main`'s `issue_certificates` task or
 SCR-045 · **(d)** the bounce webhook needs `RESEND_WEBHOOK_SECRET` on Vercel — an owner's step. The table of
 files, the caller audit and the data-shaped rehearsal land here **before the PR is marked ready**.
+
+**Read on day one, from `main`'s worker as it stands — so each plan is reviewed against a fact, not a hope:**
+
+| `main`'s code | What the wave does under it | What happens |
+|---|---|---|
+| `send_notification.ts` reads `ctx.template` as `{subject, body}` and renders it on the string path | an org saves a **block** template before the worker redeploys | correct and undesigned — **provided the row's `body` is the generated text alternative in TEMPLATE form, its `{{bindings}}` intact**; a rendered text would send one member's name to everyone. `notify`'s plan must say which |
+| `rate/actions.ts` writes `edited_at` from JavaScript; the insert takes `submitted_at default now()` | a `before insert or update` trigger coarsens both | the trigger wins for `main`'s app too; nothing in `main`'s `src/` renders either instant (`ratings.ts:39` only maps it) |
+| `issue_certificates.ts` selects the one row `issue_certificate()` returns, then renders by id | a second certificate row for one member | unaffected — it never lists rows |
+| ★ graphile-worker `0.18` fetches `task_id = any(<the tasks this worker registers>)` (`dist/sql/getJobs.js:176`) | the new app enqueues `record_survey_response` and `send_test_email`, which `main`'s worker has never heard of | **the jobs wait, unfailed, for a worker that knows them.** A survey response is stored late — which is the point of it anyway; a test mail arrives when the worker redeploys. No job is lost and none is retried to death |
 
 ### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
 
