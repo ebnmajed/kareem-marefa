@@ -1,8 +1,10 @@
 import "server-only";
 import { z } from "zod";
+import { dayLabel, type DayLabelKey, type DayLabelT } from "@/components/sessions/day-label";
 import { formatNumber } from "@/components/sessions/numerals";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
-import { getAttendanceReport } from "@/lib/dal/checkin";
+import { getAttendanceReport, type AttendanceReport } from "@/lib/dal/checkin";
+import arSessions from "@/messages/ar/sessions.json";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionsForAdmin } from "@/lib/dal/sessions";
@@ -125,6 +127,77 @@ const RSVP_STATUS_AR: Record<string, string> = {
   late_cancelled: "إلغاء متأخر",
 };
 
+// ── The day column (DEC-119, REQ-SES-017, wave 9 row L5) ────────────────
+//
+// ★ AT ONE DAY THE FILE IS BYTE-IDENTICAL TO WAVE 7's. Same six headers, same
+// one row per member, read from the row's flat summary fields — which
+// `getAttendanceReport()` keeps with exactly the meaning they had. There is no
+// «اليوم» column with one value in it: a column that says «اليوم الأول» on
+// every line of every export the org has ever downloaded is noise, and a
+// spreadsheet somebody built on the six-column shape would shift by one.
+//
+// From two days the question the file answers changes — «who attended WHICH»
+// — so it is one line per member PER DAY, the day named in its own column,
+// and «أكمل الحضور» last: `session_attendance_complete()`'s answer (contract
+// 6), which is who gets the points and the certificate. Long, not wide: the
+// number of columns does not depend on the number of days, so one pivot works
+// for a two-day session and a ten-day one.
+//
+// The day's WORDS are contract 7's — `dayLabel()` over `sessions.days`, the
+// same «اليوم الأول · الأربعاء» the attendance screen shows. Exports are
+// Arabic-only (every header here is), so the translator is the structural one
+// `day-label.ts` was written to accept, over the Arabic source itself; no
+// next-intl in a DAL module, and no second copy of the ten ordinals.
+const DAY_MESSAGES = arSessions.sessions.days;
+const dayWords: DayLabelT = (key: DayLabelKey, values = {}) => {
+  const template = key.startsWith("ordinal.")
+    ? DAY_MESSAGES.ordinal[key.slice("ordinal.".length) as keyof typeof DAY_MESSAGES.ordinal]
+    : (DAY_MESSAGES[key as Exclude<DayLabelKey, `ordinal.${string}`>] as string);
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ""));
+};
+
+const methodLabel = (method: "code" | "manual" | null) => (method === "code" ? "رمز الحضور" : method === "manual" ? "تسجيل يدوي" : "");
+const rsvpLabel = (r: { rsvpStatus: string | null; isWalkIn: boolean }) =>
+  r.rsvpStatus ? (RSVP_STATUS_AR[r.rsvpStatus] ?? r.rsvpStatus) : r.isWalkIn ? "بلا حجز (حضور مباشر)" : "";
+
+/** The per-session attendance sheet — pure, so the one-day shape is pinned by a test. */
+export function attendanceSheet(report: Pick<AttendanceReport, "rows" | "days" | "timeZone">, timeZone: string): { headers: string[]; rows: string[][] } {
+  if (report.days.length <= 1) {
+    return {
+      headers: ATTENDANCE_HEADERS_AR(timeZone),
+      rows: report.rows.map((r) => [
+        r.displayName ?? "",
+        rsvpLabel(r),
+        r.checkedIn ? "نعم" : "لا",
+        r.arrivedAt ? csvDateTime(r.arrivedAt, timeZone) : "",
+        methodLabel(r.method),
+        r.method === "manual" ? "نعم" : "لا",
+      ]),
+    };
+  }
+
+  // The weekday is read in the SESSION'S zone (contract 7, OQ-018) — a day of a
+  // workshop is a fact about the room; the arrival times stay on the org's
+  // clock, which is what the header beside them says.
+  const labels = new Map(report.days.map((d) => [d.id, dayLabel(d, report.timeZone, dayWords)]));
+  const [name, rsvp, ...rest] = ATTENDANCE_HEADERS_AR(timeZone);
+  return {
+    headers: [name, rsvp, "اليوم", ...rest, "أكمل الحضور"],
+    rows: report.rows.flatMap((r) =>
+      r.days.map((cell) => [
+        r.displayName ?? "",
+        rsvpLabel(r),
+        labels.get(cell.dayId) ?? "",
+        cell.checkedIn ? "نعم" : "لا",
+        cell.arrivedAt ? csvDateTime(cell.arrivedAt, timeZone) : "",
+        methodLabel(cell.checkedIn ? cell.method : null),
+        cell.checkedIn && cell.method === "manual" ? "نعم" : "لا",
+        r.attendanceComplete ? "نعم" : "لا",
+      ]),
+    ),
+  };
+}
+
 /**
  * SCR-044's own export (`REQ-CHK-012`: "exportable as CSV with the
  * manual-mark flag intact"). Admin only — exports sit outside a
@@ -139,17 +212,9 @@ export async function exportAttendanceCsv(locale: string, sessionId: string): Pr
   const [report, prefs] = await Promise.all([getAttendanceReport(locale, sessionId), getOrgPrefs(locale)]);
   if (!report) return null;
 
-  const rows = report.rows.map((r) => [
-    r.displayName ?? "",
-    r.rsvpStatus ? (RSVP_STATUS_AR[r.rsvpStatus] ?? r.rsvpStatus) : r.isWalkIn ? "بلا حجز (حضور مباشر)" : "",
-    r.checkedIn ? "نعم" : "لا",
-    r.arrivedAt ? csvDateTime(r.arrivedAt, prefs.timeZone) : "",
-    r.method === "code" ? "رمز الحضور" : r.method === "manual" ? "تسجيل يدوي" : "",
-    r.method === "manual" ? "نعم" : "لا",
-  ]);
-
+  const sheet = attendanceSheet(report, prefs.timeZone);
   await auditExport(locale, "attendance", "session", sessionId);
-  return { csv: buildCsv(ATTENDANCE_HEADERS_AR(prefs.timeZone), rows), sessionTitle: report.sessionTitle };
+  return { csv: buildCsv(sheet.headers, sheet.rows), sessionTitle: report.sessionTitle };
 }
 
 // ── SCR-061 — org-wide exports (REQ-ADM-017) ─────────────────────────────
