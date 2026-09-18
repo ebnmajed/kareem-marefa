@@ -143,6 +143,12 @@ export type SubmitOutcome =
 // the mock was more correct than the code. The two readers below are the only
 // place the two spellings meet, and `tests/unit/survey-dal-envelopes.test.ts`
 // feeds them the database's actual keys.
+//
+// ★ ALL FOUR readers go through a mapper, including the two whose keys happen
+// to be single words today (`missing`, `invalid`, `reason`). Those are correct
+// by luck, not by the rule — and the rule is worth more than the four lines a
+// cast would save: the next key somebody adds will be two words, and the next
+// reader will copy whatever is next to it.
 
 type Envelope = Record<string, unknown> & { status: string };
 
@@ -269,7 +275,9 @@ export async function detachSurvey(locale: string, sessionId: string): Promise<D
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("survey_detach", { p_session: sessionId });
   if (error) throw rpcError(error, "survey_detach");
-  return data as DetachOutcome;
+
+  const row = (data ?? { status: "no_survey" }) as Envelope;
+  return { status: row.status as DetachOutcome["status"] };
 }
 
 type ResultsRow = {
@@ -358,7 +366,16 @@ export async function submitSurveyResponse(locale: string, sessionId: string, an
     })),
   });
   if (error) throw rpcError(error, "submit_survey_response");
-  return data as SubmitOutcome;
+
+  const row = (data ?? { status: "no_survey" }) as Envelope;
+  if (row.status === "invalid") {
+    const ids = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
+    return { status: "invalid", missing: ids(row.missing), invalid: ids(row.invalid) };
+  }
+  if (row.status === "not_eligible") {
+    return { status: "not_eligible", reason: row.reason as "not_checked_in" | "window_closed" };
+  }
+  return { status: row.status as "ok" | "no_survey" | "empty" | "already_answered" };
 }
 
 // ── contract 6 — the CSV's rows, for the lead's audited export ─────────────

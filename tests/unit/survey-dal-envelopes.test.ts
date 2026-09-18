@@ -28,7 +28,7 @@ vi.mock("@/lib/dal/session", () => ({
   }),
 }));
 
-const { attachSurvey, saveSurveyTemplate } = await import("@/lib/dal/surveys");
+const { attachSurvey, detachSurvey, saveSurveyTemplate, submitSurveyResponse } = await import("@/lib/dal/surveys");
 
 const TEMPLATE = { templateId: null, title: "قالب", questions: [{ kind: "free_text" as const, prompt: "س", required: false, options: [] }] };
 
@@ -69,6 +69,46 @@ describe("attachSurvey — the same rename, one screen away from being live", ()
     for (const status of ["already_attached", "template_empty"] as const) {
       rpc.mockResolvedValue({ data: { status }, error: null });
       expect(await attachSurvey("ar", "33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444")).toEqual({ status });
+    }
+  });
+});
+
+// ★ The other two readers. Their keys are single words today — `missing`,
+// `invalid`, `reason` — so a cast would be correct BY LUCK. These cases make
+// the rule one rule: the next key somebody adds will be two words, and the next
+// reader will copy whatever is beside it.
+describe("submitSurveyResponse — the member's own envelope", () => {
+  const answers = [{ questionId: "55555555-5555-4555-8555-555555555555", scaleValue: 4 }];
+  const submit = () => submitSurveyResponse("ar", "77777777-7777-4777-8777-777777777777", answers);
+
+  it("carries the refused question ids through as arrays the form can index by", async () => {
+    rpc.mockResolvedValue({ data: { status: "invalid", missing: ["66666666-6666-4666-8666-666666666666"], invalid: [] }, error: null });
+    expect(await submit()).toEqual({ status: "invalid", missing: ["66666666-6666-4666-8666-666666666666"], invalid: [] });
+  });
+
+  it("an `invalid` with neither list still gives the form two arrays, never undefined", async () => {
+    rpc.mockResolvedValue({ data: { status: "invalid" }, error: null });
+    expect(await submit()).toEqual({ status: "invalid", missing: [], invalid: [] });
+  });
+
+  it("keeps `not_eligible`'s reason, which is the sentence the member reads", async () => {
+    rpc.mockResolvedValue({ data: { status: "not_eligible", reason: "window_closed" }, error: null });
+    expect(await submit()).toEqual({ status: "not_eligible", reason: "window_closed" });
+  });
+
+  it("passes the four plain outcomes through by name", async () => {
+    for (const status of ["ok", "no_survey", "empty", "already_answered"] as const) {
+      rpc.mockResolvedValue({ data: { status }, error: null });
+      expect(await submit()).toEqual({ status });
+    }
+  });
+});
+
+describe("detachSurvey", () => {
+  it("passes its three outcomes through by name", async () => {
+    for (const status of ["ok", "no_survey", "has_responses"] as const) {
+      rpc.mockResolvedValue({ data: { status }, error: null });
+      expect(await detachSurvey("ar", "77777777-7777-4777-8777-777777777777")).toEqual({ status });
     }
   });
 });
