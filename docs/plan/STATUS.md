@@ -77,7 +77,36 @@ or it does not exist.*
 
 ## ★★ WAVE 10 — IN PROGRESS on `wave-10/survey-email` — the survey and the email studio, with three carried fixes (`DEC-160`)
 
-### ★★★ WHERE THIS STOPPED — 2026-09-17, ~16:55 (+03) — the owner slept the laptop mid-wave; ★ RESUMED 2026-09-18 in the same session, working down the list below (kept as the record and as the fallback)
+### ★★★ WHERE THIS STOPPED — 2026-09-18 ~11:00 (+03): the owner's weekly usage limit ran out mid-wave; read this and nothing else first
+
+**Since the 2026-09-17 stop (the block below it is kept as the record):**
+
+- ★ **`event`'s track is closed on a build.** A REAL defect found by the rebuilt run — the template editor
+  redirected to `/app/admin/surveys/undefined` because the DAL CAST the RPC envelope (`template_id`) to the DTO
+  (`templateId`) — fixed at `c34e08b` with `tests/unit/survey-dal-envelopes.test.ts` feeding the database's actual
+  keys (the component test had mocked the camelCase shape the real stack never produced). On a production build of
+  `c34e08b`: **its three specs plus the two untouched rate specs, 42 of 42 on both projects**; eleven captures under
+  `.qa-shots/rtl/wave10-event-*.png`. ☐ **Open the eleven in bands** (the lead opened four: `templates-empty`,
+  `templates-editor-moved`, `survey-none`, `survey-withheld`). ☐ Nit sent, not done: `submitSurveyResponse` and
+  `detachSurvey` still cast their envelopes — correct by luck, make all four readers use the mapped path.
+- ★ **The survey demonstrable RAN: `tests/e2e/wave10-demo-survey.spec.ts`, 8 of 8, real worker** (`E2E_WORKER=1`,
+  worker built in the worktree with `npm run worker:build`, run by scratchpad `run-worker.sh` with `APP_URL` set).
+  Eight captures `wave10-demo-survey-{1-template-moved,2-attached,3-rate-and-survey,4-receipt,5-withheld,6-presenter-refused,7-results,8-no-survey}.png`.
+  ☐ **Open the eight in bands** — none opened yet.
+- ★ **A 390 px defect seen in `templates-editor-moved`, not yet fixed — the lead's, in `ui/reorderable-list`:** the
+  primitive renders ▲▼ and `renderActions` in a SIDE column of every row, which at 390 px takes ~120 px from a
+  card-shaped item; a question card is ~205 px wide and the nested option inputs truncate («مناس»). `09` SCR-065
+  says the arrows sit «at the start edge of its HEADER». Fix: a `controls: "side" | "inline"` prop (default `side`,
+  unchanged for every consumer); with `inline` the row renders only the item and `renderItem`'s context carries
+  `controls` for the consumer to place in its card header. Then `event` uses `inline` for questions (options stay
+  `side`), and `notify`'s block list decides for itself. One test each; re-capture `templates-editor-moved`.
+- `notify` landed the editor's checks — `a935df3`, `c602d70` — and had `checks-panel.tsx`, `render.ts` and the two
+  `notifications.json` dirty at the stop; **its next-action order is unchanged** from the block below (panes →
+  panel with `dropped` carried on `RenderedEmail` → forced dark → N5 → N6 → `{{url}}` → N8). `designer` re-read
+  `159cd6e`: approved; its one gap (`dropped` dead-ends before `RenderedEmail`) and three notes were sent to `notify`.
+- Worktree `wt-verify` is built at `c34e08b`; the real worker may still be running from it (`pkill -f "worker/dist/index.js"` if so).
+
+### (the 2026-09-17 stop, kept) — the owner slept the laptop mid-wave; ★ RESUMED 2026-09-18 in the same session
 
 **The state in one paragraph.** Branch `wave-10/survey-email`, draft **PR #27**, pushed. Migrations **`0123`–`0138`
 are promoted, applied to the LOCAL database and committed**; `supabase/proposed/` is empty. **The survey is built end
@@ -249,7 +278,7 @@ closes at *held*.
 | L3 | lead | `packages/mail-runtime` scaffolded (manifest, build order, the worker image, the lock through `npm run lockfile`) and `render.ts` + `templates.ts` moved mechanically — **after N1, with N1 as the proof** | `REQ-NTF-010` | **closed** `1a46fde` — two files moved with zero changed lines; every importer changed one specifier; the transports, the MIME encoder and the one reader of `RESEND_API_KEY` stay in the worker, and the package's tsconfig has no DOM lib and no Node types so `process`, `Buffer` or `document` fail its build. 2,061 unit and component tests; the worker builds; the lock changed by **nine additive lines**; the worker image copies and builds it in all four places. `tests/unit/mail-runtime-dist.test.ts` fails when a source file is newer than its built twin — tests import the package by name, which is `dist`, and a stale `dist` would make the pin pass against yesterday's renderer |
 | L4 | lead (custodian of `console`) | the rail's entry, the per-session link, the survey export's registration | `REQ-SUR-007`, `REQ-ADM-017`, `REQ-ADM-020` | **closed** `e97afdb`, `a7887f3`, `67e574c` (`DEC-163`) — «الاستبانات» in the rail for **both** staff roles, as SCR-065 and `assert_survey_staff()` already said; `REQ-ADM-020` amended to name the survey rather than be read around. The export is `GET /api/admin/exports/survey/[sessionId]`, beside attendance's: admin-only, audited with the session as subject, rows **already withheld** by `event`'s DAL. ★ **Not in `EXPORT_TYPES`** — that array is SCR-061's org-wide table and a per-session row there would link to nothing. ★ **Found by building it: `buildCsv()` did nothing about a cell a spreadsheet EXECUTES**, and the survey is the first export carrying a member's free text — a cell opening with `=` `+` `-` `@` is neutralised in the one builder, a signed number left alone (a named difference for the seven existing exports; the existing CSV test untouched and green). The per-session link is in both session lists: the admin's row menu and a column in the moderator's table, each named for its session and bidi-isolated |
 | L5 | lead | the two task registrations; the worker image if the package needs it | `11` | **one of two** — `record_survey_response` registered with `0137` (`a185ccb`); ☐ `send_test_email`, with N5's promotion. The image needed nothing beyond L3 |
-| L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | **half of one** — `tests/e2e/wave10-demo-survey.spec.ts` written, type-checked, linted, **never run** (`7a697f3`); ☐ run it; ☐ the email-studio demonstrable, not started |
+| L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | **the survey's: RAN, 8 of 8 with the real worker** on `c34e08b` (`tests/e2e/wave10-demo-survey.spec.ts`); ☐ its eight captures opened in bands; ☐ the email-studio demonstrable, not started (needs N4–N6) |
 | L7 | lead | ★ **the owner's migration order, DRAFTED AT SYNC 1** and finished at the freeze: what each file adds, the two windows, what `main`'s worker does job by job, the reads to run first · the mechanical caller audit · the data-shaped rehearsal | invariant 3 | ☐ |
 | L8 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | **through `0138`** — `0135` (lead), `0136` (`notify`), `0137`/`0138` (`event`); `supabase/proposed/` empty; ★ **the whole RLS suite alone on the chain through `0138`: 113 files · 1,156 passed · 4 todo · 0 failed**, then `0138`'s fail-closed line with its own mutation-checked file; `policy-diff` ✓ · `trace` no gaps. ☐ N5's SQL; ☐ the final clean `db:reset` |
 | L10 | lead (custodian of `branding`) | ★ **new at sync 1 (`DEC-161`): the org's logo, reachable by a mail client** — a storage policy admitting `anon` to exactly the object an active org's `brand_kits.logo_asset_id` names, and `GET /api/brand/[orgId]/logo` proxying it; 404 with no logo. Due before `notify`'s N6 | `REQ-NTF-014`, `REQ-DSG-021` | **closed** — `0126`, `src/lib/brand/public-logo.ts`, the route. `0080`'s shape for one more object: a policy, read as whoever asked, no signature, no `service_role`. **PNG or JPEG only** — a WebP logo stays closed because Outlook draws none, and the design falls back to the org's name. 7 cases, each asserting what stays **closed** as `anon`: any other asset of the org, a WebP logo, a replaced or cleared logo, a suspended org, writes and deletes. `org_public_logo()` answers the worker too, which is how the renderer chooses a logo band or a name. Held when `notify`'s N6 renders it |
