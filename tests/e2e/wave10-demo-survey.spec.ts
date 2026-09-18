@@ -30,11 +30,10 @@
 // three check-ins are rows — checking in is wave 7's and 9's subject, proven by
 // their own demonstrables.
 //
-// ★ STATE (2026-09-17, the lead): WRITTEN, TYPE-CHECKED AND LINTED — NOT YET RUN.
-// The session ended before a build was allowed to start. The next lead's first
-// run of it is `E2E_WORKER=1` on a production build in the verification
-// worktree with the real worker beside it (scratchpad `w9tools/run-worker.sh`
-// pattern, STATUS row L6). Expect locator fixes; the assertions are the brief's.
+// ★ RAN 2026-09-18: 8 of 8 on a production build of c34e08b in the verification
+// worktree, the REAL worker beside it (`E2E_WORKER=1`, `run-worker.sh` from the
+// worktree's `worker/dist` against local Supabase). The eight captures are in
+// `.qa-shots/rtl/` — opened by the lead in bands before the row closes.
 //
 // Captures — phone project's viewport, 390 × 844, RTL, opened by the lead:
 //   wave10-demo-survey-1-template-moved.png   wave10-demo-survey-2-attached.png
@@ -388,7 +387,9 @@ test("6 · DRAWN AT THREE — the third response releases the rate, the five bar
   await signIn(context, "admin");
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
   await expect(main(page).getByRole("heading", { name: "نسبة الاستجابة" })).toBeVisible();
-  await expect(main(page).getByText("3 استجابات")).toBeVisible();
+  // The Stat: «المجيبون» → «3 / 3» → «من 3 حاضرين مؤهلين» (REQ-SUR-008).
+  await expect(main(page).getByText("3 / 3")).toBeVisible();
+  await expect(main(page).getByText("من 3 حاضرين مؤهلين")).toBeVisible();
   await expect(main(page).getByRole("article", { name: Q_SCALE }).getByRole("progressbar")).toHaveCount(5);
   for (const answer of ["وقت أطول للنقاش", "أمثلة من قطاعنا", FORMULA]) await expect(main(page).getByText(answer, { exact: true })).toBeVisible();
   expect(await main(page).innerText()).not.toMatch(/[٠-٩]/);
