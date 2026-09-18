@@ -158,7 +158,7 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, member.presenter]);
   for (const who of ["sara", "khalid", "noura"] as Who[]) await checkIn(sessionId, who, 2);
 
-  plainSessionId = await session("جلسة بلا استبانة", 1);
+  plainSessionId = await session("أساسيات الأرشفة الرقمية", 1);
   await checkIn(plainSessionId, "sara", 1);
 });
 
