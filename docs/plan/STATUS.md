@@ -77,7 +77,7 @@ or it does not exist.*
 
 ## ★★ WAVE 10 — IN PROGRESS on `wave-10/survey-email` — the survey and the email studio, with three carried fixes (`DEC-160`)
 
-### ★★★ WHERE THIS STOPPED — 2026-09-17, ~16:55 (+03) — the owner slept the laptop mid-wave; read this and nothing else first
+### ★★★ WHERE THIS STOPPED — 2026-09-17, ~16:55 (+03) — the owner slept the laptop mid-wave; ★ RESUMED 2026-09-18 in the same session, working down the list below (kept as the record and as the fallback)
 
 **The state in one paragraph.** Branch `wave-10/survey-email`, draft **PR #27**, pushed. Migrations **`0123`–`0138`
 are promoted, applied to the LOCAL database and committed**; `supabase/proposed/` is empty. **The survey is built end
