@@ -104,6 +104,12 @@ or it does not exist.*
   `notifications.json` dirty at the stop; **its next-action order is unchanged** from the block below (panes →
   panel with `dropped` carried on `RenderedEmail` → forced dark → N5 → N6 → `{{url}}` → N8). `designer` re-read
   `159cd6e`: approved; its one gap (`dropped` dead-ends before `RenderedEmail`) and three notes were sent to `notify`.
+- ★ **After the stop message, two more units landed before the teammates went quiet:** `event` `6100486` (all four
+  envelope readers mapped, the nit closed) and `notify` `66402b3` + `53a4d23` (the checks panel with `dropped`
+  carried on `RenderedEmail`, `HEX` exactly six digits). ★ **`npm test` is RED at HEAD on two files that are
+  `notify`'s:** `tests/unit/messages-numerals.test.ts` refuses `ar/notifications.json` and `en/notifications.json`
+  — a plural using `#`; the fix is `{value}` with `formatNumber()` at the call site (`DEC-124`). **That is the first
+  thing to fix on resume**, then the panes.
 - Worktree `wt-verify` is built at `c34e08b`; the real worker may still be running from it (`pkill -f "worker/dist/index.js"` if so).
 
 ### (the 2026-09-17 stop, kept) — the owner slept the laptop mid-wave; ★ RESUMED 2026-09-18 in the same session
