@@ -36,8 +36,8 @@ export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, 
 // The editor and the preview build documents with these types; the worker and
 // the preview render them with the same compiler, which is the whole of
 // REQ-NTF-010's «there is exactly one mail renderer».
-export { SCHEMA_VERSION, BLOCK_TYPES, isBlockDocument, readBlocks } from "./blocks.js";
-export type { EmailBlock, EmailBlockDocument, BlockId, BlockType, ImageSource } from "./blocks.js";
+export { SCHEMA_VERSION, BLOCK_TYPES, isBlockDocument, readBlocks, readDocument } from "./blocks.js";
+export type { EmailBlock, EmailBlockDocument, BlockId, BlockType, ImageSource, DroppedBlock } from "./blocks.js";
 export { compileBlocks, interpolateIsolated, isolate } from "./compile.js";
 // The one sample set: the preview renders it and `tests/unit/mail-pinned/`
 // pins it, so an admin approves the bytes the suite records.
