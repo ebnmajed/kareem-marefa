@@ -11,6 +11,7 @@
         "dashboard": "Dashboard",
         "proposals": "Proposals",
         "sessions": "Sessions",
+        "surveys": "Surveys",
         "venues": "Venues",
         "categories": "Categories and tags",
         "companies": "Companies",
@@ -202,6 +203,8 @@
       "completeNote": "Ending early closes check-in immediately.",
       "createFromProposalLabel": "Create the session from <t>{title}</t>",
       "certificates": "Certificates",
+      "survey": "Survey",
+      "openSurvey": "Survey<hidden> — <t>{title}</t></hidden>",
       "attendance": "Attendance"
     },
     "venues": {
@@ -614,6 +617,10 @@
           "promoted": "Template added to the platform library",
           "retired": "Template retired",
           "unretired": "Template restored"
+        },
+        "survey": {
+          "attached": "Survey attached to a session",
+          "detached": "Survey detached from a session"
         }
       },
       "domains": {

@@ -19,49 +19,90 @@
 // 1.7 on body text.
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
+import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
+import { isBlockDocument, type DroppedBlock } from "./blocks.js";
+import { compileBlocks, type CompilePalette } from "./compile.js";
 
 export interface RenderInput {
   key: string;
-  /** The org admin's template, when one exists (REQ-NTF-007). */
-  override?: { subject: string | null; body: string | null } | null;
+  /** The org admin's template, when one exists (REQ-NTF-007).
+   *
+   *  ★ `blocks` is `notification_templates.blocks` (`0125`): **null is a STRING
+   *  template** — every row that existed before wave 10 — and the string path
+   *  below renders it byte for byte. A document takes the block path instead
+   *  (`REQ-NTF-009`). Additive and optional, so `renderEmail()`'s signature is
+   *  the one `main`'s worker calls (contract 4). */
+  override?: { subject: string | null; body: string | null; blocks?: unknown | null } | null;
   payload: Record<string, unknown>;
   member: { name: string | null; email: string };
   org: { name: string; timeZone: string };
   /** The org brand kit's light palette (06 §8.3's email-template leg, DEC-052),
    *  read from `public.brand_kit()` by the sender. Absent in a unit test, the
-   *  renderer keeps its neutral defaults — the identity override again. */
-  brand?: { fgBody: string; fgMuted: string; surface: string } | null;
+   *  renderer keeps its neutral defaults — the identity override again.
+   *
+   *  ★ The three-key shape is the one `main`'s worker sends and it keeps
+   *  working unchanged, which is why the pinned files do not move. The wider
+   *  shape carries what a DESIGN needs and `brand_kit()` has returned since
+   *  `0068`/`0093`: the nine tokens, and the logo's public URL (`0126`). */
+  brand?: LegacyBrand | FullBrand | null;
+  /** `0126` / contract 9: the public logo URL, when an ACTIVE org has one that
+   *  is PNG or JPEG. **Null renders the org's NAME as a heading** — a WebP logo
+   *  and an org with none both land here, and every design is correct with no
+   *  image. Ignored by the string path. */
+  logoUrl?: string | null;
+  /** The app's public origin, for the links a DESIGN carries — the footer's
+   *  preference link above all (`REQ-NTF-005`). The worker reads `APP_URL`; the
+   *  preview passes its own origin. ★ The string path does not read it, so its
+   *  bytes are unchanged (named difference 1 is a separate change). */
+  appUrl?: string | null;
+}
+
+/** What `main`'s worker sends, and what `render.ts` has taken since M3. */
+export interface LegacyBrand {
+  fgBody: string;
+  fgMuted: string;
+  surface: string;
+}
+
+/** One scheme of `public.brand_kit()`. */
+export interface BrandPalette {
+  canvas?: string;
+  surface?: string;
+  fgHeading?: string;
+  fgBody?: string;
+  fgMuted?: string;
+  edge?: string;
+  edgeStrong?: string;
+  spine?: string;
+  node?: string;
+  canvasRaise?: string;
+}
+
+export interface FullBrand {
+  light: BrandPalette;
+  dark?: BrandPalette;
 }
 
 export interface RenderedEmail {
   subject: string;
   text: string;
   html: string;
+  /**
+   * ★ Every row the mail LOST, so a caller can say which — empty on the string
+   * path, which drops nothing.
+   *
+   * `compileBlocks()` has always reported this and `renderEmail()` used to
+   * discard it, so the editor's checks panel had nothing to read and would
+   * have had to re-derive the drops with a second copy of `readDocument()`'s
+   * rules. Two validators disagreeing about which blocks survived is the exact
+   * failure the panel exists to prevent: an admin approving a mail that
+   * silently lost a row.
+   */
+  dropped: DroppedBlock[];
 }
 
 export class TemplateMissingError extends Error {}
 
-const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif`;
-
-// `latn` named explicitly: `ar`'s CLDR default is `arab`, the digits the owner
-// forbade everywhere (DEC-124).
-const numberFormat = new Intl.NumberFormat("ar-u-nu-latn");
-
-function formatNumber(value: number): string {
-  return numberFormat.format(value);
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-/** Resolve `a.b.c` against the payload. */
-function lookup(payload: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((node, part) => {
-    if (node && typeof node === "object" && part in (node as Record<string, unknown>)) return (node as Record<string, unknown>)[part];
-    return undefined;
-  }, payload);
-}
 
 /**
  * `{{path}}` substitution, and nothing else — no conditionals, no loops.
@@ -73,13 +114,7 @@ function lookup(payload: Record<string, unknown>, path: string): unknown {
  * blank reads better than a leaked template variable.
  */
 export function interpolate(template: string, payload: Record<string, unknown>): string {
-  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path: string) => {
-    const value = lookup(payload, path);
-    if (value === null || value === undefined) return "";
-    if (typeof value === "number") return formatNumber(value);
-    if (typeof value === "boolean") return value ? "نعم" : "لا";
-    return String(value);
-  });
+  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path: string) => formatValue(lookup(payload, path)));
 }
 
 export interface ChangedField {
@@ -260,20 +295,125 @@ function toParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
+// ★ EXACTLY the brand kit's own constraint — `~* '^#[0-9a-f]{6}$'` on every
+// one of its eighteen colour columns (`0068`, `0093`). `designer` caught the
+// first version admitting 5- and 7-digit strings: an assertion that stands in
+// for a database check and is LOOSER than it is a different rule wearing its
+// name, and the gap is where the next widening lands.
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** A hex colour, or the default. See `compilePalette()` for why. */
+function hex(value: string | undefined, fallback: string): string {
+  return value !== undefined && HEX.test(value) ? value : fallback;
+}
+
+/**
+ * The three values the shell has always used, from either brand shape.
+ *
+ * ★ For the three-key object — what `main`'s worker sends — this is the
+ * identity, which is why the pinned files do not move. For the wide one it
+ * takes the LIGHT scheme, and only when all three are present: the same guard
+ * `send_notification.ts` has applied since wave 4, so a half-filled kit falls
+ * to the neutral defaults rather than to a half-branded mail.
+ */
+function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefined {
+  if (!brand) return brand;
+  // ★ Asserted HERE and not only in `compilePalette()`, because these three
+  // reach the shell's own `style=` unescaped by BOTH paths — a test planting a
+  // `"><script>` in `fgBody` found the compiler guarded and the shell not.
+  // Every real value is an anchored-hex column of the brand kit, so this
+  // changes nothing that exists and closes what the type does not promise.
+  const three = "fgBody" in brand ? brand : brand.light ?? {};
+  return three.fgBody && three.fgMuted && three.surface
+    ? { fgBody: hex(three.fgBody, "#1a1a1a"), fgMuted: hex(three.fgMuted, "#6b6b6b"), surface: hex(three.surface, "#ffffff") }
+    : null;
+}
+
+/**
+ * The palette a DESIGN needs, which is wider than the shell's three.
+ *
+ * ★ `accent` is `fgHeading`, not a new token. `public.brand_kit()` has nine and
+ * none of them is a "primary": a dark fill with white text is the button the
+ * kit can already describe, and inventing a tenth token would be a brand-kit
+ * change (`branding`'s) for a contrast pair the kit already guarantees.
+ */
+/**
+ * ★ EVERY PALETTE VALUE IS ASSERTED TO BE A HEX COLOUR, and falls back to the
+ * default when it is not.
+ *
+ * `CompilePalette`'s fields reach fourteen `style=` and `bgcolor=` sites in
+ * `compile.ts` **unescaped** — which is safe today only because every source is
+ * an anchored-hex column of the brand kit or a literal in this file. That is a
+ * property of the callers, not of the type, and the day someone widens
+ * `CompilePalette` with a font name or a URL the hole opens silently.
+ *
+ * So it is checked here rather than trusted: a value that is not a hex colour
+ * is replaced by the default, and `tests/unit/mail-blocks.test.ts` asserts a
+ * planted non-hex never reaches the HTML.
+ */
+function compilePalette(brand: RenderInput["brand"]): CompilePalette {
+  const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
+  const legacy = legacyBrand(brand);
+  const fgHeading = hex(light.fgHeading, "#0b1220");
+  return {
+    fgBody: hex(legacy?.fgBody, "#1a1a1a"),
+    fgMuted: hex(legacy?.fgMuted, "#6b6b6b"),
+    surface: hex(legacy?.surface, "#ffffff"),
+    fgHeading,
+    edge: hex(light.edge, "#e6eaf0"),
+    accent: fgHeading,
+  };
+}
+
 /** Tables for layout, `dir="rtl"` on every cell, inline CSS only. */
-function toHtml(paragraphs: string[], org: string, brand?: RenderInput["brand"]): string {
+function toHtml(paragraphs: string[], org: string, brand?: LegacyBrand | null): string {
   const fgBody = brand?.fgBody ?? "#1a1a1a";
-  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
-  const surface = brand?.surface ?? "#ffffff";
   const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
   const rows = paragraphs
     .map((p) => `      <tr><td ${cell}>${escapeHtml(p).replace(/\n/g, "<br />")}</td></tr>`)
     .join("\n");
+  // The string path declares nothing new: these are the values M3 shipped.
+  return shell(rows, org, brand, { declareScheme: false, stack: FALLBACK_STACK });
+}
+
+/**
+ * The document both paths fill — the string path's paragraphs and the block
+ * compiler's rows land in the SAME shell, so a change to the frame reaches
+ * both and neither can drift.
+ *
+ * It is extracted rather than duplicated, and the 116 files under
+ * `tests/unit/mail-pinned/` are what proves the extraction moved not one byte
+ * of the string path's output.
+ */
+/** What differs between the two paths. The STRING path passes today's values,
+ *  so the 116 pinned files cannot move; the BLOCK path passes the designed
+ *  ones (D3 findings F1 and F4). */
+interface ShellOptions {
+  /** F1 — declare `light` so Apple Mail and Outlook.com stop auto-inverting.
+   *  An inverter that darkens a background it judges light while leaving an
+   *  explicitly-set text colour alone produces dark text on a dark card, which
+   *  is the failure a light-mode reviewer never sees. */
+  declareScheme: boolean;
+  /** F4 — the stack the cells declare. */
+  stack: string;
+}
+
+function shell(rows: string, org: string, brand: LegacyBrand | null | undefined, options: ShellOptions): string {
+  const fgBody = brand?.fgBody ?? "#1a1a1a";
+  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
+  const surface = brand?.surface ?? "#ffffff";
+  const cell = `dir="rtl" align="right" style="font-family:${options.stack};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
+  // The documented opt-out for Apple Mail and Outlook.com. Gmail on Android
+  // inverts regardless, which is what the `bgcolor` attributes in `compile.ts`
+  // are for.
+  const head = options.declareScheme
+    ? `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>`
+    : `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>`;
 
   return [
     `<!doctype html>`,
     `<html dir="rtl" lang="ar">`,
-    `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>`,
+    head,
     `<body dir="rtl" style="margin:0;padding:0;background:#f5f5f5;">`,
     `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:24px 0;">`,
     `    <tr><td dir="rtl" align="center">`,
@@ -322,12 +462,39 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   };
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
+
+  // ★ THE BRANCH, AND IT IS THE ONLY ONE (REQ-NTF-009, DEC-081). A row whose
+  // `blocks` is null — every row that existed before wave 10, and every org
+  // that has not touched its templates — falls through to the string path
+  // below, which is unchanged and which `tests/unit/mail-pinned/` pins byte for
+  // byte. The string path is removed only when every key has a design, in M13.
+  if (isBlockDocument(input.override?.blocks)) {
+    const compiled = compileBlocks(input.override.blocks, {
+      payload,
+      palette: compilePalette(input.brand),
+      logoUrl: input.logoUrl ?? null,
+      appOrigin: input.appUrl ?? null,
+      preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
+      org: input.org.name,
+    });
+    return {
+      subject,
+      // The same tail the string path writes, so a design and a default sign
+      // off identically.
+      text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
+      html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand), { declareScheme: true, stack: DESIGN_STACK }),
+      dropped: compiled.dropped,
+    };
+  }
+
   const body = interpolate(bodySource, payload);
   const paragraphs = toParagraphs(body);
 
   return {
     subject,
     text: `${paragraphs.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: toHtml(paragraphs, input.org.name, input.brand),
+    html: toHtml(paragraphs, input.org.name, legacyBrand(input.brand)),
+    // The string path drops nothing: there are no blocks to refuse.
+    dropped: [],
   };
 }

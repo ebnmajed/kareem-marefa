@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { rescopeMaterial, updateMaterialSettings } from "@/lib/dal/materials";
+import { getMaterialDownloadUrl, rescopeMaterial, updateMaterialSettings } from "@/lib/dal/materials";
 
 // REQ-MAT-005/006 — a presenter or admin toggles `allow_download`/`phase`
 // on a material they may manage. The RLS policy is the actual authority
@@ -28,4 +28,15 @@ export async function rescopeMaterialAction(locale: string, sessionId: string, m
   } catch (e) {
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
+}
+
+// REQ-PRO-004/wave 10 T1 — a proposal's own material has no viewer route to hang a download button
+// off (`app/sessions/[id]/materials/[materialId]/actions.ts`'s own `requestMaterialDownload` lives
+// under a route that assumes a session), so `ProposalMaterials` gets its own thin wrapper around the
+// same, already-generic `getMaterialDownloadUrl(locale, materialId)` — it does not care whether the
+// material belongs to a session or a proposal, and neither does this. A denial (RLS, or a version
+// that never finished uploading) comes back as `null`, same contract as the session-side action.
+export async function requestProposalMaterialDownload(locale: string, materialId: string): Promise<{ url: string | null }> {
+  const url = await getMaterialDownloadUrl(locale, materialId);
+  return { url };
 }

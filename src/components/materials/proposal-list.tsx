@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { getProposalMaterialsPageData } from "@/lib/dal/materials";
 import { formatNumber } from "@/components/sessions/numerals";
 import { UploadForm } from "@/components/materials/upload-form";
+import { ProposalDownloadButton } from "@/components/materials/proposal-download-button";
 
 interface ProposalMaterialsProps {
   proposalId: string;
@@ -18,9 +19,17 @@ interface ProposalMaterialsProps {
  *  Deliberately minimal compared to `Materials` (src/components/materials/list.tsx): a draft
  *  proposal's materials are never converted/rendered (finalize_material_upload defers the
  *  `convert_document` enqueue until carry-over, since there is no session_id yet to build a
- *  storage path from), so there is no viewer link and no phase/allow_download toggle to show —
- *  "obey every materials rule" (REQ-PRO-004) is a property of the shared upload/sniff/limit
- *  pipeline this reuses, not of this component's own UI. */
+ *  storage path from), so there is still no page-by-page viewer link (SCR-013 has no route for a
+ *  proposal) and no phase/allow_download toggle to show — "obey every materials rule" (REQ-PRO-004)
+ *  is a property of the shared upload/sniff/limit pipeline this reuses, not of this component's own
+ *  UI.
+ *
+ *  ★ Wave 10 T1: a direct download link IS shown once `material_versions_read`/`materials_storage_
+ *  read` admit the proposal's own owner and staff to the raw file (proposed/content/0001) — the
+ *  original file, unconditional on `allowDownload` (see `ProposalDownloadButton`'s own comment): the
+ *  only audience that ever reaches this component already passed `materials_read`'s proposal branch,
+ *  and both bypass that flag anyway. REQ-PRO-004's acceptance ("visible to admins") was true of the
+ *  row but not of the file until this. */
 export async function ProposalMaterials({ proposalId, locale }: ProposalMaterialsProps) {
   const t = await getTranslations("materials.list");
   const { materials, canManage, uploadLimits } = await getProposalMaterialsPageData(locale, proposalId);
@@ -56,6 +65,9 @@ export async function ProposalMaterials({ proposalId, locale }: ProposalMaterial
                 {t("openExternal")}
               </a>
             ) : null}
+
+            {/* Wave 10 T1 — pdf/image/audio kinds only (the two link kinds never have a version). */}
+            {m.currentVersionId ? <ProposalDownloadButton locale={locale} materialId={m.id} /> : null}
           </li>
         ))}
       </ul>

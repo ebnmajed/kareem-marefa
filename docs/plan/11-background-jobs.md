@@ -276,6 +276,29 @@ or neither exists.
 **Key:** `rate:{session_id}` · **Notes:** +1 h after completion, filtered at **send** time to
 members who have not yet rated — most ratings arrive in that first hour.
 
+#### `JOB-record_survey_response`
+**Serves:** `REQ-SUR-004`, `REQ-SUR-009` · `DEC-160` §3, `DEC-161` · **Added in wave 10**
+**Key:** ★ **none** · **Retry:** 5 · **Run at:** the submit's instant **plus a uniform 10 minutes … 4 hours**, computed in SQL
+**Notes:** the only writer of `survey_responses`. **The payload is the response's id, the survey and
+the answers — no member, no rating, no check-in, no request id.** The key is null on purpose:
+`enqueue_job()` always replaces on a key, so a key would collapse two members' responses into one, and
+any key derived from the member would be the leak in one string. Idempotent through the response id
+(`on conflict do nothing`), generated in SQL inside the submit. **It logs a count and never a payload**
+— a malformed payload is reported by the name of the missing field alone. `main`'s worker has never
+registered it, and graphile-worker fetches only the tasks a worker registers, so between a merge and
+the worker's redeploy these jobs **wait** rather than fail. A permanent failure leaves the
+participation and no response: the rate is one lower and nobody is told, because telling them would
+need a read that pairs a member with a response.
+
+#### `JOB-send_test_email`
+**Serves:** `REQ-NTF-011` · `DEC-161` · **Added in wave 10**
+**Key:** `testmail:{member_id}` — a double press replaces rather than duplicates
+**Notes:** «أرسل اختبارًا». Enqueued by `send_test_email(p_key, p_locale)`, which takes **no address**:
+the recipient is the calling admin's own, read inside the function. Renders the **saved** template
+(or the platform default) over the key's sample payload through the one renderer, writes an
+`email_deliveries` row, and sends through the live transport, so a test appears in the delivery log
+with its reason. «[اختبار] » is prefixed at the transport call, never in the renderer.
+
 #### `JOB-rsvp_nudge`
 **Key:** `nudge:{session_id}` · **Notes:** in-app only, **once**, at −7 d. §6 asks for reminders to
 non-responders; once and in-app is the restraint that keeps that from being the reason people mute
@@ -360,6 +383,8 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-issue_certificates` | `REQ-CRT-003`, `REQ-CRT-008` |
 | `JOB-materialise_font` | `REQ-DSG-017` |
 | `JOB-send_notification`, `JOB-schedule_reminders`, `JOB-send_reminder`, `JOB-rating_prompt`, `JOB-rsvp_nudge` | `REQ-NTF-002` … `REQ-NTF-008`, `REQ-RAT-007` |
+| `JOB-record_survey_response` | `REQ-SUR-004`, `REQ-SUR-009` |
+| `JOB-send_test_email` | `REQ-NTF-011` |
 | `JOB-enforce_retention`, `JOB-anonymise_members` | `REQ-NFR-012`, `REQ-PRF-007` |
 | `JOB-assert_storage_prefixes` | `REQ-TEN-003` |
 | `JOB-expire_impersonation` | `REQ-ADM-002` |

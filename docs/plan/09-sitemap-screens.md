@@ -53,6 +53,7 @@ thought about in the language it ships in. Every example string is **Arabic**.
     │   ├── /sessions                     SCR-042  management
     │   ├── /sessions/[id]/schedule       SCR-043  ★ schedule + publish
     │   ├── /sessions/[id]/survey         SCR-064  survey results (DEC-074)
+    │   ├── /surveys · /surveys/[templateId]   SCR-065  survey templates (DEC-160)
     │   ├── /sessions/[id]/attendance     SCR-044  attendance report
     │   ├── /sessions/[id]/certificates   SCR-045  review + release
     │   ├── /venues · /categories · /companies    SCR-046 · 047 · 048
@@ -430,6 +431,22 @@ free text** — a five-point distribution over four responses in a twelve-person
 people by inference against an attendance list the same admin can already see. Response rate is
 against **eligible attendees**. The CSV is **UTF-8 with BOM and Western digits** (`REQ-INT-010`).
 **`16` supersedes its visual notes:** §9.2 and §9.2a.
+**Amended under `DEC-160`:** the first state gains its action — «no survey on this session» offers
+«أضف استبانة من قالب», which attaches one of SCR-065's templates; the schedule form is not touched.
+Every number on the screen and in the CSV is in Western digits (`DEC-124`).
+
+### SCR-065 · `/app/admin/surveys` · `/app/admin/surveys/[templateId]` — survey templates
+**Purpose:** the questions an org asks again and again, written once. **Roles:** **مشرف المؤسسة** and
+**مُنظِّم**.
+**Serves:** `REQ-SUR-001`, `REQ-SUR-002`, `DEC-160`
+**Primary action:** «قالب جديد»; on the editor, «أضف سؤالًا».
+**States:** no templates yet · a list of templates with their question counts and how many sessions
+use each · the editor (title, ordered questions, each typed and required or optional).
+**Mobile:** one column; a question is a card with its ▲▼ at the start edge of its header.
+**RTL:** ▲▼ are vertical and do not mirror; a choice question's options are their own ordered list.
+**Note:** questions and options reorder **without dragging** through `ui/reorderable-list`
+(`REQ-DSG-028`'s rule). A template is **copied into a session's survey when attached**, so editing a
+template never rewrites a survey members have already answered.
 
 ### SCR-044 · `/app/admin/sessions/[id]/attendance`
 **Serves:** `REQ-CHK-008`, `REQ-CHK-012` · Reserved / confirmed / checked in / walked in /
@@ -583,6 +600,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-062 audit | `REQ-ADM-018`, `REQ-NFR-006` |
 | SCR-063 settings | `REQ-TEN-008`, `REQ-INT-006`, `REQ-MAT-008`, `REQ-MAT-009` |
 | SCR-064 survey results | `REQ-SUR-005`, `REQ-SUR-006`, `REQ-SUR-007`, `REQ-SUR-008` |
+| SCR-065 survey templates | `REQ-SUR-001`, `REQ-SUR-002` |
 | SCR-080 orgs | `REQ-ADM-001`, `REQ-TEN-001`, `REQ-TEN-002`, `REQ-TEN-006`, `REQ-NFR-014` |
 | SCR-081 create org | `REQ-TEN-002`, `REQ-TEN-004` |
 | SCR-082 domains | `REQ-TEN-007`, `REQ-AUT-003` |
@@ -667,6 +685,7 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | `app/admin/sessions/[id]/attendance` | SCR-044 | **M11** | Avatars earn their highest-value placement on the host view, not here |
 | `app/admin/sessions/[id]/certificates` | SCR-045 | **M12** | The three-step flow (`REQ-DSG-031`) |
 | `app/admin/sessions/[id]/survey` | SCR-064 | **M11** | New — `DEC-074`, `DEC-083` |
+| `app/admin/surveys` · `app/admin/surveys/[templateId]` | SCR-065 | **M11** | New — `DEC-160`; built in wave 10 |
 | `app/admin/venues` · `categories` · `companies` · `members` | SCR-046 … SCR-049 | **M11** | `categories` is renamed «التصنيفات والوسوم» and gains `REQ-DSC-008` |
 | `app/admin/moderation/{comments,photos,reports}` | SCR-050–052 | **M11** | Avatars join the queue's scope (`REQ-PRF-010`) |
 | `app/admin/scoring` · `recognition` | SCR-053 · SCR-054 | **M11** | `member-picker.tsx` here is promoted to `ui/combobox` in M9 |

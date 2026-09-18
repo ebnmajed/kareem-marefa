@@ -98,9 +98,13 @@ describe("a member of org A selecting with no org predicate", () => {
         // and reports (the fixture's are another member's), and M3's two
         // admin-only tables (templates, the delivery log — 0026), and a
         // session's certificate design, which staff alone read (0099,
-        // tests/rls/certificates-designs.test.ts). Their own per-policy tests
-        // prove the scoping; the sweep proves the wall.
-        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions", "session_certificate_designs"].includes(table)) {
+        // tests/rls/certificates-designs.test.ts), and the survey's six
+        // authoring tables, which staff alone read (0124, REQ-SUR-005 — a plain
+        // member reads a survey through one function, never a table). The
+        // survey's register and box are not here: with no grant at all they are
+        // refused above, which is isolation too (DEC-160 §3.3). Their own
+        // per-policy tests prove the scoping; the sweep proves the wall.
+        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions", "session_certificate_designs", "survey_templates", "survey_template_questions", "survey_template_options", "surveys", "survey_questions", "survey_question_options"].includes(table)) {
           expect(rows.some((r) => r.org_id === f.a.id)).toBe(true);
         }
       });

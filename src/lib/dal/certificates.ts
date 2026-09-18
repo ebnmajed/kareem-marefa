@@ -359,7 +359,15 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
     // A redesign re-pins only held rows, so the newest pin is the one a held
     // row carries; an issued row's is fixed. The first row in serial order is
     // what the kind was issued with.
-    const pinned = mine[0] ?? null;
+    //
+    // ★ wave 10 (DEC-160 §6): a member removed and re-added now holds TWO rows
+    // of one kind — a revoked one and its replacement — and the revoked one
+    // comes FIRST in serial order. «صدرت بـ» must name the design of the
+    // certificate the member is actually holding, so a live row wins; among
+    // live rows the rule above is unchanged, which is why this is identical to
+    // its old self on every session where nothing was revoked.
+    const live = mine.filter((c) => c.state !== "revoked");
+    const pinned = live[0] ?? mine[0] ?? null;
     const templateName = pinned ? (one(one(pinned.design_template_versions)?.design_templates ?? null)?.name ?? null) : null;
     return {
       kind,
@@ -390,11 +398,17 @@ export interface EligibleRecipient {
   memberId: string;
   name: string;
   kind: SessionCertificateKind;
-  /** ★ A checked-in member whose attendance certificate was revoked — a
-   *  removed-then-re-added check-in, which today gets no new certificate
-   *  (the fan-out fires once, at completion). Shown so staff SEE the gap
-   *  rather than finding it (my note, W8.g). */
+  /** ★ An eligible member holding no live certificate of this kind — every one
+   *  they have is revoked. Shown so staff SEE the gap rather than find it
+   *  (my note, W8.g). */
   revokedButPresent: boolean;
+  /** ★ wave 10 (DEC-160 §6): and whether that gap will be filled. A
+   *  certificate revoked because the check-in was REMOVED is replaced once
+   *  attendance is complete again; one revoked FOR CAUSE never is, and staff
+   *  have to be told which of the two they are looking at — the old single
+   *  sentence promised a replacement in both cases. Meaningless unless
+   *  `revokedButPresent`. */
+  revocationIsFinal: boolean;
 }
 
 /** SCR-045's «من يستحق» — exactly who `fan_out_certificates()` reads: active
@@ -409,7 +423,12 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
     // error — which, swallowed, rendered as «لا أحد بعد» over a full room.
     supabase.from("check_ins").select("member_id, members!check_ins_member_id_fkey(display_name)").eq("session_id", sessionId).is("removed_at", null),
     supabase.from("session_presenters").select("member_id, members(display_name)").eq("session_id", sessionId).eq("accepted", true),
-    supabase.from("certificates").select("id, member_id, kind, state").eq("session_id", sessionId),
+    // `revocation_cause` is designer/0001's. It is safe to name explicitly
+    // because the migration is PUSHED BEFORE THE MERGE (contract 3), so the
+    // column exists everywhere this code runs. A row revoked before that file
+    // carries null, and null is read as `for_cause` — final — exactly as
+    // `issue_certificate()` reads it.
+    supabase.from("certificates").select("id, member_id, kind, state, revocation_cause").eq("session_id", sessionId),
     // ★ REQ-SES-017 (wave 9, `0108`): «eligible» is the ONE definition the
     // fan-out and `issue_certificate()` use — `scoring`'s
     // `session_attendance_complete()`, read for staff through this RPC — never
@@ -433,7 +452,8 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   });
   const presenters = presenterRead.data;
   type Joined = { member_id: string; members: { display_name: string } | { display_name: string }[] | null };
-  const certsBy = (memberId: string, kind: string) => ((certs ?? []) as Array<{ member_id: string; kind: string; state: string }>).filter((c) => c.member_id === memberId && c.kind === kind);
+  type CertRow = { member_id: string; kind: string; state: string; revocation_cause: string | null };
+  const certsBy = (memberId: string, kind: string) => ((certs ?? []) as CertRow[]).filter((c) => c.member_id === memberId && c.kind === kind);
 
   const out: EligibleRecipient[] = [];
   for (const [kind, list] of [
@@ -442,11 +462,17 @@ export async function listEligibleRecipients(locale: string, sessionId: string):
   ] as const) {
     for (const r of (list ?? []) as Joined[]) {
       const mine = certsBy(r.member_id, kind);
+      const allRevoked = mine.length > 0 && mine.every((c) => c.state === "revoked");
       out.push({
         memberId: r.member_id,
         name: one(r.members)?.display_name ?? "",
         kind,
-        revokedButPresent: mine.length > 0 && mine.every((c) => c.state === "revoked"),
+        revokedButPresent: allRevoked,
+        // ★ One row revoked for cause is enough to make the gap permanent:
+        // `issue_certificate()` refuses while ANY for-cause row exists, so the
+        // screen must not promise a replacement that the database will refuse.
+        // Null reads as `for_cause`, matching the SQL's own coalesce.
+        revocationIsFinal: allRevoked && mine.some((c) => (c.revocation_cause ?? "for_cause") === "for_cause"),
       });
     }
   }

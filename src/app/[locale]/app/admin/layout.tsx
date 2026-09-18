@@ -60,10 +60,9 @@ import { AdminRail, type AdminRailChild, type AdminRailIconKey, type AdminRailIt
 // it into `AdminRailItem[]`, applying the SAME staff/admin filter at
 // whichever level the route actually sits — a leaf's own `adminOnly` gates
 // it directly; a group survives only if at least one child does (so a
-// moderator's rail regroups to exactly three top-level entries — «الجلسات»,
-// «الإشراف» with all three children, «السجل» — five reachable routes,
-// unchanged in substance from wave 6's five flat moderator-visible items,
-// per `REQ-ADM-020`).
+// moderator's rail regroups to exactly four top-level entries — «الجلسات»,
+// «الاستبانات» (wave 10), «الإشراف» with all three children, «السجل» — six
+// reachable routes, per `REQ-ADM-020`).
 //
 // `NAV_ENTRIES` has 20 leaf routes today (19 here plus `dashboard`), not the
 // 19 a stale comment once claimed — counted directly off this array, not
@@ -84,6 +83,11 @@ const NAV_ENTRIES: NavEntryDef[] = [
   // itself branches on role and renders a read-only, attendance-focused
   // list for a moderator, never the admin's management UI.
   { kind: "leaf", key: "sessions", href: "/app/admin/sessions", adminOnly: false, built: true, icon: "calendar" },
+  // SCR-065 (wave 10, `DEC-160`): both staff roles, as `09` names them and as
+  // `assert_survey_staff()` enforces — a session's survey is a session
+  // operation, so a moderator's rail gains this one entry (`REQ-ADM-020`, as
+  // amended). The lead's row, as `console`'s custodian; the screens are `event`'s.
+  { kind: "leaf", key: "surveys", href: "/app/admin/surveys", adminOnly: false, built: true, icon: "chart" },
   { kind: "leaf", key: "members", href: "/app/admin/members", adminOnly: true, built: true, icon: "user" },
   { kind: "leaf", key: "companies", href: "/app/admin/companies", adminOnly: true, built: true, icon: "building" },
   // «التصنيفات والوسوم» — `admin.shell.nav.categories` carries the fuller

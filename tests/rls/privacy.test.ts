@@ -80,6 +80,9 @@ describe("platform — the data export (REQ-PRF-006, REQ-NFR-013)", () => {
           "points_ledger",
           "ratings_given",
           "rsvps",
+          // 0135 (wave 10): which surveys the member answered — never what they
+          // said. `data-export-surveys.test.ts` proves the second half.
+          "surveys_answered",
         ].sort(),
       );
       expect((payload.member as { email: string }).email).toBe(me.email);

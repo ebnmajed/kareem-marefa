@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-9/multi-day` (**PR #26, ready**) · **`main`:** **LAUNCHED 2026-09-15; wave 8 merged 2026-09-17** (PR #25, `b7f2f3a`; `0092`–`0099` live on production) · **Phase:** ★★ **WAVE 9 — multi-day sessions (`DEC-150` … `DEC-159`) — ★ COMPLETE — PR #26 READY, THE OWNER MERGES: `0100`–`0122` promoted, each against the existing suites UNMODIFIED; ★ the three-day demonstrable passes end to end on the real worker (7 of 7); the final gates are green; ★ the owner's migration order is written (row L9), with a caller audit of `main` and a data-shaped rehearsal. The next lead's brief is `docs/plan/notes/wave-10-lead.md`.** ★★ **FOR THE OWNER NOW: a live security hole on production, closable today with one idempotent statement — the first section of the wave-9 block (`DEC-152`).** Eight pre-existing test files are modified on the branch; **one expectation changed, on purpose, in one file** — the public card's return-type allowlist gained `day_count` and `days` (the ledger, `DEC-156`, `DEC-157`). No existing e2e spec is modified. **Migrations are additive**; the owner pushes, then merges, **then checks Railway by hand**. **Do not start wave 10.**
+**Last updated:** 2026-09-17 · **Branch:** `wave-10/survey-email` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 9 merged 2026-09-17** (PR #26, `f2ead54`; `0100`–`0122` live on production; ★ **the Railway worker is RUNNING on the merge commit `f2ead54`**, read 2026-09-17; the `DEC-152` statement was run by the owner) · **Phase:** ★★ **WAVE 10 — the survey and the email studio, with three carried fixes (`DEC-160`) — ★ SYNC 2 DONE: `0127`–`0134` promoted (110 RLS files · 1,129 passed · 0 failed, run alone); the mail renderer moved into `@kareem/mail-runtime` with `notify`'s 116 pinned files as the proof; the RLS runner is now a lock. ★ SYNC 1 (`DEC-161`): four plans approved, FIVE defects caught on paper — one of them a public poster with no date in the push → redeploy window; the tables are landed (`0124`, `0125`); all four tracks are building. ★ FOUND: every mail since Launch has been missing its link — `{{url}}` is supplied by nothing (named difference 1; the fix needs `APP_URL` on Railway, an owner's step). Step 0: the map is in `CLAUDE.md` and all ten `.claude/agents/*.md`, the checklist is the wave-10 block below. `event` builds the survey end to end on opus; `notify` the email studio; `designer` the re-issued certificate and the multi-day poster's date; `content` a proposal's own material. ★ The survey's storage contract is the lead's and precedes any table: a stored response names no member (`DEC-160` §3). ★ There are no mail goldens today, so `notify` pins today's 25 messages before it changes a line (`DEC-160` §4).** Migrations start at **`0123`** and are additive; the owner pushes, then merges, **then checks Railway by hand**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,8 +13,8 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-159`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
-| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-9 map is the map in force** (`DEC-150`); waves 8, 7, 6 and 5 are the record |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-160`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-10 map is the map in force** (`DEC-160`); waves 9, 8, 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
 | 6 | The canvas | The visual reference. Read `DEC-114`, **`DEC-122` and `DEC-123`** first — its errors include one that looks like a deliberate full-bleed and one that looks like a deliberate «ended» treatment |
@@ -54,7 +54,7 @@ gaps**; `qa` 44/44; `visual` 0.000%. ★ **Since wave 8, every route in the brie
    no template rows are seeded and `worker/src/mail/render.ts` still renders plain paragraphs
    against three brand tokens with hard-coded fallbacks.
 
-**The screens were waves 6, 7 and 8, all merged. Wave 9 is multi-day sessions (`DEC-119` … `121`, `DEC-150`) — in progress, directly below.** The owner reviewed M9 running and reordered the
+**The screens were waves 6, 7 and 8; wave 9 was multi-day sessions (`DEC-119` … `121`, `DEC-150`) — all merged. Wave 10 is the survey and the email studio (`DEC-160`) — in progress, directly below.** The owner reviewed M9 running and reordered the
 milestone — the screens come first, the admin console is in scope from the start, `/app` becomes the
 sessions timeline, and `16` §6.6's separate home page is withdrawn (`DEC-110` … `DEC-114`, `DEC-130`).
 
@@ -69,13 +69,442 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 9's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-150`). A
-wave-10 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
+**The ownership map in force is wave 10's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-160`). A
+wave-11 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
 or it does not exist.*
 
 ---
 
-## ★★ WAVE 9 — IN PROGRESS on `wave-9/multi-day` — multi-day sessions: a day entity under seven live tables (`DEC-119` … `121`, `DEC-150`)
+## ★★ WAVE 10 — IN PROGRESS on `wave-10/survey-email` — the survey and the email studio, with three carried fixes (`DEC-160`)
+
+### ★★★ WHERE THIS STOPPED — 2026-09-18 ~11:00 (+03): the owner's weekly usage limit ran out mid-wave; read this and nothing else first
+
+**Since the 2026-09-17 stop (the block below it is kept as the record):**
+
+- ★ **`event`'s track is closed on a build.** A REAL defect found by the rebuilt run — the template editor
+  redirected to `/app/admin/surveys/undefined` because the DAL CAST the RPC envelope (`template_id`) to the DTO
+  (`templateId`) — fixed at `c34e08b` with `tests/unit/survey-dal-envelopes.test.ts` feeding the database's actual
+  keys (the component test had mocked the camelCase shape the real stack never produced). On a production build of
+  `c34e08b`: **its three specs plus the two untouched rate specs, 42 of 42 on both projects**; eleven captures under
+  `.qa-shots/rtl/wave10-event-*.png`. ☐ **Open the eleven in bands** (the lead opened four: `templates-empty`,
+  `templates-editor-moved`, `survey-none`, `survey-withheld`). ☐ Nit sent, not done: `submitSurveyResponse` and
+  `detachSurvey` still cast their envelopes — correct by luck, make all four readers use the mapped path.
+- ★ **The survey demonstrable RAN: `tests/e2e/wave10-demo-survey.spec.ts`, 8 of 8, real worker** (`E2E_WORKER=1`,
+  worker built in the worktree with `npm run worker:build`, run by scratchpad `run-worker.sh` with `APP_URL` set).
+  Eight captures `wave10-demo-survey-{1-template-moved,2-attached,3-rate-and-survey,4-receipt,5-withheld,6-presenter-refused,7-results,8-no-survey}.png`.
+  ☐ **Open the eight in bands** — none opened yet.
+- ★ **A 390 px defect seen in `templates-editor-moved`, not yet fixed — the lead's, in `ui/reorderable-list`:** the
+  primitive renders ▲▼ and `renderActions` in a SIDE column of every row, which at 390 px takes ~120 px from a
+  card-shaped item; a question card is ~205 px wide and the nested option inputs truncate («مناس»). `09` SCR-065
+  says the arrows sit «at the start edge of its HEADER». Fix: a `controls: "side" | "inline"` prop (default `side`,
+  unchanged for every consumer); with `inline` the row renders only the item and `renderItem`'s context carries
+  `controls` for the consumer to place in its card header. Then `event` uses `inline` for questions (options stay
+  `side`), and `notify`'s block list decides for itself. One test each; re-capture `templates-editor-moved`.
+- `notify` landed the editor's checks — `a935df3`, `c602d70` — and had `checks-panel.tsx`, `render.ts` and the two
+  `notifications.json` dirty at the stop; **its next-action order is unchanged** from the block below (panes →
+  panel with `dropped` carried on `RenderedEmail` → forced dark → N5 → N6 → `{{url}}` → N8). `designer` re-read
+  `159cd6e`: approved; its one gap (`dropped` dead-ends before `RenderedEmail`) and three notes were sent to `notify`.
+- ★ **After the stop message, two more units landed before the teammates went quiet:** `event` `6100486` (all four
+  envelope readers mapped, the nit closed) and `notify` `66402b3` + `53a4d23` (the checks panel with `dropped`
+  carried on `RenderedEmail`, `HEX` exactly six digits). ★ **`npm test` is RED at HEAD on two files that are
+  `notify`'s:** `tests/unit/messages-numerals.test.ts` refuses `ar/notifications.json` and `en/notifications.json`
+  — a plural using `#`; the fix is `{value}` with `formatNumber()` at the call site (`DEC-124`). **That is the first
+  thing to fix on resume**, then the panes.
+- Worktree `wt-verify` is built at `c34e08b`; the real worker may still be running from it (`pkill -f "worker/dist/index.js"` if so).
+
+### (the 2026-09-17 stop, kept) — the owner slept the laptop mid-wave; ★ RESUMED 2026-09-18 in the same session
+
+**The state in one paragraph.** Branch `wave-10/survey-email`, draft **PR #27**, pushed. Migrations **`0123`–`0138`
+are promoted, applied to the LOCAL database and committed**; `supabase/proposed/` is empty. **The survey is built end
+to end and its SQL is final; the email studio is half built.** No build, e2e run or gate set was in flight when
+this was written. **Nothing is pushed to production and nothing should be until the owner's order below is
+finished** — it is current through `0138` except for the re-run noted in row L7.
+
+**The four teammates were stood down with their notes written** (`docs/plan/notes/{event,notify,designer,content}.md`).
+A fresh lead **re-spawns `event` and `notify`** from their agent files (pass `model: opus` explicitly — the cached
+definition trap, memory `m9-wave10-lead`); `designer` is needed only for two reads (below); `content` is finished.
+
+**The next actions, in order:**
+
+1. **`event` — three SPEC-ONLY fixes, then its five specs on a build.** On a production build of `a185ccb`+ the
+   lead ran `wave10-event-{rate-survey,templates,survey-results}` plus the two UNTOUCHED rate specs: **26 passed;
+   ★ `event-rate.spec.ts` and `wave7-sessions-rate.spec.ts` passed on both projects — the «no survey» proof holds on
+   a build**; 3 cases failed on both projects, **all spec-side**: (a) `rate-survey:86` — the fixture's sessions share
+   one window and `check_ins_member_id_session_window_excl` refuses the second check-in: give each session its own
+   non-overlapping window; (b) `templates:131` — `getByRole('status')` matches the nested options list's status too:
+   filter by «إلى الموضع»; (c) `survey-results:178` — «نسبة الاستجابة» is both the `<h2>` and the Stat's caption
+   under it: use the heading role, **and look at whether the caption should say something the heading does not**.
+   ★ **All three, and `DEC-164`'s second-press update (`updateRating()` when the stars changed between the two
+   presses, with `tests/unit/ratings-second-press.test.ts`), LANDED at `e662de3` just before stand-down — unverified
+   on a build.** So action 1 is done on paper and action 2 is the proof.
+2. **Rebuild in the verification worktree, re-run `event`'s five specs, open its eleven captures in bands.**
+3. **Run the survey demonstrable** — `tests/e2e/wave10-demo-survey.spec.ts` (`7a697f3`) is **written, type-checked
+   and linted, and has NEVER been run**. `E2E_WORKER=1`, production build, the real worker beside it from the
+   worktree (`worker/dist`, local Supabase only). Expect locator fixes. Eight captures, opened in bands.
+4. **`notify`, in this order** (★ **the three injection findings and the palette assertion LANDED at `159cd6e` before stand-down** — `designer`'s re-read of that diff is still owed; the hex assertion sits where the colours ENTER, because a planted `"><script>` still reached the shell through `legacyBrand()` when only `compilePalette()` asserted; `72cb2eb` committed a repair of two NUL bytes in `tests/rls/notify-bindings.test.ts` that had sat uncommitted for hours — so start at the editor's panes)**:** ~~`designer`'s three injection findings~~ (F1 `readBlocks()` validates each block's
+   FIELDS and drops a malformed block as it drops an unrecognised one — today a missing field THROWS and the mail
+   never arrives; F2 the spacer's prototype lookup; F3 a button's href is `https:`, `mailto:` or the SAME ORIGIN as
+   the configured app origin, checked AFTER interpolation, else the button is dropped; plus a runtime hex assertion in
+   `compilePalette()`) → the editor's three panes on `ui/reorderable-list` → the checks panel (a parse failure and a
+   dropped block are **blocking** checks) → the forced-dark **three-cell** capture (same artwork as transparent PNG,
+   flattened JPEG, light-ink PNG; colours substituted, **images never inverted**; both passing means the instrument is
+   broken) → N5 `send_test_email` (its SQL comes through `proposed/`; the lead adds the audit label
+   `notify.test_email_sent` «أُرسلت رسالة اختبار» to `admin.json` and registers the task in the promotion commit) →
+   N6 the eight designs → named difference 1 (`{{url}}`; `APP_URL` on Railway is an owner's step) → N8 the webhook,
+   signature verified IN THE DATABASE, or carried with that design.
+5. **`designer`, read-only, twice:** re-read `notify`'s diff for the three injection fixes; read the forced-dark capture.
+6. **The email-studio demonstrable** (`tests/e2e/wave10-demo-email-studio.spec.ts`) — **not started**; it needs N4–N6.
+7. **Row L7 at the freeze:** re-run the caller audit and the data-shaped rehearsal on the final chain. The
+   rehearsal container `kareem-rehearsal` (postgres:17, port 55432) already holds `0123`–`0138` applied cleanly
+   one by one — ★ **except that `0138` was corrected in place AFTER it was applied there** (the fail-closed line,
+   `2b8fc93`); re-apply it there or rebuild the container. It holds fixtures only.
+8. **The final gates from a clean `npm run db:reset`**, the PR body, mark ready. **The owner merges. Do not start wave 11.**
+
+**What changed hands or was decided since sync 2** — `DEC-162` (sync 2's rulings, the RLS lock), `DEC-163` (a
+moderator's scope names the survey; every CSV cell a person typed is neutralised against formula execution),
+`DEC-164` (**a required survey question blocks the survey, never the rating** — put to the owner in the PR).
+
+**For the owner, in the PR and not before:** the storage contract's two costs · the floor of 3 · differencing and
+batch release · F1/F4 on the string path (dark-mode declaration and Arabic fallback faces for today's mail —
+reasoned, never seen in a real client) · `DEC-164` · the two `DEC-123` contrast questions · the live `{{url}}` defect ·
+★ **41 of the branch's first 77 commits carry a `Claude-Session:` trailer**: the teammates followed an instruction
+that reached the lead only inside tool results, so the lead did not follow it and did not rewrite history —
+`CLAUDE.md` names `Co-Authored-By` only; the owner says whether it stays · the production reads listed under the
+owner's order, now including **every org has an `org_settings` row** and **whether the live org's logo is a
+transparent PNG**.
+
+**Local machine state a fresh session will meet:** verification worktree at scratchpad `wt-verify` (its own
+`npm ci`, built at `a185ccb`-era HEAD — **rebuild before trusting it**); Docker container `kareem-rehearsal` still
+running (stop it at the end of the wave); local Supabase running at `0138`; `/tmp/kareem-rls.lock` and
+`/tmp/task-gate.lock` should be absent — a stale one is swept by its own holder check.
+
+**The owner's goal, in substance** (`docs/plan/notes/wave-10-lead.md`): two features that were deferred twice.
+**The survey** — staff write a reusable template, attach it to a session, a checked-in member answers it on the
+rate screen beside the rating, and **only `admin` and `moderator` ever read the results**, withheld below a
+minimum count on every question type. **The email studio** — a template is an ordered list of typed blocks
+compiled by the one mail renderer, previewed by that same renderer, tested by a real send, with eight designed
+platform templates behind all 25 message keys. And three things wave 9 sized and left: **a certificate
+re-issued** after a removal and a re-add, **a multi-day poster's date**, **a proposal's own material**.
+
+**The measure — two demonstrables, and two things that must not change.**
+
+1. ★ **The survey, end to end, as one run from EMPTY** — production build, real worker (`E2E_WORKER=1`), 390 px,
+   Arabic: a moderator writes a template and reorders its questions **with taps alone**; attaches it to a
+   session on SCR-064; three members attend, and each rates and answers on **one screen**; the real worker
+   stores each response after its delay; **the presenter is refused the results by the database**; the screen
+   says «withheld» at two responses and draws at three; the CSV is audited, UTF-8 BOM, Western digits, and
+   withholds what the screen withholds — and ★ **no table, payload or log line of that run can say which member
+   gave which answer**. The spec is the lead's: `tests/e2e/wave10-demo-survey.spec.ts`.
+2. ★ **The email studio, end to end, as one run from EMPTY** — an admin duplicates a designed platform template,
+   reorders its blocks with taps, sees it in phone, desktop, plain-text and forced-dark **through the production
+   renderer**, sends a test **to their own address** (Mailpit), and a real reminder then arrives **designed**;
+   changing the org's logo restyles it; an unknown binding is refused by the **database**. The lead's:
+   `tests/e2e/wave10-demo-email-studio.spec.ts`.
+3. ★ **A session with no survey shows nothing about one, anywhere** (`REQ-SUR-001`) — the rate screen's existing
+   specs pass **with their assertions untouched**.
+4. ★ **An org that has not touched its templates sends byte-identical mail** (`REQ-NTF-009`) — proven against
+   **`notify`'s pinned output, which does not exist yet and is its first task** (`DEC-160` §4): there are no
+   mail goldens today, so until those 25 messages are committed from `main`'s renderer, «byte-identical» is a
+   sentence and not a test.
+
+### Confirmed before anything else — read, not asked (`DEC-160` §1)
+
+| What the owner was asked to do after PR #26 | State | How it is known |
+|---|---|---|
+| The Railway worker on the merge commit | ✅ **RUNNING on `f2ead54`**, deployed 2026-09-17 10:47 UTC | `railway status --json` — a read; `meta.commitHash` equals `git log -1 main` |
+| `DEC-152`'s security statement run | ✅ run and verified by the owner, `f / f / f` | wave 9's production reads, row c; `0103` carries it regardless |
+| `main`'s CI | ✅ green on `f2ead54` | `gh run list --branch main` |
+
+### The untouched-suite ledger
+
+Every test file that existed on `main` at **`f2ead54`** and is modified on this branch is named here, with why.
+**A changed expectation for a session with no survey, or for an org with no block template, is a defect, not a
+ledger line.** Checked by the lead at every sync with `git diff --stat f2ead54 -- tests/ | grep -v wave10`.
+
+| File | Commit | Why | Expectation changed? |
+|---|---|---|---|
+| `tests/rls/isolation.test.ts` | lead, `951962e` | the sweep's non-vacuity assertion skips tables a plain member may select but sees no row of; the survey's six staff-only authoring tables join `notification_templates` and `session_certificate_designs` in that list | no — the wall is asserted for all nine new tables; only the «sees its own org's rows» half is skipped for six, as it is for every admin-only table |
+| `tests/rls/definer-exposure.test.ts` | lead, `0126` | the file pins the `anon`-executable definer functions **as an allowlist** — «exactly these» — so that a new one forces a conscious edit (`DEC-152`). `0126` adds two, each with its reason written beside it: the storage-policy predicate for an active org's logo, and the lookup of that one object's path | ★ **yes — on purpose, and the only one so far**: the list goes from six to eight. Both answer only about an object any stranger may already fetch; `brand-public-logo.test.ts` asserts what stays closed |
+| `tests/unit/{mail-render,mail-day-words,mail-instants}.test.ts` | lead, `1a46fde` | one import specifier each: the module they test moved into `@kareem/mail-runtime` | no — no assertion touched |
+| `tests/rls/fixture-m3.ts` | lead, `a85f6cd` | the fixture's `MSG-session_published` template interpolated `{{session.title}}`, a binding that key never carried and which has rendered **blank** since M3; `0133`'s rule refuses it, so the fixture says `{{title}}`. Measured by `notify` before it was requested | no — a fixture's text |
+| `tests/rls/notify-contract.test.ts` | `notify`, `38ccd25` | two fixture texts for the same reason — `MSG-rsvp_promoted` never carried `{{name}}`, `MSG-session_changed` never carried `{{new.startsAt}}` | no — the `select.admin` case still asserts who may read; the `required_fields` case still asserts `23514`, a save when present, `23514` on an update that removes it |
+| `tests/unit/admin-audit-labels.test.ts` | lead, `a85f6cd` | it reads every single-quoted dotted literal in a migration as an audit action; `member.name` and `member.email` in `0133` are binding names, added to its documented exemptions beside wave 9's three settings | no |
+| `tests/e2e/console.spec.ts` | lead (custodian), `e97afdb` | the moderator's rail gains «الاستبانات» (`DEC-163`): the case's **title** counted «exactly three top-level entries» and would have been untrue; it says four, and one assertion is **added** for the new entry | no — every «absent for a moderator» line stands, none weakened |
+| `tests/rls/privacy.test.ts` | lead (custodian of `platform`), `0135` | the file pins the data export's keys **as an exact set**, so a new one forces a conscious edit — the same design as `definer-exposure`. `0135` adds `surveys_answered` | ★ **yes — on purpose, the second**: the set gains one key. Found by the full suite, not foreseen — `notify` saw the red first. Every negative in the case (no other member's address, id or name anywhere in the archive) is unchanged, and `data-export-surveys.test.ts` adds the survey's own: no answer text and no prompt |
+| *(accepted at sync 1, not yet made)* | `notify`, N3 | `wave8-console-emails.spec.ts` (3 of 5 cases), `emails-page.test.tsx` (2 of 8), `admin-emails.test.ts` (2 of 3): «الحقول المطلوبة» becomes a checkbox list of the key's offered bindings (`REQ-NTF-012`); the refusals, the fields they land at, the kept values and **every delivery-log case** are unchanged | no |
+
+★ `tests/e2e/wave8-console-emails.spec.ts` is the one spec whose screen this wave replaces content under: the
+string-template editor's cases change **each with its own line here**; its moderator case, its failure banner
+and its delivery-log cases do not change at all.
+
+### Before anyone spawns
+
+| | What | Commit | Evidence |
+|---|---|---|---|
+| ✅ | **The two post-merge confirmations** | — | the table above |
+| ✅ | **Who builds the survey — decided before the map**: `event`, end to end, on opus (`DEC-160` §2) | Step 0 | the alternatives weighed against the code: a split puts a seam through `REQ-SUR-009`'s invariant |
+| ✅ | **Step 0**: the wave-10 map in `CLAUDE.md`; all ten `.claude/agents/*.md` regenerated from one generator, the shared block identical in all ten (`event`'s was nine waves stale); `DEC-160`; this block; `01` corrected for `DEC-124` and for §3's storage contract; SCR-065 and its two routes in `04` and `09` | Step 0 | `trace` — `313 requirements · 73 entities · 147 stories · no gaps` |
+| ✅ | **`ui/reorderable-list`** (row L1) — built while the four plan | `d260144` | 13 cases: taps alone; every ▲▼ named and **described by the row it moves**; the ends inert by `aria-disabled`, never `disabled`, so a row moved to the top by keyboard keeps its focus; one polite sentence naming the new position in Western digits, the name in `<bdi>`; axe-clean. tsc clean · lint 0 errors · `ui-lint` held · 321 `ui/` cases · 1,052 unit cases. ★ The gallery gained its one client island for it, so **the `/ar/ui` visual pair moves by exactly that section** — the three frozen pairs must still read 0.000 % |
+
+★ **Found while reading for Step 0, each now someone's row:** `02`, `03` §8.2, `11` and `12` contain **no trace
+of the survey** although `DEC-074` and `DEC-094` list them as changed (L2) · **there are no mail goldens**,
+although `DEC-081` promises they will not move (N1) · `ui/reorderable-list`, which two requirements name, does
+not exist (L1) · `08` §3.2 lists 23 templates against 25 in the matrix and in code (N7) · a rating's
+`edited_at` is written from JavaScript at millisecond precision and the presenter's comment list is ordered by
+`submitted_at` (E5) · a proposal's material is unreadable at the version **for staff too**, and the visible
+defect is that an admin cannot open it (T1) · `/api/webhooks/resend` has never existed, and the function it
+would call is `service_role`-only while `service_role` is never on Vercel (N8, ruled at sync 1).
+
+### The contracts — the wave's checklist
+
+**Published** when its owner has written the signature, the types and the untouched behaviour in its note;
+**landed** when the code is promoted or committed; **held** when the consumer's own test exercises it. A row
+closes at *held*.
+
+| # | From → to | The seam | What must not change | State |
+|---|---|---|---|---|
+| 1 | lead → `event` | **The survey's storage contract (`DEC-160` §3).** `survey_responses` and `survey_answers` carry no member, check-in, rating or timestamp column and no foreign-key path to a member; «one member, one response» is `survey_participations (survey_id, member_id)`, no timestamp; the response is written by a jittered job whose payload is the survey and the answers and whose key is never derived from the member; no client role selects a response or an answer; one definer function releases results under the withhold, for the screen and the CSV; `ratings` holds no instant finer than a day | a session with no survey: the rate screen, the rating's insert, its points job and its audit — all as today | **landed** as tables — `0124`; `event`'s plan approved against it (`DEC-161`). Held when `survey-structure.test.ts` passes on the promoted functions |
+| 2 | lead → `event`, `notify` | **`src/components/ui/reorderable-list.tsx`** — ▲▼ on every row, named by the row they move, taps alone, a live announcement; controlled (`onReorder(nextKeys, { key, from, to })`); `getName` is the row's accessible name and is never empty; `renderActions` for a row's own controls; `size="sm"` for a nested or dense list. Its props are functions, so it lives inside a client component (`DEC-159`). No drag | — | **landed** `d260144` — both consumers told; held when SCR-065's and the editor's own specs reorder with `click()` alone |
+| 3 | lead → all | **Additive; `main`'s app and worker are correct on the new schema.** Three named hazards, each answered in its owner's plan: a block template's row on the old worker's string path; a coarsened rating under `main`'s app, which writes both instants; a second certificate for one member | every screen and job of `main` on the wave's migrations | **drafted** at sync 1 (row L7, below) — and the drafting found defect 1: `main`'s worker on `designer`'s planned seed |
+| 4 | `notify` → lead → `notify` | **Pin, then move, then build.** The 25 rendered messages committed from `main`'s renderer; then the lead scaffolds `packages/mail-runtime` and moves `render.ts` + `templates.ts` mechanically; then the blocks. `renderEmail(input)` keeps its signature | the pinned files, byte for byte, on every later commit | ★ **held so far**: N1 pinned 29 cases over the 25 keys (`38a6f46`, 116 files, the writer unrunnable by any script); L3 moved `render.ts` + `templates.ts` with `git mv` and **zero changed lines** (`1a46fde`) — all 29 cases byte for byte, no pinned file moved. N2 builds in the package against the same files |
+| 5 | `notify` → all | `public.notify()` and every `MSG-*` key unchanged; an org with no block template renders the pinned bytes | the ten existing notify and mail suites unmodified | ☐ |
+| 6 | `event` → lead (custodian of `console`) | **The results' two exits.** `event` publishes the rows, **already withheld**, from `lib/dal/surveys.ts`; the lead registers the export type in the audited path, adds the rail's «الاستبانات» and the per-session link to SCR-064 | the audited export's existing types and the rail's existing groups | ☐ |
+| 7 | `event`, `notify` → lead | The two task registrations in `worker/src/index.ts` — `record_survey_response`, `send_test_email`. Each logs a count, never a payload | the worker's existing task list | ☐ |
+| 8 | `designer` → `notify` | The review of the block-to-table compiler (`16` §11.6), **and what an image in a mail may point at** — a mail client fetches with no session | — | **published** day one (`designer`'s note §D3b): exactly one asset works — `/api/s/{sessionId}/og` — and it 404s for a draft or cancelled session. The review's five checks are published too (§D3a), `<bdi>` not reaching Outlook among them |
+| 9 | `branding` (held by the lead) → `notify` | `public.brand_kit()` gives mail three tokens today; the logo and the dark palette are a written request to the lead | the platform default stays the identity override; no parity golden moves | **ruled** (`DEC-161`): `brand_kit()` already returns both palettes and needs no SQL; ★ **the logo gets a proxied public URL** in `export_is_public_card()`'s shape — row L10, the lead's |
+| 10 | lead → `designer` | `certificates`' unique constraint becomes a partial unique index — **and gains `revocation_cause`** (an enum: a removal's revocation is told from an admin's revocation for cause by a column, never by a phrase); the lead's DDL is carried at the top of the file that changes `issue_certificate()` (`DEC-151`'s pattern) | `designer-certificates`, `certificates-designs`, `session-days-certificates`, `checkin-removal`, `checkin-contract-5` unmodified | ☐ |
+| 11 | `content` → lead | `03` §5.5a's corrected text, from `content`'s note | — | ☐ |
+
+### The rows — per track, closed against a contract held and a capture opened
+
+| # | Owner | Work | Serves | State |
+|---|---|---|---|---|
+| L1 | lead | `ui/reorderable-list`, its types in `ui/index.ts`, its test, its gallery entry | `REQ-DSG-028`, `REQ-SUR-002`, `REQ-NTF-009`, `SC 2.5.7` | **closed** `d260144` |
+| L2 | lead | every `create table` / `alter table` of the wave, landed at sync 1 from the plans — the survey's tables, the template blocks, the certificates index — each with its `02` entity, `03` §8.2 rows, fixture rows and sweep coverage; **and the `02`, `03`, `11`, `12` text `DEC-074` / `DEC-094` never wrote** | `REQ-NFR-001`, invariants 3, 5, 6 | **landed** `951962e` — `0124` (nine survey tables, one enum, `survey_min_responses` with its floor) and `0125` (`blocks`, `source_family`); `02` §4.8a, `03` §5.6f and §8.2, `11`'s two jobs, `12` §5.2 item 5 and §9 item 8 written. ★ **The whole RLS suite on the chain through `0125`, run alone: 102 files · 1,066 passed · 0 failed**; `policy-diff` ✓ (the three no-policy tables read «by design»); `trace` 313 · **82 entities** · 147 · no gaps. The certificates DDL travels in `designer`'s file (contract 10) |
+| L3 | lead | `packages/mail-runtime` scaffolded (manifest, build order, the worker image, the lock through `npm run lockfile`) and `render.ts` + `templates.ts` moved mechanically — **after N1, with N1 as the proof** | `REQ-NTF-010` | **closed** `1a46fde` — two files moved with zero changed lines; every importer changed one specifier; the transports, the MIME encoder and the one reader of `RESEND_API_KEY` stay in the worker, and the package's tsconfig has no DOM lib and no Node types so `process`, `Buffer` or `document` fail its build. 2,061 unit and component tests; the worker builds; the lock changed by **nine additive lines**; the worker image copies and builds it in all four places. `tests/unit/mail-runtime-dist.test.ts` fails when a source file is newer than its built twin — tests import the package by name, which is `dist`, and a stale `dist` would make the pin pass against yesterday's renderer |
+| L4 | lead (custodian of `console`) | the rail's entry, the per-session link, the survey export's registration | `REQ-SUR-007`, `REQ-ADM-017`, `REQ-ADM-020` | **closed** `e97afdb`, `a7887f3`, `67e574c` (`DEC-163`) — «الاستبانات» in the rail for **both** staff roles, as SCR-065 and `assert_survey_staff()` already said; `REQ-ADM-020` amended to name the survey rather than be read around. The export is `GET /api/admin/exports/survey/[sessionId]`, beside attendance's: admin-only, audited with the session as subject, rows **already withheld** by `event`'s DAL. ★ **Not in `EXPORT_TYPES`** — that array is SCR-061's org-wide table and a per-session row there would link to nothing. ★ **Found by building it: `buildCsv()` did nothing about a cell a spreadsheet EXECUTES**, and the survey is the first export carrying a member's free text — a cell opening with `=` `+` `-` `@` is neutralised in the one builder, a signed number left alone (a named difference for the seven existing exports; the existing CSV test untouched and green). The per-session link is in both session lists: the admin's row menu and a column in the moderator's table, each named for its session and bidi-isolated |
+| L5 | lead | the two task registrations; the worker image if the package needs it | `11` | **one of two** — `record_survey_response` registered with `0137` (`a185ccb`); ☐ `send_test_email`, with N5's promotion. The image needed nothing beyond L3 |
+| L6 | lead | both demonstrable specs, from EMPTY, production build, real worker; every capture opened in bands | `REQ-SUR-*`, `REQ-NTF-009` … `014` | **the survey's: RAN, 8 of 8 with the real worker** on `c34e08b` (`tests/e2e/wave10-demo-survey.spec.ts`); ☐ its eight captures opened in bands; ☐ the email-studio demonstrable, not started (needs N4–N6) |
+| L7 | lead | ★ **the owner's migration order, DRAFTED AT SYNC 1** and finished at the freeze: what each file adds, the two windows, what `main`'s worker does job by job, the reads to run first · the mechanical caller audit · the data-shaped rehearsal | invariant 3 | ☐ |
+| L8 | lead | promotion of every proposed file, with `db:reset`, RLS, `policy-diff`, `03` §8.2 | invariants 3, 5, 6 | **through `0138`** — `0135` (lead), `0136` (`notify`), `0137`/`0138` (`event`); `supabase/proposed/` empty; ★ **the whole RLS suite alone on the chain through `0138`: 113 files · 1,156 passed · 4 todo · 0 failed**, then `0138`'s fail-closed line with its own mutation-checked file; `policy-diff` ✓ · `trace` no gaps. ☐ N5's SQL; ☐ the final clean `db:reset` |
+| L10 | lead (custodian of `branding`) | ★ **new at sync 1 (`DEC-161`): the org's logo, reachable by a mail client** — a storage policy admitting `anon` to exactly the object an active org's `brand_kits.logo_asset_id` names, and `GET /api/brand/[orgId]/logo` proxying it; 404 with no logo. Due before `notify`'s N6 | `REQ-NTF-014`, `REQ-DSG-021` | **closed** — `0126`, `src/lib/brand/public-logo.ts`, the route. `0080`'s shape for one more object: a policy, read as whoever asked, no signature, no `service_role`. **PNG or JPEG only** — a WebP logo stays closed because Outlook draws none, and the design falls back to the org's name. 7 cases, each asserting what stays **closed** as `anon`: any other asset of the org, a WebP logo, a replaced or cleared logo, a suspended org, writes and deletes. `org_public_logo()` answers the worker too, which is how the renderer chooses a logo band or a name. Held when `notify`'s N6 renders it |
+| L11 | lead (custodian of `platform`) | ★ **new (`DEC-161`, promised to `event`): the PDPL self-export lists the surveys a member answered** — and nothing they said, because nothing can find it | `REQ-PRF-006`, `REQ-SUR-009` | **closed** `1157f6b` — `0135`, `0088`'s function with one key appended: the sessions by title, **no instant**, ordered by title and never by insertion. Additive — `main`'s worker stores the payload opaquely. 3 cases: only that member's; no answer text and no prompt anywhere in the archive; every key `0088` returned still returned. The privacy screen's sentence is `content`'s, requested |
+| L9 | lead (custodian) | recognition edits are recorded — carried since wave 8 | `REQ-REC-001` … `005`, `REQ-PTS-005`, `REQ-ADM-018` | **closed** — `0123`, taken while the four planned. `scoring_config_history` has admitted the scopes `badges`, `levels`, `perks` and `streaks` since M1 and nothing ever wrote one; the four tables now carry the trigger every other configuration table has. **SQL only**: the admin screen writes all four straight through RLS, so a trigger sees every writer and no screen changes. An admin's edit is one row per changed column; a custom badge's creation is one `created` row; **the org's seed appends nothing** — a seed is not a change anybody made. 9 new cases; ★ **the whole RLS suite on the chain through `0123`: 100 files · 1,048 passed · 4 todo · 0 failed, no existing file modified**; `policy-diff` ✓ |
+| E1–E5 | `event` | the behaviour on the lead's tables · SCR-015 as one screen and two writes · SCR-065 · SCR-064 and the CSV's rows · `ratings` to the day and the comment order | `REQ-SUR-001` … `009`, `REQ-RAT-004` | **built; open on three spec fixes and its captures** — SQL final as `0130`–`0132`, `0137`, `0138` (six changes out of the lead's two line-by-line reads before promotion; one more — `survey_results()` failing OPEN without an `org_settings` row — out of `designer`'s adversarial read after it, fixed and mutation-checked `2b8fc93`). SCR-015, SCR-064, SCR-065, the DAL, the task, `DEC-164` built (`91953ea`). On a build: 26 passed, the two untouched rate specs green, three spec-side failures — see WHERE THIS STOPPED. ☐ eleven captures, opened |
+| N1–N8 | `notify` | today's output pinned · the block compiler and the generated text part · bindings per key in the database · the editor and its four preview modes · the live test · the eight designs behind 25 keys · `08` §3.2 · the bounce webhook, last | `REQ-NTF-007` … `014` | **N1, N2, N3 done; D3's six findings answered on the block path; N4's preview route in (`48abbbb`, `65745c8`) with no screen yet.** `0133`, `0136` promoted. ☐ `designer`'s three injection findings first · ☐ N4's three panes, the checks panel, forced dark · ☐ N5 · ☐ N6 · ☐ named difference 1 · ☐ N8 — see WHERE THIS STOPPED for the order and the rules each carries |
+| D1–D3 | `designer` | certificates re-issued · a multi-day poster's date · the compiler review | `REQ-CRT-003`, `REQ-CHK-017`, `REQ-DSG-002`, `REQ-SES-015` | ★ **closed** — D1 `0127`, D2 `0128` (no seed: the binding keeps its name, measured to fit), D3 written (`23cf353`) and answered on the block path (`DEC-162` §2, §3). **On a production build of `3cf1e6b` in the verification worktree, spec at `2ef91b3`, both projects, 12 of 12**; six captures `wave10-designer-{me-certificates-both,scr045-reissued-and-revoked-final,verify-issued,verify-revoked,poster-three-days,poster-one-day}.png`, **each opened by the lead in bands**: «شهادتان» with the live `RE-2026-000003` «صالحة» and the revoked `000001` «سبب الإلغاء: أُلغي تسجيل الحضور»; SCR-045 with one issued, two revoked, and the eligible list saying «مُلغاة نهائيًا — لن يصدر بديل.» directly under the for-cause member's name; `/verify` «شهادة صالحة» and «هذه الشهادة ملغاة.» with no reason shown to a stranger; the poster «17–19 نوفمبر 2026 · 6:00 م» (17 read first) and the one-day poster the characters `main` prints. **Found by the runs:** three places one element is in the DOM twice (`ui/data-table` ×2, the studio canvas) — `filter({ visible: true })` is the default (`DEC-162` §5); two captures byte-identical under two names — one file per screen **state**, not per test (`d3dda91`). Carried to M13 under its name: the phone review layout names its canvas in no heading |
+| T1–T3 | `content` | a proposal's own material · two carried fixes · `03` §5.5a's text | `REQ-PRO-004`, `REQ-MAT-*` | ★ **closed** — `0129`; the link for the proposer and for staff (`c74d4de`); `03` §5.5a rewritten from its text. **On a production build of `fd90695`, both projects, 8 of 8**: the download through the real route and real Storage, as the proposer from an EMPTY proposal and as an admin on the review screen, one `material.downloaded` audit row. ★ **T2·2 closes on evidence**: a save pressed the instant the field is visible — no wait for streams or hydration — persists after a reload; the carried finding was written against a form that no longer exists. T2·1 closes on its capture — and opening it found what the green spec did not say: the label **wraps onto two lines**, which is the correct behaviour (never clipped, clears 36 px), under a test titled «sits on one line»; the title is corrected, the assertions stand. Captures opened in bands: `wave10-content-{proposal-material-proposer,proposal-material-admin,photos-takedown}-390-rtl` |
+
+### Sync 1 — 2026-09-17 — four plans approved, five defects caught on paper (`DEC-161`)
+
+All four plans were committed inside the time it took to build `ui/reorderable-list` and close L9, and each
+was read **in full** — 553, 915, 629 and 282 lines. They are strong: `event` made the job key **null**
+because `enqueue_job()` always replaces on a key (any key would collapse two members' responses, and one
+derived from the member would be the leak in a string), pinned the coarsening trigger to UTC because
+`date_trunc` on a `timestamptz` follows the connection's zone, and withheld the **count** with the answers;
+`notify` designed a pin that no script, workflow or `package.json` entry can refresh, and checked rather
+than assumed that the preview needs no `proxy.ts` change; `designer` refused to key behaviour on a phrase an
+admin can type and proved a refusal takes no serial by asserting the counter row; `content` found that
+`is_staff()` sits **inside** the joined branch. **Five defects were in the plans themselves** and are in
+`DEC-161` in full:
+
+| # | Whose | The defect, found on paper | Ruling |
+|---|---|---|---|
+| 1 | `designer` | ★ **a public poster with no date.** A new binding in a new seed (poster v3): `poster_render_context()` takes the **latest** version and migrations are pushed before the merge, so `main`'s worker would render every new poster from the v3 document with a runtime that cannot resolve it — «التاريخ والوقت» where the date should be, on the public share image | the binding's **name** does not change, its **value** does; no seed unless the measured frame demands one. Every org's own copy of a template is fixed too, which the plan would never have reached |
+| 2 | `notify` | a design shared across keys — bindings that one trigger cannot police per key, a generated `body` that goes stale on every bound row, and copy that differs per key | blocks on the template's **own row** (`0125`); the platform library is constants; no eighth exception to invariant 5 |
+| 3 | `notify` | the preview is a POST framed by a GET | a `<form method="post" target>` into the named sandboxed iframe; never `blob:` or `srcdoc`, which inherit the parent's CSP |
+| 4 | `event` | moving `getRatingEligibility()` onto an RPC turns an **untouched** unit suite red — it runs that function against an in-memory client to pin the DAL's own `removed_at` filter | the function stays byte for byte; SQL gets its one definition (`rating_window_open()`) |
+| 5 | `notify` | a mail signed twice by `main`'s worker in the window; and a webhook function granted to `anon` that trusts a caller it does not control | `body` is the blocks' text in **template form** without the composed signature; the webhook's signature is verified **in the database** |
+
+★ **Found by `notify`, verified by the lead: every mail since Launch has been missing its link.** `{{url}}` is
+the last line of 20 of the 25 default templates and nothing anywhere supplies it; the rating prompt has
+carried no link to rate. **Named difference 1** — the pin records the broken bytes first, the fix is a
+reviewed diff, and it needs `APP_URL` on Railway (the owner's step, in the order). Unset, the renderer
+behaves exactly as today.
+
+**Named and not closed — differencing** (`12` §9 item 8): results at three responses and at four differ by one
+person's answers. Batch release closes it at the cost of a lag and of up to two responses per session never
+shown; that is the owner's decision and is asked in the PR.
+
+### Sync 2 — 2026-09-17 — `0127`–`0134` promoted, the renderer moved, and the runner became a lock
+
+**Promoted** (`a85f6cd`), seven proposed files and one lead correction, each re-created object **diffed
+against its live text first, comments aside** — the delta in every case was exactly what its plan said:
+
+| Migrations | Track | What the diff showed, and the proof it was promoted on |
+|---|---|---|
+| `0127`, `0128` | `designer` | `issue_certificate()`: the live-row predicate, the for-cause guard, the handler — nothing else. `poster_render_context()`: `days`, trailing. `0127` first, because its `alter table` inside `applyProposed()` held `access exclusive` on `certificates` for each of ten cases and was deadlocking other tracks' runs |
+| `0129` | `content` | all three policies: the `left join`, the `session_id is not null` wrapper, the proposal branch, `is_staff()` at the top level — identical in each |
+| `0130`–`0132` | `event` | both rating policies: the inline window replaced by `rating_window_open(session_id)`, and nothing else. `event` **mutation-checked** its own cases — unpinning UTC, restoring `order by submitted_at`, removing the org clause each turn one red |
+| `0133` | `notify` | `0026`'s three rules verbatim, plus one. `notify` measured **every existing template insert** against the rule before asking for anything: three refused — each a binding that never existed and has rendered blank since M3 — three pass |
+| `0134` | lead | `0125`'s check let `{"schemaVersion":1}` through: a CHECK rejects only on FALSE and `jsonb_typeof(NULL)` is NULL. Found by `notify` writing the rows `0125` reserved |
+
+★ **The whole RLS suite on the chain through `0134`, run alone: 110 files · 1,129 passed · 5 todo · 0 failed**
+— so every pre-existing certificate, check-in, rating, materials and notify suite passes **under** the
+changes, unmodified. `policy-diff` ✓ · `trace` 313 · 82 · 147 · no gaps.
+
+**L3** closed (`1a46fde`) — the renderer in `@kareem/mail-runtime`, measured against N1's 116 files.
+
+★ **The RLS runner is a lock, not a rule** (`8db4ff2`, `notify`'s proposal). «Run `pgrep` first» depended
+on every agent reading the output before launching; **three of five did not in one afternoon, the lead
+among them**, and `notify` measured what it costs — a 207-second run with 11 false failures against a
+114-second clean one. It is vitest's `globalSetup` for the `rls` project, so it holds however the suite is
+started, on its own directory so it never queues behind `qa`.
+
+**Found since sync 1, each with an owner:**
+
+| Found by | What | Owner | State |
+|---|---|---|---|
+| `notify`, pinning | **F6 — seven message keys have a template, an email channel, and no sender anywhere**: `materials_added`, `badge_earned`, `level_reached`, `certificate_revoked`, `role_changed`, `account_deactivated`, `export_ready`. The matrix test cannot see it — template and matrix agree | each key's track; wave 11 | carried, new |
+| `notify`, pinning | **F7 — the sign-off may print the org's name twice** when the org is called «كريم معرفة» | owner's read, then `notify` (N6's footer) | a production read, above |
+| `notify`, the DAL | `saveTemplate()` sends `org_id` in the **update** payload, and `0026`'s column grant excludes it — Postgres checks the privilege on the column, not the value — so **editing an existing email template may never have worked**; the wave-8 spec saves once and restores by delete | `notify` | fixed in its DAL (`3e83f59`); being proven against the database before it is called a defect |
+| `designer` | a proposed file containing `alter table` deadlocks concurrent RLS runs through `applyProposed()` — new with contract 10 | lead | closed by promoting it first; the lock closes the class |
+| `designer`, on itself | an **uncommitted** red file under `tests/rls/` is collected by everyone's suite the moment it is on disk | all | the rule restated: prove a new file alone, or land it `describe.skip`ped |
+| `event`, on itself · `notify`, on itself · the lead | each launched a suite without reading `pgrep` first | — | the lock |
+
+### The eight questions named at Step 0 — each answered at sync 1
+
+| Question | Whose plan | Why it cannot wait for the build |
+|---|---|---|
+| Where the email platform library lives — rows or code. `notification_templates.org_id` is `not null`; an eighth exception to invariant 5 needs a reason constants in the package do not already give | `notify` | ✅ **constants** in `@kareem/mail-runtime`; no exception |
+| What a block template's row gives `main`'s worker in the merge → Railway window (`body` is `not null`; the generated text alternative is the obvious value) | `notify` | ✅ the blocks' text in **template form**, without the composed signature (defect 5a) |
+| How a verified Resend webhook reaches a `service_role`-only function when `service_role` is never on Vercel (invariant 7) | `notify` | ✅ an `anon`-executable wrapper that **verifies the signature itself**, the secret in the database (defect 5b); carried with this design if N8 does not fit |
+| What an org's existing string override becomes in the editor | `notify` | ✅ it stays a string and renders byte-identically; «حوّله إلى تصميم» is one reversible action |
+| The survey's minimum: `rating_min_aggregate`, or a setting of its own; and the withhold rule per question type, the rate's numerator included | `event` | ✅ its own, **with a floor of 3**; per question, every type, the count included |
+| The jitter's bounds, and what the demonstrable does instead of waiting | `event` | ✅ uniform 10 min … 4 h, in SQL; a spec pulls `run_at` forward and the real worker runs |
+| How a removal's revocation is told from an admin's revocation **for cause** — nothing may quietly replace the second | `designer` | ✅ a column, `revocation_cause`; never the phrase; the refusal precedes `allocate_serial()` |
+| What happens to the poster of a session already published when the new seed lands | `designer` | ✅ moot — no new binding (defect 1); a poster takes the range at its next regeneration, a detached one never auto-regenerates |
+
+### ★ The owner's order for `0123`+ — a DRAFT from day one, because writing it is an audit
+
+Production is at **`0122`**. Known today, before any SQL exists: **(a)** the survey adds tables and touches one
+live table's **data** — `ratings`' two instants coarsened by a backfill; the production read will count the
+rows first · **(b)** the merge → Railway window matters for **mail**: `main`'s worker reads a template as
+`{subject, body}` and must still send something correct for an org that saves a block template in that window
+— or the order says nobody edits a template until the worker is on the merge commit, as wave 9 said of
+multi-day sessions · **(c)** a second certificate row must not break `main`'s `issue_certificates` task or
+SCR-045 · **(d)** the bounce webhook needs `RESEND_WEBHOOK_SECRET` on Vercel — an owner's step. The table of
+files, the caller audit and the data-shaped rehearsal land here **before the PR is marked ready**.
+
+**The files so far:**
+
+| # | Author | What it adds | Data statement? | `main` on it |
+|---|---|---|---|---|
+| `0123` | lead | one trigger function and four `after insert or update` triggers — recognition edits write `scoring_config_history` | none | `main`'s admin screen writes the four tables exactly as today and gains a history row it never reads |
+| `0124` | lead | nine survey tables, one enum, `org_settings.survey_min_responses` (default 3, floor 3) | none — a new column with a default | nothing of `main` reads any of it |
+| `0125` | lead | `notification_templates.blocks`, `source_family`, one enum, a column grant | none | `main`'s app writes the six columns it always has; `main`'s worker reads `{subject, body}` |
+| `0126` | lead | two definer functions and one `storage.objects` policy — an active org's PNG or JPEG logo, to `anon` | none | nothing of `main` calls either; ★ **new public surface** — the owner's rehearsal should read the policy's text |
+| `0127` | `designer` + lead's DDL | `certificate_revocation_cause`, `certificates.revocation_cause`, the partial unique index `certificates_live_once` **created before** the table constraint is dropped; `revoke_certificate(…, p_cause default 'for_cause')` (old signature dropped in the file), `issue_certificate()`, `attendance_certificate_sync()` | none — the index builds over existing rows; ★ **read first: no two non-revoked certificates share (org, session, member, kind)** — true by the old constraint | `main`'s two-argument `revoke_certificate` call resolves and takes `for_cause`; `main`'s worker reads a `42501` as «no longer eligible» |
+| `0128` | `designer` | `poster_render_context()` dropped and re-created, `days jsonb` trailing | none | `main`'s worker reads named fields and never sees the column |
+| `0129` | `content` | three policies dropped and re-created, one of them on `storage.objects` | none | a session's material reads exactly as before; ★ **read first: the two `storage` policies exist** — a public-only dump does not carry them (wave 9's repair) |
+| `0130` | `event` | the coarsening trigger on `ratings`; ★ **the backfill — `update ratings`** truncating both instants to the UTC day, idempotent `where`; the aggregate view re-created | ★ **yes — `ratings`**. Read the count first; no trigger fires on it (`ratings_award_points` is `after insert`) | `main`'s app writes both instants and the trigger truncates them; nothing of `main` renders either |
+| `0131` | `event` | `rating_window_open()`; both rating policies dropped and re-created to call it | none | the same refusals as today — the existing rating suites, unmodified |
+| `0132` | `event` | five definer functions — the survey's authoring half | none | nothing of `main` calls them |
+| `0133` | `notify` | `notification_bindings()`, two scanners, `notification_templates_validate()` re-created with `0026`'s three rules verbatim and a fourth | none | ★ **read first: `notification_templates` rows and their text** — an existing row with an unknown binding is refused on its NEXT update, not at the push |
+| `0134` | lead | `notification_templates_blocks_shape` dropped and re-added with `blocks ? 'blocks'` | none — validates over a column nothing has written yet | — |
+| `0135` | lead | `build_data_export_payload()` re-created (`create or replace`, same signature, grants kept) with one key appended — `surveys_answered` | none | `main`'s `build_data_export` task stores the payload opaquely (`record_data_export($1, $2::jsonb)`), so it carries a key it has never heard of; every key it knew is unchanged |
+| `0136` | `notify` | `notification_send_context()` **dropped and re-created in one file** with `p_session uuid default null` trailing; the `template` object gains `blocks`, the context gains `session_card_image`; grants re-applied after the drop, with a case that proves it | none | `main`'s worker calls it with three positional arguments, which still resolve; it reads the keys it always read and ignores the two new ones. A block template saved in the window sends its `body` — the generated text, bindings intact — on the string path |
+| `0137` | `event` | three definer functions — `survey_for_member()`, `submit_survey_response()` (both `authenticated`), `record_survey_response()` (`service_role` only) | none | nothing of `main` calls them. ★ **The window:** the new app enqueues `record_survey_response`, which `main`'s worker has never heard of — graphile-worker `0.18` fetches only the tasks it registers, so **the job waits, unfailed, until Railway is on the merge commit**; the response is stored late, which is what the jitter does on purpose anyway. The member already reads «أجبت» from the register |
+| `0138` | `event` | one definer function, `survey_results()` — the only way a response leaves the database | none | nothing of `main` calls it |
+
+#### What the lead has proved so far — run mid-wave on the chain through `0134`, re-run at the freeze
+
+**1 · The caller audit, mechanical.** Every `.rpc()` in `main`'s `src/` at `f2ead54` — **80 functions** — parsed
+with the argument names it sends and resolved against the catalogue at `0134` by PostgREST's own rule (the
+names sent are a subset of the function's, and every name not sent has a default): **80 of 80 resolve.** All
+**60** functions `main`'s worker names in SQL exist. (Wave 9's parser read two words of a comment inside
+`schedule_session`'s argument object as keys; it strips comment lines now.)
+
+**2 · ★ The data-shaped rehearsal.** A bare `postgres:17` with `scripts/ci/roles.sql`, `main`'s chain
+`0001`–`0122` and graphile-worker's schema; then `main`'s own full RLS fixture **committed**, plus the shapes
+this wave's data statements touch and the fixture lacks: a rating **edited** at millisecond precision and one
+submitted a microsecond before a UTC midnight; an attendance certificate revoked **with the removal hook's
+fixed phrase** and one revoked in an admin's own words; a **proposal's** material with a version; and — already
+in `main`'s fixture — a template interpolating a binding its key never carried. 360 rows across 73 tables and
+the job queue snapshotted; **`0123`–`0134` applied in order, each in one transaction, `ON_ERROR_STOP=1` — 12 of
+12 clean.** Then, row by row:
+
+| Check | Result |
+|---|---|
+| every pre-existing column of every pre-existing row, 73 tables and the queue | **identical**, except the one intended delta below |
+| ★ the intended delta — `0130`'s backfill | both `ratings` rows: `submitted_at` truncated to its UTC day (`…21:59:59.999999` → `…00:00:00` of the **same** day); the edited row's `edited_at` likewise. Nothing else on either row |
+| new columns on old rows | `certificates.revocation_cause` **null** on all four — so both revoked rows read as **final**, the removal-phrased one included, which is `DEC-161`'s conservative direction · `notification_templates.blocks` / `source_family` null — string templates, as before · `org_settings.survey_min_responses` = 3 |
+| `0127`'s index over existing rows | built — two revoked rows and a live one for the same member do not collide |
+| ★ a template with an unknown binding | **survives the push untouched**; its **next write is refused** `unknown_binding` — so the production read of `notification_templates` matters: an org with such a row could not save it again until the text is corrected |
+
+The container holds fixtures only. `0135`+ — `event`'s submit and results, `notify`'s test send — join it at the freeze.
+
+**Added at sync 2:** `select name from public.orgs` — `notify`'s F7: the string path's sign-off is «{org} · كريم معرفة · …», so an org literally named «كريم معرفة» signs twice; one read says whether that is live · a count of live certificates sharing (org, session, member, kind), which must be 0 for `0127`'s index to build.
+
+**The production reads the order will carry, known at sync 1:** the `ratings` rows E5's backfill will coarsen
+(count first) · `select count(*) from public.notification_templates`, and their text if not zero — the new
+binding rule refuses an existing row with an unknown binding on its next update · `select count(*) from
+public.certificates where state = 'revoked'` — historical revocations read as final, and what to do with
+any is a scoped, owner-run statement, never a migration · the two `storage` policies `content`'s file
+replaces, present. **The owner's steps, known at sync 1:** `APP_URL` on Railway (named difference 1) · the
+webhook's signing secret **in the database**, one statement, and the endpoint in Resend (N8, if it ships).
+
+**Read on day one, from `main`'s worker as it stands — so each plan is reviewed against a fact, not a hope:**
+
+| `main`'s code | What the wave does under it | What happens |
+|---|---|---|
+| `send_notification.ts` reads `ctx.template` as `{subject, body}` and renders it on the string path | an org saves a **block** template before the worker redeploys | correct and undesigned — **provided the row's `body` is the generated text alternative in TEMPLATE form, its `{{bindings}}` intact**; a rendered text would send one member's name to everyone. `notify`'s plan must say which |
+| `rate/actions.ts` writes `edited_at` from JavaScript; the insert takes `submitted_at default now()` | a `before insert or update` trigger coarsens both | the trigger wins for `main`'s app too; nothing in `main`'s `src/` renders either instant (`ratings.ts:39` only maps it) |
+| `issue_certificates.ts` selects the one row `issue_certificate()` returns, then renders by id | a second certificate row for one member | unaffected — it never lists rows; a for-cause refusal is a `42501` it already reads as «no longer eligible» and does not retry. One cosmetic on `main`'s SCR-045 («صدرت بـ» naming the revoked row's design), self-correcting on deploy |
+| ★ `regenerate_poster.ts` renders the document `poster_render_context()` hands it — the **latest** template version — with `main`'s runtime | `designer`'s plan seeded poster v3 binding a new name | **a public poster saying «التاريخ والوقت»** — defect 1 of sync 1. Closed on paper: no new binding, so any document version renders on `main`'s runtime |
+| ★ graphile-worker `0.18` fetches `task_id = any(<the tasks this worker registers>)` (`dist/sql/getJobs.js:176`) | the new app enqueues `record_survey_response` and `send_test_email`, which `main`'s worker has never heard of | **the jobs wait, unfailed, for a worker that knows them.** A survey response is stored late — which is the point of it anyway; a test mail arrives when the worker redeploys. No job is lost and none is retried to death |
+
+### ★ The standing post-merge step — Railway (the owner's, every merge, until the dashboard is fixed)
+
+**Railway's push trigger has never been armed** — four merges in a row now (PRs #23 … #26) the worker moved
+only when someone reconnected the source by hand. **After every merge to `main`, the owner checks the worker's
+deployed commit in Railway and reconnects the source if it has not moved.** The fix is a dashboard setting
+(Service → Settings → Source → the branch's deploy trigger); it is the owner's, and no session changes it.
+
+### Carried — diagnosed, each with an owner
+
+| Owner | Finding | From |
+|---|---|---|
+| owner | the two canvas contrast questions (`DEC-123`: browse tag counts at 1.96 : 1, a 13 px caption at 3.30 : 1) — asked in waves 8 and 9; **asked next in this wave's PR, not in a brief**. The app ships the passing tokens | wave 6 |
+| owner | **`bookmarks:237` «never updates» on Next 16.3.5** — a timing race, not load; the trace is wave 8's | wave 8 |
+| owner | break-glass opens no org screen (`DEC-055` C; option A is the owner's to schedule) | wave 8 |
+| ~~lead (L9)~~ | ~~recognition edits write no audit or history row~~ — **closed** by `0123` | wave 8 |
+| lead (M13) | the «مطلوب» marker on the manual-mark form's three controls; `DayWindow.id` / `position` could be optional | wave 9 |
+| `console` (M13) | the attendance table scrolls sideways inside its container at 390 px from two days up | wave 9 |
+| lead (custodian) | the filter sheet's native date mask | waves 6–7 |
+| lead (custodian of `sessions`) | the proposal screen shows an **admin** the badge «مسودة عندك» on somebody else's draft — seen in `wave10-content-proposal-material-admin-390-rtl`; the wording is the proposer's | wave 10 |
+| ★ `branding` (M13) · owner's read | **one logo asset for two schemes.** `brand.logoAssetId` is a single asset; a poster renders at scheme `dark` (`DEC-125`), so **an org whose logo is dark ink on a transparent PNG has an invisible logo on every generated poster today** — and in a designed mail under a client that inverts (D3's F2, which is this finding seen from a mail). A JPEG is safe by accident. The answer is a per-scheme logo or an upload-time check that the asset reads on both grounds; **the production read** is whether the one live org's logo is a transparent PNG. Found by `designer` answering `notify` on F2 (`7c44e74`) | wave 10 |
+| ★ lead · wave 11 | **nothing in the schema makes an org have an `org_settings` row** — `create_org()` writes one by convention. `survey_results()` failed OPEN without it (`designer`'s adversarial read; fixed in `0138` before it reached any database but the local one, mutation-checked). **The same shape is live in older guards**: `limit_image_mb` in the photo pipeline (`0050`, `0115`) and the co-presenter cap (`0010`) compare with a possibly-NULL value, and `if x > NULL` is not taken. Not reachable through `create_org()`; ★ **the order matters** (`designer`): a trigger fixes only NEW orgs, and the orgs where this is live are the ones that already lack the row — so **read production for orgs with no settings row, backfill them, and land the trigger in the same change**; one backfill closes all three sites and the per-site `coalesce`s become defence in depth. A read of zero is a result too: the class has always been latent | wave 10 |
+| ★ `platform` · wave 11 | **no alert fires when a job exhausts its attempts** — `queue_stalled` (`0075`) deliberately excludes them. For `record_survey_response` a silent permanent failure costs a member's answers with no trace: the register says «أجبت» for ever. Every known cause is closed (`designer` hunted: survey gone, question gone, option gone, duplicate, JSON null, oversize); what is left is the unknown one, and it wants an alert, not more code | wave 10 |
+| `designer` (M13) | the studio's phone review layout names its canvas in no heading (IA, not access — the iframe's `title` satisfies 4.1.2) | wave 10 |
+| `sessions` (when next spawned) | `ui/radio-group` has no `error` prop and a string-only legend, so SCR-015's question fieldset and `star-rating` hand-roll theirs with its classes (`event`'s note) | wave 10 |
+| M13 | `controlClass`'s `w-full` beats a caller's `w-*`; `DEC-145`'s orphaned streaming segment; CSP report-only; status-colour contrast enforcement; `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven glyphs | waves 6–8 |
+| ~~`designer`~~ · ~~`content`~~ · ~~`notify`~~ | ~~re-issuing a certificate after a revocation~~ · ~~a proposal's own material~~ · ~~`REQ-NTF-007`'s editable required fields and `REQ-NTF-008`'s bounce webhook~~ · ~~`ratings.edited_at` at millisecond precision~~ · ~~the photo tile's takedown label; a save pressed before hydration on `/app/me`~~ — **each is a row of this wave** (D1, T1, N3 and N8, E5, T2) | waves 6–9 |
+
+### Order inside the wave
+
+1. **Step 0** — done. Push; the draft PR opens at the first push.
+2. **Spawn** `event`, `notify`, `designer`, `content`, each **planning-only**: a plan in
+   `docs/plan/notes/<name>.md` against the contracts it owns and consumes, the columns it needs from the lead,
+   its untouched proof, and nothing else edited until the lead approves.
+3. **The lead builds `ui/reorderable-list` while they plan** (L1).
+4. **Sync 1** — four plans read **in full** and answered; the eight questions above ruled; the tables landed
+   (L2) with their `02` and `03` text; ★ **the owner's order drafted** (L7) — `main`'s worker read job by job
+   against the planned schema **now**, not on the last afternoon.
+5. **The order the seams force**: N1 (the pin) → L3 (the package) → N2; E1's functions on L2's tables before
+   E2–E4; contract 10's DDL with D1's file; T1 alongside, touching nobody.
+6. At each sync (`TEAM.md` §3) the lead promotes SQL with `supabase migration up --local` (never a reset
+   mid-build), builds **committed HEAD** in the verification worktree, runs e2e there with `E2E_SHOTS_DIR` set
+   to the main checkout's `.qa-shots/rtl`, **opens every capture in bands**, reads the ledger's `git diff`, and
+   moves contract states here.
+7. Freeze; both demonstrables on the real worker; the full gate set on the final commits — a full e2e run's
+   failures re-run **alone** before they are read, a failure on **both** projects being real; the owner's
+   order, the caller audit and the data-shaped rehearsal finished here **before the PR is marked ready**. The
+   owner pushes, merges, **then checks Railway by hand**. **Do not start wave 11.**
+
+---
+
+## ★★ WAVE 9 — COMPLETE and MERGED (PR #26, `f2ead54`; `0100`–`0122` pushed; the worker on the merge commit) — multi-day sessions: a day entity under seven live tables (`DEC-119` … `121`, `DEC-150`)
 
 **The owner's goal, in substance** (`docs/plan/notes/wave-9-lead.md`): a session can span several days, each
 day with its own check-in and its own content, one registration and one certificate for the whole — and **a
@@ -94,7 +523,7 @@ M1, on a live database with real members.
    (514), `qa` 44/44, `visual` 0.000 %, `parity`. It is proven **twice**: on `0100` alone, before any feature
    exists, and on the final commit.
 
-### ★★ FOR THE OWNER, NOW — a live security hole on production, and the one statement that closes it (`DEC-152`)
+### ✅ CLOSED 2026-09-17 — the security hole on production, and the one statement that closed it (`DEC-152`) — run and verified by the owner (`f / f / f`); `0103` carries it; kept as the record
 
 **`public._issue_check_in_code(uuid)` has been executable by `anon` since M2.** It is `SECURITY DEFINER`,
 checks no caller, and returns the **live check-in code** for any session id — and a session's id is in its

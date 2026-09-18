@@ -70,7 +70,7 @@ export async function NotificationList({
   ]);
 
   /** An instant in the org's zone, anything else as it stands. Same rule the
-   *  mail applies (`worker/src/mail/render.ts`), for the same reason: the
+   *  mail applies (`packages/mail-runtime/src/render.ts`), for the same reason: the
    *  session happens in a room and the room's clock is the one that matters. */
   const value = (raw: unknown) => {
     const text = raw === null || raw === undefined ? "—" : String(raw);
@@ -85,7 +85,7 @@ export async function NotificationList({
   const changeLine = (change: PayloadChange, startsAt: unknown) => {
     // A field with no string of its own renders under its own name rather than
     // being dropped: a change the member is not told about is the failure
-    // `REQ-SES-009` exists to prevent (`worker/src/mail/render.ts` says the
+    // `REQ-SES-009` exists to prevent (`packages/mail-runtime/src/render.ts` says the
     // same thing about the mail's labels).
     const key = `change.field.${change.field}` as "change.field.starts_at";
     const named = Number(change.days) > 1 && Number(change.day) >= 1;

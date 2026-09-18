@@ -38,7 +38,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 | 2 | **`registrations` is never dropped, altered, or read by platform code** | Frozen legacy holding real pre-launch signups (DEC-002). |
 | 3 | **Every migration is forward-only** and tested against production-shaped data first | There is one Supabase project today and it is production. |
 | 4 | **`main` stays deployable** | Every milestone ships to the live domain. |
-| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Seven documented exceptions only (`02` §7; the fifth, `fonts`, is DEC-049; the sixth and seventh, `retention_periods` and `platform_audit_log`, are DEC-054). |
+| 5 | **Every table has an `org_id`, RLS enabled, a full policy set, and a test** | `REQ-NFR-001`. Seven documented exceptions only (`02` §7; the fifth, `fonts`, is DEC-049; the sixth and seventh, `retention_periods` and `platform_audit_log`, are DEC-054). ★ The survey's register and box (`survey_participations`, `survey_responses`, `survey_answers`) carry `org_id` and RLS and **deliberately no policy and no grant** — that *is* their policy set (`03` §5.6f, DEC-160 §3, DEC-161). **Never add `created_at` or a member to a response.** |
 | 6 | **Every policy has a matching `grant`** | A policy without one fails `42501`. Migration `0002` exists *solely* because `0001` forgot it. |
 | 7 | **`service_role` is never on Vercel** | Anything needing it is a worker job. |
 | 8 | **No super-admin disjunct in any RLS policy** | DEC-014. It would reduce D3 to "one claim is correct". |
@@ -318,7 +318,81 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 9 — multi-day sessions, DEC-150) — ★ THE MAP IN FORCE
+### Ownership map (wave 10 — the survey and the email studio, DEC-160) — ★ THE MAP IN FORCE
+
+**Two features that were deferred twice — the survey (`REQ-SUR-001` … `009`) and the email studio
+(`REQ-NTF-009` … `014`, `16` §11) — and three fixes wave 9 sized.** The checklist is `STATUS.md`'s wave-10
+block: the contracts between tracks, then the rows. **The measure is two demonstrables, each from EMPTY on a
+production build with the real worker, at 390 px in Arabic** — a survey authored, attached, answered beside
+the rating, refused to its presenter, withheld at two responses and drawn at three, exported; and a designed
+template duplicated, reordered with taps, previewed by the production renderer, sent as a test and then
+received as a real reminder — **and two things that must not change**, proven by the suites that exist today
+passing with their assertions untouched (`STATUS.md`'s *untouched-suite ledger*): ★ **a session with no
+survey shows nothing about one, anywhere**, and ★ **an org that has not touched its templates sends
+byte-identical mail**.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ **`ui/reorderable-list`, on day one** — both features are specified against it and it does not exist (`DEC-160` §5) · ★ **the survey's storage contract** (`DEC-160` §3) and **every `create table` / `alter table` of the wave**, landed at sync 1 from the tracks' plans, with the `02`, `03`, `11` and `12` text `DEC-074` and `DEC-094` claimed and never wrote · ★ **`packages/mail-runtime`** scaffolded and `render.ts` + `templates.ts` moved into it **mechanically, after `notify`'s pinned output is committed and with it as the proof** · the custodian rows (the admin rail's entry and the audited export's registration for the survey; the two task registrations) · ★ **the owner's migration order DRAFTED AT SYNC 1**, the caller audit, the data-shaped rehearsal · both demonstrable specs · promotion, gates, the PR | the lead-only paths below, `supabase/migrations/**` from `0123`, ★ `src/components/ui/reorderable-list.tsx` (the lead's fifteenth `ui/` file) with its test and gallery entry, ★ `packages/mail-runtime/{package.json,tsconfig.json}`, `worker/src/index.ts`, `worker/Dockerfile`, `tests/rls/{fixture*,isolation.test,db,definer-exposure.test,session-days*.test}.ts`, `tests/e2e/wave10-demo-*.spec.ts`, the lead's fourteen other `ui/` files, `src/app/globals.css`, `src/lib/session-status.ts`, `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `messages/*/{ui,app,auth}.json`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `console`, `platform`, `branding` — **including `sessions'` eight and `console`'s six `ui/` primitives**, edited only for its own rows or on a teammate's written request |
+| `event` | ★ **opus** | **the survey, end to end** (`REQ-SUR-001` … `009`): the behaviour on the lead's tables — templates copied into a session's survey, the one definer function that accepts an answer, the one that releases results under the withhold · the rate screen carrying the rating and the survey as **one screen and two decorrelated writes** · the jittered job that writes a response naming no member · SCR-065 (templates, reordered without dragging) · SCR-064 (attach, response rate, results or the withhold, the CSV's rows) · `ratings.submitted_at` / `edited_at` to the day and the presenter's comment order | ★ `src/app/[locale]/app/sessions/[id]/rate/**`, ★ `src/components/event/{ratings,star-rating}.tsx`, ★ `src/lib/dal/ratings.ts`, ★ `messages/*/ratings.json` (all four back from `sessions`), new `src/app/[locale]/app/admin/surveys/**` and `src/app/[locale]/app/admin/sessions/[id]/survey/**`, new `src/components/survey/**`, new `src/lib/dal/surveys.ts`, new `worker/src/tasks/record_survey_response.ts`, new `messages/*/survey.json`, `supabase/proposed/event/**`, `tests/rls/{ratings,survey}*.test.ts`, `tests/unit/{ratings,survey}*`, `tests/components/survey/**`, `tests/components/event/{ratings,star-rating}.test.tsx`, `tests/e2e/{event-rate,wave7-sessions-rate}.spec.ts` (evidence), new `tests/e2e/wave10-event-*.spec.ts`, its note |
+| `notify` | opus | **the email studio** (`REQ-NTF-009` … `014`): ★ **first, today's output pinned** — subject, text and HTML for all 25 keys from the renderer as it stands on `main` · the nine-block compiler beside the string path, the text alternative generated from the blocks · bindings declared per key and refused by the database · the three-pane editor in `/app/admin/emails`' frame, previewing through the one renderer in phone, desktop, plain-text and forced-dark · «أرسل اختبارًا» to the admin's own address and no other · the eight designed platform templates, every one of the 25 keys resolving to a design · `08` §3.2 reconciled (23 listed, 25 real) · **last, `REQ-NTF-008`'s bounce webhook** | `worker/src/mail/**`, ★ `packages/mail-runtime/src/**` (after the lead's scaffold), ★ `src/app/[locale]/app/admin/emails/**` and `src/components/admin/delivery-reason.ts` (back from `console`, `DEC-085`), new `src/components/email/**`, new `src/app/api/admin/emails/**` and `src/app/api/webhooks/resend/**`, `src/lib/dal/notifications.ts`, `worker/src/tasks/send_notification.ts`, new `worker/src/tasks/send_test_email.ts`, `messages/*/notifications.json`, a new `messages/*/emails.json` if it wants one, `supabase/proposed/notify/**`, `tests/unit/{mail,notify,admin-emails}*`, `tests/rls/{notify,notifications}*.test.ts`, ★ `tests/components/admin/emails-page.test.tsx`, ★ `tests/e2e/wave8-console-emails.spec.ts` (evidence), new `tests/components/email/**` and `tests/e2e/wave10-notify-*.spec.ts`, its note. **Fixes only** on what it built in wave 9: `src/app/[locale]/app/me/{calendar,notifications}/**`, `src/components/{notifications,calendar}/**`, `src/lib/dal/calendar.ts`, `src/app/api/{sessions/[id]/ics,calendar}/**`, `worker/src/calendar/**`, its other seven tasks, `messages/*/calendar.json` |
+| `designer` | opus | **certificates, re-issued** (`DEC-153`'s carry): a member removed and re-added gets a new certificate under the next serial, the revoked one still verifying as revoked; two rows per member read correctly on SCR-045 and `/app/me/certificates` · **a multi-day poster's date** (wave 9's row L6): a new binding, a **new** seed migration (`DEC-149` §3), a one-day poster rendering the characters it renders today · **the review of `notify`'s block-to-table compiler** (`16` §11.6), written in its note | `src/app/[locale]/app/admin/{designer,templates}/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`, ★ `src/app/[locale]/app/me/certificates/**` (back from `content`), `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `src/components/{designer,posters}/**`, `src/components/certificates/**` except `held-achievements.tsx`, `packages/designer-runtime/**`, `packages/storage-paths/src/designer.ts`, `worker/src/render/**`, its four worker tasks, `scripts/parity/**` minus `goldens/`, `messages/*/{designer,templates,certificates}.json`, `supabase/proposed/designer/**` — ★ **with `0108`'s four functions, the lead's as custodian until now** — `tests/rls/{designer,templates,posters,certificates,fonts,exports}*.test.ts`, `tests/unit/{designer,render,posters,certificates,qr,fonts,serial}*`, `tests/e2e/{designer,templates,certificates,posters}*.spec.ts`, `tests/e2e/wave8-designer-*.spec.ts`, ★ `tests/e2e/wave7-content-certificates.spec.ts` and `tests/components/me/certificates-page.test.tsx` (evidence), `tests/components/{designer,certificates,posters}/**`, new `tests/e2e/wave10-designer-*.spec.ts`, its note |
+| `content` | sonnet | **a proposal's own material** (`DEC-155`'s carry): the three policies that `inner join sessions` admit a proposal's material for its owner and for staff, and **an admin reviewing a proposal can open the file the proposer attached** (`REQ-PRO-004`) · two carried fixes — the photo tile's takedown label wrapping, a save pressed before hydration on `/app/me` · `03` §5.5a's corrected text, in its note for the lead | `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/lib/dal/{materials,photos,tasks}.ts`, `src/app/api/upload/**`, `src/lib/storage/**`, `worker/src/content/**` and `worker/src/tasks/{convert_document,render_pages,process_photo}.ts`, its nine `ui/` primitives, `messages/*/{materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, new `tests/e2e/wave10-content-*.spec.ts`, its note. **Fixes only**: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and `actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`, `src/lib/realtime/**`, `src/app/[locale]/app/me/{page,layout,loading,error}.tsx`, `me/{bookmarks,privacy}/**`, `src/components/me/**`, `messages/*/{event,profile,privacy}.json` |
+
+★ = transferred or changed for this wave by `DEC-160`.
+
+**Wave-10 rules.**
+
+- ★ **The survey's storage contract is the lead's and comes before any table** (`DEC-160` §3): a stored
+  response names **no member** and carries **no timestamp**; «one member, one response» lives in
+  `survey_participations`; the response is written by a jittered job whose payload and key name no member;
+  **no client role selects a response or an answer** — results leave through one definer function that applies
+  the withhold to **every** question type, for the screen and the CSV alike; `ratings` holds no instant finer
+  than a day. `event` plans against it; a plan that needs a member on a response is a question to the lead,
+  never a column.
+- ★ **`notify` pins before it changes.** There are no mail goldens today (`DEC-160` §4), so «byte-identical
+  for an untouched org» is unproven until the 25 rendered messages are committed from `main`'s renderer. The
+  package move and the block compiler both come after, and both are measured against those files. **Pinned
+  mail output is never auto-refreshed** — a changed file is a reviewed change, as a shaping golden is.
+- ★ **Two untouched rules, one ledger.** A pre-existing `tests/**` file changes only with a line in
+  `STATUS.md`'s ledger saying why. The rate screen's specs pass unmodified on a session with no survey; the
+  mail unit suites pass unmodified on an org with no block template. `wave8-console-emails.spec.ts` is the
+  one spec the wave replaces content under — each changed case gets its own ledger line, and the delivery-log
+  cases do not change at all.
+- **Tables are the lead's; behaviour is the tracks'.** No teammate writes `create table` or `alter table`,
+  even in `proposed/` — it names the columns in its plan and the lead lands them at sync 1. **A function has
+  one writer.**
+- **Additive, because `main` runs on it first.** The owner pushes, then merges; Vercel and the Railway worker
+  deploy from `main`. No column dropped or renamed; a changed function is dropped and re-created **in the
+  same file** with its new arguments trailing and defaulted. Three things `main`'s worker must survive, each
+  answered in its owner's plan: a **block template's row** (its `subject` and `body` still render on the
+  string path), a **coarsened rating**, and a **second certificate** for one member.
+- **Teammates spawn planning-only**; sync 1 approves four plans against the contracts. The lead builds
+  `ui/reorderable-list` while they plan.
+- **New routes exist in `04` before they exist in `src/`** (`DEC-083`): `/app/admin/surveys` and
+  `/app/admin/surveys/[templateId]` are in (`DEC-160`); anything the studio needs beyond `/app/admin/emails`
+  is named in `notify`'s plan and lands with sync 1's entry.
+- **Every track that ships a screen runs `npm run ui-lint` before it commits** — it is not in the task hook,
+  and CI's design-system job is otherwise where a teammate learns.
+- **One writer per file, JSON and specs included.** `ratings.json` is `event`'s again, `certificates.json`
+  `designer`'s; the emails screen's strings stay in `notifications.json` unless `notify` moves them whole.
+- **Captures land at `.qa-shots/rtl/wave10-<track>-<surface>-<state>.png`** in the main checkout, phone
+  project, `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR` — and the
+  lead opens every one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate:** everything under `(marketing)/**` with the
+  components it renders (M13, with `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven glyphs); recurring
+  series (`A14`); **drag** in `ui/reorderable-list` (buttons conform; drag is the enhancement); the studio's
+  M12 mechanics beyond what the email studio needs; removing `render.ts`'s string path (M13, `DEC-081`);
+  points for answering a survey (no requirement asks for it); a member reading or editing their own answers
+  (`DEC-160` §3 makes it impossible on purpose); every `app/admin` route not named in a row above; all of
+  `app/platform/**`; the brand kit; `verify/**`; `legal/**`; objectives, tags, avatar storage, downloads
+  (`DEC-076`).
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 9 — multi-day sessions, DEC-150) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 9 merged as PR #26 (`f2ead54`). Its map is kept as the record; **wave 10's map is directly above** (`DEC-160`).
 
 **One feature on a new entity — `ENT-session_days` (`DEC-119` … `DEC-121`) — and not a routes wave.** A
 session has one or more days; each day carries its own check-in; materials, tasks and photos belong to the
@@ -584,7 +658,8 @@ to hard-fail in M13.
 `.claude/**` · `.github/**` · `package.json`, `package-lock.json` · `src/app/[locale]/layout.tsx` ·
 `src/app/[locale]/(marketing)/**` · `public/**` · `src/proxy.ts` · `src/lib/supabase/**` ·
 `src/lib/dal/session.ts` · `src/i18n/**` · `src/messages/*/marketing.json` · `scripts/**` ·
-`vitest.config.ts` · `playwright.config.ts` · `patches/**` (`DEC-136` — empty since `DEC-146` retired the one patch; a new one is the lead's).
+`vitest.config.ts` · `playwright.config.ts` · `patches/**` (`DEC-136` — empty since `DEC-146` retired the one patch; a new one is the lead's) ·
+★ from wave 10 (`DEC-160`): `worker/Dockerfile`, `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` — a package's manifest is the lead's, its `src/` is its track's.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:
@@ -600,7 +675,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A

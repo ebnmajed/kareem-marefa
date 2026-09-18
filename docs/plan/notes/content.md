@@ -3192,3 +3192,285 @@ Two more rounds, both proof-side, no further product code touched:
 `npx tsc --noEmit`/`npm run lint` clean at every step; no RLS or e2e run started at any point (freeze
 in force throughout). The lead's own real-build runs are the only verification any of this got —
 T4 passing on the real worker on both projects, and the demonstrable 7 of 7, are the actual proof.
+
+## Wave 10 plan
+
+Planning only, per the regenerated `.claude/agents/content.md`. Read (in order) `STATUS.md`'s START
+HERE block and the wave-10 block, `CLAUDE.md` § *Ownership map (wave 10)*, `DEC-160` §6 and `DEC-155`
+(where T1's defect was found and deliberately not fixed), `DEC-121`, `DEC-009`, `DEC-058`, `01-prd.md`
+`REQ-PRO-004`/`REQ-MAT-001…009`, `0116_materials_phase_by_scope.sql` in full (the five policies' live
+text, quoted below) with `0053_proposal_materials.sql`, `03-permissions-rls.md` §5.5a, and the current
+`materials.ts`/`proposal-list.tsx`/`download-button.tsx`/`actions.ts` (both the viewer route's and
+`components/materials/`'s). **No code, SQL, JSON or test written below is committed — this file only.**
+
+### T1 — a proposal's own material
+
+**Today's defect, precisely.** `materials_read` and `materials_storage_read` have carried a proposal
+branch since `0053` and are correct today, unchanged by this wave. `material_versions_read`,
+`material_pages_read` and `material_pages_storage_read` (all `0037`, touched only by `0116`'s day-scope
+clause) `inner join sessions` — for a row whose `session_id is null` no branch is reached, `is_staff()`
+included, because `is_staff()` sits *inside* the joined existence check in all three today. A proposal's
+material therefore shows its **row** (title, kind, phase badge) but `getMaterialDownloadUrl()`
+(`materials.ts:518`) reads `material_versions` under RLS and gets nothing back — `null` for owner and
+staff alike.
+
+**The three predicates, as I will write them — one shape, matching the already-correct
+`materials_storage_read`.** Each: `join sessions` → `left join sessions` (so a null `session_id` doesn't
+eliminate the row before the `where` is even evaluated), the existing session-shaped clause wrapped in
+`m.session_id is not null and (...)`, a new `or (m.proposal_id is not null and
+public.is_proposal_owner_of(m.proposal_id))`, and `is_staff()` pulled to the **top level** (it currently
+sits inside the session branch in all three — that is the second half of the bug: even a `left join`
+alone would not fix a staff reviewer, since `is_staff()` would still be gated behind `m.session_id is not
+null`).
+
+```sql
+-- material_versions_read
+drop policy "material_versions_read" on public.material_versions;
+create policy "material_versions_read" on public.material_versions for select to authenticated
+  using (org_id = public.auth_org_id() and exists (
+    select 1 from public.materials m
+      left join public.sessions s on s.id = m.session_id
+      left join public.session_days d on d.id = m.session_day_id
+     where m.id = material_versions.material_id
+       and m.removed_at is null
+       and (
+         (m.session_id is not null and (
+           m.phase = 'before' or s.state in ('completed', 'archived')
+           or (m.session_day_id is not null and d.ends_at <= now())
+           or public.is_presenter_of(m.session_id)
+         ))
+         or (m.proposal_id is not null and public.is_proposal_owner_of(m.proposal_id))
+         or public.is_staff()
+       )
+  ));
+
+-- material_pages_read — identical shape, one extra join hop (mv → m)
+drop policy "material_pages_read" on public.material_pages;
+create policy "material_pages_read" on public.material_pages for select to authenticated
+  using (org_id = public.auth_org_id() and exists (
+    select 1 from public.material_versions mv
+      join public.materials m on m.id = mv.material_id
+      left join public.sessions  s on s.id = m.session_id
+      left join public.session_days d on d.id = m.session_day_id
+     where mv.id = material_pages.material_version_id
+       and m.removed_at is null
+       and (
+         (m.session_id is not null and (
+           m.phase = 'before' or s.state in ('completed', 'archived')
+           or (m.session_day_id is not null and d.ends_at <= now())
+           or public.is_presenter_of(m.session_id)
+         ))
+         or (m.proposal_id is not null and public.is_proposal_owner_of(m.proposal_id))
+         or public.is_staff()
+       )
+  ));
+
+-- material_pages_storage_read — same shape again, storage.objects
+drop policy "material_pages_storage_read" on storage.objects;
+create policy "material_pages_storage_read" on storage.objects for select to authenticated
+  using (
+    bucket_id = 'material-pages'
+    and (storage.foldername(name))[1] = public.auth_org_id()::text
+    and exists (
+      select 1 from public.material_versions mv
+        join public.materials m on m.id = mv.material_id
+        left join public.sessions  s on s.id = m.session_id
+        left join public.session_days d on d.id = m.session_day_id
+       where mv.id = nullif((storage.foldername(name))[5], '')::uuid
+         and m.removed_at is null
+         and (
+           (m.session_id is not null and (
+             m.phase = 'before' or s.state in ('completed', 'archived')
+             or (m.session_day_id is not null and d.ends_at <= now())
+             or public.is_presenter_of(m.session_id)
+           ))
+           or (m.proposal_id is not null and public.is_proposal_owner_of(m.proposal_id))
+           or public.is_staff()
+         )
+    )
+  );
+```
+
+`materials_read`/`materials_storage_read`: **not touched** — already this shape since `0053`/`0116`.
+
+**Proof a session's material is unchanged.** Every session-scoped row still has `session_id is not
+null`, so its branch of each predicate is byte-for-byte what `0116` already evaluates — the `left join`
+change only widens which rows survive the join, never which session-scoped rows satisfy the
+`where`. Evidence, named, none of it edited: the five pre-`0116` suites (`materials-schema.test.ts` —
+including its own `POL-materials.proposal.*`/`is_proposal_owner_of` describe blocks, `photos-
+schema.test.ts`, `photos-broadcast.test.ts`, `tasks-schema.test.ts`, `storage-content.test.ts`) and the
+four wave-9 `*-days.test.ts` files (`materials-days`, `photos-days`, `tasks-days`, `storage-content-
+days`) — nine RLS files, all in my glob, all proven together at wave 9 sync and not reopened here — plus
+`tests/e2e/materials.spec.ts`. ★ `STATUS.md:412` says "the six existing content suites" against `0115`/
+`0116`; I count five pre-wave-9 files in my domain (the sixth may be counting `materials.spec.ts`, or a
+file outside my glob) — flagged as an open question below rather than guessed.
+
+**New cases** — `tests/rls/materials-proposal-versions.test.ts` (new file), against a draft proposal
+material seeded the same way `materials-schema.test.ts:617`'s `seedProposalMaterial` already does, plus
+a `material_versions` row and a `material-pages` bucket object with no `material_pages` row (proving the
+page-policy branch is inert, not merely untested — see below):
+1. the proposer reads `material_versions_read`'s row for their own proposal's material.
+2. an **accepted** co-presenter reads it too (`is_proposal_owner_of`'s second clause).
+3. staff — **both** `admin` and `moderator` (`is_staff()`'s full set) — read it, unrelated to the
+   proposal.
+4. an unrelated member (no relationship to the proposal at all) does not.
+5. a co-presenter who has **not** accepted does not (`is_proposal_owner_of`'s `accepted` filter).
+6. another org's admin does not (`org_id = auth_org_id()` on `material_versions_read` itself — this is
+   the one clause that predates T1 and stays exactly as it reads).
+7. one integration-shaped case per role (owner, staff): `materials_storage_read` (unchanged) **and**
+   the fixed `material_versions_read` together let a real `createSignedUrl()` against the `materials`
+   bucket succeed — the same two-step `getMaterialDownloadUrl()` itself performs — proving the fix closes
+   the actual defect, not just the row-level symptom.
+8. `material_pages_read`/`material_pages_storage_read` against the seeded material: **0 rows, no
+   exception**, for the proposer, staff and the unrelated member alike — proving §4's claim (no page can
+   exist while `proposal_id is not null`) rather than asserting it from the header comment alone.
+
+**Do the two page policies need the branch at all?** No. A `material_pages`/`material-pages`-bucket row
+is written only by the render job the `convert_document`/`render_pages` pipeline drives, and
+`finalize_material_upload()` (`0053:225`) **defers that enqueue** while `session_id is null` — the
+enqueue happens inside `carry_over_proposal_materials()` (`0053:132`), which is itself the trigger that
+sets `session_id` and clears `proposal_id` in the same statement. So by construction, the moment any
+`material_pages` row could exist, `proposal_id` is already null and `session_id` is already set — the
+proposal branch on these two policies is **provably unreachable**, not merely untested-today. I add it
+anyway, identically shaped to `material_versions_read`, for the same reason `0116`'s own header gives
+for keeping the session-state clause unconditioned on scope: three policies that read as one gate is a
+single invariant a reader can hold in their head; two that read as the gate and a third with a carved-out
+exception is a standing trap for the next person who adds an inline-preview-before-carry-over feature and
+copies "the" policy from the wrong one of the three. The cost is one dead `or` clause per file, proven
+dead by case 8 above rather than asserted.
+
+**The link.** `src/components/materials/proposal-list.tsx` (mine) renders it: a new
+`ProposalDownloadButton` client component (new file, `src/components/materials/proposal-download-
+button.tsx`, modelled on `app/sessions/[id]/materials/[materialId]/download-button.tsx:12` — same
+`useTransition`/toast-on-failure shape) beside each `<li>` whenever `m.currentVersionId` is not null
+(pdf/image/audio — never the two link kinds, which have no version). **For whom:** unconditional on
+`canManage`/role — every material in `ProposalMaterials`' `materials` array already passed
+`materials_read`'s proposal branch to arrive here at all (owner or staff only), and after T1's fix
+`material_versions_read` + `materials_storage_read` admit exactly that same pair, so anyone who can see
+the row can download it — mirroring the session-side viewer, where a presenter/admin's own downloads
+bypass `allow_download` in `materials_storage_read`'s second predicate the same way. A new server action,
+`requestProposalMaterialDownload` in `src/components/materials/actions.ts` (mine, already home to
+`rescopeMaterialAction`), thinly wraps the existing `getMaterialDownloadUrl(locale, materialId)` — no DAL
+change, the function is already generic over session/proposal. **Copy:** reuses `materials.list.download`
+/ `downloadAudited` — both keys exist in `ar/en materials.json` today (lines 30–31) and are currently
+**unused** by any component; I add the two missing siblings `downloading`/`downloadUnavailable`,
+Arabic-first, copied verbatim from `materials.viewer`'s own (lines 84/86: «جارٍ التحضير…» / «التحميل غير
+متاح لهذه المادة.») — same meaning, same screen family, no new sentence to draft. **Audit:**
+`record_material_download()` (`0049`) needs no change — it re-derives `is_org_admin()` and looks up
+`materials.org_id` alone, no `session_id` in its body, so it already works unmodified for a proposal
+material; a moderator's download stays unaudited, exactly as a moderator's download of a *session*
+material is unaudited today (`materials.ts:532`'s `role === "admin"` check) — an existing asymmetry,
+untouched, not introduced by this fix. **The e2e**, through the real Route Handler and real Storage
+(`0054`'s lesson): `tests/e2e/proposal-materials.spec.ts` (transferred to me) already uploads a real image
+through the form in its first test and asserts admin visibility in its second (`:176`) — no spec today
+clicks a download button at all (`materials.spec.ts:121`'s own comment: "not exercised by this spec").
+I extend the second test (new assertions appended, none of its existing ones touched) to click
+«تحميل» as the signed-in admin and, in a third new test, as the proposer — asserting a real signed URL
+is returned (the button's own success path, `window.location.href` set to a `supabase.co`/local Storage
+URL) rather than the failure toast.
+
+**Does `allow_download` apply?** No — and I checked rather than assumed. `materials_storage_read`'s
+download-permission predicate (the second `and (...)` block, `0116:114-119`, unchanged) is `m.
+allow_download or (session-presenter) or (proposal-owner) or is_staff()` — proposal-owner and staff
+already bypass the flag unconditionally, the same way a session's own presenter does. Since every viewer
+of `ProposalMaterials` is by construction owner-or-staff (materials_read's proposal branch let them see
+the row at all), `allow_download` can never be the reason a download is refused here — REQ-MAT-005's
+control is a *member*-facing one, and a proposal has no member audience yet. `updateMaterialSettings`'s
+UI (`SettingsForm`) is correspondingly absent from `proposal-list.tsx` today and stays absent — nothing
+to build.
+
+### T2 — two carried fixes
+
+**1 · The photo tile's takedown label wraps.** ★ **Already fixed, on `main`.** `git log --
+takedown-button.tsx` shows `7c6f9e5` (2026-09-16, part of PR #26/`f2ead54`) applied exactly the diagnosis
+this note carried from wave 6: `size="sm"`'s fixed `h-9` beaten by a merely-added `min-h-9`
+(emit-order, `DEC-111`/`133`'s class of bug) — fixed with `h-auto! min-h-9 py-2` on the `request`-mode
+trigger button (`takedown-button.tsx:90`). Nothing left to change in the component. What remains is the
+**capture** the definition of done already asks for — «the photo tile's takedown label on one line» —
+which has apparently never actually been retaken against this fix (`STATUS.md` still lists the row open
+at wave 10 as of this reading). I will take `.qa-shots/rtl/wave10-content-photos-takedown-390-rtl.png`
+against a half-width tile with the real (long) Arabic label and close the row on that evidence rather
+than re-touch code that is already correct.
+
+**2 · A save pressed before hydration on `/app/me`.** The implementation this finding was written
+against **no longer exists**. `actions.ts:14`'s own comment now reads "★ `useActionState`, not the old
+redirect + `?saved=1`/`?error=1` query" — `profile-form.tsx` was rebuilt in wave 7 (`07a2f3b`) and
+repaired again at wave 8 sync 5 (`bd517f6`, the company-select-after-save bug, a *different* defect from
+this one: `state.attempt` not counting a success, and a `<select>`'s `defaultValue` not re-syncing —
+both now fixed and both covered by `tests/components/me/profile-form.test.tsx` and `wave7-content-
+me.spec.ts`'s own e2e assertion). There is no `redirect()` and no query param left in the form for a
+pre-hydration POST to lose — the original bug, *as described*, cannot reproduce against this code,
+because the mechanism it depended on is gone. Whether a **different** pre-hydration defect exists in the
+current `useActionState`-based form — whether React/Next's own progressive-enhancement path for an
+action-bound form (a plain HTML POST before hydration, which Next's server-action runtime is supposed to
+resume into the same `useActionState` result on reload) actually restores `state.saved`/the echoed
+values — I cannot determine from source; it depends on framework behaviour (`node_modules/next/dist/
+docs/`) I have not been able to verify against a running instance. **What I need**: a production build
+plus a submit driven before hydration completes or with JS disabled (`test:e2e:local`, matching how the
+lead diagnosed `DEC-146`'s reserve probe) — a question to the lead per the gate rules, since diagnosing
+this needs `npm run build`.
+
+### T3 — `03-permissions-rls.md` §5.5a, corrected text (for the lead to land)
+
+§5.5a today (`03:618-635`) is the **pre-`0053`, pre-`0116`** `materials_read` — no proposal branch, no
+day-scope branch, and no mention of `material_versions_read`/`material_pages_read`/`material_pages_
+storage_read` anywhere in the document. Replacement:
+
+> #### §5.5a — `materials`, read — the phase gate, the day scope, and the proposal branch
+>
+> ```sql
+> create policy "materials_read" on materials for select to authenticated
+>   using (org_id = auth_org_id()
+>          and removed_at is null
+>          and (
+>            (session_id is not null and (
+>              phase = 'before'
+>              or exists (select 1 from sessions s where s.id = materials.session_id
+>                          and s.state in ('completed','archived'))
+>              or (session_day_id is not null
+>                  and exists (select 1 from session_days d where d.id = materials.session_day_id
+>                              and d.ends_at <= now()))
+>              or is_presenter_of(session_id)
+>            ))
+>            or (proposal_id is not null and is_proposal_owner_of(proposal_id))
+>            or is_staff()
+>          ));
+> ```
+> `REQ-MAT-006` in the database, as amended by `DEC-121`: a `بعد الجلسة` material releases when **its
+> own scope** ends — the whole session's `completed`/`archived` state for a session-scoped material, or
+> its own day's `ends_at` for a day-scoped one, whichever comes first (an early session completion never
+> leaves a later day's material hidden forever). `REQ-PRO-004`: a proposal's own material (`session_id`
+> null) is visible to its proposer, an accepted co-presenter, or staff, never to a plain member, until
+> `sessions_carry_over_proposal_materials` (`0053`) reassigns it on publication.
+>
+> **The same gate, three more times.** `material_versions_read`, `material_pages_read` and the
+> `material-pages` storage bucket's `material_pages_storage_read` each carry an **independent copy** of
+> this predicate (`0037`, day-scope clause by `0116`, proposal branch by wave 10) — a viewer's read of
+> `getViewerData()`/the download route reaches `materials` *and* one of these, so a row readable whose
+> dependant is not is the defect this section exists to prevent (`0054`). The proposal branch on the two
+> `material_pages*` policies is unreachable by construction (`carry_over_proposal_materials` clears
+> `proposal_id` before any render job can write a page row) but is written anyway, for the same reason —
+> see wave 10's `content` note §T1.
+>
+> **`allow_download` is not enforced here** — unchanged from today's text.
+
+### Open questions — my recommendation first
+
+1. **"The six existing content suites" (`STATUS.md:412`) vs. the five I can name pre-wave-9 in my
+   domain** (`materials-schema`, `photos-schema`, `photos-broadcast`, `tasks-schema`, `storage-content`).
+   **Recommendation:** treat it as six-including-`materials.spec.ts`, i.e. the DoD's own phrasing ("the
+   six existing content RLS suites **and** `materials.spec.ts`") already separates the two — no action
+   needed, just naming both explicitly in my proof rather than guessing a sixth RLS file into existence.
+2. **T2·2's real mechanism.** **Recommendation:** grant a short production-build window
+   (`npm run build` + `test:e2e:local` with JS disabled or a pre-hydration submit) once T1 is built and
+   gated, rather than block T1 on it — T2·2 is independent of T1's SQL and can land in its own small
+   commit (or close as "already fixed" like T2·1, if the repro shows nothing).
+3. **`ProposalDownloadButton` as a near-duplicate of `download-button.tsx`.** Both wrap
+   `getMaterialDownloadUrl` behind an identical `useTransition`/toast pattern; the only difference is the
+   action they call (`requestMaterialDownload` takes no scope, `requestProposalMaterialDownload` would be
+   the same body under a new name) and the `allowDownload` gate the session-side one keeps for a general
+   member audience. **Recommendation:** keep them as two small files rather than one shared component
+   with a boolean prop — the session-side one lives under a route directory for one `materialId` segment
+   and reads `materials.viewer`; the proposal one lives in my shared `components/materials/` and reads
+   `materials.list`; forcing one component to serve both namespaces is more indirection than the ~15 lines
+   saved. Says so here in case the lead prefers a single shared component instead.

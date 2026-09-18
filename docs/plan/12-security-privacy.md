@@ -210,6 +210,19 @@ From A33 / DEC-011, restated here because they are privacy controls, not UI pref
    by inference interests and affiliations. Sessions **presented** is visible — a talk is a stage.
 4. **Calendar tokens are hidden from org admins too.** The one place admin access is narrower than
    member self-access. A token is a credential for a personal Google account, not org data.
+5. ★ **A survey answer cannot be attributed — by anyone, in any artefact** (`DEC-094`, `DEC-160` §3,
+   `DEC-161`; added in wave 10, which is when the survey was built). `DEC-094` decorrelated the rating
+   and the survey response **in time**; read against the code, time is not the only join — a rating is
+   inserted with a precise instant, its points job leaves a member-attributed ledger row seconds later,
+   and the presenter's comment list was ordered by submission. So the design removes the thing being
+   joined. **A stored response names no member and carries no timestamp of any kind**; «one member, one
+   response» lives in a separate register that carries no answer and no time; the response is written
+   by a job, 10 minutes to 4 hours later, whose payload and key name no member; **no client role can
+   select a response, an answer or the register**, so results leave through one function that applies
+   the minimum-count withhold to every question type *and to the count itself*; `ratings` holds no
+   instant finer than a day; the submit writes no audit row. The costs are deliberate: a member cannot
+   re-open or edit their answers, and the self-export (`REQ-PRF-006`) says which surveys they answered
+   and not what they said — an answer that cannot be attributed is not that member's personal data.
 
 ### 5.3 Retention (OQ-019)
 
@@ -354,6 +367,19 @@ Stated rather than omitted. Each is a decision, not an oversight.
 6. **`allow_download` is friction, not DRM** (`07` §6). Page images can be screenshotted. The UI
    does not imply otherwise.
 7. **Hosting region and PDPL** (§6.1). Open, tracked as OQ-026, to be decided in M0.
+8. ★ **Survey anonymity has three residues, each stated rather than hidden** (`DEC-160` §3.6,
+   `DEC-161`). **(a) The queue row.** While a response waits for its job, the row in `graphile_worker`
+   carries the answers and a precise `created_at`, and shares a transaction id with the participation
+   written beside it. It is reachable by `service_role` alone and deleted on completion; a permanently
+   failed job keeps it until someone clears it. **(b) A survey one person answered.** The register
+   says who and the box says what. The withhold exists for this, at read time, and is why the count is
+   withheld with the answers. **(c) Differencing.** Results drawn at three responses and again at four
+   differ by one person's answers, and an org admin can see who rated on which day through the audited
+   per-rater view. The withhold is a floor on a snapshot, not on an increment. **Batch release** — a
+   response joins the aggregate only with at least `min − 1` others — closes it at the cost of a lag
+   and of up to two responses per session never being shown; that is a product decision about dropped
+   feedback and is the owner's. `survey_results()` aggregates one named set, so it is a one-line change.
+   Free text can identify its writer by what it says; no schema changes that.
 
 ---
 

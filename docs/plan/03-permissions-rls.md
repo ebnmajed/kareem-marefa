@@ -179,6 +179,8 @@ apart, and a change to what counts as a check-in changes all four at the same in
 | `photo_takedowns` | insert self | — | resolve | resolve | — | — |
 | `reports` | insert self | — | ✅ | ✅ | — | — |
 | `ratings` | insert/update self **if `has_checked_in`** | **agg only** | — | ✅ full | — | — |
+| `survey_templates`, `surveys` and their questions and options | — | — | read | read | — | — |
+| `survey_participations`, `survey_responses`, `survey_answers` | **no `select` for anyone** — answer through `submit_survey_response()` **if `has_checked_in`** | — | results through `survey_results()` only, withheld | the same; and the CSV | — | — |
 | `points_ledger` | self read, `S` insert | self read | — | read + `S` adjust | — | — |
 | `points_balances` | read | read | read | read | — | — |
 | `scoring_rules` | read | read | read | ✅ | — | — |
@@ -615,20 +617,44 @@ Manual marking is a separate `assert_fresh_admin()`- or moderator-gated RPC requ
 | `task_completions` | P7 + presenter | P3 | P3 | P3 | |
 | `task_form_responses` | §5.5b | P3 | P3 | — | |
 
-#### §5.5a — `materials`, read — the phase gate
+#### §5.5a — `materials`, read — the phase gate, the day scope, and the proposal branch
 ```sql
 create policy "materials_read" on materials for select to authenticated
   using (org_id = auth_org_id()
          and removed_at is null
-         and (phase = 'before'
-              or exists (select 1 from sessions s
-                          where s.id = materials.session_id
-                            and s.state in ('completed','archived'))
-              or is_presenter_of(session_id)
-              or is_staff()));
+         and (
+           (session_id is not null and (
+             phase = 'before'
+             or exists (select 1 from sessions s where s.id = materials.session_id
+                         and s.state in ('completed','archived'))
+             or (session_day_id is not null
+                 and exists (select 1 from session_days d where d.id = materials.session_day_id
+                             and d.ends_at <= now()))
+             or is_presenter_of(session_id)
+           ))
+           or (proposal_id is not null and is_proposal_owner_of(proposal_id))
+           or is_staff()
+         ));
 ```
-`REQ-MAT-006` in the database: a `بعد الجلسة` material is invisible to members until the session
-completes. Doing this in the DAL alone would leave the row reachable through any other read path.
+*Corrected under `DEC-161` (wave 10), from `content`'s note: this section described the pre-`0053`,
+pre-`0116` policy until then.* `REQ-MAT-006` in the database, as amended by `DEC-121`: a `بعد الجلسة`
+material releases when **its own scope** ends — the session's `completed` / `archived` state for a
+session-scoped material, or its own day's `ends_at` for a day-scoped one, whichever comes first.
+`REQ-PRO-004`: a proposal's own material (`session_id` null) is visible to its proposer, an accepted
+co-presenter, or staff — never to a plain member — until `0053`'s carry-over reassigns it on
+publication. Doing this in the DAL alone would leave the row reachable through any other read path.
+
+**The same gate, three more times.** `material_versions_read`, `material_pages_read` and the
+`material-pages` bucket's `material_pages_storage_read` each carry an **independent copy** of this
+predicate (`0037`; the day-scope clause by `0116`; the proposal branch and `is_staff()` at the top
+level by `0129`). A viewer's read reaches `materials` **and** one of these, so a row readable whose
+dependant is not is the defect this section exists to prevent (`0054`) — and was, until `0129`, exactly
+what happened to a proposal's material: all three `inner join`ed `sessions`, so for a row whose
+`session_id` is null **no branch was reached, `is_staff()` included**, and an admin reviewing a
+proposal could not open the file the proposer attached. The proposal branch on the two
+`material_pages*` policies is unreachable by construction (carry-over clears `proposal_id` before any
+render job can write a page row) and is written anyway, so the three read as one gate; a test proves
+it dead against a synthetic page row rather than an empty table.
 
 **`allow_download` is not enforced here** — RLS gates the *row*, not the *file*. The file lives in
 Storage, and download control is a bucket policy plus a signed-URL decision (§6), because that is
@@ -657,6 +683,46 @@ moderation material (`REQ-ADM-020`).
 | `photo_takedowns` | staff + requester | P3 | P6 | — | Insert hides instantly, by trigger. |
 | `reports` | staff + reporter | P3 | P6 | — | |
 | `ratings` | §5.6d | §5.6e | §5.6e | — | **The D36 boundary.** |
+| `survey_templates` | §5.6f | — | — | — | Staff read; every write is a definer RPC (a write renumbers a whole ordered set). |
+| `survey_template_questions` | §5.6f | — | — | — | Same. |
+| `survey_template_options` | §5.6f | — | — | — | Same. |
+| `surveys` | §5.6f | — | — | — | One per session. Staff read; attach and detach are definer RPCs. **A presenter is not staff.** |
+| `survey_questions` | §5.6f | — | — | — | The copy made at attach — editing a template never rewrites it. |
+| `survey_question_options` | §5.6f | — | — | — | Same. |
+| `survey_participations` | — | — | — | — | **No policy at all.** The REGISTER: who answered, with no answer, no time and no surrogate id (`DEC-160` §3). Written by `submit_survey_response()` alone. |
+| `survey_responses` | — | — | — | — | **No policy at all.** The BOX: a random id, an org and a survey, **and nothing else, ever** — no member, no timestamp. Written by the jittered job alone; read by `survey_results()` alone. |
+| `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
+
+#### §5.6f — the survey (`0124`, `DEC-074`, `DEC-160` §3, `DEC-161`)
+```sql
+create policy "survey_templates_read_staff" on survey_templates for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_template_questions_read_staff" on survey_template_questions for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_template_options_read_staff" on survey_template_options for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "surveys_read_staff" on surveys for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_questions_read_staff" on survey_questions for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+create policy "survey_question_options_read_staff" on survey_question_options for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+```
+`REQ-SUR-005`: the survey is the organisation's instrument. **Its audience is the reverse of the
+rating's** — `admin` **and** `moderator`, never the presenter, and `is_staff()` says exactly that: a
+presenter is not staff by presenting. ★ **A staff member who presents the session is refused the
+results as well** (`survey_results()`, `DEC-161`): the ask exists so a presenter never reads their own
+session's survey, and an admin who presents is that person — deliberately unlike `ratings`, where an
+admin reads per-rater rows for a session they present.
+
+★ **The three tables that hold who answered and what was answered have no policy and no grant — for
+every client role and for `service_role`.** A stored response names **no member** and carries **no
+timestamp of any kind**; «one member, one response» lives in `survey_participations`, which carries no
+answer and no time. The response is written by a jittered job whose payload and key name no member.
+Results leave through **one** definer function that applies the minimum-count withhold to **every**
+question type — and to the response count itself — for the screen and the CSV alike, so `xmin` and
+`ctid` are never readable. `tests/rls/survey-structure.test.ts` asserts the shape over the catalogue.
+`org_settings.survey_min_responses` has a floor of 3: an org cannot switch the withhold off.
 
 #### §5.6a — `comments`, insert
 ```sql
@@ -1005,6 +1071,7 @@ create policy "design_assets_storage_read"   on storage.objects for select to au
 create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
 create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
+create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
 
@@ -1762,6 +1829,100 @@ generated suite is the highest-value test in the product.
 | ★ **wave 9, sync 4, migration `0122`** — the public card is given its day windows (`DEC-157`), so `sessionPhase()` stays the one implementation and the card stops saying «جارية الآن» between two days |
 | `POL-sessions.public_card.day_windows` | The public card's row carries one `{ starts_at, ends_at }` per day, ordered, for `anon` and `authenticated` alike — enough for `sessionPhase()` and nothing more. No day id, no position, no venue; `session_days` gains no grant. |
 | `POL-sessions.public_card.one_day_unchanged` | A one-day session returns a one-element array, which `betweenDays()` has no pair to walk — the card's phase is what it has always been. |
+| ★ **wave 10, migration `0123`** — recognition edits are recorded (`DEC-160`, row L9): the four recognition tables get the history trigger every other configuration table has carried since `0004` and `0027` |
+| `POL-badges.history` | An admin's edit of a badge appends one `scoring_config_history` row per changed column (`scope = 'badges'`), retiring included; a custom badge's creation appends one `created` row; a save that changes nothing appends none; the org's seed appends none. |
+| `POL-levels.history` | An admin's edit of a level appends one row per changed column (`scope = 'levels'`), with the old and the new threshold. |
+| `POL-perks.history` | An admin's edit of a perk appends one row per changed column (`scope = 'perks'`). |
+| `POL-streak_rules.history` | An admin's edit of a streak rule appends one row per changed column (`scope = 'streaks'`). |
+| `POL-recognition.history.no_forgery` | A moderator's refused edit appends nothing; another org's history is untouched; no client role — the admin included — can insert a history row directly (`42501`). |
+| ★ **wave 10, migration `0124`** — the survey's tables (`DEC-160` §3, `DEC-161`): six authoring tables staff read, and a register and a box no client role reads. Tables only; each row below is proven by `event`'s suites at the promotion of its functions |
+| `POL-survey_templates.staff_read` | Staff of the org read its templates, questions and options; a plain member and the other org's staff read none; no client role writes any of the three directly. |
+| `POL-surveys.staff_read` | Staff of the org read a session's survey, its questions and options; a plain member, the session's presenter as such, and the other org's staff read none; no client role writes directly. |
+| `POL-survey_participations.no_client_select` | RLS enabled, no policy, no grant: `anon`, a member, the presenter, a moderator, an admin and `service_role` are each refused `42501`. |
+| `POL-survey_responses.no_client_select` | The same, for the box. |
+| `POL-survey_answers.no_client_select` | The same, for the answers. |
+| `POL-survey.structure` | Generated over the catalogue: no member, check-in, rating or timestamp column on `survey_responses` or `survey_answers`; no timestamp column on `survey_participations`; no foreign key from a response or an answer to `members`. |
+| `POL-org_settings.survey_min_responses.floor` | The minimum cannot be set below 3 by any role. |
+| ★ **wave 10, migration `0125`** — a notification template may carry blocks, on its own row (`DEC-161`): no table of shared designs, so one trigger polices one key's bindings and `body` cannot go stale |
+| `POL-notification_templates.blocks.shape` | `blocks` is null or an object carrying `schemaVersion` and an array `blocks`; anything else is refused `23514`, for every writer. `source_family` without `blocks` is refused. |
+| `POL-notification_templates.blocks.admin_only` | An admin of the org writes `blocks` and `source_family` on its own rows through the existing policies; a moderator, a member and the other org's admin cannot. |
+| ★ **wave 10, migration `0126`** — an active org's logo, readable with no session (`DEC-161`, contract 9): a mail client fetches months later with no cookie, and every app-minted URL for `design-assets` is a five-minute signature. `0080`'s shape, for one more object |
+| `POL-storage.design_assets.public_logo` | `anon` reads exactly the object an ACTIVE org's `brand_kits.logo_asset_id` names, while it is PNG or JPEG. Refused: any other design asset of the same org; the same org's logo while it is WebP (Outlook draws none); a suspended org's logo; a logo the org has since replaced or cleared. A signed-in member of ANOTHER org sees what a stranger sees. `anon` writes and deletes nothing. |
+| `RPC-org_public_logo.path_only` | Returns the storage path and the SNIFFED content type of that one object, or no row — for `anon`, `authenticated` and the worker. It reveals nothing a caller could not learn by fetching the object. |
+| `RPC-definer.anon_allowlist` (amended) | The `anon`-executable definer functions are exactly the documented eight: `0080`'s two, `verify_certificate`, the three that answer about the caller, and `0126`'s two. |
+| ★ **wave 10, migration `0127`** — `designer` — certificates re-issued (`DEC-160` §6, `DEC-161`): a removal's revocation may be replaced under the next serial, an admin's revocation for cause never is; the lead's DDL inside it (contract 10) |
+| `POL-certificates.live_once` | A second LIVE certificate for one (org, session, member, kind) is refused 23505 by `certificates_live_once`; a second REVOKED row is accepted, which is what lets a re-issue keep the first one on the register. |
+| `RPC-issue_certificate.replacement_after_removal` | A member whose certificate was revoked BY A REMOVAL, then re-added, is issued a second certificate under the NEXT serial; its `check_in_id` is the new check-in; the first keeps its serial and still verifies as revoked, without its reason. |
+| `RPC-issue_certificate.no_replacement_after_for_cause` | A certificate revoked FOR CAUSE is never replaced — not by the sync hook, not by a re-run fan-out, not by a late job. `issue_certificate()` raises `revoked_for_cause` (42501) BEFORE `allocate_serial()`, so the org's serial counter does not move. |
+| `RPC-revoke_certificate.records_its_cause` | Every revocation records why it happened: the removal path passes `attendance_removed`, every other caller takes `for_cause`. A revocation written before this file reads as `for_cause` — final — through `coalesce`. |
+| `RPC-attendance_certificate_sync.reissues_after_removal` | Attendance complete again on a completed session with certificates on, holding only a removal-revoked certificate, enqueues the issue job under 11 §2.5's key; holding a for-cause-revoked one enqueues nothing; holding a LIVE one still enqueues nothing. |
+| ★ **wave 10, migration `0128`** — `designer` — `poster_render_context()` hands the worker a session's days, by `position`; no new binding, so any document version renders on any runtime (`DEC-161`, defect 1) |
+| `RPC-poster_render_context.days` | The render context carries the session's days in `position` order — the database's derived rank, never a minimum or a maximum computed by a caller. At one day it is that one day, and every other column is `0082`'s, in `0082`'s order. Executable by `service_role` alone. |
+| ★ **wave 10, migration `0129`** — `content` — a proposal's own material (`DEC-155`'s carry): the three policies that `inner join sessions` admit it for its owner and for staff |
+| `POL-material_versions.proposal` | The version row of a proposal's own material is readable by its proposer, an accepted co-presenter, and staff — never a plain member — the same audience `materials_read`'s proposal branch already admits at the row. |
+| `POL-material_pages.proposal` | Same audience, for a proposal-owned material's page rows — in practice always empty, since no page is ever rendered before carry-over. |
+| `POL-storage.material_pages.proposal` | The page-image bucket's own copy of the same rule. |
+| ★ **wave 10, migration `0130`** — `event` — `ratings` holds no instant finer than a day (`DEC-160` §3.4): a coarsening trigger pinned to UTC, the backfill, the presenter's comments no longer in submission order |
+| `POL-ratings.day_precision.insert` | A rating written by a member is stored at midnight UTC — the instant it was written is not recoverable from the row. |
+| `POL-ratings.day_precision.update` | An edit coarsens `edited_at` too: `main`'s app writes it from JavaScript at millisecond precision, and the trigger covers `update` for exactly that reason. |
+| `POL-ratings.day_precision.backfill` | The rows that existed before this file are coarsened by it, and coarsening an already-coarsened row changes nothing. |
+| `POL-ratings.day_precision.no_award` | The backfill enqueues no `award_points` job: `ratings_award_points` is `after insert`, and this is an `update`. |
+| `POL-ratings.aggregate.comment_order` | The presenter's comment list is ordered by the rating's random id, never by submission: submission order is itself a disclosure to a presenter who watched people leave. |
+| ★ **wave 10, migration `0131`** — `event` — `rating_window_open()`: the one SQL definition of «completed, and inside the window», called by both rating policies and by the survey's submit |
+| `RPC-rating_window_open.completed_and_inside` | True for a completed session inside `rating_window_days`; false before completion and false the day after the window closes. |
+| `RPC-rating_window_open.other_org` | False for a session of another org, whatever its state — the function answers about the CALLER's org only. |
+| `RPC-rating_window_open.not_public` | `anon` cannot execute it; `authenticated` can. |
+| `POL-ratings.insert.window` | The re-created insert policy still accepts a rating inside the window and refuses one past it — the rule moved into a function, not out of the policy. |
+| `POL-ratings.update.window` | The re-created update policy still refuses an edit past the window. |
+| ★ **wave 10, migration `0132`** — `event` — the survey's authoring half: templates saved whole, attach copies, detach refused once anyone has answered; attach and detach audited |
+| `RPC-survey_template_save.staff_only` | A member is refused `not_authorized`; an admin and a moderator both succeed; a stale admin is refused `stale_claims`. |
+| `RPC-survey_template_save.whole_set` | Saving replaces the whole question set in the array's order: positions are 1…n and are never read from the client. |
+| `RPC-survey_template_save.shapes` | A choice question with fewer than two options, an empty prompt, an unknown kind and options on a non-choice question are each refused by name, with the question's index — and nothing is written. |
+| `RPC-survey_template_save.title_taken` | Two templates of one org cannot share a title; the refusal is an envelope, not a constraint error. |
+| `RPC-survey_template_save.other_org` | A template of another org is `not_found`, never edited. |
+| `RPC-survey_attach.copies` | Attaching copies the template's questions and options into the session's own rows: editing the template afterwards changes nothing that was attached. |
+| `RPC-survey_attach.one_per_session` | A second attach to the same session is refused by name; an empty template is refused before anything is written. |
+| `RPC-survey_attach.audited` | Attach and detach each write one `audit_log` row naming the session and the survey. |
+| `RPC-survey_detach.has_responses` | Once one member has answered, detaching is refused and the survey stands. |
+| ★ **wave 10, migration `0133`** — `notify` — bindings declared per message key and refused by the database for every writer (`REQ-NTF-012`), inside blocks too; `0026`'s three rules verbatim |
+| `RPC-notification_bindings.total` | Every message with an email channel offers at least the three the renderer injects; no key offers a binding twice. |
+| `RPC-notification_bindings.defaults_are_legal` | Every binding the built-in Arabic templates interpolate is offered by the key that uses it — the platform's own text cannot be refused by the rule the platform ships. |
+| `POL-notification_templates.unknown_binding` | A template whose subject, body or blocks reference a binding the key does not offer is refused `22023`, as the org admin — the writer the screen uses — and as the owner. |
+| `POL-notification_templates.blocks_bindings` | The scan reaches INSIDE `blocks`: a paragraph's `{{…}}`, a button's `urlBinding` (a bare name, not a placeholder), a detail row's label and value, an image's `alt`. |
+| `POL-notification_templates.in_app_unchecked` | An `in_app` row is not subject to the binding rule: nothing reads one (`notification_send_context` filters `channel = 'email'`), and its key may have no email channel and so no declared bindings at all. |
+| ★ **wave 10, migration `0134`** — lead — corrects `0125`: an object with no `blocks` key is refused (a CHECK rejects only on FALSE) |
+| `POL-notification_templates.blocks.shape` | … an object with `schemaVersion` and NO `blocks` key is refused `23514` too. |
+| ★ **wave 10, migration `0135`** — lead, as `platform`'s custodian — the PDPL self-export lists the surveys a member answered (`REQ-PRF-006`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-build_data_export_payload.surveys_answered` | `surveys_answered` lists, for the member alone, the sessions whose survey they took part in — by title, each entry carrying that one key and so no instant, ordered by title and never by insertion. |
+| `RPC-build_data_export_payload.surveys_no_answers` | No answer text and no question prompt appears anywhere in the archive: there is no path from a member to a stored response. Every key `0088` returned is still returned, and `surveys_answered` is the only addition. |
+| ★ **wave 10, migration `0136`** — `notify` — what one send needs to render a design: the template's blocks, and whether the mail may carry the session card's image (`REQ-NTF-009`, `REQ-NTF-014`, contract 8, `DEC-162` §3) |
+| `RPC-notification_send_context.blocks` | The `template` object carries `blocks` — null for a string template, the stored document otherwise — so the worker renders a design without a second read. |
+| `RPC-notification_send_context.card_image` | Given a session id, the context says whether `/api/s/{id}/og` will answer with BYTES — derived from `session_public_card()`, the function the route itself reads, never from a second copy of its predicate. False for a cancelled session, false for one whose poster has not finished rendering, false for another org's id however eligible, false — not an error — for an id that is no session. |
+| `RPC-notification_send_context.definer_only` | Unchanged after the drop and re-create: `anon`, `authenticated` and an org admin are all refused on the grant, because it returns another member's email address. |
+| ★ **wave 10, migration `0137`** — `event` — the one function that accepts an answer, the one that stores it, and what a member may read of a survey (`REQ-SUR-003`, `REQ-SUR-004`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-submit_survey_response.eligibility` | Exactly the members who may rate may answer: no check-in, a removed check-in, a session that has not completed and one past the window are each refused `not_eligible` with the reason. |
+| `RPC-submit_survey_response.agrees_with_rating_policy` | Across those situations the answer is `not_eligible` exactly when a rating insert is refused — the survey never admits someone the rating turns away. |
+| `RPC-submit_survey_response.second_submission` | A second submission is refused `already_answered`, read from the register by name, and enqueues nothing. |
+| `RPC-submit_survey_response.validates_before_writing` | A missing required question, an option of another question, a scale out of range and an unknown question are each refused naming the question ids — and no participation and no job are left behind. |
+| `RPC-submit_survey_response.enqueues_decorrelated` | One job, task `record_survey_response`, key NULL, `run_at` between 10 minutes and 4 hours ahead, payload `{response_id, survey_id, answers}` and nothing else. |
+| `RPC-submit_survey_response.no_audit` | The submit writes no `audit_log` row. |
+| `RPC-submit_survey_response.duplicate_option` | The same option sent twice on one question is stored once: the answer is normalised to one id at the door, so the partial unique index can never raise inside the job and lose the response. |
+| `RPC-submit_survey_response.empty_submission` | A submission with no answer at all writes NOTHING — no participation, no job — and the member who returns inside the window still finds the survey. |
+| `RPC-record_survey_response.service_role_only` | `anon`, a member, a moderator and an admin are all refused; the worker's role succeeds. |
+| `RPC-record_survey_response.replay` | Running the same job twice writes one response — the id is in the payload and the insert is `on conflict do nothing`. |
+| `RPC-survey_for_member.no_survey` | A session with no survey answers `null` — nothing about a survey reaches a member who has none (REQ-SUR-001). |
+| `RPC-survey_for_member.audience` | It answers a member with an active check-in (or one who has already answered) and nobody else: a member who never attended cannot read a session's questions by its id. |
+| ★ **wave 10, migration `0138`** — `event` — the one function that releases results, under the withhold (`REQ-SUR-005` … `008`, `DEC-160` §3.3) |
+| `RPC-survey_results.staff_only` | An admin and a moderator read; a member is refused `not_authorized`; a stale admin is refused `stale_claims`; another org's session is `not_found`. |
+| `RPC-survey_results.presenter_refused` | ★ The session's presenter is refused — whatever their role. An admin who presented their own session is refused too (REQ-SUR-005 is about presenting, not about rank). |
+| `RPC-survey_results.withheld_below_minimum` | Below `survey_min_responses` nothing leaves: no mean, no distribution, no free text — and no response count either, because in a survey one person answered the register says who. |
+| `RPC-survey_results.withheld_per_question` | At or above the minimum, a question that FEWER than the minimum answered is withheld on its own while the rest are drawn — and its own answered count is withheld with it. |
+| `RPC-survey_results.withheld_hides_n` | In the withheld branch the eligible count is the ACTIVE ATTENDEE count alone: `greatest(attendees, responses)` would publish `n` itself whenever a check-in was removed after its member answered. |
+| `RPC-survey_results.drawn` | At the minimum: a scale question's count, mean and 1…5 distribution; a choice question's per-option counts in the authored order; free text as a list. |
+| `RPC-survey_results.free_text_order` | Free text comes back ordered by the answer's random id — never by insertion, which would be the order people answered in. |
+| `RPC-survey_results.response_rate` | The numerator is the stored responses and the denominator the session's active attendees; with no eligible attendee the count is zero and the caller says so rather than dividing. |
+| `RPC-survey_results.rate_never_exceeds_one` | A member whose check-in is removed AFTER they answered cannot be taken out of the box, so the denominator is `greatest(attendees, responses)` and the rate is never above 100 %. |
+| `RPC-survey_results.no_settings_fails_closed` | ★ An org with NO `org_settings` row still withholds — at one response and at two, read by an admin and by a moderator, the answer's sentence nowhere in the serialised payload; at three it draws, with `withheld` a boolean on every question (the floor is not a wall); and with `0124`'s check dropped and the minimum set to 1 it still withholds at 3 (the function does not lean on the constraint). The minimum falls back to the floor of 3 and is never lower than it. Without the fallback `v_min` is NULL, every guard compares with NULL, and one response's free text is released with `withheld` reading null — mutation-checked: the case reads `ok` against the unfixed function. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.

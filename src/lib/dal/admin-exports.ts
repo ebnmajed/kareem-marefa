@@ -8,6 +8,7 @@ import arSessions from "@/messages/ar/sessions.json";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionsForAdmin } from "@/lib/dal/sessions";
+import { getSurveyExportRows } from "@/lib/dal/surveys";
 
 // SCR-044/SCR-061 — CSV exports (REQ-ADM-017, REQ-CHK-012's CSV acceptance).
 //
@@ -41,8 +42,27 @@ const BOM = "﻿";
  *  and an internal quote is doubled. Excel and every other reader agree on
  *  this even though the RFC predates them; nothing here is Excel-specific. */
 function csvField(value: string): string {
-  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
+  const safe = neutraliseFormula(value);
+  if (/[",\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
+  return safe;
+}
+
+/**
+ * ★ Wave 10 (`DEC-160` contract 6). A spreadsheet EXECUTES a cell that opens
+ * with `=`, `+`, `-` or `@` — and a tab or a carriage return in front does not
+ * stop it. The survey's export is the first to carry text a member typed
+ * straight into an admin's spreadsheet, but a display name, a session title
+ * and a revocation reason were always member- or staff-typed too, so the
+ * guard is in the one builder and not in one export. The apostrophe is the
+ * OWASP remedy: the cell reads as text and shows the value unchanged.
+ *
+ * A plain number keeps its sign — «-5» in a points column must stay a number
+ * a spreadsheet can sum, and a number cannot carry a formula.
+ */
+function neutraliseFormula(value: string): string {
+  if (!/^[=+\-@\t\r]/.test(value)) return value;
+  if (/^[+-]?\d+(\.\d+)?$/.test(value)) return value;
+  return `'${value}`;
 }
 
 export function buildCsv(headers: string[], rows: string[][]): string {
@@ -215,6 +235,31 @@ export async function exportAttendanceCsv(locale: string, sessionId: string): Pr
   const sheet = attendanceSheet(report, prefs.timeZone);
   await auditExport(locale, "attendance", "session", sessionId);
   return { csv: buildCsv(sheet.headers, sheet.rows), sessionTitle: report.sessionTitle };
+}
+
+/**
+ * SCR-064's export (`REQ-SUR-008`, `REQ-ADM-017`; `DEC-160` contract 6) — the
+ * lead's, as `console`'s custodian. `event` owns the rows: `getSurveyExportRows()`
+ * returns them ALREADY WITHHELD by `survey_results()`, the one function that
+ * reads a response, so this file cannot leak what the screen hides — it has
+ * nothing but the screen's own answer to print.
+ *
+ * Admin only, although the screen admits a moderator (`DEC-161`): an export
+ * is a bulk read, `REQ-ADM-017` makes it an admin capability, and
+ * `write_admin_export_audit()` asserts a FRESH admin whatever this file
+ * thinks. A withheld survey still exports — one row saying so — and is still
+ * audited: the admin asked, and the log says they asked.
+ */
+export async function exportSurveyCsv(locale: string, sessionId: string): Promise<{ csv: string; sessionTitle: string } | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const sheet = await getSurveyExportRows(locale, sessionId);
+  if (!sheet) return null;
+
+  await auditExport(locale, "survey", "session", sessionId);
+  return { csv: buildCsv(sheet.headers, sheet.rows), sessionTitle: sheet.sessionTitle };
 }
 
 // ── SCR-061 — org-wide exports (REQ-ADM-017) ─────────────────────────────

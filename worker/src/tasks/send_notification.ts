@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
-import { renderEmail, TemplateMissingError } from "../mail/render.js";
+import { renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
 // Key: `notify:{message_id}`, enqueued by `public.notify()` inside the
@@ -33,7 +33,17 @@ interface SendContext {
   optional: boolean;
   member: { id: string; email: string; display_name: string | null; status: string };
   org: { name: string; from_name: string | null; reply_to: string | null; time_zone: string };
-  template: { subject: string | null; body: string | null; locale: string } | null;
+  // `blocks` is `0125`'s column, added to this object by `notification_send_context`
+  // (DEC-161). **Null is a string template** — every row that existed before
+  // wave 10 — and `renderEmail()` then takes the path whose bytes
+  // `tests/unit/mail-pinned/` pins.
+  template: { subject: string | null; body: string | null; locale: string; blocks?: unknown | null } | null;
+  // ★ «May this mail carry the session card's image» — one boolean, derived by
+  // `notification_send_context` from `public.session_public_card()`, which is
+  // the function `/api/s/{id}/og` itself reads. NOT a state this task
+  // interprets: a second reading of that predicate here would be a second
+  // place free to drift from the SQL that decides.
+  session_card_image?: boolean;
   email_allowed: boolean;
   in_app_allowed: boolean;
 }
@@ -61,9 +71,13 @@ export const send_notification: Task = async (rawPayload, helpers) => {
     return;
   }
 
+  // The fifth argument is TRAILING and DEFAULTED (supabase/proposed/notify/0002),
+  // so `main`'s worker keeps calling this with three. The session id comes from
+  // the payload and the function scopes it to this org.
+  const payloadSessionId = typeof p.payload?.session_id === "string" ? p.payload.session_id : null;
   const { rows } = await helpers.query<{ notification_send_context: SendContext }>(
-    `select public.notification_send_context($1::uuid, $2::uuid, $3::text) as notification_send_context`,
-    [p.org_id, p.member_id, p.key],
+    `select public.notification_send_context($1::uuid, $2::uuid, $3::text, 'ar', $4::uuid) as notification_send_context`,
+    [p.org_id, p.member_id, p.key, payloadSessionId],
   );
   const ctx = rows[0]?.notification_send_context;
   if (!ctx) throw new Error(`send_notification: no context for ${p.key} / ${p.member_id}`);
@@ -78,22 +92,50 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   // 06 §8.3's email-template leg (wave 4, DEC-052): the org's brand kit,
   // merged over the platform defaults in SQL, so the mail carries the same
   // colours as the UI and the posters. One read, one shape.
-  const { rows: kitRows } = await helpers.query<{ kit: { light?: { fgBody?: string; fgMuted?: string; surface?: string } } | null }>(
+  // ★ The WHOLE kit is passed now, not three of its keys. `brand_kit()` has
+  // returned both schemes, nine tokens each, since `0068`/`0093`, and a DESIGN
+  // needs more than the shell does — a heading colour and a rule colour at
+  // least. `renderEmail()` narrows it back to the same three for the string
+  // path with the same guard this line used to apply, so the mail an untouched
+  // org receives is byte for byte the one it received before (contract 5).
+  const { rows: kitRows } = await helpers.query<{ kit: { light?: Record<string, string>; dark?: Record<string, string> } | null }>(
     `select public.brand_kit($1::uuid) as kit`,
     [p.org_id],
   );
-  const light = kitRows[0]?.kit?.light;
-  const brand = light?.fgBody && light.fgMuted && light.surface ? { fgBody: light.fgBody, fgMuted: light.fgMuted, surface: light.surface } : null;
+  const kit = kitRows[0]?.kit;
+  const brand = kit?.light ? { light: kit.light, dark: kit.dark } : null;
+
+  // `0126` / contract 9: the ONE object a mail client may fetch with no
+  // session — an ACTIVE org's logo, and only while it is PNG or JPEG. No row
+  // (no logo, a WebP one, a suspended org) means null, and a design then
+  // renders the org's NAME as a heading rather than a broken image.
+  const appUrl = process.env.APP_URL?.replace(/\/+$/, "") || null;
+  let logoUrl: string | null = null;
+  if (appUrl) {
+    const { rows: logoRows } = await helpers.query(`select storage_path from public.org_public_logo($1::uuid)`, [p.org_id]);
+    if (logoRows.length > 0) logoUrl = `${appUrl}/api/brand/${p.org_id}/logo`;
+  }
+
+  // ★ Contract 8, made concrete (D3 finding F3). `/api/s/{id}/og` is the ONE
+  // image URL a mail client can fetch with no session, and the context has
+  // already ASKED the function that route reads whether it will answer with
+  // bytes — an active org, a card-eligible session, and a poster that has
+  // finished rendering. This task copies none of that; it only needs an origin
+  // and the id it already has. A design that asks for the image and cannot have
+  // it renders one row fewer, never a broken image.
+  const cardImageUrl = appUrl && payloadSessionId && ctx.session_card_image ? `${appUrl}/api/s/${payloadSessionId}/og` : null;
 
   let rendered;
   try {
     rendered = renderEmail({
       key: p.key,
       override: ctx.template,
-      payload: p.payload ?? {},
+      payload: cardImageUrl ? { ...(p.payload ?? {}), session_card_image_url: cardImageUrl } : (p.payload ?? {}),
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
       brand,
+      logoUrl,
+      appUrl,
     });
   } catch (error) {
     // A missing template is a matrix bug, not a transient fault: retrying it

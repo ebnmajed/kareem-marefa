@@ -1162,8 +1162,8 @@ The presenter sees **aggregates only** — never who rated, never which text bel
 
 #### REQ-RAT-006 — Aggregates are withheld below three ratings
 **Serves:** OQ-009 · D36
-The presenter sees no aggregate until **3 ratings** exist; below that, **«التقييمات تظهر بعد ٣
-تقييمات»**. The rating form tells the rater this, so the anonymity promise made is the one kept.
+The presenter sees no aggregate until **3 ratings** exist; below that, **«التقييمات تظهر بعد 3
+تقييمات»** (Western digits — `DEC-124`, corrected under `DEC-160`). The rating form tells the rater this, so the anonymity promise made is the one kept.
 **Acceptance:**
 - With 1 or 2 ratings the presenter sees the count only, never a value.
 - Org admin visibility is unaffected (D36).
@@ -1937,8 +1937,11 @@ a session card becomes four lines — never authored twice.
 platform-owned and seeded for every org, in light and dark, Arabic and English, driven by the brand
 kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is never mutated.
 **Acceptance:**
-- **Every** message key resolves to a designed template; no key falls back to unstyled text.
-- Changing the org logo restyles every message.
+- **Every** message key has a designed platform template an org can adopt in one action.
+  ★ **Adoption is explicit until M13** (`DEC-161`): `REQ-NTF-009` requires an org that has not touched
+  its templates to send byte-identical mail, and `DEC-081` removes the string path in M13 — which is
+  when «no key falls back to unstyled text» becomes true of an untouched org as well.
+- Changing the org logo restyles every message an org has adopted a design for.
 - Promotion adds to the library; it never supplies the baseline.
 
 ---
@@ -2171,12 +2174,15 @@ See `REQ-ADM-002`.
 
 #### REQ-ADM-020 — The moderator scope is enforced, not merely hidden
 **Serves:** A1
-A **مُنظِّم** reaches moderation queues, event-day operations and content removal — and nothing
-else.
+A **مُنظِّم** reaches moderation queues, event-day operations, content removal and a session's
+**استبانة** — its templates, attaching one, and its withheld results (`REQ-SUR-001`, `DEC-163`) — and
+nothing else.
 **Acceptance:**
 - A moderator calling a settings, scoring, member-management or scheduling endpoint directly is
   rejected by policy.
 - A moderator cannot see per-rater ratings (`REQ-RAT-005`).
+- A moderator cannot export a survey's results: an export is an admin capability (`REQ-ADM-017`), and
+  the route answers a moderator exactly as it answers a stranger (`DEC-163`).
 
 #### REQ-ADM-021 — Staff may download session photographs, individually and as an album, audited
 **Serves:** owner 2026-09-15 (ask 7) · DEC-076
@@ -2759,21 +2765,29 @@ optional; most sessions have none.
 
 #### REQ-SUR-002 — Four question types, each required or optional
 **Serves:** owner 2026-09-15 (ask 10)
-Questions are **ordered** and typed: **مقياس ١–٥**, **اختيار واحد**, **اختيار متعدد**, **نص حر**.
+Questions are **ordered** and typed: **مقياس 1–5**, **اختيار واحد**, **اختيار متعدد**, **نص حر**
+(Western digits — `DEC-124`, corrected under `DEC-160`).
 Each is required or optional.
 **Acceptance:**
 - Question order is authored and preserved, and is reorderable **without dragging**
   (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
-- A required question blocks submission with an inline error and a summary entry
+- A required question blocks submission **of the survey** with an inline error and a summary entry
   (`REQ-UIX-009`, `REQ-UIX-010`).
+- ★ It never blocks **the rating** (`DEC-164`). The rating's gates are the two `REQ-RAT-003` names and
+  no others: on the one screen (`REQ-SUR-004`) a valid rating is written even when the survey is refused,
+  the screen says both halves — «حُفظ تقييمك. أكمل الأسئلة المطلوبة لإرسال إجاباتك.» — keeps what the
+  member had answered, and a second press submits the survey alone.
 
 #### REQ-SUR-003 — Eligibility to answer is check-in, in the rating window, once
 **Serves:** `REQ-RAT-003` · DEC-074
 Exactly the members who may rate may answer: a **checked-in attendee**, within the same 14-day
 window. **One member, one response.**
 **Acceptance:**
-- A member who did not check in cannot answer, enforced by policy.
-- A second submission by the same member is refused, not silently duplicated.
+- A member who did not check in cannot answer, enforced by the database — the one definer function
+  that accepts an answer — not by the form.
+- A second submission by the same member is refused, not silently duplicated. ★ **«Who has answered»
+  is recorded apart from «what was answered»** (`survey_participations`, `DEC-160` §3): the refusal
+  reads the first and never the second.
 - The window is the rating window; there is not a second one to keep in step.
 
 #### REQ-SUR-004 — The rating and the survey are one screen and two decorrelated writes
@@ -2784,8 +2798,10 @@ is written by the action; the survey response is enqueued with a **jittered dela
 shared request id, correlation id or client-generated key**.
 **Acceptance:**
 - The member experiences one screen and one action.
-- The two rows carry no shared identifier and no correlated timestamp.
-- `ratings.submitted_at` is stored coarsened to the **day**.
+- The two rows carry no shared identifier and no correlated timestamp. ★ **A stored response names
+  no member and carries no timestamp at all** (`DEC-160` §3); the job that writes it carries the
+  survey and the answers and nothing else, under a key not derived from the member.
+- `ratings.submitted_at` **and `ratings.edited_at`** are stored coarsened to the **day**.
 
 #### REQ-SUR-005 — Results are visible to `admin` and `moderator` only; a presenter cannot read them
 **Serves:** owner 2026-09-15 (ask 10) · DEC-074
@@ -2803,11 +2819,14 @@ choice distributions and free text alike**.
 **Acceptance:**
 - A distribution over fewer than the minimum number of responses is withheld, not drawn.
 - The screen says results are withheld and why, rather than rendering an empty chart.
+- ★ **The response count is withheld below the minimum too**, and the minimum is a setting of its own
+  with **a floor of 3** that an org cannot lower (`org_settings.survey_min_responses`, `DEC-161`): in a
+  survey one person answered, publishing «1» is the other half of saying who.
 
 #### REQ-SUR-007 — Results export as audited UTF-8-BOM CSV, in Western digits
 **Serves:** `REQ-ADM-017` · DEC-095
-Results export through the existing audited export path, **UTF-8 with BOM**, and — per
-`REQ-INT-010` — in **Western digits**, regardless of the org's numeral setting.
+Results export through the existing audited export path, **UTF-8 with BOM**, in **Western digits**
+— as every surface is (`DEC-124`; the org numeral setting this sentence once named no longer exists).
 **Acceptance:**
 - The file opens in Excel and Google Sheets with Arabic intact and numeric columns parsed as numbers.
 - The export writes an audit row.
@@ -2816,7 +2835,7 @@ Results export through the existing audited export path, **UTF-8 with BOM**, and
 #### REQ-SUR-008 — Response rate is shown against eligible attendees
 **Serves:** owner 2026-09-15 (ask 10)
 The results screen shows **نسبة الاستجابة** — responses over **eligible** attendees, not over
-invitees — in the org's numerals (`REQ-INT-006`, display).
+invitees — in Western digits (`REQ-INT-006`, `DEC-124`).
 **Acceptance:**
 - The denominator is the checked-in attendee count for that session.
 - A session with no eligible attendees shows that, rather than dividing by zero.
@@ -2827,8 +2846,13 @@ The timing of the two writes must not identify a rater. This is a storage guaran
 presentation one, and it holds in every artefact — backups, exports, worker logs, error breadcrumbs
 and data dumps.
 **Acceptance:**
-- For any member, the set of ratings whose `submitted_at` falls within ±N minutes of their survey
-  response is **not of size 1** — asserted by a test in the RLS suite.
+- ★ **Restated under `DEC-160` §3, which makes the guarantee structural.** A stored response has no
+  member and no instant, so «the ratings within ±N minutes of a member's response» is not a set that
+  can be formed. The RLS suite asserts the structure instead: `survey_responses` and
+  `survey_answers` carry **no** member, check-in, rating or timestamp column and no foreign-key path
+  to a member; the queued payload names no member; and a `ratings` row's two instants are midnight.
+- No client role can select a response, an answer, or another member's participation; results leave
+  the database only through the one function that applies `REQ-SUR-006`'s withhold.
 - No log line, breadcrumb or job payload carries both rows' identifiers.
 
 ---

@@ -169,6 +169,7 @@ src/
 │   │       │   ├── proposals/
 │   │       │   ├── sessions/[id]/schedule/
 │   │       │   ├── sessions/[id]/survey/     # SCR-064, survey results  [DEC-074, DEC-083]
+│   │       │   ├── surveys/ · surveys/[templateId]/  # SCR-065, survey templates [DEC-160]
 │   │       │   ├── venues/ · categories/ · companies/ · members/
 │   │       │   ├── moderation/{comments,photos,reports}/
 │   │       │   ├── scoring/ · recognition/
@@ -190,7 +191,9 @@ src/
 │       ├── designer/autosave/route.ts        # > 1 MB; cannot be an action [v16]
 │       ├── sessions/[id]/ics/route.ts
 │       ├── verify/[code]/route.ts            # rate-limited, in front of verify_certificate()
-│       └── webhooks/{resend,google-calendar}/route.ts
+│       ├── webhooks/{resend,google-calendar}/route.ts
+│       ├── admin/emails/preview/route.ts     # POST — the mail preview, the ONE renderer, framed sandboxed [DEC-161]
+│       └── brand/[orgId]/logo/route.ts       # GET — an active org's logo, to anon by POLICY, for mail clients [DEC-161]
 ```
 
 ### 4.1 The app stays at the repository root

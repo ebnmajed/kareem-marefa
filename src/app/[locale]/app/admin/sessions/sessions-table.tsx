@@ -8,6 +8,7 @@ import { DataTable } from "@/components/ui/data-table";
 import type { DataTableColumn } from "@/components/ui";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Link } from "@/components/ui/link";
 import { IconButton } from "@/components/ui/icon-button";
 import { Menu } from "@/components/ui/menu";
 import { MoreIcon } from "@/components/ui/icons";
@@ -159,6 +160,8 @@ export function AdminSessionsTable({
             { label: t("schedule"), href: `/app/admin/sessions/${s.id}/schedule` },
             { label: t("attendance"), href: `/app/admin/sessions/${s.id}/attendance` },
             { label: t("certificates"), href: `/app/admin/sessions/${s.id}/certificates` },
+            // SCR-064 (wave 10, `DEC-160` contract 6 — the lead's, as custodian).
+            { label: t("survey"), href: `/app/admin/sessions/${s.id}/survey` },
           ]}
         />
       ),
@@ -239,6 +242,22 @@ export function ModeratorSessionsTable({ sessions, timeZone, locale }: { session
       header: t("columnStart"),
       onCard: true,
       cell: (s) => (s.startsAt ? <bdi>{formatDateTime(s.startsAt, timeZone, locale)}</bdi> : <span className="text-fg-muted">{t("notScheduled")}</span>),
+    },
+    {
+      // SCR-064 (wave 10, `DEC-163`): a session's survey is a moderator's too.
+      // The row itself still opens attendance; this is the one other way in.
+      key: "survey",
+      header: t("survey"),
+      onCard: true,
+      cell: (s) => (
+        <Link href={`/app/admin/sessions/${s.id}/survey`} className="underline underline-offset-4">
+          {t.rich("openSurvey", {
+            title: s.title,
+            hidden: (chunks) => <span className="sr-only">{chunks}</span>,
+            t: (chunks) => <bdi>{chunks}</bdi>,
+          })}
+        </Link>
+      ),
     },
   ];
 

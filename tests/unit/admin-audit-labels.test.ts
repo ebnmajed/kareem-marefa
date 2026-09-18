@@ -30,7 +30,11 @@ const sql = readdirSync(dir)
 // switch recompute puts on its own update (DEC-151).
 // `kareem.days_notified` is `0111`'s: what `session_days_changed()` has already
 // announced in this transaction (DEC-154).
-const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow", "kareem.days_notified"]);
+// `member.name` and `member.email` are BINDING names — two of the placeholders
+// `notification_bindings()` (`0133`, REQ-NTF-012) declares for every message
+// key, which a template writes as `{{member.name}}`. A dotted path, never an
+// audit action (wave 10).
+const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow", "kareem.days_notified", "member.name", "member.email"]);
 const actions = Array.from(
   new Set(Array.from(sql.matchAll(/'([a-z_]+\.[a-z_]+)'/g), (m) => m[1]).filter((a) => !a.startsWith("public.") && !NOT_ACTIONS.has(a))),
 ).sort();
