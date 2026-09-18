@@ -2813,3 +2813,5 @@ suite **113 files, 1151 passed** (the one red in that run was the lead's `0135`,
   «assert hex in `compilePalette()`»; asserting that would have passed while a planted `"><script>`
   still reached the shell through `legacyBrand()`. The test that says «no script tag in the HTML»
   found it. Same lesson as the pin: the 116 files catch what a fragment assertion cannot.
+
+- ★ **NEXT ACTION** (resumed 2026-09-18, last hash below): the editor's **three panes** — blocks on `ui/reorderable-list` (call written at `Q6`), properties, preview — hosting `ChecksPanel` (`66402b3`) and posting to `/api/admin/emails/preview` (`48abbbb`). Then the forced-dark three-cell capture, N5, N6, `{{url}}`, N8. Done since the pause: the checks module (`a935df3`, red fixed at `c602d70`), the panel + `dropped` carried to `RenderedEmail` + `HEX` tightened to the brand kit's six digits (`66402b3`).
