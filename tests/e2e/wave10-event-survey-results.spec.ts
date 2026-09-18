@@ -123,9 +123,14 @@ async function capture(page: Page, name: string) {
 
 const main = (page: Page) => page.locator("#main");
 
-/** `n` responses, stored the way the worker stores them. */
+/** `n` MORE responses, stored the way the worker stores them. ★ Numbered from
+ *  what is already there: two batches both starting at «اقتراح 1» put the same
+ *  sentence on the screen twice, and `getByText` then hits strict mode on a
+ *  screen that is right — two members may of course write the same thing. */
 async function respond(n: number) {
-  for (let i = 0; i < n; i += 1) {
+  const { rows } = await db.query<{ n: string }>(`select count(*)::text as n from public.survey_responses where survey_id = $1`, [surveyId]);
+  const start = Number(rows[0].n);
+  for (let i = start; i < start + n; i += 1) {
     const response = (await db.query<{ id: string }>(`insert into public.survey_responses (org_id, survey_id) values ($1, $2) returning id`, [orgId, surveyId])).rows[0].id;
     await db.query(
       `insert into public.survey_answers (org_id, survey_id, response_id, question_id, scale_value) values ($1, $2, $3, $4, $5)`,

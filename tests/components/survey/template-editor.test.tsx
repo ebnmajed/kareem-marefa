@@ -96,6 +96,34 @@ describe("TemplateEditor", () => {
     expect(JSON.stringify(input)).not.toContain("position");
   });
 
+  it("★ a NEW template navigates to the id the action returned — never to `/undefined`", async () => {
+    const user = userEvent.setup();
+    save.mockResolvedValueOnce({ status: "ok", templateId: "77777777-7777-4777-8777-777777777777" } as never);
+    renderEditor(null);
+    await user.type(screen.getByLabelText(/اسم القالب/), "قالب جديد");
+    await user.click(screen.getByRole("button", { name: "أضف سؤالًا" }));
+    await user.type(screen.getAllByLabelText(/نص السؤال/)[0], "سؤال");
+    await user.click(screen.getByRole("button", { name: "حفظ القالب" }));
+
+    // ★ The URL, not just «it pushed somewhere». A save that works and lands on
+    // `/app/admin/surveys/undefined` is what shipped, and this is the assertion
+    // that fails on it. The shape the mock returns is the shape
+    // `tests/unit/survey-dal-envelopes.test.ts` proves the DAL produces — a mock
+    // asserting a shape nothing produces is worse than no test.
+    await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+    const url = router.push.mock.calls[0][0] as string;
+    expect(url).toBe("/app/admin/surveys/77777777-7777-4777-8777-777777777777");
+    expect(url).not.toContain("undefined");
+  });
+
+  it("an EXISTING template refreshes in place rather than navigating", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(screen.getByRole("button", { name: "حفظ القالب" }));
+    await waitFor(() => expect(router.refresh).toHaveBeenCalledTimes(1));
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
   it("a new question is added at the end, named «سؤال 4» until it is written", async () => {
     const user = userEvent.setup();
     renderEditor();

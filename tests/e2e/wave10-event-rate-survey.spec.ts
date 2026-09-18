@@ -89,7 +89,7 @@ test.beforeAll(async ({}, testInfo) => {
 
   ids.withSurvey = await session("كيف اختصرنا وقت التقارير الشهرية", 6);
   await checkIn(ids.withSurvey, 6);
-  ids.withoutSurvey = await session("جلسة بلا استبانة", 4);
+  ids.withoutSurvey = await session("ورشة أدوات الفريق", 4);
   await checkIn(ids.withoutSurvey, 4);
   ids.second = await session("مقدمة في قراءة الميزانية", 2);
   await checkIn(ids.second, 2);
@@ -165,7 +165,10 @@ test("★ a session with no survey shows nothing about one — the screen is the
   await open(page, `/ar/app/sessions/${ids.withoutSurvey}/rate`);
 
   await expect(main(page).getByRole("radiogroup", { name: /تقييم الجلسة/ })).toBeVisible();
-  // Not a heading, not a question, not a word — REQ-SUR-001.
+  // Not a heading, not a question, not a word — REQ-SUR-001. ★ The session's
+  // own TITLE must not contain the word either, or this case passes or fails on
+  // the fixture's prose rather than on the screen: «جلسة بلا استبانة» was the
+  // only occurrence in the page the first time this ran.
   await expect(main(page).getByRole("heading", { name: "استبانة الجلسة" })).toHaveCount(0);
   await expect(main(page)).not.toContainText("استبانة");
   // The button keeps its own label, which is what the two untouched specs press.

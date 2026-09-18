@@ -134,6 +134,18 @@ export type SubmitOutcome =
   | { status: "not_eligible"; reason: "not_checked_in" | "window_closed" }
   | { status: "invalid"; missing: string[]; invalid: string[] };
 
+// ★★ AN ENVELOPE IS MAPPED, NEVER CAST. `data as SaveTemplateOutcome` compiles
+// and is a lie: the function returns `template_id` and the DTO says
+// `templateId`, so the id was `undefined` at runtime and the editor redirected
+// to `/app/admin/surveys/undefined`. NOTHING caught it — `tsc` believes a cast,
+// the RLS suite reads the envelope in SQL's own words, and the component test
+// MOCKED the action with the camelCase shape the real stack never produced, so
+// the mock was more correct than the code. The two readers below are the only
+// place the two spellings meet, and `tests/unit/survey-dal-envelopes.test.ts`
+// feeds them the database's actual keys.
+
+type Envelope = Record<string, unknown> & { status: string };
+
 /** A refusal the caller may act on becomes a key; anything else is `generic`. */
 function rpcError(error: { message: string }, what: string): Error {
   if (/not_authorized|stale_claims|not_a_member/.test(error.message)) return new Error("not_permitted");
@@ -225,7 +237,13 @@ export async function saveSurveyTemplate(locale: string, input: SaveTemplateInpu
     })),
   });
   if (error) throw rpcError(error, "survey_template_save");
-  return data as SaveTemplateOutcome;
+
+  const row = (data ?? { status: "generic" }) as Envelope;
+  if (row.status === "ok") return { status: "ok", templateId: String(row.template_id) };
+  if (row.status === "invalid") {
+    return { status: "invalid", at: Number(row.at), field: row.field as "kind" | "prompt" | "options" };
+  }
+  return { status: row.status as "invalid_title" | "empty" | "title_taken" };
 }
 
 export async function deleteSurveyTemplate(locale: string, templateId: string): Promise<void> {
@@ -240,7 +258,11 @@ export async function attachSurvey(locale: string, sessionId: string, templateId
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("survey_attach", { p_session: sessionId, p_template: templateId });
   if (error) throw rpcError(error, "survey_attach");
-  return data as AttachOutcome;
+
+  const row = (data ?? { status: "already_attached" }) as Envelope;
+  return row.status === "ok"
+    ? { status: "ok", surveyId: String(row.survey_id) }
+    : { status: row.status as "already_attached" | "template_empty" };
 }
 
 export async function detachSurvey(locale: string, sessionId: string): Promise<DetachOutcome> {
