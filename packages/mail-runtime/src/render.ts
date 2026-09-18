@@ -20,7 +20,7 @@
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
 import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
-import { isBlockDocument } from "./blocks.js";
+import { isBlockDocument, type DroppedBlock } from "./blocks.js";
 import { compileBlocks, type CompilePalette } from "./compile.js";
 
 export interface RenderInput {
@@ -87,6 +87,18 @@ export interface RenderedEmail {
   subject: string;
   text: string;
   html: string;
+  /**
+   * ★ Every row the mail LOST, so a caller can say which — empty on the string
+   * path, which drops nothing.
+   *
+   * `compileBlocks()` has always reported this and `renderEmail()` used to
+   * discard it, so the editor's checks panel had nothing to read and would
+   * have had to re-derive the drops with a second copy of `readDocument()`'s
+   * rules. Two validators disagreeing about which blocks survived is the exact
+   * failure the panel exists to prevent: an admin approving a mail that
+   * silently lost a row.
+   */
+  dropped: DroppedBlock[];
 }
 
 export class TemplateMissingError extends Error {}
@@ -283,7 +295,12 @@ function toParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-const HEX = /^#[0-9a-fA-F]{3,8}$/;
+// ★ EXACTLY the brand kit's own constraint — `~* '^#[0-9a-f]{6}$'` on every
+// one of its eighteen colour columns (`0068`, `0093`). `designer` caught the
+// first version admitting 5- and 7-digit strings: an assertion that stands in
+// for a database check and is LOOSER than it is a different rule wearing its
+// name, and the gap is where the next widening lands.
+const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** A hex colour, or the default. See `compilePalette()` for why. */
 function hex(value: string | undefined, fallback: string): string {
@@ -466,6 +483,7 @@ export function renderEmail(input: RenderInput): RenderedEmail {
       // off identically.
       text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
       html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand), { declareScheme: true, stack: DESIGN_STACK }),
+      dropped: compiled.dropped,
     };
   }
 
@@ -476,5 +494,7 @@ export function renderEmail(input: RenderInput): RenderedEmail {
     subject,
     text: `${paragraphs.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
     html: toHtml(paragraphs, input.org.name, legacyBrand(input.brand)),
+    // The string path drops nothing: there are no blocks to refuse.
+    dropped: [],
   };
 }

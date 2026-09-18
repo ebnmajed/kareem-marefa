@@ -241,6 +241,42 @@
           "pagerLabel": "Log pages",
           "older": "Older attempts",
           "newest": "Back to the newest"
+        },
+        "checks": {
+          "heading": "Checks",
+          "headingBlocking": "{count, plural, zero {Checks} one {# check blocks sending} two {# checks block sending} few {# checks block sending} many {# checks block sending} other {# checks block sending}}",
+          "selectBlock": "Go to the block",
+          "parseFailed": {
+            "title": "The message blocks could not be read",
+            "reason": "What you see is the default text, not your design. Do not send until this is fixed."
+          },
+          "droppedBlock": {
+            "title": "A block was dropped",
+            "titleWithValue": "The «<bdi>{value}</bdi>» block was dropped",
+            "reason": "It is incomplete or unrecognised, so it will not appear in the mail a member receives. The preview is shorter than what you wrote."
+          },
+          "unknownBinding": {
+            "title": "A field this message does not offer",
+            "titleWithValue": "The field <bdi>{value}</bdi> is not offered by this message",
+            "reason": "The database will refuse the save. Choose from the available fields in the properties pane."
+          },
+          "imageNoAlt": {
+            "title": "An image with no alt text",
+            "reason": "Someone who cannot see the image is told nothing, and some clients do not download images at all."
+          },
+          "buttonNoUrl": {
+            "title": "A button with no link",
+            "reason": "The button will not appear in the delivered mail. Choose the field carrying the link."
+          },
+          "subjectTooLong": {
+            "title": "The subject is long",
+            "titleWithValue": "The subject is long — <bdi>{value}</bdi> characters",
+            "reason": "Clients truncate at roughly <bdi>{limit}</bdi> characters in the message list."
+          },
+          "footerPresent": {
+            "title": "The preference footer is always present",
+            "reason": "It is appended to every message and cannot be deleted."
+          }
         }
       },
       "reminders": {
