@@ -3300,3 +3300,21 @@ wave 10**. Every design is 390 (the link is a button). One case stays wide after
 declaration on the paragraph and detail-value cells — `overflow-wrap:anywhere;word-break:break-word;`
 (never `overflow: hidden`, which clips tashkeel) — and it moves every `.html` pinned file, so it is
 **not** folded into N1: it is proposed as its own reviewed diff after the lead opens N1's package.
+
+## Prose-dependent screens (the owner's rule, N3)
+
+A screen whose meaning leans on a paragraph of explanation: the copy stays, and the row names the
+affordance that could one day replace it. `editor.usingDefault` and `editor.restoreBody` were
+**corrected** in N1 (they became false), not stripped. The lead copies these into `STATUS.md`.
+
+| Route | Message key (`notifications.json` unless named) | What depends on it | The affordance that could replace it |
+|---|---|---|---|
+| `/app/admin/emails` | `admin.emails.intro` | that an org template overrides the platform's, and that the log is here too | a «مؤسستك / المنصة» provenance badge on every catalogue row, beside the existing «قالب المؤسسة / الافتراضي» chip |
+| `/app/admin/emails?key=…` (string editor) | `editor.usingDefault`, `editor.overridden`, `editor.framedNote` | what a member receives for this key — the design, or the admin's words in the design's frame | the live preview pane beside the string form (the block editor has one; the string editor does not), so the frame is seen rather than described |
+| same | `editor.requiredFieldsHint` | why a save is refused when a field is missing | the offered bindings as a checkbox list with the required ones pre-checked (`REQ-NTF-012`'s declared list) |
+| same | `editor.restoreBody` | that restoring deletes the org's words for good | an undo toast that restores the deleted row within the session |
+| `/app/admin/emails` (block editor) | `admin.emails.preview.darkNote` | that forced dark is a simulation, not what is sent | a persistent «محاكاة» badge on the frame itself while the mode is on |
+| same | `admin.emails.checks.*.reason` | why each check blocks or warns | selecting the named block already jumps to it; an inline fix action per check («أضف نصًا بديلًا») |
+| `/app/admin/emails?view=log` | `admin.emails.deliveries.bounceNote`, `deliveries.retention` | that a post-acceptance bounce is not recorded yet, and how long the log is kept | a `bounced` / `complained` status chip once `REQ-NTF-008`'s webhook is live (`0142`) — then `bounceNote` can go; retention as a caption on the pager |
+| `/app/me/notifications` | `preferences.intro`, `category.*.hint` | which of two channels a switch controls, and what each category covers | column headers with the channel icons, and one example message per category under its name |
+| `/app/me/calendar` | `calendar.json` `connection.privacy`, `connection.afterDisconnect` | that nobody can read the connection keys, and that disconnecting leaves existing events in place | a «مفصول — الأحداث باقية» state on each synced row after a disconnect |
