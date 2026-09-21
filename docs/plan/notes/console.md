@@ -2399,3 +2399,23 @@ column is a suggestion where one is obvious, not a commitment. `/app/admin/email
 | `/app/admin/reminders` | `notifications.admin.reminders.intro`, `.genericNote` | which offsets get a tailored message and which the generic one, and that rescheduling moves pending reminders | a per-row tag «رسالة مخصّصة» / «رسالة عامة» on each offset |
 | `/app/admin/sessions/[id]/attendance` | `checkin.attendance.removeIntro` | that removal reverses points and revokes a certificate, and keeps the record | the confirm dialog names THIS member's concrete consequences (the points, the certificate serial) |
 | `/app/admin/sessions/[id]/attendance` | `checkin.attendance.ratingsNote` | that opening the per-rater ratings is itself audited | the section behind a disclosure «اعرض التقييمات (يُسجَّل الاطلاع)» |
+
+## Wave 11 — as built (sync 1 rulings) — 2026-09-22
+
+| Unit | Commit | What |
+|---|---|---|
+| 1 | `11a3577` | `FormAlert` for six forms' form-level error |
+| 2 | `6355650` | dashboard attention tile → `ui/card`; ready-proposal row → `ui/panel` |
+| 3 | `a760c2f` | review-card and session-controls reasons on `Field` + `Textarea`, generated ids (the duplicate-id defect); `<summary>` on `buttonClass()` |
+| 5 | `9b4183f` | the attendance table reflows into cards below `md` at every `n`; `wave11-console-attendance.spec.ts` |
+| 6 | `81d4b31` | «مطلوب» on the manual mark's three fields and the removal form's day (its member and reason already had it) |
+| 4 + K3 | `7e48e66` | the picker on `ui/field` + `ui/select`, the popover on `ui/menu`'s surface; focus returns to the trigger on Escape and «تم» |
+
+`node scripts/ui-lint.mjs --strict`: **0 in the whole tree** at `7e48e66`. `npm test` 2276 passed. The lead's sweep found no
+axe finding on `/app/admin/**` at 390 px, so K3 was the picker's focus return alone. Unrun here (needs a build): the e2e
+specs named in the sync message.
+
+**Ledger lines** (for `STATUS.md`): `tests/e2e/admin-attendance.spec.ts:376` — `{ exact: true }` → `{ exact: false }`:
+«مطلوب» joins the member select's accessible name (DEC-109, K2); selector only. · `tests/components/admin/rtl-datetime-picker.test.tsx`
+— the renders wrapped in a `NextIntlClientProvider` (RTL's `wrapper`): the hour and minute selects now sit in `<Field>`,
+which reads `ui.json`; harness only, no expectation moved.
