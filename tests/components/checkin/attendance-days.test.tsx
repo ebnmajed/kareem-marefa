@@ -67,7 +67,7 @@ function removeForm(days = THREE_DAYS, action: (p: RemoveState, f: FormData) => 
 describe("the manual mark at three days", () => {
   it("offers the day, opens on the day the room is on, and lists THAT day's missing members", () => {
     markForm();
-    const day = screen.getByLabelText("اليوم") as HTMLSelectElement;
+    const day = screen.getByLabelText("اليوم", { exact: false }) as HTMLSelectElement;
     expect(day.value).toBe("d2");
     const members = screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }) as HTMLSelectElement;
     expect([...members.options].map((o) => o.textContent).filter((x) => x !== "اختر عضوًا")).toEqual(["سارة العتيبي", "خالد الحربي", "نورة القحطاني"]);
@@ -75,7 +75,7 @@ describe("the manual mark at three days", () => {
 
   it("★ switching the day switches the list — an admin correcting Tuesday sees TUESDAY's missing members", async () => {
     markForm();
-    await userEvent.selectOptions(screen.getByLabelText("اليوم"), "d1");
+    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d1");
     const members = screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }) as HTMLSelectElement;
     await waitFor(() => expect([...members.options].map((o) => o.textContent).filter((x) => x !== "اختر عضوًا")).toEqual(["نورة القحطاني"]));
   });
@@ -87,9 +87,9 @@ describe("the manual mark at three days", () => {
       return { error: null, done: true };
     });
     markForm(THREE_DAYS, action);
-    await userEvent.selectOptions(screen.getByLabelText("اليوم"), "d3");
+    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d3");
     await userEvent.selectOptions(screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }), "m3");
-    await userEvent.type(screen.getByLabelText("السبب"), "حضر بلا هاتف");
+    await userEvent.type(screen.getByLabelText("السبب", { exact: false }), "حضر بلا هاتف");
     await userEvent.click(screen.getByRole("button", { name: "سجّل حضوره" }));
     await waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0].get("dayId")).toBe("d3");
@@ -134,7 +134,7 @@ describe("★ at ONE day neither form says a word about days", () => {
     // day was deleted would produce. The form falls back to a real day rather
     // than sending the RPC an id it will refuse `not_found`.
     const { container } = markForm(ONE_DAY);
-    expect(screen.queryByLabelText("اليوم")).toBeNull();
+    expect(screen.queryByLabelText("اليوم", { exact: false })).toBeNull();
     expect(screen.queryByText("اليوم الأول")).toBeNull();
     const hidden = container.querySelector('input[type="hidden"][name="dayId"]') as HTMLInputElement | null;
     expect(hidden?.value).toBe("d1");
