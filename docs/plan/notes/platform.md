@@ -1250,3 +1250,25 @@ last attempt stops counting as failed. The new worker calls a function that has 
 **Local note for the lead:** this machine's database holds three dead `issue_certificates` jobs (`max_attempts 3`,
 from 2026-09-21). The new alert will fire on them the first time a worker runs this code locally, and so will the home
 card — that is the alert working, not a bug.
+
+## Wave 11 — P2: Prose-dependent screens (the owner's rule, 2026-09-22)
+
+The copy stays as it is. Each row names a screen whose meaning depends on a paragraph, and the affordance that
+could carry that meaning instead in a later wave. I found these by reading every `platform.json` string longer
+than a sentence, before any sweep row arrived. Fixes that are not about prose go through P2 as usual.
+
+| Route | Message key | What depends on it | The affordance that could carry it instead |
+|---|---|---|---|
+| `/app/platform/impersonate` (SCR-085) | `impersonate.honest` | that a session is logged in the org's own audit log, that the org's admins see it, and that it **opens no org screen** (`DEC-055` C) | a fixed «مُسجَّل لدى المؤسسة» badge on the start button and on the active-session card; the org's screens shown as locked items rather than described |
+| `/app/platform/impersonate` | `impersonate.tokenTail` | that an automatic expiry leaves the claim on the token for up to 15 minutes, and ending it yourself drops it now | a countdown on the active card that goes on after expiry («تنتهي صلاحيتها في المتصفح خلال 12 دقيقة»), with «أنهِ الآن» as its primary action |
+| `/app/platform/impersonate` | `impersonate.intro` | that the 4-hour ceiling is a database constraint | a duration control whose maximum is 4 h and says so at the limit, not in the intro |
+| every `/app/platform/**` (the shell) | `shell.note` | the console's whole model: no data plane, org screens closed to a platform account, break-glass bounded and audited | a persistent «بلا بيانات مؤسسات» status chip in the console header that opens the explanation on demand |
+| `/app/platform/orgs` (SCR-080) | `orgs.deleteHint` | the difference between suspend (reversible) and delete (irreversible) | two actions set apart in the menu, delete in a danger group with «لا رجعة» on its label; the slug typed back already enforces it |
+| `/app/platform/orgs/[id]/domains` (SCR-082) | `domains.removeConfirmBody` | that removing a domain stops new memberships and leaves existing members as they are | the confirm dialog's two outcomes as a short list («يتوقف: …» / «يبقى: …») rather than a sentence |
+| `/app/platform/templates` (SCR-083) | `templates.intro`, `templates.promoteIntro` | that the library is managed, not authored, and that promotion is a **copy** later org edits never reach | no «تحرير» action anywhere on the screen (already true), and the promote dialog showing «نسخة» with the version number frozen beside it |
+| `/app/platform/templates` | `templates.floorNote` | why the last default of a purpose has no retire action | a disabled retire item with its reason as the item's description, instead of an absent item explained elsewhere |
+| `/app/platform/metrics` (SCR-084) | `metrics.jobsIntro` | that oldest-pending is the number that shows a stalled queue | the oldest-pending figure styled as the row's lead figure, with the threshold drawn beside it |
+| `/app/platform` (home) | `home.exhaustedIntro` (new, P1) | that a dead job will not retry by itself, and its payload is kept for a replay but not shown | a «يُعاد بعد الإصلاح — عمليات» tag on the card, pointing to the runbook, rather than a sentence |
+
+This list covers what I found by reading, before any sweep rows. The sweep can add to it, and I will add a row for
+any finding that turns out to be about copy.
