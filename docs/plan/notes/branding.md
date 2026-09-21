@@ -676,3 +676,97 @@ I will build **neither** before the lead rules, per my agent file.
    real to map against).
 3. B2, the three `ui-lint` files — independent of B1, can start as soon as B1's SQL is handed off.
 4. B3 stays a plan until the owner's read comes back and the lead rules between the two options.
+
+---
+
+## Sync 1 — B1 approved with corrections, built — 2026-09-22
+
+Lead's four corrections, applied: (1) the SQL-vs-TS agreement check moved to `tests/rls/
+status-contrast.test.ts` — CI's unit job has no database; (2) the fixture change is a ledger line,
+verbatim below; (3) I measured the platform default AND every seeded/test palette before finalising
+the guard, per the lead's instruction, and it changed the guard's shape — see below; (4) B3 stays
+unbuilt, its read is in the owner's order; (5) B2 done in this pass, `logo-uploader`'s file input was
+already on `ui/file-drop` — nothing needed a request to the lead.
+
+### The measurement that changed B1's shape
+
+My original ten-pair draft (above, before sync 1) included four "fill vs canvas/surface" pairs at
+SC 1.4.11's 3:1 — the filled `Badge`/`Panel`'s near-white background as an object against the page
+underneath it. **Measuring the platform default against that draft found it fails its own guard**:
+`platformBrand('light').canvas`/`.surface` are both `#ffffff`, and `contrastRatio('#fbf5ea',
+'#ffffff') ≈ 1.09`, `contrastRatio('#f1f3f7', '#ffffff') ≈ 1.11` — nowhere near 3:1.
+`DEC-052`/`DEC-073` require the platform default to always be accepted, so a guard that refuses it
+is wrong regardless of how defensible the abstract WCAG reading looks. Rereading `16` §16.6's own
+numeric example confirmed it never actually claims the fill-vs-canvas pair as a violation — its one
+concrete number is "`--color-ended` **as text** on an overridden surface can fall below 4.5:1" — so
+I dropped the four fill pairs entirely rather than widen the guard past what the platform itself
+clears.
+
+**The guard is six pairs, all at SC 1.4.3's 4.5:1** (status colour AS TEXT, never the filled badge's
+own chip, which the platform already ships borderline and wave 11 does not get to retroactively
+outlaw):
+
+| Pair | Where it's live today |
+|---|---|
+| `--color-live` vs `light.canvas` | `Badge`'s outline `live` variant, used bare on the page |
+| `--color-live` vs `light.surface` | same variant, on a card |
+| `--color-ended` vs `light.canvas` | `Badge`'s outline `ended` variant — `platform/templates/library-table.tsx:143`, `platform/impersonate/history-table.tsx:58` |
+| `--color-ended` vs `light.surface` | same |
+| `--color-live-on-dark` vs `dark.canvas` | `Badge`'s dark leg drops the fill (`border-live-on-dark` + `text-live-on-dark`, `badge.tsx:33`) |
+| `--color-live-on-dark` vs `dark.surface` | same |
+
+`--color-ended` contributes **no** dark pair: its dark leg (`badge.tsx:35`) is `border-edge-strong
+text-fg-muted` — both already org tokens (`dark_edge_strong`, `dark_fg_muted`), not platform
+constants, so it is an org-vs-org question this decision does not reach, not an omission I forgot.
+
+I also measured every other `save_brand_kit()` caller in the tree before finalising (the lead's
+instruction 3): `tests/rls/brand-kits.test.ts` is the ONLY test file that calls the RPC (grepped
+`save_brand_kit\|saveBrandKit\b` across `tests/`, `supabase/`, `src/`); `tests/rls/fixture-m7.ts`
+and `tests/e2e/wave10-notify-forced-dark.spec.ts` both insert into `brand_kits` **directly**,
+bypassing the RPC entirely (the former "as the owner", the latter a raw `insert` for the mail
+forced-dark demo), so neither is reachable by a guard that lives inside `save_brand_kit()`.
+`tests/e2e/branding.spec.ts` and `wave8-branding-review.spec.ts` each edit exactly one field
+(`fgHeading`, then `canvasRaise`) through the real screen and leave `canvas`/`surface` at the
+platform default, which clears the guard — unaffected.
+
+### Untouched-suite ledger line (`STATUS.md`, verbatim to copy in)
+
+| File | Case | Why | Commit |
+|---|---|---|---|
+| `tests/rls/brand-kits.test.ts` | every case (fixture-level) | `LIGHT.canvas`/`LIGHT.surface` were `#111111`/`#222222` — a fixture colour the new status-contrast guard refuses (`--color-live`/`--color-ended` measured 2.70–3.32:1 against them, under the new 4.5:1). Changed to `#eeeeee`/`#f5f5f5`, which clear both status inks. No assertion in the file changed. | (this wave, before promotion) |
+
+### What was built, all green (`npx tsc --noEmit`, `npm run lint` 0 errors, `node scripts/ui-lint.mjs --strict` shows no `branding/` file, `npm run test:rls` on both files, `npm test` on the components/unit files)
+
+- `supabase/proposed/branding/0003_status_contrast_guard.sql` — `wcag_relative_luminance()`,
+  `wcag_contrast_ratio()` (the SQL twin of `contrast.ts`'s formula, revoked from every client role —
+  pure maths, no table read, called only from inside `save_brand_kit()`), `status_contrast_failure()`
+  (the six pairs, skips a pair on a missing/malformed hex rather than raising a raw cast error — the
+  table's own `23514` still catches that at `insert`), and `save_brand_kit()` re-created with the one
+  new `if ... then raise` block before the `insert` (errcode `55000`, precedent `0099`'s
+  `'design_locked'`, `errdetail` naming the failing pair).
+- `tests/rls/brand-kits.test.ts` — the fixture fix above, plus three new `describe` blocks:
+  `POL-save_brand_kit.status_contrast_refused` (two cases: canvas alone, surface alone; the first
+  also asserts `errdetail === 'live_vs_light_canvas'` and that no row was written),
+  `POL-save_brand_kit.status_contrast_accepted` (the platform default, built from `platformBrand()`
+  directly — the regression guard against ever refusing the identity override),
+  `POL-save_brand_kit.status_contrast_dark`.
+- `tests/rls/status-contrast.test.ts` (new) — `POL-status-contrast-formula-agreement`: eight pairs
+  (the six the guard checks plus four edge cases — identical, maximal, two near-whites, an arbitrary
+  pair) through `public.wcag_contrast_ratio()` and `contrast.ts`'s `contrastRatio()`, asserting
+  agreement to two decimals, plus a symmetry check on the SQL side alone.
+- `src/app/[locale]/app/admin/branding/actions.ts` — `errcode === '55000'` mapped to
+  `'statusContrast'`, beside the existing `42501`/`22023` mappings.
+- `src/messages/{ar,en}/branding.json` — `errors.statusContrast`, ar authored first.
+- **B2**, the three `ui-lint --strict` violations, all the same shape — a non-control element
+  (a decorative colour swatch, a status row `<div>`, a logo `<img>`) coincidentally re-typing
+  `ui/field.tsx`'s `controlClass()` recipe (`rounded-field border border-edge(-strong)?`) rather than
+  actually being one: `colour-field.tsx`'s swatch → `rounded-full` (a round chip reads better for a
+  colour preview anyway), `contrast-badge.tsx`'s row → `rounded-card` (a small status panel, not a
+  field), `logo-uploader.tsx`'s thumbnail → `rounded-card`. No escape hatch needed, no request to
+  the lead — `ui/file-drop` was already in use for the real picker.
+- B3: unchanged from the plan above — neither option built, my read query is in the owner's order.
+
+`survey-submit.test.ts` fails 6/6 on `main` with none of this wave's SQL applied (checked by running
+it alone) — `event`'s file, unrelated to B1, flagging rather than touching it.
+
+**Ready for sync.** Next: none of mine pending — waiting on the owner's two reads (B1's already-saved-kits query, B3's logo-format query) before anything further.
