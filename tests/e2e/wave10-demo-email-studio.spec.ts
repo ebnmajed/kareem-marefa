@@ -27,6 +27,9 @@
 // way a test can move it — the OWNER brings the reminder's `run_at` forward
 // after the test has asserted where the scheduler put it.
 //
+// ★ RAN 2026-09-21: 7 of 7 on a production build of 3424b09 in the verification
+// worktree, the REAL worker beside it and the sink read back.
+//
 // Captures — phone project's viewport, 390 × 844, RTL, full page, opened by the
 // lead:
 //   wave10-demo-email-1-string-editor.png   wave10-demo-email-2-adopted.png
@@ -294,7 +297,8 @@ test("3 · REORDERED WITH TAPS — one press of ▼ moves a block, the move is a
   await capture(page, "3-moved");
 
   await main(page).getByRole("button", { name: "احفظ التصميم" }).click();
-  await expect(main(page).getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
+  // Toasts mount outside `#main` (`ui/toast`); the text exact, as the brief says.
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ التصميم" })).toBeVisible();
   const { rows } = await db.query<{ blocks: { blocks: { id: string }[] } }>(
     `select blocks from public.notification_templates where org_id = $1 and key = $2 and channel = 'email'`,
     [orgId, KEY],
@@ -328,7 +332,7 @@ test("5 · SENT AS A TEST — to the admin's own address and no other, prefixed,
   const before = (await inbox(adminEmail)).length;
 
   await main(page).getByRole("button", { name: "أرسل اختبارًا" }).click();
-  await expect(main(page).getByRole("status").filter({ hasText: "أُرسلت رسالة اختبار إلى بريدك" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "أُرسلت رسالة اختبار إلى بريدك" })).toBeVisible();
   await capture(page, "5-test-sent");
 
   // The audit row names the key and the locale and NEVER an address.
@@ -372,11 +376,17 @@ test("6 · RECEIVED AS A REAL REMINDER — from the org's saved design; and ★ 
 
   const [plain] = await inbox(otherMemberEmail);
   const plainHtml = await html(plain.ID);
-  // ★ The STRING path, untouched: no scheme declaration, no `<table` — the bytes
-  // `tests/unit/mail-pinned/` pins for an org that has touched nothing.
+  // ★ The STRING path, untouched — the bytes `tests/unit/mail-pinned/` pins for
+  // an org that has touched nothing: the same table shell it always had, but
+  // none of the block path's marks (its scheme declaration, its declared
+  // Arabic faces, its block markup), and the string path's own composed sign-off.
   expect(plainHtml).not.toContain('name="color-scheme"');
-  expect(plainHtml).not.toContain("<table");
+  expect(plainHtml).not.toContain("Geeza Pro");
+  expect(plainHtml).not.toContain("bgcolor=");
+  expect(plainHtml).toContain("· كريم معرفة · شارك المعرفة.. واصنع الأثر");
   expect(plainHtml).toContain("جلسة المؤسسة الأخرى");
+  // And the designed one carries the block path's marks the string one lacks.
+  expect(designedHtml).toContain("Geeza Pro");
 
   // Both deliveries are recorded, each under its own org.
   const { rows } = await db.query<{ org_id: string; status: string }>(
