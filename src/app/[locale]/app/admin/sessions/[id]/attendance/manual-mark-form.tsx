@@ -66,7 +66,7 @@ export function ManualMarkForm({
     // this form's Arabic error, never has a chance to render.
     <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
       {manyDays ? (
-        <Field id="manual-day" label={t("dayLabel")} hint={t("markDayHint")}>
+        <Field id="manual-day" label={t("dayLabel")} hint={t("markDayHint")} required>
           <Select name="dayId" value={dayId} onChange={(e) => setDayId(e.target.value)}>
             {days.map((d) => (
               <option key={d.id} value={d.id}>
@@ -85,7 +85,7 @@ export function ManualMarkForm({
           post-submission form reset, but the DAY is in this key for a second
           reason it cannot know about — switching days replaces the option list
           entirely, and a selection from the previous day must not survive it. */}
-      <Field id="manual-member" label={t("memberLabel")}>
+      <Field id="manual-member" label={t("memberLabel")} required>
         <Select key={`member-${dayId}-${state.memberId ?? ""}-${state.error ?? ""}`} name="memberId" required defaultValue={state.memberId ?? ""}>
           <option value="" disabled>
             {t("memberPlaceholder")}
@@ -97,14 +97,15 @@ export function ManualMarkForm({
           ))}
         </Select>
       </Field>
-      {/* ★ `Field` is NOT marked `required` on any of the three, and that is
-          deliberate rather than an oversight: the marker «مطلوب» becomes part of
-          the control's accessible name, and this form's labels are asserted
-          verbatim by its e2e and component tests. The markup moves onto the
-          system; the copy does not move at all. `aria-required` below still
-          wins over the context, because the control spreads its own props last. */}
-      <Field id="manual-reason" label={t("reasonLabel")}>
-        <Textarea name="reason" aria-required="true" defaultValue={state.reason ?? ""} rows={2} maxLength={300} />
+      {/* ★ All three Fields are `required` (REQ-UIX-011, DEC-109 — wave 9's
+          carried row, closed in wave 11): «مطلوب» is drawn on the label and the
+          Field supplies `aria-required`. The marker joins each control's
+          accessible name by design (`ui/field`), so the locators that matched
+          these labels EXACTLY moved with it — each is a line in `STATUS.md`'s
+          untouched-suite ledger. The removal form below marks its fields the
+          same way. */}
+      <Field id="manual-reason" label={t("reasonLabel")} required>
+        <Textarea name="reason" defaultValue={state.reason ?? ""} rows={2} maxLength={300} />
       </Field>
       <Button type="submit" disabled={pending}>
         {t("mark")}

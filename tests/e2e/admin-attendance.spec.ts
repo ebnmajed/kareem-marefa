@@ -373,6 +373,6 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
 
   // Removed, not deleted: they are offered again as a manual-mark
   // candidate, the same "not checked in" state a fresh member would be in.
-  await expect(page.getByLabel("العضو المراد تسجيل حضوره", { exact: true }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
+  await expect(page.getByLabel("العضو المراد تسجيل حضوره", { exact: false }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
 });
 
