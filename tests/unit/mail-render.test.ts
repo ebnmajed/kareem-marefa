@@ -5,8 +5,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { changeBlock, changesFromPayload, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "../../worker/src/mail/render";
-import { DEFAULT_TEMPLATES } from "../../worker/src/mail/templates";
+import { changeBlock, changesFromPayload, interpolate, renderEmail, TemplateMissingError, type RenderInput } from "@kareem/mail-runtime";
+import { DEFAULT_TEMPLATES } from "@kareem/mail-runtime";
 
 const ORG: RenderInput["org"] = { name: "كريم معرفة", timeZone: "Asia/Riyadh" };
 const MEMBER = { name: "سارة العتيبي", email: "sara@kareem.example" };

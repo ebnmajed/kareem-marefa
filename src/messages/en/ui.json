@@ -29,6 +29,11 @@
       "removeChip": "Remove <t>{name}</t>",
       "createOption": "Add “<t>{name}</t>”",
       "resultsCount": "{count, plural, one {{value} result} other {{value} results}}"
+    },
+    "reorderableList": {
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "moved": "Moved <t>{name}</t> to position {position} of {total}"
     }
   }
 }

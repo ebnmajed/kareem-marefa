@@ -392,7 +392,11 @@ test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a
     main(page)
       .getByRole("table", { name: "المستحقّون" })
       .getByRole("row", { name: new RegExp(KHALID) }),
-  ).toContainText("شهادته ملغاة");
+    // Wave 10 (`0127`, `DEC-161`): an admin's revocation FOR CAUSE reads
+    // «مُلغاة نهائيًا — لن يصدر بديل.» in the eligible list — final, where a
+    // removal's revocation is not. The row still says the certificate is
+    // revoked; the words moved with the meaning (STATUS's ledger).
+  ).toContainText("مُلغاة نهائيًا");
 });
 
 /* ── the moderator ──────────────────────────────────────────────────────── */

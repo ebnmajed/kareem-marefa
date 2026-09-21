@@ -15,9 +15,11 @@
 # probe refuses to start otherwise) and a place for `service_role` that is
 # not Vercel. Locally and in CI it runs against the local database.
 #
-# Three workspace packages ride along: @kareem/storage-paths (the one path
-# builder), @kareem/designer-runtime (THE renderer, DEC-017) and
-# @kareem/fonts (the one font set, verified by hash below — REQ-DSG-016).
+# Four workspace packages ride along: @kareem/storage-paths (the one path
+# builder), @kareem/designer-runtime (THE renderer, DEC-017), @kareem/fonts
+# (the one font set, verified by hash below — REQ-DSG-016) and
+# @kareem/mail-runtime (THE mail renderer, shared with the app's preview —
+# REQ-NTF-010, DEC-160).
 
 # ── build: the workspaces' TypeScript, with dev dependencies ────────────────
 FROM node:22-slim AS build
@@ -29,11 +31,14 @@ COPY worker/package.json worker/
 COPY packages/designer-runtime/package.json packages/designer-runtime/
 COPY packages/storage-paths/package.json packages/storage-paths/
 COPY packages/fonts/package.json packages/fonts/
+COPY packages/mail-runtime/package.json packages/mail-runtime/
 RUN npm ci --workspace @kareem/worker --ignore-scripts
 COPY packages/storage-paths/ packages/storage-paths/
 COPY packages/designer-runtime/ packages/designer-runtime/
+COPY packages/mail-runtime/ packages/mail-runtime/
 RUN npm run build --workspace @kareem/storage-paths \
- && npm run build --workspace @kareem/designer-runtime
+ && npm run build --workspace @kareem/designer-runtime \
+ && npm run build --workspace @kareem/mail-runtime
 COPY worker/ worker/
 RUN npm run build --workspace @kareem/worker
 
@@ -64,10 +69,12 @@ COPY worker/package.json worker/
 COPY packages/designer-runtime/package.json packages/designer-runtime/
 COPY packages/storage-paths/package.json packages/storage-paths/
 COPY packages/fonts/package.json packages/fonts/
+COPY packages/mail-runtime/package.json packages/mail-runtime/
 RUN npm ci --workspace @kareem/worker --omit=dev --ignore-scripts \
  && npm cache clean --force
 COPY --from=build /app/packages/storage-paths/dist packages/storage-paths/dist
 COPY --from=build /app/packages/designer-runtime/dist packages/designer-runtime/dist
+COPY --from=build /app/packages/mail-runtime/dist packages/mail-runtime/dist
 COPY --from=build /app/worker/dist worker/dist
 
 # ── The one font set (invariant 12, REQ-DSG-016). ──────────────────────────

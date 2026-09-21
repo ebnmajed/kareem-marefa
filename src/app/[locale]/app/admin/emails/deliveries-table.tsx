@@ -17,7 +17,7 @@ export interface DeliveryDisplayRow extends DeliveryDTO {
   name: string;
 }
 
-const TONE: Record<DeliveryDTO["status"], Tone> = { queued: "neutral", sent: "info", delivered: "success", bounced: "error", failed: "error" };
+const TONE: Record<DeliveryDTO["status"], Tone> = { queued: "neutral", sent: "info", delivered: "success", bounced: "error", failed: "error", complained: "error" };
 
 export function DeliveriesTable({ rows, timeZone, locale, empty }: { rows: DeliveryDisplayRow[]; timeZone: string; locale: string; empty: EmptyStateProps }) {
   const t = useTranslations("notifications.admin.emails.deliveries");

@@ -280,7 +280,11 @@ describe("POL-notification_templates", () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
-      await insert(tx, f.a.id, "MSG-rsvp_promoted", "email", "حصلت على مقعد في {{title}}", "مرحبًا {{name}}", ["title", "name"]);
+      // `{{member.name}}`, not `{{name}}`: wave 10's binding declaration
+      // (REQ-NTF-012) refuses a placeholder the key does not offer, and
+      // `MSG-rsvp_promoted` never carried a `name` — it rendered blank. The
+      // case is about who may READ a template; the text is fixture.
+      await insert(tx, f.a.id, "MSG-rsvp_promoted", "email", "حصلت على مقعد في {{title}}", "مرحبًا {{member.name}}", ["title", "member.name"]);
       expect(await tx.q(`select id from public.notification_templates`)).toHaveLength(1);
 
       await tx.as(f.a.members[0].claims);
@@ -297,11 +301,15 @@ describe("POL-notification_templates", () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
+      // `{{startsAt}}`, not `{{new.startsAt}}`: the declared field is arbitrary
+      // to this case, and wave 10's binding declaration refuses one the key
+      // does not offer — `MSG-session_changed` carries `startsAt`, and
+      // `new.startsAt` rendered blank in every rescheduling mail it was in.
       expect(
-        await errorCode(() => insert(tx, f.a.id, "MSG-session_changed", "email", "تغيّرت تفاصيل جلسة {{title}}", "الموعد الجديد", ["title", "new.startsAt"])),
+        await errorCode(() => insert(tx, f.a.id, "MSG-session_changed", "email", "تغيّرت تفاصيل جلسة {{title}}", "الموعد الجديد", ["title", "startsAt"])),
       ).toBe("23514");
       // The same template with the field present saves.
-      await insert(tx, f.a.id, "MSG-session_changed", "email", "تغيّرت تفاصيل جلسة {{title}}", "الموعد الجديد {{new.startsAt}}", ["title", "new.startsAt"]);
+      await insert(tx, f.a.id, "MSG-session_changed", "email", "تغيّرت تفاصيل جلسة {{title}}", "الموعد الجديد {{startsAt}}", ["title", "startsAt"]);
       // And an update that deletes the field is refused too, not only an insert.
       expect(
         await errorCode(() => tx.q(`update public.notification_templates set body = 'الموعد تغيّر' where key = 'MSG-session_changed'`)),

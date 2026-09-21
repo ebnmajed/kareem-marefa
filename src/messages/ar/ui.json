@@ -29,6 +29,11 @@
       "removeChip": "إزالة <t>{name}</t>",
       "createOption": "إضافة «<t>{name}</t>»",
       "resultsCount": "{count, plural, zero {لا نتائج} one {نتيجة واحدة} two {نتيجتان} few {{value} نتائج} many {{value} نتيجة} other {{value} نتيجة}}"
+    },
+    "reorderableList": {
+      "moveUp": "انقل لأعلى",
+      "moveDown": "انقل لأسفل",
+      "moved": "نُقل <t>{name}</t> إلى الموضع {position} من {total}"
     }
   }
 }

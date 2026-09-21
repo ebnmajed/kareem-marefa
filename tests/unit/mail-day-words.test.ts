@@ -12,7 +12,7 @@
 // against the notification matrix in migration `0026`.
 import { describe, expect, it } from "vitest";
 import arSessions from "@/messages/ar/sessions.json";
-import { DAY_ORDINALS, dayBlock, dayPhrase } from "../../worker/src/mail/render";
+import { DAY_ORDINALS, dayBlock, dayPhrase } from "@kareem/mail-runtime";
 import { NAMED_ORDINALS, dayOrdinal } from "@/components/sessions/day-label";
 
 // The file wraps its own namespace, so the ordinals are one level in.

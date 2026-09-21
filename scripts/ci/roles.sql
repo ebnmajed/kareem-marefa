@@ -174,3 +174,45 @@ begin
 end $$;
 grant execute on function storage.foldername(text), storage.filename(text), storage.extension(text)
   to anon, authenticated, service_role;
+
+-- ── M12 (wave 10): the Vault and pgcrypto surface 0140's webhook reads. ─────
+-- Supabase creates schema vault, vault.secrets, the vault.decrypted_secrets
+-- view and vault.create_secret() on every project (the supabase_vault
+-- extension), and exposes pgcrypto's hmac()/digest() in schema extensions.
+-- `resend_webhook()` (0140) reads the one secret through the view and verifies
+-- the provider's signature with extensions.hmac(); a bare container has
+-- neither (CI found this: 42P01, relation "vault.secrets" does not exist).
+-- The shim keeps the SHAPE — the same columns, the same view name, the same
+-- create_secret() signature, the same closed grants (only service_role may
+-- read the table; no client role may read the view) — and stores the secret
+-- as plain text, because encryption at rest is the platform's job and the
+-- suite asserts who may READ, not how it is stored. Local Supabase is the
+-- source of truth; this exists so CI can run the same file at all.
+create extension if not exists pgcrypto with schema extensions;
+grant execute on all functions in schema extensions to anon, authenticated, service_role;
+
+create schema if not exists vault;
+create table vault.secrets (
+  id          uuid primary key default gen_random_uuid(),
+  name        text unique,
+  description text not null default '',
+  secret      text not null,
+  key_id      uuid,
+  nonce       bytea,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create view vault.decrypted_secrets as
+  select id, name, description, secret, secret as decrypted_secret, key_id, nonce, created_at, updated_at
+    from vault.secrets;
+create function vault.create_secret(new_secret text, new_name text default null, new_description text default '', new_key_id uuid default null)
+returns uuid language sql security definer as $$
+  insert into vault.secrets (secret, name, description, key_id) values (new_secret, new_name, new_description, new_key_id) returning id
+$$;
+-- The platform's grants: service_role may read and delete; no client role may
+-- see the view or the table. The definer body of resend_webhook() reads it.
+revoke all on schema vault from public;
+grant usage on schema vault to service_role;
+grant select, delete on vault.secrets to service_role;
+grant select on vault.decrypted_secrets to service_role;
+revoke execute on function vault.create_secret(text, text, text, uuid) from public;

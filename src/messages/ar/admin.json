@@ -11,6 +11,7 @@
         "dashboard": "لوحة التحكم",
         "proposals": "المقترحات",
         "sessions": "الجلسات",
+        "surveys": "الاستبانات",
         "venues": "الأماكن",
         "categories": "التصنيفات والوسوم",
         "companies": "الشركات",
@@ -202,6 +203,7 @@
       "completeNote": "الإنهاء المبكر يغلق تسجيل الحضور فورًا.",
       "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>",
       "certificates": "الشهادات",
+      "survey": "الاستبانة",
       "attendance": "الحضور"
     },
     "venues": {
@@ -614,6 +616,13 @@
           "promoted": "إضافة قالب إلى مكتبة المنصة",
           "retired": "إيقاف قالب",
           "unretired": "إعادة تفعيل قالب"
+        },
+        "survey": {
+          "attached": "إضافة استبانة إلى جلسة",
+          "detached": "إزالة استبانة من جلسة"
+        },
+        "notify": {
+          "test_email_sent": "أُرسلت رسالة اختبار"
         }
       },
       "domains": {

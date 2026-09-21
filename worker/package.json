@@ -16,6 +16,7 @@
   "dependencies": {
     "@kareem/designer-runtime": "0.1.0",
     "@kareem/fonts": "0.1.0",
+    "@kareem/mail-runtime": "0.1.0",
     "@kareem/storage-paths": "0.1.0",
     "graphile-worker": "^0.18.0",
     "pg": "^8.23.0",

@@ -1,0 +1,21 @@
+{
+  "name": "@kareem/mail-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The one mail renderer, shared by the worker (which sends) and the app (which previews). REQ-NTF-010, DEC-160.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

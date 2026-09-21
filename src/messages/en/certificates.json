@@ -96,7 +96,8 @@
       "eligibleEmptyTitle": "Nobody yet",
       "eligibleEmptyDescription": "Nobody is checked in and no presenter has accepted. Names appear here when they do.",
       "attendanceLink": "Attendance",
-      "revokedButPresent": "Checked in, certificate revoked — no new certificate is issued automatically.",
+      "revokedReplaceable": "Revoked because the check-in was removed — a replacement is issued once they are checked in again.",
+      "revokedFinal": "Revoked for good — no replacement will be issued.",
       "columns": {
         "name": "Name",
         "kind": "Kind",

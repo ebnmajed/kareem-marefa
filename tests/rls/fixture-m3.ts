@@ -51,8 +51,8 @@ async function orgRows(tx: Tx, o: Org, m2: M2Org): Promise<M3Org> {
   const templateId = (
     await q<{ id: string }>(
       `insert into public.notification_templates (org_id, key, channel, locale, subject, body, required_fields)
-       values ($1, 'MSG-session_published', 'email', 'ar', 'جلسة جديدة: {{session.title}}',
-               'مرحبًا {{member.name}}، نُشرت جلسة {{session.title}}.', '{member.name,session.title}')
+       values ($1, 'MSG-session_published', 'email', 'ar', 'جلسة جديدة: {{title}}',
+               'مرحبًا {{member.name}}، نُشرت جلسة {{title}}.', '{member.name,title}')
        returning id`,
       [o.id],
     )

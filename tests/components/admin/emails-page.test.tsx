@@ -22,8 +22,23 @@ vi.mock("@/lib/dal/notifications", () => ({
   countDeliveryFailures: vi.fn(),
   getNotificationMatrix: vi.fn(),
   listDeliveryLog: vi.fn(),
+  // Wave 10: the page reads what each message key offers, so the properties
+  // pane can LIST the fields rather than let one be typed (`REQ-NTF-012`).
+  // A harness line — every case below is still about the string editor, which
+  // this org's `blocks: null` template opens.
+  getMessageBindings: vi.fn(async () => new Map([["MSG-session_cancelled", ["title", "startsAt", "reason", "url", "member.name", "org"]]])),
 }));
-const actions = { saveEmailTemplate: vi.fn(), restoreDefaultTemplate: vi.fn() };
+// `convertTemplateToDesign` and `saveEmailDesign` are wave 10's: the page
+// binds the first for an org that HAS a string override (§X9) and the second
+// for a block template. Harness lines — no case below exercises either.
+const actions = {
+  saveEmailTemplate: vi.fn(),
+  restoreDefaultTemplate: vi.fn(),
+  convertTemplateToDesign: vi.fn(),
+  saveEmailDesign: vi.fn(),
+  sendTestEmailAction: vi.fn(),
+  adoptPlatformDesign: vi.fn(),
+};
 vi.mock("@/app/[locale]/app/admin/emails/actions", () => actions);
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "notifications" }),
@@ -46,7 +61,12 @@ const MATRIX: MatrixRow[] = [
   { key: "MSG-comment_reply", category: "social", inApp: true, email: false, optional: true },
 ];
 const CATALOGUE: TemplateCatalogue = {
-  templates: [{ id: "t1", key: "MSG-session_cancelled", channel: "email", locale: "ar", subject: "أُلغيت الجلسة", body: "نأسف", requiredFields: ["title"], updatedAt: "2026-09-10T09:00:00Z" }],
+  // `blocks: null` is a STRING template — what this org has, and what every row
+  // that existed before wave 10 is (`REQ-NTF-009`). The cases below are the
+  // string editor's and are unchanged by the two fields.
+  templates: [
+    { id: "t1", key: "MSG-session_cancelled", channel: "email", locale: "ar", subject: "أُلغيت الجلسة", body: "نأسف", requiredFields: ["title"], blocks: null, sourceFamily: null, updatedAt: "2026-09-10T09:00:00Z" },
+  ],
   emailMessages: ["MSG-reminder_1d", "MSG-session_cancelled"],
 };
 const failed: DeliveryDTO = {

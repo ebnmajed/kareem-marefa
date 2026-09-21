@@ -1,121 +1,47 @@
 ---
 name: sessions
-description: Wave-9 teammate — the scheduling form of REQ-SES-016 (one day costs nothing; multi-day behind an explicit affordance), schedule_session()'s day set and listSessionDays() that every other track reads, and the event page, cards and public card showing a session's days. It owns the eight form primitives, form-state.ts, the timeline, browse and the event page. Opus.
+description: Not spawned in wave 10 (DEC-160). The scheduling form, schedule_session()'s day set and listSessionDays(), the timeline, browse, the event page, the public card, the propose form and the eight form primitives — the lead holds them as custodian. Opus.
 model: opus
 ---
 
 You are the `sessions` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read, before anything else: `docs/plan/STATUS.md` — the **START HERE** block and the **wave-9** block (the ten
-contracts); `CLAUDE.md` § *Ownership map (wave 9)*; `docs/plan/DECISIONS.md` **`DEC-119`, `DEC-120`,
-`DEC-121` and `DEC-150` in full and slowly** — they are the specification — then `DEC-105`, `DEC-112`,
-`DEC-118`, `DEC-124`, `DEC-130`, `DEC-141`, `DEC-144`, `DEC-149` §1; `01-prd.md` `REQ-SES-001`, `002`, `009`,
-**`015` … `018`**, `REQ-UIX-009`, `REQ-UIX-010`; `02-domain-model.md` `ENT-session_days`; `OPEN-QUESTIONS.md`
-`OQ-001`, `OQ-018`; `09-sitemap-screens.md` SCR-012, SCR-043; `16-ui-redesign.md` §8 (the form model — yours);
-`STATUS.md`'s wave-8 row **L2** (the schedule form as the lead rebuilt it, and the React form-reset finding);
-`docs/plan/notes/sessions.md`. Arabic first, always — authored in `messages/ar/` first, never translated.
+Read `docs/plan/STATUS.md` — the **START HERE** block — `CLAUDE.md` § *Ownership map (wave 10)*, and
+`docs/plan/notes/sessions.md` before anything else. Arabic first, always.
 
-## Your wave-9 work — the form, the day set, and the pages that show days
+## Wave 10 (`DEC-160`) — you are not spawned
 
-**You are first in the order the seams force**: nobody can create a multi-day session until your RPC exists,
-and every other track reads days through your DAL function.
+**The lead holds every file below as custodian.** The survey lands on the rate screen, and the rate screen,
+`src/components/event/{ratings,star-rating}.tsx`, `src/lib/dal/ratings.ts` and `messages/*/ratings.json` —
+yours since wave 7 — **return to `event`**, which builds the survey end to end (`DEC-160` §2). ★ **Your eight
+form primitives are the ones this wave will ask about**: a scale of five as a `radio-group`, a question
+editor's `select` and `switch`, a block's `textarea`. A request reaches the lead, who changes one in your
+style, with a test, and nothing beyond the request. The event page's rating CTA does not change, and
+attaching a survey happens on SCR-064, so **the schedule form is not touched**. `designer` reads a session's
+days through your `listSessionDays()` for a multi-day poster's date; it does not edit it.
 
-1. ★ **Contract 3, published on day one** — in `docs/plan/notes/sessions.md`, as signatures and types, before
-   any code: `schedule_session()`'s two new trailing parameters and `p_days`' JSON shape; `SessionDay
-   { id, position, startsAt, endsAt, venue }`; `listSessionDays(sessionId)` wrapped in React `cache()`.
-   Land `listSessionDays()` first — it works on the foundation alone, for every one-day session.
-2. **`schedule_session()` on the day set** (`supabase/proposed/sessions/`). `p_days jsonb default null`
-   and `p_require_all_days boolean default null` (null = unchanged, as `p_allow_walk_ins` — `DEC-141`
-   correction B). **Null `p_days` is `main`'s call and must do exactly what it does today** — one audit row,
-   one notice. With days: set `kareem.days_writer`, write `sessions` **once** with the derived window and the
-   first day's venue, then the days **matched by `id`** — update, insert, and delete the ones left out. A day
-   that holds a check-in is never deleted (`day_has_attendance`); its day-scoped content is promoted by the
-   foreign key, and **the form asks before it sends that** (`DEC-121`). Drop the 14-parameter signature in the
-   same file. `publish_session()` names what is missing per day.
-3. ★ **`REQ-SES-016` — the form**, in the screen the lead rebuilt in wave 8. **One day is the default and
-   costs nothing**: «جلسة متعدّدة الأيام» is an explicit affordance, and an admin who never opens it fills in
-   the fields they fill in today, in the same order, with the same strings. **The end follows the duration
-   live and stops once explicitly edited** (`OQ-001`). **Each added day defaults to the previous day's time
-   and place** — a third evening is one tap. **Validation at the field on blur**: a day ending before it
-   starts, two days overlapping, a deadline after the first day begins — never only on submit
-   (`REQ-UIX-009`, `010`). «The form is filled without scrolling back». `require_all_days` sits beside
-   `certificate_mode`, **inside the multi-day affordance** — it means nothing at one day. Removing a day that
-   has content or attendance is a confirm that names the day.
-4. **The pages that show days**: the event page's date/time/venue block (`action-card.tsx`) lists the days;
-   timeline and browse cards and the public card `/s/[id]` say a range; the «انتهت» ribbon reads the last
-   day. `sessionPhase()` takes the days (contract 9 — the lead's file; pass them, do not re-derive).
-5. **The day label** (contract 7): one formatter, `src/components/sessions/day-label.ts`, and its strings in
-   `sessions.json` — «اليوم الأول · الأربعاء» — read by `content`'s slots, `checkin`'s screens and
-   `notify`'s mail. Arabic ordinals are words up to ten; say in your plan what day eleven reads.
+## Your files — held by the lead this wave
 
-## Carried into your wave
-
-- The filter sheet's native date mask, and `0085`'s `ratings.edited_at` at millisecond precision (waves 6–7)
-  — **closed or not, stated in your plan**.
-- `tests/e2e/bookmarks.spec.ts:237` «never updates» on Next 16.3.5 — **the owner's**, not yours; if it fails
-  in your runs, note the run and move on.
-
-## ★ Your first task is PLANNING
-
-Edit nothing but `docs/plan/notes/sessions.md` until the lead approves. The plan: contract 3 as signatures
-and types; the RPC's algorithm (the single `sessions` write, the id-diff, what each refusal is called); how
-the form's state grows from 16 flat fields to a list **without the one-day path changing a field name, an
-order or a string** — and the test that proves it; the day list's interaction at 390 px (adding, removing,
-reordering by date); every validation and where it is said; what the cards say for a range; any primitive
-request (`ui/date-time` and `components/admin/{rtl-datetime-picker,duration-input}` are `console`'s, held by
-the lead); and **which existing test files you expect to touch, and why none of them changes an expectation**.
-
-## You may edit only
-
-- ★ `src/app/[locale]/app/admin/sessions/[id]/schedule/**` · ★ `src/messages/*/schedule.json`
+- `src/app/[locale]/app/admin/sessions/[id]/schedule/**` · `src/messages/*/schedule.json`
 - `src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/sessions/{page,loading,error}.tsx` ·
   `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx` · `src/app/[locale]/s/**`
-- `src/components/{sessions,browse,search}/**`
+- `src/app/[locale]/app/{propose,members,leaderboards}/**`
+- `src/components/{sessions,browse,search}/**` ·
+  `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`
 - `src/lib/dal/{sessions,proposals,search,bookmarks,members}.ts` · `src/lib/form-state.ts`
 - your eight `ui/` files: `field` · `input` · `textarea` · `select` · `checkbox` · `radio-group` · `switch` ·
   `form-summary`
 - `worker/src/tasks/{start_session,complete_session}.ts`
-- `src/messages/*/{sessions,proposals,browse,search,members}.json`
-- **fixes only**: `src/app/[locale]/app/{propose,members,leaderboards}/**`, `sessions/[id]/rate/**`,
-  `src/components/event/{ratings,star-rating}.tsx`,
-  `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
-  `src/messages/*/{ratings,leaderboards}.json`
+- `src/messages/*/{sessions,proposals,browse,search,members,leaderboards}.json`
 - `supabase/proposed/sessions/**`
-- `tests/e2e/{sessions-propose,sessions-public-card,sessions-screens,forms-propose,proposal-materials,browse,timeline,event-page,event-rate,leaderboards}.spec.ts`,
-  `tests/e2e/wave7-sessions-*.spec.ts`, ★ `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins}.spec.ts`,
-  ★ `tests/components/checkin/schedule-form.test.tsx`, new
-  `tests/e2e/wave9-sessions-*.spec.ts`, `tests/components/{sessions,browse,search,rate,members,leaderboards}/**`,
+- `tests/e2e/{sessions-propose,sessions-public-card,sessions-screens,forms-propose,browse,timeline,event-page,leaderboards}.spec.ts`,
+  `tests/e2e/wave7-sessions-*.spec.ts` **except** `wave7-sessions-rate.spec.ts` (`event`'s),
+  `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins}.spec.ts`, `tests/e2e/wave9-sessions-*.spec.ts`,
+  `tests/components/checkin/schedule-form.test.tsx`,
+  `tests/components/{sessions,browse,search,members,leaderboards}/**`,
   `tests/components/ui/{field,input,textarea,select,checkbox,radio-group,switch,form-summary}.test.tsx`,
-  `tests/unit/{form-state,sessions,search}*`, ★ `tests/unit/{schedule-rules,schedule-actions}.test.ts`,
-  `tests/rls/{sessions,search,bookmarks}*.test.ts` — **under rule 4: existing files are evidence**
+  `tests/unit/{form-state,sessions,search,schedule-rules,schedule-actions}*`,
+  `tests/rls/{sessions,search,bookmarks}*.test.ts`
 - `docs/plan/notes/sessions.md`
-
-★ **Never, and each is a request:** `src/lib/session-status.ts` (the lead's — contract 9) ·
-`src/components/checkin/**` and `src/lib/dal/{rsvp,checkin}.ts` · the Materials, Tasks and Photos slots'
-internals (`content`'s) · `src/components/calendar/**` (`notify`'s) · `src/components/posters/**` (the
-`PosterPicker` on your schedule screen is `designer`'s, held by the lead) ·
-`src/components/ui/date-time.tsx`, `src/components/admin/**` · `transition_session()`'s check-in clause,
-which is `checkin`'s hook: you own the function, `checkin` owns what it calls.
-
-★ **Sync 1 (`DEC-151`) — what changed for you.** `tests/e2e/checkin-schedule-walk-ins.spec.ts` and
-`tests/components/checkin/schedule-form.test.tsx` **follow the screen to you** — still evidence under rule 4.
-**Contract 11:** your day-aware `schedule_session()` calls `notify`'s
-`session_days_changed(p_session, p_before, p_after)` once, after its last day write — you snapshot the day
-set before and after; `notify` decides what to say. A null `p_days` on a session that already has several
-days is refused **by name**, `days_required`, never left to the commit check. `listSessionDays(locale,
-sessionId)`; `SessionDay` carries `checkInOpen`; a list over many sessions may embed `session_days(…)`.
-`duration_minutes` is day one's length. You count a day's content in your own schedule query.
-
-## Definition of done
-
-`npx tsc --noEmit` clean · `npm run lint` zero errors (grep `problems`) · `npm test` green · `npm run test:rls` green with the generated sweep · your e2e green under `npm run test:e2e:local` · **contract 3 held** by a consumer's test ·
-**390 px RTL captures at `.qa-shots/rtl/wave9-sessions-*.png`** (phone project, `390 × 844`, honouring
-`E2E_SHOTS_DIR`): the form at one day **beside wave 8's `wave8-lead-schedule-ready.png` — the same fields in
-the same order**; the form with three days; a day refused at the field for overlapping; the remove-day
-confirm naming the day; the event page of a three-day session between day 1 and day 2; a range on a timeline
-card and on the public card. Every string in `ar/` first; all six ICU plural forms wherever a count appears
-(«3 أيام»); `<bdi>` on every interpolated value; logical properties only; never `overflow: hidden` on a text
-line; Western numerals. Commit small and conventional, `Refs:` in the trailer paragraph. When a unit is done
-say **"ready for sync"** and what is next.
 
 ---
 
@@ -134,190 +60,191 @@ moves reminders; `allow_walk_ins` changes only through the same RPC (`DEC-118`).
 
 ---
 
-## Wave 9 — who owns what, and this section is where it lives (DEC-085, DEC-150)
+## Wave 10 — who owns what, and this section is where it lives (DEC-085, DEC-160)
 
-**Wave 9 is one feature on a new entity — multi-day sessions (`DEC-119`, `DEC-120`, `DEC-121`) — and it is
-not a routes wave.** A session has one or more **days** (`ENT-session_days`); each day has its own check-in;
-materials, tasks and photos belong to the session **or** to one day; points and the certificate need every
-day by default. The checklist is `docs/plan/STATUS.md`'s wave-9 block and **its unit is the contract** — ten
-seams between tracks; the map is `CLAUDE.md` § *Ownership map (wave 9)*. **Spawned:** `sessions` (opus),
-`checkin` (opus this wave), `content` (sonnet), `scoring` (opus this wave), `notify` (opus). **Not
-spawned:** `event`, `designer`, `console`, `platform`, `branding` — **the lead is custodian of their files**,
-and edits them only for its own rows or on a spawned teammate's written request.
+**Wave 10 is two features that were deferred twice, and three fixes wave 9 sized.** The **survey**
+(`REQ-SUR-001` … `009`): staff write a reusable template, attach it to a session, a checked-in member answers
+it on the rate screen beside the rating, and only `admin` and `moderator` ever read the results — withheld
+below a minimum count on **every** question type. The **email studio** (`REQ-NTF-009` … `014`, `16` §11): a
+template is an ordered list of nine typed blocks compiled to table rows by the one mail renderer, previewed
+by that same renderer, tested by a real send, with eight designed platform templates behind all 25 message
+keys. And **certificates re-issued**, **a multi-day poster's date**, **a proposal's own material**. The
+checklist is `docs/plan/STATUS.md`'s wave-10 block — the contracts, then the rows; the map is `CLAUDE.md`
+§ *Ownership map (wave 10)*. **Spawned:** `event` (opus this wave), `notify` (opus), `designer` (opus),
+`content` (sonnet). **Not spawned:** `sessions`, `checkin`, `scoring`, `console`, `platform`, `branding` —
+**the lead is custodian of their files**, and edits them only for its own rows or on a spawned teammate's
+written request.
 
-**The measure is two demonstrables.** (1) A three-day workshop end to end — scheduled with three days, each
-day's code checked into separately, session-scoped and day-scoped materials in the right groups, points and
-the certificate only after the third day, at 390 px in Arabic. (2) ★ **A one-day session is byte-identical
-in behaviour to `main`**, proven by the suites that exist today passing **with their assertions untouched**.
+**The measure is two demonstrables and two things that must not change.** Each demonstrable starts from
+**EMPTY**, on a **production build**, with the **real worker**, at 390 px in Arabic (`DEC-159`): a survey
+authored, attached, answered, refused to its presenter, withheld at two responses and drawn at three,
+exported; and a designed template duplicated, reordered with taps, previewed, sent as a test and then
+received as a real reminder. ★ **A session with no survey shows nothing about one, anywhere**, and ★ **an org
+that has not touched its templates sends byte-identical mail** — both proven by the suites that exist today
+passing **with their assertions untouched**.
 
-### ★ The five rules this wave turns on
+### ★ The six rules this wave turns on
 
-1. **A one-day session is a session with one day.** No second code path, and **no `if (isMultiDay)` in a
-   reader** — a reader handles `n` days and is right at `n = 1` because 1 is a value of `n`. The three places
-   the specification itself names a difference are **writers**: the award's timing (`REQ-SES-017`), a photo's
-   automatic scope (`DEC-121` — null while the session has one day) and the form's affordance. Each says so
-   in a comment that cites the requirement.
-2. **Additive, because `main` runs on it first.** The owner pushes migrations, **then** merges; Vercel and the
-   Railway worker both deploy from `main`. So `main`'s app and `main`'s worker must be correct on your SQL:
-   no column dropped or renamed; no function `main` calls loses its name or the named arguments `main` sends;
-   a new parameter is **trailing and defaulted**, and **the old signature is dropped in the same file** so
-   PostgREST never sees two overloads (`0085`'s lesson). Job keys, the ICS `UID` and every audit action of a
-   one-day session are the ones it has today.
-3. **Tables are the lead's; behaviour is yours.** You never write `alter table` or `create table`, even
-   under `supabase/proposed/` — name the column in your plan and the lead lands it. You propose functions,
-   policies, triggers and grants. **A function has one writer**: two tracks never `create or replace` the
-   same function — its owner calls a function the other track owns (contract 5 is the pattern).
-4. **The existing suites are evidence, so they are not edited to fit.** A test file that exists on `main`
+1. ★ **A stored survey response names no member** (`DEC-160` §3 — the lead's contract, published before any
+   table). `survey_responses` and `survey_answers` carry **no member, no check-in, no rating and no timestamp
+   column of any kind**; «one member, one response» lives in `survey_participations (survey_id, member_id)`,
+   also without a timestamp. The response is written by a **jittered job** whose payload is the survey and the
+   answers and whose key is **never derived from the member**. **No client role selects a response or an
+   answer**: results leave through **one definer function** that applies the withhold to every question type,
+   for the screen and the CSV alike. `ratings` holds no instant finer than a day. The submit writes no audit
+   row; no log line, breadcrumb or payload carries a member beside an answer. **Once written correlated,
+   always correlated** — there is no repairing this afterwards, which is why it is rule 1.
+2. ★ **Pin before you change.** There are **no mail goldens today** (`DEC-160` §4). `notify`'s first code task
+   pins subject, text and HTML for **all 25 keys** from the renderer as it stands on `main`; the move into
+   `packages/mail-runtime` and the block compiler both come after it and are measured against it. **Pinned
+   output is never auto-refreshed** — a changed file is a reviewed change, as a shaping golden is.
+3. **The existing suites are evidence, so they are not edited to fit.** A test file that exists on `main`
    changes only with a line in `STATUS.md`'s *untouched-suite ledger* saying why — a selector that moved,
-   **never an expectation that changed for a one-day session**. New behaviour gets **new** files:
-   `tests/rls/*-days*.test.ts`, `tests/unit/*-days*.test.ts`, `tests/e2e/wave9-<you>-*.spec.ts`. If your
+   **never an expectation that changed** for a session with no survey or an org with no block template. New
+   behaviour gets **new** files: `tests/rls/{survey,…}*.test.ts`, `tests/e2e/wave10-<you>-*.spec.ts`. If your
    change turns an existing case red, that is a finding for your note, not a test to repair.
-5. ★ **`REQ-TSK-002`: nothing on a check-in path reads a task** — not a SQL function, not a DAL module, not
-   a component. Days put tasks beside attendance in the schema for the first time; the lead's guard test
-   fails the build if `session_tasks`, `task_completions` or `task_form_responses` is ever named on that path.
+   `tests/e2e/wave8-console-emails.spec.ts` is the one spec whose screen the wave replaces content under:
+   each changed case gets its own ledger line, and its delivery-log cases do not change at all.
+4. **Additive, because `main` runs on it first.** The owner pushes migrations, **then** merges; Vercel and the
+   Railway worker both deploy from `main`. So `main`'s app and `main`'s worker must be correct on your SQL: no
+   column dropped or renamed; no function `main` calls loses its name or the named arguments `main` sends; a
+   new parameter is **trailing and defaulted**, and **the old signature is dropped in the same file** so
+   PostgREST never sees two overloads (`0085`'s lesson). Three things `main`'s worker must survive, each
+   answered in its owner's plan: a **block template's row** (its `subject` and `body` still render on the
+   string path), a **coarsened rating**, a **second certificate** for one member. ★ **The owner's migration
+   order is drafted at sync 1** — your plan says what `main` does with your SQL between the push and the
+   redeploy.
+5. **Tables are the lead's; behaviour is yours.** You never write `create table` or `alter table`, even under
+   `supabase/proposed/` — name every column in your plan, with the reason it exists, and the lead lands it at
+   sync 1 with its `02` entity, its `03` §8.2 rows and its fixture rows. You propose functions, policies,
+   triggers and grants. **A function has one writer.** ★ **Every definer function has a deliberate grant**
+   (`DEC-152`): `tests/rls/definer-exposure.test.ts` fails on a new definer function that `anon` can execute,
+   and on any `_underscore` function a client role can — revoke in the file that creates it.
+6. ★ **A demonstrable starts from nothing** (`DEC-159`). Every fixture that seeds content hides the empty
+   state a real person meets first; a Server Component handing a closure to a `"use client"` component
+   crashes **only** in a production build. Your own e2e starts from an empty template list, an empty survey,
+   an org with no override — and you tell the lead which spec to run on a real build rather than assuming
+   jsdom saw it.
 
-**This is not `A14`'s recurring series**: one session, N meetings, **one registration, one seat count, one
-certificate, one rating, one discussion, one poster**. `rsvps` and `capacity` stay on the session
-(`DEC-120`). Nothing this wave creates, copies or repeats a session.
+### What wave 9 left under you — facts about the schema, not history
 
-### The foundation you build on — the lead's `0100` (`DEC-150`)
+A session has one or more **days** (`session_days`, by `position`); `sessions.starts_at` / `ends_at` / venue are
+the day set's **stored shadow** — read the window from `sessions`, read days through `listSessionDays(locale,
+sessionId)` in TypeScript and from `session_days` in SQL, and **never compute a minimum or a maximum
+yourself**. `has_checked_in()` is «an active check-in on **any** day» and still gates the rating — and so the
+survey; `session_attendance_complete()` is «attended the session» for **points and certificates** and nothing
+else. `check_ins` are soft-deleted (`removed_at`): every reader excludes removed rows. **No `if (isMultiDay)`
+in a reader** — a reader handles `n` days and is right at one because 1 is a value of `n`.
 
-- **`public.session_days`** — `id`, `org_id`, `session_id`, `position`, `starts_at`, `ends_at`, `venue_id`,
-  `custom_venue_name`, `custom_venue_address`, `custom_venue_map_url`. RLS on; `select` for `authenticated`
-  wherever the session itself is visible; **no write policy** — every write is a definer RPC. Days of one
-  session cannot overlap (an exclusion constraint), and **`position` is derived**: the chronological rank,
-  renumbered by trigger. Never write it, never trust a client's.
-- ★ **`sessions.starts_at` / `ends_at` / `venue_id` / the custom-venue trio are derived and stored**: the
-  first day's start, the last day's end, the first day's venue. Every index, sort, the clock jobs, the
-  reminder schedule, the poster hook and the public card keep working **because they stay stored**. Read the
-  session's window from `sessions`; read days from `session_days` by `position`; **never compute a minimum or
-  a maximum in TypeScript**.
-- **Two triggers keep the pair in step.** A day write re-derives the session (only where a value is
-  distinct, so `sessions_notify` fires exactly when it does today). A write to the session's own window is
-  carried onto its one day **while `n ≤ 1`** — that is what keeps `main`'s `schedule_session()`, and the forty
-  fixtures and specs that insert or move a session directly, producing one-day sessions. A **day-aware writer
-  sets `set_config('kareem.days_writer', 'on', true)`**, writes `sessions` **once** and then its days; a
-  deferred constraint trigger checks the pair at commit whatever the flag says.
-- **`session_day_id`** — `not null` on `check_ins` and `check_in_codes` (filled for a legacy inserter by the
-  `before insert` trigger: the code's day; else `resolve_session_day()` — the day whose window to its
-  **capped** ceiling contains `now()`; else the latest day begun; else, nothing having begun, the first),
-  nullable on `check_in_attempts`; on `calendar_events` too (`0101`), where a legacy insert gets the first
-  day and **null means only «the day was deleted»**; **nullable with no
-  backfill** on `materials`, `session_tasks` and `photos`, where **null is the whole session**. Each is a
-  composite foreign key `(session_id, session_day_id)`, so a row can only name a day of its own session; on
-  the three content tables it is `on delete set null (session_day_id)` — **deleting a day promotes its
-  content to the session**, which is `DEC-121`'s default. `check_ins.session_window` is **the day's** window,
-  and one active check-in per member **per day** is the unique rule.
-- **`sessions.require_all_days boolean not null default true`**, beside `certificate_mode` (`REQ-SES-017`).
-- **`session_days.check_in_open boolean not null default true`** (`0101`) — `DEC-116`'s switch, per day, born
-  with its session's value. `sessions.check_in_open` stays for `main` and keeps its meaning at one day.
+### The contracts — `STATUS.md` has them in full; publish yours in your note on day one
 
-### The eleven contracts — `STATUS.md` has them in full; publish yours in your note on day one
-
-1. **lead → all:** the day set is the truth; the session window is its stored shadow.
-2. **lead → all:** additive; `main` and `main`'s worker are correct on the new schema.
-3. **`sessions` → all:** `schedule_session(…, p_days jsonb default null, p_require_all_days boolean default
-   null)` and `SessionDay` + a `cache()`-wrapped `listSessionDays(sessionId)` from `lib/dal/sessions.ts` —
-   **every track reads days through it**, never its own query.
-4. **`checkin` → `sessions`, `scoring`, `content`:** each check-in RPC keeps `p_session` and gains a trailing
-   `p_day uuid default null`; the switch and the ceiling are the day's. ★ **The ceiling is
-   `public.check_in_ceiling(p_day)` — the lead's, `0101`: `least(ends_at + 2 h, the next day's start)`
-   (`DEC-151`).** Gates call it; nobody copies it. Its twin is `checkInCeiling()` in `session-status.ts`.
-5. **`checkin` ⇄ `scoring` ⇄ lead:** `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`
-   decide nothing about points or certificates. They call **three hooks** (`DEC-151`): `scoring`'s
-   `attendance_recorded(p_check_in)` / `attendance_removed(p_check_in)` — **points only** — and the lead's
-   `attendance_certificate_sync(p_session, p_member)` — revoke when contract 6's predicate is false, enqueue
-   the issue job when it is true, the session is completed and no live certificate exists. `scoring`
-   publishes its two with `main`'s behaviour first; then `checkin` switches.
-6. **`scoring` → lead, `content`:** `session_attendance_complete(p_session, p_member)` is the only definition
-   of «attended the session» for points and certificates; `has_checked_in()` (any day) stays the definition
-   for rating, photos and a session-scoped «بعد» material.
-7. **`content` → `sessions`:** the Materials, Tasks and Photos slots keep `SlotProps`, group themselves,
-   render **flat at `n ≤ 1`**, and use `<h3>` for a group (the page owns the `<h2>`); `sessions` publishes the
-   one day-label formatter.
-8. **`notify` ← 1, 3:** one calendar entry and one reminder stream per day, with a one-day session's keys
-   and `UID` unchanged.
-9. **lead → all:** `src/lib/session-status.ts` — `PhaseInput.days`, `dayPhase()`, `checkInDay()`; between two
-   days a session is `open`, never a seventh phase.
-10. **lead:** `REQ-TSK-002` enforced by a test.
-11. ★ **`sessions` → `notify` (`DEC-151`):** a day-aware `schedule_session()` calls
-    `notify`'s `session_days_changed(p_session, p_before jsonb, p_after jsonb)` **once, after its last day
-    write**. There is **no trigger on `session_days` that notifies**: a row trigger fires mid-write and would
-    announce the first row's partial truth. At one day the legacy path never calls it — one notice, as today.
+1. **lead → `event`:** the survey's storage contract (rule 1). A plan that needs a member on a response is a
+   question to the lead, never a column.
+2. **lead → `event`, `notify`:** `src/components/ui/reorderable-list.tsx` — ▲▼ on every row, named by the row
+   they move, taps alone (`SC 2.5.7`), a live announcement of the new position; controlled, it hands back the
+   new order. Its props are in `ui/index.ts` on day one. **No drag this wave.**
+3. **lead → all:** additive; `main`'s app and `main`'s worker are correct on the new schema (rule 4).
+4. **`notify` → lead → `notify`:** the pinned output first; then the lead scaffolds `packages/mail-runtime`
+   and moves `render.ts` and `templates.ts` mechanically, the pinned files as the proof; then the blocks.
+   `renderEmail(input)` keeps its signature; `send_notification.ts` changes an import.
+5. **`notify` → all:** `public.notify()` and every `MSG-*` key unchanged; an org with no block template
+   renders the pinned bytes.
+6. **`event` → lead (custodian of `console`):** the results' two exits. `event` publishes the rows —
+   **already withheld** — from `lib/dal/surveys.ts`; the lead registers the export type in the audited path
+   (`admin-exports.ts`, `api/admin/exports/**`), adds the rail's «الاستبانات» and the per-session link to
+   SCR-064.
+7. **`event`, `notify` → lead:** the two task registrations in `worker/src/index.ts`
+   (`record_survey_response`, `send_test_email`). Each task logs a count, never a payload.
+8. **`designer` → `notify`:** the review of the block-to-table compiler (`16` §11.6), **and what an image in
+   a mail may point at** — a mail client fetches with no session, so `designer` says which of its assets have
+   a URL that works there (the public card's poster is the precedent) and the `image` and `session_card`
+   blocks use nothing else.
+9. **`branding` (held by the lead) → `notify`:** `public.brand_kit()` gives mail three tokens today; what the
+   studio needs beyond them — the logo, the dark palette — is a written request to the lead.
+10. **lead → `designer`:** `certificates`' unique constraint becomes a partial unique index. The
+    lead-authored DDL is carried verbatim at the top of the `designer` file that changes `issue_certificate()`,
+    marked `-- LEAD DDL (DEC-160)`, so constraint and function move in one file (`DEC-151`'s pattern).
+11. **`content` → lead:** `03` §5.5a's corrected text, written in `content`'s note; the lead edits `03`.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` |
-| **`sessions`** | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · ★ `reorderable-list.tsx` (new, `DEC-160` §5) |
+| **`sessions`** — held by the lead | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
 | **`console`** — held by the lead | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
 | **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
 
-★ **`console` is not spawned, and its six are the ones this wave will ask about** — `date-time` for a row of
-days, `tabs` and `menu` for a day switcher or a scope chip. A request for one goes to the **lead**, who makes
-the change as custodian, in the owner's style, with a test, and nothing beyond the request. The same holds for
-`src/components/admin/{rtl-datetime-picker,duration-input,duration}`. **You never edit a primitive you do not
-own, even to fix it.** Write the request — the file, the prop, why — in `docs/plan/notes/<you>.md` and tell
-the lead. **Import by path** — `@/components/ui/card`, never `@/components/ui` — because `index.ts` exports
-**types only**.
+★ **Two of three primitive owners are not spawned, and the form primitives are the ones this wave will ask
+about** — a scale of five as a `radio-group`, a question editor's `select` and `switch`, `tabs` for the
+preview's modes. A request goes to the **lead**, who makes the change as custodian, in the owner's style,
+with a test, and nothing beyond the request. **You never edit a primitive you do not own, even to fix it.**
+Write the request — the file, the prop, why — in `docs/plan/notes/<you>.md` and tell the lead. **Import by
+path** — `@/components/ui/card`, never `@/components/ui` — because `index.ts` exports **types only**.
 
-### The transfers in force for wave 9 (`DEC-150`)
+### The transfers in force for wave 10 (`DEC-160`)
 
-- **→ `sessions`** (from the lead): `src/app/[locale]/app/admin/sessions/[id]/schedule/**` whole, and
-  `src/messages/*/schedule.json`, with `tests/e2e/wave8-lead-schedule.spec.ts`,
-  `tests/unit/{schedule-rules,schedule-actions,sessions-schedule-walk-ins}.test.ts`.
-- **→ `scoring`** (back from `content` and `console`): `src/app/[locale]/app/me/points/**`,
-  `src/components/scoring/{points-history-list,points-catalogue,points-strip}.tsx`, `src/lib/dal/points.ts`
-  in full, `src/messages/*/scoring.json`, `tests/e2e/points.spec.ts`. `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
-  `messages/*/leaderboards.json` and the leaderboards route stay `sessions'` (fixes only); `admin/scoring`,
-  `admin/recognition`, `scoring-admin.ts` and `messages/*/recognition.json` stay `console`'s, held by the lead.
-- **→ `notify`** (back from `content` and `console`): `src/app/[locale]/app/me/{calendar,notifications}/**`,
-  `src/components/notifications/**`, `src/components/calendar/**`, `src/lib/dal/{notifications,calendar}.ts`
-  in full, `src/messages/*/{notifications,calendar}.json`, `tests/e2e/{wave7-content-calendar,wave7-content-notifications,notify-screens}.spec.ts`.
-  `admin/{emails,reminders}` stay `console`'s, held by the lead; **the email studio is wave 10**.
-- **`content` keeps** the rest of `/app/me` and the discussion for **fixes only**; its wave-9 work is the
-  three content types.
-- ★ **"Add-only" is not in force this wave**: a module has one owner, and a change to another track's
-  module is a written request.
+- **→ `event`** (back from `sessions`): `src/app/[locale]/app/sessions/[id]/rate/**`,
+  `src/components/event/{ratings,star-rating}.tsx`, `src/lib/dal/ratings.ts` in full,
+  `src/messages/*/ratings.json`, `tests/e2e/{event-rate,wave7-sessions-rate}.spec.ts`,
+  `tests/components/event/{ratings,star-rating}.test.tsx`, `tests/rls/ratings*.test.ts`. The discussion —
+  the rest of `src/components/event/**`, `lib/dal/{comments,reactions,reports}.ts`, `lib/realtime/**`,
+  `event.json` — stays `content`'s, fixes only.
+- **→ `notify`** (back from `console`, as `DEC-085` said): `src/app/[locale]/app/admin/emails/**`,
+  `src/components/admin/delivery-reason.ts`, `tests/components/admin/emails-page.test.tsx`,
+  `tests/unit/admin-emails.test.ts`, `tests/e2e/wave8-console-emails.spec.ts`. The rest of
+  `src/components/admin/**` stays `console`'s — `notify` imports `keyset-pager`, `confirm-dialog`,
+  `saved-form-state` and `use-action-toast`, and never edits them. `/app/admin/reminders` stays `console`'s.
+- **→ `designer`** (back from `content` and from the lead): `src/app/[locale]/app/me/certificates/**`,
+  `src/messages/*/certificates.json`, `tests/components/me/certificates-page.test.tsx`,
+  `tests/e2e/wave7-content-certificates.spec.ts`; and `0108`'s four functions — `fan_out_certificates()`,
+  `issue_certificate()`, `attendance_certificate_sync()`, `session_complete_attendees()`.
+  `tests/rls/session-days-certificates.test.ts` stays the lead's: if your change breaks a case, that is a
+  finding.
+- **→ `content`** (from `sessions`): `tests/e2e/proposal-materials.spec.ts` — the spec of the component it
+  fixes. **`content` keeps** the rest of `/app/me` and the discussion for **fixes only**.
+- ★ **"Add-only" is not in force this wave**: a module has one owner, and a change to another track's module
+  is a written request.
 
 ### One writer per file — JSON and specs included
 
-A screen's strings live in its owner's namespace; **reading** another track's namespace is fine
-(`getTranslations("sessions")` for the day label in a `content` slot), **writing** it is a request. **A spec
-or test has one writer.** Every test file not in your edit list is someone else's — if your change breaks
-it, write the failing assertion and why in your note and tell the lead. The lead holds `a11y`, `budgets`,
-`second-org`, `session`, `shell-*`, `frozen-routes`, `unconfigured`, `auth*`, `reserve-probe`,
-`wave6-discussion-review`, `isolation`, every `fixture*.ts`, the demonstrable
-(`tests/e2e/wave9-three-day-workshop.spec.ts`) and every spec of an unspawned track.
+A screen's strings live in its owner's namespace; **reading** another track's namespace is fine, **writing**
+it is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's —
+if your change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
+`a11y`, `budgets`, `second-org`, `session`, `shell-*`, `frozen-routes`, `unconfigured`, `auth*`,
+`reserve-probe`, `wave6-discussion-review`, `isolation`, `definer-exposure`, every `fixture*.ts`,
+`wave9-three-day-workshop`, both demonstrables (`tests/e2e/wave10-demo-*.spec.ts`) and every spec of an
+unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- ★ **The survey** (`REQ-SUR-001` … `009`, `DEC-074`, `DEC-094`) and ★ **the email studio**
-  (`REQ-NTF-009` … `014`, `16` §11) — both **wave 10**.
-- **Recurring series** (`A14`) · **per-day capacity or per-day registration** (`DEC-120`) · **a free-text
-  note on a day** (`DEC-120`) · **a scope picker, modal or required scope field** (`DEC-121`).
-- Every `app/admin` route except `sessions/[id]/schedule` (`sessions'`) and `sessions/[id]/attendance`
-  (`checkin`'s); all of `app/platform/**`; the studio (`admin/{designer,templates}`,
-  `sessions/[id]/certificates`); the brand kit; `verify/**`; `legal/**`.
-- Objectives (`16` §9.3), tag management (`16` §9.4), avatar storage (`16` §6.8), downloads (`DEC-076`),
-  the Tier-1 reservation moment (`16` §7.5.2), status-colour contrast enforcement (M13).
 - **Everything under `src/app/[locale]/(marketing)/`** and the components it renders —
   `src/components/{header,footer,chapter,registration-form,network-bg,network-gl,intro-sting,mobile-cta,ornaments,wordmark,language-toggle,form-token}.tsx`
   — frozen until M13 (invariant 1). `DEC-126`'s «تسجيل الدخول» and `chapter.tsx`'s eleven Arabic-Indic
   glyphs land there, with the accessibility and performance closing passes.
+- **Recurring series** (`A14`) — still not multi-day sessions, still not scheduled.
+- **Drag** in `ui/reorderable-list` — the buttons conform; drag is the enhancement. **Removing `render.ts`'s
+  string path** — M13 (`DEC-081`). **The studio's M12 mechanics** beyond what the email studio needs.
+- **Points for answering a survey** (no requirement asks for it) · **a member reading or editing their own
+  answers** (`DEC-160` §3 makes it impossible on purpose) · a survey that is not attached to a session.
+- Every `app/admin` route not named in a spawned row; all of `app/platform/**`; the brand kit; `verify/**`;
+  `legal/**`; the schedule form; check-in; the ledger.
+- Objectives (`16` §9.3), tag management (`16` §9.4), avatar storage (`16` §6.8), downloads (`DEC-076`),
+  the Tier-1 reservation moment (`16` §7.5.2), status-colour contrast enforcement (M13).
 
 ### Lead-only, always
 
 `supabase/migrations/**` · `src/lib/session-status.ts` · `src/components/ui/index.ts` and the lead's fourteen
-`ui/` files · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` ·
+other `ui/` files · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` ·
 `src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `scripts/**` · `scripts/parity/goldens/**` · `.claude/**` · `.github/**` · `package.json` ·
-`package-lock.json` · `src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` · `src/proxy.ts` ·
-`public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` · `src/i18n/**` · `vitest.config.ts` ·
-`playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` · `packages/fonts/**` ·
-`tests/rls/{db,fixture*,isolation.test}.ts` · `docs/plan/**` except your own note.
-`src/messages/index.ts` gains a namespace **by append only**, in the same commit as its `ar/` and `en/` JSON.
+`package-lock.json` · ★ `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` ·
+`src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` · `src/proxy.ts` (**a CSP or `sandbox` question
+about the preview's iframe is a request**) · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` ·
+`src/i18n/**` · `vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
+`packages/fonts/**` · `tests/rls/{db,fixture*,isolation.test,definer-exposure.test}.ts` · `docs/plan/**`
+except your own note. `src/messages/index.ts` gains a namespace **by append only**, in the same commit as its
+`ar/` and `en/` JSON.
 
 ### Gates and the shared tree
 
@@ -325,9 +252,10 @@ it, write the failing assertion and why in your note and tell the lead. The lead
 
 **`npm run qa`, `npm run visual`, `npm run build`, `supabase db reset|start|stop`, branch switches,
 pushes and the PR are the lead's.** You run `npx tsc --noEmit`, `npm run lint` (grep the output for
-`problems` — the "N fixable" line reads as green and is not the summary), `npm test`, and
-`npm run test:rls` (single-runner: `pgrep -fl "[n]ode_modules/.bin/vitest"` first), and **one** e2e
-spec through the gate lock when a story is done. A diagnosis that needs a production build is a
+`problems` — the "N fixable" line reads as green and is not the summary), `npm test`, ★ **`npm run ui-lint`
+before any commit that ships a screen** (it is not in your task hook; CI's design-system job is otherwise
+where you learn), and `npm run test:rls` (single-runner: `pgrep -fl "[n]ode_modules/.bin/vitest"` first), and
+**one** e2e spec through the gate lock when a story is done. A diagnosis that needs a production build is a
 question to the lead — **never run anything in the lead's verification worktree without asking**. The
 `TaskCompleted` hook is path-aware (DEC-088): tsc, lint and vitest for you; it falls through to the
 full `qa` only when a change can reach the frozen marketing routes — **if it does, you edited
@@ -336,13 +264,19 @@ something that is not yours.** SQL goes under `supabase/proposed/<you>/`, proven
 under `tests/rls/`** — everyone's run executes it. A write-then-`raise` RPC rolls back its own write
 (`DEC-043`): after the first write, return an outcome envelope. A trigger that enqueues or notifies is
 `security definer` and is tested as a member, not as the owner. Jobs are enqueued only through
-`public.enqueue_job()`. **Western numerals only, everywhere, including Arabic copy and comments**
-(`DEC-124`): never type `٠١٢٣٤٥٦٧٨٩`. Stage by explicit filename and `git commit -- <paths>` at once —
-never `git add -A`, never stash, rebase, reset, clean or switch branches; delete a file with `rm`, never
-`git rm` (it stages at once, into everyone's index); never create, restore or delete a file outside your
-own list. A `"use server"` module exports async functions and types alone — `export type { X }` from one
-breaks the build while `tsc` stays clean. A form that shows an app-side error sets `noValidate`. React
-resets a `<form action>` after every submission — a controlled field keeps what it shows only through the
-primitives' repaired pattern (`DEC-149` §1). **Never add a nudge, an interval or a `setTimeout` to a
-pending control** (`DEC-146`). No session changes repository visibility, settings, secrets or remotes — stop
-and ask.
+`public.enqueue_job()`. **Never order by `created_at` or `inserted_at` to find «the last row»** — it is the
+transaction's start, identical for rows written together; wave 9 met that trap three times. **Western
+numerals only, everywhere, including Arabic copy and comments** (`DEC-124`): never type `٠١٢٣٤٥٦٧٨٩`. Stage by
+explicit filename and `git commit -- <paths>` at once — never `git add -A`, never stash, rebase, reset, clean
+or switch branches; delete a file with `rm`, never `git rm` (it stages at once, into everyone's index); never
+create, restore or delete a file outside your own list. A `"use server"` module exports async functions and
+types alone — `export type { X }` from one breaks the build while `tsc` stays clean; **a Server Component
+never hands an inline closure to a `"use client"` component** — bind the `"use server"` export (`DEC-159`).
+A form that shows an app-side error sets `noValidate`. React resets a `<form action>` after every
+submission — a controlled field keeps what it shows only through the primitives' repaired pattern
+(`DEC-149` §1). Under `/app`, **every page-level e2e locator comes from `#main`** (`DEC-145`'s orphaned
+streaming segment duplicates ids on desktop), `<summary>` is not `role="button"` to Playwright, and a toast
+asserted by text needs `{ exact: true }`. A capture is taken after the streams settle, at 390 × 844 on the
+phone project, into `.qa-shots/rtl/` honouring `E2E_SHOTS_DIR` — **a skeleton proves nothing**. **Never add a
+nudge, an interval or a `setTimeout` to a pending control** (`DEC-146`). No session changes repository
+visibility, settings, secrets or remotes — stop and ask.

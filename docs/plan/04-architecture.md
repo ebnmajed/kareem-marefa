@@ -169,6 +169,7 @@ src/
 │   │       │   ├── proposals/
 │   │       │   ├── sessions/[id]/schedule/
 │   │       │   ├── sessions/[id]/survey/     # SCR-064, survey results  [DEC-074, DEC-083]
+│   │       │   ├── surveys/ · surveys/[templateId]/  # SCR-065, survey templates [DEC-160]
 │   │       │   ├── venues/ · categories/ · companies/ · members/
 │   │       │   ├── moderation/{comments,photos,reports}/
 │   │       │   ├── scoring/ · recognition/
@@ -190,7 +191,9 @@ src/
 │       ├── designer/autosave/route.ts        # > 1 MB; cannot be an action [v16]
 │       ├── sessions/[id]/ics/route.ts
 │       ├── verify/[code]/route.ts            # rate-limited, in front of verify_certificate()
-│       └── webhooks/{resend,google-calendar}/route.ts
+│       ├── webhooks/{resend,google-calendar}/route.ts
+│       ├── admin/emails/preview/route.ts     # POST — the mail preview, the ONE renderer, framed sandboxed [DEC-161]
+│       └── brand/[orgId]/logo/route.ts       # GET — an active org's logo, to anon by POLICY, for mail clients [DEC-161]
 ```
 
 ### 4.1 The app stays at the repository root
@@ -532,6 +535,7 @@ it is on the critical path — M1 retrofits auth and RLS onto a live database wh
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Vercel (auth callback) + worker (refresh) | Client bundles |
 | `GOOGLE_FONTS_API_KEY` | Vercel only | Worker — it has a no-network policy |
 | `SENTRY_DSN` | Both | — |
+| `APP_URL` (not a secret — the app's public origin, `https://…`) | Worker, ★ **set by the owner on Railway at wave 10's merge** (`DEC-161`, named difference 1) | — . **Unset, every mail is exactly as `main` sends it today**: no `{{url}}` is supplied and the link line stays blank, which is the defect this variable closes. `PUBLIC_ORIGIN` remains the poster and certificate tasks' name for the same origin |
 
 One rule: **Vercel never holds `service_role`** — anything needing it is a job. (The converter's
 «no secrets at all» rule retired with the converter, DEC-058.)

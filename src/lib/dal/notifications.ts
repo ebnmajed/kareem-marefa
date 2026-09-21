@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { DEFAULT_TEMPLATES, isBlockDocument, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
 import { sessionClient } from "@/lib/dal/session";
+import { getOrgPrefs } from "@/lib/dal/proposals";
 
 // Notifications — the inbox and the preference matrix of SCR-026
 // (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006), plus the unread count the shell's
@@ -48,6 +50,26 @@ export interface MatrixRow {
   inApp: boolean;
   email: boolean;
   optional: boolean;
+}
+
+/**
+ * What each `MSG-*` key offers a template (`REQ-NTF-012`), read from
+ * `public.notification_bindings()` — never duplicated here, for the reason the
+ * matrix is not: the copy that drifts is always the one the screen renders,
+ * and here the other copy is the trigger that REFUSES the save. A screen
+ * listing a binding the database would reject is worse than no list at all.
+ *
+ * Keyed by `MSG-*`, each list in the order the function returns it.
+ */
+export async function getMessageBindings(locale: string): Promise<Map<string, string[]>> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("notification_bindings");
+  if (error) throw new Error(`notification_bindings: ${error.message}`);
+  const byKey = new Map<string, string[]>();
+  for (const row of (data ?? []) as Array<{ key: string; binding: string }>) {
+    byKey.set(row.key, [...(byKey.get(row.key) ?? []), row.binding]);
+  }
+  return byKey;
 }
 
 /** `08` §1, as the database holds it. */
@@ -278,6 +300,21 @@ export async function markAllRead(locale: string): Promise<void> {
 // is so the screen 404s instead of rendering an empty table that looks like
 // an org with no templates.
 
+/** The eight designed platform templates of `DEC-082` / `REQ-NTF-014`, as the
+ *  `public.email_design_family` enum holds them. A family is a SHAPE; the copy
+ *  is per message key. */
+export const DESIGN_FAMILIES = [
+  "announcement",
+  "reminder",
+  "rsvp",
+  "rescheduled",
+  "cancelled",
+  "rating",
+  "certificate",
+  "recognition",
+] as const;
+export type DesignFamily = (typeof DESIGN_FAMILIES)[number];
+
 export interface TemplateDTO {
   id: string;
   key: string;
@@ -286,6 +323,12 @@ export interface TemplateDTO {
   subject: string | null;
   body: string;
   requiredFields: string[];
+  /** `null` is a STRING template — every row that existed before wave 10, and
+   *  what an org that has not touched its templates still has (`REQ-NTF-009`).
+   *  Otherwise the ordered block document (`0125`). */
+  blocks: unknown | null;
+  /** Provenance: which platform design this was duplicated from. */
+  sourceFamily: DesignFamily | null;
   updatedAt: string;
 }
 
@@ -301,6 +344,133 @@ async function assertAdmin(locale: string) {
   return client.session.role === "admin" ? client : null;
 }
 
+export interface EmailPreviewInput {
+  key: string;
+  subject?: string;
+  body?: string;
+  /** The editor's unsaved block document, as JSON text. */
+  blocks?: string;
+  appUrl: string;
+}
+
+/**
+ * The live preview (`REQ-NTF-010`). Null for a caller who may not edit
+ * templates, and null for a key `08` §1 does not list — one answer, because a
+ * preview must not tell a non-admin which message keys exist.
+ *
+ * ★ It renders through `renderEmail()` — THE mail renderer — over the sample
+ * payload `tests/unit/mail-pinned/` pins for that key. There is no second
+ * renderer and no second sample set, which is the whole of `REQ-NTF-010`.
+ *
+ * ★ It reads NOTHING the admin is editing from the database. The draft comes
+ * in with the request, because the preview's purpose is to show an admin what
+ * they have not saved yet.
+ */
+export async function compileEmailPreview(
+  locale: string,
+  input: EmailPreviewInput,
+): Promise<{ html: string; text: string; subject: string } | null> {
+  if (!(await canEditEmailTemplates(locale))) return null;
+
+  const sample = sampleFor(input.key);
+  if (!sample) return null;
+
+  const fallback = DEFAULT_TEMPLATES[input.key];
+  // A draft with no subject or body yet falls back to the built-in Arabic
+  // default, so the frame is never empty while an admin is still typing.
+  const subject = input.subject?.trim() || fallback?.subject || "";
+  const body = input.body?.trim() || fallback?.body || "";
+  if (!subject || !body) return null;
+
+  let blocks: unknown = null;
+  if (input.blocks) {
+    try {
+      blocks = JSON.parse(input.blocks);
+    } catch {
+      // Malformed JSON previews the STRING path rather than failing: an admin
+      // mid-edit should see the message, not an error page in the frame.
+      blocks = null;
+    }
+  }
+
+  const client = await sessionClient(locale);
+  // The org's OWN name, palette and zone — a preview of a branded mail that
+  // showed the sample org's would be a picture of somebody else's message.
+  const [{ data: kit }, { data: org }, prefs, { data: logo }] = await Promise.all([
+    client.supabase.rpc("brand_kit", { p_org: client.session.orgId }),
+    client.supabase.from("orgs").select("name").eq("id", client.session.orgId).maybeSingle(),
+    getOrgPrefs(locale),
+    // ★ The preview ASKS for the logo, which it did not before — and «never
+    // asked» is how a preview came to show the org's name where the sent mail
+    // carries the logo band. The same function the worker asks (`0126`), so
+    // the preview is wrong exactly when the mail would be.
+    client.supabase.rpc("org_public_logo", { p_org: client.session.orgId }),
+  ]);
+  const light = (kit as { light?: Record<string, string> } | null)?.light;
+  const dark = (kit as { dark?: Record<string, string> } | null)?.dark;
+
+  // ★ THE SESSION CARD'S IMAGE — the logo's twin, found by looking for it.
+  //
+  // Three of the eight designs carry a `session_card` with an image, and the
+  // worker supplies it as `payload.session_card_image_url`. Neither the
+  // preview nor the test send can use the SAMPLE's session id: that uuid names
+  // no row, so `/api/s/{id}/og` would 404 and the admin would be looking at a
+  // broken image — worse than none, and it reads as «the card is broken»
+  // rather than «this org has no poster yet».
+  //
+  // `preview_card_session()` (`0141`) finds a real one, and it is a FUNCTION
+  // rather than a loop here because the test send needs the same answer. Two
+  // loops for one rule is the drift that left the logo resolved by the worker
+  // and by nobody else. It asks `session_public_card()` rather than restating
+  // its rule (contract F3): a poster that has not finished rendering has no
+  // path yet, and a state check would hand back a session whose image 404s.
+  // Asked for only when the document actually carries a card that wants an
+  // image: five of the eight designs do not, and a query for something the
+  // mail will not render is work with no reader.
+  const wantsCard =
+    isBlockDocument(blocks) &&
+    readBlocks(blocks).some((block) => block.type === "session_card" && block.withImage !== false);
+  const cardSession = wantsCard && input.appUrl
+    ? ((await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId })).data as string | null)
+    : null;
+  const cardImageUrl = cardSession ? `${input.appUrl.replace(/\/+$/, "")}/api/s/${cardSession}/og` : null;
+
+  const rendered = renderEmail({
+    key: input.key,
+    override: { subject, body, blocks },
+    // ★ The real session id travels too, not just its image. `{{url}}` is
+    // built from `payload.session_id`, and the sample's names no row — so
+    // without this the preview's button points at a 404 while the sent mail's
+    // points at the session. One answer fixes both.
+    payload: cardSession
+      ? { ...sample.payload, session_id: cardSession, session_card_image_url: cardImageUrl }
+      : sample.payload,
+    member: sample.member ?? SAMPLE_MEMBER,
+    org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
+    brand: light ? { light, dark } : null,
+    // `org_public_logo()` returns a row only for an ACTIVE org with a PNG or
+    // JPEG logo, so an empty result is the same «render the org's NAME» the
+    // worker produces rather than a broken image.
+    logoUrl: logoUrlFor(input.appUrl, client.session.orgId, Array.isArray(logo) ? logo.length > 0 : Boolean(logo)),
+    appUrl: input.appUrl,
+  });
+  return { html: rendered.html, text: rendered.text, subject: rendered.subject };
+}
+
+/**
+ * Whether the caller may edit this org's email templates — the one predicate
+ * `/api/admin/emails/preview` needs.
+ *
+ * A thin export over `assertAdmin()` rather than a second rule: the preview
+ * renders an admin's UNSAVED draft, so it never touches a row and has no RLS
+ * boundary of its own to stand behind. Authorisation therefore has to be
+ * explicit at the door, and it is the same `role === "admin"` every other
+ * surface of SCR-058 applies.
+ */
+export async function canEditEmailTemplates(locale: string): Promise<boolean> {
+  return (await assertAdmin(locale)) !== null;
+}
+
 export async function getTemplateCatalogue(locale: string): Promise<TemplateCatalogue | null> {
   const client = await assertAdmin(locale);
   if (!client) return null;
@@ -309,7 +479,7 @@ export async function getTemplateCatalogue(locale: string): Promise<TemplateCata
   const [{ data, error }, matrix] = await Promise.all([
     supabase
       .from("notification_templates")
-      .select("id, key, channel, locale, subject, body, required_fields, updated_at")
+      .select("id, key, channel, locale, subject, body, required_fields, blocks, source_family, updated_at")
       .eq("org_id", session.orgId)
       .order("key"),
     getNotificationMatrix(locale),
@@ -325,6 +495,8 @@ export async function getTemplateCatalogue(locale: string): Promise<TemplateCata
       subject: string | null;
       body: string;
       required_fields: string[] | null;
+      blocks: unknown | null;
+      source_family: DesignFamily | null;
       updated_at: string;
     }>).map((r) => ({
       id: r.id,
@@ -334,6 +506,8 @@ export async function getTemplateCatalogue(locale: string): Promise<TemplateCata
       subject: r.subject,
       body: r.body,
       requiredFields: r.required_fields ?? [],
+      blocks: r.blocks ?? null,
+      sourceFamily: r.source_family ?? null,
       updatedAt: r.updated_at,
     })),
     emailMessages: matrix.filter((m) => m.email).map((m) => m.key),
@@ -345,6 +519,11 @@ export const templateInput = z.object({
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(20000),
   requiredFields: z.array(z.string().trim().min(1).max(80)).max(20),
+  /** `REQ-NTF-009`. Omitted leaves the row a STRING template, which is what
+   *  every writer before wave 10 sends and what keeps an untouched org's mail
+   *  byte-identical. `null` CLEARS a design back to its string. */
+  blocks: z.unknown().nullish(),
+  sourceFamily: z.enum(DESIGN_FAMILIES).nullish(),
 });
 export type TemplateInput = z.infer<typeof templateInput>;
 
@@ -360,14 +539,29 @@ export async function saveTemplate(locale: string, input: TemplateInput): Promis
   if (!client) throw new Error("not_permitted");
   const { session, supabase } = client;
 
-  const row = {
-    org_id: session.orgId,
+  // `blocks` and `source_family` are sent only when the caller names them, so a
+  // writer that knows nothing about designs — the string editor, and every
+  // caller before wave 10 — leaves an existing design alone instead of
+  // clearing it. `null` is a value here, not an omission: it CLEARS a design
+  // back to its string (§X9's convert-and-clear).
+  const design =
+    input.blocks === undefined && input.sourceFamily === undefined
+      ? {}
+      : {
+          blocks: input.blocks ?? null,
+          // `0125` refuses `source_family` without `blocks`, so clearing one
+          // clears the other rather than leaving the pair inconsistent.
+          source_family: input.blocks == null ? null : (input.sourceFamily ?? null),
+        };
+
+  const writable = {
     key: input.key,
     channel: "email" as const,
     locale: "ar",
     subject: input.subject,
     body: input.body,
     required_fields: input.requiredFields,
+    ...design,
   };
 
   const { data: existing, error: findError } = await supabase
@@ -380,10 +574,55 @@ export async function saveTemplate(locale: string, input: TemplateInput): Promis
     .maybeSingle();
   if (findError) throw new Error(`notification_templates: ${findError.message}`);
 
+  // ★ `org_id` is in the INSERT and never in the UPDATE. `0026` grants
+  // `update (key, channel, locale, subject, body, required_fields)` — and
+  // `0125` adds `blocks, source_family` — so `org_id` is outside the column
+  // grant, and Postgres checks the privilege on the COLUMN, not on the value:
+  // an update payload carrying `org_id` is `42501` even when the value it
+  // carries is the row's own. It is also what makes the org boundary a grant
+  // rather than a predicate (`tests/rls/notify-template-blocks.test.ts`).
   const { error } = existing
-    ? await supabase.from("notification_templates").update(row).eq("id", existing.id)
-    : await supabase.from("notification_templates").insert(row);
+    ? await supabase.from("notification_templates").update(writable).eq("id", existing.id)
+    : await supabase.from("notification_templates").insert({ org_id: session.orgId, ...writable });
   if (error) throw mapTemplateError(error);
+}
+
+/** One template's stored subject, for a conversion that must not invent one. */
+export async function getTemplateSubject(locale: string, key: string): Promise<string | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { data } = await client.supabase
+    .from("notification_templates")
+    .select("subject")
+    .eq("org_id", client.session.orgId)
+    .eq("key", key)
+    .eq("channel", "email")
+    .maybeSingle();
+  return (data?.subject as string | undefined) ?? null;
+}
+
+export type TestSendResult =
+  | { status: "queued"; remaining: number }
+  | { status: "rate_limited"; retryAfterMinutes: number }
+  | { status: "not_permitted" };
+
+/**
+ * `REQ-NTF-011` — «أرسل اختبارًا», to the signed-in admin's OWN address.
+ *
+ * ★ There is no recipient to pass. `public.send_test_email()` takes a key and
+ * a locale and reads the address from the caller's member row, so this DAL
+ * function has nothing to get wrong: «to the admin's own address and to no
+ * other» is a property of the SQL signature, not of anything here.
+ */
+export async function sendTestEmail(locale: string, key: string): Promise<TestSendResult> {
+  const client = await assertAdmin(locale);
+  if (!client) return { status: "not_permitted" };
+  const { data, error } = await client.supabase.rpc("send_test_email", { p_key: key, p_locale: "ar" });
+  if (error) return { status: error.code === "42501" ? "not_permitted" : "not_permitted" };
+  const out = data as { status: string; remaining?: number; retry_after_minutes?: number };
+  return out.status === "rate_limited"
+    ? { status: "rate_limited", retryAfterMinutes: out.retry_after_minutes ?? 60 }
+    : { status: "queued", remaining: out.remaining ?? 0 };
 }
 
 export async function deleteTemplate(locale: string, id: string): Promise<void> {
@@ -397,16 +636,37 @@ export async function deleteTemplate(locale: string, id: string): Promise<void> 
 function mapTemplateError(error: { code?: string; message: string }): Error {
   // The trigger's own errcodes (0026): 23514 a missing required field,
   // 22023 a key or channel outside 08 §1.
+  //
+  // ★ Wave 10 gives 22023 a SECOND meaning: `unknown_binding` (REQ-NTF-012).
+  // The code alone can no longer tell them apart, so the message decides —
+  // the trigger names what it refused, exactly as rule 3 names its field.
+  if (error.code === "22023" && /unknown_binding/.test(error.message)) {
+    // ★ The name travels ON the error. `saveTemplateChecked()` re-derives the
+    // missing required field by repeating the trigger's own test, which works
+    // because that test is one `includes()`. A binding can be refused from
+    // inside a BLOCK, and re-deriving that would mean re-implementing the
+    // compiler's scan in TypeScript — a second authority on what the database
+    // refused, which is the drift this whole wave is about.
+    return Object.assign(new Error("unknown_binding"), { binding: refusedName(error.message, "unknown_binding") });
+  }
+  if (error.code === "23514" && /blocks/.test(error.message)) return new Error("malformed_blocks");
   if (error.code === "23514") return new Error("missing_required_field");
   if (error.code === "22023") return new Error("unknown_message_key");
   if (error.code === "42501") return new Error("not_permitted");
   return new Error(`notification_templates: ${error.message}`);
 }
 
+/** The name the trigger refused, out of `unknown_binding: <name>` — the shape
+ *  rule 3's `missing_required_field: <field>` already has. Parsed rather than
+ *  guessed: the database is the authority on what it refused. */
+function refusedName(message: string, label: string): string {
+  return new RegExp(`${label}:\\s*([\\w.]+)`).exec(message)?.[1] ?? "";
+}
+
 export interface DeliveryDTO {
   id: string;
   key: string;
-  status: "queued" | "sent" | "delivered" | "bounced" | "failed";
+  status: "queued" | "sent" | "delivered" | "bounced" | "failed" | "complained";
   error: string | null;
   createdAt: string;
   sentAt: string | null;
@@ -540,7 +800,7 @@ export async function listDeliveryLog(
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit + 1);
-  if (opts.status === "failed") query = query.in("status", ["failed", "bounced"]);
+  if (opts.status === "failed") query = query.in("status", ["failed", "bounced", "complained"]);
   const cursor = opts.before && /^[0-9T:.+\-]+~[0-9a-f-]{36}$/.test(opts.before) ? opts.before.split("~") : null;
   if (cursor) query = query.or(`created_at.lt."${cursor[0]}",and(created_at.eq."${cursor[0]}",id.lt.${cursor[1]})`);
 
@@ -582,7 +842,7 @@ export async function countDeliveryFailures(locale: string, opts: { days: number
     .from("email_deliveries")
     .select("id", { count: "exact", head: true })
     .eq("org_id", session.orgId)
-    .in("status", ["failed", "bounced"])
+    .in("status", ["failed", "bounced", "complained"])
     .gte("created_at", since);
   if (error) throw new Error(`email_deliveries: ${error.message}`);
   return count ?? 0;
@@ -591,7 +851,10 @@ export async function countDeliveryFailures(locale: string, opts: { days: number
 export type TemplateSaveResult =
   | { ok: true }
   | { ok: false; error: "missing_required_field"; field: string }
-  | { ok: false; error: "unknown_message_key" | "not_permitted" };
+  /** `REQ-NTF-012` — the binding the DATABASE refused, named, so the editor can
+   *  select the block or the field that carries it. */
+  | { ok: false; error: "unknown_binding"; binding: string }
+  | { ok: false; error: "unknown_message_key" | "not_permitted" | "malformed_blocks" };
 
 /**
  * `saveTemplate()`, with the trigger's refusal kept whole. The
@@ -607,7 +870,10 @@ export async function saveTemplateChecked(locale: string, input: TemplateInput):
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "unknown_message_key" || message === "not_permitted") return { ok: false, error: message };
+    if (message === "unknown_binding") {
+      return { ok: false, error: "unknown_binding", binding: (error as Error & { binding?: string }).binding ?? "" };
+    }
+    if (message === "unknown_message_key" || message === "not_permitted" || message === "malformed_blocks") return { ok: false, error: message };
     if (message !== "missing_required_field") throw error;
   }
   // The name is in the trigger's message, which `mapTemplateError()` dropped:

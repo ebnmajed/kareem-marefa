@@ -758,7 +758,7 @@ One component, four densities: `grid` (browse), `row` (lists, `/app/me`, admin),
 
 Shows: poster (or a generated navy/silver placeholder built from the title — never an empty grey
 box), **status badge over the media**, title, presenter avatars + first name, date and time with
-the org's numerals, venue, level chip, **up to three tag chips**, and the bookmark button. Staff
+Western numerals (`DEC-124`), venue, level chip, **up to three tag chips**, and the bookmark button. Staff
 additionally see the seat count. Hovering raises the card by `--shadow-raise`; the whole card is
 one link with the bookmark as a nested button (`REQ-NFR-007` — a nested interactive needs its own
 label and a stopped propagation, and there is a test for it).
@@ -1192,7 +1192,7 @@ organisation reads.
   is the whole point of the ask, and it is a policy, not a UI condition. A presenter reading an
   aggregate would be indistinguishable from the rating aggregate they already get.
 - **Results screen** `/app/admin/sessions/[id]/survey`: response rate, a bar per scale question with
-  the mean in the org's numerals, choice distributions, and free text as an anonymised list with a
+  the mean in Western numerals (`DEC-124`), choice distributions, and free text as an anonymised list with a
   minimum-count withhold matching `REQ-RAT-006`'s three — ★ **and the same withhold on the scale
   and choice distributions, not only on prose** (§9.2a). CSV export through the existing audited
   export path (`REQ-ADM-012`), UTF-8 BOM, **Western digits** (§9.2b).
@@ -1245,9 +1245,9 @@ moderator a join through RLS — they cannot read `ratings` at all — but it do
 
 `REQ-SUR-009`, **`DEC-094`**.
 
-### 9.2b ★ Numerals: display follows the org, machine-readable surfaces never do
+### 9.2b ★ Numerals: display follows the org, machine-readable surfaces never do — ★ SUPERSEDED by `DEC-124`: there is no org setting and every surface is Western; kept as the record of why the machine-readable half was already absolute
 
-`REQ-SUR-007` as drafted exports survey results «in the org's numerals». **Arabic-Indic digits break
+`REQ-SUR-007` as drafted exports survey results «in Western numerals (`DEC-124`)». **Arabic-Indic digits break
 numeric parsing in Excel and Google Sheets** — every column lands as text and every downstream sum
 is wrong, on an export that is audited and therefore trusted.
 
@@ -1539,7 +1539,7 @@ this document's.)
   than it honours it;
 - a **fallback font stack, never a web font** — the mail is designed to look right in Tahoma,
   not to depend on IBM Plex arriving;
-- numerals per the org setting;
+- Western numerals, always — there is no org setting (`DEC-124`);
 - a **plain-text alternative for every message** — some corporate clients strip HTML entirely.
 
 A free-form visual editor cannot honour those and stay correct. So the email studio is **block-based**
@@ -1619,7 +1619,12 @@ Two tiers, mirroring the designer's (`DSG-008`, DEC-052):
   original is never mutated; promotion adds, it never supplies the baseline.
 - **Every one of the 25 message keys maps to a template**, and a key with no org override falls
   back to the platform one rather than to a paragraph of unstyled text. That fallback is the whole
-  difference: today the default *is* the wall of text.
+  difference: today the default *is* the wall of text. ★ **When that fallback switches on is M13,
+  not wave 10** (`DEC-161`, `REQ-NTF-014`'s acceptance as amended): in wave 10 the library is
+  complete and every key *resolves* to a design, but an org that has not touched its templates
+  keeps sending the pinned string bytes — «byte-identical» is the wave's second demonstrable — and
+  a design becomes the org's only when an admin presses «ابدأ من تصميم جاهز». The string path
+  leaves in M13 (`DEC-081`), and that is when a key with no row renders the platform design.
 - **The brand kit drives all of it** (`REQ-DSG-021`) — logo, the three colours `render.ts` already
   reads from `public.brand_kit()`, the signature. Changing the org logo restyles twenty-two emails,
   which is what "one edit in one place" was always supposed to mean.
@@ -1678,7 +1683,7 @@ area table — both are covered by `DEC-070`.
 | `REQ-SUR-005` | **Results are visible to `admin` and `moderator` only. A presenter cannot read them** — by policy |
 | `REQ-SUR-006` | Free-text answers are withheld below the minimum-count threshold, as ratings are |
 | `REQ-SUR-007` | Results export as audited UTF-8-BOM CSV |
-| `REQ-SUR-008` | Response rate is shown against eligible attendees, in the org's numerals |
+| `REQ-SUR-008` | Response rate is shown against eligible attendees, in Western numerals (`DEC-124`) |
 | `REQ-SUR-009` | A survey response and a rating by the same member are never written correlated in time, and the minimum-count withhold covers every question type, not only free text |
 
 ### 12.3 Additions to existing areas

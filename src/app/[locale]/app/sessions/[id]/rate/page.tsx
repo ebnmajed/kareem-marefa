@@ -9,6 +9,7 @@ import { Panel } from "@/components/ui/panel";
 import type { Locale } from "@/i18n/routing";
 import { getRatePageData } from "@/lib/dal/ratings";
 import { getSessionHeading } from "@/lib/dal/sessions";
+import { getSurveyForMember } from "@/lib/dal/surveys";
 import { RateForm } from "./rate-form";
 
 // SCR-015 · /app/sessions/[id]/rate — rate the session and the presenter
@@ -44,10 +45,14 @@ export default async function RatePage({
   setRequestLocale(locale);
   const { rated } = await searchParams;
 
-  const [heading, data, t, tEvent, tUi] = await Promise.all([
+  const [heading, data, survey, t, tSurvey, tEvent, tUi] = await Promise.all([
     getSessionHeading(locale, id),
     getRatePageData(locale, id),
+    // ★ `null` for a session with no survey — REQ-SUR-001's «shows nothing
+    // about one, anywhere» is the absence of a row, not a flag to read.
+    getSurveyForMember(locale, id),
     getTranslations("ratings"),
+    getTranslations("survey.rate"),
     getTranslations("sessions.event"),
     getTranslations("ui.pageHeader"),
   ]);
@@ -127,7 +132,9 @@ export default async function RatePage({
         // News about the member's own act: a status, not an alert.
         <div role="status">
           <Panel tone="success">
-            <p className="text-label text-fg-heading">{t("form.submitted")}</p>
+            {/* The survey's receipt says both things happened; a session with no
+                survey says exactly what it said before (REQ-SUR-001). */}
+            <p className="text-label text-fg-heading">{survey?.answered ? tSurvey("sent") : t("form.submitted")}</p>
             <p className="mt-1 text-body-sm text-fg-body">{t("form.submittedBody")}</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
               <StarDisplay value={eligibility.existing.sessionStars} label={t("form.sessionLabel")} />
@@ -151,7 +158,7 @@ export default async function RatePage({
         ) : null}
       </Panel>
 
-      <RateForm locale={locale as Locale} sessionId={heading.id} checkInId={eligibility.checkInId ?? ""} existing={eligibility.existing} />
+      <RateForm locale={locale as Locale} sessionId={heading.id} checkInId={eligibility.checkInId ?? ""} existing={eligibility.existing} survey={survey} />
     </div>
   );
 }

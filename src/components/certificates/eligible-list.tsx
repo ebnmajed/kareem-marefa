@@ -14,11 +14,14 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 // the admin can edit before issuance would be a second definition of who
 // attended, and the attendance record is the one.
 //
-// ★ THE REVOKED-AND-RE-ADDED MEMBER IS NAMED, not hidden (my note, W8.g). A
-// check-in removed after issuance revokes the certificate (REQ-CHK-017); if
-// the check-in is then restored, the fan-out has already run and issues
-// nothing new. The row says so, so staff see the gap rather than learn of it
-// from the member.
+// ★ A MEMBER HOLDING NO LIVE CERTIFICATE IS NAMED, not hidden (my note, W8.g),
+// AND THE ROW SAYS WHETHER THE GAP WILL CLOSE ITSELF (wave 10, DEC-160 §6).
+// A check-in removed after issuance revokes the certificate (REQ-CHK-017) —
+// and since designer/0001 restoring the check-in issues a REPLACEMENT under
+// the next serial. But a certificate revoked FOR CAUSE is never replaced, and
+// the two look identical on this screen unless it says which is which. One
+// sentence promising a replacement in both cases is worse than none: it sends
+// staff to wait for a document the database will refuse to issue.
 
 export function EligibleList({ rows, sessionId }: { rows: EligibleRecipient[]; sessionId: string }) {
   const t = useTranslations("certificates.session");
@@ -36,11 +39,18 @@ export function EligibleList({ rows, sessionId }: { rows: EligibleRecipient[]; s
           <bdi className="text-fg-heading">{r.name}</bdi>
           {r.revokedButPresent ? (
             // A sentence, not a badge: a fixed-height chip clips a line this
-            // long at 390 px, and colour is never the only channel (the glyph is).
-            <span className="flex items-start gap-1.5 text-body-sm font-normal text-error">
-              <AlertCircleIcon className="mt-1 shrink-0" aria-hidden="true" />
-              {t("revokedButPresent")}
-            </span>
+            // long at 390 px, and colour is never the only channel — the two
+            // sentences differ in WORDS, and the glyph marks the one that needs
+            // somebody to act. A replaceable revocation is a status note; a
+            // final one is the gap nobody else will close.
+            r.revocationIsFinal ? (
+              <span className="flex items-start gap-1.5 text-body-sm font-normal text-error">
+                <AlertCircleIcon className="mt-1 shrink-0" aria-hidden="true" />
+                {t("revokedFinal")}
+              </span>
+            ) : (
+              <span className="text-body-sm font-normal text-fg-muted">{t("revokedReplaceable")}</span>
+            )
           ) : null}
         </span>
       ),

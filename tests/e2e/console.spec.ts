@@ -186,16 +186,19 @@ test("desktop: the fourteen-group IA discloses a group's real routes, and the co
   await expect(menu.getByRole("menuitem", { name: "الصور" })).toHaveAttribute("href", "/ar/app/admin/moderation/photos");
 });
 
-test("a moderator's rail regroups to exactly three top-level entries, matching REQ-ADM-020's scope", async ({ context, page }, testInfo) => {
+test("a moderator's rail regroups to exactly four top-level entries, matching REQ-ADM-020's scope", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "checked once, not per viewport — the filter is server-computed, not a layout concern");
   await signIn(context, "moderator");
   await goto(page, "/ar/app/admin/sessions");
   const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
-  // «الجلسات» direct, «الإشراف» disclosing all three queues, «السجل» direct —
+  // «الجلسات» and «الاستبانات» direct, «الإشراف» disclosing all three queues, «السجل» direct —
   // no «لوحة», no «الأعضاء», no «الإعدادات», no groups whose every child is
   // admin-only (`النقاط والتقدير`, `التصاميم`, `الإشعارات` all vanish, not
   // just hide their contents).
   await expect(nav.getByRole("link", { name: "الجلسات" })).toBeVisible();
+  // Wave 10 (`DEC-160`, SCR-065): a session's survey is staff's, so the
+  // moderator's rail gains this one entry — the title's count moved with it.
+  await expect(nav.getByRole("link", { name: "الاستبانات" })).toBeVisible();
   await expect(nav.getByRole("button", { name: "الإشراف" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "سجل التدقيق" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveCount(0);

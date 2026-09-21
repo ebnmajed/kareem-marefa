@@ -64,3 +64,10 @@ describe("REQ-INT-006 — no numeral system is frozen into the copy", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ★ The ar/en parity and blank-value cases that stood here are GONE, and on
+// purpose: `messages-namespaces.test.ts` (bb6e9f1) now proves both for every
+// namespace in the repo, not only these two. Keeping a narrower copy would
+// leave one rule with two writers — the shape this wave spent three commits
+// removing from the mail path — and the copy that drifts is always the one
+// nobody remembers is there.
