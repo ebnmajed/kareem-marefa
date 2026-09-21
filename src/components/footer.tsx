@@ -32,7 +32,7 @@ export function Footer() {
             </li>
           </ul>
         </nav>
-        <p className="text-caption text-silver-400/60">{t("internal")}</p>
+        <p className="text-caption text-fg-muted">{t("internal")}</p>
       </div>
     </footer>
   );

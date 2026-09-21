@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DesignDocument, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
 import {
@@ -467,7 +467,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
             {t("previewHeading")}
           </h2>
           {strip}
-          {canvas}
+          {/* The phone reviews and approves; it does not select layers (see `selectable`). */}
+          {cloneElement(canvas, { selectable: false })}
         </section>
         <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
