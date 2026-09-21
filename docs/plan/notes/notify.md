@@ -2961,3 +2961,31 @@ it is four joins away (a design document → a `session_posters` row → a `read
 `export_artifacts` row with a path). «The session is published» and «its poster has finished
 rendering» are different predicates, and a caller that guessed the second from the first would hand
 back a session whose image 404s — which is the exact defect the whole class is about.
+
+---
+
+## The forced-dark control — MEASURED, not reasoned
+
+Run on the final build with `0139`–`0141` present. Three cells, one variable, three outcomes:
+
+| Cell | Artwork | Result |
+|---|---|---|
+| 1 | transparent PNG, **dark** ink | «KAREEM» nearly invisible on the darkened card |
+| 2 | **the same artwork** as JPEG | readable, on its white ground |
+| 3 | transparent PNG, **light** ink | readable |
+
+★ **Cell 2 is what makes this a measurement.** The instrument is not a blanket inversion: the same
+mark, the same ink, the same dimensions — only the alpha channel differs, because `omitBackground` is
+PNG-only and the JPEG flattens onto white — and the JPEG **holds**. So cell 1 is the transparency
+interacting with a darkened surface, not the simulator darkening everything it touches. Without the
+control, cell 1 alone would have been an assertion; with it, it is a result.
+
+**The carried poster defect is now a picture.** One logo asset serving two schemes is the defect
+(`branding`'s), and «an org with a dark-ink transparent logo has an invisible logo on a dark surface»
+was until now a sentence in a note. It is now three files anyone can open.
+
+★ **And the capture had to be fixed before it could say that.** The first run framed the mode switcher
+with the iframe in the lower half — a picture of the instrument rather than of the measurement. Three
+cells whose entire purpose is «can this be READ» cannot be judged from a thumbnail of the pane the
+mail sits in. They now screenshot the element **inside** the frame, which is the rendered mail and
+nothing else.

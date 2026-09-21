@@ -192,7 +192,9 @@ test("★ the three panes at 390 px, with the preview filled by the one renderer
   await expect(
     editor(page).getByText("تذييل التفضيلات — يُضاف دائمًا ولا يمكن حذفه أو تحريكه", { exact: true }),
   ).toBeVisible();
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-editor-phone.png` });
+  // `fullPage`: the three panes stack at 390 px, so the properties pane and
+  // the checks are below the fold and a viewport shot shows one pane of three.
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-editor-phone.png`, fullPage: true });
 });
 
 test("the four preview modes differ, and the dark one says it is a simulation", async ({ context, page }, testInfo) => {
@@ -232,7 +234,12 @@ test("★ a binding the key does not offer is caught in the editor, and the save
   await expect(check(page, "لا تتيحه هذه الرسالة")).toHaveCount(1);
   // A mail an admin has not seen is a mail they must not be able to approve.
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-binding.png` });
+  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
+  // fold at 390 px. A viewport shot of the top of the page is a picture of
+  // something true that is not the thing being reviewed, and it reads as
+  // evidence — which is worse than no picture, because it is opened and
+  // believed.
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-binding.png`, fullPage: true });
 });
 
 test("★ a stored block the document LOST is named, not swallowed", async ({ context, page }, testInfo) => {
@@ -246,7 +253,12 @@ test("★ a stored block the document LOST is named, not swallowed", async ({ co
 
   await expect(check(page, "أُسقطت كتلة")).toHaveCount(1);
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-dropped.png` });
+  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
+  // fold at 390 px. A viewport shot of the top of the page is a picture of
+  // something true that is not the thing being reviewed, and it reads as
+  // evidence — which is worse than no picture, because it is opened and
+  // believed.
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-dropped.png`, fullPage: true });
 });
 
 test("an image with no alt blocks the save, and the check names the block", async ({ context, page }, testInfo) => {
@@ -258,7 +270,12 @@ test("an image with no alt blocks the save, and the check names the block", asyn
   await editor(page).getByRole("button", { name: "أضف صورة" }).click();
   await expect(check(page, "صورة بلا نص بديل")).toHaveCount(1);
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-image-alt.png` });
+  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
+  // fold at 390 px. A viewport shot of the top of the page is a picture of
+  // something true that is not the thing being reviewed, and it reads as
+  // evidence — which is worse than no picture, because it is opened and
+  // believed.
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-image-alt.png`, fullPage: true });
 });
 
 test("★ the preview route refuses a MODERATOR and a member alike — the role a unit test cannot prove", async ({ context, page }, testInfo) => {

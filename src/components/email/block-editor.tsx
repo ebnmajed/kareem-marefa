@@ -138,9 +138,16 @@ export function BlockEditor({
           {tb("heading")}
         </h3>
 
+        {/* ★ `secondary`, not `ghost`. `ghost` is «no border and no fill: a
+            tertiary action that reads as text until hovered» — which on a
+            touch screen, where there is no hover, means these nine read as a
+            row of words and not as controls at all. They are the only way to
+            add a block, so they are not tertiary. `ui-lint` cannot see this:
+            it looks for copied control classes, and a wrong variant is a
+            correct class. */}
         <div className="mt-3 flex flex-wrap gap-2">
           {BLOCK_TYPES.map((type) => (
-            <Button key={type} type="button" variant="ghost" onClick={() => {
+            <Button key={type} type="button" variant="secondary" size="sm" onClick={() => {
               const block = emptyBlock(type);
               editBlocks((current) => [...current, block]);
               setSelectedId(block.id);
@@ -171,7 +178,7 @@ export function BlockEditor({
               </button>
             )}
             renderActions={(block) => (
-              <Button type="button" variant="ghost" onClick={() => {
+              <Button type="button" variant="secondary" size="sm" onClick={() => {
                 editBlocks((current) => current.filter((b) => b.id !== block.id));
                 setSelectedId((id) => (id === block.id ? null : id));
               }}>
@@ -211,7 +218,7 @@ export function BlockEditor({
               teaches an admin the wrong thing about their own design. */}
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             disabled={blocked || testing}
             onClick={async () => {
               setTesting(true);

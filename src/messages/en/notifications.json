@@ -337,6 +337,7 @@
             "notPermitted": "You do not have permission."
           },
           "save": "Save the design",
+          "subject": "Subject",
           "saved": "Design saved",
           "saving": "Saving…",
           "blockedBySaveChecks": "Fix the blocking checks before saving.",

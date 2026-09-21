@@ -200,7 +200,17 @@ async function captureDark(page: Page, name: string) {
   // nothing to do with dark mode, which is the mistake this whole cell exists
   // to avoid making twice.
   await expect(frame.locator('img[src*="/api/brand/"]')).toHaveCount(1);
-  await page.screenshot({ path: `${SHOTS}/${name}.png` });
+  // ★ THE PICTURE MUST BE THE MAIL.
+  //
+  // A page screenshot here framed the mode switcher with the iframe in the
+  // lower half — a picture of the instrument instead of the measurement. The
+  // whole point of these three is to judge whether «كريم معرفة» can be READ on
+  // a darkened card, and that cannot be decided from a thumbnail of the pane
+  // it sits in.
+  //
+  // So the element inside the frame, which is the rendered mail and nothing
+  // else, at its full height rather than the iframe's box.
+  await frame.locator("body").screenshot({ path: `${SHOTS}/${name}.png` });
 }
 
 test("★ cell 1 — a transparent PNG, DARK ink: the prediction is that this one fails to read", async ({ context, page }, testInfo) => {
