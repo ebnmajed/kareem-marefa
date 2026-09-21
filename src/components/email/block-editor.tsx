@@ -77,7 +77,12 @@ export function BlockEditor({
   offered: readonly string[];
   action: (previous: SavedFormState, formData: FormData) => Promise<SavedFormState>;
 }) {
-  const t = useTranslations("notifications.admin.emails.editor");
+  // ★ ITS OWN NAMESPACE. The block editor briefly wrote its words into
+  // `emails.editor.*`, which the STRING editor owns — so «احفظ القالب» became
+  // «احفظ التصميم» on a screen this wave does not replace, and
+  // `wave8-console-emails.spec.ts` went red waiting for a button by name. One
+  // namespace per screen, and the untouched spec is what enforces it.
+  const t = useTranslations("notifications.admin.emails.design");
   const tb = useTranslations("notifications.admin.emails.blocks");
   const [state, dispatch] = useActionToast<SavedFormState>(action, emptySavedState(), (result) =>
     result.saved ? { title: t("saved"), tone: "success" } : result.formError ? { title: t(`errors.${result.formError}`), tone: "error" } : null,

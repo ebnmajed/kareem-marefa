@@ -160,9 +160,9 @@ test("★ the three panes at 390 px, with the preview filled by the one renderer
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
 
-  await expect(editor(page).getByRole("heading", { name: "الكتل", level: 3 })).toBeVisible();
-  await expect(editor(page).getByRole("heading", { name: "معاينة حيّة", level: 3 })).toBeVisible();
-  await expect(editor(page).getByRole("heading", { name: "خصائص الكتلة", level: 3 })).toBeVisible();
+  await expect(editor(page).getByRole("heading", { name: "الكتل", level: 3, exact: true })).toBeVisible();
+  await expect(editor(page).getByRole("heading", { name: "معاينة حيّة", level: 3, exact: true })).toBeVisible();
+  await expect(editor(page).getByRole("heading", { name: "خصائص الكتلة", level: 3, exact: true })).toBeVisible();
 
   // Every block of the stored design is a row, named by its own first words.
   await expect(editor(page).getByRole("listitem").filter({ hasText: "جلستك غدًا" })).toBeVisible();

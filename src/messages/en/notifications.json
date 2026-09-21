@@ -180,9 +180,9 @@
           "bodyHint": "Write it in Arabic. Dynamic fields are written by name between double braces.",
           "requiredFields": "Required fields",
           "requiredFieldsHint": "The names of fields the subject or body must contain, separated by commas. A text without one is refused.",
-          "save": "Save the design",
+          "save": "Save template",
           "saving": "Saving…",
-          "saved": "Design saved",
+          "saved": "Template saved",
           "restore": "Restore the default template",
           "restoreTitle": "Restore the default template for “<bdi>{name}</bdi>”?",
           "restoreBody": "Your organisation's template for this message is deleted, and it arrives with the default text from now on. Your template cannot be recovered afterward.",
@@ -201,22 +201,9 @@
             "missingRequiredField": "Neither the subject nor the body contains the field <bdi>{field}</bdi>.",
             "unknownMessageKey": "This message is not in the notification matrix, or is not sent by email.",
             "notPermitted": "This page is for organisation admins.",
-            "failed": "The template could not be saved. Try again.",
-            "blocksUnreadable": "The message blocks could not be read.",
-            "designEmpty": "The design is empty — add at least one block.",
-            "unknownBinding": "A field this message does not offer."
+            "failed": "The template could not be saved. Try again."
           },
-          "properties": "Block properties",
-          "selectABlock": "Choose a block to edit its properties.",
-          "text": "Text",
-          "label": "Button text",
-          "urlBinding": "Link field",
-          "urlBindingHint": "The name of the field carrying the link, from the list below.",
-          "alt": "Alt text",
-          "altHint": "What someone who cannot see the image is told.",
-          "availableFields": "Available fields",
-          "convertToDesign": "Convert to a design",
-          "blockedBySaveChecks": "Fix the blocking checks before saving."
+          "convertToDesign": "Convert to a design"
         },
         "deliveries": {
           "heading": "Delivery log",
@@ -330,6 +317,22 @@
             "dark": "Forced dark"
           },
           "darkNote": "Simulation: this is not the message that ships. It models what a client forcing dark mode does to it — substituting colours and leaving images alone."
+        },
+        "design": {
+          "properties": "Block properties",
+          "selectABlock": "Choose a block to edit its properties.",
+          "text": "Text",
+          "label": "Button text",
+          "urlBinding": "Link field",
+          "urlBindingHint": "The name of the field carrying the link, from the list below.",
+          "alt": "Alt text",
+          "altHint": "What someone who cannot see the image is told.",
+          "availableFields": "Available fields",
+          "errors": {},
+          "save": "Save the design",
+          "saved": "Design saved",
+          "saving": "Saving…",
+          "blockedBySaveChecks": "Fix the blocking checks before saving."
         }
       },
       "reminders": {
