@@ -129,6 +129,16 @@ carry the meaning instead.
 |---|---|---|---|---|
 | `/app/admin/designer/[documentId]` at phone width | `designer.phoneNotice` — the studio edits only at 1280 px and wider | why nothing on the phone layout can be edited: the canvas, the strip and the checks look interactive and are not | the canvas and its controls rendered visibly read-only (a «عرض فقط» badge on the canvas, disabled controls absent rather than inert), so the state is seen, not read | lead (L4) |
 
+### Sync 2 — 2026-09-22 — `0143` and `0144` promoted
+
+`platform`'s `job_exhausted` (`0143`) and `branding`'s status-colour guard (`0144`), each diffed against the live text of
+every function it re-creates (only the new predicate and the new guard differ), applied with `supabase migration up
+--local`. **RLS: 120 files · 1,204 passed · 4 todo · 0 failed** (six `survey-submit` cases first failed on leftover local
+jobs — carried below). `policy-diff` agrees; `trace` 313 · 82 · 147, no gaps. `03` §8.2 gains 12 rows; `11` §3.2–3.3 the
+alert and its runbook; `12` §5.3 a dead job's payload kept until resolved. ★ `branding` narrowed the guard from ten
+pairs to six on measurement: the platform's own near-white status fills cannot reach 3 : 1 on a white canvas, so the fill
+was never the boundary — the status INK against the org's canvas and surface is (4.5 : 1), in light and dark.
+
 ### The untouched-suite ledger
 
 A pre-existing `tests/**` file changes only with a line here saying why. **Empty at Step 0.**
@@ -160,6 +170,7 @@ A pre-existing `tests/**` file changes only with a line here saying why. **Empty
 | owner | `bookmarks:237` «never updates» on Next 16.3.5 — a timing race | wave 8 |
 | owner | break-glass opens no org screen (`DEC-055` option A is the owner's to schedule) | wave 8 |
 | lead | `DEC-145`'s orphaned streaming segment; CSP report-only; `controlClass`'s `w-full`; the filter sheet's native date mask; the admin's «مسودة عندك» badge | waves 6–10 |
+| lead (custodian of `event`) | `tests/rls/survey-submit.test.ts` counts every `record_survey_response` job in the queue, so six jittered jobs left by an earlier e2e run (no worker ran them) turned six of its cases red at sync 2 — local state, not a defect; the six were removed from the LOCAL queue by id. The test should count only its own survey's jobs | wave 11 sync 2 |
 
 ---
 

@@ -237,6 +237,7 @@ From A33 / DEC-011, restated here because they are privacy controls, not UI pref
 | **Calendar OAuth tokens** | **Until disconnect, then deleted immediately** | `REQ-CAL-007` — outside the schedule |
 | Export artifacts | Until the source changes | `source_fingerprint` |
 | Deactivated member's personal data | Anonymised after 12 months | `JOB-anonymise_members` |
+| ★ A dead job's payload (`graphile_worker._private_jobs`) | **Until resolved** — rescheduled or discarded by the runbook in `11` §3.3 (`DEC-168` §2) | Operations; `job_exhausted` fires until it is. A dead `record_survey_response` payload holds answers and no member (`DEC-160` §3), and keeping it is what makes a replay possible |
 
 **The ledger is not trimmed**, and that is a deliberate trade: it holds a member's participation
 history for as long as the org exists. The alternative — trimming it — breaks recomputation, which

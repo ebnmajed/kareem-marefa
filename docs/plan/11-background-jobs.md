@@ -351,10 +351,24 @@ pending job age** (the number that actually catches a stalled queue).
 | **Render failures** | > 3 consecutive | Usually a font or a memory ceiling. |
 | **Storage prefix violation** | any | The path builder is wrong. Page immediately. |
 | **Impersonation active** | > 2 h | Someone left a break-glass session open. |
+| ★ **Job exhausted** (wave 11, `0143`, `DEC-168`) | any job with no attempts left and not running — no time window | A permanent failure is otherwise silent; for `record_survey_response` it is a member's answers. Task name and count only, never a payload (`DEC-014`) |
 
 ### 3.3 Errors and dead letters
 Sentry, tagged with job name, key, attempt number and org. A dead-lettered job keeps its payload so
 it can be replayed after a fix — and replaying is safe, because every job is idempotent (§1.3).
+
+**A job that used its last attempt.** `job_exhausted` fires while any job has no attempts left and is not running,
+and clears only when each one is resolved; there is no time window. Every job has graphile's default 25 attempts,
+so a job exhausts about four days after its first failure. The console shows the task and a count, never a
+payload; resolving is operations, not a console action (DEC-014).
+
+1. **Read which tasks and how many**, on the linked project:
+   `select t.identifier, count(*) from graphile_worker._private_jobs j join graphile_worker._private_tasks t on t.id = j.task_id where j.attempts >= j.max_attempts and j.locked_at is null group by 1;`
+2. **Read why, for that task only**: `select j.id, j.last_error from … where t.identifier = '<task>' and j.attempts >= j.max_attempts and j.locked_at is null;` — never `select *` (the payload of `record_survey_response` holds answers).
+3. **Fix the cause**, ship it, then **replay**: `select graphile_worker.reschedule_jobs(array[<ids>]::bigint[], attempts => 0);` Every job is idempotent (§1.3); `record_survey_response()` writes once per `response_id`.
+4. **Or discard**, when the job cannot be recovered: `select graphile_worker.complete_jobs(array[<ids>]::bigint[]);` For `record_survey_response` that loses the answers for good while the register still says «أجبت» — record the decision.
+
+The alert clears on the next minute's evaluation after the last one is resolved; a new dead job while it is open fires again.
 
 ### 3.4 What the worker does not do
 **No network access except** Supabase, Google Calendar, Resend and Sentry. Fonts come from the

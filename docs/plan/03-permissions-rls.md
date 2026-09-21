@@ -1942,6 +1942,20 @@ generated suite is the highest-value test in the product.
 | ★ **wave 10, migration `0142`** — lead — a spam complaint is its own delivery status (`DEC-165`, the owner's decision) |
 | `RPC-resend_webhook.complained` | A verified `email.complained` body moves the row to `complained` with the reason «complained», and returns `applied`. |
 | `RPC-evaluate_alerts.complaint_counts` | The bounce-spike rule counts a complaint as damage beside a bounce and a failure — twenty-five sends with two complaints fire it exactly as two bounces would. |
+| ★ **wave 11, migration `0143`** — `platform` — a job that used its last attempt raises an alert, by task name and count, never a payload (`DEC-168` §2) |
+| `RPC-evaluate_job_exhaustion.worker_only` | `service_role` only — an org member, a moderator, an org admin, a platform admin and `anon` are all refused on the grant. |
+| `RPC-evaluate_job_exhaustion.fires` | One row, `job_exhausted`; fired while any job has no attempts left and is not running; `detail` is `exhausted_jobs`, `tasks` and `by_task` (identifier → count). |
+| `RPC-evaluate_job_exhaustion.running_last_attempt` | A job locked on its last attempt is not counted; a job with attempts left never is. |
+| `RPC-evaluate_job_exhaustion.clears` | Rescheduling or completing every dead job clears it; resolving one of two tasks leaves it firing. |
+| `RPC-evaluate_job_exhaustion.no_payload` | Nothing from a job's payload, key or last error appears anywhere in the row. |
+| `RPC-evaluate_job_exhaustion.not_installed` | Without the `graphile_worker` schema it reports `not_installed` rather than raising. |
+| `RPC-platform_job_health.failed_agrees` | `failed` counts exactly the jobs the alert counts — a job running its last attempt is not failed. |
+| `RPC-platform_job_health.no_org_reader` | An org member, moderator and admin are refused `not_platform_admin`, `anon` on the grant, and none of them can select `graphile_worker._private_jobs`. |
+| ★ **wave 11, migration `0144`** — `branding` — `save_brand_kit()` refuses a palette on which a status colour fails AA (`DEC-073`, `DEC-168` §3) |
+| `POL-save_brand_kit.status_contrast_refused` | A light palette whose `canvas` sits too close to `--color-live-bg`/`--color-ended-bg`'s ink threshold (i.e. `--color-live`/`--color-ended` would read below 4.5:1 against it) is refused `55000`, before any write. |
+| `POL-save_brand_kit.status_contrast_accepted` | The platform default palette (`platformBrand()`'s own light/dark, transcribed) always saves — the guard's own regression test against DEC-052's identity override. |
+| `POL-save_brand_kit.status_contrast_dark` | A dark palette whose `dark_canvas`/`dark_surface` sits too close to `--color-live-on-dark` is refused; a dark palette far from it saves. |
+| `POL-status-contrast-formula-agreement` | `public.wcag_contrast_ratio()`'s SQL formula and `src/lib/brand/contrast.ts`'s TypeScript formula agree on every pair this guard checks — a second copy of WCAG's maths, proven not to drift (`tests/rls/status-contrast.test.ts`). |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
