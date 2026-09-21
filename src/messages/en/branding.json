@@ -85,6 +85,7 @@
       "invalid": "Check the values you entered.",
       "notAdmin": "This action requires admin permission.",
       "badReference": "The selected logo or font is not valid.",
+      "statusContrast": "A status badge (such as “live” or “ended”) does not read clearly against the canvas or surface colour you chose. Try a lighter or darker value for that field.",
       "unknown": "Something went wrong. Try again."
     }
   }
