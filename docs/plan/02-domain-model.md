@@ -198,7 +198,7 @@ create type export_status     as enum ('queued', 'rendering', 'ready', 'failed')
 
 -- Notifications and calendar
 create type notify_channel    as enum ('in_app', 'email');
-create type delivery_status   as enum ('queued', 'sent', 'delivered', 'bounced', 'failed');
+create type delivery_status   as enum ('queued', 'sent', 'delivered', 'bounced', 'failed', 'complained');  -- 'complained' under DEC-165 (0142): a spam complaint — the mail arrived and the person objected
 create type calendar_provider as enum ('google');
 create type calendar_sync_state as enum ('pending', 'synced', 'failed', 'removed');
 ```

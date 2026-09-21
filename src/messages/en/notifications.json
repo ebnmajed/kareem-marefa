@@ -226,6 +226,7 @@
             "sent": "Sent",
             "delivered": "Delivered",
             "bounced": "Bounced",
+            "complained": "Marked as spam",
             "failed": "Failed"
           },
           "reasons": {

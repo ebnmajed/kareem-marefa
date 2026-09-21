@@ -226,6 +226,7 @@
             "sent": "أُرسلت",
             "delivered": "وصلت",
             "bounced": "ارتدّت",
+            "complained": "اشتكى المستلم",
             "failed": "فشلت"
           },
           "reasons": {

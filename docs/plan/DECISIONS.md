@@ -3902,3 +3902,18 @@ This changes the bytes of an existing export only for a value that would have be
 **The cost, stated:** a member can rate and never answer, so a required question is «required in order to answer», not «required in order to take part». An org that wanted the second has no way to get it, on purpose.
 
 - **Documents changed:** `01-prd.md` (`REQ-SUR-002`), `STATUS.md`
+
+## DEC-165 — A spam complaint is its own delivery status; the Resend subscription and the enum move together
+
+- **Date:** 2026-09-21 · **Decided by:** the owner, on `notify`'s finding while building `0140` («`email.complained` maps to nothing, and every available value would lie»); implemented by the lead in wave 10 as `0142`
+- **Amends:** `ENT-email_deliveries` (`02`): `delivery_status` gains `complained`. Supersedes `0140`'s deliberate `ignored` for that event.
+
+`0140` mapped Resend's four outcome events and **ignored** `email.complained`, because `delivery_status` had no honest value for it: `bounced` says the address is bad, and an admin reading that may remove a working one; `failed` says the mail never arrived, when a complaint proves it did. A wrong label in an operational log is worse than a missing one, so the gap was named rather than papered over.
+
+**The owner's ruling: the fourth value, not a reused one.** A complaint proves the mail arrived and the person objected — the one signal that predicts deliverability damage — and an org admin needs it to stop mailing that person before the whole domain suffers. So `delivery_status` gains `complained`; the webhook maps `email.complained` to it with the word as its reason; it surfaces wherever `bounced` and `failed` already do — the delivery log's failed filter and its tone, and the bounce-spike alert, which counts a complaint as damage.
+
+**Timing: wave 10, as `0142`.** The lead's judgement on the owner's terms: one additive migration (an enum value, one `case` arm, one word in the alert's filter), touching files already reopened by the wave and landing before any gate had run — so no closed work reopened and no second gate run. The ignored-events case in `notify-bounce.test.ts` changes its expectation **deliberately** (a complaint now moves the row) and is the wave's one ledger line of that kind on `notify`'s files.
+
+★ **The two halves move together, and the owner holds the second.** Resend's endpoint subscribes to exactly the events the database maps. Subscribed to `email.complained` before this migration exists, the events arrive and are discarded (`0140`'s `ignored`); the enum without the subscription never hears one. **The owner ticks `email.complained` in the Resend endpoint after the merge**, and not before — it is the last line of the owner's order.
+
+- **Documents changed:** `02-domain-model.md` (`ENT-email_deliveries`), `03-permissions-rls.md` §8.2 (`0142`), `08-notifications-calendar.md` §5.2, `STATUS.md` (the owner's order)

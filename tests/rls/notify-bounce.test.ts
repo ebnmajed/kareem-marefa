@@ -112,21 +112,37 @@ describe("RPC-resend_webhook.anon_granted and .moves_only_existing", () => {
     });
   });
 
-  it("the two ignored events are ignored, and the row does not move", async () => {
+  it("the one ignored event is ignored, and the row does not move", async () => {
     await withTx(async (tx) => {
       await setup(tx);
       await tx.asAnon();
-      for (const type of ["email.delivery_delayed", "email.complained"]) {
-        const ts = now();
-        const body = bodyFor(type);
-        const [{ out }] = await call(tx, type, ts, sign(type, ts, body), body);
-        expect(out.status, type).toBe("ignored");
-        expect(out.type, type).toBe(type);
-      }
+      const type = "email.delivery_delayed";
+      const ts = now();
+      const body = bodyFor(type);
+      const [{ out }] = await call(tx, type, ts, sign(type, ts, body), body);
+      expect(out.status).toBe("ignored");
+      expect(out.type).toBe(type);
       await tx.asOwner();
-      // ★ `delivery_status` has no value for a complaint, and every available
-      // one would lie. The gap is a request to the lead, not a mapping.
       expect((await statusOf(tx)).status).toBe("sent");
+    });
+  });
+
+  // 0142 (DEC-165, the owner's decision): a complaint is its own status. 0140
+  // ignored it because the enum had no honest value; the value exists now.
+  it("★ RPC-resend_webhook.complained — a complaint moves the row to `complained`, with the word as its reason", async () => {
+    await withTx(async (tx) => {
+      await setup(tx);
+      await tx.asAnon();
+      const type = "email.complained";
+      const ts = now();
+      const body = bodyFor(type);
+      const [{ out }] = await call(tx, type, ts, sign(type, ts, body), body);
+      expect(out.status).toBe("applied");
+      expect(out.type).toBe(type);
+      await tx.asOwner();
+      const row = await statusOf(tx);
+      expect(row.status).toBe("complained");
+      expect(row.error).toBe("complained");
     });
   });
 });

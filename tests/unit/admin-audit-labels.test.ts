@@ -36,7 +36,7 @@ const sql = readdirSync(dir)
 // audit action (wave 10).
 const NOT_ACTIONS = new Set(["background.color", "kareem.days_writer", "kareem.check_in_shadow", "kareem.days_notified", "member.name", "member.email",
   // 0140: Resend's own event names in the webhook's `case`, not audit actions.
-  "email.sent", "email.delivered", "email.bounced", "email.failed"]);
+  "email.sent", "email.delivered", "email.bounced", "email.failed", "email.complained"]);
 const actions = Array.from(
   new Set(Array.from(sql.matchAll(/'([a-z_]+\.[a-z_]+)'/g), (m) => m[1]).filter((a) => !a.startsWith("public.") && !NOT_ACTIONS.has(a))),
 ).sort();

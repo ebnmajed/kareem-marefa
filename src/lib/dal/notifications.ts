@@ -666,7 +666,7 @@ function refusedName(message: string, label: string): string {
 export interface DeliveryDTO {
   id: string;
   key: string;
-  status: "queued" | "sent" | "delivered" | "bounced" | "failed";
+  status: "queued" | "sent" | "delivered" | "bounced" | "failed" | "complained";
   error: string | null;
   createdAt: string;
   sentAt: string | null;
@@ -800,7 +800,7 @@ export async function listDeliveryLog(
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit + 1);
-  if (opts.status === "failed") query = query.in("status", ["failed", "bounced"]);
+  if (opts.status === "failed") query = query.in("status", ["failed", "bounced", "complained"]);
   const cursor = opts.before && /^[0-9T:.+\-]+~[0-9a-f-]{36}$/.test(opts.before) ? opts.before.split("~") : null;
   if (cursor) query = query.or(`created_at.lt."${cursor[0]}",and(created_at.eq."${cursor[0]}",id.lt.${cursor[1]})`);
 
@@ -842,7 +842,7 @@ export async function countDeliveryFailures(locale: string, opts: { days: number
     .from("email_deliveries")
     .select("id", { count: "exact", head: true })
     .eq("org_id", session.orgId)
-    .in("status", ["failed", "bounced"])
+    .in("status", ["failed", "bounced", "complained"])
     .gte("created_at", since);
   if (error) throw new Error(`email_deliveries: ${error.message}`);
   return count ?? 0;

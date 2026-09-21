@@ -233,6 +233,7 @@ ledger line.** Checked by the lead at every sync with `git diff --stat f2ead54 -
 | `tests/rls/privacy.test.ts` | lead (custodian of `platform`), `0135` | the file pins the data export's keys **as an exact set**, so a new one forces a conscious edit — the same design as `definer-exposure`. `0135` adds `surveys_answered` | ★ **yes — on purpose, the second**: the set gains one key. Found by the full suite, not foreseen — `notify` saw the red first. Every negative in the case (no other member's address, id or name anywhere in the archive) is unchanged, and `data-export-surveys.test.ts` adds the survey's own: no answer text and no prompt |
 | `tests/components/admin/emails-page.test.tsx` | `notify`, `af59854` | the DAL mock gains `getMessageBindings` (the page lists what a key offers so the properties pane never lets a field be typed, `REQ-NTF-012`); the actions mock gains `convertTemplateToDesign` and `saveEmailDesign`. Every case is still about the string editor, which an org's `blocks: null` row opens | no |
 | `tests/components/admin/emails-page.test.tsx` | `notify`, `767f7be` | two more mocked actions, `sendTestEmailAction` and `adoptPlatformDesign` — the page binds every action it passes down and an unmocked one is `undefined` at `.bind` | no |
+| `tests/rls/notify-bounce.test.ts` | lead, `0142` | `0140`'s «two ignored events» case becomes «one» — `email.complained` now MOVES the row, which is the owner's decision (`DEC-165`), not a drift | ★ **yes — on purpose, the third of the wave**: a complaint is recorded rather than discarded. Every signature, replay and grant case is unchanged |
 | *(accepted at sync 1, not yet made)* | `notify`, N3 | `wave8-console-emails.spec.ts` (3 of 5 cases), `emails-page.test.tsx` (2 of 8), `admin-emails.test.ts` (2 of 3): «الحقول المطلوبة» becomes a checkbox list of the key's offered bindings (`REQ-NTF-012`); the refusals, the fields they land at, the kept values and **every delivery-log case** are unchanged | no |
 
 ★ `tests/e2e/wave8-console-emails.spec.ts` is the one spec whose screen this wave replaces content under: the
@@ -408,6 +409,10 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 | `0136` | `notify` | `notification_send_context()` **dropped and re-created in one file** with `p_session uuid default null` trailing; the `template` object gains `blocks`, the context gains `session_card_image`; grants re-applied after the drop, with a case that proves it | none | `main`'s worker calls it with three positional arguments, which still resolve; it reads the keys it always read and ignores the two new ones. A block template saved in the window sends its `body` — the generated text, bindings intact — on the string path |
 | `0137` | `event` | three definer functions — `survey_for_member()`, `submit_survey_response()` (both `authenticated`), `record_survey_response()` (`service_role` only) | none | nothing of `main` calls them. ★ **The window:** the new app enqueues `record_survey_response`, which `main`'s worker has never heard of — graphile-worker `0.18` fetches only the tasks it registers, so **the job waits, unfailed, until Railway is on the merge commit**; the response is stored late, which is what the jitter does on purpose anyway. The member already reads «أجبت» from the register |
 | `0138` | `event` | one definer function, `survey_results()` — the only way a response leaves the database | none | nothing of `main` calls it |
+| `0139` | `notify` | `send_test_email(p_key, p_locale)` — no address parameter; the role read from the members table | none | nothing of `main` calls it; ★ its job `send_test_email` is one `main`'s worker has never heard of, so in the window it waits unfailed |
+| `0140` | `notify` | `resend_webhook(id, timestamp, signature, body)` — `anon` may call it; the Svix signature is verified IN THE DATABASE against the vault's `resend_webhook_secret`; it can only move a delivery row it names | none | nothing of `main` calls it; ★ **new public surface** (the ninth `anon` definer) — the owner's rehearsal should read its body |
+| `0141` | `notify` | `preview_card_session(p_org)` — one session whose public card has rendered, asking `session_public_card()` | none | nothing of `main` calls it |
+| `0142` | lead | ★ `delivery_status` gains `complained` (`DEC-165`); `resend_webhook()` maps `email.complained` to it; `evaluate_alerts()` counts a complaint in the bounce-spike rule | none — an enum value added | `main`'s app filters on `bounced`/`failed` and never names the new value: a complaint is recorded, not yet shown, until the deploy |
 
 #### What the lead has proved so far — run mid-wave on the chain through `0134`, re-run at the freeze
 
@@ -444,8 +449,17 @@ The container holds fixtures only. `0135`+ — `event`'s submit and results, `no
 binding rule refuses an existing row with an unknown binding on its next update · `select count(*) from
 public.certificates where state = 'revoked'` — historical revocations read as final, and what to do with
 any is a scoped, owner-run statement, never a migration · the two `storage` policies `content`'s file
-replaces, present. **The owner's steps, known at sync 1:** `APP_URL` on Railway (named difference 1) · the
-webhook's signing secret **in the database**, one statement, and the endpoint in Resend (N8, if it ships).
+replaces, present. **The owner's steps — as they stand 2026-09-21:**
+1. ★ **`resend_webhook_secret` — DONE by the owner (2026-09-21).** The Resend endpoint is added at
+   `https://kareem.pp.sa/api/webhooks/resend`, `vault.create_secret(…, 'resend_webhook_secret')` returned an id,
+   and the subscribed events are exactly `0140`'s four: `email.sent`, `email.delivered`, `email.bounced`,
+   `email.failed`. `email.delivery_delayed` is deliberately not subscribed. **Until `0140` is pushed the endpoint
+   404s and Resend retries; that is expected and harmless.**
+2. **`APP_URL` on the Railway worker — the owner sets it immediately AFTER the merge** (named difference 1,
+   `04` §10). Unset, every mail is byte for byte what `main` sends today; set, the next mail carries its link.
+3. ★ **`email.complained` in the Resend endpoint — the owner ticks it AFTER the merge, once `0142` is on
+   production** (`DEC-165`). Subscribed earlier, the events are discarded; unsubscribed, the new status never
+   hears one. The two halves move together and this is the second half.
 
 **Read on day one, from `main`'s worker as it stands — so each plan is reviewed against a fact, not a hope:**
 

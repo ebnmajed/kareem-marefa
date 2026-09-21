@@ -283,9 +283,16 @@ Never from a request handler. This is why `RESEND_API_KEY` lives on the worker's
 ### 5.2 Logging — `REQ-NTF-008`
 
 `ENT-email_deliveries` records every send: `provider_message_id`, status, error, timestamps. The
-Resend webhook (`/api/webhooks/resend`) updates delivery and bounce status.
+Resend webhook (`/api/webhooks/resend`) updates delivery and bounce status. ★ The route holds no
+secret: it forwards the raw body and the three Svix headers to `resend_webhook()`, which verifies the
+signature in the database against the vault's `resend_webhook_secret` (`0140`, `DEC-161` defect 5b,
+invariant 7). The endpoint subscribes to exactly the events the database maps — `email.sent`,
+`email.delivered`, `email.bounced`, `email.failed`, and from `0142` `email.complained` — and never to
+`email.delivery_delayed`, which is not an outcome.
 
-An org admin sees bounces and failures **with the reason** (`REQ-NTF-008`). Retained 180 days
+An org admin sees bounces, failures and **spam complaints** **with the reason** (`REQ-NTF-008`,
+`DEC-165`): a complaint proves the mail arrived and the person objected, the one signal that predicts
+deliverability damage, and it counts in the bounce-spike alert beside a bounce. Retained 180 days
 (OQ-019). A bounce spike alerts (`REQ-NFR-016`) — in an org where every address is on a corporate
 domain, a bounce spike usually means a mail-server change, not bad addresses, and it is worth
 knowing within the hour.

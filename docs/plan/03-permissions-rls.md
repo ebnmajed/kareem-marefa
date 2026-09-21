@@ -1939,6 +1939,9 @@ generated suite is the highest-value test in the product.
 | `RPC-preview_card_session.own_org_only` | An authenticated caller naming another org is refused `42501`; the worker (`service_role`, no claims) may name any org, because it is the one caller that already knows which org it is sending for. |
 | `RPC-preview_card_session.asks_the_rule` | A session whose poster has NOT finished rendering is skipped and the next candidate tried — `og_path is null` is «not rendered yet», which a state check on the session would call ready. |
 | `RPC-preview_card_session.none_is_null` | An org with no card-bearing session returns null rather than a session id whose image would 404. |
+| ★ **wave 10, migration `0142`** — lead — a spam complaint is its own delivery status (`DEC-165`, the owner's decision) |
+| `RPC-resend_webhook.complained` | A verified `email.complained` body moves the row to `complained` with the reason «complained», and returns `applied`. |
+| `RPC-evaluate_alerts.complaint_counts` | The bounce-spike rule counts a complaint as damage beside a bounce and a failure — twenty-five sends with two complaints fire it exactly as two bounces would. |
 
 The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
 been undone and D3 with it.
