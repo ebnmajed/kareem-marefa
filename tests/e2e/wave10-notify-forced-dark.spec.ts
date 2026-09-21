@@ -190,7 +190,16 @@ async function captureDark(page: Page, name: string) {
   //      had nothing to do with dark mode (`8e86487`).
   // The count is asserted rather than the picture read, because a picture
   // cannot tell those three apart.
-  await expect(frame.locator("img")).toHaveCount(1);
+  // ★ The LOGO, named by its route — not «one image on the page».
+  //
+  // A bare count was right only while the logo was the sole image the preview
+  // could resolve. With `preview_card_session()` (`0141`) the card's image can
+  // resolve too, and whether it does depends on whether some other spec left a
+  // rendered poster in this shared database — `sessions-public-card.spec.ts`
+  // seeds exactly that. A count would then fail here for a reason that has
+  // nothing to do with dark mode, which is the mistake this whole cell exists
+  // to avoid making twice.
+  await expect(frame.locator('img[src*="/api/brand/"]')).toHaveCount(1);
   await page.screenshot({ path: `${SHOTS}/${name}.png` });
 }
 
