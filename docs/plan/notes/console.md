@@ -2373,3 +2373,29 @@ One commit per unit, `node scripts/ui-lint.mjs --prune` after each, `npm run ui-
 
 Captures of every changed screen at `.qa-shots/rtl/wave11-console-<surface>-<state>.png`, beside the wave-8
 and wave-9 ones; the picker needs a production build to be seen open, which is the lead's to run.
+
+### Prose-dependent screens (K3 — the owner's rule, 2026-09-22: list them, never rewrite the copy)
+
+Admin screens whose meaning rests on a paragraph that has to be read. Nothing here was edited; the copy stays. The last
+column is a suggestion where one is obvious, not a commitment. `/app/admin/emails/**` is `notify`'s and is not listed.
+
+| Route | Paragraph (key) | What an admin can't do or understand without reading it | Affordance that could carry it instead |
+|---|---|---|---|
+| `/app/admin/sessions` | `admin.sessions.scheduleNote` | that creating a session neither dates nor places nor publishes it — it looks done and is not | the new row lands with a «مسودة — لم تُجدول» badge and a «جدوِلها» link to `[id]/schedule` |
+| `/app/admin/sessions` | `admin.sessions.directIntro` | that a directly-assigned presenter may decline, and the session then falls back to draft | a status on the row when the presenter declines, not a sentence about the possibility |
+| `/app/admin/venues` · `categories` · `companies` | `admin.{venues,categories,companies}.noDeleteNote` | why there is no «احذف» — deactivation is the only removal, so old sessions and members keep naming it | the row menu's «عطّل» item carries the reason as its description |
+| `/app/admin/moderation/reports` | `admin.moderation.photosReportsIntro` | that a reported photo stays PUBLIC until a decision | a «ظاهرة الآن» badge on each reported photo |
+| `/app/admin/exports` | `admin.exports.auditNote` | that every download is recorded in the audit log under their name | the download button's accessible description, or a one-line confirm naming it |
+| `/app/admin/exports` | `admin.exports.ratings.note` | that the ratings export holds per-session averages, not individual ratings (those are per session, audited) | the column headers say «متوسط», and a link to the attendance report |
+| `/app/admin/audit` | `admin.audit.scoringNote` | that scoring-setting changes are NOT in this log — they are in the scoring screen's history | the empty result for a scoring filter links to `/app/admin/scoring`'s history |
+| `/app/admin/settings` | `admin.settings.intro` | that every change is audited with old and new values | a «السجل» link to `/app/admin/audit` filtered to settings |
+| `/app/admin/scoring` | `scoring.admin.intro` | that a changed value applies to future earnings only — no balance is rewritten | the save toast and each edited row say «يسري من الآن» |
+| `/app/admin/scoring` | `scoring.admin.catalogue.fixedNote` | that the action list is closed, and reserving/reacting can never earn points | those rows render as locked «لا تمنح نقاطًا» rather than absent |
+| `/app/admin/scoring` | `scoring.admin.manual.intro` | that a manual entry cannot be deleted — a mistake is fixed by an opposite entry | a «سجّل تعديلًا معاكسًا» action on each history row, prefilled |
+| `/app/admin/scoring` | `scoring.admin.companyRules.intro`, `scoring.admin.hostCompany.intro` | that company rules and hosting points are evaluated once, at session completion — nothing happens on save | a «تُحتسب عند اكتمال الجلسة» status on a pending hosting row |
+| `/app/admin/recognition` | `recognition.admin.intro` | that the evaluator runs nightly, so a change shows tomorrow and never touches what was already earned | «التقييم التالي: …» with the time, beside the save |
+| `/app/admin/recognition` | `recognition.admin.held.intro` | that held certificates have NOT reached their owners until released | a «محجوزة — لم تصل» status per row and a count on the release button |
+| `/app/admin/recognition` | `recognition.admin.levels.note` | that lowering a threshold promotes members at the next run, raising it demotes no one | an inline preview «سيرتقي N عضوًا في التقييم التالي» |
+| `/app/admin/reminders` | `notifications.admin.reminders.intro`, `.genericNote` | which offsets get a tailored message and which the generic one, and that rescheduling moves pending reminders | a per-row tag «رسالة مخصّصة» / «رسالة عامة» on each offset |
+| `/app/admin/sessions/[id]/attendance` | `checkin.attendance.removeIntro` | that removal reverses points and revokes a certificate, and keeps the record | the confirm dialog names THIS member's concrete consequences (the points, the certificate serial) |
+| `/app/admin/sessions/[id]/attendance` | `checkin.attendance.ratingsNote` | that opening the per-rater ratings is itself audited | the section behind a disclosure «اعرض التقييمات (يُسجَّل الاطلاع)» |
