@@ -2,10 +2,12 @@
 
 import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
 import { Prose } from "@/components/ui/prose";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { type ReviewState } from "./actions";
 import { emptyReviewState } from "./state";
@@ -144,7 +146,6 @@ function Reason({
   state: ReviewState;
 }) {
   const t = useTranslations("admin.proposals");
-  const id = `${decision}-reason`;
   const [confirmOpen, setConfirmOpen] = useState(false);
   // ★ Closing the dialog is DERIVED from `state`, adjusted DURING RENDER —
   // not a `setConfirmOpen(false)` in the confirm button's own `onClick`
@@ -167,7 +168,8 @@ function Reason({
   }
   return (
     <details className="w-full" open={typed !== ""}>
-      <summary className="inline-flex h-12 cursor-pointer list-none items-center rounded-field border border-edge-strong px-6 text-label text-fg-heading hover:bg-silver-100">
+      {/* A `<summary>` cannot be `<Button>`; it takes the button's own classes. */}
+      <summary className={buttonClass("secondary", "lg", "cursor-pointer list-none")}>
         {label}
       </summary>
       <div className="mt-3">
@@ -175,18 +177,12 @@ function Reason({
             «السبب الذي سيصل صاحب المقترح» twice on one card, a screen
             reader hearing two identical fields. Each names its own
             decision now (`reasonLabelReject`/`reasonLabelRequestChanges`). */}
-        <label htmlFor={id} className="text-label text-fg-heading">
-          {t(decision === "reject" ? "reasonLabelReject" : "reasonLabelRequestChanges")}
-        </label>
-        <p className="mt-1 text-body-sm text-fg-muted">{t("reasonHint")}</p>
-        <textarea
-          id={id}
-          name={`reason-${decision}`}
-          rows={3}
-          maxLength={2000}
-          defaultValue={typed}
-          className="mt-2 block min-h-24 w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading"
-        />
+        {/* The id is the Field's own (`useId`): a hand-written
+            `${decision}-reason` repeated on every card of the queue, so the
+            second card's label named the first card's box (wave 11, K1). */}
+        <Field label={t(decision === "reject" ? "reasonLabelReject" : "reasonLabelRequestChanges")} hint={t("reasonHint")}>
+          <Textarea name={`reason-${decision}`} rows={3} maxLength={2000} defaultValue={typed} />
+        </Field>
         {decision === "reject" ? (
           <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <DialogTrigger asChild>
