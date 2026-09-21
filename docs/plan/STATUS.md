@@ -75,7 +75,7 @@ or it does not exist.*
 
 ---
 
-## ★★ WAVE 10 — IN PROGRESS on `wave-10/survey-email` — the survey and the email studio, with three carried fixes (`DEC-160`)
+## ★★ WAVE 10 — COMPLETE on `wave-10/survey-email`, PR #27 ready for the owner — the survey and the email studio, with three carried fixes (`DEC-160`)
 
 ### ★★★ WHERE THIS STOPPED — 2026-09-18 ~11:00 (+03): the owner's weekly usage limit ran out mid-wave; read this and nothing else first
 
@@ -478,6 +478,26 @@ replaces, present. **The owner's steps — as they stand 2026-09-21:**
 only when someone reconnected the source by hand. **After every merge to `main`, the owner checks the worker's
 deployed commit in Railway and reconnects the source if it has not moved.** The fix is a dashboard setting
 (Service → Settings → Source → the branch's deploy trigger); it is the owner's, and no session changes it.
+
+### The final gates — 2026-09-21 — product code at `2644d10`
+
+Run from a clean `supabase db reset` on the chain `0001`–`0142`, the tree at `2644d10`:
+
+| Gate | Result |
+|---|---|
+| `npm run test:rls` | **118 files · 1,190 passed · 4 todo · 0 failed**, alone, from the reset |
+| `npx tsc --noEmit` | clean |
+| `npm run lint` | **0 errors** (26 pre-existing warnings, unchanged) |
+| `npm test` | **233 files · 2,252 passed · 1 skipped** |
+| `policy-diff` | ✓ agrees (the three no-policy survey tables «by design») |
+| `trace` | ✓ 313 requirements · 82 entities · 147 stories · no gaps |
+| `ui-lint` | ✓ 273 files · 65 pre-existing violations held, none added |
+| `parity` | holds — 21 of 28 (cwebp absent locally, as every wave) · background block 3 of 3 |
+| `qa` | **44 passed, 0 failed** |
+| `visual` vs `main` (`f2ead54`, captured in the verification worktree) | **the three frozen pairs 0.000 %** (`/`, `/en`, `/ar/register`, phone and desktop); the `/ar/ui` pair moves — the dev gallery grew by `ui/reorderable-list`'s section, as Step 0 said it would |
+| full e2e, both projects, real worker (`E2E_WORKER=1`) | 610 passed, 8 failed, 29 did not run on the first pass. **Re-run alone, as the brief says:** two were real and are fixed (`2644d10` — the moderator's survey link carried a hidden copy of the session title and `admin-attendance`'s untouched case found two; `wave8-designer-certificates` asserted the pre-`0127` wording for a for-cause revocation, ledger line); the rest were load — the local Auth service refusing sign-ins under four workers («Database error querying schema», «Unexpected failure») and a 15 s TBT on the frozen landing beside a full run. **With one worker every one of them passes**; nothing failed on both projects after the fixes |
+
+**The two demonstrables, both from EMPTY on a production build with the real worker:** `wave10-demo-survey.spec.ts` 8 of 8 · `wave10-demo-email-studio.spec.ts` 7 of 7, the mail read back from the local SMTP sink. **Forty-six captures** under `.qa-shots/rtl/wave10-*`, every one opened by the lead in bands.
 
 ### Carried — diagnosed, each with an owner
 
