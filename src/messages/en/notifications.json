@@ -244,7 +244,7 @@
         },
         "checks": {
           "heading": "Checks",
-          "headingBlocking": "{count, plural, zero {Checks} one {# check blocks sending} two {# checks block sending} few {# checks block sending} many {# checks block sending} other {# checks block sending}}",
+          "headingBlocking": "{count, plural, zero {Checks} one {{value} check blocks sending} two {{value} checks block sending} few {{value} checks block sending} many {{value} checks block sending} other {{value} checks block sending}}",
           "selectBlock": "Go to the block",
           "parseFailed": {
             "title": "The message blocks could not be read",

@@ -40,7 +40,7 @@ export function ChecksPanel({
   return (
     <section aria-labelledby="checks-heading" className="mt-6">
       <h3 id="checks-heading" className="text-label text-fg-heading">
-        {blocking.length > 0 ? t("headingBlocking", { count: blocking.length }) : t("heading")}
+        {blocking.length > 0 ? t("headingBlocking", { count: blocking.length, value: formatNumber(blocking.length) }) : t("heading")}
       </h3>
 
       {blocking.length > 0 ? (

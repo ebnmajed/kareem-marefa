@@ -244,7 +244,7 @@
         },
         "checks": {
           "heading": "الفحوصات",
-          "headingBlocking": "{count, plural, zero {الفحوصات} one {فحص يمنع الإرسال} two {فحصان يمنعان الإرسال} few {# فحوصات تمنع الإرسال} many {# فحصًا يمنع الإرسال} other {# فحص يمنع الإرسال}}",
+          "headingBlocking": "{count, plural, zero {الفحوصات} one {فحص يمنع الإرسال} two {فحصان يمنعان الإرسال} few {{value} فحوصات تمنع الإرسال} many {{value} فحصًا يمنع الإرسال} other {{value} فحص يمنع الإرسال}}",
           "selectBlock": "اذهب إلى الكتلة",
           "parseFailed": {
             "title": "تعذّر قراءة كتل الرسالة",
