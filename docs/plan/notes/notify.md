@@ -2868,3 +2868,33 @@ My four notify files pass, and `tests/rls/notify-bounce.test.ts` passes 12/12 al
   root cause, and the local stack's rather than the schema's.
 - `survey-submit.test.ts` — `Cannot read properties of undefined (reading 'option_ids')`, which is
   `event`'s in-flight work.
+
+---
+
+## The `16` §11 audit (after N8, with no build available)
+
+Read §11.2 through §11.5 against what is built. **Three sections hold in full; two lines of the
+document do not match the wave's rulings.**
+
+- **§11.2's five constraints** — layout tables, inline CSS, `dir="rtl"` on `<html>` and every cell, a
+  fallback stack never a web font, a plain-text alternative — all hold, and `render.ts`'s header
+  records them verbatim. ★ **One line is stale**: «numerals per the org setting». `DEC-124` removed
+  the setting and made Western numerals absolute, and `tests/unit/notify-i18n.test.ts` enforces it —
+  it caught a literal `14` in my own copy an hour ago. `16` is the lead's to correct.
+- **§11.3's nine blocks** — every field of every row of the table exists and is typed:
+  `heading.level` (1–2), `button.style` (primary/secondary), `spacer.height` (sm/md/lg),
+  `detail_list.items` as label/value pairs, `image.alt` **mandatory in the type**, and the footer
+  composed rather than typed. The text alternative is generated exactly as the section describes: a
+  heading is a line, a button is `label: url`, a session card is four lines.
+- **§11.4's six checks** — five were implemented; the sixth, «text below 14 px», was **unauthorable**
+  (no block carries a size) and is now listed as *satisfied* rather than dropped (`7d96ea3`). «Each
+  names and selects its block» works end to end — `ChecksPanel`'s `onSelectBlock` is the editor's
+  `setSelectedId`. The forced-dark toggle is the fourth preview mode.
+- ★ **§11.5's fallback sentence contradicts the wave's demonstrable.** «A key with no org override
+  falls back to the platform one» cannot be true at the same time as `DEC-160`'s «an org that has not
+  touched its templates sends byte-identical mail» and `DEC-161` R3. **Adoption is explicit**, which
+  is what `mail-designs.test.ts` pins; §11.5 is the line that needs reconciling.
+- **§11.5's «Arabic and English» is NOT a gap.** `saveTemplate()` writes `locale: "ar"`
+  unconditionally (`src/lib/dal/notifications.ts:519`), so templates are Arabic-only product-wide
+  today. Arabic-only designs match the system exactly rather than falling short of it. English
+  templates would start at that line and are separate work.
