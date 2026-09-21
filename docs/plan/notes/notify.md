@@ -2815,3 +2815,56 @@ suite **113 files, 1151 passed** (the one red in that run was the lead's `0135`,
   found it. Same lesson as the pin: the 116 files catch what a fragment assertion cannot.
 
 - ★ **NEXT ACTION** (resumed 2026-09-18, last hash below): the editor's **three panes** — blocks on `ui/reorderable-list` (call written at `Q6`), properties, preview — hosting `ChecksPanel` (`66402b3`) and posting to `/api/admin/emails/preview` (`48abbbb`). Then the forced-dark three-cell capture, N5, N6, `{{url}}`, N8. Done since the pause: the checks module (`a935df3`, red fixed at `c602d70`), the panel + `dropped` carried to `RenderedEmail` + `HEX` tightened to the brand kit's six digits (`66402b3`).
+
+---
+
+## N8 — the bounce webhook (`REQ-NTF-008`, `08` §5.2)
+
+`supabase/proposed/notify/0004_resend_webhook.sql` · `src/app/api/webhooks/resend/route.ts` ·
+`tests/rls/notify-bounce.test.ts` (12) · `tests/unit/notify-webhook-route.test.ts` (9)
+
+**Why the signature is verified in the database.** Invariant 7 — `service_role` is never on Vercel.
+The door this webhook needs, `update_email_delivery_by_provider()` (`0030`), is granted to
+`service_role` alone, so a route handler cannot call it, and giving Vercel a key that could would
+put the platform's strongest credential on the edge in order to update a bounce flag. So the handler
+holds **nothing**: it forwards the three Svix headers and the raw body to `public.resend_webhook()`,
+which `anon` may call and which verifies the signature itself against a secret in the vault. There is
+no `RESEND_WEBHOOK_SECRET` on Vercel to leak, and rotation is one statement rather than a redeploy of
+two systems. A handler compromised end to end can still only forward bytes that fail to verify.
+
+- **The raw body is the signed body.** `await request.text()`, never `request.json()` — a signature is
+  over bytes, and a JSON round trip reorders keys and rewrites whitespace. Pinned by a unit case with
+  a deliberately oddly-spaced body.
+- **Constant time, by comparing digests.** Postgres has no constant-time comparison and `=` on text
+  returns at the first differing byte. Comparing the SHA-256 of each side makes the position of the
+  difference unrelated to the input.
+- **Five-minute window, checked before the HMAC** (the cheap half first), and **symmetric** — a
+  timestamp from the future is refused too.
+- **200 on every outcome but an unreachable database.** A provider retries a non-2xx for days; a 4xx
+  would also tell an attacker which guess was closer. The only 5xx left is the one a retry can fix.
+
+### ★ Three requests to the lead
+
+1. **`delivery_status` has no value for a complaint.** `email.complained` is deliberately **ignored**
+   rather than mapped, because every available value lies: `bounced` says the address is bad and an
+   admin reading it may remove a working address; `failed` says the mail did not arrive, when a
+   complaint proves it did. A wrong label in an operational log is worse than a missing one. Either
+   the enum gains `complained` (`0026` is the lead's) or the gap stays named here.
+2. **The vault secret.** `vault.create_secret('whsec_…', 'resend_webhook_secret')` in production, by
+   the owner. Unset, the function returns `{"status":"unconfigured"}` and the endpoint answers 200 —
+   so this ships safely before the secret exists.
+3. **`APP_URL` on the Railway worker** (named difference 1). Unset, every mail is byte for byte what
+   `main` sends today; set, 21 of 25 templates gain the link they have been missing since M3.
+
+### A finding that is not mine
+
+`npm run test:rls` whole: **4 files red, 22 cases — none of them mine and none touching my code.**
+My four notify files pass, and `tests/rls/notify-bounce.test.ts` passes 12/12 alone and in the suite.
+
+- `platform-alerts.test.ts` — `storage_prefix_violation` fires inside every «fires **alone**»
+  assertion. That reads as **leftover local rows**, not code: the alert is real, the test's isolation
+  is not. A `supabase db reset` (lead-only) is the likely answer.
+- `realtime.test.ts` (6/6) and `photos-broadcast.test.ts` — no rows in `realtime.messages`; the same
+  root cause, and the local stack's rather than the schema's.
+- `survey-submit.test.ts` — `Cannot read properties of undefined (reading 'option_ids')`, which is
+  `event`'s in-flight work.
