@@ -122,6 +122,26 @@ function isSendableHref(href: string, appOrigin: string | null): boolean {
 
 const SPACER_PX: Record<string, number> = { sm: 8, md: 16, lg: 32 };
 
+/**
+ * ★ A LONG UNBROKEN RUN WRAPS INSTEAD OF WIDENING THE MAIL — on the cells an
+ * author types into (a paragraph, a detail value).
+ *
+ * An admin's own text can carry a bare `{{url}}` line; a URL has no break
+ * opportunity, a table cell grows to its min-content, and the whole mail then
+ * scrolls sideways on a phone (the N1 review measured 488 px at 390).
+ * `overflow-wrap: break-word` does NOT help here — it breaks only after the
+ * cell has been sized — so the pair is:
+ *   · `overflow-wrap:anywhere` — the standard property that also lowers the
+ *     min-content width, which is what a table cell is sized by (Apple Mail,
+ *     iOS, Outlook.com and the web engines);
+ *   · `word-break:break-word` — the legacy value Gmail's sanitiser keeps and
+ *     WebKit/Blink honour with the same min-content effect.
+ * Outlook's Word engine ignores both and wraps inside the 560 px table as it
+ * always has. Both break only where no ordinary opportunity exists, so Arabic
+ * prose wraps at its spaces exactly as before. Never `overflow: hidden`.
+ */
+const WRAP = "overflow-wrap:anywhere;word-break:break-word;";
+
 /** D3a item 2: `dir="rtl"` on every text-bearing cell AND `align="right"`
  *  beside `text-align`, because Outlook's Word engine reads the attribute and
  *  does not inherit direction reliably through nested tables. A right-aligned
@@ -195,7 +215,7 @@ function compileOne(
       if (value === "") return;
       rows.push(
         textCell(
-          `font-size:17px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 16px 0;text-align:right;`,
+          `font-size:17px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 16px 0;text-align:right;${WRAP}`,
           escapeHtml(value).replace(/\n/g, "<br />"),
         ),
       );
@@ -268,7 +288,7 @@ function compileOne(
         .map(
           (pair) =>
             `<tr><td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:0 0 4px 0;text-align:right;`)} width="35%">${escapeHtml(pair.label)}</td>` +
-            `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;`)}>${escapeHtml(pair.value)}</td></tr>`,
+            `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;${WRAP}`)}>${escapeHtml(pair.value)}</td></tr>`,
         )
         .join("");
       rows.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td>`));

@@ -3318,3 +3318,23 @@ affordance that could one day replace it. `editor.usingDefault` and `editor.rest
 | `/app/admin/emails?view=log` | `admin.emails.deliveries.bounceNote`, `deliveries.retention` | that a post-acceptance bounce is not recorded yet, and how long the log is kept | a `bounced` / `complained` status chip once `REQ-NTF-008`'s webhook is live (`0142`) — then `bounceNote` can go; retention as a caption on the pager |
 | `/app/me/notifications` | `preferences.intro`, `category.*.hint` | which of two channels a switch controls, and what each category covers | column headers with the channel icons, and one example message per category under its name |
 | `/app/me/calendar` | `calendar.json` `connection.privacy`, `connection.afterDisconnect` | that nobody can read the connection keys, and that disconnecting leaves existing events in place | a «مفصول — الأحداث باقية» state on each synced row after a disconnect |
+
+### N1b — the bare URL wraps (`7794f39`'s finding, approved as its own commit)
+
+`compile.ts` gains `WRAP = "overflow-wrap:anywhere;word-break:break-word;"` on the **paragraph** cell
+and the **detail value** cell — the two cells an author types into. **Why the pair:** a table cell is
+sized by its min-content width, and `overflow-wrap: break-word` breaks only after sizing, so it would
+not have helped; `anywhere` lowers min-content (Apple Mail, iOS, Outlook.com, the web engines), and
+`word-break: break-word` is the legacy value Gmail's sanitiser keeps, with the same effect in WebKit and
+Blink. Outlook's Word engine ignores both and wraps within its 560 px table as it always has. Both
+break only where no ordinary opportunity exists, so Arabic wraps at its spaces as before — **29 of 30
+captures are pixel-identical**; `MSG-reminder_1d.org-text` goes 488 → 390 px. Never `overflow: hidden`.
+Pinned: 60 `.html` files move, no `.txt`, no subject. Review: `.qa-shots/mail-review/wave11-n1-wrap/`.
+New test `tests/unit/mail-wrap.test.ts` (3).
+
+| File | Case | Why | Commit |
+|---|---|---|---|
+| `tests/unit/mail-pinned/**` | 60 `.html` files (both variants × 30 cases); no `.txt`, no `.subject.txt` | the planned exception: paragraph and detail-value cells wrap a long unbroken run instead of widening the mail past a phone; 29 of 30 captures pixel-identical — reviewed in `.qa-shots/mail-review/wave11-n1-wrap/` | N1b |
+
+**Carried, not mine (the lead's ruling):** the fixture org «كريم معرفة» doubles in the sign-off
+(«كريم معرفة · كريم معرفة · …») — wave 10's F7; the production org name read decides it.
