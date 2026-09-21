@@ -346,3 +346,54 @@ function bulletproofButton(href: string, label: string, style: "primary" | "seco
     `<!--[if !mso]><!-- --><a href="${safeHref}" style="display:inline-block;background:${background};color:${colour};border:1px solid ${border};border-radius:8px;font-family:${DESIGN_STACK};font-size:16px;line-height:44px;padding:0 24px;text-decoration:none;">${safeLabel}</a><!--<![endif]-->`,
   ].join("");
 }
+
+
+/**
+ * The plain-text alternative a BLOCK row stores in `notification_templates.body`
+ * — `REQ-NTF-013`, and contract 3's answer.
+ *
+ * ★ IN TEMPLATE FORM: `{{bindings}}` are left INTACT, never resolved. The row
+ * is stored once and read by every send, so a rendered text would put one
+ * member's name in every other member's mail. `main`'s OLD worker renders this
+ * down its string path between the owner's push and the Railway redeploy, and
+ * interpolates it per member exactly as it does a hand-written body.
+ *
+ * ★ AND WITHOUT A SIGNATURE. The string path appends «—\n{org} · SIGNATURE»
+ * itself (`renderEmail()`), so carrying one here would sign the mail twice.
+ * The preference footer is likewise absent: it is composed at render time, not
+ * authored, and there is no binding for it to survive as.
+ *
+ * A line whose only content is a binding the old worker cannot supply renders
+ * empty and `toParagraphs()` drops it — the same mechanism `{{tasks}}` has
+ * always used.
+ */
+export function blocksToTemplateText(document: unknown): string {
+  const lines: string[] = [];
+  for (const block of readDocument(document).blocks) {
+    switch (block.type) {
+      case "heading":
+      case "paragraph":
+        if (block.text.trim() !== "") lines.push(block.text);
+        break;
+      case "button":
+        // `label: {{binding}}` — the placeholder, not the value.
+        if (block.label.trim() !== "" && block.urlBinding.trim() !== "") lines.push(`${block.label}: {{${block.urlBinding}}}`);
+        break;
+      case "session_card":
+        lines.push(["{{title}}", "{{day}}", "{{startsAt}}", "{{venue}}"].join("\n"));
+        break;
+      case "detail_list": {
+        const rows = block.items.filter((item) => item.label.trim() !== "" || item.value.trim() !== "");
+        if (rows.length > 0) lines.push(rows.map((item) => `${item.label}: ${item.value}`).join("\n"));
+        break;
+      }
+      case "image":
+        if (block.alt.trim() !== "") lines.push(block.alt);
+        break;
+      case "divider":
+      case "spacer":
+        break;
+    }
+  }
+  return lines.join("\n\n");
+}

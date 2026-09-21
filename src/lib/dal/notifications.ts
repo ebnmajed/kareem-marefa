@@ -546,6 +546,20 @@ export async function saveTemplate(locale: string, input: TemplateInput): Promis
   if (error) throw mapTemplateError(error);
 }
 
+/** One template's stored subject, for a conversion that must not invent one. */
+export async function getTemplateSubject(locale: string, key: string): Promise<string | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { data } = await client.supabase
+    .from("notification_templates")
+    .select("subject")
+    .eq("org_id", client.session.orgId)
+    .eq("key", key)
+    .eq("channel", "email")
+    .maybeSingle();
+  return (data?.subject as string | undefined) ?? null;
+}
+
 export async function deleteTemplate(locale: string, id: string): Promise<void> {
   const client = await assertAdmin(locale);
   if (!client) throw new Error("not_permitted");

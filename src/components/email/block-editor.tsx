@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BLOCK_TYPES, readDocument, SCHEMA_VERSION, type BlockType, type EmailBlock } from "@kareem/mail-runtime";
+import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
+import { useActionToast } from "@/components/admin/use-action-toast";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ReorderableList } from "@/components/ui/reorderable-list";
 import { Textarea } from "@/components/ui/textarea";
 import { ChecksPanel } from "@/components/email/checks-panel";
-import { blockName, runChecks } from "@/components/email/checks";
+import { blockName, hasBlocking, runChecks } from "@/components/email/checks";
 import { PreviewPane, type PreviewMode } from "@/components/email/preview-pane";
 
 // SCR-058's three panes — `16` §11.4, REQ-NTF-009, REQ-NTF-010, REQ-DSG-028.
@@ -63,6 +66,7 @@ export function BlockEditor({
   initialBody,
   initialBlocks,
   offered,
+  action,
 }: {
   messageKey: string;
   initialSubject: string;
@@ -71,9 +75,13 @@ export function BlockEditor({
   initialBlocks: unknown;
   /** What this key offers, from `public.notification_bindings()`. */
   offered: readonly string[];
+  action: (previous: SavedFormState, formData: FormData) => Promise<SavedFormState>;
 }) {
   const t = useTranslations("notifications.admin.emails.editor");
   const tb = useTranslations("notifications.admin.emails.blocks");
+  const [state, dispatch] = useActionToast<SavedFormState>(action, emptySavedState(), (result) =>
+    result.saved ? { title: t("saved"), tone: "success" } : result.formError ? { title: t(`errors.${result.formError}`), tone: "error" } : null,
+  );
 
   const [subject, setSubject] = useState(initialSubject);
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => readDocument(initialBlocks).blocks);
@@ -94,6 +102,7 @@ export function BlockEditor({
     [blocks, subject, offered],
   );
 
+  const blocked = hasBlocking(checks);
   const selected = blocks.find((block) => block.id === selectedId) ?? null;
   const typeLabel = (type: string) => (tb.has(`type.${type}`) ? tb(`type.${type}`) : type);
   const update = (id: string, next: Partial<EmailBlock>) =>
@@ -167,6 +176,18 @@ export function BlockEditor({
             onChange={(event) => setSubject(event.target.value)}
           />
         </Field>
+        {/* ★ The save is BLOCKED while any check is: a mail an admin has not
+            seen is a mail they must not be able to approve. The panel says
+            which check, and names the block. */}
+        <form action={dispatch} noValidate className="mt-4 flex flex-wrap items-center gap-3">
+          <input type="hidden" name="key" value={messageKey} />
+          <input type="hidden" name="subject" value={subject} />
+          <input type="hidden" name="blocks" value={documentJson} />
+          <SubmitButton pendingLabel={t("saving")} disabled={blocked}>{t("save")}</SubmitButton>
+          {blocked ? <span className="text-body-sm text-fg-muted">{t("blockedBySaveChecks")}</span> : null}
+          {state.formError ? <span className="text-body-sm text-error">{t(`errors.${state.formError}`)}</span> : null}
+        </form>
+
         <div className="mt-4">
           <PreviewPane
             messageKey={messageKey}

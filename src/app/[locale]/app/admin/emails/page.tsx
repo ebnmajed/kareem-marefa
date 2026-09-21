@@ -9,9 +9,10 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Tabs } from "@/components/ui/tabs";
 import type { Locale } from "@/i18n/routing";
-import { countDeliveryFailures, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
+import { countDeliveryFailures, getMessageBindings, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
 import { getOrgPrefs } from "@/lib/dal/proposals";
-import { restoreDefaultTemplate, saveEmailTemplate } from "./actions";
+import { BlockEditor } from "@/components/email/block-editor";
+import { convertTemplateToDesign, restoreDefaultTemplate, saveEmailDesign, saveEmailTemplate } from "./actions";
 import { DeliveriesTable } from "./deliveries-table";
 import { TemplateEditor } from "./template-editor";
 import { TemplatesTable, type TemplateCatalogueRow } from "./templates-table";
@@ -98,12 +99,12 @@ export default async function EmailsPage({
               {t.rich("editor.heading", { name: messageName(selectedKey), bdi })}
             </h2>
             <div className="mt-4">
-              <TemplateEditor
+              <EditorForKey
+                locale={locale}
+                bound={bound}
                 messageKey={selectedKey}
                 name={messageName(selectedKey)}
                 template={catalogue.templates.find((tpl) => tpl.key === selectedKey && tpl.channel === "email") ?? null}
-                action={saveEmailTemplate.bind(null, bound)}
-                restore={restoreDefaultTemplate.bind(null, bound)}
               />
             </div>
           </section>
@@ -179,5 +180,60 @@ async function LogView({ locale, timeZone, status, before, messageName }: { loca
         newestLabel={t("newest")}
       />
     </section>
+  );
+}
+
+
+/**
+ * ★ WHICH EDITOR A KEY OPENS, and the rule is the row's own `blocks` column.
+ *
+ * `blocks is null` is a STRING template — every row that existed before wave
+ * 10 — and it opens the string editor wave 8 built, unchanged. That is not
+ * deference to the old screen: `tests/e2e/wave8-console-emails.spec.ts`'s
+ * refusal and restore cases are EVIDENCE for a path this wave does not
+ * replace, and they hold because the path does not move (`DEC-160`, rule 3).
+ *
+ * A document opens the block editor. An org with a string override is offered
+ * the conversion (§X9) and nothing is converted for it: what it sends today
+ * keeps being what it sends until an admin chooses otherwise.
+ */
+async function EditorForKey({
+  locale,
+  bound,
+  messageKey,
+  name,
+  template,
+}: {
+  locale: string;
+  bound: Locale;
+  messageKey: string;
+  name: string;
+  template: Awaited<ReturnType<typeof getTemplateCatalogue>> extends infer C ? (C extends { templates: (infer T)[] } ? T | null : never) : never;
+}) {
+  const bindings = await getMessageBindings(locale);
+  const offered = bindings.get(messageKey) ?? [];
+
+  if (template?.blocks) {
+    return (
+      <BlockEditor
+        messageKey={messageKey}
+        initialSubject={template.subject ?? ""}
+        initialBody={template.body}
+        initialBlocks={template.blocks}
+        offered={offered}
+        action={saveEmailDesign.bind(null, bound)}
+      />
+    );
+  }
+
+  return (
+    <TemplateEditor
+      messageKey={messageKey}
+      name={name}
+      template={template}
+      action={saveEmailTemplate.bind(null, bound)}
+      restore={restoreDefaultTemplate.bind(null, bound)}
+      convert={template ? convertTemplateToDesign.bind(null, bound, messageKey, template.body) : undefined}
+    />
   );
 }

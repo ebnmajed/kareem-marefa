@@ -44,12 +44,16 @@ export function TemplateEditor({
   template,
   action,
   restore,
+  convert,
 }: {
   messageKey: string;
   name: string;
   template: TemplateDTO | null;
   action: Action;
   restore: (templateId: string) => Promise<void>;
+  /** §X9 — offered only for an org that HAS a string override. Converting
+   *  changes nothing that is sent until the admin saves the design. */
+  convert?: () => Promise<void>;
 }) {
   const t = useTranslations("notifications.admin.emails.editor");
   const toast = useToast();
@@ -125,6 +129,11 @@ export function TemplateEditor({
           {template ? (
             <Button type="button" variant="ghost" onClick={() => setConfirming(true)}>
               {t("restore")}
+            </Button>
+          ) : null}
+          {convert ? (
+            <Button type="button" variant="ghost" onClick={() => void convert()}>
+              {t("convertToDesign")}
             </Button>
           ) : null}
         </div>
