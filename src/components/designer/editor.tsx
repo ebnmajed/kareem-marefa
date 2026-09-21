@@ -459,8 +459,16 @@ export function DesignerEditor(props: DesignerEditorProps) {
         <Panel tone="info">
           <p className="text-body-sm text-fg-body">{t.rich("phoneNotice", { width: formatNumber(1280), bdi: (c) => <bdi>{c}</bdi> })}</p>
         </Panel>
-        {strip}
-        {canvas}
+        {/* The canvas is named in the outline on the phone as it is on the desktop (wave 10's
+            carried row): the iframe's title satisfied 4.1.2, but a member moving by heading met
+            the checks before the thing being checked. */}
+        <section aria-labelledby="dr-canvas-m" className="flex flex-col gap-3">
+          <h2 id="dr-canvas-m" className="text-h3 text-fg-heading">
+            {t("previewHeading")}
+          </h2>
+          {strip}
+          {canvas}
+        </section>
         <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="dr-checks-m" className="text-h3 text-fg-heading">

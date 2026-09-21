@@ -127,6 +127,7 @@ carry the meaning instead.
 
 | Route | The paragraph (key) | What depends on it | Affordance it could become | Found by |
 |---|---|---|---|---|
+| `/app/admin/designer/[documentId]` at phone width | `designer.phoneNotice` — the studio edits only at 1280 px and wider | why nothing on the phone layout can be edited: the canvas, the strip and the checks look interactive and are not | the canvas and its controls rendered visibly read-only (a «عرض فقط» badge on the canvas, disabled controls absent rather than inert), so the state is seen, not read | lead (L4) |
 
 ### The untouched-suite ledger
 
