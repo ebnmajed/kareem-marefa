@@ -115,4 +115,28 @@ describe("RadioGroup", () => {
     );
     await expectAccessible(container);
   });
+
+  it("★ carries its own error: adjacent, marked invalid, and read with the group (wave 11)", async () => {
+    const { container } = render(
+      <RadioGroup name="level" legend="مستوى الجلسة" options={LEVELS} error="اختر مستوى الجلسة" />,
+    );
+    const group = screen.getByRole("radiogroup", { name: "مستوى الجلسة" });
+    expect(group).toHaveAttribute("aria-invalid", "true");
+    expect(group).toHaveAccessibleDescription("اختر مستوى الجلسة");
+    // The summary is the announcement; the field's error is never a second alert.
+    expect(screen.queryByRole("alert")).toBeNull();
+    await expectAccessible(container);
+  });
+
+  it("has no error, no description and no invalid state until it is given one", () => {
+    render(<RadioGroup name="level" legend="مستوى الجلسة" options={LEVELS} />);
+    const group = screen.getByRole("radiogroup", { name: "مستوى الجلسة" });
+    expect(group).not.toHaveAttribute("aria-invalid");
+    expect(group).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("takes a node for its legend, so a typed question keeps its isolation", () => {
+    render(<RadioGroup name="q1" legend={<bdi>ما رأيك في Excel؟</bdi>} options={LEVELS} />);
+    expect(screen.getByRole("radiogroup", { name: "ما رأيك في Excel؟" }).querySelector("legend bdi")).not.toBeNull();
+  });
 });

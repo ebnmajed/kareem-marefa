@@ -2,6 +2,7 @@
 
 import { useId, useLayoutEffect, useRef } from "react";
 import type { RadioGroupProps } from "@/components/ui";
+import { AlertCircleIcon } from "@/components/ui/icons";
 
 // The house radio group — `16` §4.2, REQ-UIX-009, REQ-NFR-007.
 //
@@ -37,9 +38,12 @@ import type { RadioGroupProps } from "@/components/ui";
 // the group fell back to the option it mounted with while its state held
 // another. After every commit the radio matching `value` is re-checked and made
 // the default.
-export function RadioGroup({ name, options, legend, defaultValue, value, onChange, invalid, className = "" }: RadioGroupProps) {
+export function RadioGroup({ name, options, legend, defaultValue, value, onChange, invalid, error, className = "" }: RadioGroupProps) {
   const legendId = useId();
   const hintId = useId();
+  const errorId = useId();
+  // An error makes the group invalid unless the caller says otherwise, as `<Field>` does.
+  const isInvalid = invalid ?? Boolean(error);
   const controlled = value !== undefined;
   const group = useRef<HTMLFieldSetElement>(null);
 
@@ -58,7 +62,8 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
       id={name}
       role="radiogroup"
       aria-labelledby={legendId}
-      aria-invalid={invalid || undefined}
+      aria-invalid={isInvalid || undefined}
+      aria-describedby={error ? errorId : undefined}
       className={className}
     >
       <legend id={legendId} className="text-label text-fg-heading">
@@ -97,6 +102,15 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
           </div>
         ))}
       </div>
+      {/* The same shape as `<Field>`'s error, and for the same reason no `role="alert"`: the form's
+          summary is the announcement; this is what is read on ARRIVAL, through the group's
+          `aria-describedby`. */}
+      {error ? (
+        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error">
+          <AlertCircleIcon className="mt-[0.2em]" />
+          <span>{error}</span>
+        </p>
+      ) : null}
     </fieldset>
   );
 }

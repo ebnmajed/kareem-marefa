@@ -249,8 +249,17 @@ export interface RadioGroupProps extends Styleable {
   value?: string;
   onChange?: (value: string) => void;
   invalid?: boolean;
-  /** The group's accessible name — a fieldset legend, not a floating label. */
-  legend: string;
+  /**
+   * The group's accessible name — a fieldset legend, not a floating label. A node, so a question a
+   * member typed can be isolated in `<bdi>` (wave 11).
+   */
+  legend: ReactNode;
+  /**
+   * The group's error, under its options — adjacent, red, icon-marked, and never the only channel:
+   * it sets `aria-invalid` on the group and joins its description, exactly as `<Field>`'s does
+   * (wave 11; SCR-015's question fieldset and `star-rating` hand-rolled this).
+   */
+  error?: ReactNode;
 }
 
 export interface SwitchProps extends Styleable {
