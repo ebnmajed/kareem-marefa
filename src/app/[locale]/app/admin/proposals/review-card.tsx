@@ -9,6 +9,7 @@ import { Prose } from "@/components/ui/prose";
 import { useToast } from "@/components/ui/toast";
 import { type ReviewState } from "./actions";
 import { emptyReviewState } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // One row of SCR-041's queue, with its three decisions — rebuilt onto the
 // system for wave 6 (`16` §6.7/§7.3, `DEC-130`).
@@ -77,9 +78,9 @@ export function ReviewCard({
         {children}
 
         {state.error ? (
-          <p role="alert" className="mt-4 rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+          <FormAlert className="mt-4">
             {t(state.error)}
-          </p>
+          </FormAlert>
         ) : null}
 
         {/* `noValidate` — `16` §8.2's rule for any form that renders the app's

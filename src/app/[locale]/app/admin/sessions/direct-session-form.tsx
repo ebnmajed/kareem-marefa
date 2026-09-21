@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { emptyCreateState, SESSION_FIELDS, SESSION_REQUIRED_FIELDS, type CreateSessionState, type SessionField } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // SCR-042's «أنشئ جلسة مباشرة» (REQ-PRO-007), onto the system for wave 6
 // (`16` §8.2, `DEC-130`).
@@ -85,9 +86,9 @@ export function DirectSessionForm({
     <form action={formAction} noValidate className="mt-4 max-w-2xl space-y-6">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
-        <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+        <FormAlert>
           {t(`errors.${state.formError}`)}
-        </p>
+        </FormAlert>
       ) : null}
 
       <Field id="direct-title" label={t("titleLabel")} required={required("title")} error={err("title")}>

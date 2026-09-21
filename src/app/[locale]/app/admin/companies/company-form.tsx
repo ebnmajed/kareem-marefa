@@ -8,6 +8,7 @@ import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import { COMPANY_FIELDS, COMPANY_REQUIRED_FIELDS, emptyCompanyState, type CompanyField, type CompanyState } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // SCR-048's add form, onto `lib/form-state`'s shared model for wave 7
 // (`16` §8.2, `DEC-137`).
@@ -38,9 +39,9 @@ export function CompanyForm({ action }: { action: (prev: CompanyState, formData:
     <form action={formAction} noValidate className="mt-4 max-w-md space-y-5">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
-        <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+        <FormAlert>
           {t(`errors.${state.formError}`)}
-        </p>
+        </FormAlert>
       ) : null}
 
       <Field id="co-name" label={t("nameLabel")} required={required("name")} error={err("name")}>
