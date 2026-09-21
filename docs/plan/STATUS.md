@@ -485,7 +485,7 @@ Run from a clean `supabase db reset` on the chain `0001`–`0142`, the tree at `
 
 | Gate | Result |
 |---|---|
-| `npm run test:rls` | **118 files · 1,190 passed · 4 todo · 0 failed**, alone, from the reset |
+| `npm run test:rls` | **118 files · 1,190 passed · 4 todo · 0 failed**, alone, from the reset — ★ **and again on CI's exact shape** (a bare `postgres:17`, `roles.sql`, the chain, graphile) after CI's first run failed `notify-bounce` 13 of 13 with `relation "vault.secrets" does not exist`: `0140` reads the vault and pgcrypto, which local Supabase ships and a bare container does not; `scripts/ci/roles.sql` gains the M12 shim (the platform's shapes and closed grants, plain-text storage) beside its auth, realtime and storage ones |
 | `npx tsc --noEmit` | clean |
 | `npm run lint` | **0 errors** (26 pre-existing warnings, unchanged) |
 | `npm test` | **233 files · 2,252 passed · 1 skipped** |
