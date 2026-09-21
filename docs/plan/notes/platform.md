@@ -984,3 +984,200 @@ after start and after stop, from the page and from the banner.
   cannot turn them red; the exact count is `REQ-DSG-026`'s.
 - **The e2e run and all 13 captures** (`wave8-platform-*`), on the lead's build with
   `0009` and the roster seed applied.
+
+---
+
+## Wave 11 — the plan (2026-09-22) — P1, the exhausted-job alert · P2, the `/app/platform` findings
+
+Planning only; nothing below is code yet. Read at `b8a51f6`: `DEC-166`, `DEC-167`, `0075`, `0076`, `0095`,
+`0142` (which re-created `evaluate_alerts()` last — `notify`'s complaint arm), `worker/src/platform/alerts.ts`,
+`worker/src/tasks/evaluate_alerts.ts`, `11` §3.2–3.3, graphile-worker 0.18's `failJobs` / `getJobs` SQL, and
+every test that names `evaluate_alerts`, `platform_alerts` or `platform_job_health`.
+
+### W11.1 The gap, measured
+
+`queue_stalled` filters `attempts < max_attempts` on purpose (a dead job is not a backlog), and nothing else
+reads the other side. **No task sets `max_attempts`** (`enqueue_job()`'s `p_max_attempts` is never passed; the
+crontab passes none), so every job gets graphile's default **25**, with backoff `exp(least(attempts, 10))`
+seconds: **a job exhausts about 4 days after its first failure** (the sum of `e^1 … e^9` plus fifteen `e^10`,
+≈ 343,000 s). graphile never deletes an exhausted job — it stays in `_private_jobs` with its payload, which is
+what `11` §3.3 asks for («a dead-lettered job keeps its payload so it can be replayed after a fix»).
+
+So the alert is a **durable condition that already exists as rows**, like `ledger_divergence` reading
+`audit_log`: the source is `graphile_worker._private_jobs` joined to `_private_tasks`, the same pair
+`platform_job_health()` (`0076`) already reads. **No failure hook** — a hook in the worker would be a second
+record of what the queue already records, and it would miss a job that exhausts while a worker is between
+deploys.
+
+### W11.2 The predicate
+
+```sql
+j.attempts >= j.max_attempts and j.locked_at is null
+```
+
+The `locked_at is null` matters: graphile increments `attempts` when it **locks** a job, so a job on its 25th
+attempt that is running right now reads `attempts = max_attempts` and has not failed. (`0076`'s `failed`
+column counts it anyway — see W11.6, Q3.)
+
+**Which jobs count — every task, no exemption.** I looked for a task designed to give up quietly and found
+none: a task that decides not to act (a cancelled session, a gone survey — `designer`'s hunt in wave 10)
+returns **success**; none throws to give up. An allowlist of «ignorable» tasks would be the place a real
+loss hides, so there is none. `evaluate_alerts` itself counts too (it cannot report its own death — W11.8).
+
+### W11.3 What the super admin sees — the task name and a count, never a payload (`DEC-014`)
+
+The reading, one row, the same shape as the eight:
+
+| `alert` | `fired` | `detail` |
+|---|---|---|
+| `job_exhausted` | any row matches | `{ "exhausted_jobs": n, "tasks": k, "by_task": { "<task_identifier>": count, … }, "newest_exhausted_seconds": s }` |
+
+A task identifier is code, not org data. The function **never reads** `payload`, `key` (a job key can embed a
+session or member id), `last_error` (a thrown message can interpolate one), `queue_name` or `run_at`'s
+neighbours — it selects `t.identifier`, a count and `max(now() - j.updated_at)` … `min`, nothing else.
+`newest_exhausted_seconds` is `now() - max(j.updated_at)` over the matching rows (graphile's trigger stamps
+`updated_at` on the failing update), so an operator sees whether the loss is fresh.
+
+**On the console:** SCR-084's job-health card list already shows the task name and its dead count (`failed`,
+`0076`) — that *is* the per-task surface, platform-admin-gated, aggregate. What is missing is the **home
+page's «يحتاج انتباهك»**: a card «مهامّ استنفدت محاولاتها» that lists each task identifier in `<bdi dir="ltr">`
+with its count (six ICU forms), and links to SCR-084's job health. Nothing on the console acts on a job —
+a retry or a discard touches org data, and the super admin has no data plane (W11.5).
+
+### W11.4 Dedupe and clearing
+
+**No time window.** It fires while **any** exhausted, unlocked job exists and clears only when **every** one is
+resolved — rescheduled after a fix (`graphile_worker.reschedule_jobs(ids, attempts => 0)`, or a keyed
+`add_job` re-enqueue, which resets `attempts`), or discarded (`graphile_worker.complete_jobs(ids)`). A 24 h
+window like the other durable alerts would turn a lost survey response into silence after a day, while the
+payload that could still recover it sits in the table; the whole point of this alert is that the loss is
+otherwise invisible.
+
+**Dedupe is the sink's**, as for the eight (`alerts.ts`: no alert-state table). One addition, in
+`worker/src/platform/alerts.ts` (mine): `EdgeTriggered` swallows every reading of an open alert, so a
+**second** task exhausting while the first is unresolved would say nothing. `EdgeTriggered` gains an optional
+per-alert **escalation key** — for `job_exhausted`, `exhausted_jobs`: while open, a reading whose count
+**rises** above the count it last fired at fires again (with the new detail); a steady or falling count is
+silent; zero clears. Default off, so the eight behave exactly as today and `tests/unit/platform-alerts.test.ts`
+is untouched. A worker restart re-fires once, as today.
+
+### W11.5 Resolution is operations, not the console
+
+The runbook I write into `11` §3.3 through the lead (a request, `docs/plan/` is the lead's): the owner reads
+`select t.identifier, count(*) … where attempts >= max_attempts and locked_at is null group by 1` on the
+linked project, reads `last_error` **for that task only**, fixes, then reschedules or discards by job id.
+For `record_survey_response` a reschedule after the fix recovers the answers — the payload is
+`{response_id, survey_id, answers}`, no member (`DEC-160` §3), and `record_survey_response()` is idempotent on
+`response_id` (`0137`'s `.replay` row), so a replay cannot double-count.
+
+### W11.6 The SQL — `supabase/proposed/platform/0009_job_exhausted_alert.sql`
+
+**Schema requests to the lead: none.** No table, no column, no enum value — the source is graphile's own
+table and the alert is a row in a function's result, like the eight.
+
+1. ★ **A new function, not a ninth arm of `evaluate_alerts()`**:
+   `public.evaluate_job_exhaustion() returns table (alert text, fired boolean, detail jsonb)`, `stable security
+   definer set search_path = ''`, dynamic SQL behind `to_regnamespace('graphile_worker')` (not installed →
+   `fired false, {"status": "not_installed"}`, `0075`'s precedent). `revoke … from public, anon,
+   authenticated; grant … to service_role` — `definer-exposure` passes by construction.
+   **Why separate** (the lead may rule otherwise — Q1): `evaluate_alerts()` has had two writers already
+   (`0075` mine, `0142` `notify`'s), and a ninth arm moves **four pinned «eight» assertions in files that exist
+   on `main`** — `platform-alerts.test.ts`'s `.eight`, «all eight fire together» and `.aggregate`,
+   `platform-console.spec.ts`'s `8 : 9` row count — and makes their `quiesce()` wrong, because it deletes only
+   `run_at <= now()` jobs while an exhausted job's `run_at` is up to 6 h in the future: a dev machine's own
+   dead job would turn «a quiet database fires nothing» red. Separate, none of those moves.
+2. **`platform_job_health()`'s `failed` gains `and j.locked_at is null`** (`create or replace`, same signature,
+   same columns) so the screen's dead count and the alert's agree — `0076`'s own argument («an operator who
+   sees a healthy table and gets paged anyway stops trusting both»). Q3.
+
+No new door for the console: `platform_job_health()` already carries the task and the count through
+`assert_platform_admin()`.
+
+### W11.7 The worker
+
+- `worker/src/platform/alerts.ts` (mine): `EXHAUSTION_ALERT = "job_exhausted"`, the escalation option, the
+  `ConsoleAlertSink` line unchanged in shape (`ALERT FIRED job_exhausted {"exhausted_jobs":1,…}` — counts and
+  task names only). `ALERTS` stays the eight.
+- ★ **`worker/src/tasks/evaluate_alerts.ts` is not in my list — a request (Q2).** The change is three lines:
+  after `sink.apply(rows)` for the eight, `select alert, fired, detail from public.evaluate_job_exhaustion()`
+  and `sink.apply()` it. After, so that if the function were ever missing the eight still reach the sink
+  before the task throws. Logs a count, never a payload. No new task, no registration, no crontab line.
+
+### W11.8 What `main`'s old worker does between the push and the redeploy
+
+The owner pushes `0143+`, then merges; Railway redeploys from `main` after.
+
+- **Pushed, not merged (old app, old worker):** `evaluate_job_exhaustion()` exists and nothing calls it.
+  `platform_job_health()` answers the same columns to `main`'s SCR-084; the only difference is that a job
+  **running** its last attempt no longer counts as failed. No error path, nothing to survive.
+- **Merged, Vercel first, worker second:** the new app reads nothing new (it reads `platform_job_health()`, as
+  `main` did). The new worker calls a function that has existed since the push. The reverse order (worker
+  before SQL) cannot happen under the owner's order; if it did, the eight still fire and the task throws once
+  a minute until the push — loud, not silent.
+- **On the first new-worker tick** the alert fires for whatever production has already lost. That is the
+  point, and it is why the owner's order should start with the read in W11.5 — so the first page is expected,
+  not a surprise. (A production read is the owner's to run.)
+
+### W11.9 Tests — all new files, no existing assertion moves
+
+`tests/rls/alerts-exhausted.test.ts` (each case in a rolled-back transaction; every case first deletes
+exhausted jobs **inside** the transaction, since `graphile_worker` is shared state):
+
+| Case | Asserts |
+|---|---|
+| `RPC-evaluate_job_exhaustion.worker_only` | an org member, a moderator, an org admin, a platform admin (as `authenticated`) and `anon` are refused `42501`; `service_role` answers |
+| `.quiet` | no exhausted job → one row, `fired false`, `exhausted_jobs 0` |
+| `.fires` | an `add_job('record_survey_response', …)` driven to `attempts = max_attempts`, unlocked → `fired`, `by_task = {record_survey_response: 1}` |
+| `.running_last_attempt` | the same job **locked** → not counted |
+| `.retrying` | `attempts < max_attempts`, past or future `run_at` → not counted; `queue_stalled` unaffected either way |
+| `.clears` | `reschedule_jobs(…, attempts => 0)` clears it; `complete_jobs(…)` clears it; two tasks → `tasks 2`, one resolved → `tasks 1`, still fired |
+| ★ `.no_payload` | a dead job whose `payload`, `key` and `last_error` each carry a sentinel uuid and a sentinel Arabic string → neither appears anywhere in the row; `detail`'s top-level keys are exactly the four; `by_task`'s keys are task identifiers |
+| `.not_installed` | with `graphile_worker` renamed inside the transaction → `{status: not_installed}`, no raise |
+| ★ `RPC-platform_job_health.no_org_reader` | org member, moderator, org admin → `not_platform_admin`; `anon` → `42501`; none of them can `select` `graphile_worker._private_jobs` directly (`42501`) — no side door to a payload |
+| `RPC-platform_job_health.failed_agrees` | a platform admin reads `failed = 1` for the dead job and `0` for the locked last attempt — the same number the alert counts; no payload, key or error in any column |
+
+`tests/unit/alerts-exhaustion.test.ts`: escalation fires again on a rise, stays quiet on steady and falling,
+clears at zero, re-fires once after a restart; without the option an alert still fires once (the eight's
+behaviour, asserted again here rather than by editing the existing file).
+
+`tests/components/platform/platform-home-exhausted.test.tsx`: the card lists each task in `<bdi dir="ltr">`
+with its count; absent when nothing is dead; absent (and «تعذّر…» said) when the read fails.
+
+`tests/e2e/wave11-platform-exhausted.spec.ts`: seeds one dead `record_survey_response` job through the owner
+connection the wave-9/10 specs already use, opens `/app/platform` and SCR-084 at 390 px, asserts the card and
+the job-health row, captures `wave11-platform-home-exhausted.png` and `wave11-platform-metrics-exhausted.png`,
+removes the job.
+
+★ **One ledger line I expect, and why it is a mock, not an expectation:** `/app/platform/page.tsx` will call
+`getJobHealth()`, and `tests/components/platform/platform-home-page.test.tsx`'s `vi.mock` factory does not
+list it, so the page would call `undefined`. The factory gains `getJobHealth: vi.fn(async () => [])` — the
+same kind as `emails-page.test.tsx`'s wave-10 ledger line («the page binds every action it passes down»).
+No assertion changes. If the lead prefers zero edits, the alternative is to carry the dead counts on
+`getPlatformTotals()`'s DTO, which the mock already returns without them — I think that couples two unrelated
+reads and do not recommend it.
+
+### W11.10 P2 — the accessibility findings
+
+Waiting on the lead's sweep rows for `/app/platform/**`. Each will be fixed in my files with the app's passing
+tokens (`DEC-123`), a new test where the finding is behavioural, and a capture beside its wave-8 one.
+`node scripts/ui-lint.mjs --strict` shows **none** of my files today (`DEC-166` §1 counts no platform
+violation) — I will confirm on the first code commit.
+
+### W11.11 Questions for the lead
+
+1. **Separate function (my recommendation) or a ninth arm of `evaluate_alerts()`?** The ninth arm is the
+   tidier catalogue — one list in `11` §3.2 — at the price of four «eight» assertions and a `quiesce()` in
+   `main`'s files, each a ledger line with a changed expectation. Either way `11` §3.2 gains the row
+   «**Job exhausted** · any job with no attempts left · a permanent failure is otherwise silent — for
+   `record_survey_response`, a member's answers», which is your edit.
+2. **`worker/src/tasks/evaluate_alerts.ts`** — transfer it to me for this row, or you make the three-line change
+   on my written request?
+3. **`platform_job_health()`'s `failed` excluding a running last attempt** — approve, or leave `0076` as it is
+   and let the screen and the alert differ by at most the jobs running this second?
+4. **Four days to exhaust.** Every job has graphile's 25 attempts, so this alert fires ≈ 4 days after
+   `record_survey_response` first fails. Shortening that (`p_max_attempts` on `submit_survey_response()`'s
+   enqueue, `0137`, `event`'s function you hold) is a behaviour change outside my files and I do not propose it
+   — but if the owner wants to hear sooner, that is the lever, not a second threshold here.
+5. **Retention.** A dead `record_survey_response` job keeps its answers (no member) in `graphile_worker` until
+   someone resolves it; `12` §5.3 has no period for queue rows. I think «until resolved» is right, since that
+   is the recovery path — recorded so it is a decision and not an accident.
