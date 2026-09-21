@@ -4002,3 +4002,24 @@ What the contract half holds is `16` §14's count — the 28 behavioural checks,
 6. **`FieldProps.label` is a `ReactNode`** (`c4a07f0`), so a label a member typed keeps its `<bdi>`. **One escape approved in writing**: the discussion composer's textarea is self-labelled by `aria-label` with no visible label by design.
 
 - **Documents changed:** `STATUS.md` (the wave-11 block, the owner's order), `CLAUDE.md` (the transfer), `11` §3.2–3.3 and `12` §5.3 (when `platform`'s SQL is promoted)
+
+---
+
+## DEC-169 — An org's settings row stays `create_org()`'s to write: no trigger, because 91 test files insert it themselves; a missing row in production is a scoped data fix the owner runs
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-11 lead (STATUS row L5), on the wave-10 carried finding
+- **Narrows:** the wave-10 carried row's recommendation («backfill them, and land the trigger in the same change»)
+
+Wave 10 found `survey_results()` failing open when an org had no `org_settings` row (fixed in `0138`) and recommended a backfill plus a trigger on `orgs`. Measured before writing it: **ten** functions read `org_settings` (`presenters_within_limit`, `reserve_seat`, `schedule_session`, `schedule_session_reminders`, `schedule_rating_prompt`, `_issue_check_in_code`, `finalize_material_upload`, `record_photo_upload`, `initiate_photo_processing`, `snapshot_leaderboard`, and `survey_results`), across five owners; and **91 test files** create an org and then insert its settings row themselves. An `after insert` trigger on `orgs` — immediate or deferred — would make every one of those 91 inserts collide on the unique `org_id`, so the trigger costs rewriting 91 files of evidence to close a class that production cannot reach: `create_org()` is the only path that creates an org there, and it writes the row in the same transaction (`0005`).
+
+**Decision.** No trigger and no migration. The owner reads production for orgs without a row (the query is the first line of the owner's order). **Zero rows** closes the finding as latent-by-construction. **Any rows** get a scoped data fix the owner runs — never a migration (`CLAUDE.md`, rule 3):
+
+```sql
+insert into public.org_settings (org_id)
+select o.id from public.orgs o
+ where not exists (select 1 from public.org_settings s where s.org_id = o.id);
+```
+
+Every column has a default, so the inserted row is exactly what `create_org()` would have written. `survey_results()` keeps `0138`'s fail-closed guard as the one place a missing row ever mattered for privacy.
+
+- **Documents changed:** `STATUS.md` (row L5, the owner's order)
