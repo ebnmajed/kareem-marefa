@@ -116,6 +116,18 @@ green at **every** commit; `ui-lint --strict` green with no allowlist; ★ **a v
 | P1–P2 | `platform` | the exhausted-job alert — task name and count, never a payload (`DEC-014`); `/app/platform` findings | `REQ-NFR-007`, `11` alerts | **building** (sync 1, `DEC-168`) |
 | B1–B3 | `branding` | ★ the status-colour guard — `save_brand_kit()` refuses in SQL a palette on which a status badge fails AA; its 3 violations; one logo for two schemes, after the owner's read | `DEC-073`, `REQ-DSG-021`, `REQ-UIX-003` | **building** (sync 1, `DEC-168`) |
 
+### ★ Screens whose meaning depends on a paragraph of explanation — the list a later wave starts from
+
+**The owner's instruction (2026-09-22):** where the accessibility pass finds a screen that only makes sense
+once a member has read a paragraph, **it is noted here and the copy is NOT changed this wave.** A later wave
+strips that prose and replaces it with affordances; this table is where it starts. Every track adds rows
+through its note; the lead copies them in. One row per screen: the route, the paragraph (its message key),
+what a member cannot do or understand without reading it, and — if obvious — the affordance that would
+carry the meaning instead.
+
+| Route | The paragraph (key) | What depends on it | Affordance it could become | Found by |
+|---|---|---|---|---|
+
 ### The untouched-suite ledger
 
 A pre-existing `tests/**` file changes only with a line here saying why. **Empty at Step 0.**
