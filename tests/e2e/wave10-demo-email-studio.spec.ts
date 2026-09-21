@@ -281,7 +281,7 @@ test("2 · DUPLICATED — «ابدأ من تصميم جاهز» makes the platfo
 test("3 · REORDERED WITH TAPS — one press of ▼ moves a block, the move is announced, and the saved order is what the screen showed", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await open(page, `/ar/app/admin/emails?key=${KEY}`);
-  const list = main(page).getByRole("list", { name: "الكتل" });
+  const list = main(page).getByRole("list", { name: "كتل الرسالة" });
   const before = await list.getByRole("listitem").allInnerTexts();
   expect(before.length).toBeGreaterThan(2);
 
