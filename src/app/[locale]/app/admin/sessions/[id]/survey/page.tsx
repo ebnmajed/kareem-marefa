@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { DetachControl } from "@/components/survey/detach-control";
 import { SurveyResults } from "@/components/survey/results";
 import { formatNumber } from "@/components/sessions/numerals";
-import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
@@ -150,22 +150,24 @@ export default async function SessionSurveyPage({
 
           {!isAdmin ? <p className="mt-6 text-caption text-fg-muted">{t("exportAdminOnly")}</p> : null}
 
-          {/* Two steps, server-side: the first press asks, the second does it.
-              A destructive action with no confirmation is not one anybody should
-              be able to trip over, and this needs no dialog and no JavaScript. */}
+          {/* ★ Offered only while it can work. `survey_detach()` refuses once
+              anyone has answered, so a released result — which by definition has
+              at least `min` responses — gets the sentence instead of a button
+              that leads to a refusal. The withheld state still offers it,
+              because the response count is withheld too (`DEC-163`): the screen
+              cannot tell nobody from two, and «attached the wrong template and
+              detached it at once» is the case that must keep working. The
+              refusal path stands for both. */}
           <div className="mt-10 border-t border-edge pt-6">
-            {flags.confirm ? (
-              <form action={detach.bind(null, locale as Locale, id)}>
-                <p className="text-body-sm text-fg-body">{t("detachConfirm")}</p>
-                <div className="mt-3">
-                  <SubmitButton variant="secondary">{t("detach")}</SubmitButton>
-                </div>
-              </form>
-            ) : (
-              <ButtonLink href={`/app/admin/sessions/${id}/survey?confirm=1`} variant="secondary" size="md">
-                {t("detach")}
-              </ButtonLink>
-            )}
+            <DetachControl
+              canDetach={results.status !== "ok"}
+              confirming={Boolean(flags.confirm)}
+              confirmHref={`/app/admin/sessions/${id}/survey?confirm=1`}
+              action={detach.bind(null, locale as Locale, id)}
+              detachLabel={t("detach")}
+              confirmText={t("detachConfirm")}
+              blockedText={tErrors("has_responses")}
+            />
           </div>
         </>
       )}

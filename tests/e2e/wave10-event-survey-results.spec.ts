@@ -184,6 +184,15 @@ test("★ the third response draws it — the rate, the scale's bars, the writte
   await expect(main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("progressbar")).toHaveCount(5);
   await expect(main(page).getByText("اقتراح 1")).toBeVisible();
   await expect(main(page).getByRole("link", { name: "تصدير CSV" })).toBeVisible();
+  // ★ Every bar carries its label and its count as TEXT, so the distribution is
+  // readable without a screen reader and without colour.
+  const bars = main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("listitem");
+  await expect(bars).toHaveCount(5);
+  await expect(bars.first()).toHaveText(/^1\s*0$/);
+  // ★ And the detach is GONE once anyone has answered — the sentence is there
+  // instead of a button that the database would refuse.
+  await expect(main(page).getByRole("link", { name: "أزل الاستبانة" })).toHaveCount(0);
+  await expect(main(page).getByText("لا يمكن إزالة استبانة أجاب عنها أحد")).toBeVisible();
   // Every number on the screen is Western (DEC-124).
   expect(await main(page).innerText()).not.toMatch(/[٠-٩]/);
   await capture(page, "survey-results");

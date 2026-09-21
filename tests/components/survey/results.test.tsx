@@ -74,6 +74,38 @@ describe("SurveyResults", () => {
     expect(bars[4]).toHaveAttribute("aria-valuenow", "2");
   });
 
+  it("★ every bar carries its label and its count as VISIBLE TEXT, not only in aria", async () => {
+    const { container } = await renderResults();
+    const scale = screen.getByRole("article", { name: /ما مدى وضوح المحتوى؟/ });
+
+    // Five unlabelled grey lines is what this replaces: a sighted reader could
+    // not tell «4 chose 3» from «3 chose 4».
+    const rows = within(scale).getAllByRole("listitem");
+    expect(rows).toHaveLength(5);
+    expect(rows.map((li) => li.textContent?.trim())).toEqual(["10", "20", "31", "41", "52"]);
+
+    // The bar's own aria is unchanged, so the two audiences read the same thing.
+    const bars = within(scale).getAllByRole("progressbar");
+    expect(bars[4]).toHaveAttribute("aria-valuenow", "2");
+    expect(container.textContent).not.toMatch(/[٠-٩]/);
+  });
+
+  it("a choice question shows its option labels beside the bars, bidi-isolated", async () => {
+    await renderResults({
+      ...RESULTS,
+      questions: [{
+        id: "q4", kind: "single_choice", prompt: "هل كانت المدة مناسبة؟", required: false,
+        answeredCount: 4, withheld: false, mean: null,
+        distribution: [{ id: "o1", label: "قصيرة", count: 1 }, { id: "o2", label: "مناسبة", count: 3 }],
+        texts: null,
+      }],
+    });
+    const question = screen.getByRole("article", { name: /هل كانت المدة مناسبة؟/ });
+    const rows = within(question).getAllByRole("listitem");
+    expect(rows.map((li) => li.textContent?.trim())).toEqual(["قصيرة1", "مناسبة3"]);
+    expect(within(question).getAllByText("مناسبة")[0].closest("bdi")).toBeTruthy();
+  });
+
   it("★ a withheld question SAYS SO, draws no chart — and publishes no count either", async () => {
     await renderResults();
     const withheld = screen.getByRole("article", { name: /هل كانت المدة مناسبة؟/ });

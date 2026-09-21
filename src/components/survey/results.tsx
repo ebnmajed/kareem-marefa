@@ -13,10 +13,18 @@ import type { SurveyResultQuestion, SurveyResultsDTO } from "@/lib/dal/surveys";
 // was given, which is why the screen and the CSV cannot drift apart: they are
 // two shapes of one answer.
 //
-// ★ BARS GROW FROM THE START EDGE and every bar carries its own number, so a
-// distribution is readable without a legend and without colour (`09` SCR-064).
-// `ui/progress` is the house bar and is already logical-property-only; the
-// numbers are formatted here, in Western digits (DEC-124).
+// ★★ EVERY BAR CARRIES ITS LABEL AND ITS COUNT AS VISIBLE TEXT. `ui/progress`
+// is a bare bar by design — its consumers put their own words beside it — so a
+// row that passed the label only through `aria-label` rendered five unlabelled
+// grey lines: a sighted reader could not tell «4 chose 3» from «3 chose 4», and
+// a choice question's options were invisible altogether. The label and the
+// number are in the DOM now, and the bar's own aria is unchanged, so the two
+// audiences read the same thing rather than one of them reading nothing.
+//
+// Bars grow from the START edge, and the number sits opposite the label on one
+// line with the bar beneath, so a long option label wraps instead of being
+// squeezed — no fixed width, no `overflow: hidden` on a text line, nothing
+// physical (`09` SCR-064, `10` §2). Western digits (DEC-124).
 
 /**
  * The keys this file reads from `survey.session`, as a function type — the
@@ -103,17 +111,21 @@ function QuestionResult({ question, t }: { question: SurveyResultQuestion; t: Re
           ))}
         </ul>
       ) : (
-        <ul className="mt-2 flex flex-col gap-2">
-          {(question.distribution ?? []).map((cell) => (
-            <li key={cell.id ?? cell.value}>
-              <Progress
-                value={cell.count}
-                max={total}
-                label={cell.label ?? formatNumber(cell.value ?? 0)}
-                valueText={formatNumber(cell.count)}
-              />
-            </li>
-          ))}
+        <ul className="mt-2 flex flex-col gap-3">
+          {(question.distribution ?? []).map((cell) => {
+            const label = cell.label ?? formatNumber(cell.value ?? 0);
+            return (
+              <li key={cell.id ?? cell.value} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-body-sm text-fg-body">
+                    <bdi>{label}</bdi>
+                  </span>
+                  <span className="text-body-sm text-fg-muted">{formatNumber(cell.count)}</span>
+                </div>
+                <Progress value={cell.count} max={total} label={label} valueText={formatNumber(cell.count)} />
+              </li>
+            );
+          })}
         </ul>
       )}
     </article>
