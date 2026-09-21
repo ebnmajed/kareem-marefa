@@ -85,6 +85,13 @@ export function BlockEditor({
 
   const [subject, setSubject] = useState(initialSubject);
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => readDocument(initialBlocks).blocks);
+  // ★ WHAT THE STORED DOCUMENT LOST ON THE WAY IN, kept rather than discarded.
+  // `readDocument()` drops a malformed or unrecognised block, and an editor
+  // that swallowed that would show an admin a document SHORTER than the one
+  // stored and let them save it — silently deleting a row they never saw. It
+  // is cleared the moment they change anything, because from then on the
+  // document in front of them is the whole truth.
+  const [initialDropped, setInitialDropped] = useState(() => readDocument(initialBlocks).dropped);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<PreviewMode>("phone");
 
@@ -98,13 +105,17 @@ export function BlockEditor({
   // editor's own blocks are well-formed by construction; the renderer's drops
   // arrive with the preview and are shown by the frame's own state.
   const checks = useMemo(
-    () => runChecks({ parsed: true, blocks, dropped: [], subject, offered }),
-    [blocks, subject, offered],
+    () => runChecks({ parsed: true, blocks, dropped: initialDropped, subject, offered }),
+    [blocks, subject, offered, initialDropped],
   );
 
   const blocked = hasBlocking(checks);
   const selected = blocks.find((block) => block.id === selectedId) ?? null;
   const typeLabel = (type: string) => (tb.has(`type.${type}`) ? tb(`type.${type}`) : type);
+  const editBlocks = (next: (current: EmailBlock[]) => EmailBlock[]) => {
+    setInitialDropped([]);
+    setBlocks(next);
+  };
   const update = (id: string, next: Partial<EmailBlock>) =>
     setBlocks((current) => current.map((block) => (block.id === id ? ({ ...block, ...next } as EmailBlock) : block)));
 
@@ -120,7 +131,7 @@ export function BlockEditor({
           {BLOCK_TYPES.map((type) => (
             <Button key={type} type="button" variant="ghost" onClick={() => {
               const block = emptyBlock(type);
-              setBlocks((current) => [...current, block]);
+              editBlocks((current) => [...current, block]);
               setSelectedId(block.id);
             }}>
               {tb(`add.${type}`)}
@@ -136,7 +147,7 @@ export function BlockEditor({
             size="sm"
             label={tb("listLabel")}
             onReorder={(nextKeys) =>
-              setBlocks((current) => nextKeys.map((key) => current.find((block) => block.id === key)!).filter(Boolean))
+              editBlocks((current) => nextKeys.map((key) => current.find((block) => block.id === key)!).filter(Boolean))
             }
             renderItem={(block) => (
               <button
@@ -150,7 +161,7 @@ export function BlockEditor({
             )}
             renderActions={(block) => (
               <Button type="button" variant="ghost" onClick={() => {
-                setBlocks((current) => current.filter((b) => b.id !== block.id));
+                editBlocks((current) => current.filter((b) => b.id !== block.id));
                 setSelectedId((id) => (id === block.id ? null : id));
               }}>
                 {tb("remove")}
