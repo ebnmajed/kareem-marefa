@@ -110,11 +110,11 @@ green at **every** commit; `ui-lint --strict` green with no allowlist; ★ **a v
 | L7 | lead | **the budgets run** — `13` §7's six screens against `budgets.baseline.json`, and the landing against `pre-m13` (LCP ≤ 2.0 s, must not regress) | `REQ-NFR-008` | todo |
 | L8 | lead | ★ **`ui-lint --strict`**: CI runs `--strict`; `scripts/ui-lint-allowlist.json` **deleted** in the same commit | `DEC-087` | todo |
 | L9 | lead | promotion of the tracks' SQL; gates; the owner's order; the PR; ★ **the closing `STATUS`** — what is built, what was deliberately left, what a session opening this repo next reads first | — | todo |
-| C1–C3 | `content` | 27 violations to zero; its screens' accessibility findings; the viewer's «≤ 2.5 s to page 1, loads progressively» | `REQ-UIX-001`, `REQ-NFR-007`, `REQ-NFR-008` | planning |
-| K1–K3 | `console` | 21 violations to zero (`rtl-datetime-picker` the hardest); ★ the attendance screen — its 2, the 390 px sideways scroll from two days, «مطلوب» on the manual-mark form; `/app/admin` findings; SCR-040's budget | `REQ-UIX-001`, `REQ-CHK-015`, `REQ-NFR-007`, `REQ-NFR-008` | planning |
-| N1–N3 | `notify` | ★ the string path retired — every key designed for an untouched org, **an admin's edited string template never silently discarded**, the pinned files moved as one reviewed diff; the string code removed; its screens' findings | `DEC-081`, `REQ-NTF-007`, `REQ-NTF-014` | planning |
-| P1–P2 | `platform` | the exhausted-job alert — task name and count, never a payload (`DEC-014`); `/app/platform` findings | `REQ-NFR-007`, `11` alerts | planning |
-| B1–B3 | `branding` | ★ the status-colour guard — `save_brand_kit()` refuses in SQL a palette on which a status badge fails AA; its 3 violations; one logo for two schemes, after the owner's read | `DEC-073`, `REQ-DSG-021`, `REQ-UIX-003` | planning |
+| C1–C3 | `content` | 27 violations to zero; its screens' accessibility findings; the viewer's «≤ 2.5 s to page 1, loads progressively» | `REQ-UIX-001`, `REQ-NFR-007`, `REQ-NFR-008` | **building** (sync 1, `DEC-168`) |
+| K1–K3 | `console` | 21 violations to zero (`rtl-datetime-picker` the hardest); ★ the attendance screen — its 2, the 390 px sideways scroll from two days, «مطلوب» on the manual-mark form; `/app/admin` findings; SCR-040's budget | `REQ-UIX-001`, `REQ-CHK-015`, `REQ-NFR-007`, `REQ-NFR-008` | **building** (sync 1, `DEC-168`) |
+| N1–N3 | `notify` | ★ the string path retired — every key designed for an untouched org, **an admin's edited string template never silently discarded**, the pinned files moved as one reviewed diff; the string code removed; its screens' findings | `DEC-081`, `REQ-NTF-007`, `REQ-NTF-014` | **building** (sync 1, `DEC-168`) |
+| P1–P2 | `platform` | the exhausted-job alert — task name and count, never a payload (`DEC-014`); `/app/platform` findings | `REQ-NFR-007`, `11` alerts | **building** (sync 1, `DEC-168`) |
+| B1–B3 | `branding` | ★ the status-colour guard — `save_brand_kit()` refuses in SQL a palette on which a status badge fails AA; its 3 violations; one logo for two schemes, after the owner's read | `DEC-073`, `REQ-DSG-021`, `REQ-UIX-003` | **building** (sync 1, `DEC-168`) |
 
 ### The untouched-suite ledger
 
@@ -127,8 +127,10 @@ A pre-existing `tests/**` file changes only with a line here saying why. **Empty
 
 1. **Production reads, before anything is pushed** (each a `select`, read-only):
    - orgs with no `org_settings` row — `select o.id, o.slug from public.orgs o where not exists (select 1 from public.org_settings s where s.org_id = o.id);` (L5)
-   - `notify`'s read: orgs whose string templates were edited (named in its approved plan) (N1)
-   - `branding`'s read: saved brand kits the status guard would refuse; the live org's logo format (B1, B3)
+   - `notify`'s read: every `notification_templates` row classified `design` / `string_edited` / `string_subject_edited` / `string_verbatim_default` by MD5 against the defaults — **no text returned** (the query is in `docs/plan/notes/notify.md` §Y2) (N1)
+   - «`APP_URL` is set on the Railway worker» — a design's buttons and preference link need it (N1)
+   - `branding`'s reads: `select bk.org_id, bk.light_canvas, bk.light_surface, bk.dark_canvas, bk.dark_surface, bk.updated_at from public.brand_kits bk;` (B1), and the logo query in `docs/plan/notes/branding.md` B3, then open the file (B3)
+   - `platform`'s: the exhausted jobs production already holds, so the alert's first page after the redeploy is expected (`docs/plan/notes/platform.md` W11.5)
 2. **Push** migrations `0143`+ (additive), **then merge** — Vercel and the worker deploy from `main`.
 3. ★ **The standing post-merge step — Railway.** **Railway's push trigger has never been armed**: after
    **five** consecutive merges (PRs #23 … #27) the worker moved only when someone ran
