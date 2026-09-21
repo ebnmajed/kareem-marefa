@@ -17,13 +17,30 @@ import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const PROPOSED = ["branding/0001_brand_kits.sql", "branding/0002_regenerate_posters_on_save.sql"];
+const PROPOSED = [
+  "branding/0001_brand_kits.sql",
+  "branding/0002_regenerate_posters_on_save.sql",
+  "branding/0003_status_contrast_guard.sql",
+];
 
 const SHA = (c: string) => c.repeat(64).slice(0, 64);
 
+// ★ wave 11 (DEC-166 §2, `0003_status_contrast_guard.sql`): `canvas` and
+// `surface` were `#111111`/`#222222` — arbitrary, distinguishable swatches
+// with no accessibility intent behind them. The new guard refuses `--color-
+// live`/`--color-ended` as text below 4.5:1 against EITHER `light.canvas`
+// OR `light.surface`, and BOTH old values failed both colours (`#111111`:
+// 3.20:1 / 3.32:1; `#222222`: 2.70:1 / 2.80:1) — so EVERY case in this file
+// that calls `saveKit()` (the font gate, logo ownership, canvasRaise, both
+// poster-regeneration cases — none of them about contrast at all) would
+// have started failing with `55000` the moment the guard landed.
+// Untouched-suite ledger: two fixture colours the new status guard refuses;
+// no assertion in this file changed. `#eeeeee`/`#f5f5f5` each clear both
+// status inks (5.08:1/4.90:1 and 5.41:1/5.21:1) and stay distinct from each
+// other, so nothing that relied on `canvas` ≠ `surface` is affected.
 const LIGHT = {
-  canvas: "#111111",
-  surface: "#222222",
+  canvas: "#eeeeee",
+  surface: "#f5f5f5",
   fgHeading: "#333333",
   fgBody: "#444444",
   fgMuted: "#555555",
@@ -241,6 +258,87 @@ describe("POL-save_brand_kit.font_gate", () => {
       expect(await errorCode(() => saveKit(tx, null, null, pendingFontId))).toBe("22023");
       // The passed platform font from the M6 fixture is accepted.
       const [row] = await saveKit(tx, null, f.m6.fontId, f.m6.fontId);
+      expect(row.org_id).toBe(f.a.id);
+    });
+  });
+});
+
+// ★ wave 11 (DEC-166 §2, `0003_status_contrast_guard.sql`, 16 §16.6): DEC-073's
+// consequence — an org may override `light_canvas`/`light_surface` (and
+// their dark twins) to any hex, while `--color-live`/`--color-ended`/
+// `--color-live-on-dark` stay platform constants. `save_brand_kit()` now
+// refuses, before any write, a palette on which the status colours would
+// read below SC 1.4.3's 4.5:1 against the org's own canvas or surface.
+const saveKitWith = (tx: Tx, light: Record<string, string>, dark: Record<string, string>) =>
+  tx.q<{ id: string; org_id: string }>(`select * from public.save_brand_kit($1::jsonb, $2::jsonb, null, null, null)`, [
+    JSON.stringify(light),
+    JSON.stringify(dark),
+  ]);
+
+describe("POL-save_brand_kit.status_contrast_refused", () => {
+  it("a light palette whose canvas equals --color-live is refused 55000, no row written", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      // #8a5a1f is globals.css's own --color-live (:51) — contrast against
+      // itself is exactly 1:1, nowhere near 4.5:1.
+      const badLight = { ...LIGHT, canvas: "#8a5a1f" };
+      let detail: string | undefined;
+      try {
+        await saveKitWith(tx, badLight, DARK);
+      } catch (e) {
+        expect((e as { code?: string }).code).toBe("55000");
+        detail = (e as { detail?: string }).detail;
+      }
+      // The failing pair's key, so the screen's toast can name the field —
+      // never a bare "failed", see actions.ts's mapping.
+      expect(detail).toBe("live_vs_light_canvas");
+
+      await tx.asOwner();
+      const rows = await tx.q(`select id from public.brand_kits where org_id = $1`, [f.a.id]);
+      expect(rows).toEqual([]);
+    });
+  });
+
+  it("the same failure on surface alone (canvas untouched) is refused too", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      // #5b6780 is globals.css's own --color-ended (:54).
+      const badLight = { ...LIGHT, surface: "#5b6780" };
+      expect(await errorCode(() => saveKitWith(tx, badLight, DARK))).toBe("55000");
+    });
+  });
+});
+
+describe("POL-save_brand_kit.status_contrast_accepted", () => {
+  it("★ the platform default palette always saves — the guard's own regression test against the identity override", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const light = Object.fromEntries(
+        Object.entries(platformBrand("light")).map(([k, v]) => [k.replace("brand.", ""), v]),
+      );
+      const dark = Object.fromEntries(
+        Object.entries(platformBrand("dark")).map(([k, v]) => [k.replace("brand.", ""), v]),
+      );
+      const [row] = await saveKitWith(tx, light, dark);
+      expect(row.org_id).toBe(f.a.id);
+    });
+  });
+});
+
+describe("POL-save_brand_kit.status_contrast_dark", () => {
+  it("a dark palette whose dark_canvas equals --color-live-on-dark is refused; one far from it saves", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      // #d2a86b is globals.css's own --color-live-on-dark (:53).
+      const badDark = { ...DARK, canvas: "#d2a86b" };
+      expect(await errorCode(() => saveKitWith(tx, LIGHT, badDark))).toBe("55000");
+
+      // DARK (#0a0a0a canvas, #1a1a1a surface) is far from #d2a86b and saves.
+      const [row] = await saveKitWith(tx, LIGHT, DARK);
       expect(row.org_id).toBe(f.a.id);
     });
   });
