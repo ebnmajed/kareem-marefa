@@ -2989,3 +2989,259 @@ with the iframe in the lower half — a picture of the instrument rather than of
 cells whose entire purpose is «can this be READ» cannot be judged from a thumbnail of the pane the
 mail sits in. They now screenshot the element **inside** the frame, which is the rendered mail and
 nothing else.
+
+---
+
+# Wave 11 plan — the string path retired (`DEC-081`, `DEC-161` R3, `REQ-NTF-007`, `REQ-NTF-014`)
+
+Planning only; nothing below is built until the lead approves. Read from the tree at `b8a51f6`, not
+remembered: `packages/mail-runtime/src/{render,compile,designs,templates,samples}.ts`,
+`worker/src/tasks/{send_notification,send_test_email}.ts`, `src/lib/dal/notifications.ts`
+(`compileEmailPreview`, `saveTemplate`, `deleteTemplate`), `src/app/[locale]/app/admin/emails/{page,actions,template-editor}.tsx`,
+`0026`'s `notification_templates`, `tests/unit/mail-pinned{.test,.fixtures}.ts` and the 116 files
+(unmoved since `38a6f46`), and every test that calls `renderEmail()`.
+
+## Y0. The headline
+
+**Every message resolves to a block document, and the renderer has one path.** `renderEmail()` picks the
+document in this order, and compiles it with the compiler that already exists:
+
+| The org's row for the key | What is compiled | Subject |
+|---|---|---|
+| **no row** (every untouched org, every untouched key) | `platformDesign(key)` — the key's design from the package's eight | `DEFAULT_TEMPLATES[key].subject`, as today |
+| a row with `blocks` (an adopted or authored design) | the row's `blocks`, as today | the row's |
+| ★ **a row with `blocks is null` — an admin's EDITED string template** | **the admin's own words**, converted at render time: one `paragraph` block per paragraph of the row's `body` (the same blank-line split `toParagraphs()` has always applied), after the logo block — in the design's frame | the row's |
+
+**No SQL, no migration, no row written.** The conversion happens in the renderer, every send, from the
+row as it stands — so there is nothing to backfill, nothing for `main`'s old worker to misread, and the
+change is reverted by reverting one commit.
+
+## Y1. N1 (a) — an org with NO row receives its key's design
+
+`platformDesign(key)` exists for all 25 keys (`designs.ts`, pinned by `mail-designs.test.ts`'s «all 25»).
+The subject stays `DEFAULT_TEMPLATES[key].subject`: the design documents carry no subject (`DEC-161` D1 —
+the subject lives on the row), and the 25 default subjects are the platform's subjects. **So the 29
+`*.subject.txt` files do not move**, and the review asserts it (§Y5). `TemplateMissingError` keeps its
+meaning: a key with neither a document nor a subject is a matrix bug and dead-letters with the key named.
+
+`DEC-161` R3's «adoption is explicit … until M13» ends here, by its own terms: `REQ-NTF-014`'s «no key
+falls back to unstyled text» becomes true for an untouched org, and `REQ-NTF-009`'s «byte-identical for
+an untouched org» is retired with the path it described — that is the reviewed diff, not an accident.
+
+## Y2. ★ N1 (b) — an org that EDITED a string template keeps its words
+
+**Convert — never discard, never refuse.** A `blocks is null` row exists only because an admin wrote it:
+nothing in the product seeds `notification_templates` (no insert in any migration; `create_org()`
+writes none; «restore default» is a `delete`). So every such row is an act, and its words are kept:
+
+- **The words are the admin's, byte for byte.** Each blank-line-separated paragraph of `body` becomes one
+  `paragraph` block with that text as its template — bindings intact, interpolated per member exactly as
+  the string path interpolated them. Nothing is added to what the member reads **except** what every
+  design carries: the logo band (when the org has a public PNG/JPEG logo) and the composed footer with
+  the preference link (`REQ-NTF-005`, which the string path never carried).
+- **The subject is the row's**, untouched.
+- **No heading, no button, no session card is invented.** The admin did not write one. A `{{url}}` line
+  in their body renders as the link text it renders today.
+- **Nothing is written to the row.** The editor still opens a `blocks is null` row in the string editor
+  wave 8 built; its preview now shows the framed mail, because the preview is `renderEmail()`. The admin
+  can keep editing words (the row stays a string row, framed at send), press «حوّله إلى تصميم» (§X9,
+  built — stores the same paragraphs as blocks, so the mail does not change), or «ابدأ من تصميم جاهز»
+  (adopt the design, their words replaced **by their own choice**).
+- **Three named differences for such an org**, each visible in the pinned case `MSG-reminder_1d.org-text`
+  (§Y5): (1) the frame — the design's stack, `color-scheme: light`, the logo band and the preference
+  footer; (2) the text part gains the U+2068/U+2069 isolates around every bound value (the compiler's
+  bidi rule, `designer`'s D3a) and the preference line; (3) a bound value that itself contains a blank
+  line — an admin-typed `{{reason}}` — stays inside one paragraph as two `<br />` rather than splitting into
+  two cells. Words identical in all three.
+
+**Rejected:** *keep* the string path for edited rows (it is the path `DEC-081` removes, and N2 could not
+land); *refuse* to send until the admin converts (a member misses a reminder because an admin edited a
+template in M3); a **data migration** converting rows (a one-off data fix as a migration, `CLAUDE.md`'s
+rule 3 — and a second copy of the conversion, in SQL). And I recommend **no special case for a row whose
+text is verbatim today's default**: the row is still the admin's act, the read below tells us whether any
+exist, and «ابدأ من تصميم جاهز» is one press.
+
+### ★ The production read — the owner runs it, read-only
+
+It returns **no text and no personal data**: the org's slug, the key, how the row compares with today's
+default (by MD5, computed from `packages/mail-runtime/src/templates.ts` at `b8a51f6` — the same through
+`src/` and through `dist/`, checked), a length and two dates.
+
+```sql
+with defaults(key, subject_md5, body_md5) as (values
+    ('MSG-account_deactivated', '41ac6e389825755ff60a34da9cd592e2', '7a7d5d6dce7d452304c7f18a2d8aeeb9'),
+    ('MSG-badge_earned', '7c52efb8bcfd1b41645afa75964f6188', '50519780ffdb71015d91b614a013e21a'),
+    ('MSG-certificate_issued', 'a2f60d0fbe3f4e45e0272f5309a24e5e', 'bf891aa11689281e1eac07c565f21ebb'),
+    ('MSG-certificate_revoked', '3538474c53fc0af5b4233dfe8e90d76a', '86844fe51bab198139e7c8a402a9e500'),
+    ('MSG-comment_reply', '437537f39ff984e1b6dde05bde583fe3', 'c2a86701ed506a4d513d4a532ff9c5c4'),
+    ('MSG-copresenter_invited', '9cd59aca361595522790a0bff29d4cf8', 'd72acbd55ec1d99f86f340812aa084af'),
+    ('MSG-export_ready', 'ae145f3b9230a0234b014de0f75c681c', 'bcfa2e177b9867b9a20732ac4a1b1863'),
+    ('MSG-level_reached', 'd35938479238a7346a2f27a11e48bb7f', 'b697572c8bcf813f3e2fe2db91942726'),
+    ('MSG-materials_added', '0b3f8970b11a5d515fee1683ece68dcc', '215ae58f4151848f31d2cb3325d63616'),
+    ('MSG-mentioned', '80ac0043cdfffdb289a3ee3ce068373a', 'abcb58572055f47a53d4e5ca8c07f2c3'),
+    ('MSG-presenter_assigned', '64a61d88a78a9f8ba466ce7665fa33d9', '5928c6717c4d7cec71cef1a04c3b7f75'),
+    ('MSG-proposal_approved', '3a6f0c86860fa630178866bb6159953a', '62f4e4845f8fe6cfb681c89065bf0e40'),
+    ('MSG-proposal_changes', '65d2a1076992cbe9d0f2a21b762a2264', 'ee519ec114715ffd6f4c8a596479e936'),
+    ('MSG-proposal_rejected', '8059108b725b9c7aa35463dfe053aa92', 'd72e72cfb213b66199a982d8b0f7bbf5'),
+    ('MSG-proposal_submitted', '7f993d891b3b86af2f63ad7165642aea', 'c3970905804485b7d192e55f380e996e'),
+    ('MSG-rating_prompt', '3323326c7ca32f39191385ddd530bf68', '1a4849dfc357f2bb11a442b320f79f54'),
+    ('MSG-reminder_1d', '00b3240db4922a0b868b9605c5ca5383', 'da9b4c36c8c1446b7181284def518d73'),
+    ('MSG-reminder_2h', '00de968430280fa8f0dff3424a35cf74', 'a979937ebf15370fd3606991cc92857f'),
+    ('MSG-reminder_7d', 'e5f1a456dd596b414a92e59de193fa77', 'ddc2ac555344edca5f763a4eb70c338a'),
+    ('MSG-reminder_generic', '9b859eb7e8f15851aba30c63ee419c2d', '76ddfbe9521dd0df8de7ce535e1247e9'),
+    ('MSG-role_changed', '711b4c529eee48e1d39ff8cd09828816', '166da8444b58b0f629a9638cdd003efd'),
+    ('MSG-rsvp_promoted', 'c633d2dc6158a0ea3ccb6ecdc9f4e730', '5cafc562e2e04df097b53e91be4c52d9'),
+    ('MSG-session_cancelled', 'fabfb16d8218109f7657117337621042', 'ea3a6f4f9c811f884a71f0d9f12fe08a'),
+    ('MSG-session_changed', '4560060237a1e7bcb8140b7cafbf6b46', '115f5ce174054ceb86c0fbd435d4c758'),
+    ('MSG-session_published', '49311ae8748d65769f43de6c8172bb42', '1479137bda59bc0e787ca3fae28fcc2c'))
+select o.slug, t.key, t.channel, t.locale,
+       case when t.blocks is not null                                                   then 'design'
+            when md5(t.subject) = d.subject_md5 and md5(t.body) = d.body_md5            then 'string_verbatim_default'
+            when md5(t.body) = d.body_md5                                               then 'string_subject_edited'
+            else                                                                              'string_edited' end as kind,
+       t.source_family, char_length(t.body) as body_chars,
+       t.created_at::date as created, t.updated_at::date as updated
+  from public.notification_templates t
+  join public.orgs o on o.id = t.org_id
+  left join defaults d on d.key = t.key
+ order by o.slug, t.key, t.channel;
+```
+
+`supabase db query --linked "<the above>"`. **What each answer means:** zero rows — (b) is latent and the
+retirement changes only untouched mail; `string_edited` / `string_subject_edited` rows — those orgs keep
+their words in the frame, and their admins are the people to tell (the PR body lists the slugs, never the
+text); `string_verbatim_default` rows — same treatment under my recommendation, and the owner may rule
+otherwise; `design` rows — unaffected, already on the block path. A `channel = 'in_app'` row is outside
+this change (`renderEmail()` renders email only). A default saved under an **older** default text reads
+`string_edited`, which is the conservative direction.
+
+## Y3. N1 (c) — `main`'s old worker, and the windows
+
+**The plan needs no SQL**: no function, trigger, grant or column changes, so the push-before-merge window
+is empty for this row. Two windows remain, both named for the owner's order:
+
+1. **Merge → Railway redeploy.** Vercel deploys the new app at merge; the worker moves only when the
+   owner reconnects the source (five merges running). In between, **the preview and «أرسل اختبارًا»'s
+   preview show the design while the old worker still sends the string mail** — for an untouched org the
+   admin sees a design members do not yet receive. No data is wrong and nothing is lost; the window closes
+   when the owner's standing post-merge step is done. The test send is the worker's too, so it matches
+   whatever the worker sends.
+2. ★ **`APP_URL` on Railway.** A design's buttons and its preference link need the origin; unset, a
+   design renders with neither (the button is dropped, never relative). Today's string mail is linkless
+   when it is unset too, so it is not a regression — but `REQ-NTF-005`'s preference link and every CTA
+   depend on it. **The owner's read list gains «`APP_URL` is set on the Railway worker»** (it was the
+   wave-10 post-merge step). The worker logs one warning per job when it is unset, never a payload.
+
+## Y4. N1 (d) — `renderEmail()`'s signature and every caller
+
+**`renderEmail(input: RenderInput): RenderedEmail` — unchanged, field for field.** `RenderInput` keeps
+`override?: { subject, body, blocks? } | null`, the `LegacyBrand | FullBrand` union, `logoUrl?`, `appUrl?`;
+`RenderedEmail` keeps `dropped`. The behaviour change is inside. **One new export**,
+`emailDocumentFor(key, override): EmailBlockDocument | null` — the resolution in §Y0 as a function, so a
+caller that must know what will be compiled asks the renderer instead of re-deriving it.
+
+| Caller | Change |
+|---|---|
+| `worker/src/tasks/send_notification.ts:132` | **none** — it passes `ctx.template` (null, string or blocks) as today |
+| `worker/src/tasks/send_test_email.ts:106` | **none** — «the saved row, or the platform default» now means the design |
+| `src/lib/dal/notifications.ts:438` (`compileEmailPreview`) | two lines: `wantsCard` asks `emailDocumentFor()` rather than reading `blocks` (a no-row key now carries a card and must be asked for its image); the «empty body falls back to the default BODY» branch becomes «no body and no blocks previews the platform design» |
+| `src/app/api/admin/emails/preview/{route,simulate}.ts` | none — they call the DAL |
+| tests — `mail-pinned`, `mail-pin-write`, `mail-render`, `mail-instants`, `mail-links`, `mail-blocks`, `mail-designs` | §Y6 |
+
+Editor copy, keys stable (`src/messages/{ar,en}/notifications.json`, Arabic first): `editor.usingDefault`
+«تصل هذه الرسالة بالقالب الافتراضي، ونصه لا يظهر هنا بعد…» and `editor.restoreBody` «…وتصل من الآن
+بالنص الافتراضي…» become false and are rewritten to say «بالتصميم الافتراضي»; a new
+`editor.framedNote` on a string row: «تصل كلماتك كما كتبتها، داخل إطار التصميم.»
+`wave8-console-emails.spec.ts` asserts none of these three strings — it asserts `overridden`, the
+restore toast and the confirm button, which do not change. ★ **But `tests/components/admin/emails-page.test.tsx:144`
+asserts `usingDefault`'s exact words**, and they are the words that become false. Ledger line: *«the
+sentence under the editor's heading said an untouched key arrives as the default TEXT; after `DEC-081`
+it arrives as the default DESIGN, so the asserted copy follows the product; the refusal, the field named
+and the kept values are unchanged.»* That is a changed expectation on an untouched org, so it sits under
+the same planned exception as the pin, and I name it rather than let it pass as a selector.
+
+## Y5. The pinned files — which move, why, and how the lead reviews them
+
+**One regeneration, one commit, never piecemeal.** The writer is still `mail-pin-write.test.ts` under
+`MAIL_PIN_WRITE=1`, set nowhere.
+
+- **Move — 87 files**: `<id>.txt`, `<id>.brand.html`, `<id>.plain.html` for all 29 cases —
+  `MSG-{account_deactivated, badge_earned, badge_earned.hostile, certificate_issued, certificate_revoked,
+  comment_reply, copresenter_invited, export_ready, level_reached, materials_added, mentioned,
+  presenter_assigned, proposal_approved, proposal_changes, proposal_rejected, proposal_submitted,
+  rating_prompt, rating_prompt.no-display-name, reminder_1d, reminder_1d.day2of3, reminder_2h,
+  reminder_7d, reminder_generic, role_changed, rsvp_promoted, session_cancelled, session_changed,
+  session_changed.day2of3, session_published}`. Why: an untouched org now receives its key's design.
+- **Do not move — 29 files**: every `<id>.subject.txt` (§Y1). `git diff --stat -- 'tests/unit/mail-pinned/*.subject.txt'`
+  is empty, and the review states it.
+- **New — 4 files**: `MSG-reminder_1d.org-text.{subject.txt,txt,brand.html,plain.html}` — an edited
+  string row (`override: { subject: "غدًا: {{title}}", body: <an admin's three paragraphs>, blocks: null }`),
+  pinning §Y2's conversion. Its row lives in `mail-pinned.fixtures.ts`, not in `SAMPLE_CASES`, so the
+  preview's samples do not change. 30 cases, 120 files.
+- ★ **The harness gains two inputs in the same commit**, or the pin records a mail nobody sends:
+  `appUrl: "https://app.kareem.example"` for every render (a design without an origin drops its button
+  and its preference link), and `logoUrl` for the `.brand.html` render only (so `.plain.html` pins the
+  no-logo branch). Both are constants in `mail-pinned.fixtures.ts`; the text part stays brand- and
+  logo-independent, and the existing assertion that it is keeps passing.
+
+**The review package** — one directory, `.qa-shots/mail-review/wave11-n1/`, written by a scratchpad
+script (not `scripts/**`, which is the lead's), from two renderers: **before** = `b8a51f6`'s package
+rendered with the **new** harness inputs (so the only difference the lead sees is the retirement, not the
+origin), **after** = the commit's. Per case: `before.html`, `after.html`, `before.txt`, `after.txt`,
+`text.diff`, and **two 390 px captures** from the real Chromium — `before.png`, `after.png`, the full
+height of the mail, **never downscaled** — plus an `index.html` listing the 30 cases with both captures
+side by side and the text diff below. The lead opens the PNGs **in bands**, as every capture this repo
+has; I name in the message the cases I would look at first: `session_changed.day2of3` (the change
+block), `badge_earned.hostile` (escaping), `rating_prompt.no-display-name`, `reminder_1d.org-text`,
+`session_cancelled` (no image, no action), `export_ready` (the serial row dropped).
+
+## Y6. The existing tests this changes — measured at N1, predicted now
+
+★ **A deviation I ask the lead to approve**: the tests that assert **untouched-org string bytes** go red
+**at N1**, because N1 is when the string path becomes unreachable — so they are retired or re-aimed in
+**N1's** commit, and **N2 — deleting the dead code — then changes no test and no pinned byte**, which is
+its proof. The ledger line for each retired case is the lead's wording: «the path they pinned no longer
+exists — `DEC-081`». Predicted, from reading; the build measures and I list the actual red set in this
+note before committing:
+
+- `mail-pinned.test.ts` — the render helper passes `appUrl`, `logoUrl` and a row's `override`; every
+  assertion unchanged in shape (byte equality, the file set, no Arabic-Indic digit, subject and text
+  brand-independent, two HTML parts differ). *The one planned exception, rule 4.*
+- `mail-designs.test.ts:94` «a key with no row still renders the STRING default» — **inverted by
+  design**: `DEC-161` R3 pinned explicit adoption «until M13», and this is M13. Rewritten as «a key with
+  no row renders its design».
+- `mail-links.test.ts:24` «every key renders byte for byte its pinned file when `appUrl` is absent» —
+  retired (the pin now carries an origin); `:84` checked against the design's `label: url` line.
+- `mail-render.test.ts` — the §3.1 constraint cases (`:64`–`:97`) keep their assertions and render a
+  design; `:79` «declares a fallback font stack» is checked against `DESIGN_STACK`; `:147` «the org's
+  template wins» keeps its expectation (the admin's subject and words appear).
+- `mail-blocks.test.ts` — the cases asserting the two paths **diverge** (isolation on one, not the
+  other; `color-scheme` on one, not the other — `DEC-162`) retired.
+- `mail-instants.test.ts`, `mail-day-words.test.ts` — expected green (formatting and the day phrase
+  are shared by both paths).
+- **e2e**: `wave8-console-emails` — no case changes (§Y4). `wave9-notify-days`' Mailpit case (untouched
+  org, real worker) asserts only that the mail arrives and captures it — it stays green, and its capture
+  `wave9-notify-mail-day-2.png` becomes the design's, which the lead's real-worker run regenerates and
+  opens (the change paragraph must still say «الموعد · اليوم الثاني»). `wave10-notify-{studio,forced-dark}`
+  and the lead's `wave10-demo-email-studio` preview adopted designs — expected unchanged.
+
+## Y7. N2 and N3
+
+**N2**, after N1 is approved and landed: `render.ts` loses `toHtml()`, the string branch of
+`renderEmail()`, `ShellOptions` (both paths are the block path — `declareScheme: true`, `DESIGN_STACK`
+always), and `FALLBACK_STACK` if nothing else reads it. `toParagraphs()`' split survives inside the
+converter. `interpolate()` stays (the subject). `DEFAULT_TEMPLATES` keeps its 25 subjects; its bodies
+stay too — they are the string editor's starting text and the read's MD5 source — and the file's header
+says what they are now for. Proof: `tsc`, the pin unmoved, no test file in the diff.
+
+**N3** waits on the lead's L6 rows for `/app/admin/emails` and `/app/me/{notifications,calendar}`; each
+arrives as rule · selector · route and is fixed in the owning file with its own test.
+
+## Y8. From the lead — nothing in the schema; three answers
+
+- **Schema: none.** No column, table, function or grant. My SQL directory stays empty this wave.
+- **Q1** — approve the deviation in §Y6 (tests retired at N1, N2 test-free)? *I recommend yes.*
+- **Q2** — no special case for `string_verbatim_default` rows (§Y2)? *I recommend yes; the read may
+  make it moot.*
+- **Q3** — the owner's order gains two read-only lines: this note's query, and «`APP_URL` is set on the
+  Railway worker». *Both before the push.*
