@@ -202,7 +202,16 @@
             "unknownMessageKey": "This message is not in the notification matrix, or is not sent by email.",
             "notPermitted": "This page is for organisation admins.",
             "failed": "The template could not be saved. Try again."
-          }
+          },
+          "properties": "Block properties",
+          "selectABlock": "Choose a block to edit its properties.",
+          "text": "Text",
+          "label": "Button text",
+          "urlBinding": "Link field",
+          "urlBindingHint": "The name of the field carrying the link, from the list below.",
+          "alt": "Alt text",
+          "altHint": "What someone who cannot see the image is told.",
+          "availableFields": "Available fields"
         },
         "deliveries": {
           "heading": "Delivery log",
@@ -277,6 +286,45 @@
             "title": "The preference footer is always present",
             "reason": "It is appended to every message and cannot be deleted."
           }
+        },
+        "blocks": {
+          "heading": "Blocks",
+          "listLabel": "Message blocks",
+          "remove": "Remove",
+          "footerRow": "Preference footer — always appended, and cannot be deleted or moved",
+          "type": {
+            "heading": "Heading",
+            "paragraph": "Paragraph",
+            "button": "Button",
+            "session_card": "Session card",
+            "detail_list": "Detail list",
+            "divider": "Divider",
+            "spacer": "Spacer",
+            "image": "Image"
+          },
+          "add": {
+            "heading": "Add a heading",
+            "paragraph": "Add a paragraph",
+            "button": "Add a button",
+            "session_card": "Add a session card",
+            "detail_list": "Add a list",
+            "divider": "Add a divider",
+            "spacer": "Add a spacer",
+            "image": "Add an image"
+          }
+        },
+        "preview": {
+          "heading": "Live preview",
+          "modesLabel": "Preview mode",
+          "refresh": "Refresh the preview",
+          "frameTitle": "The message as a member receives it",
+          "mode": {
+            "phone": "Phone",
+            "desktop": "Desktop",
+            "text": "Plain text",
+            "dark": "Forced dark"
+          },
+          "darkNote": "Simulation: this is not the message that ships. It models what a client forcing dark mode does to it — substituting colours and leaving images alone."
         }
       },
       "reminders": {

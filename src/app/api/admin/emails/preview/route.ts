@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { compileEmailPreview } from "@/lib/dal/notifications";
+import { simulateForcedDark } from "./simulate";
 
 // POST /api/admin/emails/preview — SCR-058's live preview (REQ-NTF-010,
 // `16` §11.4, DEC-161, `04` §4).
@@ -35,6 +36,10 @@ const previewInput = z.object({
   /** The editor's unsaved document, as JSON. Absent renders the string path. */
   blocks: z.string().max(200_000).optional(),
   mode: z.enum(["html", "text"]).default("html"),
+  /** `dark` appends the forced-dark SIMULATION — see `./simulate.ts`. It is
+   *  the one mode whose bytes are not what ships, and it is named everywhere
+   *  it appears. */
+  simulate: z.enum(["", "dark"]).optional(),
 });
 
 /**
@@ -80,6 +85,7 @@ export async function POST(request: Request): Promise<Response> {
     body: form.get("body") ?? undefined,
     blocks: form.get("blocks") ?? undefined,
     mode: form.get("mode") ?? undefined,
+    simulate: form.get("simulate") ?? undefined,
   });
   // Zod before anything else (CLAUDE.md), and a refusal that says nothing: a
   // preview is an admin surface and its errors belong on the screen, not in a
@@ -95,7 +101,7 @@ export async function POST(request: Request): Promise<Response> {
   // must not tell a non-admin which message keys exist.
   if (!preview) return respond("not_found", "text/plain; charset=utf-8", 404);
 
-  return parsed.data.mode === "text"
-    ? respond(preview.text, "text/plain; charset=utf-8")
-    : respond(preview.html, "text/html; charset=utf-8");
+  if (parsed.data.mode === "text") return respond(preview.text, "text/plain; charset=utf-8");
+  const html = parsed.data.simulate === "dark" ? simulateForcedDark(preview.html) : preview.html;
+  return respond(html, "text/html; charset=utf-8");
 }
