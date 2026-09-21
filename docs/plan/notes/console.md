@@ -1,5 +1,7 @@
 # `console` — wave 3 (M7-console + SCR-011)
 
+> ★ **Wave 11 (M13, `DEC-166`) — the plan is the last section of this file:** *Wave 11 plan — K1 … K3*.
+
 Written before code, updated as bundles land. Read `notify.md` §6.1, `scoring.md`'s wave-3
 handoff and `content.md` §5 first — they describe what I inherit and where the gaps already are.
 
@@ -2234,3 +2236,140 @@ provider's text from its left edge, the reminders one row each); K5 at `79d22c0`
 motion reduced, and `ui/combobox` scrolling its open list clear of the phone tab bar — the member picker had
 opened under it). Carried by the lead to M13, not changed this wave: `controlClass`' `w-full` beats a caller's
 `w-*`, so every narrow `Input`/`Select` renders full width; `DurationInput` sizes wrappers meanwhile.
+
+---
+
+## Wave 11 plan (`DEC-166`) — 2026-09-22 — K1 … K3, planning only, nothing edited but this note
+
+Measured at `b8a51f6`: `node scripts/ui-lint.mjs --strict` lists **23** violations in my files — the 21 the
+brief counted plus the attendance page's 2. Every one is one of four shapes, so the plan is by shape first,
+then file by file.
+
+| Shape | Where | Becomes |
+|---|---|---|
+| **A** — a form-level error drawn as a bordered box (`p[role=alert].rounded-field border border-edge-strong`) | `categories/category-form:41`, `companies/company-form:41`, `venues/venue-form:55`, `settings/settings-form:84`, `sessions/direct-session-form:88`, `proposals/review-card:80` | one new `src/components/admin/form-alert.tsx` — `<p role="alert">` + `AlertCircleIcon` + `text-error`, the pattern `reminders-form.tsx:194` and `scoring/*-form.tsx` already use. Same element, same role, same text: every `getByRole("alert")` / `getByText` still resolves |
+| **B** — a surface borrowing the control's class string (a box that is not a control) | `admin/page:75` (the attention tile), `sessions/page:83` (a ready-to-schedule row), `attendance/page:97` (summary), `attendance/page:318` (a rating) | `ui/panel` for the three static boxes, wrapped so the landmark stays what it is (`<section aria-labelledby="summary"><Panel>`, `<li><Panel>`); `ui/card density="row" href` for the dashboard tile — it is a whole-surface link, which is what `Card` is. The link's name and `toHaveText(/2/)` are unchanged (`admin-dashboard.spec.ts:236–254`) |
+| **C** — a raw `<textarea>` with a hand-made label and hint | `review-card:181` (+ its class string `:187`), `session-controls:118` (+ `:123`) | `<Field label hint><Textarea rows={3} name maxLength defaultValue/></Field>`. Same `name`, `rows`, `maxLength`, `defaultValue`; the label text is identical and not `required` (the reason is enforced in the action — both files explain why), so `getByLabelText("سبب الرفض …")` / `("سبب الإلغاء …")` still match exactly. The hint gains `aria-describedby`, which it never had. `min-h-24` is dropped: with `rows` given `Textarea` sets no floor, and a second `min-h-*` would fight `min-h-11` by emit order |
+| **D** — a `<summary>` styled as a secondary button | `review-card:169`, `session-controls:110` | `buttonClass("secondary", "md"/"lg", "cursor-pointer list-none")` from `ui/button` — a `<summary>` cannot be `<Button>`, and the lead's exported class function is the system's answer for exactly that |
+
+**Shape C's one deliberate change, for the lead to rule on:** both textareas carry hand-written ids —
+`cancel-reason` and `${decision}-reason` — and both are rendered **once per row** (`sessions-table.tsx:206`
+renders `SessionControls` for every session with actions; `proposals/page.tsx:54` a `ReviewCard` per
+proposal). Two cancellable sessions today give two `id="cancel-reason"` and the second label points at the
+first textarea — an axe `duplicate-id` and a wrong label. Letting `<Field>` generate the id (`useId`) fixes it.
+Rule 3 says ids stay; **no test or spec reads either id** (grepped `tests/**`), so I propose the generated id
+and ask for a yes.
+
+### `rtl-datetime-picker.tsx` (5) — the decision
+
+**The picker composes `ui/field` + `ui/select`, not `ui/date-time`**, and stays where it is.
+`ui/date-time` *is* this picker behind `DateTimeProps` (it renders `RtlDateTimePicker`), so the picker
+composing it would be a cycle; and moving the picker into `ui/` to escape the linter is the thing the
+linter's exclusion comment exists to forbid.
+
+- **Hour and minute** (`:321`, `:331` — rule `field` and `class-string` each): each becomes
+  `<Field label={hourLabel}><Select value onChange dir="ltr">…</Select></Field>`, side by side in a
+  `grid grid-cols-2 gap-3`. ★ **The inner `<Field>` is load-bearing, not decoration**: when the picker sits
+  inside `ui/date-time` inside a caller's `<Field>`, a bare `ui/select` would read the **outer** Field's
+  context and take its id — the trigger's id — plus its `aria-required`/`aria-invalid`. The inner Field's
+  provider shadows the outer one. Not `required` (the marker would join the name and `getByLabelText("الساعة")`
+  is exact in `date-time.test.tsx:105`).
+- **The popover surface** (`:274`): `rounded-card border border-edge bg-canvas shadow-[var(--shadow-card)]`,
+  `ui/menu`'s floating surface — it is a surface, not a control.
+- **RTL:** unchanged. `dir="ltr"` stays on both selects (digits in Western order, `DEC-124`); the grid follows
+  the document's direction, so «الساعة» sits at the inline start in Arabic as it does today.
+- **Keyboard:** unchanged in order and in kind — both are still native `<select>`s (arrows, type-ahead, the
+  platform picker on a phone), and Tab still runs month ◀ ▶ → days → hour → minute → اليوم / امسح / تم.
+  The labels move from wrapping (implicit) to `htmlFor` (explicit); a click on the label still focuses the
+  select. The selects grow from ~30 px to `md`'s 44 px — above the `SC 2.5.8` floor they were below.
+- **Form reset:** the selects carry no `name`, but they live inside the caller's `<form>`; `ui/select`'s
+  controlled path re-selects `value` after React's post-submit reset (`DEC-149` §1), which the raw ones never did.
+- **Found, not in K1:** Escape and «تم» unmount the popover while focus is inside it, so focus drops to
+  `<body>` (`SC 2.4.3`). The fix is to return focus to the trigger; I hold it for K3 unless the lead's sweep
+  lists it first.
+
+### K2 — the attendance screen at 390 px (`/app/admin/sessions/[id]/attendance`)
+
+**What is wrong today, measured from the code:** the table has an inline `minWidth` of `420 + n × 140` px at
+`n ≥ 2` (700 px at two days, 840 at three) and **560 px at one day** — so at 390 px it scrolls sideways at
+**every** `n`, one day included; the carried row names only two up. The fix must be `n`-general (no
+`if (isMultiDay)` in a reader): the phone layout must not grow in width with `n`.
+
+**Recommendation — one `<table>`, reflowed into stacked cards below `md`, semantics pinned.**
+
+- **At `md` and up: the table exactly as it is.** The `minWidth` moves from the inline style into a CSS
+  variable applied only at `md` (`md:min-w-[var(--table-min)]`), so the desktop table and its
+  `overflow-x-auto` region are unchanged.
+- **Below `md`:** `thead` is visually hidden (it stays in the accessibility tree, so a screen reader still
+  navigates a table with headers); each `<tr>` is a card (`ui/card`'s tokens); the first cell is the card's
+  title (the name); every other cell is a line `label · value` whose label is the column header, drawn
+  `aria-hidden` (the header association already names the cell). Explicit `role="table|rowgroup|row|columnheader|cell"`
+  on the elements, because `display: block` on table parts can drop their implicit roles.
+- **By `n`:** at **one day** — name; الحالة; وقت الوصول; الطريقة (four lines, wave 7's columns). At **two** and
+  **three** — name; الحالة (with the removal reason under it); **one line per day** («اليوم الأول · حاضر ·
+  9:12»); الأيام («2 من 3» + مكتمل). A card grows **downwards** by one line per day, never sideways; at 390 px
+  the widest line is a day line, ~260 px. Nothing is dropped at any `n` — unlike `DataTable`'s card mode, which
+  keeps only `onCard` columns.
+- **No new strings**: every label is an existing `checkin.attendance.*` or `sessions.days.*` key. If the
+  capture shows one is needed, it is a request (`checkin.json` is not mine).
+
+**Why not `DataTable`, which is the house rule:** (1) `DataTable` renders the desktop table **and** a `<ul>`
+at once, so on the phone project every `getByRole("cell" | "row" | "columnheader")` on this page stops
+resolving — `admin-attendance.spec.ts:208–216, 237, 356–358`, `wave9-checkin-days.spec.ts:313–321` and
+`wave9-checkin-one-day.spec.ts:197–199` all run at 390 px on the `phone` project, and the last two are
+lead-held evidence that one day is unchanged; (2) the page is a Server Component and `DataTable` takes
+`cell` closures, so it needs a client wrapper re-deriving what the page already formats. The reflowed table
+keeps every one of those locators resolving on both projects, with no ledger line. ★ **The one thing to say
+plainly:** the phone project's `columnheader … toBeVisible()` then passes on a visually-hidden header (a
+1 × 1 box is «visible» to Playwright) — it proves the header is in the tree, not on screen. I would rather
+say that here than have a capture find it. **If the lead prefers `DataTable`**, I build that instead and the
+ledger lines are exactly the seven locators above, the two `wave9-checkin-*` ones as requests.
+
+**«مطلوب» on the manual-mark form** (`DEC-109`, carried): `required` on the three `<Field>`s — day (at
+`n ≥ 2`), member, reason — and the reason's hand-set `aria-required` goes (the Field supplies it). The marker
+joins the accessible name by design (`field.tsx`'s comment), so three locators that match the label
+**exactly** move — a selector, not an expectation:
+
+| File | Line | Owner | Change |
+|---|---|---|---|
+| `tests/e2e/admin-attendance.spec.ts` | 376 | mine | `{ exact: true }` → `{ exact: false }` — ledger line |
+| `tests/components/checkin/attendance-days.test.tsx` | 70, 78, 90, 92 | lead (custodian of `checkin`) | `{ exact: false }`, as its own lines 72, 103, 108 already do — **a request** |
+| same file | 137 | lead | `queryByLabelText("اليوم")` stays null but becomes vacuous; `{ exact: false }` keeps it meaning something (line 145 already does) — **a request** |
+
+**Question:** the removal form's reason is just as mandatory (`REQ-CHK-017`) and is not in the carried row.
+Mark it too, for consistency, or leave it as scoped? I leave it unless told.
+
+The CSV does not change (`DEC-157`); `actions.ts`, `state.ts` and `remove-check-in-form.tsx` are untouched.
+
+### K3
+
+Waiting on the lead's sweep rows and the budgets run for SCR-040 (≤ 3.0 s LCP, ≤ 250 KB JS). Candidates I
+already know of: the picker's focus return (above); the duplicate textarea ids (shape C); the attendance
+region's `tabIndex={0}` becoming a tab stop that scrolls nothing below `md` (I would make it `md`-only via the
+same reflow).
+
+### Requests of the lead
+
+1. **None of `sessions'` eight primitives needs to change for K1/K2.** `Field`, `Select` and `Textarea`
+   express every control above as they are. (Watched, not asked: `Select` has no `size`, so the picker's two
+   selects are 44 px — which is the floor anyway.)
+2. **Approve:** the generated ids for the two per-row textareas (shape C).
+3. **Rule:** K2's reflowed table vs `DataTable` (my recommendation: the reflow).
+4. **The `attendance-days.test.tsx` edit** in the table above, with its ledger line, when K2's «مطلوب» lands.
+
+### Order, and the specs that prove each unchanged
+
+One commit per unit, `node scripts/ui-lint.mjs --prune` after each, `npm run ui-lint` before each.
+
+| # | Unit | Proven unchanged by |
+|---|---|---|
+| 1 | shape A + `form-alert.tsx` (6 files) | `form-summary-links.test.tsx`, `managed-lists-status-badge.test.tsx`, `proposals-review-card.test.tsx`; e2e `admin-managed-lists`, `admin-settings`, `admin-sessions` |
+| 2 | shape B, dashboard + sessions page | `admin-dashboard-page.test.tsx`, `sessions-table.test.tsx`; e2e `admin-dashboard`, `admin-sessions` |
+| 3 | shapes C + D, `review-card` + `session-controls` | `proposals-review-card.test.tsx`, `session-controls.test.tsx`; e2e `admin-proposals`, `sessions-admin-proposals`, `admin-sessions` |
+| 4 | the picker | `rtl-datetime-picker.test.tsx`, `ui/date-time.test.tsx`, `sessions/schedule-days.test.tsx`; e2e `admin-audit` (date-only), and — not mine, all reading `picker.getByLabel("الساعة")` — `sessions-screens`, `wave8-lead-schedule`, `wave9-sessions-schedule-days`, `wave9-three-day-workshop` (one of them through the gate lock; the lead picks which) |
+| 5 | K2: the attendance page's two + the reflow | `admin-attendance.spec` on both projects, `wave9-checkin-days`, `wave9-checkin-one-day`, `attendance-days.test.tsx`, `remove-check-in-form.test.tsx`; **new** `tests/e2e/wave11-console-attendance.spec.ts` — a one-, two- and three-day session at 390 × 844 asserting `document.scrollingElement.scrollWidth ≤ innerWidth` and no scrolling region, and the desktop table unchanged; captures `wave11-console-attendance-{1day,2days,3days}.png` |
+| 6 | K2: «مطلوب» | the three ledger locators above, then the same set as 5 |
+| 7 | K3 | as the sweep's rows arrive |
+
+Captures of every changed screen at `.qa-shots/rtl/wave11-console-<surface>-<state>.png`, beside the wave-8
+and wave-9 ones; the picker needs a production build to be seen open, which is the lead's to run.
