@@ -141,10 +141,24 @@ was never the boundary — the status INK against the org's canvas and surface i
 
 ### The untouched-suite ledger
 
-A pre-existing `tests/**` file changes only with a line here saying why. **Empty at Step 0.**
+A pre-existing `tests/**` file changes only with a line here saying why.
 
 | File | Case | Why | Commit |
 |---|---|---|---|
+| `tests/components/tasks/create-form.test.tsx` | both `it()`s | `title` gained `<Field required>`'s «مطلوب» marker (REQ-UIX-011, DEC-166 sync 1 ruling 1) — the two `getByLabelText("عنوان المهمة")` calls move to `{ exact: false }` to match either way; the field, its label text and its behaviour are unchanged | `b48df60` |
+| `tests/components/viewer/page-viewer.test.tsx` | fixture only | `ViewerPageDTO` gained required `width`/`height` (C3, `render_pages.ts`'s stored dimensions threaded through to fix a CLS regression) — the three fixture rows gain `width: 1600, height: 900`; no assertion changed | `6ea202e` |
+| `tests/unit/mail-pinned/**` | 87 files changed (`.txt`, `.brand.html`, `.plain.html` × 29 cases), 4 added (`MSG-reminder_1d.org-text.*`); the 29 `.subject.txt` unmoved | the planned exception (rule 4): the string path retired, an untouched org receives its key's design — one regeneration, reviewed by the lead in `.qa-shots/mail-review/wave11-n1/` — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-pinned.fixtures.ts` · `mail-pinned.test.ts` · `mail-pin-write.test.ts` | the render inputs | the harness gains a fixed `appUrl`, a `logoUrl` on the branded render and the edited-row case, through one shared `renderPinned()`; every assertion unchanged in shape — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-blocks.test.ts` | «★ the STRING path does not isolate …» | the path they pinned no longer exists — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-blocks.test.ts` | «F1 — … a string mail declares nothing new», «F4 — … the string path keeps M3's stack» | the string halves removed — the path they pinned no longer exists — `DEC-081`; the design halves unchanged | `49b77b8` |
+| `tests/unit/mail-blocks.test.ts` | two titles: the bidi `describe`, «blocks: null is …» | titles only — they named the string path; assertions unchanged — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-links.test.ts` | «every key renders byte for byte its pinned file when `appUrl` is absent» | the path they pinned no longer exists — `DEC-081` (the pin now carries an origin; «no origin, never a relative link» stays pinned in `mail-blocks`) | `49b77b8` |
+| `tests/unit/mail-render.test.ts` | «uses tables for layout and inline CSS only» | «no `<style>` at all» becomes «the one `<style>` is F1's colour-scheme opt-out» (`DEC-162`), now on every mail — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-render.test.ts` | «uses the admin's subject and body instead of the default» | the admin's words asserted with the compiler's U+2068/U+2069 isolates set aside; subject assertion unchanged — `DEC-081` | `49b77b8` |
+| `tests/unit/mail-designs.test.ts` | «a key with no row still renders the STRING default …» | title and comment only — `DEC-161` R3's «until M13» is now; the assertions (the greeting, nothing dropped) pass unchanged — `DEC-081` | `49b77b8` |
+| `tests/components/admin/emails-page.test.tsx` | «★ the editor: the trigger's refusal at the body …», line 144 | the sentence under the editor's heading said an untouched key arrives as the default TEXT; after `DEC-081` it arrives as the default DESIGN, so the asserted copy follows the product; the refusal, the field named and the kept values are unchanged — approved at sync 1 under the planned exception | `49b77b8` |
+| `tests/rls/brand-kits.test.ts` | every case (fixture-level) | `LIGHT.canvas`/`LIGHT.surface` were `#111111`/`#222222` — a fixture colour the new status-contrast guard refuses (`--color-live`/`--color-ended` measured 2.70–3.32:1 against them, under the new 4.5:1). Changed to `#eeeeee`/`#f5f5f5`, which clear both status inks. No assertion in the file changed. | `38aa5ec` |
+| `tests/components/platform/platform-home-page.test.tsx` | its `vi.mock` factory | gains `listExhaustedJobs: vi.fn(async () => [])` — the home awaits a third read and a factory without it throws on import; no assertion changed | `2ab8041` |
 
 ### ★ The owner's order — a DRAFT from Step 0
 
