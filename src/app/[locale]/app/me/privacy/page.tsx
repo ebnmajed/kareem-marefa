@@ -7,6 +7,7 @@ import { getMyExportRequest } from "@/lib/dal/privacy";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Panel } from "@/components/ui/panel";
+import { buttonClass } from "@/components/ui/button";
 import { requestDeactivationAction, requestExportAction } from "./actions";
 import { DeactivationForm, RequestExportForm } from "./forms";
 
@@ -77,11 +78,11 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
                     `content-disposition: attachment`, so the browser saves it
                     without any JavaScript having to hold the bytes. */}
                 <p className="mt-4">
-                  <a
-                    href="/api/me/export"
-                    className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100"
-                    download
-                  >
+                  {/* A plain `<a download>`, not `ui/button`'s `<button>` — the no-JS path this
+                      comment already calls out needs a real link. `buttonClass()` is the
+                      exported helper `ui/button.tsx` builds its own class string from, read
+                      here rather than duplicating `rounded-field border border-edge-strong…`. */}
+                  <a href="/api/me/export" className={buttonClass("secondary", "lg")} download>
                     {t("exportDownload")}
                   </a>
                 </p>

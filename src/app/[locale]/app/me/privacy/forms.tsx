@@ -58,9 +58,11 @@ export function DeactivationForm({
   // admin then has to reconcile.
   if (state.ok) {
     return (
-      <p role="status" className="mt-4 rounded-field border border-edge-strong p-4 text-body text-fg-heading">
-        {t("deactivateSent")}
-      </p>
+      <Panel className="mt-4">
+        <p role="status" className="text-body text-fg-heading">
+          {t("deactivateSent")}
+        </p>
+      </Panel>
     );
   }
 
