@@ -3289,3 +3289,14 @@ the logger, and both were fixed in the product.
 > An org that has not touched a message's template receives that message's platform design; an org
 > that edited a string template receives its own subject and words, unchanged, in the design's frame;
 > and the rendered output pinned under `tests/unit/mail-pinned/` changes only by a reviewed diff.
+
+### ★ A finding the review package made — the mail is WIDER than a phone when it prints a bare URL
+
+Measured, not seen: 26 of the 30 **before** captures are 405–488 px wide at a 390 px viewport. The
+string path with `APP_URL` set prints `{{url}}` as a bare line, and an unbroken URL cannot wrap, so
+the page scrolls sideways — **that is production's mail today, since the owner set `APP_URL` after
+wave 10**. Every design is 390 (the link is a button). One case stays wide after N1:
+`MSG-reminder_1d.org-text`, because the admin's own words contain a bare `{{url}}` line. The fix is one
+declaration on the paragraph and detail-value cells — `overflow-wrap:anywhere;word-break:break-word;`
+(never `overflow: hidden`, which clips tashkeel) — and it moves every `.html` pinned file, so it is
+**not** folded into N1: it is proposed as its own reviewed diff after the lead opens N1's package.
