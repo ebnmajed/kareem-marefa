@@ -21,6 +21,7 @@
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
 import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
 import { isBlockDocument, type DroppedBlock } from "./blocks.js";
+import { linkFor } from "./links.js";
 import { compileBlocks, type CompilePalette } from "./compile.js";
 
 export interface RenderInput {
@@ -460,6 +461,15 @@ export function renderEmail(input: RenderInput): RenderedEmail {
     member: { ...(typeof input.payload.member === "object" && input.payload.member ? input.payload.member : {}), name: input.member.name ?? input.member.email, email: input.member.email },
     org: input.org.name,
   };
+
+  // ★ Named difference 1. `linkFor()` is null without an origin, so the
+  // spread adds nothing and `{{url}}` renders as the empty string it has
+  // rendered since M3 — which is why the 116 pinned files do not move. A
+  // payload that already carries its own `url` keeps it: `0073`'s export may
+  // one day ship a signed one, and a map must not overrule a sender that knows
+  // better.
+  const url = input.payload.url ?? linkFor(input.key, input.payload, input.appUrl);
+  if (url) payload.url = url;
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
 

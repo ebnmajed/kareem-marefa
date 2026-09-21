@@ -45,6 +45,7 @@ export { SAMPLE_CASES, SAMPLE_ORG, SAMPLE_MEMBER, SAMPLE_BRAND, sampleFor } from
 // The eight designed platform templates (REQ-NTF-014, DEC-082). Constants, not
 // rows: an org DUPLICATES one to own it and the original is never mutated,
 // which is true by construction when the original is code.
+export { linkFor, ROUTE_FOR } from "./links.js";
 export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign } from "./designs.js";
 export type { DesignFamily } from "./designs.js";
 export type { SampleCase } from "./samples.js";
