@@ -3474,3 +3474,269 @@ storage_read` anywhere in the document. Replacement:
    and reads `materials.viewer`; the proposal one lives in my shared `components/materials/` and reads
    `materials.list`; forcing one component to serve both namespaces is more indirection than the ~15 lines
    saved. Says so here in case the lead prefers a single shared component instead.
+
+## Wave 11 plan
+
+`DEC-166`, `DEC-167`, `CLAUDE.md` § *Ownership map (wave 11)*, `.claude/agents/content.md` (regenerated
+`b8a51f6`) read. C1's target is the 27 `ui-lint` violations in my seven files; C2 is the accessibility
+findings the lead's sweep routes to me (not yet run — I proceed on C1's own accessibility properties and
+wait for the routed rows); C3 is the viewer against `13` §7. Planning only — nothing below is committed
+except this file.
+
+### Order
+
+**create-form → task-item → proposal-list → gallery → the two privacy files → comment-composer.** The
+first three are mine outright; the last three are "fixes only" files, done last and smallest, because a
+`ui-lint` fix there is still a presentation change (rule 3 of `DEC-166`) but I hold those files for less
+than my own four, so I want any request they raise in front of the lead before I touch them, not after.
+
+### C1 — per file
+
+#### 1. `src/components/tasks/create-form.tsx` — 10 violations, all mine, no request
+
+Six raw controls, none behind `<Field>`, six copied `rounded-field border border-edge…` class strings
+plus the `<form>` wrapper's own (`className="… rounded-field border border-edge p-4"` on the `<form>`
+itself, line 84 — a `class-string` hit though the element is not a control; it becomes a plain Tailwind
+class with no `rounded-field border border-edge` literal, or a `<Panel>` wrap, whichever reads better once
+I have it open — decided in the edit, not here):
+
+| Line | Control | Becomes |
+|---|---|---|
+| 87 | `<select>` kind | `<Field id="…" label={t("kindLabel")}><Select value={kind} onChange=…>…</Select></Field>` |
+| 98 | `<input>` title, `required` | `<Field label={t("titleLabel")}><Input name="title" required maxLength={200} /></Field>` |
+| 103 | `<textarea>` description | `<Field label={t("descriptionLabel")}><Textarea name="description" maxLength={2000} /></Field>` |
+| 112 | `<select>` materialId, `required` | `<Field label={t("materialLabel")}><Select name="materialId" required>…</Select></Field>` |
+| 126 | `<input>` externalUrl, `required`, `dir="ltr"` | `<Field label={t("externalUrlLabel")}><Input name="externalUrl" type="url" required dir="ltr" placeholder="https://" /></Field>` |
+| 133 | `<textarea>` formQuestions | `<Field label={t("formQuestionsLabel")}><Textarea name="formQuestions" rows={4} /></Field>` |
+
+★ **A named finding, not a request — I resolve it myself, but the lead should see the reasoning:**
+`<Field required>` renders a visible «مطلوب» marker appended to the label text (`field.tsx:129`, `16`
+§8.2 item 3's own convention), which today's markup never shows on any of `create-form.tsx`'s three
+`required` fields. Passing `required` to `<Field>` would change what the screen displays — a real
+appearance change, permitted under rule 3, but not one this ticket asks for and not one I want to ship as
+a side effect of a class-string fix. **So `required` stays only on the control itself** (`<Input
+required>` / `<Select required>`), which is inert today anyway (the `<form noValidate>` on line 84
+already disables the browser's own validation UI for this form; `handleSubmit` does the real check), and
+`<Field>` gets no `required` prop. This also protects `tests/components/tasks/create-form.test.tsx:49`'s
+`screen.getByLabelText("عنوان المهمة")` — an exact match that a «مطلوب» suffix on the accessible name
+would break.
+
+The `<label>` wrapper class (`"flex flex-col gap-1 text-body-sm text-fg-body"`) disappears — `<Field>`
+owns that layout — and each `{t("…Label")}` string moves from being the `<label>`'s text node to
+`<Field label={…}>`'s prop; no key changes, no visible text changes (`Field`'s own `<label>` renders the
+same string in the same place relative to the control). The kind `<select>`'s `value`/`onChange` pass
+through unchanged — `ui/select.tsx`'s reset-survival logic is additive over a controlled select, not a
+behaviour change for a form this small (there is no `<form action>` here, just `onSubmit`, so the
+reset-on-refusal problem `select.tsx`'s comment describes does not even arise — `form.reset()` on line 71
+is this component's own call, made once, on success, and `<Select>`'s layout effect will simply re-run
+harmlessly).
+
+#### 2. `src/components/tasks/task-item.tsx` — 6 violations, all mine, no request
+
+Two raw controls (`TaskForm`'s per-question `<textarea>`/`<input>`, lines 150–153), four class-strings
+(`<li>` line 47, the two form controls, the submit `<button>` line 158). The submit button and the two
+`markDone`/`markUndone`/`edit` buttons (lines 92, 138) are `class-string` hits from `rounded-field border
+border-edge…` but they are `<button>`, outside both `ui-lint` rules' `CONTROLS` set for the field rule —
+only the class-string rule catches them, and the fix is `import { Button } from "@/components/ui/button"`
+(lead's file, imported by path, never edited), `variant="secondary"` for the submit, `variant="ghost"`
+for the two text-style toggles (`markDone`/`edit`/`markUndone` read today as underlined text, not a
+bordered button — `ghost` is the closest existing variant with no border and no fill; confirmed against
+`button.tsx`'s own comment). `disabled={pending}` and the `onClick` pass straight through — `Button`
+forwards `ComponentProps<"button">` per `ButtonProps`. The `<li>`'s own `rounded-field border border-edge
+p-4` (line 47) becomes `import { Card } from "@/components/ui/card"` at `density="row"`, or stays a plain
+`<li className="p-4">` if `Card`'s built-in hover-raise/`<article>` semantics turn out to be wrong for a
+list row that is not a link — decided against `06`/`16` §6.4's own scoping ("no media slot, no
+hover-elevation" is `Panel`'s description, not `Card`'s) — **more likely `Panel`**, since this is exactly
+"a static frame around content that just needs setting apart," `Panel`'s own header line. I will use
+`Panel` unless the edit shows a reason not to.
+
+The two `TaskForm` controls:
+
+| Line | Control | Becomes |
+|---|---|---|
+| 151 | `<textarea name={field.id}>` | `<Field label={field.label}><Textarea name={field.id} defaultValue={…} /></Field>` |
+| 153 | `<input name={field.id}>` | `<Field label={field.label}><Input name={field.id} defaultValue={…} /></Field>` |
+
+`field.label` is already the visible text (line 149's `<bdi>{field.label}</bdi>` inside the current
+`<label>`) — `<Field>` takes a plain `string`, so the `<bdi>` isolation on the label text is lost unless I
+keep it around the string passed in (`label={<bdi>{field.label}</bdi>}`, which `tsc` will refuse —
+`FieldProps.label` is typed `string`, not `ReactNode`). ★ **A named finding, not a request: I drop the
+`<bdi>` around the label text.** A task's `field.label` is authored by the session's own presenter
+(`REQ-TSK-001`), so it is member-generated text in a UI that otherwise bidi-isolates every interpolated
+value (`10` §1) — losing the wrap is a real, if small, regression against that rule for exactly this one
+string. The alternative — not moving this control onto `Field` — is not open (C1's whole point). I record
+it here as the smallest departure from "unchanged," and it is presentation-only: `field.label` is a short
+one-line prompt in practice (`REQ-TSK-001`'s own acceptance: "one label per line"), so a stray LTR run
+inside it is unlikely to occur, unlike a name or a code. If the lead wants `FieldProps.label` widened to
+`ReactNode` instead, that is the primitive-change request I'd rather make than carry the regression — I
+am naming both options and defaulting to the smaller footprint (drop `<bdi>`) unless told otherwise, since
+widening `label`'s type touches every one of `sessions'` eight files' 40+ call sites for one caller's
+`<bdi>`.
+
+Neither `Textarea` nor `Input` is a controlled component here (`defaultValue` only, no `value`/`onChange`
+on these two) and there is no `<form action>` on this `<form onSubmit>` — the reset-survival machinery in
+`ui/textarea.tsx`/`ui/input.tsx` is dormant either way, so nothing behavioural moves.
+
+#### 3. `src/components/materials/proposal-list.tsx` — 1 violation, mine, no request
+
+Line 51's `<li className="rounded-field border border-edge p-4">` → `<Panel>` (same reasoning as
+task-item's `<li>` above — a static bordered frame, no link, no hover state). `Panel`'s own padding
+(`p-4`) matches what is already there, so no `className` override is needed; `Panel`'s `tone="neutral"`
+default matches the current plain `border-edge bg-surface` look exactly (`Panel`'s `TONE_CLASS.neutral`
+is `"border-edge bg-surface"`, byte-identical to what the raw `<li>` implies via `globals.css`'s
+`--color-surface` default — confirmed by reading `panel.tsx`). `tests/components/materials/proposal-list.
+test.tsx` and `tests/e2e/proposal-materials.spec.ts` query by text/role, not by class, so this is a pure
+swap.
+
+#### 4. `src/components/photos/gallery.tsx` — 1 violation, mine, no request
+
+Line 146's `<li className="flex min-w-0 flex-col gap-2 rounded-field border border-edge p-2">` → the same
+`Panel` swap, `className="flex min-w-0 flex-col gap-2"` passed through since `Panel` takes a `className`
+prop appended after its own base classes. `p-2` vs. `Panel`'s built-in `p-4`: **a real, if small,
+appearance change** (more padding around each photo tile) unless I override with `className="… p-2"` —
+Tailwind's later class in the string wins for `padding` since `Panel` only emits `p-4` once and mine would
+come after in the concatenated string (`` `rounded-card border p-4 ${TONE_CLASS[tone]} ${className}` `` —
+my `p-2` is last, so it wins). I keep `p-2` explicitly for this reason, named here so the diff's intent is
+legible rather than looking like an accidental drop of `Panel`'s padding.
+
+#### 5–6. `src/app/[locale]/app/me/privacy/{forms,page}.tsx` — 1 + 1 violations, fixes-only, no request
+
+Both are class-strings on non-form elements, and both files already import `Panel` and use it elsewhere in
+the same file — the fix in each case is reusing what is already imported, not adding a new one:
+
+- `forms.tsx:61` — the post-submit `<p role="status" className="mt-4 rounded-field border
+  border-edge-strong p-4 text-body text-fg-heading">{t("deactivateSent")}</p>` becomes `<Panel
+  className="mt-4"><p role="status" className="text-body text-fg-heading">{t("deactivateSent")}</p>
+  </Panel>` — `role="status"` moves to the inner `<p>` so the live-region semantics are unchanged (`Panel`
+  itself carries no role); `Alert()` a few lines above in the same file is the exact precedent for
+  wrapping a `role`-bearing message in `<Panel>`.
+- `page.tsx:82` — the export-download `<a href="/api/me/export" className="inline-flex h-12 items-center
+  rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100" download>`.
+  This is a link styled as a secondary button, not a `<button>` — `ui/button.tsx`'s own `Button` renders a
+  `<button>` (or `i18n/navigation`'s `Link` for in-app routes), neither of which is right for a same-origin
+  download that must stay a plain `<a download>` for the no-JS path this screen's comment already calls
+  out ("a plain link, not a fetch"). ★ **A named finding for the lead, not mine to resolve alone:** none
+  of my nine primitives is a styled anchor, and `ui/button.tsx`'s `buttonClass()`/`buttonVariants` helpers
+  are exported (`export function buttonClass(...)`) — so the smallest fix is `<a href=… download
+  className={buttonClass("secondary", "lg")}>`, importing the *function*, not the component, from the
+  lead's file. I don't own `button.tsx` and this is a read of its exported helper rather than an edit, so
+  I believe this needs no primitive change and no request — flagging it only because it is the one place
+  in my seven files where the fix reaches into a lead-owned file's exports rather than composing one of my
+  own or `sessions'` eight. If the lead would rather this go through a real `<Link>`-shaped download
+  affordance instead, that is the alternative to rule on at sync.
+
+#### 7. `src/components/event/comment-composer.tsx` — 2 violations, fixes-only, ★ one request
+
+- Line 220 (the `@mention` dropdown `<ul className="absolute z-10 mt-1 w-full max-w-xs rounded-field
+  border border-edge-strong bg-[var(--color-canvas)] shadow-card">`) → `Panel` again, with the
+  positioning classes (`absolute z-10 mt-1 w-full max-w-xs`) passed through `className` and `Panel`'s own
+  padding overridden to `p-0` (the list's own `<li><button>` rows carry their own `px-4 py-2`, so an
+  outer `p-4` would double the inset) — no request, same shape as the other five class-string swaps above.
+- Line 207 (the composer `<textarea>`, labelled today only by `aria-label={label}` + a `placeholder`, no
+  visible label at all) is the harder one. ★ **This is the request, named now rather than found mid-edit:**
+  `<Field>`'s `label` is a required visible string (`field.tsx:110`'s `<label>` always renders it) — there
+  is no way to give a control a screen-reader-only accessible name through `<Field>` the way `aria-label`
+  does today, and the discussion composer's whole design is a placeholder-driven, unlabelled box (`16`'s
+  discussion screen has no field label anywhere on this row — it is a chat-style composer, not a form).
+  Wrapping it in `<Field label="…">` would put a visible label line above every comment box on every
+  session's discussion, on a screen the plan never asked to change and that `event`'s wave-10 track and
+  the lead's wave-6 review both signed off on as it stands. **Two ways to close it, in the order I'd
+  choose them:**
+  1. Keep the raw `<textarea aria-label={label}>` and add `// ui-lint-disable-next-line field —
+     self-labelled via aria-label; <Field> has no visually-hidden-label mode and this screen's design has
+     no visible label (16, discussion)` — the same shape `ui/checkbox.tsx` and `ui/radio-group.tsx` already
+     use for their own self-labelling controls, just outside `ui/` this time. This needs the lead's written
+     approval per `DEC-166` §2 ("`ui-lint-disable-next-line` needs a reason the lead approves in writing").
+  2. Or: the lead adds a `labelHidden?: boolean` (or a `visuallyHiddenLabel`) prop to `Field` that renders
+     the same `<label>` with an `sr-only` class instead of the visible one — a small, real primitive change
+     that also closes any *other* self-labelled raw control this sweep or a later one turns up, at the cost
+     of a change to a file I do not own.
+  
+  I recommend (1): it is the smaller change, it matches an existing pattern in the system, and it does not
+  touch a lead-owned file for one call site. I am not choosing it myself because the escape hatch needs the
+  lead's written approval regardless of which of the two I'd pick — this is the one line in my plan I am
+  waiting on.
+
+### The specs that prove C1 unchanged
+
+- `tests/components/tasks/create-form.test.tsx`, `tests/components/tasks/task-item.test.tsx`,
+  `tests/components/tasks/panel.test.tsx`, `tests/components/tasks/panel-grouping.test.tsx` —
+  `getByLabelText`/`getByRole` calls named above; run after each of files 1–2.
+- `tests/components/viewer/page-viewer.test.tsx` — no `<Field>` involved (C3's file has no raw
+  input/select/textarea; its five hits are all `class-string` on `<button>`/`<div>`), but its
+  `getByRole("button", { name: … })` assertions are the proof the `Button` swap (see C3 below) keeps
+  every accessible name.
+- `tests/components/materials/proposal-list.test.tsx`, `tests/e2e/proposal-materials.spec.ts`,
+  `tests/e2e/wave10-content-proposal-material.spec.ts` — file 3.
+- `tests/components/photos/*` (none exist by that exact name today per a repo search — `gallery.tsx` is
+  exercised through `tests/e2e/photos.spec.ts` and `tests/e2e/wave10-content-photos-takedown.spec.ts`) —
+  file 4; both e2e specs run once after the `Panel` swap.
+- `tests/components/me/privacy*` if present, else `tests/e2e/wave10-content-me-early-save.spec.ts` and any
+  `privacy` component test under the "fixes only" umbrella — files 5–6.
+- `tests/components/event/comment-composer.test.tsx` (if it exists — checked at edit time),
+  `tests/e2e/wave6-discussion-review.spec.ts` — file 7, and specifically a case that queries the composer
+  by its accessible name (`aria-label`) to prove the escape-hatch route keeps it, if that is the route
+  taken.
+
+New: one `tests/e2e/wave11-content-ui-lint.spec.ts` is not needed — `ui-lint` itself is the proof for C1
+(`node scripts/ui-lint.mjs --strict` naming none of these seven files is the acceptance criterion, not a
+Playwright spec); I add no new e2e file for C1 alone. A new `wave11-content-*` capture is still owed per
+the DoD (390 px RTL, beside each screen's most recent wave capture) for `tasks/create-form`,
+`tasks/task-item` (the panel/create-form screen), the viewer, and the discussion composer.
+
+### C3 — the viewer against `13` §7, measured as it stands today
+
+`page-viewer.tsx` today: only the **current** page is ever mounted as an `<Image>` (line 138) — there is
+no all-pages-at-once render — with `priority` on page 1 only (line 145) and a `±2`-page prefetch window
+rendered as bare `<link rel="prefetch">` tags (lines 96–100, 112–114), not `<Image>` elements. Thumbnails
+(lines 163–179) are a separate, always-mounted `<Image unoptimized>` per page, `priority` never set, so
+they get the browser's native default `loading="lazy"`. **So "loads progressively" mostly already holds**:
+one full page at a time, a real prefetch window, lazy thumbnails.
+
+**What does not hold, found reading `render_pages.ts` beside this file:** the worker (`worker/src/tasks/
+render_pages.ts:69`) already computes and stores each page's real `width`/`height` per page row, but
+`ViewerPageDTO` (`page-viewer.tsx:8-12`) never carries them, and `<Image width={1600} height={900} …
+className="h-auto w-full">` (line 141) hard-codes a 16:9 box for every page regardless of the source
+document's actual aspect ratio. `h-auto w-full` means the *displayed* box is never actually 16:9 — CSS
+overrides it once the real image loads — but `next/image` computes its `aspect-ratio` placeholder from the
+`width`/`height` props before the image arrives, and a portrait-oriented material page (a poster, a tall
+slide) reserves a wide box and then visibly jumps taller the moment the real image paints. That is a CLS
+regression this budget's "page 1" moment would show on exactly the documents most likely to not be 16:9.
+**Fix:** thread `width`/`height` through the DAL → `ViewerPageDTO` → the `<Image>` call (the DTO already
+has the shape to add two numbers; the DAL's `getViewerData()` reads the same row `render_pages.ts` writes).
+The `unoptimized` flag stays — signed Storage URLs, not a local/optimizable path, same reasoning the file's
+own comment on the `<img>` in `gallery.tsx` gives — so this is a layout-stability fix, not a bytes-shipped
+one; I did not find a second image (a smaller "page" variant vs. the full render) being generated for the
+main view, only the thumbnail/page split already in the DTO, so there is no unshipped smaller asset to
+reach for on the budget side.
+
+**The `≤ 2.5 s to page 1` measurement itself is the lead's spec** (`STATUS.md` row L7 runs the budgets
+spec centrally) — my part is confirming the component does not work against it, which the above shows it
+mostly does not, plus fixing the one real defect found. I have not run a Lighthouse/perf trace myself (no
+production build in hand during planning); C3's remaining item is running one once C1's viewer edit lands,
+before claiming the row done.
+
+### Requests to the lead — the complete list
+
+1. **Comment-composer's unlabelled `<textarea>`** (file 7, above): approve a `ui-lint-disable-next-line
+   field` with the stated reason, or add a visually-hidden-label mode to `Field`. My recommendation is the
+   disable comment.
+
+No other file in my seven needs a primitive change — every other raw control maps onto `Field` + `Input`/
+`Select`/`Textarea` exactly as they exist today, and every other class-string maps onto `Panel` (four
+sites) or the lead's exported `buttonClass()`/`Button` (two sites), reused by import, never edited.
+
+### C2 — accessibility findings
+
+Not yet routed to me (the lead's sweep, `STATUS.md` row L6, has not run against a branch build). I proceed
+on C1 in the meantime; the one item I can already name without a routed row is the viewer's RTL
+next/previous direction (`10` §2.4, named in my own agent brief) — confirmed correct as written:
+`page-viewer.tsx:56-63` swaps `advance`/`retreat` on the physical arrow keys by `rtl`, matching SCR-013's
+reading-direction model rather than a mirrored icon, and the on-screen `previous`/`next` buttons
+(lines 151, 157) already swap their `onClick`/`disabled` the same way. Keyboard-operable: yes (native
+`window.addEventListener("keydown")`, not scoped to a focused element, so it fires regardless of where
+focus sits inside the viewer — worth flagging that this means the shortcuts work even when focus is
+elsewhere on the page, which is arguably too broad, but that is existing behaviour, not something C1
+touches). Announced: yes, via the `aria-live="polite"` region (line 110) updated on every `index` change
+(lines 88-92). I record this as already-correct rather than a finding, since the brief asked me to confirm
+it, not to change it absent a routed row saying otherwise.
