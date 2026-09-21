@@ -29,12 +29,27 @@ const TONE: Record<ProposalState, { tone: Tone; outline?: boolean }> = {
   rejected: { tone: "error" },
 };
 
-export function ProposalStatusBadge({ state, size = "md" }: { state: ProposalState; size?: "sm" | "md" }) {
-  const t = useTranslations("proposals.proposal.state");
+// ★ Two states are worded to the proposer — «مسودة عندك», «بانتظار تعديلك». Anyone else looking (an
+// admin reviewing, a co-presenter) reads them in the third person, or the badge tells the admin the
+// draft is theirs (wave 10's carried finding). `viewerIsProposer` defaults to true: SCR-017 lists only
+// the member's own proposals.
+const OTHERS_WORDED: ReadonlySet<ProposalState> = new Set(["draft", "changes_requested"]);
+
+export function ProposalStatusBadge({
+  state,
+  size = "md",
+  viewerIsProposer = true,
+}: {
+  state: ProposalState;
+  size?: "sm" | "md";
+  viewerIsProposer?: boolean;
+}) {
+  const t = useTranslations("proposals.proposal");
   const { tone, outline } = TONE[state];
+  const others = !viewerIsProposer && OTHERS_WORDED.has(state);
   return (
     <Badge tone={tone} outline={outline} size={size}>
-      {t(state)}
+      {others ? t(`stateForOthers.${state as "draft" | "changes_requested"}`) : t(`state.${state}`)}
     </Badge>
   );
 }

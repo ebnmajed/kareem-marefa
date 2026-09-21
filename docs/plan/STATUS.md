@@ -184,7 +184,7 @@ A pre-existing `tests/**` file changes only with a line here saying why.
 | owner | the two canvas contrast questions (`DEC-123`) — **answered by the owner for this wave: the app's passing tokens, not the canvas values** (browse tag-chip counts, the 13 px caption); the sweep asserts them | wave 6 |
 | owner | `bookmarks:237` «never updates» on Next 16.3.5 — a timing race | wave 8 |
 | owner | break-glass opens no org screen (`DEC-055` option A is the owner's to schedule) | wave 8 |
-| lead | `DEC-145`'s orphaned streaming segment; CSP report-only; `controlClass`'s `w-full`; the filter sheet's native date mask; the admin's «مسودة عندك» badge | waves 6–10 |
+| lead | `DEC-145`'s orphaned streaming segment; CSP report-only; `controlClass`'s `w-full`; the filter sheet's native date mask; ~~the admin's «مسودة عندك» badge~~ — **closed in wave 11**: the badge takes `viewerIsProposer` and reads «مسودة لم تُقدَّم بعد» / «بانتظار تعديل صاحب المقترح» to anyone but the proposer | waves 6–10 |
 | lead (custodian of `event`) | `tests/rls/survey-submit.test.ts` counts every `record_survey_response` job in the queue, so six jittered jobs left by an earlier e2e run (no worker ran them) turned six of its cases red at sync 2 — local state, not a defect; the six were removed from the LOCAL queue by id. The test should count only its own survey's jobs | wave 11 sync 2 |
 
 ---

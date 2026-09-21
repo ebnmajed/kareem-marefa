@@ -92,6 +92,10 @@
         "approved": "Approved",
         "rejected": "Not accepted"
       },
+      "stateForOthers": {
+        "draft": "Draft, not yet submitted",
+        "changes_requested": "Waiting for the proposer's changes"
+      },
       "reasonLabel": "What the admin wrote",
       "approvedNote": "An admin will set the date and place and publish the session.",
       "presentersLabel": "Presenters",

@@ -92,6 +92,10 @@
         "approved": "مقبول",
         "rejected": "غير مقبول"
       },
+      "stateForOthers": {
+        "draft": "مسودة لم تُقدَّم بعد",
+        "changes_requested": "بانتظار تعديل صاحب المقترح"
+      },
       "reasonLabel": "ما كتبه المشرف",
       "approvedNote": "المشرف سيتولى تحديد الموعد والمكان وينشر الجلسة.",
       "presentersLabel": "المُقدِّمون",
