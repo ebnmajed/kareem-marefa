@@ -2439,11 +2439,17 @@ suite** in the product.
   end to end.
 - **Playwright, jsdom and `@testing-library` are not currently installed**; adding them is M0 work.
 
-#### REQ-NFR-019 — The existing public site is a frozen contract
-**Serves:** DEC-001 · A38
-`/`, `/ar`, `/en`, `/ar/register` and `/og.png` keep working, unchanged, through every milestone.
+#### REQ-NFR-019 — The public site is a live contract: its URLs, its registration behaviour and its accessibility floor never regress (re-cut by DEC-167)
+**Serves:** DEC-001 · A38 · `DEC-167`
+`/`, `/ar`, `/en`, `/ar/register` and `/og.png` keep working through every milestone. Their **URLs,
+their registration behaviour and their accessibility floor** may never regress. Their **appearance**
+may change only through a `DECISIONS.md` entry and a re-baselined visual diff, in the same commit as
+the change.
 **Acceptance:**
-- `scripts/qa.mjs` guards them in CI and must stay green.
+- `scripts/qa.mjs`'s **contract half** (`qa:contract`) guards the behaviour in CI, blocking, at every
+  commit; its **appearance half** (`qa:appearance`) is rewritten in the commit that changes the design.
+- The register form's action, field names, validation and no-JS path are unchanged; `registrations`
+  is never touched (`DEC-002`).
 - `main` stays deployable at all times.
 
 #### REQ-NFR-020 — Migrations are forward-only and safe against real rows

@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-17 · **Branch:** `wave-10/survey-email` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 9 merged 2026-09-17** (PR #26, `f2ead54`; `0100`–`0122` live on production; ★ **the Railway worker is RUNNING on the merge commit `f2ead54`**, read 2026-09-17; the `DEC-152` statement was run by the owner) · **Phase:** ★★ **WAVE 10 — the survey and the email studio, with three carried fixes (`DEC-160`) — ★ SYNC 2 DONE: `0127`–`0134` promoted (110 RLS files · 1,129 passed · 0 failed, run alone); the mail renderer moved into `@kareem/mail-runtime` with `notify`'s 116 pinned files as the proof; the RLS runner is now a lock. ★ SYNC 1 (`DEC-161`): four plans approved, FIVE defects caught on paper — one of them a public poster with no date in the push → redeploy window; the tables are landed (`0124`, `0125`); all four tracks are building. ★ FOUND: every mail since Launch has been missing its link — `{{url}}` is supplied by nothing (named difference 1; the fix needs `APP_URL` on Railway, an owner's step). Step 0: the map is in `CLAUDE.md` and all ten `.claude/agents/*.md`, the checklist is the wave-10 block below. `event` builds the survey end to end on opus; `notify` the email studio; `designer` the re-issued certificate and the multi-day poster's date; `content` a proposal's own material. ★ The survey's storage contract is the lead's and precedes any table: a stored response names no member (`DEC-160` §3). ★ There are no mail goldens today, so `notify` pins today's 25 messages before it changes a line (`DEC-160` §4).** Migrations start at **`0123`** and are additive; the owner pushes, then merges, **then checks Railway by hand**.
+**Last updated:** 2026-09-22 · **Branch:** `wave-11/m13` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 10 merged** (PR #27, `b75eb45`; `0123`–`0142` live on production; ★ **the Railway worker is RUNNING on `b75eb45`**, read 2026-09-22) · **Phase:** ★★ **WAVE 11 — M13, THE LAST MILESTONE (`DEC-166`, `DEC-167`)** — the public site rebuilt on the M9 system with a door into the platform, behind `qa` split into a contract half (blocking at every commit) and an appearance half; `ui-lint --strict` with its allowlist deleted (61 → 0); the accessibility and performance passes; the mail's string path retired. **Step 0 done**: the baseline `pre-m13` captured from `main` before the branch; the map in `CLAUDE.md` and all ten `.claude/agents/*.md`; the checklist is the wave-11 block below. Spawned, planning-only: `content`, `console`, `notify`, `platform`, `branding`. Migrations start at **`0143`** and are additive.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -13,7 +13,7 @@ two sections is the record of finished waves. To pick up the work, read exactly 
 | # | Read | Why |
 |---|---|---|
 | 1 | **[*What the next session does*](#-what-the-next-session-does--the-owners-four-directives-2026-09-15)**, further down this file | The scope, in the owner's words, with what is decided and what is open |
-| 2 | `DECISIONS.md` **`DEC-110` … `DEC-160`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
+| 2 | `DECISIONS.md` **`DEC-110` … `DEC-167`** | The resequencing, check-in, walk-ins, multi-day sessions, every known canvas error, **Western numerals everywhere (`DEC-124`)**, gradient dark posters, the certificate library, the marketing door, and the untouched `(auth)` screens. **Do not re-litigate these.** |
 | 3 | `CLAUDE.md` | Conventions and the hard invariants. **Its wave-10 map is the map in force** (`DEC-160`); waves 9, 8, 7, 6 and 5 are the record |
 | 4 | `TEAM.md` §1–§3 | How a lead runs teammates in one checkout |
 | 5 | `16-ui-redesign.md` | The design system and the screen specs. **§15 and §16 are superseded on sequencing** (`DEC-110`); everything else stands |
@@ -69,9 +69,82 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 10's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-160`). A
-wave-11 lead writes a new one before spawning anyone — `DEC-085`: *ownership lives in the agent files
-or it does not exist.*
+**The ownership map in force is wave 11's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-166`). Wave 11 is
+**M13, the last milestone of the plan** — its block is directly below.
+
+---
+
+## ★★ WAVE 11 — M13, THE LAST MILESTONE — on `wave-11/m13` — the public site rebuilt behind a split `qa`, and the closing pass (`DEC-166`, `DEC-167`)
+
+**Scope, in the owner's brief** (`docs/plan/notes/wave-11-lead.md`): the public site on the M9 system with a door into
+the platform (`REQ-UIX-025`) and Western numerals (`DEC-124`); `qa` split into contract and appearance; the
+accessibility pass over every screen (`REQ-NFR-007`); the performance pass (`REQ-NFR-008`); `ui-lint --strict` with an
+**empty** allowlist; the mail's string path retired. **Three items added to the definition of done:** `qa:contract`
+green at **every** commit; `ui-lint --strict` green with no allowlist; ★ **a visitor who has never signed in finds
+«تسجيل الدخول» at 390 px in Arabic without being told where it is.**
+
+### Step 0 — measured before the branch had a commit (`DEC-166` §1)
+
+| | |
+|---|---|
+| `main` | `43548a7` (merge `b75eb45` + the brief). ★ **Railway worker RUNNING on `b75eb45`** (`railway status --json`, a read) |
+| Baseline | ★ **`.qa-shots/visual/pre-m13/`** — 8 captures (`/ar`, `/en`, `/ar/register`, `/ar/ui` × phone 390, desktop 1440) from a fresh `npm run build` of `43548a7`, **before `wave-11/m13` existed**. Every later `visual compare` is against it. (The brief's «41 pairs» is not what `visual-diff.mjs` produces.) |
+| `qa` on that build | **44 passed, 0 failed** (44 `check()` calls; the brief's «45» counted the function) |
+| `ui-lint --strict` | **61** on disk (allowlist records 65 — `tasks/create-form.tsx` is 10, not 14). `content` 27 · `console` 21 · `branding` 3 · lead custodian 5 · `registration-form.tsx` 5 |
+| Frozen set | 13 components; **11** Arabic-Indic glyphs — `(marketing)/page.tsx:16` (3), `chapter.tsx:5` (8) — the only ones left in `src/` |
+| `REQ-EVT-010` | **already closed** — `DEC-139` (wave 7) amended it; `0091` + wave 9's T4 on the real worker. Not carried again |
+| The platform console on the system | **done in wave 8** (`DEC-147`) — `16` §15's M13 row closes by reference |
+| ★ Not read | the production read for orgs without an `org_settings` row — declined to the lead by the permission layer; **it is the owner's**, first in the order below |
+
+### The rows
+
+| Row | Owner | Work | Cites | State |
+|---|---|---|---|---|
+| L0 | lead | Step 0 — `DEC-166`, `DEC-167`, the map in `CLAUDE.md` and all ten agent files, this block, the baseline, the branch | `DEC-085` | **done** |
+| L1 | lead | ★ **`qa.mjs` split** into `qa:contract` and `qa:appearance`, **a move, not an edit** — 44 before, 44 after, the same labels; `npm run qa` runs both | `DEC-167`, `REQ-NFR-019` | todo |
+| L2 | lead | ★ **the public site, in ONE commit**: the landing and register pages on the M9 system; «تسجيل الدخول» persistent in the header at every width, distinct from «سجّل اهتمامك»; copy that says the platform exists; the eleven glyphs gone; the register form re-presented with its action, names, ids, validation and no-JS path byte-identical; a new `og.png`; `qa:appearance` rewritten; `/og.png` gains a contract check; the visual re-baseline recorded here | `REQ-UIX-025`, `STORY-UIX-015`, `DEC-124`, `DEC-126`, `DEC-167` | todo |
+| L3 | lead | ★ **the door test**: a new spec asserts «تسجيل الدخول» is in the header, visible in the first viewport at 390 × 844 and at 1440, on `/ar`, `/en`, `/ar/register`, and leads to `SCR-002`; and the lead opens the 390 px capture as someone who has never seen the product | `REQ-UIX-025` | todo |
+| L4 | lead (custodian) | 5 `ui-lint` violations — `checkin/code-input.tsx` (2, keeping `SC 3.3.8`), `designer/{bindings,checks}-panel.tsx` (2), `scoring/points-strip.tsx` (1); `ui/radio-group`'s `error` prop; the studio phone layout's canvas named in a heading; the requests the tracks make of `sessions'` eight primitives | `REQ-UIX-001` | todo |
+| L5 | lead | `org_settings` for every org: backfill (scoped `where not exists`) and a trigger on `orgs`, one migration — after the owner's read | wave-10 carried | todo |
+| L6 | lead | ★ **the accessibility sweep over every route** — `a11y.spec.ts` grown from the key screens to all of them, both themes where a screen has two; each finding routed as a row (rule, selector, route, owner) | `REQ-NFR-007` | todo |
+| L7 | lead | **the budgets run** — `13` §7's six screens against `budgets.baseline.json`, and the landing against `pre-m13` (LCP ≤ 2.0 s, must not regress) | `REQ-NFR-008` | todo |
+| L8 | lead | ★ **`ui-lint --strict`**: CI runs `--strict`; `scripts/ui-lint-allowlist.json` **deleted** in the same commit | `DEC-087` | todo |
+| L9 | lead | promotion of the tracks' SQL; gates; the owner's order; the PR; ★ **the closing `STATUS`** — what is built, what was deliberately left, what a session opening this repo next reads first | — | todo |
+| C1–C3 | `content` | 27 violations to zero; its screens' accessibility findings; the viewer's «≤ 2.5 s to page 1, loads progressively» | `REQ-UIX-001`, `REQ-NFR-007`, `REQ-NFR-008` | planning |
+| K1–K3 | `console` | 21 violations to zero (`rtl-datetime-picker` the hardest); ★ the attendance screen — its 2, the 390 px sideways scroll from two days, «مطلوب» on the manual-mark form; `/app/admin` findings; SCR-040's budget | `REQ-UIX-001`, `REQ-CHK-015`, `REQ-NFR-007`, `REQ-NFR-008` | planning |
+| N1–N3 | `notify` | ★ the string path retired — every key designed for an untouched org, **an admin's edited string template never silently discarded**, the pinned files moved as one reviewed diff; the string code removed; its screens' findings | `DEC-081`, `REQ-NTF-007`, `REQ-NTF-014` | planning |
+| P1–P2 | `platform` | the exhausted-job alert — task name and count, never a payload (`DEC-014`); `/app/platform` findings | `REQ-NFR-007`, `11` alerts | planning |
+| B1–B3 | `branding` | ★ the status-colour guard — `save_brand_kit()` refuses in SQL a palette on which a status badge fails AA; its 3 violations; one logo for two schemes, after the owner's read | `DEC-073`, `REQ-DSG-021`, `REQ-UIX-003` | planning |
+
+### The untouched-suite ledger
+
+A pre-existing `tests/**` file changes only with a line here saying why. **Empty at Step 0.**
+
+| File | Case | Why | Commit |
+|---|---|---|---|
+
+### ★ The owner's order — a DRAFT from Step 0
+
+1. **Production reads, before anything is pushed** (each a `select`, read-only):
+   - orgs with no `org_settings` row — `select o.id, o.slug from public.orgs o where not exists (select 1 from public.org_settings s where s.org_id = o.id);` (L5)
+   - `notify`'s read: orgs whose string templates were edited (named in its approved plan) (N1)
+   - `branding`'s read: saved brand kits the status guard would refuse; the live org's logo format (B1, B3)
+2. **Push** migrations `0143`+ (additive), **then merge** — Vercel and the worker deploy from `main`.
+3. ★ **The standing post-merge step — Railway.** **Railway's push trigger has never been armed**: after
+   **five** consecutive merges (PRs #23 … #27) the worker moved only when someone ran
+   `railway service source connect` by hand. **After every merge, the owner checks the worker's deployed commit
+   and reconnects the source if it has not moved.** The CLI reconnect is a workaround that has to be repeated;
+   ★ **the durable fix is the dashboard setting** (Service → Settings → Source → the branch's deploy trigger),
+   and it is the owner's — no session changes it.
+
+### Carried into the wave — each with an owner, or named as deliberately left
+
+| Owner | Finding | From |
+|---|---|---|
+| owner | the two canvas contrast questions (`DEC-123`) — **answered by the owner for this wave: the app's passing tokens, not the canvas values** (browse tag-chip counts, the 13 px caption); the sweep asserts them | wave 6 |
+| owner | `bookmarks:237` «never updates» on Next 16.3.5 — a timing race | wave 8 |
+| owner | break-glass opens no org screen (`DEC-055` option A is the owner's to schedule) | wave 8 |
+| lead | `DEC-145`'s orphaned streaming segment; CSP report-only; `controlClass`'s `w-full`; the filter sheet's native date mask; the admin's «مسودة عندك» badge | waves 6–10 |
 
 ---
 

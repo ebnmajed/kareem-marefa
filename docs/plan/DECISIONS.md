@@ -3917,3 +3917,72 @@ This changes the bytes of an existing export only for a value that would have be
 ★ **The two halves move together, and the owner holds the second.** Resend's endpoint subscribes to exactly the events the database maps. Subscribed to `email.complained` before this migration exists, the events arrive and are discarded (`0140`'s `ignored`); the enum without the subscription never hears one. **The owner ticks `email.complained` in the Resend endpoint after the merge**, and not before — it is the last line of the owner's order.
 
 - **Documents changed:** `02-domain-model.md` (`ENT-email_deliveries`), `03-permissions-rls.md` §8.2 (`0142`), `08-notifications-calendar.md` §5.2, `STATUS.md` (the owner's order)
+
+---
+
+## DEC-166 — Wave 11 is M13, the last milestone: the lead rebuilds the public site behind a split `qa`; five teammates take `ui-lint` to zero, the mail's string path, the exhausted-job alert and the status-colour guard; and the brief's measurements are corrected where the tree disagreed
+
+- **Date:** 2026-09-22 · **Decided by:** owner (the wave-11 brief, `docs/plan/notes/wave-11-lead.md`: M13's scope, the three added items of the definition of done, the carried list); the staffing, the file-level map and the order by the lead
+- **Supersedes:** `DEC-160`'s wave-10 map as the map in force (kept in `CLAUDE.md` as the record); `DEC-150`'s placement of `src/app/[locale]/app/admin/sessions/[id]/attendance/**` with `checkin` (it goes to `console` for this wave, which is spawned — below)
+
+### 1 · What Step 0 read before planning — and where the brief's numbers were wrong
+
+Measured on `main` at `43548a7` (the merge `b75eb45` plus the brief), before the branch had a commit:
+
+| The brief said | The tree says | Consequence |
+|---|---|---|
+| `visual` has **41 baseline pairs** | `scripts/visual-diff.mjs` captures **4 routes × 2 viewports = 8** (`/ar`, `/en`, `/ar/register`, `/ar/ui`) and diffs them pairwise | the baseline is **`.qa-shots/visual/pre-m13/`, 8 captures**, taken from a fresh `npm run build` of `43548a7` before `wave-11/m13` existed |
+| `qa` is **45 checks** | **44** `check()` calls and one `function check` — `44 passed, 0 failed` on that build | `16` §14's 28 / 13 / 3 split stands as counted there |
+| the `ui-lint` allowlist is **27 files, 65 violations** | the allowlist records 65; **`--strict` finds 61 on disk** — `tasks/create-form.tsx` is at 10, not 14, and the allowlist was never pruned down to it. The 61: `content` 27, `console` 21, `branding` 3, the lead's custodian files 5, `registration-form.tsx` 5 | the target is 61 → 0; the allowlist is **deleted**, not pruned, when the gate flips |
+| `REQ-EVT-010` is **carried, four waves** | **closed**: `DEC-139` amended it in wave 7 (`01-prd.md` reads «Photos publish without moderation, the moment their metadata is stripped»), `0091` delivers the no-reload clause, and wave 9's row T4 drove one photo end to end on the real worker | nothing to do; recorded in `STATUS.md` so the next brief does not carry it a fifth time |
+| M13 includes **the platform console on the system** (`16` §15) | done in **wave 8** — all seven `/app/platform` routes (`DEC-147`, `ui-reach --wave8` 20/20) | the row closes by reference |
+
+Also read, not asked: **the Railway worker is RUNNING on `b75eb45`**, PR #27's merge commit (`railway status --json`). The frozen set is exactly as the brief measured it — **13 components, 11 Arabic-Indic glyphs** (`(marketing)/page.tsx:16` three, `chapter.tsx:5` eight), and those two files are the only ones in `src/` that still hold any.
+
+★ **One read was not taken.** The carried `org_settings` finding (wave 10) asks for a production read — orgs with no settings row — before the backfill and the trigger land. The lead's read against the linked project was declined by the permission layer, and a production read is the owner's to run, so **it is the first line of this wave's owner's order**, and the migration is written so that its backfill is correct whatever the read returns (an `insert … select … where not exists`, scoped by that predicate).
+
+### 2 · Who does what
+
+**The lead holds the public site.** Every file the rebuild touches is lead-only already — `(marketing)/**`, `marketing.json`, `public/**`, `scripts/qa.mjs` — and the one rule that makes this wave delicate (the frozen HTML changes **in the same commit** as its re-baselined capture and its rewritten appearance checks) cannot be kept across two writers. The thirteen components the marketing routes render (`header`, `footer`, `chapter`, `wordmark`, `intro-sting`, `network-bg`, `network-gl`, `ornaments`, `mobile-cta`, `language-toggle`, `registration-form`, `form-token`, and the `ui/button` the page imports) are the lead's for this wave.
+
+**Spawned — five, each planning-only first:**
+
+| Teammate | Model | Why |
+|---|---|---|
+| `content` | sonnet | **27 of the 61 `ui-lint` violations are its files** — `tasks/create-form.tsx` 10 (the allowlist still records 14), `tasks/task-item.tsx` 6, `viewer/page-viewer.tsx` 5, `event/comment-composer.tsx` 2, `me/privacy/{forms,page}.tsx` 2, `photos/gallery.tsx` 1, `materials/proposal-list.tsx` 1 — plus the accessibility findings on its screens and the viewer's «loads progressively» (`REQ-NFR-008`) |
+| `console` | opus | **21 violations** across ten admin files, `rtl-datetime-picker.tsx` the hardest (a raw `<select>` pair inside an RTL date control); ★ with the attendance screen (transferred, below) it also closes two carried rows — the table's sideways scroll at 390 px from two days up, and the manual-mark form's «مطلوب» markers |
+| `notify` | opus | **retiring `templates.ts`'s string path** (`DEC-081`, `DEC-161` R3): every message key renders its design for an org that never touched its templates, so `REQ-NTF-014`'s «no key falls back to unstyled text» becomes true for every org. ★ **The pinned output moves on purpose** — 116 files, a reviewed diff the lead opens, never an auto-refresh (`DEC-160` §4) |
+| `platform` | opus | the carried **exhausted-job alert** (`queue_stalled`, `0075`, excludes exhausted jobs by design; `record_survey_response` failing permanently would cost a member's answers with no trace) and the accessibility findings on `/app/platform/**` |
+
+| `branding` | sonnet | ★ **the M13 consequence `DEC-073` left dangling**, which the brief's carried list names only as «status-colour contrast enforcement»: an org may override `light_canvas` / `light_surface` to any six-digit hex while `--color-live-bg` and `--color-ended-bg` are platform constants, so `checkContrast()` gains the status pairs and **`save_brand_kit()` refuses** a palette on which a status badge fails AA — in the database, for every writer. Plus its **3** violations (`colour-field`, `contrast-badge`, `logo-uploader`) and the carried **one-logo-two-schemes** finding, whose answer (a per-scheme logo, or an upload-time check that the asset reads on both grounds) waits on the owner's production read |
+
+**Not spawned, held by the lead as custodian:** `sessions`, `checkin`, `scoring`, `designer`, `event`. The remaining **5** violations are theirs and are the lead's custodian rows — `checkin/code-input.tsx` 2, `designer/{bindings,checks}-panel.tsx` 2, `scoring/points-strip.tsx` 1 — with `registration-form.tsx`'s 5 in the rebuild. The carried `ui/radio-group` error prop (`sessions'` primitive) and the studio phone layout's unnamed canvas (`designer`'s) are custodian rows too.
+
+★ **Transferred for this wave:** `src/app/[locale]/app/admin/sessions/[id]/attendance/**` → `console`, with `tests/e2e/admin-attendance*.spec.ts` as evidence under the ledger. The screen is `checkin`'s (`DEC-150`), `checkin` is not spawned, and every open row on it is `console`'s kind of work.
+
+### 3 · The order, because three things in this wave can only happen once
+
+1. **`qa.mjs` is split first, alone** — `qa:contract` (the behavioural checks, blocking) and `qa:appearance` (the design-coupled ones) — with **no check's assertion changed**, so the split is provably a move: 44 before, 44 after, the same labels. `npm run qa` runs both. ★ **`qa:contract` is green at every commit of this wave**, which the lead proves at every sync, not only at the end.
+2. **The rebuild is one commit** carrying the new pages, the rewritten `qa:appearance`, and the new visual baseline recorded in `STATUS.md` — invariant 1 as `DEC-167` re-cuts it. Never the HTML before its capture, never after.
+3. **`ui-lint --strict` flips last**, when the allowlist is empty on disk: CI runs `--strict` and `scripts/ui-lint-allowlist.json` is deleted in the same commit, so the gate cannot be relaxed by editing a file.
+
+### 4 · Rules carried unchanged
+
+Tables are the lead's (`DEC-150`); migrations from **`0143`** are additive and the owner pushes, then merges, then checks Railway; a pre-existing test changes only with a line in `STATUS.md`'s *untouched-suite ledger*; one writer per file, JSON and specs included; captures at `.qa-shots/rtl/wave11-<track>-<surface>-<state>.png`, phone project, `390 × 844`, from a production build the row names, opened by the lead in bands.
+
+- **Documents changed:** `CLAUDE.md` (the wave-11 map; wave 10's becomes the record), all ten `.claude/agents/*.md`, `STATUS.md` (the wave-11 block)
+
+---
+
+## DEC-167 — Invariant 1 is re-cut, not deleted: the public routes' URLs, registration behaviour and accessibility floor are the contract; their appearance changes only through a decision and a re-baselined capture
+
+- **Date:** 2026-09-22 · **Decided by:** the plan (`16` §14, written in M9 and scheduled for M13 by `DEC-110`); recorded by the wave-11 lead as the entry §14 names
+- **Supersedes:** invariant 1 as `CLAUDE.md` states it; `REQ-NFR-019` as written («keep working, unchanged, through every milestone»)
+
+Since M0 the five public routes were frozen **whole** — markup, pixels and behaviour — and `npm run qa` plus `npm run visual` held them at 44/44 and 0.000 %. That was right while nothing about them was meant to change. M13 is the milestone that changes them on purpose (`REQ-UIX-025`: a door into the platform; `DEC-124`: eleven glyphs; the system), so the freeze must say **what** is frozen, or the first redesign commit breaks the invariant by definition and the gates stop meaning anything.
+
+**Invariant 1 (new).** `/`, `/ar`, `/en`, `/ar/register` and `/og.png` are a live public contract. Their **URLs, their registration behaviour and their accessibility floor** may never regress, and `scripts/qa.mjs`'s **contract half** guards them in CI, blocking. Their **appearance** may change only through a `DECISIONS.md` entry and a re-baselined visual diff, **in the same commit as the change**, with `qa`'s appearance half rewritten against the new design in that commit.
+
+What the contract half holds is `16` §14's count — the 28 behavioural checks, and the three reduced-motion checks **re-expressed rather than weakened** if what they assert on changes. `registrations` is untouched by any of this (invariant 2, `DEC-002`): the register form's action, field names, validation and no-JS path are the contract, byte for byte.
+
+- **Documents changed:** `01-prd.md` (`REQ-NFR-019` rewritten to the above), `CLAUDE.md` (invariant 1), `13-testing-quality.md` §7 (the landing's row: «must not regress» is measured against `pre-m13`)
