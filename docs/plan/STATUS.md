@@ -441,6 +441,18 @@ the job queue snapshotted; **`0123`–`0134` applied in order, each in one trans
 | `0127`'s index over existing rows | built — two revoked rows and a live one for the same member do not collide |
 | ★ a template with an unknown binding | **survives the push untouched**; its **next write is refused** `unknown_binding` — so the production read of `notification_templates` matters: an org with such a row could not save it again until the text is corrected |
 
+★ **Rehearsed against PRODUCTION'S SCHEMA, 2026-09-22.** The owner's schema-only dump (78 tables, no rows,
+no `supabase_migrations` marker) loaded into a Supabase-shaped Postgres with zero errors; `0123`–`0142` applied
+in order, each in its own transaction: **20 of 20 clean**. Two things the dump cannot carry, as wave 9 found:
+the `storage` tables (shimmed from `roles.sql`, the six buckets seeded as `0037` does) and the one
+`storage.objects` policy `0129` replaces (a placeholder — **the production read below confirms the real one is
+present**). Then the catalogue — every function body, policy, column, enum, index and trigger in `public` —
+compared with the clean chain `0001`–`0142`: **1,684 identical, no drift**; the six residual lines are outside
+`public` (five platform storage/realtime triggers the shim omits, and `rls_auto_enable()`, a platform helper the
+dump carries and no migration creates). The dump was deleted the moment the comparison finished.
+★ **The production READS could not be run by the lead:** `supabase db query --linked` is refused to this
+session by design, so they are listed for the owner in the PR's first section and below, unchanged.
+
 ★ **Re-run at the freeze, 2026-09-21, on a container REBUILT from scratch** — `main`'s `0001`–`0122`, the graphile schema, `main`'s fixture committed, the same shapes; **360 rows across 73 tables and the queue snapshotted; `0123`–`0142` applied in order, each in its own transaction (`0142`'s `alter type … add value` as its own statement first, as the CLI runs it): 20 of 20 clean.** Row by row: every pre-existing value identical, **the one delta still `0130`'s coarsening of `ratings`** (both rows' `submitted_at`, the edited row's `edited_at`, to the UTC day); new columns on old rows — `certificates.revocation_cause` null on all four (revoked rows read as final), `notification_templates.blocks`/`source_family` null on both (string templates, as before), `org_settings.survey_min_responses` = 3; `delivery_status` reads `queued,sent,delivered,bounced,failed,complained`. The container holds fixtures only.
 
 **Added at sync 2:** `select name from public.orgs` — `notify`'s F7: the string path's sign-off is «{org} · كريم معرفة · …», so an org literally named «كريم معرفة» signs twice; one read says whether that is live · a count of live certificates sharing (org, session, member, kind), which must be 0 for `0127`'s index to build.
