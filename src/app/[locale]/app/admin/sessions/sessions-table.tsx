@@ -226,7 +226,7 @@ export function ModeratorSessionsTable({ sessions, timeZone, locale }: { session
       header: t("columnTitle"),
       onCard: true,
       cell: (s) => (
-        <span className="text-label text-fg-heading">
+        <span id={`session-title-${s.id}`} className="text-label text-fg-heading">
           <bdi>{s.title}</bdi>
         </span>
       ),
@@ -249,13 +249,14 @@ export function ModeratorSessionsTable({ sessions, timeZone, locale }: { session
       key: "survey",
       header: t("survey"),
       onCard: true,
+      // The link is named «الاستبانة» and DESCRIBED by the row's title — never a
+      // second copy of the title's text: an untouched spec finds a session by
+      // its title in this table (`admin-attendance.spec.ts`), and a hidden copy
+      // inside the link made that two matches. `aria-describedby` reads the
+      // title to a screen reader without repeating it in the DOM.
       cell: (s) => (
-        <Link href={`/app/admin/sessions/${s.id}/survey`} className="underline underline-offset-4">
-          {t.rich("openSurvey", {
-            title: s.title,
-            hidden: (chunks) => <span className="sr-only">{chunks}</span>,
-            t: (chunks) => <bdi>{chunks}</bdi>,
-          })}
+        <Link href={`/app/admin/sessions/${s.id}/survey`} className="underline underline-offset-4" aria-describedby={`session-title-${s.id}`}>
+          {t("survey")}
         </Link>
       ),
     },
