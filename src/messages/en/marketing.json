@@ -1,22 +1,40 @@
 {
   "meta": {
     "title": "Knowledge Kareem | كريم معرفة",
-    "description": "Share knowledge… make an impact — an internal knowledge-sharing initiative for our group of companies"
+    "description": "Share knowledge… make an impact — an internal knowledge-sharing platform for our group of companies"
   },
   "header": {
-    "cta": "Register interest"
+    "cta": "Register interest",
+    "signIn": "Sign in",
+    "nav": "Main navigation"
   },
   "hero": {
-    "eyebrow": "An internal knowledge-sharing initiative for our group",
+    "eyebrow": "An internal knowledge-sharing platform for our group",
     "headline": "Share knowledge… make an impact.",
     "sub": "Every experience carries value, and every insight deserves to be shared.",
     "cta": "Register your interest",
     "ctaSecondary": "Learn about the initiative",
-    "microTrust": "Takes less than a minute"
+    "microTrust": "Takes less than a minute",
+    "live": "The platform is open to everyone in the group.",
+    "signIn": "Sign in with your work account"
   },
   "about": {
     "title": "What is Knowledge Kareem?",
     "body": "Every one of us holds knowledge worth sharing. It might be an experience, a skill, or a lesson you picked up along the way. That’s where Knowledge Kareem comes in: a space where employees across the group exchange their expertise through short, varied sessions and workshops — to strengthen learning, trade best practices, and make the most of the experience already among us."
+  },
+  "platform": {
+    "title": "The platform is live",
+    "body": "Knowledge Kareem is not a plan for later. The platform brings sessions, attendance, discussion and recognition together in one place, and you sign in with your work account at any of our companies.",
+    "feature1Title": "Browse sessions and book a seat",
+    "feature1Body": "Short sessions and workshops led by colleagues, with their times and rooms — your seat is one tap away.",
+    "feature2Title": "Check in in the room",
+    "feature2Body": "A short code appears in the session; enter it on your phone and your attendance is recorded.",
+    "feature3Title": "Discuss, read, rate",
+    "feature3Body": "Ask questions, open the session's materials, and rate it once it ends.",
+    "feature4Title": "Points and certificates",
+    "feature4Body": "Every session you attend or lead adds to your balance, and your certificate carries a code that proves it.",
+    "signIn": "Sign in to the platform",
+    "signInHint": "With your work account at any of our companies"
   },
   "how": {
     "title": "How it works",
@@ -32,7 +50,7 @@
     "attendee": {
       "title": "Learn from your colleagues",
       "step1Title": "Discover",
-      "step1Body": "Browse upcoming sessions once the platform launches",
+      "step1Body": "Browse upcoming sessions on the platform",
       "step2Title": "Register",
       "step2Body": "Book your seat in the sessions that interest you",
       "step3Title": "Attend",
@@ -59,13 +77,18 @@
   },
   "finalCta": {
     "title": "Be among the first to share — and the first to know",
-    "body": "The platform launches soon. Register your interest now and we’ll email you the moment it goes live.",
+    "body": "Register your interest in leading or attending a session, and the initiative team will be in touch. Already have an account? Sign in to the platform now.",
     "cta": "Register your interest now",
-    "tagline": "Share knowledge… make an impact."
+    "tagline": "Share knowledge… make an impact.",
+    "signIn": "Sign in"
   },
   "footer": {
     "privacy": "Your email is used only for the Knowledge Kareem initiative — never shared with anyone else.",
-    "internal": "An internal initiative for our group of companies"
+    "internal": "An internal initiative for our group of companies",
+    "signIn": "Sign in",
+    "privacyLink": "Privacy policy",
+    "terms": "Terms of use",
+    "linksLabel": "Links"
   },
   "notFound": {
     "title": "Page not found",
@@ -73,7 +96,7 @@
   },
   "register": {
     "title": "Register your interest",
-    "intro": "Tell us how you’d like to take part, and we’ll be in touch when the platform launches.",
+    "intro": "Tell us how you’d like to take part, and the initiative team will be in touch.",
     "back": "Back to home",
     "roleLegend": "How would you like to take part?",
     "roleHelper": "Choosing “I’ll share my knowledge” automatically includes you as an attendee too",
@@ -83,7 +106,7 @@
     "attendeeCardBody": "I want to attend sessions and learn from my colleagues’ experience",
     "nameLabel": "Full name",
     "emailLabel": "Email",
-    "emailHint": "We’ll email you here when the platform launches",
+    "emailHint": "We’ll email you here about taking part",
     "emailPrivacy": "Your email is used only for this initiative — never shared with anyone else.",
     "topicTitleLabel": "Proposed topic title",
     "topicTitleHint": "e.g. How we cut our reporting time in half",
@@ -113,14 +136,15 @@
     },
     "success": {
       "providerTitle": "We’ve received your interest — thank you for your generosity",
-      "providerBody": "The Knowledge Kareem team will contact you soon to discuss your proposed topic and help you shape your session. We’ll also email you the moment the platform launches — and you can share more topics when the team reaches out.",
+      "providerBody": "The Knowledge Kareem team will contact you soon to discuss your proposed topic and help you shape your session — and you can share more topics when the team reaches out.",
       "attendeeTitle": "You’re registered — welcome to Knowledge Kareem",
-      "attendeeBody": "We’ll email you as soon as the platform launches and sessions begin.",
+      "attendeeBody": "The platform is open now — sign in with your work account to browse upcoming sessions and book your seat.",
       "tagline": "Share knowledge… make an impact.",
       "invite": "Invite a colleague",
       "inviteText": "Join the Knowledge Kareem initiative — share knowledge, make an impact. Register your interest here:",
       "shareTitle": "Knowledge Kareem",
-      "copied": "Link copied"
+      "copied": "Link copied",
+      "signIn": "Go to the platform"
     }
   }
 }

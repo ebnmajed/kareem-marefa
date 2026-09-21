@@ -2,7 +2,7 @@
 // design it describes, never before or after it: the hero's words, the wordmark, the constellation, the
 // sticky CTA and the intro sting.
 
-import { BASE, check, fresh, providerFieldsDisplay, shots, sleep } from "./lib.mjs";
+import { BASE, check, fresh, shots, sleep } from "./lib.mjs";
 
 export default async function appearance() {
 /* ---------------- 1. the landing's identity ---------------- */
@@ -106,4 +106,36 @@ export default async function appearance() {
   await page.close();
 }
 
+/* ---------------- 9. the M13 design (DEC-167) ---------------- */
+{
+  const page = await fresh();
+  await page.goto(`${BASE}/ar`, { waitUntil: "networkidle0" });
+  const indices = await page.$$eval(".chapter-mark .text-index", (els) => els.map((e) => e.textContent.trim()));
+  check("chapters indexed 01–05 in Western digits (DEC-124)", indices.join(",") === "01,02,03,04,05", indices.join(","));
+  const platform = await page.evaluate(() => {
+    const s = document.getElementById("platform");
+    return Boolean(s?.querySelector("h2") && s.querySelector('a[href="/ar/sign-in"]'));
+  });
+  check("the platform chapter says it exists, with its door", platform);
+  const doors = await page.evaluate(() => {
+    const bg = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? getComputedStyle(el).backgroundColor : "absent";
+    };
+    return { signIn: bg('header a[href="/ar/sign-in"]'), register: bg('header a[href="/ar/register"]') };
+  });
+  check(
+    "sign-in is outlined, the interest list is filled — two doors, not one",
+    doors.signIn === "rgba(0, 0, 0, 0)" && doors.register === "rgb(255, 255, 255)",
+    JSON.stringify(doors),
+  );
+  await page.close();
+}
+for (const path of ["/ar", "/en", "/ar/register"]) {
+  const page = await fresh();
+  await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+  const eastern = await page.evaluate(() => (document.body.innerText.match(/[\u0660-\u0669\u06F0-\u06F9]/g) ?? []).length);
+  check(`no Arabic-Indic digit on ${path} (DEC-124)`, eastern === 0, `found ${eastern}`);
+  await page.close();
+}
 }

@@ -253,4 +253,41 @@ export default async function contract() {
   await page.close();
 }
 
+/* ---------------- 8. the door into the platform (REQ-UIX-025, DEC-126) ---------------- */
+// «تسجيل الدخول» is persistent: in the header, on every public route, visible in the FIRST
+// viewport — no scrolling, no menu — at a phone's width and a desktop's, and a real touch target.
+// It goes to the Arabic sign-in (the platform is Arabic-only), whatever the page's locale.
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const page = await fresh({ width, height });
+  for (const path of ["/ar", "/en", "/ar/register"]) {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle0" });
+    const door = await page.evaluate(() => {
+      const a = document.querySelector('header a[href="/ar/sign-in"]');
+      if (!a) return null;
+      const r = a.getBoundingClientRect();
+      const cs = getComputedStyle(a);
+      return {
+        shown: r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none",
+        inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
+        height: Math.round(r.height),
+      };
+    });
+    check(
+      `door: sign-in visible in the header, first viewport — ${path} at ${width}px`,
+      door?.shown && door.inView && door.height >= 44,
+      JSON.stringify(door),
+    );
+  }
+  await page.close();
+}
+
+/* ---------------- 9. /og.png ---------------- */
+{
+  const res = await fetch(`${BASE}/og.png`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const isPng = buf.subarray(1, 4).toString("latin1") === "PNG";
+  const w = isPng ? buf.readUInt32BE(16) : 0;
+  const h = isPng ? buf.readUInt32BE(20) : 0;
+  check("/og.png is a 1200×630 PNG", res.status === 200 && isPng && w === 1200 && h === 630, `${res.status} ${w}×${h}`);
+}
 }
