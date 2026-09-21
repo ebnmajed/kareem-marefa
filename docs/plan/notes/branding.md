@@ -444,3 +444,235 @@ should land in the same sync-2 batch of commits, not weeks apart.
    makes exploitable in practice rather than academic, since `designer`'s seed is about to start
    writing real gradient templates. Worth the lead treating it as more urgent than "a request for
    later."
+
+---
+
+## Wave 11 — 2026-09-22, planning only (`DEC-166`, `DEC-073`'s consequence)
+
+Read before writing this: `STATUS.md`'s START HERE block and the wave-11 block, `CLAUDE.md` §
+*Ownership map (wave 11)*, `DEC-166`, `DEC-167`, `DEC-073` in full, `0068_brand_kits.sql` and every
+migration that has touched `save_brand_kit()` since (`0071`, `0093`), `globals.css`'s status tokens
+(read, not edited), `16` §16.6, `src/lib/brand/contrast.ts`, `tests/unit/status-tokens.test.ts`,
+`src/components/ui/badge.tsx`, `src/components/ui/panel.tsx`, `src/components/branding/{contrast-badge,brand-kit-form}.tsx`.
+This section is B1/B2/B3 of the checklist. Nothing in `src/` or `supabase/` changes yet.
+
+### B1 — the status-colour guard
+
+#### The exact pairs, read off the actual code rendering the badge, not assumed
+
+`Badge`'s filled tones (`badge.tsx:33-36`) put a **near-white platform fill** behind status text in
+light context, and switch to **transparent + border** once an ancestor carries `.theme-dark`
+(`DEC-080`'s per-section band). `Panel`'s coloured tones (`panel.tsx:11-12`) do the same with a
+translucent border. Both sit on top of whatever the org's theme layer just painted underneath them
+— a card (`bg-surface`) most of the time (`Card`'s own background, e.g. `browse/session-card.tsx`),
+sometimes the bare page (`bg-canvas`, e.g. a `Panel` used directly on `/app/propose/[id]`). So the
+badge/panel's own fill is a **UI object laid over an org colour**, and the org colour underneath it
+is either `light_canvas` or `light_surface` — I check both, since `16` §16.6's own example names
+"dark canvas… dark cards" together rather than picking one.
+
+`OUTLINE_TONE.live`/`.ended` (`badge.tsx:44-46`) and the outline `Badge` usages that already exist
+in the tree (`platform/templates/library-table.tsx:143`, `platform/impersonate/history-table.tsx:58`)
+drop the fill entirely: the status **ink itself** sits directly on the org colour, as small text
+(badge label size, never ≥ 19 px bold) — SC 1.4.3's 4.5:1, not the UI-component 3:1.
+
+So, three buckets, matching my agent file's framing exactly:
+
+| Bucket | Pair | Criterion | Threshold | Why it's skipped or kept |
+|---|---|---|---|---|
+| skip | `--color-live` on `--color-live-bg`; `--color-ended` on `--color-ended-bg` | 1.4.3 | 4.5:1 | constant on constant — always ≈15–17:1, cannot fail, no org value in it at all |
+| **kept** | `--color-live-bg` against `light_canvas` | 1.4.11 (UI component) | 3:1 | the filled badge/panel as an object against the page it sits on |
+| **kept** | `--color-live-bg` against `light_surface` | 1.4.11 | 3:1 | same object, against a card |
+| **kept** | `--color-ended-bg` against `light_canvas` | 1.4.11 | 3:1 | " |
+| **kept** | `--color-ended-bg` against `light_surface` | 1.4.11 | 3:1 | " |
+| **kept** | `--color-live` (ink) against `light_surface` | 1.4.3 | 4.5:1 | the outline badge's text, no fill under it |
+| **kept** | `--color-live` (ink) against `light_canvas` | 1.4.3 | 4.5:1 | same control used bare on the page |
+| **kept** | `--color-ended` (ink) against `light_surface` | 1.4.3 | 4.5:1 | " |
+| **kept** | `--color-ended` (ink) against `light_canvas` | 1.4.3 | 4.5:1 | " |
+| **kept** | `--color-live-on-dark` against `dark_canvas` | 1.4.11 | 3:1 | dark badge is `bg-transparent` + `border-live-on-dark/50` — the border is the object, `dark_canvas`/`dark_surface` are just as overridable as their light twins |
+| **kept** | `--color-live-on-dark` against `dark_surface` | 1.4.11 | 3:1 | " |
+| out of scope, on purpose | `ended` in dark context | — | — | `badge.tsx:35`'s dark leg is `border-edge-strong` + `text-fg-muted` — **both already org tokens** (`dark_edge_strong`, `dark_fg_muted`), not platform constants. There is no `--color-ended-on-dark`. This pair is an org-vs-org question (already, in principle, whatever `checkContrast()` on the form's own `edgeStrong`-vs-`canvas` badge covers today, however loosely) and not `DEC-073`'s consequence — I am not inventing a tenth platform token to close it. Naming it here so it isn't silently assumed covered. |
+
+Ten guarded pairs: four fills (1.4.11, 3:1) × {live-bg, ended-bg} × {canvas, surface} in light, two
+border pairs (1.4.11, 3:1) for `live-on-dark` × {canvas, surface} in dark, and four ink pairs (1.4.3,
+4.5:1) × {live, ended} × {canvas, surface} in light. `ended` contributes no dark pair; `live-on-dark`
+contributes no *ink* pair distinct from its border pair in dark (same value, same two backgrounds —
+one `>= 3` check covers both readings, since 4.5 ⊃ 3 is false in general but here I'll gate at the
+lower 1.4.11 threshold for the dark border specifically, and separately name in the SQL comment that
+a badge label's actual TEXT weight in dark mode is `text-live-on-dark` on transparent, i.e. the same
+pair again — one check, cited for both reasons, not two redundant checks).
+
+#### Where this lands: `save_brand_kit()`, in SQL, refusing before the write
+
+New `plpgsql` guard function, `public.status_contrast_ok(p_light jsonb, p_dark jsonb)` — plain
+`sql`/`plpgsql`, no table read, so it is trivially unit-testable through the RLS harness without a
+fixture — that:
+
+1. Computes WCAG relative luminance and contrast ratio in SQL (the same two-line formula
+   `contrast.ts`/`status-tokens.test.ts` already carry twice in TypeScript; a third copy in SQL is
+   unavoidable here because the enforcement point is the database, per `DEC-073`'s own text —
+   "that is `REQ-NFR-007` at the one place it can actually be enforced"). I will comment the
+   function with the same warning `status-tokens.test.ts:8-10` gives about a second source of
+   truth, and add a **fourth** reader — a new `tests/unit/status-contrast-sql.test.ts` (mine) that
+   feeds the same ten pairs' fixture hexes through both the SQL function (via `applyProposed()`'s
+   pool) and `checkContrast()` in TypeScript and asserts they agree, so the two never quietly
+   diverge the way the plain-text warning alone cannot prevent.
+2. Takes the ten pairs above as **literal hex constants transcribed from `globals.css`** — not a
+   read of `globals.css` (SQL can't read a file at runtime) but comments citing the exact line
+   numbers, same discipline `0093`'s `canvasRaise` backfill already uses for its own transcription.
+3. Raises `'status_contrast_failed'` with **errcode `'55000'`** (object-not-in-prerequisite-state —
+   the precedent is `0099_certificate_designs.sql:133`'s `'design_locked'`, a business rule that
+   isn't a bad reference or a missing value, which is why it is not `22023`) and a **detail** naming
+   which pair failed (`errhint`/`errdetail` carrying e.g. `'live_bg_vs_light_canvas'`), so the field
+   the toast points at is derivable without re-running the maths client-side.
+4. Is called from inside `save_brand_kit()`, **before** the `insert ... on conflict` — a check that
+   ran after the write would need the write to roll back on top of an already-armed
+   `write_audit()`/history trigger, and `CLAUDE.md`'s write-then-`raise` rule says a function raises
+   before its first write, not after (`DEC-043`). `save_brand_kit()`'s shape already raises before
+   any write for the logo/font checks (`0068:154-166`) — this is the same pattern, one more
+   `if ... then raise` block, before the `insert`.
+
+New file: `supabase/proposed/branding/0003_status_contrast_guard.sql`, `create or replace function
+public.save_brand_kit(...)` (unchanged signature, `0093`'s body plus the new guard call at the top),
+`create function public.status_contrast_ok(...)`, no `alter table`.
+
+**Tests, `tests/rls/brand-kits.test.ts`** (mine, existing file — new cases, not edited assertions):
+- `POL-save_brand_kit.status_contrast_refused` — a light palette whose `canvas` is `#fbf3e8` (chosen
+  to sit under 3:1 from `#fbf5ea`) is refused `55000`.
+- `POL-save_brand_kit.status_contrast_accepted` — the platform default palette
+  (`platformBrand()`'s own light/dark, transcribed) saves cleanly; this is the "platform default
+  accepted" case my agent file names explicitly, and it is also the regression guard against ever
+  shipping a guard the platform's own values can't pass.
+- `POL-save_brand_kit.status_contrast_dark` — a dark palette whose `dark_canvas` is close to
+  `#d2a86b` is refused; a dark palette far from it saves.
+- ★ **The existing fixture breaks under the new guard and I have to fix it, in the same commit as
+  the guard, not as a separate "test update" that looks like scope creep**: `LIGHT.surface` is
+  `"#222222"` today (`brand-kits.test.ts:26`) and every *other* case in that file — the font gate,
+  logo ownership, `canvasRaise`, the two poster-regeneration cases — saves a kit through that
+  fixture incidentally. `#222222` gives `live` ink 2.70:1 and `ended` ink 2.80:1 against it (measured
+  with `contrast.ts`'s own formula), both under 4.5 — so my new guard would refuse **every existing
+  case in the file**, not just the ones about contrast. I checked the literal appears exactly once
+  (`grep -n '"#222222"' tests/rls/brand-kits.test.ts`), so the fix is a one-line fixture change to a
+  light value that still fails obviously against `LIGHT.canvas`'s `#111111` (so the fill checks stay
+  meaningful) but passes against both status inks — `#eeeeee` measures `live` 5.08:1, `ended`
+  4.90:1, both ≥ 4.5, and against `LIGHT.canvas` the fill checks are unaffected (they read `canvas`,
+  not `surface`). Flagging this here rather than discovering it silently at build time, because it
+  is exactly the kind of thing "the existing suites are evidence, not edited to fit" is meant to
+  catch — this is not editing an assertion to make a test pass, it is keeping a fixture valid under
+  a new invariant the file's own header already anticipates ("the seam M13 extends", `status-tokens.test.ts:12-18`,
+  written in wave 4/M9 for exactly this day).
+- The parity-golden claim in my agent file ("the parity goldens unmoved") holds by construction:
+  `status_contrast_ok()` touches nothing `export_render_context()` or `worker/src/render/**` reads;
+  it only gates the write path.
+
+#### The screen's message
+
+New key `errors.statusContrast` in `branding.json` (`ar/` first): something naming the object and
+the fix, not a bare "failed" — draft: **"يتعارض تباين لون شارة الحالة مع اللون الذي اخترته لهذه
+الخلفية. جرّب لونًا أفتح أو أغمق."** (approximate — I will tune the Arabic once I have the actual
+failing-pair detail to decide whether to name the background field specifically, e.g. "الخلفية
+(canvas)" vs "السطح (surface)", once `errdetail` gives me the pair). `actions.ts` (mine) maps
+`errcode === '55000'` to `'statusContrast'` beside the existing `42501`/`22023` mappings — one more
+`if`, same shape. Surfaced through the existing `role="alert"` toast path (`SaveBrandKitState.error`),
+no new UI primitive.
+
+#### The production read, and what "an existing kit that now fails" does
+
+The owner's order (`STATUS.md`, already drafted) puts this first, before push. The read I am asking
+the owner to run, read-only, against the linked project:
+
+```sql
+select bk.org_id, bk.light_canvas, bk.light_surface, bk.dark_canvas, bk.dark_surface, bk.updated_at
+  from public.brand_kits bk;
+```
+
+— every existing row is small enough to eyeball; I do not need a computed pass/fail column from a
+production read (that would require running my own not-yet-promoted SQL against production, which
+is not how migrations are proven). Once I have the rows, I run the same ten checks against each
+locally with `contrast.ts` before the guard is promoted, and report which org IDs (if any) already
+hold a palette the new guard would refuse.
+
+**What happens to one that fails: refuse on the next save, never rewrite a stored kit.** My agent
+file says this in one line and I am not re-opening it — a migration silently rewriting an admin's
+chosen colours is a worse experience than a save that already succeeded staying on disk unless
+that admin visits SCR-059 again, and `save_brand_kit()`'s CHECK-based validation has never
+retroactively validated stored rows either (a font going from `passed` to some other `parity_status`
+after being referenced is explicitly allowed to sit unenforced until the next save, per `0068`'s own
+header note 3.5-ish comment on `heading_font_id`/`body_font_id`). If the read finds any org already
+below threshold, that org's SCR-059 will show the guard on its *next* save attempt, same as everyone
+else's — nothing forces it back into the admin's face before then.
+
+### B2 — the three `ui-lint` violations
+
+Not yet read in detail (planning budget went to B1 first, since it is the one with a schema
+consequence and an owner-read dependency). `colour-field.tsx`, `contrast-badge.tsx`,
+`logo-uploader.tsx` — I will read `scripts/ui-lint.mjs`'s two rules against each file at build time
+and report the fix per file in this note before committing code, per the definition of done
+("`ui-lint --strict` shows none of your files"). Expect: `colour-field.tsx` is a raw `<input
+type="text">` with a hex value that should sit on `ui/field`/`ui/input` (my agent file's SCR-059
+audit from wave 8, §5 above, already named this exact file for the same reason); `logo-uploader.tsx`
+is very likely the raw `<input type="file">` behind a styled trigger, same §5 finding, which
+`ui/file-drop` (owned by `content`, imported by path, never edited by me) should replace;
+`contrast-badge.tsx` I have not yet matched to a rule — read at build time.
+
+### B3 — one logo for two schemes
+
+**The two options, and what each costs the other two tracks:**
+
+1. **A per-scheme logo** — a second column on `brand_kits` (not mine to write: I name it in this
+   plan, the lead lands it) — `logo_asset_id_dark uuid references design_assets(id)`, alongside the
+   existing `logo_asset_id` (read as `logo_asset_id_light` in spirit, unrenamed to stay additive).
+   Costs: `save_brand_kit()` gains one more optional parameter (trailing, defaulted — the wave-11
+   additive rule); `brand_kit()` and `export_render_context()` each add one more key
+   (`logoAssetIdDark`) to their jsonb; `designer`'s `resolveBrand()`/`bindings.ts` pick the dark id
+   when `scheme === 'dark'` and a poster is always dark (`DEC-125`) — so **every poster's logo would
+   change to the dark asset the day this ships**, which is a real behaviour change `designer` has to
+   sign off on, not a free win; `notify`'s mail (light-context email chrome) keeps using the light
+   id unchanged. SCR-059 gains a second `LogoUploader` instance, one per scheme tab (the form
+   already tabs light/dark for colours — the same `Tabs` wrapper covers a second uploader with no
+   new primitive).
+2. **An upload-time check that the one asset reads on both grounds** — refuse (or warn) at
+   `save_brand_kit()`'s logo-ownership check if the uploaded PNG's alpha-weighted content is too
+   dark-ink-on-transparent to read against a dark poster background. Costs: no schema change, but a
+   real content check needs the image's *pixels* (alpha + luminance of the opaque pixels), which
+   `design_assets` does not store (`sniffed_mime`/`width`/`height`/`sha256` only, `0055:161-176`) —
+   so this option means decoding the PNG at save time (the Route Handler that already sniffs the
+   upload, before it becomes a `design_assets` row, is the natural place — not `save_brand_kit()`
+   itself, which never sees bytes) and either storing a derived boolean (`logo_reads_on_dark
+   boolean`, one more small column, still the lead's to land) or refusing the upload outright with
+   no new column at all. Cheaper on the schema, but it is a **refusal at upload time for a shape
+   `DEC-009` already forces raster-and-sniffed** — consistent with how this codebase already treats
+   uploads, and it never touches `designer`'s renderer or `notify`'s mail.
+
+**The owner's read that decides between them**, which I have not run (my agent file: "waits on the
+owner's production read"):
+
+> Is the live org's saved logo (`brand_kits.logo_asset_id` → `design_assets.storage_path`) a PNG with
+> a transparent background whose opaque pixels are dark ink (the failure mode `DEC-125`'s dark
+> posters expose)? `sniffed_mime`/`width`/`height` alone cannot answer this — it needs the actual
+> bytes. Read:
+> ```sql
+> select o.slug, bk.updated_at, da.storage_path, da.sniffed_mime, da.width, da.height
+>   from public.brand_kits bk
+>   join public.orgs o on o.id = bk.org_id
+>   join public.design_assets da on da.id = bk.logo_asset_id
+>  where bk.logo_asset_id is not null;
+> ```
+> then, for each row returned, download `storage_path` through the storage console (or a signed
+> URL) and open it — is it PNG with an alpha channel, and are its opaque pixels dark? If there is
+> **no** row (no org has uploaded a logo yet), the question is moot for now and either option is
+> equally free to build against a green field — I'd read that outcome as leaning towards Option 2
+> (cheaper, no schema growth) since there is no live regression to fix, only a future one to
+> prevent, but the choice is still the owner's/lead's to make, not mine to default into.
+
+I will build **neither** before the lead rules, per my agent file.
+
+### Order I intend to work in, once this plan is approved
+
+1. B1's SQL (`supabase/proposed/branding/0003_status_contrast_guard.sql`) + the RLS cases +
+   the `LIGHT.surface` fixture fix, handed to the lead with the `03` §8.2 rows, together — this is
+   the piece with a schema consequence and it goes first so the owner's read and the migration can
+   move in parallel with everything else.
+2. B1's screen message + `actions.ts` mapping, once the guard is promoted (so `errcode '55000'` is
+   real to map against).
+3. B2, the three `ui-lint` files — independent of B1, can start as soon as B1's SQL is handed off.
+4. B3 stays a plan until the owner's read comes back and the lead rules between the two options.
