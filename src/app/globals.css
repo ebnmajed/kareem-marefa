@@ -119,7 +119,9 @@
      aria-hidden), so they sit below text contrast minimums on purpose. */
   --spine: #d7dce3;
   --node: #0b1220;
-  --index: #c9ced6;
+  /* 3.33:1 on white, 3.08:1 on silver-100 — the chapter index is large text and still quiet (REQ-NFR-007,
+     wave 11's sweep; it was #c9ced6, 1.58:1). */
+  --index: #848da0;
 
   /* Buttons: primary inverts per context, secondary is an outline */
   --btn-bg: #0b1220;
@@ -153,7 +155,7 @@
 
   --spine: rgba(201, 206, 214, 0.26);
   --node: #c9ced6;
-  --index: rgba(201, 206, 214, 0.42);
+  --index: #6b778c; /* 4.14:1 on navy-950 (was a 42 % silver, well under 3:1) */
 
   background-color: var(--bg);
   color: var(--fg-body);
