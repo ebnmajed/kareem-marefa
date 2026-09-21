@@ -4,6 +4,12 @@ import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import type { TaskKind } from "@/lib/dal/tasks";
 import { createTaskAction } from "@/components/tasks/actions";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 
 interface CreateTaskFormProps {
   locale: string;
@@ -81,64 +87,60 @@ export function CreateTaskForm({ locale, sessionId, materials, sessionDayId }: C
     // fallback below). Without it, the browser's own check on `title`'s `required`
     // blocks the native submit event before `handleSubmit` ever runs, so an empty
     // title shows nothing at all — the same failure mode `profile-form.tsx` had.
-    <form noValidate onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-field border border-edge p-4">
-      <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-        {t("kindLabel")}
-        <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)} className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
-          {FORM_KIND.map((k) => (
-            <option key={k} value={k}>
-              {tList(`kind.${k}`)}
-            </option>
-          ))}
-        </select>
-      </label>
+    <Panel className="mt-4">
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Field label={t("kindLabel")}>
+          <Select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
+            {FORM_KIND.map((k) => (
+              <option key={k} value={k}>
+                {tList(`kind.${k}`)}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-      <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-        {t("titleLabel")}
-        <input name="title" required maxLength={200} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
-      </label>
+        <Field label={t("titleLabel")} required>
+          <Input name="title" required maxLength={200} />
+        </Field>
 
-      <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-        {t("descriptionLabel")}
-        <textarea name="description" maxLength={2000} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
-      </label>
+        <Field label={t("descriptionLabel")}>
+          <Textarea name="description" maxLength={2000} />
+        </Field>
 
-      {kind === "read_material" ? (
-        materials.length === 0 ? (
-          <p className="text-body-sm text-fg-muted">{t("noMaterials")}</p>
-        ) : (
-          <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-            {t("materialLabel")}
-            <select name="materialId" required className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
-              {materials.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        )
-      ) : null}
+        {kind === "read_material" ? (
+          materials.length === 0 ? (
+            <p className="text-body-sm text-fg-muted">{t("noMaterials")}</p>
+          ) : (
+            <Field label={t("materialLabel")} required>
+              <Select name="materialId" required>
+                {materials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )
+        ) : null}
 
-      {kind === "external" ? (
-        <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-          {t("externalUrlLabel")}
-          <input name="externalUrl" type="url" required placeholder="https://" dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
-        </label>
-      ) : null}
+        {kind === "external" ? (
+          <Field label={t("externalUrlLabel")} required>
+            <Input name="externalUrl" type="url" required placeholder="https://" dir="ltr" />
+          </Field>
+        ) : null}
 
-      {kind === "form" ? (
-        <label className="flex flex-col gap-1 text-body-sm text-fg-body">
-          {t("formQuestionsLabel")}
-          <textarea name="formQuestions" rows={4} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
-        </label>
-      ) : null}
+        {kind === "form" ? (
+          <Field label={t("formQuestionsLabel")}>
+            <Textarea name="formQuestions" rows={4} />
+          </Field>
+        ) : null}
 
-      {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
+        {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
 
-      <button type="submit" disabled={busy || (kind === "read_material" && materials.length === 0)} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
-        {t("submit")}
-      </button>
-    </form>
+        <Button type="submit" variant="secondary" size="md" disabled={busy || (kind === "read_material" && materials.length === 0)} className="self-start">
+          {t("submit")}
+        </Button>
+      </form>
+    </Panel>
   );
 }
