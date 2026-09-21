@@ -154,6 +154,18 @@ async function goto(page: Page, url: string) {
 
 const editor = (page: Page) => page.locator("#main");
 
+/**
+ * One row of the checks panel, by the words its title starts with.
+ *
+ * ★ `toHaveCount(1)` rather than `toBeVisible()`, because a check's `title`
+ * and `titleWithValue` share their opening words and two rows of the SAME
+ * check would make a bare `getByText` ambiguous under strict mode. Asserting
+ * the count says both things the case means: the check fired, and it fired
+ * once. Two builds have already been spent on locators that matched twice.
+ */
+const check = (page: Page, words: string) =>
+  editor(page).locator("li").filter({ hasText: words });
+
 test("★ the three panes at 390 px, with the preview filled by the one renderer", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
@@ -217,7 +229,7 @@ test("★ a binding the key does not offer is caught in the editor, and the save
   await text.fill("نراك في {{building}}.");
   await text.blur();
 
-  await expect(editor(page).getByText("لا تتيحه هذه الرسالة", { exact: false })).toBeVisible();
+  await expect(check(page, "لا تتيحه هذه الرسالة")).toHaveCount(1);
   // A mail an admin has not seen is a mail they must not be able to approve.
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
   await page.screenshot({ path: `${SHOTS}/wave10-notify-check-binding.png` });
@@ -232,7 +244,7 @@ test("★ a stored block the document LOST is named, not swallowed", async ({ co
   // one stored and let an admin save the loss.
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_7d");
 
-  await expect(editor(page).getByText("أُسقطت كتلة", { exact: false })).toBeVisible();
+  await expect(check(page, "أُسقطت كتلة")).toHaveCount(1);
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
   await page.screenshot({ path: `${SHOTS}/wave10-notify-check-dropped.png` });
 });
@@ -244,7 +256,7 @@ test("an image with no alt blocks the save, and the check names the block", asyn
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
 
   await editor(page).getByRole("button", { name: "أضف صورة" }).click();
-  await expect(editor(page).getByText("صورة بلا نص بديل", { exact: false })).toBeVisible();
+  await expect(check(page, "صورة بلا نص بديل")).toHaveCount(1);
   await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
   await page.screenshot({ path: `${SHOTS}/wave10-notify-check-image-alt.png` });
 });
