@@ -43,6 +43,7 @@ export function ReorderableList<Item>({
   label,
   disabled = false,
   size = "md",
+  controls = "side",
   className = "",
 }: ReorderableListProps<Item>) {
   const t = useTranslations("ui.reorderableList");
@@ -70,38 +71,45 @@ export function ReorderableList<Item>({
         {items.map((item, index) => {
           const key = keys[index];
           const nameId = `${base}-${key}-name`;
-          const context = { index, total };
+          const rowContext = { index, total };
           const atTop = disabled || index === 0;
           const atBottom = disabled || index === total - 1;
+          // The same controls whichever side they end up on: the consumer that
+          // takes them inline gets exactly what the side column would show.
+          const rowControls = (
+            <div className="flex shrink-0 items-center gap-1">
+              <IconButton
+                size={size}
+                label={t("moveUp")}
+                aria-describedby={nameId}
+                aria-disabled={atTop || undefined}
+                className={inert}
+                onClick={() => move(index, -1)}
+              >
+                <ChevronIcon direction="up" />
+              </IconButton>
+              <IconButton
+                size={size}
+                label={t("moveDown")}
+                aria-describedby={nameId}
+                aria-disabled={atBottom || undefined}
+                className={inert}
+                onClick={() => move(index, 1)}
+              >
+                <ChevronIcon direction="down" />
+              </IconButton>
+              {renderActions ? renderActions(item, { ...rowContext, controls: null }) : null}
+            </div>
+          );
+          const inline = controls === "inline";
+          const context = { ...rowContext, controls: inline ? rowControls : null };
           return (
-            <li key={key} className="flex items-start gap-2">
+            <li key={key} className={inline ? "" : "flex items-start gap-2"}>
               <span id={nameId} hidden>
                 {getName(item)}
               </span>
               <div className="min-w-0 flex-1">{renderItem(item, context)}</div>
-              <div className="flex shrink-0 items-center gap-1">
-                <IconButton
-                  size={size}
-                  label={t("moveUp")}
-                  aria-describedby={nameId}
-                  aria-disabled={atTop || undefined}
-                  className={inert}
-                  onClick={() => move(index, -1)}
-                >
-                  <ChevronIcon direction="up" />
-                </IconButton>
-                <IconButton
-                  size={size}
-                  label={t("moveDown")}
-                  aria-describedby={nameId}
-                  aria-disabled={atBottom || undefined}
-                  className={inert}
-                  onClick={() => move(index, 1)}
-                >
-                  <ChevronIcon direction="down" />
-                </IconButton>
-                {renderActions ? renderActions(item, context) : null}
-              </div>
+              {inline ? null : rowControls}
             </li>
           );
         })}

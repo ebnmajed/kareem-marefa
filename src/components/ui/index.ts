@@ -459,11 +459,22 @@ export interface ReorderableListProps<Item> extends Styleable {
   disabled?: boolean;
   /** `sm` (36 px) for a dense pane beside a canvas; `md` (44 px) is the house target. */
   size?: Extract<Size, "sm" | "md">;
+  /**
+   * Where ▲▼ and `renderActions` sit. `side` (the default): a column at the
+   * row's end, right for a one-line item. `inline`: the row renders the item
+   * alone and hands the controls to `renderItem` through `context.controls`,
+   * for a CARD-shaped item — at 390 px a side column takes ~120 px from a card
+   * and its inputs truncate (wave 10, SCR-065's editor). `09` SCR-065 puts the
+   * arrows «at the start edge of its header»; the consumer places them there.
+   */
+  controls?: "side" | "inline";
 }
 
 export interface ReorderableRowContext {
   index: number;
   total: number;
+  /** With `controls: "inline"`: ▲▼ and the actions, for the consumer to place. Otherwise null. */
+  controls: ReactNode;
 }
 
 export interface ReorderableMove {

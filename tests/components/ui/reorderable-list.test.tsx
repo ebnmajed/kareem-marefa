@@ -200,6 +200,67 @@ describe("ReorderableList", () => {
     expect(screen.getAllByRole("button", { name: "Move down" })).toHaveLength(3);
   });
 
+  it("★ controls=\"inline\": the row renders the item alone and hands ▲▼ to renderItem, which still move the row", async () => {
+    // A card-shaped item at 390 px cannot spare a side column (SCR-065's
+    // editor); the consumer places the controls in its own header instead.
+    function Inline() {
+      const [items, setItems] = useState(QUESTIONS);
+      return (
+        <NextIntlClientProvider locale="ar" messages={arUi}>
+          <ReorderableList
+            items={items}
+            getKey={(q) => q.id}
+            getName={(q) => q.text}
+            label="أسئلة الاستبانة"
+            controls="inline"
+            renderActions={(q) => <button type="button">{`احذف ${q.id}`}</button>}
+            renderItem={(q, ctx) => (
+              <article aria-label={q.text}>
+                <header data-testid={`header-${q.id}`}>{ctx.controls}</header>
+                <p>{q.text}</p>
+              </article>
+            )}
+            onReorder={(next) => setItems(next.map((id) => items.find((q) => q.id === id)!))}
+          />
+        </NextIntlClientProvider>
+      );
+    }
+    const user = userEvent.setup();
+    render(<Inline />);
+    const first = rows()[0];
+    // The controls are INSIDE the consumer's header, not beside the item.
+    const header = within(first).getByTestId("header-q1");
+    expect(within(header).getByRole("button", { name: UP })).toHaveAttribute("aria-disabled", "true");
+    expect(within(header).getByRole("button", { name: "احذف q1" })).toBeInTheDocument();
+    expect(first.className).toBe("");
+    // Nothing is rendered twice: three of each control in the whole list.
+    expect(screen.getAllByRole("button", { name: DOWN })).toHaveLength(3);
+    await user.click(within(header).getByRole("button", { name: DOWN }));
+    expect(order()).toEqual([QUESTIONS[1].text, QUESTIONS[0].text, QUESTIONS[2].text]);
+    expect(screen.getByRole("status")).toHaveTextContent("إلى الموضع 2 من 3");
+  });
+
+  it("controls=\"side\" (the default) hands renderItem null", () => {
+    const seen: unknown[] = [];
+    render(
+      <NextIntlClientProvider locale="ar" messages={arUi}>
+        <ReorderableList
+          items={QUESTIONS}
+          getKey={(q) => q.id}
+          getName={(q) => q.text}
+          label="أسئلة الاستبانة"
+          renderItem={(q, ctx) => {
+            seen.push(ctx.controls);
+            return <p>{q.text}</p>;
+          }}
+          onReorder={() => {}}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(seen).toEqual([null, null, null]);
+    expect(screen.getAllByRole("button", { name: UP })).toHaveLength(3);
+  });
+
   it("is axe-clean", async () => {
     const { container } = render(<Harness />);
     const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
