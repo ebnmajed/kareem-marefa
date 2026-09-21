@@ -4023,3 +4023,14 @@ select o.id from public.orgs o
 Every column has a default, so the inserted row is exactly what `create_org()` would have written. `survey_results()` keeps `0138`'s fail-closed guard as the one place a missing row ever mattered for privacy.
 
 - **Documents changed:** `STATUS.md` (row L5, the owner's order)
+
+---
+
+## DEC-170 — The mail's string path is retired: every message sends its design, an admin's own words are kept inside the design's frame, and «byte-identical for an untouched org» ends with the path it described
+
+- **Date:** 2026-09-22 · **Decided by:** `DEC-081` (scheduled for M13) and `DEC-161` R3 («adoption is explicit until M13»); built by `notify` as N1 (`49b77b8`), reviewed by the lead at 390 px
+- **Supersedes:** `REQ-NTF-009`'s first acceptance line («byte-identical output … the existing golden tests do not move») and `REQ-NTF-014`'s «adoption is explicit until M13»
+
+`REQ-NTF-009` promised an untouched org byte-identical mail while the block path was built beside the string path; that promise was the scaffolding for a migration, and M13 is the migration. After N1: **an org with no row for a key receives the key's platform design; an org that adopted or authored a design receives its blocks; and an org whose admin edited the old string template receives the admin's own words, converted at render time into paragraph blocks inside the design's frame** — never discarded, never refused, never rewritten in the database. The subjects do not move. The 87 pinned bodies moved once, as one reviewed package (`.qa-shots/mail-review/wave11-n1/`), which is `DEC-160` §4's rule for a changed golden.
+
+- **Documents changed:** `01-prd.md` (`REQ-NTF-009`, `REQ-NTF-014` acceptance)

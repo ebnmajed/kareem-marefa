@@ -1893,8 +1893,9 @@ existing mail shell. The `footer` is **composed, not typed**, so `REQ-NTF-005`'s
 never be forgotten. Images are **PNG/JPEG only, never SVG** (invariant 11), width-capped, always
 with `alt`.
 **Acceptance:**
-- An org that has not touched its templates renders **byte-identical** output to before; the
-  existing golden tests do not move.
+- ★ **Every message renders through the blocks** (`DEC-170`, M13): an org with no row for a key sends the
+  key's platform design; an admin's edited string template is sent as the admin's own words inside the
+  design's frame, never discarded. The pinned output changes only as a reviewed diff.
 - Blocks are reorderable without dragging (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
 
 #### REQ-NTF-010 — The template editor previews with the production renderer
@@ -1938,9 +1939,8 @@ platform-owned and seeded for every org, in light and dark, Arabic and English, 
 kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is never mutated.
 **Acceptance:**
 - **Every** message key has a designed platform template an org can adopt in one action.
-  ★ **Adoption is explicit until M13** (`DEC-161`): `REQ-NTF-009` requires an org that has not touched
-  its templates to send byte-identical mail, and `DEC-081` removes the string path in M13 — which is
-  when «no key falls back to unstyled text» becomes true of an untouched org as well.
+  ★ **Since M13 no key falls back to unstyled text, for any org** (`DEC-170`): an org that has not
+  adopted a design sends the platform's design for that key; adopting remains the way to make one's own.
 - Changing the org logo restyles every message an org has adopted a design for.
 - Promotion adds to the library; it never supplies the baseline.
 
