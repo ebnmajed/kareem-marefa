@@ -17,12 +17,10 @@
 // U+2068 FIRST STRONG ISOLATE … U+2069 POP DIRECTIONAL ISOLATE, in the HTML
 // **and** in the generated text part, which reorders without them.
 //
-// It must NOT move into `interpolate()`. That function is shared with the
-// STRING path, and isolating there would change every default template's
-// output and move all 116 files under `tests/unit/mail-pinned/` — for an org
-// that has touched nothing, which is the one thing this wave promises not to
-// do (REQ-NTF-009, contract 5). The two paths diverge here on purpose, and
-// `tests/unit/mail-blocks.test.ts` asserts that they do.
+// It does not live in `interpolate()`, which renders the SUBJECT: the
+// subject has been interpolated plainly since M3, and the 29 `.subject.txt`
+// files under `tests/unit/mail-pinned/` hold it so — isolating it would be a
+// separate, reviewed change.
 
 import { DESIGN_STACK, escapeHtml, formatValue, lookup } from "./primitives.js";
 import { readDocument, type DroppedBlock, type EmailBlock, type ImageSource } from "./blocks.js";

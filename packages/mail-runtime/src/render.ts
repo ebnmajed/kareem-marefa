@@ -19,7 +19,7 @@
 // 1.7 on body text.
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
-import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
+import { DESIGN_STACK, escapeHtml, formatNumber, formatValue, lookup } from "./primitives.js";
 import { isBlockDocument, type DroppedBlock, type EmailBlockDocument } from "./blocks.js";
 import { documentFromText, platformDesign } from "./designs.js";
 import { linkFor } from "./links.js";
@@ -29,11 +29,10 @@ export interface RenderInput {
   key: string;
   /** The org admin's template, when one exists (REQ-NTF-007).
    *
-   *  ★ `blocks` is `notification_templates.blocks` (`0125`): **null is a STRING
-   *  template** — every row that existed before wave 10 — and the string path
-   *  below renders it byte for byte. A document takes the block path instead
-   *  (`REQ-NTF-009`). Additive and optional, so `renderEmail()`'s signature is
-   *  the one `main`'s worker calls (contract 4). */
+   *  ★ `blocks` is `notification_templates.blocks` (`0125`): a document is
+   *  compiled as it is; **null is an admin's STRING template**, whose words
+   *  `emailDocumentFor()` frames as paragraphs (`DEC-081`). No override at all
+   *  is the key's platform design. */
   override?: { subject: string | null; body: string | null; blocks?: unknown | null } | null;
   payload: Record<string, unknown>;
   member: { name: string | null; email: string };
@@ -42,20 +41,19 @@ export interface RenderInput {
    *  read from `public.brand_kit()` by the sender. Absent in a unit test, the
    *  renderer keeps its neutral defaults — the identity override again.
    *
-   *  ★ The three-key shape is the one `main`'s worker sends and it keeps
-   *  working unchanged, which is why the pinned files do not move. The wider
-   *  shape carries what a DESIGN needs and `brand_kit()` has returned since
+   *  ★ The three-key shape is the one the worker sent before wave 10 and it
+   *  still works. The wider shape carries what a DESIGN needs and `brand_kit()` has returned since
    *  `0068`/`0093`: the nine tokens, and the logo's public URL (`0126`). */
   brand?: LegacyBrand | FullBrand | null;
   /** `0126` / contract 9: the public logo URL, when an ACTIVE org has one that
    *  is PNG or JPEG. **Null renders the org's NAME as a heading** — a WebP logo
    *  and an org with none both land here, and every design is correct with no
-   *  image. Ignored by the string path. */
+   *  image. */
   logoUrl?: string | null;
   /** The app's public origin, for the links a DESIGN carries — the footer's
    *  preference link above all (`REQ-NTF-005`). The worker reads `APP_URL`; the
-   *  preview passes its own origin. ★ The string path does not read it, so its
-   *  bytes are unchanged (named difference 1 is a separate change). */
+   *  preview passes its own origin. Unset, a button is dropped and the footer
+   *  carries no link — never a relative one. */
   appUrl?: string | null;
 }
 
@@ -90,8 +88,7 @@ export interface RenderedEmail {
   text: string;
   html: string;
   /**
-   * ★ Every row the mail LOST, so a caller can say which — empty on the string
-   * path, which drops nothing.
+   * ★ Every row the mail LOST, so a caller can say which.
    *
    * `compileBlocks()` has always reported this and `renderEmail()` used to
    * discard it, so the editor's checks panel had nothing to read and would
@@ -290,13 +287,6 @@ function changeLabel(change: { field: string; day?: unknown; days?: unknown }): 
   return `${base} · ${dayPhrase(position)}`;
 }
 
-function toParagraphs(text: string): string[] {
-  return text
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
 // ★ EXACTLY the brand kit's own constraint — `~* '^#[0-9a-f]{6}$'` on every
 // one of its eighteen colour columns (`0068`, `0093`). `designer` caught the
 // first version admitting 5- and 7-digit strings: an assertion that stands in
@@ -312,8 +302,7 @@ function hex(value: string | undefined, fallback: string): string {
 /**
  * The three values the shell has always used, from either brand shape.
  *
- * ★ For the three-key object — what `main`'s worker sends — this is the
- * identity, which is why the pinned files do not move. For the wide one it
+ * ★ For the three-key object this is the identity. For the wide one it
  * takes the LIGHT scheme, and only when all three are present: the same guard
  * `send_notification.ts` has applied since wave 4, so a half-filled kit falls
  * to the neutral defaults rather than to a half-branded mail.
@@ -367,50 +356,23 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
   };
 }
 
-/** Tables for layout, `dir="rtl"` on every cell, inline CSS only. */
-function toHtml(paragraphs: string[], org: string, brand?: LegacyBrand | null): string {
-  const fgBody = brand?.fgBody ?? "#1a1a1a";
-  const cell = `dir="rtl" align="right" style="font-family:${FALLBACK_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
-  const rows = paragraphs
-    .map((p) => `      <tr><td ${cell}>${escapeHtml(p).replace(/\n/g, "<br />")}</td></tr>`)
-    .join("\n");
-  // The string path declares nothing new: these are the values M3 shipped.
-  return shell(rows, org, brand, { declareScheme: false, stack: FALLBACK_STACK });
-}
-
 /**
- * The document both paths fill — the string path's paragraphs and the block
- * compiler's rows land in the SAME shell, so a change to the frame reaches
- * both and neither can drift.
- *
- * It is extracted rather than duplicated, and the 116 files under
- * `tests/unit/mail-pinned/` are what proves the extraction moved not one byte
- * of the string path's output.
+ * The document every mail fills: the block compiler's rows, then the
+ * signature. Since the string path left (`DEC-081`) there is one frame, and it
+ * carries what D3 found the string path lacked — F1's declared `light` scheme
+ * (Apple Mail and Outlook.com stop auto-inverting: an inverter that darkens a
+ * background while leaving an explicit text colour alone produces dark text on
+ * a dark card) and F4's declared Arabic faces for iOS and Android.
  */
-/** What differs between the two paths. The STRING path passes today's values,
- *  so the 116 pinned files cannot move; the BLOCK path passes the designed
- *  ones (D3 findings F1 and F4). */
-interface ShellOptions {
-  /** F1 — declare `light` so Apple Mail and Outlook.com stop auto-inverting.
-   *  An inverter that darkens a background it judges light while leaving an
-   *  explicitly-set text colour alone produces dark text on a dark card, which
-   *  is the failure a light-mode reviewer never sees. */
-  declareScheme: boolean;
-  /** F4 — the stack the cells declare. */
-  stack: string;
-}
-
-function shell(rows: string, org: string, brand: LegacyBrand | null | undefined, options: ShellOptions): string {
+function shell(rows: string, org: string, brand: LegacyBrand | null | undefined): string {
   const fgBody = brand?.fgBody ?? "#1a1a1a";
   const fgMuted = brand?.fgMuted ?? "#6b6b6b";
   const surface = brand?.surface ?? "#ffffff";
-  const cell = `dir="rtl" align="right" style="font-family:${options.stack};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
+  const cell = `dir="rtl" align="right" style="font-family:${DESIGN_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
   // The documented opt-out for Apple Mail and Outlook.com. Gmail on Android
   // inverts regardless, which is what the `bgcolor` attributes in `compile.ts`
   // are for.
-  const head = options.declareScheme
-    ? `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>`
-    : `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>`;
+  const head = `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>`;
 
   return [
     `<!doctype html>`,
@@ -484,42 +446,28 @@ export function renderEmail(input: RenderInput): RenderedEmail {
 
   // ★ Named difference 1. `linkFor()` is null without an origin, so the
   // spread adds nothing and `{{url}}` renders empty — and a button bound to it
-  // is dropped rather than pointed somewhere relative. A payload that already carries its own `url` keeps it: `0073`'s export may
-  // one day ship a signed one, and a map must not overrule a sender that knows
-  // better.
+  // is dropped rather than pointed somewhere relative. A payload that already
+  // carries its own `url` keeps it: `0073`'s export may one day ship a signed
+  // one, and a map must not overrule a sender that knows better.
   const url = input.payload.url ?? linkFor(input.key, input.payload, input.appUrl);
   if (url) payload.url = url;
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
 
-  // ★ ONE PATH (DEC-081). Every key resolves to a document above, so every
-  // mail is compiled here; the string code below is unreachable and leaves in
-  // N2 with nothing else moving.
-  {
-    const compiled = compileBlocks(document, {
-      payload,
-      palette: compilePalette(input.brand),
-      logoUrl: input.logoUrl ?? null,
-      appOrigin: input.appUrl ?? null,
-      preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
-      org: input.org.name,
-    });
-    return {
-      subject,
-      text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-      html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand), { declareScheme: true, stack: DESIGN_STACK }),
-      dropped: compiled.dropped,
-    };
-  }
-
-  const body = interpolate(input.override?.body ?? fallback?.body ?? "", payload);
-  const paragraphs = toParagraphs(body);
-
+  // ★ ONE PATH (DEC-081). Every key resolved to a document above, so every
+  // mail is compiled here.
+  const compiled = compileBlocks(document, {
+    payload,
+    palette: compilePalette(input.brand),
+    logoUrl: input.logoUrl ?? null,
+    appOrigin: input.appUrl ?? null,
+    preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
+    org: input.org.name,
+  });
   return {
     subject,
-    text: `${paragraphs.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: toHtml(paragraphs, input.org.name, legacyBrand(input.brand)),
-    // The string path drops nothing: there are no blocks to refuse.
-    dropped: [],
+    text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
+    html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand)),
+    dropped: compiled.dropped,
   };
 }
