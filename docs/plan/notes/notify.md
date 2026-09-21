@@ -3338,3 +3338,12 @@ New test `tests/unit/mail-wrap.test.ts` (3).
 
 **Carried, not mine (the lead's ruling):** the fixture org «كريم معرفة» doubles in the sign-off
 («كريم معرفة · كريم معرفة · …») — wave 10's F7; the production org name read decides it.
+
+### N2 — landed at `4d615cd`
+
+`toHtml()`, `toParagraphs()`, `ShellOptions` and `FALLBACK_STACK` deleted; the shell always declares
+F1's scheme and F4's stack. **No test file in the diff; the 120 pinned files byte-identical**; `npm test`
+2273 passed. Two test **comments** still describe the old path — `mail-pinned.test.ts:83` («before
+`toHtml()`») and `mail-day-words.test.ts:45`'s title («toParagraphs() then drops») — left as they are
+because N2's proof is that it touches no test; each is a one-line ledger item whenever the lead wants
+them corrected. **Next: N3**, on the lead's L6 rows for `/app/admin/emails` and `/app/me/{notifications,calendar}`.
