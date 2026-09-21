@@ -410,7 +410,8 @@ files, the caller audit and the data-shaped rehearsal land here **before the PR 
 #### What the lead has proved so far — run mid-wave on the chain through `0134`, re-run at the freeze
 
 **1 · The caller audit, mechanical.** Every `.rpc()` in `main`'s `src/` at `f2ead54` — **80 functions** — parsed
-with the argument names it sends and resolved against the catalogue at `0134` by PostgREST's own rule (the
+with the argument names it sends and resolved against the catalogue at `0134` — ★ **re-run 2026-09-21 against the
+catalogue at `0138` (272 functions): 80 of 80 resolve, 60 of 60 worker functions exist** — by PostgREST's own rule (the
 names sent are a subset of the function's, and every name not sent has a default): **80 of 80 resolve.** All
 **60** functions `main`'s worker names in SQL exist. (Wave 9's parser read two words of a comment inside
 `schedule_session`'s argument object as keys; it strips comment lines now.)
