@@ -42,6 +42,11 @@ export { compileBlocks, blocksToTemplateText, interpolateIsolated, isolate } fro
 // The one sample set: the preview renders it and `tests/unit/mail-pinned/`
 // pins it, so an admin approves the bytes the suite records.
 export { SAMPLE_CASES, SAMPLE_ORG, SAMPLE_MEMBER, SAMPLE_BRAND, sampleFor } from "./samples.js";
+// The eight designed platform templates (REQ-NTF-014, DEC-082). Constants, not
+// rows: an org DUPLICATES one to own it and the original is never mutated,
+// which is true by construction when the original is code.
+export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign } from "./designs.js";
+export type { DesignFamily } from "./designs.js";
 export type { SampleCase } from "./samples.js";
 export type { CompileContext, CompiledBlocks, CompilePalette } from "./compile.js";
 export { DEFAULT_TEMPLATES, SIGNATURE, defaultTemplate } from "./templates.js";

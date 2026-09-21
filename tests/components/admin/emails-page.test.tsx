@@ -31,7 +31,14 @@ vi.mock("@/lib/dal/notifications", () => ({
 // `convertTemplateToDesign` and `saveEmailDesign` are wave 10's: the page
 // binds the first for an org that HAS a string override (§X9) and the second
 // for a block template. Harness lines — no case below exercises either.
-const actions = { saveEmailTemplate: vi.fn(), restoreDefaultTemplate: vi.fn(), convertTemplateToDesign: vi.fn(), saveEmailDesign: vi.fn() };
+const actions = {
+  saveEmailTemplate: vi.fn(),
+  restoreDefaultTemplate: vi.fn(),
+  convertTemplateToDesign: vi.fn(),
+  saveEmailDesign: vi.fn(),
+  sendTestEmailAction: vi.fn(),
+  adoptPlatformDesign: vi.fn(),
+};
 vi.mock("@/app/[locale]/app/admin/emails/actions", () => actions);
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "notifications" }),

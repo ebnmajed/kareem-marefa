@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
-import { blocksToTemplateText, SCHEMA_VERSION } from "@kareem/mail-runtime";
+import { blocksToTemplateText, defaultTemplate, platformDesign, SCHEMA_VERSION } from "@kareem/mail-runtime";
 import { deleteTemplate, getTemplateSubject, saveTemplateChecked, sendTestEmail, type TestSendResult } from "@/lib/dal/notifications";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 
@@ -140,4 +140,32 @@ export async function convertTemplateToDesign(locale: Locale, key: string, body:
  */
 export async function sendTestEmailAction(locale: Locale, key: string): Promise<TestSendResult> {
   return sendTestEmail(locale, key);
+}
+
+
+/**
+ * `REQ-NTF-014` — «ابدأ من تصميم جاهز»: an org DUPLICATES the platform design
+ * for this key and it becomes theirs.
+ *
+ * ★ The original is never mutated because the original is a constant:
+ * `platformDesign()` builds a fresh document on every call, so what is stored
+ * is a copy by construction rather than by discipline. Promotion adds to the
+ * library; it never supplies the baseline.
+ *
+ * ★ And nothing is adopted for an org that does not ask. Until an admin
+ * presses this, the key has no row — or a row whose `blocks` is null — and
+ * renders the pinned string bytes (`DEC-161` R3).
+ */
+export async function adoptPlatformDesign(locale: Locale, key: string): Promise<void> {
+  const design = platformDesign(key);
+  if (!design) return;
+  const subject = (await getTemplateSubject(locale, key)) ?? defaultTemplate(key)?.subject ?? key;
+  await saveTemplateChecked(locale, {
+    key,
+    subject,
+    body: blocksToTemplateText(design),
+    requiredFields: [],
+    blocks: design,
+  });
+  revalidatePath(SCREEN(locale));
 }

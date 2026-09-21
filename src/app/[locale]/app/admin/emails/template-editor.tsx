@@ -45,6 +45,7 @@ export function TemplateEditor({
   action,
   restore,
   convert,
+  adopt,
 }: {
   messageKey: string;
   name: string;
@@ -54,6 +55,8 @@ export function TemplateEditor({
   /** §X9 — offered only for an org that HAS a string override. Converting
    *  changes nothing that is sent until the admin saves the design. */
   convert?: () => Promise<void>;
+  /** `REQ-NTF-014` — start from the platform design for this key. */
+  adopt?: () => Promise<void>;
 }) {
   const t = useTranslations("notifications.admin.emails.editor");
   const toast = useToast();
@@ -134,6 +137,11 @@ export function TemplateEditor({
           {convert ? (
             <Button type="button" variant="ghost" onClick={() => void convert()}>
               {t("convertToDesign")}
+            </Button>
+          ) : null}
+          {adopt ? (
+            <Button type="button" variant="ghost" onClick={() => void adopt()}>
+              {t("adoptDesign")}
             </Button>
           ) : null}
         </div>

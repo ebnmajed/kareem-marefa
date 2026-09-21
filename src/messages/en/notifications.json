@@ -203,7 +203,8 @@
             "notPermitted": "This page is for organisation admins.",
             "failed": "The template could not be saved. Try again."
           },
-          "convertToDesign": "Convert to a design"
+          "convertToDesign": "Convert to a design",
+          "adoptDesign": "Start from a ready design"
         },
         "deliveries": {
           "heading": "Delivery log",

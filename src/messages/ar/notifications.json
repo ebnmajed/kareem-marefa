@@ -203,7 +203,8 @@
             "notPermitted": "هذه الصفحة لمشرفي المؤسسة.",
             "failed": "تعذّر حفظ القالب. حاول مرة أخرى."
           },
-          "convertToDesign": "حوّله إلى تصميم"
+          "convertToDesign": "حوّله إلى تصميم",
+          "adoptDesign": "ابدأ من تصميم جاهز"
         },
         "deliveries": {
           "heading": "سجل الإرسال",
