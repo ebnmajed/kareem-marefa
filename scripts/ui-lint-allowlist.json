@@ -1,9 +1,0 @@
-{
-  "$comment": "ui-lint allowlist (DEC-087). MAY ONLY SHRINK. A count is the number of existing violations a file is permitted to keep; exceeding it fails CI, going below it is progress. Regenerate DOWNWARD with `node scripts/ui-lint.mjs --prune`, never upward to admit a new one. Empty by M13, when the gate flips to --strict.",
-  "files": {
-    "src/components/admin/rtl-datetime-picker.tsx": {
-      "field": 2,
-      "class-string": 3
-    }
-  }
-}

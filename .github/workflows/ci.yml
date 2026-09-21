@@ -83,7 +83,8 @@ jobs:
 
       # An allowlist that grew is a gate that was worked around.
       - name: the allowlists did not grow
-        run: git diff --exit-code scripts/ui-lint-allowlist.json scripts/route-coverage-allowlist.json
+        # ui-lint has no allowlist since M13 (DEC-087) — it is strict by construction.
+        run: git diff --exit-code scripts/route-coverage-allowlist.json
 
   unit:
     name: unit tests
