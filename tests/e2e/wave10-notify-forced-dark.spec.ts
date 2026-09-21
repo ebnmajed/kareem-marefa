@@ -210,7 +210,13 @@ async function captureDark(page: Page, name: string) {
   //
   // So the element inside the frame, which is the rendered mail and nothing
   // else, at its full height rather than the iframe's box.
-  await frame.locator("body").screenshot({ path: `${SHOTS}/${name}.png` });
+  // ★ The IFRAME is scrolled into view first, and that is not a nicety.
+  // Screenshotting an element inside a frame makes Playwright scroll it into
+  // view WITHIN the frame, which cannot help when the frame itself is half
+  // below the fold — the element never settles and the shot times out. One
+  // cell failed exactly that way; the other two happened to sit higher.
+  await page.locator('iframe[name="mail-preview"]').scrollIntoViewIfNeeded();
+  await frame.locator("body").screenshot({ path: `${SHOTS}/${name}.png`, animations: "disabled" });
 }
 
 test("★ cell 1 — a transparent PNG, DARK ink: the prediction is that this one fails to read", async ({ context, page }, testInfo) => {
