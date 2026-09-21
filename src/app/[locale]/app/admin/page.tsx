@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AlertCircleIcon, AlertTriangleIcon, CalendarIcon, CheckCircleIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
@@ -72,16 +73,20 @@ function AttentionRowItem({
   const since = oldestSince(row);
   return (
     <li>
-      <Link href={href} className="flex items-center gap-3 rounded-field border border-edge p-4 transition-colors hover:bg-silver-100">
-        <Icon aria-hidden className="shrink-0 text-[1.375rem] text-fg-muted" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-label text-fg-heading">
-            <bdi>{label}</bdi>
+      {/* The whole tile is the link — `ui/card`'s job (`16` §6.4), not a
+          `Link` drawn in the control's class string (`ui-lint`, REQ-UIX-001). */}
+      <Card density="row" href={href}>
+        <span className="flex w-full items-center gap-3 p-4">
+          <Icon aria-hidden className="shrink-0 text-[1.375rem] text-fg-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-label text-fg-heading">
+              <bdi>{label}</bdi>
+            </span>
+            {since ? <span className="block text-caption text-fg-muted">{since}</span> : null}
           </span>
-          {since ? <span className="block text-caption text-fg-muted">{since}</span> : null}
+          <span className="shrink-0 text-h3 text-fg-heading">{num(row.count)}</span>
         </span>
-        <span className="shrink-0 text-h3 text-fg-heading">{num(row.count)}</span>
-      </Link>
+      </Card>
     </li>
   );
 }
