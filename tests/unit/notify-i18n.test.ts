@@ -65,31 +65,9 @@ describe("REQ-INT-006 — no numeral system is frozen into the copy", () => {
   });
 });
 
-describe("★ `ar` and `en` carry the same keys — the gate this wave did without", () => {
-  // `messages-namespaces.test.ts` proves no leaf is claimed by two namespaces
-  // and that every namespace has its Arabic file. Nothing proves the two
-  // locales agree, and `notifications` gained keys in six separate commits
-  // this wave — parity held by care rather than by a gate, which is the state
-  // a gate exists to replace.
-  //
-  // A key present in `ar` and missing in `en` renders the raw dotted path to
-  // an English reader; one present in `en` and missing in `ar` is a string
-  // that was never written in Arabic first, which invariant 10 forbids.
-  for (const namespace of ["notifications", "calendar"]) {
-    it(`${namespace}: neither locale has a key the other lacks`, () => {
-      const ar = read(`ar/${namespace}.json`).map(([path]) => path);
-      const en = read(`en/${namespace}.json`).map(([path]) => path);
-      expect(ar.filter((key) => !en.includes(key)), `missing from en/${namespace}.json`).toEqual([]);
-      expect(en.filter((key) => !ar.includes(key)), `missing from ar/${namespace}.json`).toEqual([]);
-    });
-
-    it(`${namespace}: no value is an empty string in either locale`, () => {
-      // A blank is how a key survives a parity check while showing nothing —
-      // the one failure the comparison above cannot see.
-      for (const locale of ["ar", "en"]) {
-        const blank = read(`${locale}/${namespace}.json`).filter(([, value]) => value.trim() === "").map(([path]) => path);
-        expect(blank, `${locale}/${namespace}.json`).toEqual([]);
-      }
-    });
-  }
-});
+// ★ The ar/en parity and blank-value cases that stood here are GONE, and on
+// purpose: `messages-namespaces.test.ts` (bb6e9f1) now proves both for every
+// namespace in the repo, not only these two. Keeping a narrower copy would
+// leave one rule with two writers — the shape this wave spent three commits
+// removing from the mail path — and the copy that drifts is always the one
+// nobody remembers is there.
