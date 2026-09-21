@@ -205,7 +205,12 @@ export interface StatProps extends Styleable {
 export interface FieldProps extends Styleable {
   /** The control's id. Generated when omitted. */
   id?: string;
-  label: string;
+  /**
+   * A node, not only a string (wave 11, `content`'s request): a label built from what a member
+   * typed — a task's question — must be isolated in `<bdi>`, as `error` already can be. Every
+   * caller passing a string is unaffected.
+   */
+  label: ReactNode;
   hint?: string;
   /**
    * Adjacent, red, icon-marked — and colour is never the only channel. A
