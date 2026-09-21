@@ -3740,3 +3740,32 @@ elsewhere on the page, which is arguably too broad, but that is existing behavio
 touches). Announced: yes, via the `aria-live="polite"` region (line 110) updated on every `index` change
 (lines 88-92). I record this as already-correct rather than a finding, since the brief asked me to confirm
 it, not to change it absent a routed row saying otherwise.
+
+### C1 — done, ready for sync (2026-09-22)
+
+All 27 of content's `ui-lint` violations are at zero (`node scripts/ui-lint.mjs --strict` names none of
+my seven files; the whole tree is down to 5, all `console`'s `rtl-datetime-picker.tsx`). Commits
+`b48df60` (create-form), `8832c36` (task-item), `83cf1ef` (proposal-list), `7cfff3d` (gallery), `e2be3e3`
+(the two privacy files), `0f1b428` (comment-composer, with the lead's approved escape), `6ea202e`
+(page-viewer — the five buttons/frame, plus C3's width/height threading).
+
+**Untouched-suite ledger line, for `STATUS.md` (the lead copies this in per sync-1's instruction):**
+
+| File | Case | Why | Commit |
+|---|---|---|---|
+| `tests/components/tasks/create-form.test.tsx` | both `it()`s | `title` gained `<Field required>`'s «مطلوب» marker (REQ-UIX-011, DEC-166 sync 1 ruling 1) — the two `getByLabelText("عنوان المهمة")` calls move to `{ exact: false }` to match either way; the field, its label text and its behaviour are unchanged | `b48df60` |
+| `tests/components/viewer/page-viewer.test.tsx` | fixture only | `ViewerPageDTO` gained required `width`/`height` (C3, `render_pages.ts`'s stored dimensions threaded through to fix a CLS regression) — the three fixture rows gain `width: 1600, height: 900`; no assertion changed | `6ea202e` |
+
+**Verification run:** `npx tsc --noEmit` clean across the whole tree; `npm run lint` 0 errors, 28
+warnings (pre-existing, none in my files); `npm test` 2270 passed/1 skipped (one pre-existing unhandled
+timer error in `comment-item.test.tsx`, a file I did not touch, unrelated to this work); component suites
+for tasks/materials/viewer/photos/privacy/comment-composer/comments — 16 files, 106 tests, all green.
+`npm run test:rls` not re-run (no SQL touched this unit). `tests/e2e/tasks.spec.ts` passed 2/2 through
+`npm run test:e2e:local` — ★ **against whatever `.next` was already on disk**, not a build I triggered
+myself (only the lead runs `npm run build`), so this is a real signal the two specs still pass but is not
+proof the *new* JSX is what a fresh build served. Flagging rather than claiming more than I can back.
+
+**Not yet done:** the 390 px RTL captures (`wave11-content-*`) — these need a fresh production build,
+which is the lead's; naming the four surfaces here so the lead can capture them at the next build:
+`tasks/create-form` + `tasks/task-item` (the task panel), the viewer (`materials/[materialId]`), and the
+discussion composer. C2 (accessibility findings) still waiting on the lead's routed rows.
