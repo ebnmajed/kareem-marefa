@@ -13,7 +13,8 @@
 --     `assert_active_member()`'s own row, so «to the admin's own address and to no other» is a
 --     property of the SIGNATURE rather than of a check a caller could omit. |
 --   | `RPC-send_test_email.admin_only` | A moderator and a member are refused `42501`; the org's
---     admin succeeds. |
+--     admin succeeds; and a member whose ROW says `member` while their claim still says `admin` is
+--     refused too — the role is read from the table, not from a token that lives 900 s. |
 --   | `RPC-send_test_email.matrix_closed` | A key `08` §1 does not give an email channel is refused
 --     `22023` — a test cannot be the way to send a message the product does not send. |
 --   | `RPC-send_test_email.rate_limited` | The eleventh call within an hour returns
@@ -43,13 +44,18 @@ create or replace function public.send_test_email(
 ) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  m      public.members := public.assert_active_member();
+  -- ★ THE ROLE FROM THE TABLE, NOT THE CLAIM (0005).
+  --
+  -- `is_org_admin()` reads `auth_org_role()`, which is the JWT claim, and the
+  -- claim lives for up to 900 s. A demoted admin would keep sending tests for
+  -- a quarter of an hour on a token that is merely stale rather than forged.
+  -- `assert_fresh_admin()` is `assert_active_member()` plus the role read from
+  -- the member ROW, raising `not_an_admin` `42501` — the same shape every
+  -- other privileged write in this chain uses.
+  m      public.members := public.assert_fresh_admin();
   v_sent int;
   v_job  bigint;
 begin
-  if not public.is_org_admin() then
-    raise exception 'not_permitted' using errcode = '42501';
-  end if;
 
   -- A test cannot be the way to send a message the product does not send.
   if not exists (
@@ -95,7 +101,8 @@ begin
 end $$;
 
 -- An admin calls this from the screen, so `authenticated` holds the grant and
--- the function decides the role itself — `is_org_admin()` above. `anon` never.
+-- the function decides the role itself — `assert_fresh_admin()` above, which
+-- reads the member row rather than the token. `anon` never.
 revoke execute on function public.send_test_email(text, text) from public, anon;
 grant  execute on function public.send_test_email(text, text) to authenticated;
 

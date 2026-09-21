@@ -2926,3 +2926,38 @@ proves each. `0NNN` is the number the lead assigns at promotion. `0001` and `000
 ★ **One row of `0026`'s is worth re-reading at promotion**: `email.complained` maps to nothing,
 because `delivery_status` has no value for it. The test asserts the row does **not** move, so if the
 enum later gains `complained` that case is where the change surfaces.
+
+---
+
+## The «never asked» class, and what closes it
+
+Three surfaces render the same mail: the worker's real send, the preview, and the test send. The real
+send knows its own session; the other two carry **sample** data whose session id names no row. Every
+defect in this class came from one of the two sample-carrying surfaces not being given what the real
+send computes — and each was invisible in a picture, because a missing element and a wrongly-styled
+one look identical in a screenshot.
+
+1. **The logo** (`8e86487`) — the worker resolved it, the preview never asked. Every design previewed
+   with the org's NAME where the sent mail carries the logo band.
+2. **The card's image** (`496113a`, then `0141`) — the same, one block over, in three of the eight
+   designs.
+3. **The card's link** — `{{url}}` is built from `payload.session_id`, and the sample's names no row,
+   so the button pointed at a 404 on both surfaces. Less visible for being a link rather than a
+   picture, and the same divergence.
+4. **The test send had all three** (`send_test_email.ts`) — the control whose entire purpose is «the
+   bytes that ship, checked in Outlook» shipped bytes that differed in the block an admin most wants
+   to see.
+
+★ **The class is CLOSED, and this is why.** `public.preview_card_session(p_org)` (`0141`) is one
+function that both sample-carrying surfaces ask, and it returns the **whole** answer — a real session
+id, from which the image URL and the link both follow. There is no longer a second place that decides
+what a sample payload should contain, so there is nothing left to drift. The lead's instruction was
+to stop looking for relatives once the test send shared the preview's context, and that is what this
+is: not «the last one found», but the last one **possible**, because the two surfaces now ask the same
+question of the same function.
+
+★ **And the rule is ASKED, never restated** (contract F3). `og_path` is not a column on `sessions` —
+it is four joins away (a design document → a `session_posters` row → a `ready` `og`/`png`
+`export_artifacts` row with a path). «The session is published» and «its poster has finished
+rendering» are different predicates, and a caller that guessed the second from the first would hand
+back a session whose image 404s — which is the exact defect the whole class is about.

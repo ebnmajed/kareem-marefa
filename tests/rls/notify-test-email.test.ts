@@ -62,7 +62,7 @@ describe("RPC-send_test_email.own_address_only", () => {
 });
 
 describe("RPC-send_test_email.admin_only and .matrix_closed", () => {
-  it("a moderator and a member are refused; the org's admin succeeds", async () => {
+  it("a moderator and a member are refused; the org's admin succeeds; a DEMOTED admin's stale token does not", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.mod.claims);
@@ -71,6 +71,15 @@ describe("RPC-send_test_email.admin_only and .matrix_closed", () => {
       expect(await errorCode(() => send(tx))).toBe(PERMISSION_DENIED);
       await tx.as(f.a.admin.claims);
       expect((await send(tx))[0].out.status).toBe("queued");
+
+      // ★ THE THIRD ACTOR: a demoted admin whose TOKEN still says admin.
+      // `org_role` claims live up to 900 s, so a role read from the claim
+      // would keep sending tests for a quarter of an hour after the demotion.
+      // The row says `member`; the claims are left exactly as they were.
+      await tx.asOwner();
+      await tx.q(`update public.members set org_role = 'member' where id = $1`, [f.a.admin.memberId]);
+      await tx.as(f.a.admin.claims);
+      expect(await errorCode(() => send(tx))).toBe(PERMISSION_DENIED);
     });
   });
 

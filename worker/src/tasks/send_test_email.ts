@@ -80,12 +80,33 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
     return;
   }
 
+  // ★ THE CARD'S IMAGE AND THE LINK, WHICH THIS TASK DID NOT HAVE.
+  //
+  // A test send exists to answer «what will the real thing look like in
+  // Outlook». It rendered the sample payload untouched, so the card arrived
+  // with no image and the button pointed at a session that does not exist —
+  // the two ways the test differed from the thing it was testing, in the one
+  // block an admin most wants to check.
+  //
+  // The SAME function the preview calls (`0141`), so the two cannot drift:
+  // one real session of this org whose poster has actually rendered, or null,
+  // in which case the design renders one row fewer exactly as a real send
+  // does for a session with no card.
+  const { rows: cardRows } = await helpers.query<{ id: string | null }>(
+    `select public.preview_card_session($1::uuid) as id`,
+    [p.org_id],
+  );
+  const cardSession = cardRows[0]?.id ?? null;
+  const payload = cardSession && appUrl
+    ? { ...sample.payload, session_id: cardSession, session_card_image_url: `${appUrl}/api/s/${cardSession}/og` }
+    : sample.payload;
+
   let rendered;
   try {
     rendered = renderEmail({
       key: p.key,
       override: ctx.template,
-      payload: sample.payload,
+      payload,
       member: { name: ctx.member.display_name, email: ctx.member.email },
       org: { name: ctx.org.name, timeZone: ctx.org.time_zone },
       brand: kit?.light ? { light: kit.light, dark: kit.dark } : null,

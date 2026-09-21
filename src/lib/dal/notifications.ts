@@ -366,35 +366,6 @@ export interface EmailPreviewInput {
  * in with the request, because the preview's purpose is to show an admin what
  * they have not saved yet.
  */
-/**
- * One real, card-bearing session of the caller's org, as an image URL — or
- * null. Used only by the preview: the worker already knows its own session.
- *
- * At most three candidates, newest first. A session whose poster has not
- * rendered yet has no `og_path`, and the next one is tried rather than the
- * preview showing an image the mail would not carry.
- */
-async function previewCardImage(
-  client: Awaited<ReturnType<typeof sessionClient>>,
-  appUrl: string,
-): Promise<string | null> {
-  if (!appUrl) return null;
-  const { data: candidates } = await client.supabase
-    .from("sessions")
-    .select("id")
-    .eq("org_id", client.session.orgId)
-    .order("starts_at", { ascending: false })
-    .limit(3);
-  for (const row of (candidates ?? []) as Array<{ id: string }>) {
-    // ASK, never re-derive: `session_public_card()` answers for the same rules
-    // `/api/s/{id}/og` serves by, including the one a state check misses.
-    const { data } = await client.supabase.rpc("session_public_card", { p_session: row.id });
-    const card = (Array.isArray(data) ? data[0] : data) as { og_path?: string | null } | null | undefined;
-    if (card?.og_path) return `${appUrl.replace(/\/+$/, "")}/api/s/${row.id}/og`;
-  }
-  return null;
-}
-
 export async function compileEmailPreview(
   locale: string,
   input: EmailPreviewInput,
@@ -441,30 +412,39 @@ export async function compileEmailPreview(
   // ★ THE SESSION CARD'S IMAGE — the logo's twin, found by looking for it.
   //
   // Three of the eight designs carry a `session_card` with an image, and the
-  // worker supplies it as `payload.session_card_image_url`. The preview cannot
-  // use the SAMPLE's session id: that uuid names no row, so `/api/s/{id}/og`
-  // would 404 and the admin would be looking at a broken image — which is
-  // worse than none and would read as «the card is broken» rather than «this
-  // org has no poster yet».
+  // worker supplies it as `payload.session_card_image_url`. Neither the
+  // preview nor the test send can use the SAMPLE's session id: that uuid names
+  // no row, so `/api/s/{id}/og` would 404 and the admin would be looking at a
+  // broken image — worse than none, and it reads as «the card is broken»
+  // rather than «this org has no poster yet».
   //
-  // So it asks for a REAL one, and asks the way contract F3 requires: it does
-  // not copy `export_is_public_card()`'s predicate, it ASKS
-  // `session_public_card()` whether that session has an `og_path`. A state
-  // check would say yes for a session whose poster has not finished rendering.
-  // No candidate means the design renders one row fewer, which is the same
-  // thing the worker does and is true for that org.
+  // `preview_card_session()` (`0141`) finds a real one, and it is a FUNCTION
+  // rather than a loop here because the test send needs the same answer. Two
+  // loops for one rule is the drift that left the logo resolved by the worker
+  // and by nobody else. It asks `session_public_card()` rather than restating
+  // its rule (contract F3): a poster that has not finished rendering has no
+  // path yet, and a state check would hand back a session whose image 404s.
   // Asked for only when the document actually carries a card that wants an
   // image: five of the eight designs do not, and a query for something the
   // mail will not render is work with no reader.
   const wantsCard =
     isBlockDocument(blocks) &&
     readBlocks(blocks).some((block) => block.type === "session_card" && block.withImage !== false);
-  const cardImageUrl = wantsCard ? await previewCardImage(client, input.appUrl) : null;
+  const cardSession = wantsCard && input.appUrl
+    ? ((await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId })).data as string | null)
+    : null;
+  const cardImageUrl = cardSession ? `${input.appUrl.replace(/\/+$/, "")}/api/s/${cardSession}/og` : null;
 
   const rendered = renderEmail({
     key: input.key,
     override: { subject, body, blocks },
-    payload: cardImageUrl ? { ...sample.payload, session_card_image_url: cardImageUrl } : sample.payload,
+    // ★ The real session id travels too, not just its image. `{{url}}` is
+    // built from `payload.session_id`, and the sample's names no row — so
+    // without this the preview's button points at a 404 while the sent mail's
+    // points at the session. One answer fixes both.
+    payload: cardSession
+      ? { ...sample.payload, session_id: cardSession, session_card_image_url: cardImageUrl }
+      : sample.payload,
     member: sample.member ?? SAMPLE_MEMBER,
     org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
     brand: light ? { light, dark } : null,
