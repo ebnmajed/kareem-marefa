@@ -1,3 +1,4 @@
+import type { CSSProperties, ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
@@ -34,6 +35,22 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "statusCancelled",
   late_cancelled: "statusLateCancelled",
 };
+
+// The phone card's classes (below `md`), and the table's from `md` up — the
+// same elements either way (K2's header comment, at the table).
+const ROW = "border-b border-edge max-md:block max-md:rounded-card max-md:border max-md:bg-surface max-md:p-4";
+const CELL = "py-2 pe-4 max-md:flex max-md:items-baseline max-md:justify-between max-md:gap-3 max-md:py-1 max-md:pe-0";
+
+/** A phone card's line label — the column's header, drawn beside the value.
+ *  `aria-hidden`: the header row already names the cell, and the cell's own
+ *  accessible name must stay the value (the specs read it by that name). */
+function CellLabel({ children }: { children: ReactNode }) {
+  return (
+    <span aria-hidden="true" className="shrink-0 text-fg-muted md:hidden">
+      {children}
+    </span>
+  );
+}
 
 export default async function AttendancePage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
@@ -94,46 +111,48 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
         {t("title")} — <bdi>{report.sessionTitle}</bdi>
       </h1>
 
-      <section aria-labelledby="summary" className="mt-8 rounded-field border border-edge p-5">
-        <h2 id="summary" className="text-h3 text-fg-heading">
-          {t("summaryTitle")}
-        </h2>
-        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
-          {(
-            [
-              ["reserved", report.counts.reserved],
-              ["confirmed", report.counts.confirmed],
-              ["checkedIn", report.counts.checkedIn],
-              ["walkedIn", report.counts.walkedIn],
-              ["noShowed", report.counts.noShowed],
-            ] as const
-          ).map(([key, value]) => (
-            <div key={key}>
-              <dt className="text-body-sm text-fg-muted">{t(key)}</dt>
-              <dd className="text-label text-fg-heading">{num(value)}</dd>
-            </div>
-          ))}
-          {manyDays ? (
+      <section aria-labelledby="summary" className="mt-8">
+        <Panel>
+          <h2 id="summary" className="text-h3 text-fg-heading">
+            {t("summaryTitle")}
+          </h2>
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+            {(
+              [
+                ["reserved", report.counts.reserved],
+                ["confirmed", report.counts.confirmed],
+                ["checkedIn", report.counts.checkedIn],
+                ["walkedIn", report.counts.walkedIn],
+                ["noShowed", report.counts.noShowed],
+              ] as const
+            ).map(([key, value]) => (
+              <div key={key}>
+                <dt className="text-body-sm text-fg-muted">{t(key)}</dt>
+                <dd className="text-label text-fg-heading">{num(value)}</dd>
+              </div>
+            ))}
+            {manyDays ? (
+              <div>
+                <dt className="text-body-sm text-fg-muted">{t("completedAllDays")}</dt>
+                {/* ★ NULL until `scoring` publishes `session_attendance_complete()`
+                    (contract 6). «Attended the session» has exactly one
+                    definition and it is not this page's to guess — an em dash
+                    is honest, a re-derived number would not be. */}
+                <dd className="text-label text-fg-heading">{report.counts.completedAllDays === null ? "—" : num(report.counts.completedAllDays)}</dd>
+              </div>
+            ) : null}
             <div>
-              <dt className="text-body-sm text-fg-muted">{t("completedAllDays")}</dt>
-              {/* ★ NULL until `scoring` publishes `session_attendance_complete()`
-                  (contract 6). «Attended the session» has exactly one
-                  definition and it is not this page's to guess — an em dash
-                  is honest, a re-derived number would not be. */}
-              <dd className="text-label text-fg-heading">{report.counts.completedAllDays === null ? "—" : num(report.counts.completedAllDays)}</dd>
+              <dt className="text-body-sm text-fg-muted">{t("attendanceRateLabel")}</dt>
+              <dd className="text-label text-fg-heading">{ratePct === null ? <span className="font-normal text-fg-muted">{t("attendanceRateEmpty")}</span> : t("attendanceRateValue", { value: num(ratePct) })}</dd>
             </div>
+          </dl>
+          {manyDays ? <p className="mt-3 text-body-sm text-fg-muted">{report.requireAllDays ? t("requireAllDaysOn") : t("requireAllDaysOff")}</p> : null}
+          {isAdmin ? (
+            <a href={`/api/admin/exports/attendance/${id}`} className="mt-4 inline-block text-body-sm text-fg-heading underline underline-offset-4">
+              {t("exportCsv")}
+            </a>
           ) : null}
-          <div>
-            <dt className="text-body-sm text-fg-muted">{t("attendanceRateLabel")}</dt>
-            <dd className="text-label text-fg-heading">{ratePct === null ? <span className="font-normal text-fg-muted">{t("attendanceRateEmpty")}</span> : t("attendanceRateValue", { value: num(ratePct) })}</dd>
-          </div>
-        </dl>
-        {manyDays ? <p className="mt-3 text-body-sm text-fg-muted">{report.requireAllDays ? t("requireAllDaysOn") : t("requireAllDaysOff")}</p> : null}
-        {isAdmin ? (
-          <a href={`/api/admin/exports/attendance/${id}`} className="mt-4 inline-block text-body-sm text-fg-heading underline underline-offset-4">
-            {t("exportCsv")}
-          </a>
-        ) : null}
+        </Panel>
       </section>
 
       <section aria-labelledby="manual" className="mt-10 max-w-2xl border-t border-edge pt-8">
@@ -191,108 +210,134 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
           <p className="mt-3 text-body text-fg-body">{t("empty")}</p>
         ) : (
           // REQ-NFR-007: a scrollable region is a keyboard stop (axe scrollable-region-focusable).
-          <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-labelledby="list">
-            {/* ★ One column per day above one day; below it, the two columns
-                wave 7 shipped. `min-w` grows with the day count so a
-                three-day grid still scrolls rather than crushing at 390 px —
-                the region is already a keyboard stop (REQ-NFR-007). */}
-            <table className="w-full text-start text-body-sm" style={{ minWidth: manyDays ? `${420 + report.days.length * 140}px` : "560px" }}>
-              <thead>
-                <tr className="border-b border-edge text-fg-muted">
-                  <th scope="col" className="py-2 pe-4 text-start font-normal">
+          //
+          // ★ ONE TABLE, TWO LAYOUTS (wave 11, K2). From `md` up it is the table
+          // waves 7 and 9 shipped, and a many-day grid may still scroll inside
+          // this region. Below `md` the same rows reflow into stacked cards: the
+          // header row is visually hidden (still in the tree, so a screen reader
+          // still reads a table with headers), each row is a card, and each cell
+          // is a line «column · value». A card grows DOWNWARDS by one line per
+          // day and never sideways, so no `n` scrolls at 390 px — one day
+          // included, whose 560 px table used to. The roles are explicit because
+          // `display: block` on table parts may drop their implicit ones.
+          <div className="mt-4 md:overflow-x-auto" tabIndex={0} role="region" aria-labelledby="list">
+            {/* `min-w` grows with the day count, from `md` up only. */}
+            <table
+              role="table"
+              className="w-full text-start text-body-sm max-md:block md:min-w-[var(--table-min)]"
+              style={{ "--table-min": manyDays ? `${420 + report.days.length * 140}px` : "560px" } as CSSProperties}
+            >
+              <thead role="rowgroup" className="max-md:sr-only">
+                <tr role="row" className="border-b border-edge text-fg-muted">
+                  <th role="columnheader" scope="col" className="py-2 pe-4 text-start font-normal">
                     {t("colName")}
                   </th>
-                  <th scope="col" className="py-2 pe-4 text-start font-normal">
+                  <th role="columnheader" scope="col" className="py-2 pe-4 text-start font-normal">
                     {t("colStatus")}
                   </th>
                   {manyDays ? (
                     <>
                       {report.days.map((d, i) => (
-                        <th key={d.id} scope="col" className="py-2 pe-4 text-start font-normal">
+                        <th key={d.id} role="columnheader" scope="col" className="py-2 pe-4 text-start font-normal">
                           {markableDays[i].label}
                         </th>
                       ))}
-                      <th scope="col" className="py-2 text-start font-normal">
+                      <th role="columnheader" scope="col" className="py-2 text-start font-normal">
                         {t("colDays")}
                       </th>
                     </>
                   ) : (
                     <>
-                      <th scope="col" className="py-2 pe-4 text-start font-normal">
+                      <th role="columnheader" scope="col" className="py-2 pe-4 text-start font-normal">
                         {t("colArrival")}
                       </th>
-                      <th scope="col" className="py-2 text-start font-normal">
+                      <th role="columnheader" scope="col" className="py-2 text-start font-normal">
                         {t("colMethod")}
                       </th>
                     </>
                   )}
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup" className="max-md:block max-md:space-y-3">
                 {report.rows.map((r) => (
-                  <tr key={r.memberId} className="border-b border-edge">
-                    <td className="min-w-0 py-2 pe-4 text-fg-heading">
+                  <tr key={r.memberId} role="row" className={ROW}>
+                    <td role="cell" className={`${CELL} min-w-0 text-fg-heading max-md:text-label`}>
                       <bdi>{r.displayName ?? r.memberId}</bdi>
                     </td>
-                    <td className="py-2 pe-4 text-fg-body">
-                      {/* `removed` is checked first — it overrides walk-in/no-show/rsvp
-                          status, all of which a removal can make simultaneously true
-                          (a removed walk-in is still `isWalkIn`, and a removed
-                          confirmed member reads as `isNoShow` again per the RPC's own
-                          symmetry — see `AttendanceRow`'s own comment). */}
-                      {r.removed ? (
-                        <>
-                          <span className="text-fg-heading">{t("statusRemoved")}</span>
-                          {r.removalReason ? <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: r.removalReason, bdi: (c) => <bdi>{c}</bdi> })}</p> : null}
-                        </>
-                      ) : r.isWalkIn ? (
-                        t("statusWalkIn")
-                      ) : r.isNoShow ? (
-                        t("statusNoShow")
-                      ) : (
-                        t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")
-                      )}
+                    <td role="cell" className={`${CELL} text-fg-body`}>
+                      <CellLabel>{t("colStatus")}</CellLabel>
+                      <div className="min-w-0">
+                        {/* `removed` is checked first — it overrides walk-in/no-show/rsvp
+                            status, all of which a removal can make simultaneously true
+                            (a removed walk-in is still `isWalkIn`, and a removed
+                            confirmed member reads as `isNoShow` again per the RPC's own
+                            symmetry — see `AttendanceRow`'s own comment). */}
+                        {r.removed ? (
+                          <>
+                            <span className="text-fg-heading">{t("statusRemoved")}</span>
+                            {r.removalReason ? <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: r.removalReason, bdi: (c) => <bdi>{c}</bdi> })}</p> : null}
+                          </>
+                        ) : r.isWalkIn ? (
+                          t("statusWalkIn")
+                        ) : r.isNoShow ? (
+                          t("statusNoShow")
+                        ) : (
+                          t(STATUS_LABEL[r.rsvpStatus ?? ""] ?? "statusConfirmed")
+                        )}
+                      </div>
                     </td>
                     {manyDays ? (
                       <>
-                        {r.days.map((c) => (
-                          <td key={c.dayId} className="py-2 pe-4 text-fg-body">
-                            {c.checkedIn ? (
-                              <>
-                                <span className="text-fg-heading">{t("dayPresent")}</span>
-                                {c.arrivedAt ? (
-                                  <p className="mt-0.5 text-body-sm text-fg-muted">
-                                    <bdi>{formatDateTime(c.arrivedAt, prefs.timeZone, locale)}</bdi>
-                                  </p>
-                                ) : null}
-                              </>
-                            ) : c.removed ? (
-                              <>
-                                <span>{t("dayRemoved")}</span>
-                                {c.removalReason ? (
-                                  <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: c.removalReason, bdi: (x) => <bdi>{x}</bdi> })}</p>
-                                ) : null}
-                              </>
-                            ) : (
-                              <span className="text-fg-muted">{t("dayAbsent")}</span>
-                            )}
+                        {r.days.map((c, i) => (
+                          <td key={c.dayId} role="cell" className={`${CELL} text-fg-body`}>
+                            <CellLabel>{markableDays[i]?.label}</CellLabel>
+                            <div className="min-w-0">
+                              {c.checkedIn ? (
+                                <>
+                                  <span className="text-fg-heading">{t("dayPresent")}</span>
+                                  {c.arrivedAt ? (
+                                    <p className="mt-0.5 text-body-sm text-fg-muted">
+                                      <bdi>{formatDateTime(c.arrivedAt, prefs.timeZone, locale)}</bdi>
+                                    </p>
+                                  ) : null}
+                                </>
+                              ) : c.removed ? (
+                                <>
+                                  <span>{t("dayRemoved")}</span>
+                                  {c.removalReason ? (
+                                    <p className="mt-0.5 text-body-sm text-fg-muted">{t.rich("removedReason", { reason: c.removalReason, bdi: (x) => <bdi>{x}</bdi> })}</p>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span className="text-fg-muted">{t("dayAbsent")}</span>
+                              )}
+                            </div>
                           </td>
                         ))}
-                        <td className="py-2 text-fg-body">
-                          {t("daysAttended", { value: num(r.daysAttended), total: num(report.days.length) })}
-                          {/* ★ Not derivable from the count beside it: with
-                              `require_all_days` off, «1 من 3» IS complete.
-                              This reads contract 6's predicate through
-                              `session_complete_attendees()` and re-derives
-                              nothing. */}
-                          {r.attendanceComplete ? <span className="ms-2 text-fg-heading">{t("complete")}</span> : null}
+                        <td role="cell" className={`${CELL} text-fg-body md:pe-0`}>
+                          <CellLabel>{t("colDays")}</CellLabel>
+                          <div className="min-w-0">
+                            {t("daysAttended", { value: num(r.daysAttended), total: num(report.days.length) })}
+                            {/* ★ Not derivable from the count beside it: with
+                                `require_all_days` off, «1 من 3» IS complete.
+                                This reads contract 6's predicate through
+                                `session_complete_attendees()` and re-derives
+                                nothing. */}
+                            {r.attendanceComplete ? <span className="ms-2 text-fg-heading">{t("complete")}</span> : null}
+                          </div>
                         </td>
                       </>
                     ) : (
                       <>
-                        <td className="py-2 pe-4 text-fg-body">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</td>
-                        <td className="py-2 text-fg-body">
-                          {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}
+                        <td role="cell" className={`${CELL} text-fg-body`}>
+                          <CellLabel>{t("colArrival")}</CellLabel>
+                          <div className="min-w-0">{r.arrivedAt ? <bdi>{formatDateTime(r.arrivedAt, prefs.timeZone, locale)}</bdi> : "—"}</div>
+                        </td>
+                        <td role="cell" className={`${CELL} text-fg-body md:pe-0`}>
+                          <CellLabel>{t("colMethod")}</CellLabel>
+                          <div className="min-w-0">
+                            {r.method === "code" ? t("methodCode") : r.method === "manual" ? <span className="text-fg-heading">{t("manualBadge")}</span> : "—"}
+                          </div>
                         </td>
                       </>
                     )}
@@ -315,18 +360,20 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
           ) : (
             <ul className="mt-4 space-y-3">
               {ratings.map((r) => (
-                <li key={r.id} className="rounded-field border border-edge p-4">
-                  <p className="text-label text-fg-heading">
-                    <bdi>{r.member?.displayName ?? r.member?.id ?? ""}</bdi>
-                  </p>
-                  <p className="mt-1 text-body-sm text-fg-muted">
-                    {t("sessionStars")}: {num(r.sessionStars)} · {t("presenterStars")}: {num(r.presenterStars)}
-                  </p>
-                  {r.comment ? (
-                    <p className="mt-2 text-body-sm text-fg-body">
-                      <bdi>{r.comment}</bdi>
+                <li key={r.id}>
+                  <Panel>
+                    <p className="text-label text-fg-heading">
+                      <bdi>{r.member?.displayName ?? r.member?.id ?? ""}</bdi>
                     </p>
-                  ) : null}
+                    <p className="mt-1 text-body-sm text-fg-muted">
+                      {t("sessionStars")}: {num(r.sessionStars)} · {t("presenterStars")}: {num(r.presenterStars)}
+                    </p>
+                    {r.comment ? (
+                      <p className="mt-2 text-body-sm text-fg-body">
+                        <bdi>{r.comment}</bdi>
+                      </p>
+                    ) : null}
+                  </Panel>
                 </li>
               ))}
             </ul>
