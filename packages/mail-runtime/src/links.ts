@@ -87,6 +87,26 @@ export const ROUTE_FOR: Readonly<Record<string, Route>> = {
 };
 
 /**
+ * ★ THE ORG'S LOGO, RESOLVED THE SAME WAY BY BOTH CALL SITES.
+ *
+ * `0126` / contract 9: `/api/brand/{orgId}/logo` is the one object a mail
+ * client may fetch with no session, and only while it is PNG or JPEG for an
+ * active org. Whether such a row exists is a question each caller asks the
+ * database — the worker in SQL, the preview through the DAL — but the URL's
+ * SHAPE and the «no row means null» rule are written once, here.
+ *
+ * They were not, and that was a real defect: the worker resolved a logo and
+ * the preview never did, so every design previewed with the org's NAME where
+ * the sent mail carried the logo band. An admin approved a message they would
+ * never receive. Two copies of a rule is how that happens; one is how it
+ * stops.
+ */
+export function logoUrlFor(origin: string | null | undefined, orgId: string, hasPublicLogo: boolean): string | null {
+  if (!origin || !orgId || !hasPublicLogo) return null;
+  return `${origin.replace(/\/+$/, "")}/api/brand/${orgId}/logo`;
+}
+
+/**
  * The absolute link for one message, or null.
  *
  * Null when there is no origin, when the key has no route, or when the route

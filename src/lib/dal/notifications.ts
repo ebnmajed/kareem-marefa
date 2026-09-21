@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { DEFAULT_TEMPLATES, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
+import { DEFAULT_TEMPLATES, logoUrlFor, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
 import { sessionClient } from "@/lib/dal/session";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 
@@ -396,10 +396,15 @@ export async function compileEmailPreview(
   const client = await sessionClient(locale);
   // The org's OWN name, palette and zone — a preview of a branded mail that
   // showed the sample org's would be a picture of somebody else's message.
-  const [{ data: kit }, { data: org }, prefs] = await Promise.all([
+  const [{ data: kit }, { data: org }, prefs, { data: logo }] = await Promise.all([
     client.supabase.rpc("brand_kit", { p_org: client.session.orgId }),
     client.supabase.from("orgs").select("name").eq("id", client.session.orgId).maybeSingle(),
     getOrgPrefs(locale),
+    // ★ The preview ASKS for the logo, which it did not before — and «never
+    // asked» is how a preview came to show the org's name where the sent mail
+    // carries the logo band. The same function the worker asks (`0126`), so
+    // the preview is wrong exactly when the mail would be.
+    client.supabase.rpc("org_public_logo", { p_org: client.session.orgId }),
   ]);
   const light = (kit as { light?: Record<string, string> } | null)?.light;
   const dark = (kit as { dark?: Record<string, string> } | null)?.dark;
@@ -411,6 +416,10 @@ export async function compileEmailPreview(
     member: sample.member ?? SAMPLE_MEMBER,
     org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
     brand: light ? { light, dark } : null,
+    // `org_public_logo()` returns a row only for an ACTIVE org with a PNG or
+    // JPEG logo, so an empty result is the same «render the org's NAME» the
+    // worker produces rather than a broken image.
+    logoUrl: logoUrlFor(input.appUrl, client.session.orgId, Array.isArray(logo) ? logo.length > 0 : Boolean(logo)),
     appUrl: input.appUrl,
   });
   return { html: rendered.html, text: rendered.text, subject: rendered.subject };

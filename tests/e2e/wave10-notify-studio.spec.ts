@@ -173,8 +173,13 @@ test("★ the three panes at 390 px, with the preview filled by the one renderer
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
   await expect(frame.locator("body")).toContainText("قاعة");
 
-  // The composed footer is shown as a fixed last row, outside the reorderable set.
-  await expect(editor(page).getByText("تذييل التفضيلات", { exact: false })).toBeVisible();
+  // The composed footer is shown as a fixed last row, outside the reorderable
+  // set. ★ The WHOLE string, exactly: «تذييل التفضيلات» alone also matches the
+  // checks panel's satisfied row, and a locator that matches two things is not
+  // asserting the one it names.
+  await expect(
+    editor(page).getByText("تذييل التفضيلات — يُضاف دائمًا ولا يمكن حذفه أو تحريكه", { exact: true }),
+  ).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/wave10-notify-editor-phone.png` });
 });
 

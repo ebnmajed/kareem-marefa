@@ -1,6 +1,6 @@
 import type { Task } from "graphile-worker";
 import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
-import { renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
+import { logoUrlFor, renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
 // Key: `notify:{message_id}`, enqueued by `public.notify()` inside the
@@ -113,7 +113,9 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   let logoUrl: string | null = null;
   if (appUrl) {
     const { rows: logoRows } = await helpers.query(`select storage_path from public.org_public_logo($1::uuid)`, [p.org_id]);
-    if (logoRows.length > 0) logoUrl = `${appUrl}/api/brand/${p.org_id}/logo`;
+    // `logoUrlFor()` rather than a template literal: the preview resolves the
+    // same logo, and the two drifted apart once already.
+    logoUrl = logoUrlFor(appUrl, p.org_id, logoRows.length > 0);
   }
 
   // ★ Contract 8, made concrete (D3 finding F3). `/api/s/{id}/og` is the ONE
