@@ -3769,3 +3769,16 @@ proof the *new* JSX is what a fresh build served. Flagging rather than claiming 
 which is the lead's; naming the four surfaces here so the lead can capture them at the next build:
 `tasks/create-form` + `tasks/task-item` (the task panel), the viewer (`materials/[materialId]`), and the
 discussion composer. C2 (accessibility findings) still waiting on the lead's routed rows.
+
+### Prose-dependent screens — the owner's list (rule acknowledged, 2026-09-22)
+
+Per the lead's relay of the owner's rule: a screen whose meaning depends on a paragraph is noted here,
+not rewritten, this wave. C2's routed findings haven't arrived yet; one row I can already name from my
+own C1 pass over `/app/me/privacy` (`src/app/[locale]/app/me/privacy/page.tsx`), read closely enough
+while fixing its two `ui-lint` violations to recognise the shape:
+
+| Route | The paragraph (key) | What depends on it | Affordance it could become | Found by |
+|---|---|---|---|---|
+| `/app/me/privacy` | `privacy.page.deactivateHonest` | The whole reason there is no self-service "delete my account" — a member reading only the button labels («تصدير», «إلغاء التفعيل») would not know deletion is deliberately unavailable, or why (anonymisation instead, to protect content other members depend on) | A short inline note beside the deactivation button, or a `Tooltip`/disclosure triggered from a "لماذا لا يمكنني حذف حسابي؟" link, carrying the same explanation without it having to be read start-to-front before the member understands what pressing the button will and will not do | `content`, wave 11 C1 |
+
+More rows land here as C2's routed findings arrive.
