@@ -433,6 +433,13 @@ export interface ViewerPage {
   pageNumber: number;
   imageUrl: string;
   thumbnailUrl: string;
+  /** The rendered page's real dimensions (`material_pages.width`/`.height`, written by
+   *  `render_pages.ts`) — wave 11 C3: `ui/page-viewer.tsx` used to hard-code a 16:9 box for
+   *  every page regardless of the source document's actual aspect ratio, so a portrait page
+   *  reserved a wide box and visibly jumped taller once the real image painted (a CLS hit at
+   *  exactly the "page 1" moment `13` §7's budget measures). */
+  width: number;
+  height: number;
 }
 
 export interface ViewerData {
@@ -491,7 +498,7 @@ export async function getViewerData(locale: string, materialId: string): Promise
 
   const { data: pageRows, error: pagesError } = await supabase
     .from("material_pages")
-    .select("page_number, image_path, thumbnail_path")
+    .select("page_number, image_path, thumbnail_path, width, height")
     .eq("material_version_id", material.current_version_id)
     .order("page_number", { ascending: true });
   if (pagesError) throw new Error(`material_pages: ${pagesError.message}`);
@@ -502,7 +509,13 @@ export async function getViewerData(locale: string, materialId: string): Promise
         supabase.storage.from("material-pages").createSignedUrl(p.image_path as string, 3600),
         supabase.storage.from("material-pages").createSignedUrl(p.thumbnail_path as string, 3600),
       ]);
-      return { pageNumber: p.page_number as number, imageUrl: image.data?.signedUrl ?? "", thumbnailUrl: thumb.data?.signedUrl ?? "" };
+      return {
+        pageNumber: p.page_number as number,
+        imageUrl: image.data?.signedUrl ?? "",
+        thumbnailUrl: thumb.data?.signedUrl ?? "",
+        width: p.width as number,
+        height: p.height as number,
+      };
     }),
   );
 
