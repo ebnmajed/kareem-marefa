@@ -160,6 +160,8 @@ A pre-existing `tests/**` file changes only with a line here saying why.
 | `tests/rls/brand-kits.test.ts` | every case (fixture-level) | `LIGHT.canvas`/`LIGHT.surface` were `#111111`/`#222222` — a fixture colour the new status-contrast guard refuses (`--color-live`/`--color-ended` measured 2.70–3.32:1 against them, under the new 4.5:1). Changed to `#eeeeee`/`#f5f5f5`, which clear both status inks. No assertion in the file changed. | `38aa5ec` |
 | `tests/components/platform/platform-home-page.test.tsx` | its `vi.mock` factory | gains `listExhaustedJobs: vi.fn(async () => [])` — the home awaits a third read and a factory without it throws on import; no assertion changed | `2ab8041` |
 | `tests/components/checkin/attendance-days.test.tsx` | lines 70, 78, 90, 92, 137 | the manual-mark form's day, member and reason gain `<Field required>`'s «مطلوب» (`DEC-168` §5), which joins the accessible name; five exact label matches become `{ exact: false }`, as the file's own lines 72, 103, 108, 145 already were — made by the lead as custodian on `console`'s request; no expectation changed (line 137 still asserts the day select is absent at one day) | this commit |
+| `tests/e2e/admin-attendance.spec.ts` | line 376 | «مطلوب» joins the member select's accessible name (`DEC-168` §5, K2): `{ exact: true }` → `{ exact: false }`; selector only | `81d4b31` |
+| `tests/components/admin/rtl-datetime-picker.test.tsx` | the renders | wrapped in a `NextIntlClientProvider`: the hour and minute selects now sit in `<Field>`, which reads `ui.json`; harness only, no expectation moved | `7e48e66` |
 
 ### ★ The owner's order — a DRAFT from Step 0
 
