@@ -1619,7 +1619,12 @@ Two tiers, mirroring the designer's (`DSG-008`, DEC-052):
   original is never mutated; promotion adds, it never supplies the baseline.
 - **Every one of the 25 message keys maps to a template**, and a key with no org override falls
   back to the platform one rather than to a paragraph of unstyled text. That fallback is the whole
-  difference: today the default *is* the wall of text.
+  difference: today the default *is* the wall of text. ★ **When that fallback switches on is M13,
+  not wave 10** (`DEC-161`, `REQ-NTF-014`'s acceptance as amended): in wave 10 the library is
+  complete and every key *resolves* to a design, but an org that has not touched its templates
+  keeps sending the pinned string bytes — «byte-identical» is the wave's second demonstrable — and
+  a design becomes the org's only when an admin presses «ابدأ من تصميم جاهز». The string path
+  leaves in M13 (`DEC-081`), and that is when a key with no row renders the platform design.
 - **The brand kit drives all of it** (`REQ-DSG-021`) — logo, the three colours `render.ts` already
   reads from `public.brand_kit()`, the signature. Changing the org logo restyles twenty-two emails,
   which is what "one edit in one place" was always supposed to mean.
