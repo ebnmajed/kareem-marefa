@@ -2898,3 +2898,31 @@ document do not match the wave's rulings.**
   unconditionally (`src/lib/dal/notifications.ts:519`), so templates are Arabic-only product-wide
   today. Arabic-only designs match the system exactly rather than falling short of it. English
   templates would start at that line and are separate work.
+
+---
+
+## `03` §8.2 rows, ready to paste — the two proposed files not yet promoted
+
+Written in the table's exact shape (`| \`ROW\` | sentence (migration \`NNNN\`). |`), with the test that
+proves each. `0NNN` is the number the lead assigns at promotion. `0001` and `0002` are already in as
+`0133` and `0136`; these two are not.
+
+### `supabase/proposed/notify/0003_send_test_email.sql` — `tests/rls/notify-test-email.test.ts` (7)
+
+| `RPC-send_test_email.own_address_only` | The function takes NO address: `pg_get_function_identity_arguments` is exactly `p_key text, p_locale text`, and the queued job names the caller with no address in its payload, so «to the admin's own and to no other» is a property of the signature rather than of a check a caller could omit (migration `0NNN`). |
+| `RPC-send_test_email.admin_only` | A moderator and a member are refused `42501`; the org's admin succeeds (migration `0NNN`). |
+| `RPC-send_test_email.matrix_closed` | A key `08` §1 gives no email channel, a key not in the matrix at all, and an unknown locale are each refused `22023` — a test is not a way to send what the product does not send (migration `0NNN`). |
+| `RPC-send_test_email.rate_limited` | The eleventh call within an hour returns `{"status":"rate_limited"}` and writes nothing — ten audit rows, not eleven, because the limit precedes every write; another admin's calls do not count against this one's (migration `0NNN`). |
+| `RPC-send_test_email.audited` | One `notify.test_email_sent` row whose `after` is exactly `{key, locale}` and never an address — the actor is the recipient (migration `0NNN`). |
+
+### `supabase/proposed/notify/0004_resend_webhook.sql` — `tests/rls/notify-bounce.test.ts` (12)
+
+| `RPC-resend_webhook.signature_required` | No signature, a wrong one, one made over different bytes, one under a different Svix id, and one from another secret are each `{"status":"rejected","reason":"signature"}` and move no row; a `whsec_` prefix on the stored secret is stripped; a header carrying several `v1,` values is accepted when one matches, so a rotation works (migration `0NNN`). |
+| `RPC-resend_webhook.replay_window` | A correctly-signed body older than five minutes is rejected `stale`, and so is one five minutes in the future — the window is symmetric because a signature is valid forever; a non-numeric timestamp is rejected rather than raised (migration `0NNN`). |
+| `RPC-resend_webhook.anon_granted` | `anon` holds the grant, because a provider webhook carries no session; the secret it verifies against is reachable only inside the definer body, and `anon` selecting `vault.decrypted_secrets` gets nothing (migration `0NNN`). |
+| `RPC-resend_webhook.moves_only_existing` | A verified body naming a message this deployment never sent returns `unknown_message` and creates no row; a bounce moves the row it names and lands `data.bounce.message` in `error`, which is `REQ-NTF-008`'s «with the reason» (migration `0NNN`). |
+| `RPC-resend_webhook.unconfigured_is_quiet` | With no `resend_webhook_secret` in the vault it returns `{"status":"unconfigured"}` rather than raising, so a deployment that has not set one answers 200 and the provider does not retry forever (migration `0NNN`). |
+
+★ **One row of `0026`'s is worth re-reading at promotion**: `email.complained` maps to nothing,
+because `delivery_status` has no value for it. The test asserts the row does **not** move, so if the
+enum later gains `complained` that case is where the change surfaces.
