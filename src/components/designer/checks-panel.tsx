@@ -16,6 +16,7 @@ import {
 } from "@kareem/designer-runtime";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 
 // «Content crossing a safe area is flagged BEFORE export, not after»
 // (REQ-DSG-010), and a title that hit its floor and still overflows is
@@ -191,7 +192,8 @@ export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, show
             const layer = layerNames[f.layerId] ?? f.layerId;
             const preset = g.presets.map((p) => tp(`name.${p}`)).join("، ");
             return (
-              <li key={g.key} className="flex flex-col gap-2 rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+              <li key={g.key}>
+                <Panel className="flex flex-col gap-2 text-body-sm text-fg-heading">
                 <p>
                   {f.kind === "ppi"
                     ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", { layer, preset, ppi: formatNumber(g.ppi), bdi: (c) => <bdi>{c}</bdi> })
@@ -204,6 +206,7 @@ export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, show
                     {t("goToLayer")}
                   </Button>
                 ) : null}
+                </Panel>
               </li>
             );
           })}
