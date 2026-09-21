@@ -143,28 +143,37 @@ function PhotoGrid({ photos, sessionId, locale, isStaff, t, scope }: PhotoGridPr
         // own Arabic phrase) even inside a 2-column track — at 390 px
         // that forced the whole page to scroll sideways. `min-w-0`
         // lets the track shrink to the column width and the text wrap.
-        <li key={p.id} className="flex min-w-0 flex-col gap-2 rounded-field border border-edge p-2">
-          {p.url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a signed URL, not a static/optimizable asset
-            <img src={p.url} alt="" className="aspect-square w-full rounded-field object-cover" />
-          ) : null}
-          {p.hiddenAt ? (
-            <Badge tone="error" outline size="sm" className="self-start">
-              {t("hiddenBadge")}
-            </Badge>
-          ) : null}
-          {/* Staff alone — a photo has no presenter-write concept. The group heading already
-              says the scope; only staff gets the chip that can move it. */}
-          {scope && isStaff ? (
-            <RescopeChip
-              currentLabel={scope.currentLabel}
-              options={scope.options}
-              triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-              failedLabel={t("rescope.failed")}
-              rescopeAction={rescopePhotoAction.bind(null, locale, sessionId, p.id)}
-            />
-          ) : null}
-          <TakedownButton locale={locale} sessionId={sessionId} photoId={p.id} mode={p.hiddenAt && isStaff ? "restore" : "request"} />
+        <li key={p.id} className="min-w-0">
+          {/* `p-2!` (Tailwind's `!important` modifier, `DEC-111`'s own escape from the
+              utility-emit-order trap): `Panel`'s own `p-4` is a plain, non-important
+              utility of the same `padding` property, so which of the two wins in the
+              generated stylesheet depends on emit order, not on the order the two
+              classes appear in this string — `important` is the one override immune
+              to that. This tile was `p-2` before `ui-lint` ever named it; `Panel`'s
+              default is `p-4`, so this keeps the smaller inset on purpose. */}
+          <Panel className="flex min-w-0 flex-col gap-2 p-2!">
+            {p.url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a signed URL, not a static/optimizable asset
+              <img src={p.url} alt="" className="aspect-square w-full rounded-field object-cover" />
+            ) : null}
+            {p.hiddenAt ? (
+              <Badge tone="error" outline size="sm" className="self-start">
+                {t("hiddenBadge")}
+              </Badge>
+            ) : null}
+            {/* Staff alone — a photo has no presenter-write concept. The group heading already
+                says the scope; only staff gets the chip that can move it. */}
+            {scope && isStaff ? (
+              <RescopeChip
+                currentLabel={scope.currentLabel}
+                options={scope.options}
+                triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+                failedLabel={t("rescope.failed")}
+                rescopeAction={rescopePhotoAction.bind(null, locale, sessionId, p.id)}
+              />
+            ) : null}
+            <TakedownButton locale={locale} sessionId={sessionId} photoId={p.id} mode={p.hiddenAt && isStaff ? "restore" : "request"} />
+          </Panel>
         </li>
       ))}
     </ul>
