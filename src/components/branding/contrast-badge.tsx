@@ -26,7 +26,12 @@ export function ContrastBadge({
   const ratioText = t("ratioLabel", { ratio: formatNumber(ratio) });
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-field border border-edge px-3 py-2 text-body-sm">
+    // ★ `rounded-card`, not `rounded-field` — this row is a small status
+    // panel, not a form control (`ui/panel.tsx`'s own shape family), and the
+    // house control's own class recipe (`ui/field.tsx`'s `controlClass()`)
+    // is exactly the string `ui-lint`'s class-string rule exists to catch a
+    // non-control re-typing by coincidence (`REQ-UIX-001`).
+    <div className="flex items-center justify-between gap-2 rounded-card border border-edge px-3 py-2 text-body-sm">
       <span className="text-fg-body">{label}</span>
       <span
         role={passes ? undefined : "alert"}
