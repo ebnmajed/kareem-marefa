@@ -90,17 +90,17 @@ describe("a design renders, and says what its message says", () => {
   });
 });
 
-describe("★ adoption is EXPLICIT — the library does not change what an untouched org sends", () => {
-  it("a key with no row still renders the STRING default, design or no design", () => {
-    // DEC-161 R3: a key with no row, or a row whose `blocks` is null, renders
-    // the pinned bytes. The library being complete does not adopt it.
+describe("★ the string path retired — every key renders a design (DEC-081, M13)", () => {
+  it("a key with no row renders its design, and the design greets the member", () => {
+    // DEC-161 R3 held adoption explicit «until M13». In M13 a key with no row
+    // renders its platform design, which greets by name as the string
+    // templates always did.
     const withoutOverride = renderEmail({
       key: "MSG-reminder_1d",
       payload: sampleFor("MSG-reminder_1d")!.payload,
       member: SAMPLE_MEMBER,
       org: SAMPLE_ORG,
     });
-    // The string template's own greeting, which no design uses.
     expect(withoutOverride.text).toContain("مرحبًا");
     expect(withoutOverride.dropped).toEqual([]);
   });

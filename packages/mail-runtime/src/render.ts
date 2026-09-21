@@ -20,7 +20,8 @@
 
 import { DEFAULT_TEMPLATES, SIGNATURE, type EmailTemplate } from "./templates.js";
 import { DESIGN_STACK, escapeHtml, FALLBACK_STACK, formatNumber, formatValue, lookup } from "./primitives.js";
-import { isBlockDocument, type DroppedBlock } from "./blocks.js";
+import { isBlockDocument, type DroppedBlock, type EmailBlockDocument } from "./blocks.js";
+import { documentFromText, platformDesign } from "./designs.js";
 import { linkFor } from "./links.js";
 import { compileBlocks, type CompilePalette } from "./compile.js";
 
@@ -433,16 +434,35 @@ function shell(rows: string, org: string, brand: LegacyBrand | null | undefined,
 }
 
 /**
- * The org's template if it has one, the built-in Arabic default otherwise
- * (REQ-NTF-002, REQ-NTF-007). A key with neither is a bug in the matrix, not
- * a message to send blank, so it raises and the job dead-letters with the key
- * named.
+ * ★ WHAT IS COMPILED FOR A KEY — the one resolution, exported so a caller that
+ * must know (the preview asks whether a card wants an image) asks the renderer
+ * instead of re-deriving it (`DEC-081`, retired in M13):
+ *
+ *   · the row's `blocks`, when it has a document;
+ *   · a row with `blocks` null — an admin's EDITED string template — its own
+ *     words, in the design's frame (`documentFromText()`, `REQ-NTF-007`);
+ *   · no row — every untouched org, every untouched key — the key's platform
+ *     design (`REQ-NTF-014`: no key falls back to unstyled text).
+ *
+ * Null only for a key with no design at all, which is a matrix bug.
+ */
+export function emailDocumentFor(key: string, override: RenderInput["override"]): EmailBlockDocument | null {
+  if (isBlockDocument(override?.blocks)) return override.blocks;
+  if (override?.body) return documentFromText(override.body);
+  return platformDesign(key);
+}
+
+/**
+ * The org's row if it has one, the key's platform design otherwise
+ * (REQ-NTF-002, REQ-NTF-007, REQ-NTF-014). A key with neither a subject nor a
+ * document is a bug in the matrix, not a message to send blank, so it raises
+ * and the job dead-letters with the key named.
  */
 export function renderEmail(input: RenderInput): RenderedEmail {
   const fallback: EmailTemplate | undefined = DEFAULT_TEMPLATES[input.key];
   const subjectSource = input.override?.subject ?? fallback?.subject;
-  const bodySource = input.override?.body ?? fallback?.body;
-  if (!subjectSource || !bodySource) {
+  const document = emailDocumentFor(input.key, input.override);
+  if (!subjectSource || !document) {
     throw new TemplateMissingError(`no email template for ${input.key} — 08 §1 lists it with an email channel and 08 §3.2 must carry a template`);
   }
 
@@ -463,9 +483,8 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   };
 
   // ★ Named difference 1. `linkFor()` is null without an origin, so the
-  // spread adds nothing and `{{url}}` renders as the empty string it has
-  // rendered since M3 — which is why the 116 pinned files do not move. A
-  // payload that already carries its own `url` keeps it: `0073`'s export may
+  // spread adds nothing and `{{url}}` renders empty — and a button bound to it
+  // is dropped rather than pointed somewhere relative. A payload that already carries its own `url` keeps it: `0073`'s export may
   // one day ship a signed one, and a map must not overrule a sender that knows
   // better.
   const url = input.payload.url ?? linkFor(input.key, input.payload, input.appUrl);
@@ -473,13 +492,11 @@ export function renderEmail(input: RenderInput): RenderedEmail {
 
   const subject = interpolate(subjectSource, payload).replace(/\s+/g, " ").trim();
 
-  // ★ THE BRANCH, AND IT IS THE ONLY ONE (REQ-NTF-009, DEC-081). A row whose
-  // `blocks` is null — every row that existed before wave 10, and every org
-  // that has not touched its templates — falls through to the string path
-  // below, which is unchanged and which `tests/unit/mail-pinned/` pins byte for
-  // byte. The string path is removed only when every key has a design, in M13.
-  if (isBlockDocument(input.override?.blocks)) {
-    const compiled = compileBlocks(input.override.blocks, {
+  // ★ ONE PATH (DEC-081). Every key resolves to a document above, so every
+  // mail is compiled here; the string code below is unreachable and leaves in
+  // N2 with nothing else moving.
+  {
+    const compiled = compileBlocks(document, {
       payload,
       palette: compilePalette(input.brand),
       logoUrl: input.logoUrl ?? null,
@@ -489,15 +506,13 @@ export function renderEmail(input: RenderInput): RenderedEmail {
     });
     return {
       subject,
-      // The same tail the string path writes, so a design and a default sign
-      // off identically.
       text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
       html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand), { declareScheme: true, stack: DESIGN_STACK }),
       dropped: compiled.dropped,
     };
   }
 
-  const body = interpolate(bodySource, payload);
+  const body = interpolate(input.override?.body ?? fallback?.body ?? "", payload);
   const paragraphs = toParagraphs(body);
 
   return {

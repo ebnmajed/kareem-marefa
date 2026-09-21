@@ -100,6 +100,8 @@ export function TemplateEditor({
     <>
       <Panel tone="info" className="max-w-2xl">
         <p className="text-body-sm text-fg-body">{template ? t("overridden") : t("usingDefault")}</p>
+        {/* DEC-081: a string row is no longer sent as bare text — its words arrive in the design's frame. */}
+        {template ? <p className="text-body-sm text-fg-muted">{t("framedNote")}</p> : null}
       </Panel>
 
       <form key={template?.updatedAt ?? "default"} action={dispatch} noValidate className="mt-6 max-w-2xl space-y-5">

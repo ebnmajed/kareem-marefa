@@ -72,7 +72,9 @@ describe("08 §3.1 — the constraints email clients impose", () => {
 
   it("uses tables for layout and inline CSS only", () => {
     expect(out.html).toContain("<table");
-    expect(out.html).not.toMatch(/<style[\s>]/);
+    // The one `<style>` is F1's colour-scheme opt-out (`DEC-162`) and carries no
+    // presentation; every rule that draws anything is inline.
+    expect(out.html.match(/<style[\s>][\s\S]*?<\/style>/g)).toEqual(["<style>:root{color-scheme:light;supported-color-schemes:light;}</style>"]);
     expect(out.html).not.toContain("class=");
   });
 
@@ -153,7 +155,9 @@ describe("REQ-NTF-007 — the org's template wins", () => {
       org: ORG,
     });
     expect(out.subject).toBe("مبروك يا سارة العتيبي");
-    expect(out.text).toContain("حصلت على أول جلسة.");
+    // The admin's words, with the compiler's bidi isolates around the bound
+    // value (`10` §2) set aside.
+    expect(out.text.replace(/[\u2068\u2069]/g, "")).toContain("حصلت على أول جلسة.");
   });
 
   it("raises rather than sending a blank when a key has no template at all", () => {

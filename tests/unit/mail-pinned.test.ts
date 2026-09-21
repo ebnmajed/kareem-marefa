@@ -28,13 +28,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEMPLATES, renderEmail } from "@kareem/mail-runtime";
-import { BRAND, CASES, MEMBER, ORG, PART_SUFFIXES } from "./mail-pinned.fixtures";
+import { DEFAULT_TEMPLATES } from "@kareem/mail-runtime";
+import { BRAND, CASES, PART_SUFFIXES, renderPinned } from "./mail-pinned.fixtures";
 
 const DIR = join(process.cwd(), "tests", "unit", "mail-pinned");
 const read = (name: string) => readFileSync(join(DIR, name), "utf8");
-const render = (sample: (typeof CASES)[number], brand: typeof BRAND | null) =>
-  renderEmail({ key: sample.key, payload: sample.payload, member: sample.member ?? MEMBER, org: ORG, brand });
+const render = (sample: (typeof CASES)[number], brand: typeof BRAND | null) => renderPinned(sample, brand ? "brand" : "plain");
 
 describe("the pinned set covers what the product sends", () => {
   it("every message with an email channel is pinned at least once", () => {

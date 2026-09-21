@@ -24,8 +24,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "vitest";
-import { renderEmail } from "@kareem/mail-runtime";
-import { BRAND, CASES, MEMBER, ORG, PART_SUFFIXES } from "./mail-pinned.fixtures";
+import { CASES, PART_SUFFIXES, renderPinned } from "./mail-pinned.fixtures";
 
 const DIR = join(process.cwd(), "tests", "unit", "mail-pinned");
 
@@ -39,9 +38,8 @@ describe.runIf(process.env.MAIL_PIN_WRITE === "1")("write the pinned mail", () =
     }
 
     for (const sample of CASES) {
-      const input = { key: sample.key, payload: sample.payload, member: sample.member ?? MEMBER, org: ORG };
-      const branded = renderEmail({ ...input, brand: BRAND });
-      const plain = renderEmail({ ...input, brand: null });
+      const branded = renderPinned(sample, "brand");
+      const plain = renderPinned(sample, "plain");
       writeFileSync(join(DIR, `${sample.id}.subject.txt`), branded.subject, "utf8");
       writeFileSync(join(DIR, `${sample.id}.txt`), branded.text, "utf8");
       writeFileSync(join(DIR, `${sample.id}.brand.html`), branded.html, "utf8");

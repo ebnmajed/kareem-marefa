@@ -257,7 +257,12 @@ function compileOne(
     case "detail_list": {
       const pairs = block.items
         .map((item) => ({ label: say(item.label), value: say(item.value) }))
-        .filter((pair) => pair.label !== "" || pair.value !== "");
+        // ★ A row whose VALUE is empty is dropped, whatever its label: «رقم
+        // الشهادة:» over nothing is a question the mail asks and cannot answer.
+        // The retirement found it — `MSG-export_ready` shares the certificate
+        // family's serial row and has no serial — the first time the design
+        // was rendered for an org that had not adopted it.
+        .filter((pair) => pair.value.trim() !== "");
       if (pairs.length === 0) return;
       const inner = pairs
         .map(

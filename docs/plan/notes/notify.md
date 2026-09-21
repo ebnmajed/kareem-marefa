@@ -3245,3 +3245,47 @@ arrives as rule · selector · route and is fixed in the owning file with its ow
   make it moot.*
 - **Q3** — the owner's order gains two read-only lines: this note's query, and «`APP_URL` is set on the
   Railway worker». *Both before the push.*
+
+## Y9. ★ N1 — landed (sync 1 approved Q1–Q3)
+
+**What the build found that the plan had not** — both visible only because an untouched org now
+receives the designs, and both are in the reviewed diff:
+
+1. **The designs did not greet the member.** `tests/unit/notify-jobs.test.ts:93` — evidence, untouched
+   — asserts the sent mail carries «سارة العتيبي»; every string template greeted by name since M3 and
+   the eight designs dropped it while only adopters received them. **Fixed in the product, not the
+   test**: every family now has `{ type: "paragraph", id: "greeting", text: "مرحبًا {{member.name}}،" }`
+   after its heading — a block an org may edit or delete. Copies already stored by an org are
+   untouched (they are rows).
+2. **`MSG-export_ready` said «رقم الشهادة:» over nothing.** It shares the certificate family's serial
+   row and has no serial; `designs.ts` claimed the compiler dropped such a row, and the compiler dropped
+   one only when label **and** value were empty. **`compileBlocks()` now drops a detail row whose value
+   is empty**, whatever its label. A block-path change for every design, adopted or not — a label over
+   nothing is never what an author meant.
+
+Also: the worker logs `APP_URL is unset — <key> goes out without its links` once per job when the
+origin is missing (`info`, because `notify-jobs.test.ts`' fake logger — evidence — has no `warn`).
+
+### Ledger lines, verbatim, for `STATUS.md`
+
+| File | Case | Why | Commit |
+|---|---|---|---|
+| `tests/unit/mail-pinned/**` | 87 files changed (`.txt`, `.brand.html`, `.plain.html` × 29 cases), 4 added (`MSG-reminder_1d.org-text.*`); the 29 `.subject.txt` unmoved | the planned exception (rule 4): the string path retired, an untouched org receives its key's design — one regeneration, reviewed by the lead in `.qa-shots/mail-review/wave11-n1/` — `DEC-081` | N1 |
+| `tests/unit/mail-pinned.fixtures.ts` · `mail-pinned.test.ts` · `mail-pin-write.test.ts` | the render inputs | the harness gains a fixed `appUrl`, a `logoUrl` on the branded render and the edited-row case, through one shared `renderPinned()`; every assertion unchanged in shape — `DEC-081` | N1 |
+| `tests/unit/mail-blocks.test.ts` | «★ the STRING path does not isolate …» | the path they pinned no longer exists — `DEC-081` | N1 |
+| `tests/unit/mail-blocks.test.ts` | «F1 — … a string mail declares nothing new», «F4 — … the string path keeps M3's stack» | the string halves removed — the path they pinned no longer exists — `DEC-081`; the design halves unchanged | N1 |
+| `tests/unit/mail-blocks.test.ts` | two titles: the bidi `describe`, «blocks: null is …» | titles only — they named the string path; assertions unchanged — `DEC-081` | N1 |
+| `tests/unit/mail-links.test.ts` | «every key renders byte for byte its pinned file when `appUrl` is absent» | the path they pinned no longer exists — `DEC-081` (the pin now carries an origin; «no origin, never a relative link» stays pinned in `mail-blocks`) | N1 |
+| `tests/unit/mail-render.test.ts` | «uses tables for layout and inline CSS only» | «no `<style>` at all» becomes «the one `<style>` is F1's colour-scheme opt-out» (`DEC-162`), now on every mail — `DEC-081` | N1 |
+| `tests/unit/mail-render.test.ts` | «uses the admin's subject and body instead of the default» | the admin's words asserted with the compiler's U+2068/U+2069 isolates set aside; subject assertion unchanged — `DEC-081` | N1 |
+| `tests/unit/mail-designs.test.ts` | «a key with no row still renders the STRING default …» | title and comment only — `DEC-161` R3's «until M13» is now; the assertions (the greeting, nothing dropped) pass unchanged — `DEC-081` | N1 |
+| `tests/components/admin/emails-page.test.tsx` | «★ the editor: the trigger's refusal at the body …», line 144 | the sentence under the editor's heading said an untouched key arrives as the default TEXT; after `DEC-081` it arrives as the default DESIGN, so the asserted copy follows the product; the refusal, the field named and the kept values are unchanged — approved at sync 1 under the planned exception | N1 |
+
+`tests/unit/notify-jobs.test.ts` is **not** in the table: it went red on the missing greeting and on
+the logger, and both were fixed in the product.
+
+### `REQ-NTF-009` / `014`'s sentence, as I would write it
+
+> An org that has not touched a message's template receives that message's platform design; an org
+> that edited a string template receives its own subject and words, unchanged, in the design's frame;
+> and the rendered output pinned under `tests/unit/mail-pinned/` changes only by a reviewed diff.

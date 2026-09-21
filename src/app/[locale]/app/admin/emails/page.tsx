@@ -188,10 +188,11 @@ async function LogView({ locale, timeZone, status, before, messageName }: { loca
  * ★ WHICH EDITOR A KEY OPENS, and the rule is the row's own `blocks` column.
  *
  * `blocks is null` is a STRING template — every row that existed before wave
- * 10 — and it opens the string editor wave 8 built, unchanged. That is not
- * deference to the old screen: `tests/e2e/wave8-console-emails.spec.ts`'s
- * refusal and restore cases are EVIDENCE for a path this wave does not
- * replace, and they hold because the path does not move (`DEC-160`, rule 3).
+ * 10 — and it opens the string editor wave 8 built, unchanged: the admin's
+ * words are still theirs to edit. Since `DEC-081` they are SENT in the
+ * design's frame (`documentFromText()`), which the editor says, and
+ * `tests/e2e/wave8-console-emails.spec.ts`'s refusal and restore cases stay
+ * evidence for it (`DEC-160`, rule 3).
  *
  * A document opens the block editor. An org with a string override is offered
  * the conversion (§X9) and nothing is converted for it: what it sends today

@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { DEFAULT_TEMPLATES, isBlockDocument, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
+import { DEFAULT_TEMPLATES, emailDocumentFor, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
 import { sessionClient } from "@/lib/dal/session";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 
@@ -376,11 +376,13 @@ export async function compileEmailPreview(
   if (!sample) return null;
 
   const fallback = DEFAULT_TEMPLATES[input.key];
-  // A draft with no subject or body yet falls back to the built-in Arabic
-  // default, so the frame is never empty while an admin is still typing.
+  // A draft with no subject yet falls back to the platform's, and one with no
+  // body and no blocks previews the key's DESIGN — what an untouched key sends
+  // since the string path left (DEC-081) — so the frame is never empty while an
+  // admin is still typing.
   const subject = input.subject?.trim() || fallback?.subject || "";
-  const body = input.body?.trim() || fallback?.body || "";
-  if (!subject || !body) return null;
+  const body = input.body?.trim() || null;
+  if (!subject) return null;
 
   let blocks: unknown = null;
   if (input.blocks) {
@@ -427,9 +429,12 @@ export async function compileEmailPreview(
   // Asked for only when the document actually carries a card that wants an
   // image: five of the eight designs do not, and a query for something the
   // mail will not render is work with no reader.
-  const wantsCard =
-    isBlockDocument(blocks) &&
-    readBlocks(blocks).some((block) => block.type === "session_card" && block.withImage !== false);
+  // ★ Asked of the RENDERER's own resolution: since DEC-081 a key with no row
+  // is its design, which may carry a card, so reading `blocks` alone would
+  // miss the image an untouched org's mail really has.
+  const wantsCard = readBlocks(emailDocumentFor(input.key, { subject, body, blocks })).some(
+    (block) => block.type === "session_card" && block.withImage !== false,
+  );
   const cardSession = wantsCard && input.appUrl
     ? ((await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId })).data as string | null)
     : null;

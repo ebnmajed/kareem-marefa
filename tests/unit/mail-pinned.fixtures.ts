@@ -1,4 +1,4 @@
-import { SAMPLE_BRAND, SAMPLE_CASES, SAMPLE_MEMBER, SAMPLE_ORG, type SampleCase } from "@kareem/mail-runtime";
+import { renderEmail, sampleFor, SAMPLE_BRAND, SAMPLE_CASES, SAMPLE_MEMBER, SAMPLE_ORG, type RenderInput, type SampleCase } from "@kareem/mail-runtime";
 
 // N1 — the sample set the pinned mail is rendered from (`DEC-160` §4).
 //
@@ -48,14 +48,57 @@ import { SAMPLE_BRAND, SAMPLE_CASES, SAMPLE_MEMBER, SAMPLE_ORG, type SampleCase 
 //
 // The values are unchanged by the move, and the 116 files under
 // `tests/unit/mail-pinned/` are what proves it.
-export type PinnedCase = SampleCase;
+export type PinnedCase = SampleCase & {
+  /** An org's own row for the key. Absent: the org has none, which is every
+   *  untouched org. */
+  override?: RenderInput["override"];
+};
 export const ORG = SAMPLE_ORG;
 export const MEMBER = SAMPLE_MEMBER;
 export const BRAND = SAMPLE_BRAND;
-export const CASES: readonly PinnedCase[] = SAMPLE_CASES;
 
-/** The four parts pinned per case. The subject and the text part are rendered
- *  once: `renderEmail()` computes both before `toHtml()` and passes `brand`
- *  only to `toHtml()`, so neither can depend on it — a fact
+// ★ WAVE 11 — THE STRING PATH RETIRED (`DEC-081`). Every key now renders a
+// design, and a design without an origin drops its button and its preference
+// link — so pinning without one would record a mail nobody sends. The origin
+// is a constant; the logo is given to the BRANDED render only, so the plain
+// render pins the no-logo branch. Neither reaches the text part's
+// brand-independence: the logo block writes no text.
+export const APP_URL = "https://app.kareem.example";
+export const LOGO_URL = `${APP_URL}/api/brand/66666666-6666-4666-8666-666666666666/logo`;
+
+// ★ AN ADMIN'S EDITED STRING TEMPLATE — `REQ-NTF-007` kept through the
+// retirement. The row's own words, in the design's frame; its own subject.
+// It lives here and not in `SAMPLE_CASES`, so the preview's samples do not
+// change: this is a row, not sample data.
+const ORG_TEXT: PinnedCase = {
+  id: "MSG-reminder_1d.org-text",
+  key: "MSG-reminder_1d",
+  payload: sampleFor("MSG-reminder_1d")!.payload,
+  override: {
+    subject: "غدًا: {{title}}",
+    body: "أهلًا {{member.name}}،\n\nنلتقي غدًا في «{{title}}»، {{startsAt}}، في {{venue}}.\n\nأحضر أسئلتك.\n{{url}}",
+    blocks: null,
+  },
+};
+
+export const CASES: readonly PinnedCase[] = [...SAMPLE_CASES, ORG_TEXT];
+
+/** The one way a pinned part is rendered — the writer and the comparison share
+ *  it, so the two cannot disagree about the inputs. */
+export function renderPinned(sample: PinnedCase, variant: "brand" | "plain") {
+  return renderEmail({
+    key: sample.key,
+    override: sample.override ?? null,
+    payload: sample.payload,
+    member: sample.member ?? MEMBER,
+    org: ORG,
+    brand: variant === "brand" ? BRAND : null,
+    logoUrl: variant === "brand" ? LOGO_URL : null,
+    appUrl: APP_URL,
+  });
+}
+
+/** The four parts pinned per case. The subject and the text part are pinned
+ *  once: neither depends on the brand or the logo — a fact
  *  `mail-pinned.test.ts` asserts rather than assumes. */
 export const PART_SUFFIXES = [".subject.txt", ".txt", ".brand.html", ".plain.html"] as const;

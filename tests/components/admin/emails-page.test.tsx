@@ -141,7 +141,7 @@ describe("EmailsPage", () => {
     const { container } = await renderPage({ key: "MSG-reminder_1d" });
     // Named by what it is, not by the member's «غدًا».
     expect(screen.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeInTheDocument();
-    expect(screen.getByText("تصل هذه الرسالة بالقالب الافتراضي، ونصه لا يظهر هنا بعد: قالب المؤسسة يُكتب من البداية.")).toBeInTheDocument();
+    expect(screen.getByText("تصل هذه الرسالة بالتصميم الافتراضي. قالب المؤسسة يُكتب هنا من البداية، أو يبدأ من التصميم الجاهز.")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("الموضوع مطلوب"), { target: { value: "جلستك غدًا" } });
     fireEvent.change(screen.getByLabelText("النص مطلوب"), { target: { value: "مرحبًا" } });
     fireEvent.submit(container.querySelector("form")!);
