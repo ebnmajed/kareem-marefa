@@ -179,9 +179,17 @@ async function captureDark(page: Page, name: string) {
   // The design must have rendered at all — if the heading is missing the cell
   // is empty for a reason that has nothing to do with dark mode.
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
-  // ★ And the logo must be PRESENT as an element. A missing <img> means the
-  // mime gate refused the asset (`0126`), not that the logo vanished in the
-  // dark — the two look identical in a picture and are not the same finding.
+  // ★ And the logo must be PRESENT as an element. A missing <img> is NOT «the
+  // logo vanished in the dark» — the two look identical in a picture and are
+  // not the same finding. There are three ways it goes missing and only the
+  // first was ever guessed:
+  //   1. the mime gate refused the asset (`0126`) — refused at the door;
+  //   2. the org has no public logo row at all;
+  //   3. ★ nobody ASKED. This is what actually happened: the preview resolved
+  //      no logo while the worker did, so the cell was empty for a reason that
+  //      had nothing to do with dark mode (`8e86487`).
+  // The count is asserted rather than the picture read, because a picture
+  // cannot tell those three apart.
   await expect(frame.locator("img")).toHaveCount(1);
   await page.screenshot({ path: `${SHOTS}/${name}.png` });
 }
