@@ -770,3 +770,22 @@ platform default, which clears the guard — unaffected.
 it alone) — `event`'s file, unrelated to B1, flagging rather than touching it.
 
 **Ready for sync.** Next: none of mine pending — waiting on the owner's two reads (B1's already-saved-kits query, B3's logo-format query) before anything further.
+
+---
+
+## Prose-dependent screens — the owner's rule, 2026-09-22
+
+The lead's instruction: a screen whose meaning depends on reading a paragraph of explanation is
+**listed, not rewritten or cut** — a later wave replaces the prose with an affordance by design, and
+piecemeal copy edits now would pre-empt that. `errors.statusContrast` (this session's new key) does
+NOT belong here — it is a field-level error, not explanatory prose, and the lead already said so.
+Four candidates on `/app/admin/branding` (SCR-059), none touched:
+
+| Route | Message key(s) | What depends on it | The affordance that could carry it instead |
+|---|---|---|---|
+| `/app/admin/branding` | `branding.contrast.title`/`.body`/`.muted`/`.large`/`.ui`/`.pass`/`.fail`/`.ratioLabel` | Whether a chosen brand-token colour pair (`fgHeading`/`fgBody`/`fgMuted`/`edgeStrong` against `canvas`) meets WCAG AA is conveyed ONLY as a ratio number plus a pass/fail word (`ContrastBadge`, `contrast-badge.tsx`) — nothing stops the save if it fails, unlike the new status-colour guard. The lead named this exact screen as a likely case. | A pass/fail glyph (check/alert icon, already in `ui/icons.tsx`) beside each swatch pair, the ratio text demoted to a `title`/tooltip rather than the only signal; and/or `save_brand_kit()` itself refusing a failing brand-token pair the way it now refuses a failing status pair (a separate, bigger decision — not assumed here). |
+| `/app/admin/branding` | `branding.logo.ppiResult`, `.ppiSufficient`, `.ppiWarning`, `.ppiInsufficient` | Whether an uploaded logo prints legibly at A3 is conveyed only as a PPI number and a sentence of arithmetic — no colour or icon signal. | A traffic-light badge (green/amber/red) beside the logo preview, the PPI sentence demoted to supporting detail. |
+| `/app/admin/branding` | `branding.colours.canvasRaiseLightHint` | Why editing the light scheme's `canvasRaise` field visibly changes nothing today (`DEC-125`: posters always render dark) is explained only in a sentence beside the field. | Grey/disable the light `canvasRaise` field with a short inline tag ("غير مُستخدم اليوم") rather than a full sentence, or move the fact into the field's own `hint` slot styled distinctly from an active field's hint. |
+| `/app/admin/branding` | `branding.actions.resetConfirm` | That resetting deletes the org's customisation, reverts every screen to the platform default, and re-renders live posters is conveyed only as one dialog sentence — nothing previews WHAT changes. | A small before/after swatch pair inside the dialog (current org colour → platform default), the sentence kept but no longer the only signal. |
+
+None of these are edited this wave — flagging per the rule, not fixing.
