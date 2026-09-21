@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -186,6 +186,13 @@ export function TemplateEditor({ locale, template }: { locale: Locale; template:
 
         <div className="mt-4">
           <ReorderableList
+            // ★ INLINE, because a question is a CARD. A side column of ▲▼ and
+            // the delete takes about 120 px at 390 px, leaving the card ~205 px
+            // and truncating the option inputs inside it («مناس»). `09` SCR-065
+            // puts the arrows «at the start edge of its header», which is where
+            // the card puts them below. The OPTION list inside a question keeps
+            // the side column: its items are one line, which is what it is for.
+            controls="inline"
             items={questions}
             label={t("questionsLabel")}
             getKey={(q) => q.key}
@@ -197,10 +204,11 @@ export function TemplateEditor({ locale, template }: { locale: Locale; template:
                 <TrashIcon />
               </IconButton>
             )}
-            renderItem={(question, { index }) => (
+            renderItem={(question, { index, controls }) => (
               <QuestionCard
                 question={question}
                 index={index}
+                controls={controls}
                 error={questionErrors[question.key]}
                 onChange={(change) => update(question.key, change)}
               />
@@ -252,20 +260,30 @@ export function TemplateEditor({ locale, template }: { locale: Locale; template:
 function QuestionCard({
   question,
   index,
+  controls,
   error,
   onChange,
 }: {
   question: DraftQuestion;
   index: number;
+  /** ▲▼ and «احذف السؤال», handed over by the list to be placed (`controls: "inline"`). */
+  controls: ReactNode;
   error?: string;
   onChange: (change: Partial<DraftQuestion>) => void;
 }) {
   const t = useTranslations("survey.editor");
-  const tErrors = useTranslations("survey.errors");
+  const tError = useTranslations("survey.errors");
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-edge p-4">
-      <Field id={`prompt-${question.key}`} label={t("promptLabel")} error={error === "prompt" ? tErrors("prompt") : undefined}>
+      {/* The card's header: which question this is, and its controls at the
+          end of the same line — no column, so the fields below get the width. */}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-body-sm text-fg-muted">{t("questionFallback", { position: formatNumber(index + 1) })}</h3>
+        {controls}
+      </div>
+
+      <Field id={`prompt-${question.key}`} label={t("promptLabel")} error={error === "prompt" ? tError("prompt") : undefined}>
         <Input
           value={question.prompt}
           onChange={(e) => onChange({ prompt: e.target.value })}
@@ -296,7 +314,7 @@ function QuestionCard({
       {isChoice(question.kind) ? (
         <fieldset>
           <legend className="text-body-sm text-fg-muted">{t("optionsLabel")}</legend>
-          {error === "options" ? <p className="mt-1 text-caption text-error">{tErrors("options")}</p> : null}
+          {error === "options" ? <p className="mt-1 text-caption text-error">{tError("options")}</p> : null}
           <div className="mt-2">
             <OptionList question={question} onChange={onChange} />
           </div>

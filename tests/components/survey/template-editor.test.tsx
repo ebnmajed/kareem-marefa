@@ -53,9 +53,13 @@ const prompts = () => screen.getAllByLabelText(/نص السؤال/).map((input) 
 const questionRows = () =>
   Array.from(screen.getByRole("list", { name: "أسئلة الاستبانة" }).querySelectorAll(":scope > li")) as HTMLElement[];
 
-/** A row's own ▲▼ — the last child of the row, beside `renderActions`; the
- *  nested option list's arrows are inside `renderItem`, which comes first. */
-const rowControls = (row: HTMLElement) => within(row.querySelector(":scope > div:last-child") as HTMLElement);
+/** A row's own ▲▼. ★ They sit in the CARD'S HEADER now (`controls: "inline"`,
+ *  the list hands them to `renderItem` so a card does not lose ~120 px to a
+ *  side column at 390 px), so the header — the element carrying the question's
+ *  «سؤال n» heading — is what to scope to. A nested option list keeps the side
+ *  column, and its arrows are deeper in the card. */
+const rowControls = (row: HTMLElement) =>
+  within(row.querySelector("h3")!.parentElement as HTMLElement);
 
 beforeEach(() => {
   save.mockClear();
@@ -122,6 +126,26 @@ describe("TemplateEditor", () => {
     await user.click(screen.getByRole("button", { name: "حفظ القالب" }));
     await waitFor(() => expect(router.refresh).toHaveBeenCalledTimes(1));
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("★ the card's own controls are in its HEADER, not in a side column that would squeeze the fields", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const [first] = questionRows();
+    const heading = within(first).getByRole("heading", { name: "سؤال 1" });
+    const header = heading.parentElement as HTMLElement;
+
+    // Both arrows and the delete are in the same line as the heading…
+    for (const name of ["انقل لأعلى", "انقل لأسفل", "احذف السؤال"]) {
+      expect(within(header).getByRole("button", { name })).toBeTruthy();
+    }
+    // …and the list row itself no longer carries a controls column beside the
+    // card — the card IS the row.
+    expect(first.querySelectorAll(":scope > div").length).toBe(1);
+
+    // They still work from there, which is the whole point of moving them.
+    await user.click(within(header).getByRole("button", { name: "انقل لأسفل" }));
+    expect(prompts()[1]).toBe("ما مدى وضوح المحتوى؟");
   });
 
   it("a new question is added at the end, named «سؤال 4» until it is written", async () => {

@@ -120,11 +120,13 @@ test("★ a moderator writes a template, moves a question with ONE CLICK, and sa
   await options.nth(0).fill("مناسبة");
   await options.nth(1).fill("طويلة");
 
-  // ★ ONE CLICK on ▼ moves the second question down. `getByRole` inside the row
-  // would find the nested option list's arrows too, so the row's own controls
-  // are the last element of the row.
+  // ★ ONE CLICK on ▼ moves the second question down. The row's own controls sit
+  // in the CARD'S HEADER (`controls: "inline"` — a card cannot spare a side
+  // column at 390 px), and the nested option list keeps its own arrows deeper
+  // in the card, so the header is what to scope to.
   const rows = main(page).getByRole("list", { name: "أسئلة الاستبانة" }).locator("> li");
-  await rows.nth(1).locator("> div").last().getByRole("button", { name: "انقل لأسفل" }).click();
+  const header = (n: number) => rows.nth(n).locator("h3").locator("xpath=..");
+  await header(1).getByRole("button", { name: "انقل لأسفل" }).click();
   await expect(main(page).getByLabel(/نص السؤال/).nth(1)).toHaveValue("هل كانت المدة مناسبة؟");
   await expect(main(page).getByLabel(/نص السؤال/).nth(2)).toHaveValue("ماذا تقترح للجلسة القادمة؟");
   // The move is announced, naming the row and its new position in Western
