@@ -1,4 +1,4 @@
--- proposed by `notify` (wave 10) — one session whose public card has actually
+-- 0141_preview_card_session.sql — proposed by `notify`, read line by line and promoted by the lead (wave 10) — one session whose public card has actually
 -- been rendered, for the two surfaces that show an admin what a mail looks
 -- like before anyone receives one.
 --

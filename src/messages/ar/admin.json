@@ -621,6 +621,9 @@
         "survey": {
           "attached": "إضافة استبانة إلى جلسة",
           "detached": "إزالة استبانة من جلسة"
+        },
+        "notify": {
+          "test_email_sent": "أُرسلت رسالة اختبار"
         }
       },
       "domains": {

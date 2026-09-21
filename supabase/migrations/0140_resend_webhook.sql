@@ -1,4 +1,4 @@
--- proposed by `notify` (wave 10, N8) — REQ-NTF-008's last half: the provider
+-- 0140_resend_webhook.sql — proposed by `notify`, read line by line and promoted by the lead (wave 10, N8) — REQ-NTF-008's last half: the provider
 -- tells us a message bounced, and the org admin sees it with its reason.
 --
 -- Serves:  REQ-NTF-008 («a bounce or failure is visible to the org admin, with

@@ -621,6 +621,9 @@
         "survey": {
           "attached": "Survey attached to a session",
           "detached": "Survey detached from a session"
+        },
+        "notify": {
+          "test_email_sent": "Test email sent"
         }
       },
       "domains": {

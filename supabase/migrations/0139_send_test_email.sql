@@ -1,4 +1,4 @@
--- proposed by `notify` (wave 10, N5) — «أرسل اختبارًا»: the rendered message to
+-- 0139_send_test_email.sql — proposed by `notify`, read line by line and promoted by the lead (wave 10, N5) — «أرسل اختبارًا»: the rendered message to
 -- the signed-in admin's OWN address, through the live transport, and to no
 -- other.
 --

@@ -29,6 +29,7 @@ const ANON_MAY_EXECUTE: Record<string, string> = {
   "is_proposal_owner_of(p_proposal uuid)": "answers about the CALLER only; false for anon",
   "brand_logo_is_public(p_name text)": "a storage-policy helper for an ACTIVE org's PNG/JPEG logo, so a mail client can fetch it (0126, DEC-161); reads a path, returns a boolean",
   "org_public_logo(p_org uuid)": "REQ-NTF-014 — the path and type of that one object, or no row (0126); reveals nothing a caller could not learn by fetching it",
+  "resend_webhook(p_id text, p_timestamp text, p_signature text, p_body text)": "REQ-NTF-008 — the provider's bounce webhook carries no session, so anon calls it; it verifies the Svix signature itself against the vault's secret, which never leaves the definer body, and can only MOVE a delivery row it names (0140, DEC-161 defect 5b)",
 };
 
 describe("RPC-definer.anon_allowlist — every definer function has a deliberate grant", () => {
