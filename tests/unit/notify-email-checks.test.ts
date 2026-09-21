@@ -4,6 +4,7 @@
 // The rules are pure, so they are tested here rather than through the panel:
 // what the panel owes them is rendering, and what they owe an admin is never
 // letting one approve something they have not seen.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { EmailBlock } from "@kareem/mail-runtime";
 import { bindingsUsed, blockName, hasBlocking, runChecks, SUBJECT_LIMIT } from "@/components/email/checks";
@@ -110,5 +111,45 @@ describe("blockName — what ▲▼ are described by", () => {
   it("truncates rather than reading a whole paragraph aloud", () => {
     const name = blockName({ type: "paragraph", id: "p1", text: "ا".repeat(100) }, label);
     expect(name.length).toBeLessThanOrEqual("فقرة: ".length + 32);
+  });
+});
+
+describe("★ every check the module can emit has strings, in both locales", () => {
+  // The failure this prevents is a panel row rendering a raw message key at an
+  // admin — which looks like a bug in the mail rather than in the screen, and
+  // which no other case here would catch because each tests one check's LOGIC.
+  const ID_UNION = readFileSync(new URL("../../src/components/email/checks.ts", import.meta.url), "utf8")
+    .split("id:")[1]
+    .split(";")[0];
+  const IDS = [...ID_UNION.matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1]);
+
+  it("the union is the six `16` §11.4 names, and each resolves in ar and en", () => {
+    // The exact list, so a parse that silently found the wrong thing fails
+    // here rather than passing vacuously over an empty array.
+    expect(IDS).toEqual([
+      "parseFailed",
+      "droppedBlock",
+      "unknownBinding",
+      "imageNoAlt",
+      "buttonNoUrl",
+      "subjectTooLong",
+      "footerPresent",
+      "textSizeFixed",
+    ]);
+    for (const locale of ["ar", "en"]) {
+      const strings = JSON.parse(readFileSync(new URL(`../../src/messages/${locale}/notifications.json`, import.meta.url), "utf8"))
+        .notifications.admin.emails.checks;
+      for (const id of IDS) {
+        expect(strings[id], `${locale}/${id}`).toBeTruthy();
+        expect(typeof strings[id].title, `${locale}/${id}.title`).toBe("string");
+      }
+    }
+  });
+
+  it("★ `16` §11.4's sixth check is present as SATISFIED — no block can carry a size", () => {
+    // Listed rather than dropped: a check that can never fire is noise, but
+    // silence about a promise the design made is worse.
+    const checks = runChecks(base);
+    expect(checks.find((c) => c.id === "textSizeFixed")?.severity).toBe("satisfied");
   });
 });

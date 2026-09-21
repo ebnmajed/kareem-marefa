@@ -41,7 +41,8 @@ export interface EmailCheck {
     | "imageNoAlt"
     | "buttonNoUrl"
     | "subjectTooLong"
-    | "footerPresent";
+    | "footerPresent"
+    | "textSizeFixed";
   severity: CheckSeverity;
   /** The block this names, so the panel can select it. */
   blockId?: string;
@@ -131,6 +132,12 @@ export function runChecks(input: ChecksInput): EmailCheck[] {
   // Composed, not typed: it cannot be missing, and an admin should be able to
   // SEE that rather than infer it.
   checks.push({ id: "footerPresent", severity: "satisfied" });
+  // ★ `16` §11.4's sixth check — «text below 14 px» — the same way. No block
+  // carries a size: the compiler emits the shell's 17 px body and the heading
+  // scale, so there is nothing an admin can author that would fail it. A check
+  // that can never fire is noise, but silence about a promise the design made
+  // is worse — so it is listed as satisfied rather than dropped.
+  checks.push({ id: "textSizeFixed", severity: "satisfied" });
   return checks;
 }
 

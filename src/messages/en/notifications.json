@@ -278,6 +278,10 @@
           "footerPresent": {
             "title": "The preference footer is always present",
             "reason": "It is appended to every message and cannot be deleted."
+          },
+          "textSizeFixed": {
+            "title": "Text sizes are fixed",
+            "reason": "Sizes come from the design system, not from the block, so no block can shrink text below the minimum."
           }
         },
         "blocks": {
