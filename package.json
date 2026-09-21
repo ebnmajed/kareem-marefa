@@ -25,6 +25,8 @@
     "policy-diff": "node scripts/policy-diff.mjs",
     "serve:stub": "node scripts/serve-stub.mjs",
     "qa": "node scripts/qa-run.mjs",
+    "qa:contract": "node scripts/qa-run.mjs --part=contract",
+    "qa:appearance": "node scripts/qa-run.mjs --part=appearance",
     "visual": "node scripts/visual-diff.mjs",
     "parity": "node scripts/parity/harness.mjs",
     "parity:update": "node scripts/parity/harness.mjs --update",

@@ -198,8 +198,16 @@ jobs:
       # npm run qa starts the stub, starts next with SUPABASE_URL pointed at
       # it, and refuses to run against anything that is not localhost
       # (DEC-023). It never reaches a real project.
-      - name: qa
-        run: npm run qa
+      # DEC-167: two halves, both blocking. The contract (behaviour) never moves; the
+      # appearance half is rewritten in the same commit as the design it describes.
+      - name: qa — contract (behaviour, registration, accessibility floor)
+        run: npm run qa:contract
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_NO_SANDBOX: '1'
+      - name: qa — appearance (the design)
+        if: success() || failure()
+        run: npm run qa:appearance
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
           CHROME_NO_SANDBOX: '1'
