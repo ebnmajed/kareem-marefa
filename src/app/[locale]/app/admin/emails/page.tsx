@@ -12,7 +12,7 @@ import type { Locale } from "@/i18n/routing";
 import { countDeliveryFailures, getMessageBindings, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { BlockEditor } from "@/components/email/block-editor";
-import { convertTemplateToDesign, restoreDefaultTemplate, saveEmailDesign, saveEmailTemplate } from "./actions";
+import { convertTemplateToDesign, restoreDefaultTemplate, saveEmailDesign, saveEmailTemplate, sendTestEmailAction } from "./actions";
 import { DeliveriesTable } from "./deliveries-table";
 import { TemplateEditor } from "./template-editor";
 import { TemplatesTable, type TemplateCatalogueRow } from "./templates-table";
@@ -222,6 +222,7 @@ async function EditorForKey({
         initialBlocks={template.blocks}
         offered={offered}
         action={saveEmailDesign.bind(null, bound)}
+        sendTest={sendTestEmailAction.bind(null, bound, messageKey)}
       />
     );
   }

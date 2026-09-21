@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
 import { blocksToTemplateText, SCHEMA_VERSION } from "@kareem/mail-runtime";
-import { deleteTemplate, getTemplateSubject, saveTemplateChecked } from "@/lib/dal/notifications";
+import { deleteTemplate, getTemplateSubject, saveTemplateChecked, sendTestEmail, type TestSendResult } from "@/lib/dal/notifications";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 
 // SCR-058's Server Actions — REQ-NTF-007, on the form model for wave 8 (K6).
@@ -130,4 +130,14 @@ export async function convertTemplateToDesign(locale: Locale, key: string, body:
     blocks: { schemaVersion: SCHEMA_VERSION, blocks },
   });
   revalidatePath(SCREEN(locale));
+}
+
+
+/**
+ * `REQ-NTF-011`. Returns the outcome so the screen can say «sent», «too many»
+ * or «not permitted» — never throws for a rate limit, which is an answer and
+ * not a failure.
+ */
+export async function sendTestEmailAction(locale: Locale, key: string): Promise<TestSendResult> {
+  return sendTestEmail(locale, key);
 }

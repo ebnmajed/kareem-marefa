@@ -328,11 +328,16 @@
           "alt": "Alt text",
           "altHint": "What someone who cannot see the image is told.",
           "availableFields": "Available fields",
-          "errors": {},
+          "errors": {
+            "notPermitted": "You do not have permission."
+          },
           "save": "Save the design",
           "saved": "Design saved",
           "saving": "Saving…",
-          "blockedBySaveChecks": "Fix the blocking checks before saving."
+          "blockedBySaveChecks": "Fix the blocking checks before saving.",
+          "sendTest": "Send a test",
+          "testSent": "A test message was sent to your address",
+          "testRateLimited": "Too many tests in the last hour. Try again shortly."
         }
       },
       "reminders": {

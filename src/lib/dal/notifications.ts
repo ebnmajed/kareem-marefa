@@ -560,6 +560,30 @@ export async function getTemplateSubject(locale: string, key: string): Promise<s
   return (data?.subject as string | undefined) ?? null;
 }
 
+export type TestSendResult =
+  | { status: "queued"; remaining: number }
+  | { status: "rate_limited"; retryAfterMinutes: number }
+  | { status: "not_permitted" };
+
+/**
+ * `REQ-NTF-011` — «أرسل اختبارًا», to the signed-in admin's OWN address.
+ *
+ * ★ There is no recipient to pass. `public.send_test_email()` takes a key and
+ * a locale and reads the address from the caller's member row, so this DAL
+ * function has nothing to get wrong: «to the admin's own address and to no
+ * other» is a property of the SQL signature, not of anything here.
+ */
+export async function sendTestEmail(locale: string, key: string): Promise<TestSendResult> {
+  const client = await assertAdmin(locale);
+  if (!client) return { status: "not_permitted" };
+  const { data, error } = await client.supabase.rpc("send_test_email", { p_key: key, p_locale: "ar" });
+  if (error) return { status: error.code === "42501" ? "not_permitted" : "not_permitted" };
+  const out = data as { status: string; remaining?: number; retry_after_minutes?: number };
+  return out.status === "rate_limited"
+    ? { status: "rate_limited", retryAfterMinutes: out.retry_after_minutes ?? 60 }
+    : { status: "queued", remaining: out.remaining ?? 0 };
+}
+
 export async function deleteTemplate(locale: string, id: string): Promise<void> {
   const client = await assertAdmin(locale);
   if (!client) throw new Error("not_permitted");

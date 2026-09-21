@@ -7,6 +7,7 @@ import { emptySavedState, type SavedFormState } from "@/components/admin/saved-f
 import { useActionToast } from "@/components/admin/use-action-toast";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useToast } from "@/components/ui/toast";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ReorderableList } from "@/components/ui/reorderable-list";
@@ -67,6 +68,7 @@ export function BlockEditor({
   initialBlocks,
   offered,
   action,
+  sendTest,
 }: {
   messageKey: string;
   initialSubject: string;
@@ -76,6 +78,8 @@ export function BlockEditor({
   /** What this key offers, from `public.notification_bindings()`. */
   offered: readonly string[];
   action: (previous: SavedFormState, formData: FormData) => Promise<SavedFormState>;
+  /** `REQ-NTF-011` — takes no address; the RPC reads the caller's own. */
+  sendTest: () => Promise<{ status: string; retryAfterMinutes?: number }>;
 }) {
   // ★ ITS OWN NAMESPACE. The block editor briefly wrote its words into
   // `emails.editor.*`, which the STRING editor owns — so «احفظ القالب» became
@@ -99,6 +103,8 @@ export function BlockEditor({
   const [initialDropped, setInitialDropped] = useState(() => readDocument(initialBlocks).dropped);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<PreviewMode>("phone");
+  const [testing, setTesting] = useState(false);
+  const toast = useToast();
 
   const documentJson = useMemo(
     () => (blocks.length > 0 ? JSON.stringify({ schemaVersion: SCHEMA_VERSION, blocks }) : ""),
@@ -200,6 +206,31 @@ export function BlockEditor({
           <input type="hidden" name="subject" value={subject} />
           <input type="hidden" name="blocks" value={documentJson} />
           <SubmitButton pendingLabel={t("saving")} disabled={blocked}>{t("save")}</SubmitButton>
+          {/* ★ Disabled while any check blocks, for the same reason the save
+              is: a test send of a mail that is not the one being edited
+              teaches an admin the wrong thing about their own design. */}
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={blocked || testing}
+            onClick={async () => {
+              setTesting(true);
+              try {
+                const result = await sendTest();
+                toast.show(
+                  result.status === "queued"
+                    ? { title: t("testSent"), tone: "success" }
+                    : result.status === "rate_limited"
+                      ? { title: t("testRateLimited"), tone: "error" }
+                      : { title: t("errors.notPermitted"), tone: "error" },
+                );
+              } finally {
+                setTesting(false);
+              }
+            }}
+          >
+            {t("sendTest")}
+          </Button>
           {blocked ? <span className="text-body-sm text-fg-muted">{t("blockedBySaveChecks")}</span> : null}
           {state.formError ? <span className="text-body-sm text-error">{t(`errors.${state.formError}`)}</span> : null}
         </form>
