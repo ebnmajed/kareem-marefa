@@ -1181,3 +1181,72 @@ violation) — I will confirm on the first code commit.
 5. **Retention.** A dead `record_survey_response` job keeps its answers (no member) in `graphile_worker` until
    someone resolves it; `12` §5.3 has no period for queue rows. I think «until resolved» is right, since that
    is the recovery path — recorded so it is a decision and not an accident.
+
+## Wave 11 — P1 as built (2026-09-22), after sync 1's rulings
+
+Sync 1 approved the plan: Q1 a separate function; Q2 `worker/src/tasks/evaluate_alerts.ts` transferred to me for
+this row; Q3 `failed` gains `locked_at is null`; Q4 `max_attempts` left alone (the lead puts «hear sooner» to the
+owner); Q5 «until resolved» goes into `12` §5.3 and the runbook below into `11` §3.3.
+
+**Two departures from the plan, both smaller:** `detail` has **three** keys, not four — `newest_exhausted_seconds`
+is gone, because graphile 0.18 no longer maintains `_private_jobs.updated_at` (no trigger; read on the local
+database: three dead jobs whose `updated_at` is their creation time), so an «age since exhaustion» would be a
+wrong number. And the home reads a new DAL function, **`listExhaustedJobs()`**, not `getJobHealth()`:
+`getJobHealth()` answers `[]` when the read fails, and the home must tell a failed read from «nothing dead».
+
+### Files — for promotion
+
+| File | What |
+|---|---|
+| `supabase/proposed/platform/0011_job_exhausted_alert.sql` | `evaluate_job_exhaustion()` (new, `service_role` only) · `platform_job_health()` re-created, same signature and columns, `failed` gains `and j.locked_at is null` (its ACL is kept by `create or replace`) |
+| `worker/src/platform/alerts.ts` | `EdgeTriggered`'s optional per-alert escalation; `EXHAUSTION_ALERT`, `ESCALATE`. `ALERTS` stays the eight |
+| `worker/src/tasks/evaluate_alerts.ts` | reads `evaluate_job_exhaustion()` **after** the eight reach the sink; an empty or missing reading throws |
+| `src/lib/dal/platform.ts` | `listExhaustedJobs()` — task and count from `platform_job_health()`, `null` on a failed read |
+| `src/app/[locale]/app/platform/page.tsx` | the «مهام استنفدت محاولاتها» card in «يحتاج انتباهك»; the heading's count includes it; a failed read is said and blocks the all-clear |
+| `src/messages/{ar,en}/platform.json` | five `home.*` keys, `exhaustedJobs` in all six Arabic forms |
+| `tests/rls/alerts-exhausted.test.ts` | **8 of 8** alone (`npm run test:rls -- tests/rls/alerts-exhausted.test.ts`) |
+| `tests/unit/alerts-exhaustion.test.ts` | 7 cases — escalation, restart, the eight unchanged, the task's order and its throw |
+| `tests/components/platform/platform-home-exhausted.test.tsx` | 6 cases, axe included |
+| `tests/e2e/wave11-platform-exhausted.spec.ts` | 2 cases, two captures — **not run**: it needs a production build carrying the page (a question to the lead) |
+
+### 03 §8.2 rows
+
+| Row | Case |
+|---|---|
+| `RPC-evaluate_job_exhaustion.worker_only` | `service_role` only — an org member, a moderator, an org admin, a platform admin and `anon` are refused on the grant |
+| `RPC-evaluate_job_exhaustion.fires` | one row, `job_exhausted`; fired while any job has no attempts left and is not running; `detail` is `exhausted_jobs`, `tasks`, `by_task` (identifier → count) |
+| `RPC-evaluate_job_exhaustion.running_last_attempt` | a job locked on its last attempt is not counted; a job with attempts left never is |
+| `RPC-evaluate_job_exhaustion.clears` | rescheduling or completing every dead job clears it; resolving one of two tasks leaves it firing |
+| `RPC-evaluate_job_exhaustion.no_payload` | nothing from a job's payload, key or last error appears anywhere in the row |
+| `RPC-evaluate_job_exhaustion.not_installed` | without the `graphile_worker` schema it reports `not_installed` rather than raising |
+| `RPC-platform_job_health.failed_agrees` | `failed` counts exactly the jobs the alert counts — a job running its last attempt is not failed |
+| `RPC-platform_job_health.no_org_reader` | an org member, moderator and admin are refused `not_platform_admin`, `anon` on the grant, and none of them can select `graphile_worker._private_jobs` |
+
+### The untouched-suite ledger line (approved at sync 1)
+
+| File | Owner, commit | Why | Expectation changed? |
+|---|---|---|---|
+| `tests/components/platform/platform-home-page.test.tsx` | `platform`, this commit | its `vi.mock("@/lib/dal/platform")` factory gains `listExhaustedJobs: vi.fn(async () => [])` — the home now awaits a third read, and a factory without it makes vitest throw on the import | **no** — every assertion is as it was, and with `[]` the page renders exactly what it rendered |
+
+### The runbook, for `11` §3.3 (the lead's edit)
+
+> **A job that used its last attempt.** `job_exhausted` fires while any job has no attempts left and is not running,
+> and clears only when each one is resolved; there is no time window. Every job has graphile's default 25 attempts,
+> so a job exhausts about four days after its first failure. The console shows the task and a count, never a
+> payload; resolving is operations, not a console action (DEC-014).
+>
+> 1. **Read which tasks and how many**, on the linked project:
+>    `select t.identifier, count(*) from graphile_worker._private_jobs j join graphile_worker._private_tasks t on t.id = j.task_id where j.attempts >= j.max_attempts and j.locked_at is null group by 1;`
+> 2. **Read why, for that task only**: `select j.id, j.last_error from … where t.identifier = '<task>' and j.attempts >= j.max_attempts and j.locked_at is null;` — never `select *` (the payload of `record_survey_response` holds answers).
+> 3. **Fix the cause**, ship it, then **replay**: `select graphile_worker.reschedule_jobs(array[<ids>]::bigint[], attempts => 0);` Every job is idempotent (§1.3); `record_survey_response()` writes once per `response_id`.
+> 4. **Or discard**, when the job cannot be recovered: `select graphile_worker.complete_jobs(array[<ids>]::bigint[]);` For `record_survey_response` that loses the answers for good while the register still says «أجبت» — record the decision.
+>
+> The alert clears on the next minute's evaluation after the last one is resolved; a new dead job while it is open fires again.
+
+**What `main`'s old worker does between the push and the redeploy:** nothing calls `evaluate_job_exhaustion()`, and
+`platform_job_health()` answers `main`'s SCR-084 with the same columns — the only difference is that a job running its
+last attempt stops counting as failed. The new worker calls a function that has existed since the push.
+
+**Local note for the lead:** this machine's database holds three dead `issue_certificates` jobs (`max_attempts 3`,
+from 2026-09-21). The new alert will fire on them the first time a worker runs this code locally, and so will the home
+card — that is the alert working, not a bug.

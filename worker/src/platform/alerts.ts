@@ -41,16 +41,37 @@ export interface AlertSink {
  */
 export class EdgeTriggered implements AlertSink {
   private readonly open = new Set<string>();
+  /** For an escalating alert: the count it last fired at. */
+  private readonly firedAt = new Map<string, number>();
 
-  constructor(private readonly inner: AlertSink) {}
+  /**
+   * `escalate` names, per alert, a `detail` count that re-fires the alert while
+   * it is open whenever it RISES above the count it last fired at. A steady or
+   * falling count stays silent. Without it — the eight of `11` §3.2 — an open
+   * alert swallows every reading until it clears.
+   *
+   * `job_exhausted` needs it: the alert holds until every dead job is resolved,
+   * so without escalation a second task dying days after the first would say
+   * nothing at all.
+   */
+  constructor(
+    private readonly inner: AlertSink,
+    private readonly escalate: Readonly<Record<string, string>> = {},
+  ) {}
 
   fire(alert: string, detail: Record<string, unknown>): void {
-    if (this.open.has(alert)) return;
+    const key = this.escalate[alert];
+    const count = key === undefined ? 0 : Number(detail[key] ?? 0);
+    if (this.open.has(alert)) {
+      if (key === undefined || !(count > (this.firedAt.get(alert) ?? 0))) return;
+    }
     this.open.add(alert);
+    if (key !== undefined) this.firedAt.set(alert, count);
     this.inner.fire(alert, detail);
   }
 
   clear(alert: string): void {
+    this.firedAt.delete(alert);
     if (!this.open.delete(alert)) return;
     this.inner.clear(alert);
   }
@@ -114,3 +135,13 @@ export const ALERTS = [
   "storage_prefix_violation",
   "impersonation_active",
 ] as const;
+
+/**
+ * The ninth alert, evaluated by its own function (`evaluate_job_exhaustion()`,
+ * wave 11) so the eight above stay the eight: a job that has used its last
+ * attempt. Its `detail` is task names and counts — never a payload (DEC-014).
+ */
+export const EXHAUSTION_ALERT = "job_exhausted";
+
+/** The count `job_exhausted` escalates on: a new dead job while it is open fires again. */
+export const ESCALATE = { [EXHAUSTION_ALERT]: "exhausted_jobs" } as const;

@@ -265,7 +265,12 @@
       "attentionNone": "Nothing needs your attention right now. Every alert is clear.",
       "alertsUnavailable": "The alert states could not be read. Reload the page in a moment.",
       "viewMetrics": "View metrics",
-      "numbersTitle": "The platform in numbers"
+      "numbersTitle": "The platform in numbers",
+      "exhaustedTitle": "Jobs that used every attempt",
+      "exhaustedIntro": "These jobs failed on every attempt and the worker will not retry them on its own. Their payloads are kept for a replay after the fix, and are not shown here.",
+      "exhaustedJobs": "{count, plural, one {1 job} other {{value} jobs}}",
+      "exhaustedUnavailable": "The failed jobs could not be read. Reload the page in a moment.",
+      "viewJobs": "View job health"
     },
     "alerts": {
       "notInstalled": "The job queue is not installed in this environment.",
