@@ -988,3 +988,32 @@ Nothing else of mine is unfinished. Not started, and not mine to start: the buil
 - ★ **`tests/e2e/wave10-demo-survey.spec.ts:63` fails `tsc`** — `test.skip()` has no overload taking a
   function plus `testInfo`. It is the lead's file, untouched by me, and it will fail the typecheck gate on the
   final commits.
+
+---
+
+# The captures' three findings, and the ruling that closed the fourth
+
+Everything below came from opening the captures — not one of the four was visible to `tsc`, to the RLS
+suite, to a component test or to a passing e2e. That is the argument for the capture step, made four times
+in one afternoon.
+
+| # | What the capture showed | Fixed at |
+|---|---|---|
+| 1 | SCR-064's bars passed the label and the count through `aria` only: five unlabelled grey lines, and a choice question's options nowhere on the page. `ui/progress` is a bare bar **by design** — its consumers put their own words beside it | `03ecec2` |
+| 2 | «أزل الاستبانة» was offered on a survey with responses, which the database refuses. A control that leads to a refusal is not a control | `03ecec2` |
+| 3 | SCR-065's question cards lost ~120 px of 325 to a side column of ▲▼ and 🗑, truncating the option inputs («مناس»). The lead landed `controls="inline"` (`c9efd7b`) and the card's header takes them, where `09` SCR-065 always put them | `4634ae5` |
+
+## ★ The ruling on the fourth: NO `detachable` boolean (the lead, on `DEC-163`'s reasoning)
+
+I proposed adding «≥ 1 response exists» to `survey_results()`'s envelope so the **withheld** state could hide
+the detach control too. **Refused, and the reason is one I had not followed far enough:** the withhold hides
+the count *precisely so that «has anyone answered» is not knowable*, and **at `n = 1` that boolean IS the
+register's one row** — read against an attendance list the same staff member can open. «Someone answered»
+plus «twelve attended» is not a name; «someone answered» plus «one person attended» is. My reading that the
+boolean was safe was a reading of the common case, which is exactly the wrong case to read.
+
+**So the rule, and it is what is built:** `status === "ok"` → the sentence, because a released result has at
+least `min` responses by definition. `withheld` → the control is offered; the database refuses if anyone has
+answered, and the refusal says «لا يمكن إزالة استبانة أجاب عنها أحد». «Attached the wrong template and
+removed it at once» keeps working, which is the case that matters, and the one press a staff member can
+waste costs them a sentence rather than costing a member their anonymity.
