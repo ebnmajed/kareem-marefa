@@ -5,7 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const saveTemplateChecked = vi.fn();
-vi.mock("@/lib/dal/notifications", () => ({ saveTemplateChecked: (...a: unknown[]) => saveTemplateChecked(...a), deleteTemplate: vi.fn() }));
+vi.mock("@/lib/dal/notifications", () => ({
+  saveTemplateChecked: (...a: unknown[]) => saveTemplateChecked(...a),
+  deleteTemplate: vi.fn(),
+  // Adoption reads the row's current subject before replacing its body.
+  getTemplateSubject: async () => null,
+}));
 
 const { deliveryReason } = await import("@/components/admin/delivery-reason");
 const { saveEmailTemplate } = await import("@/app/[locale]/app/admin/emails/actions");
@@ -52,5 +57,42 @@ describe("saveEmailTemplate", () => {
     saveTemplateChecked.mockResolvedValue({ ok: false, error: "unknown_message_key" });
     const unknown = await saveEmailTemplate("ar", emptySavedState(), form({ key: "MSG-x", subject: "a", body: "b", requiredFields: "" }));
     expect(unknown.formError).toBe("unknownMessageKey");
+  });
+});
+
+
+describe("★ «ابدأ من تصميم جاهز» records WHERE the design came from", () => {
+  // `0125` defines `source_family` as provenance — which of DEC-082's eight
+  // platform designs a row came from. Adoption is the one moment that is
+  // known: afterwards the row is the org's to edit, and nothing can recover
+  // the answer. It shipped writing `blocks` and `body` with the column null.
+  beforeEach(() => saveTemplateChecked.mockReset());
+
+  it("adopting MSG-reminder_1d stores source_family = 'reminder', with the blocks", async () => {
+    const { adoptPlatformDesign } = await import("@/app/[locale]/app/admin/emails/actions");
+    await adoptPlatformDesign("ar", "MSG-reminder_1d");
+    const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string; blocks: unknown; key: string }];
+    expect(input.key).toBe("MSG-reminder_1d");
+    expect(input.sourceFamily).toBe("reminder");
+    // `0125` refuses a family without blocks, so the two travel together.
+    expect(input.blocks).toBeTruthy();
+  });
+
+  it("every key's adoption names the family the library maps it to", async () => {
+    const { adoptPlatformDesign } = await import("@/app/[locale]/app/admin/emails/actions");
+    const { DESIGN_FOR } = await import("@kareem/mail-runtime");
+    for (const key of Object.keys(DESIGN_FOR)) {
+      saveTemplateChecked.mockClear();
+      await adoptPlatformDesign("ar", key);
+      const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string }];
+      expect(input.sourceFamily, key).toBe(DESIGN_FOR[key]);
+    }
+  });
+
+  it("★ CONVERTING an org's own text records no family — that would be a false provenance", async () => {
+    const { convertTemplateToDesign } = await import("@/app/[locale]/app/admin/emails/actions");
+    await convertTemplateToDesign("ar", "MSG-reminder_1d", "فقرة أولى\n\nفقرة ثانية");
+    const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string | null }];
+    expect(input.sourceFamily).toBeNull();
   });
 });

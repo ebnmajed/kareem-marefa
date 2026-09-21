@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
-import { blocksToTemplateText, defaultTemplate, platformDesign, SCHEMA_VERSION } from "@kareem/mail-runtime";
+import { blocksToTemplateText, defaultTemplate, DESIGN_FOR, platformDesign, SCHEMA_VERSION } from "@kareem/mail-runtime";
 import { deleteTemplate, getTemplateSubject, saveTemplateChecked, sendTestEmail, type TestSendResult } from "@/lib/dal/notifications";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 
@@ -128,6 +128,10 @@ export async function convertTemplateToDesign(locale: Locale, key: string, body:
     body: blocksToTemplateText({ schemaVersion: SCHEMA_VERSION, blocks }),
     requiredFields: [],
     blocks: { schemaVersion: SCHEMA_VERSION, blocks },
+    // No `sourceFamily`, and that is correct rather than an omission: this
+    // document came from the ORG's own text, not from a platform design, so
+    // naming a family would be a false provenance.
+    sourceFamily: null,
   });
   revalidatePath(SCREEN(locale));
 }
@@ -166,6 +170,11 @@ export async function adoptPlatformDesign(locale: Locale, key: string): Promise<
     body: blocksToTemplateText(design),
     requiredFields: [],
     blocks: design,
+    // ★ PROVENANCE, and adoption is the one moment it is known. `0125` defines
+    // `source_family` as which of `DEC-082`'s eight designs a row came from;
+    // after this the row is the org's to edit and nothing can recover the
+    // answer. Written here or never.
+    sourceFamily: DESIGN_FOR[key],
   });
   revalidatePath(SCREEN(locale));
 }
