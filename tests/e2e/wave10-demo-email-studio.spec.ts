@@ -107,6 +107,36 @@ async function org(name: string, slug: string, prefix: string, firstAdmin: strin
   return rows[0].id;
 }
 
+// A 1×1 PNG: the smallest thing `export_artifacts` will call a rendered card.
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/**
+ * A rendered public card for the session — a poster document, its
+ * `session_posters` row and a `ready` `og`/`png` artifact with real bytes in
+ * Storage — so `preview_card_session()` has a session to answer with and the
+ * card's IMAGE, not only its lines, is what the preview and the mail carry.
+ * The recipe is `sessions-public-card.spec.ts`'s.
+ */
+async function renderedCard(org: string, session: string): Promise<void> {
+  const { rows: doc } = await db.query<{ id: string }>(
+    `insert into public.design_documents (org_id, purpose, document, bound_session_id, updated_by)
+     values ($1, 'poster', $2::jsonb, $3, null) returning id`,
+    [org, JSON.stringify({ schemaVersion: 1, layers: [] }), session],
+  );
+  await db.query(`insert into public.session_posters (org_id, session_id, document_id) values ($1, $2, $3)`, [org, session, doc[0].id]);
+  const path = `${org}/exports/${doc[0].id}/og.png`;
+  await db.query(
+    `insert into public.export_artifacts (org_id, document_id, preset, format, width_px, height_px, storage_path, byte_size, status, source_fingerprint, rendered_at)
+     values ($1, $2, 'og', 'png', 1200, 630, $3, $4, 'ready', $5, now())`,
+    [org, doc[0].id, path, PNG.byteLength, `fp-${doc[0].id}`],
+  );
+  const { error } = await admin.storage.from("exports").upload(path, PNG, { contentType: "image/png", upsert: true });
+  if (error) throw error;
+}
+
 /** A published session tomorrow evening with one confirmed RSVP, and its reminders scheduled. */
 async function sessionWithRsvp(org: string, member: string, title: string): Promise<string> {
   const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'الإدارة المالية') returning id`, [org]);
@@ -144,6 +174,7 @@ test.beforeAll(async ({}, testInfo) => {
   otherMemberId = await person(otherMemberEmail, "عمر الدوسري");
 
   sessionId = await sessionWithRsvp(orgId, memberId, TITLE);
+  await renderedCard(orgId, sessionId);
   otherSessionId = await sessionWithRsvp(otherOrgId, otherMemberId, "جلسة المؤسسة الأخرى");
 });
 
@@ -279,6 +310,9 @@ test("4 · PREVIEWED BY THE PRODUCTION RENDERER — the mail's heading is INSIDE
   await expect(frame(page).locator("body")).toContainText("جلستك غدًا");
   // The org's name is the mail's signature — the renderer knows whose mail this is.
   await expect(frame(page).locator("body")).toContainText("مؤسسة الاستوديو");
+  // ★ The session card carries its IMAGE: `preview_card_session()` (0141) found
+  // the rendered poster, and the preview asked rather than guessed.
+  await expect(frame(page).locator(`img[src*="/api/s/${sessionId}/og"]`)).toHaveCount(1);
 
   await main(page).getByRole("radio", { name: "داكن قسري" }).click();
   await expect(main(page).getByText("محاكاة:", { exact: false })).toBeVisible();
@@ -333,6 +367,8 @@ test("6 · RECEIVED AS A REAL REMINDER — from the org's saved design; and ★ 
   expect(designedHtml).toContain("<table");
   expect(designedHtml).toContain(TITLE);
   expect(designedHtml).toContain("جلستك غدًا");
+  // The real send carries the same card image the preview showed.
+  expect(designedHtml).toContain(`/api/s/${sessionId}/og`);
 
   const [plain] = await inbox(otherMemberEmail);
   const plainHtml = await html(plain.ID);
