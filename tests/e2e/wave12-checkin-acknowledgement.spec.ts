@@ -97,7 +97,7 @@ async function makeSession(title: string, windows: [number, number][], opts: { s
   const { rows } = await db.query<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
                                    venue_id, capacity, state, published_at, allow_walk_ins, require_all_days)
-     values ($1, $2, 'ملخص', $3, 'introductory', now() + make_interval(hours => $4), 120, now() + make_interval(hours => $5),
+     values ($1, $2, 'ملخص', $3, 'introductory', now() + make_interval(secs => $4::double precision * 3600), 120, now() + make_interval(secs => $5::double precision * 3600),
              $6, 40, $7, now() - interval '10 days', true, $8)
      returning id`,
     [orgId, title, categoryId, first[0], first[1], venueId, opts.state ?? "in_progress", opts.requireAllDays ?? true],
@@ -106,7 +106,7 @@ async function makeSession(title: string, windows: [number, number][], opts: { s
   for (const [from, to] of rest) {
     await db.query(
       `insert into public.session_days (org_id, session_id, position, starts_at, ends_at, venue_id)
-       values ($1, $2, 1, now() + make_interval(hours => $3), now() + make_interval(hours => $4), $5)`,
+       values ($1, $2, 1, now() + make_interval(secs => $3::double precision * 3600), now() + make_interval(secs => $4::double precision * 3600), $5)`,
       [orgId, sessionId, from, to, venueId],
     );
   }
@@ -265,10 +265,13 @@ test("day two of three, not yet checked in today: the form leads, then «1 of 3 
 
 test("a required day missed: «incomplete», naming the day — before the session has ended", async ({ context, page }, testInfo) => {
   const phone = testInfo.project.name === "phone";
-  // Day 1 is past its ceiling with no check-in; day 2 is running and attended.
+  // Day 1 is past its ceiling with no check-in; day 2 is over and attended;
+  // day 3 is tomorrow, so the session has not ended. ★ The attended day sits
+  // clear of every other case's check-in: `check_ins`' exclusion constraint
+  // refuses one member in two overlapping windows, whatever the session.
   const { sessionId, dayIds } = await makeSession("ورشة فاتها يوم", [
-    [-30, -28],
-    [-0.25, 1.75],
+    [-80, -78],
+    [-54, -52],
     [22, 24],
   ]);
   await checkInDirectly(sessionId, dayIds[1]);
