@@ -3075,3 +3075,42 @@ only the lead's call on the name and the action string.
 - **Every worker-generated poster** draws the org's logo the same way: `resolveBrand()` gives the raw asset id.
 - The app-side export of a logo works only while the 5-minute signed URL that `getDesignerDocument()` pins is still fresh.
 - My proposal is in the message: an optional `assets` map on the binding context. The worker supplies data: URIs and the studio signed URLs, and with no map the output is byte-identical.
+
+### DEC-179 as built (`7f3b2a0`), and the owner's step after the merge (condition 5)
+
+What was built:
+- The runtime's `BindingContext.assets` and `assetIdsOf()`. With no map, the output is byte-identical: `designer-derive-untouched` passes against `main`'s hashes.
+- `worker/src/render/assets.ts` inlines each asset as a `data:` URI:
+  - only this org's asset ids are looked up;
+  - another org's id fails the artifact with its reason;
+  - over 32 MB the artifact fails too, never truncated.
+- The studio gets signed URLs through `DesignerDocumentData.assets`.
+- The logo stays an **id** in the pinned bindings. Before, the logo went into the bindings as a signed URL that changed on every page load, so the fingerprint changed too. For a logo document the studio's export queue could therefore never match what was already rendered. It is now stable.
+- `brand.ts` is untouched in both places.
+
+Tests:
+- `tests/unit/render-assets.test.ts` (4 tests).
+- `tests/e2e/wave13-designer-upload-render.spec.ts` uploads through the real picker and asserts two things:
+  - the studio's canvas image loads;
+  - with `E2E_WORKER=1`, the worker's pixels: red at the master's centre and corner, and red at the square's corners.
+
+★ **Which posters are cached broken, and why a plain re-enqueue does NOT fix them.** `request_render()` (`0060:94–96`) finds a ready artifact for the same fingerprint and renders nothing. The fingerprint does not change: the stored document and the bindings are the same bytes, and the asset is immutable per id. So re-enqueuing `regenerate_poster` is a no-op for every poster that already rendered. The step has two parts:
+
+1. **Find them**, read-only:
+   ```sql
+   -- every poster whose document draws an asset: an upload, or the logo where the org has one
+   select p.session_id, p.mode, p.binding, d.id as document_id
+     from public.session_posters p
+     join public.design_documents d on d.id = p.document_id
+    where exists (select 1 from jsonb_array_elements(d.document->'layers') l
+                   where l->>'kind' = 'image'
+                     and (l#>>'{image,assetId}' ~ '^[0-9a-f-]{36}$'
+                          or (l#>>'{image,binding}' = 'brand.logoAssetId'
+                              and exists (select 1 from public.brand_kits b where b.org_id = p.org_id and b.logo_asset_id is not null))));
+   ```
+2. **Clear their cached artifacts, then render again.** Delete the `export_artifacts` rows of those documents. It is a data fix, scoped by that list, and never a migration. Then:
+   - a **live** poster: re-enqueue `regenerate_poster` under `poster:{session_id}`;
+   - a **detached** poster (customised or uploaded): press «اطلب التصدير» in the studio. `REQ-DSG-003` forbids regenerating it automatically.
+   
+   The old objects are overwritten at the same paths by the new renders.
+3. Certificates draw the logo too. An issued certificate's PDF re-renders only by the per-row retry or a re-issue, and a certificate is what was printed (`REQ-CRT-014`). **I recommend leaving issued certificates as they are**: the owner decides.
