@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 — STEP 0 DONE (`DEC-176`, M15)**: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; `designer`, `sessions`, `console` spawn planning-only. Migrations from **`0152`**.
+**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 — STEP 0 DONE (`DEC-176`, M15)**: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -29,7 +29,7 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 
 | # | Row | Owner | State |
 |---|---|---|---|
-| S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** |
+| S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** `a53a7a2`; draft **PR #30** |
 | C1 | Contract 1 — the download DTO in `lib/dal/posters.ts`, its route, the primary artifact named | `designer` → `sessions` | open — day one of `designer`'s plan |
 | C2 | Contract 2 — the certificate mode's one writer | `sessions` ↔ `designer` | ruled at sync 1 |
 | C3 | Contract 3 — the download audit definer (re-derive admin · moderator · accepted presenter; `42501` otherwise; `write_audit()`), red→green, `03` §8.2 rows | lead | open — `0152` |
