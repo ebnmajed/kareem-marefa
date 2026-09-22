@@ -51,7 +51,7 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | K3 | The 390 px and accessibility review of the hub and the grid | `console` | open |
 | L1 | `04`'s route table reconciled (`attendance`, `certificates`, the hub) and `09` SCR-043 — **in the hub's commit** | lead | open |
 | L2 | Promotion from `0152`, the rehearsal notes | lead | open |
-| L3 | ★ **The certificate leak** — any member can list and sign another member's certificate PDF (`0037`'s org-prefix storage policy; probed by `designer`). A restrictive `select` policy on `exports`, `0153`, red→green for own · admin · another member · anon public card | lead | open — **live on production** |
+| L3 | ★ **The certificate leak** — any member can list and sign another member's certificate PDF (`0037`'s org-prefix storage policy; probed by `designer`). A restrictive `select` policy on `exports`, `0153`, red→green for own · admin · another member · anon public card | lead | **landed** — `0153`, one restrictive policy + a definer predicate on the path's document segment; `session-downloads-storage.test.ts` red (3 × «another member sees it») → green; full RLS **131/132 files, 1282 tests**, the one red `survey-submit` = `DEC-171`'s leftover jobs (4–5 queued from earlier runs), not this. ★ **Still live on production until the owner pushes `0153`** |
 | M1 | ★ Demonstrable — the `SC 2.5.7` gate: every studio operation with `page.click()` alone, the document changed each time | `designer` writes, lead runs | open |
 | M2 | Demonstrable — `ar` and `en` consoles store byte-identical documents for «align start» | `designer` | open |
 | M3 | Demonstrable — **no parity golden moves** | lead | open |
