@@ -265,10 +265,14 @@ test("the marquee selects what it touches, and a locked region neither drags nor
 
   // From empty canvas at the page's top-left, down across the kicker (full
   // width) and stopping short of the title and of the logo at the top-right.
-  await main(page).locator("[data-layer-hit-area]").evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
-  const stage = await main(page).locator("[data-layer-hit-area]").boundingBox();
+  // ★ Measure the STAGE LAST. `layerBox()` centres the kicker, which scrolls the
+  // page; a stage box read before that is stale, and the press then lands above
+  // the stage — on the page, not the canvas — so no marquee begins (reproduced
+  // on the standalone canvas: «press lands on: DIV → selected: null»).
   const kicker = await layerBox(page, "نوع الجلسة");
+  const stage = await main(page).locator("[data-layer-hit-area]").boundingBox();
   if (!stage) throw new Error("no stage");
+  expect(stage.y + 8, "the marquee's start must be on screen").toBeGreaterThanOrEqual(0);
   await drag(page, { x: stage.x + 20, y: stage.y + 8 }, { x: stage.x + stage.width / 2, y: kicker.y + kicker.height + 10 });
   await expect(main(page).getByRole("button", { name: "اختيار الطبقة نوع الجلسة", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(main(page).getByRole("button", { name: "اختيار الطبقة عنوان الجلسة", exact: true })).toHaveAttribute("aria-pressed", "false");

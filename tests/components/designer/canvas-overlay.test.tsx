@@ -193,6 +193,39 @@ describe("the pointer path — one hand-over per gesture", () => {
   });
 });
 
+describe("★ the marquee in an RTL document (DEC-176 §1, research question 3)", () => {
+  // Two layers of the same size. On an RTL page `x` is measured from the
+  // RIGHT: «start» (x 80) sits at the page's right edge, «end» (x 700) at its
+  // left. A rectangle dragged over the LEFT of the screen must select «end» —
+  // a hit-test that mixed screen and document x would pick «start» instead.
+  const d = doc("rtl", [shape("start", { x: 80, y: 100, w: 300, h: 100 }), shape("end", { x: 700, y: 100, w: 300, h: 100 })]);
+
+  it("a rectangle over the screen's LEFT selects the layer whose logical x is the END", () => {
+    const { handlers, container } = mount("ar", { document: d, source: d });
+    const stage = container.querySelector("[data-layer-hit-area]") as HTMLElement;
+    // jsdom's boxes are at 0,0; at 0.4 the physical page's left 0…400 is 0…160 on screen.
+    fireEvent.pointerDown(stage, { pointerId: 2, button: 0, clientX: 2, clientY: 2, pointerType: "mouse" });
+    fireEvent.pointerMove(stage, { pointerId: 2, clientX: 160, clientY: 120, pointerType: "mouse" });
+    fireEvent.pointerUp(stage, { pointerId: 2, clientX: 160, clientY: 120, pointerType: "mouse" });
+    expect(handlers.onMarquee).toHaveBeenCalledWith(["end"], false);
+  });
+
+  it("and over the screen's RIGHT selects the START; a touch never marquees (the page keeps its scroll)", () => {
+    const { handlers, container } = mount("ar", { document: d, source: d });
+    const stage = container.querySelector("[data-layer-hit-area]") as HTMLElement;
+    fireEvent.pointerDown(stage, { pointerId: 3, button: 0, clientX: 300, clientY: 2, pointerType: "mouse" });
+    fireEvent.pointerMove(stage, { pointerId: 3, clientX: 430, clientY: 120, pointerType: "mouse" });
+    fireEvent.pointerUp(stage, { pointerId: 3, clientX: 430, clientY: 120, pointerType: "mouse" });
+    expect(handlers.onMarquee).toHaveBeenLastCalledWith(["start"], false);
+
+    handlers.onMarquee.mockClear();
+    fireEvent.pointerDown(stage, { pointerId: 4, button: 0, clientX: 2, clientY: 2, pointerType: "touch" });
+    fireEvent.pointerMove(stage, { pointerId: 4, clientX: 160, clientY: 120, pointerType: "touch" });
+    fireEvent.pointerUp(stage, { pointerId: 4, clientX: 160, clientY: 120, pointerType: "touch" });
+    expect(handlers.onMarquee).not.toHaveBeenCalled();
+  });
+});
+
 describe("the keyboard and the tap-to-place path", () => {
   const d = doc("rtl", [shape("l_a", { x: 300, y: 400, w: 100, h: 50 })]);
 
