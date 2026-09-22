@@ -213,6 +213,13 @@ export interface CheckInScreenData {
   /** 1 for nearly every session; the screen says nothing about the day below 2. */
   dayCount: number;
   timeZone: string;
+  /**
+   * An active check-in on the day this screen is about (any day, when the
+   * session has none). It decides only the ORDER of the form and the award
+   * state (DEC-174 Q6): before today's check-in the form leads; after it, the
+   * state does. It gates nothing — `check_in()` answers «already» itself.
+   */
+  checkedInToday: boolean;
 }
 
 /**
@@ -241,9 +248,10 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     // DEC-119), and the screen wants the answer for the day it is about.
     supabase.from("check_ins").select("session_day_id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null),
     listSessionDays(locale, sessionId),
-    // ★ ONE CALL, and the ONLY definition of «attended the session» (contract
-    // 6). Staff-gated inside (`is_staff()`), which this reader already is.
-    supabase.rpc("session_complete_attendees", { p_session: sessionId }),
+    // ★ No `session_complete_attendees()` here (DEC-174, Q5). It is staff-only
+    // and this is the MEMBER's screen: the call was refused 42501 on every
+    // render and its result never read. What the member has earned is
+    // contract 1's `getSessionAwardState()`, which the page reads beside this.
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -283,6 +291,7 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     day: day ? asCheckInDay(day) : null,
     dayCount: days.length,
     timeZone: s.time_zone,
+    checkedInToday: checkedIn,
   };
 }
 

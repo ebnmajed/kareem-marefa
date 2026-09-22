@@ -96,6 +96,9 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
   // exists (`report.rows`' own `checkedIn` already means exactly that,
   // post the removed_at fix).
   const removeCandidates = report.rows.filter((r) => r.checkedIn).map(asAttendee);
+  // REQ-PTS-015: every session award is written at completion, so before it a
+  // removal has nothing to reverse. The stored state, never the clock.
+  const paysOnCompletion = report.sessionState !== "completed" && report.sessionState !== "archived";
 
   const num = (n: number) => formatNumber(n);
   const ratePct = report.attendanceRate === null ? null : Math.round(report.attendanceRate * 100);
@@ -190,7 +193,9 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
           <h2 id="remove" className="text-h2 text-fg-heading">
             {t("removeTitle")}
           </h2>
-          <p className="mt-2 text-body-sm text-fg-muted">{t("removeIntro")}</p>
+          {/* REQ-PTS-015: before completion nothing has been paid, so the
+              copy says the member won't earn it rather than «reversed». */}
+          <p className="mt-2 text-body-sm text-fg-muted">{t(paysOnCompletion ? "removeIntroOpen" : "removeIntro")}</p>
           <RemoveCheckInForm
             action={removeCheckInAction.bind(null, locale as Locale, id)}
             candidates={removeCandidates}
@@ -198,6 +203,7 @@ export default async function AttendancePage({ params }: { params: Promise<{ loc
             days={markableDays}
             defaultDayId={defaultDayId}
             candidatesByDay={removeCandidatesByDay}
+            paysOnCompletion={paysOnCompletion}
           />
         </section>
       ) : null}
