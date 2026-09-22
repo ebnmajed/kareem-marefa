@@ -19,7 +19,10 @@
       "orgEmptyTitle": "Your organisation has no templates yet",
       "orgEmptyDescription": "Copy a platform template to adjust it in the studio, or start from blank.",
       "orgEmptyAction": "Go to platform templates",
-      "phoneEditNote": "Editing in the studio needs a wider screen; on a phone templates are reviewed, not edited."
+      "phoneEditNote": "Editing in the studio needs a wider screen; on a phone templates are reviewed, not edited.",
+      "tabsLabel": "Template kinds",
+      "tabPosters": "Posters",
+      "tabCertificates": "Certificates"
     },
     "card": {
       "family": "Family",
