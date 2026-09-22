@@ -146,13 +146,30 @@ async function openStudio(page: Page) {
   await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 }
 
+/**
+ * ★ A drag is dispatched at VIEWPORT coordinates and is NOT scrolled into view
+ * the way `click()` is: a box below the fold is a pointerdown on nothing — no
+ * gesture, no save (the first run's «no PUT in 90 s» was exactly this; the same
+ * canvas drags and saves in Chromium when it is on screen). So every target is
+ * centred in the viewport first, and `drag()` refuses a point outside it.
+ */
+async function onScreen(locator: ReturnType<Page["locator"]>) {
+  await locator.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }));
+}
+
 const layerBox = async (page: Page, name: string) => {
-  const box = await main(page).getByRole("button", { name: `اختيار الطبقة ${name}`, exact: true }).boundingBox();
+  const button = main(page).getByRole("button", { name: `اختيار الطبقة ${name}`, exact: true });
+  await onScreen(button);
+  const box = await button.boundingBox();
   if (!box) throw new Error(`no box for ${name}`);
   return box;
 };
 
 async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, options: { shift?: boolean } = {}) {
+  const view = page.viewportSize() ?? DESKTOP;
+  for (const p of [from, to]) {
+    if (p.x < 0 || p.y < 0 || p.x > view.width || p.y > view.height) throw new Error(`drag point ${p.x},${p.y} is outside the ${view.width}×${view.height} viewport`);
+  }
   if (options.shift) await page.keyboard.down("Shift");
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
@@ -193,6 +210,7 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
   const photo = await storedLayer("l_photo");
   const se = main(page).locator('[data-handle="se"]');
   await expect(se).toBeVisible();
+  await onScreen(se);
   const handle = await se.boundingBox();
   if (!handle) throw new Error("no south-east handle");
   done = saved(page);
@@ -205,8 +223,8 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
   expect(resized.frame.w / resized.frame.h).toBeCloseTo(photo.frame.w / photo.frame.h, 1);
 
   // ── rotate from the knob, with shift's 15° steps ──────────────────────────
-  const knob = await main(page).locator('[data-handle="rotate"]').boundingBox();
   const photoBox = await layerBox(page, "الصورة");
+  const knob = await main(page).locator('[data-handle="rotate"]').boundingBox();
   if (!knob) throw new Error("no rotation knob");
   const centre = { x: photoBox.x + photoBox.width / 2, y: photoBox.y + photoBox.height / 2 };
   done = saved(page);
@@ -227,6 +245,7 @@ test("the marquee selects what it touches, and a locked region neither drags nor
 
   // From empty canvas at the page's top-left, down across the kicker (full
   // width) and stopping short of the title and of the logo at the top-right.
+  await main(page).locator("[data-layer-hit-area]").evaluate((el) => el.scrollIntoView({ block: "start" }));
   const stage = await main(page).locator("[data-layer-hit-area]").boundingBox();
   const kicker = await layerBox(page, "نوع الجلسة");
   if (!stage) throw new Error("no stage");
@@ -241,6 +260,7 @@ test("the marquee selects what it touches, and a locked region neither drags nor
   await qr.click();
   await expect(main(page).locator("[data-handle]")).toHaveCount(0);
   const before = await storedLayer("l_qr");
+  await onScreen(qr);
   const q = await qr.boundingBox();
   if (!q) throw new Error("no QR box");
   await drag(page, { x: q.x + q.width / 2, y: q.y + q.height / 2 }, { x: q.x + q.width / 2 + 80, y: q.y + q.height / 2 - 80 });

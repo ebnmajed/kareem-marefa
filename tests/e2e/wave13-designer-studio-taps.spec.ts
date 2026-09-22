@@ -232,7 +232,11 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   const list = main(page).getByRole("tabpanel");
   await list.getByRole("button", { name: "تحديد متعدّد", exact: true }).click();
   await expect(list.getByRole("button", { name: "تحديد متعدّد", exact: true })).toHaveAttribute("aria-pressed", "true");
-  for (const name of ["نوع الجلسة", "المكان", "الصورة"]) {
+  // «الصورة» is still selected from the focal step, and in «تحديد متعدّد» a
+  // tap TOGGLES — so two more taps make three (tapping «الصورة» again would
+  // have removed it, which is the toggle working: the first run's «طبقتان»).
+  await expect(list.getByRole("button", { name: /^الصورة/ }).first()).toHaveAttribute("aria-pressed", "true");
+  for (const name of ["نوع الجلسة", "المكان"]) {
     await list.getByRole("button", { name: new RegExp(`^${name}`) }).first().click();
   }
   await expect(list.getByText("3 طبقات محدّدة")).toBeVisible();
