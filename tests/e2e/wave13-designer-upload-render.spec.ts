@@ -160,7 +160,13 @@ test("★ an uploaded poster is SEEN — in the studio, and (with a worker) edge
 
   // ★ 1 · the studio's canvas LOADS the image — a URL with a real size, not a uuid.
   await page.goto(`/ar/app/admin/designer/${documentId}`);
-  const img = main(page).frameLocator('iframe[title="لوحة التصميم"]').locator('img[data-layer="uploaded"]');
+  // The studio mounts two canvases: the desktop editor's and the phone's
+  // review (`xl:hidden`, display:none here, so out of the accessibility tree).
+  // The visible one is found through its region, as wave 8's spec does.
+  const img = main(page)
+    .getByRole("region", { name: "المعاينة", exact: true })
+    .frameLocator('iframe[title="لوحة التصميم"]')
+    .locator('img[data-layer="uploaded"]');
   await expect(img).toHaveAttribute("src", /^https?:\/\//);
   await expect.poll(async () => img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
 
