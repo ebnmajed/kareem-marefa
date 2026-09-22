@@ -3451,3 +3451,85 @@ At 390 × 844, RTL, after the schedule form:
 10. **An audit-label request** (`admin.json`, `console`'s): `actions.session.presenter_added`
     «إضافة مُقدِّم إلى جلسة» and `actions.session.presenter_removed` «إزالة مُقدِّم من جلسة». The
     audit screen falls back to the raw action (`audit/page.tsx:76–78`), so this is not blocking.
+
+### W12.8 As built, after sync 1 (`DEC-174`)
+
+What sync 1 ruled:
+- Q1: yes, `create_session()`'s direct branch assigns presenters.
+- Q2: yes, an add on a pending or declined row updates it.
+- Q3: refuse on a cancelled session.
+- Q4: refuse a member with an active check-in, and tell the admin to remove their attendance
+  first.
+- Q5: the mail's copy is the lead's.
+- Q6: the poster and the certificate after completion are carried, not built.
+- Q7: «the last presenter» counts accepted rows.
+- Q8: `listMembersForAdmin()` is imported read-only.
+- Q9: the completed-session sentence stays.
+
+**SQL.** `supabase/proposed/sessions/0001_session_presenters_admin.sql` holds four things:
+- `create_session()`, re-created with the same signature. The direct branch now inserts
+  `accepted = true`.
+- `_session_for_presenter_change()`, the helper that re-derives the session and takes `for update`
+  on it. It refuses a cancelled session. **No client role may execute it.**
+- `add_session_presenter()`. A pending or declined row is promoted by an `update` that sets
+  `accepted = true` and clears `declined_at`; any other add is an insert.
+- `remove_session_presenter()`, which is always a `delete`.
+
+Each audit row names the member. The `before` field records the row it replaced. **Nothing in the
+file names the ledger, an award or a job**, and a test asserts that from `prosrc`.
+
+**App.**
+- DAL: `listSessionPresentersForAdmin()`, `addSessionPresenter()`, `removeSessionPresenter()`,
+  and `presenterChangeError()` with the list of refusals.
+- `schedule/actions.ts`: two actions, `addPresenter` and `removePresenter`. `removePresenter`
+  returns the refusal already worded.
+- `schedule/presenters-state.ts`: the add form's state.
+- `schedule/presenters-section.tsx`: first in the aside on SCR-043. On a cancelled session it is
+  `locked`: the list shows and nothing is offered.
+- `RemovePresenter` gains an optional `messages` prop and an optional error return. The
+  proposal's call site is unedited, and its default render is pinned by a new test.
+- Strings in `schedule.presenters.*` (Arabic first).
+- `<AwardState … variant="inline" />` is mounted after `AttendanceOutcome` in `action-card.tsx`,
+  as the lead ruled for `checkin`. `checkin` was told the exact line.
+
+**The untouched-suite ledger. Two lines, both in `tests/rls/sessions-creation.test.ts`, both
+ruled at sync 1 (Q1):**
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/rls/sessions-creation.test.ts` «an assigned presenter is not accepted on their behalf» → «an assigned presenter is ASSIGNED — accepted, as the proposer is (REQ-SES-019)» | `accepted` `false` → **`true`** | **An expectation changed on purpose** (`DEC-172`, `DEC-174` Q1). No screen ever let a presenter accept a session, and every reader filters on `accepted`, so the row was on no surface at all. It is now the row `RPC-create_session.assigned`. The case applies `sessions/0001` through `applyProposed()`, which is a no-op once the file is promoted |
+| `tests/rls/sessions-creation.test.ts` `POL-session_presenters.decline` «a decline before publication sends the session back to draft» | unchanged. The presenter's write becomes `accepted = false, declined_at = now()` instead of `declined_at` alone | **Harness only.** The row is born accepted now, and `0010:121`'s check refuses `declined_at` beside `accepted`. The decline therefore withdraws the acceptance in the same write, which is the shape `respondToPresenterInvite()` already uses. The session still goes back to draft with the same transition row |
+
+**New files:**
+- `tests/rls/session-presenters-admin.test.ts`: 17 cases covering the six `03` §8.2 rows.
+- `tests/unit/sessions-presenter-changes.test.ts`: 8 cases.
+- `tests/components/sessions/remove-presenter.test.tsx`: 4 cases.
+- `tests/components/sessions/presenters-section.test.tsx`: 9 cases.
+- `tests/e2e/wave12-sessions-presenters.spec.ts`: 3 cases, 4 captures and an axe run on the
+  section. **It runs only after `sessions/0001` is promoted**, because the RPCs do not exist
+  before that, and only on a build that contains this commit.
+
+**Gates at the commit:**
+- `tsc` clean.
+- `lint`: 0 errors. The one warning in `sessions-creation.test.ts`, an unused `CHECK_VIOLATION`,
+  was already there.
+- `npm test`: 245 files, 2341 green.
+- `ui-lint --strict`: green, 276 files.
+- My RLS files: 29 green.
+- **The whole `test:rls` run: 124 of 125 files green.** The one red file is
+  `tests/rls/survey-submit.test.ts` (6 cases), and the cause is outside my change. It counts
+  `graphile_worker` jobs across the whole database and finds 4 and 5 where it expects 0 and 1. Its
+  `run_at` delta is **negative** (−18213 s), so it is reading **committed jobs left in the local
+  database by an earlier run**. That file applies none of my SQL. It belongs to `event` (held by
+  the lead), so I have recorded it and not touched it.
+
+**Requests to the lead, as custodian:**
+1. `admin.json` `admin.sessions.presentersHint` (line 134 of both files):
+   - ar: «سيصل كلًّا منهم إشعار، ولكل منهم أن يعتذر.» → **«يُسند إلى كلٍّ منهم تقديم الجلسة، ويصله إشعار بذلك.»**
+   - en: "Each is notified and each may decline." → **"Each is assigned to present the session, and is notified."**
+2. The audit labels in `admin.json` under `admin.audit.actions.session`:
+   - `presenter_added`: ar «إضافة مُقدِّم إلى جلسة» · en "Presenter added to a session"
+   - `presenter_removed`: ar «إزالة مُقدِّم من جلسة» · en "Presenter removed from a session"
+3. Promote `sessions/0001` **after** `scoring`'s files. The order within my file does not matter to
+   theirs: `scoring`'s triggers fire on insert, update and delete of `session_presenters` whatever
+   the writer is.

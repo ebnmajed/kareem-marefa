@@ -588,6 +588,82 @@ export async function publishSession(locale: string, sessionId: string): Promise
   if (error) throw new Error(`publish_session: ${error.message}`);
 }
 
+// ── A session's presenters, after it exists (SCR-043, REQ-SES-019) ──────────
+//
+// ★ Two admin RPCs (`add_session_presenter()`, `remove_session_presenter()`,
+// sessions/0001 in wave 12) and nothing else. They write `session_presenters`
+// rows; what a presenter is paid or loses for joining or leaving a completed
+// session is `scoring`'s triggers on that table (contract 2 of DEC-172). A
+// removal is a DELETE, never `declined_at`, which would send an unpublished
+// session back to draft.
+
+/** Every presenter row of one session, pending and declined included — the
+ *  admin needs to see a row that is on no other surface. Null for anyone who
+ *  is not an admin, so the route answers not-found. */
+export async function listSessionPresentersForAdmin(locale: string, sessionId: string): Promise<SessionPresenterDto[] | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+
+  const { data, error } = await supabase
+    .from("session_presenters")
+    .select("member_id, accepted, declined_at, created_at")
+    .eq("session_id", sessionId)
+    // The order they joined; a tie (rows written together by create_session())
+    // falls back to the member id so the list never reshuffles between renders.
+    .order("created_at")
+    .order("member_id");
+  if (error) throw new Error(`session_presenters: ${error.message}`);
+  const rows = data ?? [];
+  const names = await namesFor(supabase, rows.map((r) => r.member_id as string));
+  return rows.map((r) => ({
+    memberId: r.member_id as string,
+    displayName: names.get(r.member_id as string) ?? null,
+    accepted: r.accepted as boolean,
+    declinedAt: r.declined_at as string | null,
+  }));
+}
+
+/** The refusals the two RPCs name. Anything else is a fault, and throws. */
+export const PRESENTER_CHANGE_ERRORS = [
+  "session_not_found",
+  "session_cancelled",
+  "member_not_found",
+  "member_not_active",
+  "already_presenter",
+  "member_checked_in",
+  "presenter_not_in_org",
+  "too_many_presenters",
+  "presenter_not_found",
+  "last_presenter",
+  "not_an_admin",
+] as const;
+export type PresenterChangeError = (typeof PRESENTER_CHANGE_ERRORS)[number];
+export type PresenterChangeResult = { ok: true } | { ok: false; error: PresenterChangeError };
+
+/** A refusal the RPC raised, by name; null for anything it did not. */
+export function presenterChangeError(message: string): PresenterChangeError | null {
+  return PRESENTER_CHANGE_ERRORS.find((code) => new RegExp(`\\b${code}\\b`).test(message)) ?? null;
+}
+
+async function changePresenter(locale: string, rpc: "add_session_presenter" | "remove_session_presenter", sessionId: string, memberId: string): Promise<PresenterChangeResult> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc(rpc, { p_session: sessionId, p_member: memberId });
+  if (!error) return { ok: true };
+  const known = presenterChangeError(error.message);
+  if (known) return { ok: false, error: known };
+  throw new Error(`${rpc}: ${error.message}`);
+}
+
+/** Assigns a member to a session (REQ-SES-019): accepted, told, audited. */
+export async function addSessionPresenter(locale: string, sessionId: string, memberId: string): Promise<PresenterChangeResult> {
+  return changePresenter(locale, "add_session_presenter", sessionId, memberId);
+}
+
+/** Takes a presenter off a session (REQ-SES-019); never the last accepted one. */
+export async function removeSessionPresenter(locale: string, sessionId: string, memberId: string): Promise<PresenterChangeResult> {
+  return changePresenter(locale, "remove_session_presenter", sessionId, memberId);
+}
+
 // ── A session's heading, for the screens under it ──────────────────────────
 
 export interface SessionHeading {

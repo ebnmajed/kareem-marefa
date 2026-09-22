@@ -6,13 +6,16 @@
 //               RPC-create_session.one_per_proposal,
 //               POL-session_presenters.decline
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
+import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
 const CHECK_VIOLATION = "23514";
+
+/** Wave 12 (REQ-SES-019, DEC-174 Q1): the direct branch assigns. A no-op once promoted. */
+const ASSIGNED = "sessions/0001_session_presenters_admin.sql";
 
 const createSession = async (tx: Tx, args: { title?: string; category?: string; presenters?: string[]; proposal?: string }) =>
   (
@@ -165,13 +168,18 @@ describe("RPC-create_session.one_per_proposal", () => {
     });
   });
 
-  it("an assigned presenter is not accepted on their behalf", async () => {
+  // ★ Wave 12 moved this expectation ON PURPOSE (STATUS.md's ledger; DEC-172,
+  // DEC-174 Q1). It asserted `false` — «not accepted on their behalf» — but no
+  // screen ever let a presenter accept a SESSION, and every reader filters on
+  // `accepted`, so the row was on no surface at all. RPC-create_session.assigned.
+  it("an assigned presenter is ASSIGNED — accepted, as the proposer is (REQ-SES-019)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
+      await applyProposed(tx, ASSIGNED);
       await tx.as(f.a.admin.claims);
       const id = await createSession(tx, { title: "جلسة مُسندة", category: f.a.categoryId, presenters: [f.a.members[1].memberId] });
       await tx.asOwner();
-      expect((await tx.q<{ accepted: boolean }>(`select accepted from public.session_presenters where session_id = $1`, [id]))[0].accepted).toBe(false);
+      expect((await tx.q<{ accepted: boolean }>(`select accepted from public.session_presenters where session_id = $1`, [id]))[0].accepted).toBe(true);
     });
   });
 });
@@ -180,6 +188,7 @@ describe("POL-session_presenters.decline", () => {
   it("a decline before publication sends the session back to draft, with a transition row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
+      await applyProposed(tx, ASSIGNED);
       await tx.as(f.a.admin.claims);
       const id = await createSession(tx, { title: "جلسة سيعتذر عنها المُقدِّم", category: f.a.categoryId, presenters: [f.a.members[1].memberId] });
       await tx.asOwner();
@@ -189,9 +198,12 @@ describe("POL-session_presenters.decline", () => {
       }
 
       // The presenter has no grant on sessions.state — the consequence is the
-      // trigger's, not theirs.
+      // trigger's, not theirs. ★ Wave 12 (ledger): the row is born ACCEPTED
+      // now, and `0010`'s check refuses `declined_at` beside `accepted`, so the
+      // decline withdraws the acceptance in the same write — the shape
+      // `respondToPresenterInvite()` uses. The expectation is unchanged.
       await tx.as(f.a.members[1].claims);
-      await tx.q(`update public.session_presenters set declined_at = now() where session_id = $1 and member_id = $2`, [id, f.a.members[1].memberId]);
+      await tx.q(`update public.session_presenters set accepted = false, declined_at = now() where session_id = $1 and member_id = $2`, [id, f.a.members[1].memberId]);
 
       await tx.asOwner();
       expect((await tx.q<{ state: string }>(`select state from public.sessions where id = $1`, [id]))[0].state).toBe("draft");
