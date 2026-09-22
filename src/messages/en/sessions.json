@@ -127,6 +127,32 @@
       "unavailableTitle": "This session isn't available",
       "unavailableBody": "The link may be wrong, or the session isn't shown publicly.",
       "unavailableBack": "Go to the home page"
+    },
+    "hub": {
+      "label": "Session settings",
+      "items": {
+        "schedule": "Schedule",
+        "attendance": "Attendance",
+        "certificates": "Certificates",
+        "survey": "Survey",
+        "event": "Session page"
+      }
+    },
+    "download": {
+      "primary": "Download the poster",
+      "meta": "<bdi>{format}</bdi> · <bdi>{ratio}</bdi> · <bdi>{size}</bdi>",
+      "pending": "The poster is being prepared",
+      "pendingHint": "The download link appears when it is ready. Refresh the page in a moment.",
+      "failed": "The poster could not be prepared",
+      "failedHint": "Request the export again from the studio.",
+      "updating": "A newer version of the poster is being prepared; these files are the previous one's.",
+      "others": "{count, plural, =0 {No other formats} one {{value} other format} other {{value} other formats}}",
+      "row": "<bdi>{preset}</bdi> · <bdi>{format}</bdi>",
+      "rowDownload": "Download",
+      "rowDownloadLabel": "Download {preset} as {format}",
+      "rowPending": "Being prepared",
+      "rowFailed": "Could not be prepared",
+      "downloadFailed": "The download failed. Try again."
     }
   }
 }

@@ -664,6 +664,56 @@ export async function removeSessionPresenter(locale: string, sessionId: string, 
   return changePresenter(locale, "remove_session_presenter", sessionId, memberId);
 }
 
+// ── The session settings hub (REQ-SES-020, DEC-178) ─────────────────────────
+
+/** The hub's destinations, in the order a session is lived. */
+export const SESSION_SETTINGS_KEYS = ["schedule", "attendance", "certificates", "survey", "event"] as const;
+export type SessionSettingsKey = (typeof SESSION_SETTINGS_KEYS)[number];
+
+export interface SessionSettingsNav {
+  /** Only what this viewer may open — each page is still its own boundary. */
+  items: SessionSettingsKey[];
+}
+
+/**
+ * Which of a session's admin screens the viewer may open, for the sub-nav in
+ * `admin/sessions/[id]/layout.tsx`. PRESENTATION, not authority: each page
+ * checks at its own data and 404s on its own.
+ *
+ * - schedule: admin (`getSessionForSchedule()`).
+ * - attendance, certificates: admin and moderator.
+ * - survey: admin and moderator, but never a presenter of THIS session —
+ *   `survey_results()` refuses them whatever their role.
+ * - the event page: everyone the nav renders for.
+ *
+ * `null` for a member, a session this org cannot see, a malformed id — and
+ * for any error, which is caught: this is read by a LAYOUT, and a throw there
+ * would replace every page under it with the error boundary.
+ */
+export async function getSessionSettingsNav(locale: string, sessionId: string): Promise<SessionSettingsNav | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+  try {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("id, session_presenters(member_id, accepted)")
+      .eq("id", sessionId)
+      .eq("session_presenters.member_id", session.memberId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const presents = ((data.session_presenters ?? []) as { member_id: string; accepted: boolean }[]).some((p) => p.accepted);
+    const items = SESSION_SETTINGS_KEYS.filter((key) => {
+      if (key === "schedule") return session.role === "admin";
+      if (key === "survey") return !presents;
+      return true;
+    });
+    return { items };
+  } catch {
+    return null;
+  }
+}
+
 // ── The certificate mode's one writer (REQ-SES-020, DEC-178 contract 2) ────
 
 export type CertificateMode = "off" | "automatic" | "review";

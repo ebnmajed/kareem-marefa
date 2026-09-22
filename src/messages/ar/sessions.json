@@ -127,6 +127,32 @@
       "unavailableTitle": "هذه الجلسة غير متاحة",
       "unavailableBody": "قد يكون الرابط غير صحيح، أو أن الجلسة ليست معروضة للعامة.",
       "unavailableBack": "إلى الصفحة الرئيسية"
+    },
+    "hub": {
+      "label": "إعدادات الجلسة",
+      "items": {
+        "schedule": "الجدولة",
+        "attendance": "الحضور",
+        "certificates": "الشهادات",
+        "survey": "الاستبانة",
+        "event": "صفحة الجلسة"
+      }
+    },
+    "download": {
+      "primary": "تنزيل الملصق",
+      "meta": "<bdi>{format}</bdi> · <bdi>{ratio}</bdi> · <bdi>{size}</bdi>",
+      "pending": "الملصق قيد الإعداد",
+      "pendingHint": "يظهر رابط التنزيل حين يكتمل. حدّث الصفحة بعد قليل.",
+      "failed": "تعذّر إعداد الملصق",
+      "failedHint": "اطلب التصدير من جديد من الاستوديو.",
+      "updating": "نسخة أحدث من الملصق قيد الإعداد، والملفات هنا للنسخة السابقة.",
+      "others": "{count, plural, zero {لا صيغ أخرى} one {صيغة أخرى} two {صيغتان أخريان} few {{value} صيغ أخرى} many {{value} صيغة أخرى} other {{value} صيغة أخرى}}",
+      "row": "<bdi>{preset}</bdi> · <bdi>{format}</bdi>",
+      "rowDownload": "تنزيل",
+      "rowDownloadLabel": "تنزيل {preset} بصيغة {format}",
+      "rowPending": "قيد الإعداد",
+      "rowFailed": "تعذّر إعداده",
+      "downloadFailed": "تعذّر التنزيل. حاول مرة أخرى."
     }
   }
 }

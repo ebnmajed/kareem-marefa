@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { PosterPicker } from "@/components/posters/picker";
+import { SessionDownload } from "@/components/sessions/session-download";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
@@ -156,6 +158,11 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
           <section aria-labelledby="poster" className="space-y-4">
             <SectionHeader id="poster" title={t("poster")} />
             <PosterPicker sessionId={session.id} locale={locale} />
+            {/* «تنزيل الملصق» on the hub (REQ-DSG-027, DEC-178): the files the
+                picker's poster rendered to, from `designer`'s DTO. */}
+            <Suspense fallback={null}>
+              <SessionDownload sessionId={session.id} locale={locale} placement="hub" />
+            </Suspense>
           </section>
         </aside>
       </div>
