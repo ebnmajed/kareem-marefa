@@ -98,7 +98,9 @@ Found this wave, predating it (`sessions`, 2026-09-22):
 - On a phone the poster slot's pending line «يُولَّد الملصق… N من M» sits under «نبذة», away from the download (`session-poster.tsx`, M6, and the wave-6 phone composition).
 - The download menu trusts `status = 'ready'` and the slot trusts a successful sign, so a ready row whose object is missing makes them disagree. The route answers `?download=failed`, so the user is told.
 
-### ★ The owner's order (wave 13) — in this order
+### ★ The owner's order (wave 13) — ★ FINISHED 2026-09-22
+
+★ **DONE — pushed, merged and deployed 2026-09-22.** `0152`–`0154` are on production: `supabase migration list --linked` reads **`0154` on both sides**. The push printed the same cosmetic `pg-delta` catalogue-cache warning as wave 12's — it is the CLI's local cache failing **after** every migration had already applied, and `migration list` is the authority. PR #30 merged at **`7a66690`**, local and remote branches deleted. Railway needed the manual `railway service source connect` **again — the eighth consecutive merge** — and redeployed. ★ **`0153` closed a live leak on the way: those 11 certificate PDFs were readable by any member of the org until this push.**
 
 **Migrations: `0152`–`0154`**, all additive:
 - `0152`: a new definer function, `record_export_download()`;
