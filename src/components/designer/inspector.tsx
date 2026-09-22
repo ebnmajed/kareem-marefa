@@ -22,6 +22,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { InspectorSection } from "@/components/designer/inspector-section";
 import { formatNumber } from "@/components/sessions/numerals";
 
@@ -79,6 +80,9 @@ export interface InspectorProps {
   onFocal?: (layerId: string, point: FocalPoint, preset?: PresetName) => void;
   /** The derived preset on screen, whose own focal override the grid sets. */
   focalPreset?: PresetName;
+  /** D1b: duplicate and delete (delete confirms by name, in the editor). */
+  onDuplicate?: (layerId: string) => void;
+  onDelete?: (layerId: string) => void;
 }
 
 const token = (value: string | undefined): string | null => /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value ?? "")?.[1] ?? null;
@@ -101,6 +105,8 @@ export function Inspector({
   canPlace = false,
   onFocal,
   focalPreset,
+  onDuplicate,
+  onDelete,
 }: InspectorProps) {
   const t = useTranslations("designer.inspector");
   const tp = useTranslations("designer.properties");
@@ -259,6 +265,18 @@ export function Inspector({
       {layer.kind === "text" || layer.kind === "dynamic_field" ? (
         <>
           <InspectorSection title={t("sections.type")}>
+            {layer.kind === "text" ? (
+              // The layer's own words (D1b, «format the text»). A bound text is
+              // changed at its binding; this is what prints when nothing binds.
+              <Field label={tp("text")} hint={tp("textHint")}>
+                <Textarea
+                  value={layer.text.literal ?? ""}
+                  rows={3}
+                  disabled={disabled}
+                  onChange={(e) => onPatchLayer(layer.id, { text: { ...layer.text, literal: e.target.value } } as Partial<Layer>)}
+                />
+              </Field>
+            ) : null}
             <Field label={tp("fontFamily")}>
               <Select
                 value={layer.font.family}
@@ -273,6 +291,26 @@ export function Inspector({
               </Select>
             </Field>
             {number(tp("fontSize"), layer.font.size, (n) => onPatchLayer(layer.id, { font: { ...layer.font, size: Math.max(1, n) } } as Partial<Layer>), 1, 1)}
+            <Field label={tp("weight")}>
+              <Select
+                value={String(layer.font.weight ?? 400)}
+                disabled={disabled}
+                onChange={(e) => onPatchLayer(layer.id, { font: { ...layer.font, weight: Number(e.target.value) as 400 | 500 | 600 } } as Partial<Layer>)}
+              >
+                {([400, 500, 600] as const).map((w) => (
+                  <option key={w} value={w}>
+                    {tp(`weights.${w === 400 ? "regular" : w === 500 ? "medium" : "bold"}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {/* ★ A token, never a hex (REQ-DSG-021) — the brand check and 0055's guard refuse anything else. */}
+            <TokenSelect
+              label={tp("colour")}
+              value={layer.color ?? bind("fgHeading")}
+              disabled={disabled}
+              onValue={(color) => onPatchLayer(layer.id, { color } as Partial<Layer>)}
+            />
             <fieldset className="flex flex-col gap-2 border-0 p-0">
               <legend className="text-label text-fg-heading">{tp("align")}</legend>
               <div className="flex flex-wrap gap-2">
@@ -331,6 +369,17 @@ export function Inspector({
         </>
       ) : null}
 
+      {layer.kind === "shape" ? (
+        <InspectorSection title={t("sections.type")}>
+          <TokenSelect
+            label={tp("fill")}
+            value={layer.shape.fill ?? bind("surface")}
+            disabled={disabled}
+            onValue={(fill) => onPatchLayer(layer.id, { shape: { ...layer.shape, fill } } as Partial<Layer>)}
+          />
+        </InspectorSection>
+      ) : null}
+
       {layer.kind === "image" && onFocal ? (
         <InspectorSection title={t("sections.image")}>
           <ImageSection layer={layer} locked={locked} canEdit={canEdit} onPatchLayer={onPatchLayer} onFocal={onFocal} preset={focalPreset} />
@@ -351,6 +400,20 @@ export function Inspector({
           {number(tp("opacity"), layer.opacity ?? 1, (n) => onPatchLayer(layer.id, { opacity: Math.min(1, Math.max(0, n)) }), 0.05, 0)}
         </div>
       </InspectorSection>
+
+      {onDuplicate && onDelete ? (
+        <InspectorSection title={t("sections.layer")}>
+          {locked ? <p className="text-body-sm text-fg-muted">{t("layer.lockedNote")}</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onDuplicate(layer.id)}>
+              {t("layer.duplicate")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onDelete(layer.id)}>
+              {t("layer.delete")}
+            </Button>
+          </div>
+        </InspectorSection>
+      ) : null}
     </div>
   );
 }
@@ -364,23 +427,9 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
   const t = useTranslations("designer.inspector.background");
   const bg = doc.background ?? { type: "solid" as const, color: bind("canvas") };
 
-  const tokenSelect = (label: string, value: string, onValue: (next: string) => void) => {
-    const current = token(value);
-    return (
-      <Field label={label}>
-        <Select value={current ?? value} disabled={!canEdit} onChange={(e) => onValue(bind(e.target.value))}>
-          {/* A legacy colour that is not a token stays visible as what it is,
-              so the admin can see it and replace it — never silently lost. */}
-          {current === null ? <option value={value}>{value}</option> : null}
-          {BRAND_COLOUR_TOKENS.map((name) => (
-            <option key={name} value={name}>
-              {t(`tokens.${name}`)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-    );
-  };
+  const tokenSelect = (label: string, value: string, onValue: (next: string) => void) => (
+    <TokenSelect label={label} value={value} disabled={!canEdit} onValue={onValue} />
+  );
 
   const setType = (type: string) => {
     if (type === bg.type) return;
@@ -614,5 +663,29 @@ function ImageSection({
         </fieldset>
       )}
     </>
+  );
+}
+
+/**
+ * A brand colour, chosen by NAME from the brand kit's tokens — never a picker,
+ * never a hex (REQ-DSG-021). Shared by the background, a text's colour and a
+ * shape's fill, so the rule lives once.
+ */
+function TokenSelect({ label, value, disabled, onValue }: { label: string; value: string; disabled: boolean; onValue: (next: string) => void }) {
+  const t = useTranslations("designer.inspector.background");
+  const current = token(value);
+  return (
+    <Field label={label}>
+      <Select value={current ?? value} disabled={disabled} onChange={(e) => onValue(bind(e.target.value))}>
+        {/* A legacy colour that is not a token stays visible as what it is,
+            so the admin can see it and replace it — never silently lost. */}
+        {current === null ? <option value={value}>{value}</option> : null}
+        {BRAND_COLOUR_TOKENS.map((name) => (
+          <option key={name} value={name}>
+            {t(`tokens.${name}`)}
+          </option>
+        ))}
+      </Select>
+    </Field>
   );
 }

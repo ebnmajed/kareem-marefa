@@ -7,7 +7,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { ChevronIcon, EyeIcon, LockIcon } from "@/components/ui/icons";
+import { ChevronIcon, EyeIcon, LockIcon, PlusIcon } from "@/components/ui/icons";
 
 // SCR-057's layer list — RTL-first (06 §10), the front of the stack first.
 //
@@ -37,6 +37,9 @@ export interface LayerListProps {
   onToggleMulti?: () => void;
   /** «اختر كل طبقات هذا النوع» (DEC-093 path 5). */
   onSelectKind?: (kind: Layer["kind"]) => void;
+  /** D1b — «أضف»: text, shape, the org's logo (DEC-178). An uploaded image
+   *  waits on assets resolving in the render (the lead's ruling). */
+  onAdd?: (kind: "text" | "shape" | "logo") => void;
 }
 
 export function LayerList({
@@ -51,9 +54,11 @@ export function LayerList({
   multi = false,
   onToggleMulti,
   onSelectKind,
+  onAdd,
 }: LayerListProps) {
   const t = useTranslations("designer.layers");
   const to = useTranslations("designer.inspector.order");
+  const ta = useTranslations("designer.add");
   const base = useId();
 
   // Front first: «above» in the list is «in front» on the page — the exact
@@ -64,6 +69,22 @@ export function LayerList({
 
   return (
     <div className="flex flex-col gap-3">
+      {onAdd ? (
+        <section aria-labelledby={`${base}-add`} className="flex flex-col gap-2 border-b border-edge pb-4">
+          <h3 id={`${base}-add`} className="text-label text-fg-heading">
+            {ta("heading")}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {(["text", "shape", "logo"] as const).map((kind) => (
+              <Button key={kind} type="button" variant="secondary" size="sm" iconStart={<PlusIcon />} onClick={() => onAdd(kind)}>
+                {ta(kind)}
+              </Button>
+            ))}
+          </div>
+          <p className="text-body-sm text-fg-muted">{ta("hint")}</p>
+        </section>
+      ) : null}
+
       <p className="text-body-sm text-fg-muted">
         {t("count", { count: layers.length, value: formatNumber(layers.length) })}
         {layers.length > 1 && canEdit ? ` · ${t("orderHint")}` : ""}

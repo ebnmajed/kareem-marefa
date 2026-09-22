@@ -121,7 +121,17 @@
       "binding": "Binding",
       "bindingNone": "No binding",
       "fallback": "Fallback text",
-      "literal": "Literal text"
+      "literal": "Literal text",
+      "text": "Text",
+      "textHint": "Written as it will print. Text bound to the session's data is changed under «Data binding».",
+      "weight": "Weight",
+      "weights": {
+        "regular": "Regular",
+        "medium": "Medium",
+        "bold": "Bold"
+      },
+      "colour": "Text colour",
+      "fill": "Fill colour"
     },
     "bindings": {
       "heading": "Dynamic fields",
@@ -298,7 +308,8 @@
         "binding": "Data binding",
         "background": "Background",
         "group": "Group",
-        "image": "Image"
+        "image": "Image",
+        "layer": "Layer"
       },
       "positionNote": "Collapsed by default and never removed: the numbers are the path that needs no dragging, and the most exact one.",
       "align": {
@@ -385,7 +396,26 @@
           "bottom": "Bottom centre",
           "bottomRight": "Bottom right"
         }
+      },
+      "layer": {
+        "duplicate": "Duplicate layer",
+        "delete": "Delete layer",
+        "deleteTitle": "Delete the layer",
+        "deleteBody": "The layer <bdi>{name}</bdi> will be removed from this document. «Undo» brings it back while the editor is open.",
+        "deleteConfirm": "Delete",
+        "cancel": "Cancel",
+        "lockedNote": "Locked by the template: it cannot be deleted or duplicated here."
       }
+    },
+    "add": {
+      "heading": "Add",
+      "text": "Text",
+      "shape": "Shape",
+      "logo": "Logo",
+      "image": "Image",
+      "newText": "New text",
+      "hint": "A new layer goes on top, inside the safe area; then move it by dragging or with the align buttons.",
+      "added": "Layer added."
     }
   }
 }
