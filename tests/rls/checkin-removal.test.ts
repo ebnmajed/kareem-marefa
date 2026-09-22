@@ -8,7 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
+import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -30,7 +30,13 @@ async function addMember(tx: Tx, org: Org, local: string, name: string): Promise
 }
 
 async function setup(tx: Tx) {
-  return seed(tx);
+  const f = await seed(tx);
+  // Wave 12 (REQ-PTS-015): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
+  await tx.asOwner();
+  return f;
 }
 
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {
@@ -128,7 +134,9 @@ describe("RPC-remove_check_in.reversal", () => {
 
       // The award_points job is enqueued, not run inline (11 §2.3) — run it
       // directly, the same call the worker would make.
+      // Wave 12 (REQ-PTS-015): it is written only once the session has completed.
       await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
       await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [f.a.members[0].memberId, ciId, sessionId]);
       const [award] = await tx.q<{ id: string; amount: number }>(`select id, amount from public.points_ledger where source = 'check_in' and source_id = $1`, [ciId]);
       expect(award.amount).toBeGreaterThan(0);
@@ -192,6 +200,10 @@ describe("RPC-remove_check_in.no_show_symmetry", () => {
       const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
+      // Wave 12 (REQ-PTS-015, DEC-174 ruling 2): a removal records the no-show only once the
+      // session has completed; before that, the completion pass records it.
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
 
       await tx.as(f.a.admin.claims);
       await tx.q(`select * from public.remove_check_in($1, $2, $3)`, [sessionId, f.a.members[0].memberId, "سبب"]);

@@ -30,8 +30,25 @@ async function ready(tx: Tx) {
       where n.nspname = 'public' and p.proname = 'award_points'`,
   );
   if (!row.present) await applyProposed(tx, "scoring/0005_attendee_bonus_guard.sql");
+  // Wave 12 (REQ-PTS-015, DEC-174): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
   await tx.asOwner();
   return f;
+}
+
+/** Wave 12 (DEC-174 ruling 1): a presenter award is paid only to an accepted
+ *  presenter of the session, so the presenter these cases pay is one. Harness
+ *  only — no expectation below changes. */
+async function present(tx: Tx, sessionId: string, presenter: string): Promise<void> {
+  await tx.asOwner();
+  await tx.q(
+    `insert into public.session_presenters (org_id, session_id, member_id, accepted)
+     select s.org_id, s.id, $2, true from public.sessions s where s.id = $1
+     on conflict (session_id, member_id) do nothing`,
+    [sessionId, presenter],
+  );
 }
 
 /** A completed session with `days` days, ten or more days out — clear of the
@@ -74,6 +91,7 @@ async function attend(tx: Tx, org: Org, sessionId: string, dayId: string, member
  *  revoked from every client role and the worker connects as the owner),
  *  service_role for the definer-only award. */
 async function oldWorkerLoop(tx: Tx, sessionId: string, presenter: string): Promise<number> {
+  await present(tx, sessionId, presenter);
   await tx.asOwner();
   const checkIns = await tx.q<{ id: string }>(`select id from public.check_ins where session_id = $1 and removed_at is null`, [sessionId]);
   await tx.asServiceRole();
@@ -186,6 +204,7 @@ describe("RPC-award_points.attendee_bonus_one_day_unchanged", () => {
       const ci = await attend(tx, f.a, sessionId, dayIds[0], f.a.admin.memberId);
       await tx.asOwner();
       await tx.q(`update public.check_ins set removed_at = now(), removed_by = $2 where id = $1`, [ci, f.a.admin.memberId]);
+      await present(tx, sessionId, presenter);
 
       // The old worker's own query filters removed rows, so this is reachable
       // only by a direct call — but 0087's reversal finds an attendee_bonus by
@@ -206,6 +225,7 @@ describe("RPC-award_points.attendee_bonus_skips_silently", () => {
       const { sessionId, dayIds } = await makeDays(tx, f.a, 3);
       await attend(tx, f.a, sessionId, dayIds[0], f.a.admin.memberId); // partial
       const ghost = (await tx.q<{ id: string }>(`select gen_random_uuid() as id`))[0].id;
+      await present(tx, sessionId, presenter);
 
       await tx.asServiceRole();
       // A partial attendee, and a source_id that is not a check-in at all.
@@ -240,6 +260,7 @@ describe("the existing presenter suite, replayed with the guard applied", () => 
       const presenter = f.a.members[1].memberId;
       const { sessionId, dayIds } = await makeDays(tx, f.a, 1);
       for (const m of [f.a.admin.memberId, f.a.mod.memberId]) await attend(tx, f.a, sessionId, dayIds[0], m);
+      await present(tx, sessionId, presenter);
 
       await tx.asServiceRole();
       await tx.q(`select public.award_points('session_delivered', $1, 'session_delivered', $2, $2)`, [presenter, sessionId]);

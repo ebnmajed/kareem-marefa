@@ -31,6 +31,10 @@ async function ready(tx: Tx) {
     const [row] = await tx.q<{ present: boolean }>(`select to_regprocedure($1) is not null as present`, [probe]);
     if (!row.present) await applyProposed(tx, path);
   }
+  // Wave 12 (REQ-PTS-015, DEC-174): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
   await tx.asOwner();
   return f;
 }
@@ -232,6 +236,8 @@ describe("JOB-award_presenter_points.one_bonus_per_qualifying_attendee", () => {
       // attendance_removed() reverses the pair together.
       expect(rows[0].epoch_check_in).toBe(ids[2]);
 
+      // Wave 12 (DEC-174 ruling 1): the bonus is paid only to an accepted presenter of the session.
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, sessionId, presenter]);
       await tx.asServiceRole();
       for (const { epoch_check_in } of rows) {
         await tx.q(`select public.award_points('attendee_bonus', $1, 'attendee_bonus', $2, $3)`, [presenter, epoch_check_in, sessionId]);

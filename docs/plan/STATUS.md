@@ -29,15 +29,15 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | S0 | `DEC-172`; `REQ-SES-019`, `REQ-PTS-015`, `REQ-CHK-018`, `REQ-UIX-026` in `01` with stories, screens and M14; the map; the ten agent files | lead | **done** |
 | C1 | Contract 1 — `session_award_state(p_session)` + `getSessionAwardState(locale, id)` → `SessionAwardState` | `scoring` → `checkin` | **published** (`70e80f7`), `checkin` reconciled (`0bf1f02`) |
 | C2 | Contract 2 — presenter rows are `sessions'`, their money is `scoring`'s triggers; removal is a `delete`; the trigger covers `update of accepted` | `sessions` ↔ `scoring` | **agreed at sync 1** (`DEC-174`) |
-| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | building — approved at sync 1 (`DEC-174`) |
-| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | building — approved at sync 1 (`DEC-174`) |
-| A2 | `proposal_accepted` at completion under its existing key | `scoring` | building — approved at sync 1 (`DEC-174`) |
-| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | building — approved at sync 1 (`DEC-174`) |
-| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | building — approved at sync 1 (`DEC-174`) |
-| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | building — approved at sync 1 (`DEC-174`) |
+| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | **built** `7f9b072`, SQL promoted as `0151`; e2e awaits the build |
+| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | **built** `d2b7050`, promoted as `0148` |
+| A2 | `proposal_accepted` at completion under its existing key | `scoring` | **built**, promoted as `0149` |
+| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | **built**, promoted as `0148`–`0149` |
+| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | **built**, promoted as `0150` |
+| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | **built** `18fe962`; event-page line in `7f9b072`; e2e awaits the build |
 | L1 | ★ The whole poster — `CardMedia` `object-contain`; row densities' media `self-start` so the box keeps 4:5. **Surfaces:** timeline card (`row`/`wide`, 4:5 poster) — the defect, fixed; event page and `/s/[id]` size their own `<img>` to the render's dimensions — never cropped, unchanged; `/s/[id]`'s no-poster placeholder 16:9 — no image; moderation cards 16:9 **photos** — now contained, so a moderator sees the whole reported photo; `template-library` — a live render in its own frame, unchanged; `(dev)` gallery — `grid` placeholder, unchanged, **so `/ar/ui` and `/s/[id]` do not move** (the brief expected both to). ★ **Found by D1: members never saw posters at all** — `DEC-173`, `0145` | lead | **done** — `wave12-lead-timeline-card-{whole-poster,cropped-reproduction}.png` opened |
 | L1b | `0145` — `exports_read_session_poster` (`DEC-173`), red→green, `policy-diff` ✓ | lead | **done**, applied locally |
-| L2 | Promotion from `0145`, the rehearsal notes | lead | todo |
+| L2 | Promotion from `0145`, the rehearsal notes | lead | **promoted** `0145`–`0151`; full RLS **129/129 files, 1263 tests** from the promoted tree; `policy-diff` ✓ (35 rows lifted into `03` §8.2); `trace` ✓. Rehearsal notes: todo |
 | L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | **done** — `0146`, red→green, full RLS 121/122 files (the one red is `survey-submit`, `DEC-171`'s leftover-job count, not this) |
 | L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | **mail done** — 3 pinned files, one line each, the reviewed diff; audit labels await `sessions`' keys |
 | O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | asked |
@@ -53,6 +53,39 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | File | Assertion | Why |
 |---|---|---|
 | `tests/unit/mail-pinned/MSG-presenter_assigned.{txt,plain.html,brand.html}` | the body line | `DEC-174` sessions 5: the sentence promised an accept/decline screen that does not exist — a reviewed pinned change, written by hand with `MAIL_PIN_WRITE=1` |
+| `tests/rls/sessions-creation.test.ts` › the assigned-presenter case | (a) `accepted` `false` → `true` | `DEC-174` sessions 1 — an admin's direct assignment is accepted; before, such presenters appeared nowhere and were never paid |
+| `tests/rls/sessions-creation.test.ts` › the decline case | (b) the presenter's write becomes `accepted = false, declined_at = now()`; the expectation is unchanged | a row created accepted cannot be declined while `accepted` stays true (the table's check) |
+
+*`scoring`'s 26, copied verbatim from `docs/plan/notes/scoring.md` «The untouched-suite ledger lines» (`d2b7050`), promoted as `0147`–`0150`. Columns: # · file › case · (a) inverts / (b) harness only · why · file it needs.*
+
+| # | File › case | Change | Why | Needs |
+|---|---|---|---|---|
+| 1 | `award-points.test.ts` › `POL-check_in.award_points_hook` › «a successful check-in enqueues exactly one award_points job, keyed by the check-in id» | (a) `toHaveLength(1)` → `0`, twice; the task and payload lines go | `REQ-PTS-015`: nothing is enqueued before completion | `0007` |
+| 2 | the same › «end to end: running the enqueued job's SQL awards the check-in's points» | (b) the session completes and `evaluate_session_attendance()` runs before the job is read; `20` unchanged | the job exists only after completion | `0007` |
+| 3 | `checkin-contract-5.test.ts` › «a code check-in enqueues exactly one award_points job under pts:check_in:<id>» | (a) `1` → `0` | as 1 | `0007` |
+| 4 | the same › «a manual mark enqueues the same one job under the same key…» | (a) `1` → `0` | as 1 | `0007` |
+| 5 | the same › «writes one compensating row per unreversed award, with the same key and reason, and awards the no-show» | (b) the session completes before the award | no award on a live session, and no no-show at removal before completion (DEC-174 ruling 2) | `0007` |
+| 6 | `checkin-manual-mark.test.ts` › «enqueues exactly one award_points job, keyed pts:check_in:<id>…» | (a) `1` → `0` | as 1 | `0007` |
+| 7 | `checkin-removal.test.ts` › «reverses the points award with ONE compensating entry…» | (b) the session completes before the award | as 5 | `0007` |
+| 8 | the same › «removing a confirmed-RSVP member's check-in awards no_show…» | (b) the session completes before the removal | ruling 2 | `0007` |
+| 9 | `checkin-late-job-hooks.test.ts` › «a removed check-in does not count toward a NOT-YET-awarded streak period or badge threshold» | (b) the session completes before the evaluators run | it would otherwise pass vacuously: a running session no longer counts at all | `0009` |
+| 10 | `scoring-days-award.test.ts` › «enqueues exactly one award_points job under main's key, with main's exact payload» | (b) the session is `completed` | the hook pays only after completion; key and payload unchanged | `0007` |
+| 11 | the same › «★ the seam is behaviour-neutral: called after check_in()'s own inline enqueue…» | (a) `before` and `after` `1` → `0`; the equality lines go | no inline enqueue and no pre-completion job | `0007` |
+| 12 | the same › «calling it twice touches the same key, never a second job» | (b) `completed` | as 10 | `0007` |
+| 13 | the same › «writes ONE compensating row for the attendee's award AND one for the presenter's attendee_bonus…» | (b) completed, and the presenter's accepted row, before the awards | timing plus DEC-174 ruling 1 | `0007` |
+| 14 | the same › `no_show_symmetry` › «a confirmed RSVP earns the no_show rule…» | (b) completed before the removal | ruling 2 | `0007` |
+| 15 | the same › «★ the seam is behaviour-neutral: called after remove_check_in() has already run…» | (b) completed before the award | it would otherwise compare two empty lists | `0007` |
+| 16 | the same › `one_day_pays_at_check_in` | (a) no job at check-in; completion → **main's key and payload**, one row `…:v1`, the pass again writes nothing | ★ the case DEC-172 names; its key assertions survive verbatim | `0007` |
+| 17 | the same › `reverses_added_day` | (b) the one-day award is written directly as a pre-DEC-172 check-in left it; `[20, -20]` unchanged | no award can be paid before completion any more; the case stays the proof for legacy rows | `0007` |
+| 18 | the same › «★ a ONE-DAY session is untouched by that guard: it still pays while the session is running» | (a) `toHaveLength(1)` + key → `[]` | one rule, no branch on days | `0007` |
+| 19 | the same › `reverses_presenter_bonus_by_member` | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 20 | `scoring-days-presenter-bonus.test.ts` › every case paying or refusing a bonus (`epoch_only`, both `requires_complete`, both `one_day_unchanged`, `skips_silently`, «… 50 + 2 × 2 = 54») | (b) one helper, `present()`, inserts the presenter's accepted row; `oldWorkerLoop()` calls it; two direct calls call it | ruling 1. Without it the refusing cases would pass vacuously | `0007` |
+| 21 | `scoring-days-counting.test.ts` › «★ the EXACT query worker/src/tasks/award_presenter_points.ts runs…» | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 22 | `award-presenter-points.test.ts` › «approval enqueues one proposal_accepted job for the proposer and each accepted co-presenter, none for a declined one» | (a) `toHaveLength(1)` ×2 → `[]` | DEC-172: approval pays nothing | `0008` |
+| 23 | the same › «end to end: the enqueued job awards proposal_accepted's 10 points» | (b) a completed session from the proposal, the proposer its accepted presenter; `10` unchanged | the award re-derives the completed session and the presenter | `0007` |
+| 24 | the same › «award_presenter_points' logic: session_delivered + attendee_bonus per check-in…» | (b) completed + the presenter's row; `54` unchanged | timing + ruling 1 | `0007` |
+| 25 | `recognition-evaluators.test.ts` › `evaluate_streaks.idempotent` and `evaluate_badges.idempotent` | (b) `sessionAtOffset()` completes each session | streaks and badges count completed sessions | `0009` |
+| 26 | `checkin-days.test.ts:505–509` (**`checkin`'s, not edited**) | none: it still passes, but vacuously (no reversal before completion) | its after-completion half is proven by the new case «after completion a removal reverses under reversal:<id>:v1…» in `scoring-completion-timing.test.ts`, as DEC-174 asks | — |
 
 ---
 
