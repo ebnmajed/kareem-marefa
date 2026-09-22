@@ -46,6 +46,14 @@ test.describe.configure({ mode: "serial" });
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 const TITLE = "كيف نخطط لربع السنة";
+// A 1×1 PNG, `sessions-public-card.spec.ts`'s. The master's object has to EXIST
+// for the poster slot to sign it: a ready row with no object reads «يُولَّد
+// الملصق…» where the poster goes (sessions.md W13.10, carried). What the poster
+// looks like is the parity suite's job, not this one's.
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -53,6 +61,7 @@ let orgId = "";
 let sessionId = "";
 let masterId = "";
 let squareId = "";
+let masterPath = "";
 const emails: Record<"boss" | "mod" | "sara" | "nora", string> = { boss: "", mod: "", sara: "", nora: "" };
 const userIds: string[] = [];
 
@@ -127,12 +136,16 @@ test.beforeAll(async ({}, testInfo) => {
     return rows[0].id;
   };
   masterId = await artifact("master", 1080, 1350, "ready", 1_234_000);
+  masterPath = `${orgId}/exports/${doc[0].id}/master.png`;
+  const { error: uploadError } = await admin.storage.from("exports").upload(masterPath, PNG, { contentType: "image/png", upsert: true });
+  if (uploadError) throw uploadError;
   squareId = await artifact("square", 1080, 1080, "ready", 820_000);
   await artifact("story", 1080, 1920, "queued", null);
 });
 
 test.afterAll(async () => {
   if (!db) return;
+  if (masterPath) await admin.storage.from("exports").remove([masterPath]);
   for (const id of userIds) await admin.auth.admin.deleteUser(id);
   if (orgId) await db.query(`delete from public.orgs where id = $1`, [orgId]);
   await db.end();
