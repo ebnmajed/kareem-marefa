@@ -3049,3 +3049,29 @@ route.
 
 **Q2 and Q7, answered by `DEC-177`:** one function (above), and the member's own download **is** audited. Q2 is now
 only the lead's call on the name and the action string.
+
+## Wave 13 — as built (after sync 1, `DEC-178`)
+
+| Row | Commit | State |
+|---|---|---|
+| C1 — `getSessionPosterDownloads()` + types, `downloadHref()` | `e2f9ddb` | **published** |
+| D4 — one signer in `posters.ts`; `designer.ts` re-exports it, `signCertificateUrl` is an alias; `designer-one-signer.test.ts` guards it | `e2f9ddb` | done |
+| The audited route `GET /api/designer/downloads/[artifactId]` → `record_export_download()` → `303` to the signer; a refusal or failure → `303` back to the same-origin Referer with `?download=failed` | `ddf9edb` | built. **End to end waits on `0152`** |
+| D5 — SCR-045's issued rows link to the route; `me/certificates` moved off its bare `<a download>` (`DEC-177`); the studio's export panel moved to the route; thumbnails stay previews | `ddf9edb` | built. The e2e waits on `0152` |
+| D1 runtime — `geometry.ts`, the `arrange.ts` additions, `focal.ts`, `validate.ts` checks a preset's focal | `aa17eb4` | done, with unit tests |
+| D1 UI — canvas pointer model, handles, knob, guides, marquee, nudge bursts, the iframe origin fix; inspector group, transform and image sections; «تحديد متعدّد», select-by-kind | `61afd8b` | done, with jsdom tests. **e2e not yet run (needs a build)** |
+| D1b — add text, shape and logo; duplicate; named delete; text words, weight, colour; shape fill | `eebeb1f` | done. **«صورة» held** on the asset-resolution finding below |
+| D2 — the nine-point grid (the path) and the draggable dot; «الوسط» on an untouched layer writes nothing | `61afd8b` | done |
+| D2b — `scale: 'page'`, `SCHEMA_VERSION` 2, `BASE_SCHEMA_VERSION` 1 for every other writer, `page_scale_needs_v2` | `50c76af` | done. Parity holds; `designer-derive-untouched` matches `main`'s runtime |
+| The posters \| certificates tab strip | `5cd672c` | done |
+| The `SC 2.5.7` gate and the drag spec | `dfafeab` | written, **not yet run** |
+| Contract 2's control on SCR-045 | — | waits on the lead's «promoted» |
+
+**Parity**, run without `--update` after D2b: «parity holds». 21 of 28 assertions ran (the 7 slide-page cases skip locally because there is no `cwebp`), the background block ran 3 of 3, and `scripts/parity/goldens/**` is untouched.
+
+★ **Found while building D1b and sent to the lead, unruled at this writing: no image asset resolves to a URL.**
+- `render.ts:163` passes `image.assetId` through `resolveRef()`, which returns a non-binding value unchanged. The output is `<img src="<uuid>">`.
+- **Every uploaded poster** renders its only layer as a broken image, in the studio and in every export.
+- **Every worker-generated poster** draws the org's logo the same way: `resolveBrand()` gives the raw asset id.
+- The app-side export of a logo works only while the 5-minute signed URL that `getDesignerDocument()` pins is still fresh.
+- My proposal is in the message: an optional `assets` map on the binding context. The worker supplies data: URIs and the studio signed URLs, and with no map the output is byte-identical.
