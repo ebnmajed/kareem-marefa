@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **313** |
+| Requirements (`REQ-*`) | **317** |
 | Entities (`ENT-*`) | **82** |
-| Stories (`STORY-*`) | **147** |
+| Stories (`STORY-*`) | **151** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 39 |
 | Messages cited (`MSG-*`) | 22 |
@@ -125,6 +125,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-040` +2 | — | — | `STORY-CHK-006` | M9 |
 | `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-006` | M9 |
 | `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` +1 | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-007` | M9 |
+| `REQ-CHK-018` | — | — | `SCR-012` `SCR-014` | — | — | `STORY-CHK-008` | M14 |
 
 ### CRT
 
@@ -350,8 +351,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PTS-010` | `ENT-reactions` `ENT-scoring_rules` | `POL-scoring_rules.catalogue` | `SCR-045` `SCR-053` `SCR-054` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-011` | `ENT-points_balances` | — | `SCR-016` `SCR-044` | `JOB-audit_balances` | — | `STORY-PTS-006` | M4 |
 | `REQ-PTS-012` | `ENT-points_ledger` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-award_presenter_points` | `MSG-reminder_` | `STORY-PTS-002` | M4 |
-| `REQ-PTS-013` | — | — | `SCR-022` | — | — | `STORY-PTS-005` | M4 |
+| `REQ-PTS-013` | — | — | `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-005` | M4 |
 | `REQ-PTS-014` | — | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
+| `REQ-PTS-015` | — | — | `SCR-014` `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-007` | M14 |
 
 ### RAT
 
@@ -399,7 +401,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-SES-001` | `ENT-session_days` `ENT-sessions` | — | `SCR-012` `SCR-043` `SCR-057` | — | — | `STORY-SES-001` | M2 |
+| `REQ-SES-001` | `ENT-session_days` `ENT-sessions` | — | `SCR-012` `SCR-043` `SCR-057` | — | `MSG-presenter_assigned` | `STORY-SES-001` | M2 |
 | `REQ-SES-002` | `ENT-session_days` `ENT-sessions` | — | `SCR-014` `SCR-016` `SCR-043` +3 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-001` | M2 |
 | `REQ-SES-003` | `ENT-session_state_transitions` `ENT-sessions` | `POL-session_presenters.decline` | `SCR-042` | — | — | `STORY-SES-002` | M2 |
 | `REQ-SES-004` | — | — | — | `JOB-archive_sessions` `JOB-award_presenter_points` +5 | — | `STORY-SES-003` | M2 |
@@ -417,6 +419,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-016` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +5 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-009` | M9 |
 | `REQ-SES-017` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-010` | M9 |
 | `REQ-SES-018` | — | — | `SCR-012` `SCR-013` | — | — | `STORY-SES-011` | M9 |
+| `REQ-SES-019` | — | — | `SCR-043` `SCR-057` | — | `MSG-presenter_assigned` | `STORY-SES-012` | M14 |
 
 ### SUR
 
@@ -484,5 +487,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-023` | — | — | `SCR-010` | — | — | `STORY-UIX-013` | M9 |
 | `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
 | `REQ-UIX-025` | — | — | `SCR-002` | — | — | `STORY-UIX-015` | M13 |
+| `REQ-UIX-026` | — | — | `SCR-007` `SCR-011` `SCR-012` | — | — | `STORY-UIX-017` | M14 |
 
 <!-- TRACEABILITY:END -->

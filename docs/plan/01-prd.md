@@ -575,6 +575,8 @@ sitting beside `certificate_mode` where that judgement already lives.
   `REQ-CHK-009` makes the verified check-in the sole *trigger* for attendance; the full day set is
   not known until the session ends, so the award is computed then. A one-day session is unchanged,
   because attending every day is attending the one.
+  ★ **Amended by `DEC-172`:** a one-day session also pays at completion (`REQ-PTS-015`) — one rule,
+  no branch on the number of days.
 - The idempotency key is per member **per session**, so re-running the job cannot double-pay
   (`REQ-PTS-011`'s ledger is append-only and must stay recomputable).
 - Partial attendance earns nothing by default, and the member can see why: their points history
@@ -600,6 +602,22 @@ added it from, shown afterwards as a chip, and changeable in one tap.
 - Adding a second day to an existing session **re-scopes nothing**.
 - Reordering days moves day-scoped content with its day; deleting a day that holds content asks,
   and defaults to promoting that content to the session rather than deleting it.
+
+#### REQ-SES-019 — An admin changes a session's presenters after it is created
+**Serves:** owner 2026-09-22 · DEC-172
+A session's presenters are set when it is created and can be changed afterwards by an **مشرف
+المؤسسة**, from the session's admin screen, at any time. Once a proposal becomes a session, the
+proposal's own control no longer applies.
+**Acceptance:**
+- Adding and removing are two audited actions. Each names the member and is refused for anyone
+  outside the org, beyond the org's presenter limit (`A5`), or — for removal — for the last
+  presenter.
+- An added presenter is **assigned**, not invited. They are told by the existing
+  `MSG-presenter_assigned` and appear everywhere a presenter appears, the poster included.
+- Before the session completes, a change costs nothing, because nothing has been paid
+  (`REQ-PTS-015`). After it completes, an added presenter is paid their presenter awards and a
+  removed one's are reversed by compensating entries (`REQ-PTS-013`), never by deleting rows.
+- A presenter taking themselves off is not this requirement.
 
 #### REQ-RSV-001 — A member reserves a seat
 **Serves:** D18
@@ -1286,6 +1304,23 @@ default.
 **Serves:** §8 quality bar · D38
 **Acceptance:**
 - An org admin can change any value, cap, cooldown or enablement through the console alone.
+
+#### REQ-PTS-015 — Every award a session earns is paid when the session completes
+**Serves:** owner 2026-09-22 · DEC-172
+Attendance, company, presenter and proposal awards tied to a session are written to the ledger
+**when the session completes**, and never before — whatever the number of days. The check-in is
+still the sole *trigger* for attendance (`REQ-CHK-009`); the payment waits for the end.
+**Acceptance:**
+- One rule and one moment, with no branch on the number of days. A one-day session pays at
+  completion, exactly as a multi-day session already does (`REQ-SES-017`).
+- Before completion, removing an attendance record or a presenter leaves no ledger row and needs no
+  reversal. After completion, the compensating entry of `REQ-CHK-017` / `REQ-PTS-013` still
+  applies.
+- `proposal_accepted` is paid at completion under the key it has always had, so an award already
+  paid at approval is never paid again.
+- Streaks and badges that count attended sessions count completed ones.
+- A pending amount is **computed** from the rules and the attendance, and never stored — the ledger
+  remains the only record of a balance (`REQ-PTS-001`).
 
 ---
 
@@ -2641,6 +2676,19 @@ corrected by the one role accountable for the org's records.
 - The member sees the outcome honestly: their «حضرت» becomes «لم تُسجّل حضورك», and their points
   history shows the reversal as an entry rather than a number that quietly changed.
 
+#### REQ-CHK-018 — Check-in says what the member has earned and when it arrives
+**Serves:** owner 2026-09-22 · DEC-172
+The member who checks in is told, at once, what they have earned and that it arrives when the
+session ends. This replaces the feedback the ledger row used to give when a one-day session paid at
+check-in (`REQ-PTS-015`), and it is the base a later gamification layer builds on.
+**Acceptance:**
+- It is a **state the screen reads from the data**, not a message fired once. A reload, or opening
+  the event page later, shows the same thing.
+- It distinguishes nothing earned, pending (with the amount, and for a multi-day session the days
+  attended out of the days required), paid, and not earned because a day was missed.
+- The amount shown is the one the completion pass will write, computed from the same rules — never
+  a separate stored figure.
+
 #### REQ-UIX-021 — The member's landing screen is the sessions timeline
 **Serves:** owner 2026-09-15 · DEC-112
 `/app` renders **the sessions a member can attend**, as a single scrollable timeline grouped by
@@ -2752,6 +2800,17 @@ both CTAs point only at `/register`, so a member with an account must type `/sig
   sign-in door are different things (`DEC-002`, invariant 2).
 - Nothing is added to the marketing header before M13; `npm run qa` stays 44/44 and the visual
   baseline is re-cut in the same commit as the rebuild, never before it.
+
+#### REQ-UIX-026 — A poster is shown whole wherever it appears
+**Serves:** owner 2026-09-22 · DEC-172
+A poster is a designed artefact whose typography is the point. **No surface crops it.** Where the
+space given to a poster does not match its aspect, the space around it is left empty rather than
+the poster being cut.
+**Acceptance:**
+- At 390 px and at desktop width, the timeline card, the event page, the public card and every
+  other surface showing a poster show its full width and height.
+- Each surface's media aspect is chosen deliberately and written down. A surface that shows a
+  photo rather than a poster says whether it may crop, and why.
 
 ---
 

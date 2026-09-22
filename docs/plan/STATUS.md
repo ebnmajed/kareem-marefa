@@ -1,7 +1,54 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-11/m13`, **PR #28 ready for the owner** · **`main`:** **LAUNCHED 2026-09-15; wave 10 merged** (PR #27, `b75eb45`; `0123`–`0142` live on production; ★ **the Railway worker is RUNNING on `b75eb45`**, read 2026-09-22) · **Phase:** ★★ **WAVE 11 — M13, THE LAST MILESTONE (`DEC-166`, `DEC-167`)** — the public site rebuilt on the M9 system with a door into the platform, behind `qa` split into a contract half (blocking at every commit) and an appearance half; `ui-lint --strict` with its allowlist deleted (61 → 0); the accessibility and performance passes; the mail's string path retired. **Step 0 done**: the baseline `pre-m13` captured from `main` before the branch; the map in `CLAUDE.md` and all ten `.claude/agents/*.md`; the checklist is the wave-11 block below. Spawned, planning-only: `content`, `console`, `notify`, `platform`, `branding`. Migrations start at **`0143`** and are additive.
+**Last updated:** 2026-09-22 · **Branch:** `wave-12/presenters-awards-posters` (from `main` `2eea8a5`) · **`main`:** wave 11 merged (PR #28, `b3f8d76`); production at **`0144`** · **Phase:** ★★ **WAVE 12 — NEW SCOPE AFTER THE PLAN (`DEC-172`, milestone M14)** — presenters change after creation (`REQ-SES-019`), every session award pays at completion and check-in says what is pending (`REQ-PTS-015`, `REQ-CHK-018`), a poster is never cropped (`REQ-UIX-026`). **Step 0 done**: `DEC-172`, the four requirements traced, the map in `CLAUDE.md` and all ten `.claude/agents/*.md`. Spawned, planning-only: `scoring`, `sessions`, `checkin`. Migrations start at **`0145`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
+
+---
+
+## ★★★ WAVE 12 — on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
+
+**New scope after the plan.** `DEC-171` closed `14-roadmap.md`; this wave is milestone **M14** so its stories
+trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 12)*.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `2eea8a5` (merge `b3f8d76` + the two brief commits, **not yet pushed to `origin/main`**) |
+| Production | `0144`; no open PRs |
+| ★ Brief vs code, 1 | **`proposal_accepted` is paid at APPROVAL** (`0031`'s `proposals_award_points()`), not at completion; `0031:84` is `sessions_completion_fanout()`. **The owner answered: it moves to completion** (`DEC-172`) |
+| ★ Brief vs code, 2 | `session_presenters` **has** admin `insert`/`delete` policies with grants (`0010:476–483`); what is missing is an RPC, a DAL function and a screen. **No session-level accept/decline screen exists** → an admin-added presenter is **assigned** (`accepted = true`), matching `MSG-presenter_assigned` |
+| ★ Brief vs code, 3 | `wave9-checkin-one-day.spec.ts` **asserts nothing about points**; pay-at-check-in is pinned by RLS files (`scoring-days-award` `one_day_pays_at_check_in`, `checkin-contract-5`, likely `checkin-{late-job-hooks,manual-mark,removal}`) — transferred to `scoring` as evidence |
+| ★ Brief vs code, 4 | `CardMedia` is used by 7 files, not the 10 listed: `browse/session-card` (4/5), `s/[id]` (16/9, placeholder only), `designer/template-library` (by orientation), the three moderation cards (16/9, photos), the `(dev)` gallery (4/5). `event-hero`, `posters/{picker,session-poster}` and `sessions/[id]/page` do **not** use it and have no `object-cover`. The crop is `object-cover` **plus** the row densities' `items-stretch`, which make the media box taller than 4:5 at a fixed width |
+| `trace` | 317 requirements · 151 stories · no gaps (M14 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-172`; `REQ-SES-019`, `REQ-PTS-015`, `REQ-CHK-018`, `REQ-UIX-026` in `01` with stories, screens and M14; the map; the ten agent files | lead | **done** |
+| C1 | Contract 1 — the pending state: SQL function + `points.ts` DTO, names and type in `scoring`'s note | `scoring` → `checkin` | planning |
+| C2 | Contract 2 — presenter rows are `sessions'`, their money is `scoring`'s triggers; removal is a `delete` | `sessions` ↔ `scoring` | planning |
+| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | planning |
+| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | planning |
+| A2 | `proposal_accepted` at completion under its existing key | `scoring` | planning |
+| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | planning |
+| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | planning |
+| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | planning |
+| L1 | ★ The whole poster — `CardMedia`, each surface's aspect written down, visual + gallery re-baselined in one commit | lead | todo |
+| L2 | Promotion from `0145`, the rehearsal notes | lead | todo |
+| D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | todo |
+| D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | todo |
+| D3 | Demonstrable — one-day: check in, told pending, no row; completes, row appears; removed before completion → no row, no reversal | lead | todo |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | todo |
+
+### Untouched-suite ledger (wave 12)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+| — | — | — |
 
 ---
 

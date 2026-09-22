@@ -30,7 +30,7 @@ const RE = {
   msg: /\bMSG-[a-z_]+\b/g,
   story: /^####\s+(STORY-[A-Z]{3}-\d{3})\s+—/gm,
   // Longest alternative first, or `M13` matches as `M1` and drops the 3 (DEC-102).
-  milestone: /\bM(?:1[0-3]|[0-9])\b/g,
+  milestone: /\bM(?:1[0-4]|[0-9])\b/g,  // M14: DEC-172, new scope after the plan
 }
 
 // TRACEABILITY.md is excluded: it is generated FROM this analysis, so feeding

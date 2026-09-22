@@ -4063,3 +4063,46 @@ The public site and the platform behind it, live since 2026-09-15: sessions (one
 | Recurring series (`A14`) · drag in `ui/reorderable-list` · objectives, tag management, avatar storage, downloads (`DEC-076`) · points for a survey · the exhausted-job alert's `max_attempts` lever | new features, never in M13's scope | owner |
 
 - **Documents changed:** `STATUS.md` (the closing block and START HERE)
+
+---
+
+## DEC-172 — Wave 12 is new scope: presenters change after creation, every session award pays at completion and check-in says what is pending, and a poster is never cropped
+
+- **Date:** 2026-09-22 · **Decided by:** the owner (two reported defects, one ruling, and the answer on `proposal_accepted` below); scoped and measured by the wave-12 lead from `docs/plan/notes/wave-12-lead.md`
+- **Amends:** `REQ-SES-017` (the one-day exception to «evaluated at completion» ends), `05` §1.2 (`proposal_accepted` is paid at completion, not approval), `DEC-151` (the timing difference in `attendance_recorded()` is removed; nothing else in it changes)
+- **Adds:** `REQ-SES-019`, `REQ-PTS-015`, `REQ-CHK-018`, `REQ-UIX-026` (`01-prd.md`)
+- ★ **This is not a milestone of `14-roadmap.md`.** DEC-171 closed the plan; this entry is the first piece of new scope, logged before anyone is spawned, as DEC-085 requires.
+
+### Measured before deciding — three of the brief's claims did not hold
+
+1. **Presenter points were not all paid at completion.** `0031`'s `sessions_completion_fanout()` pays `session_delivered`, `attendee_bonus` and `rating_bonus` when a session completes. But `proposals_award_points()` pays **`proposal_accepted` at approval**, to the proposer and every accepted co-presenter. The owner was asked and answered: **it moves to completion.**
+2. **`session_presenters` has a writer at the table.** `0010` grants admins `insert` and `delete` under `p2_admin_insert` / `p2_admin_delete`. What does not exist is an RPC, a DAL function or a screen — and **no session-level accept or decline screen exists either**: the only accept flow is on proposals. The insert notifier is `MSG-presenter_assigned` («an admin can … assign a presenter»).
+3. **`wave9-checkin-one-day.spec.ts` asserts nothing about points.** The suites that pin pay-at-check-in are RLS files — among them `scoring-days-award` (`RPC-attendance_recorded.one_day_pays_at_check_in`) and `checkin-contract-5`. Those are what the untouched-suite ledger will name.
+
+### 1 · Presenters change after a session is created (`REQ-SES-019`)
+
+- Two RPCs, `add_session_presenter()` and `remove_session_presenter()`, **admin only** — the same gate as the table's own policies and the schedule screen. The brief's «staff» is read as «not the presenter»; a moderator does not schedule (`REQ-SES-001`). They insert and delete rows, so `presenter_is_same_org()`, `presenters_within_limit()`, `session_presenters_notify()` and the poster hook run unchanged. Each writes an `audit_log` row.
+- ★ **An admin-added presenter is ASSIGNED, `accepted = true`**, as the proposer is and as `MSG-presenter_assigned` already says. Building a session-level invitation flow is new scope; a presenter who wants off asks the admin.
+- The control sits on `/app/admin/sessions/[id]/schedule`, composed from `components/admin/member-picker` and `components/sessions/remove-presenter` — no new primitive.
+- **At least one presenter stays.** Removing the last is refused at the RPC.
+
+### 2 · Every session award pays at completion; check-in acknowledges (`REQ-PTS-015`, `REQ-CHK-018`)
+
+- **One rule, one moment, no branch on day count.** `attendance_recorded()` evaluates only a session that is already `completed` or `archived` (what pays a member marked present afterwards). `award_points()` loses its multi-day-only clause, so the rule holds even for a late job. `proposal_accepted` is paid by the completion fan-out to the session's accepted presenters who were on the proposal, **under the key it has today**, so a proposal already paid at approval before this change is never paid twice.
+- ★ **Presenter awards follow the presenter, whatever the moment.** A row becoming an accepted presenter of a completed session enqueues that presenter's award. A row that stops being an accepted presenter — deleted or declined — gets a **compensating row for each presenter award it holds for that session** (`0087`'s shape: its own idempotency key, never a delete). Before completion that finds nothing, except a `proposal_accepted` paid at approval before this change. A presenter re-added after a reversal can be paid again, under an epoch, as attendance is (`0113`).
+- ★ **A pending amount is computed, never stored.** `scoring` publishes one function and one DAL DTO that say, for the caller and a session: nothing earned, pending (how much, and days attended out of days required), paid, or incomplete. `checkin` renders it on the check-in screen and the attendance outcome as a **state read from the data**, which survives a reload — not a toast.
+- Streaks and badges that count attended sessions count **completed** ones, so no award follows a check-in before the session ends. `scoring` measures each downstream reader and says what moved.
+- What it buys: before completion, an admin editing attendance or presenters costs nothing — no reversal, because nothing was paid. `0087`'s machinery stays for the after-completion case.
+
+### 3 · A poster is shown whole (`REQ-UIX-026`)
+
+- The cause is `CardMedia`'s `object-cover` (`ui/card.tsx`), and the row densities' `items-stretch`, which make the media box taller than 4:5 while its width is fixed — so the image is cut at the sides.
+- ★ **The decision: a designed artefact is never cropped.** The poster box keeps the poster's aspect instead of stretching, and the image is `object-contain` on the navy ground, so a poster whose aspect differs is letterboxed rather than cut. Empty space beside a poster is acceptable; a sliced title is not. Each `CardMedia` surface is decided once and the reasoning is written in the lead's STATUS row. The public card's `visual` pair and the `(dev)` gallery are re-baselined in the same commit.
+
+### The team (the map is `CLAUDE.md` § *Ownership map (wave 12)*)
+
+`scoring` (opus): the timing, the presenter award hooks, the pending function, and the downstream readers. `sessions` (opus): the two RPCs and the control. `checkin` (opus): the acknowledgement. **The lead** does the poster as custodian of `ui/card.tsx`, with the two `sessions`' files that frame it transferred for the wave. It also writes the three demonstrables, every table change, the promotions from `0145`, and the gates.
+
+**Not this wave — the owner's remaining list, unstarted:** per-session settings consolidated · deleting a session with its awarded points · the photo gallery with a lightbox · the wordmark navigating to marketing rather than `/app` · Google avatars discarded (`avatarUrl={null}`) · the gamification layer · the prose pass · `DEC-100`'s motion system.
+
+- **Documents changed:** `01-prd.md` (four requirements, `REQ-SES-017`'s acceptance), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-12 block)

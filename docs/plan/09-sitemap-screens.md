@@ -129,6 +129,8 @@ after the choice — the permanence is enforced by `org_id`'s immutability, not 
 and not a redirect loop. No account, member row or audit subject is created.
 
 ### SCR-007 · `/s/[id]` — the public session card
+
+★ **Wave 12 (`DEC-172`) — `REQ-UIX-026`:** the public card's media never crops a poster.
 **Purpose:** a shareable preview of one session. **Roles:** anyone, unauthenticated.
 **Serves:** `REQ-DSC-006`, `REQ-SES-013`, `REQ-UIX-003`, DEC-066
 **Primary action:** «افتح الجلسة» — which leads to sign-in, carrying `?next=` to that session.
@@ -180,6 +182,8 @@ returns not-found (`REQ-CRT-009`).
 **Realtime:** points and RSVP counts.
 
 ### SCR-011 · `/app/sessions`
+
+★ **Wave 12 (`DEC-172`) — `REQ-UIX-026`:** a timeline card's poster is shown whole at 390 px and at desktop width — never cropped.
 **Purpose:** browse and find. **Serves:** `REQ-DSC-003`, `REQ-DSC-005`
 **Primary action:** open a session.
 **Filters:** التصنيف · التاريخ · المكان · المستوى · المُقدِّم · الشركة · **لغة الجلسة** (OQ-017)
@@ -191,6 +195,8 @@ results.
 from a separate rule. Date range pickers run right-to-left.
 
 ### SCR-012 · `/app/sessions/[id]` ★ — the event page
+
+★ **Wave 12 (`DEC-172`) — `REQ-CHK-018`, `REQ-UIX-026`:** the attendance outcome shows the pending award until the session completes; the poster is shown whole.
 **Purpose:** everything about one جلسة. **Roles:** any member. **Serves:** `REQ-SES-013`,
 `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-006`, `REQ-TSK-004`
 **Primary action:** exactly one — «احجز مقعدك» / «انضم لقائمة الانتظار» / «ألغِ حجزي» / «سجّل حضورك»
@@ -242,6 +248,8 @@ page numbers use the org numeral setting.
 exists at all, and a denied member never receives a URL (`07` §6).
 
 ### SCR-014 · `/app/sessions/[id]/check-in` ★
+
+★ **Wave 12 (`DEC-172`) — `REQ-CHK-018`, `REQ-PTS-015`:** after a verified check-in the screen shows what the member has earned and that it arrives when the session ends — a state read from the data, the same on reload, never a toast. No ledger row is written here any more.
 **Purpose:** the only proof of attendance. **Serves:** `REQ-CHK-003`, `REQ-CHK-006`,
 `REQ-CHK-010`, `REQ-CHK-011`
 **Primary action:** enter **رمز الحضور**.
@@ -345,6 +353,8 @@ component-level check would leak through search results, realtime payloads and t
 tagging** — «الصور» means photos this member **uploaded**.
 
 ### SCR-022 · `/app/me/points` ★
+
+★ **Wave 12 (`DEC-172`) — `REQ-PTS-015`:** session awards arrive at completion; the balance never shows a figure the ledger does not hold.
 **Purpose:** explain every point. **Serves:** `REQ-PTS-003`
 **Primary action:** none — it is a record.
 **Shows:** running balance · current level and distance to the next · every ledger row with date,
@@ -399,6 +409,8 @@ is a number nobody trusts.
 reason** the proposer receives.
 
 ### SCR-043 · `/app/admin/sessions/[id]/schedule` ★
+
+★ **Wave 12 (`DEC-172`) — `REQ-SES-019`:** the session's presenters are listed here and changed here — add with the member picker, remove with a confirm that names the person; the last presenter cannot be removed.
 **Purpose:** turn an approved مقترح into a published جلسة. **Serves:** `REQ-SES-001`,
 `REQ-SES-002`, `REQ-CRT-002`, `REQ-DSG-002`
 **Primary action:** «انشر الجلسة»
