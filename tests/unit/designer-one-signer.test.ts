@@ -33,10 +33,10 @@ describe("the one export signer", () => {
     expect(found).toEqual([{ path: join("src", "lib", "dal", "posters.ts"), count: 1 }]);
   });
 
-  it("the other two names are the same function, not copies", async () => {
+  it("the studio's name is the same function, not a copy — and the certificates' is gone (DEC-177)", async () => {
     const source = (p: string) => readFileSync(join(root, p), "utf8");
     expect(source("src/lib/dal/designer.ts")).toContain('export { signExportUrl } from "@/lib/dal/posters"');
-    expect(source("src/lib/dal/certificates.ts")).toMatch(/export const signCertificateUrl = signExportUrl;/);
+    expect(source("src/lib/dal/certificates.ts")).not.toContain("signCertificateUrl");
   });
 
   it("the matcher sees a chain split across lines", () => {

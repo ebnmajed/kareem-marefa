@@ -11,14 +11,13 @@ import type { CertificateRow, MyCertificates } from "@/lib/dal/certificates";
 
 vi.mock("@/lib/dal/certificates", () => ({
   listMyCertificates: vi.fn(),
-  signCertificateUrl: vi.fn().mockResolvedValue(null),
   getOrgTimeZone: vi.fn().mockResolvedValue("Asia/Riyadh"),
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "certificates" }),
 }));
 
-const { listMyCertificates, signCertificateUrl } = await import("@/lib/dal/certificates");
+const { listMyCertificates } = await import("@/lib/dal/certificates");
 const { default: MyCertificatesPage } = await import("@/app/[locale]/app/me/certificates/page");
 
 function cert(overrides: Partial<CertificateRow> = {}): CertificateRow {
@@ -68,7 +67,6 @@ describe("MyCertificatesPage", () => {
   });
 
   it("shows 'preparing' rather than a broken download when the PDF has not rendered yet", async () => {
-    vi.mocked(signCertificateUrl).mockResolvedValueOnce(null);
     await renderPage([cert({ pdfPath: null })]);
     expect(screen.getByText("الشهادة قيد التجهيز")).toBeInTheDocument();
     expect(screen.queryByText("نزّل الشهادة")).not.toBeInTheDocument();

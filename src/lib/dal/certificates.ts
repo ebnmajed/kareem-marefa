@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type BrandScheme, type DesignDocument, formatBindingDate, orientationOf, validateDocument } from "@kareem/designer-runtime";
 import { createServerClient } from "@/lib/supabase/server";
 import { previewBrandBindings } from "@/lib/dal/designer";
-import { downloadHref, signExportUrl } from "@/lib/dal/posters";
+import { downloadHref } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
 
 // Certificates — REQ-CRT-004 … REQ-CRT-014, 03 §5.8/§5.8a, A13.
@@ -162,10 +162,6 @@ export async function listMyCertificates(locale: string): Promise<MyCertificates
   };
 }
 
-/** ★ An ALIAS of the one signer (REQ-DSG-027), not a copy: the event page
- *  (`sessions'`) still imports this name. Deleted when its last caller moves to
- *  `downloadHref` — a member's own download is audited too (DEC-177). */
-export const signCertificateUrl = signExportUrl;
 
 /* ── SCR-045: the session's, for review and release ────────────────────── */
 

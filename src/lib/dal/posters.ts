@@ -439,8 +439,10 @@ export async function signDesignAssetUrl(locale: string, assetId: string): Promi
  * the boundary — org-prefixed, and the path came from the one builder (03 §6).
  *
  * It lives HERE, in the leaf module, because `designer.ts` imports this file and
- * `certificates.ts` imports `designer.ts`; `designer.ts` re-exports it and
- * `signCertificateUrl` is an alias, so no caller changed its import.
+ * `certificates.ts` imports `designer.ts`; `designer.ts` re-exports it so the
+ * studio's import did not move. `signCertificateUrl` is gone: every certificate
+ * a person takes away now goes through the audited route (DEC-177), and a
+ * certificate needs no preview.
  *
  * `download` names the file (Content-Disposition: attachment) — the audited
  * download route passes the name `record_export_download()` built; a preview or
@@ -563,13 +565,21 @@ export async function getSessionPosterDownloads(locale: string, sessionId: strin
 
   let entitled = session.role === "admin" || session.role === "moderator";
   if (!entitled) {
-    const { data: presenter } = await supabase
+    // The same rule as `record_export_download()` (0152): an ACCEPTED presenter
+    // who has not declined. `session_presenters` has no `id` column — asking for
+    // one made PostgREST error, `data` came back null, and every non-staff
+    // presenter read as «not entitled» (found by `sessions`' hub spec). An error
+    // is therefore thrown, never read as «render nothing»: a silent null is
+    // exactly what hid it.
+    const { data: presenter, error } = await supabase
       .from("session_presenters")
-      .select("id")
+      .select("member_id")
       .eq("session_id", sessionId)
       .eq("member_id", session.memberId)
       .eq("accepted", true)
+      .is("declined_at", null)
       .maybeSingle();
+    if (error) throw new Error(`posters: the presenter check failed — ${error.message}`);
     entitled = presenter !== null;
   }
   if (!entitled) return null;
