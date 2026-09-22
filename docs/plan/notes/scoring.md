@@ -1248,7 +1248,7 @@ behaviour**, and `main`'s worker on this SQL behaves exactly like the new one.
 
 ## A1 · One-day attendance at completion — one rule, one moment
 
-**File:** `supabase/proposed/scoring/0002_award_at_completion.sql` (after contract 1's `0001`). Four
+**File:** `supabase/proposed/scoring/0007_award_at_completion.sql` (after contract 1's `0001`). Four
 functions re-created with `create or replace` and the same signatures. No new signature.
 
 | Function | Change |
@@ -1284,7 +1284,7 @@ wrongly.
 
 ## A2 · `proposal_accepted` at completion, under its existing key
 
-**File:** `0003_presenter_awards.sql`.
+**File:** `0008_presenter_awards.sql`.
 
 - **`proposals_award_points()` and its trigger are dropped**, both in this file:
   `drop trigger proposals_award_points on public.proposals; drop function public.proposals_award_points();`.
@@ -1317,7 +1317,7 @@ wrongly.
 scoring function. **My trigger decides the money**, so `0010`'s direct admin policies are covered as well
 as `sessions`' RPCs.
 
-### The trigger (`0003_presenter_awards.sql`)
+### The trigger (`0008_presenter_awards.sql`)
 
 ```sql
 create function public.session_presenters_awards() returns trigger
@@ -1412,7 +1412,7 @@ Session `S` completed; `P` added (`accepted`); one qualifying attendee `A` (epoc
 
 ## A4 · Streaks and badges count completed sessions; every downstream reader measured
 
-**File:** `0004_counting_completed.sql`, which re-creates `evaluate_streaks()` and `evaluate_badges()`
+**File:** `0009_counting_completed.sql`, which re-creates `evaluate_streaks()` and `evaluate_badges()`
 from `0113`.
 
 | Reader | Today | Change |
@@ -1439,7 +1439,7 @@ change. Question 11.
 
 ## Contract 1 — the build
 
-**File:** `0001_session_award_state.sql`, then `src/lib/dal/points.ts` (additive: `AwardDay`,
+**File:** `0006_session_award_state.sql`, then `src/lib/dal/points.ts` (additive: `AwardDay`,
 `SessionAwardState`, `getSessionAwardState`). No screen of mine changes.
 
 ---
@@ -1554,7 +1554,7 @@ D3 demonstrables exercise this end to end.
 
 ## Files
 
-`supabase/proposed/scoring/{0001_session_award_state,0002_award_at_completion,0003_presenter_awards,0004_counting_completed}.sql`
+`supabase/proposed/scoring/{0006_session_award_state,0007_award_at_completion,0008_presenter_awards,0009_counting_completed}.sql`
 · `src/lib/dal/points.ts` (additive) · `worker/src/tasks/evaluate_no_shows.ts` (a comment) · the seven
 new test files · the ledger lines above, written by the lead in the same commit as each promoted file.
 **No** `create table` / `alter table`, no `src/messages` change, no screen.
@@ -1661,3 +1661,78 @@ refuse it. The new row is `RPC-award_points.presenter_earns_no_attendance`, in
 `scoring-completion-timing.test.ts`.
 
 **`checkin`'s Q2** (incomplete before completion): accepted by the lead, as row 4 of contract 1 states.
+
+
+---
+
+# Wave 12 — built (after sync 1, `DEC-174`)
+
+**Proposed files are numbered `0006`–`0009`, not `0001`–`0004`.** Wave 9's test files still name
+`scoring/0001_attendance_hooks.sql` … `0005_attendee_bonus_guard.sql` behind their probes, so reusing a
+number would be confusing to read. The lead renumbers them from `0146` at promotion anyway.
+
+| File | What | Proven by (new files) | Green |
+|---|---|---|---|
+| `supabase/proposed/scoring/0006_session_award_state.sql` | contract 1: `session_award_state()`, `attendance_award_barred()` | `tests/rls/scoring-award-state.test.ts` (9) · `tests/unit/scoring-award-state.test.ts` (8) | yes |
+| `…/0007_award_at_completion.sql` | `award_points()` (timing for every session, the presenter bar, the presenter guard and epoch), `presenter_award_epoch()`, `proposal_presenter()`, `evaluate_member_attendance()` (pay waits for completion; ruling 9's re-pay), `attendance_recorded()`, `attendance_removed()` (no-show waits) | `scoring-completion-timing.test.ts` (10) | yes |
+| `…/0008_presenter_awards.sql` | the approval trigger dropped; `enqueue_presenter_awards()`; `sessions_completion_fanout()` re-created; the `session_presenters_awards` trigger | `scoring-presenter-awards.test.ts` (7) · `scoring-proposal-at-completion.test.ts` (5) · `scoring-presenter-recompute.test.ts` (1) | yes |
+| `…/0009_counting_completed.sql` | `evaluate_streaks()`, `evaluate_badges()` count completed sessions | `scoring-counting-completed.test.ts` (2) | yes |
+| `src/lib/dal/points.ts` | `AwardDay`, `SessionAwardState`, `getSessionAwardState()`, `toSessionAwardState()` | the unit file above | `1458c16` |
+| `worker/src/tasks/evaluate_no_shows.ts` | **comment only**: the one-day «proven no-op» sentence is no longer true | — | — |
+
+**Whole RLS suite with every edit below applied: 128 of 129 files green.** The one red file is
+`survey-submit.test.ts` (6 cases), which is **not mine and was red before any of my files existed**: it
+fails identically on a run that applies none of my SQL. It counts all `record_survey_response` jobs with a
+null key, and the shared database holds 4 such **committed** jobs, left there by some earlier run. Also
+not mine: `session-presenters-admin.test.ts` › «a member of another org» was red once, on `sessions`'
+uncommitted work, and green on the next run.
+
+**Every edited test file applies `0006`–`0009` in its `ready()` / `setup()` / `apply()`.** That is one
+loop, a no-op once promoted (`applyProposed()` skips a missing file), and it is what lets each case be
+proven green **before** promotion.
+
+## ★ The untouched-suite ledger lines — file, case, (a) expectation inverts / (b) harness only, why
+
+Every file below also gains the `applyProposed()` loop for `0006`–`0009` (harness). **Promote `0007`,
+`0008` and `0009` with these lines in the same commit**; `0006` moves nothing.
+
+| # | File › case | Move | Why | Needs |
+|---|---|---|---|---|
+| 1 | `award-points.test.ts` › `POL-check_in.award_points_hook` › «a successful check-in enqueues exactly one award_points job, keyed by the check-in id» | (a) `toHaveLength(1)` → `0`, twice; the task and payload lines go | `REQ-PTS-015`: nothing is enqueued before completion | `0007` |
+| 2 | the same › «end to end: running the enqueued job's SQL awards the check-in's points» | (b) the session completes and `evaluate_session_attendance()` runs before the job is read; `20` unchanged | the job exists only after completion | `0007` |
+| 3 | `checkin-contract-5.test.ts` › «a code check-in enqueues exactly one award_points job under pts:check_in:<id>» | (a) `1` → `0` | as 1 | `0007` |
+| 4 | the same › «a manual mark enqueues the same one job under the same key…» | (a) `1` → `0` | as 1 | `0007` |
+| 5 | the same › «writes one compensating row per unreversed award, with the same key and reason, and awards the no-show» | (b) the session completes before the award | no award on a live session, and no no-show at removal before completion (DEC-174 ruling 2) | `0007` |
+| 6 | `checkin-manual-mark.test.ts` › «enqueues exactly one award_points job, keyed pts:check_in:<id>…» | (a) `1` → `0` | as 1 | `0007` |
+| 7 | `checkin-removal.test.ts` › «reverses the points award with ONE compensating entry…» | (b) the session completes before the award | as 5 | `0007` |
+| 8 | the same › «removing a confirmed-RSVP member's check-in awards no_show…» | (b) the session completes before the removal | ruling 2 | `0007` |
+| 9 | `checkin-late-job-hooks.test.ts` › «a removed check-in does not count toward a NOT-YET-awarded streak period or badge threshold» | (b) the session completes before the evaluators run | it would otherwise pass vacuously: a running session no longer counts at all | `0009` |
+| 10 | `scoring-days-award.test.ts` › «enqueues exactly one award_points job under main's key, with main's exact payload» | (b) the session is `completed` | the hook pays only after completion; key and payload unchanged | `0007` |
+| 11 | the same › «★ the seam is behaviour-neutral: called after check_in()'s own inline enqueue…» | (a) `before` and `after` `1` → `0`; the equality lines go | no inline enqueue and no pre-completion job | `0007` |
+| 12 | the same › «calling it twice touches the same key, never a second job» | (b) `completed` | as 10 | `0007` |
+| 13 | the same › «writes ONE compensating row for the attendee's award AND one for the presenter's attendee_bonus…» | (b) completed, and the presenter's accepted row, before the awards | timing plus DEC-174 ruling 1 | `0007` |
+| 14 | the same › `no_show_symmetry` › «a confirmed RSVP earns the no_show rule…» | (b) completed before the removal | ruling 2 | `0007` |
+| 15 | the same › «★ the seam is behaviour-neutral: called after remove_check_in() has already run…» | (b) completed before the award | it would otherwise compare two empty lists | `0007` |
+| 16 | the same › `one_day_pays_at_check_in` | (a) no job at check-in; completion → **main's key and payload**, one row `…:v1`, the pass again writes nothing | ★ the case DEC-172 names; its key assertions survive verbatim | `0007` |
+| 17 | the same › `reverses_added_day` | (b) the one-day award is written directly as a pre-DEC-172 check-in left it; `[20, -20]` unchanged | no award can be paid before completion any more; the case stays the proof for legacy rows | `0007` |
+| 18 | the same › «★ a ONE-DAY session is untouched by that guard: it still pays while the session is running» | (a) `toHaveLength(1)` + key → `[]` | one rule, no branch on days | `0007` |
+| 19 | the same › `reverses_presenter_bonus_by_member` | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 20 | `scoring-days-presenter-bonus.test.ts` › every case paying or refusing a bonus (`epoch_only`, both `requires_complete`, both `one_day_unchanged`, `skips_silently`, «… 50 + 2 × 2 = 54») | (b) one helper, `present()`, inserts the presenter's accepted row; `oldWorkerLoop()` calls it; two direct calls call it | ruling 1. Without it the refusing cases would pass vacuously | `0007` |
+| 21 | `scoring-days-counting.test.ts` › «★ the EXACT query worker/src/tasks/award_presenter_points.ts runs…» | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 22 | `award-presenter-points.test.ts` › «approval enqueues one proposal_accepted job for the proposer and each accepted co-presenter, none for a declined one» | (a) `toHaveLength(1)` ×2 → `[]` | DEC-172: approval pays nothing | `0008` |
+| 23 | the same › «end to end: the enqueued job awards proposal_accepted's 10 points» | (b) a completed session from the proposal, the proposer its accepted presenter; `10` unchanged | the award re-derives the completed session and the presenter | `0007` |
+| 24 | the same › «award_presenter_points' logic: session_delivered + attendee_bonus per check-in…» | (b) completed + the presenter's row; `54` unchanged | timing + ruling 1 | `0007` |
+| 25 | `recognition-evaluators.test.ts` › `evaluate_streaks.idempotent` and `evaluate_badges.idempotent` | (b) `sessionAtOffset()` completes each session | streaks and badges count completed sessions | `0009` |
+| 26 | `checkin-days.test.ts:505–509` (**`checkin`'s, not edited**) | none: it still passes, but vacuously (no reversal before completion) | its after-completion half is proven by the new case «after completion a removal reverses under reversal:<id>:v1…» in `scoring-completion-timing.test.ts`, as DEC-174 asks | — |
+
+## What a reader should know that the SQL does not say out loud
+
+- ★ **A `proposal_accepted` job queued at approval seconds before the push** and run after completion
+  writes its row with `session_id = null`: the payload it carries is the old one. The completion fan-out
+  replaces a still-queued job under the same key with the new payload, so this needs a job that is
+  **both** queued before the push **and** still queued at completion. That is harmless, and recorded.
+- **`attendance_award_barred()` is also «is an accepted presenter»**: `award_points()`'s presenter guard
+  calls it with the opposite sense. One definition; the name reads from the attendance side because that
+  is where contract 1 needs it.
+- **The trigger never raises** and returns on a cascade (session or member row gone). A failed award
+  cannot undo an admin's presenter change.

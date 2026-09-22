@@ -31,12 +31,11 @@ function isPayload(p: unknown): p is EvaluateNoShowsPayload {
 export const evaluate_no_shows: Task = async (payload, helpers) => {
   if (!isPayload(payload)) throw new Error(`evaluate_no_shows: malformed payload ${JSON.stringify(payload)}`);
 
-  // ★ FIRST, the attendance award (REQ-SES-017, DEC-151 answer 4). For a
-  // multi-day session this is where the award happens at all — the full day
-  // set is not known until the session ends. For a ONE-DAY session it is a
-  // proven no-op: the award landed at check-in under the very key this pass
-  // recomputes, so evaluate_member_attendance() finds it standing and writes
-  // nothing.
+  // ★ FIRST, the attendance award (REQ-SES-017, DEC-151 answer 4, and since
+  // wave 12 REQ-PTS-015 / DEC-172). This is where EVERY session's attendance
+  // award happens — one day or many, nothing is paid at check-in any more.
+  // The key is the one a check-in used to enqueue, so an award paid at
+  // check-in before DEC-172 is found standing here and nothing more is written.
   //
   // Folded in rather than given its own job, on 0081's precedent: the company
   // rules are here for exactly the same reason, sessions_completion_fanout()
