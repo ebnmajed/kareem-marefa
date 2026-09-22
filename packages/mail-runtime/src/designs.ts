@@ -112,7 +112,7 @@ interface Copy {
 
 const COPY: Readonly<Record<string, Copy>> = {
   "MSG-session_published": { heading: "جلسة جديدة", body: "نُشرت جلسة جديدة قد تهمّك.", action: { label: "اعرض الجلسة", urlBinding: "url" } },
-  "MSG-presenter_assigned": { heading: "أُسندت إليك جلسة", body: "تستطيع القبول أو الاعتذار من صفحة الجلسة.", action: { label: "اعرض الجلسة", urlBinding: "url" } },
+  "MSG-presenter_assigned": { heading: "أُسندت إليك جلسة", body: "تجد موعدها ومكانها وتفاصيلها كاملة في صفحة الجلسة.", action: { label: "اعرض الجلسة", urlBinding: "url" } },
   "MSG-proposal_approved": { heading: "قُبل مقترحك", body: "قُبل مقترحك «{{title}}». سنتواصل معك لتحديد الموعد والمكان.", action: { label: "اعرض المقترح", urlBinding: "url" } },
   "MSG-copresenter_invited": { heading: "دعوة للمشاركة في التقديم", body: "دعاك {{inviter}} للمشاركة في تقديم جلسة «{{title}}».", action: { label: "اعرض المقترح", urlBinding: "url" } },
 

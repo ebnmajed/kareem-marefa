@@ -38,8 +38,8 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | L1 | ★ The whole poster — `CardMedia` `object-contain`; row densities' media `self-start` so the box keeps 4:5. **Surfaces:** timeline card (`row`/`wide`, 4:5 poster) — the defect, fixed; event page and `/s/[id]` size their own `<img>` to the render's dimensions — never cropped, unchanged; `/s/[id]`'s no-poster placeholder 16:9 — no image; moderation cards 16:9 **photos** — now contained, so a moderator sees the whole reported photo; `template-library` — a live render in its own frame, unchanged; `(dev)` gallery — `grid` placeholder, unchanged, **so `/ar/ui` and `/s/[id]` do not move** (the brief expected both to). ★ **Found by D1: members never saw posters at all** — `DEC-173`, `0145` | lead | **done** — `wave12-lead-timeline-card-{whole-poster,cropped-reproduction}.png` opened |
 | L1b | `0145` — `exports_read_session_poster` (`DEC-173`), red→green, `policy-diff` ✓ | lead | **done**, applied locally |
 | L2 | Promotion from `0145`, the rehearsal notes | lead | todo |
-| L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | todo |
-| L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | todo |
+| L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | **done** — `0146`, red→green, full RLS 121/122 files (the one red is `survey-submit`, `DEC-171`'s leftover-job count, not this) |
+| L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | **mail done** — 3 pinned files, one line each, the reviewed diff; audit labels await `sessions`' keys |
 | O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | asked |
 | D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | **done** on a build of `421f0ed`+L1: `tests/e2e/wave12-demo-poster.spec.ts` (box 4:5, `contain`); captures beside a labelled reproduction of the old rendering. **The owner's own screenshot is not in the tree** — asked for |
 | D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | todo |
@@ -52,7 +52,7 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 
 | File | Assertion | Why |
 |---|---|---|
-| — | — | — |
+| `tests/unit/mail-pinned/MSG-presenter_assigned.{txt,plain.html,brand.html}` | the body line | `DEC-174` sessions 5: the sentence promised an accept/decline screen that does not exist — a reviewed pinned change, written by hand with `MAIL_PIN_WRITE=1` |
 
 ---
 

@@ -57,7 +57,7 @@ export const DEFAULT_TEMPLATES: Readonly<Record<string, EmailTemplate>> = {
   },
   "MSG-presenter_assigned": {
     subject: "أُسندت إليك جلسة — {{title}}",
-    body: `${greeting}\n\nأُسندت إليك جلسة «{{title}}».\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\nتستطيع القبول أو الاعتذار من صفحة الجلسة.\n\n{{url}}`,
+    body: `${greeting}\n\nأُسندت إليك جلسة «{{title}}».\n\nالموعد: {{startsAt}}\nالمكان: {{venue}}\n\nتجد تفاصيلها كاملة في صفحة الجلسة.\n\n{{url}}`,
   },
   // 08 §3.3's worked example — the one that matters most operationally,
   // because a vague version sends people to the wrong room.

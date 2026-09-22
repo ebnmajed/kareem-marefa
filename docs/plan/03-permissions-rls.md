@@ -1249,6 +1249,7 @@ generated suite is the highest-value test in the product.
 | `RPC-create_session.admin_only` | A member and a moderator are refused `42501`; an admin of another org cannot reach the proposal or create into that org. |
 | `RPC-create_session.one_per_proposal` | An approved proposal becomes at most one session (partial unique index); a second attempt is refused, and only an `approved` proposal can be turned into one (`REQ-PRO-007`, `REQ-PRO-008`). |
 | `POL-session_presenters.decline` | A presenter declining an unpublished session returns it to `draft` and writes the transition row; a published session is left alone (`REQ-SES-003`). |
+| `POL-session_presenters.update_self.not_after_completion` | A presenter of a completed or cancelled session cannot change their own `accepted` / `declined_at` (the update matches no row); on a session still ahead they can, as before (migration `0146`, `DEC-174`). |
 | `RPC-schedule_session.admin_only` | A member, a moderator and the session's own presenter are all refused; a presenter cannot set a date even through the RPC (D13, migration `0021`). |
 | `RPC-schedule_session.derives` | `ends_at` is stored, derived from the duration when not given and independently editable when it is; the time zone comes from the venue, else the org; a custom venue needs a name **and** an address (`REQ-SES-002`). |
 | `RPC-publish_session.gate` | Publishing without a date, an end, a venue or a capacity is refused by the **table**, not only by the form; the refusal names what is missing (`REQ-SES-001`; the poster gate joins at M6). |
