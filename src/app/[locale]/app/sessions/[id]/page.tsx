@@ -26,7 +26,7 @@ import { TagChip } from "@/components/ui/tag-chip";
 import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
 import { formatNumber } from "@/components/sessions/numerals";
 import { isSessionBookmarked } from "@/lib/dal/bookmarks";
-import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
+import { listMyCertificates } from "@/lib/dal/certificates";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { requireSession } from "@/lib/dal/session";
@@ -372,9 +372,14 @@ function SectionSkeleton() {
   );
 }
 
-/** A signed link to the member's own issued certificate for this session, once its PDF has rendered. */
+/**
+ * The member's own issued certificate for this session, once its PDF has
+ * rendered — as `designer`'s audited download route, never a URL signed at
+ * render time: a member's own download writes an audit row too (DEC-177,
+ * DEC-178). `null` while it has not rendered, so no link can 404.
+ */
 async function myCertificateHref(locale: string, sessionId: string): Promise<string | null> {
   const { certificates } = await listMyCertificates(locale);
-  const mine = certificates.find((c) => c.sessionId === sessionId && c.state === "issued" && c.pdfPath);
-  return mine?.pdfPath ? signCertificateUrl(locale, mine.pdfPath) : null;
+  const mine = certificates.find((c) => c.sessionId === sessionId && c.state === "issued" && c.downloadHref);
+  return mine?.downloadHref ?? null;
 }
