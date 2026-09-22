@@ -30,6 +30,8 @@ const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@1
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
+// Every award here is written by the worker, so the spec runs only when one is running and says so.
+test.skip(process.env.E2E_REAL_WORKER !== "1", "needs the real worker: start it, then run with E2E_REAL_WORKER=1");
 test.describe.configure({ mode: "serial" });
 
 const expect = baseExpect.configure({ timeout: 15_000 });
