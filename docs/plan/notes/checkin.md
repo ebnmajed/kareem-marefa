@@ -2365,3 +2365,28 @@ Consequences for my rendering, none of which changes the plan's shape:
 - **`incomplete` before completion needs `require_all_days`.** With it off, a missed day never makes the
   award unreachable, which matches the copy (`award.incomplete.rule` names «جميع أيام الجلسة»). Answered:
   Q2 is settled by `scoring`'s row 4, so the lead's ruling is only needed if they disagree.
+
+## 11 · K1 built — `18fe962` (sync 1 applied, `DEC-174`)
+
+| Ruling | Where it landed |
+|---|---|
+| The state, one body with two variants | `src/components/checkin/award-state.tsx`. `section` on SCR-014 is a `region` named «نقاط هذه الجلسة». `inline` is for the action card and has no heading and no Panel. Neither is ever a live region. |
+| Q1, the event page | Requested from `sessions` in writing: one unconditional line after `action-card.tsx:124`. **Not landed by me**, because the file is `sessions'`. |
+| Q3, removal copy | New keys `attendance.removeIntroOpen` and `removeConfirmBodyOpen`, chosen while `sessionState` is neither `completed` nor `archived`. `RemoveCheckInForm`'s new prop `paysOnCompletion` defaults to the old copy, so `remove-check-in-form.test.tsx` is untouched. |
+| Q4, a failed read | Caught in the component, which renders nothing and logs `[award-state] session <id>: <message>`. SCR-014 also streams it behind `Suspense`, so the code form never waits on a points read. |
+| Q5, the wasted RPC | Deleted from `getCheckInScreenData()`. Pinned by `tests/unit/checkin-screen-reads.test.ts`: **no** RPC is called. |
+| Q6, the order | `CheckInScreenData.checkedInToday`, per day, excluding removed rows. The state leads once the member is checked in, or when the page carries `?success` or `?already`. Otherwise the form leads. With no form, the state follows the refusal. |
+
+- **No existing test was edited.** `npm test` passes all 2320 tests, with 1 skipped. `tsc`, lint (0 errors on my
+  files) and `ui-lint --strict` are clean.
+- **New tests:** `award-state.test.tsx` has 20 cases (the four states, the plural forms at 1, 2, 3, 11 and 100
+  and for days at 2 and 11, no Eastern digit, no live region, no heading inline, and a failed read that
+  renders nothing and logs once). `remove-check-in-copy.test.tsx` has 3 cases. `checkin-screen-reads.test.ts`
+  has 5.
+- **`wave12-checkin-acknowledgement.spec.ts` is written and not yet run.** It needs `scoring`'s
+  `session_award_state()` promoted, the action-card line, and a build. It covers four cases:
+  - one day through the real code, then a fresh navigation, then the event page, with no ledger row;
+  - day 2 of 3 before today's check-in, with the form first;
+  - a missed required day, before the end;
+  - completed and paid.
+  It produces eight captures at `wave12-checkin-{check-in,event}-{pending,pending-days,incomplete,paid}.png`.
