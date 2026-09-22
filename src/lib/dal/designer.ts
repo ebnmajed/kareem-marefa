@@ -541,14 +541,9 @@ export async function retryExport(locale: string, artifactId: string): Promise<{
   return { status: "ok" };
 }
 
-/** A short-lived signed URL for a finished artifact. `exports_storage_read`
- *  (0037) is the boundary — org-prefixed, and the path came from the one
- *  builder (03 §6). */
-export async function signExportUrl(locale: string, storagePath: string): Promise<string | null> {
-  const { supabase } = await sessionClient(locale);
-  const { data } = await supabase.storage.from("exports").createSignedUrl(storagePath, 300);
-  return data?.signedUrl ?? null;
-}
+/** The one signer lives in `posters.ts` (REQ-DSG-027 — «there is one»); it is
+ *  re-exported here so the studio's import did not move. */
+export { signExportUrl } from "@/lib/dal/posters";
 
 /* ── the org brand override for the editor's preview (wave 4, DEC-052) ──── */
 

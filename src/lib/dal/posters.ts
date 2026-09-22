@@ -333,25 +333,15 @@ async function loadSessionPoster(locale: string, sessionId: string, variant: Pos
   let total = 0;
 
   if (documentId) {
-    // Only the newest fingerprint's artifacts matter: an older one describes
-    // a session that has since changed (REQ-DSG-013).
-    const { data: artifacts } = await supabase
-      .from("export_artifacts")
-      .select("preset, format, status, storage_path, source_fingerprint, rendered_at, width_px, height_px")
-      .eq("document_id", documentId)
-      .order("rendered_at", { ascending: false });
-
-    const newest = artifacts?.find((a) => a.status === "ready")?.source_fingerprint ?? artifacts?.[0]?.source_fingerprint;
-    const current = (artifacts ?? []).filter((a) => a.source_fingerprint === newest);
+    const { current } = await currentPosterSet(supabase, documentId);
     total = current.length;
     ready = current.filter((a) => a.status === "ready").length;
 
     const match = current.find((a) => a.preset === variant && a.status === "ready" && a.storage_path) ?? current.find((a) => a.status === "ready" && a.storage_path);
     if (match?.storage_path) {
-      const { data } = await supabase.storage.from("exports").createSignedUrl(match.storage_path as string, 300);
-      imageUrl = data?.signedUrl ?? null;
-      width = (match.width_px as number | null) ?? null;
-      height = (match.height_px as number | null) ?? null;
+      imageUrl = await signExportUrl(locale, match.storage_path);
+      width = match.width_px;
+      height = match.height_px;
     }
   }
 
@@ -429,4 +419,175 @@ export async function signDesignAssetUrl(locale: string, assetId: string): Promi
   if (!asset?.storage_path) return null;
   const { data } = await supabase.storage.from("design-assets").createSignedUrl(asset.storage_path as string, 300);
   return data?.signedUrl ?? null;
+}
+
+/* ── the one signer (REQ-DSG-027, DEC-176 §1) ────────────────────────────── */
+
+/**
+ * ★ THE ONE SIGNER for a finished export — every `exports` URL in the app is
+ * minted here, and `tests/unit/designer-one-signer.test.ts` fails the build if a
+ * second `createSignedUrl` on `exports` appears anywhere else. Five minutes: the
+ * bucket is private and a link is not a share. `exports_storage_read` (0037) is
+ * the boundary — org-prefixed, and the path came from the one builder (03 §6).
+ *
+ * It lives HERE, in the leaf module, because `designer.ts` imports this file and
+ * `certificates.ts` imports `designer.ts`; `designer.ts` re-exports it and
+ * `signCertificateUrl` is an alias, so no caller changed its import.
+ *
+ * `download` names the file (Content-Disposition: attachment) — the audited
+ * download route passes the name `record_export_download()` built; a preview or
+ * a thumbnail passes nothing and is served inline, exactly as before.
+ */
+export async function signExportUrl(locale: string, storagePath: string, options: { download?: string } = {}): Promise<string | null> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.storage
+    .from("exports")
+    .createSignedUrl(storagePath, 300, options.download ? { download: options.download } : undefined);
+  return data?.signedUrl ?? null;
+}
+
+/* ── a session poster's current set of renders ──────────────────────────── */
+
+interface PosterArtifactRow {
+  id: string;
+  preset: PresetName;
+  format: "png" | "webp" | "pdf";
+  status: "queued" | "rendering" | "ready" | "failed";
+  storage_path: string | null;
+  source_fingerprint: string;
+  width_px: number | null;
+  height_px: number | null;
+  byte_size: number | null;
+}
+
+/**
+ * The set of renders a poster SHOWS — shared by the slot and the download DTO,
+ * so the file downloaded is the poster on the page.
+ *
+ * Only one fingerprint's artifacts matter: an older one describes a session
+ * that has since changed (REQ-DSG-013). It is the newest READY fingerprint, by
+ * `rendered_at` (a render's own finish time, never a transaction's start), or,
+ * before anything has rendered, the newest row's. `updating` says a different
+ * fingerprint has work queued or running — a newer poster is on its way and the
+ * files here are the previous one's.
+ */
+async function currentPosterSet(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], documentId: string): Promise<{ current: PosterArtifactRow[]; updating: boolean }> {
+  const { data } = await supabase
+    .from("export_artifacts")
+    .select("id, preset, format, status, storage_path, source_fingerprint, width_px, height_px, byte_size, rendered_at")
+    .eq("document_id", documentId)
+    .order("rendered_at", { ascending: false });
+  const rows = (data ?? []) as unknown as PosterArtifactRow[];
+  const newest = rows.find((a) => a.status === "ready")?.source_fingerprint ?? rows[0]?.source_fingerprint;
+  return {
+    current: rows.filter((a) => a.source_fingerprint === newest),
+    updating: rows.some((a) => a.source_fingerprint !== newest && (a.status === "queued" || a.status === "rendering")),
+  };
+}
+
+/* ── ★ contract 1 — the session's download (REQ-DSG-027, DEC-176, DEC-178) ── */
+
+export type DownloadState = "ready" | "pending" | "failed";
+
+export interface PosterDownload {
+  /** master · square · story · landscape · og · a4 · a3 */
+  preset: PresetName;
+  format: "png" | "webp" | "pdf";
+  widthPx: number | null;
+  heightPx: number | null;
+  /** Queued and rendering are both `pending` — a file that is not there yet is
+   *  never a link (REQ-DSG-027's third acceptance). */
+  state: DownloadState;
+  /** Bytes, when ready (`export_artifacts.byte_size`, 0055). */
+  byteSize: number | null;
+  /** Ready only: `/api/designer/downloads/<artifactId>` — the audited route
+   *  (contract 3), never a signed URL. Render it as a plain `<a>`, never a
+   *  `<Link>`, so nothing is prefetched. */
+  href: string | null;
+}
+
+export interface SessionPosterDownloads {
+  sessionId: string;
+  /** ALWAYS the 4:5 master as PNG (DEC-176: «a simple download») — `pending`
+   *  until it has rendered. */
+  primary: PosterDownload;
+  /** Every other artifact of the same set, in `presetsFor('poster')` order,
+   *  PNG before WebP — for the disclosure. */
+  others: PosterDownload[];
+  ready: number;
+  total: number;
+  /** A newer render of this poster is queued or running; the files above are
+   *  the previous one's. */
+  updating: boolean;
+}
+
+const FORMAT_ORDER: Record<PosterDownload["format"], number> = { png: 0, webp: 1, pdf: 2 };
+
+/** The route every download goes through — `app/api/designer/downloads`. */
+export function downloadHref(artifactId: string): string {
+  return `/api/designer/downloads/${artifactId}`;
+}
+
+function toDownload(a: PosterArtifactRow): PosterDownload {
+  const ready = a.status === "ready" && a.storage_path !== null;
+  return {
+    preset: a.preset,
+    format: a.format,
+    widthPx: a.width_px,
+    heightPx: a.height_px,
+    state: ready ? "ready" : a.status === "failed" ? "failed" : "pending",
+    byteSize: ready ? a.byte_size : null,
+    href: ready ? downloadHref(a.id) : null,
+  };
+}
+
+/**
+ * A session poster's files, for «تنزيل الملصق» on the event page and the hub.
+ *
+ * `null` means render nothing: the session has no poster, its poster has never
+ * been rendered, or the caller is not an admin, a moderator or an ACCEPTED
+ * presenter of this session. That decides only whether a menu is drawn — the
+ * refusal that counts is the route's, where `record_export_download()`
+ * re-derives the same rule and audits (contract 3, DEC-177).
+ */
+export async function getSessionPosterDownloads(locale: string, sessionId: string): Promise<SessionPosterDownloads | null> {
+  const { session, supabase } = await sessionClient(locale);
+
+  let entitled = session.role === "admin" || session.role === "moderator";
+  if (!entitled) {
+    const { data: presenter } = await supabase
+      .from("session_presenters")
+      .select("id")
+      .eq("session_id", sessionId)
+      .eq("member_id", session.memberId)
+      .eq("accepted", true)
+      .maybeSingle();
+    entitled = presenter !== null;
+  }
+  if (!entitled) return null;
+
+  const { data: poster } = await supabase.from("session_posters").select("document_id").eq("session_id", sessionId).maybeSingle();
+  const documentId = (poster?.document_id as string | null | undefined) ?? null;
+  if (!documentId) return null;
+
+  const { current, updating } = await currentPosterSet(supabase, documentId);
+  if (current.length === 0) return null;
+
+  const order = presetsFor("poster");
+  const sorted = current
+    .slice()
+    .sort((a, b) => order.indexOf(a.preset) - order.indexOf(b.preset) || FORMAT_ORDER[a.format] - FORMAT_ORDER[b.format]);
+  const primaryRow = sorted.find((a) => a.preset === "master" && a.format === "png");
+  const primary: PosterDownload = primaryRow
+    ? toDownload(primaryRow)
+    : { preset: "master", format: "png", widthPx: PRESETS.master.width, heightPx: PRESETS.master.height, state: "pending", byteSize: null, href: null };
+
+  return {
+    sessionId,
+    primary,
+    others: sorted.filter((a) => a !== primaryRow).map(toDownload),
+    ready: current.filter((a) => a.status === "ready").length,
+    total: current.length,
+    updating,
+  };
 }
