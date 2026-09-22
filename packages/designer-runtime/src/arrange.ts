@@ -24,6 +24,7 @@
 
 import type { DesignDocument, Layer } from './model.js'
 import { type Box, sourceSafeBox } from './presets.js'
+import { normaliseRotation } from './geometry.js'
 
 export type AlignAxis = 'inline' | 'block'
 export type AlignEdge = 'start' | 'center' | 'end'
@@ -128,4 +129,102 @@ export function reorderLayer(doc: DesignDocument, layerId: string, move: Reorder
   layers[i] = neighbour
   layers[j] = layer
   return { ...doc, layers }
+}
+
+/* ── wave 13: groups, tap-to-place, rotation and width by a tap (DEC-178) ───
+ *
+ * Added beside the three above, which are unchanged. Every one is again a
+ * single tap — SC 2.5.7's path for what the canvas now also does by dragging —
+ * and every one works on the DOCUMENT's axis and takes no direction.
+ */
+
+/** Align to the safe area, the page, or the SELECTION's own bounds. */
+export type GroupAlignTarget = AlignTarget | 'selection'
+
+/** The logical box the named layers' frames span. */
+export function selectionBox(doc: DesignDocument, layerIds: readonly string[]): Box | null {
+  const frames = doc.layers.filter((l) => layerIds.includes(l.id)).map((l) => l.frame)
+  if (frames.length === 0) return null
+  const x = Math.min(...frames.map((f) => f.x))
+  const y = Math.min(...frames.map((f) => f.y))
+  const w = Math.max(...frames.map((f) => f.x + f.w)) - x
+  const h = Math.max(...frames.map((f) => f.y + f.h)) - y
+  return { x, y, w, h }
+}
+
+/**
+ * Several layers aligned at once. To the safe area or the page it is exactly
+ * `alignLayer()` for each, so one layer and a group can never disagree; to
+ * the selection, each is placed against the group's own bounds.
+ */
+export function alignLayers(doc: DesignDocument, layerIds: readonly string[], axis: AlignAxis, edge: AlignEdge, target: GroupAlignTarget): DesignDocument {
+  if (target !== 'selection') return layerIds.reduce((d, id) => alignLayer(d, id, axis, edge, target), doc)
+  const box = selectionBox(doc, layerIds)
+  if (!box) return doc
+  const ids = new Set(layerIds)
+  return {
+    ...doc,
+    layers: doc.layers.map((l) => {
+      if (!ids.has(l.id)) return l
+      const f = l.frame
+      const [origin, span, size] = axis === 'inline' ? [box.x, box.w, f.w] : [box.y, box.h, f.h]
+      const at = Math.round(edge === 'start' ? origin : edge === 'end' ? origin + span - size : origin + (span - size) / 2)
+      return { ...l, frame: axis === 'inline' ? { ...f, x: at } : { ...f, y: at } }
+    }),
+  }
+}
+
+/**
+ * Equal gaps between three or more layers on one axis, the two outermost
+ * where they are. Ordered by their start on the document's axis, so the same
+ * group distributes to the same bytes from any console. Fewer than three is a
+ * no-op: two layers have one gap and nothing to equalise.
+ */
+export function distributeLayers(doc: DesignDocument, layerIds: readonly string[], axis: AlignAxis): DesignDocument {
+  const members = doc.layers.filter((l) => layerIds.includes(l.id))
+  if (members.length < 3) return doc
+  const start = (f: Layer['frame']) => (axis === 'inline' ? f.x : f.y)
+  const size = (f: Layer['frame']) => (axis === 'inline' ? f.w : f.h)
+  const ordered = members.slice().sort((a, b) => start(a.frame) - start(b.frame) || doc.layers.indexOf(a) - doc.layers.indexOf(b))
+  const first = ordered[0] as Layer
+  const last = ordered[ordered.length - 1] as Layer
+  const span = start(last.frame) + size(last.frame) - start(first.frame)
+  const total = ordered.reduce((sum, l) => sum + size(l.frame), 0)
+  const gap = (span - total) / (ordered.length - 1)
+
+  const placed = new Map<string, number>()
+  let cursor = start(first.frame)
+  for (const l of ordered) {
+    placed.set(l.id, Math.round(cursor))
+    cursor += size(l.frame) + gap
+  }
+  return {
+    ...doc,
+    layers: doc.layers.map((l) => {
+      const at = placed.get(l.id)
+      if (at === undefined) return l
+      return { ...l, frame: axis === 'inline' ? { ...l.frame, x: at } : { ...l.frame, y: at } }
+    }),
+  }
+}
+
+/** Tap-to-place: the layer's centre put on a point given in LOGICAL document
+ *  coordinates (the canvas converts the tap). */
+export function placeLayerCentre(doc: DesignDocument, layerId: string, point: { x: number; y: number }): DesignDocument {
+  return withLayer(doc, layerId, (l) => ({ ...l, frame: { ...l.frame, x: Math.round(point.x - l.frame.w / 2), y: Math.round(point.y - l.frame.h / 2) } }))
+}
+
+/** ±15° by a tap, and «صفّر الدوران». Whole degrees in (−180, 180]. */
+export function rotateLayer(doc: DesignDocument, layerId: string, degrees: number, mode: 'by' | 'to' = 'by'): DesignDocument {
+  return withLayer(doc, layerId, (l) => {
+    const next = mode === 'by' ? (l.frame.rotation ?? 0) + degrees : degrees
+    return { ...l, frame: { ...l.frame, rotation: normaliseRotation(next) } }
+  })
+}
+
+/** «املأ المنطقة الآمنة عرضًا» — the layer spans the safe area's width, its
+ *  height kept. Resize by a tap. */
+export function fillSafeWidth(doc: DesignDocument, layerId: string): DesignDocument {
+  const box = sourceSafeBox(doc)
+  return withLayer(doc, layerId, (l) => ({ ...l, frame: { ...l.frame, x: box.x, w: box.w } }))
 }

@@ -138,6 +138,18 @@ function layer(v: unknown, index: number, seen: Set<string>, is: Issues): Layer 
     // has to be redrawn for English; one written logically does not.
     return is.add(`${path}.align`, 'align_logical', 'align must be start, center or end — never left or right'), null
   }
+  // A32's per-variant crop, set from the studio's focal grid since wave 13:
+  // the same 0…1 as `image.focal` below, which has always been checked while
+  // this one never was. Only ever stricter, so `main`'s worker accepts
+  // whatever this accepts.
+  if (isObj(v.presets)) {
+    for (const [name, override] of Object.entries(v.presets)) {
+      const f = isObj(override) ? override.focal : undefined
+      if (f !== undefined && (!isObj(f) || !isNum(f.x) || !isNum(f.y) || f.x < 0 || f.x > 1 || f.y < 0 || f.y > 1)) {
+        return is.add(`${path}.presets.${name}.focal`, 'image_focal', 'a focal point is {x, y} in 0…1'), null
+      }
+    }
+  }
 
   switch (v.kind) {
     case 'text': {
