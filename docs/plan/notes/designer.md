@@ -2973,3 +2973,79 @@ drag, resize, snap and multi-select are not shed.
 *Research sources consulted for the table in W13.1:* the daybrush/moveable repository and docs
 (github.com/daybrush/moveable, daybrush.com/moveable); W3C and practitioner notes on `SC 2.5.8`'s five
 exceptions (github.com/w3c/wcag/issues/3714, wcag22aa.org/new-criteria/target-size).
+
+### W13.14 · Amended by `DEC-177` (`225d858`) — contract 3 has two subjects, and the member's own download is audited
+
+I re-read `DEC-177` and the agent file from disk. The change supersedes W13.2's route text where they differ,
+W13.8's D5, and Q2 and Q7.
+
+**One function, not two.** The route passes **only `p_artifact uuid`**. The function finds the subject from the
+data, never from the URL, so a forged link cannot pick a laxer branch. It also gives one call site, one grant and
+one row in `definer-exposure.test.ts`.
+
+Proposed for `0152` (the lead's to write and name):
+
+```
+record_export_download(p_artifact uuid) returns table (storage_path text, file_name text)
+  security definer · set search_path = '' · revoke from public, anon · grant to authenticated   (DEC-177 §1, 0049's pattern)
+```
+
+It works in this order:
+1. The artifact must be `ready`, with `org_id = auth_org_id()`. Anything else raises `42501`, and so does an
+   unknown id, so there is no existence oracle.
+2. **Session poster**: the document is some `session_posters.document_id`. Admitted: `is_staff()` (admin or
+   moderator), or an **accepted** `session_presenters` row for that session and `auth_member_id()`.
+3. **Certificate**: the document's `bound_certificate_id` is set. Admitted: `is_staff()`, or
+   `certificates.member_id = auth_member_id()`. For the member, the certificate must not be `held` (`REQ-CRT-013`:
+   invisible until released). A `revoked` one stays downloadable to its member, as the page does today
+   (`me/certificates/page.tsx:111–114`, `REQ-CRT-011`).
+4. **Any other document** (a template draft, an unbound document in the studio's export panel): `is_org_admin()`.
+   This is not a new audience; `documents_read` already limits these to admins.
+5. **Everyone else** raises `42501`.
+6. `write_audit()` then records the actor, the subject and the artifact, as `REQ-ADM-021`'s acceptance asks. The
+   action is `export.downloaded`, the target is `export_artifacts` / `p_artifact`, and the details are `{ subject:
+   'session_poster' | 'certificate' | 'document', session_id?, certificate_id?, preset, format }`. It is written in
+   the same transaction, and then the path is returned.
+7. The function builds `file_name` as `poster-<preset>.<ext>` or `certificate-<serial>.pdf`: ASCII, and the serial
+   is Western (`DEC-095`).
+
+The `03` §8.2 rows the lead's red→green needs:
+
+| Subject | Rows |
+|---|---|
+| poster | admin ✓ · moderator ✓ · accepted presenter ✓ · a presenter not yet accepted ✗ · a plain member ✗ (though `0145` lets them read the bytes) · another org's admin ✗ |
+| certificate | its member ✓ · its member while `held` ✗ · its member when `revoked` ✓ · another member ✗ · admin ✓ · moderator ✓ |
+| both | unknown id ✗ · a non-`ready` artifact ✗ · exactly one audit row per admitted call · none per refused call · `anon` cannot execute |
+
+**One thing to flag on the moderator row.** `DEC-177` admits a moderator to a certificate, but `certs_read_*` are
+admin-only (`03` §5.8). So a moderator never *sees* a certificate row to get its `href`, and SCR-045 shows them no
+issuance table (`certificates/page.tsx:131–132`). The function allows it and no screen offers it. That is consistent,
+and I am stating it so nobody reads the missing link as a bug.
+
+**D5 is now three surfaces, one route:**
+
+| Surface | Change | Owner |
+|---|---|---|
+| SCR-045 (`admin/sessions/[id]/certificates`) | issued rows get a «الملف» link, as W13.8 | mine |
+| ★ **`me/certificates/page.tsx:115`** | the bare `<a download>` on a render-time signed URL becomes `href={c.downloadHref}`, a plain `<a>` to `/api/designer/downloads/<artifactId>`. «قيد التجهيز» when it is null, exactly as today. `links` and the `signCertificateUrl` call on that page go | mine (fixes only, `DEC-177` §2) |
+| the event page's «شهادتك» (`sessions/[id]/page.tsx:376–380`, `myCertificateHref()`) | **the same unaudited class**: a render-time signed URL on the member's own certificate. I publish `downloadHref` on `listMyCertificates()`'s rows, and `sessions` changes the one line to use it, which is a request to `sessions` through the lead. If it stays, `REQ-ADM-021` is still unmet on that page | `sessions'` file |
+
+**In the DAL.** `CertificateRow` gains `downloadHref: string | null`. `attachPdfs()` already selects the ready PDF per
+document, and it additionally selects the artifact `id`, so both `listMyCertificates()` and
+`getSessionCertificatesWithRender()` fill it. `pdfPath` stays, because other readers use it.
+
+**`signCertificateUrl` now has no caller left in my files.** If `sessions` moves the event page to `downloadHref`,
+the alias is deleted and **`signExportUrl` is left with exactly two callers**: the studio's thumbnails, and the
+route.
+
+**Tests, re-checked against this change:**
+- `tests/components/me/certificates-page.test.tsx`: **no assertion moves**. Its fixture's `pdfPath: null` case still
+  shows «قيد التجهيز» (the row carries no `downloadHref`). No case asserts the download link's `href`. Its
+  `signCertificateUrl` mock becomes unused; I leave it, because removing it is an edit to evidence for nothing.
+- `tests/e2e/wave7-content-certificates.spec.ts` asserts «الشهادة قيد التجهيز» and not the link (`:11`), so it holds.
+- **New:** `wave13-designer-certificates-download.spec.ts` gains the member's case. The member downloads their own
+  certificate from `/app/me/certificates` → `303` → the PDF, with one audit row naming them. Another member forging
+  that artifact id → `403`, with no row.
+
+**Q2 and Q7, answered by `DEC-177`:** one function (above), and the member's own download **is** audited. Q2 is now
+only the lead's call on the name and the action string.
