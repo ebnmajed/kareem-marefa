@@ -270,10 +270,18 @@ test("the marquee selects what it touches, and a locked region neither drags nor
   // the stage — on the page, not the canvas — so no marquee begins (reproduced
   // on the standalone canvas: «press lands on: DIV → selected: null»).
   const kicker = await layerBox(page, "نوع الجلسة");
+  // The title is 20 document px below the kicker (280 + 60 → 360): about 9
+  // screen px at the studio's ~0.45. The marquee selects what it TOUCHES, so it
+  // ends in the MIDDLE of that gap, measured — the first cut ended 10 px below
+  // the kicker, 1 px inside the title, and selected it, correctly.
+  const title = await main(page).getByRole("button", { name: "اختيار الطبقة عنوان الجلسة", exact: true }).boundingBox();
+  if (!title) throw new Error("no title box");
+  const gapEnd = (kicker.y + kicker.height + title.y) / 2;
+  expect(title.y - (kicker.y + kicker.height), "there is a gap to end the marquee in").toBeGreaterThan(2);
   const stage = await main(page).locator("[data-layer-hit-area]").boundingBox();
   if (!stage) throw new Error("no stage");
   expect(stage.y + 8, "the marquee's start must be on screen").toBeGreaterThanOrEqual(0);
-  await drag(page, { x: stage.x + 20, y: stage.y + 8 }, { x: stage.x + stage.width / 2, y: kicker.y + kicker.height + 10 });
+  await drag(page, { x: stage.x + 20, y: stage.y + 8 }, { x: stage.x + stage.width / 2, y: gapEnd });
   await expect(main(page).getByRole("button", { name: "اختيار الطبقة نوع الجلسة", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(main(page).getByRole("button", { name: "اختيار الطبقة عنوان الجلسة", exact: true })).toHaveAttribute("aria-pressed", "false");
   await expect(main(page).getByRole("button", { name: "اختيار الطبقة شعار المؤسسة", exact: true })).toHaveAttribute("aria-pressed", "false");
