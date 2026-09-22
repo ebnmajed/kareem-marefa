@@ -154,7 +154,24 @@ async function openStudio(page: Page) {
  * centred in the viewport first, and `drag()` refuses a point outside it.
  */
 async function onScreen(locator: ReturnType<Page["locator"]>) {
-  await locator.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }));
+  // ★ INSTANT, then measured once it has stopped. `globals.css` scrolls
+  // smoothly, so a plain scrollIntoView animates and the box read straight
+  // after it is the box from BEFORE the scroll — the second run's guard caught
+  // exactly that (a point at y 1089 after «centring»). The canvas itself fits:
+  // a 1080 × 1350 artboard at the studio's ~0.45 is ~607 px tall, well inside
+  // 1000; it is the page's header and toolbar above it that push a lower layer
+  // below the fold.
+  await locator.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }));
+  let last = "";
+  await expect
+    .poll(async () => {
+      const box = await locator.boundingBox();
+      const now = JSON.stringify(box);
+      const settled = now === last;
+      last = now;
+      return settled;
+    }, { intervals: [50, 100, 100, 200] })
+    .toBe(true);
 }
 
 const layerBox = async (page: Page, name: string) => {
@@ -184,6 +201,8 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
   test.slow();
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
+  // DEC-149 §4: no smooth scroll under a pointer measurement.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await openStudio(page);
   await expect(main(page).getByText("اسحب الطبقة لتحريكها", { exact: false })).toBeVisible();
 
@@ -241,11 +260,12 @@ test("the marquee selects what it touches, and a locked region neither drags nor
   test.skip(onPhone(), "the editor is desktop-only (09)");
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await openStudio(page);
 
   // From empty canvas at the page's top-left, down across the kicker (full
   // width) and stopping short of the title and of the logo at the top-right.
-  await main(page).locator("[data-layer-hit-area]").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await main(page).locator("[data-layer-hit-area]").evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
   const stage = await main(page).locator("[data-layer-hit-area]").boundingBox();
   const kicker = await layerBox(page, "نوع الجلسة");
   if (!stage) throw new Error("no stage");

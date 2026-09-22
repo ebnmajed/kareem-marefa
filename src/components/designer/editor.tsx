@@ -17,6 +17,7 @@ import {
   type NewLayerKind,
   nudgeLayers,
   placeLayerCentre,
+  paintOrder,
   PRESETS,
   presetsForDocument,
   removeLayer,
@@ -133,6 +134,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const tcv = useTranslations("designer.canvas");
   const ta = useTranslations("designer.add");
   const tly = useTranslations("designer.inspector.layer");
+  const tl = useTranslations("designer.layers");
   const ui = useTranslations("ui");
   const toast = useToast();
 
@@ -671,10 +673,34 @@ export function DesignerEditor(props: DesignerEditorProps) {
     <Switch label={tpr("safeAreaLabel")} checked={overlays} onCheckedChange={setOverlays} />
   );
 
+  /**
+   * ★ WHICH layer, not what kind (REQ-UIX-013, the lead's ruling on DEC-178's
+   * «a confirm that names the layer»): with two text layers, «نص» cannot tell
+   * the admin which one is about to go. A text is named by its own words,
+   * shortened; a field by its layer name; anything else by its name, with its
+   * kind and its place in the list said beneath. The kind alone is only the
+   * fallback for a layer with nothing else to say.
+   */
+  const identify = (layer: Layer): string => {
+    const words = layer.kind === "text" ? (layer.text.literal ?? layer.text.fallback ?? "").trim() : "";
+    if (words) return words.length > 40 ? `${words.slice(0, 40).trimEnd()}…` : words;
+    return layer.name ?? tl(`kind.${layer.kind}`);
+  };
+
   const deleteDialog = (
     <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
       <DialogContent title={tly("deleteTitle")} closeLabel={ui("dialog.close")}>
-        <p className="text-body-sm text-fg-body">{tly.rich("deleteBody", { name: deleting?.name ?? deleting?.id ?? "", bdi: (c) => <bdi>{c}</bdi> })}</p>
+        <p className="text-body-sm text-fg-body">{tly.rich("deleteBody", { name: deleting ? identify(deleting) : "", bdi: (c) => <bdi>{c}</bdi> })}</p>
+        {deleting ? (
+          <p className="mt-1 text-body-sm text-fg-muted">
+            {tly.rich("deletePosition", {
+              kind: tl(`kind.${deleting.kind}`),
+              position: formatNumber(paintOrder(document).reverse().findIndex((l) => l.id === deleting.id) + 1),
+              total: formatNumber(document.layers.length),
+              bdi: (c) => <bdi>{c}</bdi>,
+            })}
+          </p>
+        ) : null}
         <div className="mt-6 flex flex-wrap gap-3">
           <Button type="button" size="md" onClick={confirmDelete}>
             {tly("deleteConfirm")}
