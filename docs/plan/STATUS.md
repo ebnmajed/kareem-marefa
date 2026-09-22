@@ -90,6 +90,9 @@ wordmark link · Google avatars · the gamification layer · the prose pass · `
 12: the month-end streak gap · presenter certificates and the poster after a post-completion presenter change ·
 `materials_uploaded` and `late_cancellation` have no writer · company points not re-evaluated after a
 post-completion change · `survey-submit.test.ts` counts every queued job.
+Found this wave, predating it (`sessions`, 2026-09-22):
+- On a phone the poster slot's pending line «يُولَّد الملصق… N من M» sits under «نبذة», away from the download (`session-poster.tsx`, M6, and the wave-6 phone composition).
+- The download menu trusts `status = 'ready'` and the slot trusts a successful sign, so a ready row whose object is missing makes them disagree. The route answers `?download=failed`, so the user is told.
 
 ### ★ The standing owner step — Railway, after every merge
 
