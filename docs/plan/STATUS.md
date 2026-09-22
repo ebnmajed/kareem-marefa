@@ -5,7 +5,32 @@
 
 ---
 
-## ★★ START HERE — the next session's brief
+## ★★★ START HERE — THE PLAN IS COMPLETE (M13, wave 11, `DEC-171`)
+
+**M0 through M13 are built.** The public site and the platform behind it have been live since 2026-09-15;
+wave 11 was the last milestone of `14-roadmap.md`, and **after it there is no further plan — anything more is
+new scope the owner decides.** A session opening this repository next reads, in this order:
+
+| # | Read | Why |
+|---|---|---|
+| 1 | **This block**, then the **wave-11 block** below — above all *The owner's order* and *Carried* | What is still owed by the owner (production reads, the push, the merge, Railway) and what was left on purpose |
+| 2 | `DECISIONS.md` **`DEC-171`** | What is built, **what is deliberately left and whose each item is**, in one table |
+| 3 | `CLAUDE.md` | The invariants — ★ invariant 1 is **re-cut** (`DEC-167`): the public routes' URLs, registration behaviour and accessibility floor never regress (`qa:contract`, blocking); their appearance moves only with a decision and a re-baselined capture in the same commit |
+| 4 | `STATUS.md`'s *Screens whose meaning depends on a paragraph* | The owner's list for the next design pass: prose to be replaced by affordances (2026-09-22) |
+| 5 | `docs/plan/notes/<track>.md` for the area you touch | Each track's own record — longer than any summary, and the reason things are the way they are |
+
+**The gates, as M13 leaves them.** `qa:contract` (38 checks) and `qa:appearance` (19) — both blocking.
+`ui-lint` strict with **no allowlist** (61 → 0 this wave). The accessibility sweep
+(`tests/e2e/wave11-lead-a11y-sweep.spec.ts`) — 62 routes, **0 findings** on both projects. The budgets spec —
+no regression against `main`. RLS, `policy-diff`, `trace`, parity, the untouched-suite ledger — as every wave.
+
+**Starting new work:** there is no wave map in force after wave 11. A lead starting new scope writes a new
+ownership map into `CLAUDE.md` and all ten `.claude/agents/*.md` before spawning anyone (`DEC-085`), and logs
+the scope as a `DECISIONS.md` entry first.
+
+---
+
+## ★★ START HERE — the wave-10 brief (kept as the record; superseded by the block above)
 
 **This file is long and mostly history.** It is append-only by habit, so everything below the next
 two sections is the record of finished waves. To pick up the work, read exactly this:
@@ -69,8 +94,7 @@ canvas; the app's own tokens are 5.11:1) — two real questions for design (brow
 1.96:1, a 13 px caption at 3.30:1), and **`DEC-114`'s classes 2 and 3 verified rather than assumed**:
 no ratings on any browse card, no Arabic-Indic digits in any machine-readable string.
 
-**The ownership map in force is wave 11's** (`CLAUDE.md`, all ten `.claude/agents/*.md`, `DEC-166`). Wave 11 is
-**M13, the last milestone of the plan** — its block is directly below.
+**The last ownership map is wave 11's** (`CLAUDE.md`, `DEC-166`) — M13, the last milestone of the plan.
 
 ---
 
@@ -128,6 +152,48 @@ carry the meaning instead.
 | Route | The paragraph (key) | What depends on it | Affordance it could become | Found by |
 |---|---|---|---|---|
 | `/app/admin/designer/[documentId]` at phone width | `designer.phoneNotice` — the studio edits only at 1280 px and wider | why nothing on the phone layout can be edited: the canvas, the strip and the checks look interactive and are not | the canvas and its controls rendered visibly read-only (a «عرض فقط» badge on the canvas, disabled controls absent rather than inert), so the state is seen, not read | lead (L4) |
+| `/app/me/privacy` | `privacy.page.deactivateHonest` | The whole reason there is no self-service "delete my account" — a member reading only the button labels («تصدير», «إلغاء التفعيل») would not know deletion is deliberately unavailable, or why (anonymisation instead, to protect content other members depend on) | A short inline note beside the deactivation button, or a `Tooltip`/disclosure triggered from a "لماذا لا يمكنني حذف حسابي؟" link, carrying the same explanation without it having to be read start-to-front before the member understands what pressing the button will and will not do | `content` |
+| `/app/admin/sessions` | `admin.sessions.scheduleNote` | that creating a session neither dates nor places nor publishes it — it looks done and is not | the new row lands with a «مسودة — لم تُجدول» badge and a «جدوِلها» link to `[id]/schedule` | `console` |
+| `/app/admin/sessions` | `admin.sessions.directIntro` | that a directly-assigned presenter may decline, and the session then falls back to draft | a status on the row when the presenter declines, not a sentence about the possibility | `console` |
+| `/app/admin/venues` · `categories` · `companies` | `admin.{venues,categories,companies}.noDeleteNote` | why there is no «احذف» — deactivation is the only removal, so old sessions and members keep naming it | the row menu's «عطّل» item carries the reason as its description | `console` |
+| `/app/admin/moderation/reports` | `admin.moderation.photosReportsIntro` | that a reported photo stays PUBLIC until a decision | a «ظاهرة الآن» badge on each reported photo | `console` |
+| `/app/admin/exports` | `admin.exports.auditNote` | that every download is recorded in the audit log under their name | the download button's accessible description, or a one-line confirm naming it | `console` |
+| `/app/admin/exports` | `admin.exports.ratings.note` | that the ratings export holds per-session averages, not individual ratings (those are per session, audited) | the column headers say «متوسط», and a link to the attendance report | `console` |
+| `/app/admin/audit` | `admin.audit.scoringNote` | that scoring-setting changes are NOT in this log — they are in the scoring screen's history | the empty result for a scoring filter links to `/app/admin/scoring`'s history | `console` |
+| `/app/admin/settings` | `admin.settings.intro` | that every change is audited with old and new values | a «السجل» link to `/app/admin/audit` filtered to settings | `console` |
+| `/app/admin/scoring` | `scoring.admin.intro` | that a changed value applies to future earnings only — no balance is rewritten | the save toast and each edited row say «يسري من الآن» | `console` |
+| `/app/admin/scoring` | `scoring.admin.catalogue.fixedNote` | that the action list is closed, and reserving/reacting can never earn points | those rows render as locked «لا تمنح نقاطًا» rather than absent | `console` |
+| `/app/admin/scoring` | `scoring.admin.manual.intro` | that a manual entry cannot be deleted — a mistake is fixed by an opposite entry | a «سجّل تعديلًا معاكسًا» action on each history row, prefilled | `console` |
+| `/app/admin/scoring` | `scoring.admin.companyRules.intro`, `scoring.admin.hostCompany.intro` | that company rules and hosting points are evaluated once, at session completion — nothing happens on save | a «تُحتسب عند اكتمال الجلسة» status on a pending hosting row | `console` |
+| `/app/admin/recognition` | `recognition.admin.intro` | that the evaluator runs nightly, so a change shows tomorrow and never touches what was already earned | «التقييم التالي: …» with the time, beside the save | `console` |
+| `/app/admin/recognition` | `recognition.admin.held.intro` | that held certificates have NOT reached their owners until released | a «محجوزة — لم تصل» status per row and a count on the release button | `console` |
+| `/app/admin/recognition` | `recognition.admin.levels.note` | that lowering a threshold promotes members at the next run, raising it demotes no one | an inline preview «سيرتقي N عضوًا في التقييم التالي» | `console` |
+| `/app/admin/reminders` | `notifications.admin.reminders.intro`, `.genericNote` | which offsets get a tailored message and which the generic one, and that rescheduling moves pending reminders | a per-row tag «رسالة مخصّصة» / «رسالة عامة» on each offset | `console` |
+| `/app/admin/sessions/[id]/attendance` | `checkin.attendance.removeIntro` | that removal reverses points and revokes a certificate, and keeps the record | the confirm dialog names THIS member's concrete consequences (the points, the certificate serial) | `console` |
+| `/app/admin/sessions/[id]/attendance` | `checkin.attendance.ratingsNote` | that opening the per-rater ratings is itself audited | the section behind a disclosure «اعرض التقييمات (يُسجَّل الاطلاع)» | `console` |
+| `/app/admin/emails` | `admin.emails.intro` | that an org template overrides the platform's, and that the log is here too | a «مؤسستك / المنصة» provenance badge on every catalogue row, beside the existing «قالب المؤسسة / الافتراضي» chip | `notify` |
+| `/app/admin/emails?key=…` (string editor) | `editor.usingDefault`, `editor.overridden`, `editor.framedNote` | what a member receives for this key — the design, or the admin's words in the design's frame | the live preview pane beside the string form (the block editor has one; the string editor does not), so the frame is seen rather than described | `notify` |
+| same | `editor.requiredFieldsHint` | why a save is refused when a field is missing | the offered bindings as a checkbox list with the required ones pre-checked (`REQ-NTF-012`'s declared list) | `notify` |
+| same | `editor.restoreBody` | that restoring deletes the org's words for good | an undo toast that restores the deleted row within the session | `notify` |
+| `/app/admin/emails` (block editor) | `admin.emails.preview.darkNote` | that forced dark is a simulation, not what is sent | a persistent «محاكاة» badge on the frame itself while the mode is on | `notify` |
+| same | `admin.emails.checks.*.reason` | why each check blocks or warns | selecting the named block already jumps to it; an inline fix action per check («أضف نصًا بديلًا») | `notify` |
+| `/app/admin/emails?view=log` | `admin.emails.deliveries.bounceNote`, `deliveries.retention` | that a post-acceptance bounce is not recorded yet, and how long the log is kept | a `bounced` / `complained` status chip once `REQ-NTF-008`'s webhook is live (`0142`) — then `bounceNote` can go; retention as a caption on the pager | `notify` |
+| `/app/me/notifications` | `preferences.intro`, `category.*.hint` | which of two channels a switch controls, and what each category covers | column headers with the channel icons, and one example message per category under its name | `notify` |
+| `/app/me/calendar` | `calendar.json` `connection.privacy`, `connection.afterDisconnect` | that nobody can read the connection keys, and that disconnecting leaves existing events in place | a «مفصول — الأحداث باقية» state on each synced row after a disconnect | `notify` |
+| `/app/platform/impersonate` (SCR-085) | `impersonate.honest` | that a session is logged in the org's own audit log, that the org's admins see it, and that it **opens no org screen** (`DEC-055` C) | a fixed «مُسجَّل لدى المؤسسة» badge on the start button and on the active-session card; the org's screens shown as locked items rather than described | `platform` |
+| `/app/platform/impersonate` | `impersonate.tokenTail` | that an automatic expiry leaves the claim on the token for up to 15 minutes, and ending it yourself drops it now | a countdown on the active card that goes on after expiry («تنتهي صلاحيتها في المتصفح خلال 12 دقيقة»), with «أنهِ الآن» as its primary action | `platform` |
+| `/app/platform/impersonate` | `impersonate.intro` | that the 4-hour ceiling is a database constraint | a duration control whose maximum is 4 h and says so at the limit, not in the intro | `platform` |
+| every `/app/platform/**` (the shell) | `shell.note` | the console's whole model: no data plane, org screens closed to a platform account, break-glass bounded and audited | a persistent «بلا بيانات مؤسسات» status chip in the console header that opens the explanation on demand | `platform` |
+| `/app/platform/orgs` (SCR-080) | `orgs.deleteHint` | the difference between suspend (reversible) and delete (irreversible) | two actions set apart in the menu, delete in a danger group with «لا رجعة» on its label; the slug typed back already enforces it | `platform` |
+| `/app/platform/orgs/[id]/domains` (SCR-082) | `domains.removeConfirmBody` | that removing a domain stops new memberships and leaves existing members as they are | the confirm dialog's two outcomes as a short list («يتوقف: …» / «يبقى: …») rather than a sentence | `platform` |
+| `/app/platform/templates` (SCR-083) | `templates.intro`, `templates.promoteIntro` | that the library is managed, not authored, and that promotion is a **copy** later org edits never reach | no «تحرير» action anywhere on the screen (already true), and the promote dialog showing «نسخة» with the version number frozen beside it | `platform` |
+| `/app/platform/templates` | `templates.floorNote` | why the last default of a purpose has no retire action | a disabled retire item with its reason as the item's description, instead of an absent item explained elsewhere | `platform` |
+| `/app/platform/metrics` (SCR-084) | `metrics.jobsIntro` | that oldest-pending is the number that shows a stalled queue | the oldest-pending figure styled as the row's lead figure, with the threshold drawn beside it | `platform` |
+| `/app/platform` (home) | `home.exhaustedIntro` (new, P1) | that a dead job will not retry by itself, and its payload is kept for a replay but not shown | a «يُعاد بعد الإصلاح — عمليات» tag on the card, pointing to the runbook, rather than a sentence | `platform` |
+| `/app/admin/branding` | `branding.contrast.title`/`.body`/`.muted`/`.large`/`.ui`/`.pass`/`.fail`/`.ratioLabel` | Whether a chosen brand-token colour pair (`fgHeading`/`fgBody`/`fgMuted`/`edgeStrong` against `canvas`) meets WCAG AA is conveyed ONLY as a ratio number plus a pass/fail word (`ContrastBadge`, `contrast-badge.tsx`) — nothing stops the save if it fails, unlike the new status-colour guard. The lead named this exact screen as a likely case. | A pass/fail glyph (check/alert icon, already in `ui/icons.tsx`) beside each swatch pair, the ratio text demoted to a `title`/tooltip rather than the only signal; and/or `save_brand_kit()` itself refusing a failing brand-token pair the way it now refuses a failing status pair (a separate, bigger decision — not assumed here). | `branding` |
+| `/app/admin/branding` | `branding.logo.ppiResult`, `.ppiSufficient`, `.ppiWarning`, `.ppiInsufficient` | Whether an uploaded logo prints legibly at A3 is conveyed only as a PPI number and a sentence of arithmetic — no colour or icon signal. | A traffic-light badge (green/amber/red) beside the logo preview, the PPI sentence demoted to supporting detail. | `branding` |
+| `/app/admin/branding` | `branding.colours.canvasRaiseLightHint` | Why editing the light scheme's `canvasRaise` field visibly changes nothing today (`DEC-125`: posters always render dark) is explained only in a sentence beside the field. | Grey/disable the light `canvasRaise` field with a short inline tag ("غير مُستخدم اليوم") rather than a full sentence, or move the fact into the field's own `hint` slot styled distinctly from an active field's hint. | `branding` |
+| `/app/admin/branding` | `branding.actions.resetConfirm` | That resetting deletes the org's customisation, reverts every screen to the platform default, and re-renders live posters is conveyed only as one dialog sentence — nothing previews WHAT changes. | A small before/after swatch pair inside the dialog (current org colour → platform default), the sentence kept but no longer the only signal. | `branding` |
 
 ### Sync 2 — 2026-09-22 — `0143` and `0144` promoted
 

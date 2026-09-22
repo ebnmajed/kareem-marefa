@@ -4034,3 +4034,32 @@ Every column has a default, so the inserted row is exactly what `create_org()` w
 `REQ-NTF-009` promised an untouched org byte-identical mail while the block path was built beside the string path; that promise was the scaffolding for a migration, and M13 is the migration. After N1: **an org with no row for a key receives the key's platform design; an org that adopted or authored a design receives its blocks; and an org whose admin edited the old string template receives the admin's own words, converted at render time into paragraph blocks inside the design's frame** — never discarded, never refused, never rewritten in the database. The subjects do not move. The 87 pinned bodies moved once, as one reviewed package (`.qa-shots/mail-review/wave11-n1/`), which is `DEC-160` §4's rule for a changed golden.
 
 - **Documents changed:** `01-prd.md` (`REQ-NTF-009`, `REQ-NTF-014` acceptance)
+
+---
+
+## DEC-171 — M13 closes the plan: what was built, what is deliberately left and whose it is, and what is new scope from here
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-11 lead, closing M13 as the brief asked («say so in STATUS — what is built, what was deliberately left, and what a session opening this repo next should read first»)
+- **Supersedes:** nothing. It ends `14-roadmap.md`'s sequence: after M13 there is no further plan, and anything more is new scope the owner decides.
+
+### Built — M0 through M13
+
+The public site and the platform behind it, live since 2026-09-15: sessions (one or several days), reservations and waitlists, a rotating check-in code and the host view, materials with an RTL viewer, photos stripped before they are seen, the discussion, ratings and the anonymous survey, points, leaderboards, recognition, certificates with public verification, the studio and its poster and certificate libraries, the brand kit, the email studio behind every message, the admin console, the super-admin console with break-glass, PDPL export and anonymisation. Every route is on the M9 design system; the public site has a door into the platform (`REQ-UIX-025`); `ui-lint` is strict with no allowlist; the accessibility sweep visits 62 of 64 routes with no `serious` or `critical` finding; the landing does not regress against `main` before the rebuild.
+
+### Deliberately left — each with its owner
+
+| Item | Why it is not in M13 | Whose |
+|---|---|---|
+| **13 §7's absolute budgets** (LCP ≈ 2.8–3.5 s on a laptop's `next start`; ~159 KB of App Router shell on every `/app` screen, check-in's 80 KB unreachable) | `DEC-055`: regression is enforced, the absolute numbers are to be re-measured against production and the table amended or the shell split scheduled | owner |
+| **CSP enforcement** — the policy is `report-only` everywhere | the reports go to Vercel's logs and have never been read; the marketing routes are nonce-less on purpose (a nonce would make the prerendered pages dynamic), so enforcing there needs a different policy. The step: read a week of `csp-report:` lines, then flip `content-security-policy-report-only` → `content-security-policy` for the NONCED (platform) responses in `proxy.ts`, one line | owner reads, a session flips |
+| **Break-glass opens no org screen** (`DEC-055` option C) | option A — a read-only browsable `impersonating` state — is a feature, not a fix | owner |
+| **One logo for two schemes** (B3) | the owner's read decides whether it is live; the upload-time check is the named prevention | owner reads |
+| `bookmarks:237` «never updates» on Next 16.3.5 | a timing race in the spec, traced in wave 8, not a product defect found by any member | a session |
+| `DEC-145`'s orphaned streaming segment (duplicate ids on desktop under `/app`) · `controlClass`'s `w-full` beating a caller's `w-*` · the filter sheet's native date mask | each is diagnosed and cosmetic; none is reachable as a failure by the sweep, the gates or a member | a session |
+| F6 — seven message keys with a template and no sender · F7 — an org named «كريم معرفة» signs its mail twice | F6 is a product question (should those events mail?), F7 depends on the production org name | owner |
+| `choose-org` outside the accessibility sweep | it needs a member of two orgs; it was rebuilt on the system in wave 6 and has its own specs | a session |
+| `tests/rls/survey-submit.test.ts` counts every queued `record_survey_response` job | a leftover from an earlier e2e run turns it red locally; it should count its own survey's jobs | a session |
+| **The prose-dependent screens** (`STATUS.md`'s list, the owner's rule of 2026-09-22) | the owner's instruction: listed, not rewritten — a later wave replaces the prose with affordances | owner schedules |
+| Recurring series (`A14`) · drag in `ui/reorderable-list` · objectives, tag management, avatar storage, downloads (`DEC-076`) · points for a survey · the exhausted-job alert's `max_attempts` lever | new features, never in M13's scope | owner |
+
+- **Documents changed:** `STATUS.md` (the closing block and START HERE)
