@@ -167,13 +167,18 @@ src/
 │   │       │   ├── layout.tsx        # shell only — NO auth check here [v16]
 │   │       │   ├── page.tsx          # dashboard
 │   │       │   ├── proposals/
-│   │       │   ├── sessions/[id]/schedule/
+│   │       │   ├── sessions/[id]/layout.tsx  # the settings hub's sub-nav — NO auth decision [REQ-SES-020, DEC-176, DEC-178]
+│   │       │   ├── sessions/[id]/page.tsx    # redirect only: admin → schedule, moderator → attendance, else 404
+│   │       │   ├── sessions/[id]/schedule/   # SCR-043 — no certificate mode since wave 13 (DEC-178)
+│   │       │   ├── sessions/[id]/attendance/ # SCR-044 — shipped since wave 7; added here by DEC-176
+│   │       │   ├── sessions/[id]/certificates/ # SCR-045 — the certificate mode's one writer; shipped since M6; added here by DEC-176
 │   │       │   ├── sessions/[id]/survey/     # SCR-064, survey results  [DEC-074, DEC-083]
 │   │       │   ├── surveys/ · surveys/[templateId]/  # SCR-065, survey templates [DEC-160]
 │   │       │   ├── venues/ · categories/ · companies/ · members/
 │   │       │   ├── moderation/{comments,photos,reports}/
 │   │       │   ├── scoring/ · recognition/
-│   │       │   ├── templates/{posters,certificates}/
+│   │       │   ├── templates/page.tsx     # redirect → templates/posters; the rail's one «التصاميم» leaf [DEC-178]
+│   │       │   ├── templates/{posters,certificates}/  # SCR-055/056, with a posters | certificates tab strip
 │   │       │   ├── designer/[documentId]/page.tsx
 │   │       │   ├── emails/ · branding/ · reminders/
 │   │       │   ├── exports/ · audit/
@@ -189,6 +194,7 @@ src/
 │       ├── upload/photo/route.ts
 │       ├── upload/design-asset/route.ts
 │       ├── designer/autosave/route.ts        # > 1 MB; cannot be an action [v16]
+│       ├── designer/downloads/[artifactId]/route.ts  # GET — EVERY download: record_export_download() (0152) audits, then 303 to the one signer; a refusal 303s back with ?download=failed [DEC-176…178]
 │       ├── sessions/[id]/ics/route.ts
 │       ├── verify/[code]/route.ts            # rate-limited, in front of verify_certificate()
 │       ├── webhooks/{resend,google-calendar}/route.ts
