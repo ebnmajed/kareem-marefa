@@ -130,6 +130,7 @@ green at **every** commit; `ui-lint --strict` green with no allowlist; ★ **a v
 | `npm run test:rls` | **120 files · 1,204 passed · 4 todo · 0 failed** on the chain `0001`–`0144` |
 | `npm run ui-lint` | ★ **strict, no allowlist — 274 files, 0 violations** (61 at Step 0) |
 | `npm run qa` | ★ **57 / 57 — `qa:contract` 38 (the original 31 unchanged + the door on three routes × two widths + `/og.png`), `qa:appearance` 19** |
+| ★ CI's `frozen routes (qa)` job | **red at every push from `31ca556` (the split) until this fix, and not caught before the PR was marked ready**: `qa:contract` 38/38 in CI every time, but `qa:appearance` — the job's SECOND step — timed out on its first page. The helper started the app as `npx next start` and stopped only the `npx` wrapper; on Linux the real server survived, orphaned on :3000, its log pipe unread, so it answered the readiness probe and then hung. `scripts/lib/stubbed-server.mjs` now spawns `next` itself and refuses to start if :3000 already answers. Locally both halves pass as separate steps with nothing left on :3000 |
 | `npm run visual` vs `pre-m13` | the six marketing pairs move by design; **`/ar/ui` 0.000 % on both widths** — no `ui/` primitive moved. The re-baseline is `.qa-shots/visual/m13/` |
 | accessibility sweep | ★ **62 routes on each project, 0 findings of any impact** |
 | budgets | no regression against `main` measured back to back (L7) |
