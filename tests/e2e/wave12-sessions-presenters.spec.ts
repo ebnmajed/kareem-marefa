@@ -146,16 +146,32 @@ async function signIn(context: BrowserContext) {
 /** The section, found from `#main` (DEC-145). */
 const section = (page: Page) => page.locator("#main").locator('section[aria-labelledby="presenters"]');
 
-async function capture(page: Page, name: string) {
+/**
+ * A full page from the top, for a state of the page; the viewport alone, for
+ * an open dialog — a fixed layer in a full-page shot is drawn wherever the page
+ * was scrolled to, and so are the sticky header and the rail's skip link,
+ * which is what the first run's captures showed mid-page.
+ */
+async function capture(page: Page, name: string, { dialog = false } = {}) {
   expect(page.viewportSize()).toEqual(PHONE);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(wide, `${name} scrolls sideways at 390 px`).toBe(false);
-  await section(page).scrollIntoViewIfNeeded();
+  if (!dialog) {
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      // `instant`: the page scrolls smoothly, and a smooth scroll is still
+      // under way when the shot is taken — the tab bar lands mid-page.
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }
   mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: join(SHOTS, `wave12-sessions-schedule-presenters-${name}.png`), fullPage: true });
+  await page.screenshot({ path: join(SHOTS, `wave12-sessions-schedule-presenters-${name}.png`), fullPage: !dialog });
 }
 
 async function open(page: Page, sessionId: string) {
+  // The phone project's device is 412 × 839; the captures are 390 × 844
+  // (timeline.spec.ts's pattern). Every case here runs on the phone project.
+  await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(section(page).getByRole("heading", { level: 2, name: /المُقدِّمون/ })).toBeVisible();
@@ -197,7 +213,7 @@ test("removing asks, names her, and deletes — never a decline", async ({ page,
   const dialog = page.getByRole("dialog", { name: "إزالة سارة العتيبي من مُقدِّمي الجلسة؟" });
   await expect(dialog).toContainText("لن يظهر اسمه بين مُقدِّمي هذه الجلسة.");
   await expect(dialog).not.toContainText("نقاط");
-  await capture(page, "confirm");
+  await capture(page, "confirm", { dialog: true });
 
   await dialog.getByRole("button", { name: "أزل", exact: true }).click();
   await expect(dialog).toHaveCount(0);
