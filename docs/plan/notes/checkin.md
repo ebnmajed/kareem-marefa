@@ -2337,3 +2337,31 @@ the same merge as `scoring`'s timing change, never before.** The lead orders the
   defect, one line, no behaviour visible to a member)?
 - **Q6.** Should the block sit above the code form (as sketched) or below it on SCR-014 when the member has
   not yet checked in today on a multi-day session?
+
+## 10 · Reconciled with `scoring`'s published contract 1 (`scoring.md` § CONTRACT 1)
+
+The names match mine exactly: `getSessionAwardState(locale, sessionId)`, `SessionAwardState` and
+`public.session_award_state(p_session)`, which is `authenticated`-only and takes the caller alone. §2's type
+holds with two differences:
+
+- The day type is `scoring`'s exported **`AwardDay`** (`{ position, startsAt }`), which matches
+  `LabelledDay` structurally. I import theirs.
+- `pending` and `incomplete` also carry **`dayCount`**. I use it for `dayName()`'s `dayCount` when naming a
+  missed day, so the component needs no second read of the days. The days line stays gated on
+  `daysRequired > 1` (§2.3).
+
+Consequences for my rendering, none of which changes the plan's shape:
+
+- **It throws on an RPC error.** Q4 stands. My proposal is to catch the error in `AwardState` and render
+  nothing. SCR-014 must not fall over on a scoring read.
+- **`incomplete` can return to `pending`** when an admin marks the missed day. That is correct because the
+  state is re-read on every render. Nothing of mine stores it.
+- **A presenter who has an active check-in reads `pending`.** This only happens when a member checks in and
+  is added as a presenter afterwards (`REQ-SES-019`), because `check_in()` refuses a presenter. `scoring`
+  says the completion pass would pay them, so `pending` is true, and I render it as I would for any member.
+  The event page's `AwardState` does not gate on relation, which is why this needs no special case.
+- **`paid` comes first**, so a one-day award paid at check-in before the migration reads `paid`. This is
+  §8's point, now confirmed by the function itself.
+- **`incomplete` before completion needs `require_all_days`.** With it off, a missed day never makes the
+  award unreachable, which matches the copy (`award.incomplete.rule` names «جميع أيام الجلسة»). Answered:
+  Q2 is settled by `scoring`'s row 4, so the lead's ruling is only needed if they disagree.
