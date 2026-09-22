@@ -24,11 +24,11 @@ import { SCHEMA_VERSION, type EmailBlock, type EmailBlockDocument } from "./bloc
 // dropped at render time. They are authored here, so a missing id is a type
 // error rather than a mail with a row missing.
 //
-// ★ AND THE ADOPTION IS EXPLICIT (`DEC-161` R3). Nothing here is applied to an
-// org automatically: a key with no row, or a row whose `blocks` is null, still
-// renders the pinned STRING bytes. An admin duplicates a design to own it.
-// That is what keeps «an org that has not touched its templates sends
-// byte-identical mail» true while the library exists.
+// ★ AND SINCE M13 THEY ARE WHAT AN UNTOUCHED ORG SENDS (`DEC-081`). `DEC-161`
+// R3 kept adoption explicit «until M13»; the string path has left, so a key
+// with no row renders its design here, and an admin duplicates one only to
+// EDIT it. A row whose `blocks` is null is an admin's own text, framed by
+// `documentFromText()` below — never replaced by a design.
 
 export type DesignFamily =
   | "announcement"
@@ -159,7 +159,15 @@ const logo = (): EmailBlock => ({ type: "image", id: "logo", src: { kind: "org_l
  * member reads carefully, can never arrive with a broken image.
  */
 function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
-  const heading: EmailBlock = { type: "heading", id: "h", text: copy.heading, level: 1 };
+  // ★ The heading, then the member by name — every string template greeted
+  // since M3, and `notify-jobs.test.ts` holds the sent mail to it. The designs
+  // dropped the greeting while only adopters received them; the retirement
+  // makes them every member's mail, so it comes back as a block an org may
+  // edit or remove (`DEC-081`).
+  const heading: EmailBlock[] = [
+    { type: "heading", id: "h", text: copy.heading, level: 1 },
+    { type: "paragraph", id: "greeting", text: "مرحبًا {{member.name}}،" },
+  ];
   const body: EmailBlock = { type: "paragraph", id: "body", text: copy.body };
   const button: EmailBlock[] = copy.action
     ? [{ type: "button", id: "cta", label: copy.action.label, urlBinding: copy.action.urlBinding, style: "primary" }]
@@ -167,24 +175,24 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
 
   switch (family) {
     case "announcement":
-      return [logo(), heading, body, { type: "session_card", id: "card", withImage: true }, ...button];
+      return [logo(), ...heading, body, { type: "session_card", id: "card", withImage: true }, ...button];
     case "reminder":
-      return [logo(), heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
+      return [logo(), ...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
     case "rsvp":
-      return [logo(), heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
+      return [logo(), ...heading, { type: "session_card", id: "card", withImage: true }, body, ...button];
     case "rescheduled":
       // The change block is the point of this one: `{{changes}}` is the
       // renderer's pre-built «old ← new» (`08` §3.3, `REQ-SES-009`).
-      return [logo(), heading, body, { type: "paragraph", id: "changes", text: "{{changes}}" }, { type: "session_card", id: "card" }, ...button];
+      return [logo(), ...heading, body, { type: "paragraph", id: "changes", text: "{{changes}}" }, { type: "session_card", id: "card" }, ...button];
     case "cancelled":
       // No image, and no primary action: an ending with a reason.
-      return [logo(), heading, body];
+      return [logo(), ...heading, body];
     case "rating":
-      return [logo(), heading, body, ...button];
+      return [logo(), ...heading, body, ...button];
     case "certificate":
-      return [logo(), heading, body, { type: "detail_list", id: "meta", items: [{ label: "رقم الشهادة", value: "{{serial}}" }] }, ...button];
+      return [logo(), ...heading, body, { type: "detail_list", id: "meta", items: [{ label: "رقم الشهادة", value: "{{serial}}" }] }, ...button];
     case "recognition":
-      return [logo(), heading, body, ...button];
+      return [logo(), ...heading, body, ...button];
   }
 }
 
@@ -194,9 +202,38 @@ export function platformDesign(key: string): EmailBlockDocument | null {
   const copy = COPY[key];
   if (!family || !copy) return null;
   const blocks = layout(family, copy);
-  // `certificate` carries a serial row that only one of its three keys has;
-  // the compiler drops a detail row whose label and value are both empty, and
-  // an unresolved `{{serial}}` renders blank — so the row is dropped for
-  // `MSG-export_ready` without a second layout.
+  // `certificate` carries a serial row that only two of its three keys have;
+  // an unresolved `{{serial}}` renders blank and the compiler drops a detail
+  // row whose value is empty — so the row is dropped for `MSG-export_ready`
+  // without a second layout.
   return { schemaVersion: SCHEMA_VERSION, blocks };
+}
+
+/**
+ * ★ AN ADMIN'S EDITED STRING TEMPLATE, IN THE DESIGN'S FRAME — `DEC-081`'s
+ * retirement, `REQ-NTF-007` kept.
+ *
+ * A row whose `blocks` is null exists only because an admin wrote it: nothing
+ * seeds `notification_templates`, and «restore default» deletes. So when the
+ * string path left, those words could be converted, discarded or refused — and
+ * discarding an admin's words for a platform design is a regression, not a
+ * cleanup. They are converted, at render time, and never written back:
+ *
+ *   · one `paragraph` per blank-line-separated paragraph of the body — the
+ *     split `toParagraphs()` always applied — with the admin's text as its
+ *     template, bindings intact and interpolated per member as before;
+ *   · after the logo, which every design carries, and before the composed
+ *     footer, which `compileBlocks()` appends to every document;
+ *   · no heading, no button, no card: the admin wrote none.
+ *
+ * «حوّله إلى تصميم» (`convertTemplateToDesign`) stores the same paragraphs, so
+ * converting in the editor does not change the mail an org already receives.
+ */
+export function documentFromText(body: string): EmailBlockDocument {
+  const paragraphs = body
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((text, index): EmailBlock => ({ type: "paragraph", id: `p${index + 1}`, text }));
+  return { schemaVersion: SCHEMA_VERSION, blocks: [logo(), ...paragraphs] };
 }

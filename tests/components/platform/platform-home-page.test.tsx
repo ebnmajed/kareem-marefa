@@ -16,6 +16,7 @@ vi.mock("@/lib/dal/platform", async () => ({
   PLATFORM_ALERTS: [],
   listPlatformAlerts: vi.fn(),
   getPlatformTotals: vi.fn(),
+  listExhaustedJobs: vi.fn(async () => []),
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "platform" }),

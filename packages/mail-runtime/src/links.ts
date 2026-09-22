@@ -15,9 +15,9 @@
 // fills the id, in one place, here.
 //
 // ★ AND IT IS OFF UNTIL `APP_URL` IS SET. `linkFor()` returns null without an
-// origin, `renderEmail()` then supplies no `url`, and the output is byte for
-// byte today's — which is why the 116 pinned files do not move. A relative
-// link in a mail is a broken link, so half an origin is worse than none.
+// origin, `renderEmail()` then supplies no `url`, and a button bound to it is
+// dropped. A relative link in a mail is a broken link, so half an origin is
+// worse than none.
 
 /** The id in the payload, and the path it belongs to. `id: null` is a route
  *  with no id — a member's own page, which every recipient can reach. */

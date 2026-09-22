@@ -8,9 +8,9 @@ import ar from "@/messages/ar/materials.json";
 import { PageViewer, type ViewerPageDTO } from "@/components/viewer/page-viewer";
 
 const pages: ViewerPageDTO[] = [
-  { pageNumber: 1, imageUrl: "https://x.test/1.webp", thumbnailUrl: "https://x.test/t1.webp" },
-  { pageNumber: 2, imageUrl: "https://x.test/2.webp", thumbnailUrl: "https://x.test/t2.webp" },
-  { pageNumber: 3, imageUrl: "https://x.test/3.webp", thumbnailUrl: "https://x.test/t3.webp" },
+  { pageNumber: 1, imageUrl: "https://x.test/1.webp", thumbnailUrl: "https://x.test/t1.webp", width: 1600, height: 900 },
+  { pageNumber: 2, imageUrl: "https://x.test/2.webp", thumbnailUrl: "https://x.test/t2.webp", width: 1600, height: 900 },
+  { pageNumber: 3, imageUrl: "https://x.test/3.webp", thumbnailUrl: "https://x.test/t3.webp", width: 1600, height: 900 },
 ];
 
 function renderViewer(rtl: boolean) {

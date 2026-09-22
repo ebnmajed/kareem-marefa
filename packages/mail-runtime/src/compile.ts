@@ -17,12 +17,10 @@
 // U+2068 FIRST STRONG ISOLATE … U+2069 POP DIRECTIONAL ISOLATE, in the HTML
 // **and** in the generated text part, which reorders without them.
 //
-// It must NOT move into `interpolate()`. That function is shared with the
-// STRING path, and isolating there would change every default template's
-// output and move all 116 files under `tests/unit/mail-pinned/` — for an org
-// that has touched nothing, which is the one thing this wave promises not to
-// do (REQ-NTF-009, contract 5). The two paths diverge here on purpose, and
-// `tests/unit/mail-blocks.test.ts` asserts that they do.
+// It does not live in `interpolate()`, which renders the SUBJECT: the
+// subject has been interpolated plainly since M3, and the 29 `.subject.txt`
+// files under `tests/unit/mail-pinned/` hold it so — isolating it would be a
+// separate, reviewed change.
 
 import { DESIGN_STACK, escapeHtml, formatValue, lookup } from "./primitives.js";
 import { readDocument, type DroppedBlock, type EmailBlock, type ImageSource } from "./blocks.js";
@@ -122,6 +120,26 @@ function isSendableHref(href: string, appOrigin: string | null): boolean {
 
 const SPACER_PX: Record<string, number> = { sm: 8, md: 16, lg: 32 };
 
+/**
+ * ★ A LONG UNBROKEN RUN WRAPS INSTEAD OF WIDENING THE MAIL — on the cells an
+ * author types into (a paragraph, a detail value).
+ *
+ * An admin's own text can carry a bare `{{url}}` line; a URL has no break
+ * opportunity, a table cell grows to its min-content, and the whole mail then
+ * scrolls sideways on a phone (the N1 review measured 488 px at 390).
+ * `overflow-wrap: break-word` does NOT help here — it breaks only after the
+ * cell has been sized — so the pair is:
+ *   · `overflow-wrap:anywhere` — the standard property that also lowers the
+ *     min-content width, which is what a table cell is sized by (Apple Mail,
+ *     iOS, Outlook.com and the web engines);
+ *   · `word-break:break-word` — the legacy value Gmail's sanitiser keeps and
+ *     WebKit/Blink honour with the same min-content effect.
+ * Outlook's Word engine ignores both and wraps inside the 560 px table as it
+ * always has. Both break only where no ordinary opportunity exists, so Arabic
+ * prose wraps at its spaces exactly as before. Never `overflow: hidden`.
+ */
+const WRAP = "overflow-wrap:anywhere;word-break:break-word;";
+
 /** D3a item 2: `dir="rtl"` on every text-bearing cell AND `align="right"`
  *  beside `text-align`, because Outlook's Word engine reads the attribute and
  *  does not inherit direction reliably through nested tables. A right-aligned
@@ -195,7 +213,7 @@ function compileOne(
       if (value === "") return;
       rows.push(
         textCell(
-          `font-size:17px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 16px 0;text-align:right;`,
+          `font-size:17px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 16px 0;text-align:right;${WRAP}`,
           escapeHtml(value).replace(/\n/g, "<br />"),
         ),
       );
@@ -257,13 +275,18 @@ function compileOne(
     case "detail_list": {
       const pairs = block.items
         .map((item) => ({ label: say(item.label), value: say(item.value) }))
-        .filter((pair) => pair.label !== "" || pair.value !== "");
+        // ★ A row whose VALUE is empty is dropped, whatever its label: «رقم
+        // الشهادة:» over nothing is a question the mail asks and cannot answer.
+        // The retirement found it — `MSG-export_ready` shares the certificate
+        // family's serial row and has no serial — the first time the design
+        // was rendered for an org that had not adopted it.
+        .filter((pair) => pair.value.trim() !== "");
       if (pairs.length === 0) return;
       const inner = pairs
         .map(
           (pair) =>
             `<tr><td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:0 0 4px 0;text-align:right;`)} width="35%">${escapeHtml(pair.label)}</td>` +
-            `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;`)}>${escapeHtml(pair.value)}</td></tr>`,
+            `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;${WRAP}`)}>${escapeHtml(pair.value)}</td></tr>`,
         )
         .join("");
       rows.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td>`));

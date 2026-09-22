@@ -51,6 +51,7 @@ export function CodeInput({ name, id, defaultValue }: { name: string; id: string
       <input type="hidden" name={name} value={chars.join("")} />
       <div className="flex gap-2" dir="ltr" role="group" aria-labelledby={`${id}-label`}>
         {chars.map((char, i) => (
+          // ui-lint-disable-next-line field — six single-character boxes are ONE control, named by the group's aria-labelledby; <Field> wraps one control (lead, wave 11)
           <input
             key={i}
             ref={(el) => {
@@ -67,6 +68,7 @@ export function CodeInput({ name, id, defaultValue }: { name: string; id: string
             autoCapitalize="characters"
             spellCheck={false}
             maxLength={1}
+            // ui-lint-disable-next-line class-string — a segmented code box has no primitive; its border must match the system's control (lead, wave 11)
             className="h-14 w-full min-w-11 rounded-field border border-edge-strong bg-canvas text-center text-h2 text-fg-heading uppercase"
           />
         ))}

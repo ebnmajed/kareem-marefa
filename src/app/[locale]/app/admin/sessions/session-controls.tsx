@@ -2,9 +2,11 @@
 
 import { useActionState, useId, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Prose } from "@/components/ui/prose";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import type { SessionAction } from "@/lib/dal/sessions";
 import type { TransitionState } from "./actions";
@@ -107,21 +109,17 @@ export function SessionControls({
 
       {actions.includes("cancel") ? (
         <details className="mt-3">
-          <summary className="inline-flex h-11 cursor-pointer list-none items-center rounded-field border border-edge-strong px-4 text-body-sm text-fg-heading hover:bg-silver-100">
+          {/* A `<summary>` cannot be `<Button>`; it takes the button's own classes. */}
+          <summary className={buttonClass("secondary", "md", "cursor-pointer list-none")}>
             {t("cancel")}
           </summary>
           <div className="mt-3">
-            <label htmlFor="cancel-reason" className="text-label text-fg-heading">
-              {t("cancelReasonLabel")}
-            </label>
-            <p className="mt-1 text-body-sm text-fg-muted">{t("cancelReasonHint")}</p>
-            <textarea
-              id="cancel-reason"
-              name="reason"
-              rows={3}
-              maxLength={2000}
-              className="mt-2 block min-h-24 w-full rounded-field border border-edge-strong bg-canvas px-4 py-3 text-body text-fg-heading"
-            />
+            {/* The id is the Field's own (`useId`): a hand-written
+                `cancel-reason` repeated for every cancellable session on the
+                page, so the second label named the first box (wave 11, K1). */}
+            <Field label={t("cancelReasonLabel")} hint={t("cancelReasonHint")}>
+              <Textarea name="reason" rows={3} maxLength={2000} />
+            </Field>
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <DialogTrigger asChild>
                 <Button type="button" variant="secondary" className="mt-3 h-11 px-4 text-body-sm" disabled={pending}>

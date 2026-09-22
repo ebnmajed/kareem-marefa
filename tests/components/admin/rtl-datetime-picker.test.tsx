@@ -1,10 +1,26 @@
-// RtlDateTimePicker — SCR-043's carried-over item (DEC-045). No
-// NextIntlClientProvider needed: every string is a prop, not read through
-// `useTranslations`, so the host page supplies real `ar.json` strings and
-// this test can too, directly.
-import { render, screen, fireEvent, within } from "@testing-library/react";
+// RtlDateTimePicker — SCR-043's carried-over item (DEC-045). Every string the
+// picker itself shows is a prop, so the host page supplies real `ar.json`
+// strings and this test can too, directly.
+//
+// ★ Wave 11 (K1, a harness change with its ledger line — no expectation
+// moved): the hour and minute selects now sit in `ui/field`'s `<Field>`, which
+// reads `ui.json` through `useTranslations`, so every render here is wrapped in
+// a provider. `render` below is RTL's with that wrapper; `rerender` keeps it.
+import type { ReactElement, ReactNode } from "react";
+import { render as rtlRender, screen, fireEvent, within } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import { RtlDateTimePicker } from "@/components/admin/rtl-datetime-picker";
+import uiAr from "@/messages/ar/ui.json";
+
+function Provider({ children }: { children: ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="ar" messages={uiAr}>
+      {children}
+    </NextIntlClientProvider>
+  );
+}
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: Provider });
 
 const LABELS = {
   label: "التاريخ والوقت",

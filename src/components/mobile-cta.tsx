@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { ButtonLink } from "@/components/ui/button";
 
 /**
  * Sticky bottom CTA bar, landing page + mobile only, appearing once the hero
@@ -32,12 +32,9 @@ export function MobileCta() {
 
   return (
     <div className="theme-dark fixed inset-x-0 bottom-0 z-40 border-t border-edge !bg-navy-950/95 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] backdrop-blur-md md:hidden">
-      <Link
-        href="/register"
-        className="flex h-12 w-full items-center justify-center rounded-field bg-white text-label text-navy-950 transition-colors duration-150 active:bg-silver-200"
-      >
+      <ButtonLink href="/register" className="w-full">
         {t("cta")}
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

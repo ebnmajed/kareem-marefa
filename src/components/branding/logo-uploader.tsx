@@ -105,8 +105,13 @@ export function LogoUploader({
 
       <div className="flex flex-wrap items-center gap-4">
         {assetId && previewUrl ? (
+          // ★ `rounded-card`, not `rounded-field` — a logo thumbnail, not a
+          // form control; `rounded-field border border-edge` is the house
+          // control's own class recipe (`ui/field.tsx`'s `controlClass()`),
+          // and this `<img>` re-typing it was a coincidence `ui-lint`'s
+          // class-string rule exists to catch (`REQ-UIX-001`).
           // eslint-disable-next-line @next/next/no-img-element -- an org-uploaded image at a short-lived signed URL.
-          <img src={previewUrl} alt={t("current")} className="h-16 w-auto max-w-[160px] rounded-field border border-edge object-contain p-1" />
+          <img src={previewUrl} alt={t("current")} className="h-16 w-auto max-w-[160px] rounded-card border border-edge object-contain p-1" />
         ) : (
           <p className="text-body-sm text-fg-muted">{t("none")}</p>
         )}

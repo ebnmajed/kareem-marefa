@@ -1,5 +1,4 @@
-// The four things BOTH mail paths need — the string path (`render.ts`) and the
-// block compiler (`compile.ts`).
+// The four things both `render.ts` and the block compiler (`compile.ts`) need.
 //
 // ★ WHY THEY LIVE IN THEIR OWN FILE. `compile.ts` needs them and `render.ts`
 // calls `compile.ts`, so leaving them in `render.ts` would make the two modules
@@ -7,16 +6,13 @@
 // side effect, and then it fails in a way that reads as a bug somewhere else.
 // One leaf module, imported by both, and there is no cycle to reason about.
 //
-// Extracted from `render.ts` with their bodies unchanged; the 116 files under
-// `tests/unit/mail-pinned/` are what proves it.
-
+// Extracted from `render.ts` with their bodies unchanged.
+//
 // D3a item 1: a mail renders in the READER's fonts — invariant 12 does not
 // reach an inbox and `@font-face` is stripped by Gmail and Outlook — so the
 // stack is declared and ends in a generic that exists on Windows, macOS, iOS,
-// Android and Gmail's web client. Both paths use THIS constant: two stacks
-// would be two chances for an Arabic face to fall back silently to one that
-// breaks lam-alef.
-export const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif`;
+// Android and Gmail's web client. There is ONE stack, below: two would be two
+// chances for an Arabic face to fall back silently to one that breaks lam-alef.
 
 /**
  * The stack a DESIGNED mail declares (D3 finding F4, block path only).
@@ -30,11 +26,8 @@ export const FALLBACK_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial
  * (`06` §5.1). A platform reordering its fallbacks would change our Arabic
  * silently, on most readers, and nothing would tell us.
  *
- * ★ Why the string path keeps the stack above: `FALLBACK_STACK` is in every
- * cell of both paths, so widening it there would move all 116 pinned files —
- * changing the mail every org already sends, on a claim nobody here can verify
- * without opening iOS Mail. That is what `REQ-NTF-009` forbids this wave. The
- * string path leaves in M13 regardless.
+ * The string path kept M3's shorter stack (without the two mobile faces) until
+ * it left in M13 (`DEC-081`); every mail now declares this one.
  */
 export const DESIGN_STACK = `'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic', Arial, sans-serif`;
 

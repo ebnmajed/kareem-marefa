@@ -3,8 +3,6 @@
 // The binding twenty-one default templates end on, which nothing has ever
 // supplied. These cases fix the two halves of the answer: with no `APP_URL`
 // the bytes are TODAY'S, and with one the link is absolute and correct.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TEMPLATES, linkFor, renderEmail, ROUTE_FOR, sampleFor, SAMPLE_MEMBER, SAMPLE_ORG } from "@kareem/mail-runtime";
 
@@ -21,16 +19,6 @@ const render = (key: string, appUrl?: string, payload?: Record<string, unknown>)
   });
 
 describe("★ unset is today — an origin nobody configured changes nothing", () => {
-  it("every key renders byte for byte its pinned file when `appUrl` is absent", () => {
-    // The 116 files were written from `main`'s renderer before any of this
-    // existed. If supplying `{{url}}` could reach an unconfigured deployment,
-    // this is where it would show.
-    for (const key of KEYS) {
-      const pinned = readFileSync(join(process.cwd(), "tests", "unit", "mail-pinned", `${key}.plain.html`), "utf8");
-      expect(render(key).html, key).toBe(pinned);
-    }
-  });
-
   it("null and the empty string are both «unset» — half an origin is a broken link", () => {
     for (const origin of [null, undefined, ""]) {
       expect(linkFor("MSG-reminder_1d", { session_id: "s1" }, origin)).toBeNull();

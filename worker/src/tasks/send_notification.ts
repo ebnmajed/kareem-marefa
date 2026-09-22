@@ -34,9 +34,9 @@ interface SendContext {
   member: { id: string; email: string; display_name: string | null; status: string };
   org: { name: string; from_name: string | null; reply_to: string | null; time_zone: string };
   // `blocks` is `0125`'s column, added to this object by `notification_send_context`
-  // (DEC-161). **Null is a string template** — every row that existed before
-  // wave 10 — and `renderEmail()` then takes the path whose bytes
-  // `tests/unit/mail-pinned/` pins.
+  // (DEC-161). **Null is an admin's string template**, which `renderEmail()`
+  // sends as the admin's own words in the design's frame; no row at all is the
+  // key's platform design (DEC-081 — the string path retired in M13).
   template: { subject: string | null; body: string | null; locale: string; blocks?: unknown | null } | null;
   // ★ «May this mail carry the session card's image» — one boolean, derived by
   // `notification_send_context` from `public.session_public_card()`, which is
@@ -110,6 +110,10 @@ export const send_notification: Task = async (rawPayload, helpers) => {
   // (no logo, a WebP one, a suspended org) means null, and a design then
   // renders the org's NAME as a heading rather than a broken image.
   const appUrl = process.env.APP_URL?.replace(/\/+$/, "") || null;
+  // Every mail is a design since DEC-081, and a design without an origin loses
+  // its button and its preference link (REQ-NTF-005) — never a relative one.
+  // Said once per job, with the key and nothing from the payload.
+  if (!appUrl) helpers.logger.info(`send_notification: APP_URL is unset — ${p.key} goes out without its links`);
   let logoUrl: string | null = null;
   if (appUrl) {
     const { rows: logoRows } = await helpers.query(`select storage_path from public.org_public_logo($1::uuid)`, [p.org_id]);

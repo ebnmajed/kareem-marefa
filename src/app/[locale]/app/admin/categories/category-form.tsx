@@ -8,6 +8,7 @@ import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import { CATEGORY_FIELDS, CATEGORY_REQUIRED_FIELDS, emptyCategoryState, type CategoryField, type CategoryState } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // SCR-047's add form, onto `lib/form-state`'s shared model for wave 7
 // (`16` §8.2, `DEC-137`).
@@ -38,9 +39,9 @@ export function CategoryForm({ action }: { action: (prev: CategoryState, formDat
     <form action={formAction} noValidate className="mt-4 max-w-md space-y-5">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
-        <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+        <FormAlert>
           {t(`errors.${state.formError}`)}
-        </p>
+        </FormAlert>
       ) : null}
 
       <Field id="c-name" label={t("nameLabel")} required={required("name")} error={err("name")}>

@@ -73,7 +73,7 @@ describe("each block compiles to one table row and to its own text", () => {
   });
 });
 
-describe("★ bidi isolation — and the two paths diverge here on purpose", () => {
+describe("★ bidi isolation — in the compiler, the one path since DEC-081", () => {
   // `<bdi>` is not supported by Outlook's Word engine (D3a item 3), so a bound
   // value is wrapped in U+2068 … U+2069 — in the HTML and in the text part,
   // which reorders without them.
@@ -89,19 +89,6 @@ describe("★ bidi isolation — and the two paths diverge here on purpose", () 
     const out = compileBlocks(doc({ type: "paragraph", id: "p1", text: "قبل {{day}} بعد" }), ctx());
     expect(out.text[0]).toBe("قبل  بعد");
     expect(out.text[0]).not.toContain(FSI);
-  });
-
-  it("★ the STRING path does not isolate — `interpolate()` is shared, and isolating there would move all 116 pinned files", () => {
-    const out = renderEmail({
-      key: "MSG-badge_earned",
-      override: { subject: "شارة {{badge}}", body: "حصلت على {{badge}}." },
-      payload: { badge: "أول جلسة" },
-      member: { name: "سارة", email: "s@k.example" },
-      org: { name: "كريم معرفة", timeZone: "Asia/Riyadh" },
-    });
-    expect(out.text).toContain("حصلت على أول جلسة.");
-    expect(out.text).not.toContain(FSI);
-    expect(out.html).not.toContain(FSI);
   });
 });
 
@@ -201,7 +188,7 @@ describe("renderEmail's one branch", () => {
     org: { name: "كريم معرفة", timeZone: "Asia/Riyadh" },
   } as const;
 
-  it("★ blocks: null is a STRING template — byte-identical to sending no blocks key at all", () => {
+  it("★ blocks: null is the admin's own text — byte-identical to sending no blocks key at all", () => {
     const without = renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "مرحبًا {{member.name}}." } });
     const withNull = renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "مرحبًا {{member.name}}.", blocks: null } });
     expect(withNull.html).toBe(without.html);
@@ -258,17 +245,12 @@ describe("D3's findings — on the block path, and not on the string path", () =
 
   const designed = (...blocks: EmailBlock[]) =>
     renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "نص", blocks: doc(...blocks) }, appUrl: "https://kareem.pp.sa" });
-  const strung = () => renderEmail({ ...base, override: { subject: "غدًا: {{title}}", body: "مرحبًا {{member.name}}." } });
 
   it("F1 — a DESIGNED mail declares its scheme; a string mail declares nothing new", () => {
     const out = designed({ type: "heading", id: "h1", text: "عنوان", level: 1 });
     expect(out.html).toContain('<meta name="color-scheme" content="light" />');
     expect(out.html).toContain('<meta name="supported-color-schemes" content="light" />');
     expect(out.html).toContain("color-scheme:light;supported-color-schemes:light;");
-
-    const old = strung();
-    expect(old.html).not.toContain("color-scheme");
-    expect(old.html).not.toMatch(/<style[\s>]/);
   });
 
   it("F2 — the logo cell carries an explicit bgcolor ATTRIBUTE, so a transparent PNG has something to stand on", () => {
@@ -308,10 +290,6 @@ describe("D3's findings — on the block path, and not on the string path", () =
     const out = designed({ type: "paragraph", id: "p1", text: "نص" });
     expect(out.html).toContain("'Geeza Pro'");
     expect(out.html).toContain("'Noto Naskh Arabic'");
-
-    const old = strung();
-    expect(old.html).not.toContain("Geeza Pro");
-    expect(old.html).toContain("Tahoma");
   });
 
   it("F5 — the session card's own lines carry dir, because they are the bound values", () => {

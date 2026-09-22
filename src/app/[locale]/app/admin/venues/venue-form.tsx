@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import { emptyVenueState, VENUE_FIELDS, VENUE_REQUIRED_FIELDS, type VenueField, type VenueState } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // SCR-046's add form, onto `lib/form-state`'s shared model for wave 7
 // (`16` §8.2, `DEC-137`) — `admin/sessions/direct-session-form.tsx`'s
@@ -52,9 +53,9 @@ export function VenueForm({ action }: { action: (prev: VenueState, formData: For
     <form action={formAction} noValidate className="mt-4 max-w-2xl space-y-5">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
-        <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+        <FormAlert>
           {t(`errors.${state.formError}`)}
-        </p>
+        </FormAlert>
       ) : null}
 
       <Field id="v-name" label={t("nameLabel")} required={required("name")} error={err("name")}>

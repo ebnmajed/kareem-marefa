@@ -372,6 +372,33 @@ export async function getJobHealth(locale: string): Promise<JobHealthRow[]> {
   );
 }
 
+/** One task with jobs that have used their last attempt — a name and a count, never a payload. */
+export interface ExhaustedTask {
+  task: string;
+  jobs: number;
+}
+
+/**
+ * The console home's «مهام استنفدت محاولاتها» — `job_exhausted` (wave 11), read
+ * through the same `platform_job_health()` SCR-084 lists, so the home and the
+ * job-health cards can never disagree: `failed` counts exactly the jobs the
+ * worker's alert counts (`0011_job_exhausted_alert`).
+ *
+ * ★ `null` when the read FAILED, never `[]` — the same rule as the alerts: an
+ * all-clear from a function that did not answer is the lie this screen must
+ * not tell.
+ */
+export async function listExhaustedJobs(locale: string): Promise<ExhaustedTask[] | null> {
+  await requirePlatformAdmin(locale);
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("platform_job_health");
+  if (error || !data) return null;
+  return (data as { task_identifier: string; failed: number | string }[])
+    .map((r) => ({ task: r.task_identifier, jobs: count(r.failed) }))
+    .filter((r) => r.jobs > 0)
+    .sort((a, b) => b.jobs - a.jobs || a.task.localeCompare(b.task));
+}
+
 // ── SCR-084 and the console's home · the eight alerts of `11` §3.2 ─────────
 
 /** `11` §3.2's alerts, in the document's order — the order both screens list them in. */

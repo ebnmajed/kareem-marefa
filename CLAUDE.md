@@ -34,7 +34,7 @@ Document statuses: `draft` · `settled` · `frozen` · `withdrawn`. Story status
 
 | # | Invariant | Why |
 |---|---|---|
-| 1 | **`/`, `/ar`, `/en`, `/ar/register`, `/og.png` are a frozen public contract** | A live site serves real visitors. `scripts/qa.mjs` guards them in CI. |
+| 1 | **`/`, `/ar`, `/en`, `/ar/register`, `/og.png` are a live public contract** — their URLs, registration behaviour and accessibility floor never regress; their appearance changes only through a `DECISIONS.md` entry and a re-baselined capture in the same commit (`DEC-167`) | A live site serves real visitors. `qa:contract` guards the behaviour in CI at every commit; `qa:appearance` and `npm run visual` move with the design. |
 | 2 | **`registrations` is never dropped, altered, or read by platform code** | Frozen legacy holding real pre-launch signups (DEC-002). |
 | 3 | **Every migration is forward-only** and tested against production-shaped data first | There is one Supabase project today and it is production. |
 | 4 | **`main` stays deployable** | Every milestone ships to the live domain. |
@@ -318,7 +318,66 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 10 — the survey and the email studio, DEC-160) — ★ THE MAP IN FORCE
+### Ownership map (wave 11 — M13, the public site and the closing pass, DEC-166) — ★ THE MAP IN FORCE
+
+**The last milestone of the plan.** The public site rebuilt on the M9 system with a door into the platform
+(`REQ-UIX-025`) and Western numerals (`DEC-124`); `qa` split into a contract half that is blocking at every
+commit and an appearance half rewritten with the design (`DEC-167`, the re-cut invariant 1); `ui-lint`
+flipped to `--strict` with its allowlist **deleted** — 61 violations to 0, most of them not marketing at all;
+the accessibility pass over every screen (`REQ-NFR-007`) and the performance pass against `13` §7
+(`REQ-NFR-008`); the mail's string path retired (`DEC-081`). The checklist is `STATUS.md`'s wave-11 block.
+**The measure adds three items to the usual**: `qa:contract` green at every commit; `ui-lint --strict` green
+with no allowlist; and **a visitor who has never signed in finds «تسجيل الدخول» at 390 px in Arabic without
+being told where it is.**
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ **`qa.mjs` split first, alone, no assertion changed** · ★ **the public site** — `(marketing)/**` and the thirteen components it renders, the door, the numerals, the copy that says the platform exists, the register form re-presented with its behaviour byte-identical, the new `og.png`, the rewritten `qa:appearance` and the re-baselined visual **in one commit** · the custodian rows (5 `ui-lint` violations in `checkin`, `designer`, `scoring` files; `ui/radio-group`'s error prop; the studio's unnamed canvas) · the `org_settings` backfill and trigger · the accessibility sweep over every route and the budgets run · the `--strict` flip · promotion, gates, the PR, the closing `STATUS` | the lead-only paths below, `supabase/migrations/**` from `0143`, `src/app/[locale]/(marketing)/**`, ★ `src/components/{header,footer,chapter,wordmark,intro-sting,network-bg,network-gl,ornaments,mobile-cta,language-toggle,registration-form,form-token}.tsx`, `src/messages/*/marketing.json`, `public/**`, `tests/e2e/{a11y,budgets,frozen-routes}*.spec.ts`, new `tests/e2e/wave11-lead-*.spec.ts`, the lead's fifteen `ui/` files, `src/app/globals.css`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `messages/*/{ui,app,auth}.json`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `designer`, `event` — **including `sessions'` eight `ui/` primitives**, edited only for its own rows or on a teammate's written request |
+| `content` | sonnet | **27 of the 61 `ui-lint` violations** — `tasks/create-form.tsx` (10), `tasks/task-item.tsx` (6), `viewer/page-viewer.tsx` (5), `event/comment-composer.tsx` (2), `me/privacy/{forms,page}.tsx` (2), `photos/gallery.tsx`, `materials/proposal-list.tsx` — onto the form primitives, **behaviour unchanged**; the accessibility findings the sweep routes to its screens; the viewer's «loads progressively» (`REQ-NFR-008`) | `src/components/{materials,photos,viewer,tasks}/**`, `src/app/[locale]/app/sessions/[id]/materials/**`, `src/lib/dal/{materials,photos,tasks}.ts`, `src/app/api/upload/**`, `src/lib/storage/**`, `worker/src/content/**` and its three tasks, its nine `ui/` primitives, `messages/*/{materials,photos,tasks}.json`, `supabase/proposed/content/**`, its tests, new `tests/e2e/wave11-content-*.spec.ts`, its note. **Fixes only**: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and `actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`, `src/lib/realtime/**`, `src/app/[locale]/app/me/{page,layout,loading,error}.tsx`, `me/{bookmarks,privacy}/**`, `src/components/me/**`, `messages/*/{event,profile,privacy}.json` |
+| `console` | opus | **21 violations** across ten admin files — `rtl-datetime-picker.tsx` (5) the hardest; ★ **the attendance screen** (transferred): its 2 violations, the table's sideways scroll at 390 px from two days up, the manual-mark form's «مطلوب» markers; the accessibility findings on `/app/admin/**`; the admin dashboard's budget | `src/app/[locale]/app/admin/**` **except** `designer`, `templates`, `branding`, `emails`, `surveys`, `sessions/[id]/{certificates,schedule,survey}`; ★ `src/app/[locale]/app/admin/sessions/[id]/attendance/**` (from `checkin`); `src/app/api/admin/**` except `branding` and `emails`; `src/lib/dal/admin*.ts`, `src/lib/dal/scoring-admin.ts`; `src/components/{admin,browse}/**` except `admin/delivery-reason.ts`; its six `ui/` primitives; `messages/*/admin.json`; `supabase/proposed/console/**`; its tests, ★ `tests/e2e/admin-attendance*.spec.ts` (evidence); new `tests/e2e/wave11-console-*.spec.ts`; its note |
+| `notify` | opus | ★ **the string path retired** (`DEC-081`, `DEC-161` R3): an org that never touched its templates receives the **designed** mail for every one of the 25 keys; `REQ-NTF-014` true for every org; **the pinned files move as one reviewed diff** the lead opens, and `main`'s worker on the post-merge schema is answered in the plan | `packages/mail-runtime/src/**`, `worker/src/mail/**`, `worker/src/tasks/{send_notification,send_test_email}.ts`, `src/app/[locale]/app/admin/emails/**`, `src/components/{email,notifications,calendar}/**`, `src/components/admin/delivery-reason.ts`, `src/app/api/admin/emails/**`, `src/app/api/webhooks/**`, `src/lib/dal/{notifications,calendar}.ts`, `messages/*/{notifications,emails,calendar}.json`, `supabase/proposed/notify/**`, `tests/unit/{mail,notify,admin-emails}*` **including `tests/unit/mail-pinned/**` under the reviewed-diff rule**, `tests/rls/{notify,notifications}*.test.ts`, `tests/components/{email,admin/emails-page}*`, new `tests/e2e/wave11-notify-*.spec.ts`, its note |
+| `platform` | opus | the carried **exhausted-job alert** — a job that has used its last attempt raises an alert the super admin sees (`0075`'s `queue_stalled` excludes them by design); the accessibility findings on `/app/platform/**` | `src/app/[locale]/app/platform/**`, `src/app/api/platform/**`, `src/lib/dal/platform*.ts`, `src/components/platform/**`, `worker/src/platform/**` and its six tasks, ★ `worker/src/tasks/evaluate_alerts.ts` for this row (`DEC-168`), `messages/*/platform.json`, `supabase/proposed/platform/**`, its tests, new `tests/e2e/wave11-platform-*.spec.ts`, its note |
+| `branding` | sonnet | ★ **status-colour contrast enforced** (`DEC-073`'s M13 consequence): `checkContrast()` gains the `live` / `ended` pairs and **`save_brand_kit()` refuses** a palette on which a status badge fails AA, in the database; its **3** violations (`colour-field`, `contrast-badge`, `logo-uploader`); the carried **one logo for two schemes** — a per-scheme logo or an upload-time check, after the owner's production read | `src/app/[locale]/app/admin/branding/**`, `src/app/api/admin/branding/**`, `src/lib/brand/**`, `src/components/branding/**`, `packages/storage-paths/src/brand.ts`, add-only `resolveBrand()` in `packages/designer-runtime/src/brand.ts` — **never `BRAND_COLOUR_TOKENS`** — `messages/*/branding.json`, `supabase/proposed/branding/**`, its tests, new `tests/e2e/wave11-branding-*.spec.ts`, its note |
+
+★ = transferred or changed for this wave by `DEC-166`.
+
+**Wave-11 rules.**
+
+- ★ **`qa:contract` is green at every commit of the wave**, and the lead proves it at each sync. The split is
+  a move, not an edit: 44 checks before, 44 after, the same labels.
+- ★ **The frozen HTML changes only in the same commit as its re-baselined capture** and its rewritten
+  `qa:appearance` — never before, never after (`DEC-167`). No teammate touches a file the marketing routes
+  render; the `TaskCompleted` hook falls through to the full `qa` when one does, **which means you edited
+  something that is not yours.**
+- ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups. The
+  register form's action, field names, ids, validation and no-JS path are the contract, byte for byte.
+- ★ **A `ui-lint` fix is a presentation change, never a behaviour change.** Moving a raw control onto
+  `<Field>` keeps its `name`, `id`, `defaultValue`, `required`, `form`, its submit path and every e2e locator
+  that reads it; a spec that breaks is a finding, not a test to repair (the ledger). **No
+  `ui-lint-disable-next-line` without a reason the lead approves in writing** — the escape hatch is for a
+  control the system genuinely cannot express (a hidden-by-design input inside `file-drop`), never for time.
+- ★ **The allowlist only shrinks, and at the end it is deleted.** Run `node scripts/ui-lint.mjs --prune`
+  after each fix so the recorded counts fall with the tree.
+- **The accessibility sweep is the lead's harness; the fixes are the owners'.** A finding on your screen
+  arrives as a written row naming the rule, the selector and the route — it is yours whether or not you
+  built the screen.
+- **Additive, because `main` runs on it first.** Migrations from `0143`; the owner runs the production
+  reads, pushes, merges, then checks Railway by hand.
+- **Tables are the lead's; behaviour is the tracks'.** **A function has one writer.** **One writer per file,
+  JSON and specs included.**
+- **Every track that ships a screen runs `npm run ui-lint` before it commits.**
+- **Captures land at `.qa-shots/rtl/wave11-<track>-<surface>-<state>.png`** in the main checkout, phone
+  project, `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR` — and the
+  lead opens every one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate:** recurring series (`A14`); drag in
+  `ui/reorderable-list`; objectives, tags, avatar storage, downloads (`DEC-076`); points for a survey; any new
+  feature. **After M13 there is no further plan** — anything more is new scope the owner decides.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`,
+  `start`, `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 10 — the survey and the email studio, DEC-160) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 10 merged as PR #27 (`b75eb45`). Its map is kept as the record; **wave 11's map is directly above** (`DEC-166`).
 
 **Two features that were deferred twice — the survey (`REQ-SUR-001` … `009`) and the email studio
 (`REQ-NTF-009` … `014`, `16` §11) — and three fixes wave 9 sized.** The checklist is `STATUS.md`'s wave-10

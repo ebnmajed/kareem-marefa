@@ -11,8 +11,10 @@ import { startStubbedServer, STUB } from './lib/stubbed-server.mjs'
 
 const { spawnChild, shutdown } = await startStubbedServer()
 
-console.log('· running scripts/qa.mjs\n')
-const qa = spawnChild('node', ['scripts/qa.mjs'], { SUPABASE_URL: STUB })
+// `--part=contract|appearance` passes through (DEC-167): `npm run qa:contract` is the blocking half.
+const args = process.argv.slice(2)
+console.log(`· running scripts/qa.mjs ${args.join(' ')}\n`)
+const qa = spawnChild('node', ['scripts/qa.mjs', ...args], { SUPABASE_URL: STUB })
 qa.stdout.pipe(process.stdout)
 qa.stderr.pipe(process.stderr)
 

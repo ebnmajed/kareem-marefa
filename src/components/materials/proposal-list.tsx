@@ -3,6 +3,7 @@ import { getProposalMaterialsPageData } from "@/lib/dal/materials";
 import { formatNumber } from "@/components/sessions/numerals";
 import { UploadForm } from "@/components/materials/upload-form";
 import { ProposalDownloadButton } from "@/components/materials/proposal-download-button";
+import { Panel } from "@/components/ui/panel";
 
 interface ProposalMaterialsProps {
   proposalId: string;
@@ -48,26 +49,28 @@ export async function ProposalMaterials({ proposalId, locale }: ProposalMaterial
       <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length) })}</p>
       <ul className="mt-4 flex flex-col gap-3">
         {materials.map((m) => (
-          <li key={m.id} className="rounded-field border border-edge p-4">
-            <p className="text-body font-medium text-fg-heading">
-              <bdi>{m.title}</bdi>
-            </p>
-            <p className="text-body-sm text-fg-muted">{t(`kind.${m.kind}`)}</p>
-
-            {m.fontSubstitutionWarning ? (
-              <p className="mt-2 text-body-sm text-fg-heading">
-                {t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+          <li key={m.id}>
+            <Panel>
+              <p className="text-body font-medium text-fg-heading">
+                <bdi>{m.title}</bdi>
               </p>
-            ) : null}
+              <p className="text-body-sm text-fg-muted">{t(`kind.${m.kind}`)}</p>
 
-            {m.externalUrl ? (
-              <a href={m.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
-                {t("openExternal")}
-              </a>
-            ) : null}
+              {m.fontSubstitutionWarning ? (
+                <p className="mt-2 text-body-sm text-fg-heading">
+                  {t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+                </p>
+              ) : null}
 
-            {/* Wave 10 T1 — pdf/image/audio kinds only (the two link kinds never have a version). */}
-            {m.currentVersionId ? <ProposalDownloadButton locale={locale} materialId={m.id} /> : null}
+              {m.externalUrl ? (
+                <a href={m.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
+                  {t("openExternal")}
+                </a>
+              ) : null}
+
+              {/* Wave 10 T1 — pdf/image/audio kinds only (the two link kinds never have a version). */}
+              {m.currentVersionId ? <ProposalDownloadButton locale={locale} materialId={m.id} /> : null}
+            </Panel>
           </li>
         ))}
       </ul>

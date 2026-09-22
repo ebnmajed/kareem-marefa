@@ -5,17 +5,13 @@ import { NetworkGL } from "@/components/network-gl";
 import { IntroSting } from "@/components/intro-sting";
 import { Chapter } from "@/components/chapter";
 import { MobileCta } from "@/components/mobile-cta";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink, buttonClass } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
-
-const STEPS: Record<string, string[]> = {
-  ar: ["١", "٢", "٣"],
-  en: ["1", "2", "3"],
-};
 
 /** Word-by-word focus pull — blur racks to sharp like a lens finding focus.
  * Splitting on spaces is safe for Arabic (joining is within-word only). */
@@ -47,7 +43,6 @@ export default async function LandingPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations();
-  const steps = STEPS[locale] ?? STEPS.en;
 
   return (
     <>
@@ -85,10 +80,9 @@ export default async function LandingPage({
               style={delay(680)}
             >
               <ButtonLink href="/register">{t("hero.cta")}</ButtonLink>
-              <a
-                href="#about"
-                className="inline-flex h-12 items-center justify-center rounded-field border border-[var(--btn2-border)] px-7 text-label text-[var(--btn2-fg)] transition-colors duration-150 hover:border-[var(--btn2-border-hover)] hover:bg-[var(--btn2-bg-hover)] active:border-[var(--btn2-border-hover)] active:bg-[var(--btn2-bg-hover)]"
-              >
+              {/* An in-page anchor, so a plain <a> with the system's class — the locale-aware
+                  Link would turn "#about" into a navigation. */}
+              <a href="#about" className={buttonClass("secondary", "lg")}>
                 {t("hero.ctaSecondary")}
               </a>
             </div>
@@ -98,6 +92,22 @@ export default async function LandingPage({
             >
               {t("hero.microTrust")}
             </p>
+            {/* The platform exists (REQ-UIX-025) — said once in the hero, with its door. */}
+            <p
+              className="hero-enter mt-9 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-edge pt-6 text-body text-fg-body"
+              style={delay(840)}
+            >
+              <span aria-hidden="true" className="size-[7px] shrink-0 rounded-full bg-node" />
+              <span>{t("hero.live")}</span>
+              <Link
+                href="/sign-in"
+                locale="ar"
+                hrefLang="ar"
+                className="text-label text-fg-heading underline underline-offset-4 hover:no-underline"
+              >
+                {t("hero.signIn")}
+              </Link>
+            </p>
           </div>
         </div>
       </section>
@@ -105,7 +115,7 @@ export default async function LandingPage({
       {/* 01 — The manifesto. The copy is the artwork here: set large, given
           room, and left to carry the section on its own. */}
       <section id="about" className="scroll-mt-24 bg-white">
-        <Chapter n={1} locale={locale} pad="clamp(6rem, 13vw, 11rem)">
+        <Chapter n={1} rhythm="clamp(6rem, 13vw, 11rem)">
           <h2 className="reveal-cut text-chapter">{t("about.title")}</h2>
           <p className="reveal-cut mt-10 max-w-[58ch] text-statement text-fg-body">
             {t("about.body")}
@@ -113,10 +123,43 @@ export default async function LandingPage({
         </Chapter>
       </section>
 
-      {/* 02 — The two paths, as a diptych split by a hairline. Each step is a
+      {/* 02 — The platform, which exists (REQ-UIX-025, DEC-126). Four things a member does
+          there, as a two-by-two of cells split by hairlines, and the door under them. */}
+      <section id="platform" className="cv-section scroll-mt-24 bg-silver-100">
+        <Chapter n={2} rhythm="clamp(4.5rem, 9vw, 8rem)">
+          <h2 className="reveal-cut text-chapter">{t("platform.title")}</h2>
+          <p className="reveal-cut mt-8 max-w-[58ch] text-body-lg text-fg-body">
+            {t("platform.body")}
+          </p>
+          <ul className="mt-12 grid gap-px border border-edge bg-[var(--edge)] sm:grid-cols-2">
+            {([1, 2, 3, 4] as const).map((n) => (
+              <li key={n} className="reveal-cut flex gap-4 bg-white p-6 md:p-8">
+                <span
+                  aria-hidden="true"
+                  className="mt-[0.7em] size-[5px] shrink-0 rounded-full bg-node"
+                />
+                <div>
+                  <h3 className="text-h3 text-fg-heading">{t(`platform.feature${n}Title`)}</h3>
+                  <p className="mt-2 max-w-[40ch] text-body text-fg-body">
+                    {t(`platform.feature${n}Body`)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="reveal-cut mt-12 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <ButtonLink href="/sign-in" locale="ar" hrefLang="ar">
+              {t("platform.signIn")}
+            </ButtonLink>
+            <p className="text-caption text-fg-muted">{t("platform.signInHint")}</p>
+          </div>
+        </Chapter>
+      </section>
+
+      {/* 03 — The two paths, as a diptych split by a hairline. Each step is a
           node; the line between them draws as you arrive at it. */}
-      <section className="cv-section bg-silver-100">
-        <Chapter n={2} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
+      <section className="cv-section bg-white">
+        <Chapter n={3} rhythm="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("how.title")}</h2>
           <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-0">
             {(["provider", "attendee"] as const).map((path, i) => (
@@ -134,7 +177,7 @@ export default async function LandingPage({
                     <li key={n} className="flex gap-5">
                       <span className="step-rail flex flex-col items-center">
                         <span className="step-num flex size-10 shrink-0 items-center justify-center rounded-full border border-silver-300 bg-white text-caption font-medium text-navy-950">
-                          {steps[n - 1]}
+                          {n}
                         </span>
                         {n < 3 && (
                           <span
@@ -160,16 +203,11 @@ export default async function LandingPage({
         </Chapter>
       </section>
 
-      {/* 03 — Recognition. The emotional peak, and the line the whole page is
+      {/* 04 — Recognition. The emotional peak, and the line the whole page is
           built around. The network is drawn behind it rather than left a void. */}
       <section className="cv-section theme-dark relative overflow-clip">
         <NetworkBg className="draw-on-scroll opacity-[0.3]" />
-        <Chapter
-          n={3}
-          locale={locale}
-          pad="clamp(5.5rem, 12vw, 10rem)"
-          className="relative"
-        >
+        <Chapter n={4} rhythm="clamp(5.5rem, 12vw, 10rem)" className="relative">
           <h2 className="reveal-cut text-chapter">{t("recognition.title")}</h2>
           <p className="reveal-cut mt-10 max-w-[54ch] text-statement">
             {t("recognition.body")}
@@ -199,10 +237,10 @@ export default async function LandingPage({
         </Chapter>
       </section>
 
-      {/* 04 — The reassurance. Three qualifying criteria as an editorial
+      {/* 05 — The reassurance. Three qualifying criteria as an editorial
           definition list: term in the margin, plain language beside it. */}
       <section className="cv-section bg-white">
-        <Chapter n={4} locale={locale} pad="clamp(4.5rem, 9vw, 8rem)">
+        <Chapter n={5} rhythm="clamp(4.5rem, 9vw, 8rem)">
           <h2 className="reveal-cut text-chapter">{t("policy.title")}</h2>
           <p className="reveal-cut mt-7 max-w-[62ch] text-body-lg text-fg-body">
             {t("policy.intro")}
@@ -236,8 +274,11 @@ export default async function LandingPage({
           <div className="max-w-[34rem]">
             <h2 className="reveal-cut text-chapter">{t("finalCta.title")}</h2>
             <p className="reveal-cut mt-6 text-body-lg">{t("finalCta.body")}</p>
-            <div className="mt-10">
+            <div className="mt-10 flex flex-wrap items-center gap-4">
               <ButtonLink href="/register">{t("finalCta.cta")}</ButtonLink>
+              <ButtonLink href="/sign-in" locale="ar" hrefLang="ar" variant="secondary">
+                {t("finalCta.signIn")}
+              </ButtonLink>
             </div>
           </div>
           <div className="mt-[clamp(4rem,9vw,7rem)] border-t border-edge pt-[clamp(3rem,7vw,5.5rem)]">

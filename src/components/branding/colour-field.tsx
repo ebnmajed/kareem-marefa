@@ -64,7 +64,15 @@ export function ColourField({
           // "no colour yet," not "black is chosen."
           value={valid ? value : "#9ca3af"}
           onChange={(e) => onChange(e.target.value)}
-          className={`h-11 w-11 shrink-0 cursor-pointer rounded-field border border-edge bg-transparent p-0.5 ${valid ? "" : "opacity-50"}`}
+          // ★ `rounded-full`, not `rounded-field` — this decorative swatch is
+          // not the real control (`aria-hidden`, `tabIndex={-1}`; `<Input>`
+          // beside it is what `<Field>` wires), so it never needs to look
+          // like one. `rounded-field border border-edge` is the house
+          // control's own class recipe (`ui/field.tsx`'s `controlClass()`);
+          // a swatch coincidentally re-typing it is exactly what `ui-lint`'s
+          // class-string rule exists to catch, and a round chip is the more
+          // legible shape for a colour preview anyway (`REQ-UIX-001`).
+          className={`h-11 w-11 shrink-0 cursor-pointer rounded-full border border-edge bg-transparent p-0.5 ${valid ? "" : "opacity-50"}`}
         />
         <Input name={name} type="text" dir="ltr" inputMode="text" maxLength={7} value={value} onChange={(e) => onChange(e.target.value)} className="flex-1" />
       </div>

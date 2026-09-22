@@ -204,6 +204,7 @@ export function CommentComposer({
 
   return (
     <div className="relative">
+      {/* ui-lint-disable-next-line field — self-labelled via aria-label; a chat composer with no visible label by design (16, discussion); approved by the lead, wave 11 sync 1 */}
       <textarea
         ref={textareaRef}
         value={body}
@@ -217,19 +218,21 @@ export function CommentComposer({
         className={controlClass(false, "md", "resize-none overflow-hidden")}
       />
       {candidates.length > 0 ? (
-        <ul className="absolute z-10 mt-1 w-full max-w-xs rounded-field border border-edge-strong bg-[var(--color-canvas)] shadow-card">
-          {candidates.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                onClick={() => pickMention(c)}
-                className="block w-full px-4 py-2 text-start text-body-sm text-fg-heading hover:bg-[var(--btn2-bg-hover)]"
-              >
-                <bdi>{c.displayName ?? "—"}</bdi>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <Panel className="absolute z-10 mt-1 w-full max-w-xs p-0! bg-[var(--color-canvas)]! shadow-card">
+          <ul>
+            {candidates.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => pickMention(c)}
+                  className="block w-full px-4 py-2 text-start text-body-sm text-fg-heading hover:bg-[var(--btn2-bg-hover)]"
+                >
+                  <bdi>{c.displayName ?? "—"}</bdi>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       ) : null}
       <div className="mt-1 flex items-center justify-between gap-3">
         <p className="text-body-sm text-fg-muted">{t("mentionHint")}</p>

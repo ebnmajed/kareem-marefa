@@ -22,6 +22,7 @@
 // them.
 export {
   renderEmail,
+  emailDocumentFor,
   interpolate,
   changeBlock,
   changesFromPayload,
@@ -46,7 +47,7 @@ export { SAMPLE_CASES, SAMPLE_ORG, SAMPLE_MEMBER, SAMPLE_BRAND, sampleFor } from
 // rows: an org DUPLICATES one to own it and the original is never mutated,
 // which is true by construction when the original is code.
 export { linkFor, logoUrlFor, ROUTE_FOR } from "./links.js";
-export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign } from "./designs.js";
+export { DESIGN_FAMILIES, DESIGN_FOR, platformDesign, documentFromText } from "./designs.js";
 export type { DesignFamily } from "./designs.js";
 export type { SampleCase } from "./samples.js";
 export type { CompileContext, CompiledBlocks, CompilePalette } from "./compile.js";

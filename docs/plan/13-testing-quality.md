@@ -267,7 +267,7 @@ because that is what members are actually holding.
 
 | Screen | LCP | INP | CLS | JS (gz) |
 |---|---|---|---|---|
-| Marketing landing **[FROZEN]** | ≤ 2.0 s | ≤ 200 ms | ≤ 0.05 | current — **must not regress** |
+| Marketing landing **[live contract, `DEC-167`]** | ≤ 2.0 s | ≤ 200 ms | ≤ 0.05 | **must not regress against `pre-m13`** (the M13 rebuild is measured against `main` before it) |
 | Event page (SCR-012) | ≤ 2.5 s | ≤ 200 ms | ≤ 0.1 | ≤ 180 KB |
 | Session list (SCR-011) | ≤ 2.5 s | ≤ 200 ms | ≤ 0.1 | ≤ 150 KB |
 | **Check-in (SCR-014)** | **≤ 1.5 s** | **≤ 100 ms** | ≤ 0.05 | **≤ 80 KB** |

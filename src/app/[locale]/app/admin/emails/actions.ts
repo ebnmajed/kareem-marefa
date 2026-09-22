@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
-import { blocksToTemplateText, defaultTemplate, DESIGN_FOR, platformDesign, SCHEMA_VERSION } from "@kareem/mail-runtime";
+import { blocksToTemplateText, defaultTemplate, DESIGN_FOR, documentFromText, platformDesign } from "@kareem/mail-runtime";
 import { deleteTemplate, getTemplateSubject, saveTemplateChecked, sendTestEmail, type TestSendResult } from "@/lib/dal/notifications";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 
@@ -111,23 +111,20 @@ export async function saveEmailDesign(locale: Locale, previous: State, formData:
  * §X9 — «حوّله إلى تصميم». An org's existing STRING override becomes a design
  * whose blocks are one paragraph per paragraph of the body.
  *
- * ★ It uses `toParagraphs()`'s own split — the same one the renderer has always
- * applied — so nothing is lost and nothing is invented, and the mail the org
- * sends today is the mail the design renders tomorrow. The subject is
- * untouched: it lives on the row, not in the document (DEC-161).
+ * ★ It stores `documentFromText()` — the SAME conversion the renderer applies
+ * to a string row at every send since the string path left (`DEC-081`) — so
+ * converting changes nothing a member receives: the mail the org sends today
+ * is the mail the design renders tomorrow. The subject is untouched: it lives
+ * on the row, not in the document (DEC-161).
  */
 export async function convertTemplateToDesign(locale: Locale, key: string, body: string): Promise<void> {
-  const paragraphs = body
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const blocks = paragraphs.map((text, index) => ({ type: "paragraph" as const, id: `p${index + 1}`, text }));
+  const blocks = documentFromText(body);
   await saveTemplateChecked(locale, {
     key,
     subject: (await getTemplateSubject(locale, key)) ?? key,
-    body: blocksToTemplateText({ schemaVersion: SCHEMA_VERSION, blocks }),
+    body: blocksToTemplateText(blocks),
     requiredFields: [],
-    blocks: { schemaVersion: SCHEMA_VERSION, blocks },
+    blocks,
     // No `sourceFamily`, and that is correct rather than an omission: this
     // document came from the ORG's own text, not from a platform design, so
     // naming a family would be a false provenance.
@@ -156,9 +153,10 @@ export async function sendTestEmailAction(locale: Locale, key: string): Promise<
  * is a copy by construction rather than by discipline. Promotion adds to the
  * library; it never supplies the baseline.
  *
- * ★ And nothing is adopted for an org that does not ask. Until an admin
- * presses this, the key has no row — or a row whose `blocks` is null — and
- * renders the pinned string bytes (`DEC-161` R3).
+ * ★ Since the string path left (`DEC-081`) a key with no row already SENDS
+ * this design; adopting it stores a copy the org can edit. A row whose
+ * `blocks` is null sends the admin's own words in the design's frame, and
+ * adopting replaces them — by the admin's choice, never the renderer's.
  */
 export async function adoptPlatformDesign(locale: Locale, key: string): Promise<void> {
   const design = platformDesign(key);

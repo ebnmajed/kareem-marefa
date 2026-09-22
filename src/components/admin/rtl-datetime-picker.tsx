@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { controlClass } from "@/components/ui/field";
+import { controlClass, Field } from "@/components/ui/field";
 import { ChevronIcon } from "@/components/ui/icons";
+import { Select } from "@/components/ui/select";
 import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-043's carried-over item (DEC-045, console.md): a native
@@ -38,6 +39,12 @@ import { formatNumber } from "@/components/sessions/numerals";
 //
 // `min`/`max` compare the DATE part and disable the days outside them; the
 // server is still the boundary.
+//
+// ★ Wave 11 (K1): the hour and minute selects are `ui/select` inside
+// `ui/field`, and the popover is `ui/menu`'s floating surface — the last raw
+// controls in the admin console. `<Field>` reads `ui.json`, so the picker now
+// needs a `NextIntlClientProvider` above it, which every page has. K3: Escape
+// from inside the popover and «تم» return focus to the trigger (SC 2.4.3).
 //
 // Week starts Sunday (the Gulf convention `Asia/Riyadh`'s org default
 // implies) — not derived from `Intl.Locale().weekInfo`, which is not yet
@@ -133,6 +140,7 @@ export function RtlDateTimePicker({
   const [viewYear, setViewYear] = useState(initial?.y ?? now.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial?.m ?? now.getMonth());
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverId = useId();
 
   useEffect(() => {
@@ -141,7 +149,13 @@ export function RtlDateTimePicker({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      // ★ SC 2.4.3: closing unmounts the popover, so focus inside it would
+      // fall to <body>. It goes back to the trigger — but only when it WAS
+      // inside: an Escape pressed elsewhere must not pull focus here.
+      const inside = containerRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (inside) triggerRef.current?.focus();
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey);
@@ -256,6 +270,7 @@ export function RtlDateTimePicker({
           ignores the attribute. */}
       {/* eslint-disable-next-line jsx-a11y/role-supports-aria-props */}
       <button
+        ref={triggerRef}
         id={hideLabel ? id : `${id}-trigger`}
         type="button"
         aria-haspopup="dialog"
@@ -271,7 +286,7 @@ export function RtlDateTimePicker({
       </button>
 
       {open ? (
-        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-field border border-edge-strong bg-canvas p-4 shadow-lg">
+        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-card border border-edge bg-canvas p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
             <button type="button" onClick={goPrevMonth} aria-label={prevMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
               <ChevronIcon direction="back" />
@@ -315,27 +330,31 @@ export function RtlDateTimePicker({
           </div>
 
           {dateOnly ? null : (
-            <div className="mt-4 flex items-center gap-3 border-t border-edge pt-4">
-              <label className="flex items-center gap-2 text-body-sm text-fg-heading">
-                {hourLabel}
-                <select value={p?.h ?? 0} onChange={(e) => setHour(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+            // ★ Each select has its OWN `<Field>`, and that is load-bearing: inside
+            // `ui/date-time` inside a caller's `<Field>`, a bare `ui/select` would
+            // read the OUTER Field's context and take its id — the trigger's —
+            // with its `aria-required` and `aria-invalid`. The inner provider
+            // shadows it. Not `required`: the marker would join the name, and
+            // «الساعة» is matched exactly.
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-edge pt-4">
+              <Field label={hourLabel}>
+                <Select value={p?.h ?? 0} onChange={(e) => setHour(Number(e.target.value))} dir="ltr">
                   {Array.from({ length: 24 }, (_, h) => (
                     <option key={h} value={h}>
                       {num(h)}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-body-sm text-fg-heading">
-                {minuteLabel}
-                <select value={p?.min ?? 0} onChange={(e) => setMinute(Number(e.target.value))} dir="ltr" className="rounded-field border border-edge-strong bg-canvas px-2 py-1 text-body-sm text-fg-heading">
+                </Select>
+              </Field>
+              <Field label={minuteLabel}>
+                <Select value={p?.min ?? 0} onChange={(e) => setMinute(Number(e.target.value))} dir="ltr">
                   {Array.from({ length: 60 }, (_, m) => m).filter((m) => m % 5 === 0 || m === (p?.min ?? 0)).map((m) => (
                     <option key={m} value={m}>
                       {num(m)}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Field>
             </div>
           )}
 
@@ -357,7 +376,14 @@ export function RtlDateTimePicker({
                 {clearLabel}
               </button>
             ) : null}
-            <button type="button" onClick={() => setOpen(false)} className="ms-auto inline-flex h-10 items-center rounded-field bg-navy-950 px-5 text-body-sm text-white hover:bg-navy-900">
+            <button
+              type="button"
+              onClick={() => {
+                // SC 2.4.3 — «تم» unmounts the popover it sits in; focus returns to the trigger.
+                setOpen(false);
+                triggerRef.current?.focus();
+              }}
+              className="ms-auto inline-flex h-10 items-center rounded-field bg-navy-950 px-5 text-body-sm text-white hover:bg-navy-900">
               {doneLabel}
             </button>
           </div>

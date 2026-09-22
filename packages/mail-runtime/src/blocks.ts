@@ -1,9 +1,9 @@
 // The block model — REQ-NTF-009, 16 §11.3, DEC-081, DEC-161.
 //
 // A template is an ordered list of typed blocks, each compiling to ONE table
-// row of the shell `render.ts` already builds. The shell is correct and stays;
-// this is a second way to fill it, beside the string path, which keeps
-// producing the bytes `tests/unit/mail-pinned/` pins.
+// row of the shell `render.ts` builds. Since `DEC-081` retired the string path
+// in M13 it is the only way to fill it: an admin's string template is framed
+// as paragraphs, and a key with no row is its platform design.
 //
 // ★ EIGHT TYPED MEMBERS, NINE BLOCKS. `16` §11.3 lists nine and the ninth —
 // `footer` — is **composed, not typed**: the compiler appends it to every
@@ -13,8 +13,7 @@
 // than merely intended.
 //
 // ★ NO `subject` HERE. The subject is `notification_templates.subject` and
-// nowhere else (DEC-161): one row, one source, and `main`'s old worker keeps
-// reading it down the string path in the merge → Railway window.
+// nowhere else (DEC-161): one row, one source.
 
 /** Bumped only when a stored document needs migrating. `0125` requires the
  *  key to be present, so a document with no version is refused by the

@@ -51,6 +51,10 @@ export async function saveBrandKitAction(locale: Locale, _prev: SaveBrandKitStat
     const code = (e as { code?: string })?.code;
     if (code === "42501") return { error: "notAdmin", saved: false };
     if (code === "22023") return { error: "badReference", saved: false };
+    // ★ DEC-073's consequence (wave 11, `0003_status_contrast_guard.sql`):
+    // `save_brand_kit()` refuses, in the database, a palette on which a
+    // status badge would fail AA — before any write.
+    if (code === "55000") return { error: "statusContrast", saved: false };
     return { error: "unknown", saved: false };
   }
 

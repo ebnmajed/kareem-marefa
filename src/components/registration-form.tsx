@@ -20,7 +20,11 @@ import {
   type RegistrationErrors,
   type RegistrationField,
 } from "@/lib/schema";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { ShareIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const initialState: RegistrationState = { status: "idle" };
 
@@ -147,6 +151,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
       <div className="hp-field" aria-hidden="true">
         <label>
           Leave this field empty
+          {/* ui-lint-disable-next-line field — the honeypot: off-screen, aria-hidden, never filled by a person; a labelled <Field> would announce it */}
           <input
             type="text"
             name={HONEYPOT_FIELD}
@@ -291,6 +296,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
                 key={cat}
                 className="flex h-11 cursor-pointer items-center rounded-full border border-[var(--edge-strong)] px-4.5 text-label text-fg-body transition-colors duration-150 hover:border-navy-950 active:border-navy-950 has-checked:border-navy-950 has-checked:bg-navy-950 has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
               >
+                {/* ui-lint-disable-next-line field — self-labelling, as ui/radio-group is: the chip IS the label; its id is the registration contract (qa:contract) */}
                 <input
                   type="radio"
                   name="topicCategory"
@@ -387,6 +393,7 @@ function RoleCard({
       htmlFor={id}
       className="relative block cursor-pointer rounded-card border border-silver-300 bg-white p-6 shadow-card transition-colors duration-150 hover:border-silver-400 active:border-navy-950 has-checked:border-navy-950 has-checked:shadow-[inset_0_0_0_1px_#0B1220] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
     >
+      {/* ui-lint-disable-next-line field — self-labelling, as ui/radio-group is: the card IS the label; its id is the registration contract (qa:contract) */}
       <input
         type="radio"
         name="role"
@@ -439,63 +446,38 @@ function TextField({
   error?: string | false;
   textarea?: boolean;
   ariaRequired?: boolean;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "id"> &
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "id" | "size"> &
   Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "name" | "id">) {
-  const hintId = hint ? `${id}-hint` : undefined;
+  // On the system since M13 (REQ-UIX-001): `<Field>` owns the label, the hint, the error and the
+  // aria, and names the error `${id}-error` — the id qa:contract reads. The privacy line is this
+  // form's own and joins the description by id, merged, never replacing the Field's.
   const privacyId = privacy ? `${id}-privacy` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
-  const describedBy =
-    [hintId, privacyId, errorId].filter(Boolean).join(" ") || undefined;
-
-  const fieldClasses = `w-full rounded-field border bg-white px-4 text-body text-fg-heading transition-colors duration-150 placeholder:text-[#8A93A6] focus:outline-none focus:ring-0 ${
-    error
-      ? "border-error-border focus:border-error focus:shadow-[0_0_0_3px_rgba(158,59,63,0.12)]"
-      : "border-[var(--edge-strong)] hover:border-slate-muted focus:border-navy-950 focus:shadow-[0_0_0_3px_rgba(11,18,32,0.10)]"
-  }`;
 
   return (
     <div className="scroll-mt-24">
-      <label htmlFor={id} className="block text-label text-fg-heading">
-        {label}
-      </label>
-      {hint && (
-        <p id={hintId} className="mt-1 text-caption text-fg-muted">
-          {hint}
-        </p>
-      )}
-      {textarea ? (
-        <textarea
-          id={id}
-          name={name}
-          rows={3}
-          aria-describedby={describedBy}
-          aria-invalid={error ? true : undefined}
-          aria-required={ariaRequired || undefined}
-          className={`${fieldClasses} mt-2 min-h-[7.5rem] py-3`}
-          {...(inputProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
-        />
-      ) : (
-        <input
-          id={id}
-          name={name}
-          aria-describedby={describedBy}
-          aria-invalid={error ? true : undefined}
-          aria-required={ariaRequired || undefined}
-          className={`${fieldClasses} mt-2 h-13`}
-          {...(inputProps as React.InputHTMLAttributes<HTMLInputElement>)}
-        />
-      )}
+      <Field id={id} label={label} hint={hint} error={error || undefined} required={ariaRequired}>
+        {textarea ? (
+          <Textarea
+            name={name}
+            rows={3}
+            aria-describedby={privacyId}
+            className="min-h-[7.5rem]"
+            {...(inputProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+          />
+        ) : (
+          <Input
+            name={name}
+            size="lg"
+            aria-describedby={privacyId}
+            {...(inputProps as Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">)}
+          />
+        )}
+      </Field>
       {privacy && (
         <p id={privacyId} className="mt-2 text-caption text-fg-muted">
           {privacy}
         </p>
       )}
-      {/* Reserve one caption line so blur/live validation doesn't shift the
-          fields below when an error appears. Height is locale-scaled via
-          --lh-caption (Arabic errors run taller) plus the FieldError's mt-2. */}
-      <div className="min-h-[calc(0.5rem+var(--lh-caption))]">
-        {error && <FieldError id={errorId!} msg={error} />}
-      </div>
     </div>
   );
 }
@@ -636,23 +618,25 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
       <p className="mt-6 text-caption font-medium text-fg-muted">
         {t("success.tagline")}
       </p>
-      {shareUrl && (
-        <button
-          type="button"
-          onClick={handleShare}
-          aria-live="polite"
-          className="mt-6 inline-flex h-11 items-center gap-2 rounded-field border border-[var(--btn2-border)] px-5 text-label text-fg-heading transition-colors duration-150 hover:bg-white"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="18" cy="5" r="3" />
-            <circle cx="6" cy="12" r="3" />
-            <circle cx="18" cy="19" r="3" />
-            <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
-            <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
-          </svg>
-          {copied ? t("success.copied") : t("success.invite")}
-        </button>
-      )}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {shareUrl && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            onClick={handleShare}
+            aria-live="polite"
+            iconStart={<ShareIcon />}
+          >
+            {copied ? t("success.copied") : t("success.invite")}
+          </Button>
+        )}
+        {/* The platform is open (REQ-UIX-025): the interest list is not a sign-up, so the
+            panel says where the platform is rather than pretending registering was entering. */}
+        <ButtonLink href="/sign-in" locale="ar" hrefLang="ar" variant="ghost" size="md">
+          {t("success.signIn")}
+        </ButtonLink>
+      </div>
     </div>
   );
 }

@@ -46,10 +46,13 @@ describe("CreateTaskForm", () => {
   it("a successful submission clears the form back to its default kind", async () => {
     createTaskAction.mockResolvedValueOnce({ error: null });
     renderForm();
-    fireEvent.change(screen.getByLabelText("عنوان المهمة"), { target: { value: "اقرأ المادة قبل الجلسة" } });
+    // ★ wave 11 (DEC-166 sync 1): the label now carries the system's «مطلوب»
+    // marker (`ui/field.tsx`, REQ-UIX-011) since `title` is a required field —
+    // `exact: false` matches "عنوان المهمة مطلوب" as well as the bare label.
+    fireEvent.change(screen.getByLabelText("عنوان المهمة", { exact: false }), { target: { value: "اقرأ المادة قبل الجلسة" } });
     fireEvent.click(screen.getByRole("button", { name: "إضافة" }));
 
     await waitFor(() => expect(createTaskAction).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByLabelText("عنوان المهمة")).toHaveValue(""));
+    await waitFor(() => expect(screen.getByLabelText("عنوان المهمة", { exact: false })).toHaveValue(""));
   });
 });

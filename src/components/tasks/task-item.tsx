@@ -6,6 +6,11 @@ import { useTranslations } from "next-intl";
 import type { TaskSummary } from "@/lib/dal/tasks";
 import { rescopeTaskAction, submitTaskFormResponseAction, toggleTaskCompletionAction } from "@/components/tasks/actions";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { Panel } from "@/components/ui/panel";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 interface TaskItemProps {
   locale: string;
@@ -44,57 +49,59 @@ export function TaskItem({ locale, sessionId, task, scope }: TaskItemProps) {
   }
 
   return (
-    <li className="rounded-field border border-edge p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-body font-medium text-fg-heading">
-            <bdi>{task.title}</bdi>
-          </p>
-          <p className="text-body-sm text-fg-muted">{t(`list.kind.${task.kind}`)}</p>
-          {task.description ? (
-            <p className="mt-1 text-body-sm text-fg-body">
-              <bdi>{task.description}</bdi>
+    <li>
+      <Panel>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-body font-medium text-fg-heading">
+              <bdi>{task.title}</bdi>
             </p>
-          ) : null}
+            <p className="text-body-sm text-fg-muted">{t(`list.kind.${task.kind}`)}</p>
+            {task.description ? (
+              <p className="mt-1 text-body-sm text-fg-body">
+                <bdi>{task.description}</bdi>
+              </p>
+            ) : null}
+          </div>
+          {task.completed ? <span className="text-body-sm text-fg-heading">{t("list.completedBadge")}</span> : null}
         </div>
-        {task.completed ? <span className="text-body-sm text-fg-heading">{t("list.completedBadge")}</span> : null}
-      </div>
 
-      {/* The group heading already says which day/scope this card is under — only a manager
-          gets the chip that can move it. */}
-      {scope ? (
-        <RescopeChip
-          currentLabel={scope.currentLabel}
-          options={scope.options}
-          triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-          failedLabel={t("list.rescope.failed")}
-          rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
-          className="mt-2"
-        />
-      ) : null}
+        {/* The group heading already says which day/scope this card is under — only a manager
+            gets the chip that can move it. */}
+        {scope ? (
+          <RescopeChip
+            currentLabel={scope.currentLabel}
+            options={scope.options}
+            triggerAriaLabel={t.markup("list.rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+            failedLabel={t("list.rescope.failed")}
+            rescopeAction={rescopeTaskAction.bind(null, locale, sessionId, task.id)}
+            className="mt-2"
+          />
+        ) : null}
 
-      {task.kind === "read_material" && task.materialId ? (
-        <Link href={`/${locale}/app/sessions/${sessionId}/materials/${task.materialId}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
-          {t("list.openMaterial")}
-        </Link>
-      ) : null}
+        {task.kind === "read_material" && task.materialId ? (
+          <Link href={`/${locale}/app/sessions/${sessionId}/materials/${task.materialId}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
+            {t("list.openMaterial")}
+          </Link>
+        ) : null}
 
-      {task.kind === "external" && task.externalUrl ? (
-        <a href={task.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
-          {t("list.openExternal")}
-        </a>
-      ) : null}
+        {task.kind === "external" && task.externalUrl ? (
+          <a href={task.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
+            {t("list.openExternal")}
+          </a>
+        ) : null}
 
-      {task.kind === "form" && task.formSchema ? <TaskForm locale={locale} sessionId={sessionId} task={task} /> : null}
+        {task.kind === "form" && task.formSchema ? <TaskForm locale={locale} sessionId={sessionId} task={task} /> : null}
 
-      {task.kind !== "form" ? (
-        <div className="mt-2 flex flex-col gap-1">
-          <button type="button" disabled={pending} onClick={() => toggle(!task.completed)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading disabled:opacity-40 w-fit">
-            {task.completed ? t("list.markUndone") : t("list.markDone")}
-          </button>
-          {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
-        </div>
-      ) : null}
+        {task.kind !== "form" ? (
+          <div className="mt-2 flex flex-col gap-1">
+            <button type="button" disabled={pending} onClick={() => toggle(!task.completed)} className="self-start text-body-sm text-fg-body underline hover:text-fg-heading disabled:opacity-40 w-fit">
+              {task.completed ? t("list.markUndone") : t("list.markDone")}
+            </button>
+            {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
+          </div>
+        ) : null}
+      </Panel>
     </li>
   );
 }
@@ -145,19 +152,18 @@ function TaskForm({ locale, sessionId, task }: TaskItemProps) {
   return (
     <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-2">
       {(task.formSchema ?? []).map((field) => (
-        <label key={field.id} className="flex flex-col gap-1 text-body-sm text-fg-body">
-          <bdi>{field.label}</bdi>
+        <Field key={field.id} label={<bdi>{field.label}</bdi>}>
           {field.type === "textarea" ? (
-            <textarea name={field.id} defaultValue={task.myFormResponse?.[field.id] ?? ""} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
+            <Textarea name={field.id} defaultValue={task.myFormResponse?.[field.id] ?? ""} />
           ) : (
-            <input name={field.id} defaultValue={task.myFormResponse?.[field.id] ?? ""} className="rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body text-fg-heading" />
+            <Input name={field.id} defaultValue={task.myFormResponse?.[field.id] ?? ""} />
           )}
-        </label>
+        </Field>
       ))}
       {error ? <p className="text-body-sm text-fg-heading">{error}</p> : null}
-      <button type="submit" disabled={pending} className="self-start rounded-field border border-edge-strong px-4 py-2 text-label text-fg-heading disabled:opacity-40 w-fit">
+      <Button type="submit" variant="secondary" size="sm" disabled={pending} className="self-start">
         {t("submit")}
-      </button>
+      </Button>
     </form>
   );
 }

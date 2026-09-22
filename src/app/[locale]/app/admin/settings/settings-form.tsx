@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 import type { OrgSettingsAdmin } from "@/lib/dal/admin-settings";
 import { emptySettingsState, SETTINGS_FIELDS, SETTINGS_REQUIRED_FIELDS, type SettingsField, type SettingsState } from "./state";
+import { FormAlert } from "@/components/admin/form-alert";
 
 // SCR-063's form, onto `lib/form-state`'s shared model for wave 7
 // (`16` §8.2, `DEC-137`) — the one substantive rebuild among K3-K6: fourteen
@@ -81,9 +82,9 @@ export function SettingsForm({ action, settings }: { action: (prev: SettingsStat
     <form action={formAction} noValidate className="mt-6 max-w-2xl space-y-10">
       {attempted ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
-        <p role="alert" className="rounded-field border border-edge-strong p-3 text-body-sm text-fg-heading">
+        <FormAlert>
           {t(`errors.${state.formError}`)}
-        </p>
+        </FormAlert>
       ) : null}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

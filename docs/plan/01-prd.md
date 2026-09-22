@@ -1893,8 +1893,9 @@ existing mail shell. The `footer` is **composed, not typed**, so `REQ-NTF-005`'s
 never be forgotten. Images are **PNG/JPEG only, never SVG** (invariant 11), width-capped, always
 with `alt`.
 **Acceptance:**
-- An org that has not touched its templates renders **byte-identical** output to before; the
-  existing golden tests do not move.
+- ★ **Every message renders through the blocks** (`DEC-170`, M13): an org with no row for a key sends the
+  key's platform design; an admin's edited string template is sent as the admin's own words inside the
+  design's frame, never discarded. The pinned output changes only as a reviewed diff.
 - Blocks are reorderable without dragging (`REQ-DSG-028`'s rule — the shared `ui/reorderable-list`).
 
 #### REQ-NTF-010 — The template editor previews with the production renderer
@@ -1938,9 +1939,8 @@ platform-owned and seeded for every org, in light and dark, Arabic and English, 
 kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is never mutated.
 **Acceptance:**
 - **Every** message key has a designed platform template an org can adopt in one action.
-  ★ **Adoption is explicit until M13** (`DEC-161`): `REQ-NTF-009` requires an org that has not touched
-  its templates to send byte-identical mail, and `DEC-081` removes the string path in M13 — which is
-  when «no key falls back to unstyled text» becomes true of an untouched org as well.
+  ★ **Since M13 no key falls back to unstyled text, for any org** (`DEC-170`): an org that has not
+  adopted a design sends the platform's design for that key; adopting remains the way to make one's own.
 - Changing the org logo restyles every message an org has adopted a design for.
 - Promotion adds to the library; it never supplies the baseline.
 
@@ -2439,11 +2439,17 @@ suite** in the product.
   end to end.
 - **Playwright, jsdom and `@testing-library` are not currently installed**; adding them is M0 work.
 
-#### REQ-NFR-019 — The existing public site is a frozen contract
-**Serves:** DEC-001 · A38
-`/`, `/ar`, `/en`, `/ar/register` and `/og.png` keep working, unchanged, through every milestone.
+#### REQ-NFR-019 — The public site is a live contract: its URLs, its registration behaviour and its accessibility floor never regress (re-cut by DEC-167)
+**Serves:** DEC-001 · A38 · `DEC-167`
+`/`, `/ar`, `/en`, `/ar/register` and `/og.png` keep working through every milestone. Their **URLs,
+their registration behaviour and their accessibility floor** may never regress. Their **appearance**
+may change only through a `DECISIONS.md` entry and a re-baselined visual diff, in the same commit as
+the change.
 **Acceptance:**
-- `scripts/qa.mjs` guards them in CI and must stay green.
+- `scripts/qa.mjs`'s **contract half** (`qa:contract`) guards the behaviour in CI, blocking, at every
+  commit; its **appearance half** (`qa:appearance`) is rewritten in the commit that changes the design.
+- The register form's action, field names, validation and no-JS path are unchanged; `registrations`
+  is never touched (`DEC-002`).
 - `main` stays deployable at all times.
 
 #### REQ-NFR-020 — Migrations are forward-only and safe against real rows

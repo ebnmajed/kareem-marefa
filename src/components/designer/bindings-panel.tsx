@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Panel } from "@/components/ui/panel";
 
 // SCR-057's dynamic-field list — REQ-DSG-006.
 //
@@ -42,7 +43,8 @@ export function BindingsPanel({ declared, values, fallbacks = {}, layerNames = {
         {fields.map((binding) => {
           const value = values[binding];
           return (
-            <li key={binding} className="rounded-field border border-edge px-3 py-2">
+            <li key={binding}>
+              <Panel>
               <p className="text-body-sm text-fg-muted">
                 <bdi>{label(binding)}</bdi>
               </p>
@@ -57,6 +59,7 @@ export function BindingsPanel({ declared, values, fallbacks = {}, layerNames = {
               ) : (
                 <p className="text-body-sm text-fg-heading">{t("unbound")}</p>
               )}
+              </Panel>
             </li>
           );
         })}

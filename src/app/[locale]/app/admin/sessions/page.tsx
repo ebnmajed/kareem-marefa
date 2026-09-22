@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { getOrgPrefs, listCategories, listNameableMembers } from "@/lib/dal/proposals";
@@ -80,40 +81,42 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
         ) : (
           <ul className="mt-4 space-y-3">
             {ready.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-field border border-edge p-4">
-                <div className="min-w-0">
-                  <p className="text-label text-fg-heading">
-                    <bdi>{p.title}</bdi>
-                  </p>
-                  <p className="mt-1 text-body-sm text-fg-muted">
-                    {p.categoryName ? <bdi>{p.categoryName}</bdi> : null}
-                    {p.presenterNames.length > 0 ? (
-                      <>
-                        {p.categoryName ? " · " : null}
-                        {p.presenterNames.map((n, i) => (
-                          <span key={n + i}>
-                            {i > 0 ? "، " : ""}
-                            <bdi>{n}</bdi>
-                          </span>
-                        ))}
-                      </>
-                    ) : null}
-                  </p>
-                </div>
-                <form action={makeSessionFromProposal.bind(null, locale as Locale, p.id)} className="ms-auto">
-                  {/* The visible label is short; the accessible name names
-                      the proposal, because this page also carries a
-                      «أنشئ الجلسة» submit for the direct form and two
-                      controls with one accessible name doing different
-                      things is a REQ-NFR-007 failure a screenshot hides. */}
-                  <button
-                    type="submit"
-                    aria-label={`${t("createFromProposal")} — ${p.title}`}
-                    className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
-                  >
-                    {t("createFromProposal")}
-                  </button>
-                </form>
+              <li key={p.id}>
+                <Panel className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                  <div className="min-w-0">
+                    <p className="text-label text-fg-heading">
+                      <bdi>{p.title}</bdi>
+                    </p>
+                    <p className="mt-1 text-body-sm text-fg-muted">
+                      {p.categoryName ? <bdi>{p.categoryName}</bdi> : null}
+                      {p.presenterNames.length > 0 ? (
+                        <>
+                          {p.categoryName ? " · " : null}
+                          {p.presenterNames.map((n, i) => (
+                            <span key={n + i}>
+                              {i > 0 ? "، " : ""}
+                              <bdi>{n}</bdi>
+                            </span>
+                          ))}
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  <form action={makeSessionFromProposal.bind(null, locale as Locale, p.id)} className="ms-auto">
+                    {/* The visible label is short; the accessible name names
+                        the proposal, because this page also carries a
+                        «أنشئ الجلسة» submit for the direct form and two
+                        controls with one accessible name doing different
+                        things is a REQ-NFR-007 failure a screenshot hides. */}
+                    <button
+                      type="submit"
+                      aria-label={`${t("createFromProposal")} — ${p.title}`}
+                      className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
+                    >
+                      {t("createFromProposal")}
+                    </button>
+                  </form>
+                </Panel>
               </li>
             ))}
           </ul>

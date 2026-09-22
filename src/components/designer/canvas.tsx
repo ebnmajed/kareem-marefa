@@ -35,6 +35,12 @@ export interface DesignerCanvasProps {
   origin: string;
   selectedLayerId: string | null;
   onSelect: (layerId: string | null) => void;
+  /**
+   * False where nothing can be edited — the phone's view-and-approve layout. The per-layer selection
+   * buttons are then not rendered at all: sized to their layers, small ones fall under SC 2.5.8's
+   * 24 px at phone scale, and a control with nothing to do is noise to a screen reader (wave 11 sweep).
+   */
+  selectable?: boolean;
   lockedLayerIds: string[];
   /** The placeholder label an unbound field draws, translated. */
   placeholderLabel: (binding: string) => string;
@@ -53,6 +59,7 @@ export function DesignerCanvas({
   origin,
   selectedLayerId,
   onSelect,
+  selectable = true,
   lockedLayerIds,
   placeholderLabel,
   preset,
@@ -150,7 +157,11 @@ export function DesignerCanvas({
           {/* The selection overlay, in document coordinates × scale. Logical
               positioning, so it mirrors with the canvas instead of drifting
               off the far edge in the other direction. */}
-          <div className="absolute inset-0" dir={doc.direction}>
+          {selectable ? (
+          // ★ SC 2.5.8's «equivalent» exception, named rather than assumed: a box here is sized to its
+          // layer, so a small layer is a small target — and the Layers panel selects the same layer
+          // with a 44 px row. The sweep excludes this overlay by this attribute, and says why.
+          <div className="absolute inset-0" dir={doc.direction} data-layer-hit-area="">
             {doc.layers
               .filter((l) => !l.hidden)
               .map((layer) => {
@@ -181,6 +192,7 @@ export function DesignerCanvas({
                 );
               })}
           </div>
+          ) : null}
         </div>
       </div>
     </div>

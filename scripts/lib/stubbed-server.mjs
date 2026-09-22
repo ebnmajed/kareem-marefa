@@ -107,8 +107,18 @@ export async function startStubbedServer({ log = console.log } = {}) {
     process.exit(2)
   }
 
+  // ★ Nothing may already be on :3000. A server left over from an earlier run answers the readiness
+  // probe below and then hangs — its log pipe has no reader any more — so every navigation times out
+  // (wave 11: CI's second qa step met the first step's orphaned server at every push).
+  if (await waitFor(`${BASE}/ar`, 1)) {
+    console.error(`Something is already serving ${BASE} — an orphaned \`next start\`? Stop it and retry.`)
+    process.exit(2)
+  }
+
   log('· starting next start on :3000, pointed at the stub')
-  drain(spawnChild('npx', ['next', 'start'], {
+  // ★ `next` itself, not `npx next`: SIGTERM on an `npx` wrapper does not reach the server it spawned
+  // on Linux, so `shutdown()` left `next start` running, orphaned, on :3000.
+  drain(spawnChild(process.execPath, [join(ROOT, 'node_modules', 'next', 'dist', 'bin', 'next'), 'start'], {
     // The whole point of this file. Without these two lines the app posts
     // registrations to the production project.
     SUPABASE_URL: STUB,

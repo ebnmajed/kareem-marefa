@@ -101,7 +101,7 @@ export default async function ProposalPage({
       <PageHeader
         breadcrumb={[{ href: "/app/propose", label: tp("mine.title") }]}
         breadcrumbLabel={(await getTranslations("ui.pageHeader"))("breadcrumb")}
-        status={<ProposalStatusBadge state={proposal.state} />}
+        status={<ProposalStatusBadge state={proposal.state} viewerIsProposer={proposal.viewerIsProposer} />}
         title={proposal.title}
         meta={
           <p className="text-body-sm text-fg-muted">

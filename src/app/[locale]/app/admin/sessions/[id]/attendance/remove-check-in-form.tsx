@@ -91,7 +91,7 @@ export function RemoveCheckInForm({
     // reached, because the click never becomes a request.
     <form ref={formRef} action={formAction} noValidate className="mt-4 max-w-md space-y-4">
       {manyDays ? (
-        <Field id="remove-day" label={t("dayLabel")} hint={t("removeDayHint")}>
+        <Field id="remove-day" label={t("dayLabel")} hint={t("removeDayHint")} required>
           <Select
             name="dayId"
             value={dayId}

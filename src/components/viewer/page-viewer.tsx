@@ -4,11 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 
 export interface ViewerPageDTO {
   pageNumber: number;
   imageUrl: string;
   thumbnailUrl: string;
+  /** The rendered page's real dimensions (wave 11 C3) — `next/image`'s `width`/`height` are
+   *  its aspect-ratio placeholder, reserved before the image itself loads; a hard-coded 16:9
+   *  box on a non-16:9 page (a portrait slide, a poster) reserved the wrong box and visibly
+   *  jumped once the real image painted, at exactly the "page 1" moment `13` §7 measures. */
+  width: number;
+  height: number;
 }
 
 interface PageViewerProps {
@@ -119,44 +127,45 @@ export function PageViewer({ pages, rtl, title }: PageViewerProps) {
             {t.rich("pageOf", { current: formatNumber(index + 1), total: formatNumber(total), bdi: (chunks) => <bdi>{chunks}</bdi> })}
           </p>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setZoomStep((z) => Math.max(0, z - 1))} disabled={zoomStep === 0} className="rounded-field border border-edge px-3 py-1 text-label text-fg-body disabled:opacity-40">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setZoomStep((z) => Math.max(0, z - 1))} disabled={zoomStep === 0}>
               {t("zoomOut")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setZoomStep((z) => Math.min(ZOOM_STEPS.length - 1, z + 1))}
               disabled={zoomStep === ZOOM_STEPS.length - 1}
-              className="rounded-field border border-edge px-3 py-1 text-label text-fg-body disabled:opacity-40"
             >
               {t("zoomIn")}
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div className="relative mt-3 overflow-auto rounded-field border border-edge">
+        <Panel className="relative mt-3 overflow-auto p-0!">
           <div style={{ transform: `scale(${zoom})`, transformOrigin: rtl ? "top right" : "top left" }}>
             <Image
               src={current.imageUrl}
               alt={`${title} — ${t.markup("pageOf", { current: index + 1, total, bdi: (chunks) => chunks })}`}
-              width={1600}
-              height={900}
+              width={current.width}
+              height={current.height}
               className="h-auto w-full"
               unoptimized
               priority={index === 0}
             />
           </div>
-        </div>
+        </Panel>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <button type="button" onClick={rtl ? advance : retreat} disabled={rtl ? index === total - 1 : index === 0} className="rounded-field border border-edge px-4 py-2 text-label text-fg-body disabled:opacity-40">
+          <Button type="button" variant="secondary" size="md" onClick={rtl ? advance : retreat} disabled={rtl ? index === total - 1 : index === 0}>
             {t("previous")}
-          </button>
+          </Button>
           <button type="button" onClick={() => setShowThumbnails((s) => !s)} className="text-label text-fg-body md:hidden">
             {t("thumbnailsLabel")}
           </button>
-          <button type="button" onClick={rtl ? retreat : advance} disabled={rtl ? index === 0 : index === total - 1} className="rounded-field border border-edge px-4 py-2 text-label text-fg-body disabled:opacity-40">
+          <Button type="button" variant="secondary" size="md" onClick={rtl ? retreat : advance} disabled={rtl ? index === 0 : index === total - 1}>
             {t("next")}
-          </button>
+          </Button>
         </div>
       </div>
 
