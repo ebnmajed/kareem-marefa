@@ -1598,3 +1598,58 @@ is proven with `applyProposed()` in its own tests before I hand it over.
 12. **A presenter badge after removal.** `sessions_delivered_count` badges are never revoked (the
     evaluator only inserts), so a presenter removed after completion keeps one that counted that
     session. Leave it (badges are not points, and `REQ-REC-*` has no revocation) — confirm.
+
+---
+
+## Sync-1 early rulings, folded in (the lead, 2026-09-22)
+
+**1 · `add_session_presenter()` may UPDATE a pending or declined row to `accepted = true`.** This is
+covered already. The trigger is `after insert or delete or update of accepted, declined_at`, and it
+compares `was` with `is`, not the operation. So `false → true`, and «`declined_at` cleared with
+`accepted` set», are both «becomes an accepted presenter». After completion that pays; before completion
+it does nothing. `POL-session_presenters.pays_on_join_after_completion` has an update case beside the
+insert case.
+
+**2 · Rows stuck at `accepted = false`, flipped by the owner's scoped data fix.** ★ **Stated plainly: on
+a COMPLETED or ARCHIVED session, flipping a row to `accepted = true` PAYS that presenter**, exactly as the
+fan-out would have at completion:
+- `session_delivered` (50);
+- `attendee_bonus` (2 per qualifying attendee, up to 30);
+- `rating_bonus` (20) if the session's ratings meet the threshold. It is evaluated at once when completion
+  was more than 48 h ago, otherwise also at +48 h;
+- `proposal_accepted` never, because a directly created session has no proposal.
+
+The payment goes through the worker (existing jobs, existing keys), so it lands when Railway runs them,
+not inside the data fix's transaction. On a session **not yet completed**, the flip pays nothing now and
+the member is paid at completion like any presenter. The owner's order: whether to run the fix before or
+after this trigger is promoted **is** the decision to pay or not. Before → nothing is paid for sessions
+already completed. After → they are paid. The read that sizes it is the third query in «What `main`'s
+worker does».
+
+**3 · Attendance and presenter awards together — the paths measured.** `check_in()` refuses
+`is_presenter_of()` (`0120`, `check_in` body) and `mark_checked_in_manually()` refuses an **accepted**
+presenter with `presenter_cannot_check_in` (`0120`, its body, «REQ-CHK-011 applies to manual too»). Both
+test `accepted` **only**. So a member can still hold both an attendance award and presenter awards by
+three routes, each of which **checks in first and becomes accepted later**:
+
+| Route | Guarded today? |
+|---|---|
+| `sessions`' `add_session_presenter()` (insert or update to accepted) | yes, by its Q4 refusal |
+| a pending (`accepted = false`) co-presenter checks in, then **the owner's data fix** flips the row | no. The fix is plain SQL |
+| the same member, then **self-update** `accepted = true` (`session_presenters_update_self`) | no |
+| an admin **inserting directly** through `p2_admin_insert` (`0010:476`), not through the RPC | no |
+
+**My proposal, in `award_points()` (`0002`), one clause:** a `check_in` attendance award writes nothing
+when the member is an accepted presenter of the session **at run time**. Since the award now runs at
+completion, this closes every route above for a session whose presenter changed **before** completion,
+which is where the data fix mostly lands. After completion there is a residual case: a member already paid
+for attendance who becomes a presenter. I do **not** reverse the attendance award automatically. It was
+honestly earned when written, and a second automatic reversal path is more surface than the case is worth.
+**Recommendation for the owner's order: the data fix excludes rows whose member has an active check-in on
+that session**, which the owner can read first:
+`select count(*) from public.session_presenters sp join public.check_ins c on c.session_id = sp.session_id and c.member_id = sp.member_id and c.removed_at is null where not sp.accepted and sp.declined_at is null;`.
+This adds to the move list: **none**. No existing case checks in an accepted presenter, because both RPCs
+refuse it. The new row is `RPC-award_points.presenter_earns_no_attendance`, in
+`scoring-completion-timing.test.ts`.
+
+**`checkin`'s Q2** (incomplete before completion): accepted by the lead, as row 4 of contract 1 states.
