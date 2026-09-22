@@ -94,6 +94,41 @@ Found this wave, predating it (`sessions`, 2026-09-22):
 - On a phone the poster slot's pending line «يُولَّد الملصق… N من M» sits under «نبذة», away from the download (`session-poster.tsx`, M6, and the wave-6 phone composition).
 - The download menu trusts `status = 'ready'` and the slot trusts a successful sign, so a ready row whose object is missing makes them disagree. The route answers `?download=failed`, so the user is told.
 
+### ★ The owner's order (wave 13) — DRAFT, written as the wave builds; not yet rehearsed
+
+**Migrations so far: `0152`–`0154`**, all additive:
+- `0152`: a new definer function;
+- `0153`: one restrictive storage policy, plus its definer predicate;
+- `0154`: `schedule_session()` re-created with one default changed, plus one new definer function.
+
+Each must still be **rehearsed on the owner's production schema dump before the push**, as every wave since 7. The rehearsal lands here.
+
+1. **Read production first** (reads only):
+   ```sql
+   -- how many certificate PDFs sit under the exports prefix (what 0153 narrows)
+   select count(*) from public.export_artifacts ea join public.design_documents d on d.id = ea.document_id
+    where d.bound_certificate_id is not null and ea.status = 'ready';
+   -- the posters DEC-179 left cached broken (designer's query, notes/designer.md «DEC-179 as built»)
+   select p.session_id, p.mode, d.id as document_id
+     from public.session_posters p join public.design_documents d on d.id = p.document_id
+    where exists (select 1 from jsonb_array_elements(d.document->'layers') l
+                   where l->>'kind' = 'image'
+                     and (l#>>'{image,assetId}' ~ '^[0-9a-f-]{36}$'
+                          or (l#>>'{image,binding}' = 'brand.logoAssetId'
+                              and exists (select 1 from public.brand_kits b where b.org_id = p.org_id and b.logo_asset_id is not null))));
+   ```
+2. **Rehearse, then push `0152`–`0154` before the merge.**
+   - ★ **`0153` closes a live leak: any org member can list and sign another member's certificate PDF.** It can be pushed on its own ahead of the rest.
+   - ★ **The push MUST precede the merge.** `0154` makes `schedule_session()` treat a missing mode as unchanged. The new schedule form sends none. On the old schema the old default would reset every saved session's certificates to **off**.
+   - `main`'s form still sends the mode, so `main` on the new schema saves byte-identically.
+3. **Merge, then Railway.** Reconnect Railway (the standing step below) **before anyone edits in the new studio**. A `schemaVersion: 2` document rendered by `main`'s old worker is refused (`schema_version_future`) rather than cached wrong, and a retry after the new worker deploys renders it.
+4. ★ **Re-render the posters `DEC-179` left broken.** Re-enqueueing alone does nothing: `request_render()` skips a ready artifact with the same fingerprint (`0060:94`), and the fingerprint does not change. So:
+   - (a) delete the `export_artifacts` rows of the documents the query in step 1 lists — a **scoped data fix, never a migration**;
+   - (b) re-enqueue `regenerate_poster` under `poster:{session_id}` for each **live** poster;
+   - (c) for each **detached** one, press «اطلب التصدير» in the studio (`REQ-DSG-003`).
+   - Every production session is a test session (`DEC-175`), so this is cosmetic today. It becomes owed the day a real session exists.
+5. **Issued certificates that draw the logo stay as printed** (`REQ-CRT-014`) — `designer`'s recommendation, **the owner's call**.
+
 ### ★ The standing owner step — Railway, after every merge
 
 Railway's push trigger has needed a manual `railway service source connect` after **seven consecutive merges**.
