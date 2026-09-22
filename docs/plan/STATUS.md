@@ -111,6 +111,7 @@ every merge, and **it is the last thing in this project still done by hand**.
 | `tests/components/checkin/schedule-form.test.tsx` › `BASE_INITIAL` | (b) the `certificateMode` line removed | harness only — `ScheduleInitial` lost the field |
 | `tests/components/sessions/schedule-days.test.tsx` › `BASE` | (b) the same line removed | harness only |
 | `tests/components/me/certificates-page.test.tsx` | (b) the mock of the deleted `signCertificateUrl` removed — the entry, its import, one `mockResolvedValueOnce`; **no assertion changed** | the page links through `downloadHref` (`DEC-177`); `designer` `67c66e1` |
+| `tests/e2e/wave9-three-day-workshop.spec.ts` › case 1 (the lead's, R7) | (b) the mode is set on SCR-045 — «تصدر تلقائيًا عند اكتمال الجلسة», «احفظ الوضع», the preflight's «ثبّت الوضع» — not by the schedule's radio; the DB assertion `certificate_mode = 'automatic'` is unchanged, now polled after SCR-045's save | the mode left SCR-043 (`DEC-178`, `6f71d56`, `0d64933`). **7/7 with the real worker** on build `2549666`: case 7 still issues exactly one certificate, to the member who came all three days |
 
 ---
 
